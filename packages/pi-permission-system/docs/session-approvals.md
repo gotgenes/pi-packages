@@ -1,15 +1,27 @@
 # Session-Scoped Approvals
 
-When any permission resolves to `ask`, the permission dialog offers four options:
+When any permission resolves to `ask`, the permission dialog offers six options:
 
 ```text
-Yes | Yes, allow "<pattern>" for this session | No | No, provide reason
+Yes | Yes, allow "<pattern>" for this session | Yes, enter a custom pattern for this session | Yes, save a custom pattern to config | No | No, provide reason
 ```
 
 Selecting **Yes, allow "\<pattern\>" for this session** approves the current request and records the suggested wildcard pattern as a session rule.
 Subsequent requests that match the pattern skip the prompt for the remainder of the session.
 
+Selecting **Yes, enter a custom pattern for this session** opens a second chooser with several candidate patterns derived from the current request.
+After choosing a candidate, an input box is shown with that pattern prefilled so it can be accepted as-is or edited before saving.
+Selecting `← Back` or dismissing a nested chooser returns to the previous permission choice instead of denying the request.
+The final pattern approves the current request and is recorded as a session rule.
+Use this when the suggested pattern is too broad or too narrow but the approval should remain temporary.
+
+Selecting **Yes, save a custom pattern to config** uses the same candidate-pattern chooser and editable input flow, then asks whether to save the final pattern to the project config or the global config.
+The config-target chooser also includes `← Back`, allowing the user to return to the top-level permission choices before anything is written.
+The saved rule uses `allow` as the permission action, so future matching requests are approved without prompting according to normal config precedence.
+Use this when the pattern should persist across sessions.
+
 Session approvals are ephemeral — they are never persisted to disk and are cleared on `session_shutdown`.
+Persisted custom patterns are written to config and remain until removed or overridden.
 
 ## Suggested Patterns
 

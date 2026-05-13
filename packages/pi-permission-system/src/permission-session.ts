@@ -250,6 +250,10 @@ export class PermissionSession {
 
   // ── Infrastructure paths ───────────────────────────────────────────────
 
+  getAgentDir(): string {
+    return this.paths.agentDir;
+  }
+
   getInfrastructureDirs(): readonly string[] {
     return this.paths.piInfrastructureDirs;
   }

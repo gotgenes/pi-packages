@@ -1,8 +1,8 @@
-import type { PermissionPromptDecision } from "../../permission-dialog";
 import type {
-  PermissionDecisionEvent,
-  PermissionDecisionResolution,
-} from "../../permission-events";
+  CustomPatternApprovalTarget,
+  PermissionPromptDecision,
+} from "../../permission-dialog";
+import type { PermissionDecisionEvent } from "../../permission-events";
 import type { PromptPermissionDetails } from "../../permission-prompter";
 import type { Rule } from "../../rule";
 import type { PermissionCheckResult, PermissionState } from "../../types";
@@ -94,6 +94,13 @@ export interface GateRunnerDeps {
   ): PermissionCheckResult;
   getSessionRuleset(): Rule[];
   approveSessionRule(surface: string, pattern: string): void;
+  persistCustomPattern(
+    target: CustomPatternApprovalTarget,
+    surface: string,
+    pattern: string,
+    action: "allow" | "ask",
+  ): string;
+  refreshConfig(): void;
   writeReviewLog(event: string, details: Record<string, unknown>): void;
   emitDecision(event: PermissionDecisionEvent): void;
   canConfirm(): boolean;

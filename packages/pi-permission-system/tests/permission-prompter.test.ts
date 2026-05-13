@@ -248,6 +248,31 @@ describe("PermissionPrompter", () => {
       );
     });
 
+    it("passes sessionLabel and customPatternOptions to confirmPermission when present", async () => {
+      mockConfirmPermission.mockResolvedValue({
+        approved: true,
+        state: "approved",
+      });
+      const deps = makeDeps();
+      const prompter = new PermissionPrompter(deps);
+      const details = makeDetails({
+        sessionLabel: "Yes, for 'read' tool",
+        customPatternOptions: ["path/file.ts", "path/*", "*"],
+      });
+
+      await prompter.prompt(makeCtx(true), details);
+
+      expect(mockConfirmPermission).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.any(String),
+        expect.anything(),
+        {
+          sessionLabel: "Yes, for 'read' tool",
+          customPatternOptions: ["path/file.ts", "path/*", "*"],
+        },
+      );
+    });
+
     it("passes undefined options to confirmPermission when sessionLabel is absent", async () => {
       mockConfirmPermission.mockResolvedValue({
         approved: true,
@@ -352,6 +377,30 @@ describe("PermissionPrompter", () => {
   });
 
   // ── Subagent forwarding path ─────────────────────────────────────────────
+
+  it("logs customPatternApprovalTarget when user enters a custom pattern", async () => {
+    const writeReviewLog = vi.fn();
+    mockConfirmPermission.mockResolvedValue({
+      approved: true,
+      state: "approved_with_custom_pattern",
+      customPatternApproval: {
+        pattern: "git *",
+        target: "project",
+      },
+    });
+    const deps = makeDeps({ writeReviewLog });
+    const prompter = new PermissionPrompter(deps);
+
+    await prompter.prompt(makeCtx(true), makeDetails({ surface: "bash" }));
+
+    expect(writeReviewLog).toHaveBeenCalledWith(
+      "permission_request.approved",
+      expect.objectContaining({
+        customPatternApprovalTarget: "project",
+        resolution: "approved_with_custom_pattern",
+      }),
+    );
+  });
 
   describe("subagent forwarding path", () => {
     it("calls confirmPermission even when ctx has no UI", async () => {

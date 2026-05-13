@@ -99,6 +99,7 @@ export async function waitForForwardedPermissionApproval(
   ctx: ExtensionContext,
   message: string,
   deps: PermissionForwardingDeps,
+  options?: RequestPermissionOptions,
 ): Promise<PermissionPromptDecision> {
   const requesterSessionId = getSessionId(ctx);
   const targetSessionId = resolvePermissionForwardingTargetSessionId({
@@ -145,6 +146,7 @@ export async function waitForForwardedPermissionApproval(
     targetSessionId,
     requesterAgentName,
     message,
+    options,
   };
 
   const requestPath = join(location.requestsDir, `${requestId}.json`);
@@ -182,6 +184,8 @@ export async function waitForForwardedPermissionApproval(
         approved: response?.approved ?? null,
         state: response?.state ?? null,
         denialReason: response?.denialReason ?? null,
+        customPattern: response?.customPatternApproval?.pattern ?? null,
+        customPatternTarget: response?.customPatternApproval?.target ?? null,
         responderSessionId: response?.responderSessionId ?? null,
         targetSessionId,
         responsePath,
@@ -290,6 +294,7 @@ export async function processForwardedPermissionRequests(
           ctx.ui,
           "Permission Required (Subagent)",
           formatForwardedPermissionPrompt(request),
+          request.options,
         );
       } catch (error) {
         logPermissionForwardingError(
@@ -322,6 +327,7 @@ export async function processForwardedPermissionRequests(
         approved: decision.approved,
         state: decision.state,
         denialReason: decision.denialReason,
+        customPatternApproval: decision.customPatternApproval,
         responderSessionId: currentSessionId,
         respondedAt: Date.now(),
       } satisfies ForwardedPermissionResponse);
@@ -363,5 +369,5 @@ export async function confirmPermission(
     return { approved: false, state: "denied" };
   }
 
-  return waitForForwardedPermissionApproval(ctx, message, deps);
+  return waitForForwardedPermissionApproval(ctx, message, deps, options);
 }

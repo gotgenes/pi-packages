@@ -4,6 +4,7 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 
 import { toRecord } from "../common";
+import { suggestSessionPattern } from "../pattern-suggest";
 import {
   emitDecisionEvent,
   type PermissionEventBus,
@@ -16,6 +17,7 @@ import {
   formatUnknownToolReason,
 } from "../permission-prompts";
 import type { PermissionSession } from "../permission-session";
+import { persistPermissionRule } from "../persist-permission-rule";
 import {
   checkRequestedToolRegistration,
   getToolNameFromValue,
@@ -114,12 +116,32 @@ export class PermissionGateHandler {
     const getSessionRuleset = () => session.getSessionRuleset();
     const approveSessionRule = (surface: string, pattern: string) =>
       session.approveSessionRule(surface, pattern);
+    const persistCustomPattern: GateRunnerDeps["persistCustomPattern"] = (
+      target,
+      surface,
+      pattern,
+      action,
+    ) => {
+      if (target === "session") {
+        throw new Error("Session custom patterns are not persisted to config.");
+      }
+      return persistPermissionRule({
+        agentDir: session.getAgentDir(),
+        cwd: ctx.cwd,
+        scope: target,
+        surface,
+        pattern,
+        action,
+      }).path;
+    };
 
     // ── Shared runner deps (built once, reused for all gates) ────────────
     const runnerDeps: GateRunnerDeps = {
       checkPermission,
       getSessionRuleset,
       approveSessionRule,
+      persistCustomPattern,
+      refreshConfig: () => session.refreshConfig(ctx),
       writeReviewLog,
       emitDecision,
       canConfirm,
@@ -289,18 +311,27 @@ export class PermissionGateHandler {
       skillName,
       agentName ?? undefined,
     );
+    const skillSuggestion = suggestSessionPattern("skill", skillName);
     const skillInputCanConfirm = session.canPrompt(ctx);
     let skillInputAutoApproved = false;
     const skillInputGate = await applyPermissionGate({
       state: check.state,
       canConfirm: skillInputCanConfirm,
+      sessionApproval: {
+        surface: skillSuggestion.surface,
+        pattern: skillSuggestion.pattern,
+      },
       promptForApproval: async () => {
         const decision = await session.prompt(ctx, {
           requestId: session.createPermissionRequestId("skill-input"),
           source: "skill_input",
           agentName,
           message: skillInputMessage,
+          surface: "skill",
+          defaultPersistAction: "allow",
           skillName,
+          sessionLabel: skillSuggestion.label,
+          customPatternOptions: skillSuggestion.patternOptions,
         });
         skillInputAutoApproved = decision.autoApproved === true;
         return decision;
@@ -332,7 +363,11 @@ export class PermissionGateHandler {
             : skillInputGate.action === "allow"
               ? skillInputAutoApproved
                 ? "auto_approved"
-                : "user_approved"
+                : skillInputGate.customPatternApproval
+                  ? "approved_with_custom_pattern"
+                  : skillInputGate.sessionApproval
+                    ? "user_approved_for_session"
+                    : "user_approved"
               : skillInputCanConfirm
                 ? "user_denied"
                 : "confirmation_unavailable",
@@ -340,6 +375,38 @@ export class PermissionGateHandler {
       agentName: agentName ?? null,
       matchedPattern: check.matchedPattern ?? null,
     });
+
+    if (skillInputGate.action === "allow") {
+      if (skillInputGate.sessionApproval) {
+        session.approveSessionRule(
+          skillInputGate.sessionApproval.surface,
+          skillInputGate.sessionApproval.pattern,
+        );
+      }
+
+      if (skillInputGate.customPatternApproval) {
+        if (skillInputGate.customPatternApproval.target === "session") {
+          session.approveSessionRule(
+            "skill",
+            skillInputGate.customPatternApproval.pattern,
+          );
+        } else {
+          persistPermissionRule({
+            agentDir: session.getAgentDir(),
+            cwd: ctx.cwd,
+            scope: skillInputGate.customPatternApproval.target,
+            surface: "skill",
+            pattern: skillInputGate.customPatternApproval.pattern,
+            action: "allow",
+          });
+          session.approveSessionRule(
+            "skill",
+            skillInputGate.customPatternApproval.pattern,
+          );
+          session.refreshConfig(ctx);
+        }
+      }
+    }
 
     if (skillInputGate.action === "block") {
       return { action: "handled" };

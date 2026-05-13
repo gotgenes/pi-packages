@@ -6,6 +6,7 @@ import {
   type PermissionForwardingDeps,
 } from "./forwarded-permissions/polling";
 import type {
+  CustomPatternApprovalTarget,
   PermissionPromptDecision,
   RequestPermissionOptions,
 } from "./permission-dialog";
@@ -19,6 +20,8 @@ export interface PromptPermissionDetails {
   source: PermissionReviewSource;
   agentName: string | null;
   message: string;
+  surface?: string;
+  defaultPersistAction?: "allow" | "ask";
   toolCallId?: string;
   toolName?: string;
   skillName?: string;
@@ -28,6 +31,8 @@ export interface PromptPermissionDetails {
   toolInputPreview?: string;
   /** Override label for the "for this session" dialog option. */
   sessionLabel?: string;
+  /** Candidate patterns for custom session/config approval flows. */
+  customPatternOptions?: string[];
 }
 
 /** Mockable contract for permission prompting. */
@@ -74,6 +79,25 @@ export interface PermissionPrompterDeps {
  * parameter (e.g. a future sessionLabel variant) only requires changing
  * PromptPermissionDetails and this class — not the full threading chain.
  */
+function getCustomPatternApprovalTarget(details: {
+  customPatternApproval?: { target: CustomPatternApprovalTarget };
+}): CustomPatternApprovalTarget | null {
+  return details.customPatternApproval?.target ?? null;
+}
+
+function buildRequestPermissionOptions(
+  details: PromptPermissionDetails,
+): RequestPermissionOptions | undefined {
+  const options: RequestPermissionOptions = {};
+  if (details.sessionLabel) {
+    options.sessionLabel = details.sessionLabel;
+  }
+  if (details.customPatternOptions && details.customPatternOptions.length > 0) {
+    options.customPatternOptions = details.customPatternOptions;
+  }
+  return Object.keys(options).length > 0 ? options : undefined;
+}
+
 export class PermissionPrompter implements PermissionPrompterApi {
   constructor(private readonly deps: PermissionPrompterDeps) {}
 
@@ -92,7 +116,7 @@ export class PermissionPrompter implements PermissionPrompterApi {
       ctx,
       details.message,
       this.buildForwardingDeps(),
-      details.sessionLabel ? { sessionLabel: details.sessionLabel } : undefined,
+      buildRequestPermissionOptions(details),
     );
 
     this.writeReviewEntry(
@@ -103,6 +127,7 @@ export class PermissionPrompter implements PermissionPrompterApi {
         ...details,
         resolution: decision.state,
         denialReason: decision.denialReason,
+        customPatternApproval: decision.customPatternApproval,
       },
     );
 
@@ -116,6 +141,7 @@ export class PermissionPrompter implements PermissionPrompterApi {
     details: PromptPermissionDetails & {
       resolution?: string;
       denialReason?: string;
+      customPatternApproval?: { target: CustomPatternApprovalTarget };
     },
   ): void {
     this.deps.writeReviewLog(event, {
@@ -130,8 +156,11 @@ export class PermissionPrompter implements PermissionPrompterApi {
       command: details.command ?? null,
       target: details.target ?? null,
       toolInputPreview: details.toolInputPreview ?? null,
+      surface: details.surface ?? null,
+      defaultPersistAction: details.defaultPersistAction ?? null,
       resolution: details.resolution ?? null,
       denialReason: details.denialReason ?? null,
+      customPatternApprovalTarget: getCustomPatternApprovalTarget(details),
     });
   }
 

@@ -72,6 +72,12 @@ describe("deriveResolution", () => {
     );
   });
 
+  it("returns approved_with_custom_pattern for ask + allow with custom pattern", () => {
+    expect(deriveResolution("ask", "allow", false, true, false, true)).toBe(
+      "approved_with_custom_pattern",
+    );
+  });
+
   it("returns user_denied for ask + block with canConfirm", () => {
     expect(deriveResolution("ask", "block", false, true)).toBe("user_denied");
   });

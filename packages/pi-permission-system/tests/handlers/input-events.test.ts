@@ -57,6 +57,8 @@ function makeSession(
     getToolPermission: vi.fn().mockReturnValue("allow" as PermissionState),
     getSessionRuleset: vi.fn().mockReturnValue([]),
     approveSessionRule: vi.fn(),
+    getAgentDir: vi.fn().mockReturnValue("/tmp/agent"),
+    refreshConfig: vi.fn(),
     canPrompt: vi.fn().mockReturnValue(true),
     prompt: vi.fn().mockResolvedValue({ approved: true, state: "approved" }),
     createPermissionRequestId: vi.fn().mockReturnValue("req-id"),
@@ -164,6 +166,52 @@ describe("handleInput decision events — skill gate", () => {
       result: "deny",
       resolution: "user_denied",
     });
+  });
+
+  it("emits allow with approved_with_custom_pattern when state=ask and user enters a custom pattern", async () => {
+    const { handler, events } = makeHandler("ask", {
+      prompt: vi.fn().mockResolvedValue({
+        approved: true,
+        state: "approved_with_custom_pattern",
+        customPatternApproval: {
+          pattern: "librarian",
+          target: "session",
+        },
+      }),
+    });
+    await handler.handleInput({ text: "/skill:librarian" }, makeCtx());
+
+    const decisions = getDecisionEvents(events);
+    expect(decisions).toHaveLength(1);
+    expect(decisions[0]).toMatchObject({
+      surface: "skill",
+      value: "librarian",
+      result: "allow",
+      resolution: "approved_with_custom_pattern",
+    });
+  });
+
+  it("records a session rule and refreshes config when a custom skill pattern is persisted", async () => {
+    const refreshConfig = vi.fn();
+    const approveSessionRule = vi.fn();
+    const { handler } = makeHandler("ask", {
+      prompt: vi.fn().mockResolvedValue({
+        approved: true,
+        state: "approved_with_custom_pattern",
+        customPatternApproval: {
+          pattern: "librarian",
+          target: "global",
+        },
+      }),
+      approveSessionRule,
+      refreshConfig,
+    });
+    const ctx = makeCtx();
+
+    await handler.handleInput({ text: "/skill:librarian" }, ctx);
+
+    expect(approveSessionRule).toHaveBeenCalledWith("skill", "librarian");
+    expect(refreshConfig).toHaveBeenCalledWith(ctx);
   });
 
   it("emits deny with confirmation_unavailable when state=ask but no UI", async () => {

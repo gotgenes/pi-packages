@@ -1,4 +1,5 @@
 import { getNonEmptyString, toRecord } from "../../common";
+import { suggestSessionPattern } from "../../pattern-suggest";
 import type { Rule } from "../../rule";
 import { deriveApprovalPattern } from "../../session-rules";
 import type { PermissionCheckResult } from "../../types";
@@ -88,6 +89,13 @@ export async function describeBashExternalDirectoryGate(
   );
 
   const patterns = uncoveredPaths.map((p) => deriveApprovalPattern(p));
+  const customPatternOptions = patterns.flatMap(
+    (pattern, index) =>
+      suggestSessionPattern(
+        "external_directory",
+        uncoveredPaths[index] ?? pattern,
+      ).patternOptions,
+  );
 
   return {
     surface: "external_directory",
@@ -115,9 +123,12 @@ export async function describeBashExternalDirectoryGate(
       source: "tool_call",
       agentName: tcc.agentName,
       message: bashExtMessage,
+      surface: "external_directory",
+      defaultPersistAction: "allow",
       toolCallId: tcc.toolCallId,
       toolName: tcc.toolName,
       command,
+      customPatternOptions,
     },
     logContext: {
       source: "tool_call",

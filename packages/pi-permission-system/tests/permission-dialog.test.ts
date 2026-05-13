@@ -24,6 +24,12 @@ describe("isPermissionDecisionState", () => {
     expect(isPermissionDecisionState("approved_for_session")).toBe(true);
   });
 
+  it("accepts approved_with_custom_pattern", () => {
+    expect(isPermissionDecisionState("approved_with_custom_pattern")).toBe(
+      true,
+    );
+  });
+
   it("rejects unknown strings", () => {
     expect(isPermissionDecisionState("unknown")).toBe(false);
   });
@@ -117,7 +123,7 @@ describe("requestPermissionDecisionFromUi", () => {
     expect(result).toEqual({ approved: false, state: "denied" });
   });
 
-  it("passes four options to ui.select", async () => {
+  it("passes six options to ui.select", async () => {
     const selectFn = vi.fn().mockResolvedValue("Yes");
     const ui: PermissionDecisionUi = {
       select: selectFn,
@@ -128,6 +134,8 @@ describe("requestPermissionDecisionFromUi", () => {
     expect(options).toEqual([
       "Yes",
       "Yes, for this session",
+      "Yes, enter a custom pattern for this session",
+      "Yes, save a custom pattern to config",
       "No",
       "No, provide reason",
     ]);
@@ -159,6 +167,163 @@ describe("requestPermissionDecisionFromUi", () => {
       { sessionLabel: customLabel },
     );
     expect(result).toEqual({ approved: true, state: "approved_for_session" });
+  });
+
+  it("returns approved_with_custom_pattern for custom session pattern", async () => {
+    const ui: PermissionDecisionUi = {
+      select: vi
+        .fn()
+        .mockResolvedValueOnce("Yes, enter a custom pattern for this session"),
+      input: vi.fn().mockResolvedValue("git checkout *"),
+    };
+    const result = await requestPermissionDecisionFromUi(
+      ui,
+      "Title",
+      "Message",
+    );
+    expect(result).toEqual({
+      approved: true,
+      state: "approved_with_custom_pattern",
+      customPatternApproval: {
+        pattern: "git checkout *",
+        target: "session",
+      },
+    });
+  });
+
+  it("returns approved_with_custom_pattern for persisted custom pattern", async () => {
+    const ui: PermissionDecisionUi = {
+      select: vi
+        .fn()
+        .mockResolvedValueOnce("Yes, save a custom pattern to config")
+        .mockResolvedValueOnce("Project config"),
+      input: vi.fn().mockResolvedValue("exa:search"),
+    };
+    const result = await requestPermissionDecisionFromUi(
+      ui,
+      "Title",
+      "Message",
+    );
+    expect(result).toEqual({
+      approved: true,
+      state: "approved_with_custom_pattern",
+      customPatternApproval: {
+        pattern: "exa:search",
+        target: "project",
+      },
+    });
+  });
+
+  it("shows custom pattern candidates before the edit input", async () => {
+    const selectFn = vi
+      .fn()
+      .mockResolvedValueOnce("Yes, enter a custom pattern for this session")
+      .mockResolvedValueOnce("Use pattern: git checkout *");
+    const inputFn = vi.fn().mockResolvedValue("git checkout main");
+    const ui: PermissionDecisionUi = {
+      select: selectFn,
+      input: inputFn,
+    };
+
+    const result = await requestPermissionDecisionFromUi(
+      ui,
+      "Title",
+      "Message",
+      {
+        customPatternOptions: ["git checkout main", "git checkout *", "git *"],
+      },
+    );
+
+    expect(selectFn.mock.calls[1][1]).toEqual([
+      "Use pattern: git checkout main",
+      "Use pattern: git checkout *",
+      "Use pattern: git *",
+      "Enter a custom pattern manually",
+      "← Back",
+    ]);
+    expect(inputFn).toHaveBeenCalledWith(
+      "Title\nEdit pattern or press Enter to use:\ngit checkout *",
+      "git checkout *",
+    );
+    expect(result).toEqual({
+      approved: true,
+      state: "approved_with_custom_pattern",
+      customPatternApproval: {
+        pattern: "git checkout main",
+        target: "session",
+      },
+    });
+  });
+
+  it("uses the selected candidate when the edit input is empty", async () => {
+    const ui: PermissionDecisionUi = {
+      select: vi
+        .fn()
+        .mockResolvedValueOnce("Yes, enter a custom pattern for this session")
+        .mockResolvedValueOnce("Use pattern: git *"),
+      input: vi.fn().mockResolvedValue(""),
+    };
+
+    const result = await requestPermissionDecisionFromUi(
+      ui,
+      "Title",
+      "Message",
+      { customPatternOptions: ["git *"] },
+    );
+
+    expect(result).toEqual({
+      approved: true,
+      state: "approved_with_custom_pattern",
+      customPatternApproval: {
+        pattern: "git *",
+        target: "session",
+      },
+    });
+  });
+
+  it("returns to the top-level choices from the custom pattern chooser", async () => {
+    const selectFn = vi
+      .fn()
+      .mockResolvedValueOnce("Yes, enter a custom pattern for this session")
+      .mockResolvedValueOnce("← Back")
+      .mockResolvedValueOnce("No");
+    const ui: PermissionDecisionUi = {
+      select: selectFn,
+      input: vi.fn(),
+    };
+
+    const result = await requestPermissionDecisionFromUi(
+      ui,
+      "Title",
+      "Message",
+      { customPatternOptions: ["git *"] },
+    );
+
+    expect(result).toEqual({ approved: false, state: "denied" });
+    expect(selectFn).toHaveBeenCalledTimes(3);
+  });
+
+  it("returns to the top-level choices from config target selection", async () => {
+    const selectFn = vi
+      .fn()
+      .mockResolvedValueOnce("Yes, save a custom pattern to config")
+      .mockResolvedValueOnce("Use pattern: git *")
+      .mockResolvedValueOnce("← Back")
+      .mockResolvedValueOnce("Yes");
+    const ui: PermissionDecisionUi = {
+      select: selectFn,
+      input: vi.fn().mockResolvedValue(""),
+    };
+
+    const result = await requestPermissionDecisionFromUi(
+      ui,
+      "Title",
+      "Message",
+      { customPatternOptions: ["git *"] },
+    );
+
+    expect(result).toEqual({ approved: true, state: "approved" });
+    expect(selectFn).toHaveBeenCalledTimes(4);
   });
 
   it("falls back to default session label when no options provided", async () => {

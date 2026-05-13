@@ -1,4 +1,3 @@
-import type { PermissionPromptDecision } from "../../permission-dialog";
 import { applyPermissionGate } from "../../permission-gate";
 import type { PermissionCheckResult } from "../../types";
 import type { GateDescriptor, GateRunnerDeps } from "./descriptor";
@@ -102,6 +101,9 @@ export async function runGateCheck(
   // 4. Determine whether session approval was granted
   const hasSessionApproval =
     gateResult.action === "allow" && gateResult.sessionApproval !== undefined;
+  const hasCustomPatternApproval =
+    gateResult.action === "allow" &&
+    gateResult.customPatternApproval !== undefined;
 
   // 5. Emit decision event
   deps.emitDecision({
@@ -114,6 +116,7 @@ export async function runGateCheck(
       hasSessionApproval,
       canConfirm,
       autoApproved,
+      hasCustomPatternApproval,
     ),
     origin: check.origin ?? null,
     agentName: agentName ?? null,
@@ -133,6 +136,41 @@ export async function runGateCheck(
           descriptor.sessionApproval.pattern,
         );
       }
+    }
+  }
+
+  if (gateResult.action === "allow" && gateResult.customPatternApproval) {
+    const customPattern = gateResult.customPatternApproval;
+    const surface = descriptor.promptDetails.surface ?? descriptor.surface;
+
+    if (customPattern.target === "session") {
+      deps.approveSessionRule(surface, customPattern.pattern);
+      deps.writeReviewLog("permission_request.custom_pattern_recorded", {
+        ...descriptor.logContext,
+        agentName,
+        surface,
+        resolution: "approved_with_custom_pattern",
+        customPattern: customPattern.pattern,
+        customPatternTarget: "session",
+      });
+    } else {
+      const configPath = deps.persistCustomPattern(
+        customPattern.target,
+        surface,
+        customPattern.pattern,
+        descriptor.promptDetails.defaultPersistAction ?? "allow",
+      );
+      deps.approveSessionRule(surface, customPattern.pattern);
+      deps.refreshConfig();
+      deps.writeReviewLog("permission_request.custom_pattern_recorded", {
+        ...descriptor.logContext,
+        agentName,
+        surface,
+        resolution: "approved_with_custom_pattern",
+        customPattern: customPattern.pattern,
+        customPatternTarget: customPattern.target,
+        configPath,
+      });
     }
   }
 

@@ -1,8 +1,15 @@
-import type { PermissionPromptDecision } from "./permission-dialog";
+import type {
+  CustomPatternApproval,
+  PermissionPromptDecision,
+} from "./permission-dialog";
 
 /** Result of applying the permission gate. */
 export type PermissionGateResult =
-  | { action: "allow"; sessionApproval?: { surface: string; pattern: string } }
+  | {
+      action: "allow";
+      sessionApproval?: { surface: string; pattern: string };
+      customPatternApproval?: CustomPatternApproval;
+    }
   | { action: "block"; reason: string };
 
 /** Everything the gate needs — no direct dependency on ExtensionContext. */
@@ -77,6 +84,12 @@ export async function applyPermissionGate(
     }
     if (decision.state === "approved_for_session" && params.sessionApproval) {
       return { action: "allow", sessionApproval: params.sessionApproval };
+    }
+    if (decision.state === "approved_with_custom_pattern") {
+      return {
+        action: "allow",
+        customPatternApproval: decision.customPatternApproval,
+      };
     }
   }
 

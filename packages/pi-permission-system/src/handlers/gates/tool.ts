@@ -83,9 +83,12 @@ export function describeToolGate(
       source: "tool_call",
       agentName: tcc.agentName,
       message: askMessage,
+      surface: tcc.toolName,
+      defaultPersistAction: "allow",
       toolCallId: tcc.toolCallId,
       toolName: tcc.toolName,
       sessionLabel: suggestion.label,
+      customPatternOptions: suggestion.patternOptions,
       ...permissionLogContext,
     },
     logContext: {

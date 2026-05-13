@@ -83,6 +83,7 @@ function makeSession(
       .fn()
       .mockReturnValue(["/test/agent", "/test/agent/git"]),
     getInfrastructureReadPaths: vi.fn().mockReturnValue([]),
+    refreshConfig: vi.fn(),
     canPrompt: vi.fn().mockReturnValue(true),
     prompt: vi.fn().mockResolvedValue({ approved: true, state: "approved" }),
     ...overrides,

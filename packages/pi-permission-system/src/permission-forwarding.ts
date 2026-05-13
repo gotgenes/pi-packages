@@ -1,6 +1,10 @@
 import { join } from "node:path";
 
-import type { PermissionDecisionState } from "./permission-dialog";
+import type {
+  CustomPatternApproval,
+  PermissionDecisionState,
+  RequestPermissionOptions,
+} from "./permission-dialog";
 
 export const PERMISSION_FORWARDING_POLL_INTERVAL_MS = 250;
 export const PERMISSION_FORWARDING_TIMEOUT_MS = 10 * 60 * 1000;
@@ -44,12 +48,14 @@ export type ForwardedPermissionRequest = {
   targetSessionId: string;
   requesterAgentName: string;
   message: string;
+  options?: RequestPermissionOptions;
 };
 
 export type ForwardedPermissionResponse = {
   approved: boolean;
   state: PermissionDecisionState;
   denialReason?: string;
+  customPatternApproval?: CustomPatternApproval;
   responderSessionId: string;
   respondedAt: number;
 };

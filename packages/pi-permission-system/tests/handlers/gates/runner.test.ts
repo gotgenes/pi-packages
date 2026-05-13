@@ -61,6 +61,8 @@ function makeRunnerDeps(
     checkPermission: vi.fn().mockReturnValue(makeCheckResult("allow")),
     getSessionRuleset: vi.fn().mockReturnValue([]),
     approveSessionRule: vi.fn(),
+    persistCustomPattern: vi.fn().mockReturnValue("/tmp/config.json"),
+    refreshConfig: vi.fn(),
     writeReviewLog: vi.fn(),
     emitDecision: vi.fn(),
     canConfirm: vi.fn().mockReturnValue(true),
@@ -201,6 +203,49 @@ describe("runGateCheck", () => {
     expect(deps.approveSessionRule).toHaveBeenCalledWith(
       "external_directory",
       "/outside/b/*",
+    );
+  });
+
+  it("persists a custom project pattern, records a session rule, refreshes config, and emits approved_with_custom_pattern", async () => {
+    const deps = makeRunnerDeps({
+      checkPermission: vi.fn().mockReturnValue(makeCheckResult("ask")),
+      promptPermission: vi.fn().mockResolvedValue({
+        approved: true,
+        state: "approved_with_custom_pattern",
+        customPatternApproval: {
+          pattern: "git checkout *",
+          target: "project",
+        },
+      }),
+    });
+    const descriptor = makeDescriptor({
+      surface: "bash",
+      promptDetails: {
+        source: "tool_call",
+        agentName: null,
+        message: "Allow?",
+        surface: "bash",
+        defaultPersistAction: "allow",
+        toolCallId: "tc-1",
+        toolName: "bash",
+      },
+      decision: { surface: "bash", value: "git checkout main" },
+    });
+    const result = await runGateCheck(descriptor, null, "tc-1", deps);
+    expect(result).toEqual({ action: "allow" });
+    expect(deps.persistCustomPattern).toHaveBeenCalledWith(
+      "project",
+      "bash",
+      "git checkout *",
+      "allow",
+    );
+    expect(deps.approveSessionRule).toHaveBeenCalledWith(
+      "bash",
+      "git checkout *",
+    );
+    expect(deps.refreshConfig).toHaveBeenCalledTimes(1);
+    expect(deps.emitDecision).toHaveBeenCalledWith(
+      expect.objectContaining({ resolution: "approved_with_custom_pattern" }),
     );
   });
 

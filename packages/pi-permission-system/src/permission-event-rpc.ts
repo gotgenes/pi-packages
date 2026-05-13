@@ -169,6 +169,8 @@ async function handlePromptRpc(
       approved: decision.approved,
       resolution: decision.state,
       denialReason: decision.denialReason ?? null,
+      customPattern: decision.customPatternApproval?.pattern ?? null,
+      customPatternTarget: decision.customPatternApproval?.target ?? null,
     });
 
     const data: PermissionsPromptReplyData = {

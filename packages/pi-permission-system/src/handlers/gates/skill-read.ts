@@ -1,5 +1,6 @@
 import { toRecord } from "../../common";
 import { normalizePathForComparison } from "../../path-utils";
+import { suggestSessionPattern } from "../../pattern-suggest";
 import {
   formatSkillPathAskPrompt,
   formatSkillPathDenyReason,
@@ -51,6 +52,7 @@ export function describeSkillReadGate(
     path,
     tcc.agentName ?? undefined,
   );
+  const suggestion = suggestSessionPattern("skill", matchedSkill.name);
 
   return {
     surface: "skill",
@@ -73,10 +75,13 @@ export function describeSkillReadGate(
       source: "skill_read",
       agentName: tcc.agentName,
       message: skillReadMessage,
+      surface: "skill",
+      defaultPersistAction: "allow",
       toolCallId: tcc.toolCallId,
       toolName: tcc.toolName,
       skillName: matchedSkill.name,
       path,
+      customPatternOptions: suggestion.patternOptions,
     },
     logContext: {
       source: "skill_read",

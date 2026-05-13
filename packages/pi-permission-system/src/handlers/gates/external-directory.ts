@@ -4,6 +4,7 @@ import {
   isPiInfrastructureRead,
   normalizePathForComparison,
 } from "../../path-utils";
+import { suggestSessionPattern } from "../../pattern-suggest";
 import { deriveApprovalPattern } from "../../session-rules";
 import type { GateResult } from "./descriptor";
 import {
@@ -76,6 +77,10 @@ export function describeExternalDirectoryGate(
   );
 
   const pattern = deriveApprovalPattern(normalizedExtPath);
+  const suggestion = suggestSessionPattern(
+    "external_directory",
+    normalizedExtPath,
+  );
 
   return {
     surface: "external_directory",
@@ -103,9 +108,12 @@ export function describeExternalDirectoryGate(
       source: "tool_call",
       agentName: tcc.agentName,
       message: extDirMessage,
+      surface: "external_directory",
+      defaultPersistAction: "allow",
       toolCallId: tcc.toolCallId,
       toolName: tcc.toolName,
       path: externalDirectoryPath,
+      customPatternOptions: suggestion.patternOptions,
     },
     logContext: {
       source: "tool_call",

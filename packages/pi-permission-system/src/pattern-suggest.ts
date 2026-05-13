@@ -10,6 +10,8 @@ export interface SessionApprovalSuggestion {
   pattern: string;
   /** Human-readable label for the "for session" dialog option. */
   label: string;
+  /** Candidate patterns the user can choose or edit for custom approvals. */
+  patternOptions: string[];
 }
 
 /**
@@ -120,5 +122,51 @@ export function suggestSessionPattern(
       break;
   }
 
-  return { surface, pattern, label: buildLabel(pattern, surface) };
+  return {
+    surface,
+    pattern,
+    label: buildLabel(pattern, surface),
+    patternOptions: suggestPatternOptions(surface, value, pattern),
+  };
+}
+
+function suggestPatternOptions(
+  surface: string,
+  value: string,
+  primaryPattern: string,
+): string[] {
+  const trimmed = value.trim();
+  const candidates: string[] = [];
+
+  if (trimmed) {
+    candidates.push(trimmed);
+  }
+  candidates.push(primaryPattern);
+
+  if (surface === "bash") {
+    const firstToken = trimmed.split(/\s+/)[0];
+    if (firstToken) {
+      candidates.push(`${firstToken} *`);
+    }
+    candidates.push("*");
+  } else if (surface === "mcp") {
+    candidates.push("*");
+  } else if (surface === "skill") {
+    candidates.push("*");
+  } else if (surface === "external_directory") {
+    candidates.push("*");
+  } else {
+    candidates.push("*");
+  }
+
+  return dedupeNonEmpty(candidates);
+}
+
+function dedupeNonEmpty(values: readonly string[]): string[] {
+  return values
+    .map((value) => value.trim())
+    .filter(
+      (value, index, array) =>
+        value.length > 0 && array.indexOf(value) === index,
+    );
 }

@@ -254,6 +254,28 @@ export function writeJsonFileAtomic(
   }
 }
 
+function parseRequestPermissionOptions(
+  value: unknown,
+): ForwardedPermissionRequest["options"] {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+  const record = value as Record<string, unknown>;
+  const options: ForwardedPermissionRequest["options"] = {};
+  if (typeof record.sessionLabel === "string") {
+    options.sessionLabel = record.sessionLabel;
+  }
+  if (
+    Array.isArray(record.customPatternOptions) &&
+    record.customPatternOptions.every(
+      (item): item is string => typeof item === "string",
+    )
+  ) {
+    options.customPatternOptions = record.customPatternOptions;
+  }
+  return Object.keys(options).length > 0 ? options : undefined;
+}
+
 export function readForwardedPermissionRequest(
   logger: ForwardedPermissionLogger | null,
   filePath: string,
@@ -284,6 +306,7 @@ export function readForwardedPermissionRequest(
       targetSessionId: parsed.targetSessionId,
       requesterAgentName: parsed.requesterAgentName,
       message: parsed.message,
+      options: parseRequestPermissionOptions(parsed.options),
     };
   } catch (error) {
     logPermissionForwardingWarning(
@@ -321,6 +344,18 @@ export function readForwardedPermissionResponse(
       denialReason:
         typeof parsed.denialReason === "string"
           ? parsed.denialReason
+          : undefined,
+      customPatternApproval:
+        parsed.customPatternApproval &&
+        typeof parsed.customPatternApproval === "object" &&
+        typeof parsed.customPatternApproval.pattern === "string" &&
+        (parsed.customPatternApproval.target === "session" ||
+          parsed.customPatternApproval.target === "project" ||
+          parsed.customPatternApproval.target === "global")
+          ? {
+              pattern: parsed.customPatternApproval.pattern,
+              target: parsed.customPatternApproval.target,
+            }
           : undefined,
       responderSessionId: parsed.responderSessionId,
       respondedAt:

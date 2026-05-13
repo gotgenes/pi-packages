@@ -10,6 +10,7 @@ One unified config file per scope:
 | Project | `<cwd>/.pi/extensions/pi-permission-system/config.json`                                    |
 
 Project config overrides global config; per-agent frontmatter overrides both.
+The permission prompt can also write custom `allow` rules to either the project or global config when the user selects **Yes, save a custom pattern to config**.
 
 > **Coming from OpenCode?**
 > This extension's permission model was inspired by OpenCode's.
@@ -376,6 +377,28 @@ They are expanded to the OS home directory at match time, so configs are portabl
 ```
 
 The pattern is stored and displayed as written (e.g. `~/development/*`) in logs and approval dialogs.
+
+### Saving Custom Patterns from the Permission Prompt
+
+When a permission prompt appears, **Yes, save a custom pattern to config** shows several candidate patterns derived from the current request.
+After choosing a candidate, an input box is shown with that pattern prefilled so it can be accepted as-is or edited before saving.
+The user then chooses either the project config or the global config.
+The nested choosers include `← Back`, so the user can return to the top-level permission choices before any config file is written.
+The extension writes the final pattern under the current permission surface with action `allow`.
+For example, entering `git checkout *` for a bash prompt and choosing project config writes a project-level rule equivalent to:
+
+```jsonc
+{
+  "permission": {
+    "bash": {
+      "git checkout *": "allow"
+    }
+  }
+}
+```
+
+If the surface already has a string shorthand such as `"bash": "ask"`, saving a non-`*` custom pattern expands it to a pattern map and preserves the old catch-all as `"*": "ask"`.
+Project config rules override global config rules, and per-agent frontmatter still overrides both.
 
 ---
 
