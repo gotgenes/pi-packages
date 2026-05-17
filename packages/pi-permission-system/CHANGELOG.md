@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.18.2](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v5.18.1...pi-permission-system-v5.18.2) (2026-05-17)
+
+
+### Bug Fixes
+
+* bash path gate skips tokens matching only universal default ([#58](https://github.com/gotgenes/pi-packages/issues/58)) ([33fd169](https://github.com/gotgenes/pi-packages/commit/33fd1693b0c409b16c6a05072f52df78427713a1))
+* restore per-package lint:md and lint scripts ([0e42617](https://github.com/gotgenes/pi-packages/commit/0e42617c443a7f8695f33855fa17058fc1712f27))
+* skip path gate when no explicit path rules configured ([#58](https://github.com/gotgenes/pi-packages/issues/58)) ([a6d55e1](https://github.com/gotgenes/pi-packages/commit/a6d55e17bea4fbb8d4b46259da38ac4c8b919455))
+* use root markdownlint config from all packages ([30192f8](https://github.com/gotgenes/pi-packages/commit/30192f8ccfc5c3c420f9f9b602df174baf263e92))
+
+
+### Documentation
+
+* add redirect AGENTS.md to each package subdirectory ([cbdcd29](https://github.com/gotgenes/pi-packages/commit/cbdcd297194c814f545ae93eaa7418e9337450d3))
+* plan fix path gate firing for universal default ([#58](https://github.com/gotgenes/pi-packages/issues/58)) ([ae9bbab](https://github.com/gotgenes/pi-packages/commit/ae9bbab1b2f3062bfad754a1a8b9f1a2c3ea29f7))
+
+
+### Miscellaneous Chores
+
+* consolidate configs into monorepo root ([8583eaf](https://github.com/gotgenes/pi-packages/commit/8583eaf0764ac98def1987f20fafcc25e912b134))
+* remove per-package pi-autoformat configs ([b2d405a](https://github.com/gotgenes/pi-packages/commit/b2d405a0a278341e4f6ff1c8b607533eaa4f021a))
+* replace markdownlint-cli2 with rumdl ([d8dc789](https://github.com/gotgenes/pi-packages/commit/d8dc7897d854bf11396b85bc8c365e8e2ed7e66c))
+* update package.json URLs to monorepo ([b92dbfa](https://github.com/gotgenes/pi-packages/commit/b92dbfaeaeb6cf2823272cb6fb6f206fb99a5009))
+
 ## [5.18.1](https://github.com/gotgenes/pi-permission-system/compare/v5.18.0...v5.18.1) (2026-05-15)
 
 

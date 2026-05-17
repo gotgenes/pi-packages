@@ -1,6 +1,6 @@
 {
-  "packages/pi-autoformat": "4.0.5",
-  "packages/pi-github-tools": "3.0.0",
-  "packages/pi-permission-system": "5.18.1",
-  "packages/pi-subagents": "1.0.0"
+  "packages/pi-autoformat": "4.0.6",
+  "packages/pi-github-tools": "3.0.1",
+  "packages/pi-permission-system": "5.18.2",
+  "packages/pi-subagents": "1.0.1"
 }
