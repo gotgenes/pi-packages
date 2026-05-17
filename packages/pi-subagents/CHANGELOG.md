@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v1.0.1...pi-subagents-v1.0.2) (2026-05-17)
+
+
+### Documentation
+
+* plan update ADR 0001 to reflect hard-fork decision ([#51](https://github.com/gotgenes/pi-packages/issues/51)) ([bd4899a](https://github.com/gotgenes/pi-packages/commit/bd4899a0d7e72c43b80c3c07c07ccc32dc0df8ed))
+* update ADR 0001 to reflect hard-fork decision ([#51](https://github.com/gotgenes/pi-packages/issues/51)) ([387e0ad](https://github.com/gotgenes/pi-packages/commit/387e0ad06ec1cf015c1d3d1d9852a1be015fc283))
+
 ## [1.0.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v1.0.0...pi-subagents-v1.0.1) (2026-05-17)
 
 
