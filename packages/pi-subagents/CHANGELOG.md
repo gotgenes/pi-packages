@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v2.0.0...pi-subagents-v3.0.0) (2026-05-17)
+
+
+### ⚠ BREAKING CHANGES
+
+* The JoinMode type and defaultJoinMode setting are removed from the public settings interface.
+* The join-mode setting (smart/async/group) is removed. Background agents always notify individually on completion.
+* The subagents:ready event is no longer emitted. Extensions should use the typed SubagentsAPI ([#48](https://github.com/gotgenes/pi-packages/issues/48)) instead of event-based RPC discovery.
+* The subagents:rpc:ping, subagents:rpc:spawn, and subagents:rpc:stop event channels are no longer registered. Use the typed SubagentsAPI via Symbol.for() instead.
+
+### Features
+
+* remove group-join and cross-extension-rpc source ([b7d7f21](https://github.com/gotgenes/pi-packages/commit/b7d7f21af265e2ff95f0534f5c0b51f71b8f1e7f))
+* remove group-join wiring from index.ts ([4e2dc7f](https://github.com/gotgenes/pi-packages/commit/4e2dc7f8a98e441308f229745dfc42d09784d786))
+* remove join-mode types and settings ([1d98793](https://github.com/gotgenes/pi-packages/commit/1d98793eb85aa3d9815274aa443c34bb4434b6f9))
+* remove RPC wiring from index.ts ([3a960af](https://github.com/gotgenes/pi-packages/commit/3a960af8f6bb83219497d6229d12c6859cf3eb71))
+
+
+### Documentation
+
+* plan removal of group-join, output-file, and ad-hoc RPC ([#49](https://github.com/gotgenes/pi-packages/issues/49)) ([853a97f](https://github.com/gotgenes/pi-packages/commit/853a97f1c47051868b2ffddd7d5509f765a80d07))
+* remove group-join and RPC from README and AGENTS ([9f65f7a](https://github.com/gotgenes/pi-packages/commit/9f65f7a21611af8dead00a5fb34d7d10f3d6ab43))
+
 ## [2.0.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v1.0.2...pi-subagents-v2.0.0) (2026-05-17)
 
 
