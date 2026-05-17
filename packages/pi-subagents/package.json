@@ -1,6 +1,6 @@
 {
   "name": "@gotgenes/pi-subagents",
-  "version": "1.0.2",
+  "version": "2.0.0",
   "description": "A pi extension that brings Claude Code-style autonomous sub-agents to pi. Friendly fork of @tintinweb/pi-subagents.",
   "author": {
     "name": "Chris Lasher"

@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v1.0.2...pi-subagents-v2.0.0) (2026-05-17)
+
+
+### ⚠ BREAKING CHANGES
+
+* the `schedule` parameter is removed from the Agent tool. The `subagents:scheduled` and `subagents:scheduler_ready` events are no longer emitted. The `/agents → Settings → Scheduling` toggle is removed.
+* the `schedule` parameter is removed from the Agent tool and the `subagents:scheduled` / `subagents:scheduler_ready` events are no longer emitted. System cron (or launchd) invoking `pi` directly is the recommended replacement for recurring/delayed agent tasks.
+
+### Features
+
+* remove scheduled subagents source and tests ([860a03f](https://github.com/gotgenes/pi-packages/commit/860a03f08a6dbd418b437a72c2fd05ea416abacb))
+* remove scheduler wiring, types, and settings ([d5184e8](https://github.com/gotgenes/pi-packages/commit/d5184e88b181e60809b7fecc6a0971a18723bb9d))
+
+
+### Documentation
+
+* correct Module-Level Changes table in plan [#52](https://github.com/gotgenes/pi-packages/issues/52) (AGENTS.md → SKILL.md) ([93337e2](https://github.com/gotgenes/pi-packages/commit/93337e2a6b0424dc64e0adaf7a5c6ae6913c5991))
+* plan remove in-process scheduled subagents ([#52](https://github.com/gotgenes/pi-packages/issues/52)) ([bc548a4](https://github.com/gotgenes/pi-packages/commit/bc548a4dc6be4c5f810e9e33abcc76bc0d84f0da))
+* remove scheduling from README, architecture doc, and skill ([b2f16f2](https://github.com/gotgenes/pi-packages/commit/b2f16f2a53674a6a2675024dfc038c4243edd299))
+* **retro:** add retro notes for issue [#51](https://github.com/gotgenes/pi-packages/issues/51) ([0f741de](https://github.com/gotgenes/pi-packages/commit/0f741dedbe4a8e26fd1e39098fb153e4511082b9))
+
 ## [1.0.2](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v1.0.1...pi-subagents-v1.0.2) (2026-05-17)
 
 
