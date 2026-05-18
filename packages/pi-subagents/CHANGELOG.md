@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.1.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v4.0.0...pi-subagents-v4.1.0) (2026-05-18)
+
+
+### Features
+
+* add resolveInvocationModel to model-resolver ([462b519](https://github.com/gotgenes/pi-packages/commit/462b5194fdfdf86d8d2d166a99472c651e00b76b))
+
+
+### Bug Fixes
+
+* remove quotes from rumdl glob patterns in lint:md script ([a8a0c62](https://github.com/gotgenes/pi-packages/commit/a8a0c62feb2fc45cf68cd7d777259dc159de671b))
+
+
+### Documentation
+
+* plan extract model resolution from Agent.execute ([#53](https://github.com/gotgenes/pi-packages/issues/53)) ([4c07a47](https://github.com/gotgenes/pi-packages/commit/4c07a474f9f25043a2fa3a4f2829e97eb9bb7666))
+* **retro:** add retro notes for issue [#48](https://github.com/gotgenes/pi-packages/issues/48) ([f244c04](https://github.com/gotgenes/pi-packages/commit/f244c04c64f768e724e89d77962f2fb63715b998))
+
 ## [4.0.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v3.0.0...pi-subagents-v4.0.0) (2026-05-17)
 
 
