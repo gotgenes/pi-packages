@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.1.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v4.1.0...pi-subagents-v4.1.1) (2026-05-18)
+
+
+### Documentation
+
+* plan decompose index.ts into tool + menu modules ([#54](https://github.com/gotgenes/pi-packages/issues/54)) ([7adf954](https://github.com/gotgenes/pi-packages/commit/7adf954f37800ace0bcc9d5eb65045e2e133e4f2))
+* **retro:** add retro notes for issue [#53](https://github.com/gotgenes/pi-packages/issues/53) ([f8ca910](https://github.com/gotgenes/pi-packages/commit/f8ca9101576eaad8639d1bb2579f0e631a075038))
+
 ## [4.1.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v4.0.0...pi-subagents-v4.1.0) (2026-05-18)
 
 
