@@ -1,5 +1,26 @@
 # Changelog
 
+## [4.0.0](https://github.com/gotgenes/pi-packages/compare/pi-github-tools-v3.0.1...pi-github-tools-v4.0.0) (2026-05-19)
+
+
+### ⚠ BREAKING CHANGES
+
+* All @earendil-works/pi-* peerDependencies and devDependencies now require >=0.75.0, aligning with Pi's Node 22 minimum.
+* Minimum supported Node.js version is now >=22, aligning with Pi v0.75.0. tsconfig target raised from ES2023 to ES2024.
+    - ES2024 APIs (Promise.withResolvers, Object.groupBy, Map.groupBy, Array.fromAsync) are now allowed.
+    - @types/node catalog aligned to ^22.15.3.
+    - pi-autoformat now declares engines.node for consistency.
+
+### Features
+
+* raise minimum Node.js version to 22 and bump tsconfig target to ES2024 ([98a5b01](https://github.com/gotgenes/pi-packages/commit/98a5b01ca20aa1feed14a60bfa7bb9e082c9914b))
+* raise minimum Pi dependency to v0.75.0 ([1068329](https://github.com/gotgenes/pi-packages/commit/10683290d2a789880848bf7eb093d4307b6eff40))
+
+
+### Bug Fixes
+
+* unquote rumdl globs so shell expands them ([3b13a20](https://github.com/gotgenes/pi-packages/commit/3b13a20b2822db1e85a9d7546e0a21a63451d975))
+
 ## [3.0.1](https://github.com/gotgenes/pi-packages/compare/pi-github-tools-v3.0.0...pi-github-tools-v3.0.1) (2026-05-17)
 
 

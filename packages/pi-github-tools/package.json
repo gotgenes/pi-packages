@@ -1,6 +1,6 @@
 {
   "name": "@gotgenes/pi-github-tools",
-  "version": "3.0.1",
+  "version": "4.0.0",
   "description": "Pi extension providing deterministic GitHub CI, release, and issue tools.",
   "type": "module",
   "files": [

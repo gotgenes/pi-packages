@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.0.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v4.1.1...pi-subagents-v5.0.0) (2026-05-19)
+
+
+### ⚠ BREAKING CHANGES
+
+* All @earendil-works/pi-* peerDependencies and devDependencies now require >=0.75.0, aligning with Pi's Node 22 minimum.
+* Minimum supported Node.js version is now >=22, aligning with Pi v0.75.0. tsconfig target raised from ES2023 to ES2024.
+    - ES2024 APIs (Promise.withResolvers, Object.groupBy, Map.groupBy, Array.fromAsync) are now allowed.
+    - @types/node catalog aligned to ^22.15.3.
+    - pi-autoformat now declares engines.node for consistency.
+
+### Features
+
+* raise minimum Node.js version to 22 and bump tsconfig target to ES2024 ([98a5b01](https://github.com/gotgenes/pi-packages/commit/98a5b01ca20aa1feed14a60bfa7bb9e082c9914b))
+* raise minimum Pi dependency to v0.75.0 ([1068329](https://github.com/gotgenes/pi-packages/commit/10683290d2a789880848bf7eb093d4307b6eff40))
+
+
+### Documentation
+
+* **retro:** add retro notes for issue [#54](https://github.com/gotgenes/pi-packages/issues/54) ([d753eb3](https://github.com/gotgenes/pi-packages/commit/d753eb3f836a28f089197a45dd582dc4be88872d))
+
 ## [4.1.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v4.1.0...pi-subagents-v4.1.1) (2026-05-18)
 
 

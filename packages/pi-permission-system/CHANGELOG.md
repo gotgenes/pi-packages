@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v5.18.3...pi-permission-system-v6.0.0) (2026-05-19)
+
+
+### ⚠ BREAKING CHANGES
+
+* All @earendil-works/pi-* peerDependencies and devDependencies now require >=0.75.0, aligning with Pi's Node 22 minimum.
+* Minimum supported Node.js version is now >=22, aligning with Pi v0.75.0. tsconfig target raised from ES2023 to ES2024.
+    - ES2024 APIs (Promise.withResolvers, Object.groupBy, Map.groupBy, Array.fromAsync) are now allowed.
+    - @types/node catalog aligned to ^22.15.3.
+    - pi-autoformat now declares engines.node for consistency.
+
+### Features
+
+* raise minimum Node.js version to 22 and bump tsconfig target to ES2024 ([98a5b01](https://github.com/gotgenes/pi-packages/commit/98a5b01ca20aa1feed14a60bfa7bb9e082c9914b))
+* raise minimum Pi dependency to v0.75.0 ([1068329](https://github.com/gotgenes/pi-packages/commit/10683290d2a789880848bf7eb093d4307b6eff40))
+
+
+### Bug Fixes
+
+* unquote rumdl globs so shell expands them ([3b13a20](https://github.com/gotgenes/pi-packages/commit/3b13a20b2822db1e85a9d7546e0a21a63451d975))
+
 ## [5.18.3](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v5.18.2...pi-permission-system-v5.18.3) (2026-05-17)
 
 
