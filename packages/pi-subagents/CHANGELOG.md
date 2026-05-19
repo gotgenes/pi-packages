@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.3.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v5.2.0...pi-subagents-v5.3.0) (2026-05-19)
+
+
+### Features
+
+* add assembleSessionConfig in session-config.ts ([ee8076d](https://github.com/gotgenes/pi-packages/commit/ee8076dc2292ec957b64894af3fcd22567f23be5))
+
+
+### Documentation
+
+* add [#80](https://github.com/gotgenes/pi-packages/issues/80) to architecture roadmap, mark [#69](https://github.com/gotgenes/pi-packages/issues/69) and [#71](https://github.com/gotgenes/pi-packages/issues/71) done ([5744e28](https://github.com/gotgenes/pi-packages/commit/5744e28ac993454f8cb33afb18e5247569f9f971))
+* plan session-config assembler extraction ([#71](https://github.com/gotgenes/pi-packages/issues/71)) ([5d2cd4f](https://github.com/gotgenes/pi-packages/commit/5d2cd4f8de214a03a11688b56221679591aedafd))
+* **retro:** add retro notes for issue [#69](https://github.com/gotgenes/pi-packages/issues/69) ([18cbbdb](https://github.com/gotgenes/pi-packages/commit/18cbbdb627f2ae63f8109c1f5597c31265738415))
+
 ## [5.2.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v5.1.0...pi-subagents-v5.2.0) (2026-05-19)
 
 
