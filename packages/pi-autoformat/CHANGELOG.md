@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.0.1](https://github.com/gotgenes/pi-packages/compare/pi-autoformat-v5.0.0...pi-autoformat-v5.0.1) (2026-05-19)
+
+
+### Documentation
+
+* **retro:** add retro notes for issue [#67](https://github.com/gotgenes/pi-packages/issues/67) ([5deac18](https://github.com/gotgenes/pi-packages/commit/5deac1868d9bb69b92c45d2b215e63b5960b3bd1))
+
 ## [5.0.0](https://github.com/gotgenes/pi-packages/compare/pi-autoformat-v4.0.6...pi-autoformat-v5.0.0) (2026-05-19)
 
 

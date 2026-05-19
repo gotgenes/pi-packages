@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.1.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v5.0.0...pi-subagents-v5.1.0) (2026-05-19)
+
+
+### Features
+
+* add debugLog utility gated on PI_SUBAGENTS_DEBUG ([#57](https://github.com/gotgenes/pi-packages/issues/57)) ([2b8874a](https://github.com/gotgenes/pi-packages/commit/2b8874aeaa28bc09550dd0f8977b7b57d996b254))
+* thread debugLog into agent-manager and notification catch blocks ([#57](https://github.com/gotgenes/pi-packages/issues/57)) ([07943a3](https://github.com/gotgenes/pi-packages/commit/07943a341fbe0a0a35f25af3f4b15bc28cdee7a2))
+* thread debugLog into custom-agents and memory catch blocks ([#57](https://github.com/gotgenes/pi-packages/issues/57)) ([e239925](https://github.com/gotgenes/pi-packages/commit/e2399253410dc644b38269b52de6e6a4bfa75d3a))
+* thread debugLog into env catch blocks ([#57](https://github.com/gotgenes/pi-packages/issues/57)) ([f5ff82f](https://github.com/gotgenes/pi-packages/commit/f5ff82f0c06be3c1dfe5d5ec0ff3621105b55ad0))
+* thread debugLog into output-file catch block ([#57](https://github.com/gotgenes/pi-packages/issues/57)) ([a72b11b](https://github.com/gotgenes/pi-packages/commit/a72b11bc1f36bf256f520b9f13e546295fc6cb64))
+* thread debugLog into skill-loader catch block ([#57](https://github.com/gotgenes/pi-packages/issues/57)) ([b57231c](https://github.com/gotgenes/pi-packages/commit/b57231cc5de56a834c34f9e171b909d03939505c))
+* thread debugLog into worktree catch blocks ([#57](https://github.com/gotgenes/pi-packages/issues/57)) ([049f489](https://github.com/gotgenes/pi-packages/commit/049f4891ab5b09c9d1a301f7d8af797cb165cb4c))
+
+
+### Documentation
+
+* plan structured debug logging for silenced catch blocks ([#57](https://github.com/gotgenes/pi-packages/issues/57)) ([28e403e](https://github.com/gotgenes/pi-packages/commit/28e403ea2605405da1a57871af946ee2971ee289))
+
 ## [5.0.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v4.1.1...pi-subagents-v5.0.0) (2026-05-19)
 
 
