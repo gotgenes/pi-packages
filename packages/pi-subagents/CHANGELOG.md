@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.2.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v5.1.0...pi-subagents-v5.2.0) (2026-05-19)
+
+
+### Features
+
+* add SubagentRuntime interface and factory ([b316c12](https://github.com/gotgenes/pi-packages/commit/b316c1222cecf34d1149fa2a847a1c11883164c1))
+* thread defaultMaxTurns and graceTurns through RunOptions ([db9f1ac](https://github.com/gotgenes/pi-packages/commit/db9f1ac7c47b7b42559ddf659f86c02f78a82d23))
+
+
+### Bug Fixes
+
+* remove pi-subagents/README.md from rumdl exclude and fix 131 lint issues ([50f334c](https://github.com/gotgenes/pi-packages/commit/50f334c83edf08ee2cb413b1e6520f6c5a26cd41))
+
+
+### Documentation
+
+* enforce one-sentence-per-line across all markdown files ([a533869](https://github.com/gotgenes/pi-packages/commit/a533869e09ea33a2da8c4ac022d9be4674be4b18))
+* one sentence per line throughout architecture.md; add Issue-prefix and sentence rules to markdown-conventions ([f274ea8](https://github.com/gotgenes/pi-packages/commit/f274ea8003e23c3ad37516422d052f7c815da638))
+* **pi-subagents:** add structural refactoring roadmap with issue sequencing ([a820538](https://github.com/gotgenes/pi-packages/commit/a8205382624acbd26721594630d25976373fc617))
+* plan SubagentRuntime to eliminate module-scope mutable state ([#69](https://github.com/gotgenes/pi-packages/issues/69)) ([fa5eee4](https://github.com/gotgenes/pi-packages/commit/fa5eee4434724fd47dc384092787b50ea9859f4d))
+* **retro:** add follow-up retro notes for issue [#57](https://github.com/gotgenes/pi-packages/issues/57) ([629e11f](https://github.com/gotgenes/pi-packages/commit/629e11f2eaed1294fa756ad3e54fe692428e1c0e))
+* **retro:** add retro notes for issue [#57](https://github.com/gotgenes/pi-packages/issues/57) ([1701841](https://github.com/gotgenes/pi-packages/commit/1701841f387b3418286f670ae0eb10613b5f2b4b))
+
 ## [5.1.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v5.0.0...pi-subagents-v5.1.0) (2026-05-19)
 
 

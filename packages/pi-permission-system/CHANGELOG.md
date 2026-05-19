@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.0.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v6.0.0...pi-permission-system-v6.0.1) (2026-05-19)
+
+
+### Bug Fixes
+
+* re-enable MD057 and fix broken links ([52a88b1](https://github.com/gotgenes/pi-packages/commit/52a88b1c74fbc4d78d92b1eef8c46e016a8e3fda))
+
+
+### Documentation
+
+* enforce one-sentence-per-line across all markdown files ([a533869](https://github.com/gotgenes/pi-packages/commit/a533869e09ea33a2da8c4ac022d9be4674be4b18))
+
 ## [6.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v5.18.3...pi-permission-system-v6.0.0) (2026-05-19)
 
 

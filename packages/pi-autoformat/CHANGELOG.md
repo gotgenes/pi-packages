@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.0.2](https://github.com/gotgenes/pi-packages/compare/pi-autoformat-v5.0.1...pi-autoformat-v5.0.2) (2026-05-19)
+
+
+### Documentation
+
+* enforce one-sentence-per-line across all markdown files ([a533869](https://github.com/gotgenes/pi-packages/commit/a533869e09ea33a2da8c4ac022d9be4674be4b18))
+
 ## [5.0.1](https://github.com/gotgenes/pi-packages/compare/pi-autoformat-v5.0.0...pi-autoformat-v5.0.1) (2026-05-19)
 
 
