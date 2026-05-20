@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.1.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.0.1...pi-subagents-v6.1.0) (2026-05-20)
+
+
+### Features
+
+* create AgentRecord class with transition methods ([#98](https://github.com/gotgenes/pi-packages/issues/98)) ([e5b2170](https://github.com/gotgenes/pi-packages/commit/e5b21704de2d693e4feff8b0c0f80a4f6e3fdabd))
+
+
+### Documentation
+
+* plan AgentRecord state machine extraction ([#98](https://github.com/gotgenes/pi-packages/issues/98)) ([5ca6613](https://github.com/gotgenes/pi-packages/commit/5ca6613ba8e73e042c7f06e2f303ad573048138e))
+* **retro:** add retro notes for issue [#102](https://github.com/gotgenes/pi-packages/issues/102) ([594a61a](https://github.com/gotgenes/pi-packages/commit/594a61a59f04aafba06ab8649c183b5003e95822))
+
 ## [6.0.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.0.0...pi-subagents-v6.0.1) (2026-05-20)
 
 
