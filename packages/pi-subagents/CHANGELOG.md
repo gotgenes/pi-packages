@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.8.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v5.7.0...pi-subagents-v5.8.0) (2026-05-20)
+
+
+### Features
+
+* add SessionLifecycleHandler ([d8d95fa](https://github.com/gotgenes/pi-packages/commit/d8d95fa92561e0068444c3c925f21b50825a741c))
+* add ToolStartHandler ([c293e41](https://github.com/gotgenes/pi-packages/commit/c293e41e25d9742f807f85d0efe0a0e5605b29a6))
+
+
+### Documentation
+
+* **retro:** add retro notes for issue [#87](https://github.com/gotgenes/pi-packages/issues/87) ([1701fe4](https://github.com/gotgenes/pi-packages/commit/1701fe41d582d7180b2622c2e03db954e8d2c2af))
+
 ## [5.7.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v5.6.0...pi-subagents-v5.7.0) (2026-05-20)
 
 
