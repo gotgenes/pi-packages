@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.8.2](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v5.8.1...pi-subagents-v5.8.2) (2026-05-20)
+
+
+### Documentation
+
+* plan inject projectAgentsDir into AgentMenuDeps ([#77](https://github.com/gotgenes/pi-packages/issues/77)) ([d8cf039](https://github.com/gotgenes/pi-packages/commit/d8cf03944d0abc6230541d67655d89582665a615))
+* **retro:** add retro notes for issue [#66](https://github.com/gotgenes/pi-packages/issues/66) ([ce0f04a](https://github.com/gotgenes/pi-packages/commit/ce0f04a3d84523a4c2e8b7bc998b5bec0f16970f))
+
 ## [5.8.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v5.8.0...pi-subagents-v5.8.1) (2026-05-20)
 
 
