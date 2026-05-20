@@ -2,5 +2,5 @@
   "packages/pi-autoformat": "5.0.2",
   "packages/pi-github-tools": "4.0.1",
   "packages/pi-permission-system": "6.0.1",
-  "packages/pi-subagents": "5.4.0"
+  "packages/pi-subagents": "5.4.1"
 }

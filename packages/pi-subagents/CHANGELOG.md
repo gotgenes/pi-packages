@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.4.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v5.4.0...pi-subagents-v5.4.1) (2026-05-20)
+
+
+### Documentation
+
+* plan inject cwd into AgentManager constructor ([#76](https://github.com/gotgenes/pi-packages/issues/76)) ([7d3d50a](https://github.com/gotgenes/pi-packages/commit/7d3d50a7b7b96ef15cf5ffd7f609ed0baa46d6b9))
+* **retro:** add retro notes for issue [#80](https://github.com/gotgenes/pi-packages/issues/80) ([ac38a72](https://github.com/gotgenes/pi-packages/commit/ac38a7209788c7725c7307491a18fb5a8e83962d))
+
 ## [5.4.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v5.3.0...pi-subagents-v5.4.0) (2026-05-20)
 
 
