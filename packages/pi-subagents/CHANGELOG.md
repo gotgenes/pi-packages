@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.0.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v5.8.2...pi-subagents-v6.0.0) (2026-05-20)
+
+
+### ⚠ BREAKING CHANGES
+
+* Subagent transcripts are now written in Pi's official JSONL session format via SessionManager.create() instead of the bespoke flat format. The output-file.ts module and its encodeCwd/createOutputFilePath/ writeInitialEntry/streamToOutputFile exports are removed. Transcript file paths change from /tmp/pi-subagents-<uid>/... to the Pi sessions directory.
+
+### Features
+
+* add deriveSubagentSessionDir for session directory derivation ([#61](https://github.com/gotgenes/pi-packages/issues/61)) ([8442379](https://github.com/gotgenes/pi-packages/commit/8442379ae4433ba1428d703a24bef7b57c8624f2))
+* remove bespoke output-file transcript format ([#61](https://github.com/gotgenes/pi-packages/issues/61)) ([1aab916](https://github.com/gotgenes/pi-packages/commit/1aab9166fc52e4f04e1d0a369788bf5c4a3da7c7))
+* thread parent session info through spawn and run options ([#61](https://github.com/gotgenes/pi-packages/issues/61)) ([6f0d537](https://github.com/gotgenes/pi-packages/commit/6f0d537d745df63be43eb14de92caf42e65ab347))
+* use persisted SessionManager for subagent sessions ([#61](https://github.com/gotgenes/pi-packages/issues/61)) ([ffafa69](https://github.com/gotgenes/pi-packages/commit/ffafa69d96068f881ec97e4f924245a308e542ba))
+* wire session file path through agent-tool, remove output-file streaming ([#61](https://github.com/gotgenes/pi-packages/issues/61)) ([97acf0a](https://github.com/gotgenes/pi-packages/commit/97acf0a63cbe21e0954e79cd7db71e5632084454))
+
+
+### Bug Fixes
+
+* use cwd in session-dir fallback path to namespace by project ([#61](https://github.com/gotgenes/pi-packages/issues/61)) ([0394420](https://github.com/gotgenes/pi-packages/commit/0394420237b9d23b35fe6c4e65b03fc267beaa0c))
+
+
+### Documentation
+
+* plan session format transcript migration ([#61](https://github.com/gotgenes/pi-packages/issues/61)) ([68238c1](https://github.com/gotgenes/pi-packages/commit/68238c1c90c375c8469929399f18d0566e97a32c))
+* **retro:** add retro notes for issue [#77](https://github.com/gotgenes/pi-packages/issues/77) ([004c99c](https://github.com/gotgenes/pi-packages/commit/004c99c4fba6b515360bb453eedbeb1218cebbc2))
+* update architecture and package skill for session format migration ([#61](https://github.com/gotgenes/pi-packages/issues/61)) ([eef5e16](https://github.com/gotgenes/pi-packages/commit/eef5e16ad90118092badcbe2594c89c399919c15))
+
 ## [5.8.2](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v5.8.1...pi-subagents-v5.8.2) (2026-05-20)
 
 
