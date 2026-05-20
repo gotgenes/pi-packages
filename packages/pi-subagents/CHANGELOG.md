@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.4.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v5.3.0...pi-subagents-v5.4.0) (2026-05-20)
+
+
+### Features
+
+* add resolveAgentConfig with guaranteed-non-null fallback chain ([6b676a0](https://github.com/gotgenes/pi-packages/commit/6b676a0b59ebc3598d366cb5db600a8177b301e6))
+
+
+### Documentation
+
+* plan consolidate getConfig/getAgentConfig into resolveAgentConfig ([#80](https://github.com/gotgenes/pi-packages/issues/80)) ([1c14b47](https://github.com/gotgenes/pi-packages/commit/1c14b4760fa67dff5dbf17306d04bbe992b38bce))
+* **retro:** add retro notes for issue [#71](https://github.com/gotgenes/pi-packages/issues/71) ([a70e52f](https://github.com/gotgenes/pi-packages/commit/a70e52f840cf3b2f65689987dcb7316e32dc12ff))
+
 ## [5.3.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v5.2.0...pi-subagents-v5.3.0) (2026-05-19)
 
 
