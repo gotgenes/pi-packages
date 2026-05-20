@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.0.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.0.0...pi-subagents-v6.0.1) (2026-05-20)
+
+
+### Documentation
+
+* full refresh of architecture.md — reflect completed decomposition ([a8187ce](https://github.com/gotgenes/pi-packages/commit/a8187ce839b465529191b53bbb19fd39d5c71e69))
+* **pi-subagents:** set new architectural target for AgentManager decomposition ([83288da](https://github.com/gotgenes/pi-packages/commit/83288daf3dc6dce7bcad81799a4f6e9f300553c0))
+* plan consolidate test AgentRecord factory ([#102](https://github.com/gotgenes/pi-packages/issues/102)) ([22a3213](https://github.com/gotgenes/pi-packages/commit/22a3213bb55d15871d3582e89d1336fcd9e8fa36))
+* **retro:** add retro notes for issue [#61](https://github.com/gotgenes/pi-packages/issues/61) ([7053be7](https://github.com/gotgenes/pi-packages/commit/7053be7bec86a0c160cb602528d1c59e370ba33d))
+
 ## [6.0.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v5.8.2...pi-subagents-v6.0.0) (2026-05-20)
 
 
