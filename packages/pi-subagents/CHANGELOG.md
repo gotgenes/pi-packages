@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.5.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v5.4.1...pi-subagents-v5.5.0) (2026-05-20)
+
+
+### Features
+
+* extract WorktreeManager interface and GitWorktreeManager class ([#84](https://github.com/gotgenes/pi-packages/issues/84)) ([23efb99](https://github.com/gotgenes/pi-packages/commit/23efb99e0d5e6bf6a65b758020e00af69fe84f6e))
+
+
+### Documentation
+
+* plan dependency-inject AgentManager's collaborators ([#72](https://github.com/gotgenes/pi-packages/issues/72)) ([a99374a](https://github.com/gotgenes/pi-packages/commit/a99374aa2b11defd301be97f64b9bdba2a618712))
+* plan extract GitWorktreeManager class ([#84](https://github.com/gotgenes/pi-packages/issues/84)) ([47d9d93](https://github.com/gotgenes/pi-packages/commit/47d9d9368fc2f4762bf31e312ebd84e4332ca4c4))
+* **retro:** add retro notes for issue [#76](https://github.com/gotgenes/pi-packages/issues/76) ([ceef7e0](https://github.com/gotgenes/pi-packages/commit/ceef7e05c8753bbbb6558ca507924b5562cc9c52))
+* update plan to reference [#84](https://github.com/gotgenes/pi-packages/issues/84) as prerequisite ([#72](https://github.com/gotgenes/pi-packages/issues/72)) ([d8ad3f5](https://github.com/gotgenes/pi-packages/commit/d8ad3f544929c569789d63fcf140bd300d5ef389))
+
 ## [5.4.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v5.4.0...pi-subagents-v5.4.1) (2026-05-20)
 
 
