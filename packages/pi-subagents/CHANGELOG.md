@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.6.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v5.5.0...pi-subagents-v5.6.0) (2026-05-20)
+
+
+### Features
+
+* convert AgentManager to options-bag constructor with DI ([1292cec](https://github.com/gotgenes/pi-packages/commit/1292cec60c24d8e657985c53b9b3413089c2a79d))
+* define AgentRunner interface in agent-runner.ts ([6a3c85a](https://github.com/gotgenes/pi-packages/commit/6a3c85a445daf0e4e8c01620eb6ae1a8237f1766))
+
+
+### Documentation
+
+* mark [#84](https://github.com/gotgenes/pi-packages/issues/84) as done in plan ([#72](https://github.com/gotgenes/pi-packages/issues/72)) ([5cfa1ec](https://github.com/gotgenes/pi-packages/commit/5cfa1ecf080f95fbd6b4aec05b27cc9672f60267))
+* **retro:** add retro notes for issue [#84](https://github.com/gotgenes/pi-packages/issues/84) ([99d9016](https://github.com/gotgenes/pi-packages/commit/99d90161df5fe9d302514e33c2d2d9fbfb248f25))
+
 ## [5.5.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v5.4.1...pi-subagents-v5.5.0) (2026-05-20)
 
 
