@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.4.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.3.1...pi-subagents-v6.4.0) (2026-05-21)
+
+
+### Features
+
+* **pi-subagents:** add AgentTypeRegistry class ([#108](https://github.com/gotgenes/pi-packages/issues/108)) ([e34ad07](https://github.com/gotgenes/pi-packages/commit/e34ad071726d2ba6066721c69e72abed46905f23))
+
+
+### Documentation
+
+* **pi-subagents:** add issue numbers to encapsulation roadmap ([ddb189e](https://github.com/gotgenes/pi-packages/commit/ddb189e4b379d709a3489c1912fd829a35891c5c))
+* **pi-subagents:** add Phase 7 encapsulation roadmap to architecture doc ([e0c0953](https://github.com/gotgenes/pi-packages/commit/e0c09532c65ff64cf3cee428f68b0c1edc30441f))
+* **pi-subagents:** update architecture.md to reflect current state ([56c322f](https://github.com/gotgenes/pi-packages/commit/56c322f5d205b8f5787186d8979e34e2c2338d25))
+* plan AgentTypeRegistry extraction ([#108](https://github.com/gotgenes/pi-packages/issues/108)) ([ffe8702](https://github.com/gotgenes/pi-packages/commit/ffe87029783885d944892c951dda8c374805bc19))
+* update architecture and skill docs for AgentTypeRegistry ([#108](https://github.com/gotgenes/pi-packages/issues/108)) ([3e756dd](https://github.com/gotgenes/pi-packages/commit/3e756dd69c78ce26de552fb259d751f5750255f5))
+
 ## [6.3.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.3.0...pi-subagents-v6.3.1) (2026-05-21)
 
 

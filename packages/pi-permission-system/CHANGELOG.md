@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.0.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v7.0.0...pi-permission-system-v7.0.1) (2026-05-21)
+
+
+### Documentation
+
+* **retro:** add retro notes for issue [#78](https://github.com/gotgenes/pi-packages/issues/78) ([594d3e1](https://github.com/gotgenes/pi-packages/commit/594d3e13512facbf4b6241b9a394aca8e59c0707))
+* **retro:** add retro notes for issue [#78](https://github.com/gotgenes/pi-packages/issues/78) ([5f93117](https://github.com/gotgenes/pi-packages/commit/5f93117969524af86b28db979649032e860fc72e))
+
 ## [7.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v6.0.2...pi-permission-system-v7.0.0) (2026-05-21)
 
 
