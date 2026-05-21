@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.5.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.4.0...pi-subagents-v6.5.0) (2026-05-21)
+
+
+### Features
+
+* add SettingsManager class with get/set normalization ([a21aa28](https://github.com/gotgenes/pi-packages/commit/a21aa28bc4b30b4c17ebfb88c939eba01756f39f))
+* SettingsManager load, save, snapshot, and lifecycle events ([c3ece9f](https://github.com/gotgenes/pi-packages/commit/c3ece9f8429919da5a8397691b66020941555b37))
+
+
+### Documentation
+
+* add A2b SettingsManager apply methods step ([#118](https://github.com/gotgenes/pi-packages/issues/118)) to architecture roadmap ([43a462a](https://github.com/gotgenes/pi-packages/commit/43a462a7b8e4ee4db2ca8eaa4d85e7e0d5ee4024))
+* plan extract SettingsManager class ([#109](https://github.com/gotgenes/pi-packages/issues/109)) ([88cece7](https://github.com/gotgenes/pi-packages/commit/88cece74c3ff6726f37827aff7ac337fc720f642))
+* **retro:** add retro notes for issue [#108](https://github.com/gotgenes/pi-packages/issues/108) ([55b1877](https://github.com/gotgenes/pi-packages/commit/55b187736f05aba381f5aa2554e451433e005c4d))
+* update architecture doc — mark A2 SettingsManager complete ([#109](https://github.com/gotgenes/pi-packages/issues/109)) ([856baa6](https://github.com/gotgenes/pi-packages/commit/856baa64b65098193c3d9228d5a4c7af8f207c72))
+
 ## [6.4.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.3.1...pi-subagents-v6.4.0) (2026-05-21)
 
 
