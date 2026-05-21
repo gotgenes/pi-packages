@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.8.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.7.0...pi-subagents-v6.8.0) (2026-05-21)
+
+
+### Features
+
+* add ExecutionState interface ([#111](https://github.com/gotgenes/pi-packages/issues/111)) ([4f33e09](https://github.com/gotgenes/pi-packages/commit/4f33e09b8578509985308b225111cfdfce22bb06))
+* add NotificationState class ([#111](https://github.com/gotgenes/pi-packages/issues/111)) ([cbee34d](https://github.com/gotgenes/pi-packages/commit/cbee34d1944e411dd8593ac0cfbaa3fa66982d00))
+* add WorktreeState class ([#111](https://github.com/gotgenes/pi-packages/issues/111)) ([eddb0c8](https://github.com/gotgenes/pi-packages/commit/eddb0c84311d420f3b50c2861f7585cfd8d1037f))
+
+
+### Documentation
+
+* plan AgentRecord lifecycle state split ([#111](https://github.com/gotgenes/pi-packages/issues/111)) ([c271d89](https://github.com/gotgenes/pi-packages/commit/c271d8931729e620e46f05e82cdca8276dbd0a6d))
+* **retro:** add retro notes for issue [#110](https://github.com/gotgenes/pi-packages/issues/110) ([4a48c65](https://github.com/gotgenes/pi-packages/commit/4a48c655752902f86b864f224e209831f73e241d))
+* update architecture doc for AgentRecord lifecycle split ([#111](https://github.com/gotgenes/pi-packages/issues/111)) ([b0d8967](https://github.com/gotgenes/pi-packages/commit/b0d8967601eb7aca41cf59ce7f40f399ccc51fec))
+
 ## [6.7.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.6.0...pi-subagents-v6.7.0) (2026-05-21)
 
 
