@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v6.0.2...pi-permission-system-v7.0.0) (2026-05-21)
+
+
+### ⚠ BREAKING CHANGES
+
+* GateDescriptor.messages has been replaced by GateDescriptor.denialContext. Any code constructing a GateDescriptor must provide a DenialContext instead of pre-formatted message strings.
+
+### Features
+
+* add centralized denial message formatter ([#78](https://github.com/gotgenes/pi-packages/issues/78)) ([99f2d36](https://github.com/gotgenes/pi-packages/commit/99f2d362d669dd4d6a6a18365fecd42dd0d77eaa))
+
+
+### Bug Fixes
+
+* remove broken relative links in archived plan 0042 ([07bcca4](https://github.com/gotgenes/pi-packages/commit/07bcca49d506f5726ca96a4b9128b77635e84b7e))
+
+
+### Documentation
+
+* add README to archived plans directory ([c3fcb9f](https://github.com/gotgenes/pi-packages/commit/c3fcb9f7f669c1d25207225e807970eea1c9adc8))
+* archive pre-monorepo plans, plan soften denial messages ([#78](https://github.com/gotgenes/pi-packages/issues/78)) ([7709f8f](https://github.com/gotgenes/pi-packages/commit/7709f8f85a0b7c002a943a222f6005d6069245c1))
+
+
+### Code Refactoring
+
+* remove messages from GateDescriptor ([#78](https://github.com/gotgenes/pi-packages/issues/78)) ([d3cae38](https://github.com/gotgenes/pi-packages/commit/d3cae387ea57c23ede6df27156d1a026aa6b58f2))
+
 ## [6.0.2](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v6.0.1...pi-permission-system-v6.0.2) (2026-05-20)
 
 
