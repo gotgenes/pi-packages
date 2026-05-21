@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.7.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.6.0...pi-subagents-v6.7.0) (2026-05-21)
+
+
+### Features
+
+* add AgentActivityTracker class ([#110](https://github.com/gotgenes/pi-packages/issues/110)) ([151308a](https://github.com/gotgenes/pi-packages/commit/151308ad3da569d72e40495bece502281dc302a8))
+
+
+### Documentation
+
+* plan AgentActivityTracker class ([#110](https://github.com/gotgenes/pi-packages/issues/110)) ([8f5e56b](https://github.com/gotgenes/pi-packages/commit/8f5e56ba0a29730e060bac4658bb4953ce36d4a9))
+* **retro:** add retro notes for issue [#118](https://github.com/gotgenes/pi-packages/issues/118) ([1959e52](https://github.com/gotgenes/pi-packages/commit/1959e52d8b150bbc90da72edd93dc6f2ec315e22))
+* update architecture doc — mark A3 done, fix Map type ([#110](https://github.com/gotgenes/pi-packages/issues/110)) ([463e997](https://github.com/gotgenes/pi-packages/commit/463e9974db21df17f4b2578825f3c67bc1e90b29))
+
 ## [6.6.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.5.0...pi-subagents-v6.6.0) (2026-05-21)
 
 
