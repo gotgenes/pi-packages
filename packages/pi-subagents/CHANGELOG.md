@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.6.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.5.0...pi-subagents-v6.6.0) (2026-05-21)
+
+
+### Features
+
+* accept onMaxConcurrentChanged callback in SettingsManager constructor ([a6829ba](https://github.com/gotgenes/pi-packages/commit/a6829ba528caa7d106139de5217eddc89a18cf83))
+* add SettingsManager.applyDefaultMaxTurns and applyGraceTurns methods ([02f8c65](https://github.com/gotgenes/pi-packages/commit/02f8c65297b80aaf1231960bf4b2ed2bdb13eeb4))
+* add SettingsManager.applyMaxConcurrent method ([ad9de8a](https://github.com/gotgenes/pi-packages/commit/ad9de8a2553233bb34e7e07f9745f6e778ae1564))
+
+
+### Documentation
+
+* mark A2b SettingsManager apply methods done in architecture ([#118](https://github.com/gotgenes/pi-packages/issues/118)) ([dafd480](https://github.com/gotgenes/pi-packages/commit/dafd4800b4b3a0cb5935ffd8f20c0a257b7c8be5))
+* plan SettingsManager apply methods ([#118](https://github.com/gotgenes/pi-packages/issues/118)) ([51e14ac](https://github.com/gotgenes/pi-packages/commit/51e14aceaf4e30591ca993a06b459e9e1ae8f031))
+* **retro:** add retro notes for issue [#109](https://github.com/gotgenes/pi-packages/issues/109) ([22e0ccb](https://github.com/gotgenes/pi-packages/commit/22e0ccb0a32d54472b0cece5c27d1cf80a2afe14))
+
 ## [6.5.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.4.0...pi-subagents-v6.5.0) (2026-05-21)
 
 
