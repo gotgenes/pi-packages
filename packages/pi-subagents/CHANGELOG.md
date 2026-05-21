@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.2.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.1.0...pi-subagents-v6.2.0) (2026-05-21)
+
+
+### Features
+
+* add ParentSnapshot type and builder ([#99](https://github.com/gotgenes/pi-packages/issues/99)) ([ee24eb9](https://github.com/gotgenes/pi-packages/commit/ee24eb907eba9f6f917bc166c912e5482eff5bd5))
+
+
+### Documentation
+
+* **pi-subagents:** cross-reference issues in architecture decomposition plan ([2242e45](https://github.com/gotgenes/pi-packages/commit/2242e457b7e1bf8cb44e9a1df6fb4d2fd1ba1116))
+* plan replace live ctx capture with ParentSnapshot ([#99](https://github.com/gotgenes/pi-packages/issues/99)) ([b6b63f8](https://github.com/gotgenes/pi-packages/commit/b6b63f8677231617a00cb1e3d1227667cbae7ecd))
+* **retro:** add retro notes for issue [#98](https://github.com/gotgenes/pi-packages/issues/98) ([ef52aaa](https://github.com/gotgenes/pi-packages/commit/ef52aaa4d8b690b309f2129ff34f90c44368cc57))
+
 ## [6.1.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.0.1...pi-subagents-v6.1.0) (2026-05-20)
 
 
