@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.9.2](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.9.1...pi-subagents-v6.9.2) (2026-05-22)
+
+
+### Documentation
+
+* mark E2 type housekeeping done in architecture ([#116](https://github.com/gotgenes/pi-packages/issues/116)) ([89f18a8](https://github.com/gotgenes/pi-packages/commit/89f18a82fac39b4a62be8e440355b859afaa6d2f))
+* plan type housekeeping and small structural cleanups ([#116](https://github.com/gotgenes/pi-packages/issues/116)) ([e1cbd26](https://github.com/gotgenes/pi-packages/commit/e1cbd269961a1bff3b11e2e916733a79c39a087d))
+* **retro:** add retro notes for issue [#115](https://github.com/gotgenes/pi-packages/issues/115) ([05b8809](https://github.com/gotgenes/pi-packages/commit/05b88093f7b70ea886b6c7cb5f0cc96161a95df6))
+
 ## [6.9.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.9.0...pi-subagents-v6.9.1) (2026-05-22)
 
 
