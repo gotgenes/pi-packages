@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.11.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.10.0...pi-subagents-v6.11.0) (2026-05-22)
+
+
+### Features
+
+* inject SDK boundary into agent-runner via RunnerIO ([#133](https://github.com/gotgenes/pi-packages/issues/133)) ([a9f6a9e](https://github.com/gotgenes/pi-packages/commit/a9f6a9e8c71e307b71600409e865fb539312f539))
+
+
+### Documentation
+
+* plan SDK boundary injection into agent-runner ([#133](https://github.com/gotgenes/pi-packages/issues/133)) ([1706ebc](https://github.com/gotgenes/pi-packages/commit/1706ebcc1452c6798dafb733ec8c68e6ee9e8512))
+* **retro:** add retro notes for issue [#132](https://github.com/gotgenes/pi-packages/issues/132) ([d0af140](https://github.com/gotgenes/pi-packages/commit/d0af1409ddc18099dfdda94ab37af2b99bc46c3c))
+* update architecture doc for Step H completion ([#133](https://github.com/gotgenes/pi-packages/issues/133)) ([f6b1258](https://github.com/gotgenes/pi-packages/commit/f6b1258f50a038df18ca1f33e3681c7bc258f4fc))
+
 ## [6.10.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.9.4...pi-subagents-v6.10.0) (2026-05-22)
 
 
