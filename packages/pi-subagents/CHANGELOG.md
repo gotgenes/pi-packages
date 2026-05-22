@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.9.3](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.9.2...pi-subagents-v6.9.3) (2026-05-22)
+
+
+### Documentation
+
+* add issue numbers to Phase 8 roadmap steps ([77fee40](https://github.com/gotgenes/pi-packages/commit/77fee402ebc445171f3768f2eea1bba242ce9723))
+* add Phase 8 roadmap — testability, display extraction, menu decomposition ([37a0520](https://github.com/gotgenes/pi-packages/commit/37a0520e32a93f4c9bffd5a728882c68e9811024))
+* clean up architecture.md progress tracking ([e006032](https://github.com/gotgenes/pi-packages/commit/e00603209b9c21cb1bef41c34eeb71c1cc338117))
+* **retro:** add retro notes for issue [#116](https://github.com/gotgenes/pi-packages/issues/116) ([701dca8](https://github.com/gotgenes/pi-packages/commit/701dca8075221aa4c36e19e2d54d43c74863ea57))
+
 ## [6.9.2](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.9.1...pi-subagents-v6.9.2) (2026-05-22)
 
 

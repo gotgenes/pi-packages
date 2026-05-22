@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.1.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v7.0.1...pi-permission-system-v7.1.0) (2026-05-22)
+
+
+### Features
+
+* support glob patterns in piInfrastructureReadPaths ([#122](https://github.com/gotgenes/pi-packages/issues/122)) ([7ebce24](https://github.com/gotgenes/pi-packages/commit/7ebce24ff36f573c3165fdf49e4b470f68d79b69))
+
+
+### Documentation
+
+* document piInfrastructureReadPaths glob support ([#122](https://github.com/gotgenes/pi-packages/issues/122)) ([94fa688](https://github.com/gotgenes/pi-packages/commit/94fa688f1c41a6cf1d7bb49a3934728741dd1001))
+* fix misleading ** examples and clarify * matches all characters ([00563dc](https://github.com/gotgenes/pi-packages/commit/00563dc90e3e800e0fc1b0f3ad0a9ed8c78f86b7))
+* plan glob support for piInfrastructureReadPaths ([#122](https://github.com/gotgenes/pi-packages/issues/122)) ([1450d8b](https://github.com/gotgenes/pi-packages/commit/1450d8b61529d54c21df49d364d8bbcc1c7e55ec))
+
 ## [7.0.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v7.0.0...pi-permission-system-v7.0.1) (2026-05-21)
 
 
