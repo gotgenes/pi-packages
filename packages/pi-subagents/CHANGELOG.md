@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.10.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.9.4...pi-subagents-v6.10.0) (2026-05-22)
+
+
+### Features
+
+* inject IO collaborators into assembleSessionConfig ([#132](https://github.com/gotgenes/pi-packages/issues/132)) ([74d3dbf](https://github.com/gotgenes/pi-packages/commit/74d3dbf5e67cf28f75683e55240719ad2be86490))
+
+
+### Documentation
+
+* mark Step G complete in Phase 8 roadmap ([#132](https://github.com/gotgenes/pi-packages/issues/132)) ([95512bd](https://github.com/gotgenes/pi-packages/commit/95512bdec3757d5955d13e22261a90da41cea40e))
+* plan IO collaborator injection into assembleSessionConfig ([#132](https://github.com/gotgenes/pi-packages/issues/132)) ([23c3b62](https://github.com/gotgenes/pi-packages/commit/23c3b624e8c0afb8fda72c1b5fba86cb165f78dd))
+* **retro:** add retro notes for issue [#131](https://github.com/gotgenes/pi-packages/issues/131) ([b91cee9](https://github.com/gotgenes/pi-packages/commit/b91cee9ef69f8b1ab41be986663bad22e77a8c67))
+
 ## [6.9.4](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.9.3...pi-subagents-v6.9.4) (2026-05-22)
 
 
