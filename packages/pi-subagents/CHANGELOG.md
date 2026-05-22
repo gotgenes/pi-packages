@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.12.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.11.0...pi-subagents-v6.12.0) (2026-05-22)
+
+
+### Features
+
+* narrow runtime widget field to WidgetLike interface ([#134](https://github.com/gotgenes/pi-packages/issues/134)) ([afa70ab](https://github.com/gotgenes/pi-packages/commit/afa70ab430109248a8f61ccd182b0f3acd1fa7e1))
+* use SDK types in CreateSessionOptions ([#134](https://github.com/gotgenes/pi-packages/issues/134)) ([c2452af](https://github.com/gotgenes/pi-packages/commit/c2452af0ee3d47d778878443a634ca787f8d0bfb))
+
+
+### Bug Fixes
+
+* replace message-shape as-any casts with type guards ([#134](https://github.com/gotgenes/pi-packages/issues/134)) ([d7ad65a](https://github.com/gotgenes/pi-packages/commit/d7ad65a61267790ae1ae8414b0c2aa9ebc8ad59c))
+
+
+### Documentation
+
+* plan as-any cast reduction in test suite ([#134](https://github.com/gotgenes/pi-packages/issues/134)) ([f7cb1aa](https://github.com/gotgenes/pi-packages/commit/f7cb1aac0963021ae0545b73c88f950a7adb5fd2))
+* **retro:** add retro notes for issue [#133](https://github.com/gotgenes/pi-packages/issues/133) ([be32640](https://github.com/gotgenes/pi-packages/commit/be32640048943059a98fc79797a35dfefd70fc34))
+* update architecture doc for Step I completion ([#134](https://github.com/gotgenes/pi-packages/issues/134)) ([fd4aca7](https://github.com/gotgenes/pi-packages/commit/fd4aca79c74da2b8c4e3c58e2376e0612941d7d9))
+
 ## [6.11.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.10.0...pi-subagents-v6.11.0) (2026-05-22)
 
 
