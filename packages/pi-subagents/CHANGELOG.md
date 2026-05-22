@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.9.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.8.3...pi-subagents-v6.9.0) (2026-05-22)
+
+
+### Features
+
+* add onAgentCreated to AgentManagerObserver ([e2f1c12](https://github.com/gotgenes/pi-packages/commit/e2f1c1273ce560231cc98ef3c7e214efd2c20f47))
+
+
+### Documentation
+
+* mark D2 done, update field counts in architecture.md ([#114](https://github.com/gotgenes/pi-packages/issues/114)) ([702caf4](https://github.com/gotgenes/pi-packages/commit/702caf4187bfa015b0d80361b06b6360fddc31b1))
+* plan narrow AgentToolDeps and AgentMenuDeps ([#114](https://github.com/gotgenes/pi-packages/issues/114)) ([0f7e953](https://github.com/gotgenes/pi-packages/commit/0f7e95362043109c4113cfe3f7b848e296f118c9))
+* **retro:** add retro notes for issue [#113](https://github.com/gotgenes/pi-packages/issues/113) ([6b3c280](https://github.com/gotgenes/pi-packages/commit/6b3c2800e6d7728b8b620172e4acb1068b65e6c4))
+
 ## [6.8.3](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.8.2...pi-subagents-v6.8.3) (2026-05-22)
 
 
