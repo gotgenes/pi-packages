@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.8.3](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.8.2...pi-subagents-v6.8.3) (2026-05-22)
+
+
+### Documentation
+
+* mark Step D1 complete in architecture.md ([#113](https://github.com/gotgenes/pi-packages/issues/113)) ([b42de23](https://github.com/gotgenes/pi-packages/commit/b42de238710931348336d6e7fd81bb000a0ab584))
+* plan disambiguate SpawnOptions (public vs internal) ([#113](https://github.com/gotgenes/pi-packages/issues/113)) ([2f3cebc](https://github.com/gotgenes/pi-packages/commit/2f3cebc6623e0ba20c73145d8e7c6b9ffae6f875))
+* **retro:** add retro notes for issue [#112](https://github.com/gotgenes/pi-packages/issues/112) ([2a59ed4](https://github.com/gotgenes/pi-packages/commit/2a59ed4e4f5462cdbf8df96e4b675a9c5ec6eb9d))
+
 ## [6.8.2](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.8.1...pi-subagents-v6.8.2) (2026-05-22)
 
 
