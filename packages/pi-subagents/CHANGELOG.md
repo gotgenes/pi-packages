@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.12.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.12.0...pi-subagents-v6.12.1) (2026-05-22)
+
+
+### Documentation
+
+* mark Step J done, add ui/display.ts to module listing ([#135](https://github.com/gotgenes/pi-packages/issues/135)) ([37ced45](https://github.com/gotgenes/pi-packages/commit/37ced45e1a0287aa78e588cb8bc7905c0f969637))
+* plan display helper extraction from agent-widget ([#135](https://github.com/gotgenes/pi-packages/issues/135)) ([9e65e7d](https://github.com/gotgenes/pi-packages/commit/9e65e7d93bf47d4c4582d367d2f31a2386a5cc8c))
+* **retro:** add retro notes for issue [#134](https://github.com/gotgenes/pi-packages/issues/134) ([775ce99](https://github.com/gotgenes/pi-packages/commit/775ce99710153d4ebcf40f773eae21553c7f8a82))
+
 ## [6.12.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.11.0...pi-subagents-v6.12.0) (2026-05-22)
 
 
