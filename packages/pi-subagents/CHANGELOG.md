@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.9.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.9.0...pi-subagents-v6.9.1) (2026-05-22)
+
+
+### Documentation
+
+* plan decompose agent-tool.ts into foreground/background modules ([#115](https://github.com/gotgenes/pi-packages/issues/115)) ([4b9aefb](https://github.com/gotgenes/pi-packages/commit/4b9aefb18fe0431a033d90f10bcbe7d37c53a6b8))
+* **retro:** add retro notes for issue [#114](https://github.com/gotgenes/pi-packages/issues/114) ([e6095e7](https://github.com/gotgenes/pi-packages/commit/e6095e7465f482ac18756305b9740f1101dbd41a))
+* update architecture for E1 agent-tool decomposition ([#115](https://github.com/gotgenes/pi-packages/issues/115)) ([8bccf0a](https://github.com/gotgenes/pi-packages/commit/8bccf0ab90787d906c82c5a362c0763d3b7bd2f5))
+
 ## [6.9.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.8.3...pi-subagents-v6.9.0) (2026-05-22)
 
 
