@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.16.2](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.16.1...pi-subagents-v6.16.2) (2026-05-23)
+
+
+### Documentation
+
+* fix plan for narrow UI context ([#146](https://github.com/gotgenes/pi-packages/issues/146)) ([3d5b591](https://github.com/gotgenes/pi-packages/commit/3d5b591c0668ffcd9f66a6fc9a2c5d57236865af))
+* mark Step N complete in architecture doc ([#146](https://github.com/gotgenes/pi-packages/issues/146)) ([9948869](https://github.com/gotgenes/pi-packages/commit/9948869b849817dac6f221f1e90db5e47fd12d31))
+* plan narrow UI context for menu handlers ([#146](https://github.com/gotgenes/pi-packages/issues/146)) ([88318b4](https://github.com/gotgenes/pi-packages/commit/88318b4550fe95fc70b1a9ee1e904c608a2189a3))
+* **retro:** add retro notes for issue [#148](https://github.com/gotgenes/pi-packages/issues/148) ([982fe51](https://github.com/gotgenes/pi-packages/commit/982fe51d7e27b7a127605710ced709bbd6291a0f))
+
 ## [6.16.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.16.0...pi-subagents-v6.16.1) (2026-05-23)
 
 
