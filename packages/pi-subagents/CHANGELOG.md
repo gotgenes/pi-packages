@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.17.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.17.0...pi-subagents-v6.17.1) (2026-05-23)
+
+
+### Documentation
+
+* **pi-subagents:** add issue numbers to Phase 10 roadmap ([d6cc622](https://github.com/gotgenes/pi-packages/commit/d6cc62275bb2bdd9dbe9b2516bac03bdadd280d6))
+* **pi-subagents:** hyperlink Phase 10 issue references in architecture doc ([1e2e488](https://github.com/gotgenes/pi-packages/commit/1e2e4888779496d9988036c9cbde6b728cc91a98))
+* **pi-subagents:** restructure architecture doc with domain model and diagrams ([3dcf468](https://github.com/gotgenes/pi-packages/commit/3dcf4686c636e90da6337ad5502f91450597a700))
+* **retro:** add retro notes for issue [#147](https://github.com/gotgenes/pi-packages/issues/147) ([0488655](https://github.com/gotgenes/pi-packages/commit/0488655729eff841809993f34238a688ff46acda))
+* **retro:** add retro notes for issue [#147](https://github.com/gotgenes/pi-packages/issues/147) ([e6b2810](https://github.com/gotgenes/pi-packages/commit/e6b2810431f8baef79412fec9aa6b8aa194ff257))
+* **retro:** replace retro deterministic step with sync-with-remote ([#147](https://github.com/gotgenes/pi-packages/issues/147)) ([9e9b365](https://github.com/gotgenes/pi-packages/commit/9e9b365ca3481f42ecf97c92fd4e44a4491b7573))
+
 ## [6.17.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.16.3...pi-subagents-v6.17.0) (2026-05-23)
 
 
