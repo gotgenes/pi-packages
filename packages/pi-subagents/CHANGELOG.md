@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.16.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.16.0...pi-subagents-v6.16.1) (2026-05-23)
+
+
+### Bug Fixes
+
+* **pi-subagents:** theme parentheses and separator in formatSessionTokens ([33b67f6](https://github.com/gotgenes/pi-packages/commit/33b67f63915563c41605addb885af52b47844e96))
+
+
+### Documentation
+
+* plan split AgentWidget rendering from lifecycle ([#148](https://github.com/gotgenes/pi-packages/issues/148)) ([24c11d5](https://github.com/gotgenes/pi-packages/commit/24c11d51f2b6c9d2712815fbe46ede72084ffcbb))
+* **retro:** add retro notes for issue [#144](https://github.com/gotgenes/pi-packages/issues/144) ([f3cdfd4](https://github.com/gotgenes/pi-packages/commit/f3cdfd46fe223d6cecb5dad0d739f053e7468433))
+* update architecture for widget rendering extraction ([#148](https://github.com/gotgenes/pi-packages/issues/148)) ([450707e](https://github.com/gotgenes/pi-packages/commit/450707e1d0f41ae78f1a655ab350fd8f4fd64125))
+
 ## [6.16.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.15.0...pi-subagents-v6.16.0) (2026-05-23)
 
 
