@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.13.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.13.0...pi-subagents-v6.13.1) (2026-05-23)
+
+
+### Documentation
+
+* **pi-subagents:** add dependency bag convention to Phase 9 ([72436cd](https://github.com/gotgenes/pi-packages/commit/72436cd51d7a3058de6bb17673f3552fd4e61340))
+* **pi-subagents:** add issue references to Phase 9 steps ([43e9b9c](https://github.com/gotgenes/pi-packages/commit/43e9b9c2f2d816f0802783752ce0bcc8022d4a33))
+* **pi-subagents:** add Phase 9 roadmap to architecture.md ([6fb1ad8](https://github.com/gotgenes/pi-packages/commit/6fb1ad892df3e85cca35361a0995adcdf3b0569b))
+* **pi-subagents:** convert dependency graphs to Mermaid diagrams ([d2571e8](https://github.com/gotgenes/pi-packages/commit/d2571e8558faf2c6728068bfafbbf24beb812f7c))
+* **pi-subagents:** refine Step M to include execute decomposition ([262f570](https://github.com/gotgenes/pi-packages/commit/262f5708d54bb6aa30ccd405bed1e89bfd5ea999))
+* **pi-subagents:** remove progress markers from architecture.md ([aca298b](https://github.com/gotgenes/pi-packages/commit/aca298ba7e1da44c48dc442b2602a4202d4943a3))
+* **retro:** add retro notes for issue [#136](https://github.com/gotgenes/pi-packages/issues/136) ([20384ac](https://github.com/gotgenes/pi-packages/commit/20384ac2040ae4334565f303f327bb007d9b4501))
+
 ## [6.13.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.12.1...pi-subagents-v6.13.0) (2026-05-23)
 
 
