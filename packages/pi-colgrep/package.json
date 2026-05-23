@@ -1,6 +1,6 @@
 {
   "name": "@gotgenes/pi-colgrep",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Pi extension that integrates ColGrep semantic code search as an agent tool.",
   "type": "module",
   "files": [

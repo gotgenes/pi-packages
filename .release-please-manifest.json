@@ -1,6 +1,6 @@
 {
   "packages/pi-autoformat": "5.0.2",
-  "packages/pi-colgrep": "1.0.0",
+  "packages/pi-colgrep": "1.1.0",
   "packages/pi-github-tools": "4.0.2",
   "packages/pi-permission-system": "7.1.1",
   "packages/pi-subagents": "6.13.1"
