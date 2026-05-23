@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.1.2](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v7.1.1...pi-permission-system-v7.1.2) (2026-05-23)
+
+
+### Bug Fixes
+
+* resolve fallow dead-code warnings ([2113f6b](https://github.com/gotgenes/pi-packages/commit/2113f6bc49812ce32ac68d0e2dd88e0a60b4474a))
+
+
+### Documentation
+
+* plan barrel discipline enforcement ([#155](https://github.com/gotgenes/pi-packages/issues/155)) ([58692cf](https://github.com/gotgenes/pi-packages/commit/58692cf98235ee5cc82e714943fb4238b78601c4))
+
 ## [7.1.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v7.1.0...pi-permission-system-v7.1.1) (2026-05-22)
 
 

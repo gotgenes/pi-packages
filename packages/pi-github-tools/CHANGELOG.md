@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.0.3](https://github.com/gotgenes/pi-packages/compare/pi-github-tools-v4.0.2...pi-github-tools-v4.0.3) (2026-05-23)
+
+
+### Bug Fixes
+
+* resolve fallow dead-code warnings ([2113f6b](https://github.com/gotgenes/pi-packages/commit/2113f6bc49812ce32ac68d0e2dd88e0a60b4474a))
+
 ## [4.0.2](https://github.com/gotgenes/pi-packages/compare/pi-github-tools-v4.0.1...pi-github-tools-v4.0.2) (2026-05-20)
 
 

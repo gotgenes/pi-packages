@@ -1,6 +1,6 @@
 {
   "name": "@gotgenes/pi-autoformat",
-  "version": "5.0.2",
+  "version": "5.0.3",
   "description": "Pi extension package for prompt-end auto-formatting",
   "keywords": [
     "pi-package",
