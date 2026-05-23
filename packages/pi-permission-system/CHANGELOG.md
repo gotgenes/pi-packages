@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.1.4](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v7.1.3...pi-permission-system-v7.1.4) (2026-05-23)
+
+
+### Bug Fixes
+
+* add package.json imports field for #src/#test path aliases ([#157](https://github.com/gotgenes/pi-packages/issues/157)) ([75b4598](https://github.com/gotgenes/pi-packages/commit/75b45980810583452f7741678359c004900c8bd0))
+
 ## [7.1.3](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v7.1.2...pi-permission-system-v7.1.3) (2026-05-23)
 
 

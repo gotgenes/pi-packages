@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.17.2](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.17.1...pi-subagents-v6.17.2) (2026-05-23)
+
+
+### Bug Fixes
+
+* add package.json imports field for #src/#test path aliases ([#157](https://github.com/gotgenes/pi-packages/issues/157)) ([75b4598](https://github.com/gotgenes/pi-packages/commit/75b45980810583452f7741678359c004900c8bd0))
+
+
+### Documentation
+
+* plan reorganize pi-subagents source into domain directories ([#164](https://github.com/gotgenes/pi-packages/issues/164)) ([40d1214](https://github.com/gotgenes/pi-packages/commit/40d1214ea806215a5a5cda092bf24de3ebb0a195))
+* **retro:** add planning stage notes for issue [#164](https://github.com/gotgenes/pi-packages/issues/164) ([947ec91](https://github.com/gotgenes/pi-packages/commit/947ec91f86de214a637e9d76348c32cb8a743dc4))
+* **retro:** add TDD stage notes for issue [#164](https://github.com/gotgenes/pi-packages/issues/164) ([3f075cd](https://github.com/gotgenes/pi-packages/commit/3f075cd01c8517e6322a98bf7c51831fce861ce2))
+* update architecture doc to reflect domain directory restructuring ([#164](https://github.com/gotgenes/pi-packages/issues/164)) ([a8c912d](https://github.com/gotgenes/pi-packages/commit/a8c912d065e6b3627ea617fadbaa95a470dfe1d5))
+
 ## [6.17.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.17.0...pi-subagents-v6.17.1) (2026-05-23)
 
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.2](https://github.com/gotgenes/pi-packages/compare/pi-colgrep-v1.3.1...pi-colgrep-v1.3.2) (2026-05-23)
+
+
+### Bug Fixes
+
+* add package.json imports field for #src/#test path aliases ([#157](https://github.com/gotgenes/pi-packages/issues/157)) ([75b4598](https://github.com/gotgenes/pi-packages/commit/75b45980810583452f7741678359c004900c8bd0))
+
 ## [1.3.1](https://github.com/gotgenes/pi-packages/compare/pi-colgrep-v1.3.0...pi-colgrep-v1.3.1) (2026-05-23)
 
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.0.4](https://github.com/gotgenes/pi-packages/compare/pi-autoformat-v5.0.3...pi-autoformat-v5.0.4) (2026-05-23)
+
+
+### Bug Fixes
+
+* add package.json imports field for #src/#test path aliases ([#157](https://github.com/gotgenes/pi-packages/issues/157)) ([75b4598](https://github.com/gotgenes/pi-packages/commit/75b45980810583452f7741678359c004900c8bd0))
+
 ## [5.0.3](https://github.com/gotgenes/pi-packages/compare/pi-autoformat-v5.0.2...pi-autoformat-v5.0.3) (2026-05-23)
 
 
