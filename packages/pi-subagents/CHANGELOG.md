@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.17.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.16.3...pi-subagents-v6.17.0) (2026-05-23)
+
+
+### Features
+
+* inject wrapText into ConversationViewer (Phase 9, Step O) ([#147](https://github.com/gotgenes/pi-packages/issues/147)) ([2522d5b](https://github.com/gotgenes/pi-packages/commit/2522d5b82f2a29b9011f31d49f82b5f914f12f99))
+
+
+### Documentation
+
+* mark Step O complete in architecture doc ([#147](https://github.com/gotgenes/pi-packages/issues/147)) ([c4a6ee5](https://github.com/gotgenes/pi-packages/commit/c4a6ee5217692fc67b9a9e5b6c8586376e9e7e02))
+* plan inject wrapText into ConversationViewer ([#147](https://github.com/gotgenes/pi-packages/issues/147)) ([fe4dceb](https://github.com/gotgenes/pi-packages/commit/fe4dcebda894b0d641820e55d41e48e4a0c67c3d))
+* **retro:** add planning stage notes for issue [#147](https://github.com/gotgenes/pi-packages/issues/147) ([dce5db2](https://github.com/gotgenes/pi-packages/commit/dce5db2fc2ce2fd530bbfacd61ec40e771005768))
+* **retro:** add TDD stage notes for issue [#147](https://github.com/gotgenes/pi-packages/issues/147) ([2db1238](https://github.com/gotgenes/pi-packages/commit/2db123874d1730ac8811d44731a8f7cb052ee043))
+
 ## [6.16.3](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.16.2...pi-subagents-v6.16.3) (2026-05-23)
 
 
