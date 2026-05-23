@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.16.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.15.0...pi-subagents-v6.16.0) (2026-05-23)
+
+
+### Features
+
+* add session and outputFile convenience getters to AgentRecord ([#144](https://github.com/gotgenes/pi-packages/issues/144)) ([b451894](https://github.com/gotgenes/pi-packages/commit/b451894d101b43be9115dcf6d45725a09da81df8))
+
+
+### Documentation
+
+* mark Step L complete, remove resolved smells from architecture doc ([#144](https://github.com/gotgenes/pi-packages/issues/144)) ([36ab7a5](https://github.com/gotgenes/pi-packages/commit/36ab7a51d0320666b71d6c9e20c3bbf63b7c43c5))
+* plan consolidate observation model ([#144](https://github.com/gotgenes/pi-packages/issues/144)) ([9aa2c85](https://github.com/gotgenes/pi-packages/commit/9aa2c8508079c6ae847662631afd223e8966e12e))
+* **retro:** add retro notes for issue [#145](https://github.com/gotgenes/pi-packages/issues/145) ([2d23081](https://github.com/gotgenes/pi-packages/commit/2d230817d53357a62eb752b56f8b1c8ce4af718c))
+
 ## [6.15.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.14.1...pi-subagents-v6.15.0) (2026-05-23)
 
 
