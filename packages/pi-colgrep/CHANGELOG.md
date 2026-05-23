@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.2.0](https://github.com/gotgenes/pi-packages/compare/pi-colgrep-v1.1.0...pi-colgrep-v1.2.0) (2026-05-23)
+
+
+### Features
+
+* add debounced reindex scheduling ([#91](https://github.com/gotgenes/pi-packages/issues/91)) ([f12bd7d](https://github.com/gotgenes/pi-packages/commit/f12bd7d2fb47b7dbe7edfbfa65705ebe727280cc))
+* add reindexer shutdown ([#91](https://github.com/gotgenes/pi-packages/issues/91)) ([55db463](https://github.com/gotgenes/pi-packages/commit/55db4631386856e1bc791f6c01b3f03251f05c23))
+* add reindexer with immediate execution ([#91](https://github.com/gotgenes/pi-packages/issues/91)) ([84356be](https://github.com/gotgenes/pi-packages/commit/84356befd9c146ca518919587a27361965671c5f))
+* clean up reindexer on session shutdown ([#91](https://github.com/gotgenes/pi-packages/issues/91)) ([9a87869](https://github.com/gotgenes/pi-packages/commit/9a878697f352bf111ca6c1dc86ce99d6c3916eef))
+* handle reindex errors gracefully ([#91](https://github.com/gotgenes/pi-packages/issues/91)) ([2ca14d5](https://github.com/gotgenes/pi-packages/commit/2ca14d544275cf16412435079206a0c9184bb266))
+* queue reindex behind in-flight run ([#91](https://github.com/gotgenes/pi-packages/issues/91)) ([bb9ccbe](https://github.com/gotgenes/pi-packages/commit/bb9ccbe1eb56df768e547649a069ac3231835bfe))
+* register /colgrep-reindex manual command ([#91](https://github.com/gotgenes/pi-packages/issues/91)) ([c591e80](https://github.com/gotgenes/pi-packages/commit/c591e8016ea9dac9db8d47e9fe51e01febc0c5b6))
+* reindex on session start ([#91](https://github.com/gotgenes/pi-packages/issues/91)) ([d18cb8a](https://github.com/gotgenes/pi-packages/commit/d18cb8a1de49c7d92535a1b14d8d02cd6a7f93eb))
+* schedule reindex on write/edit tool results ([#91](https://github.com/gotgenes/pi-packages/issues/91)) ([bb17ea0](https://github.com/gotgenes/pi-packages/commit/bb17ea0b6bb532f0d1a64e0e07a914f408482633))
+
+
+### Documentation
+
+* plan auto-reindex on session start and file mutations ([#91](https://github.com/gotgenes/pi-packages/issues/91)) ([291d55f](https://github.com/gotgenes/pi-packages/commit/291d55f2a03674c3d84ab2e59d053b72c1b2d9b6))
+
 ## [1.1.0](https://github.com/gotgenes/pi-packages/compare/pi-colgrep-v1.0.0...pi-colgrep-v1.1.0) (2026-05-23)
 
 
