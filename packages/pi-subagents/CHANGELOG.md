@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.15.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.14.1...pi-subagents-v6.15.0) (2026-05-23)
+
+
+### Features
+
+* extract resolveSpawnConfig pure function ([#145](https://github.com/gotgenes/pi-packages/issues/145)) ([e89724a](https://github.com/gotgenes/pi-packages/commit/e89724a87480713529160d0fa23975becbcfe162))
+
+
+### Documentation
+
+* plan decompose execute and push ctx to boundary ([#145](https://github.com/gotgenes/pi-packages/issues/145)) ([aae7d7b](https://github.com/gotgenes/pi-packages/commit/aae7d7b4e04ab0dddedd2a0f9f2b806719956ced))
+* update architecture doc for completed Step M ([#145](https://github.com/gotgenes/pi-packages/issues/145)) ([33ec0c7](https://github.com/gotgenes/pi-packages/commit/33ec0c73479076c180381dcc1cb4106ba635f33f))
+* update plan with injected collaborators for ctx elimination ([#145](https://github.com/gotgenes/pi-packages/issues/145)) ([76bb57b](https://github.com/gotgenes/pi-packages/commit/76bb57b4b5190078ded8685907f0878640031e13))
+
 ## [6.14.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.14.0...pi-subagents-v6.14.1) (2026-05-23)
 
 
