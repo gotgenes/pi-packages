@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.14.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.13.1...pi-subagents-v6.14.0) (2026-05-23)
+
+
+### Features
+
+* add promptSnippet to Agent, get_subagent_result, and steer_subagent ([#152](https://github.com/gotgenes/pi-packages/issues/152)) ([3ccbe14](https://github.com/gotgenes/pi-packages/commit/3ccbe140b05ab038c3c50ff1fdbe314d721c7b60))
+
+
+### Documentation
+
+* plan add promptSnippet to subagent tools ([#152](https://github.com/gotgenes/pi-packages/issues/152)) ([f8fd56d](https://github.com/gotgenes/pi-packages/commit/f8fd56dff3d6a824f36c198d9a9d1b50a0bf740a))
+
 ## [6.13.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.13.0...pi-subagents-v6.13.1) (2026-05-23)
 
 

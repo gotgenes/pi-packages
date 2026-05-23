@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.1](https://github.com/gotgenes/pi-packages/compare/pi-colgrep-v1.3.0...pi-colgrep-v1.3.1) (2026-05-23)
+
+
+### Documentation
+
+* **retro:** add retro notes for issue [#92](https://github.com/gotgenes/pi-packages/issues/92) ([721ee0e](https://github.com/gotgenes/pi-packages/commit/721ee0e1e632bace0b3c64e7832164e753cfb8af))
+* **retro:** move promptGuidelines rule to code-design skill ([#92](https://github.com/gotgenes/pi-packages/issues/92)) ([e4e4676](https://github.com/gotgenes/pi-packages/commit/e4e46764fbbc7f37460af907393fd12d92ce2f47))
+
 ## [1.3.0](https://github.com/gotgenes/pi-packages/compare/pi-colgrep-v1.2.0...pi-colgrep-v1.3.0) (2026-05-23)
 
 
