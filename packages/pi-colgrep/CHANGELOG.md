@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.3.0](https://github.com/gotgenes/pi-packages/compare/pi-colgrep-v1.2.0...pi-colgrep-v1.3.0) (2026-05-23)
+
+
+### Features
+
+* add colgrep usage skill ([#92](https://github.com/gotgenes/pi-packages/issues/92)) ([5eacbe7](https://github.com/gotgenes/pi-packages/commit/5eacbe717ee66bba7484846b52df81b2f6d400b2))
+* register colgrep skill and license in package.json ([#92](https://github.com/gotgenes/pi-packages/issues/92)) ([33a3c33](https://github.com/gotgenes/pi-packages/commit/33a3c338c1b75eee0337dbc2d171b1acd083451c))
+
+
+### Bug Fixes
+
+* self-identify colgrep in limit guideline ([#92](https://github.com/gotgenes/pi-packages/issues/92)) ([fa164a1](https://github.com/gotgenes/pi-packages/commit/fa164a19d22deb63f72d6c56f735fa6eb49e41f8))
+
+
+### Documentation
+
+* add next-plaid Apache-2.0 license ([#92](https://github.com/gotgenes/pi-packages/issues/92)) ([b51e007](https://github.com/gotgenes/pi-packages/commit/b51e0071200ebbb096c96eabdb10f409183aaa23))
+* plan colgrep usage skill ([#92](https://github.com/gotgenes/pi-packages/issues/92)) ([bb518be](https://github.com/gotgenes/pi-packages/commit/bb518bec95ce4252cf43cf959e07fdf9c2f7620a))
+* **retro:** add retro notes for issue [#91](https://github.com/gotgenes/pi-packages/issues/91) ([cac61f9](https://github.com/gotgenes/pi-packages/commit/cac61f9525b04644d2960a2e0c4c667250572283))
+
 ## [1.2.0](https://github.com/gotgenes/pi-packages/compare/pi-colgrep-v1.1.0...pi-colgrep-v1.2.0) (2026-05-23)
 
 
