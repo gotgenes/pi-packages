@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.18.2](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.18.1...pi-subagents-v6.18.2) (2026-05-24)
+
+
+### Documentation
+
+* plan extract ParentSessionInfo from AgentSpawnConfig ([#166](https://github.com/gotgenes/pi-packages/issues/166)) ([aff7b35](https://github.com/gotgenes/pi-packages/commit/aff7b35c98503fbb3da6a287631a2aa5c4d498fd))
+* **retro:** add planning stage notes for issue [#166](https://github.com/gotgenes/pi-packages/issues/166) ([6138473](https://github.com/gotgenes/pi-packages/commit/613847313d56a9df8b479726d831679391bd0c1a))
+* **retro:** add retro notes for issue [#165](https://github.com/gotgenes/pi-packages/issues/165) ([2a3e70d](https://github.com/gotgenes/pi-packages/commit/2a3e70dc6b903b4c053e7f6ebc09169bc3e34bf6))
+* **retro:** add TDD stage notes for issue [#166](https://github.com/gotgenes/pi-packages/issues/166) ([2696da5](https://github.com/gotgenes/pi-packages/commit/2696da599de72f1a881577a4de8fedc57472a695))
+* update architecture doc — AgentSpawnConfig step 3 complete ([125450b](https://github.com/gotgenes/pi-packages/commit/125450ba9ea5753b4cad07ed4d1675dcdbc7e319))
+
 ## [6.18.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.18.0...pi-subagents-v6.18.1) (2026-05-24)
 
 
