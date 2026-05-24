@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.1.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v7.0.0...pi-subagents-v7.1.0) (2026-05-24)
+
+
+### Features
+
+* **pi-subagents:** define SessionContext narrow interface ([#192](https://github.com/gotgenes/pi-packages/issues/192)) ([a043d4d](https://github.com/gotgenes/pi-packages/commit/a043d4d970a8aacc084a125d9a07b860a7fb6e9b))
+
+
+### Documentation
+
+* **pi-subagents:** archive Phase 10, propose Phase 11 roadmap ([d474eef](https://github.com/gotgenes/pi-packages/commit/d474eef98c1a39757d933da291725ff126f1b8ac))
+* **pi-subagents:** revise Phase 11 roadmap — layered class conversion ([35d1083](https://github.com/gotgenes/pi-packages/commit/35d1083445aece783e344c37fc949395e190f9e5))
+* plan SessionContext narrow interface ([#192](https://github.com/gotgenes/pi-packages/issues/192)) ([95cb16e](https://github.com/gotgenes/pi-packages/commit/95cb16e46aa630ecc34f423aaaa4ff02845ed5b5))
+* **retro:** add planning stage notes for issue [#192](https://github.com/gotgenes/pi-packages/issues/192) ([31fd729](https://github.com/gotgenes/pi-packages/commit/31fd7290985b0ef1d240cd5afd5e0e0e7eec9131))
+* **retro:** add retro notes for issue [#185](https://github.com/gotgenes/pi-packages/issues/185) ([66e49cf](https://github.com/gotgenes/pi-packages/commit/66e49cfb4129b9bba3b78e0850402bc61d99dda8))
+* **retro:** add TDD stage notes for issue [#192](https://github.com/gotgenes/pi-packages/issues/192) ([6cf3f95](https://github.com/gotgenes/pi-packages/commit/6cf3f95f6c39f3f81c1d335348d5abd74d948ff3))
+
 ## [7.0.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.19.1...pi-subagents-v7.0.0) (2026-05-24)
 
 
