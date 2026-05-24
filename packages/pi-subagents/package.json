@@ -1,6 +1,6 @@
 {
   "name": "@gotgenes/pi-subagents",
-  "version": "6.18.8",
+  "version": "6.19.0",
   "type": "module",
   "exports": {
     ".": "./src/service.ts"

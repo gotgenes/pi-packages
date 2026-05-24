@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.19.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.18.8...pi-subagents-v6.19.0) (2026-05-24)
+
+
+### Features
+
+* extract shared content-item parsing into session/content-items ([5ed0d1c](https://github.com/gotgenes/pi-packages/commit/5ed0d1c6291d9044e1ab85c637b1e5f0051789f3))
+* extract shared content-item parsing into session/content-items ([413fda0](https://github.com/gotgenes/pi-packages/commit/413fda0cc8bb496a79285d0ec97c97d9b0b6cc6d))
+
+
+### Documentation
+
+* mark step 9 (extract turn-formatting) done in architecture ([04a0b55](https://github.com/gotgenes/pi-packages/commit/04a0b554b8848adc0f43b8939fa866086282a6af))
+* plan extract shared turn-formatting logic ([#172](https://github.com/gotgenes/pi-packages/issues/172)) ([818affe](https://github.com/gotgenes/pi-packages/commit/818affe22457cfbc1cabc5d4e7477e9391b3ed46))
+* **retro:** add planning stage notes for issue [#172](https://github.com/gotgenes/pi-packages/issues/172) ([809b4cf](https://github.com/gotgenes/pi-packages/commit/809b4cf4dd9f59f1c57eb0776835af88e0cef8f4))
+* **retro:** add retro notes for issue [#171](https://github.com/gotgenes/pi-packages/issues/171) ([2b50b37](https://github.com/gotgenes/pi-packages/commit/2b50b374f9d99305144bc6227eb48e3a9d68efb3))
+
 ## [6.18.8](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.18.7...pi-subagents-v6.18.8) (2026-05-24)
 
 
