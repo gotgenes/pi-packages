@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.18.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.18.0...pi-subagents-v6.18.1) (2026-05-24)
+
+
+### Documentation
+
+* plan decompose ResolvedSpawnConfig ([#165](https://github.com/gotgenes/pi-packages/issues/165)) ([1b14d56](https://github.com/gotgenes/pi-packages/commit/1b14d56aaada427a7344ec22adb4bbf8d7ce0bf7))
+* **retro:** add planning stage notes for issue [#165](https://github.com/gotgenes/pi-packages/issues/165) ([8e0476a](https://github.com/gotgenes/pi-packages/commit/8e0476afa991953884455c7dd09c7ffb742cb329))
+* **retro:** add TDD stage notes for issue [#165](https://github.com/gotgenes/pi-packages/issues/165) ([68248e5](https://github.com/gotgenes/pi-packages/commit/68248e572d38ad6e0cdb61bdd22f2b46193eaac6))
+
 ## [6.18.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.17.2...pi-subagents-v6.18.0) (2026-05-24)
 
 

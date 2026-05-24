@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.1](https://github.com/gotgenes/pi-packages/compare/pi-colgrep-v1.4.0...pi-colgrep-v1.4.1) (2026-05-24)
+
+
+### Documentation
+
+* improve skill descriptions to signal decision-relevant content ([51f52ef](https://github.com/gotgenes/pi-packages/commit/51f52ef30ac47516325f1220167d0828639abb83))
+
 ## [1.4.0](https://github.com/gotgenes/pi-packages/compare/pi-colgrep-v1.3.2...pi-colgrep-v1.4.0) (2026-05-24)
 
 
