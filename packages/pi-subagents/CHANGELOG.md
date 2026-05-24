@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.18.6](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.18.5...pi-subagents-v6.18.6) (2026-05-24)
+
+
+### Documentation
+
+* plan extract RunContext from RunOptions ([#169](https://github.com/gotgenes/pi-packages/issues/169)) ([ca12b2e](https://github.com/gotgenes/pi-packages/commit/ca12b2ebd116cb50c6e12d2d3fe3a87ff997d6d6))
+* **retro:** add planning stage notes for issue [#169](https://github.com/gotgenes/pi-packages/issues/169) ([05b0176](https://github.com/gotgenes/pi-packages/commit/05b01764a4aaa885efca9d061abf6bacb384057c))
+* **retro:** add retro notes for issue [#168](https://github.com/gotgenes/pi-packages/issues/168) ([dfe46ed](https://github.com/gotgenes/pi-packages/commit/dfe46ed5b5ee62371912dbbc6227443adee8e67b))
+* **retro:** add TDD stage notes for issue [#169](https://github.com/gotgenes/pi-packages/issues/169) ([84c0d8d](https://github.com/gotgenes/pi-packages/commit/84c0d8d5ef0a94750c470e3f10b3ab589caac794))
+* update architecture doc for RunContext extraction ([#169](https://github.com/gotgenes/pi-packages/issues/169)) ([ea49fe1](https://github.com/gotgenes/pi-packages/commit/ea49fe1b9c316e6541814de821738d6d121c4d13))
+* update RunOptions field references in comments ([#169](https://github.com/gotgenes/pi-packages/issues/169)) ([fd9c3ed](https://github.com/gotgenes/pi-packages/commit/fd9c3ed0e0b01c45136c8f34d8f31a89564e8061))
+
 ## [6.18.5](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.18.4...pi-subagents-v6.18.5) (2026-05-24)
 
 
