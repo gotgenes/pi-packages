@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.18.8](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.18.7...pi-subagents-v6.18.8) (2026-05-24)
+
+
+### Documentation
+
+* plan reduce renderResult complexity ([#171](https://github.com/gotgenes/pi-packages/issues/171)) ([340c410](https://github.com/gotgenes/pi-packages/commit/340c4107a8b4b39c39a3bf9d04b83b445db5982d))
+* **retro:** add planning stage notes for issue [#171](https://github.com/gotgenes/pi-packages/issues/171) ([509300b](https://github.com/gotgenes/pi-packages/commit/509300bb6de499ed7f7272a0336945674f1e4df3))
+* **retro:** add retro note for issue [#171](https://github.com/gotgenes/pi-packages/issues/171) ([f8e53f1](https://github.com/gotgenes/pi-packages/commit/f8e53f11ef69fe90df2c84156846811d997d5fcd))
+* **retro:** add retro notes for issue [#170](https://github.com/gotgenes/pi-packages/issues/170) ([da2a6a7](https://github.com/gotgenes/pi-packages/commit/da2a6a7e9855b1e79d7d9d3a096b0e4788bce42d))
+* **retro:** add TDD stage notes for issue [#171](https://github.com/gotgenes/pi-packages/issues/171) ([0621901](https://github.com/gotgenes/pi-packages/commit/0621901b6a7b33951e96bd1814448dacf72400fb))
+* update architecture and skill for result-renderer ([#171](https://github.com/gotgenes/pi-packages/issues/171)) ([1510dc7](https://github.com/gotgenes/pi-packages/commit/1510dc77f1adafab9793cc067a91ec9b9e1cf6c3))
+* update architecture for result-renderer extraction ([#171](https://github.com/gotgenes/pi-packages/issues/171)) ([1183522](https://github.com/gotgenes/pi-packages/commit/11835223615fdcf4bdbe34d367278d7ed240c901))
+
 ## [6.18.7](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.18.6...pi-subagents-v6.18.7) (2026-05-24)
 
 
