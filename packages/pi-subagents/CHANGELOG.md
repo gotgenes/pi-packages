@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.18.4](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.18.3...pi-subagents-v6.18.4) (2026-05-24)
+
+
+### Documentation
+
+* mark RunnerIO split done in architecture ([#167](https://github.com/gotgenes/pi-packages/issues/167)) ([824fd72](https://github.com/gotgenes/pi-packages/commit/824fd726361f62b6696dcc62de3b0bbb9cf45711))
+* plan narrow RunnerIO into EnvironmentIO + SessionFactoryIO ([#167](https://github.com/gotgenes/pi-packages/issues/167)) ([8110fec](https://github.com/gotgenes/pi-packages/commit/8110fec44dfaf08bd93d9cbc59ad04c6cba62a84))
+* **retro:** add planning stage notes for issue [#167](https://github.com/gotgenes/pi-packages/issues/167) ([1aceff7](https://github.com/gotgenes/pi-packages/commit/1aceff77c8177093c60b90b87a3f991cb0186602))
+* **retro:** add retro notes for issue [#180](https://github.com/gotgenes/pi-packages/issues/180) ([1fcd0ac](https://github.com/gotgenes/pi-packages/commit/1fcd0ace6fd7f5ec90a8d44423b276eb351875af))
+* **retro:** add TDD stage notes for issue [#167](https://github.com/gotgenes/pi-packages/issues/167) ([870c767](https://github.com/gotgenes/pi-packages/commit/870c7670fdab831d408232c126312d0b5010d6f4))
+
 ## [6.18.3](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.18.2...pi-subagents-v6.18.3) (2026-05-24)
 
 
