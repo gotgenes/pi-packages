@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.19.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.19.0...pi-subagents-v6.19.1) (2026-05-24)
+
+
+### Documentation
+
+* plan replace any casts with SDK types ([#188](https://github.com/gotgenes/pi-packages/issues/188)) ([96207da](https://github.com/gotgenes/pi-packages/commit/96207dacf0035db11605d55a61132cf43f7c3b40))
+* **retro:** add planning stage notes for issue [#188](https://github.com/gotgenes/pi-packages/issues/188) ([6e38b12](https://github.com/gotgenes/pi-packages/commit/6e38b128a5bbaad3ca81b31adbf390482081a41e))
+* **retro:** add retro notes for issue [#172](https://github.com/gotgenes/pi-packages/issues/172) ([270c00a](https://github.com/gotgenes/pi-packages/commit/270c00a5f84bf454352443a6c57a6076803090c6))
+* **retro:** add TDD stage notes for issue [#188](https://github.com/gotgenes/pi-packages/issues/188) ([8a5f51a](https://github.com/gotgenes/pi-packages/commit/8a5f51a2fd02a143e85f176417b31af4a11b34f4))
+
 ## [6.19.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.18.8...pi-subagents-v6.19.0) (2026-05-24)
 
 
