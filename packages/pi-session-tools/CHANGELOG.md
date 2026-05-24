@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/gotgenes/pi-packages/compare/pi-session-tools-v0.2.0...pi-session-tools-v0.3.0) (2026-05-24)
+
+
+### Features
+
+* add eslint config with type-aware rules and import enforcement ([4fb3cc6](https://github.com/gotgenes/pi-packages/commit/4fb3cc678da10d350b85c464318476ba9ae99dca))
+
 ## [0.2.0](https://github.com/gotgenes/pi-packages/compare/pi-session-tools-v0.1.0...pi-session-tools-v0.2.0) (2026-05-23)
 
 

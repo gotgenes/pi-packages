@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/gotgenes/pi-packages/compare/pi-colgrep-v1.3.2...pi-colgrep-v1.4.0) (2026-05-24)
+
+
+### Features
+
+* add eslint config with type-aware rules and import enforcement ([4fb3cc6](https://github.com/gotgenes/pi-packages/commit/4fb3cc678da10d350b85c464318476ba9ae99dca))
+
 ## [1.3.2](https://github.com/gotgenes/pi-packages/compare/pi-colgrep-v1.3.1...pi-colgrep-v1.3.2) (2026-05-23)
 
 

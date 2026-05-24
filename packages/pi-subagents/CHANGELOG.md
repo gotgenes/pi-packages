@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.18.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.17.2...pi-subagents-v6.18.0) (2026-05-24)
+
+
+### Features
+
+* add eslint config with type-aware rules and import enforcement ([4fb3cc6](https://github.com/gotgenes/pi-packages/commit/4fb3cc678da10d350b85c464318476ba9ae99dca))
+
+
+### Bug Fixes
+
+* **pi-subagents:** add missing "type": "module" to package.json ([8cfd07d](https://github.com/gotgenes/pi-packages/commit/8cfd07dfbfd44f52dc43ac7ae67d5824304825ae))
+
+
+### Documentation
+
+* **retro:** add retro notes for issue [#164](https://github.com/gotgenes/pi-packages/issues/164) ([d8e2861](https://github.com/gotgenes/pi-packages/commit/d8e28615d6adabc86415f4d41ffd1bd90184fd0f))
+
 ## [6.17.2](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.17.1...pi-subagents-v6.17.2) (2026-05-23)
 
 

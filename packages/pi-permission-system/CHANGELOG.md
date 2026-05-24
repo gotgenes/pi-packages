@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.2.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v7.1.4...pi-permission-system-v7.2.0) (2026-05-24)
+
+
+### Features
+
+* add eslint config with type-aware rules and import enforcement ([4fb3cc6](https://github.com/gotgenes/pi-packages/commit/4fb3cc678da10d350b85c464318476ba9ae99dca))
+
 ## [7.1.4](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v7.1.3...pi-permission-system-v7.1.4) (2026-05-23)
 
 

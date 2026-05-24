@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.1.0](https://github.com/gotgenes/pi-packages/compare/pi-github-tools-v4.0.4...pi-github-tools-v4.1.0) (2026-05-24)
+
+
+### Features
+
+* add eslint config with type-aware rules and import enforcement ([4fb3cc6](https://github.com/gotgenes/pi-packages/commit/4fb3cc678da10d350b85c464318476ba9ae99dca))
+
 ## [4.0.4](https://github.com/gotgenes/pi-packages/compare/pi-github-tools-v4.0.3...pi-github-tools-v4.0.4) (2026-05-23)
 
 
