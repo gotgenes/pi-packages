@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.18.5](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.18.4...pi-subagents-v6.18.5) (2026-05-24)
+
+
+### Documentation
+
+* mark ToolFilterConfig extraction done in architecture doc ([#168](https://github.com/gotgenes/pi-packages/issues/168)) ([686c33e](https://github.com/gotgenes/pi-packages/commit/686c33ed107e1ec1ec56c73441b1551bf59bff3f))
+* plan extract ToolFilterConfig from SessionConfig ([#168](https://github.com/gotgenes/pi-packages/issues/168)) ([beaaeb4](https://github.com/gotgenes/pi-packages/commit/beaaeb41588bb93739b5ba6959c12202efbe7862))
+* **retro:** add planning stage notes for issue [#168](https://github.com/gotgenes/pi-packages/issues/168) ([7086139](https://github.com/gotgenes/pi-packages/commit/70861390a6190653d499c720fc298972e03967aa))
+* **retro:** add retro notes for issue [#167](https://github.com/gotgenes/pi-packages/issues/167) ([cc96edd](https://github.com/gotgenes/pi-packages/commit/cc96edd20994a48ee2f824ea9136fa0da83e4c23))
+* **retro:** add TDD stage notes for issue [#168](https://github.com/gotgenes/pi-packages/issues/168) ([8a14bf7](https://github.com/gotgenes/pi-packages/commit/8a14bf766e9c38c89f31468293fdafa8c79d32ea))
+* update architecture to reflect current layout and RunnerIO split ([#167](https://github.com/gotgenes/pi-packages/issues/167)) ([d4a98aa](https://github.com/gotgenes/pi-packages/commit/d4a98aaa1600c24c28dd1005e381588990ab74fd))
+
 ## [6.18.4](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.18.3...pi-subagents-v6.18.4) (2026-05-24)
 
 
