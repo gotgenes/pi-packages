@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.0.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.19.1...pi-subagents-v7.0.0) (2026-05-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* `src/session/memory.ts` and all persistent agent memory functionality (MEMORY.md, agent-memory directories) are removed from pi-subagents. This is scope reduction — agent spawning, execution, and result retrieval remain.
+* `MemoryScope` is no longer exported from the package. The `memory` field is removed from `AgentConfig`. Custom agent .md files with a `memory:` frontmatter key will have it silently ignored.
+* The `memory` field in agent configuration no longer has any effect. Memory block injection, memory tool augmentation, and the `AssemblerIO.buildMemoryBlock` / `buildReadOnlyMemoryBlock` collaborators are removed from the session assembler.
+
+### Features
+
+* delete memory module ([78ace55](https://github.com/gotgenes/pi-packages/commit/78ace558b1988bce8e002b28fe3152c5de708b84))
+* remove memory from session assembly and config layers ([6ebeb91](https://github.com/gotgenes/pi-packages/commit/6ebeb91f28c56c1d21fc4e1a7b6bededa8eba025))
+* remove MemoryScope type and memory config field ([d6e3bcb](https://github.com/gotgenes/pi-packages/commit/d6e3bcbb58902133a3704d89d88b548f8f2a4769))
+
+
+### Documentation
+
+* plan remove persistent agent memory ([#185](https://github.com/gotgenes/pi-packages/issues/185)) ([0f6b3ad](https://github.com/gotgenes/pi-packages/commit/0f6b3adb6c35c3879c5d1e176e1c6d9da36a5cf1))
+* **retro:** add planning stage notes for issue [#185](https://github.com/gotgenes/pi-packages/issues/185) ([58dcfbc](https://github.com/gotgenes/pi-packages/commit/58dcfbc3124ec7695048ad3df8fc6f397a883d1a))
+* **retro:** add retro notes for issue [#188](https://github.com/gotgenes/pi-packages/issues/188) ([8eeaf6b](https://github.com/gotgenes/pi-packages/commit/8eeaf6b52f7b40a2126f3ffa3ca01a8e3b84f338))
+* **retro:** add TDD stage notes for issue [#185](https://github.com/gotgenes/pi-packages/issues/185) ([8e75b18](https://github.com/gotgenes/pi-packages/commit/8e75b18b2c87b47f1a29df9d2c544a8ad2023f9f))
+* update architecture after memory removal ([52716d5](https://github.com/gotgenes/pi-packages/commit/52716d5f89b729ce183d4a450d8539e6cabdbadc))
+
 ## [6.19.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.19.0...pi-subagents-v6.19.1) (2026-05-24)
 
 
