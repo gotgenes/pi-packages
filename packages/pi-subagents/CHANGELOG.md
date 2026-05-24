@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.18.3](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.18.2...pi-subagents-v6.18.3) (2026-05-24)
+
+
+### Performance Improvements
+
+* reorder append-mode prompt for KV cache reuse ([#180](https://github.com/gotgenes/pi-packages/issues/180)) ([5f688bd](https://github.com/gotgenes/pi-packages/commit/5f688bd1d008e20987d28626c5f5d0df0f66b854))
+
+
+### Documentation
+
+* plan reorder append-mode prompt for KV cache reuse ([#180](https://github.com/gotgenes/pi-packages/issues/180)) ([bb0ddec](https://github.com/gotgenes/pi-packages/commit/bb0ddec8a7beb37baace5698e4fa4d09e61497d6))
+* **retro:** add planning stage notes for issue [#180](https://github.com/gotgenes/pi-packages/issues/180) ([3413158](https://github.com/gotgenes/pi-packages/commit/341315898baa09652df18731ad318c89861ec62c))
+* **retro:** add retro notes for issue [#166](https://github.com/gotgenes/pi-packages/issues/166) ([fae30ce](https://github.com/gotgenes/pi-packages/commit/fae30cec3dd99bbac490a2764a8340aa12fc171c))
+* **retro:** add TDD stage notes for issue [#180](https://github.com/gotgenes/pi-packages/issues/180) ([1560f2d](https://github.com/gotgenes/pi-packages/commit/1560f2d6f7029cbbe0cc7b1efe1aba2a243e8357))
+
 ## [6.18.2](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.18.1...pi-subagents-v6.18.2) (2026-05-24)
 
 
