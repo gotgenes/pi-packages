@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.18.7](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.18.6...pi-subagents-v6.18.7) (2026-05-24)
+
+
+### Documentation
+
+* plan reduce buildContentLines complexity ([#170](https://github.com/gotgenes/pi-packages/issues/170)) ([9912d16](https://github.com/gotgenes/pi-packages/commit/9912d16a375aef3fcf39148f0fc6e0c7ca761f31))
+* **retro:** add planning stage notes for issue [#170](https://github.com/gotgenes/pi-packages/issues/170) ([3ed1b75](https://github.com/gotgenes/pi-packages/commit/3ed1b7570af3e6569015570c657dc7ea1fe583f4))
+* **retro:** add retro notes for issue [#169](https://github.com/gotgenes/pi-packages/issues/169) ([419c451](https://github.com/gotgenes/pi-packages/commit/419c451f285564f98a0ba11dddb215f38ad541c3))
+* **retro:** add TDD stage notes for issue [#170](https://github.com/gotgenes/pi-packages/issues/170) ([75b3253](https://github.com/gotgenes/pi-packages/commit/75b325393be083eca02cf1db3a872a504ba03e53))
+* update architecture for message-formatters extraction ([#170](https://github.com/gotgenes/pi-packages/issues/170)) ([1005354](https://github.com/gotgenes/pi-packages/commit/1005354d6faf632ff617acdc679660cffd3afbe2))
+
 ## [6.18.6](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.18.5...pi-subagents-v6.18.6) (2026-05-24)
 
 
