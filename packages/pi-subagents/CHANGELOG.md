@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.3.2](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v7.3.1...pi-subagents-v7.3.2) (2026-05-25)
+
+
+### Documentation
+
+* mark Phase 13 Step 1 complete ([8d62590](https://github.com/gotgenes/pi-packages/commit/8d62590aeded8aba25df96ea2fbba6581572eaf7))
+* **pi-subagents:** link Phase 13 issues [#214](https://github.com/gotgenes/pi-packages/issues/214)–[#219](https://github.com/gotgenes/pi-packages/issues/219) in architecture roadmap ([636a1e5](https://github.com/gotgenes/pi-packages/commit/636a1e500319b9ce1007c0a571dd13199cdd2606))
+* **pi-subagents:** propose Phase 13 improvement roadmap ([caf2a53](https://github.com/gotgenes/pi-packages/commit/caf2a5376c69744db1743a9362096e764d9524b1))
+* plan convert remaining closure factories to classes ([#214](https://github.com/gotgenes/pi-packages/issues/214)) ([2225920](https://github.com/gotgenes/pi-packages/commit/222592007e2ce29d5e6d5678a303f6cb781dae39))
+* **retro:** add planning stage notes for issue [#214](https://github.com/gotgenes/pi-packages/issues/214) ([3072e61](https://github.com/gotgenes/pi-packages/commit/3072e618f08080065ef9f3c7520ff44e8dbc84b4))
+* **retro:** add retro notes for issue [#208](https://github.com/gotgenes/pi-packages/issues/208) ([1436396](https://github.com/gotgenes/pi-packages/commit/1436396d71e79cbbf519877e9dc899000ebd0001))
+* **retro:** add TDD stage notes for issue [#214](https://github.com/gotgenes/pi-packages/issues/214) ([201e1eb](https://github.com/gotgenes/pi-packages/commit/201e1ebbaba66e0d83cc006ef77b711c22fb1bb8))
+
 ## [7.3.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v7.3.0...pi-subagents-v7.3.1) (2026-05-25)
 
 
