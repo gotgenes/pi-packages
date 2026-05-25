@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.2.8](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v7.2.7...pi-subagents-v7.2.8) (2026-05-25)
+
+
+### Performance Improvements
+
+* remove &lt;inherited_system_prompt&gt; wrapper to maximise KV cache reuse ([#180](https://github.com/gotgenes/pi-packages/issues/180)) ([f35e7b1](https://github.com/gotgenes/pi-packages/commit/f35e7b1b4309f91656677932c201d762c4be5cf3))
+
+
+### Documentation
+
+* **retro:** add retro notes for issue [#206](https://github.com/gotgenes/pi-packages/issues/206) ([f439057](https://github.com/gotgenes/pi-packages/commit/f439057bd42edc018df8ddd94783f8a9c89968e0))
+
 ## [7.2.7](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v7.2.6...pi-subagents-v7.2.7) (2026-05-25)
 
 
