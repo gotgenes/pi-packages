@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.3.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v7.2.8...pi-subagents-v7.3.0) (2026-05-25)
+
+
+### Features
+
+* extract assembleWidgetState from agent-widget update ([c63fdac](https://github.com/gotgenes/pi-packages/commit/c63fdacdb184f989598ebafbf595cc9c01c9d3a0))
+
+
+### Documentation
+
+* plan decompose update in agent-widget.ts ([#207](https://github.com/gotgenes/pi-packages/issues/207)) ([5ae2e74](https://github.com/gotgenes/pi-packages/commit/5ae2e74385753cd8e68504f767539aff019e5d08))
+* plan decompose update in agent-widget.ts ([#207](https://github.com/gotgenes/pi-packages/issues/207)) ([fb30d98](https://github.com/gotgenes/pi-packages/commit/fb30d98fc0fcc2c3cd6f016b78251cdb4caf6d96))
+* **retro:** add planning stage notes for issue [#207](https://github.com/gotgenes/pi-packages/issues/207) ([1624d2d](https://github.com/gotgenes/pi-packages/commit/1624d2d4aef5fee77db319940de7e2a3e93a8a27))
+* **retro:** add planning stage notes for issue [#207](https://github.com/gotgenes/pi-packages/issues/207) ([931ff0e](https://github.com/gotgenes/pi-packages/commit/931ff0ea3810d87a35f49b3b671d1ef4d88d55f7))
+* **retro:** add TDD stage notes for issue [#207](https://github.com/gotgenes/pi-packages/issues/207) ([770940a](https://github.com/gotgenes/pi-packages/commit/770940a3ff5c6b7ddd84ac35a4352ffc6c7c189e))
+* update complexity hotspots after widget decomposition ([5848a17](https://github.com/gotgenes/pi-packages/commit/5848a173158f13fa58ccd357edf9a310559f92e1))
+
 ## [7.2.8](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v7.2.7...pi-subagents-v7.2.8) (2026-05-25)
 
 
