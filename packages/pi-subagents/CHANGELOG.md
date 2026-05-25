@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.2.7](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v7.2.6...pi-subagents-v7.2.7) (2026-05-25)
+
+
+### Documentation
+
+* plan decompose showAgentDetail ([#206](https://github.com/gotgenes/pi-packages/issues/206)) ([fe575a0](https://github.com/gotgenes/pi-packages/commit/fe575a0f2727bdcdaa4dd977f7b2db4d6cb6e9f3))
+* **retro:** add planning stage notes for issue [#206](https://github.com/gotgenes/pi-packages/issues/206) ([057bbb6](https://github.com/gotgenes/pi-packages/commit/057bbb666b8d1c89d70936a837fc028512368fcc))
+* **retro:** add retro notes for issue [#205](https://github.com/gotgenes/pi-packages/issues/205) ([b9abe3b](https://github.com/gotgenes/pi-packages/commit/b9abe3ba050468d71015eb77262afb4093c8289f))
+* **retro:** add TDD stage notes for issue [#206](https://github.com/gotgenes/pi-packages/issues/206) ([88fdfc2](https://github.com/gotgenes/pi-packages/commit/88fdfc222950ce63e0a8f9273d3bff234ffa0538))
+* update complexity table after showAgentDetail decomposition ([8d8a396](https://github.com/gotgenes/pi-packages/commit/8d8a396bbfbe0e4d86dc37aceb53df613868bd26))
+
 ## [7.2.6](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v7.2.5...pi-subagents-v7.2.6) (2026-05-25)
 
 
