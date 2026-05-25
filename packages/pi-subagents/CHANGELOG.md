@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.2.6](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v7.2.5...pi-subagents-v7.2.6) (2026-05-25)
+
+
+### Documentation
+
+* archive Phase 11 to history, add Phase 11 to refactoring table ([2c617f2](https://github.com/gotgenes/pi-packages/commit/2c617f2c752ea935d55878ba58fce997985086b5))
+* plan decompose renderWidgetLines ([#205](https://github.com/gotgenes/pi-packages/issues/205)) ([88d09cd](https://github.com/gotgenes/pi-packages/commit/88d09cdad53bc3f215c069b8d6da6a44e10b5af7))
+* **retro:** add planning stage notes for issue [#205](https://github.com/gotgenes/pi-packages/issues/205) ([14afc1f](https://github.com/gotgenes/pi-packages/commit/14afc1ff82d61828fdac9373f31cb68ebfc1a2e7))
+* **retro:** add retro notes for issue [#196](https://github.com/gotgenes/pi-packages/issues/196) ([cfc7d94](https://github.com/gotgenes/pi-packages/commit/cfc7d94f72b120a4550f73e2d1cf00822db759c2))
+* **retro:** add TDD stage notes for issue [#205](https://github.com/gotgenes/pi-packages/issues/205) ([a676078](https://github.com/gotgenes/pi-packages/commit/a6760789898435e5b552941124de6f32be21407e))
+
 ## [7.2.5](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v7.2.4...pi-subagents-v7.2.5) (2026-05-25)
 
 
