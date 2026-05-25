@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.3.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v7.2.0...pi-permission-system-v7.3.0) (2026-05-25)
+
+
+### Features
+
+* **pi-permission-system:** add SubagentSessionRegistry class ([a0ef16b](https://github.com/gotgenes/pi-packages/commit/a0ef16b8302f95b30cc11cb121441dbd164c276c))
+* **pi-permission-system:** detect in-process subagents via session registry ([c90b824](https://github.com/gotgenes/pi-packages/commit/c90b824b4515a1d5ca259348ae0b60c7d70f29d4))
+* **pi-permission-system:** expose registry and getToolPermission on PermissionsService ([984d2bb](https://github.com/gotgenes/pi-packages/commit/984d2bbb76f08cea91b5c0117eb356ae576ad6be))
+* **pi-permission-system:** resolve forwarding target from subagent registry ([5eb15af](https://github.com/gotgenes/pi-packages/commit/5eb15afe680bfd36627c2c21165b59a0ea5e227c))
+
+
+### Documentation
+
+* **pi-permission-system:** document subagent session registry API ([93c5c3e](https://github.com/gotgenes/pi-packages/commit/93c5c3e72b2b757a99eba17d1c6885ea49271403))
+* **pi-permission-system:** update architecture for subagent registry ([7b32e6a](https://github.com/gotgenes/pi-packages/commit/7b32e6a247e789b927e5cb3f19a367db0c110353))
+* plan subagent session registry and tool-level permission query ([#221](https://github.com/gotgenes/pi-packages/issues/221)) ([a11d91a](https://github.com/gotgenes/pi-packages/commit/a11d91aa1e13e846030deb0af37444c44eeda7c8))
+* **retro:** add planning stage notes for issue [#221](https://github.com/gotgenes/pi-packages/issues/221) ([cf434c2](https://github.com/gotgenes/pi-packages/commit/cf434c2f9711f26290a4635aea519f1f56e98cc7))
+* **retro:** add TDD stage notes for issue [#221](https://github.com/gotgenes/pi-packages/issues/221) ([e050898](https://github.com/gotgenes/pi-packages/commit/e05089840ee6bbb07cbeab5c55367e2dcd304866))
+
 ## [7.2.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v7.1.4...pi-permission-system-v7.2.0) (2026-05-24)
 
 
