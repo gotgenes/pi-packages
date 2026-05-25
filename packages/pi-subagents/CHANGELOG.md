@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.2.5](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v7.2.4...pi-subagents-v7.2.5) (2026-05-25)
+
+
+### Documentation
+
+* mark Phase 11 Layer 3 and Layer 4 complete ([bf71795](https://github.com/gotgenes/pi-packages/commit/bf71795649a5b3c14a2b3ff16b2109d131a0ed32))
+* plan convert AgentRunner and AgentsMenuHandler to classes ([#196](https://github.com/gotgenes/pi-packages/issues/196)) ([cd0bd1f](https://github.com/gotgenes/pi-packages/commit/cd0bd1fdec0c87655bdb38f8243084df807b676a))
+* **retro:** add planning stage notes for issue [#196](https://github.com/gotgenes/pi-packages/issues/196) ([677d4bf](https://github.com/gotgenes/pi-packages/commit/677d4bf6619f13eba8d17181efab04cc67e47bbd))
+* **retro:** add TDD stage notes for issue [#196](https://github.com/gotgenes/pi-packages/issues/196) ([72d24ba](https://github.com/gotgenes/pi-packages/commit/72d24ba56b8dc7668ff350ad3f0ba027b996d26e))
+
 ## [7.2.4](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v7.2.3...pi-subagents-v7.2.4) (2026-05-25)
 
 
