@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.2.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v7.1.0...pi-subagents-v7.2.0) (2026-05-25)
+
+
+### Features
+
+* SubagentRuntime stores typed SessionContext and owns context queries ([#193](https://github.com/gotgenes/pi-packages/issues/193)) ([4ca5319](https://github.com/gotgenes/pi-packages/commit/4ca531934e36c37c7cbc8fef8314a483e7dec479))
+
+
+### Documentation
+
+* mark Phase 11 Layer 1 complete, update metrics ([#193](https://github.com/gotgenes/pi-packages/issues/193)) ([32233ed](https://github.com/gotgenes/pi-packages/commit/32233ed89f27dca854ce858978c3acc029b1e801))
+* plan SubagentRuntime owns context queries ([#193](https://github.com/gotgenes/pi-packages/issues/193)) ([6ea475a](https://github.com/gotgenes/pi-packages/commit/6ea475af94f8456c1d665adcd007dd2833ab7a4b))
+* **retro:** add planning stage notes for issue [#193](https://github.com/gotgenes/pi-packages/issues/193) ([7da6d5a](https://github.com/gotgenes/pi-packages/commit/7da6d5abac82bdea0cbdbc8677dda04d38a7887d))
+* **retro:** add retro notes for issue [#192](https://github.com/gotgenes/pi-packages/issues/192) ([1223de4](https://github.com/gotgenes/pi-packages/commit/1223de4a68d4514eb504c5c95d64fb35500d286b))
+* **retro:** add TDD stage notes for issue [#193](https://github.com/gotgenes/pi-packages/issues/193) ([3950b81](https://github.com/gotgenes/pi-packages/commit/3950b81228a3db57eb4c24236fa7d75c638a335a))
+
 ## [7.1.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v7.0.0...pi-subagents-v7.1.0) (2026-05-24)
 
 
