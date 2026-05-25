@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.4.0](https://github.com/gotgenes/pi-packages/compare/pi-session-tools-v0.3.0...pi-session-tools-v0.4.0) (2026-05-25)
+
+
+### Features
+
+* add deriveParentSessionFile utility ([95413a4](https://github.com/gotgenes/pi-packages/commit/95413a468ac8f4d1d7b7d9bebe204853fd67197c))
+* add read_parent_session tool for parent session access ([d5ac58e](https://github.com/gotgenes/pi-packages/commit/d5ac58eceac0644694cef37facfd7c3486baabf1))
+* add read_session tool for session introspection ([cfb47e0](https://github.com/gotgenes/pi-packages/commit/cfb47e0c782ca8cb1ad92dab46960ee475658c70))
+
+
+### Bug Fixes
+
+* add path aliases to pi-session-tools tsconfig for test imports ([8655a58](https://github.com/gotgenes/pi-packages/commit/8655a58ba97a82360b3e0d21b9c0e7294e45129b))
+
 ## [0.3.0](https://github.com/gotgenes/pi-packages/compare/pi-session-tools-v0.2.0...pi-session-tools-v0.3.0) (2026-05-24)
 
 

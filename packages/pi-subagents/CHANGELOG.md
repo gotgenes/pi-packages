@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.4.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v7.3.2...pi-subagents-v7.4.0) (2026-05-25)
+
+
+### Features
+
+* add model attribution to formatAssistantMessage ([76f2ada](https://github.com/gotgenes/pi-packages/commit/76f2adaa6bad9d1a3b15a3ba208b3ab96e07ecd1))
+* add model attribution to getAgentConversation ([c186c37](https://github.com/gotgenes/pi-packages/commit/c186c370b975e5ef6596d9a3d7719c720a580640))
+
+
+### Documentation
+
+* **retro:** add retro notes for issue [#214](https://github.com/gotgenes/pi-packages/issues/214) ([7e39c96](https://github.com/gotgenes/pi-packages/commit/7e39c96563517661c1c8c7f250402115b232a097))
+
 ## [7.3.2](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v7.3.1...pi-subagents-v7.3.2) (2026-05-25)
 
 
