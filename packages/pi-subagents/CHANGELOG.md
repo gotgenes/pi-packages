@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.3.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v7.3.0...pi-subagents-v7.3.1) (2026-05-25)
+
+
+### Bug Fixes
+
+* add parameter type annotations to shared test fixture factories ([2953adc](https://github.com/gotgenes/pi-packages/commit/2953adc5761dd4aa2d3c592ea5f8856161e01e3a))
+
+
+### Documentation
+
+* plan extract shared test fixtures ([#208](https://github.com/gotgenes/pi-packages/issues/208)) ([22fafed](https://github.com/gotgenes/pi-packages/commit/22fafed860134f00f1b5d6cb7c87fa42be7dcf09))
+* **retro:** add planning stage notes for issue [#208](https://github.com/gotgenes/pi-packages/issues/208) ([aaa9d5d](https://github.com/gotgenes/pi-packages/commit/aaa9d5d0a4654b2ebb25a7ad4d11a3a54db7c206))
+* **retro:** add retro notes for issue [#207](https://github.com/gotgenes/pi-packages/issues/207) ([3b97a5c](https://github.com/gotgenes/pi-packages/commit/3b97a5c5b3fbb98a78ba280fbdbbdf55f61d82fc))
+* **retro:** add TDD stage notes for issue [#208](https://github.com/gotgenes/pi-packages/issues/208) ([65d0606](https://github.com/gotgenes/pi-packages/commit/65d0606167e531518bd8de4d33f91c6080e21723))
+* update Phase 12 Step 4 to reference test/helpers/ ([8e9e406](https://github.com/gotgenes/pi-packages/commit/8e9e406bfe12487f67363b223d037664f842acce))
+
 ## [7.3.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v7.2.8...pi-subagents-v7.3.0) (2026-05-25)
 
 
