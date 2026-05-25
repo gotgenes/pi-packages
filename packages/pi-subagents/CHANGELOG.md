@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.2.3](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v7.2.2...pi-subagents-v7.2.3) (2026-05-25)
+
+
+### Bug Fixes
+
+* enforce fallow dead-code gate in CI ([#195](https://github.com/gotgenes/pi-packages/issues/195)) ([b1bd734](https://github.com/gotgenes/pi-packages/commit/b1bd734e1d2f5921521bebb1735db8f8c402b53b))
+
 ## [7.2.2](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v7.2.1...pi-subagents-v7.2.2) (2026-05-25)
 
 
