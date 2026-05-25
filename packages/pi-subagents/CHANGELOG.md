@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.2.2](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v7.2.1...pi-subagents-v7.2.2) (2026-05-25)
+
+
+### Bug Fixes
+
+* remove unused AgentSession import and over-annotated mock return type in get-result-tool ([c3bc590](https://github.com/gotgenes/pi-packages/commit/c3bc59015e766d961422f4a7ecd23643c4cabefd))
+
+
+### Documentation
+
+* mark [#195](https://github.com/gotgenes/pi-packages/issues/195) tool factory conversions complete in architecture roadmap ([cb5562b](https://github.com/gotgenes/pi-packages/commit/cb5562b57ef613ab0c1e136c9d9712c71e831bcd))
+* plan convert tool factories to classes ([#195](https://github.com/gotgenes/pi-packages/issues/195)) ([ec916c2](https://github.com/gotgenes/pi-packages/commit/ec916c22a9d5f3453fba5784e3d2f5ecdc68740d))
+* **retro:** add planning stage notes for issue [#195](https://github.com/gotgenes/pi-packages/issues/195) ([2ca0c96](https://github.com/gotgenes/pi-packages/commit/2ca0c964f8e73b0b0247daf9834986a9344be060))
+* **retro:** add retro notes for issue [#194](https://github.com/gotgenes/pi-packages/issues/194) ([d7d973f](https://github.com/gotgenes/pi-packages/commit/d7d973f88ca48cf1a19b24bd396ef15a606a98bc))
+* **retro:** add TDD stage notes for issue [#195](https://github.com/gotgenes/pi-packages/issues/195) ([921b1f8](https://github.com/gotgenes/pi-packages/commit/921b1f8e500baf9b2fffeb140336d4561bdaebf1))
+
 ## [7.2.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v7.2.0...pi-subagents-v7.2.1) (2026-05-25)
 
 
