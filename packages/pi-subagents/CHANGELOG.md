@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.2.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v7.2.0...pi-subagents-v7.2.1) (2026-05-25)
+
+
+### Documentation
+
+* mark Layer 2 done and update health metrics in architecture doc ([ad00426](https://github.com/gotgenes/pi-packages/commit/ad00426f0f29ceff0915033419fdc2f1b53755b0))
+* plan align tool interfaces for structural typing ([#194](https://github.com/gotgenes/pi-packages/issues/194)) ([36e56b0](https://github.com/gotgenes/pi-packages/commit/36e56b08351893e3c2d63569e7cfa140c172e20b))
+* **retro:** add planning stage notes for issue [#194](https://github.com/gotgenes/pi-packages/issues/194) ([63a5763](https://github.com/gotgenes/pi-packages/commit/63a5763ed2bf4c2a6e2e9a19fdcdce71a2a9905a))
+* **retro:** add retro notes for issue [#193](https://github.com/gotgenes/pi-packages/issues/193) ([8987f90](https://github.com/gotgenes/pi-packages/commit/8987f907e00bb70429782c947a2afbdb1db5faa9))
+* **retro:** add TDD stage notes for issue [#194](https://github.com/gotgenes/pi-packages/issues/194) ([f692323](https://github.com/gotgenes/pi-packages/commit/f69232395882c07d6d95273e08021b94800f0e43))
+
 ## [7.2.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v7.1.0...pi-subagents-v7.2.0) (2026-05-25)
 
 

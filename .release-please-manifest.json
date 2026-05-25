@@ -4,5 +4,5 @@
   "packages/pi-github-tools": "4.1.0",
   "packages/pi-permission-system": "7.2.0",
   "packages/pi-session-tools": "0.3.0",
-  "packages/pi-subagents": "7.2.0"
+  "packages/pi-subagents": "7.2.1"
 }
