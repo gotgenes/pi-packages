@@ -1,5 +1,20 @@
 # Changelog
 
+## [5.1.1](https://github.com/gotgenes/pi-packages/compare/pi-autoformat-v5.1.0...pi-autoformat-v5.1.1) (2026-05-25)
+
+
+### Bug Fixes
+
+* use pi-autoformat tag in status key and status line ([#202](https://github.com/gotgenes/pi-packages/issues/202)) ([dd7ce59](https://github.com/gotgenes/pi-packages/commit/dd7ce59ceea8e44c286653df617173b9c61b9dc4))
+* use pi-autoformat tag in steering message prefixes ([#202](https://github.com/gotgenes/pi-packages/issues/202)) ([fa1ab2d](https://github.com/gotgenes/pi-packages/commit/fa1ab2dd60591b4674a009e99413dd435a5a85d7))
+
+
+### Documentation
+
+* plan consistent pi-autoformat message tags ([#202](https://github.com/gotgenes/pi-packages/issues/202)) ([ef1d36f](https://github.com/gotgenes/pi-packages/commit/ef1d36f0678d083ec5a736bc8861ea36c2e483c2))
+* **retro:** add planning stage notes for issue [#202](https://github.com/gotgenes/pi-packages/issues/202) ([fdbc65b](https://github.com/gotgenes/pi-packages/commit/fdbc65b98374986d645b27a75c872fb979d76272))
+* **retro:** add TDD stage notes for issue [#202](https://github.com/gotgenes/pi-packages/issues/202) ([632cd50](https://github.com/gotgenes/pi-packages/commit/632cd5014368ed9f67321b5ac4f84cd24e8b43cb))
+
 ## [5.1.0](https://github.com/gotgenes/pi-packages/compare/pi-autoformat-v5.0.4...pi-autoformat-v5.1.0) (2026-05-24)
 
 

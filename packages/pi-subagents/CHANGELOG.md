@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.2.4](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v7.2.3...pi-subagents-v7.2.4) (2026-05-25)
+
+
+### Documentation
+
+* **retro:** add retro notes for issue [#195](https://github.com/gotgenes/pi-packages/issues/195) ([d591201](https://github.com/gotgenes/pi-packages/commit/d591201e0dcf88a73cfd2843c9f4eb5ec9b0e9b6))
+
 ## [7.2.3](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v7.2.2...pi-subagents-v7.2.3) (2026-05-25)
 
 
