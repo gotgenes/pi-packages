@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.8.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v7.8.0...pi-subagents-v7.8.1) (2026-05-26)
+
+
+### Documentation
+
+* plan reduce test duplication — top 3 clone families ([#219](https://github.com/gotgenes/pi-packages/issues/219)) ([c941b1b](https://github.com/gotgenes/pi-packages/commit/c941b1b3c047f6895eb57da3291b75082a2b99a3))
+* **retro:** add planning stage notes for issue [#219](https://github.com/gotgenes/pi-packages/issues/219) ([5122f7c](https://github.com/gotgenes/pi-packages/commit/5122f7cd666873abbbb6b6880fffb1e751beb9b5))
+* **retro:** add retro notes for issue [#218](https://github.com/gotgenes/pi-packages/issues/218) ([ef9187b](https://github.com/gotgenes/pi-packages/commit/ef9187ba8521d10212bd992cbfcf3d853886938b))
+* **retro:** add TDD stage notes for issue [#219](https://github.com/gotgenes/pi-packages/issues/219) ([975f94e](https://github.com/gotgenes/pi-packages/commit/975f94e5e868310765029050490098b335a67e1e))
+
 ## [7.8.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v7.7.0...pi-subagents-v7.8.0) (2026-05-26)
 
 
