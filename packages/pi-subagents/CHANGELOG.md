@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.8.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v7.7.0...pi-subagents-v7.8.0) (2026-05-26)
+
+
+### Features
+
+* inject agentDir into SettingsManager and loadSettings to remove SDK dependency ([7dcb986](https://github.com/gotgenes/pi-packages/commit/7dcb9868c8ac52c86a3eac0b6fc6648c8d57fc7c))
+* wire agentDir from SDK boundary in index.ts ([#218](https://github.com/gotgenes/pi-packages/issues/218)) ([17e9fc5](https://github.com/gotgenes/pi-packages/commit/17e9fc5f7880ae92168a6bb30e6fbc82748b7b2a))
+
+
+### Documentation
+
+* plan push SDK boundary in settings.ts ([#218](https://github.com/gotgenes/pi-packages/issues/218)) ([19f7cd6](https://github.com/gotgenes/pi-packages/commit/19f7cd6ddfa28290f7e61e6273d966c946868cf6))
+* **retro:** add planning stage notes for issue [#218](https://github.com/gotgenes/pi-packages/issues/218) ([80be50e](https://github.com/gotgenes/pi-packages/commit/80be50e1b6ddf19f743010bd4c3cdf232d901cf1))
+* **retro:** add retro notes for issue [#217](https://github.com/gotgenes/pi-packages/issues/217) ([2140655](https://github.com/gotgenes/pi-packages/commit/21406555e34fbe0d41f48206e3208e1cb7326633))
+* **retro:** add TDD stage notes for issue [#218](https://github.com/gotgenes/pi-packages/issues/218) ([86b4f94](https://github.com/gotgenes/pi-packages/commit/86b4f946d7498e96dbb2b4c513d0ea6331fc5f8c))
+
 ## [7.7.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v7.6.0...pi-subagents-v7.7.0) (2026-05-26)
 
 
