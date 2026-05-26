@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.6.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v7.5.1...pi-subagents-v7.6.0) (2026-05-26)
+
+
+### Features
+
+* add WorktreeState.performCleanup for self-cleanup ([#216](https://github.com/gotgenes/pi-packages/issues/216)) ([ad0583a](https://github.com/gotgenes/pi-packages/commit/ad0583a9c26b6782af2a55ea86e72f3c3474ebe7))
+
+
+### Documentation
+
+* plan decompose startAgent via RunHandle lifecycle object ([#216](https://github.com/gotgenes/pi-packages/issues/216)) ([2689571](https://github.com/gotgenes/pi-packages/commit/268957175c2aaa03da98c99778c6ff67e0bf45e3))
+* **retro:** add planning stage notes for issue [#216](https://github.com/gotgenes/pi-packages/issues/216) ([06daa19](https://github.com/gotgenes/pi-packages/commit/06daa1923d75aae8aec1ddd492486c951e50a23f))
+* **retro:** add retro notes for issue [#215](https://github.com/gotgenes/pi-packages/issues/215) ([57f7cf9](https://github.com/gotgenes/pi-packages/commit/57f7cf9139ce3d77f2ec91541bc67cd78c57bdb8))
+* **retro:** add TDD stage notes for issue [#216](https://github.com/gotgenes/pi-packages/issues/216) ([4001da1](https://github.com/gotgenes/pi-packages/commit/4001da1faecc15d2c2c92e7fd69788d908ef5ad8))
+* update architecture doc for [#216](https://github.com/gotgenes/pi-packages/issues/216) RunHandle decomposition ([8ad4a2a](https://github.com/gotgenes/pi-packages/commit/8ad4a2a2d25acdf7f2cd544f6b3cd3949edbc471))
+
 ## [7.5.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v7.5.0...pi-subagents-v7.5.1) (2026-05-26)
 
 
