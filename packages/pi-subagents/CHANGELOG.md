@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.7.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v7.6.0...pi-subagents-v7.7.0) (2026-05-26)
+
+
+### Features
+
+* extract writeAgentFile overwrite-guard function ([#217](https://github.com/gotgenes/pi-packages/issues/217)) ([141df78](https://github.com/gotgenes/pi-packages/commit/141df784ea5cf6c5286a1a6e9861daa259fa4e1c))
+
+
+### Documentation
+
+* add Phase 14 roadmap — Agent domain model, scheduling extraction ([#227](https://github.com/gotgenes/pi-packages/issues/227)–[#232](https://github.com/gotgenes/pi-packages/issues/232)) ([089d9e0](https://github.com/gotgenes/pi-packages/commit/089d9e0becde693c2795ca590d987a4d2b169edc))
+* plan extract overwrite guard from UI ([#217](https://github.com/gotgenes/pi-packages/issues/217)) ([89de32c](https://github.com/gotgenes/pi-packages/commit/89de32c6a1bbb84fb0e252fecaa6edf79dc9b5b3))
+* **retro:** add planning stage notes for issue [#217](https://github.com/gotgenes/pi-packages/issues/217) ([b1a854f](https://github.com/gotgenes/pi-packages/commit/b1a854f18ad133542c5f3e3ab4400ed753ba7c8c))
+* **retro:** add retro notes for issue [#216](https://github.com/gotgenes/pi-packages/issues/216) ([dcb86ea](https://github.com/gotgenes/pi-packages/commit/dcb86eace93d2f68acf39d6f0b8e7d64aaf982d1))
+* **retro:** add TDD stage notes for issue [#217](https://github.com/gotgenes/pi-packages/issues/217) ([7305a28](https://github.com/gotgenes/pi-packages/commit/7305a281f89258d8898fb13f02ba051b58513a71))
+* update architecture for writeAgentFile extraction ([#217](https://github.com/gotgenes/pi-packages/issues/217)) ([298a819](https://github.com/gotgenes/pi-packages/commit/298a8196de5b8dc507bb08ead57a6c712a50c3f0))
+
 ## [7.6.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v7.5.1...pi-subagents-v7.6.0) (2026-05-26)
 
 
