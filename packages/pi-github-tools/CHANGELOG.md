@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.1.1](https://github.com/gotgenes/pi-packages/compare/pi-github-tools-v4.1.0...pi-github-tools-v4.1.1) (2026-05-26)
+
+
+### Bug Fixes
+
+* resolve pre-existing lint errors in pi-autoformat and pi-permission-system ([68fd516](https://github.com/gotgenes/pi-packages/commit/68fd516e33ddbb9a5e37ef19e949ee9ecdc37252))
+
 ## [4.1.0](https://github.com/gotgenes/pi-packages/compare/pi-github-tools-v4.0.4...pi-github-tools-v4.1.0) (2026-05-24)
 
 

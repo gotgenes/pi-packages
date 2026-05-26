@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.1.3](https://github.com/gotgenes/pi-packages/compare/pi-autoformat-v5.1.2...pi-autoformat-v5.1.3) (2026-05-26)
+
+
+### Bug Fixes
+
+* resolve pre-existing lint errors in pi-autoformat and pi-permission-system ([68fd516](https://github.com/gotgenes/pi-packages/commit/68fd516e33ddbb9a5e37ef19e949ee9ecdc37252))
+
 ## [5.1.2](https://github.com/gotgenes/pi-packages/compare/pi-autoformat-v5.1.1...pi-autoformat-v5.1.2) (2026-05-25)
 
 

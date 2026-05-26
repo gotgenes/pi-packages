@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.5.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v7.4.0...pi-subagents-v7.5.0) (2026-05-26)
+
+
+### Features
+
+* add permission bridge for cross-extension registration ([#101](https://github.com/gotgenes/pi-packages/issues/101)) ([1827720](https://github.com/gotgenes/pi-packages/commit/18277203f7ee10e56f90a0d4db587a4aa95376ab))
+* register child sessions with permission system ([#101](https://github.com/gotgenes/pi-packages/issues/101)) ([0487828](https://github.com/gotgenes/pi-packages/commit/04878286d7da6660362360482fb916b1b3743ce3))
+
+
+### Bug Fixes
+
+* resolve pre-existing lint errors in pi-autoformat and pi-permission-system ([68fd516](https://github.com/gotgenes/pi-packages/commit/68fd516e33ddbb9a5e37ef19e949ee9ecdc37252))
+
+
+### Documentation
+
+* document permission-bridge in architecture ([#101](https://github.com/gotgenes/pi-packages/issues/101)) ([d0120ab](https://github.com/gotgenes/pi-packages/commit/d0120abdf049e2aeba14ba75071ed55b24e23dbe))
+* update subagent integration docs for native permission bridge ([#101](https://github.com/gotgenes/pi-packages/issues/101)) ([0bd456b](https://github.com/gotgenes/pi-packages/commit/0bd456befa8ea6918e74f4393d844868795edc77))
+
 ## [7.4.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v7.3.2...pi-subagents-v7.4.0) (2026-05-25)
 
 

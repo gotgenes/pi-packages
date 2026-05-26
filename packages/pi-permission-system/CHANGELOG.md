@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.3.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v7.3.0...pi-permission-system-v7.3.1) (2026-05-26)
+
+
+### Bug Fixes
+
+* resolve pre-existing lint errors in pi-autoformat and pi-permission-system ([68fd516](https://github.com/gotgenes/pi-packages/commit/68fd516e33ddbb9a5e37ef19e949ee9ecdc37252))
+
+
+### Documentation
+
+* update subagent integration docs for native permission bridge ([#101](https://github.com/gotgenes/pi-packages/issues/101)) ([0bd456b](https://github.com/gotgenes/pi-packages/commit/0bd456befa8ea6918e74f4393d844868795edc77))
+
 ## [7.3.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v7.2.0...pi-permission-system-v7.3.0) (2026-05-25)
 
 
