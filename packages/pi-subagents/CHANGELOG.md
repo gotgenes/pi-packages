@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.5.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v7.5.0...pi-subagents-v7.5.1) (2026-05-26)
+
+
+### Documentation
+
+* plan decompose buildParentContext ([#215](https://github.com/gotgenes/pi-packages/issues/215)) ([9103609](https://github.com/gotgenes/pi-packages/commit/910360991b50c320927c1457bfef6b7cb5624b7b))
+* **retro:** add planning stage notes for issue [#215](https://github.com/gotgenes/pi-packages/issues/215) ([5c534d5](https://github.com/gotgenes/pi-packages/commit/5c534d5efb640ef1d72d6ccf7bf2e15ac2acf755))
+* **retro:** add TDD stage notes for issue [#215](https://github.com/gotgenes/pi-packages/issues/215) ([79064d0](https://github.com/gotgenes/pi-packages/commit/79064d072c36c2f92013dbfba58ce1de1ab01bce))
+
 ## [7.5.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v7.4.0...pi-subagents-v7.5.0) (2026-05-26)
 
 
