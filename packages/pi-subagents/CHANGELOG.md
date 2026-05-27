@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [10.0.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v9.0.1...pi-subagents-v10.0.0) (2026-05-27)
+
+
+### ⚠ BREAKING CHANGES
+
+* The tool name changes from "Agent" to "subagent". Any AGENTS.md files, prompt templates, or custom agent configs that reference the tool by name will need updating.
+
+### Features
+
+* rename Agent tool to subagent ([#242](https://github.com/gotgenes/pi-packages/issues/242)) ([8b1c310](https://github.com/gotgenes/pi-packages/commit/8b1c310d8fd2d797b0d116fdaf2d4b28ea5b41ce))
+
+
+### Documentation
+
+* **pi-subagents:** add Phase 14 Step 4 — rename Agent tool to subagent ([#242](https://github.com/gotgenes/pi-packages/issues/242)) ([2a3cd9f](https://github.com/gotgenes/pi-packages/commit/2a3cd9f25dce042a77d28da1d17a6d8c7870dddf))
+* plan rename Agent tool to subagent ([#242](https://github.com/gotgenes/pi-packages/issues/242)) ([41fe2a4](https://github.com/gotgenes/pi-packages/commit/41fe2a4033a49b39fbbe3938580c6afaeefa9d47))
+* **retro:** add planning stage notes for issue [#242](https://github.com/gotgenes/pi-packages/issues/242) ([6211bed](https://github.com/gotgenes/pi-packages/commit/6211bede3cde8e283b05ed81cc1652e2e370cd9b))
+* **retro:** add TDD stage notes for issue [#242](https://github.com/gotgenes/pi-packages/issues/242) ([7ec9ead](https://github.com/gotgenes/pi-packages/commit/7ec9eadc3544a4c73ce1d3e491cc29da3fddbe16))
+* update tool name references after Agent → subagent rename ([#242](https://github.com/gotgenes/pi-packages/issues/242)) ([0b6774d](https://github.com/gotgenes/pi-packages/commit/0b6774dbe049320bb7919f1f09c6f4c090eb91c5))
+
 ## [9.0.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v9.0.0...pi-subagents-v9.0.1) (2026-05-27)
 
 
