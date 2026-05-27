@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [10.2.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v10.1.0...pi-subagents-v10.2.0) (2026-05-27)
+
+
+### Features
+
+* **pi-subagents:** add run lifecycle methods to Agent ([2a378f1](https://github.com/gotgenes/pi-packages/commit/2a378f1c82e977bdfee25931ab449757e364d589))
+
+
+### Documentation
+
+* **pi-subagents:** update architecture for async startAgent ([941eb10](https://github.com/gotgenes/pi-packages/commit/941eb109e71e4c51d5bb37a2a46ffc12f618d949))
+* plan async startAgent and RunHandle dissolution ([#228](https://github.com/gotgenes/pi-packages/issues/228)) ([647adf8](https://github.com/gotgenes/pi-packages/commit/647adf853fec63ea53afd63bc8204c89a6194bbe))
+* **retro:** add planning stage notes for issue [#228](https://github.com/gotgenes/pi-packages/issues/228) ([8dd9f8a](https://github.com/gotgenes/pi-packages/commit/8dd9f8ab7082c08e424b1b4a9557253af2ce584b))
+* **retro:** add retro notes for issue [#227](https://github.com/gotgenes/pi-packages/issues/227) ([78a4d64](https://github.com/gotgenes/pi-packages/commit/78a4d645f524465c64bf0b6ba1bcca37858e8721))
+* **retro:** add TDD stage notes for issue [#228](https://github.com/gotgenes/pi-packages/issues/228) ([ab497c5](https://github.com/gotgenes/pi-packages/commit/ab497c57723666d0635a0a08f9eecc06576da549))
+
 ## [10.1.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v10.0.1...pi-subagents-v10.1.0) (2026-05-27)
 
 
