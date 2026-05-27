@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.0.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v7.8.1...pi-subagents-v8.0.0) (2026-05-27)
+
+
+### ⚠ BREAKING CHANGES
+
+* The `disallowed_tools` frontmatter field is no longer supported. Users should migrate to pi-permission-system's `permission:`
+
+### Features
+
+* remove disallowedTools from AgentConfig ([6044552](https://github.com/gotgenes/pi-packages/commit/6044552db68180bf8a151c0f64c13f264f3dacb9))
+
+
+### Documentation
+
+* add Phase 14 issue links, anemic-model and lifecycle-object smells to discovery skill ([9831176](https://github.com/gotgenes/pi-packages/commit/983117652937dce08e61a6cf7624e35ccf8a0dcb))
+* mark Phase 14 Step 1 complete in architecture ([d24e3dd](https://github.com/gotgenes/pi-packages/commit/d24e3dd5c664e63a372f399f9e325f1bdf877022))
+* **pi-subagents:** add Phase 14 issue links ([#237](https://github.com/gotgenes/pi-packages/issues/237), [#238](https://github.com/gotgenes/pi-packages/issues/238), [#239](https://github.com/gotgenes/pi-packages/issues/239)) ([b152a75](https://github.com/gotgenes/pi-packages/commit/b152a75dcd6596468c5c0aeca1b36ac33216dfa8))
+* **pi-subagents:** add target architecture vision and renumber phases 14-17 ([f7e5315](https://github.com/gotgenes/pi-packages/commit/f7e5315bbfb088d7a40637deead1811691dec1bd))
+* **pi-subagents:** archive Phase 13, update metrics for Phase 14 ([9d473db](https://github.com/gotgenes/pi-packages/commit/9d473db1b0e420fa52ce9d09bea7afff75331e58))
+* plan removal of disallowed_tools ([#237](https://github.com/gotgenes/pi-packages/issues/237)) ([9cb600c](https://github.com/gotgenes/pi-packages/commit/9cb600cad9c8cc7b1081b021f039b0f36b9f9a44))
+* remove disallowed_tools from README and add migration note ([9b3905f](https://github.com/gotgenes/pi-packages/commit/9b3905fbaa81db47633c0c8edf21ed3b766d5507))
+* **retro:** add planning stage notes for issue [#237](https://github.com/gotgenes/pi-packages/issues/237) ([85460dd](https://github.com/gotgenes/pi-packages/commit/85460dd72949d7da83eaf9ed2196ff5c41d92f7f))
+* **retro:** add retro notes for issue [#219](https://github.com/gotgenes/pi-packages/issues/219) ([2d92af5](https://github.com/gotgenes/pi-packages/commit/2d92af577c0cfb71c575a5c334df2347840b4a8d))
+* **retro:** add TDD stage notes for issue [#237](https://github.com/gotgenes/pi-packages/issues/237) ([f334538](https://github.com/gotgenes/pi-packages/commit/f3345383a76975f09c0ee689edcb5df286b76fc7))
+
 ## [7.8.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v7.8.0...pi-subagents-v7.8.1) (2026-05-26)
 
 
