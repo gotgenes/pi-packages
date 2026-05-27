@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [10.2.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v10.2.0...pi-subagents-v10.2.1) (2026-05-27)
+
+
+### Documentation
+
+* **pi-subagents:** renumber Phase 15 steps to match execution order ([598bb65](https://github.com/gotgenes/pi-packages/commit/598bb653ac8b63756e8c00dfcf19d3167e2dbc37))
+* **pi-subagents:** revise Phase 15 roadmap for Agent-born-complete vision ([e04583e](https://github.com/gotgenes/pi-packages/commit/e04583e75bfc1314674a6f3181762a26733fb830))
+* plan push exec/registry relay deps to runner construction ([#231](https://github.com/gotgenes/pi-packages/issues/231)) ([646b4d5](https://github.com/gotgenes/pi-packages/commit/646b4d5085e0f7d36a397b43b3b46e0537c3141f))
+* **retro:** add planning stage notes for issue [#231](https://github.com/gotgenes/pi-packages/issues/231) ([dc0daee](https://github.com/gotgenes/pi-packages/commit/dc0daee634c17cf2a40336e27f551bfa2ce0e249))
+* **retro:** add retro notes for issue [#228](https://github.com/gotgenes/pi-packages/issues/228) ([d5b563b](https://github.com/gotgenes/pi-packages/commit/d5b563b6484cbd6a89cd7e9e87ebd431aed128fc))
+* **retro:** add TDD stage notes for issue [#231](https://github.com/gotgenes/pi-packages/issues/231) ([28094ae](https://github.com/gotgenes/pi-packages/commit/28094ae812141ea1c93a22be50ed29d31b7a979a))
+* update architecture for runner self-contained ([#231](https://github.com/gotgenes/pi-packages/issues/231)) ([80dd339](https://github.com/gotgenes/pi-packages/commit/80dd339d7dee9b312b52af2b74756c5748619a49))
+
 ## [10.2.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v10.1.0...pi-subagents-v10.2.0) (2026-05-27)
 
 
