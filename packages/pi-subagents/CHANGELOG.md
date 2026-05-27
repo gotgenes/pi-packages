@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [9.0.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v8.0.0...pi-subagents-v9.0.0) (2026-05-27)
+
+
+### ⚠ BREAKING CHANGES
+
+* extensions field in agent frontmatter no longer supports a comma-separated allowlist. Values like `extensions: pi-github-tools, colgrep` are coerced to `true` (inherit all). Users who relied on per-extension filtering should migrate to `permission:` frontmatter in pi-permission-system.
+
+### Features
+
+* narrow extensions type from union to boolean ([90350ab](https://github.com/gotgenes/pi-packages/commit/90350abef259f5494990c5796a005f2edba2163d))
+
+
+### Documentation
+
+* mark Phase 14 Step 2 complete in architecture ([fc8bc57](https://github.com/gotgenes/pi-packages/commit/fc8bc57788a3ade9ec2f74200973e5a811c48bb3))
+* plan remove extensions filtering ([#238](https://github.com/gotgenes/pi-packages/issues/238)) ([1f4046a](https://github.com/gotgenes/pi-packages/commit/1f4046a84a308e80472425b5ca9e83263ecc310a))
+* **retro:** add planning stage notes for issue [#238](https://github.com/gotgenes/pi-packages/issues/238) ([b2ce842](https://github.com/gotgenes/pi-packages/commit/b2ce842dcc999fd48f6aeb67c6d464750d6d87aa))
+* **retro:** add retro notes for issue [#237](https://github.com/gotgenes/pi-packages/issues/237) ([6be215e](https://github.com/gotgenes/pi-packages/commit/6be215e6f4d9307f94b5bb61c024292a8eb77469))
+* **retro:** add TDD stage notes for issue [#238](https://github.com/gotgenes/pi-packages/issues/238) ([87256db](https://github.com/gotgenes/pi-packages/commit/87256dbd97ba4a69267f2091896d959bef9ff9df))
+* simplify extensions field to boolean in README ([b4028d7](https://github.com/gotgenes/pi-packages/commit/b4028d7c203fce792238acb147709ad3c3d4d28e))
+
 ## [8.0.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v7.8.1...pi-subagents-v8.0.0) (2026-05-27)
 
 
