@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [10.1.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v10.0.1...pi-subagents-v10.1.0) (2026-05-27)
+
+
+### Features
+
+* **pi-subagents:** add abort() to AgentRecord ([bbc9dc7](https://github.com/gotgenes/pi-packages/commit/bbc9dc779d2ff845680f6de34d0ef33c10cdf124))
+* **pi-subagents:** add setupWorktree() to AgentRecord ([1786fdb](https://github.com/gotgenes/pi-packages/commit/1786fdb939d3e858d6453b71a43b9fb3c3346a88))
+* **pi-subagents:** add steer buffering to AgentRecord ([a22d8c7](https://github.com/gotgenes/pi-packages/commit/a22d8c77e8074e1fe9f396305267380d9f3558b3))
+
+
+### Bug Fixes
+
+* **pi-subagents:** remove unused AgentInit/AgentStatus re-exports from types.ts ([6789cb7](https://github.com/gotgenes/pi-packages/commit/6789cb72e26eefd54da4ff6ee5dd847c4fa78385))
+
+
+### Documentation
+
+* **pi-subagents:** archive Phase 14, advance to Phase 15 ([a8147fb](https://github.com/gotgenes/pi-packages/commit/a8147fb3f6be9af6d73089bbb42b40080e8e04a7))
+* **pi-subagents:** update architecture for Agent rename ([#227](https://github.com/gotgenes/pi-packages/issues/227)) ([f9afc88](https://github.com/gotgenes/pi-packages/commit/f9afc88dcc21213abe453baa032563ff37499ca9))
+* plan evolve AgentRecord into Agent with behavior ([#227](https://github.com/gotgenes/pi-packages/issues/227)) ([d56ff97](https://github.com/gotgenes/pi-packages/commit/d56ff97408063de6467149dc332e35d4078dd137))
+* replace \n with &lt;br/&gt; in Mermaid node labels ([3312a45](https://github.com/gotgenes/pi-packages/commit/3312a4559100cf9ae923f67819653b5a99fceb12))
+* **retro:** add planning stage notes for issue [#227](https://github.com/gotgenes/pi-packages/issues/227) ([ccd9788](https://github.com/gotgenes/pi-packages/commit/ccd9788ac619ae9f0380cb4b0c0b632efb0faf68))
+* **retro:** add retro notes for issue [#239](https://github.com/gotgenes/pi-packages/issues/239) ([58a19a1](https://github.com/gotgenes/pi-packages/commit/58a19a1e65d93c753ef7ba9c24e34d4ebb6f172d))
+* **retro:** add TDD stage notes for issue [#227](https://github.com/gotgenes/pi-packages/issues/227) ([66cf314](https://github.com/gotgenes/pi-packages/commit/66cf314aa4bef736a689d547e75e8bede1757f85))
+
 ## [10.0.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v10.0.0...pi-subagents-v10.0.1) (2026-05-27)
 
 

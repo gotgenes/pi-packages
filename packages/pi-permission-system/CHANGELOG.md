@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.3.2](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v7.3.1...pi-permission-system-v7.3.2) (2026-05-27)
+
+
+### Documentation
+
+* replace \n with &lt;br/&gt; in Mermaid node labels ([3312a45](https://github.com/gotgenes/pi-packages/commit/3312a4559100cf9ae923f67819653b5a99fceb12))
+
 ## [7.3.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v7.3.0...pi-permission-system-v7.3.1) (2026-05-26)
 
 
