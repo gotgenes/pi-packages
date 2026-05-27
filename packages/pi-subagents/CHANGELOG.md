@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [10.0.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v10.0.0...pi-subagents-v10.0.1) (2026-05-27)
+
+
+### Documentation
+
+* mark Phase 14 Step 3 complete in architecture ([fb374ba](https://github.com/gotgenes/pi-packages/commit/fb374ba5829945a4d2f71d8a611bc5128cdd3bf1))
+* plan collapse filterActiveTools to recursion guard ([#239](https://github.com/gotgenes/pi-packages/issues/239)) ([411b22e](https://github.com/gotgenes/pi-packages/commit/411b22ef8186e5fe73bfa81672edfe473ad9d76a))
+* **retro:** add planning stage notes for issue [#239](https://github.com/gotgenes/pi-packages/issues/239) ([c0383b1](https://github.com/gotgenes/pi-packages/commit/c0383b1d9333b70d61a80b75cd1e6e2724d91ad3))
+* **retro:** add retro notes for issue [#242](https://github.com/gotgenes/pi-packages/issues/242) ([69c8cc2](https://github.com/gotgenes/pi-packages/commit/69c8cc269f6dfd6552aecb6d073ea86bb22267dd))
+* **retro:** add TDD stage notes for issue [#239](https://github.com/gotgenes/pi-packages/issues/239) ([f4098a0](https://github.com/gotgenes/pi-packages/commit/f4098a084564dd75bd683449a2aa3926ae36cba3))
+
 ## [10.0.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v9.0.1...pi-subagents-v10.0.0) (2026-05-27)
 
 
