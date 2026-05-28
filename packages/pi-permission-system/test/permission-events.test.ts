@@ -8,6 +8,7 @@ import { getGlobalConfigPath } from "#src/config-paths";
 import piPermissionSystemExtension from "#src/index";
 import type {
   PermissionDecisionEvent,
+  PermissionPromptEvent,
   PermissionsCheckReplyData,
   PermissionsCheckRequest,
   PermissionsPromptReplyData,
@@ -17,8 +18,10 @@ import type {
 } from "#src/permission-events";
 import {
   emitDecisionEvent,
+  emitPromptEvent,
   emitReadyEvent,
   PERMISSIONS_DECISION_CHANNEL,
+  PERMISSIONS_PROMPT_CHANNEL,
   PERMISSIONS_PROTOCOL_VERSION,
   PERMISSIONS_READY_CHANNEL,
   PERMISSIONS_RPC_CHECK_CHANNEL,
@@ -43,6 +46,7 @@ describe("constants", () => {
 
   it("channel names have the correct values", () => {
     expect(PERMISSIONS_READY_CHANNEL).toBe("permissions:ready");
+    expect(PERMISSIONS_PROMPT_CHANNEL).toBe("permissions:prompt");
     expect(PERMISSIONS_DECISION_CHANNEL).toBe("permissions:decision");
     expect(PERMISSIONS_RPC_CHECK_CHANNEL).toBe("permissions:rpc:check");
     expect(PERMISSIONS_RPC_PROMPT_CHANNEL).toBe("permissions:rpc:prompt");
@@ -66,6 +70,44 @@ describe("emitReadyEvent", () => {
     emitReadyEvent(bus);
     const payload = bus.emit.mock.calls[0][1] as PermissionsReadyEvent;
     expect(typeof payload.protocolVersion).toBe("number");
+  });
+});
+
+// ── emitPromptEvent ────────────────────────────────────────────────────────
+
+describe("emitPromptEvent", () => {
+  function makePromptEvent(
+    overrides: Partial<PermissionPromptEvent> = {},
+  ): PermissionPromptEvent {
+    return {
+      requestId: "req-123",
+      source: "tool_call",
+      agentName: "Explore",
+      message: "Allow git status?",
+      toolCallId: "call-123",
+      toolName: "bash",
+      skillName: null,
+      path: null,
+      command: "git status",
+      target: null,
+      toolInputPreview: null,
+      sessionLabel: null,
+      ...overrides,
+    };
+  }
+
+  it("emits on the permissions:prompt channel", () => {
+    const bus = makeEventBus();
+    emitPromptEvent(bus, makePromptEvent());
+    expect(bus.emit).toHaveBeenCalledOnce();
+    expect(bus.emit.mock.calls[0][0]).toBe("permissions:prompt");
+  });
+
+  it("forwards the full payload unchanged", () => {
+    const bus = makeEventBus();
+    const event = makePromptEvent({ sessionLabel: "Allow for session" });
+    emitPromptEvent(bus, event);
+    expect(bus.emit.mock.calls[0][1]).toEqual(event);
   });
 });
 

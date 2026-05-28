@@ -27,6 +27,9 @@ export const PERMISSIONS_PROTOCOL_VERSION = 1;
 /** Emitted at `session_start`, after the service is published. */
 export const PERMISSIONS_READY_CHANNEL = "permissions:ready";
 
+/** Emitted when the user is being prompted for a permission decision. */
+export const PERMISSIONS_PROMPT_CHANNEL = "permissions:prompt";
+
 /** Emitted after every permission gate resolution. */
 export const PERMISSIONS_DECISION_CHANNEL = "permissions:decision";
 
@@ -64,6 +67,36 @@ export type PermissionsRpcReply<T = void> =
 /** Payload emitted on `permissions:ready`. */
 export interface PermissionsReadyEvent {
   protocolVersion: number;
+}
+
+// ── permissions:prompt ─────────────────────────────────────────────────────
+
+/** Payload emitted on `permissions:prompt`. */
+export interface PermissionPromptEvent {
+  /** Unique ID for the permission request being prompted. */
+  requestId: string;
+  /** Prompt source: tool call, skill input/read, RPC, forwarded subagent request, etc. */
+  source: string;
+  /** Agent name (when known). */
+  agentName: string | null;
+  /** Message displayed to the user. */
+  message: string;
+  /** Tool call ID (when the prompt is for a tool call). */
+  toolCallId: string | null;
+  /** Tool name (when the prompt is for a tool call). */
+  toolName: string | null;
+  /** Skill name (when the prompt is for a skill request). */
+  skillName: string | null;
+  /** Path being evaluated (when available). */
+  path: string | null;
+  /** Command being evaluated (when available). */
+  command: string | null;
+  /** Target being evaluated (when available). */
+  target: string | null;
+  /** Tool input preview shown in logs/prompts (when available). */
+  toolInputPreview: string | null;
+  /** Override label for the "for this session" dialog option. */
+  sessionLabel: string | null;
 }
 
 // ── permissions:decision ───────────────────────────────────────────────────
@@ -168,6 +201,17 @@ export function emitReadyEvent(events: PermissionEventBus): void {
     protocolVersion: PERMISSIONS_PROTOCOL_VERSION,
   };
   events.emit(PERMISSIONS_READY_CHANNEL, payload);
+}
+
+/**
+ * Emit a `permissions:prompt` broadcast.
+ * Call immediately before showing or forwarding a permission prompt.
+ */
+export function emitPromptEvent(
+  events: PermissionEventBus,
+  event: PermissionPromptEvent,
+): void {
+  events.emit(PERMISSIONS_PROMPT_CHANNEL, event);
 }
 
 /**

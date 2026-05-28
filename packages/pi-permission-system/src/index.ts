@@ -54,6 +54,7 @@ export default function piPermissionSystemExtension(pi: ExtensionAPI): void {
     subagentSessionsDir: runtime.subagentSessionsDir,
     forwardingDir: runtime.forwardingDir,
     registry: subagentRegistry,
+    events: pi.events,
     requestPermissionDecisionFromUi,
   });
 

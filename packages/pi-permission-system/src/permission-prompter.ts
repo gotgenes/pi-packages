@@ -9,6 +9,8 @@ import type {
   PermissionPromptDecision,
   RequestPermissionOptions,
 } from "./permission-dialog";
+import type { PermissionEventBus } from "./permission-events";
+import { emitPromptEvent } from "./permission-events";
 import type { SubagentSessionRegistry } from "./subagent-registry";
 import { shouldAutoApprovePermissionState } from "./yolo-mode";
 
@@ -57,6 +59,8 @@ export interface PermissionPrompterDeps {
   forwardingDir: string;
   /** In-process subagent session registry for detection and forwarding target resolution. */
   registry?: SubagentSessionRegistry;
+  /** Event bus used for permission prompt broadcasts. */
+  events: PermissionEventBus;
   /** Show the interactive permission dialog in the UI. */
   requestPermissionDecisionFromUi(
     ui: ExtensionContext["ui"],
@@ -90,6 +94,20 @@ export class PermissionPrompter implements PermissionPrompterApi {
     }
 
     this.writeReviewEntry("permission_request.waiting", details);
+    emitPromptEvent(this.deps.events, {
+      requestId: details.requestId,
+      source: details.source,
+      agentName: details.agentName,
+      message: details.message,
+      toolCallId: details.toolCallId ?? null,
+      toolName: details.toolName ?? null,
+      skillName: details.skillName ?? null,
+      path: details.path ?? null,
+      command: details.command ?? null,
+      target: details.target ?? null,
+      toolInputPreview: details.toolInputPreview ?? null,
+      sessionLabel: details.sessionLabel ?? null,
+    });
 
     const decision = await confirmPermission(
       ctx,

@@ -11,6 +11,7 @@ import type {
 } from "#src/permission-events";
 import {
   PERMISSIONS_PROTOCOL_VERSION,
+  PERMISSIONS_PROMPT_CHANNEL,
   PERMISSIONS_RPC_CHECK_CHANNEL,
   PERMISSIONS_RPC_PROMPT_CHANNEL,
 } from "#src/permission-events";
@@ -315,6 +316,49 @@ describe("registerPermissionRpcHandlers — permissions:rpc:prompt", () => {
       expect(reply.data?.approved).toBe(true);
       expect(reply.data?.state).toBe("approved");
     }
+  });
+
+  it("emits a prompt broadcast before awaiting the UI decision", async () => {
+    const bus = createEventBus();
+    const ctx = makeCtxWithUi();
+    const requestUi = vi
+      .fn()
+      .mockResolvedValue({ approved: true, state: "approved" as const });
+    const deps = makeDeps({
+      getRuntimeContext: vi.fn().mockReturnValue(ctx),
+      requestPermissionDecisionFromUi: requestUi,
+    });
+    registerPermissionRpcHandlers(bus, deps);
+
+    const promptPromise = waitForReply(bus, PERMISSIONS_PROMPT_CHANNEL);
+    const replyPromise = waitForReply(
+      bus,
+      `${PERMISSIONS_RPC_PROMPT_CHANNEL}:reply:req-prompt-broadcast`,
+    );
+    bus.emit(PERMISSIONS_RPC_PROMPT_CHANNEL, {
+      requestId: "req-prompt-broadcast",
+      surface: "bash",
+      value: "git push",
+      message: "Allow git push?",
+      agentName: "Worker",
+      sessionLabel: "Allow git *",
+    });
+
+    await expect(promptPromise).resolves.toEqual({
+      requestId: "req-prompt-broadcast",
+      source: "rpc_prompt",
+      agentName: "Worker",
+      message: "Allow git push?",
+      toolCallId: null,
+      toolName: null,
+      skillName: null,
+      path: null,
+      command: null,
+      target: "git push",
+      toolInputPreview: null,
+      sessionLabel: "Allow git *",
+    });
+    await replyPromise;
   });
 
   it("passes the message to requestPermissionDecisionFromUi", async () => {
