@@ -21,6 +21,7 @@ import type {
   PermissionsRpcReply,
 } from "./permission-events";
 import {
+  emitPromptEvent,
   PERMISSIONS_PROTOCOL_VERSION,
   PERMISSIONS_RPC_CHECK_CHANNEL,
   PERMISSIONS_RPC_PROMPT_CHANNEL,
@@ -154,6 +155,21 @@ async function handlePromptRpc(
     const title = surface
       ? `Permission request${agentName ? ` from ${agentName}` : ""}`
       : "Permission request";
+
+    emitPromptEvent(events, {
+      requestId,
+      source: "rpc_prompt",
+      agentName: agentName ?? null,
+      message,
+      toolCallId: null,
+      toolName: null,
+      skillName: null,
+      path: null,
+      command: null,
+      target: value ?? null,
+      toolInputPreview: null,
+      sessionLabel: sessionLabel ?? null,
+    });
 
     const decision = await deps.requestPermissionDecisionFromUi(
       ctx.ui,

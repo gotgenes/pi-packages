@@ -53,6 +53,7 @@ function makeDeps(
     writeReviewLog: vi.fn(),
     subagentSessionsDir: "/sessions/subagents",
     forwardingDir: "/sessions/permission-forwarding",
+    events: { emit: vi.fn(), on: vi.fn().mockReturnValue(() => undefined) },
     requestPermissionDecisionFromUi: vi
       .fn()
       .mockResolvedValue({ approved: true, state: "approved" }),
