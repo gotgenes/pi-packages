@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.3.3](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v7.3.2...pi-permission-system-v7.3.3) (2026-05-28)
+
+
+### Bug Fixes
+
+* respect config-level allow/deny in bash external-directory gate ([#249](https://github.com/gotgenes/pi-packages/issues/249)) ([1437ff3](https://github.com/gotgenes/pi-packages/commit/1437ff3e3c0bdde93927ba9fdf9e3cf5b52e7c0c))
+
+
+### Documentation
+
+* plan fix for bash external-directory config-level allow bypass ([#249](https://github.com/gotgenes/pi-packages/issues/249)) ([9e09f35](https://github.com/gotgenes/pi-packages/commit/9e09f35e6cfad09b53a1b55b54fcd44af4ed6a7b))
+* **retro:** add planning stage notes for issue [#249](https://github.com/gotgenes/pi-packages/issues/249) ([fe13214](https://github.com/gotgenes/pi-packages/commit/fe132144869db93bfc83c4e940abb7d3ce813d46))
+* **retro:** add TDD stage notes for issue [#249](https://github.com/gotgenes/pi-packages/issues/249) ([b5d22f6](https://github.com/gotgenes/pi-packages/commit/b5d22f6d67f7d2c28ed406c99bc0458df9024713))
+
 ## [7.3.2](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v7.3.1...pi-permission-system-v7.3.2) (2026-05-27)
 
 

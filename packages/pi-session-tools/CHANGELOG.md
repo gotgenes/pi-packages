@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/gotgenes/pi-packages/compare/pi-session-tools-v1.0.0...pi-session-tools-v1.0.1) (2026-05-28)
+
+
+### Documentation
+
+* **retro:** add retro notes for issue [#251](https://github.com/gotgenes/pi-packages/issues/251) ([7b2c6a6](https://github.com/gotgenes/pi-packages/commit/7b2c6a613ff28c3d26b82cf035960380edd37c17))
+
 ## [1.0.0](https://github.com/gotgenes/pi-packages/compare/pi-session-tools-v0.4.0...pi-session-tools-v1.0.0) (2026-05-28)
 
 
