@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [11.0.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v10.2.1...pi-subagents-v11.0.0) (2026-05-28)
+
+
+### ⚠ BREAKING CHANGES
+
+* AgentSpawnConfig.onSessionCreated is replaced by AgentSpawnConfig.observer (AgentLifecycleObserver). Callers that used onSessionCreated must use observer.onSessionCreated instead.
+
+### Features
+
+* add Agent.run() encapsulating full execution lifecycle ([#229](https://github.com/gotgenes/pi-packages/issues/229)) ([780cb72](https://github.com/gotgenes/pi-packages/commit/780cb72ea7a6981ee283a9de791d5fb65cabaa28))
+* add AgentLifecycleObserver interface ([#229](https://github.com/gotgenes/pi-packages/issues/229)) ([c0f08a4](https://github.com/gotgenes/pi-packages/commit/c0f08a40ce36afa3a7876345709db56e192a893b))
+* AgentManager.spawn() creates complete Agent, deletes startAgent ([#229](https://github.com/gotgenes/pi-packages/issues/229)) ([4d83c6d](https://github.com/gotgenes/pi-packages/commit/4d83c6d583df905054066ed841a67795753928d4))
+* expand AgentInit with run-config, deps, and self-created AbortController ([#229](https://github.com/gotgenes/pi-packages/issues/229)) ([e522f23](https://github.com/gotgenes/pi-packages/commit/e522f23232e4b447ffa39e36a19cf70c7e5cbaae))
+
+
+### Documentation
+
+* mark Phase 15 Step 4 complete, update architecture ([#229](https://github.com/gotgenes/pi-packages/issues/229)) ([29b0da8](https://github.com/gotgenes/pi-packages/commit/29b0da8435aaa5be51fc073612fc09d9a22004bc))
+* plan Agent born complete — Agent.run() absorbs startAgent ([#229](https://github.com/gotgenes/pi-packages/issues/229)) ([c1588b5](https://github.com/gotgenes/pi-packages/commit/c1588b58ae697d22db1bf30b8997e5502626c33b))
+* **retro:** add planning stage notes for issue [#229](https://github.com/gotgenes/pi-packages/issues/229) ([21243d5](https://github.com/gotgenes/pi-packages/commit/21243d564691daab5dcddff23809a82db56c0660))
+* **retro:** add retro notes for issue [#231](https://github.com/gotgenes/pi-packages/issues/231) ([249cce0](https://github.com/gotgenes/pi-packages/commit/249cce0e1c7642d8c85da67e8f3c92f210735e7b))
+* **retro:** add TDD stage notes for issue [#229](https://github.com/gotgenes/pi-packages/issues/229) ([047cd9e](https://github.com/gotgenes/pi-packages/commit/047cd9e2816f6a25d93bbba33fc93b228989f272))
+
 ## [10.2.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v10.2.0...pi-subagents-v10.2.1) (2026-05-27)
 
 
