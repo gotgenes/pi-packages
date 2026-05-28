@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.0.0](https://github.com/gotgenes/pi-packages/compare/pi-session-tools-v0.4.0...pi-session-tools-v1.0.0) (2026-05-28)
+
+
+### ⚠ BREAKING CHANGES
+
+* both tools now return structured transcript text instead of raw JSON. Tool result bodies, thinking content, and image data are omitted. The session file on disk is available for consumers that need raw entries.
+
+### Features
+
+* add formatTranscript with basic message formatting ([#251](https://github.com/gotgenes/pi-packages/issues/251)) ([f9a7dee](https://github.com/gotgenes/pi-packages/commit/f9a7dee2d5ff37fc2a7533489172c94adab777d0))
+* add metadata entry formatting to transcript ([#251](https://github.com/gotgenes/pi-packages/issues/251)) ([49ffac9](https://github.com/gotgenes/pi-packages/commit/49ffac9795da86211adfdb1cb0cb9eb23339d23f))
+* add tool call summaries and tool result folding ([#251](https://github.com/gotgenes/pi-packages/issues/251)) ([ddcc645](https://github.com/gotgenes/pi-packages/commit/ddcc6455f4ae3b027401cd9d54ef9d70fc42be00))
+* wire transcript formatter into read_session and read_parent_session ([#251](https://github.com/gotgenes/pi-packages/issues/251)) ([1c09452](https://github.com/gotgenes/pi-packages/commit/1c09452d996f6c38fe3c862402fc3ef9695ff9a5))
+
+
+### Documentation
+
+* document read_session and read_parent_session transcript format in README ([#251](https://github.com/gotgenes/pi-packages/issues/251)) ([53be9c6](https://github.com/gotgenes/pi-packages/commit/53be9c6a473a84402dbfbdd93dbbe787e94733a5))
+* plan transcript-formatted output for session tools ([#251](https://github.com/gotgenes/pi-packages/issues/251)) ([f34dc19](https://github.com/gotgenes/pi-packages/commit/f34dc191bb5ee48e03d64265d91f0a241c8b8176))
+* **retro:** add planning stage notes for issue [#251](https://github.com/gotgenes/pi-packages/issues/251) ([9db6d0a](https://github.com/gotgenes/pi-packages/commit/9db6d0a57ca99aaa12b709e5a716c92016a91f70))
+* **retro:** add TDD stage notes for issue [#251](https://github.com/gotgenes/pi-packages/issues/251) ([80fda15](https://github.com/gotgenes/pi-packages/commit/80fda154867b9ab4e9aed80121c4c8e1b3e9b748))
+
 ## [0.4.0](https://github.com/gotgenes/pi-packages/compare/pi-session-tools-v0.3.0...pi-session-tools-v0.4.0) (2026-05-25)
 
 
