@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [11.1.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v11.0.1...pi-subagents-v11.1.0) (2026-05-28)
+
+
+### Features
+
+* **pi-subagents:** add ConcurrencyQueue class ([#230](https://github.com/gotgenes/pi-packages/issues/230)) ([9fff9b7](https://github.com/gotgenes/pi-packages/commit/9fff9b7fc318ad8bf5ac3a218ee7bf1c5e11104b))
+
+
+### Documentation
+
+* **pi-subagents:** update architecture for ConcurrencyQueue extraction ([#230](https://github.com/gotgenes/pi-packages/issues/230)) ([4bd69e1](https://github.com/gotgenes/pi-packages/commit/4bd69e16164132400c7e0f9e4ecfd9f41842247a))
+
 ## [11.0.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v11.0.0...pi-subagents-v11.0.1) (2026-05-28)
 
 
