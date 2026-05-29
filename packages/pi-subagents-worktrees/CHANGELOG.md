@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-worktrees-v0.1.0...pi-subagents-worktrees-v0.2.0) (2026-05-29)
+
+
+### Features
+
+* replace indexed-access aliases with named imports from pi-subagents ([#272](https://github.com/gotgenes/pi-packages/issues/272)) ([757ecf6](https://github.com/gotgenes/pi-packages/commit/757ecf6baa8633dd552bd0fd0becfe8cb088364c))
+
 ## [0.1.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-worktrees-v0.0.1...pi-subagents-worktrees-v0.1.0) (2026-05-29)
 
 
