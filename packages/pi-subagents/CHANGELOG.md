@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [11.3.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v11.2.0...pi-subagents-v11.3.0) (2026-05-29)
+
+
+### Features
+
+* **pi-subagents:** add WorktreeIsolation collaborator ([ee7ab73](https://github.com/gotgenes/pi-packages/commit/ee7ab73a53f8643b5887856c33d53786a5a5a9cc))
+
 ## [11.2.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v11.1.0...pi-subagents-v11.2.0) (2026-05-28)
 
 
