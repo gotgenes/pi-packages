@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [11.6.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v11.5.0...pi-subagents-v11.6.0) (2026-05-29)
+
+
+### Features
+
+* **pi-subagents:** publish bundled type declarations and fix stale exports path ([8eda6f6](https://github.com/gotgenes/pi-packages/commit/8eda6f6611a12c60d99a5069f352abd634997e67))
+
 ## [11.5.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v11.4.0...pi-subagents-v11.5.0) (2026-05-29)
 
 
