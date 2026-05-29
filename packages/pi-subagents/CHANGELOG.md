@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [12.1.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v12.0.0...pi-subagents-v12.1.0) (2026-05-29)
+
+
+### Features
+
+* export WorkspaceProvider collaborator types by name ([#272](https://github.com/gotgenes/pi-packages/issues/272)) ([1ff4697](https://github.com/gotgenes/pi-packages/commit/1ff4697a3033be445340d18af005a5d34fb5934d))
+
 ## [12.0.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v11.6.0...pi-subagents-v12.0.0) (2026-05-29)
 
 
