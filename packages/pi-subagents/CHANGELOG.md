@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [12.0.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v11.6.0...pi-subagents-v12.0.0) (2026-05-29)
+
+
+### ⚠ BREAKING CHANGES
+
+* SubagentRecord no longer carries worktreeResult, and the core no longer creates git worktrees. Worktree isolation moves to @gotgenes/pi-subagents-worktrees.
+* the Agent tool no longer accepts isolation: "worktree", and SubagentsService.SpawnOptions no longer has an isolation field. Install @gotgenes/pi-subagents-worktrees and list the agent in worktreeAgents instead.
+
+### Features
+
+* drop the isolation spawn axis from the subagents API ([2ff8970](https://github.com/gotgenes/pi-packages/commit/2ff897059feec67a49af7e3f54e0e4828faa2521))
+* remove git worktree isolation from the subagents core ([2e81044](https://github.com/gotgenes/pi-packages/commit/2e81044221562c528d1fb296f356f60d81af0661))
+
 ## [11.6.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v11.5.0...pi-subagents-v11.6.0) (2026-05-29)
 
 
