@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [11.5.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v11.4.0...pi-subagents-v11.5.0) (2026-05-29)
+
+
+### Features
+
+* add WorkspaceProvider registration seam to subagents service ([51a9970](https://github.com/gotgenes/pi-packages/commit/51a99701db214c11f08251e9ed5549d01c4d5839))
+* consult workspace provider for child cwd and disposal ([32eeffc](https://github.com/gotgenes/pi-packages/commit/32eeffc1cc31bc7e403c25cdd116e2b351be4527))
+
 ## [11.4.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v11.3.0...pi-subagents-v11.4.0) (2026-05-29)
 
 
