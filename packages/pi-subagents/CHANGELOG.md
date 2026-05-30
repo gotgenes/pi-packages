@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [13.1.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v13.0.0...pi-subagents-v13.1.0) (2026-05-30)
+
+
+### Features
+
+* add createSubagentSession factory ([62c319d](https://github.com/gotgenes/pi-packages/commit/62c319d6703a6f58a829f372b609daea36170987))
+* add SubagentSession with turn-loop and disposal behavior ([69f8f4b](https://github.com/gotgenes/pi-packages/commit/69f8f4bf78431be990a9eb6fbe592e59cc313912))
+* dissolve the runner; Agent drives SubagentSession directly ([fbe71b0](https://github.com/gotgenes/pi-packages/commit/fbe71b02759551e60b4e22e96bb28299e444feb2))
+
 ## [13.0.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v12.1.0...pi-subagents-v13.0.0) (2026-05-30)
 
 
