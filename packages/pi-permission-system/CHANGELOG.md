@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.4.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v7.4.0...pi-permission-system-v7.4.1) (2026-05-30)
+
+
+### Bug Fixes
+
+* **pi-permission-system:** resolve bash paths against leading cd target ([c655a7e](https://github.com/gotgenes/pi-packages/commit/c655a7e737aeac9a8f10909804260c65d339c8b7))
+
+
+### Documentation
+
+* **pi-permission-system:** document cd-aware bash path resolution ([a2e6541](https://github.com/gotgenes/pi-packages/commit/a2e65410e89eb1e62579078c16af05aead013603))
+
 ## [7.4.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v7.3.3...pi-permission-system-v7.4.0) (2026-05-29)
 
 
