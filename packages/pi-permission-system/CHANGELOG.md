@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v7.4.1...pi-permission-system-v8.0.0) (2026-05-30)
+
+
+### ⚠ BREAKING CHANGES
+
+* `registerSubagentSession` and `unregisterSubagentSession` are removed from the `PermissionsService` interface and its implementation. The `SubagentSessionInfo` type is no longer re-exported from the public service module.
+
+### Features
+
+* remove inbound subagent-registration methods from PermissionsService ([#267](https://github.com/gotgenes/pi-packages/issues/267)) ([552735a](https://github.com/gotgenes/pi-packages/commit/552735a97eec939fc06130bce059c78f03eb8e58))
+
+
+### Documentation
+
+* **pi-permission-system:** describe event-driven subagent registration ([#267](https://github.com/gotgenes/pi-packages/issues/267)) ([8c39b87](https://github.com/gotgenes/pi-packages/commit/8c39b8785aa389d96b5f38996711d8aa3dbeb284))
+
 ## [7.4.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v7.4.0...pi-permission-system-v7.4.1) (2026-05-30)
 
 
