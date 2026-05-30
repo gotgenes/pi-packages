@@ -4,6 +4,6 @@
   "packages/pi-github-tools": "4.1.1",
   "packages/pi-permission-system": "7.4.1",
   "packages/pi-session-tools": "1.0.1",
-  "packages/pi-subagents": "13.1.0",
+  "packages/pi-subagents": "13.2.0",
   "packages/pi-subagents-worktrees": "0.2.0"
 }

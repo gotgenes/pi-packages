@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [13.2.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v13.1.0...pi-subagents-v13.2.0) (2026-05-30)
+
+
+### Features
+
+* add delegate methods to SubagentSession for session encapsulation ([#277](https://github.com/gotgenes/pi-packages/issues/277)) ([038e906](https://github.com/gotgenes/pi-packages/commit/038e906312b00d18ff617caf68bce980db70a243))
+* add session-encapsulation methods to Agent ([#277](https://github.com/gotgenes/pi-packages/issues/277)) ([03b4382](https://github.com/gotgenes/pi-packages/commit/03b43820aa7bd4ab4f9a4cd15ae09a1217c317d4))
+
 ## [13.1.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v13.0.0...pi-subagents-v13.1.0) (2026-05-30)
 
 
