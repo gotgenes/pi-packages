@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [13.0.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v12.1.0...pi-subagents-v13.0.0) (2026-05-30)
+
+
+### ⚠ BREAKING CHANGES
+
+* the `skills:` custom-agent frontmatter key and skill preloading are removed; children always load the parent's skills.
+* the `extensions:` custom-agent frontmatter key is removed; children always load the parent's extensions.
+* `SpawnOptions.isolated` and the `isolated:` custom-agent frontmatter key are removed. Children always load the parent's extensions.
+
+### Features
+
+* always inherit extensions; make the recursion guard unconditional ([#264](https://github.com/gotgenes/pi-packages/issues/264)) ([3cc682e](https://github.com/gotgenes/pi-packages/commit/3cc682ec401167f922a1f892f6260a10f9fa99f2))
+* always inherit skills; remove noSkills and the skill-preload path ([#264](https://github.com/gotgenes/pi-packages/issues/264)) ([93266ff](https://github.com/gotgenes/pi-packages/commit/93266ff4a204d154b357efac57912330fad240be))
+* remove isolated from the subagent spawn API and lifecycle ([#264](https://github.com/gotgenes/pi-packages/issues/264)) ([d08f340](https://github.com/gotgenes/pi-packages/commit/d08f34066ea472d850423e67349b7a623ca72f42))
+
 ## [12.1.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v12.0.0...pi-subagents-v12.1.0) (2026-05-29)
 
 
