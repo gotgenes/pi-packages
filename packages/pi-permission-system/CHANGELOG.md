@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.2.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v8.2.0...pi-permission-system-v8.2.1) (2026-05-31)
+
+
+### Bug Fixes
+
+* remove stale PermissionGateHandler import in tool-call.test.ts ([#288](https://github.com/gotgenes/pi-packages/issues/288)) ([67259f6](https://github.com/gotgenes/pi-packages/commit/67259f666938e15473016edfeafcb718abe304f7))
+
 ## [8.2.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v8.1.0...pi-permission-system-v8.2.0) (2026-05-31)
 
 
