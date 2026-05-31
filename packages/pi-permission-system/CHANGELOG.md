@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.1.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v8.0.0...pi-permission-system-v8.1.0) (2026-05-31)
+
+
+### Features
+
+* add toolInputPreviewMaxLength and toolTextSummaryMaxLength config fields ([#266](https://github.com/gotgenes/pi-packages/issues/266)) ([3a7dafb](https://github.com/gotgenes/pi-packages/commit/3a7dafbb0bb8534dabda7eeba6c4d35ba2e8708b))
+* use configured preview limits in permission prompts ([#266](https://github.com/gotgenes/pi-packages/issues/266)) ([83e2829](https://github.com/gotgenes/pi-packages/commit/83e2829175a55f2f0436c742e19e3753ee171e47))
+
+
+### Documentation
+
+* document configurable tool-preview length knobs ([#266](https://github.com/gotgenes/pi-packages/issues/266)) ([6d0b134](https://github.com/gotgenes/pi-packages/commit/6d0b134be4ef4c90ddf582b32058c3ec9d2eb13f))
+
 ## [8.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v7.4.1...pi-permission-system-v8.0.0) (2026-05-30)
 
 
