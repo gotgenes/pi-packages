@@ -9,8 +9,11 @@ import type {
   PermissionPromptDecision,
   RequestPermissionOptions,
 } from "./permission-dialog";
-import type { PermissionEventBus } from "./permission-events";
-import { emitPromptEvent } from "./permission-events";
+import {
+  PERMISSIONS_PROTOCOL_VERSION,
+  type PermissionEventBus,
+  type PermissionUiPromptEvent,
+} from "./permission-events";
 import type { SubagentSessionRegistry } from "./subagent-registry";
 import { shouldAutoApprovePermissionState } from "./yolo-mode";
 
@@ -31,6 +34,46 @@ export interface PromptPermissionDetails {
   toolInputPreview?: string;
   /** Override label for the "for this session" dialog option. */
   sessionLabel?: string;
+}
+
+function promptSurface(details: PromptPermissionDetails): string | null {
+  if (details.source === "skill_input" || details.source === "skill_read") {
+    return "skill";
+  }
+  return details.toolName ?? null;
+}
+
+function promptValue(details: PromptPermissionDetails): string | null {
+  return (
+    details.command ??
+    details.path ??
+    details.target ??
+    details.skillName ??
+    details.toolName ??
+    null
+  );
+}
+
+function buildUiPromptEvent(
+  details: PromptPermissionDetails,
+): PermissionUiPromptEvent {
+  return {
+    protocolVersion: PERMISSIONS_PROTOCOL_VERSION,
+    requestId: details.requestId,
+    source: details.source,
+    surface: promptSurface(details),
+    value: promptValue(details),
+    agentName: details.agentName,
+    message: details.message,
+    toolCallId: details.toolCallId ?? null,
+    toolName: details.toolName ?? null,
+    skillName: details.skillName ?? null,
+    path: details.path ?? null,
+    command: details.command ?? null,
+    target: details.target ?? null,
+    toolInputPreview: details.toolInputPreview ?? null,
+    sessionLabel: details.sessionLabel ?? null,
+  };
 }
 
 /** Mockable contract for permission prompting. */
@@ -59,7 +102,7 @@ export interface PermissionPrompterDeps {
   forwardingDir: string;
   /** In-process subagent session registry for detection and forwarding target resolution. */
   registry?: SubagentSessionRegistry;
-  /** Event bus used for permission prompt broadcasts. */
+  /** Event bus used for UI prompt broadcasts. */
   events: PermissionEventBus;
   /** Show the interactive permission dialog in the UI. */
   requestPermissionDecisionFromUi(
@@ -94,26 +137,13 @@ export class PermissionPrompter implements PermissionPrompterApi {
     }
 
     this.writeReviewEntry("permission_request.waiting", details);
-    emitPromptEvent(this.deps.events, {
-      requestId: details.requestId,
-      source: details.source,
-      agentName: details.agentName,
-      message: details.message,
-      toolCallId: details.toolCallId ?? null,
-      toolName: details.toolName ?? null,
-      skillName: details.skillName ?? null,
-      path: details.path ?? null,
-      command: details.command ?? null,
-      target: details.target ?? null,
-      toolInputPreview: details.toolInputPreview ?? null,
-      sessionLabel: details.sessionLabel ?? null,
-    });
 
     const decision = await confirmPermission(
       ctx,
       details.message,
       this.buildForwardingDeps(),
       details.sessionLabel ? { sessionLabel: details.sessionLabel } : undefined,
+      buildUiPromptEvent(details),
     );
 
     this.writeReviewEntry(
@@ -177,6 +207,7 @@ export class PermissionPrompter implements PermissionPrompterApi {
       forwardingDir: deps.forwardingDir,
       subagentSessionsDir: deps.subagentSessionsDir,
       registry: deps.registry,
+      events: deps.events,
       logger,
       // eslint-disable-next-line @typescript-eslint/unbound-method -- logger methods are plain function closures; no this-binding issue
       writeReviewLog: deps.writeReviewLog,

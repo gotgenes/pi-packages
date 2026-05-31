@@ -72,8 +72,13 @@ describe("PermissionPrompter", () => {
 
   describe("yolo-mode auto-approve", () => {
     it("returns approved without calling confirmPermission when yoloMode is true", async () => {
+      const events = {
+        emit: vi.fn(),
+        on: vi.fn().mockReturnValue(() => undefined),
+      };
       const deps = makeDeps({
         getConfig: () => ({ ...DEFAULT_EXTENSION_CONFIG, yoloMode: true }),
+        events,
       });
       const prompter = new PermissionPrompter(deps);
 
@@ -85,6 +90,10 @@ describe("PermissionPrompter", () => {
         autoApproved: true,
       });
       expect(mockConfirmPermission).not.toHaveBeenCalled();
+      expect(events.emit).not.toHaveBeenCalledWith(
+        "permissions:ui_prompt",
+        expect.anything(),
+      );
     });
 
     it("logs permission_request.auto_approved in yolo mode", async () => {
@@ -152,6 +161,75 @@ describe("PermissionPrompter", () => {
       ).toBeGreaterThanOrEqual(0);
       expect(calls.indexOf("permission_request.waiting")).toBeLessThan(
         calls.indexOf("permission_request.approved"),
+      );
+    });
+
+    it("passes a UI prompt event with normalized surface and value to confirmPermission", async () => {
+      const events = {
+        emit: vi.fn(),
+        on: vi.fn().mockReturnValue(() => undefined),
+      };
+      mockConfirmPermission.mockResolvedValue({
+        approved: true,
+        state: "approved",
+      });
+      const deps = makeDeps({ events });
+      const prompter = new PermissionPrompter(deps);
+
+      await prompter.prompt(
+        makeCtx(true),
+        makeDetails({
+          toolName: "bash",
+          command: "git push",
+          toolInputPreview: "git push",
+        }),
+      );
+
+      expect(events.emit).not.toHaveBeenCalled();
+      expect(mockConfirmPermission.mock.calls[0][4]).toEqual(
+        expect.objectContaining({
+          protocolVersion: 1,
+          requestId: "req-123",
+          source: "tool_call",
+          surface: "bash",
+          value: "git push",
+          toolName: "bash",
+          command: "git push",
+          toolInputPreview: "git push",
+        }),
+      );
+    });
+
+    it("normalizes skill UI prompt events to the skill surface", async () => {
+      const events = {
+        emit: vi.fn(),
+        on: vi.fn().mockReturnValue(() => undefined),
+      };
+      mockConfirmPermission.mockResolvedValue({
+        approved: true,
+        state: "approved",
+      });
+      const deps = makeDeps({ events });
+      const prompter = new PermissionPrompter(deps);
+
+      await prompter.prompt(
+        makeCtx(true),
+        makeDetails({
+          source: "skill_input",
+          toolName: undefined,
+          skillName: "deploy-helper",
+        }),
+      );
+
+      expect(events.emit).not.toHaveBeenCalled();
+      expect(mockConfirmPermission.mock.calls[0][4]).toEqual(
+        expect.objectContaining({
+          protocolVersion: 1,
+          source: "skill_input",
+          surface: "skill",
+          value: "deploy-helper",
+          skillName: "deploy-helper",
+        }),
       );
     });
 
@@ -246,6 +324,7 @@ describe("PermissionPrompter", () => {
         expect.any(String),
         expect.anything(),
         { sessionLabel: "Yes, for 'read' tool" },
+        expect.objectContaining({ sessionLabel: "Yes, for 'read' tool" }),
       );
     });
 
@@ -264,6 +343,7 @@ describe("PermissionPrompter", () => {
         expect.any(String),
         expect.anything(),
         undefined,
+        expect.objectContaining({ sessionLabel: null }),
       );
     });
 
@@ -283,6 +363,7 @@ describe("PermissionPrompter", () => {
         "Allow bash: git status?",
         expect.anything(),
         undefined,
+        expect.objectContaining({ message: "Allow bash: git status?" }),
       );
     });
   });

@@ -27,8 +27,8 @@ export const PERMISSIONS_PROTOCOL_VERSION = 1;
 /** Emitted at `session_start`, after the service is published. */
 export const PERMISSIONS_READY_CHANNEL = "permissions:ready";
 
-/** Emitted when the user is being prompted for a permission decision. */
-export const PERMISSIONS_PROMPT_CHANNEL = "permissions:prompt";
+/** Emitted when a permission request is committed to the active UI prompt path. */
+export const PERMISSIONS_UI_PROMPT_CHANNEL = "permissions:ui_prompt";
 
 /** Emitted after every permission gate resolution. */
 export const PERMISSIONS_DECISION_CHANNEL = "permissions:decision";
@@ -69,14 +69,27 @@ export interface PermissionsReadyEvent {
   protocolVersion: number;
 }
 
-// ── permissions:prompt ─────────────────────────────────────────────────────
+// ── permissions:ui_prompt ──────────────────────────────────────────────────
 
-/** Payload emitted on `permissions:prompt`. */
-export interface PermissionPromptEvent {
+/** Payload emitted on `permissions:ui_prompt`. */
+export type PermissionUiPromptSource =
+  | "tool_call"
+  | "skill_input"
+  | "skill_read"
+  | "rpc_prompt"
+  | "forwarded_permission";
+
+export interface PermissionUiPromptEvent {
+  /** Protocol version for the cross-extension event contract. */
+  protocolVersion: number;
   /** Unique ID for the permission request being prompted. */
   requestId: string;
   /** Prompt source: tool call, skill input/read, RPC, forwarded subagent request, etc. */
-  source: string;
+  source: PermissionUiPromptSource;
+  /** Permission surface being evaluated, when known. */
+  surface: string | null;
+  /** Value being evaluated: command, path, skill name, tool target, etc. */
+  value: string | null;
   /** Agent name (when known). */
   agentName: string | null;
   /** Message displayed to the user. */
@@ -204,14 +217,19 @@ export function emitReadyEvent(events: PermissionEventBus): void {
 }
 
 /**
- * Emit a `permissions:prompt` broadcast.
- * Call immediately before showing or forwarding a permission prompt.
+ * Emit a `permissions:ui_prompt` broadcast.
+ * Call immediately before invoking the active user-facing permission UI.
  */
-export function emitPromptEvent(
+export function emitUiPromptEvent(
   events: PermissionEventBus,
-  event: PermissionPromptEvent,
+  event: PermissionUiPromptEvent,
 ): void {
-  events.emit(PERMISSIONS_PROMPT_CHANNEL, event);
+  try {
+    events.emit(PERMISSIONS_UI_PROMPT_CHANNEL, event);
+  } catch {
+    // UI-prompt broadcasts are observational. A consumer failure must not block
+    // the permission dialog itself.
+  }
 }
 
 /**

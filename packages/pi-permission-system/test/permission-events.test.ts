@@ -8,7 +8,7 @@ import { getGlobalConfigPath } from "#src/config-paths";
 import piPermissionSystemExtension from "#src/index";
 import type {
   PermissionDecisionEvent,
-  PermissionPromptEvent,
+  PermissionUiPromptEvent,
   PermissionsCheckReplyData,
   PermissionsCheckRequest,
   PermissionsPromptReplyData,
@@ -18,14 +18,14 @@ import type {
 } from "#src/permission-events";
 import {
   emitDecisionEvent,
-  emitPromptEvent,
   emitReadyEvent,
+  emitUiPromptEvent,
   PERMISSIONS_DECISION_CHANNEL,
-  PERMISSIONS_PROMPT_CHANNEL,
   PERMISSIONS_PROTOCOL_VERSION,
   PERMISSIONS_READY_CHANNEL,
   PERMISSIONS_RPC_CHECK_CHANNEL,
   PERMISSIONS_RPC_PROMPT_CHANNEL,
+  PERMISSIONS_UI_PROMPT_CHANNEL,
 } from "#src/permission-events";
 
 // ── Minimal EventBus stub ──────────────────────────────────────────────────
@@ -46,7 +46,7 @@ describe("constants", () => {
 
   it("channel names have the correct values", () => {
     expect(PERMISSIONS_READY_CHANNEL).toBe("permissions:ready");
-    expect(PERMISSIONS_PROMPT_CHANNEL).toBe("permissions:prompt");
+    expect(PERMISSIONS_UI_PROMPT_CHANNEL).toBe("permissions:ui_prompt");
     expect(PERMISSIONS_DECISION_CHANNEL).toBe("permissions:decision");
     expect(PERMISSIONS_RPC_CHECK_CHANNEL).toBe("permissions:rpc:check");
     expect(PERMISSIONS_RPC_PROMPT_CHANNEL).toBe("permissions:rpc:prompt");
@@ -73,15 +73,18 @@ describe("emitReadyEvent", () => {
   });
 });
 
-// ── emitPromptEvent ────────────────────────────────────────────────────────
+// ── emitUiPromptEvent ──────────────────────────────────────────────────────
 
-describe("emitPromptEvent", () => {
-  function makePromptEvent(
-    overrides: Partial<PermissionPromptEvent> = {},
-  ): PermissionPromptEvent {
+describe("emitUiPromptEvent", () => {
+  function makeUiPromptEvent(
+    overrides: Partial<PermissionUiPromptEvent> = {},
+  ): PermissionUiPromptEvent {
     return {
+      protocolVersion: PERMISSIONS_PROTOCOL_VERSION,
       requestId: "req-123",
       source: "tool_call",
+      surface: "bash",
+      value: "git status",
       agentName: "Explore",
       message: "Allow git status?",
       toolCallId: "call-123",
@@ -96,18 +99,36 @@ describe("emitPromptEvent", () => {
     };
   }
 
-  it("emits on the permissions:prompt channel", () => {
+  it("emits on the permissions:ui_prompt channel", () => {
     const bus = makeEventBus();
-    emitPromptEvent(bus, makePromptEvent());
+    emitUiPromptEvent(bus, makeUiPromptEvent());
     expect(bus.emit).toHaveBeenCalledOnce();
-    expect(bus.emit.mock.calls[0][0]).toBe("permissions:prompt");
+    expect(bus.emit.mock.calls[0][0]).toBe("permissions:ui_prompt");
   });
 
   it("forwards the full payload unchanged", () => {
     const bus = makeEventBus();
-    const event = makePromptEvent({ sessionLabel: "Allow for session" });
-    emitPromptEvent(bus, event);
+    const event = makeUiPromptEvent({ sessionLabel: "Allow for session" });
+    emitUiPromptEvent(bus, event);
     expect(bus.emit.mock.calls[0][1]).toEqual(event);
+  });
+
+  it("includes the protocol version in UI prompt events", () => {
+    const bus = makeEventBus();
+    emitUiPromptEvent(bus, makeUiPromptEvent());
+    const payload = bus.emit.mock.calls[0][1] as PermissionUiPromptEvent;
+    expect(payload.protocolVersion).toBe(PERMISSIONS_PROTOCOL_VERSION);
+  });
+
+  it("swallows event bus errors because UI prompt broadcasts are observational", () => {
+    const bus = {
+      emit: vi.fn(() => {
+        throw new Error("listener failed");
+      }),
+      on: vi.fn().mockReturnValue(() => undefined),
+    };
+
+    expect(() => emitUiPromptEvent(bus, makeUiPromptEvent())).not.toThrow();
   });
 });
 

@@ -249,11 +249,50 @@ The protocol version constant is exported from `src/permission-events.ts` and em
 | Channel                                    | Direction | When                              | Payload type                                      |
 | ------------------------------------------ | --------- | --------------------------------- | ------------------------------------------------- |
 | `permissions:ready`                        | Broadcast | At `session_start`, after publish | `PermissionsReadyEvent`                           |
+| `permissions:ui_prompt`                    | Broadcast | Before active UI prompt           | `PermissionUiPromptEvent`                         |
 | `permissions:decision`                     | Broadcast | After every gate resolution       | `PermissionDecisionEvent`                         |
 | `permissions:rpc:check`                    | Request   | On-demand                         | `PermissionsCheckRequest`                         |
 | `permissions:rpc:check:reply:<requestId>`  | Reply     | After each check request          | `PermissionsRpcReply<PermissionsCheckReplyData>`  |
 | `permissions:rpc:prompt`                   | Request   | On-demand                         | `PermissionsPromptRequest`                        |
 | `permissions:rpc:prompt:reply:<requestId>` | Reply     | After prompt is resolved          | `PermissionsRpcReply<PermissionsPromptReplyData>` |
+
+---
+
+## UI Prompt Broadcasts
+
+The permission system emits `permissions:ui_prompt` immediately before it invokes the active user-facing permission UI.
+This event is for integrations such as notification extensions that should alert only when the user needs to respond to a permission prompt.
+It is not a generic "permission request entered waiting state" event, and it does not imply the prompt will be approved.
+Policy decisions that resolve without an active UI prompt, such as `policy_allow`, `policy_deny`, `session_approved`, `infrastructure_auto_allowed`, or `auto_approved`, do not emit this event.
+Non-UI child sessions also do not emit this event when they create a forwarded permission request; the parent UI session emits it immediately before showing the forwarded permission dialog.
+
+```typescript
+pi.events.on("permissions:ui_prompt", (raw) => {
+  const event = raw as import("@gotgenes/pi-permission-system").PermissionUiPromptEvent;
+  console.log(event.surface, event.value, event.message);
+  // e.g. "bash" "git push" "Allow git push?"
+});
+```
+
+### Payload Fields
+
+| Field              | Type             | Description                                                                                                      |
+| ------------------ | ---------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `protocolVersion`  | `number`         | Cross-extension event protocol version                                                                           |
+| `requestId`        | `string`         | Unique ID for the permission request being prompted                                                              |
+| `source`           | `PermissionUiPromptSource` | Prompt source: `"tool_call"`, `"skill_input"`, `"skill_read"`, `"rpc_prompt"`, or `"forwarded_permission"` |
+| `surface`          | `string \| null` | Permission surface being evaluated, when known                                                                   |
+| `value`            | `string \| null` | Value being evaluated: command, path, skill name, tool target, etc.                                              |
+| `agentName`        | `string \| null` | Active/requesting agent name when known                                                                          |
+| `message`          | `string`         | Message displayed in the permission prompt                                                                       |
+| `toolCallId`       | `string \| null` | Tool call ID when the prompt is for a tool call                                                                  |
+| `toolName`         | `string \| null` | Tool name when the prompt is for a tool call                                                                     |
+| `skillName`        | `string \| null` | Skill name when the prompt is for a skill request                                                                |
+| `path`             | `string \| null` | Path being evaluated, when available                                                                             |
+| `command`          | `string \| null` | Command being evaluated, when available                                                                          |
+| `target`           | `string \| null` | Generic target being evaluated, when available                                                                   |
+| `toolInputPreview` | `string \| null` | Tool input preview shown in logs/prompts, when available                                                         |
+| `sessionLabel`     | `string \| null` | Override label for the "for this session" dialog option                                                          |
 
 ---
 

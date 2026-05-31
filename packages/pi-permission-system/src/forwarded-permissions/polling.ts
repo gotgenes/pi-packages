@@ -12,6 +12,12 @@ import type {
   RequestPermissionOptions,
 } from "#src/permission-dialog";
 import {
+  emitUiPromptEvent,
+  PERMISSIONS_PROTOCOL_VERSION,
+  type PermissionEventBus,
+  type PermissionUiPromptEvent,
+} from "#src/permission-events";
+import {
   type ForwardedPermissionRequest,
   type ForwardedPermissionResponse,
   isForwardedPermissionRequestForSession,
@@ -43,6 +49,8 @@ export interface PermissionForwardingDeps {
   subagentSessionsDir: string;
   /** In-process subagent session registry for detection and forwarding target resolution. */
   registry?: SubagentSessionRegistry;
+  /** Event bus used for UI prompt broadcasts. */
+  events?: PermissionEventBus;
   logger: ForwardedPermissionLogger;
   writeReviewLog: (event: string, details: Record<string, unknown>) => void;
   requestPermissionDecisionFromUi: (
@@ -296,6 +304,26 @@ export async function processForwardedPermissionRequests(
         forwardedPermissionLogDetails,
       );
       try {
+        if (deps.events) {
+          const message = formatForwardedPermissionPrompt(request);
+          emitUiPromptEvent(deps.events, {
+            protocolVersion: PERMISSIONS_PROTOCOL_VERSION,
+            requestId: request.id,
+            source: "forwarded_permission",
+            surface: null,
+            value: request.message,
+            agentName: request.requesterAgentName || null,
+            message,
+            toolCallId: null,
+            toolName: null,
+            skillName: null,
+            path: null,
+            command: null,
+            target: request.message,
+            toolInputPreview: null,
+            sessionLabel: null,
+          });
+        }
         decision = await deps.requestPermissionDecisionFromUi(
           ctx.ui,
           "Permission Required (Subagent)",
@@ -359,8 +387,12 @@ export async function confirmPermission(
   message: string,
   deps: PermissionForwardingDeps,
   options?: RequestPermissionOptions,
+  uiPromptEvent?: PermissionUiPromptEvent,
 ): Promise<PermissionPromptDecision> {
   if (ctx.hasUI) {
+    if (deps.events && uiPromptEvent) {
+      emitUiPromptEvent(deps.events, uiPromptEvent);
+    }
     return deps.requestPermissionDecisionFromUi(
       ctx.ui,
       "Permission Required",

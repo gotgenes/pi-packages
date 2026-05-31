@@ -21,7 +21,7 @@ import type {
   PermissionsRpcReply,
 } from "./permission-events";
 import {
-  emitPromptEvent,
+  emitUiPromptEvent,
   PERMISSIONS_PROTOCOL_VERSION,
   PERMISSIONS_RPC_CHECK_CHANNEL,
   PERMISSIONS_RPC_PROMPT_CHANNEL,
@@ -156,9 +156,12 @@ async function handlePromptRpc(
       ? `Permission request${agentName ? ` from ${agentName}` : ""}`
       : "Permission request";
 
-    emitPromptEvent(events, {
+    emitUiPromptEvent(events, {
+      protocolVersion: PERMISSIONS_PROTOCOL_VERSION,
       requestId,
       source: "rpc_prompt",
+      surface: surface ?? null,
+      value: value ?? null,
       agentName: agentName ?? null,
       message,
       toolCallId: null,

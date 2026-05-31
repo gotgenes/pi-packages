@@ -62,6 +62,7 @@ export default function piPermissionSystemExtension(pi: ExtensionAPI): void {
     forwardingDir: runtime.forwardingDir,
     subagentSessionsDir: runtime.subagentSessionsDir,
     registry: subagentRegistry,
+    events: pi.events,
     logger: {
       writeReviewLog: runtime.writeReviewLog.bind(runtime),
       writeDebugLog: runtime.writeDebugLog.bind(runtime),

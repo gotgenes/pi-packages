@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Features
+
+* broadcast `permissions:ui_prompt` before active user-facing permission UI prompts
+
+### Documentation
+
+* document UI prompt broadcasts in the README and cross-extension API reference
+
 ## [9.2.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v9.1.0...pi-permission-system-v9.2.0) (2026-06-02)
 
 

@@ -11,9 +11,9 @@ import type {
 } from "#src/permission-events";
 import {
   PERMISSIONS_PROTOCOL_VERSION,
-  PERMISSIONS_PROMPT_CHANNEL,
   PERMISSIONS_RPC_CHECK_CHANNEL,
   PERMISSIONS_RPC_PROMPT_CHANNEL,
+  PERMISSIONS_UI_PROMPT_CHANNEL,
 } from "#src/permission-events";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -318,7 +318,7 @@ describe("registerPermissionRpcHandlers — permissions:rpc:prompt", () => {
     }
   });
 
-  it("emits a prompt broadcast before awaiting the UI decision", async () => {
+  it("emits a UI prompt broadcast before awaiting the UI decision", async () => {
     const bus = createEventBus();
     const ctx = makeCtxWithUi();
     const requestUi = vi
@@ -330,7 +330,7 @@ describe("registerPermissionRpcHandlers — permissions:rpc:prompt", () => {
     });
     registerPermissionRpcHandlers(bus, deps);
 
-    const promptPromise = waitForReply(bus, PERMISSIONS_PROMPT_CHANNEL);
+    const promptPromise = waitForReply(bus, PERMISSIONS_UI_PROMPT_CHANNEL);
     const replyPromise = waitForReply(
       bus,
       `${PERMISSIONS_RPC_PROMPT_CHANNEL}:reply:req-prompt-broadcast`,
@@ -345,8 +345,11 @@ describe("registerPermissionRpcHandlers — permissions:rpc:prompt", () => {
     });
 
     await expect(promptPromise).resolves.toEqual({
+      protocolVersion: PERMISSIONS_PROTOCOL_VERSION,
       requestId: "req-prompt-broadcast",
       source: "rpc_prompt",
+      surface: "bash",
+      value: "git push",
       agentName: "Worker",
       message: "Allow git push?",
       toolCallId: null,

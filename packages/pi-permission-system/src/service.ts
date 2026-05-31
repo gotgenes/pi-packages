@@ -15,6 +15,25 @@ import type { ToolInputFormatter } from "./tool-input-formatter-registry";
 import type { PermissionCheckResult, PermissionState } from "./types";
 
 export type { PermissionCheckResult, PermissionState, ToolInputFormatter };
+export {
+  PERMISSIONS_DECISION_CHANNEL,
+  PERMISSIONS_PROTOCOL_VERSION,
+  PERMISSIONS_READY_CHANNEL,
+  PERMISSIONS_RPC_CHECK_CHANNEL,
+  PERMISSIONS_RPC_PROMPT_CHANNEL,
+  PERMISSIONS_UI_PROMPT_CHANNEL,
+} from "./permission-events";
+export type {
+  PermissionDecisionEvent,
+  PermissionsCheckReplyData,
+  PermissionsCheckRequest,
+  PermissionsPromptReplyData,
+  PermissionsPromptRequest,
+  PermissionsReadyEvent,
+  PermissionsRpcReply,
+  PermissionUiPromptEvent,
+  PermissionUiPromptSource,
+} from "./permission-events";
 
 /** Process-global key for the service slot. */
 const SERVICE_KEY = Symbol.for("@gotgenes/pi-permission-system:service");
