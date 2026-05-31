@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.2.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v8.1.0...pi-permission-system-v8.2.0) (2026-05-31)
+
+
+### Features
+
+* add SessionApproval value object and SessionRules.record ([8f98d92](https://github.com/gotgenes/pi-packages/commit/8f98d9223a424b0993d51c2d9106e7d01c6819d7))
+* centralize decision-event construction in buildDecisionEvent ([19c2c83](https://github.com/gotgenes/pi-packages/commit/19c2c837b1907a4c302105ee86715533477247d4))
+
 ## [8.1.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v8.0.0...pi-permission-system-v8.1.0) (2026-05-31)
 
 
