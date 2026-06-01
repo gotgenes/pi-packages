@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.3.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v8.3.0...pi-permission-system-v8.3.1) (2026-06-01)
+
+
+### Bug Fixes
+
+* add process-global SubagentSessionRegistry accessor ([#296](https://github.com/gotgenes/pi-packages/issues/296)) ([d3fd3b0](https://github.com/gotgenes/pi-packages/commit/d3fd3b04223b2d276873094ad8c14f239654b8c8))
+* share SubagentSessionRegistry across parent and child sessions ([#296](https://github.com/gotgenes/pi-packages/issues/296)) ([fed676a](https://github.com/gotgenes/pi-packages/commit/fed676aaa485abe8db158e522ba898705f3dff94))
+
+
+### Documentation
+
+* explain process-global subagent registry across session buses ([#296](https://github.com/gotgenes/pi-packages/issues/296)) ([1804dbb](https://github.com/gotgenes/pi-packages/commit/1804dbbb766d7b7fbc0e49da877f3238f5c3e8dc))
+* use ADR-NNNN with links docs-wide ([c6b6431](https://github.com/gotgenes/pi-packages/commit/c6b6431c004f324931f23be46cf2e47e8fdac919))
+
 ## [8.3.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v8.2.1...pi-permission-system-v8.3.0) (2026-06-01)
 
 

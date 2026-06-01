@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-worktrees-v0.2.0...pi-subagents-worktrees-v0.2.1) (2026-06-01)
+
+
+### Documentation
+
+* use ADR-NNNN with links docs-wide ([c6b6431](https://github.com/gotgenes/pi-packages/commit/c6b6431c004f324931f23be46cf2e47e8fdac919))
+
 ## [0.2.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-worktrees-v0.1.0...pi-subagents-worktrees-v0.2.0) (2026-05-29)
 
 
