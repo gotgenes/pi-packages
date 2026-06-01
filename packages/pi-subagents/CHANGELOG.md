@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [14.0.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v13.2.2...pi-subagents-v14.0.0) (2026-06-01)
+
+
+### ⚠ BREAKING CHANGES
+
+* **pi-subagents:** the subagents:child:session-created payload no longer includes sessionDir or agentName; it now carries sessionId (string) and parentSessionId (optional string). The subagents:child:disposed payload no longer includes sessionDir; it now carries sessionId (string). External subscribers reading sessionDir or agentName from these two events must update to use sessionId instead.
+
+### Bug Fixes
+
+* **pi-subagents:** carry child session id on session-created/disposed lifecycle events ([af94672](https://github.com/gotgenes/pi-packages/commit/af946723df7a4c7b2e65aa2e732085abb0019c7e))
+
 ## [13.2.2](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v13.2.1...pi-subagents-v13.2.2) (2026-06-01)
 
 

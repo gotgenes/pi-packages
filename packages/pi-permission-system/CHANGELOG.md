@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.3.2](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v8.3.1...pi-permission-system-v8.3.2) (2026-06-01)
+
+
+### Bug Fixes
+
+* **pi-permission-system:** key subagent registry by session id and drop vestigial agentName ([d299c54](https://github.com/gotgenes/pi-packages/commit/d299c5421f41ab0829fb83fcf4e030d1c7af6d56))
+* **pi-permission-system:** resolve subagent detection and forwarding target by session id ([0f7e079](https://github.com/gotgenes/pi-packages/commit/0f7e0795b911797e645f4d44c42bb314bf0cb103))
+
+
+### Documentation
+
+* **retro:** add retro notes for issue [#296](https://github.com/gotgenes/pi-packages/issues/296) ([75743ab](https://github.com/gotgenes/pi-packages/commit/75743abe92604de142ff6e77c9c0fbc44266e12a))
+
 ## [8.3.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v8.3.0...pi-permission-system-v8.3.1) (2026-06-01)
 
 
