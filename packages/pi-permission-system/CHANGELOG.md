@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.3.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v8.2.1...pi-permission-system-v8.3.0) (2026-06-01)
+
+
+### Features
+
+* add built-in MCP input summarizer ([#283](https://github.com/gotgenes/pi-packages/issues/283)) ([2d47e36](https://github.com/gotgenes/pi-packages/commit/2d47e360b475c72c76026ea5ea4ebf6446b58c3e))
+* add ToolInputFormatterRegistry ([#283](https://github.com/gotgenes/pi-packages/issues/283)) ([c2c2b3d](https://github.com/gotgenes/pi-packages/commit/c2c2b3d64664b03cf6715e630e0bb59c4d1b650c))
+* consult custom formatter registry in ToolPreviewFormatter ([#283](https://github.com/gotgenes/pi-packages/issues/283)) ([9a0d756](https://github.com/gotgenes/pi-packages/commit/9a0d75600f7aa364c06bee7c0419c64d9a5325e9))
+* expose registerToolInputFormatter on PermissionsService ([#283](https://github.com/gotgenes/pi-packages/issues/283)) ([2287484](https://github.com/gotgenes/pi-packages/commit/2287484e24392fffac37962e41ad985446e75d2d))
+
+
+### Documentation
+
+* add authoring guide for tool input formatters ([#283](https://github.com/gotgenes/pi-packages/issues/283)) ([6d154a1](https://github.com/gotgenes/pi-packages/commit/6d154a14a7a1f26ded4f1d77d50b52d200b70a27))
+* document tool input formatter seam ([#283](https://github.com/gotgenes/pi-packages/issues/283)) ([2fc9ff1](https://github.com/gotgenes/pi-packages/commit/2fc9ff1df97341b8825ef13c99a3ffd651dcd8e0))
+
 ## [8.2.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v8.2.0...pi-permission-system-v8.2.1) (2026-05-31)
 
 
