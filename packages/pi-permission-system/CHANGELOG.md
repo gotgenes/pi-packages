@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [9.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v8.3.2...pi-permission-system-v9.0.0) (2026-06-01)
+
+
+### ⚠ BREAKING CHANGES
+
+* unpublishPermissionsService() now requires the service to remove as its sole argument. The package's public export is service.ts, so this changes the published API surface.
+
+### Features
+
+* scope service teardown to the publishing instance ([#302](https://github.com/gotgenes/pi-packages/issues/302)) ([72180e9](https://github.com/gotgenes/pi-packages/commit/72180e906f7370c842cd5e31a11726c2971fc988))
+
+
+### Bug Fixes
+
+* keep the parent's service published across child shutdown ([#302](https://github.com/gotgenes/pi-packages/issues/302)) ([300214c](https://github.com/gotgenes/pi-packages/commit/300214ca21d985bfba7231f261c022c394d8bf5a))
+
+
+### Documentation
+
+* document session_start service publication and ready timing ([#302](https://github.com/gotgenes/pi-packages/issues/302)) ([a894fb8](https://github.com/gotgenes/pi-packages/commit/a894fb8d5c2bbc7cd9d33769859d172c5a7dbb73))
+
 ## [8.3.2](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v8.3.1...pi-permission-system-v8.3.2) (2026-06-01)
 
 
