@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [9.0.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v9.0.0...pi-permission-system-v9.0.1) (2026-06-01)
+
+
+### Bug Fixes
+
+* enumerate top-level bash commands in BashProgram ([cdb41e1](https://github.com/gotgenes/pi-packages/commit/cdb41e1ed03ad2219f5ba0a3ec79130bd39f3686))
+* evaluate each bash sub-command with most-restrictive precedence ([85e48b2](https://github.com/gotgenes/pi-packages/commit/85e48b258dad84756a05fe11615d6d5de68a8659))
+* gate bash command chains per sub-command ([#301](https://github.com/gotgenes/pi-packages/issues/301)) ([3f80097](https://github.com/gotgenes/pi-packages/commit/3f800977a909b2efc2a21ffefe933804b1c0eafd))
+
+
+### Documentation
+
+* document per-sub-command bash chain evaluation ([#301](https://github.com/gotgenes/pi-packages/issues/301)) ([e195a70](https://github.com/gotgenes/pi-packages/commit/e195a706d192f3acaeb232c6ed580890ac3c0652))
+
 ## [9.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v8.3.2...pi-permission-system-v9.0.0) (2026-06-01)
 
 
