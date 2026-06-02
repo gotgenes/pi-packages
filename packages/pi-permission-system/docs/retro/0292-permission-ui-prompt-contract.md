@@ -66,4 +66,36 @@ After commit 5 — full verification (`check`, `lint`, full `test`, `pnpm fallow
 - `tsc` did not flag the test breakages in `permission-prompter.test.ts` / `permission-event-rpc.test.ts` (loose mock-call and `waitForReply` typing); they failed only at runtime.
   Always run the affected test files, not just `check`, after a payload-shape change.
 - The branch has no upstream, so the `/tdd-plan` `git pull --ff-only` step fails by design — proceed (baseline was freshly rebased onto `main`).
+
+## Stage: Implementation — TDD (2026-06-02T12:36:31Z) — COMPLETED
+
+### Session summary
+
+Resumed from the paused session and landed the remaining three implementation commits plus two docs commits and one CHANGELOG cleanup.
+Forwarded non-degradation (plan steps 5+6) and best-effort emits (D7) close out all nine plan steps.
+Test count went 1749 → 1753 (+4: two for the forwarded display-field relay, two for best-effort `ready`/`decision` emits).
+Full verification is green (`check`, `lint`, `pnpm -r run test` = 3264 tests, `pnpm fallow dead-code`, no lockfile drift), and the pre-completion reviewer returned PASS.
+
+### Commits landed this session
+
+1. `197deb56` `feat`: preserve display fields for forwarded prompts (plan steps 5+6, D3/D4).
+   `ForwardedPermissionRequest` gains optional `source`/`surface`/`value`; new `ForwardedPromptDisplay` relays them through `confirmPermission` → `waitForForwardedPermissionApproval` as one param; `PermissionPrompter.prompt` builds the event once and passes its display fields onward; `readForwardedPermissionRequest` does a tolerant read (`asUiPromptSource` / `asNullableDisplayString`) defaulting `source` to `"tool_call"` on absence.
+2. `601c7860` `feat`: make `ready` and `decision` broadcasts best-effort (D7) — wrapped `emitReadyEvent` and `emitDecisionEvent` in the same try/catch `emitUiPromptEvent` already used.
+3. `0d5c33ec` `docs`: lean `ui_prompt` contract in `docs/cross-extension-api.md` (lean field table, `ForwardedPromptContext`, no-`protocolVersion` stability note, defensive-read example, best-effort note, empty `PermissionsReadyEvent`).
+4. `b61d86c4` `docs`: update `docs/architecture/permission-prompter.md` data-flow for the broadcast emit + display-field relay.
+5. `aa921d4c` `fix`: drop the manual `## Unreleased` section from `CHANGELOG.md` (see Observations).
+
+### Observations
+
+- The reader (`readForwardedPermissionRequest`) reconstructs only known fields, so the persisted `source`/`surface`/`value` were silently dropped until I added them to the read path — the write side alone was not enough.
+  This was the one non-obvious step: a request shape change needs both the writer and the reconstructing reader updated.
+- Deviation from the plan's "bundle `message` too" (D6): kept `message` positional and added exactly one new `forwarded?: ForwardedPromptDisplay` param to `confirmPermission` (now 5 params).
+  This matches the worked-out design in the paused stage notes.
+  The pre-completion reviewer flagged the 5-param boundary as a non-blocking WARN — revisit only if a sixth param appears.
+- `README.md` needed no change — its feature bullet already read "active user-facing permission UI".
+- The inherited #292 commit (`e71b0d86`, moekyo) had added a manual `## Unreleased` section to `CHANGELOG.md`, which release-please owns.
+  User approved removing it in a new `fix:` commit (preserves moekyo's authorship on the original commit; release-please regenerates from the conventional commits).
+- Pre-completion reviewer: **PASS** — ready for `/ship-issue`.
+  One non-blocking WARN (`confirmPermission` 5 params, plan-documented).
+- Tolerant-source narrowing avoided casts via `find` over an `as const satisfies readonly PermissionUiPromptSource[]` array, sidestepping the biome/eslint assertion loop noted in AGENTS.md.
 </content>
