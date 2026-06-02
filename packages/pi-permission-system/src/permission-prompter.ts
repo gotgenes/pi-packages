@@ -10,10 +10,10 @@ import type {
   RequestPermissionOptions,
 } from "./permission-dialog";
 import {
-  PERMISSIONS_PROTOCOL_VERSION,
+  emitUiPromptEvent,
   type PermissionEventBus,
-  type PermissionUiPromptEvent,
 } from "./permission-events";
+import { buildDirectUiPrompt } from "./permission-ui-prompt";
 import type { SubagentSessionRegistry } from "./subagent-registry";
 import { shouldAutoApprovePermissionState } from "./yolo-mode";
 
@@ -34,46 +34,6 @@ export interface PromptPermissionDetails {
   toolInputPreview?: string;
   /** Override label for the "for this session" dialog option. */
   sessionLabel?: string;
-}
-
-function promptSurface(details: PromptPermissionDetails): string | null {
-  if (details.source === "skill_input" || details.source === "skill_read") {
-    return "skill";
-  }
-  return details.toolName ?? null;
-}
-
-function promptValue(details: PromptPermissionDetails): string | null {
-  return (
-    details.command ??
-    details.path ??
-    details.target ??
-    details.skillName ??
-    details.toolName ??
-    null
-  );
-}
-
-function buildUiPromptEvent(
-  details: PromptPermissionDetails,
-): PermissionUiPromptEvent {
-  return {
-    protocolVersion: PERMISSIONS_PROTOCOL_VERSION,
-    requestId: details.requestId,
-    source: details.source,
-    surface: promptSurface(details),
-    value: promptValue(details),
-    agentName: details.agentName,
-    message: details.message,
-    toolCallId: details.toolCallId ?? null,
-    toolName: details.toolName ?? null,
-    skillName: details.skillName ?? null,
-    path: details.path ?? null,
-    command: details.command ?? null,
-    target: details.target ?? null,
-    toolInputPreview: details.toolInputPreview ?? null,
-    sessionLabel: details.sessionLabel ?? null,
-  };
 }
 
 /** Mockable contract for permission prompting. */
@@ -138,12 +98,18 @@ export class PermissionPrompter implements PermissionPrompterApi {
 
     this.writeReviewEntry("permission_request.waiting", details);
 
+    // Emit the UI-prompt broadcast only when this session shows the dialog
+    // itself. Non-UI (forwarded) prompts are emitted by the parent that
+    // actually renders the forwarded dialog, not here.
+    if (ctx.hasUI) {
+      emitUiPromptEvent(this.deps.events, buildDirectUiPrompt(details));
+    }
+
     const decision = await confirmPermission(
       ctx,
       details.message,
       this.buildForwardingDeps(),
       details.sessionLabel ? { sessionLabel: details.sessionLabel } : undefined,
-      buildUiPromptEvent(details),
     );
 
     this.writeReviewEntry(

@@ -7,7 +7,6 @@ import {
   confirmPermission,
   processForwardedPermissionRequests,
 } from "#src/forwarded-permissions/polling";
-import type { PermissionUiPromptEvent } from "#src/permission-events";
 import {
   createPermissionForwardingLocation,
   resolvePermissionForwardingTargetSessionId,
@@ -305,13 +304,16 @@ describe("processForwardedPermissionRequests", () => {
       expect(events.emit).toHaveBeenCalledWith(
         "permissions:ui_prompt",
         expect.objectContaining({
-          protocolVersion: 1,
           requestId: "req-forwarded",
-          source: "forwarded_permission",
+          source: "tool_call",
           surface: null,
-          value: "Allow git push?",
+          value: null,
           agentName: "Explore",
-          target: "Allow git push?",
+          message: expect.stringContaining("Allow git push?"),
+          forwarding: {
+            requesterAgentName: "Explore",
+            requesterSessionId: "child-session",
+          },
         }),
       );
       expect(requestPermissionDecisionFromUi).toHaveBeenCalled();
@@ -380,25 +382,7 @@ describe("processForwardedPermissionRequests", () => {
 });
 
 describe("confirmPermission", () => {
-  const uiPromptEvent: PermissionUiPromptEvent = {
-    protocolVersion: 1,
-    requestId: "req-ui",
-    source: "tool_call",
-    surface: "bash",
-    value: "git push",
-    agentName: null,
-    message: "Allow git push?",
-    toolCallId: "call-ui",
-    toolName: "bash",
-    skillName: null,
-    path: null,
-    command: "git push",
-    target: null,
-    toolInputPreview: null,
-    sessionLabel: null,
-  };
-
-  test("emits a UI prompt event only when the active UI prompt path is used", async () => {
+  test("shows the UI dialog but does not emit a UI prompt event (the prompter does)", async () => {
     const events = {
       emit: vi.fn(),
       on: vi.fn().mockReturnValue(() => undefined),
@@ -422,18 +406,16 @@ describe("confirmPermission", () => {
         requestPermissionDecisionFromUi,
         shouldAutoApprove: () => false,
       },
-      undefined,
-      uiPromptEvent,
     );
 
-    expect(events.emit).toHaveBeenCalledWith(
-      "permissions:ui_prompt",
-      uiPromptEvent,
-    );
     expect(requestPermissionDecisionFromUi).toHaveBeenCalled();
+    expect(events.emit).not.toHaveBeenCalledWith(
+      "permissions:ui_prompt",
+      expect.anything(),
+    );
   });
 
-  test("does not emit a UI prompt event when no active UI prompt exists", async () => {
+  test("does not show a dialog or emit when there is no active UI", async () => {
     const events = {
       emit: vi.fn(),
       on: vi.fn().mockReturnValue(() => undefined),
@@ -457,8 +439,6 @@ describe("confirmPermission", () => {
         requestPermissionDecisionFromUi,
         shouldAutoApprove: () => false,
       },
-      undefined,
-      uiPromptEvent,
     );
 
     expect(events.emit).not.toHaveBeenCalledWith(

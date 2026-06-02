@@ -78,21 +78,13 @@ describe("emitUiPromptEvent", () => {
     overrides: Partial<PermissionUiPromptEvent> = {},
   ): PermissionUiPromptEvent {
     return {
-      protocolVersion: PERMISSIONS_PROTOCOL_VERSION,
       requestId: "req-123",
       source: "tool_call",
       surface: "bash",
       value: "git status",
       agentName: "Explore",
       message: "Allow git status?",
-      toolCallId: "call-123",
-      toolName: "bash",
-      skillName: null,
-      path: null,
-      command: "git status",
-      target: null,
-      toolInputPreview: null,
-      sessionLabel: null,
+      forwarding: null,
       ...overrides,
     };
   }
@@ -106,16 +98,11 @@ describe("emitUiPromptEvent", () => {
 
   it("forwards the full payload unchanged", () => {
     const bus = makeEventBus();
-    const event = makeUiPromptEvent({ sessionLabel: "Allow for session" });
+    const event = makeUiPromptEvent({
+      forwarding: { requesterAgentName: "Worker", requesterSessionId: "child" },
+    });
     emitUiPromptEvent(bus, event);
     expect(bus.emit.mock.calls[0][1]).toEqual(event);
-  });
-
-  it("includes the protocol version in UI prompt events", () => {
-    const bus = makeEventBus();
-    emitUiPromptEvent(bus, makeUiPromptEvent());
-    const payload = bus.emit.mock.calls[0][1] as PermissionUiPromptEvent;
-    expect(payload.protocolVersion).toBe(PERMISSIONS_PROTOCOL_VERSION);
   });
 
   it("swallows event bus errors because UI prompt broadcasts are observational", () => {

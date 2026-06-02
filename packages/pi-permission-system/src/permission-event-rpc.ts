@@ -27,6 +27,7 @@ import {
   PERMISSIONS_RPC_PROMPT_CHANNEL,
 } from "./permission-events";
 import type { PermissionManager } from "./permission-manager";
+import { buildRpcUiPrompt } from "./permission-ui-prompt";
 import type { Rule } from "./rule";
 
 /** Dependencies injected into the RPC handler registry. */
@@ -156,23 +157,10 @@ async function handlePromptRpc(
       ? `Permission request${agentName ? ` from ${agentName}` : ""}`
       : "Permission request";
 
-    emitUiPromptEvent(events, {
-      protocolVersion: PERMISSIONS_PROTOCOL_VERSION,
-      requestId,
-      source: "rpc_prompt",
-      surface: surface ?? null,
-      value: value ?? null,
-      agentName: agentName ?? null,
-      message,
-      toolCallId: null,
-      toolName: null,
-      skillName: null,
-      path: null,
-      command: null,
-      target: value ?? null,
-      toolInputPreview: null,
-      sessionLabel: sessionLabel ?? null,
-    });
+    emitUiPromptEvent(
+      events,
+      buildRpcUiPrompt({ requestId, surface, value, agentName, message }),
+    );
 
     const decision = await deps.requestPermissionDecisionFromUi(
       ctx.ui,

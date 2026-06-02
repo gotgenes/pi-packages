@@ -345,21 +345,13 @@ describe("registerPermissionRpcHandlers — permissions:rpc:prompt", () => {
     });
 
     await expect(promptPromise).resolves.toEqual({
-      protocolVersion: PERMISSIONS_PROTOCOL_VERSION,
       requestId: "req-prompt-broadcast",
       source: "rpc_prompt",
       surface: "bash",
       value: "git push",
       agentName: "Worker",
       message: "Allow git push?",
-      toolCallId: null,
-      toolName: null,
-      skillName: null,
-      path: null,
-      command: null,
-      target: "git push",
-      toolInputPreview: null,
-      sessionLabel: "Allow git *",
+      forwarding: null,
     });
     await replyPromise;
   });

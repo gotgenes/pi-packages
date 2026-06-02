@@ -15,6 +15,7 @@ import type { ToolInputFormatter } from "./tool-input-formatter-registry";
 import type { PermissionCheckResult, PermissionState } from "./types";
 
 export type {
+  ForwardedPromptContext,
   PermissionDecisionEvent,
   PermissionsPromptReplyData,
   PermissionsPromptRequest,

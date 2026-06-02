@@ -75,45 +75,52 @@ export type PermissionsReadyEvent = Record<string, never>;
 
 // ── permissions:ui_prompt ──────────────────────────────────────────────────
 
-/** Payload emitted on `permissions:ui_prompt`. */
+/**
+ * Origin of a UI prompt.
+ *
+ * Forwarding is orthogonal to origin: a forwarded subagent prompt keeps its
+ * original source and is identified by a non-null `forwarding` field, not by a
+ * dedicated source value.
+ */
 export type PermissionUiPromptSource =
   | "tool_call"
   | "skill_input"
   | "skill_read"
-  | "rpc_prompt"
-  | "forwarded_permission";
+  | "rpc_prompt";
 
+/** Forwarding context, present only when a prompt was forwarded from a non-UI subagent. */
+export interface ForwardedPromptContext {
+  /** Requesting subagent's display name, when known. */
+  requesterAgentName: string | null;
+  /** Requesting subagent's session id, when known. */
+  requesterSessionId: string | null;
+}
+
+/**
+ * Payload emitted on `permissions:ui_prompt`, immediately before the active
+ * user-facing permission UI is shown.
+ *
+ * Lean by design: `surface`/`value` are the normalized display projection a
+ * notification consumer reads; `source` is the origin; `forwarding` is non-null
+ * only for forwarded subagent prompts. There is no `protocolVersion` — the
+ * published types plus package semver define the broadcast contract, and
+ * consumers should read defensively.
+ */
 export interface PermissionUiPromptEvent {
-  /** Protocol version for the cross-extension event contract. */
-  protocolVersion: number;
   /** Unique ID for the permission request being prompted. */
   requestId: string;
-  /** Prompt source: tool call, skill input/read, RPC, forwarded subagent request, etc. */
+  /** Prompt origin. */
   source: PermissionUiPromptSource;
-  /** Permission surface being evaluated, when known. */
+  /** Normalized display surface (e.g. "bash", "skill"), when known. */
   surface: string | null;
-  /** Value being evaluated: command, path, skill name, tool target, etc. */
+  /** Normalized display value (command, path, skill name, etc.), when known. */
   value: string | null;
   /** Agent name (when known). */
   agentName: string | null;
   /** Message displayed to the user. */
   message: string;
-  /** Tool call ID (when the prompt is for a tool call). */
-  toolCallId: string | null;
-  /** Tool name (when the prompt is for a tool call). */
-  toolName: string | null;
-  /** Skill name (when the prompt is for a skill request). */
-  skillName: string | null;
-  /** Path being evaluated (when available). */
-  path: string | null;
-  /** Command being evaluated (when available). */
-  command: string | null;
-  /** Target being evaluated (when available). */
-  target: string | null;
-  /** Tool input preview shown in logs/prompts (when available). */
-  toolInputPreview: string | null;
-  /** Override label for the "for this session" dialog option. */
-  sessionLabel: string | null;
+  /** Forwarding context, or null for a direct prompt. */
+  forwarding: ForwardedPromptContext | null;
 }
 
 // ── permissions:decision ───────────────────────────────────────────────────

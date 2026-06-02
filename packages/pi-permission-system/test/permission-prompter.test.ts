@@ -164,7 +164,7 @@ describe("PermissionPrompter", () => {
       );
     });
 
-    it("passes a UI prompt event with normalized surface and value to confirmPermission", async () => {
+    it("emits a UI prompt event with normalized surface and value when the session has UI", async () => {
       const events = {
         emit: vi.fn(),
         on: vi.fn().mockReturnValue(() => undefined),
@@ -185,19 +185,15 @@ describe("PermissionPrompter", () => {
         }),
       );
 
-      expect(events.emit).not.toHaveBeenCalled();
-      expect(mockConfirmPermission.mock.calls[0][4]).toEqual(
-        expect.objectContaining({
-          protocolVersion: 1,
-          requestId: "req-123",
-          source: "tool_call",
-          surface: "bash",
-          value: "git push",
-          toolName: "bash",
-          command: "git push",
-          toolInputPreview: "git push",
-        }),
-      );
+      expect(events.emit).toHaveBeenCalledWith("permissions:ui_prompt", {
+        requestId: "req-123",
+        source: "tool_call",
+        surface: "bash",
+        value: "git push",
+        agentName: "test-agent",
+        message: "Allow read?",
+        forwarding: null,
+      });
     });
 
     it("normalizes skill UI prompt events to the skill surface", async () => {
@@ -221,15 +217,34 @@ describe("PermissionPrompter", () => {
         }),
       );
 
-      expect(events.emit).not.toHaveBeenCalled();
-      expect(mockConfirmPermission.mock.calls[0][4]).toEqual(
-        expect.objectContaining({
-          protocolVersion: 1,
-          source: "skill_input",
-          surface: "skill",
-          value: "deploy-helper",
-          skillName: "deploy-helper",
-        }),
+      expect(events.emit).toHaveBeenCalledWith("permissions:ui_prompt", {
+        requestId: "req-123",
+        source: "skill_input",
+        surface: "skill",
+        value: "deploy-helper",
+        agentName: "test-agent",
+        message: "Allow read?",
+        forwarding: null,
+      });
+    });
+
+    it("does not emit a UI prompt event when the session has no UI", async () => {
+      const events = {
+        emit: vi.fn(),
+        on: vi.fn().mockReturnValue(() => undefined),
+      };
+      mockConfirmPermission.mockResolvedValue({
+        approved: true,
+        state: "approved",
+      });
+      const deps = makeDeps({ events });
+      const prompter = new PermissionPrompter(deps);
+
+      await prompter.prompt(makeCtx(false), makeDetails());
+
+      expect(events.emit).not.toHaveBeenCalledWith(
+        "permissions:ui_prompt",
+        expect.anything(),
       );
     });
 
@@ -324,7 +339,6 @@ describe("PermissionPrompter", () => {
         expect.any(String),
         expect.anything(),
         { sessionLabel: "Yes, for 'read' tool" },
-        expect.objectContaining({ sessionLabel: "Yes, for 'read' tool" }),
       );
     });
 
@@ -343,7 +357,6 @@ describe("PermissionPrompter", () => {
         expect.any(String),
         expect.anything(),
         undefined,
-        expect.objectContaining({ sessionLabel: null }),
       );
     });
 
@@ -363,7 +376,6 @@ describe("PermissionPrompter", () => {
         "Allow bash: git status?",
         expect.anything(),
         undefined,
-        expect.objectContaining({ message: "Allow bash: git status?" }),
       );
     });
   });
