@@ -242,7 +242,11 @@ The extension also emits events on Pi's `pi.events` bus so other extensions can 
 ## Stability Guarantee
 
 Fields may be added to any payload, but existing fields will not be removed or renamed without a semver-major version bump.
-The protocol version constant is exported from `src/permission-events.ts` and embedded in every RPC reply.
+The broadcast contract is defined by the published TypeScript types plus package semver — broadcast payloads (`permissions:ready`, `permissions:ui_prompt`, `permissions:decision`) carry no `protocolVersion`.
+The `PERMISSIONS_PROTOCOL_VERSION` constant is exported from `src/permission-events.ts` and embedded only in the RPC reply envelope, where per-call request/reply negotiation is load-bearing.
+Consumers should read broadcast payloads defensively (field-presence checks) rather than version-gating — that is robust to any shape skew between independently-versioned sibling extensions.
+
+All three broadcasts are best-effort: a throwing listener cannot block permission handling, session startup, or gate resolution.
 
 ## Channel Reference
 
@@ -265,34 +269,50 @@ This event is for integrations such as notification extensions that should alert
 It is not a generic "permission request entered waiting state" event, and it does not imply the prompt will be approved.
 Policy decisions that resolve without an active UI prompt, such as `policy_allow`, `policy_deny`, `session_approved`, `infrastructure_auto_allowed`, or `auto_approved`, do not emit this event.
 Non-UI child sessions also do not emit this event when they create a forwarded permission request; the parent UI session emits it immediately before showing the forwarded permission dialog.
+Forwarded prompts are not degraded: the parent emits the child's original `source` and the same `surface`/`value` display projection, plus a populated `forwarding` context identifying the requesting subagent.
+
+The payload is lean by design — `surface`/`value` are the normalized display projection a notification consumer reads, not a mirror of the internal review log.
+Read defensively rather than version-gating: broadcast payloads carry no `protocolVersion`.
 
 ```typescript
+import type { PermissionUiPromptEvent } from "@gotgenes/pi-permission-system";
+
 pi.events.on("permissions:ui_prompt", (raw) => {
-  const event = raw as import("@gotgenes/pi-permission-system").PermissionUiPromptEvent;
-  console.log(event.surface, event.value, event.message);
+  const event = raw as PermissionUiPromptEvent;
+  // Defensive read: tolerate any shape skew between sibling extensions.
+  if (typeof event.value !== "string" && typeof event.message !== "string") {
+    return;
+  }
+  notify(event.surface, event.value, event.message);
   // e.g. "bash" "git push" "Allow git push?"
 });
 ```
 
 ### Payload Fields
 
-| Field              | Type             | Description                                                                                                      |
-| ------------------ | ---------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `protocolVersion`  | `number`         | Cross-extension event protocol version                                                                           |
-| `requestId`        | `string`         | Unique ID for the permission request being prompted                                                              |
-| `source`           | `PermissionUiPromptSource` | Prompt source: `"tool_call"`, `"skill_input"`, `"skill_read"`, `"rpc_prompt"`, or `"forwarded_permission"` |
-| `surface`          | `string \| null` | Permission surface being evaluated, when known                                                                   |
-| `value`            | `string \| null` | Value being evaluated: command, path, skill name, tool target, etc.                                              |
-| `agentName`        | `string \| null` | Active/requesting agent name when known                                                                          |
-| `message`          | `string`         | Message displayed in the permission prompt                                                                       |
-| `toolCallId`       | `string \| null` | Tool call ID when the prompt is for a tool call                                                                  |
-| `toolName`         | `string \| null` | Tool name when the prompt is for a tool call                                                                     |
-| `skillName`        | `string \| null` | Skill name when the prompt is for a skill request                                                                |
-| `path`             | `string \| null` | Path being evaluated, when available                                                                             |
-| `command`          | `string \| null` | Command being evaluated, when available                                                                          |
-| `target`           | `string \| null` | Generic target being evaluated, when available                                                                   |
-| `toolInputPreview` | `string \| null` | Tool input preview shown in logs/prompts, when available                                                         |
-| `sessionLabel`     | `string \| null` | Override label for the "for this session" dialog option                                                          |
+| Field        | Type                             | Description                                                                      |
+| ------------ | -------------------------------- | -------------------------------------------------------------------------------- |
+| `requestId`  | `string`                         | Unique ID for the permission request being prompted                              |
+| `source`     | `PermissionUiPromptSource`       | Prompt origin: `"tool_call"`, `"skill_input"`, `"skill_read"`, or `"rpc_prompt"` |
+| `surface`    | `string \| null`                 | Normalized display surface (e.g. `"bash"`, `"skill"`), when known                |
+| `value`      | `string \| null`                 | Normalized display value (command, path, skill name, etc.), when known           |
+| `agentName`  | `string \| null`                 | Active/requesting agent name, when known                                         |
+| `message`    | `string`                         | Message displayed in the permission prompt                                       |
+| `forwarding` | `ForwardedPromptContext \| null` | Forwarding context, or `null` for a direct prompt                                |
+
+Forwarding is orthogonal to origin: a forwarded subagent prompt keeps its original `source` and is identified by a non-null `forwarding` field, not by a dedicated source value.
+
+#### `ForwardedPromptContext`
+
+Present only when the prompt was forwarded from a non-UI subagent.
+
+| Field                | Type             | Description                                    |
+| -------------------- | ---------------- | ---------------------------------------------- |
+| `requesterAgentName` | `string \| null` | Requesting subagent's display name, when known |
+| `requesterSessionId` | `string \| null` | Requesting subagent's session id, when known   |
+
+The `surface`/`value` pair is a deliberate display projection that replaces the redundant per-source fields (`command`/`path`/`target`/`skillName`/`toolName`/`toolCallId`/`toolInputPreview`/`sessionLabel`) from earlier drafts — none of which the notification use case reads.
+The stability guarantee is additive, so any can be reintroduced in a later minor when a concrete consumer needs them.
 
 ---
 
@@ -444,9 +464,17 @@ The extension emits `permissions:ready` at `session_start`, right after the serv
 It fires once per `session_start` (including `/reload`).
 Consumers that start after the extension can check via a ping-style RPC check — the `permissions:rpc:check` handler is active as long as the extension is loaded.
 
+The payload is intentionally empty (`Record<string, never>`): the channel is a pure readiness signal.
+It carries no `protocolVersion` — version negotiation lives in the RPC reply envelope, and the broadcast contract is defined by the published types plus package semver.
+
 ```typescript
-pi.events.on("permissions:ready", (raw) => {
-  const event = raw as import("@gotgenes/pi-permission-system").PermissionsReadyEvent;
-  console.log("Permission system loaded, protocol version:", event.protocolVersion);
+pi.events.on("permissions:ready", () => {
+  void (async () => {
+    const { getPermissionsService } = await import(
+      "@gotgenes/pi-permission-system"
+    );
+    const permissions = getPermissionsService();
+    // The service is published just before this fires — resolve it now.
+  })();
 });
 ```
