@@ -222,7 +222,12 @@ export interface PermissionsPromptReplyData {
  */
 export function emitReadyEvent(events: PermissionEventBus): void {
   const payload: PermissionsReadyEvent = {};
-  events.emit(PERMISSIONS_READY_CHANNEL, payload);
+  try {
+    events.emit(PERMISSIONS_READY_CHANNEL, payload);
+  } catch {
+    // Broadcasts are best-effort. A throwing listener must not block the
+    // permission system from completing session startup.
+  }
 }
 
 /**
@@ -249,5 +254,10 @@ export function emitDecisionEvent(
   events: PermissionEventBus,
   event: PermissionDecisionEvent,
 ): void {
-  events.emit(PERMISSIONS_DECISION_CHANNEL, event);
+  try {
+    events.emit(PERMISSIONS_DECISION_CHANNEL, event);
+  } catch {
+    // Broadcasts are best-effort. A throwing listener must not block the
+    // permission gate from resolving.
+  }
 }

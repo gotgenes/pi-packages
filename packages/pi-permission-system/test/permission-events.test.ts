@@ -69,6 +69,17 @@ describe("emitReadyEvent", () => {
     const payload = bus.emit.mock.calls[0][1] as PermissionsReadyEvent;
     expect(payload).not.toHaveProperty("protocolVersion");
   });
+
+  it("swallows event bus errors because broadcasts are best-effort", () => {
+    const bus = {
+      emit: vi.fn(() => {
+        throw new Error("listener failed");
+      }),
+      on: vi.fn().mockReturnValue(() => undefined),
+    };
+
+    expect(() => emitReadyEvent(bus)).not.toThrow();
+  });
 });
 
 // ── emitUiPromptEvent ──────────────────────────────────────────────────────
@@ -190,6 +201,17 @@ describe("emitDecisionEvent", () => {
     expect(payload.origin).toBeNull();
     expect(payload.agentName).toBeNull();
     expect(payload.matchedPattern).toBeNull();
+  });
+
+  it("swallows event bus errors because broadcasts are best-effort", () => {
+    const bus = {
+      emit: vi.fn(() => {
+        throw new Error("listener failed");
+      }),
+      on: vi.fn().mockReturnValue(() => undefined),
+    };
+
+    expect(() => emitDecisionEvent(bus, makeDecisionEvent())).not.toThrow();
   });
 });
 
