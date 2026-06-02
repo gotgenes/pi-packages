@@ -8,11 +8,15 @@
 
 1. **Yolo-mode check** — if `yoloMode` is enabled in the active config, auto-approve and write a `permission_request.auto_approved` review-log entry without showing any UI.
 2. **Review log — waiting** — write `permission_request.waiting` before any dialog is shown.
-3. **UI/forwarding branch** — delegate to `confirmPermission()` in `forwarded-permissions/polling.ts`, which selects the correct path:
+3. **UI prompt broadcast** — build the `PermissionUiPromptEvent` once via `buildDirectUiPrompt(details)`.
+   When `ctx.hasUI`, emit it on `permissions:ui_prompt` so observers (e.g. notification extensions) know the user must respond.
+   A non-UI session does not emit here — the parent emits from the forwarded path instead.
+4. **UI/forwarding branch** — delegate to `confirmPermission()` in `forwarded-permissions/polling.ts`, which selects the correct path:
    - `ctx.hasUI` → show the interactive dialog via `requestPermissionDecisionFromUi`.
-   - subagent context → write a forwarded-permission request file and poll for the parent session's response.
+   - subagent context → write a forwarded-permission request file (carrying the relayed display fields) and poll for the parent session's response.
    - neither → deny immediately.
-4. **Review log — outcome** — write `permission_request.approved` or `permission_request.denied` with the final decision state and any denial reason.
+   The prompter relays the built event's `source`/`surface`/`value` to `confirmPermission` so a forwarded request persists them and the parent emits a non-degraded event.
+5. **Review log — outcome** — write `permission_request.approved` or `permission_request.denied` with the final decision state and any denial reason.
 
 ## Why a class instead of a free function
 
@@ -38,6 +42,8 @@ interface PermissionPrompterDeps {
   writeReviewLog(event: string, details: Record<string, unknown>): void;
   subagentSessionsDir: string;                   // forwarding path detection
   forwardingDir: string;                         // forwarded-request files
+  events: PermissionEventBus;                     // permissions:ui_prompt broadcast
+  registry?: SubagentSessionRegistry;             // subagent detection + target resolution
   requestPermissionDecisionFromUi(...): Promise<PermissionPromptDecision>;
 }
 ```
