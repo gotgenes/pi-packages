@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [9.1.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v9.0.1...pi-permission-system-v9.1.0) (2026-06-02)
+
+
+### Features
+
+* evaluate nested bash command substitutions and subshells ([#306](https://github.com/gotgenes/pi-packages/issues/306)) ([0e52d64](https://github.com/gotgenes/pi-packages/commit/0e52d645bc2f604b1317781edf48578936e0ae34))
+* surface nested execution context in bash deny and ask messages ([#306](https://github.com/gotgenes/pi-packages/issues/306)) ([9d88543](https://github.com/gotgenes/pi-packages/commit/9d88543c855d16910d71c7e783c451160753c52d))
+
+
+### Documentation
+
+* document nested bash command evaluation ([#306](https://github.com/gotgenes/pi-packages/issues/306)) ([352e206](https://github.com/gotgenes/pi-packages/commit/352e206ce673ba73d57b1a4dbf24a409adf32e70))
+
 ## [9.0.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v9.0.0...pi-permission-system-v9.0.1) (2026-06-01)
 
 
