@@ -64,10 +64,14 @@ export type PermissionsRpcReply<T = void> =
 
 // ── permissions:ready ──────────────────────────────────────────────────────
 
-/** Payload emitted on `permissions:ready`. */
-export interface PermissionsReadyEvent {
-  protocolVersion: number;
-}
+/**
+ * Payload emitted on `permissions:ready`.
+ *
+ * Intentionally empty: the channel is a readiness signal. Version negotiation
+ * lives in the RPC envelope (`PermissionsRpcReply`), not in broadcast payloads —
+ * the published types plus package semver define the broadcast contract.
+ */
+export type PermissionsReadyEvent = Record<string, never>;
 
 // ── permissions:ui_prompt ──────────────────────────────────────────────────
 
@@ -210,9 +214,7 @@ export interface PermissionsPromptReplyData {
  * reacting to ready can immediately resolve `getPermissionsService()`.
  */
 export function emitReadyEvent(events: PermissionEventBus): void {
-  const payload: PermissionsReadyEvent = {
-    protocolVersion: PERMISSIONS_PROTOCOL_VERSION,
-  };
+  const payload: PermissionsReadyEvent = {};
   events.emit(PERMISSIONS_READY_CHANNEL, payload);
 }
 

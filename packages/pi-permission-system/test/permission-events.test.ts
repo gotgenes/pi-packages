@@ -56,20 +56,18 @@ describe("constants", () => {
 // ── emitReadyEvent ─────────────────────────────────────────────────────────
 
 describe("emitReadyEvent", () => {
-  it("emits on the permissions:ready channel with protocol version", () => {
+  it("emits an empty payload on the permissions:ready channel", () => {
     const bus = makeEventBus();
     emitReadyEvent(bus);
     expect(bus.emit).toHaveBeenCalledOnce();
-    expect(bus.emit).toHaveBeenCalledWith("permissions:ready", {
-      protocolVersion: 1,
-    });
+    expect(bus.emit).toHaveBeenCalledWith("permissions:ready", {});
   });
 
-  it("emitted payload satisfies PermissionsReadyEvent shape", () => {
+  it("carries no protocolVersion (version lives in the RPC envelope)", () => {
     const bus = makeEventBus();
     emitReadyEvent(bus);
     const payload = bus.emit.mock.calls[0][1] as PermissionsReadyEvent;
-    expect(typeof payload.protocolVersion).toBe("number");
+    expect(payload).not.toHaveProperty("protocolVersion");
   });
 });
 
@@ -342,7 +340,7 @@ describe("piPermissionSystemExtension ready event wiring", () => {
     rmSync(baseDir, { recursive: true, force: true });
   });
 
-  it("emits permissions:ready with protocolVersion at session_start", async () => {
+  it("emits permissions:ready at session_start", async () => {
     const emitSpy = vi.fn();
     const handlers = new Map<
       string,
@@ -387,8 +385,6 @@ describe("piPermissionSystemExtension ready event wiring", () => {
       ([channel]) => channel === PERMISSIONS_READY_CHANNEL,
     );
     expect(readyCalls).toHaveLength(1);
-    expect(readyCalls[0][1]).toEqual({
-      protocolVersion: PERMISSIONS_PROTOCOL_VERSION,
-    });
+    expect(readyCalls[0][1]).toEqual({});
   });
 });
