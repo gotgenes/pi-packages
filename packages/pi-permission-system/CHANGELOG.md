@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [9.2.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v9.1.0...pi-permission-system-v9.2.0) (2026-06-02)
+
+
+### Features
+
+* flag relative paths conservatively after a non-literal cd ([6e631a0](https://github.com/gotgenes/pi-packages/commit/6e631a0c62633e0be3a498752a3bf3614d357d65)), closes [#307](https://github.com/gotgenes/pi-packages/issues/307)
+* fold sequential current-shell cd into the bash effective directory ([7fd8e95](https://github.com/gotgenes/pi-packages/commit/7fd8e9525196ffa558a2b59ea9f4cf66943f9010)), closes [#307](https://github.com/gotgenes/pi-packages/issues/307)
+* scope cd inside subshells and persist it across brace groups ([37b948c](https://github.com/gotgenes/pi-packages/commit/37b948c7e9fd5d9ddac3aa8c6b456039132f7c4e)), closes [#307](https://github.com/gotgenes/pi-packages/issues/307)
+
 ## [9.1.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v9.0.1...pi-permission-system-v9.1.0) (2026-06-02)
 
 
