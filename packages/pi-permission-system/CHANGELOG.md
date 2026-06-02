@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [10.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v9.2.0...pi-permission-system-v10.0.0) (2026-06-02)
+
+
+### ⚠ BREAKING CHANGES
+
+* **pi-permission-system:** the permissions:ready event payload no longer includes protocolVersion. Consumers that read it must rely on package semver instead.
+
+### Features
+
+* **pi-permission-manager:** broadcast permission prompts on permissions:prompt channel ([8540f3b](https://github.com/gotgenes/pi-packages/commit/8540f3b462b76a4789c4c17a75fadf254ae39feb))
+* **pi-permission-system:** drop protocolVersion from permissions:ready ([6728a93](https://github.com/gotgenes/pi-packages/commit/6728a93af7edbc6953d20f448f1c3f54f9b7893f))
+* **pi-permission-system:** harden prompt broadcasts ([067bafd](https://github.com/gotgenes/pi-packages/commit/067bafd80ef983fd8b9ab00914cf1cec9b6db915))
+* **pi-permission-system:** make ready and decision broadcasts best-effort ([00a895f](https://github.com/gotgenes/pi-packages/commit/00a895f9377bcb7b598acbc6c95d7bc7cc83c515))
+* **pi-permission-system:** preserve display fields for forwarded prompts ([9970912](https://github.com/gotgenes/pi-packages/commit/997091228736bbd4395d8bd16aeb9f4a4ae7e0b2))
+* **pi-permission-system:** slim ui_prompt payload and centralize construction ([7a1ec56](https://github.com/gotgenes/pi-packages/commit/7a1ec56a827e90fe80a0f7de48e1222b5271700d))
+
+
+### Bug Fixes
+
+* **pi-permission-system:** drop manual CHANGELOG Unreleased section ([f14e4f5](https://github.com/gotgenes/pi-packages/commit/f14e4f5d9b5ae1d6b207a913aefdd71980a46dd6))
+
+
+### Documentation
+
+* **pi-permission-system:** document the lean ui_prompt contract ([0b3c11c](https://github.com/gotgenes/pi-packages/commit/0b3c11c57a7b718d2f73a184802f8c5dcb95fbe7))
+
 ## [9.2.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v9.1.0...pi-permission-system-v9.2.0) (2026-06-02)
 
 
