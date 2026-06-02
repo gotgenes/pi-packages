@@ -36,7 +36,7 @@ jobs:
 
       - name: Fallow audit
         if: github.event_name == 'pull_request'
-        run: pnpm fallow audit
+        run: pnpm fallow audit --base origin/${{ github.base_ref }}
 
       - name: Fallow dead-code gate
         if: github.ref == 'refs/heads/main'
