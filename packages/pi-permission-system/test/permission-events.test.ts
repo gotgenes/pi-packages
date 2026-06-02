@@ -8,13 +8,13 @@ import { getGlobalConfigPath } from "#src/config-paths";
 import piPermissionSystemExtension from "#src/index";
 import type {
   PermissionDecisionEvent,
-  PermissionUiPromptEvent,
   PermissionsCheckReplyData,
   PermissionsCheckRequest,
   PermissionsPromptReplyData,
   PermissionsPromptRequest,
   PermissionsReadyEvent,
   PermissionsRpcReply,
+  PermissionUiPromptEvent,
 } from "#src/permission-events";
 import {
   emitDecisionEvent,

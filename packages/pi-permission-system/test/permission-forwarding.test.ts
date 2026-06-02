@@ -7,13 +7,13 @@ import {
   confirmPermission,
   processForwardedPermissionRequests,
 } from "#src/forwarded-permissions/polling";
+import type { PermissionUiPromptEvent } from "#src/permission-events";
 import {
   createPermissionForwardingLocation,
   resolvePermissionForwardingTargetSessionId,
   SUBAGENT_PARENT_SESSION_ENV_CANDIDATES,
   SUBAGENT_PARENT_SESSION_ENV_KEY,
 } from "#src/permission-forwarding";
-import type { PermissionUiPromptEvent } from "#src/permission-events";
 import { SubagentSessionRegistry } from "#src/subagent-registry";
 
 afterEach(() => {
