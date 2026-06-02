@@ -339,6 +339,30 @@ describe("PermissionPrompter", () => {
         expect.any(String),
         expect.anything(),
         { sessionLabel: "Yes, for 'read' tool" },
+        { source: "tool_call", surface: "read", value: "read" },
+      );
+    });
+
+    it("passes the display fields (source/surface/value) to confirmPermission", async () => {
+      mockConfirmPermission.mockResolvedValue({
+        approved: true,
+        state: "approved",
+      });
+      const deps = makeDeps();
+      const prompter = new PermissionPrompter(deps);
+      const details = makeDetails({
+        toolName: "bash",
+        command: "git push",
+      });
+
+      await prompter.prompt(makeCtx(false), details);
+
+      expect(mockConfirmPermission).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.any(String),
+        expect.anything(),
+        undefined,
+        { source: "tool_call", surface: "bash", value: "git push" },
       );
     });
 
@@ -357,6 +381,7 @@ describe("PermissionPrompter", () => {
         expect.any(String),
         expect.anything(),
         undefined,
+        { source: "tool_call", surface: "read", value: "read" },
       );
     });
 
@@ -376,6 +401,7 @@ describe("PermissionPrompter", () => {
         "Allow bash: git status?",
         expect.anything(),
         undefined,
+        { source: "tool_call", surface: "read", value: "read" },
       );
     });
   });

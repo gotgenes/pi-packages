@@ -18,6 +18,7 @@ import {
 import {
   type ForwardedPermissionRequest,
   type ForwardedPermissionResponse,
+  type ForwardedPromptDisplay,
   isForwardedPermissionRequestForSession,
   PERMISSION_FORWARDING_POLL_INTERVAL_MS,
   PERMISSION_FORWARDING_TIMEOUT_MS,
@@ -110,6 +111,7 @@ export async function waitForForwardedPermissionApproval(
   ctx: ExtensionContext,
   message: string,
   deps: PermissionForwardingDeps,
+  forwarded?: ForwardedPromptDisplay,
 ): Promise<PermissionPromptDecision> {
   const requesterSessionId = getSessionId(ctx);
   const targetSessionId = resolvePermissionForwardingTargetSessionId({
@@ -162,6 +164,13 @@ export async function waitForForwardedPermissionApproval(
     targetSessionId,
     requesterAgentName,
     message,
+    ...(forwarded
+      ? {
+          source: forwarded.source,
+          surface: forwarded.surface,
+          value: forwarded.value,
+        }
+      : {}),
   };
 
   const requestPath = join(location.requestsDir, `${requestId}.json`);
@@ -312,6 +321,9 @@ export async function processForwardedPermissionRequests(
               message: forwardedMessage,
               requesterAgentName: request.requesterAgentName || null,
               requesterSessionId: request.requesterSessionId || null,
+              source: request.source ?? null,
+              surface: request.surface ?? null,
+              value: request.value ?? null,
             }),
           );
         }
@@ -378,6 +390,7 @@ export async function confirmPermission(
   message: string,
   deps: PermissionForwardingDeps,
   options?: RequestPermissionOptions,
+  forwarded?: ForwardedPromptDisplay,
 ): Promise<PermissionPromptDecision> {
   if (ctx.hasUI) {
     return deps.requestPermissionDecisionFromUi(
@@ -394,5 +407,5 @@ export async function confirmPermission(
     return { approved: false, state: "denied" };
   }
 
-  return waitForForwardedPermissionApproval(ctx, message, deps);
+  return waitForForwardedPermissionApproval(ctx, message, deps, forwarded);
 }

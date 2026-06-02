@@ -1,6 +1,7 @@
 import { join } from "node:path";
 
 import type { PermissionDecisionState } from "./permission-dialog";
+import type { PermissionUiPromptSource } from "./permission-events";
 import type { SubagentSessionRegistry } from "./subagent-registry";
 
 export const PERMISSION_FORWARDING_POLL_INTERVAL_MS = 250;
@@ -38,6 +39,19 @@ const SESSION_FORWARDING_ROOT_DIRECTORY_NAME = "sessions";
 const SESSION_FORWARDING_REQUESTS_DIRECTORY_NAME = "requests";
 const SESSION_FORWARDING_RESPONSES_DIRECTORY_NAME = "responses";
 
+/**
+ * Display fields relayed from a forwarding child to the parent UI so the parent
+ * can emit a non-degraded `permissions:ui_prompt` event.
+ *
+ * Carried separately from the prompt message because the parent reconstructs
+ * the original event through `buildForwardedUiPrompt`, not from the message text.
+ */
+export interface ForwardedPromptDisplay {
+  source: PermissionUiPromptSource;
+  surface: string | null;
+  value: string | null;
+}
+
 export type ForwardedPermissionRequest = {
   id: string;
   createdAt: number;
@@ -45,6 +59,15 @@ export type ForwardedPermissionRequest = {
   targetSessionId: string;
   requesterAgentName: string;
   message: string;
+  /**
+   * Original prompt display fields, persisted so the parent emits a
+   * non-degraded event. Optional for version-skew tolerance: a parent on a
+   * newer version may read a request written by an older child during an
+   * upgrade, in which case the reader defaults `source` to `"tool_call"`.
+   */
+  source?: PermissionUiPromptSource;
+  surface?: string | null;
+  value?: string | null;
 };
 
 export type ForwardedPermissionResponse = {

@@ -98,11 +98,13 @@ export class PermissionPrompter implements PermissionPrompterApi {
 
     this.writeReviewEntry("permission_request.waiting", details);
 
-    // Emit the UI-prompt broadcast only when this session shows the dialog
-    // itself. Non-UI (forwarded) prompts are emitted by the parent that
-    // actually renders the forwarded dialog, not here.
+    // Build the event once. When this session has UI it broadcasts directly;
+    // when it does not (a forwarding subagent), the display fields ride along
+    // to the parent so the parent emits a non-degraded event from the
+    // forwarded path instead of here.
+    const uiPrompt = buildDirectUiPrompt(details);
     if (ctx.hasUI) {
-      emitUiPromptEvent(this.deps.events, buildDirectUiPrompt(details));
+      emitUiPromptEvent(this.deps.events, uiPrompt);
     }
 
     const decision = await confirmPermission(
@@ -110,6 +112,11 @@ export class PermissionPrompter implements PermissionPrompterApi {
       details.message,
       this.buildForwardingDeps(),
       details.sessionLabel ? { sessionLabel: details.sessionLabel } : undefined,
+      {
+        source: uiPrompt.source,
+        surface: uiPrompt.surface,
+        value: uiPrompt.value,
+      },
     );
 
     this.writeReviewEntry(

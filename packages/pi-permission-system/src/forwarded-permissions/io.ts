@@ -10,12 +10,36 @@ import {
 } from "node:fs";
 
 import { isPermissionDecisionState } from "#src/permission-dialog";
+import type { PermissionUiPromptSource } from "#src/permission-events";
 import {
   createPermissionForwardingLocation,
   type ForwardedPermissionRequest,
   type ForwardedPermissionResponse,
   type PermissionForwardingLocation,
 } from "#src/permission-forwarding";
+
+/** Valid `permissions:ui_prompt` source values, for tolerant request reads. */
+const UI_PROMPT_SOURCES = [
+  "tool_call",
+  "skill_input",
+  "skill_read",
+  "rpc_prompt",
+] as const satisfies readonly PermissionUiPromptSource[];
+
+/** Narrow an unknown value to a valid prompt source, or `undefined`. */
+function asUiPromptSource(
+  value: unknown,
+): PermissionUiPromptSource | undefined {
+  return UI_PROMPT_SOURCES.find((source) => source === value);
+}
+
+/** Narrow an unknown value to a nullable display string, or `undefined`. */
+function asNullableDisplayString(value: unknown): string | null | undefined {
+  if (value === null || typeof value === "string") {
+    return value;
+  }
+  return undefined;
+}
 
 type LogFn = (event: string, details: Record<string, unknown>) => void;
 
@@ -285,6 +309,11 @@ export function readForwardedPermissionRequest(
       targetSessionId: parsed.targetSessionId,
       requesterAgentName: parsed.requesterAgentName,
       message: parsed.message,
+      // Tolerant read: display fields are optional and may be absent (older
+      // child) or malformed; reconstruct only the well-formed ones.
+      source: asUiPromptSource(parsed.source),
+      surface: asNullableDisplayString(parsed.surface),
+      value: asNullableDisplayString(parsed.value),
     };
   } catch (error) {
     logPermissionForwardingWarning(
