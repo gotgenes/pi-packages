@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/gotgenes/pi-packages/compare/pi-subagents-worktrees-v0.2.1...pi-subagents-worktrees-v0.2.2) (2026-06-03)
+
+
+### Documentation
+
+* standardize and correct package READMEs ([4c270ad](https://github.com/gotgenes/pi-packages/commit/4c270adac97ca816fa1889a879d1d4fe19cdd464))
+
 ## [0.2.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-worktrees-v0.2.0...pi-subagents-worktrees-v0.2.1) (2026-06-01)
 
 

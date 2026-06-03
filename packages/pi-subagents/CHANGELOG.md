@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [14.0.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v14.0.0...pi-subagents-v14.0.1) (2026-06-03)
+
+
+### Documentation
+
+* standardize and correct package READMEs ([4c270ad](https://github.com/gotgenes/pi-packages/commit/4c270adac97ca816fa1889a879d1d4fe19cdd464))
+
 ## [14.0.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v13.2.2...pi-subagents-v14.0.0) (2026-06-01)
 
 

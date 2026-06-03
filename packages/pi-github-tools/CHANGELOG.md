@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.1.2](https://github.com/gotgenes/pi-packages/compare/pi-github-tools-v4.1.1...pi-github-tools-v4.1.2) (2026-06-03)
+
+
+### Documentation
+
+* standardize and correct package READMEs ([4c270ad](https://github.com/gotgenes/pi-packages/commit/4c270adac97ca816fa1889a879d1d4fe19cdd464))
+
 ## [4.1.1](https://github.com/gotgenes/pi-packages/compare/pi-github-tools-v4.1.0...pi-github-tools-v4.1.1) (2026-05-26)
 
 

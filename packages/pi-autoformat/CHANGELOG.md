@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.1.4](https://github.com/gotgenes/pi-packages/compare/pi-autoformat-v5.1.3...pi-autoformat-v5.1.4) (2026-06-03)
+
+
+### Documentation
+
+* standardize and correct package READMEs ([4c270ad](https://github.com/gotgenes/pi-packages/commit/4c270adac97ca816fa1889a879d1d4fe19cdd464))
+
 ## [5.1.3](https://github.com/gotgenes/pi-packages/compare/pi-autoformat-v5.1.2...pi-autoformat-v5.1.3) (2026-05-26)
 
 

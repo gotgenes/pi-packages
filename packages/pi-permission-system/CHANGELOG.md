@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [10.1.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v10.0.0...pi-permission-system-v10.1.0) (2026-06-03)
+
+
+### Features
+
+* add DecisionReporter and GateDecisionReporter ([530211d](https://github.com/gotgenes/pi-packages/commit/530211da9158a012e86f37311e326f4e2b571c55))
+* add GatePrompter and SessionApprovalRecorder session roles ([2f761e4](https://github.com/gotgenes/pi-packages/commit/2f761e44fd07c98fe98147275f75fc170163b06d))
+* add GateRunner class consolidating gate dispatch ([a390558](https://github.com/gotgenes/pi-packages/commit/a390558f19723fa911924b2d1878d4d874d6966d))
+* add getToolPreviewLimits and getInfrastructureReadDirs to PermissionSession ([#327](https://github.com/gotgenes/pi-packages/issues/327)) ([a0bf166](https://github.com/gotgenes/pi-packages/commit/a0bf1662119eeeb4b390c668c6993c7ff87194bf))
+* add PermissionResolver.resolve to PermissionSession ([c922bbd](https://github.com/gotgenes/pi-packages/commit/c922bbddcfb47a2ec88d349f3a797b633bd58f45))
+* add skill_input denial context ([#326](https://github.com/gotgenes/pi-packages/issues/326)) ([71e9d28](https://github.com/gotgenes/pi-packages/commit/71e9d28c5f6c8a09d2bfa9fe21cca6c55948898b))
+* introduce SkillInputGatePipeline collaborator ([#329](https://github.com/gotgenes/pi-packages/issues/329)) ([4ddd5af](https://github.com/gotgenes/pi-packages/commit/4ddd5af1c476ab3c3eb29ce456a33b273c386ca0))
+* introduce ToolCallGatePipeline collaborator ([#327](https://github.com/gotgenes/pi-packages/issues/327)) ([3a87727](https://github.com/gotgenes/pi-packages/commit/3a877274091bfc2db3998ca915f76ecbdd2ac1e7))
+
+
+### Bug Fixes
+
+* drop vestigial events field; document makeReporter in package skill ([9e0a8a7](https://github.com/gotgenes/pi-packages/commit/9e0a8a7d89b4c081d21465e02b7aa77c18ddd1b0))
+
+
+### Documentation
+
+* document SkillInputGatePipeline in architecture and package skill ([#329](https://github.com/gotgenes/pi-packages/issues/329)) ([9193c86](https://github.com/gotgenes/pi-packages/commit/9193c86ecc2fa6b18da6a7c7e4a9f9efbbc807ed))
+* record the composition-root collaborator extraction ([#320](https://github.com/gotgenes/pi-packages/issues/320)) ([dab8890](https://github.com/gotgenes/pi-packages/commit/dab8890df05e003bb9136924ab2d344c7fe69319))
+* standardize and correct package READMEs ([4c270ad](https://github.com/gotgenes/pi-packages/commit/4c270adac97ca816fa1889a879d1d4fe19cdd464))
+
 ## [10.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v9.2.0...pi-permission-system-v10.0.0) (2026-06-02)
 
 
