@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [10.2.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v10.1.0...pi-permission-system-v10.2.0) (2026-06-04)
+
+
+### Features
+
+* add PermissionManager.configureForCwd and agentDir option ([5a2d363](https://github.com/gotgenes/pi-packages/commit/5a2d3634a0b8466a5d6aa8baa170a9bf53e068fb))
+
 ## [10.1.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v10.0.0...pi-permission-system-v10.1.0) (2026-06-03)
 
 
