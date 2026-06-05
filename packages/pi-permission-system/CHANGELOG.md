@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [10.3.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v10.2.0...pi-permission-system-v10.3.0) (2026-06-05)
+
+
+### Features
+
+* add ConfigStore owning extension config state ([5941733](https://github.com/gotgenes/pi-packages/commit/5941733a67c0ad9aef3d3b2e5908a82e76ac8603))
+
 ## [10.2.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v10.1.0...pi-permission-system-v10.2.0) (2026-06-04)
 
 
