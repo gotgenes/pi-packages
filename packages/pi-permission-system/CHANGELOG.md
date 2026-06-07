@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [10.4.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v10.3.1...pi-permission-system-v10.4.0) (2026-06-07)
+
+
+### Features
+
+* add context-owning PromptingGateway ([1885be2](https://github.com/gotgenes/pi-packages/commit/1885be28fb797eb5ed67a7a30d51e58fa73e3ff0))
+
+
+### Documentation
+
+* mark Phase 4 Step 6 complete; drop unused beforeEach import ([217057a](https://github.com/gotgenes/pi-packages/commit/217057ab5f8a1d3290322b442e267287b31635cf))
+
 ## [10.3.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v10.3.0...pi-permission-system-v10.3.1) (2026-06-06)
 
 
