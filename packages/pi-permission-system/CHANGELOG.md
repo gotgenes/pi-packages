@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [10.5.2](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v10.5.1...pi-permission-system-v10.5.2) (2026-06-08)
+
+
+### Bug Fixes
+
+* **pi-permission-system:** expand $HOME in normalizePathForComparison ([#350](https://github.com/gotgenes/pi-packages/issues/350)) ([1b92ed3](https://github.com/gotgenes/pi-packages/commit/1b92ed3d2364174d3287171c58ce8452239b3e8d))
+* **pi-permission-system:** home-expand path values before matching ([#350](https://github.com/gotgenes/pi-packages/issues/350)) ([48a7b37](https://github.com/gotgenes/pi-packages/commit/48a7b3783857b449442d30edefe04f8255e5f4f8))
+
+
+### Documentation
+
+* **pi-permission-system:** note path values are home-expanded for matching ([#350](https://github.com/gotgenes/pi-packages/issues/350)) ([e9c264d](https://github.com/gotgenes/pi-packages/commit/e9c264de85d327a0bfbcd84401a259cb509a5dfa))
+
 ## [10.5.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v10.5.0...pi-permission-system-v10.5.1) (2026-06-07)
 
 
