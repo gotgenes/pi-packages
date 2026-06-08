@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [10.6.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v10.5.3...pi-permission-system-v10.6.0) (2026-06-08)
+
+
+### Features
+
+* **pi-permission-system:** add best-effort canonicalizePath helper ([5b5002e](https://github.com/gotgenes/pi-packages/commit/5b5002e1b5400485f30a9f22440a88d14ed5135d))
+
+
+### Bug Fixes
+
+* **pi-permission-system:** canonicalize bash external-path containment ([#345](https://github.com/gotgenes/pi-packages/issues/345)) ([89f8e9b](https://github.com/gotgenes/pi-packages/commit/89f8e9bb35cd268e46a2b124663f44c11a44be97))
+* **pi-permission-system:** canonicalize tool-call external-directory containment ([#345](https://github.com/gotgenes/pi-packages/issues/345)) ([d7f3bd1](https://github.com/gotgenes/pi-packages/commit/d7f3bd1c02d115621cd87065de240b816837065f))
+
+
+### Documentation
+
+* **pi-permission-system:** note symlink canonicalization in architecture ([b758a48](https://github.com/gotgenes/pi-packages/commit/b758a48bc55485ad9e751543db59858886ba360c))
+
 ## [10.5.3](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v10.5.2...pi-permission-system-v10.5.3) (2026-06-08)
 
 
