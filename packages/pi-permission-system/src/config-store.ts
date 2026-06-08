@@ -69,6 +69,38 @@ export interface ConfigStoreDeps {
   logger: DebugReviewLogger;
 }
 
+type RuntimeConfigSaveFields = Pick<
+  PermissionSystemExtensionConfig,
+  "debugLog" | "permissionReviewLog" | "yoloMode"
+> &
+  Partial<
+    Pick<
+      PermissionSystemExtensionConfig,
+      | "piInfrastructureReadPaths"
+      | "toolInputPreviewMaxLength"
+      | "toolTextSummaryMaxLength"
+    >
+  >;
+
+function pickRuntimeConfigSaveFields(
+  config: PermissionSystemExtensionConfig,
+): RuntimeConfigSaveFields {
+  return {
+    debugLog: config.debugLog,
+    permissionReviewLog: config.permissionReviewLog,
+    yoloMode: config.yoloMode,
+    ...(config.piInfrastructureReadPaths !== undefined && {
+      piInfrastructureReadPaths: config.piInfrastructureReadPaths,
+    }),
+    ...(config.toolInputPreviewMaxLength !== undefined && {
+      toolInputPreviewMaxLength: config.toolInputPreviewMaxLength,
+    }),
+    ...(config.toolTextSummaryMaxLength !== undefined && {
+      toolTextSummaryMaxLength: config.toolTextSummaryMaxLength,
+    }),
+  };
+}
+
 /**
  * Owns the mutable extension config and the operations that read/write it.
  *
@@ -124,9 +156,7 @@ export class ConfigStore implements SessionConfigStore, CommandConfigStore {
 
     this.deps.logger.debug("config.loaded", {
       warning: warning ?? null,
-      debugLog: runtimeConfig.debugLog,
-      permissionReviewLog: runtimeConfig.permissionReviewLog,
-      yoloMode: runtimeConfig.yoloMode,
+      ...pickRuntimeConfigSaveFields(runtimeConfig),
     });
   }
 
@@ -148,9 +178,7 @@ export class ConfigStore implements SessionConfigStore, CommandConfigStore {
     const existing = loadUnifiedConfig(globalPath);
     const merged = {
       ...existing.config,
-      debugLog: normalized.debugLog,
-      permissionReviewLog: normalized.permissionReviewLog,
-      yoloMode: normalized.yoloMode,
+      ...pickRuntimeConfigSaveFields(normalized),
     };
 
     const tmpPath = `${globalPath}.tmp`;
@@ -178,11 +206,10 @@ export class ConfigStore implements SessionConfigStore, CommandConfigStore {
     syncPermissionSystemStatus(ctx, normalized);
     this.lastConfigWarning = null;
 
-    this.deps.logger.debug("config.saved", {
-      debugLog: normalized.debugLog,
-      permissionReviewLog: normalized.permissionReviewLog,
-      yoloMode: normalized.yoloMode,
-    });
+    this.deps.logger.debug(
+      "config.saved",
+      pickRuntimeConfigSaveFields(normalized),
+    );
   }
 
   /**

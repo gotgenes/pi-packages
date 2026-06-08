@@ -21,10 +21,34 @@ export interface UnifiedPermissionConfig {
   debugLog?: boolean;
   permissionReviewLog?: boolean;
   yoloMode?: boolean;
+  piInfrastructureReadPaths?: string[];
+  toolInputPreviewMaxLength?: number;
+  toolTextSummaryMaxLength?: number;
 
   // Flat permission policy
   permission?: FlatPermissionConfig;
 }
+
+const BOOLEAN_RUNTIME_KNOB_KEYS = [
+  "debugLog",
+  "permissionReviewLog",
+  "yoloMode",
+] as const;
+
+const STRING_ARRAY_RUNTIME_KNOB_KEYS = ["piInfrastructureReadPaths"] as const;
+
+const POSITIVE_INT_RUNTIME_KNOB_KEYS = [
+  "toolInputPreviewMaxLength",
+  "toolTextSummaryMaxLength",
+] as const;
+
+const RUNTIME_KNOB_KEYS = [
+  ...BOOLEAN_RUNTIME_KNOB_KEYS,
+  ...STRING_ARRAY_RUNTIME_KNOB_KEYS,
+  ...POSITIVE_INT_RUNTIME_KNOB_KEYS,
+] as const;
+
+type RuntimeKnobKey = (typeof RUNTIME_KNOB_KEYS)[number];
 
 export interface UnifiedConfigLoadResult {
   config: UnifiedPermissionConfig;
@@ -117,6 +141,19 @@ function normalizeOptionalBoolean(value: unknown): boolean | undefined {
   return undefined;
 }
 
+function normalizeOptionalStringArray(value: unknown): string[] | undefined {
+  return Array.isArray(value) &&
+    value.every((entry): entry is string => typeof entry === "string")
+    ? value
+    : undefined;
+}
+
+function normalizeOptionalPositiveInt(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isInteger(value) && value > 0
+    ? value
+    : undefined;
+}
+
 /**
  * Normalize a raw `permission` value from parsed JSON into a FlatPermissionConfig.
  * Drops non-object top-level values, invalid PermissionState strings, and
@@ -171,17 +208,26 @@ export function normalizeUnifiedConfig(raw: unknown): {
   const config: UnifiedPermissionConfig = {};
 
   // Runtime knobs
-  const debugLog = normalizeOptionalBoolean(record.debugLog);
-  if (debugLog !== undefined) config.debugLog = debugLog;
+  for (const key of BOOLEAN_RUNTIME_KNOB_KEYS) {
+    const value = normalizeOptionalBoolean(record[key]);
+    if (value !== undefined) {
+      config[key] = value;
+    }
+  }
 
-  const permissionReviewLog = normalizeOptionalBoolean(
-    record.permissionReviewLog,
-  );
-  if (permissionReviewLog !== undefined)
-    config.permissionReviewLog = permissionReviewLog;
+  for (const key of STRING_ARRAY_RUNTIME_KNOB_KEYS) {
+    const value = normalizeOptionalStringArray(record[key]);
+    if (value !== undefined) {
+      config[key] = value;
+    }
+  }
 
-  const yoloMode = normalizeOptionalBoolean(record.yoloMode);
-  if (yoloMode !== undefined) config.yoloMode = yoloMode;
+  for (const key of POSITIVE_INT_RUNTIME_KNOB_KEYS) {
+    const value = normalizeOptionalPositiveInt(record[key]);
+    if (value !== undefined) {
+      config[key] = value;
+    }
+  }
 
   // Flat permission policy
   const permission = normalizeFlatPermissionValue(record.permission);
@@ -193,8 +239,7 @@ export function normalizeUnifiedConfig(raw: unknown): {
 /**
  * Merge two unified configs.
  * - `permission` is deep-shallow merged (surface-level object maps are shallow-merged).
- * - Scalar fields (debugLog, permissionReviewLog, yoloMode) are replaced when
- *   present in the override.
+ * - Runtime knobs are replaced when present in the override.
  */
 export function mergeUnifiedConfigs(
   base: UnifiedPermissionConfig,
@@ -202,13 +247,7 @@ export function mergeUnifiedConfigs(
 ): UnifiedPermissionConfig {
   const merged: UnifiedPermissionConfig = {};
 
-  // Scalars: override replaces base when defined
-  for (const key of ["debugLog", "permissionReviewLog", "yoloMode"] as const) {
-    const value = override[key] ?? base[key];
-    if (value !== undefined) {
-      merged[key] = value;
-    }
-  }
+  mergeRuntimeKnobs(merged, base, override);
 
   // Permission: deep-shallow merge
   const basePerm = base.permission;
@@ -222,6 +261,26 @@ export function mergeUnifiedConfigs(
   }
 
   return merged;
+}
+
+function mergeRuntimeKnobs(
+  merged: UnifiedPermissionConfig,
+  base: UnifiedPermissionConfig,
+  override: UnifiedPermissionConfig,
+): void {
+  for (const key of RUNTIME_KNOB_KEYS) {
+    assignRuntimeKnob(merged, key, override[key] ?? base[key]);
+  }
+}
+
+function assignRuntimeKnob<Key extends RuntimeKnobKey>(
+  config: UnifiedPermissionConfig,
+  key: Key,
+  value: UnifiedPermissionConfig[Key] | undefined,
+): void {
+  if (value !== undefined) {
+    config[key] = value;
+  }
 }
 
 export interface MergedConfigResult {

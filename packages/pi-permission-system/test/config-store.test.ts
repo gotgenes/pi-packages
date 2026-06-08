@@ -192,6 +192,28 @@ describe("ConfigStore", () => {
       expect(store.current().permissionReviewLog).toBe(false);
     });
 
+    it("keeps optional runtime knobs from merged config", () => {
+      const { store } = makeStore();
+      mockLoadAndMergeConfigs.mockReturnValue({
+        merged: {
+          ...DEFAULT_EXTENSION_CONFIG,
+          piInfrastructureReadPaths: ["/opt/pi"],
+          toolInputPreviewMaxLength: 400,
+          toolTextSummaryMaxLength: 120,
+        },
+        issues: [],
+      });
+
+      store.refresh();
+
+      expect(store.current()).toEqual({
+        ...DEFAULT_EXTENSION_CONFIG,
+        piInfrastructureReadPaths: ["/opt/pi"],
+        toolInputPreviewMaxLength: 400,
+        toolTextSummaryMaxLength: 120,
+      });
+    });
+
     it("writes config.loaded debug log", () => {
       const { store, logger } = makeStore();
       store.refresh();
@@ -312,6 +334,36 @@ describe("ConfigStore", () => {
         "utf-8",
       );
       expect(mockRenameSync).toHaveBeenCalled();
+    });
+
+    it("writes optional runtime knobs without dropping existing permission", () => {
+      const { store } = makeStore();
+      mockLoadUnifiedConfig.mockReturnValue({
+        config: { permission: { "*": "ask" } },
+      });
+      const next = {
+        ...DEFAULT_EXTENSION_CONFIG,
+        piInfrastructureReadPaths: ["/opt/pi"],
+        toolInputPreviewMaxLength: 400,
+        toolTextSummaryMaxLength: 120,
+      };
+
+      store.save(next, makeCommandCtx());
+
+      const [, written] = mockWriteFileSync.mock.calls[0] as [
+        string,
+        string,
+        string,
+      ];
+      expect(JSON.parse(written)).toEqual({
+        permission: { "*": "ask" },
+        debugLog: false,
+        permissionReviewLog: true,
+        yoloMode: false,
+        piInfrastructureReadPaths: ["/opt/pi"],
+        toolInputPreviewMaxLength: 400,
+        toolTextSummaryMaxLength: 120,
+      });
     });
 
     it("updates current() after a successful save", () => {

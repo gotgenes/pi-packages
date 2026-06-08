@@ -7,6 +7,7 @@ import {
   loadAndMergeConfigs,
   loadUnifiedConfig,
   mergeUnifiedConfigs,
+  normalizeUnifiedConfig,
   stripJsonComments,
 } from "#src/config-loader";
 
@@ -219,6 +220,36 @@ describe("loadUnifiedConfig", () => {
     });
   });
 
+  it("preserves optional runtime knobs", () => {
+    const configPath = join(tempDir, "config.json");
+    writeFileSync(
+      configPath,
+      JSON.stringify({
+        piInfrastructureReadPaths: ["~/.local/share/mise/installs/pi"],
+        toolInputPreviewMaxLength: 400,
+        toolTextSummaryMaxLength: 120,
+      }),
+    );
+
+    const result = loadUnifiedConfig(configPath);
+    expect(result.config).toEqual({
+      piInfrastructureReadPaths: ["~/.local/share/mise/installs/pi"],
+      toolInputPreviewMaxLength: 400,
+      toolTextSummaryMaxLength: 120,
+    });
+  });
+
+  it("drops invalid optional runtime knobs", () => {
+    const result = normalizeUnifiedConfig({
+      piInfrastructureReadPaths: ["/ok", 42],
+      toolInputPreviewMaxLength: 0,
+      toolTextSummaryMaxLength: 80.5,
+    });
+
+    expect(result.config).toEqual({});
+    expect(result.issues).toEqual([]);
+  });
+
   it("accepts permission as object with mixed string and object values", () => {
     const configPath = join(tempDir, "config.json");
     writeFileSync(
@@ -322,6 +353,26 @@ describe("mergeUnifiedConfigs", () => {
     expect(merged.yoloMode).toBe(true);
   });
 
+  it("replaces optional runtime knobs when overrides define them", () => {
+    const merged = mergeUnifiedConfigs(
+      {
+        piInfrastructureReadPaths: ["/global/pi"],
+        toolInputPreviewMaxLength: 400,
+        toolTextSummaryMaxLength: 120,
+      },
+      {
+        piInfrastructureReadPaths: ["/project/pi"],
+        toolTextSummaryMaxLength: 240,
+      },
+    );
+
+    expect(merged).toEqual({
+      piInfrastructureReadPaths: ["/project/pi"],
+      toolInputPreviewMaxLength: 400,
+      toolTextSummaryMaxLength: 240,
+    });
+  });
+
   it("returns base unchanged when override is empty", () => {
     const base = {
       debugLog: true,
@@ -418,6 +469,26 @@ describe("loadAndMergeConfigs", () => {
       "*": "allow",
       read: "allow",
       write: "deny",
+    });
+  });
+
+  it("merges optional runtime knobs from new-layout configs", () => {
+    writeGlobal({
+      piInfrastructureReadPaths: ["/global/pi"],
+      toolInputPreviewMaxLength: 400,
+      toolTextSummaryMaxLength: 120,
+    });
+    writeProject({
+      piInfrastructureReadPaths: ["/project/pi"],
+      toolTextSummaryMaxLength: 240,
+    });
+
+    const result = loadAndMergeConfigs(agentDir, cwd, extensionRoot);
+    expect(result.issues).toEqual([]);
+    expect(result.merged).toEqual({
+      piInfrastructureReadPaths: ["/project/pi"],
+      toolInputPreviewMaxLength: 400,
+      toolTextSummaryMaxLength: 240,
     });
   });
 
