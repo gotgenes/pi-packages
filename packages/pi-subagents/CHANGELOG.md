@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [15.0.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v14.0.1...pi-subagents-v15.0.0) (2026-06-09)
+
+
+### ⚠ BREAKING CHANGES
+
+* **pi-subagents:** Custom agents in .pi/agents/*.md that omit the prompt_mode frontmatter key now default to append instead of replace, so they inherit the parent system prompt (AGENTS.md / CLAUDE.md / skills). Add `prompt_mode: replace` explicitly to restore the previous standalone-prompt behavior.
+
+### Bug Fixes
+
+* **pi-subagents:** default custom agents to append prompt mode ([#360](https://github.com/gotgenes/pi-packages/issues/360)) ([e3a3c96](https://github.com/gotgenes/pi-packages/commit/e3a3c9623eb0448a005f436c7c8a98504ceaf6e9))
+
+
+### Documentation
+
+* **pi-subagents:** note custom agents default to append prompt mode ([#360](https://github.com/gotgenes/pi-packages/issues/360)) ([9d6038c](https://github.com/gotgenes/pi-packages/commit/9d6038c515dd1b6681bf47d9cbff090da70cf014))
+
 ## [14.0.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v14.0.0...pi-subagents-v14.0.1) (2026-06-03)
 
 
