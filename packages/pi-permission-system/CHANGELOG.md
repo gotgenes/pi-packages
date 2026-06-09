@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [10.7.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v10.6.0...pi-permission-system-v10.7.0) (2026-06-09)
+
+
+### Features
+
+* add normalizeOptionalStringArray to common ([8be9154](https://github.com/gotgenes/pi-packages/commit/8be9154d7a492f13526f7bd8d4e33fc2e209f98d))
+
+
+### Bug Fixes
+
+* carry piInfrastructureReadPaths through the unified config loader ([#347](https://github.com/gotgenes/pi-packages/issues/347)) ([51bc145](https://github.com/gotgenes/pi-packages/commit/51bc145c15cc54bc69333d1e6cc48c74dda267d1))
+
 ## [10.6.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v10.5.3...pi-permission-system-v10.6.0) (2026-06-08)
 
 
