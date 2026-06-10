@@ -2,7 +2,7 @@
   "packages/pi-autoformat": "5.1.4",
   "packages/pi-colgrep": "1.4.2",
   "packages/pi-github-tools": "4.1.2",
-  "packages/pi-permission-system": "10.7.2",
+  "packages/pi-permission-system": "10.8.0",
   "packages/pi-session-tools": "1.0.2",
   "packages/pi-subagents": "15.0.1",
   "packages/pi-subagents-worktrees": "0.2.2"

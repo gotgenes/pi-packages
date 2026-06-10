@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [10.8.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v10.7.2...pi-permission-system-v10.8.0) (2026-06-10)
+
+
+### Features
+
+* add CacheKeyGate for agent-start cache keys ([#365](https://github.com/gotgenes/pi-packages/issues/365)) ([e99285c](https://github.com/gotgenes/pi-packages/commit/e99285c50fef3f6fd8ea7dac00080eeb9957adaa))
+
+
+### Documentation
+
+* mark Phase 5 Step 4 complete ([#365](https://github.com/gotgenes/pi-packages/issues/365)) ([4bd0e30](https://github.com/gotgenes/pi-packages/commit/4bd0e30fb4cb03d6cff76242f75955e9698c7d0d))
+
 ## [10.7.2](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v10.7.1...pi-permission-system-v10.7.2) (2026-06-10)
 
 
