@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [10.10.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v10.9.0...pi-permission-system-v10.10.0) (2026-06-10)
+
+
+### Features
+
+* **pi-permission-system:** add case-insensitive and Windows-separator options to wildcard matcher ([587b3e8](https://github.com/gotgenes/pi-packages/commit/587b3e88d0deed365ab690d38145e2f9ce8eaee6))
+
+
+### Bug Fixes
+
+* **pi-permission-system:** auto-allow infrastructure reads case-insensitively on Windows ([a3f137a](https://github.com/gotgenes/pi-packages/commit/a3f137ad5edb8f42378144fa9ca556996954155c))
+* **pi-permission-system:** auto-detect Pi's install directory for infrastructure reads ([#382](https://github.com/gotgenes/pi-packages/issues/382)) ([c3d89ba](https://github.com/gotgenes/pi-packages/commit/c3d89ba4f58805fb5012258beb2db108ef61ebbe))
+* **pi-permission-system:** include an optional Pi package dir in infrastructure reads ([da667ec](https://github.com/gotgenes/pi-packages/commit/da667eca95f02f8de246bdc42ca90df7696fe2ca))
+* **pi-permission-system:** make path containment case-insensitive on Windows via path.relative ([c10b84a](https://github.com/gotgenes/pi-packages/commit/c10b84ad4508b1cf8ead763e3fa0560a1e9ba370))
+* **pi-permission-system:** match external_directory/path patterns case-insensitively on Windows ([3ed92da](https://github.com/gotgenes/pi-packages/commit/3ed92dabc1643fb5e0c52b9eac76e0940f8a8dc4))
+
+
+### Documentation
+
+* **pi-permission-system:** document Windows case-insensitive matching and Pi-install auto-allow ([c98d33b](https://github.com/gotgenes/pi-packages/commit/c98d33b775eea9cbe83f019222841a6ab820942f))
+
 ## [10.9.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v10.8.0...pi-permission-system-v10.9.0) (2026-06-10)
 
 
