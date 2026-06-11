@@ -3,6 +3,7 @@ import { getNonEmptyString, toRecord } from "./common";
 /** Narrow interface for the Pi tool API subset used by handler classes. */
 export interface ToolRegistry {
   getAll(): unknown[];
+  getActive(): unknown[];
   setActive(names: string[]): void;
 }
 

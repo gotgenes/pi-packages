@@ -152,6 +152,7 @@ export default function piPermissionSystemExtension(pi: ExtensionAPI): void {
 
   const toolRegistry = {
     getAll: () => pi.getAllTools(),
+    getActive: () => pi.getActiveTools(),
     setActive: (names: string[]) => pi.setActiveTools(names),
   };
 

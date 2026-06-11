@@ -119,6 +119,7 @@ describe("handleToolCall — skill-read gate", () => {
       },
       toolRegistry: {
         getAll: vi.fn().mockReturnValue([{ toolName: "read" }]),
+        getActive: vi.fn().mockReturnValue([{ toolName: "read" }]),
       },
     });
     const event = {
@@ -146,6 +147,7 @@ describe("handleToolCall — skill-read gate", () => {
       },
       toolRegistry: {
         getAll: vi.fn().mockReturnValue([{ toolName: "read" }]),
+        getActive: vi.fn().mockReturnValue([{ toolName: "read" }]),
       },
     });
     const event = {

@@ -123,6 +123,7 @@ export function makeToolRegistry(
 ): ToolRegistry {
   return {
     getAll: vi.fn().mockReturnValue([{ name: "read" }, { name: "bash" }]),
+    getActive: vi.fn().mockReturnValue([{ name: "read" }, { name: "bash" }]),
     setActive: vi.fn(),
     ...overrides,
   };

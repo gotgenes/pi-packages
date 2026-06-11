@@ -363,6 +363,7 @@ describe("piPermissionSystemExtension ready event wiring", () => {
       ),
       registerCommand: vi.fn(),
       getAllTools: vi.fn().mockReturnValue([]),
+      getActiveTools: vi.fn().mockReturnValue([]),
       setActiveTools: vi.fn(),
       registerProvider: vi.fn(),
       events: { emit: emitSpy, on: vi.fn().mockReturnValue(() => undefined) },

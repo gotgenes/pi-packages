@@ -31,6 +31,7 @@ function makeEvent(systemPrompt = "You are an assistant.") {
 function makeToolRegistry(overrides: Partial<ToolRegistry> = {}): ToolRegistry {
   return {
     getAll: vi.fn().mockReturnValue([]),
+    getActive: vi.fn().mockReturnValue([]),
     setActive: vi.fn(),
     ...overrides,
   };
@@ -126,7 +127,9 @@ describe("AgentPrepHandler.handle", () => {
     const { handler, toolRegistry } = makeSetup({
       toolPermission: "deny",
       toolRegistry: {
-        getAll: vi.fn().mockReturnValue([{ name: "write" }, { name: "read" }]),
+        getActive: vi
+          .fn()
+          .mockReturnValue([{ name: "write" }, { name: "read" }]),
       },
     });
     await handler.handle(makeEvent(), makeCtx());
@@ -136,7 +139,9 @@ describe("AgentPrepHandler.handle", () => {
   it("includes allowed and ask tools in the active list", async () => {
     const { handler, toolRegistry } = makeSetup({
       toolRegistry: {
-        getAll: vi.fn().mockReturnValue([{ name: "read" }, { name: "write" }]),
+        getActive: vi
+          .fn()
+          .mockReturnValue([{ name: "read" }, { name: "write" }]),
       },
     });
     await handler.handle(makeEvent(), makeCtx());
@@ -146,7 +151,7 @@ describe("AgentPrepHandler.handle", () => {
   it("calls setActive once across repeated calls with the same allowed tools", async () => {
     const { handler, toolRegistry } = makeSetup({
       toolRegistry: {
-        getAll: vi.fn().mockReturnValue([{ name: "read" }]),
+        getActive: vi.fn().mockReturnValue([{ name: "read" }]),
       },
     });
     await handler.handle(makeEvent(), makeCtx());

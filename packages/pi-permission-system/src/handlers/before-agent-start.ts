@@ -56,7 +56,7 @@ export class AgentPrepHandler {
     this.session.refreshConfig(ctx);
 
     const agentName = this.session.resolveAgentName(ctx, event.systemPrompt);
-    const allTools = this.toolRegistry.getAll();
+    const allTools = this.toolRegistry.getActive();
     const allowedTools: string[] = [];
 
     for (const tool of allTools) {

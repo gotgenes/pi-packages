@@ -123,6 +123,14 @@ function makeDeduplicatingHandler(prompter?: GatePrompter): {
           { name: "edit" },
           { name: "bash" },
         ]),
+      getActive: vi
+        .fn()
+        .mockReturnValue([
+          { name: "read" },
+          { name: "write" },
+          { name: "edit" },
+          { name: "bash" },
+        ]),
     }),
     new ToolCallGatePipeline(resolver, session),
     new SkillInputGatePipeline(resolver),
@@ -365,6 +373,7 @@ describe("session shutdown clears external-directory approvals", () => {
       session,
       makeToolRegistry({
         getAll: vi.fn().mockReturnValue([{ name: "read" }]),
+        getActive: vi.fn().mockReturnValue([{ name: "read" }]),
       }),
       new ToolCallGatePipeline(resolver, session),
       new SkillInputGatePipeline(resolver),
