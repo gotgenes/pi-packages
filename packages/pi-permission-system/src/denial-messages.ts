@@ -126,7 +126,14 @@ function buildToolDenyBody(
     parts.push(qualifier);
   }
 
-  return `${parts.join(" ")}.`;
+  let message = `${parts.join(" ")}.`;
+
+  // Append custom denial reason after the sentence-ending period.
+  if (check.reason) {
+    message += ` Reason: ${check.reason}.`;
+  }
+
+  return message;
 }
 
 /**

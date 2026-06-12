@@ -322,6 +322,7 @@ function buildCheckResult(
   return {
     toolName,
     state: rule.action,
+    reason: rule.reason,
     matchedPattern:
       rule.layer === "config" || rule.layer === "session"
         ? rule.pattern

@@ -211,6 +211,68 @@ describe("evaluate", () => {
     expect(result.origin).toBe("project");
   });
 
+  test("evaluate() propagates reason from the matched rule", () => {
+    const rule: Rule = {
+      surface: "bash",
+      pattern: "npm *",
+      action: "deny",
+      reason: "Use pnpm instead",
+      layer: "config",
+      origin: "global",
+    };
+    const result = evaluate("bash", "npm install", [rule]);
+    expect(result.action).toBe("deny");
+    expect(result.reason).toBe("Use pnpm instead");
+  });
+
+  test("evaluate() carries reason through last-match-wins", () => {
+    const denyNpm: Rule = {
+      surface: "bash",
+      pattern: "npm *",
+      action: "deny",
+      reason: "Use pnpm",
+      layer: "config",
+      origin: "global",
+    };
+    const allowNpmInstall: Rule = {
+      surface: "bash",
+      pattern: "npm install",
+      action: "allow",
+      layer: "config",
+      origin: "global",
+    };
+    // Last rule matches and its action is "allow" → no reason expected.
+    const result = evaluate("bash", "npm install", [denyNpm, allowNpmInstall]);
+    expect(result.action).toBe("allow");
+    expect(result.reason).toBeUndefined();
+  });
+
+  test("evaluate() preserves reason when last-match-wins picks a deny with reason", () => {
+    const allowAll: Rule = {
+      surface: "bash",
+      pattern: "*",
+      action: "allow",
+      layer: "config",
+      origin: "global",
+    };
+    const denyNpm: Rule = {
+      surface: "bash",
+      pattern: "npm *",
+      action: "deny",
+      reason: "Use pnpm",
+      layer: "config",
+      origin: "global",
+    };
+    const result = evaluate("bash", "npm install", [allowAll, denyNpm]);
+    expect(result.action).toBe("deny");
+    expect(result.reason).toBe("Use pnpm");
+  });
+
+  test("evaluate() synthetic fallback rule has no reason", () => {
+    const result = evaluate("bash", "npm install", []);
+    expect(result.reason).toBeUndefined();
+  });
+
   test("evaluate() synthetic fallback rule has origin 'builtin'", () => {
     const result = evaluate("bash", "npm install", []);
     expect(result.origin).toBe("builtin");

@@ -126,9 +126,25 @@ function normalizeOptionalBoolean(value: unknown): boolean | undefined {
 }
 
 /**
+ * Narrow type guard: a raw JSON value that represents a deny-with-reason object.
+ */
+function isDenyWithReason(
+  value: unknown,
+): value is { action: "deny"; reason?: string } {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return false;
+  }
+  const record = value as Record<string, unknown>;
+  return (
+    record.action === "deny" &&
+    (record.reason === undefined || typeof record.reason === "string")
+  );
+}
+
+/**
  * Normalize a raw `permission` value from parsed JSON into a FlatPermissionConfig.
- * Drops non-object top-level values, invalid PermissionState strings, and
- * invalid action values inside object maps.
+ * Accepts PermissionState strings and DenyWithReason objects inside pattern maps.
+ * Drops non-object top-level values and invalid action values.
  */
 function normalizeFlatPermissionValue(
   value: unknown,
@@ -147,13 +163,19 @@ function normalizeFlatPermissionValue(
         hasAny = true;
       }
     } else if (typeof val === "object" && val !== null && !Array.isArray(val)) {
-      const map: Record<string, import("./types").PermissionState> = {};
+      const map: Record<
+        string,
+        import("./types").PermissionState | { action: "deny"; reason?: string }
+      > = {};
       let mapHasAny = false;
-      for (const [pattern, action] of Object.entries(
+      for (const [pattern, rawAction] of Object.entries(
         val as Record<string, unknown>,
       )) {
-        if (isPermissionState(action)) {
-          map[pattern] = action;
+        if (isDenyWithReason(rawAction)) {
+          map[pattern] = rawAction;
+          mapHasAny = true;
+        } else if (isPermissionState(rawAction)) {
+          map[pattern] = rawAction;
           mapHasAny = true;
         }
       }

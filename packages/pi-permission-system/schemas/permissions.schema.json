@@ -112,6 +112,23 @@
         {
           "const": "ask",
           "description": "Prompt the user for confirmation via the interactive UI before proceeding."
+        },
+        {
+          "type": "object",
+          "description": "Deny with an optional custom reason.",
+          "properties": {
+            "action": {
+              "const": "deny",
+              "description": "The permission decision — must be \"deny\"."
+            },
+            "reason": {
+              "type": "string",
+              "maxLength": 500,
+              "description": "Optional reason shown to the agent when this action is denied."
+            }
+          },
+          "required": ["action"],
+          "additionalProperties": false
         }
       ]
     },

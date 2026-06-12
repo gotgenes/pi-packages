@@ -163,4 +163,103 @@ describe("normalizeFlatConfig", () => {
       ]);
     });
   });
+
+  describe("deny with reason", () => {
+    test("{ action: 'deny', reason: 'msg' } produces a rule with reason", () => {
+      const result = normalizeFlatConfig({
+        bash: { "npm *": { action: "deny", reason: "Use pnpm instead" } },
+      });
+      expect(result).toEqual([
+        {
+          surface: "bash",
+          pattern: "npm *",
+          action: "deny",
+          reason: "Use pnpm instead",
+          origin: "builtin",
+        },
+      ]);
+    });
+
+    test("{ action: 'deny' } without reason produces a rule without reason", () => {
+      const result = normalizeFlatConfig({
+        bash: { "rm -rf *": { action: "deny" } },
+      });
+      expect(result).toEqual([
+        {
+          surface: "bash",
+          pattern: "rm -rf *",
+          action: "deny",
+          origin: "builtin",
+        },
+      ]);
+    });
+
+    test("deny-with-reason and plain strings can coexist in the same surface", () => {
+      const result = normalizeFlatConfig({
+        bash: {
+          "git *": "allow",
+          "npm *": { action: "deny", reason: "Use pnpm" },
+          "yarn *": { action: "deny", reason: "Use pnpm or npm" },
+          "*": "ask",
+        },
+      });
+      expect(result).toEqual([
+        {
+          surface: "bash",
+          pattern: "git *",
+          action: "allow",
+          origin: "builtin",
+        },
+        {
+          surface: "bash",
+          pattern: "npm *",
+          action: "deny",
+          reason: "Use pnpm",
+          origin: "builtin",
+        },
+        {
+          surface: "bash",
+          pattern: "yarn *",
+          action: "deny",
+          reason: "Use pnpm or npm",
+          origin: "builtin",
+        },
+        {
+          surface: "bash",
+          pattern: "*",
+          action: "ask",
+          origin: "builtin",
+        },
+      ]);
+    });
+
+    test("top-level DenyWithReason object is treated as pattern map (not deny-with-reason)", () => {
+      // `{ action: "deny", reason: "..." }` at the surface level is parsed
+      // as a pattern→action map, where "action" is a pattern key and
+      // "deny" is its action value. This is correct — deny-with-reason is
+      // only valid at the inner pattern-value level, not at the surface level.
+      const result = normalizeFlatConfig({
+        bash: { action: "deny", reason: "Not allowed" } as never,
+      });
+      expect(result).toEqual([
+        {
+          surface: "bash",
+          pattern: "action",
+          action: "deny",
+          origin: "builtin",
+        },
+      ]);
+    });
+
+    test("non-string reason value is rejected (malformed config)", () => {
+      // A non-string reason, e.g. from a typo in JSON config, must be
+      // rejected by the type guard to prevent type pollution.
+      const result = normalizeFlatConfig({
+        bash: {
+          "npm *": { action: "deny", reason: 42 } as never,
+        },
+      });
+      expect(result).toEqual([]);
+    });
+  });
 });

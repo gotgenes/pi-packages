@@ -1245,6 +1245,75 @@ describe("cross-cutting path surface", () => {
     }
   });
 
+  // ── Deny-with-reason ────────────────────────────────────────────────────
+
+  it("deny-with-reason: reason is threaded through to PermissionCheckResult", () => {
+    const { manager, cleanup } = makeManagerWithConfig({
+      bash: { "npm *": { action: "deny", reason: "Use pnpm instead" } },
+    });
+    try {
+      const result = manager.checkPermission("bash", {
+        command: "npm install",
+      });
+      expect(result.state).toBe("deny");
+      expect(result.reason).toBe("Use pnpm instead");
+      expect(result.matchedPattern).toBe("npm *");
+    } finally {
+      cleanup();
+    }
+  });
+
+  it("deny-without-reason: reason is undefined in PermissionCheckResult", () => {
+    const { manager, cleanup } = makeManagerWithConfig({
+      bash: { "rm -rf *": "deny" },
+    });
+    try {
+      const result = manager.checkPermission("bash", {
+        command: "rm -rf /",
+      });
+      expect(result.state).toBe("deny");
+      expect(result.reason).toBeUndefined();
+    } finally {
+      cleanup();
+    }
+  });
+
+  it("deny-with-reason on non-bash surface", () => {
+    const { manager, cleanup } = makeManagerWithConfig({
+      read: {
+        "*.env": {
+          action: "deny",
+          reason: "Environment files contain secrets",
+        },
+      },
+    });
+    try {
+      const result = manager.checkPermission("read", { path: ".env" });
+      expect(result.state).toBe("deny");
+      expect(result.reason).toBe("Environment files contain secrets");
+      expect(result.matchedPattern).toBe("*.env");
+    } finally {
+      cleanup();
+    }
+  });
+
+  it("non-string reason is silently rejected (malformed config edge case)", () => {
+    const { manager, cleanup } = makeManagerWithConfig({
+      bash: { "npm *": { action: "deny", reason: 42 } },
+    });
+    try {
+      // The malformed reason value is rejected by the type guard;
+      // the pattern is treated as absent, falling through to the default.
+      const result = manager.checkPermission("bash", {
+        command: "npm install",
+      });
+      expect(result.state).toBe("ask");
+      expect(result.reason).toBeUndefined();
+    } finally {
+      cleanup();
+    }
+  });
+
   // ── Last-match-wins ordering ────────────────────────────────────────────
 
   it("last-match-wins: catch-all after deny overrides the deny", () => {

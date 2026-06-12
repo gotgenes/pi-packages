@@ -58,7 +58,13 @@ Scalar fields (`debugLog`, `permissionReviewLog`, `yoloMode`) use simple replace
     "read": "allow",
     "write": "deny",
     "edit": "deny",
-    "bash": { "git *": "ask", "git status": "allow" },
+    "bash": {
+      "*": "ask",
+      "git *": "ask",
+      "git status": "allow",
+      "git diff": "allow",
+      "npm *": { "action": "deny", "reason": "Use pnpm instead" }
+    },
     "mcp": { "mcp_status": "allow" },
     "skill": { "*": "ask" },
     "external_directory": "ask"
@@ -122,6 +128,8 @@ Omitting `"*"` defaults to `"ask"` (least privilege).
 
 Any registered tool name can be a surface key.
 A string value is a catch-all for that surface.
+For `deny` rules, the value can also be an object with an optional `reason`: `{ "action": "deny", "reason": "..." }`.
+The reason is shown to the agent when the command is blocked.
 
 | Surface example                               | Description                         |
 | --------------------------------------------- | ----------------------------------- |
@@ -214,7 +222,8 @@ Place a more specific pattern *after* it to carve out exceptions — the later m
       "git *": "ask",
       "git status": "allow",
       "git diff": "allow",
-      "rm -rf *": "deny"
+      "rm -rf *": "deny",
+      "npm *": { "action": "deny", "reason": "Use pnpm instead" }
     }
   }
 }
