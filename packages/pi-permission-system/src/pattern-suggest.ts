@@ -1,4 +1,4 @@
-import { prefix } from "./bash-arity";
+import { prefix, stripBashCommentLines } from "./bash-arity";
 import { PATH_BEARING_TOOLS } from "./path-utils";
 import { deriveApprovalPattern } from "./session-rules";
 
@@ -26,11 +26,15 @@ export interface SessionApprovalSuggestion {
 export function suggestBashPattern(command: string): string {
   const trimmed = command.trim();
   if (!trimmed) return "";
-  const tokens = trimmed.split(/\s+/);
-  if (tokens.length === 1) return trimmed;
+  // Strip leading shell comment lines so the suggestion is based on the
+  // actual command, not a `# description` prefix agents often prepend.
+  const stripped = stripBashCommentLines(trimmed);
+  if (!stripped) return "";
+  const tokens = stripped.split(/\s+/);
+  if (tokens.length === 1) return stripped;
   const meaningful = prefix(tokens);
   if (meaningful.length >= tokens.length) {
-    return `${trimmed}*`;
+    return `${stripped}*`;
   }
   return `${meaningful.join(" ")} *`;
 }

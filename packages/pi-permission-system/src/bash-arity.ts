@@ -184,3 +184,27 @@ export function prefix(tokens: string[]): string[] {
   // Unknown command — default arity 1.
   return [tokens[0]];
 }
+
+/**
+ * Remove shell comment lines from a bash command string.
+ *
+ * A comment line is one whose first non-whitespace character is `#`. Agents
+ * frequently prepend descriptive comments before the real command
+ * (e.g. `"# Check debug logs\nfind ..."`); such prefixes defeat wildcard
+ * pattern matching and session-approval suggestions, which tokenize the
+ * leading text. Stripping comment lines lets matching operate on the actual
+ * command.
+ *
+ * The original command is never returned: when every line is a comment (or
+ * the input is blank) an empty string is returned, and each caller applies
+ * its own fallback.
+ *
+ * @param command - Raw bash command, possibly multi-line.
+ * @returns The command with comment lines removed and surrounding whitespace
+ *   trimmed, or an empty string when nothing meaningful remains.
+ */
+export function stripBashCommentLines(command: string): string {
+  const lines = command.split("\n");
+  const meaningful = lines.filter((line) => !/^\s*#/.test(line));
+  return meaningful.join("\n").trim();
+}

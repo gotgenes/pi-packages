@@ -42,6 +42,30 @@ describe("suggestBashPattern", () => {
       "docker compose up *",
     );
   });
+
+  it("strips leading comment lines and suggests based on the actual command", () => {
+    expect(
+      suggestBashPattern(
+        "# Check debug logs\nfind /home -path '*debug*' -type f",
+      ),
+    ).toBe("find *");
+  });
+
+  it("strips multiple leading comment lines", () => {
+    expect(suggestBashPattern("# Step 1\n# Step 2\ngit status --short")).toBe(
+      "git status *",
+    );
+  });
+
+  it("returns empty for comment-only input", () => {
+    expect(suggestBashPattern("# just a comment")).toBe("");
+  });
+
+  it("handles mixed comment and command lines", () => {
+    expect(suggestBashPattern("# description\nrm -rf ./build; echo done")).toBe(
+      "rm *",
+    );
+  });
 });
 
 describe("suggestMcpPattern", () => {

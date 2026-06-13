@@ -198,6 +198,34 @@ describe("normalizeInput — non-MCP surfaces", () => {
       expect(result.values).toEqual([""]);
       expect(result.resultExtras).toEqual({ command: "" });
     });
+
+    it("strips leading comment lines from values but keeps original in resultExtras", () => {
+      const cmd = "# Check debug logs\nfind /home -path '*debug*' -type f";
+      const result = normalizeInput("bash", { command: cmd }, []);
+      expect(result.values).toEqual(["find /home -path '*debug*' -type f"]);
+      expect(result.resultExtras).toEqual({ command: cmd });
+    });
+
+    it("strips multiple comment lines", () => {
+      const cmd = "# Step 1\n# Step 2\ngit status --short";
+      const result = normalizeInput("bash", { command: cmd }, []);
+      expect(result.values).toEqual(["git status --short"]);
+    });
+
+    it("preserves command when no comment lines present", () => {
+      const result = normalizeInput(
+        "bash",
+        { command: "grep -rn foo src/" },
+        [],
+      );
+      expect(result.values).toEqual(["grep -rn foo src/"]);
+    });
+
+    it("falls back to original when all lines are comments", () => {
+      const cmd = "# just a comment";
+      const result = normalizeInput("bash", { command: cmd }, []);
+      expect(result.values).toEqual(["# just a comment"]);
+    });
   });
 
   describe("path-bearing tools (read, write, edit, grep, find, ls)", () => {

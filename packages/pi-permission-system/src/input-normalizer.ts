@@ -1,3 +1,4 @@
+import { stripBashCommentLines } from "./bash-arity";
 import { getNonEmptyString, toRecord } from "./common";
 import { createMcpPermissionTargets } from "./mcp-targets";
 import { getPathPolicyValues, PATH_BEARING_TOOLS } from "./path-utils";
@@ -92,9 +93,14 @@ export function normalizeInput(
   if (toolName === "bash") {
     const record = toRecord(input);
     const command = typeof record.command === "string" ? record.command : "";
+    // Strip leading shell comment lines so pattern matching operates on the
+    // actual command, not a `# description` prefix agents often prepend.
+    // Fall back to the raw command when stripping leaves nothing, so an
+    // all-comment command still evaluates against its literal text.
+    const matchValue = stripBashCommentLines(command) || command;
     return {
       surface: "bash",
-      values: [command],
+      values: [matchValue],
       resultExtras: { command },
     };
   }

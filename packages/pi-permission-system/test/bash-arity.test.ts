@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ARITY, prefix } from "#src/bash-arity";
+import { ARITY, prefix, stripBashCommentLines } from "#src/bash-arity";
 
 describe("ARITY dictionary", () => {
   it("is exported as a plain object", () => {
@@ -102,5 +102,43 @@ describe("prefix", () => {
 
   it("returns arity-1 for bare 'ls' (args are paths)", () => {
     expect(prefix(["ls", "-la", "/tmp"])).toEqual(["ls"]);
+  });
+});
+
+describe("stripBashCommentLines", () => {
+  it("removes a single leading comment line", () => {
+    expect(
+      stripBashCommentLines("# Check debug logs\nfind /home -type f"),
+    ).toBe("find /home -type f");
+  });
+
+  it("removes multiple leading comment lines", () => {
+    expect(
+      stripBashCommentLines("# Step 1\n# Step 2\ngit status --short"),
+    ).toBe("git status --short");
+  });
+
+  it("returns empty string when all lines are comments", () => {
+    expect(stripBashCommentLines("# just a comment")).toBe("");
+  });
+
+  it("returns empty string for blank input", () => {
+    expect(stripBashCommentLines("")).toBe("");
+  });
+
+  it("returns the command unchanged when no comment lines are present", () => {
+    expect(stripBashCommentLines("grep -rn foo src/")).toBe(
+      "grep -rn foo src/",
+    );
+  });
+
+  it("trims surrounding whitespace from the result", () => {
+    expect(stripBashCommentLines("\n\n  ls -la  \n")).toBe("ls -la");
+  });
+
+  it("treats indented comment lines as comments", () => {
+    expect(stripBashCommentLines("    # indented comment\necho hi")).toBe(
+      "echo hi",
+    );
   });
 });
