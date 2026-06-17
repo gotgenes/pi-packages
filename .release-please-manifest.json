@@ -5,6 +5,6 @@
   "packages/pi-nocd": "1.0.0",
   "packages/pi-permission-system": "13.2.0",
   "packages/pi-session-tools": "1.1.0",
-  "packages/pi-subagents": "16.4.0",
+  "packages/pi-subagents": "16.5.0",
   "packages/pi-subagents-worktrees": "0.2.3"
 }

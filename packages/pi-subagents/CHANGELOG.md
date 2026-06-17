@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [16.5.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v16.4.0...pi-subagents-v16.5.0) (2026-06-17)
+
+
+### Features
+
+* accumulate live activity in record-observer ([#420](https://github.com/gotgenes/pi-packages/issues/420)) ([c75e7cf](https://github.com/gotgenes/pi-packages/commit/c75e7cf20e44116743fc847238b4364a1edda25a))
+* add live-activity fields to SubagentState ([#420](https://github.com/gotgenes/pi-packages/issues/420)) ([713f19a](https://github.com/gotgenes/pi-packages/commit/713f19aa13306b6c41dc54f3ddfa73fcdfc65427))
+* expose live-activity getters on Subagent ([#420](https://github.com/gotgenes/pi-packages/issues/420)) ([6438d6c](https://github.com/gotgenes/pi-packages/commit/6438d6ca0fdb25b1dfeffa0f76a1eae8630f0cce))
+
 ## [16.4.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v16.3.1...pi-subagents-v16.4.0) (2026-06-16)
 
 
