@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [16.6.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v16.5.0...pi-subagents-v16.6.0) (2026-06-17)
+
+
+### Features
+
+* read widget activity off subagent records ([#421](https://github.com/gotgenes/pi-packages/issues/421)) ([df09e03](https://github.com/gotgenes/pi-packages/commit/df09e03d122c391212507c4c5d8436cd4a0561ba))
+
 ## [16.5.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v16.4.0...pi-subagents-v16.5.0) (2026-06-17)
 
 
