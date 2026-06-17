@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [14.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v13.2.0...pi-permission-system-v14.0.0) (2026-06-17)
+
+
+### ⚠ BREAKING CHANGES
+
+* project agents' `permission:` frontmatter at `<cwd>/.pi/agents/<name>.md` is now read and enforced. Previously the wrong directory (`<cwd>/.pi/agent/agents`) was checked and the frontmatter was silently ignored, so a session may become more restrictive on upgrade.
+
+### Bug Fixes
+
+* correct project agents directory path to &lt;cwd&gt;/.pi/agents ([#428](https://github.com/gotgenes/pi-packages/issues/428)) ([eb5af78](https://github.com/gotgenes/pi-packages/commit/eb5af78193fa3cc574da6b8d80efd643ebce0ef9))
+
+
+### Documentation
+
+* correct project agent override path to &lt;cwd&gt;/.pi/agents ([#428](https://github.com/gotgenes/pi-packages/issues/428)) ([d193d6a](https://github.com/gotgenes/pi-packages/commit/d193d6a61155fb4e4a064800509cdbbd84b0ceb9))
+* fix stale project agents path in troubleshooting and ADR-0001 ([#428](https://github.com/gotgenes/pi-packages/issues/428)) ([95effeb](https://github.com/gotgenes/pi-packages/commit/95effebfd0b2e87db4512c91adc134b2470f26a3))
+
 ## [13.2.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v13.1.2...pi-permission-system-v13.2.0) (2026-06-17)
 
 
