@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.1.5](https://github.com/gotgenes/pi-packages/compare/pi-github-tools-v4.1.4...pi-github-tools-v4.1.5) (2026-06-17)
+
+
+### Documentation
+
+* **pi-github-tools:** correct documented merge-method fallback to merge ([00eb826](https://github.com/gotgenes/pi-packages/commit/00eb82647bc51ba4b99b1a82e39760463ceb2b97))
+
 ## [4.1.4](https://github.com/gotgenes/pi-packages/compare/pi-github-tools-v4.1.3...pi-github-tools-v4.1.4) (2026-06-12)
 
 

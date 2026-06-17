@@ -1,7 +1,7 @@
 {
   "packages/pi-autoformat": "5.1.5",
   "packages/pi-colgrep": "1.5.1",
-  "packages/pi-github-tools": "4.1.4",
+  "packages/pi-github-tools": "4.1.5",
   "packages/pi-nocd": "1.0.0",
   "packages/pi-permission-system": "13.1.2",
   "packages/pi-session-tools": "1.1.0",
