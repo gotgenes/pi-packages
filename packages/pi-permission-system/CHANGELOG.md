@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [13.2.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v13.1.2...pi-permission-system-v13.2.0) (2026-06-17)
+
+
+### Features
+
+* **pi-permission-system:** add external-directory typed+resolved policy aliases ([#418](https://github.com/gotgenes/pi-packages/issues/418)) ([ae653d1](https://github.com/gotgenes/pi-packages/commit/ae653d11fa52403cc5a78cd0148bc102de923d3c))
+
+
+### Bug Fixes
+
+* **pi-permission-system:** match external_directory patterns against typed and resolved paths ([#418](https://github.com/gotgenes/pi-packages/issues/418)) ([d08e645](https://github.com/gotgenes/pi-packages/commit/d08e64509d980c818708ecd2b7152ba6fc05946d))
+
+
+### Documentation
+
+* **pi-permission-system:** document external_directory symlink alias matching ([#418](https://github.com/gotgenes/pi-packages/issues/418)) ([8760273](https://github.com/gotgenes/pi-packages/commit/876027313457591ab5f175c689aa3074143db388))
+
 ## [13.1.2](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v13.1.1...pi-permission-system-v13.1.2) (2026-06-16)
 
 
