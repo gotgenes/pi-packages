@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [17.0.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v16.6.0...pi-subagents-v17.0.0) (2026-06-18)
+
+
+### ⚠ BREAKING CHANGES
+
+* SUBAGENT_EVENTS.ACTIVITY ("subagents:activity") is removed. It was never emitted, so no consumer could act on it, and there is no replacement — the activity tier was removed in Phase 18. Consumers should subscribe to the now-declared FAILED, COMPACTED, CREATED, and STEERED channels instead.
+
+### Features
+
+* reconcile SUBAGENT_EVENTS with emitted channels ([#425](https://github.com/gotgenes/pi-packages/issues/425)) ([ba0c48b](https://github.com/gotgenes/pi-packages/commit/ba0c48b294123c1498db2040b1037adcd7ad4e4e))
+
 ## [16.6.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v16.5.0...pi-subagents-v16.6.0) (2026-06-17)
 
 
