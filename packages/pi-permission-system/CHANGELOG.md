@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [15.1.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v15.0.1...pi-permission-system-v15.1.0) (2026-06-20)
+
+
+### Features
+
+* **pi-permission-system:** trace tool-call decisions and emit a session summary ([#452](https://github.com/gotgenes/pi-packages/issues/452)) ([528e340](https://github.com/gotgenes/pi-packages/commit/528e340ae38a6b2f431dac1ab92642c1af72c0ac))
+* **pi-permission-system:** warn when a permissive top-level "*" leaves bash ungated ([#452](https://github.com/gotgenes/pi-packages/issues/452)) ([8ef8d0f](https://github.com/gotgenes/pi-packages/commit/8ef8d0fdf39297817c57968f0e345d79c6369d3a))
+
+
+### Bug Fixes
+
+* **pi-permission-system:** prompt instead of allowing an unparseable bash command ([#452](https://github.com/gotgenes/pi-packages/issues/452)) ([538bac1](https://github.com/gotgenes/pi-packages/commit/538bac12e343d613f2e980dabb516a880b90f3fe))
+* **pi-permission-system:** retry tree-sitter parser init instead of caching a rejected promise ([#452](https://github.com/gotgenes/pi-packages/issues/452)) ([468facd](https://github.com/gotgenes/pi-packages/commit/468facd50e9f9ee986121f76546c368851b14edb))
+
+
+### Documentation
+
+* **pi-permission-system:** document fail-closed gate behavior and bash fallback warning ([#452](https://github.com/gotgenes/pi-packages/issues/452)) ([fbb2844](https://github.com/gotgenes/pi-packages/commit/fbb28449afe9d92934769499d874c1cb93241c1b))
+
 ## [15.0.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v15.0.0...pi-permission-system-v15.0.1) (2026-06-20)
 
 
