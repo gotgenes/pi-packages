@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [17.2.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v17.1.0...pi-subagents-v17.2.0) (2026-06-20)
+
+
+### Features
+
+* shrink agent widget to background runs only ([#444](https://github.com/gotgenes/pi-packages/issues/444)) ([76463b4](https://github.com/gotgenes/pi-packages/commit/76463b47227961226dbce5efb70a71d596fe092e))
+
+
+### Documentation
+
+* note background-only widget in README and roadmap ([#444](https://github.com/gotgenes/pi-packages/issues/444)) ([437332f](https://github.com/gotgenes/pi-packages/commit/437332fa4a1fbb2f0a0358495454847bc597ae13))
+
 ## [17.1.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v17.0.1...pi-subagents-v17.1.0) (2026-06-20)
 
 
