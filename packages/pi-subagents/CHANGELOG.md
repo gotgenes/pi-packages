@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [17.0.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v17.0.0...pi-subagents-v17.0.1) (2026-06-20)
+
+
+### Bug Fixes
+
+* **pi-subagents:** exclude disabled agents from the subagent tool description ([#448](https://github.com/gotgenes/pi-packages/issues/448)) ([9a43414](https://github.com/gotgenes/pi-packages/commit/9a43414b3e15f0c978db9d468b737b13b801fdb2))
+* **pi-subagents:** return an error when spawning a disabled agent type ([#448](https://github.com/gotgenes/pi-packages/issues/448)) ([0e0225e](https://github.com/gotgenes/pi-packages/commit/0e0225e167596217dc7b1d99dd6269600d65326b))
+
 ## [17.0.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v16.6.0...pi-subagents-v17.0.0) (2026-06-18)
 
 
