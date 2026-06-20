@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [15.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v14.0.1...pi-permission-system-v15.0.0) (2026-06-20)
+
+
+### ⚠ BREAKING CHANGES
+
+* the wire system prompt now lists the active tools (narrowed to the permission-allowed set) in the `Available tools:` section. Previously the permission system removed that section entirely, so the model saw no tool listing. Sessions that relied on the empty-listing behavior will now see the narrowed listing.
+
+### Bug Fixes
+
+* narrow the Available tools section to the active set instead of stripping it ([#437](https://github.com/gotgenes/pi-packages/issues/437)) ([dc0b97d](https://github.com/gotgenes/pi-packages/commit/dc0b97d7571d6f3a5cf0b0e15172f0d2d92b050a))
+
+
+### Documentation
+
+* describe Available-tools narrowing and drop the prompt-cache module ([#437](https://github.com/gotgenes/pi-packages/issues/437)) ([4112057](https://github.com/gotgenes/pi-packages/commit/411205711c5574aebb7add9edf9e035d21614946))
+
 ## [14.0.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v14.0.0...pi-permission-system-v14.0.1) (2026-06-19)
 
 
