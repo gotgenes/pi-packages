@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [17.1.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v17.0.1...pi-subagents-v17.1.0) (2026-06-20)
+
+
+### Features
+
+* add SubagentsSettingsHandler for focused settings command ([#447](https://github.com/gotgenes/pi-packages/issues/447)) ([cae804d](https://github.com/gotgenes/pi-packages/commit/cae804d1be7ac437ad7344035b5d99cd1424e0c0))
+* register /subagents-settings command ([#447](https://github.com/gotgenes/pi-packages/issues/447)) ([7735a38](https://github.com/gotgenes/pi-packages/commit/7735a38db2658fd9faca6388ac4bc712fa8e5a86))
+
 ## [17.0.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v17.0.0...pi-subagents-v17.0.1) (2026-06-20)
 
 
