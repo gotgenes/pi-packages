@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [16.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v15.1.0...pi-permission-system-v16.0.0) (2026-06-21)
+
+
+### ⚠ BREAKING CHANGES
+
+* **pi-permission-system:** the bash permission gate fails closed. An internal gate error blocks the tool (with a gate_error review-log entry) instead of running it ungated, and a non-empty unparseable bash command resolves to ask instead of riding a permissive top-level "*". To opt back into permissive bash behavior, set an explicit "bash": { "*": "allow" } policy.
+
+### Bug Fixes
+
+* **pi-permission-system:** cut a major release for the fail-closed gate change ([#452](https://github.com/gotgenes/pi-packages/issues/452)) ([c7451cd](https://github.com/gotgenes/pi-packages/commit/c7451cd5fdcbc262a65863e26d5d56e24dda715e))
+
 ## [15.1.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v15.0.1...pi-permission-system-v15.1.0) (2026-06-20)
 
 
