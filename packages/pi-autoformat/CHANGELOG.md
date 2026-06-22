@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.1.6](https://github.com/gotgenes/pi-packages/compare/pi-autoformat-v5.1.5...pi-autoformat-v5.1.6) (2026-06-22)
+
+
+### Documentation
+
+* **pi-autoformat:** document treefmt for subdirectory-scoped formatters ([#459](https://github.com/gotgenes/pi-packages/issues/459)) ([5c35757](https://github.com/gotgenes/pi-packages/commit/5c35757636862594462ca274fee6fc7b6465865f))
+
 ## [5.1.5](https://github.com/gotgenes/pi-packages/compare/pi-autoformat-v5.1.4...pi-autoformat-v5.1.5) (2026-06-12)
 
 
