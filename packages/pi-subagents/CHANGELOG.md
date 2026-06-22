@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [17.3.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v17.2.0...pi-subagents-v17.3.0) (2026-06-22)
+
+
+### Features
+
+* add /subagent-sessions read-only navigation command ([#445](https://github.com/gotgenes/pi-packages/issues/445)) ([341385c](https://github.com/gotgenes/pi-packages/commit/341385cf1f0c9f5ae1d3035c5b3b34bc3e636c92))
+* add subagent session selection and live transcript source ([#445](https://github.com/gotgenes/pi-packages/issues/445)) ([7173647](https://github.com/gotgenes/pi-packages/commit/71736478c37af2c6ceaebc3ce0ee5a85e75ab1cb))
+* add typed agentMessages accessor on subagent record ([#445](https://github.com/gotgenes/pi-packages/issues/445)) ([3bd49e3](https://github.com/gotgenes/pi-packages/commit/3bd49e37feea2cca52c706f7e765b8ae934ab9fe))
+
 ## [17.2.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v17.1.0...pi-subagents-v17.2.0) (2026-06-20)
 
 
