@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [17.4.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v17.3.0...pi-subagents-v17.4.0) (2026-06-23)
+
+
+### Features
+
+* add getToolDefinition accessor on subagent record ([#462](https://github.com/gotgenes/pi-packages/issues/462)) ([e0bfdac](https://github.com/gotgenes/pi-packages/commit/e0bfdacec33120d0f52e6294f3676f4776aee4af))
+* expose getToolDefinition on the transcript source seam ([#462](https://github.com/gotgenes/pi-packages/issues/462)) ([669f5ff](https://github.com/gotgenes/pi-packages/commit/669f5ff71523122ebb011adc6875b54d7001d53a))
+* render /subagent-sessions transcript with Pi per-entry components ([#462](https://github.com/gotgenes/pi-packages/issues/462)) ([b832a43](https://github.com/gotgenes/pi-packages/commit/b832a437c97378f701033ef8e98c6f7805d7e7a8))
+
 ## [17.3.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v17.2.0...pi-subagents-v17.3.0) (2026-06-22)
 
 
