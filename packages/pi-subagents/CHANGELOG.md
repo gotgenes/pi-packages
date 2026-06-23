@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [18.0.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v17.5.0...pi-subagents-v18.0.0) (2026-06-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* **pi-subagents:** The /agents command is removed. Its responsibilities are now served by: /subagents:settings (configure concurrency and turn limits), /subagents:sessions (read-only session transcript viewing), and the always-on background widget (running-agent visibility).
+* **pi-subagents:** the /subagents-settings and /subagent-sessions commands are renamed to /subagents:settings and /subagents:sessions.
+
+### Features
+
+* **pi-subagents:** dissolve /agents and remove the conversation-viewer subtree ([cb813f2](https://github.com/gotgenes/pi-packages/commit/cb813f2c5fac7c0b5fa62eecf7f0665671382c1c))
+* **pi-subagents:** namespace commands under subagents: ([23bf99e](https://github.com/gotgenes/pi-packages/commit/23bf99e8662a2b89b2816a14e5f2801fd6c74159))
+
 ## [17.5.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v17.4.0...pi-subagents-v17.5.0) (2026-06-23)
 
 
