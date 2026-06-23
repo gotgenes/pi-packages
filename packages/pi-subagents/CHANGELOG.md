@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [17.5.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v17.4.0...pi-subagents-v17.5.0) (2026-06-23)
+
+
+### Features
+
+* **pi-subagents:** add file-snapshot transcript source ([06a9ee3](https://github.com/gotgenes/pi-packages/commit/06a9ee39b5f529f770c39cf8d8bdcefd1511bb7d))
+* **pi-subagents:** retain evicted-agent descriptors in the manager ([3128e2a](https://github.com/gotgenes/pi-packages/commit/3128e2a44b94be9b976b74d24cf5127ca0944074))
+* **pi-subagents:** source evicted-agent transcripts from disk in /subagent-sessions ([b4da762](https://github.com/gotgenes/pi-packages/commit/b4da762b0574b49e028518c62e7b2f11acaf1ad4))
+
 ## [17.4.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v17.3.0...pi-subagents-v17.4.0) (2026-06-23)
 
 
