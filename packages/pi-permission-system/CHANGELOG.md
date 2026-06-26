@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [16.2.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v16.1.0...pi-permission-system-v16.2.0) (2026-06-26)
+
+
+### Features
+
+* **pi-permission-system:** add ScopedPermissionManager.check(intent) ([#478](https://github.com/gotgenes/pi-packages/issues/478)) ([7cb600a](https://github.com/gotgenes/pi-packages/commit/7cb600a11efd4bc60bd31c70d85550c7e1b28058))
+* **pi-permission-system:** narrow ScopedPermissionResolver to resolve(intent) ([#478](https://github.com/gotgenes/pi-packages/issues/478)) ([908176f](https://github.com/gotgenes/pi-packages/commit/908176f8341e05d9181d5cf22ede10a6d5a470d0))
+
+
+### Documentation
+
+* **pi-permission-system:** record resolve(intent) narrowing ([#478](https://github.com/gotgenes/pi-packages/issues/478)) ([fb8f986](https://github.com/gotgenes/pi-packages/commit/fb8f986e15e5db20d84030d0f77b2aa4aad39aab))
+
 ## [16.1.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v16.0.2...pi-permission-system-v16.1.0) (2026-06-26)
 
 
