@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [17.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v16.2.1...pi-permission-system-v17.0.0) (2026-06-27)
+
+
+### ⚠ BREAKING CHANGES
+
+* **pi-permission-system:** the path surface now also matches the canonical (symlink-resolved) form of bash path-rule tokens, so a path rule can fire on a symlink alias it previously missed, changing decisions on upgrade with no config edit.
+* **pi-permission-system:** the path surface now also matches the canonical (symlink-resolved) form of a tool's file path. A path rule that previously matched only the as-typed spelling now also matches when the path resolves through a symlink to a target the pattern covers, which can change allow/deny decisions on upgrade with no config edit.
+
+### Features
+
+* **pi-permission-system:** add AccessPath.forPath and forLiteral factories ([4323cae](https://github.com/gotgenes/pi-packages/commit/4323cae859907dd62d9cb401c194443717ab752c)), closes [#486](https://github.com/gotgenes/pi-packages/issues/486)
+* **pi-permission-system:** match the canonical form on the bash-path gate ([6ce0c06](https://github.com/gotgenes/pi-packages/commit/6ce0c06b35c12eca32ffce5d4fe974c2f2dee393))
+* **pi-permission-system:** match the canonical form on the path tool gate ([869ca76](https://github.com/gotgenes/pi-packages/commit/869ca761cf3d7a8367eb932106065a866d996ce4))
+
+
+### Documentation
+
+* **pi-permission-system:** document canonical path-surface matching ([9606dce](https://github.com/gotgenes/pi-packages/commit/9606dce744bc1f95bd8424d2bb115a376d9a1191)), closes [#486](https://github.com/gotgenes/pi-packages/issues/486)
+
 ## [16.2.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v16.2.0...pi-permission-system-v16.2.1) (2026-06-27)
 
 
