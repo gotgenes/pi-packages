@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [16.2.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v16.2.0...pi-permission-system-v16.2.1) (2026-06-27)
+
+
+### Bug Fixes
+
+* **pi-permission-system:** floor opaque bash -c/eval wrappers to ask ([#481](https://github.com/gotgenes/pi-packages/issues/481)) ([e69493c](https://github.com/gotgenes/pi-packages/commit/e69493c00a04fdcdc1a972ef04ffee5839c93d2a))
+* **pi-permission-system:** strip env-var assignment prefix from bash command units ([#481](https://github.com/gotgenes/pi-packages/issues/481)) ([1c99fb3](https://github.com/gotgenes/pi-packages/commit/1c99fb3835442dce3cb01b89f26db0a39084b7af))
+
+
+### Documentation
+
+* **pi-permission-system:** document env-prefix stripping and opaque bash-wrapper floor ([#481](https://github.com/gotgenes/pi-packages/issues/481)) ([40c0012](https://github.com/gotgenes/pi-packages/commit/40c001270249ace6a9d471c92063f9f09aa67238))
+* **pi-permission-system:** note opaque-wrapper sentinel in README and skill ([#481](https://github.com/gotgenes/pi-packages/issues/481)) ([e226fe7](https://github.com/gotgenes/pi-packages/commit/e226fe7a49218fac73f2dcb8c84cb13608d48fa0))
+* **pi-permission-system:** note prefix strip and opaque flag in commands() JSDoc ([#481](https://github.com/gotgenes/pi-packages/issues/481)) ([1892098](https://github.com/gotgenes/pi-packages/commit/18920980e0b17b6dd5e51a75fd103663f9313b32))
+
 ## [16.2.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v16.1.0...pi-permission-system-v16.2.0) (2026-06-26)
 
 
