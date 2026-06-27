@@ -8,6 +8,7 @@ import type { GatePrompter } from "#src/gate-prompter";
 import type { GateDescriptor } from "#src/handlers/gates/descriptor";
 import { GateRunner } from "#src/handlers/gates/runner";
 import type { SkillInputGateInputs } from "#src/handlers/gates/skill-input-gate-pipeline";
+import type { BashAuditConfig } from "#src/bash-command-auditor";
 import type { ToolCallGateInputs } from "#src/handlers/gates/tool-call-gate-pipeline";
 import type { ToolCallContext } from "#src/handlers/gates/types";
 import type { ScopedPermissionResolver } from "#src/permission-resolver";
@@ -254,6 +255,7 @@ export function makeGateInputs(
     getActiveSkillEntries?: () => SkillPromptEntry[];
     getInfrastructureReadDirs?: () => string[];
     getToolPreviewLimits?: () => ToolPreviewFormatterOptions;
+    getBashAuditConfig?: () => BashAuditConfig;
   } = {},
 ): ToolCallGateInputs {
   return {
@@ -269,6 +271,9 @@ export function makeGateInputs(
         toolTextSummaryMaxLength: 100,
         toolInputLogPreviewMaxLength: 200,
       })),
+    getBashAuditConfig:
+      overrides.getBashAuditConfig ??
+      vi.fn<() => BashAuditConfig>(() => ({})),
   };
 }
 

@@ -10,6 +10,10 @@ export interface PermissionSystemExtensionConfig {
   debugLog: boolean;
   permissionReviewLog: boolean;
   yoloMode: boolean;
+  /** When true, `sudo` prefixes in bash commands are permitted. Default: false. */
+  allowSudo?: boolean;
+  /** When true, `bash/sh -c` with dynamic arguments is permitted. Default: false. */
+  allowShellEscape?: boolean;
   /** Additional directories to auto-allow for reads as Pi infrastructure. */
   piInfrastructureReadPaths?: string[];
   /** Max length of the inline-JSON input preview shown in permission prompts. Defaults to 200. */
@@ -54,6 +58,12 @@ export function normalizePermissionSystemConfig(
     permissionReviewLog: raw.permissionReviewLog !== false,
     yoloMode: raw.yoloMode === true,
   };
+  if (raw.allowSudo !== undefined) {
+    result.allowSudo = raw.allowSudo;
+  }
+  if (raw.allowShellEscape !== undefined) {
+    result.allowShellEscape = raw.allowShellEscape;
+  }
   if (raw.piInfrastructureReadPaths !== undefined) {
     result.piInfrastructureReadPaths = raw.piInfrastructureReadPaths;
   }

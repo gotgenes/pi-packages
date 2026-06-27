@@ -4,6 +4,7 @@ import {
   getActiveAgentNameFromSystemPrompt,
 } from "./active-agent";
 
+import type { BashAuditConfig } from "./bash-command-auditor";
 import type { SessionConfigStore } from "./config-store";
 import type { PermissionSystemExtensionConfig } from "./extension-config";
 import type { ExtensionPaths } from "./extension-paths";
@@ -185,5 +186,18 @@ export class PermissionSession implements ToolCallGateInputs {
    */
   getToolPreviewLimits(): ToolPreviewFormatterOptions {
     return resolveToolPreviewLimits(this.config);
+  }
+
+  /**
+   * Bash command audit config derived from the current extension config.
+   *
+   * Supplies `allowSudo` and `allowShellEscape` flags to `auditBashCommand`
+   * so the auditor respects the operator-set policy for each session.
+   */
+  getBashAuditConfig(): BashAuditConfig {
+    return {
+      allowSudo: this.config.allowSudo,
+      allowShellEscape: this.config.allowShellEscape,
+    };
   }
 }

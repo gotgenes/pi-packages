@@ -26,6 +26,8 @@ export interface UnifiedPermissionConfig {
   debugLog?: boolean;
   permissionReviewLog?: boolean;
   yoloMode?: boolean;
+  allowSudo?: boolean;
+  allowShellEscape?: boolean;
   toolInputPreviewMaxLength?: number;
   toolTextSummaryMaxLength?: number;
   piInfrastructureReadPaths?: string[];
@@ -195,6 +197,12 @@ export function normalizeUnifiedConfig(raw: unknown): {
   const yoloMode = normalizeOptionalBoolean(record.yoloMode);
   if (yoloMode !== undefined) config.yoloMode = yoloMode;
 
+  const allowSudo = normalizeOptionalBoolean(record.allowSudo);
+  if (allowSudo !== undefined) config.allowSudo = allowSudo;
+
+  const allowShellEscape = normalizeOptionalBoolean(record.allowShellEscape);
+  if (allowShellEscape !== undefined) config.allowShellEscape = allowShellEscape;
+
   const toolInputPreviewMaxLength = normalizeOptionalPositiveInt(
     record.toolInputPreviewMaxLength,
   );
@@ -235,7 +243,7 @@ export function mergeUnifiedConfigs(
   const merged: UnifiedPermissionConfig = {};
 
   // Boolean scalars: override replaces base when defined
-  for (const key of ["debugLog", "permissionReviewLog", "yoloMode"] as const) {
+  for (const key of ["debugLog", "permissionReviewLog", "yoloMode", "allowSudo", "allowShellEscape"] as const) {
     const value = override[key] ?? base[key];
     if (value !== undefined) {
       merged[key] = value;
