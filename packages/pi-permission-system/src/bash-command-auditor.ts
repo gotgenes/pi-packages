@@ -42,15 +42,16 @@ export type BashAuditVerdict =
 /**
  * Returns `true` when the raw command contains `sudo` at the start of any
  * pipeline segment (after `&&`, `||`, `;`, `|`, or at the very start).
+ * Matches case-insensitively and handles path-qualified forms (`/usr/bin/sudo`).
  *
  * This is a conservative text-level check: it may fire on `sudo` inside a
  * string literal, but the false-positive rate is acceptable for a security
  * pre-filter.
  */
 function hasSudoPrefix(command: string): boolean {
-  // Match `sudo` at the very start of the command or after any shell operator,
-  // followed by whitespace or end-of-string (word-boundary guard).
-  return /(?:^|&&|\|\||[;|\n])\s*sudo(?:\s|$)/.test(command);
+  // Match `sudo` (or any path ending in `/sudo`, e.g. `/usr/bin/sudo`) at the
+  // start of a pipeline segment, case-insensitively.
+  return /(?:^|&&|\|\||[;|\n])\s*(?:\S*\/)?sudo(?:\s|$)/i.test(command);
 }
 
 /**
@@ -74,10 +75,10 @@ function isLiteralShellCArg(arg: string): boolean {
  * variable references, command substitution, or is unquoted).
  */
 function hasShellEscape(command: string): boolean {
-  // Match `bash` or `sh` followed by optional flag tokens and then `-c `.
-  // Flags may appear before `-c` in arbitrary order (e.g. `bash -x -c ...`).
+  // Match `bash` or `sh` (case-insensitively) followed by optional flag tokens
+  // and then `-c`. Flags may appear before `-c` in arbitrary order.
   // The capture group grabs everything after `-c ` on the same logical line.
-  const shellCRe = /\b(?:bash|sh)\b(?:\s+[-\w]+)*\s+-c\s+([\s\S]+)/;
+  const shellCRe = /\b(?:bash|sh)\b(?:\s+[-\w]+)*\s+-c\s+([\s\S]+)/i;
   const match = command.match(shellCRe);
   if (!match) return false;
 
