@@ -1,4 +1,5 @@
 import { realpathSync } from "node:fs";
+import { realpath } from "node:fs/promises";
 import { join } from "node:path";
 
 /**
@@ -27,4 +28,25 @@ export function canonicalizePath(absolutePath: string): string {
     }
   }
   return absolutePath;
+}
+
+/**
+ * Resolve symlinks for an absolute path asynchronously using `fs.realpath`.
+ *
+ * Returns the resolved real path on success, or `null` when resolution fails
+ * (dangling symlink, ENOENT, EPERM, ELOOP, or any other error).
+ *
+ * Used by the path permission gate to prevent symlink-traversal bypass: a
+ * caller should treat a `null` return as a deny, because an unresolvable path
+ * could be a dangling or adversarially crafted symlink.
+ */
+export async function resolveSymlinkAsync(
+  absolutePath: string,
+): Promise<string | null> {
+  if (!absolutePath) return null;
+  try {
+    return await realpath(absolutePath);
+  } catch {
+    return null;
+  }
 }

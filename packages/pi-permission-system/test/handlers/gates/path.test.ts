@@ -27,9 +27,9 @@ function makeTcc(overrides: Partial<ToolCallContext> = {}): ToolCallContext {
 // ── tests ──────────────────────────────────────────────────────────────────
 
 describe("describePathGate", () => {
-  it("returns null for non-path-bearing tools", () => {
+  it("returns null for non-path-bearing tools", async () => {
     const resolver = makeResolver();
-    const result = describePathGate(
+    const result = await describePathGate(
       makeTcc({ toolName: "bash", input: { command: "ls" } }),
       resolver,
     );
@@ -37,22 +37,22 @@ describe("describePathGate", () => {
     expect(resolver.resolve).not.toHaveBeenCalled();
   });
 
-  it("returns null when tool has no extractable path", () => {
+  it("returns null when tool has no extractable path", async () => {
     const resolver = makeResolver();
-    const result = describePathGate(
+    const result = await describePathGate(
       makeTcc({ toolName: "read", input: {} }),
       resolver,
     );
     expect(result).toBeNull();
   });
 
-  it("returns null when path check result is allow", () => {
+  it("returns null when path check result is allow", async () => {
     const resolver = makeResolver(makeCheckResult({ state: "allow" }));
-    const result = describePathGate(makeTcc(), resolver);
+    const result = await describePathGate(makeTcc(), resolver);
     expect(result).toBeNull();
   });
 
-  it("returns null when matchedPattern is undefined (universal default)", () => {
+  it("returns null when matchedPattern is undefined (universal default)", async () => {
     const resolver = makeResolver(
       makeCheckResult({
         state: "ask",
@@ -61,11 +61,11 @@ describe("describePathGate", () => {
         origin: "builtin",
       }),
     );
-    const result = describePathGate(makeTcc(), resolver);
+    const result = await describePathGate(makeTcc(), resolver);
     expect(result).toBeNull();
   });
 
-  it("returns GateDescriptor when matchedPattern is defined (explicit path rule)", () => {
+  it("returns GateDescriptor when matchedPattern is defined (explicit path rule)", async () => {
     const resolver = makeResolver(
       makeCheckResult({
         state: "ask",
@@ -74,16 +74,16 @@ describe("describePathGate", () => {
         origin: "global",
       }),
     );
-    const result = describePathGate(makeTcc(), resolver);
+    const result = await describePathGate(makeTcc(), resolver);
     expect(result).not.toBeNull();
     expect(isGateDescriptor(result)).toBe(true);
   });
 
-  it("returns GateDescriptor when path check result is deny", () => {
+  it("returns GateDescriptor when path check result is deny", async () => {
     const resolver = makeResolver(
       makeCheckResult({ state: "deny", matchedPattern: "*.env" }),
     );
-    const result = describePathGate(makeTcc(), resolver);
+    const result = await describePathGate(makeTcc(), resolver);
     expect(result).not.toBeNull();
     expect(isGateDescriptor(result)).toBe(true);
     const desc = result as GateDescriptor;
@@ -91,11 +91,11 @@ describe("describePathGate", () => {
     expect(desc.preCheck?.state).toBe("deny");
   });
 
-  it("returns GateDescriptor when path check result is ask", () => {
+  it("returns GateDescriptor when path check result is ask", async () => {
     const resolver = makeResolver(
       makeCheckResult({ state: "ask", matchedPattern: "*.env" }),
     );
-    const result = describePathGate(makeTcc(), resolver);
+    const result = await describePathGate(makeTcc(), resolver);
     expect(result).not.toBeNull();
     expect(isGateDescriptor(result)).toBe(true);
     const desc = result as GateDescriptor;
@@ -103,11 +103,11 @@ describe("describePathGate", () => {
     expect(desc.preCheck?.state).toBe("ask");
   });
 
-  it("descriptor has correct session approval surface and pattern", () => {
+  it("descriptor has correct session approval surface and pattern", async () => {
     const resolver = makeResolver(
       makeCheckResult({ state: "ask", matchedPattern: "*" }),
     );
-    const result = describePathGate(
+    const result = await describePathGate(
       makeTcc({ input: { path: "/test/project/src/.env" } }),
       resolver,
     ) as GateDescriptor;
@@ -116,11 +116,11 @@ describe("describePathGate", () => {
     expect(result.sessionApproval?.representativePattern).toBeDefined();
   });
 
-  it("binds a current-directory file's session approval to the cwd subtree", () => {
+  it("binds a current-directory file's session approval to the cwd subtree", async () => {
     const resolver = makeResolver(
       makeCheckResult({ state: "ask", matchedPattern: "*" }),
     );
-    const result = describePathGate(
+    const result = await describePathGate(
       makeTcc({ input: { path: "index.html" }, cwd: "/test/project" }),
       resolver,
     ) as GateDescriptor;
@@ -130,11 +130,11 @@ describe("describePathGate", () => {
     );
   });
 
-  it("descriptor denialContext references the file path and tool name", () => {
+  it("descriptor denialContext references the file path and tool name", async () => {
     const resolver = makeResolver(
       makeCheckResult({ state: "deny", matchedPattern: "*.env" }),
     );
-    const result = describePathGate(makeTcc(), resolver) as GateDescriptor;
+    const result = await describePathGate(makeTcc(), resolver) as GateDescriptor;
     expect(result.denialContext).toEqual({
       kind: "path",
       toolName: "read",
@@ -143,18 +143,18 @@ describe("describePathGate", () => {
     });
   });
 
-  it("descriptor decision uses surface 'path' and the file path as value", () => {
+  it("descriptor decision uses surface 'path' and the file path as value", async () => {
     const resolver = makeResolver(
       makeCheckResult({ state: "deny", matchedPattern: "*.env" }),
     );
-    const result = describePathGate(makeTcc(), resolver) as GateDescriptor;
+    const result = await describePathGate(makeTcc(), resolver) as GateDescriptor;
     expect(result.decision.surface).toBe("path");
     expect(result.decision.value).toBe(".env");
   });
 
-  it("resolves the path surface with the file path and agent name", () => {
+  it("resolves the path surface with the file path and agent name", async () => {
     const resolver = makeResolver(makeCheckResult({ state: "allow" }));
-    describePathGate(makeTcc({ agentName: "my-agent" }), resolver);
+    await describePathGate(makeTcc({ agentName: "my-agent" }), resolver);
     expect(resolver.resolve).toHaveBeenCalledWith({
       kind: "tool",
       surface: "path",
@@ -171,11 +171,11 @@ describe("describePathGate", () => {
 // correctly when the tool input contains a ~/... or $HOME/... path.
 
 describe("describePathGate — home-relative paths", () => {
-  it("passes raw ~/... path to resolver and builds descriptor on deny", () => {
+  it("passes raw ~/... path to resolver and builds descriptor on deny", async () => {
     const resolver = makeResolver(
       makeCheckResult({ state: "deny", matchedPattern: "~/.ssh/*" }),
     );
-    const result = describePathGate(
+    const result = await describePathGate(
       makeTcc({ input: { path: "~/.ssh/config" } }),
       resolver,
     ) as GateDescriptor;
@@ -196,11 +196,11 @@ describe("describePathGate — home-relative paths", () => {
     });
   });
 
-  it("passes raw $HOME/... path to resolver and builds descriptor on deny", () => {
+  it("passes raw $HOME/... path to resolver and builds descriptor on deny", async () => {
     const resolver = makeResolver(
       makeCheckResult({ state: "deny", matchedPattern: "$HOME/.ssh/*" }),
     );
-    const result = describePathGate(
+    const result = await describePathGate(
       makeTcc({ input: { path: "$HOME/.ssh/config" } }),
       resolver,
     ) as GateDescriptor;
@@ -213,9 +213,9 @@ describe("describePathGate — home-relative paths", () => {
     });
   });
 
-  it("returns null when home-relative path resolves to allow", () => {
+  it("returns null when home-relative path resolves to allow", async () => {
     const resolver = makeResolver(makeCheckResult({ state: "allow" }));
-    const result = describePathGate(
+    const result = await describePathGate(
       makeTcc({ input: { path: "~/.ssh/config" } }),
       resolver,
     );
@@ -236,11 +236,11 @@ describe("describePathGate — extension and MCP tools (#352)", () => {
     };
   }
 
-  it("gates an extension tool that exposes input.path", () => {
+  it("gates an extension tool that exposes input.path", async () => {
     const resolver = makeResolver(
       makeCheckResult({ state: "deny", matchedPattern: "*.env" }),
     );
-    const result = describePathGate(
+    const result = await describePathGate(
       makeTcc({ toolName: "my-ext", input: { path: ".env" } }),
       resolver,
     );
@@ -253,11 +253,11 @@ describe("describePathGate — extension and MCP tools (#352)", () => {
     });
   });
 
-  it("gates an MCP tool via arguments.path", () => {
+  it("gates an MCP tool via arguments.path", async () => {
     const resolver = makeResolver(
       makeCheckResult({ state: "deny", matchedPattern: "*.env" }),
     );
-    const result = describePathGate(
+    const result = await describePathGate(
       makeTcc({ toolName: "mcp", input: { arguments: { path: ".env" } } }),
       resolver,
     );
@@ -270,11 +270,11 @@ describe("describePathGate — extension and MCP tools (#352)", () => {
     });
   });
 
-  it("uses a registered extractor's path for a custom-shaped tool", () => {
+  it("uses a registered extractor's path for a custom-shaped tool", async () => {
     const resolver = makeResolver(
       makeCheckResult({ state: "deny", matchedPattern: "*" }),
     );
-    describePathGate(
+    await describePathGate(
       makeTcc({ toolName: "ffgrep", input: { target: "/etc/passwd" } }),
       resolver,
       extractorLookup("ffgrep", "target"),
@@ -287,9 +287,9 @@ describe("describePathGate — extension and MCP tools (#352)", () => {
     });
   });
 
-  it("returns null for an extension tool without a path", () => {
+  it("returns null for an extension tool without a path", async () => {
     const resolver = makeResolver();
-    const result = describePathGate(
+    const result = await describePathGate(
       makeTcc({ toolName: "my-ext", input: { other: true } }),
       resolver,
     );

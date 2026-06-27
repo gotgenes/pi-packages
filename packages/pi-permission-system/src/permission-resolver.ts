@@ -18,6 +18,16 @@ import type { PermissionCheckResult, PermissionState } from "./types";
  */
 export interface ScopedPermissionResolver {
   resolve(intent: AccessIntent): PermissionCheckResult;
+  /**
+   * Returns true when at least one explicit `path`-surface rule is configured.
+   * Gates use this as a fast-path skip to avoid `fs.realpath()` calls on every
+   * tool invocation when no path rules are present.
+   *
+   * Optional so that lightweight mock resolvers in tests that don't exercise
+   * symlink resolution are not required to implement it — the gate defaults to
+   * `false` (skip resolution) when the method is absent.
+   */
+  hasPathRules?(agentName?: string): boolean;
 }
 
 /**
@@ -93,5 +103,9 @@ export class PermissionResolver
 
   getConfigIssues(agentName?: string): string[] {
     return this.permissionManager.getConfigIssues(agentName);
+  }
+
+  hasPathRules(agentName?: string): boolean {
+    return this.permissionManager.hasPathRules?.(agentName) ?? false;
   }
 }

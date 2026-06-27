@@ -76,6 +76,17 @@ export interface ScopedPermissionManager {
   ): PermissionCheckResult;
   getToolPermission(toolName: string, agentName?: string): PermissionState;
   getConfigIssues(agentName?: string): string[];
+  /**
+   * Returns true when at least one explicit `path`-surface rule exists in the
+   * composed config ruleset for the given agent scope.
+   *
+   * Used by the path permission gate as a fast-path skip to avoid calling
+   * `fs.realpath()` on every tool invocation when no path rules are configured.
+   *
+   * Optional so lightweight test mocks that don't exercise symlink resolution
+   * are not required to implement it.
+   */
+  hasPathRules?(agentName?: string): boolean;
 }
 
 export interface PermissionManagerOptions extends PolicyLoaderOptions {
@@ -129,6 +140,13 @@ export class PermissionManager implements ScopedPermissionManager {
     // Trigger a load/resolve to ensure issues are collected.
     this.resolvePermissions(agentName);
     return [...this.loader.getConfigIssues()];
+  }
+
+  hasPathRules(agentName?: string): boolean {
+    const { composedRules } = this.resolvePermissions(agentName);
+    return composedRules.some(
+      (r) => r.surface === "path" && r.layer === "config",
+    );
   }
 
   getResolvedPolicyPaths(): ResolvedPolicyPaths {
