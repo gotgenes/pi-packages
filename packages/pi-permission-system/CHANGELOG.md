@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [17.1.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v17.0.0...pi-permission-system-v17.1.0) (2026-06-28)
+
+
+### Features
+
+* **pi-permission-system:** add PathNormalizer collaborator ([#510](https://github.com/gotgenes/pi-packages/issues/510)) ([d016089](https://github.com/gotgenes/pi-packages/commit/d016089690aff3821eabd5bd5351bb3a0c3639d4))
+
 ## [17.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v16.2.1...pi-permission-system-v17.0.0) (2026-06-27)
 
 
