@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [18.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v17.1.1...pi-permission-system-v18.0.0) (2026-06-29)
+
+
+### ⚠ BREAKING CHANGES
+
+* **pi-permission-system:** A permissions:rpc:check query for a `path` / `external_directory` / path-bearing surface now matches the canonical (symlink-resolved) alias, and a `path` / path-bearing query now evaluates the supplied path instead of collapsing to `*`.
+* **pi-permission-system:** A service (`getPermissionsService().checkPermission`) query for a `path` / `external_directory` / path-bearing surface now matches the canonical (symlink-resolved) alias, and a `path` / path-bearing query now evaluates the supplied path instead of collapsing to `*`. A symlinked path can now match a rule on its canonical target.
+* **pi-permission-system:** a per-tool path rule (e.g. `read: deny *.env`) now also fires when a symlink's resolved target matches the pattern, where previously only the lexically-referenced spelling matched. A symlink alias can no longer evade a per-tool deny/allow.
+
+### Features
+
+* **pi-permission-system:** match the canonical form on service path queries ([be4a3e7](https://github.com/gotgenes/pi-packages/commit/be4a3e7f48e700db4c667ce8176459a1e89820b4))
+* **pi-permission-system:** match the canonical form on the per-tool path gate ([ad36e78](https://github.com/gotgenes/pi-packages/commit/ad36e7860084be7692cb142f50c8818bd013ec38))
+* **pi-permission-system:** match the canonical form on the RPC check query ([bb04ca5](https://github.com/gotgenes/pi-packages/commit/bb04ca5d0bae265570144f7d76dee2bad9269f94))
+
+
+### Bug Fixes
+
+* **pi-permission-system:** remove unused join import; annotate closed findings ([#504](https://github.com/gotgenes/pi-packages/issues/504)) ([eb7c7b2](https://github.com/gotgenes/pi-packages/commit/eb7c7b298e21358d831892545b5dd8d3e9fb340a))
+
+
+### Documentation
+
+* **pi-permission-system:** document canonical per-tool path matching ([bafa492](https://github.com/gotgenes/pi-packages/commit/bafa492cf8517902aea5a44d6ea59d4b33e7f754))
+* **pi-permission-system:** document canonical service/RPC path matching ([35c36fa](https://github.com/gotgenes/pi-packages/commit/35c36fa9f7954aa84eb468954660b5857e067be3))
+
 ## [17.1.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v17.1.0...pi-permission-system-v17.1.1) (2026-06-29)
 
 
