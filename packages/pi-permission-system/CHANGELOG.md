@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [18.0.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v18.0.0...pi-permission-system-v18.0.1) (2026-06-30)
+
+
+### Documentation
+
+* **pi-permission-system:** name the path-values boundary contract and guard it ([#506](https://github.com/gotgenes/pi-packages/issues/506)) ([a47648c](https://github.com/gotgenes/pi-packages/commit/a47648c1fcff3226b6ea3269392f9d8548654ee1))
+
 ## [18.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v17.1.1...pi-permission-system-v18.0.0) (2026-06-29)
 
 
