@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [18.0.2](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v18.0.1...pi-permission-system-v18.0.2) (2026-07-01)
+
+
+### Bug Fixes
+
+* **pi-permission-system:** add AccessPath.resolvedAlias() for symlink-target disclosure ([cf6e25c](https://github.com/gotgenes/pi-packages/commit/cf6e25c8a5b672fbab4b41a21240af8ca818971b))
+* **pi-permission-system:** disclose resolved symlink target in tool external-directory messages ([1225e2b](https://github.com/gotgenes/pi-packages/commit/1225e2bcface907a0a4407aadcd744c2398edc19))
+* **pi-permission-system:** disclose resolved symlink targets in bash external-directory messages ([f9fab42](https://github.com/gotgenes/pi-packages/commit/f9fab42b758dd106e67b83a0e3c95fe6fc216687))
+
 ## [18.0.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v18.0.0...pi-permission-system-v18.0.1) (2026-06-30)
 
 
