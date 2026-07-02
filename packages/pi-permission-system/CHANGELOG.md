@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [18.1.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v18.0.2...pi-permission-system-v18.1.0) (2026-07-02)
+
+
+### Features
+
+* **pi-permission-system:** add rule-driven bare-token classifier ([0d693a7](https://github.com/gotgenes/pi-packages/commit/0d693a79478b3e7d9d23c573ec5a085ce8afccfd)), closes [#509](https://github.com/gotgenes/pi-packages/issues/509)
+* **pi-permission-system:** derive promotable path-token matcher from config ([4a29882](https://github.com/gotgenes/pi-packages/commit/4a298827768fe8730b6b51898740d084676d46cd)), closes [#509](https://github.com/gotgenes/pi-packages/issues/509)
+* **pi-permission-system:** gate bash bare filenames via path rules ([4ee201a](https://github.com/gotgenes/pi-packages/commit/4ee201a0f771c732e9ac62562a09d54204b425aa)), closes [#509](https://github.com/gotgenes/pi-packages/issues/509)
+* **pi-permission-system:** promote bare tokens in bash path projection ([f887b7c](https://github.com/gotgenes/pi-packages/commit/f887b7cd3820f085d97105bfa6dc470b35500835)), closes [#509](https://github.com/gotgenes/pi-packages/issues/509)
+
+
+### Documentation
+
+* **pi-permission-system:** document bash bare-filename path promotion ([db7159b](https://github.com/gotgenes/pi-packages/commit/db7159b00af083dc9a7af13c41589ba95376f9ac)), closes [#509](https://github.com/gotgenes/pi-packages/issues/509)
+
 ## [18.0.2](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v18.0.1...pi-permission-system-v18.0.2) (2026-07-01)
 
 
