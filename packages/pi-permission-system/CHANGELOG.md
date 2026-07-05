@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [18.1.2](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v18.1.1...pi-permission-system-v18.1.2) (2026-07-05)
+
+
+### Bug Fixes
+
+* **pi-permission-system:** allow-list Git Bash POSIX paths via external_directory on win32 ([#533](https://github.com/gotgenes/pi-packages/issues/533)) ([5532a43](https://github.com/gotgenes/pi-packages/commit/5532a436d825625316c67f29b90f0ceb427d4b29))
+* **pi-permission-system:** fold Git Bash cd targets with MSYS semantics on win32 ([#533](https://github.com/gotgenes/pi-packages/issues/533)) ([5cb20b4](https://github.com/gotgenes/pi-packages/commit/5cb20b41db7c22c3344ab7f8a4fa39e89adb1e1a))
+* **pi-permission-system:** match Git Bash POSIX-absolute bash tokens as typed on win32 ([#533](https://github.com/gotgenes/pi-packages/issues/533)) ([095fa5e](https://github.com/gotgenes/pi-packages/commit/095fa5eaf774567cfae8f82d11b0224ace7bc5eb))
+* **pi-permission-system:** recognize POSIX device paths in bash commands on win32 ([#533](https://github.com/gotgenes/pi-packages/issues/533)) ([11ca70f](https://github.com/gotgenes/pi-packages/commit/11ca70fe845469d478fb47b12e8ff572930a1be4))
+* **pi-permission-system:** translate MSYS drive-mount bash tokens on win32 ([#533](https://github.com/gotgenes/pi-packages/issues/533)) ([2bf4e53](https://github.com/gotgenes/pi-packages/commit/2bf4e53674c48ac9591ffb21831eb82bc3cb77b8))
+
+
+### Documentation
+
+* **pi-permission-system:** document Git Bash path semantics on Windows ([#533](https://github.com/gotgenes/pi-packages/issues/533)) ([09afcb2](https://github.com/gotgenes/pi-packages/commit/09afcb241ea05938d88ffce8c3d6d34cbb821619))
+
 ## [18.1.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v18.1.0...pi-permission-system-v18.1.1) (2026-07-03)
 
 
