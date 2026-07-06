@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.2.0](https://github.com/gotgenes/pi-packages/compare/pi-session-tools-v1.1.1...pi-session-tools-v1.2.0) (2026-07-06)
+
+
+### Features
+
+* **pi-session-tools:** add list_session_files discovery tool ([#549](https://github.com/gotgenes/pi-packages/issues/549)) ([077d860](https://github.com/gotgenes/pi-packages/commit/077d86018a55ab5d6ab0dbf5c0f75dcdbd8fbe1a))
+* **pi-session-tools:** add read_session_file tool ([#549](https://github.com/gotgenes/pi-packages/issues/549)) ([a3dba26](https://github.com/gotgenes/pi-packages/commit/a3dba26feff4815692882dc99ec6550cd712f4a1))
+* **pi-session-tools:** add session-file locating and reading helpers ([#549](https://github.com/gotgenes/pi-packages/issues/549)) ([240f684](https://github.com/gotgenes/pi-packages/commit/240f684d63d274f3fdebd33a926e646b5e959507))
+
+
+### Documentation
+
+* **pi-session-tools:** document read_session_file and list_session_files ([#549](https://github.com/gotgenes/pi-packages/issues/549)) ([cede7a9](https://github.com/gotgenes/pi-packages/commit/cede7a93131b484bef6d11b49b1c9eb8cf93c4fa))
+
 ## [1.1.1](https://github.com/gotgenes/pi-packages/compare/pi-session-tools-v1.1.0...pi-session-tools-v1.1.1) (2026-07-06)
 
 
