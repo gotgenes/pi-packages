@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [19.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v18.2.0...pi-permission-system-v19.0.0) (2026-07-06)
+
+
+### ⚠ BREAKING CHANGES
+
+* **pi-permission-system:** The permission-system config loader was tolerant — it silently discarded malformed fields (a non-boolean `debugLog`, an invalid permission action, an unknown key) and loaded the rest. It now rejects the entire config file for that scope when any field is invalid, and reports each problem with its JSON path. On upgrade, a config that previously loaded with silently-dropped fields will be rejected until the reported problems are fixed; the affected scope falls back to the safe `ask` default until then. Fix each field named in the emitted issues (visible in the permission review log / debug log).
+
+### Features
+
+* **pi-permission-system:** add zod config schema as validation source ([6b71491](https://github.com/gotgenes/pi-packages/commit/6b71491b058d64e328139bd8ccfa104e9bbe2f5a))
+* **pi-permission-system:** generate JSON Schema from zod and fix hosted $id URL ([7b6556d](https://github.com/gotgenes/pi-packages/commit/7b6556d7676b8e6574cd01eeec2032a499b19649))
+* **pi-permission-system:** validate config with zod and reject invalid fields ([7e32cae](https://github.com/gotgenes/pi-packages/commit/7e32caea8f750637069ebaf243bb1db90ae745f7))
+
+
+### Documentation
+
+* **pi-permission-system:** document zod config schema and strict validation ([c8babf9](https://github.com/gotgenes/pi-packages/commit/c8babf962be56fa48eba22d5a7fe7ca34ccfa1e7))
+
 ## [18.2.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v18.1.2...pi-permission-system-v18.2.0) (2026-07-06)
 
 
