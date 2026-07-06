@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [18.2.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v18.1.2...pi-permission-system-v18.2.0) (2026-07-06)
+
+
+### Features
+
+* **pi-permission-system:** add yolo rule origin and ask→allow rewrite helper ([a4bbcc0](https://github.com/gotgenes/pi-packages/commit/a4bbcc0f25d57e31c7658e48ec5bc4465a4c1908))
+* **pi-permission-system:** auto-approve yolo-origin allow in the gate runner ([caf8419](https://github.com/gotgenes/pi-packages/commit/caf8419f835b37693678fccf77373a828f850386))
+* **pi-permission-system:** rewrite ask rules to yolo-origin allow at check time ([cd4e509](https://github.com/gotgenes/pi-packages/commit/cd4e509290aed701928890a6df585b383abbfc2b))
+
 ## [18.1.2](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v18.1.1...pi-permission-system-v18.1.2) (2026-07-05)
 
 
