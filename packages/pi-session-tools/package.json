@@ -1,6 +1,6 @@
 {
   "name": "@gotgenes/pi-session-tools",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Pi extension providing session metadata tools (naming, context) for multi-session workflows",
   "keywords": [
     "pi-package",

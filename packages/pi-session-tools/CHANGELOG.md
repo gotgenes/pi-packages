@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.1.1](https://github.com/gotgenes/pi-packages/compare/pi-session-tools-v1.1.0...pi-session-tools-v1.1.1) (2026-07-06)
+
+
+### Bug Fixes
+
+* **pi-session-tools:** count only effective model changes in summary ([#546](https://github.com/gotgenes/pi-packages/issues/546)) ([1afe175](https://github.com/gotgenes/pi-packages/commit/1afe1753c53c5bea5fc62341094fec8b6632950b))
+* **pi-session-tools:** suppress phantom model-change lines in transcript ([#546](https://github.com/gotgenes/pi-packages/issues/546)) ([7b4f1be](https://github.com/gotgenes/pi-packages/commit/7b4f1bedf2fd29b21e054bc3b0a35370620a1493))
+
+
+### Documentation
+
+* **pi-session-tools:** note phantom model-change suppression ([#546](https://github.com/gotgenes/pi-packages/issues/546)) ([f8775e1](https://github.com/gotgenes/pi-packages/commit/f8775e1bbb1fce4cf8e4943ffba02bc165b1750b))
+
 ## [1.1.0](https://github.com/gotgenes/pi-packages/compare/pi-session-tools-v1.0.3...pi-session-tools-v1.1.0) (2026-06-16)
 
 
