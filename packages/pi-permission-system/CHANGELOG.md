@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [20.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v19.0.1...pi-permission-system-v20.0.0) (2026-07-07)
+
+
+### ⚠ BREAKING CHANGES
+
+* **pi-permission-system:** The permissions:rpc:check and permissions:rpc:prompt event-bus channels are removed, along with their request/reply types (PermissionsCheckRequest, PermissionsCheckReplyData, PermissionsPromptRequest, PermissionsPromptReplyData), the PermissionsRpcReply envelope, PERMISSIONS_PROTOCOL_VERSION, and the rpc_prompt member of PermissionUiPromptSource. permissions:rpc:check consumers migrate to getPermissionsService().checkPermission(surface, value?, agentName?). permissions:rpc:prompt is removed with no public replacement; prompt forwarding is an internal subagent-to-parent mechanism.
+
+### Features
+
+* **pi-permission-system:** remove deprecated event-bus RPC channel ([557ea91](https://github.com/gotgenes/pi-packages/commit/557ea913c54f21ef64b0812169bbc7d5224072e2))
+
+
+### Documentation
+
+* **pi-permission-system:** repoint cross-extension docs off the removed RPC channel ([b3d06f7](https://github.com/gotgenes/pi-packages/commit/b3d06f77aea43758a4e820e66d1111608b86879b)), closes [#531](https://github.com/gotgenes/pi-packages/issues/531)
+
 ## [19.0.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v19.0.0...pi-permission-system-v19.0.1) (2026-07-07)
 
 
