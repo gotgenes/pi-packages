@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [20.1.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v20.0.0...pi-permission-system-v20.1.0) (2026-07-08)
+
+
+### Features
+
+* **pi-permission-system:** gate win32 backslash-relative bash args via path rules ([#520](https://github.com/gotgenes/pi-packages/issues/520)) ([ad90fe5](https://github.com/gotgenes/pi-packages/commit/ad90fe568403a292afec52eaf75e9cb42e4db62c))
+* **pi-permission-system:** recognize win32 backslash-relative path tokens ([#520](https://github.com/gotgenes/pi-packages/issues/520)) ([343f331](https://github.com/gotgenes/pi-packages/commit/343f3318257df5358f6db7e447fd1de8f16a81b8))
+
+
+### Documentation
+
+* **pi-permission-system:** document win32 backslash-relative path recognition ([#520](https://github.com/gotgenes/pi-packages/issues/520)) ([b71d0b8](https://github.com/gotgenes/pi-packages/commit/b71d0b88fa8ee28eddfb4fc9796b7e15172d670a))
+
 ## [20.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v19.0.1...pi-permission-system-v20.0.0) (2026-07-07)
 
 
