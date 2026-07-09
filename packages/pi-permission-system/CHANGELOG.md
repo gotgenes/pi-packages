@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [20.3.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v20.2.0...pi-permission-system-v20.3.0) (2026-07-09)
+
+
+### Features
+
+* **pi-permission-system:** forward the child's session-approval suggestion ([fa04d8c](https://github.com/gotgenes/pi-packages/commit/fa04d8ca3485ca3f6e29bbe8d53146f5eeb6672c))
+* **pi-permission-system:** offer whole-session scope on forwarded approvals ([bd2be07](https://github.com/gotgenes/pi-packages/commit/bd2be0799923ed809cd0939047486fdc1b2a477f))
+
+
+### Documentation
+
+* **pi-permission-system:** record forwarded grant-scope selection (Phase 9 Step 4) ([a3d1fca](https://github.com/gotgenes/pi-packages/commit/a3d1fca183dc5e4d6fb15ec6ec78199f5d092bc3))
+
 ## [20.2.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v20.1.0...pi-permission-system-v20.2.0) (2026-07-09)
 
 
