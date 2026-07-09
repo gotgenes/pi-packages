@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [20.2.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v20.1.0...pi-permission-system-v20.2.0) (2026-07-09)
+
+
+### Features
+
+* **pi-permission-system:** serve forwarded permissions by resolution and Authorizer escalation ([#557](https://github.com/gotgenes/pi-packages/issues/557)) ([c5d3bcb](https://github.com/gotgenes/pi-packages/commit/c5d3bcbf4e69a568f750d6a7c0619d4b88d5b377))
+
+
+### Documentation
+
+* **pi-permission-system:** mark Phase 9 Step 3 complete ([a5a348f](https://github.com/gotgenes/pi-packages/commit/a5a348f3d3dc1835e64ecd7b6b0c1b6164085a97))
+
 ## [20.1.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v20.0.0...pi-permission-system-v20.1.0) (2026-07-08)
 
 
