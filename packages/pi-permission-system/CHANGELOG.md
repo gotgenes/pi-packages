@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [20.4.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v20.3.0...pi-permission-system-v20.4.0) (2026-07-12)
+
+
+### Features
+
+* **pi-permission-system:** add bash advisory decompose-or-fallback resolver ([e0637f1](https://github.com/gotgenes/pi-packages/commit/e0637f150d5ae0dcb16b92ccaa8520367636cc3c))
+* **pi-permission-system:** add warm tree-sitter parser and sync bash-command parse ([66470f0](https://github.com/gotgenes/pi-packages/commit/66470f084e639e4c7282d4a8e49b3fd6937bcb9e))
+* **pi-permission-system:** decompose advisory bash checkPermission at gate parity ([d8d7ef0](https://github.com/gotgenes/pi-packages/commit/d8d7ef010263b831e512dc26e97dde5bb93c5337))
+* **pi-permission-system:** warm bash parser on before_agent_start ([509c597](https://github.com/gotgenes/pi-packages/commit/509c597ffcf24bb9ef8af64ba91b7ae849ad02a8))
+
+
+### Documentation
+
+* **pi-permission-system:** document advisory bash decomposition and complete roadmap step 4 ([aeb8633](https://github.com/gotgenes/pi-packages/commit/aeb86330f0f7b179796879f3fe4abc1a3642a57d))
+
 ## [20.3.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v20.2.0...pi-permission-system-v20.3.0) (2026-07-09)
 
 
