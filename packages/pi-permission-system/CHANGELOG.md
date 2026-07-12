@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [20.4.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v20.4.0...pi-permission-system-v20.4.1) (2026-07-12)
+
+
+### Bug Fixes
+
+* **pi-permission-system:** floor find/fd exec wrappers to ask ([#490](https://github.com/gotgenes/pi-packages/issues/490)) ([6cb1d54](https://github.com/gotgenes/pi-packages/commit/6cb1d5422682894a3f742af9b4769d8ef8c40ed8))
+* **pi-permission-system:** floor sudo/env/xargs/time/nohup/timeout/nice to ask ([#490](https://github.com/gotgenes/pi-packages/issues/490)) ([b4d5c40](https://github.com/gotgenes/pi-packages/commit/b4d5c40985e4921d3ab1037ba3b273b6fa2fbd59))
+
+
+### Documentation
+
+* **pi-permission-system:** document indirection-wrapper floor and mark roadmap step 5 ([#490](https://github.com/gotgenes/pi-packages/issues/490)) ([e35c1ee](https://github.com/gotgenes/pi-packages/commit/e35c1ee622f847a9096699495502e36064cae96e))
+
 ## [20.4.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v20.3.0...pi-permission-system-v20.4.0) (2026-07-12)
 
 
