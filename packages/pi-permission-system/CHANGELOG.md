@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [20.4.2](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v20.4.1...pi-permission-system-v20.4.2) (2026-07-13)
+
+
+### Documentation
+
+* **pi-permission-system:** add read-only bash command allowlist recipe ([#521](https://github.com/gotgenes/pi-packages/issues/521)) ([6e9710f](https://github.com/gotgenes/pi-packages/commit/6e9710fb4564d99721a8e077839d567af326f3cc))
+
 ## [20.4.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v20.4.0...pi-permission-system-v20.4.1) (2026-07-12)
 
 
