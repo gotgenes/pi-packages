@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [20.5.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v20.4.2...pi-permission-system-v20.5.0) (2026-07-13)
+
+
+### Features
+
+* **pi-permission-system:** add shellTools config schema ([cd4f851](https://github.com/gotgenes/pi-packages/commit/cd4f851ab4ddccbc2409f664432e3cf256997817))
+* **pi-permission-system:** carry shellTools through config merge ([635d66b](https://github.com/gotgenes/pi-packages/commit/635d66b56d753f00192269f04cd7dceba1264f8d))
+
+
+### Bug Fixes
+
+* **pi-permission-system:** treat bare / as a filesystem-root path candidate ([#583](https://github.com/gotgenes/pi-packages/issues/583)) ([dfa4080](https://github.com/gotgenes/pi-packages/commit/dfa408026a6f74f63c4537f9e6904acabc4f260a))
+
+
+### Documentation
+
+* **pi-permission-system:** document shellTools config ([1b8e3c3](https://github.com/gotgenes/pi-packages/commit/1b8e3c3a5779ac6cae9686c10da1b8b3a0f36309))
+
 ## [20.4.2](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v20.4.1...pi-permission-system-v20.4.2) (2026-07-13)
 
 
