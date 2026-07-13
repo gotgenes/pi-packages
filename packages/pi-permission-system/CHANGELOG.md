@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [20.6.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v20.5.0...pi-permission-system-v20.6.0) (2026-07-13)
+
+
+### Features
+
+* **pi-permission-system:** add resolveShellInvocation dispatch point ([5c5edc8](https://github.com/gotgenes/pi-packages/commit/5c5edc84cd46dafb5dade9fd51b2946632b72776))
+* **pi-permission-system:** gate aliased shell tools through the bash stack ([2c17f2c](https://github.com/gotgenes/pi-packages/commit/2c17f2ce4b6207684f999d0bc30fe630c79934bb)), closes [#574](https://github.com/gotgenes/pi-packages/issues/574)
+* **pi-permission-system:** resolve and gate aliased shell workdir ([d9b2af8](https://github.com/gotgenes/pi-packages/commit/d9b2af86107671366935242e704d1f17821db73f)), closes [#574](https://github.com/gotgenes/pi-packages/issues/574)
+
+
+### Documentation
+
+* **pi-permission-system:** document live shellTools enforcement ([b8048ed](https://github.com/gotgenes/pi-packages/commit/b8048eddba5f8c0e9b82cf0c3e31055e7813b745))
+
 ## [20.5.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v20.4.2...pi-permission-system-v20.5.0) (2026-07-13)
 
 
