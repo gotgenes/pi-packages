@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [20.7.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v20.7.0...pi-permission-system-v20.7.1) (2026-07-14)
+
+
+### Bug Fixes
+
+* **pi-permission-system:** clip inline permission prompt lines to terminal width ([e3c6907](https://github.com/gotgenes/pi-packages/commit/e3c6907057070cbb444f4ca0dbc69661849b7dc2)), closes [#573](https://github.com/gotgenes/pi-packages/issues/573)
+
 ## [20.7.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v20.6.0...pi-permission-system-v20.7.0) (2026-07-14)
 
 
