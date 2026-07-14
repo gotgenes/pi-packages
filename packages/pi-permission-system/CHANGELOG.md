@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [20.7.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v20.6.0...pi-permission-system-v20.7.0) (2026-07-14)
+
+
+### Features
+
+* **pi-permission-system:** add doublePressToConfirm config toggle ([bd401bf](https://github.com/gotgenes/pi-packages/commit/bd401bff0bd926313acfafe5e50b579c88e4002f))
+* **pi-permission-system:** add inline permission prompt decision model ([08d6ec6](https://github.com/gotgenes/pi-packages/commit/08d6ec6b7e9abbcbf05b49579d307e3f5934cb3a))
+* **pi-permission-system:** dispatch TUI permission prompts to the inline keybind dialog ([197c0f9](https://github.com/gotgenes/pi-packages/commit/197c0f91178f7010e84ed80eb3682dc27c1f737f))
+* **pi-permission-system:** render inline keybind permission prompt ([7ac7dad](https://github.com/gotgenes/pi-packages/commit/7ac7dad3ef49f03e19b279056ea54d4c5a456c80))
+
 ## [20.6.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v20.5.0...pi-permission-system-v20.6.0) (2026-07-13)
 
 
