@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [18.0.2](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v18.0.1...pi-subagents-v18.0.2) (2026-07-14)
+
+
+### Documentation
+
+* **pi-subagents:** drop NotificationState from architecture and skill after result-delivery extraction ([99dae2c](https://github.com/gotgenes/pi-packages/commit/99dae2cd631ed41b5ef2ea0565660d72eb4e788f))
+
 ## [18.0.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v18.0.0...pi-subagents-v18.0.1) (2026-06-24)
 
 
