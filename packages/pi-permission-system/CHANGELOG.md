@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [20.7.2](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v20.7.1...pi-permission-system-v20.7.2) (2026-07-14)
+
+
+### Bug Fixes
+
+* **pi-permission-system:** floor additional exec-capable indirection wrappers ([#575](https://github.com/gotgenes/pi-packages/issues/575)) ([abddb7b](https://github.com/gotgenes/pi-packages/commit/abddb7b70077cef7fc12f3eea75ce6f38de6006f))
+
+
+### Documentation
+
+* **pi-permission-system:** record exec-capable wrapper survey and mark Phase 11 Step 6 complete ([#575](https://github.com/gotgenes/pi-packages/issues/575)) ([6485246](https://github.com/gotgenes/pi-packages/commit/6485246577ec1cba992275b983809a1fcb30be2c))
+
 ## [20.7.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v20.7.0...pi-permission-system-v20.7.1) (2026-07-14)
 
 
