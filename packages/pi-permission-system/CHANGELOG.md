@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [20.7.3](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v20.7.2...pi-permission-system-v20.7.3) (2026-07-15)
+
+
+### Bug Fixes
+
+* **pi-permission-system:** ship consumable public type declarations ([#592](https://github.com/gotgenes/pi-packages/issues/592)) ([542e094](https://github.com/gotgenes/pi-packages/commit/542e094b9650e8f13bd9dad3864007f3ce2c0cc2))
+
+
+### Documentation
+
+* **pi-permission-system:** document the bundled public type declaration ([070875d](https://github.com/gotgenes/pi-packages/commit/070875d654efde50e8867f8fd4aeba857a26c4fb))
+
 ## [20.7.2](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v20.7.1...pi-permission-system-v20.7.2) (2026-07-14)
 
 
