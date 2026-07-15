@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [18.0.3](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v18.0.2...pi-subagents-v18.0.3) (2026-07-15)
+
+
+### Bug Fixes
+
+* **pi-subagents:** omit empty Default agents section header ([a29c324](https://github.com/gotgenes/pi-packages/commit/a29c32498caa4e29f0cc3292d5a6be4f4126c5f8)), closes [#594](https://github.com/gotgenes/pi-packages/issues/594)
+* **pi-subagents:** source subagent guideline copy from agent config ([a2b41a6](https://github.com/gotgenes/pi-packages/commit/a2b41a665586a271b6453b89dabec0bd94be394c)), closes [#594](https://github.com/gotgenes/pi-packages/issues/594)
+
 ## [18.0.2](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v18.0.1...pi-subagents-v18.0.2) (2026-07-14)
 
 
