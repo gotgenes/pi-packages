@@ -33,6 +33,11 @@ describe("buildParentSnapshot", () => {
     expect(snapshot.systemPrompt).toBe("my prompt");
   });
 
+  it("captures supplied parent active tools", () => {
+    expect(buildParentSnapshot(makeCtx(), false, ["read", "extension_tool"]).activeTools)
+      .toEqual(["read", "extension_tool"]);
+  });
+
   it("captures model from ctx", () => {
     const model = { id: "claude-haiku", provider: "anthropic" };
     const snapshot = buildParentSnapshot(makeCtx({ model }));

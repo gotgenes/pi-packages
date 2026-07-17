@@ -30,6 +30,7 @@ export class SubagentRuntime {
   // ── Session state (was closure-scoped in index.ts) ───────────────────────
   /** Active Pi session context — set on session_start, cleared on session_shutdown. */
   currentCtx: SessionContext | undefined = undefined;
+  private getActiveTools: () => string[] = () => [];
 
   // ── Session-context methods ──────────────────────────────────────────────
 
@@ -43,13 +44,17 @@ export class SubagentRuntime {
     this.currentCtx = undefined;
   }
 
+  setActiveToolsProvider(provider: () => string[]): void {
+    this.getActiveTools = provider;
+  }
+
   /**
    * Build a parent snapshot from the current session context.
    * Only valid during an active session (currentCtx is defined).
    */
   buildSnapshot(inheritContext: boolean): ParentSnapshot {
 
-    return buildParentSnapshot(this.currentCtx!, inheritContext);
+    return buildParentSnapshot(this.currentCtx!, inheritContext, this.getActiveTools());
   }
 
   /** Extract model info from the current session context. */

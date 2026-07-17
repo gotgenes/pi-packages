@@ -54,6 +54,7 @@ export default function (pi: ExtensionAPI) {
 
   // ---- Runtime: all mutable extension state in one place ----
   const runtime = createSubagentRuntime();
+  runtime.setActiveToolsProvider(() => pi.getActiveTools());
 
   // ---- Notification system ----
   // Owns completion nudges and live-activity cleanup. The widget detects finished

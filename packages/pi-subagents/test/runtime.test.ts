@@ -91,8 +91,20 @@ describe("SubagentRuntime context query methods", () => {
     runtime.setSessionContext(ctx);
     mockBuildParentSnapshot.mockReturnValueOnce(STUB_SNAPSHOT);
     const result = runtime.buildSnapshot(true);
-    expect(mockBuildParentSnapshot).toHaveBeenCalledWith(ctx, true);
+    expect(mockBuildParentSnapshot).toHaveBeenCalledWith(ctx, true, []);
     expect(result).toBe(STUB_SNAPSHOT);
+  });
+
+  it("captures active extension tools through its composition provider", () => {
+    const runtime = createSubagentRuntime();
+    const ctx = makeSessionCtx();
+    runtime.setSessionContext(ctx);
+    runtime.setActiveToolsProvider(() => ["read", "extension_tool"]);
+    mockBuildParentSnapshot.mockReturnValueOnce(STUB_SNAPSHOT);
+
+    runtime.buildSnapshot(true);
+
+    expect(mockBuildParentSnapshot).toHaveBeenCalledWith(ctx, true, ["read", "extension_tool"]);
   });
 
   it("buildSnapshot passes false inheritContext correctly", () => {
@@ -101,7 +113,7 @@ describe("SubagentRuntime context query methods", () => {
     runtime.setSessionContext(ctx);
     mockBuildParentSnapshot.mockReturnValueOnce(STUB_SNAPSHOT);
     runtime.buildSnapshot(false);
-    expect(mockBuildParentSnapshot).toHaveBeenCalledWith(ctx, false);
+    expect(mockBuildParentSnapshot).toHaveBeenCalledWith(ctx, false, []);
   });
 
   it("getModelInfo returns model and modelRegistry from current context", () => {

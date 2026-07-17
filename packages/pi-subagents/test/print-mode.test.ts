@@ -14,7 +14,7 @@ import subagentsExtension from "#src/index";
 import { createSubagentSession } from "#src/lifecycle/create-subagent-session";
 import { createMockSession, createSubagentSessionStub, toSubagentSession } from "./helpers/mock-session";
 
-function makePi() {
+function makePi(activeTools: string[] = []) {
   const tools = new Map<string, any>();
   const handlers = new Map<string, any>();
   const eventHandlers = new Map<string, any>();
@@ -26,6 +26,7 @@ function makePi() {
         tools.set(tool.name, tool);
       }),
       registerCommand: vi.fn(),
+      getActiveTools: vi.fn(() => activeTools),
       on: vi.fn((event: string, handler: any) => {
         handlers.set(event, handler);
       }),
@@ -65,6 +66,7 @@ function makeHeadlessCtx() {
       getBranch: vi.fn(() => []),
     },
     getSystemPrompt: vi.fn(() => "parent prompt"),
+    getActiveTools: vi.fn(() => []),
   } as any;
 }
 
@@ -79,7 +81,7 @@ describe("print mode background notifications", () => {
       toSubagentSession(createSubagentSessionStub(createMockSession(), "/sessions/child.jsonl")),
     );
 
-    const { pi, tools, handlers } = makePi();
+    const { pi, tools, handlers } = makePi(["extension_tool"]);
     subagentsExtension(pi);
     vi.useFakeTimers();
 
@@ -99,6 +101,11 @@ describe("print mode background notifications", () => {
       undefined,
       undefined,
       makeHeadlessCtx(),
+    );
+
+    expect(vi.mocked(createSubagentSession)).toHaveBeenCalledWith(
+      expect.objectContaining({ snapshot: expect.objectContaining({ activeTools: ["extension_tool"] }) }),
+      expect.anything(),
     );
 
     await vi.advanceTimersByTimeAsync(100); // smart-join batch debounce

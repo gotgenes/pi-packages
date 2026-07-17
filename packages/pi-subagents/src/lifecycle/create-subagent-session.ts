@@ -206,7 +206,7 @@ export async function createSubagentSession(
     settingsManager: deps.io.createSettingsManager(cfg.effectiveCwd, agentDir),
     modelRegistry: snapshot.modelRegistry,
     model: cfg.model,
-    tools: cfg.toolNames,
+    tools: [...new Set([...cfg.toolNames, ...snapshot.activeTools])],
     resourceLoader: loader,
     thinkingLevel: cfg.thinkingLevel,
   });

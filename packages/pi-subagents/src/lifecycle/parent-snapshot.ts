@@ -21,6 +21,8 @@ export interface ParentSnapshot {
     find(provider: string, modelId: string): unknown;
     getAvailable?(): Array<{ provider: string; id: string }>;
   };
+  /** Active parent tool names captured at spawn time. */
+  activeTools: string[];
   /** Pre-built parent conversation text (when inheritContext was requested). */
   parentContext?: string;
 }
@@ -34,6 +36,7 @@ export interface ParentSnapshot {
 export function buildParentSnapshot(
   ctx: SessionContext,
   inheritContext?: boolean,
+  activeTools: string[] = [],
 ): ParentSnapshot {
   const parentContext = inheritContext ? buildParentContext(ctx) : undefined;
   return {
@@ -42,6 +45,7 @@ export function buildParentSnapshot(
     model: ctx.model,
 
     modelRegistry: ctx.modelRegistry!,
+    activeTools,
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- || intentional: converts empty string to undefined as well as null/undefined
     parentContext: parentContext || undefined,
   };
