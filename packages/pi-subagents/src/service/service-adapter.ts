@@ -56,6 +56,7 @@ export class SubagentsServiceAdapter implements SubagentsService {
       maxTurns: options?.maxTurns,
       thinkingLevel: options?.thinkingLevel,
       inheritContext: options?.inheritContext,
+      parentResultMode: options?.parentResultMode,
       bypassQueue: options?.bypassQueue,
       isBackground,
     });
@@ -115,10 +116,11 @@ export class SubagentsServiceAdapter implements SubagentsService {
  * Uses an explicit allowlist — new fields must be opted in.
  */
 export function toSubagentRecord(record: Subagent): SubagentRecord {
+  const presentation = record.parentResultPresentation;
   const out: SubagentRecord = {
     id: record.id,
     type: record.type,
-    description: record.description,
+    description: presentation.description,
     status: record.status,
     toolUses: record.toolUses,
     startedAt: record.startedAt,
@@ -126,8 +128,8 @@ export function toSubagentRecord(record: Subagent): SubagentRecord {
     compactionCount: record.compactionCount,
   };
 
-  if (record.result !== undefined) out.result = record.result;
-  if (record.error !== undefined) out.error = record.error;
+  if (presentation.result !== undefined) out.result = presentation.result;
+  if (presentation.error !== undefined) out.error = presentation.error;
   if (record.completedAt !== undefined) out.completedAt = record.completedAt;
 
   return out;

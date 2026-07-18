@@ -169,6 +169,21 @@ describe("SessionNavigatorHandler", () => {
     expect(ui.custom).not.toHaveBeenCalled();
   });
 
+  it("withholds a redacted native child's session from the picker", async () => {
+    const ui = makeUI();
+    const record = makeNavigable({
+      description: "SECRET TASK BODY",
+      agentMessages: [{ role: "assistant", content: "SECRET CHILD RESULT" }] as unknown as SessionMessage[],
+      isParentResultRedacted: true,
+    });
+
+    await new SessionNavigatorHandler().handle({ ui, agents: [record], evicted: [], registry, cwd: "/test/cwd", readFile: noReadFile });
+
+    expect(ui.notify).toHaveBeenCalledWith("No subagent sessions to view.", "info");
+    expect(ui.select).not.toHaveBeenCalled();
+    expect(ui.custom).not.toHaveBeenCalled();
+  });
+
   it("does not open the overlay when the operator cancels the picker", async () => {
     const ui = makeUI(undefined);
     await new SessionNavigatorHandler().handle({ ui, agents: [makeNavigable()], evicted: [], registry, cwd: "/test/cwd", readFile: noReadFile });

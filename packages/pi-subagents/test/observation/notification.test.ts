@@ -78,6 +78,21 @@ describe("formatTaskNotification", () => {
     const xml = formatTaskNotification(baseRecord, 500);
     expect(xml).not.toContain("tool-use-id");
   });
+
+  it("redacts task and result text for a redacted native child", () => {
+    const record = createTestSubagent({
+      description: "SECRET TASK BODY",
+      result: "SECRET CHILD RESULT",
+      parentResultMode: "redacted",
+    });
+    const xml = formatTaskNotification(record, 500);
+    const details = buildNotificationDetails(record, 500);
+
+    expect(xml).not.toContain("SECRET TASK BODY");
+    expect(xml).not.toContain("SECRET CHILD RESULT");
+    expect(JSON.stringify(details)).not.toContain("SECRET TASK BODY");
+    expect(JSON.stringify(details)).not.toContain("SECRET CHILD RESULT");
+  });
 });
 
 describe("buildNotificationDetails", () => {

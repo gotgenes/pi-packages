@@ -293,6 +293,29 @@ describe("SubagentManager — evicted descriptors", () => {
     expect(typeof evicted[0].startedAt).toBe("number");
   });
 
+  it("does not retain a redacted native child's task, result, or transcript path", async () => {
+    const { factory, stub } = createSessionFactory(createMockSession(), "/tasks/secret.jsonl");
+    stub.runTurnLoop.mockResolvedValue({ responseText: "SECRET CHILD RESULT", aborted: false, steered: false });
+    ({ manager } = createManager({ createSubagentSession: factory }));
+
+    const id = manager.spawn(STUB_SNAPSHOT, "general-purpose", "SECRET TASK BODY", {
+      description: "SECRET TASK BODY",
+      isBackground: true,
+      parentResultMode: "redacted",
+    });
+    await manager.getRecord(id)!.promise;
+    expect(manager.getRecord(id)!.result).toBe("SECRET CHILD RESULT");
+
+    const completedAt = manager.getRecord(id)!.completedAt!;
+    vi.spyOn(Date, "now").mockReturnValue(completedAt + 11 * 60_000);
+    (manager as any).cleanup();
+
+    expect(manager.listAgents()).toHaveLength(0);
+    expect(JSON.stringify(manager.listEvicted())).not.toContain("SECRET TASK BODY");
+    expect(JSON.stringify(manager.listEvicted())).not.toContain("SECRET CHILD RESULT");
+    expect(manager.listEvicted()).toEqual([]);
+  });
+
   it("does not retain a descriptor for an evicted agent without an outputFile", async () => {
     await spawnAndEvict(undefined);
 

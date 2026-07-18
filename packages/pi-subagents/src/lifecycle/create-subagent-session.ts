@@ -23,7 +23,7 @@ import type { ParentSnapshot } from "#src/lifecycle/parent-snapshot";
 import { SubagentSession } from "#src/lifecycle/subagent-session";
 import type { EnvInfo } from "#src/session/env";
 import { type AssemblerIO, assembleSessionConfig } from "#src/session/session-config";
-import type { ParentSessionInfo, ShellExec, SubagentType, ThinkingLevel } from "#src/types";
+import type { ParentResultMode, ParentSessionInfo, ShellExec, SubagentType, ThinkingLevel } from "#src/types";
 
 /** Names of tools registered by this extension that subagents must NOT inherit. */
 const EXCLUDED_TOOL_NAMES = ["subagent", "get_subagent_result", "steer_subagent"];
@@ -135,6 +135,7 @@ export interface CreateSubagentSessionParams {
   parentSession?: ParentSessionInfo;
   model?: Model<any>;
   thinkingLevel?: ThinkingLevel;
+  parentResultMode?: ParentResultMode;
 }
 
 /**
@@ -218,6 +219,7 @@ export async function createSubagentSession(
     agentName: type,
     agentMaxTurns: cfg.agentMaxTurns,
     parentContext: snapshot.parentContext,
+    parentResultMode: params.parentResultMode,
     lifecycle: deps.lifecycle,
   });
 

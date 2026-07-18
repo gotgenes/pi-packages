@@ -245,6 +245,44 @@ describe("AgentWidget — projection reads activity off Subagent records", () =>
 	});
 });
 
+describe("AgentWidget — parent result redaction", () => {
+	it("withholds task and streamed result text for a redacted native child", () => {
+		const record = createTestSubagent({
+			status: "running",
+			completedAt: undefined,
+			description: "SECRET TASK BODY",
+			responseText: "SECRET CHILD RESULT",
+			parentResultMode: "redacted",
+			invocation: { runInBackground: true },
+		});
+		const { widget, renderLines } = (() => {
+			const manager = { listAgents: () => [record] } as unknown as SubagentManager;
+			const registry = new AgentTypeRegistry(() => new Map());
+			const widget = new AgentWidget(manager, registry);
+			let renderFn: ((tui: unknown, theme: unknown) => { render(): string[] }) | undefined;
+			widget.setUICtx({
+				setStatus: () => {},
+				setWidget: (_key, content) => {
+					if (typeof content === "function") renderFn = content as typeof renderFn;
+				},
+			});
+			return {
+				widget,
+				renderLines: () => renderFn!(
+					{ terminal: { columns: 200 }, requestRender: () => {} },
+					{ fg: (_: string, text: string) => text, bold: (text: string) => text },
+				).render(),
+			};
+		})();
+
+		widget.update();
+
+		const text = renderLines().join("\n");
+		expect(text).not.toContain("SECRET TASK BODY");
+		expect(text).not.toContain("SECRET CHILD RESULT");
+	});
+});
+
 describe("AgentWidget.update self-seeds finished agents", () => {
 	it("seeds a completed agent so it ages out after one turn", () => {
 		const { widget, lastContent } = makeWidget([{ id: "a1", status: "completed", completedAt: 5000 }]);

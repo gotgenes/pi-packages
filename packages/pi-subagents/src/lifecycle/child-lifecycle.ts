@@ -44,7 +44,8 @@ export interface ChildSessionCreatedEvent {
 
 /** Payload for `subagents:child:completed`. */
 export interface ChildCompletedEvent {
-  sessionDir: string;
+  /** Omitted when parentResultMode redacts the child transcript. */
+  sessionDir?: string;
   agentName: string;
   /** True if the run was hard-aborted (max turns + grace exceeded). */
   aborted: boolean;

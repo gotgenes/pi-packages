@@ -20,7 +20,7 @@ import { normalizeMaxTurns } from "#src/lifecycle/turn-limits";
 import { getSessionContextPercent, type SessionStatsLike } from "#src/lifecycle/usage";
 import { extractText } from "#src/session/context";
 import { getAgentConversation } from "#src/session/conversation";
-import type { SessionMessage } from "#src/types";
+import type { ParentResultMode, SessionMessage } from "#src/types";
 
 /** Outcome of one turn loop. */
 export interface TurnLoopResult {
@@ -55,6 +55,7 @@ export interface SubagentSessionMeta {
   agentMaxTurns: number | undefined;
   /** Parent context prepended to the run prompt, captured at spawn time. */
   parentContext: string | undefined;
+  parentResultMode: ParentResultMode | undefined;
   lifecycle: ChildLifecyclePublisher;
 }
 
@@ -119,7 +120,7 @@ export class SubagentSession {
     try {
       await session.prompt(effectivePrompt);
       this.meta.lifecycle.completed({
-        sessionDir: this.meta.sessionDir,
+        ...(this.meta.parentResultMode === "redacted" ? {} : { sessionDir: this.meta.sessionDir }),
         agentName: this.meta.agentName,
         aborted,
         steered: softLimitReached,

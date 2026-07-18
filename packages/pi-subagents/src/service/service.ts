@@ -18,11 +18,13 @@ import type {
   WorkspacePrepareContext,
   WorkspaceProvider,
 } from "#src/lifecycle/workspace";
+import type { ParentResultMode } from "#src/types";
 
 
 // SubagentStatus is defined in the lifecycle layer (single home) and re-exported
 // here for the public API surface — mirrors the LifetimeUsage / workspace pattern.
 export type { SubagentStatus } from "#src/lifecycle/subagent";
+export type { ParentResultMode } from "#src/types";
 // Generative extension seam (ADR 0002, Phase 16 Step 2). The provider type
 // and all four collaborator types it references are re-exported by name so
 // consumers can import them directly rather than recovering them via
@@ -58,6 +60,8 @@ export interface SpawnOptions {
   maxTurns?: number;
   thinkingLevel?: string;
   inheritContext?: boolean;
+  /** Redact task/result text from parent-facing records, events, and notifications. */
+  parentResultMode?: ParentResultMode;
   foreground?: boolean;
   bypassQueue?: boolean;
 }
