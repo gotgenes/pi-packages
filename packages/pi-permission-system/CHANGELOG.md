@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [20.8.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v20.7.3...pi-permission-system-v20.8.0) (2026-07-18)
+
+
+### Features
+
+* **pi-permission-system:** accept pre-fixed path-values intents for forwarded serving ([ab60874](https://github.com/gotgenes/pi-packages/commit/ab6087464c7719c01bd7f2a15fd4c56a1a7e9f93))
+* **pi-permission-system:** declare ForwardedAccessIntent wire schema with tolerant read ([#596](https://github.com/gotgenes/pi-packages/issues/596)) ([66ddbef](https://github.com/gotgenes/pi-packages/commit/66ddbef74e3fa6cd41d17358a0b817ae91d49ed1))
+* **pi-permission-system:** emit access-intent facts from the bash path gates ([#596](https://github.com/gotgenes/pi-packages/issues/596)) ([1a0e6de](https://github.com/gotgenes/pi-packages/commit/1a0e6de3fdf411ab576d0c9aa5571ff23cb5f179))
+* **pi-permission-system:** emit access-intent facts from the per-tool gate ([#596](https://github.com/gotgenes/pi-packages/issues/596)) ([2e17256](https://github.com/gotgenes/pi-packages/commit/2e1725695442b10073ea627ce9699ef363e4c77c))
+* **pi-permission-system:** emit access-intent facts from the skill gates ([#596](https://github.com/gotgenes/pi-packages/issues/596)) ([5a20033](https://github.com/gotgenes/pi-packages/commit/5a20033fca9f33dee576c5d39c0c04e468d2d031))
+* **pi-permission-system:** emit access-intent facts from the tool path gates ([#596](https://github.com/gotgenes/pi-packages/issues/596)) ([93a3398](https://github.com/gotgenes/pi-packages/commit/93a3398245b06fe6cb80f841d2a2ca5dc8172de5))
+* **pi-permission-system:** serialize the child-fixed access intent onto the forwarded request ([#596](https://github.com/gotgenes/pi-packages/issues/596)) ([5234614](https://github.com/gotgenes/pi-packages/commit/52346148c41a097719558175582b57d12e7832d0))
+* **pi-permission-system:** serving resolves the forwarded access intent at gate parity ([#597](https://github.com/gotgenes/pi-packages/issues/597)) ([a8fe815](https://github.com/gotgenes/pi-packages/commit/a8fe815bd70e3243553b7cac6841ec270e20bf23))
+
+
+### Documentation
+
+* **pi-permission-system:** fix stale ServingPolicy doc comment ([#597](https://github.com/gotgenes/pi-packages/issues/597)) ([64b1b8e](https://github.com/gotgenes/pi-packages/commit/64b1b8e13a8d22ee4f088bef7d54024a81d9a437))
+
 ## [20.7.3](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v20.7.2...pi-permission-system-v20.7.3) (2026-07-15)
 
 
