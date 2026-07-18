@@ -266,6 +266,8 @@ Foreground agents bypass the queue — they block the parent anyway.
 ## Persistent Settings
 
 Runtime tuning values set via `/subagents:settings` (max concurrency, default max turns, grace turns) persist across pi restarts.
+The hand-edited global config also supports `defaultRunInBackground` (default `false`): when `true`, any `subagent` call that omits `run_in_background` runs in the background.
+Explicit `run_in_background: true` or `false` and agent frontmatter continue to take precedence.
 Two files, merged on load:
 
 - **Global:** `~/.pi/agent/subagents.json` — your machine-wide defaults.
@@ -283,12 +285,13 @@ mkdir -p ~/.pi/agent
 cat > ~/.pi/agent/subagents.json <<'EOF'
 {
   "maxConcurrent": 16,
-  "graceTurns": 10
+  "graceTurns": 10,
+  "defaultRunInBackground": true
 }
 EOF
 ```
 
-Every project now starts with concurrency 16 and grace 10, without ever touching the command.
+Every project now starts with concurrency 16, grace 10, and background execution for calls that omit `run_in_background`, without ever touching the command.
 Individual projects can still override via `/subagents:settings`.
 
 **Failure behavior:** missing file is silent; malformed JSON logs a `[pi-subagents] Ignoring malformed settings at …` warning to stderr; invalid/out-of-range field values are dropped per-field; write failures downgrade the `/subagents:settings` toast to a warning with `(session only; failed to persist)`.

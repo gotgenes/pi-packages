@@ -39,6 +39,10 @@ describe("createToolDeps", () => {
 			expect(createToolDeps().settings.defaultMaxTurns).toBeUndefined();
 		});
 
+		it("settings.defaultRunInBackground is false by default", () => {
+			expect(createToolDeps().settings.defaultRunInBackground).toBe(false);
+		});
+
 		it("settings.maxConcurrent is 4 by default", () => {
 			expect(createToolDeps().settings.maxConcurrent).toBe(4);
 		});
@@ -65,8 +69,11 @@ describe("createToolDeps", () => {
 		});
 
 		it("replaces settings when overridden", () => {
-			const deps = createToolDeps({ settings: { defaultMaxTurns: 10, maxConcurrent: 2 } });
+			const deps = createToolDeps({
+				settings: { defaultMaxTurns: 10, defaultRunInBackground: true, maxConcurrent: 2 },
+			});
 			expect(deps.settings.defaultMaxTurns).toBe(10);
+			expect(deps.settings.defaultRunInBackground).toBe(true);
 			expect(deps.settings.maxConcurrent).toBe(2);
 		});
 	});

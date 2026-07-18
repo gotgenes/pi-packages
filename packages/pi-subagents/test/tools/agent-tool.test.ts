@@ -146,6 +146,42 @@ describe("AgentTool — model resolution error", () => {
 });
 
 describe("AgentTool — background execution", () => {
+	it("uses the global default for an omitted run_in_background", async () => {
+		const deps = createToolDeps({
+			settings: { defaultMaxTurns: undefined, defaultRunInBackground: true, maxConcurrent: 4 },
+		});
+		deps.manager.getRecord = vi.fn().mockReturnValue(createTestSubagent({ status: "running" }));
+		const result = await execute(deps, {
+			prompt: "do something",
+			description: "default background task",
+			subagent_type: "general-purpose",
+		});
+
+		expect(result.content[0].text).toContain("background");
+		expect(deps.manager.spawn).toHaveBeenCalledOnce();
+		expect(deps.manager.spawnAndWait).not.toHaveBeenCalled();
+	});
+
+	it("uses the global default for a nested call", async () => {
+		const deps = createToolDeps({
+			settings: { defaultMaxTurns: undefined, defaultRunInBackground: true, maxConcurrent: 4 },
+		});
+		deps.manager.getRecord = vi.fn().mockReturnValue(createTestSubagent({ status: "running" }));
+		const result = await execute(
+			deps,
+			{
+				prompt: "do something",
+				description: "nested task",
+				subagent_type: "general-purpose",
+			},
+			makeCtx({ getSystemPrompt: () => '<active_agent name="general-purpose"/>' }),
+		);
+
+		expect(result.content[0].text).toContain("background");
+		expect(deps.manager.spawn).toHaveBeenCalledOnce();
+		expect(deps.manager.spawnAndWait).not.toHaveBeenCalled();
+	});
+
 	it("returns background launch message with agent ID", async () => {
 		const deps = createToolDeps();
 		const record = createTestSubagent({ status: "running" });
@@ -193,6 +229,35 @@ describe("AgentTool — background execution", () => {
 });
 
 describe("AgentTool — foreground execution", () => {
+	it("keeps an omitted run foreground when the global setting is absent or false", async () => {
+		const deps = createToolDeps({
+			settings: { defaultMaxTurns: undefined, defaultRunInBackground: false, maxConcurrent: 4 },
+		});
+		await execute(deps, {
+			prompt: "do task",
+			description: "legacy foreground",
+			subagent_type: "general-purpose",
+		});
+
+		expect(deps.manager.spawnAndWait).toHaveBeenCalledOnce();
+		expect(deps.manager.spawn).not.toHaveBeenCalled();
+	});
+
+	it("lets explicit run_in_background:false override the global default", async () => {
+		const deps = createToolDeps({
+			settings: { defaultMaxTurns: undefined, defaultRunInBackground: true, maxConcurrent: 4 },
+		});
+		await execute(deps, {
+			prompt: "do task",
+			description: "explicit foreground",
+			subagent_type: "general-purpose",
+			run_in_background: false,
+		});
+
+		expect(deps.manager.spawnAndWait).toHaveBeenCalledOnce();
+		expect(deps.manager.spawn).not.toHaveBeenCalled();
+	});
+
 	it("returns completion message with stats", async () => {
 		const deps = createToolDeps();
 		deps.manager.spawnAndWait = vi.fn().mockResolvedValue(
