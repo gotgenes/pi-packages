@@ -368,6 +368,22 @@ svc?.spawn("Explore", "Check for stale TODOs");
 Declare this package as an optional peer dependency.
 See `src/service/service.ts` for the full `SubagentsService` interface and the `WorkspaceProvider` seam.
 
+#### Ordered lifecycle interception
+
+`registerLifecycleInterceptor()` is a generative provider seam for extensions that must replace or deny the exact child prompt, or accept, replace, abort, or continue a proposed child result before finalization.
+Callbacks receive immutable agent, session, run, and parent identity plus execution-path facts, never a manager or live session.
+Registrations are awaited in registration order, prompt and result replacements flow to later registrations, and continuations remain in the same session for at most three rounds.
+Existing lifecycle events remain observational and cannot substitute for this registration API.
+
+```typescript
+const registration = svc?.registerLifecycleInterceptor({
+  beforeStart: async ({ prompt }) => ({ action: "continue", prompt: `Context:\n${prompt}` }),
+  beforeComplete: async ({ proposedResult }) => ({ action: "complete", result: proposedResult }),
+});
+
+await registration?.dispose();
+```
+
 ### `@gotgenes/pi-subagents/settings` — layered config loader
 
 Extensions that store configuration in JSON files can use the shared layered loader, which reads a global file (`<agentDir>/<filename>`) and a project file (`<cwd>/.pi/<filename>`) and merges them — project wins on conflicts, missing files are silent, malformed files warn and fall back:

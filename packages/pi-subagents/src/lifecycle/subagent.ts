@@ -6,10 +6,16 @@
  * Behavior (abort, steer buffering) lives here rather than on SubagentManager.
  */
 
+import { randomUUID } from "node:crypto";
 import type { Model } from "@earendil-works/pi-ai";
 import type { AgentSessionEvent, ToolDefinition } from "@earendil-works/pi-coding-agent";
 import { debugLog } from "#src/debug";
 import type { CreateSubagentSessionParams } from "#src/lifecycle/create-subagent-session";
+import {
+  type LifecycleInterceptorRegistry,
+  type SubagentLifecycleExecutionPath,
+  type SubagentTurnLifecycle,
+} from "#src/lifecycle/lifecycle-interceptor";
 import type { ParentSnapshot } from "#src/lifecycle/parent-snapshot";
 import { RunListeners } from "#src/lifecycle/run-listeners";
 import type { SubagentSession, TurnLoopResult } from "#src/lifecycle/subagent-session";
@@ -68,7 +74,13 @@ export interface SubagentExecution {
 	maxTurns?: number;
 	thinkingLevel?: ThinkingLevel;
 	parentSession?: ParentSessionInfo;
+	/** Service-origin identity for lifecycle callbacks; never changes child setup. */
+	lifecycleParentSession?: ParentSessionInfo;
 	signal?: AbortSignal;
+	/** Owned by the manager; only a callback bridge reaches the child session. */
+	lifecycleInterceptors?: LifecycleInterceptorRegistry;
+	/** Spawn-path facts remain stable when the same child session resumes. */
+	executionPath?: SubagentLifecycleExecutionPath;
 }
 
 export interface SubagentInit {
@@ -267,12 +279,14 @@ export class Subagent {
 		this.execution.observer?.onSessionCreated?.(this);
 
 		const runConfig = this.execution.getRunConfig?.();
+		const lifecycle = this.createTurnLifecycle("initial");
 		try {
 			const result = await this.subagentSession.runTurnLoop(this.execution.prompt, {
 				maxTurns: this.execution.maxTurns,
 				defaultMaxTurns: runConfig?.defaultMaxTurns,
 				graceTurns: runConfig?.graceTurns,
-				signal: this.abortController.signal,
+				signal: lifecycle?.signal ?? this.abortController.signal,
+				...(lifecycle ? { lifecycle } : {}),
 			});
 			this.completeRun(result);
 		} catch (err) {
@@ -329,14 +343,58 @@ export class Subagent {
 			onCompact: (info) => this.execution.observer?.onCompacted?.(this, info),
 		}));
 
+		const lifecycle = this.createTurnLifecycle("resume", signal);
 		try {
-			const responseText = await subagentSession.resumeTurnLoop(prompt, signal);
-			this.markCompleted(responseText);
+			if (lifecycle) {
+				const result = await subagentSession.resumeLifecycleTurnLoop(
+					prompt,
+					lifecycle.signal,
+					lifecycle,
+				);
+				if (result.aborted) this.markAborted(result.responseText);
+				else if (result.steered) this.markSteered(result.responseText);
+				else this.markCompleted(result.responseText);
+			} else {
+				const responseText = await subagentSession.resumeTurnLoop(prompt, signal);
+				this.markCompleted(responseText);
+			}
 		} catch (err) {
 			this.markError(err);
 		} finally {
 			this.listeners.release();
 		}
+	}
+
+	/** Build a callback-only lifecycle bridge after the immutable child session exists. */
+	private createTurnLifecycle(
+		phase: "initial" | "resume",
+		executionSignal: AbortSignal | undefined = this.abortController.signal,
+	): SubagentTurnLifecycle | undefined {
+		const registry = this.execution.lifecycleInterceptors;
+		const session = this.subagentSession;
+		if (!registry?.hasInterceptors() || !session) return undefined;
+		const initialPath = this.execution.executionPath ?? {
+			phase: "initial" as const,
+			origin: "service" as const,
+			mode: "foreground" as const,
+			admission: "immediate" as const,
+		};
+		const lifecycleParent = this.execution.lifecycleParentSession ?? this.execution.parentSession;
+		return registry.createTurnLifecycle({
+			identity: {
+				agentId: this.id,
+				sessionId: session.sessionId,
+				runId: randomUUID(),
+				agentType: this.type,
+				...(lifecycleParent?.parentSessionId
+					? { parentSessionId: lifecycleParent.parentSessionId }
+					: {}),
+			},
+			execution: { ...initialPath, phase },
+			signal: executionSignal === this.abortController.signal
+				? executionSignal
+				: AbortSignal.any([this.abortController.signal, executionSignal]),
+		});
 	}
 
 	/** Transition to running state. Sets status and startedAt. */

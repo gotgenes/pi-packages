@@ -16,6 +16,10 @@ import {
   type ToolDefinition,
 } from "@earendil-works/pi-coding-agent";
 import type { ChildLifecyclePublisher } from "#src/lifecycle/child-lifecycle";
+import {
+  type SubagentLifecycleOutcome,
+  type SubagentTurnLifecycle,
+} from "#src/lifecycle/lifecycle-interceptor";
 import { normalizeMaxTurns } from "#src/lifecycle/turn-limits";
 import { getSessionContextPercent, type SessionStatsLike } from "#src/lifecycle/usage";
 import { extractText } from "#src/session/context";
@@ -29,6 +33,8 @@ export interface TurnLoopResult {
   aborted: boolean;
   /** True if the agent was steered to wrap up (soft turn limit) but finished in time. */
   steered: boolean;
+  /** A lifecycle provider denied finalization; no child completion is emitted. */
+  lifecycleAborted?: boolean;
 }
 
 /** Per-call options for the initial run's turn loop. */
@@ -40,6 +46,8 @@ export interface TurnLoopOptions {
   /** Grace turns after the soft-limit steer message before a hard abort. */
   graceTurns?: number;
   signal?: AbortSignal;
+  /** Present only for an execution that captured active lifecycle providers. */
+  lifecycle?: SubagentTurnLifecycle;
 }
 
 /** Session-level facts known at creation, supplied by the factory. */
@@ -79,7 +87,13 @@ export class SubagentSession {
     return this.meta.outputFile;
   }
 
-  /** Drive the initial run's turn loop; emits `completed` on success. */
+  /** Stable child session identity for lifecycle provider metadata. */
+  // fallow-ignore-next-line unused-class-member -- Subagent reads this through the lifecycle-only session boundary
+  get sessionId(): string {
+    return this.meta.sessionId;
+  }
+
+  /** Drive the initial run's turn loop; emits `completed` on accepted success. */
   async runTurnLoop(prompt: string, opts: TurnLoopOptions): Promise<TurnLoopResult> {
     const session = this._session;
 
@@ -111,30 +125,34 @@ export class SubagentSession {
     const collector = collectResponseText(session);
     const cleanupAbort = forwardAbortSignal(session, opts.signal);
 
-    // Prepend parent context if it was captured at spawn time.
+    // Prepend parent context before lifecycle providers see the exact prompt.
     const effectivePrompt = this.meta.parentContext
       ? this.meta.parentContext + prompt
       : prompt;
 
     try {
-      await session.prompt(effectivePrompt);
-      this.meta.lifecycle.completed({
-        sessionDir: this.meta.sessionDir,
-        agentName: this.meta.agentName,
-        aborted,
-        steered: softLimitReached,
-      });
+      if (!opts.lifecycle) {
+        // Preserve the released no-provider order byte-for-byte: completion is
+        // published immediately after prompt resolution and before extraction.
+        await session.prompt(effectivePrompt);
+        this.publishCompleted(aborted, softLimitReached);
+        const responseText = collector.getText().trim() || getLastAssistantText(session);
+        return { responseText, aborted, steered: softLimitReached };
+      }
+      return await this.driveLifecycleTurns(
+        effectivePrompt,
+        opts.lifecycle,
+        () => collector.getText().trim() || getLastAssistantText(session),
+        () => ({ aborted, steered: softLimitReached }),
+      );
     } finally {
       unsubTurns();
       collector.unsubscribe();
       cleanupAbort();
     }
-
-    const responseText = collector.getText().trim() || getLastAssistantText(session);
-    return { responseText, aborted, steered: softLimitReached };
   }
 
-  /** Re-prompt the same session (resume); does not emit `completed`. */
+  /** Re-prompt the same session (resume); preserves the released no-provider path. */
   async resumeTurnLoop(prompt: string, signal?: AbortSignal): Promise<string> {
     const session = this._session;
     const collector = collectResponseText(session);
@@ -142,12 +160,108 @@ export class SubagentSession {
 
     try {
       await session.prompt(prompt);
+      return collector.getText().trim() || getLastAssistantText(session);
     } finally {
       collector.unsubscribe();
       cleanupAbort();
     }
+  }
 
-    return collector.getText().trim() || getLastAssistantText(session);
+  /**
+   * Resume with active providers. This is separate from resumeTurnLoop so the
+   * historical no-provider method signature and event behavior remain intact.
+   */
+  // fallow-ignore-next-line unused-class-member -- Subagent selects this only when a provider is registered
+  async resumeLifecycleTurnLoop(
+    prompt: string,
+    signal: AbortSignal | undefined,
+    lifecycle: SubagentTurnLifecycle,
+  ): Promise<TurnLoopResult> {
+    const collector = collectResponseText(this._session);
+    const cleanupAbort = forwardAbortSignal(this._session, signal);
+    try {
+      return await this.driveLifecycleTurns(
+        prompt,
+        lifecycle,
+        () => collector.getText().trim() || getLastAssistantText(this._session),
+        () => ({ aborted: false, steered: false }),
+      );
+    } finally {
+      collector.unsubscribe();
+      cleanupAbort();
+    }
+  }
+
+  private async driveLifecycleTurns(
+    initialPrompt: string,
+    lifecycle: SubagentTurnLifecycle,
+    responseText: () => string,
+    outcome: () => Readonly<{ aborted: boolean; steered: boolean }>,
+  ): Promise<TurnLoopResult> {
+    const start = await lifecycle.beforeStart(initialPrompt);
+    if (start?.action === "abort") {
+      return this.lifecycleAbort(start.reason, outcome());
+    }
+
+    let prompt = start?.prompt ?? initialPrompt;
+    let continuationRound = 0;
+    for (;;) {
+      lifecycle.signal.throwIfAborted();
+      await this._session.prompt(prompt);
+      const turnOutcome = outcome();
+      const proposedResult = responseText();
+      const completion = await lifecycle.beforeComplete(
+        proposedResult,
+        toLifecycleOutcome(turnOutcome),
+        continuationRound,
+      );
+      if (completion?.action === "abort") {
+        return this.lifecycleAbort(completion.reason, turnOutcome);
+      }
+      if (completion?.action === "continue") {
+        if (continuationRound >= lifecycle.maxContinuationRounds) {
+          return this.lifecycleAbort(
+            `Lifecycle continuation limit of ${lifecycle.maxContinuationRounds} reached`,
+            turnOutcome,
+          );
+        }
+        continuationRound++;
+        prompt = completion.prompt;
+        continue;
+      }
+
+      const finalResult = completion?.action === "complete"
+        ? completion.result ?? proposedResult
+        : proposedResult;
+      this.publishCompleted(turnOutcome.aborted, turnOutcome.steered);
+      return {
+        responseText: finalResult,
+        aborted: turnOutcome.aborted,
+        steered: turnOutcome.steered,
+      };
+    }
+  }
+
+  private lifecycleAbort(
+    reason: string,
+    outcome: Readonly<{ aborted: boolean; steered: boolean }>,
+  ): TurnLoopResult {
+    // No child completion is emitted: the provider declined to accept a turn.
+    return {
+      responseText: reason,
+      aborted: true,
+      steered: outcome.steered,
+      lifecycleAborted: true,
+    };
+  }
+
+  private publishCompleted(aborted: boolean, steered: boolean): void {
+    this.meta.lifecycle.completed({
+      sessionDir: this.meta.sessionDir,
+      agentName: this.meta.agentName,
+      aborted,
+      steered,
+    });
   }
 
   /** Deliver a steer to the live session. */
@@ -199,6 +313,14 @@ export class SubagentSession {
 }
 
 // ── Private turn-loop helpers ───────────────────────────────────────────────────
+
+function toLifecycleOutcome(
+  outcome: Readonly<{ aborted: boolean; steered: boolean }>,
+): SubagentLifecycleOutcome {
+  if (outcome.aborted) return "aborted";
+  if (outcome.steered) return "steered";
+  return "completed";
+}
 
 /**
  * Subscribe to a session and collect the last assistant message text.

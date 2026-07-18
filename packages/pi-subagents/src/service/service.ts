@@ -9,6 +9,10 @@
  *   svc?.spawn("Explore", "Check for stale TODOs");
  */
 
+import type {
+  SubagentLifecycleInterceptor,
+  SubagentLifecycleRegistration,
+} from "#src/lifecycle/lifecycle-interceptor";
 import type { SubagentStatus } from "#src/lifecycle/subagent";
 import type { LifetimeUsage } from "#src/lifecycle/usage";
 import type {
@@ -20,6 +24,22 @@ import type {
 } from "#src/lifecycle/workspace";
 
 
+export {
+  MAX_LIFECYCLE_CONTINUATION_ROUNDS,
+  type SubagentExecutionAdmission,
+  type SubagentExecutionMode,
+  type SubagentExecutionOrigin,
+  type SubagentExecutionPhase,
+  type SubagentLifecycleCompletionContext,
+  type SubagentLifecycleCompletionDecision,
+  type SubagentLifecycleExecutionPath,
+  type SubagentLifecycleIdentity,
+  type SubagentLifecycleInterceptor,
+  type SubagentLifecycleOutcome,
+  type SubagentLifecycleRegistration,
+  type SubagentLifecycleStartContext,
+  type SubagentLifecycleStartDecision,
+} from "#src/lifecycle/lifecycle-interceptor";
 // SubagentStatus is defined in the lifecycle layer (single home) and re-exported
 // here for the public API surface — mirrors the LifetimeUsage / workspace pattern.
 export type { SubagentStatus } from "#src/lifecycle/subagent";
@@ -91,6 +111,14 @@ export interface SubagentsService {
    * registered. Returns a disposer that unregisters the provider.
    */
   registerWorkspaceProvider(provider: WorkspaceProvider): () => void;
+
+  /**
+   * Register an ordered async lifecycle provider. It receives only immutable
+   * execution facts and prompt/result decisions, never a manager or session.
+   */
+  registerLifecycleInterceptor(
+    interceptor: SubagentLifecycleInterceptor,
+  ): SubagentLifecycleRegistration;
 }
 
 /** Event channel constants for pi.events subscriptions. */

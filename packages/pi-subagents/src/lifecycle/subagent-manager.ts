@@ -11,6 +11,13 @@ import type { Model } from "@earendil-works/pi-ai";
 import { debugLog } from "#src/debug";
 import type { ConcurrencyLimiter } from "#src/lifecycle/concurrency-limiter";
 import type { CreateSubagentSessionParams } from "#src/lifecycle/create-subagent-session";
+import {
+  LifecycleInterceptorRegistry,
+  type SubagentExecutionAdmission,
+  type SubagentExecutionOrigin,
+  type SubagentLifecycleInterceptor,
+  type SubagentLifecycleRegistration,
+} from "#src/lifecycle/lifecycle-interceptor";
 import type { ParentSnapshot } from "#src/lifecycle/parent-snapshot";
 import { Subagent, type SubagentLifecycleObserver } from "#src/lifecycle/subagent";
 import type { SubagentSession } from "#src/lifecycle/subagent-session";
@@ -80,6 +87,10 @@ export interface AgentSpawnConfig {
   observer?: SubagentLifecycleObserver;
   /** Parent session identity - grouped fields that travel together from the tool boundary. */
   parentSession?: ParentSessionInfo;
+  /** Identity known to a service caller without changing its existing session setup. */
+  lifecycleParentSession?: ParentSessionInfo;
+  /** Which supported public entry path created this execution. */
+  origin?: SubagentExecutionOrigin;
 }
 
 export class SubagentManager {
@@ -93,6 +104,7 @@ export class SubagentManager {
   private readonly baseCwd: string;
   private getRunConfig?: () => RunConfig;
   private _workspaceProvider?: WorkspaceProvider;
+  private readonly lifecycleInterceptors = new LifecycleInterceptorRegistry();
 
   /** The registered workspace provider, or undefined when none is registered. */
   get workspaceProvider(): WorkspaceProvider | undefined {
@@ -127,6 +139,13 @@ export class SubagentManager {
     };
   }
 
+  /** Register a generative lifecycle provider without exposing manager internals. */
+  registerLifecycleInterceptor(
+    interceptor: SubagentLifecycleInterceptor,
+  ): SubagentLifecycleRegistration {
+    return this.lifecycleInterceptors.register(interceptor);
+  }
+
   /** Compose a per-agent lifecycle observer from manager and spawn-config concerns. */
   private buildObserver(options: AgentSpawnConfig): SubagentLifecycleObserver {
     return {
@@ -158,6 +177,9 @@ export class SubagentManager {
     options: AgentSpawnConfig,
   ): string {
     const id = randomUUID().slice(0, 17);
+    const admission: SubagentExecutionAdmission = options.isBackground && !options.bypassQueue && this.limiter.isSaturated()
+      ? "queued"
+      : "immediate";
     const record = new Subagent({
       id,
       type,
@@ -179,7 +201,15 @@ export class SubagentManager {
         maxTurns: options.maxTurns,
         thinkingLevel: options.thinkingLevel,
         parentSession: options.parentSession,
+        lifecycleParentSession: options.lifecycleParentSession,
         signal: options.signal,
+        lifecycleInterceptors: this.lifecycleInterceptors,
+        executionPath: {
+          phase: "initial",
+          origin: options.origin ?? "service",
+          mode: options.isBackground ? "background" : "foreground",
+          admission,
+        },
       },
     });
     this.agents.set(id, record);
@@ -339,6 +369,9 @@ export class SubagentManager {
 
   dispose() {
     clearInterval(this.cleanupInterval);
+    // Lifecycle callbacks observe the shutdown signal before their registration
+    // disposer runs. Existing no-provider teardown stays synchronous.
+    void this.lifecycleInterceptors.dispose();
     // Drop pending thunks
     this.limiter.clear();
     for (const record of this.agents.values()) {

@@ -38,6 +38,7 @@ export function spawnBackground(
       inheritContext: execution.inheritContext,
       thinkingLevel: execution.thinking,
       isBackground: true,
+      origin: "tool",
       invocation: execution.agentInvocation,
     });
   } catch (err) {

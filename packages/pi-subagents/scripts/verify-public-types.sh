@@ -24,7 +24,7 @@ if grep -q '#src' "$DTS"; then
   grep -n '#src' "$DTS" >&2
   exit 1
 fi
-for sym in getSubagentsService WorkspaceProvider SubagentsService LifetimeUsage Workspace WorkspacePrepareContext WorkspaceDisposeOutcome WorkspaceDisposeResult; do
+for sym in getSubagentsService WorkspaceProvider SubagentsService LifetimeUsage Workspace WorkspacePrepareContext WorkspaceDisposeOutcome WorkspaceDisposeResult MAX_LIFECYCLE_CONTINUATION_ROUNDS SubagentExecutionAdmission SubagentExecutionMode SubagentExecutionOrigin SubagentExecutionPhase SubagentLifecycleCompletionContext SubagentLifecycleCompletionDecision SubagentLifecycleExecutionPath SubagentLifecycleIdentity SubagentLifecycleInterceptor SubagentLifecycleOutcome SubagentLifecycleRegistration SubagentLifecycleStartContext SubagentLifecycleStartDecision; do
   grep -q "$sym" "$DTS" || { echo "FAIL: '$sym' missing from dist/public.d.ts" >&2; exit 1; }
 done
 echo "OK: dist/public.d.ts is self-contained and exports the public surface"
@@ -70,6 +70,9 @@ import {
   type WorkspaceDisposeResult,
   type WorkspacePrepareContext,
   type WorkspaceProvider,
+  type SubagentLifecycleInterceptor,
+  type SubagentLifecycleRegistration,
+  MAX_LIFECYCLE_CONTINUATION_ROUNDS,
 } from "@gotgenes/pi-subagents";
 
 // Exercise the value export and all workspace collaborator type exports.
@@ -85,8 +88,17 @@ const provider: WorkspaceProvider = {
   },
 };
 
+const interceptor: SubagentLifecycleInterceptor = {
+  beforeStart: (context) => ({ action: "continue", prompt: context.prompt }),
+  beforeComplete: (context) => ({ action: "complete", result: context.proposedResult }),
+};
+
+declare const registration: SubagentLifecycleRegistration;
 void provider;
 void getSubagentsService;
+void interceptor;
+void registration;
+void MAX_LIFECYCLE_CONTINUATION_ROUNDS;
 TS
 
 cat > "$CONSUMER/probe-settings.ts" <<'TS'
