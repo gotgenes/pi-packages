@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [20.9.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v20.8.0...pi-permission-system-v20.9.0) (2026-07-19)
+
+
+### Features
+
+* **pi-permission-system:** add authorizerChain config field ([#599](https://github.com/gotgenes/pi-packages/issues/599)) ([6c0bb72](https://github.com/gotgenes/pi-packages/commit/6c0bb72680d864b70e8fac5bb5c480b9a96751f8))
+* **pi-permission-system:** add registerAuthorizer cross-extension seam ([#599](https://github.com/gotgenes/pi-packages/issues/599)) ([ea60900](https://github.com/gotgenes/pi-packages/commit/ea60900439d68ccc028ba75c3e432945e0ac3b72))
+* **pi-permission-system:** cap link verdicts with the delegation envelope ([#599](https://github.com/gotgenes/pi-packages/issues/599)) ([28733fc](https://github.com/gotgenes/pi-packages/commit/28733fca298f1fea1f7a810b61728f9c96bf225f))
+* **pi-permission-system:** inject a session-scoped PermissionQuery into chain links ([#599](https://github.com/gotgenes/pi-packages/issues/599)) ([29452ff](https://github.com/gotgenes/pi-packages/commit/29452ff8cbec6abc431a318b7937843ecefb724d))
+* **pi-permission-system:** resolve the configured authorizer chain ([#599](https://github.com/gotgenes/pi-packages/issues/599)) ([fb366d9](https://github.com/gotgenes/pi-packages/commit/fb366d9aed47ab439ffc033e4967a4285d37fe8a))
+
+
+### Documentation
+
+* **pi-permission-system:** document registerAuthorizer + authorizerChain and mark Phase 12 Step 5 complete ([#599](https://github.com/gotgenes/pi-packages/issues/599)) ([1d6b228](https://github.com/gotgenes/pi-packages/commit/1d6b22889296b3277a118cc8168486664c691305))
+
 ## [20.8.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v20.7.3...pi-permission-system-v20.8.0) (2026-07-18)
 
 
