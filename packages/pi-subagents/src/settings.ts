@@ -6,6 +6,8 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { type LayeredSettingsSource, loadLayeredSettings } from "#src/layered-settings";
 export interface SubagentsSettings {
+  /** Default omitted run_in_background to true for tool-based launches. */
+  defaultRunInBackground?: boolean;
   maxConcurrent?: number;
   /**
    * 0 = unlimited — the extension's single source of truth for that convention:
@@ -29,6 +31,7 @@ const DEFAULT_GRACE_TURNS = 5;
  */
 export class SettingsManager {
   private _defaultMaxTurns: number | undefined = undefined;
+  private _defaultRunInBackground = false;
   private _graceTurns: number = DEFAULT_GRACE_TURNS;
   private _maxConcurrent: number = DEFAULT_MAX_CONCURRENT;
 
@@ -56,6 +59,10 @@ export class SettingsManager {
     } else {
       this._defaultMaxTurns = Math.max(1, n);
     }
+  }
+
+  get defaultRunInBackground(): boolean {
+    return this._defaultRunInBackground;
   }
 
   // ── graceTurns: minimum 1 ──
@@ -89,6 +96,9 @@ export class SettingsManager {
     const settings = loadSettings(this.agentDir, this.cwd);
     if (typeof settings.maxConcurrent === "number") this.maxConcurrent = settings.maxConcurrent;
     if (typeof settings.defaultMaxTurns === "number") this.defaultMaxTurns = settings.defaultMaxTurns;
+    if (typeof settings.defaultRunInBackground === "boolean") {
+      this._defaultRunInBackground = settings.defaultRunInBackground;
+    }
     if (typeof settings.graceTurns === "number") this.graceTurns = settings.graceTurns;
     this.emit("subagents:settings_loaded", { settings });
     return settings;
@@ -98,8 +108,9 @@ export class SettingsManager {
    * Snapshot current in-memory values for persistence.
    * `defaultMaxTurns` uses 0 as the on-disk marker for unlimited (undefined).
    */
-  snapshot(): { maxConcurrent: number; defaultMaxTurns: number; graceTurns: number } {
+  snapshot(): { defaultRunInBackground: boolean; maxConcurrent: number; defaultMaxTurns: number; graceTurns: number } {
     return {
+      defaultRunInBackground: this._defaultRunInBackground,
       maxConcurrent: this._maxConcurrent,
       defaultMaxTurns: this._defaultMaxTurns ?? 0,
       graceTurns: this._graceTurns,
@@ -158,6 +169,9 @@ function sanitize(raw: unknown): SubagentsSettings {
   if (!raw || typeof raw !== "object") return {};
   const r = raw as Record<string, unknown>;
   const out: SubagentsSettings = {};
+  if (typeof r.defaultRunInBackground === "boolean") {
+    out.defaultRunInBackground = r.defaultRunInBackground;
+  }
   if (
     Number.isInteger(r.maxConcurrent) &&
     (r.maxConcurrent as number) >= 1 &&

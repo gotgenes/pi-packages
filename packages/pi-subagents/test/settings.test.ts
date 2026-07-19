@@ -51,6 +51,13 @@ describe("settings persistence", () => {
     expect(loadSettings(globalDir, projectDir)).toEqual({ maxConcurrent: 16, graceTurns: 10 });
   });
 
+  it("loads defaultRunInBackground from the global file", () => {
+    writeGlobal({ defaultRunInBackground: true });
+    expect(loadSettings(globalDir, projectDir)).toEqual({ defaultRunInBackground: true });
+    writeGlobal({ defaultRunInBackground: false });
+    expect(loadSettings(globalDir, projectDir)).toEqual({ defaultRunInBackground: false });
+  });
+
   it("loads from project when no global file", () => {
     writeProject({ maxConcurrent: 8 });
     expect(loadSettings(globalDir, projectDir)).toEqual({ maxConcurrent: 8 });
@@ -246,6 +253,11 @@ describe("settings persistence", () => {
 
 describe("SettingsManager", () => {
   describe("constructor defaults", () => {
+    it("defaults defaultRunInBackground to false", () => {
+      const sm = new SettingsManager({ emit: vi.fn(), cwd: "/tmp", agentDir: "/nonexistent" });
+      expect(sm.defaultRunInBackground).toBe(false);
+    });
+
     it("defaults to defaultMaxTurns: undefined (unlimited)", () => {
       const sm = new SettingsManager({ emit: vi.fn(), cwd: "/tmp", agentDir: "/nonexistent" });
       expect(sm.defaultMaxTurns).toBeUndefined();
@@ -355,6 +367,34 @@ describe("SettingsManager", () => {
       expect(sm.defaultMaxTurns).toBeUndefined();
     });
 
+    it("applies defaultRunInBackground from disk", () => {
+      mkdirSync(join(projectDir, ".pi"), { recursive: true });
+      writeFileSync(join(projectDir, ".pi", "subagents.json"), JSON.stringify({ defaultRunInBackground: true }));
+      const sm = new SettingsManager({ emit: vi.fn(), cwd: projectDir, agentDir: globalDir });
+      sm.load();
+      expect(sm.defaultRunInBackground).toBe(true);
+    });
+
+    it("preserves a project background override when another setting is saved", () => {
+      writeFileSync(join(globalDir, "subagents.json"), JSON.stringify({ defaultRunInBackground: true }));
+      mkdirSync(join(projectDir, ".pi"), { recursive: true });
+      writeFileSync(join(projectDir, ".pi", "subagents.json"), JSON.stringify({ defaultRunInBackground: false }));
+      const sm = new SettingsManager({ emit: vi.fn(), cwd: projectDir, agentDir: globalDir });
+      sm.load();
+      sm.applyMaxConcurrent(8);
+
+      expect(JSON.parse(readFileSync(join(projectDir, ".pi", "subagents.json"), "utf-8"))).toEqual({
+        defaultRunInBackground: false,
+        maxConcurrent: 8,
+        defaultMaxTurns: 0,
+        graceTurns: 5,
+      });
+
+      const restarted = new SettingsManager({ emit: vi.fn(), cwd: projectDir, agentDir: globalDir });
+      restarted.load();
+      expect(restarted.defaultRunInBackground).toBe(false);
+    });
+
     it("applies defaultMaxTurns from disk (0 → unlimited)", () => {
       mkdirSync(join(projectDir, ".pi"), { recursive: true });
       writeFileSync(join(projectDir, ".pi", "subagents.json"), JSON.stringify({ defaultMaxTurns: 0 }));
@@ -400,7 +440,7 @@ describe("SettingsManager", () => {
   describe("snapshot()", () => {
     it("returns default values before any changes", () => {
       const sm = new SettingsManager({ emit: vi.fn(), cwd: "/tmp", agentDir: "/nonexistent" });
-      expect(sm.snapshot()).toEqual({ maxConcurrent: 4, defaultMaxTurns: 0, graceTurns: 5 });
+      expect(sm.snapshot()).toEqual({ defaultRunInBackground: false, maxConcurrent: 4, defaultMaxTurns: 0, graceTurns: 5 });
     });
 
     it("reflects mutations: defaultMaxTurns undefined maps to 0 in snapshot", () => {
@@ -408,13 +448,13 @@ describe("SettingsManager", () => {
       sm.defaultMaxTurns = undefined;
       sm.graceTurns = 3;
       sm.maxConcurrent = 8;
-      expect(sm.snapshot()).toEqual({ maxConcurrent: 8, defaultMaxTurns: 0, graceTurns: 3 });
+      expect(sm.snapshot()).toEqual({ defaultRunInBackground: false, maxConcurrent: 8, defaultMaxTurns: 0, graceTurns: 3 });
     });
 
     it("reflects a concrete defaultMaxTurns value", () => {
       const sm = new SettingsManager({ emit: vi.fn(), cwd: "/tmp", agentDir: "/nonexistent" });
       sm.defaultMaxTurns = 20;
-      expect(sm.snapshot()).toEqual({ maxConcurrent: 4, defaultMaxTurns: 20, graceTurns: 5 });
+      expect(sm.snapshot()).toEqual({ defaultRunInBackground: false, maxConcurrent: 4, defaultMaxTurns: 20, graceTurns: 5 });
     });
   });
 
@@ -436,7 +476,7 @@ describe("SettingsManager", () => {
       const toast = sm.saveAndNotify("Max concurrency set to 5");
       expect(toast).toEqual({ message: "Max concurrency set to 5", level: "info" });
       const written = JSON.parse(readFileSync(join(projectDir, ".pi", "subagents.json"), "utf-8"));
-      expect(written).toEqual({ maxConcurrent: 5, defaultMaxTurns: 0, graceTurns: 5 });
+      expect(written).toEqual({ defaultRunInBackground: false, maxConcurrent: 5, defaultMaxTurns: 0, graceTurns: 5 });
     });
 
     it("emits subagents:settings_changed with persisted:true on success", () => {
@@ -445,7 +485,7 @@ describe("SettingsManager", () => {
       sm.graceTurns = 3;
       sm.saveAndNotify("Grace turns set to 3");
       expect(emit).toHaveBeenCalledWith("subagents:settings_changed", {
-        settings: { maxConcurrent: 4, defaultMaxTurns: 0, graceTurns: 3 },
+        settings: { defaultRunInBackground: false, maxConcurrent: 4, defaultMaxTurns: 0, graceTurns: 3 },
         persisted: true,
       });
     });
@@ -473,7 +513,7 @@ describe("SettingsManager", () => {
         const sm = new SettingsManager({ emit, cwd: filePosingAsCwd, agentDir: "/nonexistent" });
         sm.saveAndNotify("something");
         expect(emit).toHaveBeenCalledWith("subagents:settings_changed", {
-          settings: { maxConcurrent: 4, defaultMaxTurns: 0, graceTurns: 5 },
+          settings: { defaultRunInBackground: false, maxConcurrent: 4, defaultMaxTurns: 0, graceTurns: 5 },
           persisted: false,
         });
       } finally {

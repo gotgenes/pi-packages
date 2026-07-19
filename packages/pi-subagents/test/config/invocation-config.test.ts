@@ -75,6 +75,26 @@ describe("resolveAgentInvocationConfig", () => {
     expect(resolved.runInBackground).toBe(true);
   });
 
+  it("uses the background default only when config and tool params omit it", () => {
+    const resolved = resolveAgentInvocationConfig(
+      makeConfig({ runInBackground: undefined }),
+      {},
+      true,
+    );
+
+    expect(resolved.runInBackground).toBe(true);
+  });
+
+  it("keeps an explicit agent foreground default over the global fallback", () => {
+    const resolved = resolveAgentInvocationConfig(
+      makeConfig({ runInBackground: false }),
+      { run_in_background: true },
+      true,
+    );
+
+    expect(resolved.runInBackground).toBe(false);
+  });
+
   it("defaults booleans to false when neither config nor params set them", () => {
     const resolved = resolveAgentInvocationConfig(
       makeConfig({

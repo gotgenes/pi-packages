@@ -75,7 +75,7 @@ export function resolveSpawnConfig(
   params: Record<string, unknown>,
   registry: AgentTypeRegistry,
   modelInfo: ModelInfo,
-  settings: { readonly defaultMaxTurns: number | undefined },
+  settings: { readonly defaultMaxTurns: number | undefined; readonly defaultRunInBackground?: boolean },
 ): ResolvedSpawnConfig | SpawnConfigError {
   const rawType = params.subagent_type as SubagentType;
   const resolved = registry.resolveType(rawType);
@@ -92,7 +92,11 @@ export function resolveSpawnConfig(
 
   // Merge agent config defaults with tool-call params
   const customConfig = registry.resolveAgentConfig(subagentType);
-  const resolvedConfig = resolveAgentInvocationConfig(customConfig, params);
+  const resolvedConfig = resolveAgentInvocationConfig(
+    customConfig,
+    params,
+    settings.defaultRunInBackground ?? false,
+  );
 
   // Resolve model
   const resolution = resolveInvocationModel(
