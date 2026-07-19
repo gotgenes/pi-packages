@@ -19,7 +19,7 @@ import type { WorkspaceProvider } from "#src/lifecycle/workspace";
 import { WorkspaceBracket } from "#src/lifecycle/workspace-bracket";
 import { subscribeSubagentObserver } from "#src/observation/record-observer";
 import type { RunConfig } from "#src/runtime";
-import type { AgentInvocation, CompactionInfo, ParentSessionInfo, SessionMessage, SubagentType, ThinkingLevel } from "#src/types";
+import type { AgentInvocation, CompactionInfo, ParentResultMode, ParentSessionInfo, SessionMessage, SubagentType, ThinkingLevel } from "#src/types";
 
 /** Per-subagent lifecycle observer — created by SubagentManager for each spawn. */
 export interface SubagentLifecycleObserver {
@@ -34,6 +34,14 @@ export interface SubagentLifecycleObserver {
 }
 
 export type { SubagentStatus } from "#src/lifecycle/subagent-state";
+
+/** A result projection safe to expose in the parent session. */
+export interface ParentResultPresentation {
+	description: string;
+	result: string | undefined;
+	error: string | undefined;
+	outputFile: string | undefined;
+}
 
 /**
  * The result of a steer attempt. `Subagent.steer` owns the non-running
@@ -67,6 +75,7 @@ export interface SubagentExecution {
 	model?: Model<any>;
 	maxTurns?: number;
 	thinkingLevel?: ThinkingLevel;
+	parentResultMode?: ParentResultMode;
 	parentSession?: ParentSessionInfo;
 	signal?: AbortSignal;
 }
@@ -126,6 +135,29 @@ export class Subagent {
 	/** Path to the agent's session JSONL file, or undefined if not yet available. */
 	get outputFile(): string | undefined {
 		return this.subagentSession?.outputFile;
+	}
+
+	/** Whether parent-facing transcript access is withheld for this child. */
+	get isParentResultRedacted(): boolean {
+		return this.execution.parentResultMode === "redacted";
+	}
+
+	/** Task/result fields safe to expose through parent-facing channels. */
+	get parentResultPresentation(): ParentResultPresentation {
+		if (this.isParentResultRedacted) {
+			return {
+				description: "Child task withheld.",
+				result: "Child result withheld.",
+				error: this.error === undefined ? undefined : "Child error details withheld.",
+				outputFile: undefined,
+			};
+		}
+		return {
+			description: this.description,
+			result: this.result,
+			error: this.error,
+			outputFile: this.outputFile,
+		};
 	}
 
 	/** The tool call ID that spawned this background agent, if any. */
@@ -253,6 +285,7 @@ export class Subagent {
 				parentSession: this.execution.parentSession,
 				model: this.execution.model,
 				thinkingLevel: this.execution.thinkingLevel,
+				parentResultMode: this.execution.parentResultMode,
 			});
 		} catch (err) {
 			// The factory disposed its own session on a post-creation failure.
@@ -430,7 +463,7 @@ export class Subagent {
 				: "completed";
 		const finalResult =
 			result.responseText +
-			this.workspaceBracket.dispose({ status: finalStatus, description: this.description });
+			this.workspaceBracket.dispose({ status: finalStatus, description: this.parentResultPresentation.description });
 
 		if (result.aborted) this.markAborted(finalResult);
 		else if (result.steered) this.markSteered(finalResult);
@@ -450,7 +483,7 @@ export class Subagent {
 		this.listeners.release();
 
 		try {
-			this.workspaceBracket.dispose({ status: "error", description: this.description });
+			this.workspaceBracket.dispose({ status: "error", description: this.parentResultPresentation.description });
 		} catch (cleanupErr) { debugLog("workspace dispose on agent error", cleanupErr); }
 
 		this.execution.observer?.onRunFinished?.(this);

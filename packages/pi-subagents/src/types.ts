@@ -9,6 +9,9 @@ import type { ModelRegistry } from "#src/session/model-resolver";
 
 export type { SteerOutcome } from "#src/lifecycle/subagent";
 export { Subagent } from "#src/lifecycle/subagent";
+
+/** Controls task/result text exposed outside a native child session. */
+export type ParentResultMode = "full" | "redacted";
 export type { AgentSessionEvent, ThinkingLevel };
 
 /**

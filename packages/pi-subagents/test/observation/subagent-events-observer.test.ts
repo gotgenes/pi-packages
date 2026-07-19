@@ -106,6 +106,25 @@ describe("SubagentEventsObserver", () => {
 			});
 		});
 
+		it("redacts task and result text from parent events and persisted records", () => {
+			const { observer, emit, appendEntry } = makeObserver();
+			const record = createTestSubagent({
+				description: "SECRET TASK BODY",
+				result: "SECRET CHILD RESULT",
+				parentResultMode: "redacted",
+			});
+
+			observer.onSubagentCreated(record);
+			observer.onSubagentStarted(record);
+			observer.onSubagentCompacted(record, { reason: "manual", tokensBefore: 1 });
+			observer.onSubagentCompleted(record);
+
+			expect(JSON.stringify(emit.mock.calls)).not.toContain("SECRET TASK BODY");
+			expect(JSON.stringify(emit.mock.calls)).not.toContain("SECRET CHILD RESULT");
+			expect(JSON.stringify(appendEntry.mock.calls)).not.toContain("SECRET TASK BODY");
+			expect(JSON.stringify(appendEntry.mock.calls)).not.toContain("SECRET CHILD RESULT");
+		});
+
 		it("calls notifications.sendCompletion unconditionally — the manager decides whether to nudge", () => {
 			const notifications = makeNotifications();
 			const { observer } = makeObserver({ notifications });

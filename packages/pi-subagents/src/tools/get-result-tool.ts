@@ -55,6 +55,7 @@ export class GetResultTool {
 	}
 
 	private buildReport(record: Subagent, verbose?: boolean): AgentReport {
+		const presentation = record.parentResultPresentation;
 		return {
 			id: record.id,
 			displayName: getDisplayName(record.type, this.registry),
@@ -64,10 +65,10 @@ export class GetResultTool {
 			contextPercent: record.getContextPercent(),
 			compactionCount: record.compactionCount,
 			duration: formatDuration(record.startedAt, record.completedAt),
-			description: record.description,
-			result: record.result,
-			error: record.error,
-			conversation: verbose ? record.getConversation() : undefined,
+			description: presentation.description,
+			result: presentation.result,
+			error: presentation.error,
+			conversation: verbose && !record.isParentResultRedacted ? record.getConversation() : undefined,
 		};
 	}
 

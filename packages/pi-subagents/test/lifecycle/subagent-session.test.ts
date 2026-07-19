@@ -66,6 +66,7 @@ function makeSubagentSession(
     agentName: string;
     agentMaxTurns: number | undefined;
     parentContext: string | undefined;
+    parentResultMode: "full" | "redacted" | undefined;
     lifecycle: ReturnType<typeof createChildLifecycleMock>;
   }>,
 ) {
@@ -78,6 +79,7 @@ function makeSubagentSession(
     agentName: metaOverrides?.agentName ?? "Explore",
     agentMaxTurns: metaOverrides?.agentMaxTurns,
     parentContext: metaOverrides?.parentContext,
+    parentResultMode: metaOverrides?.parentResultMode,
     lifecycle,
   });
   return { sub, lifecycle };
@@ -219,6 +221,24 @@ describe("SubagentSession — runTurnLoop lifecycle events", () => {
     expect(lifecycle.completed).toHaveBeenCalledOnce();
     expect(lifecycle.completed).toHaveBeenCalledWith({
       sessionDir: "/d",
+      agentName: "Explore",
+      aborted: false,
+      steered: false,
+    });
+  });
+
+  it("omits sessionDir from a redacted native child's completed event", async () => {
+    const { session } = createSession("OK");
+    const { sub } = makeSubagentSession(session, {
+      sessionDir: "/sessions/SECRET-CHILD-TRANSCRIPT",
+      parentResultMode: "redacted",
+      lifecycle,
+    });
+
+    await sub.runTurnLoop("go", {});
+
+    expect(JSON.stringify(lifecycle.completed.mock.calls)).not.toContain("SECRET-CHILD-TRANSCRIPT");
+    expect(lifecycle.completed).toHaveBeenCalledWith({
       agentName: "Explore",
       aborted: false,
       steered: false,

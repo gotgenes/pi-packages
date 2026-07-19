@@ -109,6 +109,28 @@ describe("GetResultTool", () => {
 		expect(result.content[0].text).toContain("Finished after wait.");
 	});
 
+	it("withholds a redacted native child's task, result, and verbose conversation", async () => {
+		const record = createTestSubagent({
+			description: "SECRET TASK BODY",
+			result: "SECRET CHILD RESULT",
+			parentResultMode: "redacted",
+		});
+		const stub = createSubagentSessionStub();
+		stub.getConversation.mockReturnValue("SECRET CHILD CONVERSATION");
+		record.subagentSession = toSubagentSession(stub);
+
+		const result = await execute(
+			makeManager(new Map([["agent-1", record]])),
+			makeNotifications(),
+			{ agent_id: "agent-1", verbose: true },
+		);
+
+		expect(result.content[0].text).not.toContain("SECRET TASK BODY");
+		expect(result.content[0].text).not.toContain("SECRET CHILD RESULT");
+		expect(result.content[0].text).not.toContain("SECRET CHILD CONVERSATION");
+		expect(stub.getConversation).not.toHaveBeenCalled();
+	});
+
 	it("includes conversation when verbose=true", async () => {
 		const record = createTestSubagent();
 		const stub = createSubagentSessionStub();

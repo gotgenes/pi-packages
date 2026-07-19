@@ -126,6 +126,29 @@ describe("AgentTool — resume path", () => {
 		});
 		expect(result.content[0].text).toContain("Resumed output.");
 	});
+
+	it("withholds a redacted native child's resumed result and error", async () => {
+		const deps = createToolDeps();
+		const existing = createTestSubagent({ parentResultMode: "redacted" });
+		existing.subagentSession = toSubagentSession(createSubagentSessionStub(createMockSession()));
+		const resumed = createTestSubagent({
+			result: "SECRET CHILD RESULT",
+			error: "SECRET CHILD ERROR",
+			parentResultMode: "redacted",
+		});
+		deps.manager.getRecord = vi.fn().mockReturnValue(existing);
+		deps.manager.resume = vi.fn().mockResolvedValue(resumed);
+
+		const result = await execute(deps, {
+			prompt: "continue",
+			description: "resume",
+			subagent_type: "general-purpose",
+			resume: "agent-1",
+		});
+
+		expect(JSON.stringify(result)).not.toContain("SECRET CHILD RESULT");
+		expect(JSON.stringify(result)).not.toContain("SECRET CHILD ERROR");
+	});
 });
 
 describe("AgentTool — model resolution error", () => {

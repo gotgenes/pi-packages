@@ -2,7 +2,7 @@ import type { CreateSubagentSessionParams } from "#src/lifecycle/create-subagent
 import { Subagent, type SubagentExecution } from "#src/lifecycle/subagent";
 import type { SubagentSession } from "#src/lifecycle/subagent-session";
 import { SubagentState, type SubagentStatus } from "#src/lifecycle/subagent-state";
-import type { AgentInvocation, SubagentType } from "#src/types";
+import type { AgentInvocation, ParentResultMode, SubagentType } from "#src/types";
 import { createSubagentSessionStub, toSubagentSession } from "#test/helpers/mock-session";
 import { STUB_SNAPSHOT } from "#test/helpers/stub-ctx";
 
@@ -52,10 +52,12 @@ export interface TestSubagentOptions {
 	responseText?: string;
 	/** Thread maxTurns into the stub execution. Ignored when `execution` is supplied. */
 	maxTurns?: number;
+	/** Thread parent result visibility into the stub execution. Ignored when `execution` is supplied. */
+	parentResultMode?: ParentResultMode;
 }
 
 export function createTestSubagent(overrides: TestSubagentOptions = {}): Subagent {
-	const { id, type, description, invocation, execution, toolCallId, toolUses, lifetimeUsage, compactionCount, turnCount, activeTools, responseText, maxTurns, ...stateOverrides } =
+	const { id, type, description, invocation, execution, toolCallId, toolUses, lifetimeUsage, compactionCount, turnCount, activeTools, responseText, maxTurns, parentResultMode, ...stateOverrides } =
 		overrides;
 	const state = new SubagentState({
 		status: "completed",
@@ -78,6 +80,7 @@ export function createTestSubagent(overrides: TestSubagentOptions = {}): Subagen
 		execution: execution ?? makeStubExecution({
 			...(toolCallId ? { parentSession: { toolCallId } } : {}),
 			...(maxTurns !== undefined ? { maxTurns } : {}),
+			...(parentResultMode !== undefined ? { parentResultMode } : {}),
 		}),
 		state,
 	});

@@ -438,9 +438,11 @@ describe("Subagent — disposeSession", () => {
 /** Create a complete Agent ready for run(). */
 function createRunnableAgent(overrides?: {
 	createSubagentSession?: SessionFactory;
+	description?: string;
 	observer?: SubagentLifecycleObserver;
 	getRunConfig?: () => { defaultMaxTurns: number | undefined; graceTurns: number };
 	parentSession?: { toolCallId?: string; parentSessionFile?: string; parentSessionId?: string };
+	parentResultMode?: "full" | "redacted";
 	signal?: AbortSignal;
 	baseCwd?: string;
 	workspaceProvider?: WorkspaceProvider;
@@ -451,7 +453,7 @@ function createRunnableAgent(overrides?: {
 	return new Subagent({
 		id: "run-1",
 		type: "general-purpose",
-		description: "run test",
+		description: overrides?.description ?? "run test",
 		execution: {
 			createSubagentSession,
 			observer,
@@ -459,6 +461,7 @@ function createRunnableAgent(overrides?: {
 			prompt: "do something",
 			getRunConfig: overrides?.getRunConfig,
 			parentSession: overrides?.parentSession,
+			parentResultMode: overrides?.parentResultMode,
 			signal: overrides?.signal,
 			baseCwd: overrides?.baseCwd ?? "/base",
 			getWorkspaceProvider: provider ? () => provider : undefined,
@@ -525,6 +528,15 @@ describe("Subagent.run() — workspace provider", () => {
 		expect(params.cwd).toBe("/ws/dir");
 	});
 
+	it("threads redacted parent result mode to the child session factory", async () => {
+		const { factory } = createFactory();
+		const agent = createRunnableAgent({ createSubagentSession: factory, parentResultMode: "redacted" });
+
+		await agent.run();
+
+		expect((factory as ReturnType<typeof vi.fn>).mock.calls[0][0].parentResultMode).toBe("redacted");
+	});
+
 	it("calls prepare with the run-start context", async () => {
 		const provider = makeWorkspaceProvider(makeWorkspace("/ws/dir"));
 		const agent = createRunnableAgent({ workspaceProvider: provider, baseCwd: "/parent" });
@@ -543,6 +555,56 @@ describe("Subagent.run() — workspace provider", () => {
 		await agent.run();
 		expect(agent.result).toBe("done\n\n---\nsaved to branch foo");
 		expect(workspace.dispose).toHaveBeenCalledWith({ status: "completed", description: "run test" });
+	});
+
+	it("withholds a redacted native child's description from successful workspace disposal", async () => {
+		const { stub } = createFactory();
+		const workspace = makeWorkspace("/ws/dir");
+		const agent = createRunnableAgent({
+			createSubagentSession: async () => toSubagentSession(stub),
+			workspaceProvider: makeWorkspaceProvider(workspace),
+			parentResultMode: "redacted",
+			description: "SECRET TASK BODY",
+		});
+
+		await agent.run();
+
+		expect(JSON.stringify(vi.mocked(workspace.dispose).mock.calls)).not.toContain("SECRET TASK BODY");
+		expect(workspace.dispose).toHaveBeenCalledWith({ status: "completed", description: "Child task withheld." });
+	});
+
+	it("withholds a redacted native child's description from failed workspace disposal", async () => {
+		const { stub } = createFactory();
+		stub.runTurnLoop.mockRejectedValue(new Error("failed"));
+		const workspace = makeWorkspace("/ws/dir");
+		const agent = createRunnableAgent({
+			createSubagentSession: async () => toSubagentSession(stub),
+			workspaceProvider: makeWorkspaceProvider(workspace),
+			parentResultMode: "redacted",
+			description: "SECRET TASK BODY",
+		});
+
+		await agent.run();
+
+		expect(JSON.stringify(vi.mocked(workspace.dispose).mock.calls)).not.toContain("SECRET TASK BODY");
+		expect(workspace.dispose).toHaveBeenCalledWith({ status: "error", description: "Child task withheld." });
+	});
+
+	it("withholds a redacted native child's description from cancelled workspace disposal", async () => {
+		const { stub } = createFactory();
+		stub.runTurnLoop.mockResolvedValue({ responseText: "done", aborted: true, steered: false });
+		const workspace = makeWorkspace("/ws/dir");
+		const agent = createRunnableAgent({
+			createSubagentSession: async () => toSubagentSession(stub),
+			workspaceProvider: makeWorkspaceProvider(workspace),
+			parentResultMode: "redacted",
+			description: "SECRET TASK BODY",
+		});
+
+		await agent.run();
+
+		expect(JSON.stringify(vi.mocked(workspace.dispose).mock.calls)).not.toContain("SECRET TASK BODY");
+		expect(workspace.dispose).toHaveBeenCalledWith({ status: "aborted", description: "Child task withheld." });
 	});
 
 	it("falls back to baseCwd (cwd undefined) when prepare returns undefined", async () => {

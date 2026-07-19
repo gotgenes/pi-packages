@@ -42,28 +42,29 @@ export function getStatusLabel(status: string, error?: string): string {
 
 /** Format a structured <task-notification> XML block for the parent agent to parse. */
 export function formatTaskNotification(record: Subagent, resultMaxLen: number): string {
-  const status = getStatusLabel(record.status, record.error);
+  const presentation = record.parentResultPresentation;
+  const status = getStatusLabel(record.status, presentation.error);
   const durationMs = record.completedAt ? record.completedAt - record.startedAt : 0;
   const totalTokens = getLifetimeTotal(record.lifetimeUsage);
   const contextPercent = record.getContextPercent();
   const ctxXml = contextPercent !== null ? `<context_percent>${Math.round(contextPercent)}</context_percent>` : "";
   const compactXml = record.compactionCount ? `<compactions>${record.compactionCount}</compactions>` : "";
 
-  const resultPreview = record.result
-    ? record.result.length > resultMaxLen
-      ? record.result.slice(0, resultMaxLen) + "\n...(truncated, use get_subagent_result for full output)"
-      : record.result
+  const resultPreview = presentation.result
+    ? presentation.result.length > resultMaxLen
+      ? presentation.result.slice(0, resultMaxLen) + "\n...(truncated, use get_subagent_result for full output)"
+      : presentation.result
     : "No output.";
 
   const toolCallId = record.toolCallId;
-  const outputFile = record.outputFile;
+  const outputFile = presentation.outputFile;
   return [
     "<task-notification>",
     `<task-id>${record.id}</task-id>`,
     toolCallId ? `<tool-use-id>${escapeXml(toolCallId)}</tool-use-id>` : null,
     outputFile ? `<output-file>${escapeXml(outputFile)}</output-file>` : null,
     `<status>${escapeXml(status)}</status>`,
-    `<summary>Subagent "${escapeXml(record.description)}" ${record.status}</summary>`,
+    `<summary>Subagent "${escapeXml(presentation.description)}" ${record.status}</summary>`,
     `<result>${escapeXml(resultPreview)}</result>`,
     `<usage><total_tokens>${totalTokens}</total_tokens><tool_uses>${record.toolUses}</tool_uses>${ctxXml}${compactXml}<duration_ms>${durationMs}</duration_ms></usage>`,
     "</task-notification>",
@@ -78,28 +79,30 @@ export function buildNotificationDetails(
   resultMaxLen: number,
 ): NotificationDetails {
   const totalTokens = getLifetimeTotal(record.lifetimeUsage);
+  const presentation = record.parentResultPresentation;
 
   return {
     id: record.id,
-    description: record.description,
+    description: presentation.description,
     status: record.status,
     toolUses: record.toolUses,
     turnCount: record.turnCount,
     maxTurns: record.maxTurns,
     totalTokens,
     durationMs: record.completedAt ? record.completedAt - record.startedAt : 0,
-    outputFile: record.outputFile,
-    error: record.error,
-    resultPreview: record.result
-      ? record.result.length > resultMaxLen
-        ? record.result.slice(0, resultMaxLen) + "…"
-        : record.result
+    outputFile: presentation.outputFile,
+    error: presentation.error,
+    resultPreview: presentation.result
+      ? presentation.result.length > resultMaxLen
+        ? presentation.result.slice(0, resultMaxLen) + "…"
+        : presentation.result
       : "No output.",
   };
 }
 
 /** Build event data for lifecycle events from a Subagent. */
 export function buildEventData(record: Subagent) {
+  const presentation = record.parentResultPresentation;
   const durationMs = record.completedAt ? record.completedAt - record.startedAt : Date.now() - record.startedAt;
   const u = record.lifetimeUsage;
   const total = getLifetimeTotal(u);
@@ -110,9 +113,9 @@ export function buildEventData(record: Subagent) {
   return {
     id: record.id,
     type: record.type,
-    description: record.description,
-    result: record.result,
-    error: record.error,
+    description: presentation.description,
+    result: presentation.result,
+    error: presentation.error,
     status: record.status,
     toolUses: record.toolUses,
     durationMs,
@@ -189,7 +192,7 @@ export class NotificationManager implements NotificationSystem, ResultDelivery {
     if (this.consumed.has(record.id)) return;
 
     const notification = formatTaskNotification(record, 500);
-    const outputFile = record.outputFile;
+    const outputFile = record.parentResultPresentation.outputFile;
     const footer = outputFile ? `\nFull transcript available at: ${outputFile}` : "";
 
     this.sendMessage(

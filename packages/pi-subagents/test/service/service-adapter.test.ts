@@ -40,6 +40,18 @@ describe("toSubagentRecord", () => {
     });
   });
 
+  it("redacts task and result text from a redacted native child", () => {
+    const record = createTestSubagent({
+      description: "SECRET TASK BODY",
+      result: "SECRET CHILD RESULT",
+      parentResultMode: "redacted",
+    });
+    const result = toSubagentRecord(record);
+
+    expect(JSON.stringify(result)).not.toContain("SECRET TASK BODY");
+    expect(JSON.stringify(result)).not.toContain("SECRET CHILD RESULT");
+  });
+
   it("strips the session from the serialized record", () => {
     const record = createTestSubagent();
     record.subagentSession = toSubagentSession(createSubagentSessionStub(createMockSession()));
@@ -302,6 +314,19 @@ describe("SubagentsServiceAdapter — spawn", () => {
       "Explore",
       "long prompt here",
       expect.objectContaining({ description: "short desc" }),
+    );
+  });
+
+  it("threads redacted parent result mode only through the native service", () => {
+    const mgr = createManagerStub();
+    const svc = new SubagentsServiceAdapter(mgr, vi.fn(), makeRuntimeStub());
+    svc.spawn("Explore", "SECRET TASK BODY", { parentResultMode: "redacted" });
+
+    expect(mgr.spawn).toHaveBeenCalledWith(
+      expect.anything(),
+      "Explore",
+      "SECRET TASK BODY",
+      expect.objectContaining({ parentResultMode: "redacted" }),
     );
   });
 

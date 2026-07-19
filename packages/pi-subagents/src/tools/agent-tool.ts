@@ -100,9 +100,10 @@ export class AgentTool {
 			if (!record) {
 				return textResult(`Failed to resume agent "${params.resume as string}".`);
 			}
+			const presentation = record.parentResultPresentation;
 			return textResult(
-				record.result?.trim() ?? record.error?.trim() ?? "No output.",
-				buildDetails(config.presentation.detailBase, record),
+				presentation.result?.trim() ?? presentation.error?.trim() ?? "No output.",
+				buildDetails(config.presentation.detailBase, record, { error: presentation.error }),
 			);
 		}
 

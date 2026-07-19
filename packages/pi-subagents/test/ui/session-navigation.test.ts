@@ -36,6 +36,16 @@ describe("listNavigableAgents", () => {
     expect(entry.kind === "live" && entry.record).toBe(ready);
   });
 
+  it("excludes a redacted native child from transcript navigation", () => {
+    const redacted = makeNavigable({
+      description: "SECRET TASK BODY",
+      agentMessages: [{ role: "assistant", content: "SECRET CHILD RESULT" }] as unknown as SessionMessage[],
+      isParentResultRedacted: true,
+    });
+
+    expect(listNavigableAgents([redacted], [], registry)).toEqual([]);
+  });
+
   it("builds a label with name, description, tool count, status, and duration", () => {
     const record = makeNavigable({
       type: "general-purpose",

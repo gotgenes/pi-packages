@@ -33,6 +33,7 @@ export interface NavigableSubagent {
   readonly activeTools: ReadonlyMap<string, string>;
   readonly responseText: string;
   readonly agentMessages: readonly SessionMessage[];
+  readonly isParentResultRedacted: boolean;
   isSessionReady(): boolean;
   subscribeToUpdates(fn: (event: AgentSessionEvent) => void): (() => void) | undefined;
   getToolDefinition(name: string): ToolDefinition | undefined;
@@ -86,7 +87,7 @@ export function listNavigableAgents(
   registry: AgentConfigLookup,
 ): NavigationEntry[] {
   const live = agents
-    .filter((record) => record.isSessionReady())
+    .filter((record) => record.isSessionReady() && !record.isParentResultRedacted)
     .map((record): NavigationEntry => ({ kind: "live", record, label: buildLabel(record, registry) }));
   const liveIds = new Set(agents.map((record) => record.id));
   const evictedEntries = evicted

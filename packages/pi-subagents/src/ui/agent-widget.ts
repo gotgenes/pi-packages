@@ -165,21 +165,22 @@ export class AgentWidget implements SubagentManagerObserver {
 
   /** Project a live Subagent record onto a pure-data WidgetAgent snapshot. */
   private toWidgetAgent(record: Subagent): WidgetAgent {
+    const presentation = record.parentResultPresentation;
     return {
       id: record.id,
       type: record.type,
       status: record.status,
-      description: record.description,
+      description: presentation.description,
       toolUses: record.toolUses,
       startedAt: record.startedAt,
       completedAt: record.completedAt,
-      error: record.error,
+      error: presentation.error,
       lifetimeUsage: record.lifetimeUsage,
       compactionCount: record.compactionCount,
       turnCount: record.turnCount,
       maxTurns: record.maxTurns,
       activeTools: record.activeTools,
-      responseText: record.responseText,
+      responseText: presentation.result ?? "",
       contextPercent: record.getContextPercent(),
     };
   }

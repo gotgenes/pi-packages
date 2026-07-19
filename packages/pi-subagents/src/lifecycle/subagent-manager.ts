@@ -18,7 +18,7 @@ import { SubagentState, type SubagentStatus } from "#src/lifecycle/subagent-stat
 import type { WorkspaceProvider } from "#src/lifecycle/workspace";
 
 import type { RunConfig } from "#src/runtime";
-import type { AgentInvocation, CompactionInfo, ParentSessionInfo, SubagentType, ThinkingLevel } from "#src/types";
+import type { AgentInvocation, CompactionInfo, ParentResultMode, ParentSessionInfo, SubagentType, ThinkingLevel } from "#src/types";
 
 /**
  * A lightweight snapshot of a subagent evicted by the 10-minute cleanup sweep.
@@ -65,6 +65,7 @@ export interface AgentSpawnConfig {
   maxTurns?: number;
   inheritContext?: boolean;
   thinkingLevel?: ThinkingLevel;
+  parentResultMode?: ParentResultMode;
   isBackground?: boolean;
   /**
    * Skip the maxConcurrent queue check for this spawn - start immediately even
@@ -178,6 +179,7 @@ export class SubagentManager {
         model: options.model,
         maxTurns: options.maxTurns,
         thinkingLevel: options.thinkingLevel,
+        parentResultMode: options.parentResultMode,
         parentSession: options.parentSession,
         signal: options.signal,
       },
@@ -273,7 +275,8 @@ export class SubagentManager {
       if ((record.completedAt ?? 0) >= cutoff) continue;
       // Retain a navigable descriptor before freeing the heavy session. Only an
       // agent with a persisted file can be sourced from disk after eviction.
-      if (record.outputFile) this.evicted.set(id, toEvictedSubagent(record, record.outputFile));
+      const outputFile = record.parentResultPresentation.outputFile;
+      if (outputFile) this.evicted.set(id, toEvictedSubagent(record, outputFile));
       this.removeRecord(id, record);
     }
   }
@@ -354,7 +357,7 @@ function toEvictedSubagent(record: Subagent, outputFile: string): EvictedSubagen
   return {
     id: record.id,
     type: record.type,
-    description: record.description,
+    description: record.parentResultPresentation.description,
     status: record.status,
     startedAt: record.startedAt,
     completedAt: record.completedAt,

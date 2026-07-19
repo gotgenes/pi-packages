@@ -38,7 +38,7 @@ export class SubagentEventsObserver implements SubagentManagerObserver {
 		this.emit("subagents:started", {
 			id: record.id,
 			type: record.type,
-			description: record.description,
+			description: record.parentResultPresentation.description,
 		});
 	}
 
@@ -53,13 +53,14 @@ export class SubagentEventsObserver implements SubagentManagerObserver {
 		}
 
 		// Persist final record for cross-extension history reconstruction.
+		const presentation = record.parentResultPresentation;
 		this.appendEntry("subagents:record", {
 			id: record.id,
 			type: record.type,
-			description: record.description,
+			description: presentation.description,
 			status: record.status,
-			result: record.result,
-			error: record.error,
+			result: presentation.result,
+			error: presentation.error,
 			startedAt: record.startedAt,
 			completedAt: record.completedAt,
 		});
@@ -73,7 +74,7 @@ export class SubagentEventsObserver implements SubagentManagerObserver {
 		this.emit("subagents:compacted", {
 			id: record.id,
 			type: record.type,
-			description: record.description,
+			description: record.parentResultPresentation.description,
 			reason: info.reason,
 			tokensBefore: info.tokensBefore,
 			compactionCount: record.compactionCount,
@@ -85,7 +86,7 @@ export class SubagentEventsObserver implements SubagentManagerObserver {
 		this.emit("subagents:created", {
 			id: record.id,
 			type: record.type,
-			description: record.description,
+			description: record.parentResultPresentation.description,
 			isBackground: true,
 		});
 	}
