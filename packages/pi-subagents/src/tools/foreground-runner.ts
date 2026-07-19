@@ -92,6 +92,7 @@ export async function runForeground(
         maxTurns: execution.effectiveMaxTurns,
         inheritContext: execution.inheritContext,
         thinkingLevel: execution.thinking,
+        origin: "tool",
         invocation: execution.agentInvocation,
         signal,
         parentSession: params.parentSession,

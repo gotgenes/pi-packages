@@ -124,10 +124,15 @@ function makeStubCtx(): SessionContext {
  * Override `currentCtx` to simulate no active session.
  */
 function makeRuntimeStub(override: Partial<ServiceRuntimeLike> = {}): ServiceRuntimeLike {
+  const { getSessionInfo, ...rest } = override;
   return {
     currentCtx: makeStubCtx(),
     buildSnapshot: vi.fn((_: boolean): ParentSnapshot => STUB_SNAPSHOT),
-    ...override,
+    getSessionInfo: getSessionInfo ?? (() => ({
+      parentSessionFile: "/sessions/parent.jsonl",
+      parentSessionId: "stub-session",
+    })),
+    ...rest,
   };
 }
 
@@ -147,6 +152,9 @@ function createManagerStub() {
     waitForAll: vi.fn<SubagentManagerLike["waitForAll"]>(async () => {}),
     hasRunning: vi.fn<SubagentManagerLike["hasRunning"]>(() => false),
     registerWorkspaceProvider: vi.fn<SubagentManagerLike["registerWorkspaceProvider"]>(() => () => {}),
+    registerLifecycleInterceptor: vi.fn<SubagentManagerLike["registerLifecycleInterceptor"]>(() => ({
+      dispose: async () => {},
+    })),
   };
 }
 
@@ -260,6 +268,11 @@ describe("SubagentsServiceAdapter — spawn", () => {
         model: resolvedModel,
         maxTurns: 5,
         isBackground: true,
+        origin: "service",
+        lifecycleParentSession: {
+          parentSessionFile: "/sessions/parent.jsonl",
+          parentSessionId: "stub-session",
+        },
       }),
     );
   });
@@ -388,6 +401,19 @@ describe("SubagentsServiceAdapter — steer, abort, waitForAll, hasRunning", () 
       expect(await svc.steer("a-1", "focus on tests")).toBe(true);
       expect(mockSteer).toHaveBeenCalledWith("focus on tests");
     });
+  });
+});
+
+describe("SubagentsServiceAdapter — registerLifecycleInterceptor", () => {
+  it("delegates the generic provider without exposing manager internals", () => {
+    const registration = { dispose: vi.fn(async () => {}) };
+    const mgr = createManagerStub();
+    mgr.registerLifecycleInterceptor.mockReturnValue(registration);
+    const svc = new SubagentsServiceAdapter(mgr, vi.fn(), makeRuntimeStub());
+    const interceptor = { beforeStart: () => ({ action: "continue" as const }) };
+
+    expect(svc.registerLifecycleInterceptor(interceptor)).toBe(registration);
+    expect(mgr.registerLifecycleInterceptor).toHaveBeenCalledWith(interceptor);
   });
 });
 

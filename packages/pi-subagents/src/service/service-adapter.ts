@@ -6,6 +6,10 @@
  */
 
 import type { Model } from "@earendil-works/pi-ai";
+import type {
+  SubagentLifecycleInterceptor,
+  SubagentLifecycleRegistration,
+} from "#src/lifecycle/lifecycle-interceptor";
 import type { ParentSnapshot } from "#src/lifecycle/parent-snapshot";
 import type { WorkspaceProvider } from "#src/lifecycle/workspace";
 import type { SpawnOptions, SubagentRecord, SubagentsService } from "#src/service/service";
@@ -21,6 +25,9 @@ export interface SubagentManagerLike {
   waitForAll(): Promise<void>;
   hasRunning(): boolean;
   registerWorkspaceProvider(provider: WorkspaceProvider): () => void;
+  registerLifecycleInterceptor(
+    interceptor: SubagentLifecycleInterceptor,
+  ): SubagentLifecycleRegistration;
 }
 
 /**
@@ -30,6 +37,7 @@ export interface SubagentManagerLike {
 export interface ServiceRuntimeLike {
   readonly currentCtx: SessionContext | undefined;
   buildSnapshot(inheritContext: boolean): ParentSnapshot;
+  getSessionInfo(): { parentSessionFile: string; parentSessionId: string };
 }
 
 /** Adapter that wraps SubagentManager to satisfy SubagentsService. */
@@ -50,6 +58,7 @@ export class SubagentsServiceAdapter implements SubagentsService {
     const isBackground = !(options?.foreground ?? false);
 
     const snapshot = this.runtime.buildSnapshot(options?.inheritContext ?? false);
+    const parent = this.runtime.getSessionInfo();
     return this.manager.spawn(snapshot, type, prompt, {
       description,
       model,
@@ -58,6 +67,13 @@ export class SubagentsServiceAdapter implements SubagentsService {
       inheritContext: options?.inheritContext,
       bypassQueue: options?.bypassQueue,
       isBackground,
+      origin: "service",
+      lifecycleParentSession: parent.parentSessionId
+        ? {
+            parentSessionFile: parent.parentSessionFile || undefined,
+            parentSessionId: parent.parentSessionId,
+          }
+        : undefined,
     });
   }
 
@@ -93,6 +109,12 @@ export class SubagentsServiceAdapter implements SubagentsService {
 
   registerWorkspaceProvider(provider: WorkspaceProvider): () => void {
     return this.manager.registerWorkspaceProvider(provider);
+  }
+
+  registerLifecycleInterceptor(
+    interceptor: SubagentLifecycleInterceptor,
+  ): SubagentLifecycleRegistration {
+    return this.manager.registerLifecycleInterceptor(interceptor);
   }
 
   /** Resolve an optional model-string override against the current session's registry. */

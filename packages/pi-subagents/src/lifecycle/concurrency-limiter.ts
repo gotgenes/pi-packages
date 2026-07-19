@@ -15,6 +15,11 @@ export class ConcurrencyLimiter {
 
 	constructor(private readonly getLimit: () => number) {}
 
+	/** Whether a newly scheduled task will wait behind work already admitted. */
+	isSaturated(): boolean {
+		return this.active >= this.getLimit();
+	}
+
 	/**
 	 * Schedule a task to run FIFO once a slot is free.
 	 * Returns a promise that settles with the task, or resolves early if the
