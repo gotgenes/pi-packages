@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [18.1.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v18.0.3...pi-subagents-v18.1.0) (2026-07-20)
+
+
+### Features
+
+* **pi-subagents:** add consumption state to SubagentState ([#617](https://github.com/gotgenes/pi-packages/issues/617)) ([ed96647](https://github.com/gotgenes/pi-packages/commit/ed966475ecb042bdd2c6c217cc376f67a6358c5a))
+* **pi-subagents:** add session-retention settings ([#617](https://github.com/gotgenes/pi-packages/issues/617)) ([aef24eb](https://github.com/gotgenes/pi-packages/commit/aef24eb23757eaba553310530222517b776fb3c7))
+* **pi-subagents:** add Subagent.releaseSession with outputFile capture ([#617](https://github.com/gotgenes/pi-packages/issues/617)) ([d9e7871](https://github.com/gotgenes/pi-packages/commit/d9e7871ae8cf72c7e93a5a8a6904e7cad21ffaa9))
+
+
+### Bug Fixes
+
+* **pi-subagents:** honest messages and transcript pointer for released sessions ([#617](https://github.com/gotgenes/pi-packages/issues/617)) ([4b9e7d7](https://github.com/gotgenes/pi-packages/commit/4b9e7d786d072f0b37a09a30c287f6e181a5430c))
+* **pi-subagents:** mark foreground and resume returns consumed ([#617](https://github.com/gotgenes/pi-packages/issues/617)) ([a9c7e92](https://github.com/gotgenes/pi-packages/commit/a9c7e9222f5a6010c06cb1a522f77740760c28ba))
+* **pi-subagents:** move consumed-result tracking from notification layer to domain ([#617](https://github.com/gotgenes/pi-packages/issues/617)) ([0cedaad](https://github.com/gotgenes/pi-packages/commit/0cedaad5b95c7bd5c8843a50f3bc4ed76a00c98e))
+* **pi-subagents:** retain records and release sessions via consumption-aware sweep ([#617](https://github.com/gotgenes/pi-packages/issues/617)) ([0136408](https://github.com/gotgenes/pi-packages/commit/013640874b5e3ed62d068d9478840c6c02a745e0))
+
+
+### Documentation
+
+* **pi-subagents:** refresh stale evicted-descriptor comments ([#617](https://github.com/gotgenes/pi-packages/issues/617)) ([fb3e4fc](https://github.com/gotgenes/pi-packages/commit/fb3e4fca2983ce7f79b43067cca5325f10a2aaaa))
+* **pi-subagents:** update architecture, README, and skill for consumption-aware retention ([#617](https://github.com/gotgenes/pi-packages/issues/617)) ([a4bd166](https://github.com/gotgenes/pi-packages/commit/a4bd166c244c92708d71533173a5b879d8badcb5))
+
 ## [18.0.3](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v18.0.2...pi-subagents-v18.0.3) (2026-07-15)
 
 
