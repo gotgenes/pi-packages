@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-model-judge-v1.0.0...pi-permission-model-judge-v1.0.1) (2026-07-20)
+
+
+### Documentation
+
+* **pi-permission-model-judge:** feature the doubled-package typo pattern ([abcfa23](https://github.com/gotgenes/pi-packages/commit/abcfa23eac678b42b2e031b0bb1092db4b601c55))
+
 ## 1.0.0 (2026-07-20)
 
 
