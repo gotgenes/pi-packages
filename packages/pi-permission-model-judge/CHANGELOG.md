@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.0.2](https://github.com/gotgenes/pi-packages/compare/pi-permission-model-judge-v1.0.1...pi-permission-model-judge-v1.0.2) (2026-07-21)
+
+
+### Bug Fixes
+
+* **pi-permission-model-judge:** forward resolved auth into the review model call ([9836020](https://github.com/gotgenes/pi-packages/commit/98360207d19a91edcf8e166b59dd1a9262349277)), closes [#625](https://github.com/gotgenes/pi-packages/issues/625)
+* **pi-permission-model-judge:** resolve model auth before the review call ([4c90603](https://github.com/gotgenes/pi-packages/commit/4c906031144e18c7f6b60eac5f8607e271f090f2)), closes [#625](https://github.com/gotgenes/pi-packages/issues/625)
+
+
+### Documentation
+
+* **pi-permission-model-judge:** feature the corrected dropped-prefix typo pattern ([13553d5](https://github.com/gotgenes/pi-packages/commit/13553d5c4ba8ba50a90688bd26e597a842f5f509)), closes [#625](https://github.com/gotgenes/pi-packages/issues/625)
+
 ## [1.0.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-model-judge-v1.0.0...pi-permission-model-judge-v1.0.1) (2026-07-20)
 
 
