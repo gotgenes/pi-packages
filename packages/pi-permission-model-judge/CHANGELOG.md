@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.1.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-model-judge-v1.0.2...pi-permission-model-judge-v1.1.0) (2026-07-21)
+
+
+### Features
+
+* **pi-permission-model-judge:** distinguish model-call defer reasons in reviewPath ([9098f46](https://github.com/gotgenes/pi-packages/commit/9098f465d64dfee3994132bd87a71ad40152b259))
+* **pi-permission-model-judge:** record the decision trail to the permission review log ([e3964ae](https://github.com/gotgenes/pi-packages/commit/e3964ae6ca443d043db4e735ad69df90bac11c0d))
+* **pi-permission-model-judge:** return the matched typo pattern ([4db29fb](https://github.com/gotgenes/pi-packages/commit/4db29fbf098c8d3c853539b408316ee2a8fffe54))
+
+
+### Documentation
+
+* **pi-permission-model-judge:** document the decision trail ([335a7b5](https://github.com/gotgenes/pi-packages/commit/335a7b5b0f40650760d8597f511f32dc2116bf81))
+
 ## [1.0.2](https://github.com/gotgenes/pi-packages/compare/pi-permission-model-judge-v1.0.1...pi-permission-model-judge-v1.0.2) (2026-07-21)
 
 
