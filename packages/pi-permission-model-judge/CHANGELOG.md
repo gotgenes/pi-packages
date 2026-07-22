@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.1.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-model-judge-v1.1.0...pi-permission-model-judge-v1.1.1) (2026-07-22)
+
+
+### Bug Fixes
+
+* **pi-permission-model-judge:** force a structured verdict tool call in the model review ([5a89bba](https://github.com/gotgenes/pi-packages/commit/5a89bba94b6493790a664e87cad98514253927fe)), closes [#628](https://github.com/gotgenes/pi-packages/issues/628)
+
+
+### Documentation
+
+* **pi-permission-model-judge:** describe the forced verdict tool call ([1a2b940](https://github.com/gotgenes/pi-packages/commit/1a2b9404ad06b083f96b455df0a66e934b3f5eab))
+
 ## [1.1.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-model-judge-v1.0.2...pi-permission-model-judge-v1.1.0) (2026-07-21)
 
 
