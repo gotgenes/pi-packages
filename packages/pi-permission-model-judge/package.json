@@ -1,6 +1,6 @@
 {
   "name": "@gotgenes/pi-permission-model-judge",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Deny-first typo-path model judge — a pi-permission-system Authorizer chain link",
   "type": "module",
   "imports": {

@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.1.2](https://github.com/gotgenes/pi-packages/compare/pi-permission-model-judge-v1.1.1...pi-permission-model-judge-v1.1.2) (2026-07-22)
+
+
+### Bug Fixes
+
+* **pi-permission-model-judge:** review typo paths embedded in bash commands ([#630](https://github.com/gotgenes/pi-packages/issues/630)) ([782c83d](https://github.com/gotgenes/pi-packages/commit/782c83d36d5d279c4932be315b9e78aae43ccb26))
+
+
+### Documentation
+
+* **pi-permission-model-judge:** note bash-command paths are reviewed ([58a82e8](https://github.com/gotgenes/pi-packages/commit/58a82e8ca7a0df5552b767099004afc83e53be55))
+
 ## [1.1.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-model-judge-v1.1.0...pi-permission-model-judge-v1.1.1) (2026-07-22)
 
 
