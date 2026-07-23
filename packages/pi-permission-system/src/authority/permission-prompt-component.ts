@@ -43,11 +43,13 @@ export interface PermissionPromptView {
   mode: ExtensionContext["mode"];
   ui: PermissionPromptUi;
   doublePressToConfirm: boolean;
+  overlay: boolean;
 }
 
-/** Live prompt-behavior preferences read at prompt time (see `doublePressToConfirm`). */
+/** Live prompt-behavior preferences read at prompt time. */
 export interface PromptPreferences {
   doublePressToConfirm: boolean;
+  overlay: boolean;
 }
 
 /**
@@ -108,7 +110,7 @@ export function presentInlinePermissionPrompt(
         },
         done,
       ),
-    { overlay: false },
+    { overlay: view.overlay },
   );
 }
 

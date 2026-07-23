@@ -199,7 +199,7 @@ function formatConfigIssues(error: ZodError): string[] {
  */
 // Scalar knobs merged by override-replaces-base; keep in sync with
 // PermissionSystemExtensionConfig booleans (debugLog, permissionReviewLog,
-// yoloMode, doublePressToConfirm).
+// yoloMode, doublePressToConfirm, overlay).
 export function mergeUnifiedConfigs(
   base: UnifiedPermissionConfig,
   override: UnifiedPermissionConfig,
@@ -212,6 +212,7 @@ export function mergeUnifiedConfigs(
     "permissionReviewLog",
     "yoloMode",
     "doublePressToConfirm",
+    "overlay",
   ] as const) {
     const value = override[key] ?? base[key];
     if (value !== undefined) {
