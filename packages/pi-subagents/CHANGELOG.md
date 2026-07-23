@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [18.1.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v18.1.0...pi-subagents-v18.1.1) (2026-07-23)
+
+
+### Bug Fixes
+
+* **pi-subagents:** add subagents:resumed observer channel ([#466](https://github.com/gotgenes/pi-packages/issues/466)) ([021ad39](https://github.com/gotgenes/pi-packages/commit/021ad396c7d9d83037cb3327c5a71e17bb67a0cc))
+* **pi-subagents:** route resume termination through completion observer ([#466](https://github.com/gotgenes/pi-packages/issues/466)) ([58f2543](https://github.com/gotgenes/pi-packages/commit/58f25431689059ebd706af54d4daf7990278ca42))
+
+
+### Documentation
+
+* **pi-subagents:** document subagents:resumed and land Phase 21 Step 2 ([#466](https://github.com/gotgenes/pi-packages/issues/466)) ([a404e9c](https://github.com/gotgenes/pi-packages/commit/a404e9cbe935a31f4a5c0ff5a820cb5e3d64a807))
+
 ## [18.1.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v18.0.3...pi-subagents-v18.1.0) (2026-07-20)
 
 
