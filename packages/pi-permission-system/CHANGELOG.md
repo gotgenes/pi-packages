@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [23.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v22.0.0...pi-permission-system-v23.0.0) (2026-07-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* **pi-permission-system:** path values embedded in `--opt=value` bash tokens are now extracted and gated by the `path` and `external_directory` surfaces. Previously they were invisible to both, so a permissive `bash` rule such as `grep *` allowed them. Add an allow pattern on `external_directory` or `path` for an intended target.
+* **pi-permission-system:** bash commands referencing existing bare-named files or in-project symlinks are now gated by `path` rules (matched against the canonical, symlink-resolved form) and by `external_directory` when they resolve outside the working directory. Previously a permissive `bash` allow rule such as `cat *` bypassed both. A bare token naming no file is still dropped, so `git status`-style commands are unaffected. To restore prior behavior for an intended target, add an allow pattern on `external_directory` (for outside-CWD paths) or on `path`.
+
+### Bug Fixes
+
+* **pi-permission-system:** classify path values embedded in --opt=value tokens ([0be19fd](https://github.com/gotgenes/pi-packages/commit/0be19fd209254ea76840747c128d3bc5112a912b)), closes [#645](https://github.com/gotgenes/pi-packages/issues/645)
+* **pi-permission-system:** gate existing bare-named files and symlinks in bash commands ([9467858](https://github.com/gotgenes/pi-packages/commit/9467858cdb8824cbdcf5a05994dd0d6b3784cbaa)), closes [#645](https://github.com/gotgenes/pi-packages/issues/645)
+
+
+### Documentation
+
+* **pi-permission-system:** update architecture and skill docs for probe-based path candidacy ([90c402d](https://github.com/gotgenes/pi-packages/commit/90c402d54edbc857597aca66e0cb5f01bade550f)), closes [#645](https://github.com/gotgenes/pi-packages/issues/645)
+
 ## [22.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v21.0.0...pi-permission-system-v22.0.0) (2026-07-24)
 
 
