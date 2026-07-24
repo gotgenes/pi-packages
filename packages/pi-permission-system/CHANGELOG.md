@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [22.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v21.0.0...pi-permission-system-v22.0.0) (2026-07-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* **pi-permission-system:** In an untrusted project, project-scoped permission configuration (project config.json and project-agent frontmatter) and project-scoped runtime config (yoloMode, permissionReviewLog, etc.) are no longer loaded until the user grants project trust. Only global policy applies. Grant project trust, or set defaultProjectTrust, to restore the prior behavior.
+
+### Features
+
+* **pi-permission-system:** support skipping project scope in loadAndMergeConfigs ([e5a2e57](https://github.com/gotgenes/pi-packages/commit/e5a2e57b39c7bae44e7ac126b24094c2d5dce155))
+
+
+### Bug Fixes
+
+* **pi-permission-system:** gate project-scoped config on project trust ([f264e71](https://github.com/gotgenes/pi-packages/commit/f264e711b90c7947d805bec654bc78199a76fada))
+
+
+### Documentation
+
+* **pi-permission-system:** document project-trust gating for project config ([e955a29](https://github.com/gotgenes/pi-packages/commit/e955a299156215be57144000d5157481615d8060))
+
 ## [21.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v20.10.0...pi-permission-system-v21.0.0) (2026-07-24)
 
 
