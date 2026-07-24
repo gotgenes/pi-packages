@@ -19,6 +19,16 @@ function makeDetails(
   };
 }
 
+function makePromptUi() {
+  return {
+    select: vi.fn(),
+    input: vi.fn(),
+    custom: vi.fn(),
+    getToolsExpanded: vi.fn(() => false),
+    setToolsExpanded: vi.fn(),
+  };
+}
+
 function makeDeps(
   overrides: {
     requestPermissionDecision?: typeof requestPermissionDecision;
@@ -28,7 +38,7 @@ function makeDeps(
     emit: vi.fn(),
     on: vi.fn().mockReturnValue(() => undefined),
   };
-  const ui = { select: vi.fn(), input: vi.fn(), custom: vi.fn() };
+  const ui = makePromptUi();
   const decisionFn =
     overrides.requestPermissionDecision ??
     vi
@@ -135,7 +145,7 @@ describe("LocalUserAuthorizer", () => {
       }),
       on: vi.fn().mockReturnValue(() => undefined),
     };
-    const ui = { select: vi.fn(), input: vi.fn(), custom: vi.fn() };
+    const ui = makePromptUi();
     const decisionFn = vi.fn<typeof requestPermissionDecision>(() => {
       calls.push("dialog");
       return Promise.resolve({ approved: true, state: "approved" });

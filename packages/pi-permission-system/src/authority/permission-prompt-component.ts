@@ -1,6 +1,7 @@
 import type {
   ExtensionContext,
   ExtensionUIContext,
+  KeybindingsManager,
 } from "@earendil-works/pi-coding-agent";
 import {
   type Component,
@@ -35,7 +36,7 @@ import {
 /** The subset of the session UI surface the inline dialog needs. */
 export type PermissionPromptUi = Pick<
   ExtensionUIContext,
-  "select" | "input" | "custom"
+  "select" | "input" | "custom" | "getToolsExpanded" | "setToolsExpanded"
 >;
 
 /** The resolved presentation context selected once per activation. */
@@ -97,12 +98,16 @@ export function presentInlinePermissionPrompt(
     sessionScope: options?.sessionScope,
   };
   return view.ui.custom<PermissionPromptDecision>(
-    (tui, theme, _keybindings, done) =>
+    (tui, theme, keybindings, done) =>
       new PermissionPromptComponent(
         theme,
+        keybindings,
         config,
         title,
         message,
+        () => {
+          view.ui.setToolsExpanded(!view.ui.getToolsExpanded());
+        },
         () => {
           tui.requestRender();
         },
@@ -118,9 +123,11 @@ class PermissionPromptComponent implements Component {
 
   constructor(
     private readonly theme: PromptTheme,
+    private readonly keybindings: KeybindingsManager,
     private readonly config: PromptModelConfig,
     private readonly title: string,
     private readonly message: string,
+    private readonly toggleToolsExpanded: () => void,
     private readonly requestRender: () => void,
     private readonly done: (decision: PermissionPromptDecision) => void,
   ) {
@@ -147,6 +154,10 @@ class PermissionPromptComponent implements Component {
   }
 
   handleInput(data: string): void {
+    if (this.keybindings.matches(data, "app.tools.expand")) {
+      this.toggleToolsExpanded();
+      return;
+    }
     if (this.state.step === "reason") {
       this.handleReasonInput(data);
       return;

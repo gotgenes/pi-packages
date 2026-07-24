@@ -31,15 +31,18 @@ interface CapturedComponent {
 type PromptFactory = (
   tui: { requestRender: () => void },
   theme: ReturnType<typeof plainTheme>,
-  keybindings: undefined,
+  keybindings: { matches(data: string, action: string): boolean },
   done: (decision: PermissionPromptDecision) => void,
 ) => CapturedComponent;
+
+const CONFIGURED_TOOLS_EXPAND_KEY = "\u0010";
 
 function makeFakeView(doublePressToConfirm: boolean) {
   const captured: {
     component?: CapturedComponent;
     options?: unknown;
   } = {};
+  let toolsExpanded = false;
   const custom = (
     factory: PromptFactory,
     options: unknown,
@@ -49,17 +52,31 @@ function makeFakeView(doublePressToConfirm: boolean) {
       captured.component = factory(
         { requestRender: vi.fn() },
         plainTheme(),
-        undefined,
+        {
+          matches: (data, action) =>
+            action === "app.tools.expand" &&
+            data === CONFIGURED_TOOLS_EXPAND_KEY,
+        },
         resolve,
       );
     });
   };
+  const getToolsExpanded = vi.fn(() => toolsExpanded);
+  const setToolsExpanded = vi.fn((expanded: boolean) => {
+    toolsExpanded = expanded;
+  });
   const view = {
     mode: "tui",
     doublePressToConfirm,
-    ui: { select: vi.fn(), input: vi.fn(), custom },
+    ui: {
+      select: vi.fn(),
+      input: vi.fn(),
+      custom,
+      getToolsExpanded,
+      setToolsExpanded,
+    },
   } as unknown as PermissionPromptView;
-  return { view, captured };
+  return { view, captured, getToolsExpanded, setToolsExpanded };
 }
 
 const ARROW_DOWN = "\u001b[B";
@@ -117,6 +134,39 @@ describe("presentInlinePermissionPrompt", () => {
     for (const line of lines) {
       expect(visibleWidth(line)).toBeLessThanOrEqual(width);
     }
+  });
+
+  describe("tool expansion", () => {
+    it("toggles tools with the configured app.tools.expand key without resolving", async () => {
+      const { view, captured, getToolsExpanded, setToolsExpanded } =
+        makeFakeView(true);
+      const promise = presentInlinePermissionPrompt(view, "Title", "Message");
+      let settled = false;
+      void promise.then(() => {
+        settled = true;
+      });
+
+      captured.component?.handleInput(CONFIGURED_TOOLS_EXPAND_KEY);
+      await Promise.resolve();
+
+      expect(getToolsExpanded).toHaveBeenCalledTimes(1);
+      expect(setToolsExpanded).toHaveBeenNthCalledWith(1, true);
+      expect(settled).toBe(false);
+
+      captured.component?.handleInput(CONFIGURED_TOOLS_EXPAND_KEY);
+      await Promise.resolve();
+
+      expect(getToolsExpanded).toHaveBeenCalledTimes(2);
+      expect(setToolsExpanded).toHaveBeenNthCalledWith(2, false);
+      expect(settled).toBe(false);
+
+      captured.component?.handleInput("y");
+      await Promise.resolve();
+      expect(settled).toBe(false);
+
+      captured.component?.handleInput("y");
+      expect(await promise).toEqual({ approved: true, state: "approved" });
+    });
   });
 
   describe("double-press to confirm (enabled)", () => {
