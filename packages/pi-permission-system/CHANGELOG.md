@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [21.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v20.10.0...pi-permission-system-v21.0.0) (2026-07-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* **pi-permission-system:** A session whose project/agent/project-agent config is invalid previously inherited a lower scope's `allow` rules unchanged; those surfaces now resolve to `ask` (prompt) until the invalid config is corrected. Only sessions that already emit a config-validation warning are affected. Fix the reported config issues and reload to restore the intended policy.
+
+### Features
+
+* **pi-permission-system:** add floorAllowsToAsk allow→ask overlay ([#646](https://github.com/gotgenes/pi-packages/issues/646)) ([8dbdcd7](https://github.com/gotgenes/pi-packages/commit/8dbdcd75bd8c6f62528d0466f93cfefa039f3d4b))
+* **pi-permission-system:** mark invalid non-global config scopes ([#646](https://github.com/gotgenes/pi-packages/issues/646)) ([1abd318](https://github.com/gotgenes/pi-packages/commit/1abd3182b7c1b6304d0ef28acfbb59c470508a43))
+
+
+### Bug Fixes
+
+* **pi-permission-system:** fail closed when a higher-precedence config scope is invalid ([#646](https://github.com/gotgenes/pi-packages/issues/646)) ([b3c11c0](https://github.com/gotgenes/pi-packages/commit/b3c11c0984b7d9849349c5d8d0f1de111d1c7a03))
+
+
+### Documentation
+
+* **pi-permission-system:** document cross-scope fail-closed config clamp ([#646](https://github.com/gotgenes/pi-packages/issues/646)) ([7903b4c](https://github.com/gotgenes/pi-packages/commit/7903b4cc15710618a6f0ed5cc302687af18db4be))
+
 ## [20.10.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v20.9.1...pi-permission-system-v20.10.0) (2026-07-21)
 
 
