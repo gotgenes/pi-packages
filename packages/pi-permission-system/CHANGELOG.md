@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [23.0.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v23.0.0...pi-permission-system-v23.0.1) (2026-07-25)
+
+
+### Bug Fixes
+
+* **pi-permission-system:** fold separators on both sides of a win32 path match ([50e2ac0](https://github.com/gotgenes/pi-packages/commit/50e2ac0dd66b4b308a676849a09e3fff59e754be)), closes [#653](https://github.com/gotgenes/pi-packages/issues/653)
+
+
+### Documentation
+
+* **pi-permission-system:** record the symmetric win32 separator fold ([e2eea21](https://github.com/gotgenes/pi-packages/commit/e2eea21e0aac1212f46be9680fb59146b90c68f7)), closes [#653](https://github.com/gotgenes/pi-packages/issues/653)
+
 ## [23.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v22.0.0...pi-permission-system-v23.0.0) (2026-07-24)
 
 
