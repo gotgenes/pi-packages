@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [18.1.2](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v18.1.1...pi-subagents-v18.1.2) (2026-07-25)
+
+
+### Bug Fixes
+
+* **pi-subagents:** strip the inherited parent cwd footer from child prompts ([449078d](https://github.com/gotgenes/pi-packages/commit/449078d035f287ad0d7c5b7b6d5db9d00bf35f69)), closes [#640](https://github.com/gotgenes/pi-packages/issues/640)
+
+
+### Documentation
+
+* **pi-subagents:** record the inherited cwd-footer strip ([f4764d5](https://github.com/gotgenes/pi-packages/commit/f4764d5f00110da8df3a39c3524a5446b0a5b86e)), closes [#640](https://github.com/gotgenes/pi-packages/issues/640)
+
 ## [18.1.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v18.1.0...pi-subagents-v18.1.1) (2026-07-23)
 
 
