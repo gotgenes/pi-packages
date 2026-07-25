@@ -4,6 +4,10 @@ import type { SkillPromptEntry } from "./skill-prompt-sanitizer";
 import type { ToolPreviewFormatter } from "./tool-preview-formatter";
 import type { PermissionCheckResult } from "./types";
 import { getNonEmptyString, toRecord } from "./value-guards";
+import { truncateInlineText } from "./tool-input-preview";
+
+/** Max width for assembled prompt messages to avoid TUI rendering crashes on narrow terminals. */
+const MAX_PROMPT_WIDTH = 200;
 
 // NOTE: formatDenyReason, formatUserDeniedReason, and
 // formatPermissionHardStopHint have been moved to denial-messages.ts.
@@ -50,7 +54,10 @@ export function formatAskPrompt(
       fullCommand && fullCommand !== subCommand
         ? ` (full command: '${fullCommand}')`
         : "";
-    return `${subject} requested bash command '${subCommand}'${qualifierInfo}${fullCommandInfo}. Allow this command?`;
+    return truncateInlineText(
+      `${subject} requested bash command '${subCommand}'${qualifierInfo}${fullCommandInfo}. Allow this command?`,
+      MAX_PROMPT_WIDTH,
+    );
   }
 
   if (isMcpCheck(result) && result.target) {
@@ -61,7 +68,10 @@ export function formatAskPrompt(
       ? formatter.formatToolInputForPrompt("mcp", input)
       : "";
     const previewSuffix = mcpPreview ? ` ${mcpPreview}` : "";
-    return `${subject} requested MCP target '${result.target}'${patternInfo}${previewSuffix}. Allow this call?`;
+    return truncateInlineText(
+      `${subject} requested MCP target '${result.target}'${patternInfo}${previewSuffix}. Allow this call?`,
+      MAX_PROMPT_WIDTH,
+    );
   }
 
   const patternInfo = result.matchedPattern
@@ -71,7 +81,10 @@ export function formatAskPrompt(
     ? formatter.formatToolInputForPrompt(result.toolName, input)
     : "";
   const inputSuffix = inputPreview ? ` ${inputPreview}` : "";
-  return `${subject} requested tool '${result.toolName}'${patternInfo}${inputSuffix}. Allow this call?`;
+  return truncateInlineText(
+    `${subject} requested tool '${result.toolName}'${patternInfo}${inputSuffix}. Allow this call?`,
+    MAX_PROMPT_WIDTH,
+  );
 }
 
 export function formatSkillAskPrompt(
