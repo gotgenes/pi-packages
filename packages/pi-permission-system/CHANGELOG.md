@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [23.0.3](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v23.0.2...pi-permission-system-v23.0.3) (2026-07-26)
+
+
+### Bug Fixes
+
+* **pi-permission-system:** preserve tool expansion in inline permission prompts ([6a0d241](https://github.com/gotgenes/pi-packages/commit/6a0d241291f8eefa51493b683e12514a83f295bd))
+
+
+### Documentation
+
+* **pi-permission-system:** document tool expansion during permission prompts ([f4098d3](https://github.com/gotgenes/pi-packages/commit/f4098d331efc72538ee3836ffb4056beee8cbed0))
+
 ## [23.0.2](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v23.0.1...pi-permission-system-v23.0.2) (2026-07-26)
 
 
