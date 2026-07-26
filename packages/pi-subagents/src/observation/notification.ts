@@ -20,9 +20,18 @@ export interface NotificationDetails {
 
 // ---- Pure helpers (exported for unit testing) ----
 
-/** Escape XML special characters to prevent injection in structured notifications. */
+/**
+ * Escape XML special characters to prevent injection in structured
+ * notifications. Quotes are escaped too, so values stay safe if they are ever
+ * placed in attribute position, not only element content.
+ */
 export function escapeXml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
 }
 
 /** Human-readable status label for agent completion. */

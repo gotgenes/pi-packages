@@ -19,6 +19,10 @@ describe("escapeXml", () => {
   it("returns unchanged string with no special chars", () => {
     expect(escapeXml("hello world")).toBe("hello world");
   });
+
+  it("escapes double and single quotes (attribute-safe)", () => {
+    expect(escapeXml('say "hi" it\'s fine')).toBe("say &quot;hi&quot; it&apos;s fine");
+  });
 });
 
 describe("getStatusLabel", () => {
