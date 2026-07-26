@@ -815,6 +815,68 @@ describe("SubagentManager — lifecycle observer forwarding", () => {
   });
 });
 
+describe("SubagentManager — queued-stop lifecycle contract", () => {
+  it("abort() on a queued agent notifies onSubagentCompleted with status stopped", () => {
+    const onSubagentCompleted = vi.fn();
+    const { manager: mgr } = createManager({
+      createSubagentSession: createBlockingFactory(),
+      getMaxConcurrent: () => 1,
+      observer: { onSubagentCompleted },
+    });
+    const running = spawnBg(mgr, "a");
+    const queued = spawnBg(mgr, "b");
+
+    expect(mgr.abort(queued)).toBe(true);
+
+    expect(onSubagentCompleted).toHaveBeenCalledTimes(1);
+    const record = onSubagentCompleted.mock.calls[0][0] as Subagent;
+    expect(record.id).toBe(queued);
+    expect(record.status).toBe("stopped");
+    mgr.abort(running);
+  });
+
+  it("a stopped-while-queued agent notifies exactly once even after its slot frees", async () => {
+    const onSubagentCompleted = vi.fn();
+    let limit = 0; // everything queues until raised
+    const { manager: mgr, limiter } = createManager({
+      getMaxConcurrent: () => limit,
+      observer: { onSubagentCompleted },
+    });
+    const queued = spawnBg(mgr, "a");
+    const queuedPromise = mgr.getRecord(queued)!.promise;
+
+    mgr.abort(queued); // stopped while queued → terminal notification
+    limit = 4;
+    limiter.recheck(); // slot opens; the dropped thunk must stay a no-op
+    await queuedPromise;
+
+    const queuedCalls = onSubagentCompleted.mock.calls.filter(
+      (c) => (c[0] as Subagent).id === queued,
+    );
+    expect(queuedCalls).toHaveLength(1);
+    expect((queuedCalls[0][0] as Subagent).status).toBe("stopped");
+  });
+
+  it("abortAll() notifies onSubagentCompleted for queued agents", () => {
+    const onSubagentCompleted = vi.fn();
+    const { manager: mgr } = createManager({
+      createSubagentSession: createBlockingFactory(),
+      getMaxConcurrent: () => 1,
+      observer: { onSubagentCompleted },
+    });
+    spawnBg(mgr, "a");
+    const queued = spawnBg(mgr, "b");
+
+    mgr.abortAll();
+
+    const queuedCalls = onSubagentCompleted.mock.calls.filter(
+      (c) => (c[0] as Subagent).id === queued,
+    );
+    expect(queuedCalls).toHaveLength(1);
+    expect((queuedCalls[0][0] as Subagent).status).toBe("stopped");
+  });
+});
+
 describe("SubagentManager — toolCallId notification wiring", () => {
   let manager: SubagentManager;
 

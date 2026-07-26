@@ -256,10 +256,26 @@ export class SubagentManager {
     // becomes a no-op (status guard) when its slot finally opens.
     if (record.status === "queued") {
       record.markStopped();
+      this.notifyQueuedStopped(record);
       return true;
     }
 
     return record.abort();
+  }
+
+  /**
+   * Deliver the terminal lifecycle notification for a stopped-while-queued
+   * agent. A queued agent never runs, so onRunFinished cannot fire for it —
+   * without this, queued stops emitted no completion event or notification,
+   * leaving event subscribers waiting forever (asymmetric with running agents,
+   * whose aborts flow through the run path).
+   */
+  private notifyQueuedStopped(record: Subagent): void {
+    try {
+      this.observer?.onSubagentCompleted(record);
+    } catch (err) {
+      debugLog("onSubagentCompleted observer", err);
+    }
   }
 
   /** Dispose a record's session and remove it from the map. */
@@ -315,6 +331,7 @@ export class SubagentManager {
     for (const record of this.agents.values()) {
       if (record.status === "queued") {
         record.markStopped();
+        this.notifyQueuedStopped(record);
         count++;
       } else if (record.abort()) {
         count++;
