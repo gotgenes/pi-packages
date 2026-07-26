@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [24.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v23.0.3...pi-permission-system-v24.0.0) (2026-07-26)
+
+
+### ⚠ BREAKING CHANGES
+
+* **pi-permission-system:** an authorizer chain link's `allow` on a forwarded subagent ask raised by the `path` or `external_directory` gate is now downgraded to `defer`, so the request falls through to an interactive prompt. This affects only an operator running an allow-capable third-party link named in `authorizerChain`; the first-party model judge is deny-first and is unaffected, as are forwarded `bash` asks and per-tool-gated asks. See packages/pi-permission-system/docs/migration/0635-forwarded-ask-delegation-envelope.md
+
+### Bug Fixes
+
+* **pi-permission-system:** carry forwarded access facts to the Authorizer Chain ([#635](https://github.com/gotgenes/pi-packages/issues/635)) ([c0790ad](https://github.com/gotgenes/pi-packages/commit/c0790ad6d1d15defaba60097d803618b4d8c461c))
+
 ## [23.0.3](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v23.0.2...pi-permission-system-v23.0.3) (2026-07-26)
 
 
