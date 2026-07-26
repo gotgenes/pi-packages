@@ -231,4 +231,67 @@ describe("NotificationManager", () => {
     vi.advanceTimersByTime(300);
     expect(args.sendMessage).not.toHaveBeenCalled();
   });
+
+  describe("parent-turn awareness", () => {
+    it("holds a nudge that fires while the parent agent is streaming and delivers it on agent end", () => {
+      const args = makeArgs();
+      const system = makeManager(args);
+      const record = createTestSubagent({ id: "held-1" });
+      system.onParentAgentStart();
+      system.sendCompletion(record);
+      vi.advanceTimersByTime(300);
+      // Not handed to pi's followUp queue mid-turn — held where consumed is still consultable.
+      expect(args.sendMessage).not.toHaveBeenCalled();
+      system.onParentAgentEnd();
+      expect(args.sendMessage).toHaveBeenCalledOnce();
+    });
+
+    it("suppresses a held nudge when the record is consumed before agent end (fire→pull→turn-end race)", () => {
+      const args = makeArgs();
+      const system = makeManager(args);
+      const record = createTestSubagent({ id: "race-2" });
+      system.onParentAgentStart();
+      system.sendCompletion(record);
+      vi.advanceTimersByTime(300); // nudge fires mid-turn
+      record.markConsumed(); // parent pulls via get_subagent_result later in the same turn
+      system.onParentAgentEnd();
+      expect(args.sendMessage).not.toHaveBeenCalled();
+    });
+
+    it("delivers at fire time when the parent went idle before the hold elapsed", () => {
+      const args = makeArgs();
+      const system = makeManager(args);
+      const record = createTestSubagent({ id: "idle-1" });
+      system.onParentAgentStart();
+      system.onParentAgentEnd();
+      system.sendCompletion(record);
+      vi.advanceTimersByTime(300);
+      expect(args.sendMessage).toHaveBeenCalledOnce();
+    });
+
+    it("does not duplicate a held nudge when the agent re-completes before agent end", () => {
+      const args = makeArgs();
+      const system = makeManager(args);
+      const record = createTestSubagent({ id: "recomplete-1" });
+      system.onParentAgentStart();
+      system.sendCompletion(record);
+      vi.advanceTimersByTime(300);
+      system.sendCompletion(record); // e.g. a resumed run reaching terminal state again
+      vi.advanceTimersByTime(300);
+      system.onParentAgentEnd();
+      expect(args.sendMessage).toHaveBeenCalledOnce();
+    });
+
+    it("dispose clears held nudges", () => {
+      const args = makeArgs();
+      const system = makeManager(args);
+      const record = createTestSubagent({ id: "disposed-1" });
+      system.onParentAgentStart();
+      system.sendCompletion(record);
+      vi.advanceTimersByTime(300);
+      system.dispose();
+      system.onParentAgentEnd();
+      expect(args.sendMessage).not.toHaveBeenCalled();
+    });
+  });
 });

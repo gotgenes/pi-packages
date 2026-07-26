@@ -132,6 +132,14 @@ const NUDGE_HOLD_MS = 200;
 
 export class NotificationManager implements NotificationSystem {
   private pendingNudges = new Map<string, ReturnType<typeof setTimeout>>();
+  // pi.sendMessage is fire-and-forget: once a followUp is handed to Pi's queue
+  // it cannot be recalled, yet it is only delivered when the parent's agent
+  // loop ends. A parent that pulls the result (get_subagent_result) between
+  // handoff and delivery would then receive the same result twice. So while
+  // the parent is streaming, fired nudges are held here — where
+  // record.consumed can still be consulted — and flushed on agent end.
+  private heldNudges = new Map<string, Subagent>();
+  private parentStreaming = false;
 
   constructor(
     private sendMessage: (
@@ -152,6 +160,30 @@ export class NotificationManager implements NotificationSystem {
   dispose(): void {
     for (const timer of this.pendingNudges.values()) clearTimeout(timer);
     this.pendingNudges.clear();
+    this.heldNudges.clear();
+  }
+
+  /** Mark the parent agent loop as streaming; fired nudges are held until agent end. */
+  onParentAgentStart(): void {
+    this.parentStreaming = true;
+  }
+
+  /**
+   * Flush nudges held during the parent's agent loop. Each held record
+   * re-checks consumption via emitIndividualNudge, so results the parent
+   * already pulled mid-turn are suppressed instead of delivered twice.
+   */
+  onParentAgentEnd(): void {
+    this.parentStreaming = false;
+    const held = [...this.heldNudges.values()];
+    this.heldNudges.clear();
+    for (const record of held) {
+      try {
+        this.emitIndividualNudge(record);
+      } catch (err) {
+        debugLog("notification render", err);
+      }
+    }
   }
 
   private cancelNudge(key: string): void {
@@ -179,6 +211,10 @@ export class NotificationManager implements NotificationSystem {
 
   private emitIndividualNudge(record: Subagent): void {
     if (record.consumed) return;
+    if (this.parentStreaming) {
+      this.heldNudges.set(record.id, record);
+      return;
+    }
 
     const notification = formatTaskNotification(record, 500);
     const outputFile = record.outputFile;

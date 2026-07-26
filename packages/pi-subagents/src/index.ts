@@ -63,6 +63,13 @@ export default function (pi: ExtensionAPI) {
     (msg, opts) => pi.sendMessage(msg, opts),
   );
 
+  // Track the parent agent loop so completion nudges are held while it streams
+  // and flushed (with a fresh consumed re-check) when it ends — a nudge handed
+  // to Pi's followUp queue mid-turn could not be recalled if the parent pulled
+  // the result later in the same turn, duplicating the delivery.
+  pi.on("agent_start", () => notifications.onParentAgentStart());
+  pi.on("agent_end", () => notifications.onParentAgentEnd());
+
   // Settings: owns all three in-memory values and handles load/save/emit.
   // onMaxConcurrentChanged is wired to the limiter directly (closure captures by reference).
   const settings = new SettingsManager({
