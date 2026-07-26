@@ -101,6 +101,32 @@ describe("GetResultTool", () => {
 		expect(record.consumed).toBe(true);
 	});
 
+	it("waits for a queued agent when wait=true (promise is captured at spawn)", async () => {
+		const sessionStub = createSubagentSessionStub();
+		sessionStub.runTurnLoop.mockResolvedValue({ responseText: "Finished after queue.", aborted: false, steered: false });
+		const record = createTestSubagent({
+			status: "queued",
+			completedAt: undefined,
+			execution: makeStubExecution({
+				createSubagentSession: async () => toSubagentSession(sessionStub),
+			}),
+		});
+		// Simulate limiter admission: the thunk starts only after the wait began.
+		let admit!: () => void;
+		record.scheduleVia(
+			(thunk) =>
+				new Promise<void>((resolve) => {
+					admit = () => void thunk().then(resolve);
+				}),
+		);
+		const records = new Map([["agent-1", record]]);
+		const resultPromise = execute(makeManager(records), { agent_id: "agent-1", wait: true });
+		admit(); // a slot frees while the parent is waiting
+		const result = await resultPromise;
+		expect(result.content[0].text).toContain("Finished after queue.");
+		expect(record.consumed).toBe(true);
+	});
+
 	it("includes conversation when verbose=true", async () => {
 		const record = createTestSubagent();
 		const stub = createSubagentSessionStub();

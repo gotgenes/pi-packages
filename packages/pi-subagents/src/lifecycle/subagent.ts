@@ -343,6 +343,14 @@ export class Subagent {
 			throw new Error("Subagent not configured for resume — missing session");
 		}
 
+		// Refresh the awaitable handle: waiters (e.g. get_subagent_result wait:true)
+		// must track the live resume, not the settled promise of a prior run.
+		const run = this.runResume(subagentSession, prompt, signal);
+		this._promise = run;
+		return run;
+	}
+
+	private async runResume(subagentSession: SubagentSession, prompt: string, signal?: AbortSignal): Promise<void> {
 		this.resetForResume(Date.now());
 		this.listeners.attachObserver(subscribeSubagentObserver(subagentSession, this.state, {
 			onCompact: (info) => this.execution.observer?.onCompacted?.(this, info),

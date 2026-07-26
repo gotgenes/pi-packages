@@ -794,6 +794,31 @@ describe("Subagent.resume() — happy path", () => {
 		await agent.resume("continue");
 		expect(agent.error).toBeUndefined();
 	});
+
+	it("exposes the in-flight resume via the promise getter (wait support)", async () => {
+		const { agent, stub } = createResumableAgent();
+		let release!: (result: string) => void;
+		stub.resumeTurnLoop.mockImplementation(
+			() =>
+				new Promise<string>((resolve) => {
+					release = resolve;
+				}),
+		);
+		const resumePromise = agent.resume("continue");
+		// The awaitable promise must track the live resume, not a finished prior run.
+		expect(agent.promise).toBeDefined();
+		let settled = false;
+		void agent.promise?.then(() => {
+			settled = true;
+		});
+		await new Promise((r) => setTimeout(r, 0));
+		expect(settled).toBe(false);
+		release("resumed late");
+		await resumePromise;
+		await agent.promise;
+		expect(agent.status).toBe("completed");
+		expect(agent.result).toBe("resumed late");
+	});
 });
 
 describe("Subagent.resume() — observer lifecycle", () => {

@@ -32,8 +32,10 @@ export class GetResultTool {
 			return textResult(`Agent not found: "${params.agent_id}". Records are cleared at session start/switch, so it may be from a previous session.`);
 		}
 
-		// Wait for completion if requested.
-		if (params.wait && record.status === "running" && record.promise) {
+		// Wait for completion if requested. isActive() covers queued agents too:
+		// their promise is captured eagerly at spawn (scheduleVia), so waiting on a
+		// still-queued agent resolves when its slot frees and the run finishes.
+		if (params.wait && record.isActive() && record.promise) {
 			await record.promise;
 		}
 
