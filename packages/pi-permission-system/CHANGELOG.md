@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [23.0.2](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v23.0.1...pi-permission-system-v23.0.2) (2026-07-26)
+
+
+### Bug Fixes
+
+* **pi-permission-system:** create forwarding request files owner-only ([8c77c72](https://github.com/gotgenes/pi-packages/commit/8c77c7228a52d3b57397c7d53d301d002087d92f)), closes [#647](https://github.com/gotgenes/pi-packages/issues/647)
+* **pi-permission-system:** create permission logs owner-only ([6043cf8](https://github.com/gotgenes/pi-packages/commit/6043cf81bbe6332290d2d6bc8882ba1eadf181cc)), closes [#647](https://github.com/gotgenes/pi-packages/issues/647)
+* **pi-permission-system:** mask sensitive-keyed values in permission logs ([05cb12a](https://github.com/gotgenes/pi-packages/commit/05cb12a1c85e3030f6de3a4ed20cf1cd150e2d56)), closes [#647](https://github.com/gotgenes/pi-packages/issues/647)
+* **pi-permission-system:** redact generic tool input in the review log ([2035fb2](https://github.com/gotgenes/pi-packages/commit/2035fb2276efd75daa8d1f4e6e2af8e67763a9f8)), closes [#647](https://github.com/gotgenes/pi-packages/issues/647)
+
+
+### Documentation
+
+* **pi-permission-system:** link ADR 0010 by absolute URL from shipped docs ([0384af6](https://github.com/gotgenes/pi-packages/commit/0384af6483bd1a2d7f00a5a91efbe241c6d6898f)), closes [#647](https://github.com/gotgenes/pi-packages/issues/647)
+* **pi-permission-system:** record ADR 0010 on permission-log secret exposure ([c13b48a](https://github.com/gotgenes/pi-packages/commit/c13b48a9a14635d25af18a2c0f70bf765141a623)), closes [#647](https://github.com/gotgenes/pi-packages/issues/647)
+
 ## [23.0.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v23.0.0...pi-permission-system-v23.0.1) (2026-07-25)
 
 
