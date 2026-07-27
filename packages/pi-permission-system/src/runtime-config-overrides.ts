@@ -20,7 +20,5 @@ export function applyPermissionSystemRuntimeOverrides(
   config: PermissionSystemExtensionConfig,
   overrides: PermissionSystemRuntimeOverrides,
 ): PermissionSystemExtensionConfig {
-  return overrides.yoloMode === true
-    ? { ...config, yoloMode: true }
-    : config;
+  return overrides.yoloMode === true ? { ...config, yoloMode: true } : config;
 }

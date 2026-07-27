@@ -15,16 +15,19 @@ describe("readPermissionSystemRuntimeOverrides", () => {
     ).toEqual({ yoloMode: true });
   });
 
-  it.each([undefined, "", "0", "true", "yes"])(
-    "does not enable yolo for %s",
-    (value) => {
-      expect(
-        readPermissionSystemRuntimeOverrides({
-          PI_PERMISSION_SYSTEM_YOLO: value,
-        }),
-      ).toEqual({});
-    },
-  );
+  it.each([
+    undefined,
+    "",
+    "0",
+    "true",
+    "yes",
+  ])("does not enable yolo for %s", (value) => {
+    expect(
+      readPermissionSystemRuntimeOverrides({
+        PI_PERMISSION_SYSTEM_YOLO: value,
+      }),
+    ).toEqual({});
+  });
 });
 
 describe("applyPermissionSystemRuntimeOverrides", () => {
