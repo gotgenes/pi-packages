@@ -171,7 +171,8 @@ export class TranscriptOverlay implements Component {
       return;
     }
 
-    const totalLines = this.buildContentLines(this.innerWidth()).length;
+    const hInnerW = this.contentWidth();
+    const totalLines = this.buildContentLines(hInnerW).length;
     const viewportHeight = this.viewportHeight();
     const maxScroll = Math.max(0, totalLines - viewportHeight);
 
@@ -199,7 +200,7 @@ export class TranscriptOverlay implements Component {
   render(width: number): string[] {
     if (width < 6) return [];
     const th = this.theme;
-    const innerW = width - 4;
+    const innerW = this.contentWidth();
     const lines: string[] = [];
 
     const pad = (s: string, len: number): string => s + " ".repeat(Math.max(0, len - visibleWidth(s)));
@@ -250,8 +251,10 @@ export class TranscriptOverlay implements Component {
 
   // ---- Private ----
 
-  private innerWidth(): number {
-    return Math.max(0, this.tui.terminal.columns - 4);
+  // Content text width
+  private contentWidth(): number {
+    const overlayWidth = Math.floor((this.tui.terminal.columns * 90) / 100);
+    return Math.max(0, overlayWidth - 4);
   }
 
   private viewportHeight(): number {
