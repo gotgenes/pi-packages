@@ -118,6 +118,11 @@ The optional `authorizerChain` field names registered case-by-case decision link
 A downstream extension registers a link via `getPermissionsService().registerAuthorizer(name, authorize)`; it decides nothing until you name it here (opt-in), config order fixes the chain order, and the chain owner caps any link's `allow` on `external_directory`/`path` to keep it within your policy — see [docs/configuration.md](docs/configuration.md#authorizer-chain--case-by-case-decision-links).
 [`@gotgenes/pi-permission-model-judge`](https://github.com/gotgenes/pi-packages/tree/main/packages/pi-permission-model-judge) is a first-party reference implementation of such a link — a deny-first reviewer that auto-denies mistyped out-of-directory paths.
 
+Trusted launchers can enable the existing deny-preserving yolo composition for one Pi process with `PI_PERMISSION_SYSTEM_YOLO=1 pi`.
+Only the exact value `1` enables the override, configuration reloads retain it, and it never changes global or project config files.
+The override converts `ask` results to `allow` while explicit `deny` rules remain enforced.
+See [the launcher-scoped yolo reference](docs/configuration.md#launcher-scoped-yolo-override) for the complete contract.
+
 For the full reference — all surfaces, runtime knobs, per-agent overrides, merge semantics, and common recipes — see [docs/configuration.md](docs/configuration.md).
 
 ## Upgrading

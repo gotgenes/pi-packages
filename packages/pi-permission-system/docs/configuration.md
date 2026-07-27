@@ -112,6 +112,24 @@ This clamp is deny-preserving and, like `yoloMode`, applied at composition; when
 Both logs write to `~/.pi/agent/extensions/pi-permission-system/logs/`.
 No debug output is printed to the terminal.
 
+### Launcher-scoped yolo override
+
+A trusted launcher can enable the existing yolo composition for one Pi process and its descendants:
+
+```bash
+PI_PERMISSION_SYSTEM_YOLO=1 pi
+```
+
+Only the exact string `1` enables the override.
+Missing, empty, and other values leave the merged file configuration unchanged.
+The override converts effective `ask` results to `allow` while preserving every explicit `deny` rule.
+It remains active across configuration reloads for the lifetime of the process, and the status indicator, `/permission-system show`, and diagnostic records report the effective yolo-on state.
+The environment value is never written to global or project configuration.
+If settings are saved while the override is active, the existing file-backed `yoloMode` value is preserved.
+
+Treat this environment variable as a trusted-launcher API rather than a general shell default.
+Setting it globally would intentionally enable yolo for every Pi process inheriting that environment.
+
 ### Inline permission dialog (TUI)
 
 In an interactive **TUI** session, an `ask` decision opens an inline keybind dialog with one-key shortcuts:
