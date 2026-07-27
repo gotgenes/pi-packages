@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [19.0.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v19.0.0...pi-subagents-v19.0.1) (2026-07-27)
+
+
+### Bug Fixes
+
+* **pi-subagents:** end a get_subagent_result wait on parent interrupt ([#662](https://github.com/gotgenes/pi-packages/issues/662)) ([97abfa1](https://github.com/gotgenes/pi-packages/commit/97abfa1d5467e18fa7e14ebb0d7a4f784b114e8c))
+* **pi-subagents:** honor wait:true for queued agents ([#662](https://github.com/gotgenes/pi-packages/issues/662)) ([fb298c6](https://github.com/gotgenes/pi-packages/commit/fb298c6ce66bff9e974a59f8d5c070f7c245c5ea))
+* **pi-subagents:** track the live resume in the Subagent promise getter ([#662](https://github.com/gotgenes/pi-packages/issues/662)) ([ceb8234](https://github.com/gotgenes/pi-packages/commit/ceb8234ef4205ddd6c9d9cee46c5875156bcadf1))
+
 ## [19.0.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v18.1.2...pi-subagents-v19.0.0) (2026-07-27)
 
 
