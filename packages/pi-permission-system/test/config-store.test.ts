@@ -124,6 +124,7 @@ function makeStore(overrides: Partial<ConfigStoreDeps> = {}): {
     agentDir: "/test/agent",
     policyPaths: makePolicyPathProvider(),
     logger,
+    runtimeOverrides: {},
     ...overrides,
   };
   return { store: new ConfigStore(deps), logger };
@@ -155,6 +156,16 @@ describe("ConfigStore", () => {
     it("returns DEFAULT_EXTENSION_CONFIG before any refresh", () => {
       const { store } = makeStore();
       expect(store.current()).toEqual(DEFAULT_EXTENSION_CONFIG);
+    });
+
+    it("applies a yolo runtime override before any refresh", () => {
+      const { store } = makeStore({
+        runtimeOverrides: { yoloMode: true },
+      });
+      expect(store.current()).toEqual({
+        ...DEFAULT_EXTENSION_CONFIG,
+        yoloMode: true,
+      });
     });
   });
 
@@ -203,6 +214,18 @@ describe("ConfigStore", () => {
       store.refresh(undefined, true);
       expect(store.current().debugLog).toBe(true);
       expect(store.current().permissionReviewLog).toBe(false);
+    });
+
+    it("retains a yolo runtime override across refresh", () => {
+      const { store } = makeStore({
+        runtimeOverrides: { yoloMode: true },
+      });
+      mockLoadAndMergeConfigs.mockReturnValue({
+        merged: { ...DEFAULT_EXTENSION_CONFIG, yoloMode: false },
+        issues: [],
+      });
+      store.refresh(undefined, true);
+      expect(store.current().yoloMode).toBe(true);
     });
 
     it("writes config.loaded debug log", () => {
@@ -298,6 +321,18 @@ describe("ConfigStore", () => {
         ctx,
         expect.any(Object),
       );
+    });
+
+    it("syncs the effective yolo state after refresh", () => {
+      const { store } = makeStore({
+        runtimeOverrides: { yoloMode: true },
+      });
+      const ctx = makeCtx({ hasUI: true });
+      store.refresh(ctx, true);
+      expect(mockSyncPermissionSystemStatus).toHaveBeenCalledWith(ctx, {
+        ...DEFAULT_EXTENSION_CONFIG,
+        yoloMode: true,
+      });
     });
 
     it("does not call syncPermissionSystemStatus when hasUI is false", () => {
@@ -423,6 +458,22 @@ describe("ConfigStore", () => {
         expect.stringContaining('"piInfrastructureReadPaths"'),
         "utf-8",
       );
+    });
+
+    it("does not persist the process-scoped yolo override", () => {
+      const { store } = makeStore({
+        runtimeOverrides: { yoloMode: true },
+      });
+      mockLoadUnifiedConfig.mockReturnValue({
+        config: { yoloMode: false },
+      });
+      store.save(store.current(), makeCommandCtx());
+      expect(mockWriteFileSync).toHaveBeenCalledWith(
+        expect.stringContaining(".tmp"),
+        expect.stringContaining('"yoloMode": false'),
+        "utf-8",
+      );
+      expect(store.current().yoloMode).toBe(true);
     });
   });
 

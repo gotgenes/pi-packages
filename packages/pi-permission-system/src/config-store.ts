@@ -26,6 +26,10 @@ import {
   type PermissionSystemExtensionConfig,
 } from "./extension-config";
 import type { ResolvedPolicyPaths } from "./policy-loader";
+import {
+  applyPermissionSystemRuntimeOverrides,
+  type PermissionSystemRuntimeOverrides,
+} from "./runtime-config-overrides";
 import type { DebugReviewLogger } from "./session-logger";
 import { syncPermissionSystemStatus } from "./status";
 
@@ -67,6 +71,7 @@ export interface ConfigStoreDeps {
   agentDir: string;
   policyPaths: ResolvedPolicyPathProvider;
   logger: DebugReviewLogger;
+  runtimeOverrides: PermissionSystemRuntimeOverrides;
 }
 
 /**
@@ -84,7 +89,9 @@ export class ConfigStore implements SessionConfigStore, CommandConfigStore {
   private lastConfigWarning: string | null = null;
 
   constructor(private readonly deps: ConfigStoreDeps) {
-    this.config = { ...DEFAULT_EXTENSION_CONFIG };
+    this.config = this.applyRuntimeOverrides({
+      ...DEFAULT_EXTENSION_CONFIG,
+    });
   }
 
   /** Return the current extension config. */
@@ -108,7 +115,8 @@ export class ConfigStore implements SessionConfigStore, CommandConfigStore {
       EXTENSION_ROOT,
       { includeProjectScope: projectTrusted },
     );
-    const runtimeConfig = normalizePermissionSystemConfig(mergeResult.merged);
+    const fileConfig = normalizePermissionSystemConfig(mergeResult.merged);
+    const runtimeConfig = this.applyRuntimeOverrides(fileConfig);
     this.config = runtimeConfig;
 
     if (ctx?.hasUI) {
@@ -150,11 +158,19 @@ export class ConfigStore implements SessionConfigStore, CommandConfigStore {
     const globalPath = getGlobalConfigPath(this.deps.agentDir);
 
     const existing = loadUnifiedConfig(globalPath);
+    const persistedYoloMode =
+      this.deps.runtimeOverrides.yoloMode === true
+        ? existing.config.yoloMode === true
+        : normalized.yoloMode;
+    const persistedConfig = {
+      ...normalized,
+      yoloMode: persistedYoloMode,
+    };
     const merged = {
       ...existing.config,
-      debugLog: normalized.debugLog,
-      permissionReviewLog: normalized.permissionReviewLog,
-      yoloMode: normalized.yoloMode,
+      debugLog: persistedConfig.debugLog,
+      permissionReviewLog: persistedConfig.permissionReviewLog,
+      yoloMode: persistedConfig.yoloMode,
     };
 
     const tmpPath = `${globalPath}.tmp`;
@@ -178,14 +194,14 @@ export class ConfigStore implements SessionConfigStore, CommandConfigStore {
       return;
     }
 
-    this.config = normalized;
-    syncPermissionSystemStatus(ctx, normalized);
+    this.config = this.applyRuntimeOverrides(persistedConfig);
+    syncPermissionSystemStatus(ctx, this.config);
     this.lastConfigWarning = null;
 
     this.deps.logger.debug("config.saved", {
-      debugLog: normalized.debugLog,
-      permissionReviewLog: normalized.permissionReviewLog,
-      yoloMode: normalized.yoloMode,
+      debugLog: this.config.debugLog,
+      permissionReviewLog: this.config.permissionReviewLog,
+      yoloMode: this.config.yoloMode,
     });
   }
 
@@ -221,6 +237,15 @@ export class ConfigStore implements SessionConfigStore, CommandConfigStore {
     this.deps.logger.debug(
       "config.resolved",
       entry as unknown as Record<string, unknown>,
+    );
+  }
+
+  private applyRuntimeOverrides(
+    config: PermissionSystemExtensionConfig,
+  ): PermissionSystemExtensionConfig {
+    return applyPermissionSystemRuntimeOverrides(
+      config,
+      this.deps.runtimeOverrides,
     );
   }
 }
