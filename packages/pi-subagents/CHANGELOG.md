@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [19.0.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v18.1.2...pi-subagents-v19.0.0) (2026-07-27)
+
+
+### ⚠ BREAKING CHANGES
+
+* **pi-subagents:** @gotgenes/pi-subagents now requires @earendil-works/pi-coding-agent >= 0.80.5, raised from >= 0.75.0. Nudge delivery is gated on the agent_settled lifecycle event, which Pi added in 0.80.4 and first published to npm in 0.80.5 (0.80.4 was tagged but never published). On an older host the event never fires and completion nudges would never be delivered. Upgrade Pi to 0.80.5 or newer.
+
+### Bug Fixes
+
+* **pi-subagents:** gate completion nudges on the parent turn boundary ([#661](https://github.com/gotgenes/pi-packages/issues/661)) ([8f7f387](https://github.com/gotgenes/pi-packages/commit/8f7f387dc38d181589acaa5016e0a8810cbac825))
+
 ## [18.1.2](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v18.1.1...pi-subagents-v18.1.2) (2026-07-25)
 
 
