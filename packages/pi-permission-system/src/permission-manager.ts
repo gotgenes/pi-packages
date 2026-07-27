@@ -5,8 +5,10 @@ import { PATH_SURFACES } from "./access-intent/path-surfaces";
 import { classifyToolKind } from "./access-intent/tool-kind";
 import {
   getGlobalConfigPath,
+  getGlobalSettingsPath,
   getProjectAgentsDir,
   getProjectConfigPath,
+  getProjectSettingsPath,
 } from "./config-paths";
 import { normalizeFlatConfig } from "./normalize";
 import { type PathFlavor, posixPathFlavor } from "./path/path-flavor";
@@ -382,8 +384,10 @@ function derivePolicyLoaderOptions(
 ): PolicyLoaderOptions {
   return {
     globalConfigPath: getGlobalConfigPath(agentDir),
+    globalSettingsPath: getGlobalSettingsPath(agentDir),
     agentsDir: join(agentDir, "agents"),
     projectGlobalConfigPath: cwd ? getProjectConfigPath(cwd) : undefined,
+    projectSettingsPath: cwd ? getProjectSettingsPath(cwd) : undefined,
     projectAgentsDir: cwd ? getProjectAgentsDir(cwd) : undefined,
   };
 }

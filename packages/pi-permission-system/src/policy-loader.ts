@@ -7,6 +7,11 @@ import {
   stripJsonComments,
 } from "./config-loader";
 import { getGlobalConfigPath } from "./config-paths";
+import { mergeFlatPermissions } from "./permission-merge";
+import {
+  loadSettingsPolicy,
+  type SettingsPolicyLoadResult,
+} from "./settings-policy";
 import type { ScopeConfig } from "./types";
 import { toRecord } from "./value-guards";
 import { extractFrontmatter, parseSimpleYamlMap } from "./yaml-frontmatter";
@@ -67,8 +72,12 @@ function getConfiguredMcpServerNamesFromPaths(
 export interface ResolvedPolicyPaths {
   globalConfigPath: string;
   globalConfigExists: boolean;
+  globalSettingsPath?: string | null;
+  globalSettingsExists?: boolean;
   projectConfigPath: string | null;
   projectConfigExists: boolean;
+  projectSettingsPath?: string | null;
+  projectSettingsExists?: boolean;
   agentsDir: string;
   agentsDirExists: boolean;
   projectAgentsDir: string | null;
@@ -122,6 +131,22 @@ type FileCacheEntry<TValue> = {
   value: TValue;
 };
 
+function mergeScopeConfigs(
+  base: ScopeConfig,
+  override: ScopeConfig,
+): ScopeConfig {
+  const permission =
+    base.permission && override.permission
+      ? mergeFlatPermissions(base.permission, override.permission)
+      : (override.permission ?? base.permission);
+  return {
+    ...(permission ? { permission } : {}),
+    ...(base.invalid === true || override.invalid === true
+      ? { invalid: true }
+      : {}),
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Options shared between FilePolicyLoader and the backward-compat
 // PermissionManager constructor.
@@ -129,8 +154,10 @@ type FileCacheEntry<TValue> = {
 
 export interface PolicyLoaderOptions {
   globalConfigPath?: string;
+  globalSettingsPath?: string;
   agentsDir?: string;
   projectGlobalConfigPath?: string;
+  projectSettingsPath?: string;
   projectAgentsDir?: string;
   globalMcpConfigPath?: string;
   mcpServerNames?: readonly string[];
@@ -146,14 +173,20 @@ export interface PolicyLoaderOptions {
  */
 export class FilePolicyLoader implements PolicyLoader {
   private readonly globalConfigPath: string;
+  private readonly globalSettingsPath: string | null;
   private readonly agentsDir: string;
   private readonly projectGlobalConfigPath: string | null;
+  private readonly projectSettingsPath: string | null;
   private readonly projectAgentsDir: string | null;
   private readonly globalMcpConfigPath: string;
   private readonly configuredMcpServerNamesOverride: readonly string[] | null;
 
   private globalConfigCache: FileCacheEntry<ScopeConfig> | null = null;
   private projectGlobalConfigCache: FileCacheEntry<ScopeConfig> | null = null;
+  private globalSettingsCache: FileCacheEntry<SettingsPolicyLoadResult> | null =
+    null;
+  private projectSettingsCache: FileCacheEntry<SettingsPolicyLoadResult> | null =
+    null;
   private readonly agentConfigCache = new Map<
     string,
     FileCacheEntry<ScopeConfig>
@@ -170,8 +203,10 @@ export class FilePolicyLoader implements PolicyLoader {
   constructor(options: PolicyLoaderOptions = {}) {
     this.globalConfigPath =
       options.globalConfigPath ?? defaultGlobalConfigPath();
+    this.globalSettingsPath = options.globalSettingsPath ?? null;
     this.agentsDir = options.agentsDir ?? defaultAgentsDir();
     this.projectGlobalConfigPath = options.projectGlobalConfigPath ?? null;
+    this.projectSettingsPath = options.projectSettingsPath ?? null;
     this.projectAgentsDir = options.projectAgentsDir ?? null;
     this.globalMcpConfigPath =
       options.globalMcpConfigPath ?? defaultGlobalMcpConfigPath();
@@ -200,44 +235,91 @@ export class FilePolicyLoader implements PolicyLoader {
     return [...this.accumulatedConfigIssues];
   }
 
+  private loadGlobalSettings(): SettingsPolicyLoadResult {
+    if (!this.globalSettingsPath) return { issues: [] };
+    const stamp = getFileStamp(this.globalSettingsPath);
+    if (this.globalSettingsCache?.stamp === stamp) {
+      return this.globalSettingsCache.value;
+    }
+    const value = loadSettingsPolicy(this.globalSettingsPath);
+    this.accumulateConfigIssues(value.issues);
+    this.globalSettingsCache = { stamp, value };
+    return value;
+  }
+
+  private loadProjectSettings(): SettingsPolicyLoadResult {
+    if (!this.projectSettingsPath) return { issues: [] };
+    const stamp = getFileStamp(this.projectSettingsPath);
+    if (this.projectSettingsCache?.stamp === stamp) {
+      return this.projectSettingsCache.value;
+    }
+    const value = loadSettingsPolicy(this.projectSettingsPath);
+    this.accumulateConfigIssues(value.issues);
+    this.projectSettingsCache = { stamp, value };
+    return value;
+  }
+
   // ── Scope loaders ────────────────────────────────────────────────────
 
   loadGlobalConfig(): ScopeConfig {
-    const stamp = getFileStamp(this.globalConfigPath);
+    const settingsStamp = this.globalSettingsPath
+      ? getFileStamp(this.globalSettingsPath)
+      : "none";
+    const stamp = `${settingsStamp}|${getFileStamp(this.globalConfigPath)}`;
     if (this.globalConfigCache?.stamp === stamp) {
       return this.globalConfigCache.value;
     }
 
+    const settings = this.loadGlobalSettings();
     const { config, issues } = loadUnifiedConfig(this.globalConfigPath);
     this.accumulateConfigIssues(issues);
 
-    const value: ScopeConfig = {
-      permission: config.permission,
-    };
+    const value = mergeScopeConfigs(
+      {
+        permission: settings.permission,
+        ...(settings.issues.length > 0 ? { invalid: true } : {}),
+      },
+      { permission: config.permission },
+    );
 
     this.globalConfigCache = { stamp, value };
     return value;
   }
 
   loadProjectConfig(): ScopeConfig {
-    if (!this.projectGlobalConfigPath) {
+    if (!this.projectGlobalConfigPath && !this.projectSettingsPath) {
       return {};
     }
 
-    const stamp = getFileStamp(this.projectGlobalConfigPath);
+    const settingsStamp = this.projectSettingsPath
+      ? getFileStamp(this.projectSettingsPath)
+      : "none";
+    const configStamp = this.projectGlobalConfigPath
+      ? getFileStamp(this.projectGlobalConfigPath)
+      : "none";
+    const stamp = `${settingsStamp}|${configStamp}`;
     if (this.projectGlobalConfigCache?.stamp === stamp) {
       return this.projectGlobalConfigCache.value;
     }
 
-    const { config, issues } = loadUnifiedConfig(this.projectGlobalConfigPath);
-    this.accumulateConfigIssues(issues);
+    const settings = this.loadProjectSettings();
+    const configResult = this.projectGlobalConfigPath
+      ? loadUnifiedConfig(this.projectGlobalConfigPath)
+      : { config: {}, issues: [] };
+    this.accumulateConfigIssues(configResult.issues);
 
-    // A present-but-rejected file yields issues (parse error or schema
-    // rejection); an absent file yields none. Fail closed on the former.
-    const value: ScopeConfig = {
-      permission: config.permission,
-      ...(issues.length > 0 ? { invalid: true } : {}),
-    };
+    // A present-but-rejected source yields issues; an absent source yields none.
+    // The dedicated config file overrides the settings-backed policy.
+    const value = mergeScopeConfigs(
+      {
+        permission: settings.permission,
+        ...(settings.issues.length > 0 ? { invalid: true } : {}),
+      },
+      {
+        permission: configResult.config.permission,
+        ...(configResult.issues.length > 0 ? { invalid: true } : {}),
+      },
+    );
 
     this.projectGlobalConfigCache = { stamp, value };
     return value;
@@ -294,18 +376,32 @@ export class FilePolicyLoader implements PolicyLoader {
   }
 
   loadAgentConfig(agentName?: string): ScopeConfig {
-    return this.loadScopeConfigFrom(
-      this.agentsDir,
-      this.agentConfigCache,
-      agentName,
+    const settings = this.loadGlobalSettings();
+    return mergeScopeConfigs(
+      {
+        permission: agentName ? settings.agents?.[agentName] : undefined,
+        ...(agentName && settings.issues.length > 0 ? { invalid: true } : {}),
+      },
+      this.loadScopeConfigFrom(
+        this.agentsDir,
+        this.agentConfigCache,
+        agentName,
+      ),
     );
   }
 
   loadProjectAgentConfig(agentName?: string): ScopeConfig {
-    return this.loadScopeConfigFrom(
-      this.projectAgentsDir,
-      this.projectAgentConfigCache,
-      agentName,
+    const settings = this.loadProjectSettings();
+    return mergeScopeConfigs(
+      {
+        permission: agentName ? settings.agents?.[agentName] : undefined,
+        ...(agentName && settings.issues.length > 0 ? { invalid: true } : {}),
+      },
+      this.loadScopeConfigFrom(
+        this.projectAgentsDir,
+        this.projectAgentConfigCache,
+        agentName,
+      ),
     );
   }
 
@@ -335,15 +431,21 @@ export class FilePolicyLoader implements PolicyLoader {
     const agentStamp = agentName
       ? getFileStamp(join(this.agentsDir, `${agentName}.md`))
       : "missing";
+    const globalSettingsStamp = this.globalSettingsPath
+      ? getFileStamp(this.globalSettingsPath)
+      : "none";
     const projectStamp = this.projectGlobalConfigPath
       ? getFileStamp(this.projectGlobalConfigPath)
+      : "none";
+    const projectSettingsStamp = this.projectSettingsPath
+      ? getFileStamp(this.projectSettingsPath)
       : "none";
     const projectAgentStamp =
       this.projectAgentsDir && agentName
         ? getFileStamp(join(this.projectAgentsDir, `${agentName}.md`))
         : "none";
 
-    return `${getFileStamp(this.globalConfigPath)}|${projectStamp}|${agentStamp}|${projectAgentStamp}`;
+    return `${getFileStamp(this.globalConfigPath)}|${globalSettingsStamp}|${projectStamp}|${projectSettingsStamp}|${agentStamp}|${projectAgentStamp}`;
   }
 
   // ── Resolved paths ────────────────────────────────────────────────────
@@ -352,9 +454,17 @@ export class FilePolicyLoader implements PolicyLoader {
     return {
       globalConfigPath: this.globalConfigPath,
       globalConfigExists: existsSync(this.globalConfigPath),
+      globalSettingsPath: this.globalSettingsPath,
+      globalSettingsExists: this.globalSettingsPath
+        ? existsSync(this.globalSettingsPath)
+        : false,
       projectConfigPath: this.projectGlobalConfigPath,
       projectConfigExists: this.projectGlobalConfigPath
         ? existsSync(this.projectGlobalConfigPath)
+        : false,
+      projectSettingsPath: this.projectSettingsPath,
+      projectSettingsExists: this.projectSettingsPath
+        ? existsSync(this.projectSettingsPath)
         : false,
       agentsDir: this.agentsDir,
       agentsDirExists: existsSync(this.agentsDir),
