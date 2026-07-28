@@ -52,22 +52,22 @@ describe("renderStats", () => {
 
 	it("includes turn count with max turns", () => {
 		const details = makeDetails({ turnCount: 5, maxTurns: 30 });
-		expect(renderStats(details, theme)).toContain("[dim:⟳5≤30]");
+		expect(renderStats(details, theme)).toContain("[dim:↻5≤30]");
 	});
 
 	it("includes turn count without max turns", () => {
 		const details = makeDetails({ turnCount: 5 });
-		expect(renderStats(details, theme)).toContain("[dim:⟳5]");
+		expect(renderStats(details, theme)).toContain("[dim:↻5]");
 	});
 
 	it("excludes turn count when turnCount is 0", () => {
 		const details = makeDetails({ turnCount: 0 });
-		expect(renderStats(details, theme)).not.toContain("⟳");
+		expect(renderStats(details, theme)).not.toContain("↻");
 	});
 
 	it("excludes turn count when turnCount is undefined", () => {
 		const details = makeDetails({ turnCount: undefined });
-		expect(renderStats(details, theme)).not.toContain("⟳");
+		expect(renderStats(details, theme)).not.toContain("↻");
 	});
 
 	it("includes singular tool use", () => {

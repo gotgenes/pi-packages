@@ -103,7 +103,7 @@ export function renderFailed(details: AgentDetails, theme: Theme): string {
 // ---- Shared helper ----
 
 /**
- * Build the stats string: "haiku · thinking: high · ⟳5≤30 · 3 tool uses · 33.8k token".
+ * Build the stats string: "haiku · thinking: high · ↻5≤30 · 3 tool uses · 33.8k token".
  * Returns an empty string when all fields are absent or zero.
  */
 export function renderStats(details: AgentDetails, theme: Theme): string {

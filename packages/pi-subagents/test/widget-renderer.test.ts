@@ -52,7 +52,7 @@ describe("renderFinishedLine", () => {
 		// Duration (5000ms = 5.0s)
 		expect(line).toContain("5.0s");
 		// Turn count with max
-		expect(line).toContain("⟳3≤10");
+		expect(line).toContain("↻3≤10");
 		// No trailing status text for completed
 		expect(line).not.toContain("error");
 		expect(line).not.toContain("aborted");
@@ -78,7 +78,7 @@ describe("renderFinishedLine", () => {
 		const agent = makeAgent(); // defaults: turnCount: 3, maxTurns: 10
 		const line = renderFinishedLine(agent, testRegistry, theme);
 		// Finished agents now always show turn count — accepted behavior change (#421)
-		expect(line).toContain("⟳3≤10");
+		expect(line).toContain("↻3≤10");
 	});
 
 	it("uses Date.now() for duration when completedAt is undefined", () => {
@@ -159,7 +159,7 @@ describe("renderRunningLines", () => {
 		expect(header).toContain("**Agent**");
 		expect(header).toContain("[muted:test task]");
 		// Stats: turn count
-		expect(header).toContain("⟳2≤10");
+		expect(header).toContain("↻2≤10");
 		// Tool uses
 		expect(header).toContain("5 tool uses");
 
@@ -199,7 +199,7 @@ describe("renderRunningLines", () => {
 		// Context percent
 		expect(header).toContain("45%");
 		// Compaction count
-		expect(header).toContain("↻1");
+		expect(header).toContain("⇊1");
 	});
 
 	it("omits token display when lifetimeUsage totals zero", () => {

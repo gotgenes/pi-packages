@@ -239,7 +239,7 @@ describe("AgentWidget — projection reads activity off Subagent records", () =>
 		const lines = renderFn!(stubTui, stubTheme).render();
 		const allText = lines.join("\n");
 		// Turn 3 from the record should appear
-		expect(allText).toContain("⟳3");
+		expect(allText).toContain("↻3");
 		// Active tool "read" → "reading…"
 		expect(allText).toContain("reading");
 	});

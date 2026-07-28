@@ -87,7 +87,7 @@ describe("buildStatsParts", () => {
       totalTokens: 1000,
       durationMs: 5000,
     });
-    expect(parts).toEqual(["⟳5≤10", "3 tool uses", "1.0k token", "5.0s"]);
+    expect(parts).toEqual(["↻5≤10", "3 tool uses", "1.0k token", "5.0s"]);
   });
 
   it("omits a part when its field is zero", () => {
@@ -96,13 +96,13 @@ describe("buildStatsParts", () => {
     ).toEqual(["3 tool uses", "1.0k token", "5.0s"]);
     expect(
       buildStatsParts({ turnCount: 5, maxTurns: 10, toolUses: 0, totalTokens: 1000, durationMs: 5000 }),
-    ).toEqual(["⟳5≤10", "1.0k token", "5.0s"]);
+    ).toEqual(["↻5≤10", "1.0k token", "5.0s"]);
     expect(
       buildStatsParts({ turnCount: 5, maxTurns: 10, toolUses: 3, totalTokens: 0, durationMs: 5000 }),
-    ).toEqual(["⟳5≤10", "3 tool uses", "5.0s"]);
+    ).toEqual(["↻5≤10", "3 tool uses", "5.0s"]);
     expect(
       buildStatsParts({ turnCount: 5, maxTurns: 10, toolUses: 3, totalTokens: 1000, durationMs: 0 }),
-    ).toEqual(["⟳5≤10", "3 tool uses", "1.0k token"]);
+    ).toEqual(["↻5≤10", "3 tool uses", "1.0k token"]);
   });
 
   it("returns an empty array when all fields are zero", () => {
