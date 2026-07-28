@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [19.1.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v19.0.1...pi-subagents-v19.1.0) (2026-07-28)
+
+
+### Features
+
+* **pi-subagents:** add a stopQueued transition to SubagentState ([f7d48a9](https://github.com/gotgenes/pi-packages/commit/f7d48a9a9485f7a3db730485af81fcff50734d1a)), closes [#665](https://github.com/gotgenes/pi-packages/issues/665)
+* **pi-subagents:** fire the terminal observer from Subagent.stopQueued ([0100cb6](https://github.com/gotgenes/pi-packages/commit/0100cb61d1fe2543358bb5bdbd51643381037f84)), closes [#665](https://github.com/gotgenes/pi-packages/issues/665)
+
+
+### Bug Fixes
+
+* **pi-subagents:** emit terminal lifecycle when a queued agent is stopped ([a4fda3d](https://github.com/gotgenes/pi-packages/commit/a4fda3db09dfd37979bcbaa2328c1ac44027d391)), closes [#665](https://github.com/gotgenes/pi-packages/issues/665)
+* **pi-subagents:** report a never-started agent honestly in get_subagent_result ([210d521](https://github.com/gotgenes/pi-packages/commit/210d5212d73b12c86f2f7c148e7e27629e4c1482))
+* **pi-subagents:** stop nudging a session that is shutting down ([d69419b](https://github.com/gotgenes/pi-packages/commit/d69419b116cd3cc431f09df08147094c09241ccf))
+* **pi-subagents:** tell the truth in a stopped-while-queued notification ([b4fe2b8](https://github.com/gotgenes/pi-packages/commit/b4fe2b8f6f6a9e5f1f366369e4f55a5121fe4da7)), closes [#665](https://github.com/gotgenes/pi-packages/issues/665)
+
+
+### Documentation
+
+* **pi-subagents:** document the stopped-while-queued lifecycle ([15719f4](https://github.com/gotgenes/pi-packages/commit/15719f48af67548e18f985a0814cb16a1cfa9b2c))
+
 ## [19.0.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v19.0.0...pi-subagents-v19.0.1) (2026-07-27)
 
 
