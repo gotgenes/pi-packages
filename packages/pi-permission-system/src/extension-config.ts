@@ -28,6 +28,8 @@ export interface PermissionSystemExtensionConfig {
   shellTools?: ShellToolsConfig;
   /** Ordered names of registered live-authority chain links to consult before the terminal authorizer. */
   authorizerChain?: string[];
+  /** When true, chain links may grant `allow` on `external_directory` (opt-in; `path` stays excluded). */
+  allowAuthorizerOnExternalDirectory?: boolean;
 }
 
 export const DEFAULT_EXTENSION_CONFIG: PermissionSystemExtensionConfig = {
@@ -82,6 +84,9 @@ export function normalizePermissionSystemConfig(
   }
   if (raw.authorizerChain !== undefined) {
     result.authorizerChain = raw.authorizerChain;
+  }
+  if (raw.allowAuthorizerOnExternalDirectory === true) {
+    result.allowAuthorizerOnExternalDirectory = true;
   }
   return result;
 }

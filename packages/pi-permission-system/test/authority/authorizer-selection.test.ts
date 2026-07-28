@@ -100,6 +100,7 @@ type SelectionDeps = SelectionCtorDeps & {
   getPermissionQuery: () => PermissionQuery;
   authorizerRegistry: AuthorizerRegistry;
   getAuthorizerChain: () => string[];
+  getAllowAuthorizerOnExternalDirectory: () => boolean;
 };
 
 function makeDeps(overrides: Partial<SelectionDeps> = {}): SelectionDeps {
@@ -123,6 +124,8 @@ function makeDeps(overrides: Partial<SelectionDeps> = {}): SelectionDeps {
     authorizerRegistry:
       overrides.authorizerRegistry ?? new AuthorizerRegistry(),
     getAuthorizerChain: overrides.getAuthorizerChain ?? (() => []),
+    getAllowAuthorizerOnExternalDirectory:
+      overrides.getAllowAuthorizerOnExternalDirectory ?? (() => false),
   };
 }
 

@@ -65,6 +65,12 @@
         "minLength": 1
       }
     },
+    "allowAuthorizerOnExternalDirectory": {
+      "description": "Let chain links (e.g. an LLM auto-review judge) grant allow on the external_directory surface instead of always deferring to the terminal prompt.",
+      "markdownDescription": "Let chain links (e.g. an LLM auto-review judge) grant `allow` on the `external_directory` surface, instead of the bounded-delegation checkpoint always downgrading such an `allow` to `defer`.\n\nBy default (`false`) a link can never auto-approve access **outside** the working directory — every outside-CWD ask falls through to the terminal (a prompt). Set this to `true` to let a named judge in `authorizerChain` decide outside-CWD access, enabling a Codex/Claude Code-style auto-review flow.\n\n⚠️ The `path` surface stays excluded regardless of this flag, so secret-shaped paths (`.env`, `~/.ssh/*`) can never be auto-approved by a link. This flag only relaxes the whole-`external_directory` exclusion; pair it with an `external_directory` permission policy (e.g. `{ \"*\": \"ask\", \"~/.cargo/registry/*\": \"allow\" }`) to keep the relaxation scoped.",
+      "default": false,
+      "type": "boolean"
+    },
     "permission": {
       "type": "object",
       "propertyNames": {

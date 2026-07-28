@@ -65,6 +65,8 @@ export class AuthorizerSelection
       authorizerRegistry: AuthorizerLookup;
       /** The operator's configured link names, read live per ask. */
       getAuthorizerChain: () => string[];
+      /** When true, links may grant `allow` on `external_directory` (opt-in). */
+      getAllowAuthorizerOnExternalDirectory: () => boolean;
     },
   ) {}
 
@@ -93,7 +95,12 @@ export class AuthorizerSelection
         this.deps.logger.review("authorizer_chain_unregistered_link", { name });
         continue;
       }
-      links.push({ authorize: encloseInDelegationEnvelope(authorize) });
+      links.push({
+        authorize: encloseInDelegationEnvelope(
+          authorize,
+          this.deps.getAllowAuthorizerOnExternalDirectory(),
+        ),
+      });
     }
     return links;
   }
