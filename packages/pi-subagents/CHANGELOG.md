@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [19.2.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v19.2.0...pi-subagents-v19.2.1) (2026-07-28)
+
+
+### Bug Fixes
+
+* **pi-subagents:** make escapeXml attribute-safe by escaping quotes ([b6ab6bb](https://github.com/gotgenes/pi-packages/commit/b6ab6bbe43c79d55b86c5c2a6d58adc7ad24d94d))
+* **pi-subagents:** replace turn glyph that overflows its monospace cell ([8a54b9c](https://github.com/gotgenes/pi-packages/commit/8a54b9cabac1d2535e865a9a46ddb8f6845e21aa)), closes [#669](https://github.com/gotgenes/pi-packages/issues/669) [#681](https://github.com/gotgenes/pi-packages/issues/681)
+
 ## [19.2.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v19.1.0...pi-subagents-v19.2.0) (2026-07-28)
 
 
