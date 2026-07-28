@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [19.2.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v19.1.0...pi-subagents-v19.2.0) (2026-07-28)
+
+
+### Features
+
+* **pi-subagents:** add the ESC abort-all toggle to /subagents:settings ([#664](https://github.com/gotgenes/pi-packages/issues/664)) ([3e85ae9](https://github.com/gotgenes/pi-packages/commit/3e85ae92d8383c9c26f5d78153f2ba21a521c104))
+* **pi-subagents:** gate ESC abort-all on the interrupt policy ([#664](https://github.com/gotgenes/pi-packages/issues/664)) ([64ec124](https://github.com/gotgenes/pi-packages/commit/64ec124fd9b9b61b71f893e7b5d76ac557287123))
+* **pi-subagents:** persist the abortAllOnInterrupt setting ([#664](https://github.com/gotgenes/pi-packages/issues/664)) ([c371881](https://github.com/gotgenes/pi-packages/commit/c3718814a0398b9f9bd56dbd9bbe0d4c223bf5f8))
+
+
+### Documentation
+
+* **pi-subagents:** document the abortAllOnInterrupt setting ([#664](https://github.com/gotgenes/pi-packages/issues/664)) ([68e47c4](https://github.com/gotgenes/pi-packages/commit/68e47c4447c04474b369f146f12b7521c37a6066))
+
 ## [19.1.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v19.0.1...pi-subagents-v19.1.0) (2026-07-28)
 
 
