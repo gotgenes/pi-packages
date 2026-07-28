@@ -28,6 +28,10 @@ function getFileStamp(path: string): string {
   }
 }
 
+function loadOptionalUnifiedConfig(path: string | null) {
+  return path ? loadUnifiedConfig(path) : { config: {}, issues: [] };
+}
+
 // ---------------------------------------------------------------------------
 // MCP server-name reading helpers
 // ---------------------------------------------------------------------------
@@ -303,9 +307,9 @@ export class FilePolicyLoader implements PolicyLoader {
     }
 
     const settings = this.loadProjectSettings();
-    const configResult = this.projectGlobalConfigPath
-      ? loadUnifiedConfig(this.projectGlobalConfigPath)
-      : { config: {}, issues: [] };
+    const configResult = loadOptionalUnifiedConfig(
+      this.projectGlobalConfigPath,
+    );
     this.accumulateConfigIssues(configResult.issues);
 
     // A present-but-rejected source yields issues; an absent source yields none.

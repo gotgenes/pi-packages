@@ -1,18 +1,6 @@
 import type { ResolvedPolicyPaths } from "./permission-manager";
 
-export interface ResolvedConfigLogEntry {
-  globalConfigPath: string;
-  globalConfigExists: boolean;
-  globalSettingsPath?: string | null;
-  globalSettingsExists?: boolean;
-  projectConfigPath: string | null;
-  projectConfigExists: boolean;
-  projectSettingsPath?: string | null;
-  projectSettingsExists?: boolean;
-  agentsDir: string;
-  agentsDirExists: boolean;
-  projectAgentsDir: string | null;
-  projectAgentsDirExists: boolean;
+export interface ResolvedConfigLogEntry extends ResolvedPolicyPaths {
   legacyGlobalPolicyDetected: boolean;
   legacyProjectPolicyDetected: boolean;
   legacyExtensionConfigDetected: boolean;
