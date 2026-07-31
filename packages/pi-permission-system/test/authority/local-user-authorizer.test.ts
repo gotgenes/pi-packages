@@ -138,30 +138,127 @@ describe("LocalUserAuthorizer", () => {
     );
   });
 
-  it("emits the UI event before calling requestPermissionDecision", async () => {
-    const calls: string[] = [];
-    const events = {
-      emit: vi.fn(() => {
-        calls.push("emit");
-      }),
-      on: vi.fn().mockReturnValue(() => undefined),
-    };
-    const ui = makePromptUi();
-    const decisionFn = vi.fn<typeof requestPermissionDecision>(() => {
-      calls.push("dialog");
-      return Promise.resolve({ approved: true, state: "approved" });
-    });
-    const authorizer = new LocalUserAuthorizer({
-      ui,
-      mode: "tui",
-      events,
-      getPromptPreferences: () => ({ doublePressToConfirm: true }),
-      requestPermissionDecision: decisionFn,
+  describe("Herdr blocked lifecycle", () => {
+    it("stays blocked while a direct permission decision is pending", async () => {
+      const calls: string[] = [];
+      const pending = Promise.withResolvers<PermissionPromptDecision>();
+      const events = {
+        emit: vi.fn((channel: string, data: unknown) => {
+          if (channel === "herdr:blocked") {
+            const { active } = data as { active: boolean };
+            calls.push(active ? "herdr:active" : "herdr:inactive");
+            return;
+          }
+          calls.push(channel);
+        }),
+        on: vi.fn().mockReturnValue(() => undefined),
+      };
+      const ui = makePromptUi();
+      const decisionFn = vi.fn<typeof requestPermissionDecision>(() => {
+        calls.push("dialog");
+        return pending.promise;
+      });
+      const authorizer = new LocalUserAuthorizer({
+        ui,
+        mode: "tui",
+        events,
+        getPromptPreferences: () => ({ doublePressToConfirm: true }),
+        requestPermissionDecision: decisionFn,
+      });
+
+      const decisionPromise = authorizer.authorize(makeDetails());
+
+      expect(calls).toEqual([
+        "permissions:ui_prompt",
+        "herdr:active",
+        "dialog",
+      ]);
+      expect(events.emit).toHaveBeenNthCalledWith(2, "herdr:blocked", {
+        active: true,
+        label: "Permission Required",
+      });
+
+      const decision: PermissionPromptDecision = {
+        approved: true,
+        state: "approved",
+      };
+      pending.resolve(decision);
+      await expect(decisionPromise).resolves.toEqual(decision);
+
+      expect(calls).toEqual([
+        "permissions:ui_prompt",
+        "herdr:active",
+        "dialog",
+        "herdr:inactive",
+      ]);
+      expect(events.emit).toHaveBeenNthCalledWith(3, "herdr:blocked", {
+        active: false,
+      });
     });
 
-    await authorizer.authorize(makeDetails());
+    it("brackets a forwarded subagent prompt on the serving event bus", async () => {
+      const { deps, events } = makeDeps();
+      const authorizer = new LocalUserAuthorizer(deps);
 
-    expect(calls).toEqual(["emit", "dialog"]);
+      await authorizer.authorize(
+        makeDetails({
+          forwarding: {
+            requesterAgentName: "Explore",
+            requesterSessionId: "child-session",
+          },
+        }),
+      );
+
+      expect(events.emit).toHaveBeenCalledTimes(3);
+      expect(events.emit).toHaveBeenNthCalledWith(2, "herdr:blocked", {
+        active: true,
+        label: "Permission Required",
+      });
+      expect(events.emit).toHaveBeenNthCalledWith(3, "herdr:blocked", {
+        active: false,
+      });
+    });
+
+    it("clears the blocked state when the decision rejects", async () => {
+      const failure = new Error("prompt failed");
+      const { deps, events } = makeDeps({
+        requestPermissionDecision: vi
+          .fn<typeof requestPermissionDecision>()
+          .mockRejectedValue(failure),
+      });
+      const authorizer = new LocalUserAuthorizer(deps);
+
+      await expect(authorizer.authorize(makeDetails())).rejects.toBe(failure);
+
+      expect(events.emit).toHaveBeenNthCalledWith(3, "herdr:blocked", {
+        active: false,
+      });
+    });
+
+    it("ignores Herdr listener failures", async () => {
+      const decision: PermissionPromptDecision = {
+        approved: false,
+        state: "denied",
+      };
+      const { deps, events, decisionFn } = makeDeps({
+        requestPermissionDecision: vi
+          .fn<typeof requestPermissionDecision>()
+          .mockResolvedValue(decision),
+      });
+      events.emit.mockImplementation((channel: string) => {
+        if (channel === "herdr:blocked") {
+          throw new Error("listener failed");
+        }
+      });
+      const authorizer = new LocalUserAuthorizer(deps);
+
+      await expect(authorizer.authorize(makeDetails())).resolves.toEqual(
+        decision,
+      );
+
+      expect(decisionFn).toHaveBeenCalledOnce();
+      expect(events.emit).toHaveBeenCalledTimes(3);
+    });
   });
 
   describe("forwarded provenance", () => {
