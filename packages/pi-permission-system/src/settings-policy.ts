@@ -8,11 +8,13 @@ import {
 
 const settingsPolicySchema = z.strictObject({
   permission: permissionSchema.optional(),
+  subagentPermission: permissionSchema.optional(),
   agents: z.record(z.string().min(1), permissionSchema).optional(),
 });
 
 export interface SettingsPolicyLoadResult {
   permission?: FlatPermissionConfig;
+  subagentPermission?: FlatPermissionConfig;
   agents?: Record<string, FlatPermissionConfig>;
   issues: string[];
 }
@@ -48,6 +50,9 @@ export function loadSettingsPolicy(path: string): SettingsPolicyLoadResult {
 
   return {
     ...(result.data.permission ? { permission: result.data.permission } : {}),
+    ...(result.data.subagentPermission
+      ? { subagentPermission: result.data.subagentPermission }
+      : {}),
     ...(result.data.agents ? { agents: result.data.agents } : {}),
     issues: [],
   };

@@ -15,6 +15,9 @@ Use the namespaced settings section for global and per-agent policy:
 {
   "piPermissionSystem": {
     "permission": { "*": "ask", "read": "allow" },
+    "subagentPermission": {
+      "bash": { "**": "deny", "git status *": "allow" }
+    },
     "agents": {
       "worker": { "bash": "deny", "edit": "allow", "write": "allow" }
     }
@@ -53,7 +56,10 @@ See [migration/0644-project-trust-gating.md](migration/0644-project-trust-gating
 7. Project Pi settings agent policy
 8. Project agent frontmatter
 
-The `permission` object uses deep-shallow merge: string-vs-string replaces; both-object shallow-merges pattern maps; string-vs-object the override wins entirely.
+The `permission` and `subagentPermission` objects use deep-shallow merge: string-vs-string replaces; both-object shallow-merges pattern maps; string-vs-object the override wins entirely.
+For detected subagents, the resolved `subagentPermission` policy is a ceiling over the resolved regular and per-agent policy: the most restrictive result wins (`deny` > `ask` > `allow`).
+A session approval may satisfy a ceiling `ask`, but it cannot override a ceiling `deny`.
+Omitting `subagentPermission` adds no restriction.
 Scalar fields (`debugLog`, `permissionReviewLog`, `yoloMode`, `doublePressToConfirm`) use simple replacement.
 
 **Invalid higher-precedence scope fails closed.**
@@ -86,6 +92,18 @@ This clamp is deny-preserving and, like `yoloMode`, applied at composition; when
 
   // Ordered names of registered live-authority chain links (empty = none)
   "authorizerChain": [],
+
+  // Additional ceiling for every detected subagent
+  "subagentPermission": {
+    "bash": {
+      "**": "deny",
+      "git status *": "allow",
+      "git diff *": "allow",
+      "git log *": "allow",
+      "git show *": "allow",
+      "git rev-parse *": "allow"
+    }
+  },
 
   // Flat permission policy
   "permission": {

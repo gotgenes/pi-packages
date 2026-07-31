@@ -143,8 +143,16 @@ function mergeScopeConfigs(
     base.permission && override.permission
       ? mergeFlatPermissions(base.permission, override.permission)
       : (override.permission ?? base.permission);
+  const subagentPermission =
+    base.subagentPermission && override.subagentPermission
+      ? mergeFlatPermissions(
+          base.subagentPermission,
+          override.subagentPermission,
+        )
+      : (override.subagentPermission ?? base.subagentPermission);
   return {
     ...(permission ? { permission } : {}),
+    ...(subagentPermission ? { subagentPermission } : {}),
     ...(base.invalid === true || override.invalid === true
       ? { invalid: true }
       : {}),
@@ -281,9 +289,13 @@ export class FilePolicyLoader implements PolicyLoader {
     const value = mergeScopeConfigs(
       {
         permission: settings.permission,
+        subagentPermission: settings.subagentPermission,
         ...(settings.issues.length > 0 ? { invalid: true } : {}),
       },
-      { permission: config.permission },
+      {
+        permission: config.permission,
+        subagentPermission: config.subagentPermission,
+      },
     );
 
     this.globalConfigCache = { stamp, value };
@@ -317,10 +329,12 @@ export class FilePolicyLoader implements PolicyLoader {
     const value = mergeScopeConfigs(
       {
         permission: settings.permission,
+        subagentPermission: settings.subagentPermission,
         ...(settings.issues.length > 0 ? { invalid: true } : {}),
       },
       {
         permission: configResult.config.permission,
+        subagentPermission: configResult.config.subagentPermission,
         ...(configResult.issues.length > 0 ? { invalid: true } : {}),
       },
     );

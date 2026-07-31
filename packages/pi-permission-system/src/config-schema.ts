@@ -214,6 +214,12 @@ export const unifiedConfigSchema = z
       default: [],
     }),
     permission: permissionSchema.optional(),
+    subagentPermission: permissionSchema.optional().meta({
+      description:
+        "Additional permission ceiling applied to every detected subagent session.",
+      markdownDescription:
+        "Additional permission policy applied only to detected subagent sessions. It composes with the regular `permission` policy using most-restrictive-wins (`deny` > `ask` > `allow`), so it can tighten but never loosen the parent policy.",
+    }),
     shellTools: shellToolsSchema.optional(),
   })
   .meta({

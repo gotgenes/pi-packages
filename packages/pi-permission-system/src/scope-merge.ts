@@ -26,14 +26,16 @@ export interface MergedScopes {
  */
 export function mergeScopesWithOrigins(
   scopes: readonly (readonly [RuleOrigin, ScopeConfig])[],
+  field: "permission" | "subagentPermission" = "permission",
 ): MergedScopes {
   const origins: OriginMap = new Map();
   let mergedPermission: FlatPermissionConfig = {};
 
   for (const [scopeName, scope] of scopes) {
-    if (!scope.permission) continue;
+    const permission = scope[field];
+    if (!permission) continue;
 
-    for (const [surface, value] of Object.entries(scope.permission)) {
+    for (const [surface, value] of Object.entries(permission)) {
       const baseVal = mergedPermission[surface];
       /* eslint-disable @typescript-eslint/no-unnecessary-condition -- defensive null/type checks; config values may differ at runtime */
       const bothObjects =
@@ -65,7 +67,7 @@ export function mergeScopesWithOrigins(
       }
     }
 
-    mergedPermission = mergeFlatPermissions(mergedPermission, scope.permission);
+    mergedPermission = mergeFlatPermissions(mergedPermission, permission);
   }
 
   return { mergedPermission, origins };

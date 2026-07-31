@@ -18,12 +18,15 @@ describe("loadSettingsPolicy", () => {
     rmSync(tempDir, { recursive: true, force: true });
   });
 
-  it("loads global and per-agent permission policies", () => {
+  it("loads global, subagent, and per-agent permission policies", () => {
     writeFileSync(
       settingsPath,
       JSON.stringify({
         piPermissionSystem: {
           permission: { "*": "ask", read: "allow" },
+          subagentPermission: {
+            bash: { "**": "deny", "git status *": "allow" },
+          },
           agents: {
             worker: { bash: "deny", edit: "allow", write: "allow" },
           },
@@ -33,6 +36,9 @@ describe("loadSettingsPolicy", () => {
 
     expect(loadSettingsPolicy(settingsPath)).toEqual({
       permission: { "*": "ask", read: "allow" },
+      subagentPermission: {
+        bash: { "**": "deny", "git status *": "allow" },
+      },
       agents: {
         worker: { bash: "deny", edit: "allow", write: "allow" },
       },
@@ -58,6 +64,7 @@ describe("loadSettingsPolicy", () => {
 
     const result = loadSettingsPolicy(settingsPath);
     expect(result.permission).toBeUndefined();
+    expect(result.subagentPermission).toBeUndefined();
     expect(result.agents).toBeUndefined();
     expect(result.issues.join("\n")).toContain(
       "piPermissionSystem.permission.bash",

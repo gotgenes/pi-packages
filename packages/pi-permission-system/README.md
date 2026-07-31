@@ -107,8 +107,10 @@ Permission policy can live in Pi settings or the extension's dedicated config:
 | Global  | `~/.pi/agent/settings.json` | `~/.pi/agent/extensions/pi-permission-system/config.json` |
 | Project | `<cwd>/.pi/settings.json`   | `<cwd>/.pi/extensions/pi-permission-system/config.json`   |
 
-Put global policy under `piPermissionSystem.permission` and per-agent policy under `piPermissionSystem.agents.<name>`.
+Put global policy under `piPermissionSystem.permission`, the all-subagent ceiling under `piPermissionSystem.subagentPermission`, and per-agent policy under `piPermissionSystem.agents.<name>`.
+The dedicated config accepts the same `subagentPermission` key.
 Dedicated config overrides settings in the same scope; agent frontmatter remains the highest-precedence source.
+For detected subagents, `subagentPermission` composes with the resolved regular and per-agent policy using most-restrictive-wins (`deny` > `ask` > `allow`).
 Runtime knobs remain in the dedicated config.
 Project config (policy and runtime knobs) is loaded only once the project is trusted — in an untrusted directory only global config applies, so an untrusted repository cannot loosen your global policy (see [Upgrading](#2200--project-config-requires-project-trust)).
 

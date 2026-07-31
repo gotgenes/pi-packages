@@ -17,6 +17,17 @@
     "exec_command": { "commandArgument": "cmd", "workdirArgument": "workdir" }
   },
 
+  "subagentPermission": {
+    "bash": {
+      "**": "deny",
+      "git status *": "allow",
+      "git diff *": "allow",
+      "git log *": "allow",
+      "git show *": "allow",
+      "git rev-parse *": "allow"
+    }
+  },
+
   "permission": {
     "*": "ask",
     "path": {

@@ -38,6 +38,7 @@ import type {
   PermissionState,
 } from "./types";
 import { isPermissionState } from "./types";
+import { wildcardMatch } from "./wildcard-matcher";
 
 const SPECIAL_PERMISSION_KEYS = new Set(["external_directory", "path"]);
 
@@ -46,6 +47,42 @@ const DEFAULT_UNIVERSAL_FALLBACK: PermissionState = "ask";
 
 /** Default yolo reader — yolo disabled unless the composition root injects one. */
 const YOLO_DISABLED = (): boolean => false;
+const NOT_SUBAGENT = (): boolean => false;
+
+const RESTRICTIVENESS: Record<PermissionState, number> = {
+  allow: 0,
+  ask: 1,
+  deny: 2,
+};
+
+export interface PermissionResolutionContext {
+  isSubagent?: boolean;
+}
+
+function moreRestrictiveResult(
+  base: PermissionCheckResult,
+  ceiling: PermissionCheckResult,
+): PermissionCheckResult {
+  return RESTRICTIVENESS[ceiling.state] > RESTRICTIVENESS[base.state]
+    ? ceiling
+    : base;
+}
+
+function moreRestrictiveState(
+  base: PermissionState,
+  ceiling: PermissionState,
+): PermissionState {
+  return RESTRICTIVENESS[ceiling] > RESTRICTIVENESS[base] ? ceiling : base;
+}
+
+function hasNonDenyConfigRule(surface: string, rules: Ruleset): boolean {
+  return rules.some(
+    (rule) =>
+      rule.layer === "config" &&
+      rule.action !== "deny" &&
+      wildcardMatch(rule.surface, surface),
+  );
+}
 
 type FileCacheEntry<TValue> = {
   stamp: string;
@@ -58,6 +95,8 @@ type ResolvedPermissions = {
    * Session rules are appended at call-time inside check().
    */
   composedRules: Ruleset;
+  /** Subagent-only ceiling; its synthesized default is allow (no restriction). */
+  subagentRules: Ruleset;
   /**
    * Non-global scopes whose config file failed to load or validate. When
    * non-empty the composed ruleset has been floored allow→ask (#646); the
@@ -83,6 +122,7 @@ export interface ScopedPermissionManager {
   check(
     intent: ResolvedAccessIntent,
     sessionRules?: Ruleset,
+    context?: PermissionResolutionContext,
   ): PermissionCheckResult;
   getToolPermission(toolName: string, agentName?: string): PermissionState;
   getConfigIssues(agentName?: string): string[];
@@ -110,12 +150,15 @@ export interface PermissionManagerOptions extends PolicyLoaderOptions {
    * yolo disabled.
    */
   isYoloEnabled?: () => boolean;
+  /** Read live so the same manager can apply the subagent ceiling by session. */
+  isSubagent?: () => boolean;
 }
 
 export class PermissionManager implements ScopedPermissionManager {
   private readonly agentDir: string | undefined;
   private readonly flavor: PathFlavor;
   private readonly isYoloEnabled: () => boolean;
+  private readonly isSubagent: () => boolean;
   private loader: PolicyLoader;
   private readonly resolvedPermissionsCache = new Map<
     string,
@@ -126,6 +169,7 @@ export class PermissionManager implements ScopedPermissionManager {
     this.agentDir = options.agentDir;
     this.flavor = options.flavor ?? posixPathFlavor;
     this.isYoloEnabled = options.isYoloEnabled ?? YOLO_DISABLED;
+    this.isSubagent = options.isSubagent ?? NOT_SUBAGENT;
     this.loader =
       options.policyLoader ??
       new FilePolicyLoader(
@@ -185,12 +229,17 @@ export class PermissionManager implements ScopedPermissionManager {
     // Merge permission objects across scopes (lowest → highest precedence),
     // building a parallel origin map that tracks which scope contributed each
     // (surface, pattern) entry.
-    const { mergedPermission, origins } = mergeScopesWithOrigins([
+    const scopes = [
       ["global", globalConfig],
       ["project", projectConfig],
       ["agent", agentConfig],
       ["project-agent", projectAgentConfig],
-    ]);
+    ] as const;
+    const { mergedPermission, origins } = mergeScopesWithOrigins(scopes);
+    const {
+      mergedPermission: mergedSubagentPermission,
+      origins: subagentOrigins,
+    } = mergeScopesWithOrigins(scopes, "subagentPermission");
 
     // Extract the universal fallback from permission["*"].
     // The "*" key feeds synthesizeDefaults() only — it is NOT included as a
@@ -224,6 +273,36 @@ export class PermissionManager implements ScopedPermissionManager {
       configRules,
     );
 
+    const subagentUniversalFallback = isPermissionState(
+      mergedSubagentPermission["*"],
+    )
+      ? mergedSubagentPermission["*"]
+      : "allow";
+    const subagentUniversalFallbackOrigin: RuleOrigin =
+      subagentOrigins.get("*")?.get("*") ?? "builtin";
+    const subagentPermissionWithoutUniversal: FlatPermissionConfig =
+      Object.fromEntries(
+        Object.entries(mergedSubagentPermission).filter(([key]) => key !== "*"),
+      );
+    const subagentConfigRules: Ruleset = normalizeFlatConfig(
+      subagentPermissionWithoutUniversal,
+    ).map(
+      (rule): Rule => ({
+        ...rule,
+        layer: "config",
+        origin:
+          subagentOrigins.get(rule.surface)?.get(rule.pattern) ?? "builtin",
+      }),
+    );
+    const subagentRules = composeRuleset(
+      synthesizeDefaults(
+        subagentUniversalFallback,
+        subagentUniversalFallbackOrigin,
+      ),
+      [],
+      subagentConfigRules,
+    );
+
     // Fail closed when a non-global scope's config is invalid: floor every
     // `allow` (including one inherited from a lower scope) to `ask` so a
     // higher scope meant to tighten policy cannot silently fail open (#646).
@@ -238,9 +317,14 @@ export class PermissionManager implements ScopedPermissionManager {
       failClosedScopes.length > 0
         ? floorAllowsToAsk(composedRules)
         : composedRules;
+    const effectiveSubagentRules =
+      failClosedScopes.length > 0
+        ? floorAllowsToAsk(subagentRules)
+        : subagentRules;
 
     const value: ResolvedPermissions = {
       composedRules: effectiveRules,
+      subagentRules: effectiveSubagentRules,
       failClosedScopes,
     };
     this.resolvedPermissionsCache.set(cacheKey, { stamp, value });
@@ -263,11 +347,32 @@ export class PermissionManager implements ScopedPermissionManager {
    * command-level rules. Used for tool injection decisions.
    */
   getToolPermission(toolName: string, agentName?: string): PermissionState {
-    const { composedRules } = this.resolvePermissions(agentName);
+    const { composedRules, subagentRules } = this.resolvePermissions(agentName);
     // Every surface (special, bash, mcp, skill, path-bearing, and extension
     // tools) resolves its tool-level state identically: evaluate the surface
     // name against the "*" catch-all value. There is no per-kind branch.
-    return evaluate(toolName.trim(), "*", composedRules, this.flavor).action;
+    const base = evaluate(
+      toolName.trim(),
+      "*",
+      composedRules,
+      this.flavor,
+    ).action;
+    if (!this.isSubagent()) return base;
+    const normalizedToolName = toolName.trim();
+    const ceiling = evaluate(
+      normalizedToolName,
+      "*",
+      subagentRules,
+      this.flavor,
+    ).action;
+    // A deny fallback with explicit allow/ask patterns must keep the tool
+    // visible so those narrower operations can reach the runtime gate.
+    const visibilityCeiling =
+      ceiling === "deny" &&
+      hasNonDenyConfigRule(normalizedToolName, subagentRules)
+        ? "allow"
+        : ceiling;
+    return moreRestrictiveState(base, visibilityCeiling);
   }
 
   /**
@@ -287,29 +392,75 @@ export class PermissionManager implements ScopedPermissionManager {
   check(
     intent: ResolvedAccessIntent,
     sessionRules?: Ruleset,
+    context?: PermissionResolutionContext,
   ): PermissionCheckResult {
-    const { composedRules } = this.resolvePermissions(intent.agentName);
-    const composedWithSession: Ruleset = sessionRules?.length
-      ? [...composedRules, ...sessionRules]
-      : composedRules;
-    // Apply the yolo rewrite post-cache so the resolved-permissions cache and
-    // the display surfaces (getComposedConfigRules / getToolPermission) stay
-    // yolo-free — only the resolution path sees the ask→allow rewrite (#526).
-    const fullRules: Ruleset = this.isYoloEnabled()
-      ? rewriteAsksToYolo(composedWithSession)
-      : composedWithSession;
+    const { composedRules, subagentRules } = this.resolvePermissions(
+      intent.agentName,
+    );
+    const withSession = (rules: Ruleset): Ruleset =>
+      sessionRules?.length ? [...rules, ...sessionRules] : rules;
+    const finalize = (rules: Ruleset): Ruleset =>
+      this.isYoloEnabled() ? rewriteAsksToYolo(rules) : rules;
+    const fullRules = finalize(withSession(composedRules));
+    const isSubagent = context?.isSubagent ?? this.isSubagent();
+    const subagentConfigRules = isSubagent
+      ? finalize(subagentRules)
+      : undefined;
+    const subagentSessionRules = isSubagent
+      ? finalize(withSession(subagentRules))
+      : undefined;
+    const resolveResult = (
+      surface: string,
+      values: string[],
+      resultExtras: Record<string, unknown>,
+      normalizedToolName: string,
+      toolName: string,
+    ): PermissionCheckResult => {
+      const base = buildCheckResult(
+        surface,
+        values,
+        resultExtras,
+        normalizedToolName,
+        toolName,
+        fullRules,
+        this.flavor,
+      );
+      if (!subagentConfigRules || !subagentSessionRules) return base;
+      const configCeiling = buildCheckResult(
+        surface,
+        values,
+        resultExtras,
+        normalizedToolName,
+        toolName,
+        subagentConfigRules,
+        this.flavor,
+      );
+      // Session approvals may satisfy an `ask`, but never override a ceiling
+      // `deny`; forwarded requests use this same path.
+      const ceiling =
+        configCeiling.state === "deny"
+          ? configCeiling
+          : buildCheckResult(
+              surface,
+              values,
+              resultExtras,
+              normalizedToolName,
+              toolName,
+              subagentSessionRules,
+              this.flavor,
+            );
+      return moreRestrictiveResult(base, ceiling);
+    };
 
     if (intent.kind === "path-values") {
       const lookupValues =
         intent.values.length > 0 ? [...intent.values] : ["*"];
-      return buildCheckResult(
+      return resolveResult(
         intent.surface,
         lookupValues,
         {},
         intent.surface,
         intent.surface,
-        fullRules,
-        this.flavor,
       );
     }
 
@@ -320,14 +471,12 @@ export class PermissionManager implements ScopedPermissionManager {
       intent.input,
       this.loader.getConfiguredMcpServerNames(),
     );
-    return buildCheckResult(
+    return resolveResult(
       surface,
       values,
       resultExtras,
       toolName,
       intent.surface,
-      fullRules,
-      this.flavor,
     );
   }
 }
