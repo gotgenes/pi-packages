@@ -78,6 +78,8 @@ function makePolicyPathProvider(
         globalConfigExists: false,
         projectConfigPath: null,
         projectConfigExists: false,
+        projectLocalConfigPath: null,
+        projectLocalConfigExists: false,
         agentsDir: "/agent/agents",
         agentsDirExists: false,
         projectAgentsDir: null,
@@ -422,6 +424,41 @@ describe("ConfigStore", () => {
         expect.stringContaining(".tmp"),
         expect.stringContaining('"piInfrastructureReadPaths"'),
         "utf-8",
+      );
+    });
+  });
+
+  describe("setShowPersistenceSummary()", () => {
+    it("persists only the sticky global preference and updates current config", () => {
+      const { store } = makeStore();
+      mockLoadUnifiedConfig.mockReturnValue({
+        config: { permission: { bash: "ask" }, debugLog: true },
+      });
+
+      expect(store.setShowPersistenceSummary(false, vi.fn())).toBe(true);
+
+      expect(store.current().showPersistenceSummary).toBe(false);
+      expect(mockWriteFileSync).toHaveBeenCalledWith(
+        expect.stringContaining(".tmp"),
+        expect.stringContaining('"showPersistenceSummary": false'),
+        "utf-8",
+      );
+      const content = mockWriteFileSync.mock.calls.at(-1)?.[1] as string;
+      expect(content).toContain('"debugLog": true');
+      expect(content).not.toContain('"yoloMode"');
+    });
+
+    it("keeps the live preference unchanged when persistence fails", () => {
+      const { store } = makeStore();
+      const notify = vi.fn();
+      mockMkdirSync.mockImplementation(() => {
+        throw new Error("disk full");
+      });
+
+      expect(store.setShowPersistenceSummary(false, notify)).toBe(false);
+      expect(store.current().showPersistenceSummary).toBe(true);
+      expect(notify).toHaveBeenCalledWith(
+        expect.stringContaining("Failed to save"),
       );
     });
   });

@@ -33,16 +33,24 @@ function makeDeps(
 ): AuthorizerSelectionDeps {
   return {
     detection: overrides.detection ?? makeDetection(),
-    events: overrides.events ?? {
-      emit: vi.fn(),
-      on: vi.fn().mockReturnValue(() => undefined),
-    },
-    getPromptPreferences:
-      overrides.getPromptPreferences ??
-      (() => ({ doublePressToConfirm: true })),
-    requestPermissionDecision:
-      overrides.requestPermissionDecision ??
-      vi.fn().mockResolvedValue({ approved: true, state: "approved" }),
+    createLocalAuthorizer:
+      overrides.createLocalAuthorizer ??
+      ((ctx) =>
+        new LocalUserAuthorizer({
+          ui: ctx.ui,
+          mode: ctx.mode,
+          events: {
+            emit: vi.fn(),
+            on: vi.fn().mockReturnValue(() => undefined),
+          },
+          getPromptPreferences: () => ({
+            doublePressToConfirm: true,
+            showPersistenceSummary: true,
+          }),
+          requestPermissionDecision: vi
+            .fn()
+            .mockResolvedValue({ approved: true, state: "approved" }),
+        })),
     forwardingDir: overrides.forwardingDir ?? "/tmp/forwarding",
     registry: overrides.registry,
     logger: overrides.logger ?? { review: vi.fn(), debug: vi.fn() },

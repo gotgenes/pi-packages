@@ -113,6 +113,57 @@ describe("FilePolicyLoader.loadProjectConfig", () => {
     }
   });
 
+  it("merges project-local config after shared project config", () => {
+    const baseDir = makeTempDir();
+    try {
+      const projectConfigPath = join(baseDir, "project-config.json");
+      const projectLocalConfigPath = join(baseDir, "project-config.local.json");
+      writeFileSync(
+        projectConfigPath,
+        JSON.stringify({ permission: { bash: "ask", read: "deny" } }),
+      );
+      writeFileSync(
+        projectLocalConfigPath,
+        JSON.stringify({ permission: { bash: "allow" } }),
+      );
+      const loader = new FilePolicyLoader({
+        globalConfigPath: "/nonexistent/config.json",
+        agentsDir: "/nonexistent/agents",
+        projectGlobalConfigPath: projectConfigPath,
+        projectLocalConfigPath,
+      });
+
+      expect(loader.loadProjectConfig()).toEqual({
+        permission: { bash: "allow", read: "deny" },
+      });
+    } finally {
+      rmSync(baseDir, { recursive: true, force: true });
+    }
+  });
+
+  it("marks the scope invalid when project-local config is rejected", () => {
+    const baseDir = makeTempDir();
+    try {
+      const projectConfigPath = join(baseDir, "project-config.json");
+      const projectLocalConfigPath = join(baseDir, "project-config.local.json");
+      writeFileSync(
+        projectConfigPath,
+        JSON.stringify({ permission: { bash: "allow" } }),
+      );
+      writeFileSync(projectLocalConfigPath, JSON.stringify({ debugLo: true }));
+      const loader = new FilePolicyLoader({
+        globalConfigPath: "/nonexistent/config.json",
+        agentsDir: "/nonexistent/agents",
+        projectGlobalConfigPath: projectConfigPath,
+        projectLocalConfigPath,
+      });
+
+      expect(loader.loadProjectConfig().invalid).toBe(true);
+    } finally {
+      rmSync(baseDir, { recursive: true, force: true });
+    }
+  });
+
   it("marks the scope invalid when the project config file is rejected", () => {
     const baseDir = makeTempDir();
     try {

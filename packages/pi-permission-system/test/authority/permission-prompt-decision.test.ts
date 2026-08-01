@@ -13,6 +13,7 @@ function makeConfig(
   return {
     doublePressToConfirm: true,
     sessionLabel: "Yes, for this session",
+    showPersistenceSummary: true,
     ...overrides,
   };
 }
@@ -306,6 +307,42 @@ describe("reducePrompt", () => {
           reasonDraft: "",
           reasonError: undefined,
           scopeServing: false,
+        },
+      });
+    });
+  });
+
+  describe("optional persistence summary", () => {
+    const globalTarget = {
+      scope: "global" as const,
+      path: "/agent/config.json",
+      expectedDir: "/agent",
+      expectedRoot: "/agent",
+    };
+
+    it("persists immediately when the sticky summary preference is off", () => {
+      const config = makeConfig({
+        doublePressToConfirm: false,
+        showPersistenceSummary: false,
+        persistent: {
+          proposal: { surface: "bash", patterns: ["git status"] },
+          globalTarget,
+        },
+      });
+
+      expect(
+        reducePrompt(config, initialPromptState(config), {
+          type: "hotkey",
+          key: "g",
+        }),
+      ).toEqual({
+        kind: "decision",
+        decision: {
+          kind: "persist",
+          scope: "global",
+          proposal: config.persistent?.proposal,
+          target: globalTarget,
+          summaryShown: false,
         },
       });
     });

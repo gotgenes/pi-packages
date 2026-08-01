@@ -9,6 +9,7 @@ import {
   type ServingPolicy,
 } from "./authority/forwarded-request-server";
 import { ForwardingManager } from "./authority/forwarding-manager";
+import { LocalUserAuthorizer } from "./authority/local-user-authorizer";
 import { requestPermissionDecision } from "./authority/permission-prompt-component";
 import { PermissionPrompter } from "./authority/permission-prompter";
 import { SubagentDetection } from "./authority/subagent-detection";
@@ -36,6 +37,11 @@ import { PermissionManager } from "./permission-manager";
 import { PermissionResolver } from "./permission-resolver";
 import { PermissionSession } from "./permission-session";
 import { LocalPermissionsService } from "./permissions-service";
+import {
+  PersistentApprovalService,
+  PersistentApprovalTargetResolver,
+} from "./persistent-approval-service";
+import { PersistentPermissionWriter } from "./persistent-permission-writer";
 import { PermissionServiceLifecycle } from "./service-lifecycle";
 import { PermissionSessionLogger } from "./session-logger";
 import { SessionRules } from "./session-rules";
@@ -104,11 +110,31 @@ export default function piPermissionSystemExtension(pi: ExtensionAPI): void {
 
   const authorizerSelection = new AuthorizerSelection({
     detection: subagentDetection,
-    events: pi.events,
-    getPromptPreferences: () => ({
-      doublePressToConfirm: configStore.current().doublePressToConfirm,
-    }),
-    requestPermissionDecision,
+    createLocalAuthorizer: (ctx) =>
+      new LocalUserAuthorizer({
+        ui: ctx.ui,
+        mode: ctx.mode,
+        events: pi.events,
+        getPromptPreferences: () => ({
+          doublePressToConfirm: configStore.current().doublePressToConfirm,
+          showPersistenceSummary: configStore.current().showPersistenceSummary,
+        }),
+        setShowPersistenceSummary: (enabled) =>
+          configStore.setShowPersistenceSummary(enabled, (message) =>
+            ctx.ui.notify(message, "error"),
+          ),
+        requestPermissionDecision,
+        persistentApprovalService: new PersistentApprovalService({
+          targetResolver: new PersistentApprovalTargetResolver({
+            agentDir,
+            cwd: ctx.cwd,
+            isProjectTrusted: () => ctx.isProjectTrusted(),
+          }),
+          writer: new PersistentPermissionWriter(),
+          reload: (cwd) => permissionManager.configureForCwd(cwd),
+          logger,
+        }),
+      }),
     forwardingDir: paths.forwardingDir,
     registry: subagentRegistry,
     logger,

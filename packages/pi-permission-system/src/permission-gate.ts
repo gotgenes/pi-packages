@@ -2,7 +2,10 @@ import type { PermissionPromptDecision } from "#src/authority/permission-dialog"
 
 /** Result of applying the permission gate. */
 export type PermissionGateResult =
-  | { action: "allow"; sessionApproval?: { surface: string; pattern: string } }
+  | {
+      action: "allow";
+      sessionApproval?: { surface: string; patterns: readonly string[] };
+    }
   | { action: "block"; reason: string };
 
 /** Everything the gate needs — no direct dependency on ExtensionContext. */
@@ -22,7 +25,7 @@ export interface PermissionGateParams {
    * "for this session". When present and the decision is `approved_for_session`,
    * the result carries the suggestion back to the caller for recording.
    */
-  sessionApproval?: { surface: string; pattern: string };
+  sessionApproval?: { surface: string; patterns: readonly string[] };
 
   /** Write a review-log entry. Called for deny and ask-but-unavailable paths. */
   writeLog: (event: string, extra: Record<string, unknown>) => void;
@@ -70,7 +73,10 @@ export async function applyPermissionGate(
       };
     }
     if (decision.state === "approved_for_session" && params.sessionApproval) {
-      return { action: "allow", sessionApproval: params.sessionApproval };
+      return {
+        action: "allow",
+        sessionApproval: decision.sessionApproval ?? params.sessionApproval,
+      };
     }
   }
 

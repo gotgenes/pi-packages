@@ -33,14 +33,12 @@ export class SessionApproval {
     return this.patterns[0];
   }
 
-  /**
-   * Single-pattern shape `applyPermissionGate` echoes back to the caller.
-   * Returns `undefined` when patterns is empty (degenerate case).
-   */
-  toGateApproval(): { surface: string; pattern: string } | undefined {
-    const pattern = this.representativePattern;
-    if (pattern === undefined) return undefined;
-    return { surface: this.surface, pattern };
+  /** Plain proposal data `applyPermissionGate` may echo back after editing. */
+  toGateApproval():
+    | { surface: string; patterns: readonly string[] }
+    | undefined {
+    if (this.patterns.length === 0) return undefined;
+    return { surface: this.surface, patterns: [...this.patterns] };
   }
 
   /**

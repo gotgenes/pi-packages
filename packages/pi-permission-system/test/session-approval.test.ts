@@ -15,11 +15,11 @@ describe("SessionApproval", () => {
       expect(approval.representativePattern).toBe("git *");
     });
 
-    it("toGateApproval returns { surface, pattern }", () => {
+    it("toGateApproval returns the complete proposal", () => {
       const approval = SessionApproval.single("bash", "git *");
       expect(approval.toGateApproval()).toEqual({
         surface: "bash",
-        pattern: "git *",
+        patterns: ["git *"],
       });
     });
   });
@@ -42,15 +42,26 @@ describe("SessionApproval", () => {
       expect(approval.representativePattern).toBe("/outside/a/*");
     });
 
-    it("toGateApproval returns { surface, pattern } using the first pattern", () => {
+    it("toGateApproval returns every pattern", () => {
       const approval = SessionApproval.multiple("external_directory", [
         "/outside/a/*",
         "/outside/b/*",
       ]);
       expect(approval.toGateApproval()).toEqual({
         surface: "external_directory",
-        pattern: "/outside/a/*",
+        patterns: ["/outside/a/*", "/outside/b/*"],
       });
+    });
+
+    it("toGateApproval returns a defensive copy", () => {
+      const approval = SessionApproval.multiple("external_directory", [
+        "/outside/a/*",
+        "/outside/b/*",
+      ]);
+      const gateApproval = approval.toGateApproval();
+      (gateApproval?.patterns as string[]).push("/outside/c/*");
+
+      expect(approval.patterns).toEqual(["/outside/a/*", "/outside/b/*"]);
     });
 
     it("defensive copy — mutating the source array does not affect patterns", () => {

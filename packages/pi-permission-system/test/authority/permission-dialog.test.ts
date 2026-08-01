@@ -267,6 +267,93 @@ describe("requestPermissionDecisionFromUi", () => {
   });
 });
 
+describe("persistent approval choices", () => {
+  const globalTarget = {
+    scope: "global" as const,
+    path: "/agent/extensions/pi-permission-system/config.json",
+    expectedDir: "/agent/extensions/pi-permission-system",
+  };
+  const projectTarget = {
+    scope: "project" as const,
+    path: "/project/.pi/extensions/pi-permission-system/config.local.json",
+    expectedDir: "/project/.pi/extensions/pi-permission-system",
+  };
+  const persistent = {
+    proposal: { surface: "bash", patterns: ["git *"] },
+    projectTarget,
+    globalTarget,
+  };
+
+  it("shows exact rule details without a typed acknowledgement", async () => {
+    const select = vi
+      .fn()
+      .mockResolvedValueOnce("Persist for this project")
+      .mockResolvedValueOnce("Confirm");
+    const input = vi.fn();
+
+    const result = await requestPermissionDecisionFromUi(
+      { select, input },
+      "Title",
+      "Message",
+      { persistent },
+    );
+
+    expect(select.mock.calls[1]?.[0]).toContain("Surface: bash");
+    expect(select.mock.calls[1]?.[0]).toContain("  - git *");
+    expect(select.mock.calls[1]?.[0]).toContain(projectTarget.path);
+    expect(input).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      kind: "persist",
+      scope: "project",
+      proposal: persistent.proposal,
+      target: projectTarget,
+      summaryShown: true,
+    });
+  });
+
+  it("skips exact rule details when the sticky preference is off", async () => {
+    const select = vi.fn().mockResolvedValueOnce("Persist globally");
+
+    const result = await requestPermissionDecisionFromUi(
+      { select, input: vi.fn() },
+      "Title",
+      "Message",
+      { persistent },
+      false,
+    );
+
+    expect(select).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({
+      kind: "persist",
+      scope: "global",
+      proposal: persistent.proposal,
+      target: globalTarget,
+      summaryShown: false,
+    });
+  });
+
+  it("edits the proposal before a session approval", async () => {
+    const select = vi
+      .fn()
+      .mockResolvedValueOnce("Edit proposed pattern(s)")
+      .mockResolvedValueOnce("Yes, for this session");
+    const input = vi.fn().mockResolvedValueOnce("git status");
+
+    const result = await requestPermissionDecisionFromUi(
+      { select, input },
+      "Title",
+      "Message",
+      { persistent },
+    );
+
+    expect(result).toEqual({
+      approved: true,
+      state: "approved_for_session",
+      sessionApproval: { surface: "bash", patterns: ["git status"] },
+    });
+  });
+});
+
 describe("normalizePermissionDenialReason", () => {
   it("returns trimmed string for non-empty input", () => {
     expect(normalizePermissionDenialReason("  reason  ")).toBe("reason");

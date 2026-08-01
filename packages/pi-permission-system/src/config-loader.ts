@@ -7,6 +7,7 @@ import {
   getLegacyGlobalPolicyPath,
   getLegacyProjectPolicyPath,
   getProjectConfigPath,
+  getProjectLocalConfigPath,
 } from "./config-paths";
 import {
   type ShellToolsConfig,
@@ -199,7 +200,7 @@ function formatConfigIssues(error: ZodError): string[] {
  */
 // Scalar knobs merged by override-replaces-base; keep in sync with
 // PermissionSystemExtensionConfig booleans (debugLog, permissionReviewLog,
-// yoloMode, doublePressToConfirm).
+// yoloMode, doublePressToConfirm, showPersistenceSummary).
 export function mergeUnifiedConfigs(
   base: UnifiedPermissionConfig,
   override: UnifiedPermissionConfig,
@@ -212,6 +213,7 @@ export function mergeUnifiedConfigs(
     "permissionReviewLog",
     "yoloMode",
     "doublePressToConfirm",
+    "showPersistenceSummary",
   ] as const) {
     const value = override[key] ?? base[key];
     if (value !== undefined) {
@@ -281,7 +283,8 @@ export interface MergedConfigResult {
  * 2. Legacy extension runtime config (if present and path differs from new global)
  * 3. New global config
  * 4. Legacy project policy (if present)
- * 5. New project config — highest precedence
+ * 5. New shared project config
+ * 6. New project-local config — highest precedence
  *
  * Legacy files are detected and warned about. Their content is parsed with the
  * flat-format parser — legacy-format keys (defaultPolicy, tools, bash, etc.)
@@ -304,6 +307,7 @@ export function loadAndMergeConfigs(
 
   const newGlobalPath = getGlobalConfigPath(agentDir);
   const newProjectPath = getProjectConfigPath(cwd);
+  const newProjectLocalPath = getProjectLocalConfigPath(cwd);
   const legacyGlobalPolicyPath = getLegacyGlobalPolicyPath(agentDir);
   const legacyProjectPolicyPath = getLegacyProjectPolicyPath(cwd);
   const legacyExtConfigPath = getLegacyExtensionConfigPath(extensionRoot);
@@ -359,13 +363,19 @@ export function loadAndMergeConfigs(
     merged = mergeUnifiedConfigs(merged, legacy.config);
   }
 
-  // 5. New project config — skipped when the project scope is withheld, so an
-  // untrusted project contributes nothing and `project` reports empty.
+  // 5–6. Shared and local project config — both are skipped when the project
+  // scope is withheld, so an untrusted project contributes nothing.
   const projectResult = includeProjectScope
     ? loadUnifiedConfig(newProjectPath)
     : { config: {}, issues: [] };
-  allIssues.push(...projectResult.issues);
-  const projectConfig = projectResult.config;
+  const projectLocalResult = includeProjectScope
+    ? loadUnifiedConfig(newProjectLocalPath)
+    : { config: {}, issues: [] };
+  allIssues.push(...projectResult.issues, ...projectLocalResult.issues);
+  const projectConfig = mergeUnifiedConfigs(
+    projectResult.config,
+    projectLocalResult.config,
+  );
   merged = mergeUnifiedConfigs(merged, projectConfig);
 
   const bashFallbackIssue = detectPermissiveBashFallback(merged.permission);
