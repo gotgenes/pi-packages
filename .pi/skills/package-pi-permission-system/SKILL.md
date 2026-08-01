@@ -68,13 +68,15 @@ This lesson comes from issue [#296]: the regression where `permission-bridge.ts`
 
 ## Configuration
 
-One unified config file per scope, following the `pi-autoformat` convention (`extensions/<id>/config.json`).
+Unified config follows the `pi-autoformat` convention (`extensions/<id>/config.json`), with a user-local project override used only for explicit persistent approvals.
 
 - **Global config**: `~/.pi/agent/extensions/pi-permission-system/config.json` (respects `PI_CODING_AGENT_DIR`)
-- **Project config**: `<cwd>/.pi/extensions/pi-permission-system/config.json`
+- **Shared project config**: `<cwd>/.pi/extensions/pi-permission-system/config.json`
+- **Project-local config**: `<cwd>/.pi/extensions/pi-permission-system/config.local.json`
 - **Per-agent overrides**: YAML frontmatter in agent definition files
 
-Merge precedence: project overrides global; per-agent frontmatter overrides both.
+Merge precedence: shared project overrides global; project-local overrides shared project; global-agent and project-agent frontmatter remain higher.
+Automatic project persistence writes only trusted-project `config.local.json`, never the shared project file.
 The `permission` object uses deep-shallow merge; scalar fields use simple replacement.
 
 - Zod source of truth: `src/config-schema.ts` (the composable schemas, the `z.infer` config types, and `buildPermissionsJsonSchema`).

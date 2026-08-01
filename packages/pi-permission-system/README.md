@@ -64,10 +64,11 @@ All permissions use one of three states:
 | `deny`  | Blocks the action with an error message  |
 | `ask`   | Prompts the user for confirmation via UI |
 
-When the dialog prompts, you can approve once or approve a pattern for the rest of the session.
-In an interactive TUI session the prompt is an inline keybind dialog — `y` approve, `s` approve for this session, `n` deny, `r` deny with a reason — where each hotkey arms and a second press confirms (configurable via `doublePressToConfirm`).
-Pi's tool-expansion binding (`app.tools.expand`, `Ctrl+O` by default) keeps working while the dialog is open, so you can expand a truncated tool preview before deciding.
-See [docs/configuration.md](docs/configuration.md#inline-permission-dialog-tui) for the hotkeys and [docs/session-approvals.md](docs/session-approvals.md) for session-scoped rules and pattern suggestions.
+When a local dialog prompts, you can approve once, approve an editable pattern for the session, or persist an editable `allow` rule for this project or globally.
+Durable choices can show the exact surface, patterns, scope, action, and destination before writing; toggle the sticky summary preference with `t` or `/permission-system` settings.
+The inline TUI keeps single-letter shortcuts and arrow navigation for every choice: `y` approve, `s` approve for this session, `e` edit, `p` persist for the project, `g` persist globally, `n` deny, and `r` deny with a reason.
+Pi's tool-expansion binding keeps working there.
+See [docs/configuration.md](docs/configuration.md#inline-permission-dialog-tui) for prompt behavior and [docs/session-approvals.md](docs/session-approvals.md) for approval lifetimes and pattern suggestions.
 
 The `path` surface is a cross-cutting gate that applies to **all** file access — Pi tools, bash commands, MCP calls, and extension tools alike.
 Extension and MCP tools that operate on paths (via `input.path`, MCP's `input.arguments.path`, or a registered access extractor) are gated by default, so a `path` deny cannot be overridden by a per-tool allow — making it the right place to protect sensitive files like `.env` or `~/.ssh/*` from every tool at once.
@@ -102,12 +103,14 @@ See [docs/configuration.md](docs/configuration.md) for the full recipe.
 
 Config lives in one JSON file per scope:
 
-| Scope   | Path                                                      |
-| ------- | --------------------------------------------------------- |
-| Global  | `~/.pi/agent/extensions/pi-permission-system/config.json` |
-| Project | `<cwd>/.pi/extensions/pi-permission-system/config.json`   |
+| Scope         | Path                                                          |
+| ------------- | ------------------------------------------------------------- |
+| Global        | `~/.pi/agent/extensions/pi-permission-system/config.json`     |
+| Project       | `<cwd>/.pi/extensions/pi-permission-system/config.json`       |
+| Project-local | `<cwd>/.pi/extensions/pi-permission-system/config.local.json` |
 
-Project overrides global; per-agent YAML frontmatter overrides both.
+Shared project config overrides global, project-local config overrides shared project config, and per-agent YAML frontmatter overrides file config.
+The prompt writes project approvals only to `config.local.json`; normally add that file to your own `.gitignore`.
 Project config (policy and runtime knobs) is loaded only once the project is trusted — in an untrusted directory only global config applies, so an untrusted repository cannot loosen your global policy (see [Upgrading](#2200--project-config-requires-project-trust)).
 
 Within a surface map like `bash` or `mcp`, **last matching rule wins** — put broad catch-alls first and specific overrides after.
@@ -170,6 +173,7 @@ Run `pnpm install` to set up hooks automatically.
 
 This project began as a fork of [MasuRii/pi-permission-system](https://github.com/MasuRii/pi-permission-system).
 Thank you to [MasuRii](https://github.com/MasuRii) for the original work that made this possible.
+The durable-approval design also builds on prior persistence and editable-pattern work by [rienkim in PR #73](https://github.com/gotgenes/pi-packages/pull/73).
 
 Thank you to the [OpenCode](https://opencode.ai) team for the permission model design that inspired the flat config format and evaluation semantics used in this extension.
 

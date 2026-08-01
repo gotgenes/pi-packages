@@ -2,15 +2,16 @@
 
 ## Common Issues
 
-| Problem                                                           | Cause                                                             | Solution                                                                                                                                          |
-| ----------------------------------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Config not applied (everything asks)                              | File not found or parse error                                     | Verify the global config at `~/.pi/agent/extensions/pi-permission-system/config.json` (respects `PI_CODING_AGENT_DIR`); check for trailing commas |
-| Per-agent override not applied                                    | Frontmatter parsing issue                                         | Ensure `---` delimiters at file top; keep YAML simple; restart session                                                                            |
-| Tool blocked as unregistered                                      | Unknown tool name                                                 | Use a registered `mcp` tool for server tools: `{ "tool": "server:tool" }`                                                                         |
-| `/skill:<name>` blocked                                           | Deny policy or confirmation unavailable                           | Check merged `skill` policy (global/project/agent layers). `ask` still requires UI or forwarded confirmation.                                     |
-| External file path blocked                                        | `external_directory` is `ask` without UI or `deny`                | Allow/ask the permission or keep file tools inside the active working directory.                                                                  |
-| Spurious external-path prompt for `cd <subdir> && grep … ../path` | Relative path was resolved against cwd instead of the `cd` target | Fixed in current version — paths after a leading `cd <subdir> &&` are resolved against the cd target, matching actual shell behavior.             |
-| Permission prompt is too verbose                                  | Generic extension tool input is large                             | Built-in file tools are summarized automatically; third-party tools are capped to a bounded one-line JSON preview.                                |
+| Problem                                                           | Cause                                                                                    | Solution                                                                                                                                          |
+| ----------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Config not applied (everything asks)                              | File not found or parse error                                                            | Verify the global config at `~/.pi/agent/extensions/pi-permission-system/config.json` (respects `PI_CODING_AGENT_DIR`); check for trailing commas |
+| Per-agent override not applied                                    | Frontmatter parsing issue                                                                | Ensure `---` delimiters at file top; keep YAML simple; restart session                                                                            |
+| Tool blocked as unregistered                                      | Unknown tool name                                                                        | Use a registered `mcp` tool for server tools: `{ "tool": "server:tool" }`                                                                         |
+| `/skill:<name>` blocked                                           | Deny policy or confirmation unavailable                                                  | Check merged `skill` policy (global/project/agent layers). `ask` still requires UI or forwarded confirmation.                                     |
+| External file path blocked                                        | `external_directory` is `ask` without UI or `deny`                                       | Allow/ask the permission or keep file tools inside the active working directory.                                                                  |
+| Spurious external-path prompt for `cd <subdir> && grep … ../path` | Relative path was resolved against cwd instead of the `cd` target                        | Fixed in current version — paths after a leading `cd <subdir> &&` are resolved against the cd target, matching actual shell behavior.             |
+| Permission prompt is too verbose                                  | Generic extension tool input is large                                                    | Built-in file tools are summarized automatically; third-party tools are capped to a bounded one-line JSON preview.                                |
+| Durable approval is denied                                        | Project is untrusted, config is invalid, or atomic write/reload failed                   | Read the `permission_rule.persistence_failed` review entry, fix the displayed destination, and retry; the pending tool call remains blocked.      |
 
 ## Diagnostic Logging
 
@@ -26,6 +27,8 @@ This makes it easy to verify which files the extension actually loaded:
   "globalConfigExists": true,
   "projectConfigPath": "/…/my-project/.pi/extensions/pi-permission-system/config.json",
   "projectConfigExists": false,
+  "projectLocalConfigPath": "/…/my-project/.pi/extensions/pi-permission-system/config.local.json",
+  "projectLocalConfigExists": false,
   "agentsDir": "/…/.pi/agent/agents",
   "agentsDirExists": true,
   "projectAgentsDir": "/…/my-project/.pi/agents",
