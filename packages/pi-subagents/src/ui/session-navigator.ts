@@ -24,13 +24,13 @@ import {
   getMarkdownTheme,
   parseSkillBlock,
   SkillInvocationMessageComponent,
-  type ToolDefinition,
   ToolExecutionComponent,
   UserMessageComponent,
 } from "@earendil-works/pi-coding-agent";
 import {
   type Component,
   Container,
+  type KeyId,
   type MarkdownTheme,
   matchesKey,
   Spacer,
@@ -131,11 +131,12 @@ export class SessionNavigatorHandler {
 /**
  * Read-only scrollable transcript overlay.
  *
- * Caches the settled transcript's rendered lines per overlay width and rebuilds
- * Pi's rich per-entry component tree only when messages settle. Streaming deltas
- * use a lightweight activity row, so paint/scroll stay O(viewport) instead of
- * O(total transcript). This class owns scroll state, chrome, and live activity;
- * component mapping lives in `buildTranscriptComponents`.
+ * The settled transcript is held as per-message blocks of Pi's rich components
+ * (`consumeMessage`), each caching its rendered lines per overlay width. New
+ * messages append blocks, tool results mutate only their own block, and paint
+ * or scroll slices a flat line cache — O(changed message) and O(viewport),
+ * never O(total transcript). This class owns scroll state, chrome, and live
+ * activity.
  */
 export class TranscriptOverlay implements Component {
   private scrollOffset = 0;
@@ -149,17 +150,28 @@ export class TranscriptOverlay implements Component {
   private readonly done: (result: undefined) => void;
   private readonly cwd: string;
   private readonly markdownTheme: MarkdownTheme;
-  private content: Container;
   /** Last inner width supplied by the overlay compositor; input must use this layout. */
   private renderedInnerWidth: number | undefined;
-  /**
-   * Width-keyed rendering of the settled transcript. Rendering Pi's rich
-   * per-entry components is O(total transcript); keeping those lines stable
-   * makes paint and scroll O(viewport) instead of O(10k+ lines).
-   */
-  private settledLinesCache: { width: number; lines: readonly string[] } | undefined;
+  /** Settled transcript as per-message component blocks, appended in message order. */
+  private settledBlocks: SettledBlock[] = [];
+  /** How many source messages have been consumed into `settledBlocks`. */
+  private settledCount = 0;
+  /** Identity guard: the last consumed message; a mismatch means history was rewritten. */
+  private lastConsumed: SessionMessage | undefined;
+  /** Whether any consumed block holds visible components (drives user-message spacing). */
+  private hasVisibleContent = false;
+  /** Width the block line caches were rendered at. */
+  private settledWidth: number | undefined;
+  /** Concatenation of every block's cached lines at `settledWidth`. */
+  private settledFlat: readonly string[] | undefined;
+  /** In-flight tool components by toolCallId, pairing later results to their block. */
+  private readonly pendingTools = new Map<
+    string,
+    { component: ToolExecutionComponent; block: SettledBlock }
+  >();
   /** Current assistant message, rendered separately so deltas never touch settled history. */
   private liveAssistant: AssistantMessageComponent | undefined;
+  private liveMessage: AssistantMessage | undefined;
   private liveAssistantLinesCache: { width: number; lines: readonly string[] } | undefined;
 
   constructor({ tui, theme, source, done, cwd, markdownTheme }: TranscriptOverlayOptions) {
@@ -169,7 +181,7 @@ export class TranscriptOverlay implements Component {
     this.done = done;
     this.cwd = cwd;
     this.markdownTheme = markdownTheme;
-    this.content = this.rebuild();
+    this.consumeNewSettled();
     this.unsubscribe = source.subscribe((event) => this.handleSourceChange(event));
   }
 
@@ -181,28 +193,14 @@ export class TranscriptOverlay implements Component {
     }
 
     const totalLines = this.contentLineCount(this.renderedInnerWidth ?? this.innerWidth());
-    const viewportHeight = this.viewportHeight();
-    const maxScroll = Math.max(0, totalLines - viewportHeight);
+    const viewport = this.viewportHeight();
+    const maxScroll = Math.max(0, totalLines - viewport);
 
-    if (matchesKey(data, "up") || matchesKey(data, "k")) {
-      this.scrollOffset = Math.max(0, this.scrollOffset - 1);
-      this.autoScroll = this.scrollOffset >= maxScroll;
-    } else if (matchesKey(data, "down") || matchesKey(data, "j")) {
-      this.scrollOffset = Math.min(maxScroll, this.scrollOffset + 1);
-      this.autoScroll = this.scrollOffset >= maxScroll;
-    } else if (matchesKey(data, "pageUp") || matchesKey(data, "shift+up")) {
-      this.scrollOffset = Math.max(0, this.scrollOffset - viewportHeight);
-      this.autoScroll = false;
-    } else if (matchesKey(data, "pageDown") || matchesKey(data, "shift+down")) {
-      this.scrollOffset = Math.min(maxScroll, this.scrollOffset + viewportHeight);
-      this.autoScroll = this.scrollOffset >= maxScroll;
-    } else if (matchesKey(data, "home")) {
-      this.scrollOffset = 0;
-      this.autoScroll = false;
-    } else if (matchesKey(data, "end")) {
-      this.scrollOffset = maxScroll;
-      this.autoScroll = true;
-    }
+    const binding = SCROLL_BINDINGS.find(({ keys }) => keys.some((key) => matchesKey(data, key)));
+    if (!binding) return;
+    const next = binding.next({ offset: this.scrollOffset, maxScroll, viewport });
+    this.scrollOffset = next.offset;
+    this.autoScroll = next.autoScroll;
   }
 
   render(width: number): string[] {
@@ -247,9 +245,12 @@ export class TranscriptOverlay implements Component {
 
   // fallow-ignore-next-line unused-class-member
   invalidate(): void {
-    this.content.invalidate();
+    for (const block of this.settledBlocks) {
+      block.container.invalidate();
+      block.lines = undefined;
+    }
+    this.settledFlat = undefined;
     this.liveAssistant?.invalidate();
-    this.settledLinesCache = undefined;
     this.liveAssistantLinesCache = undefined;
   }
 
@@ -272,13 +273,22 @@ export class TranscriptOverlay implements Component {
     return Math.max(MIN_VIEWPORT, maxRows - CHROME_LINES);
   }
 
-  /** Settled transcript lines, rendered once per width/content version. */
+  /** Settled transcript lines; each block renders once per width/content version. */
   private settledLines(innerW: number): readonly string[] {
     if (innerW <= 0) return [];
-    if (this.settledLinesCache?.width === innerW) return this.settledLinesCache.lines;
-    const lines = this.content.render(innerW).map((line) => truncateToWidth(line, innerW));
-    this.settledLinesCache = { width: innerW, lines };
-    return lines;
+    if (this.settledWidth !== innerW) {
+      this.settledWidth = innerW;
+      for (const block of this.settledBlocks) block.lines = undefined;
+      this.settledFlat = undefined;
+    }
+    if (this.settledFlat) return this.settledFlat;
+    const flat: string[] = [];
+    for (const block of this.settledBlocks) {
+      block.lines ??= block.container.render(innerW).map((line) => truncateToWidth(line, innerW));
+      for (const line of block.lines) flat.push(line);
+    }
+    this.settledFlat = flat;
+    return flat;
   }
 
   /** Current rich assistant message, re-rendered independently of settled history. */
@@ -328,171 +338,251 @@ export class TranscriptOverlay implements Component {
 
   private handleSourceChange(event?: AgentSessionEvent): void {
     if (this.closed) return;
-    if (
-      event &&
-      (event.type === "message_start" || event.type === "message_update") &&
-      event.message.role === "assistant"
-    ) {
-      this.updateLiveAssistant(event.message);
-    } else if (eventSettlesTranscript(event)) {
-      this.rebuildSettledContent();
-    }
+    this.applySourceEvent(event);
     this.tui.requestRender();
   }
 
+  /** Route one session event to the narrowest settled/live update. */
+  private applySourceEvent(event?: AgentSessionEvent): void {
+    if (!event || event.type === "agent_end" || event.type === "compaction_end") {
+      // Catch-alls: run/compaction boundaries may rewrite or mutate history
+      // in place, and event-less sources give no narrower signal.
+      this.resetSettledContent();
+      return;
+    }
+    if (event.type === "message_start" || event.type === "message_update") {
+      this.applyPartialMessage(event.message);
+      return;
+    }
+    // Any other session event is a cheap catch-up: consume messages that
+    // settled since the last check, or no-op when nothing is new.
+    if (event.type === "message_end" && this.isLiveMessage(event.message)) {
+      this.clearLiveAssistant();
+    }
+    this.consumeNewSettled();
+  }
+
+  /** A partial for the in-flight assistant updates the live component; other roles settle. */
+  private applyPartialMessage(message: SessionMessage): void {
+    if (message.role === "assistant") this.updateLiveAssistant(message);
+    else this.consumeNewSettled();
+  }
+
   /**
-   * On the first partial event, split a trailing in-progress assistant message
-   * out of settled history. Later deltas update only this one component.
+   * On the first partial event, mount the in-progress assistant message as its
+   * own rich component. Later deltas update only this one component; the
+   * settled prefix is caught up once, not per token.
    */
   private updateLiveAssistant(message: AssistantMessage): void {
     if (!this.liveAssistant) {
-      const messages = this.source.getMessages();
-      const last = messages.at(-1);
-      const lastIsLiveAssistant =
-        last?.role === "assistant" &&
-        (last === message || last.timestamp === message.timestamp);
-      this.content = this.buildComponents(
-        lastIsLiveAssistant ? messages.slice(0, -1) : messages,
-      );
-      this.settledLinesCache = undefined;
-      this.liveAssistant = new AssistantMessageComponent(
-        message,
-        false,
-        this.markdownTheme,
-      );
+      this.consumeNewSettled();
+      this.liveAssistant = new AssistantMessageComponent(message, false, this.markdownTheme);
     } else {
       this.liveAssistant.updateContent(message);
     }
+    this.liveMessage = message;
     this.liveAssistantLinesCache = undefined;
   }
 
-  private rebuildSettledContent(): void {
-    this.content = this.rebuild();
+  private isLiveMessage(message: SessionMessage): boolean {
+    if (!this.liveMessage || message.role !== "assistant") return false;
+    return message === this.liveMessage || message.timestamp === this.liveMessage.timestamp;
+  }
+
+  private clearLiveAssistant(): void {
     this.liveAssistant = undefined;
-    this.settledLinesCache = undefined;
+    this.liveMessage = undefined;
     this.liveAssistantLinesCache = undefined;
   }
 
-  private rebuild(): Container {
-    return this.buildComponents(this.source.getMessages());
+  /** Drop all settled state and re-consume the source from scratch. */
+  private resetSettledContent(): void {
+    this.settledBlocks = [];
+    this.settledCount = 0;
+    this.lastConsumed = undefined;
+    this.hasVisibleContent = false;
+    this.settledFlat = undefined;
+    this.pendingTools.clear();
+    this.clearLiveAssistant();
+    this.consumeNewSettled();
   }
 
-  private buildComponents(messages: readonly SessionMessage[]): Container {
-    return buildTranscriptComponents(messages, {
-      tui: this.tui,
-      cwd: this.cwd,
-      markdownTheme: this.markdownTheme,
-      getToolDefinition: (name) => this.source.getToolDefinition(name),
-    });
+  /**
+   * Append blocks for messages settled since the last check. The agent runtime
+   * pushes a message into its state before emitting `message_end`, so at event
+   * time the settled prefix is already visible through `getMessages()`.
+   */
+  private consumeNewSettled(): void {
+    const messages = this.source.getMessages();
+    if (
+      this.settledCount > messages.length ||
+      (this.settledCount > 0 && messages[this.settledCount - 1] !== this.lastConsumed)
+    ) {
+      // The consumed prefix no longer mirrors the source: history was
+      // rewritten wholesale (e.g. compaction/branching). Start over.
+      this.resetSettledContent();
+      return;
+    }
+    let end = messages.length;
+    if (end > this.settledCount && this.isLiveMessage(messages[end - 1])) end -= 1;
+    if (end === this.settledCount) return;
+    for (let i = this.settledCount; i < end; i++) this.consumeMessage(messages[i]);
+    this.settledCount = end;
+    this.lastConsumed = messages[end - 1];
+    this.settledFlat = undefined;
+  }
+
+  /**
+   * Map one settled message onto Pi's per-entry components, mirroring Pi's own
+   * interactive-mode `renderSessionContext` mapping. Tool results are matched
+   * to their tool-call components by id, exactly as Pi does. `custom`-role
+   * messages are skipped — rendering them needs the child session's
+   * message-renderer registry, which the navigator does not hold.
+   */
+  private consumeMessage(message: SessionMessage): void {
+    switch (message.role) {
+      case "assistant":
+        this.consumeAssistantMessage(message);
+        break;
+      case "toolResult":
+        this.consumeToolResult(message);
+        break;
+      case "user":
+        this.consumeUserMessage(message);
+        break;
+      case "bashExecution":
+        this.consumeBashExecution(message);
+        break;
+      case "compactionSummary":
+        this.consumeSummary(new CompactionSummaryMessageComponent(message, this.markdownTheme));
+        break;
+      case "branchSummary":
+        this.consumeSummary(new BranchSummaryMessageComponent(message, this.markdownTheme));
+        break;
+    }
+  }
+
+  private consumeAssistantMessage(message: AssistantMessage): void {
+    const block = this.newBlock();
+    block.container.addChild(new AssistantMessageComponent(message, false, this.markdownTheme));
+    for (const content of message.content) {
+      if (content.type !== "toolCall") continue;
+      const tool = new ToolExecutionComponent(
+        content.name,
+        content.id,
+        content.arguments,
+        { showImages: false },
+        this.source.getToolDefinition(content.name),
+        this.tui,
+        this.cwd,
+      );
+      tool.setExpanded(true);
+      block.container.addChild(tool);
+      this.pendingTools.set(content.id, { component: tool, block });
+    }
+    this.hasVisibleContent = true;
+  }
+
+  private consumeToolResult(message: Extract<SessionMessage, { role: "toolResult" }>): void {
+    const entry = this.pendingTools.get(message.toolCallId);
+    if (!entry) return;
+    entry.component.updateResult(message);
+    entry.block.lines = undefined;
+    this.settledFlat = undefined;
+    this.pendingTools.delete(message.toolCallId);
+  }
+
+  private consumeUserMessage(message: Extract<SessionMessage, { role: "user" }>): void {
+    const block = this.newBlock();
+    addUserComponents(block.container, message.content, this.markdownTheme, this.hasVisibleContent);
+    if (block.container.children.length > 0) this.hasVisibleContent = true;
+  }
+
+  private consumeBashExecution(message: Extract<SessionMessage, { role: "bashExecution" }>): void {
+    const block = this.newBlock();
+    const bash = new BashExecutionComponent(message.command, this.tui, message.excludeFromContext);
+    if (message.output) bash.appendOutput(message.output);
+    bash.setComplete(message.exitCode, message.cancelled, undefined, message.fullOutputPath);
+    block.container.addChild(bash);
+    this.hasVisibleContent = true;
+  }
+
+  /** Compaction and branch summaries share the same spacer + expanded-block shape. */
+  private consumeSummary(
+    summary: CompactionSummaryMessageComponent | BranchSummaryMessageComponent,
+  ): void {
+    const block = this.newBlock();
+    block.container.addChild(new Spacer(1));
+    summary.setExpanded(true);
+    block.container.addChild(summary);
+    this.hasVisibleContent = true;
+  }
+
+  private newBlock(): SettledBlock {
+    const block: SettledBlock = { container: new Container(), lines: undefined };
+    this.settledBlocks.push(block);
+    return block;
   }
 }
 
-/**
- * High-frequency partial events are represented by the lightweight streaming
- * row. Rebuild the rich transcript only when a message is settled, the agent
- * finishes, or compaction replaces the message history. An undefined event is
- * treated conservatively for synthetic/static sources used by extensions.
- */
-function eventSettlesTranscript(event?: AgentSessionEvent): boolean {
-  if (!event) return true;
-  return event.type === "message_end" || event.type === "agent_end" || event.type === "compaction_end";
+/** One consumed message's rich components plus its width-cached rendered lines. */
+interface SettledBlock {
+  container: Container;
+  lines: readonly string[] | undefined;
 }
 
-/** Dependencies the per-entry component tree needs from the SDK/TUI environment. */
-interface TranscriptRenderOptions {
-  tui: TUI;
-  cwd: string;
-  markdownTheme: MarkdownTheme;
-  getToolDefinition: (name: string) => ToolDefinition | undefined;
+/** Inputs a scroll binding needs to produce the next scroll state. */
+interface ScrollContext {
+  offset: number;
+  maxScroll: number;
+  viewport: number;
 }
 
-/**
- * Build a `Container` of Pi's per-entry components from a message snapshot,
- * mirroring Pi's own interactive-mode `renderSessionContext` mapping. Tool
- * results are matched to their tool-call components by id, exactly as Pi does.
- * `custom`-role messages are skipped — rendering them needs the child session's
- * message-renderer registry, which the navigator does not hold.
- */
-function buildTranscriptComponents(
-  messages: readonly SessionMessage[],
-  opts: TranscriptRenderOptions,
-): Container {
-  const container = new Container();
-  const pendingTools = new Map<string, ToolExecutionComponent>();
-  for (const message of messages) {
-    addMessageComponents(container, message, pendingTools, opts);
-  }
-  return container;
+interface ScrollState {
+  offset: number;
+  autoScroll: boolean;
 }
 
-function addMessageComponents(
-  container: Container,
-  message: SessionMessage,
-  pendingTools: Map<string, ToolExecutionComponent>,
-  opts: TranscriptRenderOptions,
-): void {
-  switch (message.role) {
-    case "assistant": {
-      container.addChild(new AssistantMessageComponent(message, false, opts.markdownTheme));
-      for (const content of message.content) {
-        if (content.type !== "toolCall") continue;
-        const tool = new ToolExecutionComponent(
-          content.name,
-          content.id,
-          content.arguments,
-          { showImages: false },
-          opts.getToolDefinition(content.name),
-          opts.tui,
-          opts.cwd,
-        );
-        tool.setExpanded(true);
-        container.addChild(tool);
-        pendingTools.set(content.id, tool);
-      }
-      break;
-    }
-    case "toolResult": {
-      pendingTools.get(message.toolCallId)?.updateResult(message);
-      pendingTools.delete(message.toolCallId);
-      break;
-    }
-    case "user": {
-      addUserComponents(container, message.content, opts.markdownTheme);
-      break;
-    }
-    case "bashExecution": {
-      const bash = new BashExecutionComponent(message.command, opts.tui, message.excludeFromContext);
-      if (message.output) bash.appendOutput(message.output);
-      bash.setComplete(message.exitCode, message.cancelled, undefined, message.fullOutputPath);
-      container.addChild(bash);
-      break;
-    }
-    case "compactionSummary": {
-      container.addChild(new Spacer(1));
-      const summary = new CompactionSummaryMessageComponent(message, opts.markdownTheme);
-      summary.setExpanded(true);
-      container.addChild(summary);
-      break;
-    }
-    case "branchSummary": {
-      container.addChild(new Spacer(1));
-      const summary = new BranchSummaryMessageComponent(message, opts.markdownTheme);
-      summary.setExpanded(true);
-      container.addChild(summary);
-      break;
-    }
-  }
+/** Clamped offset with auto-scroll re-armed whenever it reaches the bottom. */
+function scrolledTo(offset: number, maxScroll: number): ScrollState {
+  return { offset, autoScroll: offset >= maxScroll };
 }
+
+/** Keyboard bindings for the transcript viewport, applied over the rendered layout. */
+const SCROLL_BINDINGS: ReadonlyArray<{
+  keys: readonly KeyId[];
+  next: (context: ScrollContext) => ScrollState;
+}> = [
+  {
+    keys: ["up", "k"],
+    next: ({ offset, maxScroll }) => scrolledTo(Math.max(0, offset - 1), maxScroll),
+  },
+  {
+    keys: ["down", "j"],
+    next: ({ offset, maxScroll }) => scrolledTo(Math.min(maxScroll, offset + 1), maxScroll),
+  },
+  {
+    keys: ["pageUp", "shift+up"],
+    next: ({ offset, viewport }) => ({ offset: Math.max(0, offset - viewport), autoScroll: false }),
+  },
+  {
+    keys: ["pageDown", "shift+down"],
+    next: ({ offset, maxScroll, viewport }) => scrolledTo(Math.min(maxScroll, offset + viewport), maxScroll),
+  },
+  { keys: ["home"], next: () => ({ offset: 0, autoScroll: false }) },
+  { keys: ["end"], next: ({ maxScroll }) => ({ offset: maxScroll, autoScroll: true }) },
+];
 
 /** Render a user message (skill block + text) into the container, mirroring Pi. */
 function addUserComponents(
   container: Container,
   content: string | readonly { type: string; text?: string }[],
   markdownTheme: MarkdownTheme,
+  hasPrecedingContent: boolean,
 ): void {
   const text = userMessageText(content);
   if (!text) return;
-  if (container.children.length > 0) container.addChild(new Spacer(1));
+  if (hasPrecedingContent) container.addChild(new Spacer(1));
 
   const skillBlock = parseSkillBlock(text);
   if (!skillBlock) {

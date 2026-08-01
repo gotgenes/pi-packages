@@ -201,9 +201,8 @@ describe("TranscriptOverlay", () => {
 
     it("does not rebuild the transcript tree for high-frequency streaming updates", () => {
       const tui = mockTui();
-      const getMessages = vi.fn(
-        () => [{ role: "user", content: "stable" }] as unknown as SessionMessage[],
-      );
+      const messages = [{ role: "user", content: "stable" }] as unknown as SessionMessage[];
+      const getMessages = vi.fn(() => messages);
       let captured: ((event: AgentSessionEvent) => void) | undefined;
       const source = fakeSource({
         getMessages,
@@ -217,7 +216,7 @@ describe("TranscriptOverlay", () => {
       const setupMessageReads = getMessages.mock.calls.length;
 
       captured?.(assistantSessionEvent("message_update", { type: "text", text: "token" }));
-      captured?.({ type: "tool_execution_update" } as AgentSessionEvent);
+      captured?.(assistantSessionEvent("message_update", { type: "text", text: "token two" }));
 
       expect(getMessages).toHaveBeenCalledTimes(setupMessageReads);
       expect(tui.requestRender).toHaveBeenCalledTimes(3);
@@ -227,11 +226,9 @@ describe("TranscriptOverlay", () => {
     it("keeps the lightweight streaming row live while settled transcript lines stay cached", () => {
       let responseText = "first token";
       let captured: ((event: AgentSessionEvent) => void) | undefined;
-      const getMessages = vi.fn(
-        () => [{ role: "user", content: "settled" }] as unknown as SessionMessage[],
-      );
+      const messages = [{ role: "user", content: "settled" }] as unknown as SessionMessage[];
       const source = fakeSource({
-        getMessages,
+        getMessages: () => messages,
         streaming: () => ({ activeTools: new Map(), responseText }),
         subscribe: (onChange) => {
           captured = onChange;
@@ -241,11 +238,16 @@ describe("TranscriptOverlay", () => {
       const overlay = makeOverlay({ source });
       expect(overlay.render(80).join("\n")).toContain("first token");
 
-      responseText = "second token";
-      captured?.({ type: "tool_execution_update" } as AgentSessionEvent);
+      const containerRender = vi.spyOn(Container.prototype, "render");
+      try {
+        responseText = "second token";
+        captured?.({ type: "tool_execution_update" } as AgentSessionEvent);
 
-      expect(overlay.render(80).join("\n")).toContain("second token");
-      expect(getMessages).toHaveBeenCalledOnce();
+        expect(overlay.render(80).join("\n")).toContain("second token");
+        expect(containerRender).not.toHaveBeenCalled();
+      } finally {
+        containerRender.mockRestore();
+      }
     });
 
 
@@ -284,23 +286,170 @@ describe("TranscriptOverlay", () => {
       expect(getMessages).toHaveBeenCalledTimes(setupMessageReads);
     });
 
-    it("does rebuild the transcript tree when a message settles", () => {
-      const getMessages = vi.fn(
-        () => [{ role: "user", content: "stable" }] as unknown as SessionMessage[],
-      );
+    it("consumes newly settled messages when a message settles", () => {
+      const messages = [{ role: "user", content: "stable" }] as unknown as SessionMessage[];
       let captured: ((event: AgentSessionEvent) => void) | undefined;
       const source = fakeSource({
-        getMessages,
+        getMessages: () => messages,
         subscribe: (onChange) => {
           captured = onChange;
           return () => {};
         },
       });
-      makeOverlay({ source });
+      const overlay = makeOverlay({ source });
+      overlay.render(80);
 
-      captured?.({ type: "message_end" } as AgentSessionEvent);
+      const settled = { role: "user", content: "just settled" } as unknown as SessionMessage;
+      messages.push(settled);
+      captured?.({ type: "message_end", message: settled } as unknown as AgentSessionEvent);
 
-      expect(getMessages).toHaveBeenCalledTimes(2);
+      expect(overlay.render(80).join("\n")).toContain("just settled");
+    });
+  });
+
+  describe("incremental settlement", () => {
+    function liveFixture(initial: SessionMessage[]) {
+      const messages = initial;
+      let captured: ((event?: AgentSessionEvent) => void) | undefined;
+      const source = fakeSource({
+        getMessages: () => messages,
+        subscribe: (onChange) => {
+          captured = onChange;
+          return () => {};
+        },
+      });
+      return {
+        messages,
+        source,
+        emit: (event: AgentSessionEvent | undefined) => captured?.(event),
+      };
+    }
+
+    it("renders only the newly settled message's components when a message settles", () => {
+      const fixture = liveFixture(
+        Array.from(
+          { length: 200 },
+          (_, i) => ({ role: "user", content: `message ${i}\n${"body\n".repeat(20)}` }),
+        ) as unknown as SessionMessage[],
+      );
+      const overlay = makeOverlay({ source: fixture.source, tui: mockTui(40, 160) });
+      overlay.render(80);
+
+      const containerRender = vi.spyOn(Container.prototype, "render");
+      try {
+        const settled = { role: "user", content: "fresh settled message" } as unknown as SessionMessage;
+        fixture.messages.push(settled);
+        fixture.emit({ type: "message_end", message: settled } as unknown as AgentSessionEvent);
+
+        expect(overlay.render(80).join("\n")).toContain("fresh settled message");
+        expect(containerRender.mock.calls.length).toBeLessThanOrEqual(4);
+      } finally {
+        containerRender.mockRestore();
+      }
+    });
+
+    it("updates only the affected tool block when its result settles", () => {
+      const assistant = {
+        role: "assistant",
+        content: [{ type: "toolCall", id: "tc-1", name: "read", arguments: { path: "/x.ts" } }],
+        stopReason: "toolUse",
+        timestamp: 1,
+      } as unknown as SessionMessage;
+      const padding = Array.from(
+        { length: 50 },
+        (_, i) => ({ role: "user", content: `filler ${i}` }),
+      ) as unknown as SessionMessage[];
+      const fixture = liveFixture([...padding, assistant]);
+      const overlay = makeOverlay({ source: fixture.source, tui: mockTui(40, 160) });
+      const before = overlay.render(80).join("\n");
+
+      const containerRender = vi.spyOn(Container.prototype, "render");
+      try {
+        const result = {
+          role: "toolResult",
+          toolCallId: "tc-1",
+          toolName: "read",
+          content: [{ type: "text", text: "tool result body" }],
+          isError: false,
+        } as unknown as SessionMessage;
+        fixture.messages.push(result);
+        fixture.emit({ type: "message_end", message: result } as unknown as AgentSessionEvent);
+
+        const after = overlay.render(80).join("\n");
+        expect(after).not.toEqual(before);
+        expect(containerRender.mock.calls.length).toBeLessThanOrEqual(4);
+      } finally {
+        containerRender.mockRestore();
+      }
+    });
+
+    it("produces the same lines as a freshly built overlay after incremental settles", () => {
+      const user = (text: string) => ({ role: "user", content: text }) as unknown as SessionMessage;
+      const assistant = {
+        role: "assistant",
+        content: [
+          { type: "text", text: "let me read that" },
+          { type: "toolCall", id: "tc-9", name: "read", arguments: { path: "/y.ts" } },
+        ],
+        stopReason: "toolUse",
+        timestamp: 5,
+      } as unknown as SessionMessage;
+      const result = {
+        role: "toolResult",
+        toolCallId: "tc-9",
+        toolName: "read",
+        content: [{ type: "text", text: "y file body" }],
+        isError: false,
+      } as unknown as SessionMessage;
+      const fixture = liveFixture([user("alpha")]);
+      const overlay = makeOverlay({ source: fixture.source });
+      overlay.render(80);
+
+      for (const settled of [assistant, result, user("beta"), user("gamma")]) {
+        fixture.messages.push(settled);
+        fixture.emit({ type: "message_end", message: settled } as unknown as AgentSessionEvent);
+      }
+
+      const fresh = makeOverlay({
+        source: fakeSource({ getMessages: () => fixture.messages }),
+      });
+      expect(overlay.render(80)).toEqual(fresh.render(80));
+    });
+
+    it("re-renders settled history on agent_end to capture in-place mutations", () => {
+      const message = { role: "user", content: "before mutation" } as unknown as SessionMessage;
+      const fixture = liveFixture([message]);
+      const overlay = makeOverlay({ source: fixture.source });
+      expect(overlay.render(80).join("\n")).toContain("before mutation");
+
+      (message as unknown as { content: string }).content = "after mutation";
+      fixture.emit({ type: "agent_end" } as unknown as AgentSessionEvent);
+
+      expect(overlay.render(80).join("\n")).toContain("after mutation");
+    });
+
+    it("falls back to a full rebuild when settled history shrinks under the overlay", () => {
+      let messages = [
+        { role: "user", content: "one" },
+        { role: "user", content: "two" },
+      ] as unknown as SessionMessage[];
+      let captured: ((event?: AgentSessionEvent) => void) | undefined;
+      const source = fakeSource({
+        getMessages: () => messages,
+        subscribe: (onChange) => {
+          captured = onChange;
+          return () => {};
+        },
+      });
+      const overlay = makeOverlay({ source });
+      expect(overlay.render(80).join("\n")).toContain("two");
+
+      messages = [{ role: "user", content: "rewritten" }] as unknown as SessionMessage[];
+      captured?.({ type: "turn_end" } as unknown as AgentSessionEvent);
+
+      const out = overlay.render(80).join("\n");
+      expect(out).toContain("rewritten");
+      expect(out).not.toContain("two");
     });
   });
 });
