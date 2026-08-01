@@ -1,8 +1,8 @@
 import { getMarkdownTheme, initTheme } from "@earendil-works/pi-coding-agent";
-import type { Component, TUI } from "@earendil-works/pi-tui";
+import { type Component, Container, type TUI } from "@earendil-works/pi-tui";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { AgentTypeRegistry } from "#src/config/agent-types";
-import type { SessionMessage } from "#src/types";
+import type { AgentSessionEvent, SessionMessage } from "#src/types";
 import type { TranscriptSource } from "#src/ui/session-navigation";
 import { SessionNavigatorHandler, TranscriptOverlay } from "#src/ui/session-navigator";
 import { makeNavigable } from "#test/helpers/make-navigable";
@@ -32,6 +32,27 @@ function fakeSource(overrides: Partial<TranscriptSource> = {}): TranscriptSource
     getToolDefinition: () => undefined,
     ...overrides,
   };
+}
+
+
+function assistantSessionEvent(
+  type: "message_start" | "message_update" | "message_end",
+  content: { type: "text"; text: string } | { type: "thinking"; thinking: string },
+  timestamp = 1,
+): AgentSessionEvent {
+  const message = {
+    role: "assistant",
+    content: [content],
+    stopReason: "stop",
+    timestamp,
+  };
+  if (type !== "message_update") return { type, message } as unknown as AgentSessionEvent;
+  const delta = content.type === "text" ? content.text : content.thinking;
+  const assistantMessageEvent = {
+    type: content.type === "text" ? "text_delta" : "thinking_delta",
+    delta,
+  };
+  return { type, message, assistantMessageEvent } as unknown as AgentSessionEvent;
 }
 
 function makeOverlay(opts: { source?: TranscriptSource; done?: (r: undefined) => void; tui?: TUI } = {}) {
@@ -119,7 +140,7 @@ describe("TranscriptOverlay", () => {
 
   it("rebuilds the component tree when the source changes", () => {
     let messages = [{ role: "user", content: "first" }] as unknown as SessionMessage[];
-    let captured: (() => void) | undefined;
+    let captured: ((event?: AgentSessionEvent) => void) | undefined;
     const source = fakeSource({
       getMessages: () => messages,
       subscribe: (onChange) => {
@@ -130,8 +151,157 @@ describe("TranscriptOverlay", () => {
     const overlay = makeOverlay({ source });
     expect(overlay.render(80).join("\n")).toContain("first");
     messages = [{ role: "user", content: "second" }] as unknown as SessionMessage[];
-    captured?.();
+    captured?.({ type: "message_end" } as AgentSessionEvent);
     expect(overlay.render(80).join("\n")).toContain("second");
+  });
+
+  describe("large-transcript performance invariants", () => {
+    it("reuses rendered transcript lines across paints and scrolling at the same width", () => {
+      const messages = Array.from(
+        { length: 200 },
+        (_, i) => ({ role: "user", content: `message ${i}\n${"body\n".repeat(20)}` }),
+      ) as unknown as SessionMessage[];
+      // Overlay renders at 90% of the terminal width in production. Keep the
+      // terminal wider than the component width so input must reuse the actual
+      // rendered layout rather than recomputing at terminal width.
+      const overlay = makeOverlay({
+        source: fakeSource({ getMessages: () => messages }),
+        tui: mockTui(40, 160),
+      });
+      const containerRender = vi.spyOn(Container.prototype, "render");
+      try {
+        const initialOutput = overlay.render(80);
+        const initialRenderCalls = containerRender.mock.calls.length;
+
+        overlay.render(80);
+        overlay.handleInput("\x1b[A");
+        const scrolledOutput = overlay.render(80);
+
+        expect(containerRender).toHaveBeenCalledTimes(initialRenderCalls);
+        expect(scrolledOutput).not.toEqual(initialOutput);
+      } finally {
+        containerRender.mockRestore();
+      }
+    });
+
+    it("invalidates rendered transcript lines when width changes", () => {
+      const overlay = makeOverlay();
+      const containerRender = vi.spyOn(Container.prototype, "render");
+      try {
+        overlay.render(80);
+        const initialRenderCalls = containerRender.mock.calls.length;
+
+        overlay.render(100);
+
+        expect(containerRender.mock.calls.length).toBeGreaterThan(initialRenderCalls);
+      } finally {
+        containerRender.mockRestore();
+      }
+    });
+
+    it("does not rebuild the transcript tree for high-frequency streaming updates", () => {
+      const tui = mockTui();
+      const getMessages = vi.fn(
+        () => [{ role: "user", content: "stable" }] as unknown as SessionMessage[],
+      );
+      let captured: ((event: AgentSessionEvent) => void) | undefined;
+      const source = fakeSource({
+        getMessages,
+        subscribe: (onChange) => {
+          captured = onChange;
+          return () => {};
+        },
+      });
+      makeOverlay({ source, tui });
+      captured?.(assistantSessionEvent("message_start", { type: "text", text: "" }));
+      const setupMessageReads = getMessages.mock.calls.length;
+
+      captured?.(assistantSessionEvent("message_update", { type: "text", text: "token" }));
+      captured?.({ type: "tool_execution_update" } as AgentSessionEvent);
+
+      expect(getMessages).toHaveBeenCalledTimes(setupMessageReads);
+      expect(tui.requestRender).toHaveBeenCalledTimes(3);
+    });
+
+
+    it("keeps the lightweight streaming row live while settled transcript lines stay cached", () => {
+      let responseText = "first token";
+      let captured: ((event: AgentSessionEvent) => void) | undefined;
+      const getMessages = vi.fn(
+        () => [{ role: "user", content: "settled" }] as unknown as SessionMessage[],
+      );
+      const source = fakeSource({
+        getMessages,
+        streaming: () => ({ activeTools: new Map(), responseText }),
+        subscribe: (onChange) => {
+          captured = onChange;
+          return () => {};
+        },
+      });
+      const overlay = makeOverlay({ source });
+      expect(overlay.render(80).join("\n")).toContain("first token");
+
+      responseText = "second token";
+      captured?.({ type: "tool_execution_update" } as AgentSessionEvent);
+
+      expect(overlay.render(80).join("\n")).toContain("second token");
+      expect(getMessages).toHaveBeenCalledOnce();
+    });
+
+
+    it("streams the current rich assistant message without rebuilding settled history", () => {
+      let captured: ((event: AgentSessionEvent) => void) | undefined;
+      const getMessages = vi.fn(
+        () => [{ role: "user", content: "settled history" }] as unknown as SessionMessage[],
+      );
+      const source = fakeSource({
+        getMessages,
+        streaming: () => ({ activeTools: new Map(), responseText: "" }),
+        subscribe: (onChange) => {
+          captured = onChange;
+          return () => {};
+        },
+      });
+      const overlay = makeOverlay({ source });
+      captured?.(assistantSessionEvent("message_start", { type: "thinking", thinking: "" }));
+      captured?.(
+        assistantSessionEvent("message_update", {
+          type: "thinking",
+          thinking: "live full thinking block",
+        }),
+      );
+      const setupMessageReads = getMessages.mock.calls.length;
+
+      expect(overlay.render(80).join("\n")).toContain("live full thinking block");
+
+      captured?.(
+        assistantSessionEvent("message_update", {
+          type: "thinking",
+          thinking: "updated full thinking block",
+        }),
+      );
+      expect(overlay.render(80).join("\n")).toContain("updated full thinking block");
+      expect(getMessages).toHaveBeenCalledTimes(setupMessageReads);
+    });
+
+    it("does rebuild the transcript tree when a message settles", () => {
+      const getMessages = vi.fn(
+        () => [{ role: "user", content: "stable" }] as unknown as SessionMessage[],
+      );
+      let captured: ((event: AgentSessionEvent) => void) | undefined;
+      const source = fakeSource({
+        getMessages,
+        subscribe: (onChange) => {
+          captured = onChange;
+          return () => {};
+        },
+      });
+      makeOverlay({ source });
+
+      captured?.({ type: "message_end" } as AgentSessionEvent);
+
+      expect(getMessages).toHaveBeenCalledTimes(2);
+    });
   });
 });
 

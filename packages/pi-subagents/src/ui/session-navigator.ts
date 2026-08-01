@@ -15,6 +15,7 @@
  * snapshot (`fileSnapshotSource`) swaps in without touching the renderer or the overlay.
  */
 
+import type { AssistantMessage } from "@earendil-works/pi-ai";
 import {
   AssistantMessageComponent,
   BashExecutionComponent,
@@ -38,7 +39,7 @@ import {
   visibleWidth,
 } from "@earendil-works/pi-tui";
 import type { AgentConfigLookup } from "#src/config/agent-types";
-import type { SessionMessage } from "#src/types";
+import type { AgentSessionEvent, SessionMessage } from "#src/types";
 import { describeActivity, type Theme } from "#src/ui/display";
 import { GLYPHS } from "#src/ui/glyphs";
 import { fileSnapshotSource, listNavigableAgents, liveSource, type NavigableSubagent, type TranscriptSource } from "#src/ui/session-navigation";
@@ -130,11 +131,11 @@ export class SessionNavigatorHandler {
 /**
  * Read-only scrollable transcript overlay.
  *
- * Caches a `Container` of Pi's per-entry components and rebuilds it only when the
- * source changes (live agents) — each paint reuses the cached tree, so markdown
- * highlighting does not re-run per frame. This class owns scroll state, chrome,
- * and the running-agent streaming indicator; the component mapping lives in
- * `buildTranscriptComponents`.
+ * Caches the settled transcript's rendered lines per overlay width and rebuilds
+ * Pi's rich per-entry component tree only when messages settle. Streaming deltas
+ * use a lightweight activity row, so paint/scroll stay O(viewport) instead of
+ * O(total transcript). This class owns scroll state, chrome, and live activity;
+ * component mapping lives in `buildTranscriptComponents`.
  */
 export class TranscriptOverlay implements Component {
   private scrollOffset = 0;
@@ -149,6 +150,17 @@ export class TranscriptOverlay implements Component {
   private readonly cwd: string;
   private readonly markdownTheme: MarkdownTheme;
   private content: Container;
+  /** Last inner width supplied by the overlay compositor; input must use this layout. */
+  private renderedInnerWidth: number | undefined;
+  /**
+   * Width-keyed rendering of the settled transcript. Rendering Pi's rich
+   * per-entry components is O(total transcript); keeping those lines stable
+   * makes paint and scroll O(viewport) instead of O(10k+ lines).
+   */
+  private settledLinesCache: { width: number; lines: readonly string[] } | undefined;
+  /** Current assistant message, rendered separately so deltas never touch settled history. */
+  private liveAssistant: AssistantMessageComponent | undefined;
+  private liveAssistantLinesCache: { width: number; lines: readonly string[] } | undefined;
 
   constructor({ tui, theme, source, done, cwd, markdownTheme }: TranscriptOverlayOptions) {
     this.tui = tui;
@@ -158,11 +170,7 @@ export class TranscriptOverlay implements Component {
     this.cwd = cwd;
     this.markdownTheme = markdownTheme;
     this.content = this.rebuild();
-    this.unsubscribe = source.subscribe(() => {
-      if (this.closed) return;
-      this.content = this.rebuild();
-      this.tui.requestRender();
-    });
+    this.unsubscribe = source.subscribe((event) => this.handleSourceChange(event));
   }
 
   handleInput(data: string): void {
@@ -172,7 +180,7 @@ export class TranscriptOverlay implements Component {
       return;
     }
 
-    const totalLines = this.buildContentLines(this.innerWidth()).length;
+    const totalLines = this.contentLineCount(this.renderedInnerWidth ?? this.innerWidth());
     const viewportHeight = this.viewportHeight();
     const maxScroll = Math.max(0, totalLines - viewportHeight);
 
@@ -201,6 +209,7 @@ export class TranscriptOverlay implements Component {
     if (width < 6) return [];
     const th = this.theme;
     const innerW = width - 4;
+    this.renderedInnerWidth = innerW;
     const lines: string[] = [];
 
     const pad = (s: string, len: number): string => s + " ".repeat(Math.max(0, len - visibleWidth(s)));
@@ -214,20 +223,20 @@ export class TranscriptOverlay implements Component {
     lines.push(row(th.bold("Subagent session")));
     lines.push(hrMid);
 
-    const contentLines = this.buildContentLines(innerW);
+    const totalLines = this.contentLineCount(innerW);
     const viewportHeight = this.viewportHeight();
-    const maxScroll = Math.max(0, contentLines.length - viewportHeight);
+    const maxScroll = Math.max(0, totalLines - viewportHeight);
     if (this.autoScroll) this.scrollOffset = maxScroll;
     const visibleStart = Math.min(this.scrollOffset, maxScroll);
-    const visible = contentLines.slice(visibleStart, visibleStart + viewportHeight);
+    const visible = this.visibleContentLines(innerW, visibleStart, viewportHeight);
     for (let i = 0; i < viewportHeight; i++) lines.push(row(visible[i] ?? ""));
 
     lines.push(hrMid);
     const scrollPct =
-      contentLines.length <= viewportHeight
+      totalLines <= viewportHeight
         ? "100%"
-        : `${Math.round(((visibleStart + viewportHeight) / contentLines.length) * 100)}%`;
-    const footerLeft = th.fg("dim", `${contentLines.length} lines · ${scrollPct}`);
+        : `${Math.round(((visibleStart + viewportHeight) / totalLines) * 100)}%`;
+    const footerLeft = th.fg("dim", `${totalLines} lines · ${scrollPct}`);
     const footerRight = th.fg("dim", "↑↓ scroll · PgUp/PgDn · Esc close");
     const footerGap = Math.max(1, innerW - visibleWidth(footerLeft) - visibleWidth(footerRight));
     lines.push(row(footerLeft + " ".repeat(footerGap) + footerRight));
@@ -239,6 +248,9 @@ export class TranscriptOverlay implements Component {
   // fallow-ignore-next-line unused-class-member
   invalidate(): void {
     this.content.invalidate();
+    this.liveAssistant?.invalidate();
+    this.settledLinesCache = undefined;
+    this.liveAssistantLinesCache = undefined;
   }
 
   dispose(): void {
@@ -260,27 +272,130 @@ export class TranscriptOverlay implements Component {
     return Math.max(MIN_VIEWPORT, maxRows - CHROME_LINES);
   }
 
-  private buildContentLines(innerW: number): string[] {
+  /** Settled transcript lines, rendered once per width/content version. */
+  private settledLines(innerW: number): readonly string[] {
     if (innerW <= 0) return [];
-    const lines = this.content.render(innerW);
+    if (this.settledLinesCache?.width === innerW) return this.settledLinesCache.lines;
+    const lines = this.content.render(innerW).map((line) => truncateToWidth(line, innerW));
+    this.settledLinesCache = { width: innerW, lines };
+    return lines;
+  }
+
+  /** Current rich assistant message, re-rendered independently of settled history. */
+  private liveAssistantLines(innerW: number): readonly string[] {
+    if (!this.liveAssistant) return [];
+    if (this.liveAssistantLinesCache?.width === innerW) return this.liveAssistantLinesCache.lines;
+    const lines = this.liveAssistant.render(innerW).map((line) => truncateToWidth(line, innerW));
+    this.liveAssistantLinesCache = { width: innerW, lines };
+    return lines;
+  }
+
+  /** Rich live tail plus lightweight activity rows; settled history stays untouched. */
+  private streamingLines(innerW: number): readonly string[] {
+    const lines = [...this.liveAssistantLines(innerW)];
     const streaming = this.source.streaming();
-    if (streaming) {
-      lines.push(
-        "",
+    if (!streaming) return lines;
+    lines.push(
+      "",
+      truncateToWidth(
         `${GLYPHS.streaming} ${describeActivity(streaming.activeTools, streaming.responseText)}`,
-      );
+        innerW,
+      ),
+    );
+    return lines;
+  }
+
+  private contentLineCount(innerW: number): number {
+    return this.settledLines(innerW).length + this.streamingLines(innerW).length;
+  }
+
+  /**
+   * Slice directly across settled + streaming rows. This avoids copying or
+   * mapping the full transcript on every keypress/paint.
+   */
+  private visibleContentLines(innerW: number, start: number, count: number): string[] {
+    const settled = this.settledLines(innerW);
+    const streaming = this.streamingLines(innerW);
+    const end = start + count;
+    const visible = settled.slice(start, Math.min(end, settled.length));
+    if (end > settled.length) {
+      const streamingStart = Math.max(0, start - settled.length);
+      const streamingEnd = Math.max(0, end - settled.length);
+      visible.push(...streaming.slice(streamingStart, streamingEnd));
     }
-    return lines.map((l) => truncateToWidth(l, innerW));
+    return visible;
+  }
+
+  private handleSourceChange(event?: AgentSessionEvent): void {
+    if (this.closed) return;
+    if (
+      event &&
+      (event.type === "message_start" || event.type === "message_update") &&
+      event.message.role === "assistant"
+    ) {
+      this.updateLiveAssistant(event.message);
+    } else if (eventSettlesTranscript(event)) {
+      this.rebuildSettledContent();
+    }
+    this.tui.requestRender();
+  }
+
+  /**
+   * On the first partial event, split a trailing in-progress assistant message
+   * out of settled history. Later deltas update only this one component.
+   */
+  private updateLiveAssistant(message: AssistantMessage): void {
+    if (!this.liveAssistant) {
+      const messages = this.source.getMessages();
+      const last = messages.at(-1);
+      const lastIsLiveAssistant =
+        last?.role === "assistant" &&
+        (last === message || last.timestamp === message.timestamp);
+      this.content = this.buildComponents(
+        lastIsLiveAssistant ? messages.slice(0, -1) : messages,
+      );
+      this.settledLinesCache = undefined;
+      this.liveAssistant = new AssistantMessageComponent(
+        message,
+        false,
+        this.markdownTheme,
+      );
+    } else {
+      this.liveAssistant.updateContent(message);
+    }
+    this.liveAssistantLinesCache = undefined;
+  }
+
+  private rebuildSettledContent(): void {
+    this.content = this.rebuild();
+    this.liveAssistant = undefined;
+    this.settledLinesCache = undefined;
+    this.liveAssistantLinesCache = undefined;
   }
 
   private rebuild(): Container {
-    return buildTranscriptComponents(this.source.getMessages(), {
+    return this.buildComponents(this.source.getMessages());
+  }
+
+  private buildComponents(messages: readonly SessionMessage[]): Container {
+    return buildTranscriptComponents(messages, {
       tui: this.tui,
       cwd: this.cwd,
       markdownTheme: this.markdownTheme,
       getToolDefinition: (name) => this.source.getToolDefinition(name),
     });
   }
+}
+
+/**
+ * High-frequency partial events are represented by the lightweight streaming
+ * row. Rebuild the rich transcript only when a message is settled, the agent
+ * finishes, or compaction replaces the message history. An undefined event is
+ * treated conservatively for synthetic/static sources used by extensions.
+ */
+function eventSettlesTranscript(event?: AgentSessionEvent): boolean {
+  if (!event) return true;
+  return event.type === "message_end" || event.type === "agent_end" || event.type === "compaction_end";
 }
 
 /** Dependencies the per-entry component tree needs from the SDK/TUI environment. */
