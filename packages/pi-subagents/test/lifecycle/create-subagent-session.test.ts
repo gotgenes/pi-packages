@@ -87,6 +87,48 @@ describe("createSubagentSession — assembly", () => {
     );
   });
 
+  it("disables excluded package extensions in the child settings view before loader reload", async () => {
+    const baseSettings = {
+      getGlobalSettings: vi.fn(() => ({
+        packages: ["npm:@cortexkit/pi-magic-context", "npm:keep-me"],
+      })),
+      getProjectSettings: vi.fn(() => ({
+        packages: [{ source: "npm:@cortexkit/pi-magic-context", skills: ["skills/**"] }],
+      })),
+    };
+    io.createSettingsManager.mockReturnValue(baseSettings);
+
+    await createSubagentSession(
+      { snapshot: STUB_SNAPSHOT, type: "Explore" },
+      createSubagentSessionDeps({
+        io,
+        exec,
+        registry: mockAgentLookup,
+        getExcludedExtensionPackages: () => ["npm:@cortexkit/pi-magic-context"],
+      }),
+    );
+
+    const loaderOpts = io.createResourceLoader.mock.calls[0][0];
+    expect(loaderOpts.settingsManager.getGlobalSettings().packages).toEqual([
+      { source: "npm:@cortexkit/pi-magic-context", extensions: [] },
+      "npm:keep-me",
+    ]);
+    expect(loaderOpts.settingsManager.getProjectSettings().packages).toEqual([
+      {
+        source: "npm:@cortexkit/pi-magic-context",
+        skills: ["skills/**"],
+        extensions: [],
+      },
+    ]);
+    expect(io.createSession).toHaveBeenCalledWith(
+      expect.objectContaining({ settingsManager: loaderOpts.settingsManager }),
+    );
+    expect(baseSettings.getGlobalSettings().packages).toEqual([
+      "npm:@cortexkit/pi-magic-context",
+      "npm:keep-me",
+    ]);
+  });
+
   it("suppresses AGENTS.md/CLAUDE.md/APPEND_SYSTEM.md for subagents", async () => {
     await createSubagentSession(
       { snapshot: STUB_SNAPSHOT, type: "Explore" },

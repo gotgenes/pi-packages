@@ -24,6 +24,8 @@ export interface SubagentsSettings {
    * abort on ESC either way.
    */
   abortAllOnInterrupt?: boolean;
+  /** Pi package sources whose extensions children must not load. */
+  excludedExtensionPackages?: string[];
 }
 
 
@@ -47,6 +49,7 @@ export class SettingsManager {
   private _consumedSessionRetentionMinutes: number = DEFAULT_CONSUMED_RETENTION_MINUTES;
   private _unconsumedSessionRetentionMinutes: number = DEFAULT_UNCONSUMED_RETENTION_MINUTES;
   private _abortAllOnInterrupt: boolean = DEFAULT_ABORT_ALL_ON_INTERRUPT;
+  private _excludedExtensionPackages: string[] = [];
 
   private readonly emit: SettingsEmit;
   private readonly cwd: string;
@@ -118,6 +121,10 @@ export class SettingsManager {
     return this._abortAllOnInterrupt;
   }
 
+  get excludedExtensionPackages(): readonly string[] {
+    return this._excludedExtensionPackages;
+  }
+
   // ── Lifecycle methods ──
 
   /**
@@ -136,6 +143,7 @@ export class SettingsManager {
       this.unconsumedSessionRetentionMinutes = settings.unconsumedSessionRetentionMinutes;
     if (typeof settings.abortAllOnInterrupt === "boolean")
       this._abortAllOnInterrupt = settings.abortAllOnInterrupt;
+    this._excludedExtensionPackages = [...(settings.excludedExtensionPackages ?? [])];
     this.emit("subagents:settings_loaded", { settings });
     return settings;
   }
@@ -151,8 +159,9 @@ export class SettingsManager {
     consumedSessionRetentionMinutes: number;
     unconsumedSessionRetentionMinutes: number;
     abortAllOnInterrupt: boolean;
+    excludedExtensionPackages?: string[];
   } {
-    return {
+    const snapshot = {
       maxConcurrent: this._maxConcurrent,
       defaultMaxTurns: this._defaultMaxTurns ?? 0,
       graceTurns: this._graceTurns,
@@ -160,6 +169,9 @@ export class SettingsManager {
       unconsumedSessionRetentionMinutes: this._unconsumedSessionRetentionMinutes,
       abortAllOnInterrupt: this._abortAllOnInterrupt,
     };
+    return this._excludedExtensionPackages.length > 0
+      ? { ...snapshot, excludedExtensionPackages: [...this._excludedExtensionPackages] }
+      : snapshot;
   }
 
   /**
@@ -278,6 +290,13 @@ function sanitize(raw: unknown): SubagentsSettings {
   }
   if (typeof r.abortAllOnInterrupt === "boolean") {
     out.abortAllOnInterrupt = r.abortAllOnInterrupt;
+  }
+  if (Array.isArray(r.excludedExtensionPackages)) {
+    const packages = r.excludedExtensionPackages
+      .filter((value): value is string => typeof value === "string")
+      .map((value) => value.trim())
+      .filter(Boolean);
+    out.excludedExtensionPackages = [...new Set(packages)];
   }
   return out;
 }

@@ -547,7 +547,8 @@ The observational surface then carries only fire-and-forget broadcasts of immuta
 - **Session lifecycle** — create child sessions, bind extensions, run conversation loop, track results.
 - **Concurrency management** — queue, abort, resume, max concurrency.
 - **Recursion guard** — remove pi-subagents' own three tools from child sessions (prevent infinite nesting).
-  With `isolated` removed (#264), children always load the parent's resources, so the guard is unconditional rather than gated on `cfg.extensions`.
+  With `isolated` removed (#264), children load the parent's resources by default, so the guard is unconditional rather than gated on per-agent policy.
+  Child settings may disable extensions from exact package sources before resource loading.
   This is the core defending its own invariant, keyed off its own tool names — not policy.
 - **Lifecycle events** — emit awaited, ordered events when child sessions spawn, are created, complete, and are disposed.
 - **Workspace provider seam** — accept a registered `WorkspaceProvider` and consult it for the child's cwd; default to the parent's cwd when none is registered.
@@ -559,7 +560,8 @@ These policy and environment concerns were removed so the core stays narrow; eac
 
 - **Tool policy** (`disallowed_tools`) and **extension filtering** (`extensions: string[]`) — access control and tool visibility belong in pi-permission-system's `permission:` frontmatter (Phase 14, #237/#238).
 - **Worktree isolation** (`GitWorktreeManager`, the `isolation: "worktree"` mode) — one _strategy_ for choosing the child's cwd, evicted to `@gotgenes/pi-subagents-worktrees` (#263), the first consumer of the workspace provider seam.
-- **Extension lifecycle control** (`extensions: false`, `isolated`, `noSkills`) — removed in #264; deny-at-use covers what `isolated` pretended to do for tools, and prevent-load is left as a _latent_ (un-built) provider seam, added only if a real consumer needs it.
+- **Per-agent extension lifecycle control** (`extensions: false`, `isolated`, `noSkills`) — removed in #264; deny-at-use covers tool policy.
+  The global/project `excludedExtensionPackages` setting provides the narrower prevent-load seam needed for session-oriented extensions that are unsafe in child runtimes.
 
 ### Composition model
 

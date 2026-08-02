@@ -304,6 +304,25 @@ Individual projects can still override via `/subagents:settings`.
 
 **Failure behavior:** missing file is silent; malformed JSON logs a `[pi-subagents] Ignoring malformed settings at …` warning to stderr; invalid/out-of-range field values are dropped per-field; write failures downgrade the `/subagents:settings` toast to a warning with `(session only; failed to persist)`.
 
+### Excluding package extensions from children
+
+Some session-oriented extensions must run only in the parent.
+Add their exact Pi package sources to `excludedExtensionPackages`:
+
+```json
+{
+  "excludedExtensionPackages": [
+    "npm:@cortexkit/pi-magic-context"
+  ]
+}
+```
+
+The setting disables only the matched package's extensions in child resource loaders, before extension factories run.
+Other resources from that package and all resources from other packages remain available.
+The parent session is unchanged.
+
+This setting is edited directly in the global or project `subagents.json`; it is not exposed in `/subagents:settings`.
+
 ### Abort on interrupt
 
 By default, pressing ESC to interrupt the parent agent also aborts every subagent.
@@ -343,7 +362,8 @@ The earlier `isolation: "worktree"` spawn flag and `isolation:` frontmatter key 
 ## Removed: agent memory and skill preloading
 
 Persistent agent memory (the `memory:` frontmatter key) and skill preloading (the `skills:` frontmatter key) were removed when the core was slimmed down.
-Children now always inherit the parent's skills and extensions, so the `isolated`, `extensions`, and `skills` frontmatter keys no longer exist.
+Children inherit the parent's skills and extensions by default, so the `isolated`, `extensions`, and `skills` frontmatter keys no longer exist.
+Package-level extension opt-outs belong in `excludedExtensionPackages` settings instead of agent frontmatter.
 
 ## Migrating from `disallowed_tools`
 

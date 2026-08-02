@@ -29,10 +29,49 @@ import type { ParentSessionInfo, ShellExec, SubagentType, ThinkingLevel } from "
 /** Names of tools registered by this extension that subagents must NOT inherit. */
 const EXCLUDED_TOOL_NAMES = ["subagent", "get_subagent_result", "steer_subagent"];
 
+type PiSettings = ReturnType<SettingsManager["getGlobalSettings"]>;
+
+function disableExcludedPackageExtensions(settings: PiSettings, excludedSources: ReadonlySet<string>): PiSettings {
+  if (!settings.packages || excludedSources.size === 0) return settings;
+
+  return {
+    ...settings,
+    packages: settings.packages.map((pkg) => {
+      const source = typeof pkg === "string" ? pkg : pkg.source;
+      if (!excludedSources.has(source)) return pkg;
+      return typeof pkg === "string" ? { source, extensions: [] } : { ...pkg, extensions: [] };
+    }),
+  };
+}
+
+/** Child-local view of Pi settings that disables selected package extensions before resource loading. */
+function createChildSettingsManager(
+  settingsManager: SettingsManager,
+  excludedSources: readonly string[],
+): SettingsManager {
+  const excluded = new Set(excludedSources);
+  if (excluded.size === 0) return settingsManager;
+
+  return new Proxy(settingsManager, {
+    get(target, property) {
+      if (property === "getGlobalSettings") {
+        return () => disableExcludedPackageExtensions(target.getGlobalSettings(), excluded);
+      }
+      if (property === "getProjectSettings") {
+        return () => disableExcludedPackageExtensions(target.getProjectSettings(), excluded);
+      }
+      const value = (target as unknown as Record<PropertyKey, unknown>)[property];
+      return typeof value === "function"
+        ? (...args: unknown[]): unknown => Reflect.apply(value, target, args) as unknown
+        : value;
+    },
+  });
+}
+
 /**
  * Apply the recursion guard: remove this extension's dispatch tools from the
  * child's active set. Runs after `bindExtensions` so extension-registered tools
- * are also covered. Unconditional: children always load the parent's extensions.
+ * are also covered. The guard is unconditional for every child that reaches binding.
  */
 function applyRecursionGuard(session: AgentSession): void {
   const filtered = session
@@ -59,6 +98,7 @@ export interface SessionManagerLike {
 export interface ResourceLoaderOptions {
   cwd: string;
   agentDir: string;
+  settingsManager?: SettingsManager;
   noPromptTemplates?: boolean;
   noThemes?: boolean;
   noContextFiles?: boolean;
@@ -122,6 +162,7 @@ export interface SubagentSessionDeps {
   io: SubagentSessionIO;
   exec: ShellExec;
   registry: AgentConfigLookup;
+  getExcludedExtensionPackages: () => readonly string[];
   /** Publishes the child-execution lifecycle so consumers can observe it. */
   lifecycle: ChildLifecyclePublisher;
 }
@@ -174,8 +215,12 @@ export async function createSubagentSession(
   );
 
   const agentDir = deps.io.getAgentDir();
+  const settingsManager = createChildSettingsManager(
+    deps.io.createSettingsManager(effectiveCwd, agentDir),
+    deps.getExcludedExtensionPackages(),
+  );
 
-  // Children always load the parent's extensions and skills.
+  // Children load the parent's skills and all extensions not explicitly excluded.
   // Suppress AGENTS.md/CLAUDE.md and APPEND_SYSTEM.md - upstream's
   // buildSystemPrompt() re-appends both AFTER systemPromptOverride, which
   // would defeat prompt_mode: replace. Parent context, if wanted, reaches the
@@ -184,6 +229,7 @@ export async function createSubagentSession(
   const loader = deps.io.createResourceLoader({
     cwd: cfg.effectiveCwd,
     agentDir,
+    settingsManager,
     noPromptTemplates: true,
     noThemes: true,
     noContextFiles: true,
@@ -204,7 +250,7 @@ export async function createSubagentSession(
     cwd: cfg.effectiveCwd,
     agentDir,
     sessionManager,
-    settingsManager: deps.io.createSettingsManager(cfg.effectiveCwd, agentDir),
+    settingsManager,
     modelRegistry: snapshot.modelRegistry,
     model: cfg.model,
     tools: cfg.toolNames,

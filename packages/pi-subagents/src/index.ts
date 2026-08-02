@@ -108,6 +108,7 @@ export default function (pi: ExtensionAPI) {
     },
     exec: (cmd, args, opts) => pi.exec(cmd, args, opts),
     registry,
+    getExcludedExtensionPackages: () => settings.excludedExtensionPackages,
     lifecycle: createChildLifecyclePublisher((channel, data) => pi.events.emit(channel, data)),
   };
 

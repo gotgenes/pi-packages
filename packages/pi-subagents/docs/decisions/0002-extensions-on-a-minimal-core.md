@@ -96,3 +96,9 @@ Permissions depend only on the core's events; workspaces depend only on the core
   Confirming Pi's event model supports awaited pre-bind emission is the first investigation of the reclaimed phase.
 - Once the cwd is resolved through the provider seam rather than relayed by `Agent`, child-session creation can construct a born-complete execution and the "runner" concept dissolves — recovering the structural goal of the abandoned collaborator steps by a cleaner route.
 - The reclaimed Phase 16 roadmap and step issues live in [`docs/architecture/architecture.md`](../architecture/architecture.md).
+
+## Amendment: concrete prevent-load consumer
+
+Magic Context exposed a concrete integration failure: in-process children reloaded its session-wide extension runtime and multiplied global session discovery in the shared V8 heap.
+The core therefore admits a narrow package-level prevent-load setting, `excludedExtensionPackages`.
+It applies globally or per project before child resource loading, preserves default inheritance, and does not restore per-agent policy or tool permission semantics.

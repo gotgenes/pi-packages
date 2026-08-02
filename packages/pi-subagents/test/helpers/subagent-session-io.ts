@@ -81,12 +81,14 @@ export function createSubagentSessionDeps(overrides?: {
 	io?: ReturnType<typeof createSubagentSessionIO>;
 	exec?: ShellExec;
 	registry?: AgentConfigLookup;
+	getExcludedExtensionPackages?: () => readonly string[];
 	lifecycle?: ReturnType<typeof createChildLifecycleMock>;
 }) {
 	return {
 		io: overrides?.io ?? createSubagentSessionIO(),
 		exec: overrides?.exec ?? vi.fn(),
 		registry: overrides?.registry ?? createAgentLookup(),
+		getExcludedExtensionPackages: overrides?.getExcludedExtensionPackages ?? (() => []),
 		lifecycle: overrides?.lifecycle ?? createChildLifecycleMock(),
 	};
 }
