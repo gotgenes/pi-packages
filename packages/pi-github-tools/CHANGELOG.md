@@ -1,5 +1,21 @@
 # Changelog
 
+## [4.2.0](https://github.com/gotgenes/pi-packages/compare/pi-github-tools-v4.1.5...pi-github-tools-v4.2.0) (2026-08-04)
+
+
+### Features
+
+* **pi-github-tools:** add merge-state classification for PR check rollups ([#673](https://github.com/gotgenes/pi-packages/issues/673)) ([4243520](https://github.com/gotgenes/pi-packages/commit/42435206aed5abd2cf259365b6eaa69af2b7040b))
+* **pi-github-tools:** stream check-wait progress from release_pr_merge ([#673](https://github.com/gotgenes/pi-packages/issues/673)) ([13902d1](https://github.com/gotgenes/pi-packages/commit/13902d18f68a03ca35ab35525e9af30c0cdc48d4))
+* **pi-github-tools:** wait out in-progress checks in release_pr_merge ([#673](https://github.com/gotgenes/pi-packages/issues/673)) ([2b91c1c](https://github.com/gotgenes/pi-packages/commit/2b91c1c290f246772f7708334bbb5f3200efb977))
+
+
+### Documentation
+
+* fold the UNSTABLE check-wait runbook into release_pr_merge ([#673](https://github.com/gotgenes/pi-packages/issues/673)) ([54e549b](https://github.com/gotgenes/pi-packages/commit/54e549ba8cf803495bf432dc19706ccc6908c0fa))
+* **retro:** add planning stage notes for issue [#673](https://github.com/gotgenes/pi-packages/issues/673) ([c4e1c6d](https://github.com/gotgenes/pi-packages/commit/c4e1c6d7fb307afcd64c211466fa3a58e80316b1))
+* **retro:** add TDD stage notes for issue [#673](https://github.com/gotgenes/pi-packages/issues/673) ([850903e](https://github.com/gotgenes/pi-packages/commit/850903eeb0743c17461205ca4d4da1d8e7e04a76))
+
 ## [4.1.5](https://github.com/gotgenes/pi-packages/compare/pi-github-tools-v4.1.4...pi-github-tools-v4.1.5) (2026-06-17)
 
 
