@@ -43,6 +43,11 @@ class WorktreeWorkspace implements Workspace {
       this.info,
       outcome.description,
     );
+    if (result.error) {
+      return {
+        resultAddendum: `\n\n---\nWorktree cleanup failed and was left in place for manual recovery at \`${result.path}\`: ${result.error}`,
+      };
+    }
     if (result.hasChanges && result.branch) {
       return {
         resultAddendum: `\n\n---\nChanges saved to branch \`${result.branch}\`. Merge with: \`git merge ${result.branch}\``,

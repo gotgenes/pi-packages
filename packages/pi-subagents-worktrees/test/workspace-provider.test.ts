@@ -1,5 +1,11 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -127,5 +133,42 @@ describe("WorktreeWorkspaceProvider", () => {
       cwd: repoDir,
     }).toString();
     expect(branches).toContain("pi-agent-abc123");
+  });
+
+  it("dispose surfaces a cleanup failure instead of silently reporting no changes", async () => {
+    const provider = new WorktreeWorkspaceProvider({
+      worktreeAgents: ["Explore"],
+    });
+    const workspace = await provider.prepare(
+      ctx({ agentType: "Explore", baseCwd: repoDir, agentId: "fail-1" }),
+    );
+    const wtPath = workspace!.cwd;
+    writeFileSync(join(wtPath, "new-file.txt"), "agent output");
+
+    // Install a pre-commit hook that always fails, forcing the underlying
+    // `cleanupWorktree` commit to throw partway through the changes-exist
+    // path. Worktrees share the main repo's hooks directory.
+    const hookPath = join(repoDir, ".git", "hooks", "pre-commit");
+    writeFileSync(hookPath, "#!/bin/sh\nexit 1\n");
+    chmodSync(hookPath, 0o755);
+
+    const result = workspace!.dispose({
+      status: "completed",
+      description: "did work",
+    });
+
+    expect(result?.resultAddendum).toContain("cleanup failed");
+    expect(result?.resultAddendum).toContain(wtPath);
+    expect(existsSync(wtPath)).toBe(true);
+
+    // Cleanup this test's own preserved worktree.
+    try {
+      execFileSync("git", ["worktree", "remove", "--force", wtPath], {
+        cwd: repoDir,
+        stdio: "pipe",
+      });
+    } catch {
+      /* ignore */
+    }
   });
 });
