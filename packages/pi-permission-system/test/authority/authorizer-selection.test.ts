@@ -31,6 +31,7 @@ function makeCtx(overrides: Partial<ExtensionContext> = {}): ExtensionContext {
   return {
     cwd: "/test/project",
     hasUI: true,
+    signal: new AbortController().signal,
     ui: {
       setStatus: vi.fn(),
       notify: vi.fn(),
@@ -273,6 +274,33 @@ describe("AuthorizerSelection", () => {
         expect.anything(),
         expect.anything(),
         logger,
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      );
+    });
+
+    it("injects the active context abort signal into each link", async () => {
+      const controller = new AbortController();
+      const link = vi
+        .fn<Authorizer["authorize"]>()
+        .mockResolvedValue({ kind: "defer" });
+      const registry = new AuthorizerRegistry();
+      registry.register("judge", link);
+      const selection = new AuthorizerSelection(
+        makeDeps({
+          prompter: makeInvokingPrompter(),
+          authorizerRegistry: registry,
+          getAuthorizerChain: () => ["judge"],
+        }),
+      );
+
+      selection.activate(makeCtx({ hasUI: true, signal: controller.signal }));
+      await selection.escalate(makeDetailsOn("bash"));
+
+      expect(link).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        { signal: controller.signal },
       );
     });
 

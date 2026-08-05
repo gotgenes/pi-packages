@@ -32,8 +32,8 @@ export const DELEGATION_EXCLUDED_SURFACES: ReadonlySet<string> = new Set([
 export function encloseInDelegationEnvelope(
   authorize: Authorizer["authorize"],
 ): Authorizer["authorize"] {
-  return async (details, query, log) => {
-    const verdict = await authorize(details, query, log);
+  return async (details, query, log, context) => {
+    const verdict = await authorize(details, query, log, context);
     if (verdict.kind === "allow" && isExcludedSurface(details)) {
       return { kind: "defer" };
     }

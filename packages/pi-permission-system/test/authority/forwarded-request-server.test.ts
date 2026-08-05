@@ -398,6 +398,7 @@ describe("processInbox — bounded delegation over forwarded asks", () => {
     getToolPermission: vi.fn(),
   };
   const log = makeAuthorizerLog();
+  const context = { signal: undefined };
   const allowingLink: Authorizer["authorize"] = () =>
     Promise.resolve({ kind: "allow" });
 
@@ -418,7 +419,9 @@ describe("processInbox — bounded delegation over forwarded asks", () => {
 
     // The gate surface, not the displayed tool name, decides exclusion — so a
     // forwarded path ask is capped exactly like the same ask made locally.
-    expect(await enclosed(details, query, log)).toEqual({ kind: "defer" });
+    expect(await enclosed(details, query, log, context)).toEqual({
+      kind: "defer",
+    });
   });
 
   test("passes a link's allow on a forwarded bash ask through", async () => {
@@ -432,7 +435,9 @@ describe("processInbox — bounded delegation over forwarded asks", () => {
 
     const enclosed = encloseInDelegationEnvelope(allowingLink);
 
-    expect(await enclosed(details, query, log)).toEqual({ kind: "allow" });
+    expect(await enclosed(details, query, log, context)).toEqual({
+      kind: "allow",
+    });
   });
 });
 

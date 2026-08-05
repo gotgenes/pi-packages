@@ -213,7 +213,7 @@ The excluded surface is the **gate** surface the rule fired on, not the tool nam
 This holds for an ask forwarded up from a subagent exactly as it does for a local one.
 See [migration/0635-forwarded-ask-delegation-envelope.md](migration/0635-forwarded-ask-delegation-envelope.md).
 
-Extension authors: register a link from a `permissions:ready` handler via `getPermissionsService().registerAuthorizer(name, authorize)`; the callback receives the ask details and a narrow, session-scoped `PermissionQuery` (`checkPermission` / `getToolPermission`) so it can consult the deterministic engine at gate parity.
+Extension authors: register a link from a `permissions:ready` handler via `getPermissionsService().registerAuthorizer(name, authorize)`; the callback receives the ask details, a narrow session-scoped `PermissionQuery` (`checkPermission` / `getToolPermission`), a shared `AuthorizerLog`, and an aggregate invocation context whose `signal` field exposes `ctx.signal` so long-running link work can cancel promptly on session interruption.
 Registration returns a disposer, and only one link may hold a given name.
 For a complete working example, see [`@gotgenes/pi-permission-model-judge`](https://github.com/gotgenes/pi-packages/tree/main/packages/pi-permission-model-judge): it registers a `model-judge` link on `permissions:ready` that reviews `external_directory` asks and auto-denies mistyped paths with a corrective reason.
 
