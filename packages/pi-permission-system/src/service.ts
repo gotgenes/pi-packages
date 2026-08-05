@@ -20,6 +20,8 @@ export type {
   Authorizer,
   AuthorizerVerdict,
 } from "./authority/authorizer";
+export { isAuthorizerAlreadyRegisteredError } from "./authority/authorizer-registry";
+export { isRegisteredSubagentChild } from "./authority/subagent-context";
 
 /**
  * The narrow review-log seam handed to a chain link at `authorize` time
@@ -160,9 +162,11 @@ export interface PermissionsService extends PermissionQuery {
    *
    * @param name      - Operator-facing link name referenced from `authorizerChain`.
    * @param authorize - The link's decision callback
-   *                    (`(details, query, log) => verdict`); `log` is an
-   *                    {@link AuthorizerLog} for recording a decision trail to
-   *                    the shared permission review log.
+   *                    (`(details, query, log, signal?) => verdict`); `log` is
+   *                    an {@link AuthorizerLog} for recording a decision trail
+   *                    to the shared permission review log, and `signal` is the
+   *                    active session's `ctx.signal` so long-running link work
+   *                    can cancel promptly when the session is interrupted.
    */
   registerAuthorizer(
     name: string,

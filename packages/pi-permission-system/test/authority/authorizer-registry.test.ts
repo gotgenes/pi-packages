@@ -1,7 +1,11 @@
 import { describe, expect, test } from "vitest";
 
 import type { Authorizer } from "#src/authority/authorizer";
-import { AuthorizerRegistry } from "#src/authority/authorizer-registry";
+import {
+  AuthorizerAlreadyRegisteredError,
+  AuthorizerRegistry,
+  isAuthorizerAlreadyRegisteredError,
+} from "#src/authority/authorizer-registry";
 
 const noopLink: Authorizer["authorize"] = () =>
   Promise.resolve({ kind: "defer" });
@@ -28,7 +32,18 @@ describe("AuthorizerRegistry", () => {
         registry.register("model-judge", () =>
           Promise.resolve({ kind: "defer" }),
         ),
-      ).toThrow("model-judge");
+      ).toThrow(AuthorizerAlreadyRegisteredError);
+      try {
+        registry.register("model-judge", () =>
+          Promise.resolve({ kind: "defer" }),
+        );
+      } catch (error) {
+        expect(error).toBeInstanceOf(AuthorizerAlreadyRegisteredError);
+        if (error instanceof AuthorizerAlreadyRegisteredError) {
+          expect(error.code).toBe("AUTHORIZER_ALREADY_REGISTERED");
+          expect(error.linkName).toBe("model-judge");
+        }
+      }
     });
 
     test("allows registering different names independently", () => {
@@ -67,5 +82,38 @@ describe("AuthorizerRegistry", () => {
       const registry = new AuthorizerRegistry();
       expect(registry.get("unknown")).toBeUndefined();
     });
+  });
+});
+
+describe("isAuthorizerAlreadyRegisteredError", () => {
+  test("returns true for the registry's duplicate-registration error", () => {
+    const registry = new AuthorizerRegistry();
+    registry.register("model-judge", noopLink);
+    try {
+      registry.register("model-judge", noopLink);
+    } catch (error) {
+      expect(isAuthorizerAlreadyRegisteredError(error)).toBe(true);
+      return;
+    }
+    throw new Error("expected duplicate registration to throw");
+  });
+
+  test("returns true for a structural error shape from another module instance", () => {
+    const foreignError = {
+      name: "AuthorizerAlreadyRegisteredError",
+      code: "AUTHORIZER_ALREADY_REGISTERED",
+      linkName: "model-judge",
+    };
+    expect(isAuthorizerAlreadyRegisteredError(foreignError)).toBe(true);
+  });
+
+  test("returns false for unrelated errors", () => {
+    expect(isAuthorizerAlreadyRegisteredError(new Error("nope"))).toBe(false);
+    expect(
+      isAuthorizerAlreadyRegisteredError({
+        name: "AuthorizerAlreadyRegisteredError",
+        code: "AUTHORIZER_ALREADY_REGISTERED",
+      }),
+    ).toBe(false);
   });
 });

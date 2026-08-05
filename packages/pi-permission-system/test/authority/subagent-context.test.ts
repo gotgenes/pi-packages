@@ -6,7 +6,10 @@ import {
   normalizeFilesystemPath,
   type SubagentDetectionContext,
 } from "#src/authority/subagent-context";
-import { SubagentSessionRegistry } from "#src/authority/subagent-registry";
+import {
+  getSubagentSessionRegistry,
+  SubagentSessionRegistry,
+} from "#src/authority/subagent-registry";
 import { posixPathFlavor, win32PathFlavor } from "#src/path/path-flavor";
 
 afterEach(() => {
@@ -62,6 +65,20 @@ describe("isRegisteredSubagentChild", () => {
       },
     };
     expect(isRegisteredSubagentChild(ctx, registry)).toBe(false);
+  });
+});
+
+describe("isRegisteredSubagentChild (public one-arg form)", () => {
+  test("reads from the process-global subagent session registry", () => {
+    const sessionId = "global-child-session";
+    const registry = getSubagentSessionRegistry();
+    registry.register(sessionId, {});
+
+    try {
+      expect(isRegisteredSubagentChild(makeCtx(null, sessionId))).toBe(true);
+    } finally {
+      registry.unregister(sessionId);
+    }
   });
 });
 

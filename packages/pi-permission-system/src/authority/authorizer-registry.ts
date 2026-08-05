@@ -15,6 +15,41 @@
 import type { Authorizer } from "./authorizer";
 
 /**
+ * Thrown when a second authorizer attempts to register the same link name.
+ *
+ * Exported so downstream extensions can reliably catch duplicate-registration
+ * in child sessions without string-matching the error message.
+ */
+export class AuthorizerAlreadyRegisteredError extends Error {
+  readonly code = "AUTHORIZER_ALREADY_REGISTERED" as const;
+
+  constructor(readonly linkName: string) {
+    super(`An authorizer is already registered for '${linkName}'.`);
+    this.name = "AuthorizerAlreadyRegisteredError";
+  }
+}
+
+/**
+ * Return true when `value` matches the duplicate-registration error shape.
+ *
+ * Consumers should prefer this guard over `instanceof` across extension
+ * boundaries, where each extension may import a different module instance.
+ */
+export function isAuthorizerAlreadyRegisteredError(
+  value: unknown,
+): value is AuthorizerAlreadyRegisteredError {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  const candidate = value as Record<string, unknown>;
+  return (
+    candidate.name === "AuthorizerAlreadyRegisteredError" &&
+    candidate.code === "AUTHORIZER_ALREADY_REGISTERED" &&
+    typeof candidate.linkName === "string"
+  );
+}
+
+/**
  * Read-only lookup used by chain composition (ISP — exposes only the read side,
  * not the registration surface).
  */
@@ -53,7 +88,7 @@ export class AuthorizerRegistry
    */
   register(name: string, authorize: Authorizer["authorize"]): () => void {
     if (this.links.has(name)) {
-      throw new Error(`An authorizer is already registered for '${name}'.`);
+      throw new AuthorizerAlreadyRegisteredError(name);
     }
     this.links.set(name, authorize);
     return () => {

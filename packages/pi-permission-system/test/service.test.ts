@@ -1,12 +1,18 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AccessIntent } from "#src/access-intent/access-intent";
-import { AuthorizerRegistry } from "#src/authority/authorizer-registry";
+import {
+  AuthorizerRegistry,
+  isAuthorizerAlreadyRegisteredError,
+} from "#src/authority/authorizer-registry";
+import { getSubagentSessionRegistry } from "#src/authority/subagent-registry";
 import { posixPathFlavor } from "#src/path/path-flavor";
 import { PathNormalizer } from "#src/path-normalizer";
 import { LocalPermissionsService } from "#src/permissions-service";
 import type { PermissionsService } from "#src/service";
 import {
   getPermissionsService,
+  isAuthorizerAlreadyRegisteredError as isAuthorizerAlreadyRegisteredErrorPublic,
+  isRegisteredSubagentChild,
   publishPermissionsService,
   unpublishPermissionsService,
 } from "#src/service";
@@ -77,6 +83,38 @@ describe("globalThis accessor", () => {
   it("unpublish is safe to call when nothing was published", () => {
     expect(() => unpublishPermissionsService(makeService())).not.toThrow();
     expect(getPermissionsService()).toBeUndefined();
+  });
+});
+
+describe("additional public exports", () => {
+  it("exports isRegisteredSubagentChild with process-global registry lookup", () => {
+    const sessionId = "service-export-child";
+    const ctx = {
+      sessionManager: {
+        getSessionDir: () => "",
+        getSessionId: () => sessionId,
+      },
+    };
+    const registry = getSubagentSessionRegistry();
+    registry.register(sessionId, {});
+    try {
+      expect(isRegisteredSubagentChild(ctx)).toBe(true);
+    } finally {
+      registry.unregister(sessionId);
+    }
+  });
+
+  it("exports isAuthorizerAlreadyRegisteredError for cross-module-safe duplicate detection", () => {
+    const foreignError = {
+      name: "AuthorizerAlreadyRegisteredError",
+      code: "AUTHORIZER_ALREADY_REGISTERED",
+      linkName: "model-judge",
+    };
+    expect(isAuthorizerAlreadyRegisteredErrorPublic(foreignError)).toBe(true);
+    // Keep source and public exports aligned.
+    expect(isAuthorizerAlreadyRegisteredErrorPublic(foreignError)).toBe(
+      isAuthorizerAlreadyRegisteredError(foreignError),
+    );
   });
 });
 

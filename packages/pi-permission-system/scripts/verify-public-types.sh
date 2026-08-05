@@ -28,7 +28,8 @@ for sym in getPermissionsService publishPermissionsService unpublishPermissionsS
   PermissionsService PermissionCheckResult PermissionState ToolInputFormatter \
   PERMISSIONS_UI_PROMPT_CHANNEL PERMISSIONS_READY_CHANNEL PERMISSIONS_DECISION_CHANNEL \
   PermissionUiPromptEvent registerAuthorizer PermissionQuery Authorizer \
-  AuthorizerVerdict PromptPermissionDetails; do
+  AuthorizerVerdict PromptPermissionDetails isRegisteredSubagentChild \
+  isAuthorizerAlreadyRegisteredError; do
   grep -q "$sym" "$DTS" || { echo "FAIL: '$sym' missing from dist/public.d.ts" >&2; exit 1; }
 done
 echo "OK: dist/public.d.ts is self-contained and exports the public surface"

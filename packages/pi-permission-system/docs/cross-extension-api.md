@@ -78,6 +78,16 @@ interface PermissionsService {
     toolName: string,
     extractor: (input: Record<string, unknown>) => string | undefined,
   ): () => void;
+
+  /**
+   * Register a named live-authority link consulted by `authorizerChain`.
+   * Returns a disposer.
+   * Throws a duplicate-registration error when the name is already present.
+   */
+  registerAuthorizer(
+    name: string,
+    authorize: Authorizer["authorize"],
+  ): () => void;
 }
 ```
 
@@ -262,6 +272,49 @@ const dispose = permissions.registerToolAccessExtractor("ffgrep", (input) =>
 
 Registration rules mirror `registerToolInputFormatter`: one extractor per tool name (a second `register` for the same name throws), and the returned disposer is identity-guarded.
 The extractor must not throw — guard your parsing and return `undefined` on anything unexpected.
+
+#### `isRegisteredSubagentChild` and `isAuthorizerAlreadyRegisteredError`
+
+`registerAuthorizer` callbacks receive the current ask details, the narrow `PermissionQuery`, the shared `AuthorizerLog`, and an optional `signal` (`ctx.signal`) as the fourth argument.
+Use `signal` to cancel long-running review work (for example, a model call) promptly when the user interrupts the session.
+
+When an extension registers authorizers from a `permissions:ready` listener, in-process subagent children reuse the parent service instance.
+A child can therefore hit duplicate registration if it calls `registerAuthorizer` for a link name the parent already owns.
+
+Use the public child detector to skip duplicate registration in children:
+
+```typescript
+import { isRegisteredSubagentChild } from "@gotgenes/pi-permission-system";
+
+pi.events.on(PERMISSIONS_READY_CHANNEL, (_event, ctx) => {
+  if (isRegisteredSubagentChild(ctx)) {
+    return;
+  }
+  registerAuthorizer();
+});
+```
+
+And/or use the exported type guard when a duplicate slips through:
+
+```typescript
+import {
+  getPermissionsService,
+  isAuthorizerAlreadyRegisteredError,
+} from "@gotgenes/pi-permission-system";
+
+try {
+  getPermissionsService()?.registerAuthorizer("model-judge", authorize);
+} catch (error) {
+  if (isAuthorizerAlreadyRegisteredError(error)) {
+    // Benign duplicate in child context.
+  } else {
+    throw error;
+  }
+}
+```
+
+Duplicate-registration errors carry a stable `code` (`"AUTHORIZER_ALREADY_REGISTERED"`) and the duplicate `linkName`.
+`isAuthorizerAlreadyRegisteredError` checks that shape directly, so handling stays reliable across per-extension module isolation.
 
 #### Subagent session registration
 

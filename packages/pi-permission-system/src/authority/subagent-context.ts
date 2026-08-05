@@ -1,5 +1,6 @@
 import { SUBAGENT_ENV_HINT_KEYS } from "#src/authority/permission-forwarding";
 import type { SubagentSessionRegistry } from "#src/authority/subagent-registry";
+import { getSubagentSessionRegistry } from "#src/authority/subagent-registry";
 import type { PathFlavor } from "#src/path/path-flavor";
 
 /**
@@ -33,14 +34,22 @@ export function normalizeFilesystemPath(
  */
 export function isRegisteredSubagentChild(
   ctx: SubagentDetectionContext,
+): boolean;
+export function isRegisteredSubagentChild(
+  ctx: SubagentDetectionContext,
   registry: SubagentSessionRegistry,
+): boolean;
+export function isRegisteredSubagentChild(
+  ctx: SubagentDetectionContext,
+  registry?: SubagentSessionRegistry,
 ): boolean {
+  const activeRegistry = registry ?? getSubagentSessionRegistry();
   try {
     const sessionId = ctx.sessionManager.getSessionId();
     if (!sessionId) {
       return false;
     }
-    return registry.has(sessionId);
+    return activeRegistry.has(sessionId);
   } catch {
     // getSessionId() unavailable — treat as not-a-registered-child.
     return false;
