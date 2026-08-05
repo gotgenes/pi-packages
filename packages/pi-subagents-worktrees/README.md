@@ -44,6 +44,7 @@ An agent type not in `worktreeAgents` runs in the parent working directory, exac
 - A child whose agent type is listed gets a fresh detached worktree at `HEAD` before it runs.
 - When the child finishes with no changes, the worktree is removed.
 - When the child finishes with changes, they are committed to a branch (`pi-agent-<id>`), and the child's result gains a note: `Changes saved to branch \`<branch>\`. Merge with: \`git merge <branch>\``.
+- If cleanup fails partway through (e.g. a pre-commit hook rejects the safety-net commit), the worktree is **left in place** rather than removed, and the child's result gains a note: `Worktree cleanup failed and was left in place for manual recovery at \`<path>\`: <error>`.
 - If worktree creation fails for an opted-in agent (not a git repo, no commits yet, or `git worktree add` fails), the child run **fails** with an explanatory error rather than silently running unisolated.
 
 ## Migrating from `isolation: "worktree"`
