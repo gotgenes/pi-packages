@@ -1,5 +1,11 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -228,6 +234,36 @@ describe("worktree", () => {
 
       const result = cleanupWorktree(repoDir, wt, "already gone");
       expect(result.hasChanges).toBe(false);
+    });
+
+    it("leaves the worktree in place when the changes-exist path throws", () => {
+      const wt = createWorktree(repoDir, "hook-fail-1")!;
+      writeFileSync(join(wt.path, "change.txt"), "agent wrote this");
+
+      // Install a pre-commit hook that always fails, forcing `git commit`
+      // to throw partway through the changes-exist path. Worktrees share
+      // the main repo's hooks directory (their `.git` is a file pointing
+      // back to it), so the hook is installed there, not under `wt.path`.
+      const hookPath = join(repoDir, ".git", "hooks", "pre-commit");
+      writeFileSync(hookPath, "#!/bin/sh\nexit 1\n");
+      chmodSync(hookPath, 0o755);
+
+      const result = cleanupWorktree(repoDir, wt, "hook rejects this");
+
+      expect(result.hasChanges).toBe(false);
+      expect(result.error).toBeTruthy();
+      expect(result.path).toBe(wt.path);
+      expect(existsSync(wt.path)).toBe(true);
+
+      // Cleanup — this test's own preserved worktree.
+      try {
+        execFileSync("git", ["worktree", "remove", "--force", wt.path], {
+          cwd: repoDir,
+          stdio: "pipe",
+        });
+      } catch {
+        /* ignore */
+      }
     });
 
     it("truncates commit message at 200 chars", () => {

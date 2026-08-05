@@ -29,8 +29,10 @@ export interface WorktreeCleanupResult {
   hasChanges: boolean;
   /** Branch name if changes were committed. */
   branch?: string;
-  /** Worktree path if it was kept. */
+  /** Worktree path if it was kept — either a committed changes-exist result, or a partial-failure result left in place for manual recovery. */
   path?: string;
+  /** Set when cleanup failed partway through; the worktree was left in place at `path`. */
+  error?: string;
 }
 
 /**
@@ -152,12 +154,16 @@ export function cleanupWorktree(
     };
   } catch (err) {
     debugLog("cleanupWorktree", err);
-    try {
-      removeWorktree(cwd, worktree.path);
-    } catch (removeErr) {
-      debugLog("removeWorktree on cleanup error", removeErr);
-    }
-    return { hasChanges: false };
+    // Do NOT remove the worktree here — its state is uncertain and it may
+    // contain uncommitted/staged work that would otherwise be lost with no
+    // trace. Leave it on disk and report failure so the caller can decide
+    // (e.g. surface the path to the user for manual recovery) instead of
+    // silently discarding it.
+    return {
+      hasChanges: false,
+      path: worktree.path,
+      error: err instanceof Error ? err.message : String(err),
+    };
   }
 }
 
