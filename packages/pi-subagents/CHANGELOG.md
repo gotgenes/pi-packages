@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [19.2.2](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v19.2.1...pi-subagents-v19.2.2) (2026-08-10)
+
+
+### Bug Fixes
+
+* **pi-subagents:** scroll the session preview at the width it renders at ([9bdee3c](https://github.com/gotgenes/pi-packages/commit/9bdee3c5f542679363e86b389af179aa82fb4580)), closes [#670](https://github.com/gotgenes/pi-packages/issues/670) [#689](https://github.com/gotgenes/pi-packages/issues/689)
+
+
+### Performance Improvements
+
+* **pi-subagents:** make session-preview paint and scroll viewport-bound ([f5f1fcc](https://github.com/gotgenes/pi-packages/commit/f5f1fcc41bfd6def44aa26d388aa70b06b3c1b53)), closes [#689](https://github.com/gotgenes/pi-packages/issues/689)
+* **pi-subagents:** settle session-preview messages incrementally ([316ddb1](https://github.com/gotgenes/pi-packages/commit/316ddb16143914bf160c438b1d8b2cabda4d9805)), closes [#689](https://github.com/gotgenes/pi-packages/issues/689)
+* **pi-subagents:** update only the live message on session-preview deltas ([14d3022](https://github.com/gotgenes/pi-packages/commit/14d3022ee3b34372daabe16de3c5b54dafc2049a)), closes [#689](https://github.com/gotgenes/pi-packages/issues/689)
+
 ## [19.2.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v19.2.0...pi-subagents-v19.2.1) (2026-07-28)
 
 
