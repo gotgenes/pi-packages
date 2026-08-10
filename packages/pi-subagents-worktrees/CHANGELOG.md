@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.3.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-worktrees-v0.2.4...pi-subagents-worktrees-v0.3.0) (2026-08-10)
+
+
+### Features
+
+* **pi-subagents-worktrees:** add /subagents-worktrees to inspect and remove preserved worktrees ([#714](https://github.com/gotgenes/pi-packages/issues/714)) ([9e101e0](https://github.com/gotgenes/pi-packages/commit/9e101e0b634641cf916423c7b9d131ff8ee1ae3b))
+* **pi-subagents-worktrees:** add a registry of live worktree paths ([#714](https://github.com/gotgenes/pi-packages/issues/714)) ([06afe43](https://github.com/gotgenes/pi-packages/commit/06afe43107105e7e9917f4eb291ea8716b3cc1a9))
+* **pi-subagents-worktrees:** detect preserved rescue worktrees ([#714](https://github.com/gotgenes/pi-packages/issues/714)) ([4fe0acd](https://github.com/gotgenes/pi-packages/commit/4fe0acdc8aff9fd801381e6ba9c01dc828c68c57))
+* **pi-subagents-worktrees:** track live worktrees while children run ([#714](https://github.com/gotgenes/pi-packages/issues/714)) ([a270e8f](https://github.com/gotgenes/pi-packages/commit/a270e8fecb4d754744cf49f565bd0a5c70f0dbb3))
+* **pi-subagents-worktrees:** warn at session start about preserved rescue worktrees ([#714](https://github.com/gotgenes/pi-packages/issues/714)) ([a081cbf](https://github.com/gotgenes/pi-packages/commit/a081cbf89ff1d8153c58dbe4f5bb199d3d26560f))
+
+
+### Documentation
+
+* **pi-subagents-worktrees:** document preserved-worktree recovery ([#714](https://github.com/gotgenes/pi-packages/issues/714)) ([cd98283](https://github.com/gotgenes/pi-packages/commit/cd98283f375ee7dea80ddd038cd33f8a068f2b69))
+
 ## [0.2.4](https://github.com/gotgenes/pi-packages/compare/pi-subagents-worktrees-v0.2.3...pi-subagents-worktrees-v0.2.4) (2026-08-10)
 
 
