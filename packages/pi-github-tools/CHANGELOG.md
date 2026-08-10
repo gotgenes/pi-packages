@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.2.1](https://github.com/gotgenes/pi-packages/compare/pi-github-tools-v4.2.0...pi-github-tools-v4.2.1) (2026-08-10)
+
+
+### Documentation
+
+* **retro:** add retro notes for issue [#673](https://github.com/gotgenes/pi-packages/issues/673) ([e3239fc](https://github.com/gotgenes/pi-packages/commit/e3239fcd81d50e98856156dc66c87d71a8d57728))
+
 ## [4.2.0](https://github.com/gotgenes/pi-packages/compare/pi-github-tools-v4.1.5...pi-github-tools-v4.2.0) (2026-08-04)
 
 

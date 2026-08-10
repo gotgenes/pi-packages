@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.2.4](https://github.com/gotgenes/pi-packages/compare/pi-subagents-worktrees-v0.2.3...pi-subagents-worktrees-v0.2.4) (2026-08-10)
+
+
+### Bug Fixes
+
+* **pi-subagents-worktrees:** preserve the worktree when cleanup fails ([#704](https://github.com/gotgenes/pi-packages/issues/704)) ([4a3f8e2](https://github.com/gotgenes/pi-packages/commit/4a3f8e205e62db4bd7b664507f72a81f68a9029e))
+* **pi-subagents-worktrees:** retry the rescue commit with --no-verify ([#704](https://github.com/gotgenes/pi-packages/issues/704)) ([b9d17cb](https://github.com/gotgenes/pi-packages/commit/b9d17cbc1dc9917e3ad4129d7f21f1799f366b78))
+
+
+### Documentation
+
+* **pi-subagents-worktrees:** document rescue-commit retry and worktree preservation ([#704](https://github.com/gotgenes/pi-packages/issues/704)) ([60ec850](https://github.com/gotgenes/pi-packages/commit/60ec8503ae8f71dee346b5d5238d7f05c7a8fe29))
+
 ## [0.2.3](https://github.com/gotgenes/pi-packages/compare/pi-subagents-worktrees-v0.2.2...pi-subagents-worktrees-v0.2.3) (2026-06-12)
 
 
