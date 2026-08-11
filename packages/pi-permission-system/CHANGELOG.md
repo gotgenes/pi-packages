@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [25.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v24.0.0...pi-permission-system-v25.0.0) (2026-08-11)
+
+
+### ⚠ BREAKING CHANGES
+
+* **pi-permission-system:** a bash command referencing `$HOME` or `${HOME}` now reaches the `external_directory` gate whether or not the target exists, so a policy with `external_directory: {"*": "ask"}` prompts for commands that previously ran silently. Allow the directory explicitly to restore the old behavior — e.g. `"external_directory": {"~/.cargo/registry/*": "allow"}`. The token shown in prompts, review-log entries, and derived session-approval patterns is now the expanded path rather than the `$HOME/...` spelling; this makes the prompt agree with the approval pattern, which was already derived from the expanded form.
+
+### Features
+
+* **pi-permission-system:** expand ${HOME} alongside $HOME in path patterns ([3ebbd41](https://github.com/gotgenes/pi-packages/commit/3ebbd418e5b85a6dfbc1865c69f62c1f9a3cb144)), closes [#694](https://github.com/gotgenes/pi-packages/issues/694)
+
+
+### Bug Fixes
+
+* **pi-permission-system:** resolve $HOME and $PWD expansions in bash path tokens ([8cbc7ee](https://github.com/gotgenes/pi-packages/commit/8cbc7ee011a3e06dcf047bfe8a467db3aa487721)), closes [#694](https://github.com/gotgenes/pi-packages/issues/694)
+
+
+### Documentation
+
+* **pi-permission-system:** record resolved shell expansions in ADR 0009 and user docs ([caaf5ec](https://github.com/gotgenes/pi-packages/commit/caaf5ec02ef2f7df1e2a922dba0a9afdc121b191)), closes [#694](https://github.com/gotgenes/pi-packages/issues/694)
+
 ## [24.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v23.0.3...pi-permission-system-v24.0.0) (2026-07-26)
 
 
