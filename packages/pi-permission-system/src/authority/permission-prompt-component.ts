@@ -248,7 +248,26 @@ class PermissionPromptComponent implements Component {
   }
 
   private renderDecision(): string[] {
-    const lines = [this.theme.fg("accent", this.title), this.message, ""];
+    const lines = [this.theme.fg("accent", this.title), ""];
+    // Render each line with contextual color:
+    // - lines with ⚠️  → warning color
+    // - "key : value" label lines → key in muted, value in text
+    // - empty lines → as-is
+    for (const line of this.message.split("\n")) {
+      if (line.includes("⚠️")) {
+        lines.push(this.theme.fg("warning", line));
+      } else if (line.includes(" : ")) {
+        const colonIdx = line.indexOf(" : ");
+        const label = line.slice(0, colonIdx);
+        const value = line.slice(colonIdx + 3);
+        lines.push(
+          this.theme.fg("muted", label) + this.theme.fg("muted", " : ") + value,
+        );
+      } else {
+        lines.push(line);
+      }
+    }
+    lines.push("");
     for (const key of OPTION_ORDER) {
       const label = key === "s" ? this.config.sessionLabel : OPTION_LABELS[key];
       const selected = this.state.highlightedKey === key;

@@ -1,7 +1,10 @@
-import {
-  type ExternalPathDisclosure,
-  resolvesToSuffix,
-} from "#src/denial-messages";
+import type { ExternalPathDisclosure } from "#src/denial-messages";
+
+function wrap(label: string, value: string): string {
+  const termWidth = (process.stdout.columns as number | undefined) ?? 80;
+  const inline = `${label}${value}`;
+  return inline.length > termWidth ? `${label}\n    ${value}` : inline;
+}
 
 export function formatExternalDirectoryAskPrompt(
   toolName: string,
@@ -10,8 +13,12 @@ export function formatExternalDirectoryAskPrompt(
   cwd: string,
   agentName?: string,
 ): string {
-  const subject = agentName ? `Agent '${agentName}'` : "Current agent";
-  return `${subject} requested tool '${toolName}' for path '${pathValue}'${resolvesToSuffix(resolvedPath)} outside working directory '${cwd}'. Allow this external directory access?`;
+  const agentInfo = agentName ? `agent     : ${agentName}\n` : "";
+  const resolved =
+    resolvedPath && resolvedPath !== pathValue
+      ? `\n${wrap("resolves : ", resolvedPath)}`
+      : "";
+  return `${agentInfo}  ${wrap("tool     : ", toolName)}\n  ${wrap("path     : ", pathValue)}${resolved}\n  ${wrap("cwd      : ", cwd)}\n\n⚠️  EXTERNAL DIRECTORY — allow access?`;
 }
 
 export function formatBashExternalDirectoryAskPrompt(
@@ -20,9 +27,13 @@ export function formatBashExternalDirectoryAskPrompt(
   cwd: string,
   agentName?: string,
 ): string {
-  const subject = agentName ? `Agent '${agentName}'` : "Current agent";
-  const pathList = externalPaths
-    .map(({ path, resolvedPath }) => `${path}${resolvesToSuffix(resolvedPath)}`)
-    .join(", ");
-  return `${subject} requested bash command '${command}' which references path(s) outside working directory '${cwd}': ${pathList}. Allow this external directory access?`;
+  const agentInfo = agentName ? `agent     : ${agentName}\n` : "";
+  const pathLines = externalPaths
+    .map(({ path, resolvedPath }) =>
+      resolvedPath && resolvedPath !== path
+        ? `${wrap("path     : ", path)}\n${wrap("resolves : ", resolvedPath)}`
+        : wrap("path     : ", path),
+    )
+    .join("\n");
+  return `${agentInfo}  ${wrap("bash     : ", command)}\n  ${pathLines}\n  ${wrap("cwd      : ", cwd)}\n\n⚠️  EXTERNAL DIRECTORY — allow access?`;
 }

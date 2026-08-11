@@ -36,7 +36,15 @@ export function formatAskPrompt(
   input?: unknown,
   formatter?: ToolPreviewFormatter,
 ): string {
-  const subject = agentName ? `Agent '${agentName}'` : "Current agent";
+  // Wrap long values onto the next line if they exceed the terminal width.
+  // Falls back to 80 if stdout is not a TTY (e.g. in tests).
+  const termWidth = (process.stdout.columns as number | undefined) ?? 80;
+  const wrap = (label: string, value: string): string => {
+    const inline = `${label}${value}`;
+    return inline.length > termWidth ? `${label}\n    ${value}` : inline;
+  };
+
+  const agentInfo = agentName ? `agent: ${agentName}\n` : "";
 
   if (classifyToolKind(result.toolName) === "bash") {
     const subCommand = result.command ?? "";
@@ -44,34 +52,43 @@ export function formatAskPrompt(
       result.matchedPattern,
       result.commandContext,
     );
-    const qualifierInfo = qualifier ? ` ${qualifier}` : "";
+    // Skip the generic fallback pattern — it adds no information
+    const qualifierInfo =
+      qualifier && result.matchedPattern !== "*"
+        ? `\n${wrap("  context : ", qualifier)}`
+        : "";
     const fullCommand = getNonEmptyString(toRecord(input).command);
     const fullCommandInfo =
       fullCommand && fullCommand !== subCommand
-        ? ` (full command: '${fullCommand}')`
+        ? `\n${wrap("  full    : ", fullCommand)}`
         : "";
-    return `${subject} requested bash command '${subCommand}'${qualifierInfo}${fullCommandInfo}. Allow this command?`;
+    return `${agentInfo}  bash    : ${subCommand}${qualifierInfo}${fullCommandInfo}`;
   }
 
   if (isMcpCheck(result) && result.target) {
     const patternInfo = result.matchedPattern
-      ? ` (matched '${result.matchedPattern}')`
+      ? `\n${wrap("  matched : ", result.matchedPattern)}`
       : "";
     const mcpPreview = formatter
       ? formatter.formatToolInputForPrompt("mcp", input)
       : "";
-    const previewSuffix = mcpPreview ? ` ${mcpPreview}` : "";
-    return `${subject} requested MCP target '${result.target}'${patternInfo}${previewSuffix}. Allow this call?`;
+    const previewSuffix = mcpPreview
+      ? `\n${wrap("  input   : ", mcpPreview)}`
+      : "";
+    return `${agentInfo}  mcp     : ${result.target}${patternInfo}${previewSuffix}`;
   }
 
+  // Generic tool — show pretty-printed JSON input so nothing is truncated
   const patternInfo = result.matchedPattern
-    ? ` (matched '${result.matchedPattern}')`
+    ? `\n${wrap("  matched : ", result.matchedPattern)}`
     : "";
-  const inputPreview = formatter
+  const preview = formatter
     ? formatter.formatToolInputForPrompt(result.toolName, input)
-    : "";
-  const inputSuffix = inputPreview ? ` ${inputPreview}` : "";
-  return `${subject} requested tool '${result.toolName}'${patternInfo}${inputSuffix}. Allow this call?`;
+    : undefined;
+  const rawInput =
+    preview ?? (input != null ? JSON.stringify(input, null, 2) : "");
+  const inputSuffix = rawInput ? `\n${rawInput}` : "";
+  return `${agentInfo}  tool    : ${result.toolName}${patternInfo}${inputSuffix}`;
 }
 
 export function formatSkillAskPrompt(

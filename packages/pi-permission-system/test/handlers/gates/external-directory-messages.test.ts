@@ -11,20 +11,21 @@ import {
 // Their behavior is tested in denial-messages.test.ts.
 
 describe("formatExternalDirectoryAskPrompt", () => {
-  test("uses 'Current agent' when no agent name provided", () => {
+  test("omits agent line when no agent name provided", () => {
     const result = formatExternalDirectoryAskPrompt(
       "read",
       "/etc/passwd",
       undefined,
       "/projects/my-app",
     );
-    expect(result).toContain("Current agent");
+    expect(result).not.toContain("agent");
     expect(result).toContain("read");
     expect(result).toContain("/etc/passwd");
     expect(result).toContain("/projects/my-app");
+    expect(result).toContain("⚠️");
   });
 
-  test("uses agent name when provided", () => {
+  test("shows agent name as first line when provided", () => {
     const result = formatExternalDirectoryAskPrompt(
       "write",
       "/tmp/out.txt",
@@ -32,9 +33,11 @@ describe("formatExternalDirectoryAskPrompt", () => {
       "/projects/my-app",
       "my-agent",
     );
-    expect(result).toContain("Agent 'my-agent'");
+    expect(result).toContain("agent     : my-agent");
     expect(result).toContain("write");
     expect(result).toContain("/tmp/out.txt");
+    // agent line appears before tool line
+    expect(result.indexOf("agent")).toBeLessThan(result.indexOf("tool"));
   });
 
   test("discloses the resolved path when it differs from the typed path", () => {
@@ -44,9 +47,9 @@ describe("formatExternalDirectoryAskPrompt", () => {
       "/etc/passwd",
       "/projects/my-app",
     );
-    expect(result).toBe(
-      "Current agent requested tool 'read' for path 'demo-symlink-passwd' (resolves to '/etc/passwd') outside working directory '/projects/my-app'. Allow this external directory access?",
-    );
+    expect(result).toContain("demo-symlink-passwd");
+    expect(result).toContain("/etc/passwd");
+    expect(result).toContain("resolves");
   });
 
   test("omits the disclosure when resolvedPath is undefined", () => {
@@ -56,7 +59,7 @@ describe("formatExternalDirectoryAskPrompt", () => {
       undefined,
       "/projects/my-app",
     );
-    expect(result).not.toContain("resolves to");
+    expect(result).not.toContain("resolves");
   });
 });
 
@@ -68,18 +71,20 @@ describe("formatBashExternalDirectoryAskPrompt", () => {
       "/projects/my-app",
       "my-agent",
     );
-    expect(result).toContain("Agent 'my-agent'");
+    expect(result).toContain("agent     : my-agent");
     expect(result).toContain("cat /etc/passwd");
     expect(result).toContain("/etc/passwd");
     expect(result).toContain("/projects/my-app");
+    expect(result).toContain("⚠️");
   });
 
-  test("uses 'Current agent' when no agent name provided", () => {
+  test("omits agent line when no agent name provided", () => {
     const result = formatBashExternalDirectoryAskPrompt(
       "ls /tmp",
       [{ path: "/tmp" }],
       "/projects/my-app",
     );
-    expect(result).toContain("Current agent");
+    expect(result).not.toContain("agent");
+    expect(result).toContain("⚠️");
   });
 });
