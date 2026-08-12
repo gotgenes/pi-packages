@@ -18,6 +18,7 @@ import type { PermissionCheckResult, PermissionState } from "./types";
 
 export type {
   Authorizer,
+  AuthorizerInvocationContext,
   AuthorizerVerdict,
 } from "./authority/authorizer";
 
@@ -147,9 +148,11 @@ export interface PermissionsService extends PermissionQuery {
    *
    * A link reviews an `ask` and returns `allow` / `deny` (with an optional
    * teaching `reason`) / `defer`. It is handed a narrow, session-scoped
-   * {@link PermissionQuery} at `authorize` time so it can query the
-   * deterministic engine at gate parity. Register from a `permissions:ready`
-   * handler so registration is robust to load order and survives `/reload`.
+   * {@link PermissionQuery} and an aggregate invocation context at `authorize`
+   * time so it can query the deterministic engine at gate parity and read the
+   * active session abort signal from `context.signal`. Register from a
+   * `permissions:ready` handler so registration is robust to load order and
+   * survives `/reload`.
    *
    * Registration alone grants **no authority**: the link decides nothing until
    * the operator names it in the `authorizerChain` config (opt-in activation),
@@ -160,9 +163,11 @@ export interface PermissionsService extends PermissionQuery {
    *
    * @param name      - Operator-facing link name referenced from `authorizerChain`.
    * @param authorize - The link's decision callback
-   *                    (`(details, query, log) => verdict`); `log` is an
-   *                    {@link AuthorizerLog} for recording a decision trail to
-   *                    the shared permission review log.
+   *                    (`(details, query, log, context) => verdict`); `log` is
+   *                    an {@link AuthorizerLog} for recording a decision trail
+   *                    to the shared permission review log, and `context` is a
+   *                    plain object whose optional `signal` field exposes the
+   *                    active session abort signal.
    */
   registerAuthorizer(
     name: string,

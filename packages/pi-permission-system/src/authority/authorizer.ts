@@ -24,6 +24,12 @@ export type AuthorizerVerdict =
   | { kind: "deny"; reason?: string }
   | { kind: "defer" };
 
+/** The aggregate runtime context passed to an `Authorizer`. */
+export interface AuthorizerInvocationContext {
+  /** The active session abort signal, or undefined when no signal exists. */
+  signal: AbortSignal | undefined;
+}
+
 /**
  * A non-terminal link in the live-authority chain: reviews an `ask` and may
  * decide it or defer to the next link (ADR 0007). The chain injects a narrow,
@@ -38,6 +44,7 @@ export interface Authorizer {
     details: PromptPermissionDetails,
     query: PermissionQuery,
     log: AuthorizerLog,
+    context: AuthorizerInvocationContext,
   ): Promise<AuthorizerVerdict>;
 }
 

@@ -3,6 +3,7 @@ import type { PermissionPromptDecision } from "#src/authority/permission-dialog"
 import type { PermissionQuery } from "#src/service";
 import {
   type Authorizer,
+  type AuthorizerInvocationContext,
   type AuthorizerSelectionDeps,
   selectAuthorizer,
   type TerminalAuthorizer,
@@ -55,6 +56,7 @@ export class AuthorizerSelection
   implements AskEscalator, AuthorizerSelectionLifecycle
 {
   private terminal: TerminalAuthorizer | null = null;
+  private context: AuthorizerInvocationContext | null = null;
 
   constructor(
     private readonly deps: AuthorizerSelectionDeps & {
@@ -76,6 +78,7 @@ export class AuthorizerSelection
    */
   activate(ctx: ExtensionContext): void {
     this.terminal = selectAuthorizer(ctx, this.deps);
+    this.context = { signal: ctx.signal };
   }
 
   /**
@@ -101,6 +104,7 @@ export class AuthorizerSelection
   /** Clear the stored selection. */
   deactivate(): void {
     this.terminal = null;
+    this.context = null;
   }
 
   /**
@@ -117,7 +121,7 @@ export class AuthorizerSelection
   escalate(
     details: PromptPermissionDetails,
   ): Promise<PermissionPromptDecision> {
-    if (this.terminal === null) {
+    if (this.terminal === null || this.context === null) {
       return Promise.reject(
         new Error("escalate called before the session was activated"),
       );
@@ -127,6 +131,7 @@ export class AuthorizerSelection
       this.terminal,
       this.deps.getPermissionQuery(),
       this.deps.logger,
+      this.context,
     );
     return this.deps.prompter.prompt(chain, details);
   }
