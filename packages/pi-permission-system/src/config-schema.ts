@@ -187,6 +187,13 @@ export const unifiedConfigSchema = z
         "Require a confirming second press of a decision hotkey (`y`/`s`/`n`/`r`) in the inline permission dialog before it commits — the first press arms the action and shows a `Press y again to approve.` hint.\n\nApplies to interactive **TUI** sessions only; the non-TUI (RPC/frontend) prompt keeps its single-select flow. Set to `false` to commit decisions on the first hotkey press.",
       default: true,
     }),
+    overlay: z.boolean().optional().meta({
+      description:
+        "Render the permission dialog as an overlay instead of inline.",
+      markdownDescription:
+        "Render the permission dialog as an overlay instead of replacing the full TUI content. Default: `false`.",
+      default: false,
+    }),
     toolInputPreviewMaxLength: z.number().int().min(1).optional().meta({
       description:
         "Maximum character length of the inline-JSON tool-input preview shown in permission prompts. Omit to use the default (200). Set to a large value to disable truncation.",

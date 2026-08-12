@@ -55,6 +55,7 @@ export class LocalUserAuthorizer implements TerminalAuthorizer {
         ui: this.deps.ui,
         doublePressToConfirm:
           this.deps.getPromptPreferences().doublePressToConfirm,
+        overlay: this.deps.getPromptPreferences().overlay,
       },
       details.forwarding
         ? "Permission Required (Subagent)"
