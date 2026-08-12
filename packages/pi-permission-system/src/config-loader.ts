@@ -212,6 +212,7 @@ export function mergeUnifiedConfigs(
     "permissionReviewLog",
     "yoloMode",
     "doublePressToConfirm",
+    "allowAuthorizerOnExternalDirectory",
   ] as const) {
     const value = override[key] ?? base[key];
     if (value !== undefined) {

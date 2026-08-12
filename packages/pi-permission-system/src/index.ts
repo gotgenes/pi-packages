@@ -122,6 +122,8 @@ export default function piPermissionSystemExtension(pi: ExtensionAPI): void {
     // resolved in config order at activation.
     authorizerRegistry,
     getAuthorizerChain: () => configStore.current().authorizerChain ?? [],
+    getAllowAuthorizerOnExternalDirectory: () =>
+      configStore.current().allowAuthorizerOnExternalDirectory === true,
   });
 
   // Resolver composes the manager + session ruleset and owns the

@@ -115,4 +115,41 @@ describe("encloseInDelegationEnvelope", () => {
     await enclosed(details, query, log);
     expect(link).toHaveBeenCalledWith(details, query, log);
   });
+
+  describe("allowAuthorizerOnExternalDirectory opt-in", () => {
+    it("lets an allow on external_directory pass through when enabled", async () => {
+      const enclosed = encloseInDelegationEnvelope(
+        makeLink({ kind: "allow" }),
+        true,
+      );
+      const verdict = await enclosed(
+        makeDetails("external_directory"),
+        query,
+        log,
+      );
+      expect(verdict).toEqual({ kind: "allow" });
+    });
+
+    it("still caps an allow on path to defer when enabled (secrets stay protected)", async () => {
+      const enclosed = encloseInDelegationEnvelope(
+        makeLink({ kind: "allow" }),
+        true,
+      );
+      const verdict = await enclosed(makeDetails("path"), query, log);
+      expect(verdict).toEqual({ kind: "defer" });
+    });
+
+    it("keeps the external_directory cap when the flag is false", async () => {
+      const enclosed = encloseInDelegationEnvelope(
+        makeLink({ kind: "allow" }),
+        false,
+      );
+      const verdict = await enclosed(
+        makeDetails("external_directory"),
+        query,
+        log,
+      );
+      expect(verdict).toEqual({ kind: "defer" });
+    });
+  });
 });
