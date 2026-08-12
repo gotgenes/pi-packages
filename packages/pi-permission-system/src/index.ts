@@ -86,6 +86,10 @@ export default function piPermissionSystemExtension(pi: ExtensionAPI): void {
     agentDir,
     flavor: hostFlavor,
     isYoloEnabled: () => isYoloModeEnabled(configStore.current()),
+    isSubagent: () => {
+      const context = session.getRuntimeContext();
+      return context ? subagentDetection.isSubagent(context) : false;
+    },
   });
 
   const logger = new PermissionSessionLogger({
@@ -143,6 +147,7 @@ export default function piPermissionSystemExtension(pi: ExtensionAPI): void {
           intent.matchValues,
           intent.principal.agentName,
         ),
+        { isSubagent: true },
       ),
   };
 

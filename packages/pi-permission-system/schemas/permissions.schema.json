@@ -118,6 +118,59 @@
         }
       ]
     },
+    "subagentPermission": {
+      "description": "Additional permission ceiling applied to every detected subagent session.",
+      "markdownDescription": "Additional permission policy applied only to detected subagent sessions. It composes with the regular `permission` policy using most-restrictive-wins (`deny` > `ask` > `allow`), so it can tighten but never loosen the parent policy.",
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "minLength": 1,
+        "description": "A surface name or the universal fallback key '*'."
+      },
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/permissionState"
+          },
+          {
+            "$ref": "#/$defs/permissionMap"
+          }
+        ]
+      },
+      "examples": [
+        {
+          "*": "ask",
+          "path": {
+            "*": "allow",
+            "*.env": "deny",
+            "*.env.*": "deny",
+            "*.env.example": "allow"
+          },
+          "read": "allow",
+          "write": "deny",
+          "edit": "deny",
+          "bash": {
+            "*": "ask",
+            "git *": "ask",
+            "git status": "allow",
+            "git diff": "allow"
+          },
+          "mcp": {
+            "*": "ask",
+            "mcp_status": "allow",
+            "exa:*": "allow"
+          },
+          "skill": {
+            "*": "ask",
+            "librarian": "allow"
+          },
+          "external_directory": {
+            "*": "ask",
+            "~/.cargo/registry/*": "allow"
+          }
+        }
+      ]
+    },
     "shellTools": {
       "type": "object",
       "propertyNames": {

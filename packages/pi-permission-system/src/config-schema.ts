@@ -73,7 +73,7 @@ const permissionMapSchema = z
       "A map of wildcard patterns to permission states.\n\nUse `*` for wildcard matching. When multiple patterns match, the **last matching rule wins** — put broad catch-alls first and specific overrides after them.\n\nPattern keys support home directory expansion:\n- `~/path` or `$HOME/path` — expanded to the OS home directory at match time.\n- `~` or `$HOME` alone — expands to the home directory itself.\n\nThe stored pattern is always shown in logs and approval dialogs as written (e.g. `~/dev/*`).",
   });
 
-const permissionSchema = z
+export const permissionSchema = z
   .record(
     z.string().min(1).meta({
       description: "A surface name or the universal fallback key '*'.",
@@ -214,6 +214,12 @@ export const unifiedConfigSchema = z
       default: [],
     }),
     permission: permissionSchema.optional(),
+    subagentPermission: permissionSchema.optional().meta({
+      description:
+        "Additional permission ceiling applied to every detected subagent session.",
+      markdownDescription:
+        "Additional permission policy applied only to detected subagent sessions. It composes with the regular `permission` policy using most-restrictive-wins (`deny` > `ask` > `allow`), so it can tighten but never loosen the parent policy.",
+    }),
     shellTools: shellToolsSchema.optional(),
   })
   .meta({

@@ -23,6 +23,8 @@ export type {
  */
 export interface ScopeConfig {
   permission?: FlatPermissionConfig;
+  /** Additional permission ceiling applied only in detected subagent sessions. */
+  subagentPermission?: FlatPermissionConfig;
   /**
    * True when the scope's config file was present but failed to load or
    * validate (JSON parse error or schema rejection). Absent and valid files

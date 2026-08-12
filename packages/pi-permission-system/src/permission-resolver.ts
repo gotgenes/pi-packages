@@ -3,7 +3,10 @@ import type {
   PathValuesAccessIntent,
   ResolvedAccessIntent,
 } from "./access-intent/access-intent";
-import type { ScopedPermissionManager } from "./permission-manager";
+import type {
+  PermissionResolutionContext,
+  ScopedPermissionManager,
+} from "./permission-manager";
 import type { Rule } from "./rule";
 import type { SessionRules } from "./session-rules";
 import type { SkillPermissionChecker } from "./skill-prompt-sanitizer";
@@ -82,11 +85,13 @@ export class PermissionResolver
    */
   resolve(
     intent: AccessIntent | PathValuesAccessIntent,
+    context?: PermissionResolutionContext,
   ): PermissionCheckResult {
-    return this.permissionManager.check(
-      toResolvedIntent(intent),
-      this.sessionRules.getRuleset(),
-    );
+    const resolvedIntent = toResolvedIntent(intent);
+    const rules = this.sessionRules.getRuleset();
+    return context
+      ? this.permissionManager.check(resolvedIntent, rules, context)
+      : this.permissionManager.check(resolvedIntent, rules);
   }
 
   /**

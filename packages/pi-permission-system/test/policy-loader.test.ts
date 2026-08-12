@@ -16,6 +16,7 @@ function makeLoader(
   baseDir: string,
   options: {
     globalConfig?: Record<string, unknown>;
+    settingsPolicy?: Record<string, unknown>;
     mcpServerNames?: readonly string[];
   } = {},
 ) {
@@ -27,9 +28,21 @@ function makeLoader(
     globalConfigPath,
     JSON.stringify(options.globalConfig ?? {}, null, 2),
   );
+  const globalSettingsPath = join(baseDir, "settings.json");
+  writeFileSync(
+    globalSettingsPath,
+    JSON.stringify(
+      options.settingsPolicy
+        ? { piPermissionSystem: options.settingsPolicy }
+        : {},
+      null,
+      2,
+    ),
+  );
 
   return new FilePolicyLoader({
     globalConfigPath,
+    globalSettingsPath,
     agentsDir,
     mcpServerNames: options.mcpServerNames
       ? [...options.mcpServerNames]
@@ -62,6 +75,25 @@ describe("FilePolicyLoader.loadGlobalConfig", () => {
     });
     const config = loader.loadGlobalConfig();
     expect(config.permission).toBeUndefined();
+  });
+
+  it("loads settings policy below the dedicated config file", () => {
+    const baseDir = makeTempDir();
+    try {
+      const loader = makeLoader(baseDir, {
+        settingsPolicy: {
+          permission: { "*": "ask", read: "allow", write: "deny" },
+        },
+        globalConfig: { permission: { read: "deny" } },
+      });
+      expect(loader.loadGlobalConfig().permission).toEqual({
+        "*": "ask",
+        read: "deny",
+        write: "deny",
+      });
+    } finally {
+      rmSync(baseDir, { recursive: true, force: true });
+    }
   });
 
   it("returns empty ScopeConfig when config file has no permission key", () => {
@@ -108,6 +140,40 @@ describe("FilePolicyLoader.loadProjectConfig", () => {
       const config = loader.loadProjectConfig();
       expect(config.permission).toEqual({ bash: "allow" });
       expect(config.invalid).toBeUndefined();
+    } finally {
+      rmSync(baseDir, { recursive: true, force: true });
+    }
+  });
+
+  it("loads project settings below the dedicated project config", () => {
+    const baseDir = makeTempDir();
+    try {
+      const projectSettingsPath = join(baseDir, "project-settings.json");
+      writeFileSync(
+        projectSettingsPath,
+        JSON.stringify({
+          piPermissionSystem: {
+            permission: { "*": "ask", bash: "deny", read: "allow" },
+          },
+        }),
+      );
+      const projectConfigPath = join(baseDir, "project-config.json");
+      writeFileSync(
+        projectConfigPath,
+        JSON.stringify({ permission: { read: "deny" } }),
+      );
+      const loader = new FilePolicyLoader({
+        globalConfigPath: "/nonexistent/config.json",
+        agentsDir: "/nonexistent/agents",
+        projectGlobalConfigPath: projectConfigPath,
+        projectSettingsPath,
+      });
+
+      expect(loader.loadProjectConfig().permission).toEqual({
+        "*": "ask",
+        bash: "deny",
+        read: "deny",
+      });
     } finally {
       rmSync(baseDir, { recursive: true, force: true });
     }
@@ -173,6 +239,33 @@ describe("FilePolicyLoader.loadAgentConfig", () => {
       writeFileSync(join(baseDir, "config.json"), "{}");
       const config = loader.loadAgentConfig("coder");
       expect(config.permission).toEqual({ bash: "allow" });
+    } finally {
+      rmSync(baseDir, { recursive: true, force: true });
+    }
+  });
+
+  it("loads per-agent settings below agent frontmatter", () => {
+    const baseDir = makeTempDir();
+    try {
+      const agentsDir = join(baseDir, "agents");
+      mkdirSync(agentsDir, { recursive: true });
+      writeFileSync(
+        join(agentsDir, "coder.md"),
+        `---\npermission:\n  edit: deny\n---\n# Coder agent\n`,
+      );
+      const loader = makeLoader(baseDir, {
+        settingsPolicy: {
+          agents: {
+            coder: { bash: "deny", edit: "allow", write: "allow" },
+          },
+        },
+      });
+
+      expect(loader.loadAgentConfig("coder").permission).toEqual({
+        bash: "deny",
+        edit: "deny",
+        write: "allow",
+      });
     } finally {
       rmSync(baseDir, { recursive: true, force: true });
     }
@@ -259,19 +352,29 @@ describe("FilePolicyLoader.getResolvedPolicyPaths", () => {
     const baseDir = makeTempDir();
     try {
       const globalConfigPath = join(baseDir, "config.json");
+      const globalSettingsPath = join(baseDir, "settings.json");
       const agentsDir = join(baseDir, "agents");
       writeFileSync(globalConfigPath, "{}");
+      writeFileSync(globalSettingsPath, "{}");
       mkdirSync(agentsDir, { recursive: true });
 
-      const loader = new FilePolicyLoader({ globalConfigPath, agentsDir });
+      const loader = new FilePolicyLoader({
+        globalConfigPath,
+        globalSettingsPath,
+        agentsDir,
+      });
       const paths = loader.getResolvedPolicyPaths();
 
       expect(paths.globalConfigPath).toBe(globalConfigPath);
       expect(paths.globalConfigExists).toBe(true);
+      expect(paths.globalSettingsPath).toBe(globalSettingsPath);
+      expect(paths.globalSettingsExists).toBe(true);
       expect(paths.agentsDir).toBe(agentsDir);
       expect(paths.agentsDirExists).toBe(true);
       expect(paths.projectConfigPath).toBeNull();
       expect(paths.projectConfigExists).toBe(false);
+      expect(paths.projectSettingsPath).toBeNull();
+      expect(paths.projectSettingsExists).toBe(false);
       expect(paths.projectAgentsDir).toBeNull();
       expect(paths.projectAgentsDirExists).toBe(false);
     } finally {

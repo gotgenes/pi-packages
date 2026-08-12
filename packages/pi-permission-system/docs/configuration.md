@@ -2,14 +2,31 @@
 
 ## Config File Locations
 
-One unified config file per scope:
+Permission policy can live in Pi settings or the extension's dedicated config file:
 
-| Scope   | Path                                                                                       |
-| ------- | ------------------------------------------------------------------------------------------ |
-| Global  | `~/.pi/agent/extensions/pi-permission-system/config.json` (respects `PI_CODING_AGENT_DIR`) |
-| Project | `<cwd>/.pi/extensions/pi-permission-system/config.json`                                    |
+| Scope   | Pi settings                 | Dedicated config                                                                           |
+| ------- | --------------------------- | ------------------------------------------------------------------------------------------ |
+| Global  | `~/.pi/agent/settings.json` | `~/.pi/agent/extensions/pi-permission-system/config.json` (respects `PI_CODING_AGENT_DIR`) |
+| Project | `<cwd>/.pi/settings.json`   | `<cwd>/.pi/extensions/pi-permission-system/config.json`                                    |
 
-Project config overrides global config; per-agent frontmatter overrides both.
+Use the namespaced settings section for global and per-agent policy:
+
+```jsonc
+{
+  "piPermissionSystem": {
+    "permission": { "*": "ask", "read": "allow" },
+    "subagentPermission": {
+      "bash": { "**": "deny", "git status *": "allow" }
+    },
+    "agents": {
+      "worker": { "bash": "deny", "edit": "allow", "write": "allow" }
+    }
+  }
+}
+```
+
+Only permission policy is loaded from Pi settings.
+Runtime knobs such as `debugLog` and `yoloMode` remain in the dedicated config file.
 
 **Project config requires project trust.**
 Project and project-agent scopes (both permission policy and runtime config such as `yoloMode`) are loaded only when Pi reports the project as trusted (`ctx.isProjectTrusted()`).
@@ -30,12 +47,19 @@ See [migration/0644-project-trust-gating.md](migration/0644-project-trust-gating
 
 **Precedence order (later wins):**
 
-1. Global config file
-2. Project config file
-3. Global agent frontmatter
-4. Project agent frontmatter
+1. Global Pi settings policy
+2. Global dedicated config file
+3. Project Pi settings policy
+4. Project dedicated config file
+5. Global Pi settings agent policy
+6. Global agent frontmatter
+7. Project Pi settings agent policy
+8. Project agent frontmatter
 
-The `permission` object uses deep-shallow merge: string-vs-string replaces; both-object shallow-merges pattern maps; string-vs-object the override wins entirely.
+The `permission` and `subagentPermission` objects use deep-shallow merge: string-vs-string replaces; both-object shallow-merges pattern maps; string-vs-object the override wins entirely.
+For detected subagents, the resolved `subagentPermission` policy is a ceiling over the resolved regular and per-agent policy: the most restrictive result wins (`deny` > `ask` > `allow`).
+A session approval may satisfy a ceiling `ask`, but it cannot override a ceiling `deny`.
+Omitting `subagentPermission` adds no restriction.
 Scalar fields (`debugLog`, `permissionReviewLog`, `yoloMode`, `doublePressToConfirm`) use simple replacement.
 
 **Invalid higher-precedence scope fails closed.**
@@ -68,6 +92,18 @@ This clamp is deny-preserving and, like `yoloMode`, applied at composition; when
 
   // Ordered names of registered live-authority chain links (empty = none)
   "authorizerChain": [],
+
+  // Additional ceiling for every detected subagent
+  "subagentPermission": {
+    "bash": {
+      "**": "deny",
+      "git status *": "allow",
+      "git diff *": "allow",
+      "git log *": "allow",
+      "git show *": "allow",
+      "git rev-parse *": "allow"
+    }
+  },
 
   // Flat permission policy
   "permission": {

@@ -100,14 +100,18 @@ See [docs/configuration.md](docs/configuration.md) for the full recipe.
 
 ## Configuration
 
-Config lives in one JSON file per scope:
+Permission policy can live in Pi settings or the extension's dedicated config:
 
-| Scope   | Path                                                      |
-| ------- | --------------------------------------------------------- |
-| Global  | `~/.pi/agent/extensions/pi-permission-system/config.json` |
-| Project | `<cwd>/.pi/extensions/pi-permission-system/config.json`   |
+| Scope   | Pi settings                 | Dedicated config                                          |
+| ------- | --------------------------- | --------------------------------------------------------- |
+| Global  | `~/.pi/agent/settings.json` | `~/.pi/agent/extensions/pi-permission-system/config.json` |
+| Project | `<cwd>/.pi/settings.json`   | `<cwd>/.pi/extensions/pi-permission-system/config.json`   |
 
-Project overrides global; per-agent YAML frontmatter overrides both.
+Put global policy under `piPermissionSystem.permission`, the all-subagent ceiling under `piPermissionSystem.subagentPermission`, and per-agent policy under `piPermissionSystem.agents.<name>`.
+The dedicated config accepts the same `subagentPermission` key.
+Dedicated config overrides settings in the same scope; agent frontmatter remains the highest-precedence source.
+For detected subagents, `subagentPermission` composes with the resolved regular and per-agent policy using most-restrictive-wins (`deny` > `ask` > `allow`).
+Runtime knobs remain in the dedicated config.
 Project config (policy and runtime knobs) is loaded only once the project is trusted — in an untrusted directory only global config applies, so an untrusted repository cannot loosen your global policy (see [Upgrading](#2200--project-config-requires-project-trust)).
 
 Within a surface map like `bash` or `mcp`, **last matching rule wins** — put broad catch-alls first and specific overrides after.

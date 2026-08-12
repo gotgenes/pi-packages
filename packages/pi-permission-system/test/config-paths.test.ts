@@ -6,11 +6,13 @@ import {
   getGlobalConfigDir,
   getGlobalConfigPath,
   getGlobalLogsDir,
+  getGlobalSettingsPath,
   getLegacyExtensionConfigPath,
   getLegacyGlobalPolicyPath,
   getLegacyProjectPolicyPath,
   getProjectAgentsDir,
   getProjectConfigPath,
+  getProjectSettingsPath,
   REVIEW_LOG_FILENAME,
 } from "#src/config-paths";
 
@@ -20,6 +22,18 @@ describe("config-paths", () => {
   const extensionRoot = "/opt/extensions/pi-permission-system";
 
   describe("new layout paths", () => {
+    it("getGlobalSettingsPath returns settings.json under agentDir", () => {
+      expect(getGlobalSettingsPath(agentDir)).toBe(
+        join(agentDir, "settings.json"),
+      );
+    });
+
+    it("getProjectSettingsPath returns .pi/settings.json under cwd", () => {
+      expect(getProjectSettingsPath(cwd)).toBe(
+        join(cwd, ".pi", "settings.json"),
+      );
+    });
+
     it("getGlobalConfigDir returns extensions/pi-permission-system under agentDir", () => {
       expect(getGlobalConfigDir(agentDir)).toBe(
         join(agentDir, "extensions", "pi-permission-system"),

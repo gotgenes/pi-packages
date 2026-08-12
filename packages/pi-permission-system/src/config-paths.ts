@@ -5,6 +5,14 @@ const EXTENSION_ID = "pi-permission-system";
 export const DEBUG_LOG_FILENAME = `${EXTENSION_ID}-debug.jsonl`;
 export const REVIEW_LOG_FILENAME = `${EXTENSION_ID}-permission-review.jsonl`;
 
+export function getGlobalSettingsPath(agentDir: string): string {
+  return join(agentDir, "settings.json");
+}
+
+export function getProjectSettingsPath(cwd: string): string {
+  return join(cwd, ".pi", "settings.json");
+}
+
 export function getGlobalConfigDir(agentDir: string): string {
   return join(agentDir, "extensions", EXTENSION_ID);
 }
