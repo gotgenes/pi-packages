@@ -5,6 +5,8 @@ export interface ResolvedConfigLogEntry {
   globalConfigExists: boolean;
   projectConfigPath: string | null;
   projectConfigExists: boolean;
+  projectLocalConfigPath: string | null;
+  projectLocalConfigExists: boolean;
   agentsDir: string;
   agentsDirExists: boolean;
   projectAgentsDir: string | null;

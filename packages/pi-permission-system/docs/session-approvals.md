@@ -1,15 +1,37 @@
 # Session-Scoped Approvals
 
-When any permission resolves to `ask`, the permission dialog offers four options:
+When a permission resolves to `ask`, the local permission dialog offers these outcomes:
 
-```text
-Yes | Yes, allow "<pattern>" for this session | No | No, provide reason
-```
+- Approve this request once.
+- Approve the proposed pattern for this session.
+- Edit the proposed pattern.
+- Persist an `allow` rule to trusted project-local policy.
+- Persist an `allow` rule to global policy.
+- Deny, optionally with a reason.
 
-Selecting **Yes, allow "\<pattern\>" for this session** approves the current request and records the suggested wildcard pattern as a session rule.
-Subsequent requests that match the pattern skip the prompt for the remainder of the session.
+Selecting the session choice approves the current request and records the displayed wildcard pattern in memory.
+Subsequent requests that match it skip the prompt until `session_shutdown`.
+Editing changes the rule that is recorded; it never changes the permission surface.
 
-Session approvals are ephemeral — they are never persisted to disk and are cleared on `session_shutdown`.
+## Durable Approvals
+
+Project persistence writes only to `<cwd>/.pi/extensions/pi-permission-system/config.local.json`, and is offered only after Pi trusts the project.
+It never modifies shared project `config.json`, agent frontmatter, Pi settings, or `.gitignore`.
+Global persistence writes `~/.pi/agent/extensions/pi-permission-system/config.json` (respecting `PI_CODING_AGENT_DIR`).
+
+By default, a summary shows the surface, every exact pattern, `allow`, scope, and destination before writing.
+Press `t` in the inline prompt, or use `/permission-system` settings, to persistently toggle **Show summary before saving**.
+When the summary is disabled, selecting project or global persistence saves after the configured hotkey confirmation without a separate summary or typed acknowledgement.
+
+Writes preserve unrelated JSONC comments and formatting, validate the complete result, and atomically replace the destination.
+Policy reloads immediately.
+If writing or reload fails, the pending request is denied, the original file is restored, and the failure is recorded in the review log.
+
+Persistent rules use normal precedence and most-restrictive composition.
+A global or project-local allow cannot override a higher-precedence agent rule or a deny on `path` / `external_directory`.
+To roll back, remove the generated pattern from the displayed destination and reload Pi.
+
+Forwarded subagent prompts do not offer editing or durable persistence in this release because the requester must perform its own project-trust check.
 
 ## Suggested Patterns
 
@@ -51,6 +73,9 @@ The review log records session approval decisions:
 
 - `resolution: "approved_for_session"` — when the user approves with the session pattern
 - `resolution: "session_approved"` — when a later request is matched by an existing session rule
+- `permission_rule.persistence_requested` — before trust revalidation and mutation
+- `permission_rule.persistence_succeeded` — after atomic write and immediate reload
+- `permission_rule.persistence_failed` — when validation, trust, write, or reload blocks persistence
 
 ## Permission Prompt Summaries
 

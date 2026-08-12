@@ -8,6 +8,7 @@ import {
 } from "#src/denial-messages";
 import { applyPermissionGate } from "#src/permission-gate";
 import type { ScopedPermissionResolver } from "#src/permission-resolver";
+import { SessionApproval } from "#src/session-approval";
 import type { SessionApprovalRecorder } from "#src/session-approval-recorder";
 import type { PermissionCheckResult } from "#src/types";
 import type { GateDescriptor, GateResult } from "./descriptor";
@@ -184,8 +185,13 @@ export class GateRunner {
 
     // 6. Record session approval — tell the store; it owns the per-pattern loop
     // hasSessionApproval already implies gateResult.action === "allow"
-    if (hasSessionApproval && descriptor.sessionApproval) {
-      this.recorder.recordSessionApproval(descriptor.sessionApproval);
+    if (hasSessionApproval && gateResult.sessionApproval) {
+      this.recorder.recordSessionApproval(
+        SessionApproval.multiple(
+          gateResult.sessionApproval.surface,
+          gateResult.sessionApproval.patterns,
+        ),
+      );
     }
 
     if (gateResult.action === "block") {

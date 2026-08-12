@@ -5,6 +5,7 @@
   "permissionReviewLog": true,
   "yoloMode": false,
   "doublePressToConfirm": true,
+  "showPersistenceSummary": true,
 
   "toolInputPreviewMaxLength": 400,
   "toolTextSummaryMaxLength": 120,

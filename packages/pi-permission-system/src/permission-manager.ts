@@ -7,6 +7,7 @@ import {
   getGlobalConfigPath,
   getProjectAgentsDir,
   getProjectConfigPath,
+  getProjectLocalConfigPath,
 } from "./config-paths";
 import { normalizeFlatConfig } from "./normalize";
 import { type PathFlavor, posixPathFlavor } from "./path/path-flavor";
@@ -384,6 +385,7 @@ function derivePolicyLoaderOptions(
     globalConfigPath: getGlobalConfigPath(agentDir),
     agentsDir: join(agentDir, "agents"),
     projectGlobalConfigPath: cwd ? getProjectConfigPath(cwd) : undefined,
+    projectLocalConfigPath: cwd ? getProjectLocalConfigPath(cwd) : undefined,
     projectAgentsDir: cwd ? getProjectAgentsDir(cwd) : undefined,
   };
 }

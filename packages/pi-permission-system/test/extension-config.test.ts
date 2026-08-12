@@ -98,6 +98,7 @@ describe("normalizePermissionSystemConfig", () => {
       permissionReviewLog: false,
       yoloMode: true,
       doublePressToConfirm: true,
+      showPersistenceSummary: true,
     });
   });
 
@@ -126,6 +127,19 @@ describe("normalizePermissionSystemConfig", () => {
       doublePressToConfirm: false,
     });
     expect(result.doublePressToConfirm).toBe(false);
+  });
+
+  it("shows persistence summaries by default", () => {
+    expect(normalizePermissionSystemConfig({}).showPersistenceSummary).toBe(
+      true,
+    );
+  });
+
+  it("disables persistence summaries when explicitly configured", () => {
+    expect(
+      normalizePermissionSystemConfig({ showPersistenceSummary: false })
+        .showPersistenceSummary,
+    ).toBe(false);
   });
 
   it("includes toolInputPreviewMaxLength when a valid positive integer is provided", () => {

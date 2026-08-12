@@ -1,7 +1,9 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
-import type {
-  PermissionPromptDecision,
-  RequestPermissionOptions,
+import { isPersistentPermissionChoice } from "#src/authority/interactive-permission-choice";
+import {
+  createDeniedPermissionDecision,
+  type PermissionPromptDecision,
+  type RequestPermissionOptions,
 } from "#src/authority/permission-dialog";
 import type {
   PermissionPromptUi,
@@ -14,6 +16,10 @@ import {
   type PermissionEventBus,
 } from "#src/permission-events";
 import { buildUiPrompt } from "#src/permission-ui-prompt";
+import type {
+  PersistentApprovalApi,
+  PersistentApprovalTarget,
+} from "#src/persistent-approval-service";
 import type { TerminalAuthorizer } from "./authorizer";
 import type { PromptPermissionDetails } from "./permission-prompter";
 
@@ -27,8 +33,12 @@ export interface LocalUserAuthorizerDeps {
   events: PermissionEventBus;
   /** Read live at prompt time so a settings-modal toggle takes effect on the next prompt. */
   getPromptPreferences: () => PromptPreferences;
+  /** Persist the sticky summary preference changed from the inline prompt. */
+  setShowPersistenceSummary?: (enabled: boolean) => boolean;
   /** Injected for testability; production callers pass the real function. */
   requestPermissionDecision: typeof requestPermissionDecision;
+  /** Present only for direct local sessions that may mutate durable policy. */
+  persistentApprovalService?: PersistentApprovalApi;
 }
 
 /**
@@ -44,24 +54,75 @@ export interface LocalUserAuthorizerDeps {
 export class LocalUserAuthorizer implements TerminalAuthorizer {
   constructor(private readonly deps: LocalUserAuthorizerDeps) {}
 
-  authorize(
+  async authorize(
     details: PromptPermissionDetails,
   ): Promise<PermissionPromptDecision> {
     const uiPrompt = buildUiPrompt(details);
     emitUiPromptEvent(this.deps.events, uiPrompt);
-    return this.deps.requestPermissionDecision(
+    const preferences = this.deps.getPromptPreferences();
+    const choice = await this.deps.requestPermissionDecision(
       {
         mode: this.deps.mode,
         ui: this.deps.ui,
-        doublePressToConfirm:
-          this.deps.getPromptPreferences().doublePressToConfirm,
+        doublePressToConfirm: preferences.doublePressToConfirm,
+        showPersistenceSummary: preferences.showPersistenceSummary,
+        setShowPersistenceSummary: this.deps.setShowPersistenceSummary,
       },
       details.forwarding
         ? "Permission Required (Subagent)"
         : "Permission Required",
       details.message,
-      buildRequestOptions(details),
+      buildRequestOptions(details, this.deps.persistentApprovalService),
     );
+    if (!isPersistentPermissionChoice(choice)) return choice;
+
+    if (
+      this.deps.getPromptPreferences().showPersistenceSummary &&
+      !choice.summaryShown
+    ) {
+      return createDeniedPermissionDecision(
+        "Persistent approval summary was not shown.",
+      );
+    }
+
+    if (!this.deps.persistentApprovalService) {
+      return createDeniedPermissionDecision(
+        "Persistent approval is unavailable in this session.",
+      );
+    }
+    try {
+      this.deps.persistentApprovalService.persist({
+        requestId: details.requestId,
+        target: choice.target,
+        surface: choice.proposal.surface,
+        patterns: choice.proposal.patterns,
+      });
+      return { approved: true, state: "approved" };
+    } catch (error) {
+      return createDeniedPermissionDecision(persistenceFailureReason(error));
+    }
+  }
+}
+
+/** Keep filesystem paths and other error details out of agent-visible denial text. */
+function persistenceFailureReason(error: unknown): string {
+  const code = safeErrorCode(error);
+  return code
+    ? `Persistent approval failed (${code}).`
+    : "Persistent approval failed.";
+}
+
+function safeErrorCode(error: unknown): string | undefined {
+  try {
+    const code =
+      typeof error === "object" && error !== null
+        ? (error as { code?: unknown }).code
+        : undefined;
+    return typeof code === "string" && /^[A-Z][A-Z0-9_]{0,63}$/.test(code)
+      ? code
+      : undefined;
+  } catch {
+    return undefined;
   }
 }
 
@@ -72,6 +133,7 @@ export class LocalUserAuthorizer implements TerminalAuthorizer {
  */
 function buildRequestOptions(
   details: PromptPermissionDetails,
+  persistence?: PersistentApprovalApi,
 ): RequestPermissionOptions | undefined {
   const pattern = details.sessionApproval?.patterns[0];
   if (details.forwarding && details.sessionApproval && pattern) {
@@ -83,7 +145,30 @@ function buildRequestOptions(
       ),
     };
   }
-  return details.sessionLabel
-    ? { sessionLabel: details.sessionLabel }
-    : undefined;
+  if (details.forwarding) {
+    return details.sessionLabel
+      ? { sessionLabel: details.sessionLabel }
+      : undefined;
+  }
+
+  const proposal = details.sessionApproval;
+  if (!proposal || !persistence) {
+    return details.sessionLabel
+      ? { sessionLabel: details.sessionLabel }
+      : undefined;
+  }
+  let projectTarget: PersistentApprovalTarget | undefined;
+  try {
+    projectTarget = persistence.prepare("project");
+  } catch {
+    projectTarget = undefined;
+  }
+  return {
+    ...(details.sessionLabel ? { sessionLabel: details.sessionLabel } : {}),
+    persistent: {
+      proposal,
+      ...(projectTarget ? { projectTarget } : {}),
+      globalTarget: persistence.prepare("global"),
+    },
+  };
 }

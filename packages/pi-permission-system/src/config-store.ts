@@ -11,7 +11,11 @@ import type {
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 
-import { loadAndMergeConfigs, loadUnifiedConfig } from "./config-loader";
+import {
+  loadAndMergeConfigs,
+  loadUnifiedConfig,
+  type UnifiedPermissionConfig,
+} from "./config-loader";
 import {
   getGlobalConfigPath,
   getLegacyExtensionConfigPath,
@@ -148,33 +152,21 @@ export class ConfigStore implements SessionConfigStore, CommandConfigStore {
   ): void {
     const normalized = normalizePermissionSystemConfig(next);
     const globalPath = getGlobalConfigPath(this.deps.agentDir);
-
     const existing = loadUnifiedConfig(globalPath);
     const merged = {
       ...existing.config,
       debugLog: normalized.debugLog,
       permissionReviewLog: normalized.permissionReviewLog,
       yoloMode: normalized.yoloMode,
+      doublePressToConfirm: normalized.doublePressToConfirm,
+      showPersistenceSummary: normalized.showPersistenceSummary,
     };
 
-    const tmpPath = `${globalPath}.tmp`;
-    try {
-      mkdirSync(dirname(globalPath), { recursive: true });
-      writeFileSync(tmpPath, `${JSON.stringify(merged, null, 2)}\n`, "utf-8");
-      renameSync(tmpPath, globalPath);
-    } catch (error) {
-      try {
-        if (existsSync(tmpPath)) {
-          unlinkSync(tmpPath);
-        }
-      } catch {
-        // Ignore cleanup failures.
-      }
-      const message = error instanceof Error ? error.message : String(error);
-      ctx.ui.notify(
-        `Failed to save permission-system config at '${globalPath}': ${message}`,
-        "error",
-      );
+    if (
+      !this.writeGlobalConfig(globalPath, merged, (message) =>
+        ctx.ui.notify(message, "error"),
+      )
+    ) {
       return;
     }
 
@@ -186,7 +178,51 @@ export class ConfigStore implements SessionConfigStore, CommandConfigStore {
       debugLog: normalized.debugLog,
       permissionReviewLog: normalized.permissionReviewLog,
       yoloMode: normalized.yoloMode,
+      doublePressToConfirm: normalized.doublePressToConfirm,
+      showPersistenceSummary: normalized.showPersistenceSummary,
     });
+  }
+
+  /** Persist the sticky summary preference without copying project overrides globally. */
+  setShowPersistenceSummary(
+    enabled: boolean,
+    notify: (message: string) => void,
+  ): boolean {
+    const globalPath = getGlobalConfigPath(this.deps.agentDir);
+    const existing = loadUnifiedConfig(globalPath);
+    const merged = { ...existing.config, showPersistenceSummary: enabled };
+    if (!this.writeGlobalConfig(globalPath, merged, notify)) return false;
+
+    this.config = { ...this.config, showPersistenceSummary: enabled };
+    this.deps.logger.debug("config.prompt_preference_saved", {
+      showPersistenceSummary: enabled,
+    });
+    return true;
+  }
+
+  private writeGlobalConfig(
+    globalPath: string,
+    config: UnifiedPermissionConfig,
+    notify: (message: string) => void,
+  ): boolean {
+    const tmpPath = `${globalPath}.tmp`;
+    try {
+      mkdirSync(dirname(globalPath), { recursive: true });
+      writeFileSync(tmpPath, `${JSON.stringify(config, null, 2)}\n`, "utf-8");
+      renameSync(tmpPath, globalPath);
+      return true;
+    } catch (error) {
+      try {
+        if (existsSync(tmpPath)) unlinkSync(tmpPath);
+      } catch {
+        // Ignore cleanup failures.
+      }
+      const message = error instanceof Error ? error.message : String(error);
+      notify(
+        `Failed to save permission-system config at '${globalPath}': ${message}`,
+      );
+      return false;
+    }
   }
 
   /**

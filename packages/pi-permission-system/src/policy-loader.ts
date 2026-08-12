@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { getAgentDir } from "@earendil-works/pi-coding-agent";
 import {
   loadUnifiedConfig,
+  mergeUnifiedConfigs,
   normalizeFlatPermissionValue,
   stripJsonComments,
 } from "./config-loader";
@@ -69,6 +70,8 @@ export interface ResolvedPolicyPaths {
   globalConfigExists: boolean;
   projectConfigPath: string | null;
   projectConfigExists: boolean;
+  projectLocalConfigPath: string | null;
+  projectLocalConfigExists: boolean;
   agentsDir: string;
   agentsDirExists: boolean;
   projectAgentsDir: string | null;
@@ -131,6 +134,7 @@ export interface PolicyLoaderOptions {
   globalConfigPath?: string;
   agentsDir?: string;
   projectGlobalConfigPath?: string;
+  projectLocalConfigPath?: string;
   projectAgentsDir?: string;
   globalMcpConfigPath?: string;
   mcpServerNames?: readonly string[];
@@ -148,6 +152,7 @@ export class FilePolicyLoader implements PolicyLoader {
   private readonly globalConfigPath: string;
   private readonly agentsDir: string;
   private readonly projectGlobalConfigPath: string | null;
+  private readonly projectLocalConfigPath: string | null;
   private readonly projectAgentsDir: string | null;
   private readonly globalMcpConfigPath: string;
   private readonly configuredMcpServerNamesOverride: readonly string[] | null;
@@ -172,6 +177,7 @@ export class FilePolicyLoader implements PolicyLoader {
       options.globalConfigPath ?? defaultGlobalConfigPath();
     this.agentsDir = options.agentsDir ?? defaultAgentsDir();
     this.projectGlobalConfigPath = options.projectGlobalConfigPath ?? null;
+    this.projectLocalConfigPath = options.projectLocalConfigPath ?? null;
     this.projectAgentsDir = options.projectAgentsDir ?? null;
     this.globalMcpConfigPath =
       options.globalMcpConfigPath ?? defaultGlobalMcpConfigPath();
@@ -220,17 +226,31 @@ export class FilePolicyLoader implements PolicyLoader {
   }
 
   loadProjectConfig(): ScopeConfig {
-    if (!this.projectGlobalConfigPath) {
+    if (!this.projectGlobalConfigPath && !this.projectLocalConfigPath) {
       return {};
     }
 
-    const stamp = getFileStamp(this.projectGlobalConfigPath);
+    const stamp = [
+      this.projectGlobalConfigPath
+        ? getFileStamp(this.projectGlobalConfigPath)
+        : "none",
+      this.projectLocalConfigPath
+        ? getFileStamp(this.projectLocalConfigPath)
+        : "none",
+    ].join("|");
     if (this.projectGlobalConfigCache?.stamp === stamp) {
       return this.projectGlobalConfigCache.value;
     }
 
-    const { config, issues } = loadUnifiedConfig(this.projectGlobalConfigPath);
+    const shared = this.projectGlobalConfigPath
+      ? loadUnifiedConfig(this.projectGlobalConfigPath)
+      : { config: {}, issues: [] };
+    const local = this.projectLocalConfigPath
+      ? loadUnifiedConfig(this.projectLocalConfigPath)
+      : { config: {}, issues: [] };
+    const issues = [...shared.issues, ...local.issues];
     this.accumulateConfigIssues(issues);
+    const config = mergeUnifiedConfigs(shared.config, local.config);
 
     // A present-but-rejected file yields issues (parse error or schema
     // rejection); an absent file yields none. Fail closed on the former.
@@ -338,12 +358,15 @@ export class FilePolicyLoader implements PolicyLoader {
     const projectStamp = this.projectGlobalConfigPath
       ? getFileStamp(this.projectGlobalConfigPath)
       : "none";
+    const projectLocalStamp = this.projectLocalConfigPath
+      ? getFileStamp(this.projectLocalConfigPath)
+      : "none";
     const projectAgentStamp =
       this.projectAgentsDir && agentName
         ? getFileStamp(join(this.projectAgentsDir, `${agentName}.md`))
         : "none";
 
-    return `${getFileStamp(this.globalConfigPath)}|${projectStamp}|${agentStamp}|${projectAgentStamp}`;
+    return `${getFileStamp(this.globalConfigPath)}|${projectStamp}|${projectLocalStamp}|${agentStamp}|${projectAgentStamp}`;
   }
 
   // ── Resolved paths ────────────────────────────────────────────────────
@@ -355,6 +378,10 @@ export class FilePolicyLoader implements PolicyLoader {
       projectConfigPath: this.projectGlobalConfigPath,
       projectConfigExists: this.projectGlobalConfigPath
         ? existsSync(this.projectGlobalConfigPath)
+        : false,
+      projectLocalConfigPath: this.projectLocalConfigPath,
+      projectLocalConfigExists: this.projectLocalConfigPath
+        ? existsSync(this.projectLocalConfigPath)
         : false,
       agentsDir: this.agentsDir,
       agentsDirExists: existsSync(this.agentsDir),

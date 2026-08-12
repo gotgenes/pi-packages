@@ -4,12 +4,15 @@
 
 One unified config file per scope:
 
-| Scope   | Path                                                                                       |
-| ------- | ------------------------------------------------------------------------------------------ |
-| Global  | `~/.pi/agent/extensions/pi-permission-system/config.json` (respects `PI_CODING_AGENT_DIR`) |
-| Project | `<cwd>/.pi/extensions/pi-permission-system/config.json`                                    |
+| Scope         | Path                                                                                       |
+| ------------- | ------------------------------------------------------------------------------------------ |
+| Global        | `~/.pi/agent/extensions/pi-permission-system/config.json` (respects `PI_CODING_AGENT_DIR`) |
+| Project       | `<cwd>/.pi/extensions/pi-permission-system/config.json`                                    |
+| Project-local | `<cwd>/.pi/extensions/pi-permission-system/config.local.json`                              |
 
-Project config overrides global config; per-agent frontmatter overrides both.
+Shared project config overrides global config; project-local config overrides shared project config; per-agent frontmatter overrides file config.
+The permission prompt writes project approvals only to `config.local.json`, never shared `config.json`.
+The local file is user-owned and should normally be ignored by Git.
 
 **Project config requires project trust.**
 Project and project-agent scopes (both permission policy and runtime config such as `yoloMode`) are loaded only when Pi reports the project as trusted (`ctx.isProjectTrusted()`).
@@ -31,15 +34,16 @@ See [migration/0644-project-trust-gating.md](migration/0644-project-trust-gating
 **Precedence order (later wins):**
 
 1. Global config file
-2. Project config file
-3. Global agent frontmatter
-4. Project agent frontmatter
+2. Shared project config file
+3. Project-local config file
+4. Global agent frontmatter
+5. Project agent frontmatter
 
 The `permission` object uses deep-shallow merge: string-vs-string replaces; both-object shallow-merges pattern maps; string-vs-object the override wins entirely.
-Scalar fields (`debugLog`, `permissionReviewLog`, `yoloMode`, `doublePressToConfirm`) use simple replacement.
+Scalar fields (`debugLog`, `permissionReviewLog`, `yoloMode`, `doublePressToConfirm`, `showPersistenceSummary`) use simple replacement.
 
 **Invalid higher-precedence scope fails closed.**
-If a non-global scope (project config, global agent frontmatter, or project agent frontmatter) is present but fails to load or validate, it no longer contributes an empty scope that silently inherits the lower scope's rules.
+If a non-global scope (shared/local project config, global agent frontmatter, or project agent frontmatter) is present but fails to load or validate, it no longer contributes an empty scope that silently inherits the lower scope's rules.
 Instead the effective policy is floored so nothing resolves more permissively than `ask`: every `allow` (including one inherited from a lower scope) is clamped to `ask`, while `deny` and `ask` are unchanged.
 So a global `bash: allow` cannot remain effective behind a project scope that was meant to deny bash but contains a typo — bash prompts until the invalid config is fixed.
 A validation warning plus a distinct fail-closed notice are emitted, and a fix + reload restores the intended policy.
@@ -57,6 +61,7 @@ This clamp is deny-preserving and, like `yoloMode`, applied at composition; when
   "permissionReviewLog": true,
   "yoloMode": false,
   "doublePressToConfirm": true,
+  "showPersistenceSummary": true,
   "toolInputPreviewMaxLength": 400,
   "toolTextSummaryMaxLength": 120,
   "piInfrastructureReadPaths": [],
@@ -104,6 +109,7 @@ This clamp is deny-preserving and, like `yoloMode`, applied at composition; when
 | `permissionReviewLog`       | `true`  | Enables the permission request/denial review log at `logs/pi-permission-system-permission-review.jsonl`. Records bash command strings verbatim — see [Log file sensitivity](#log-file-sensitivity) |
 | `yoloMode`                  | `false` | Auto-approves `ask` results instead of prompting when yolo mode is enabled                                                                                                                         |
 | `doublePressToConfirm`      | `true`  | Requires a confirming second press of a decision hotkey in the inline TUI dialog (see below). TUI sessions only; set to `false` for single-press.                                                  |
+| `showPersistenceSummary`    | `true`  | Shows the exact rule and destination before saving a durable approval. Toggle persistently with `t` in the inline prompt or through `/permission-system`.                                          |
 | `toolInputPreviewMaxLength` | `200`   | Max characters of inline JSON shown in permission prompts for tool inputs. Omit to use the default. Set to a large value to disable truncation.                                                    |
 | `toolTextSummaryMaxLength`  | `80`    | Max characters of inline pattern/path summaries (grep patterns, find globs, ls paths) in permission prompts. Omit to use the default.                                                              |
 | `piInfrastructureReadPaths` | `[]`    | Extra directories to auto-allow for reads, bypassing the `external_directory` gate. Supports `~`/`$HOME`/`${HOME}` expansion and wildcard patterns (`*`, `?`).                                     |
@@ -119,13 +125,21 @@ In an interactive **TUI** session, an `ask` decision opens an inline keybind dia
 | Key | Action                                                            |
 | --- | ----------------------------------------------------------------- |
 | `y` | Approve once                                                      |
-| `s` | Approve for this session                                          |
+| `s` | Approve the proposed pattern for this session                     |
+| `e` | Edit the proposed pattern(s)                                      |
+| `p` | Persist the proposed pattern(s) for this trusted project          |
+| `g` | Persist the proposed pattern(s) globally                          |
 | `n` | Deny                                                              |
 | `r` | Deny with a reason (opens an inline editor; a reason is required) |
 
-Arrow keys / `j`/`k` move the highlight, `enter` confirms the highlighted option, and `esc` denies.
-With `doublePressToConfirm` enabled (the default), a letter hotkey **arms** its action and shows a `Press y again to approve.` hint; press the same key again to commit.
-Set `doublePressToConfirm` to `false` to commit on the first press.
+Project persistence is omitted when the project is not trusted.
+Arrow keys / `j`/`k` move the highlight, `enter` confirms the highlighted option, and `esc` denies at the decision list or returns from a sub-step.
+The edit field supports backspace and `Ctrl+U` to clear.
+Press `t` to toggle the sticky `showPersistenceSummary` preference; when enabled, `p` or `g` opens the exact-rule summary and `enter` saves it.
+When the summary is disabled, `p` or `g` saves directly after the configured hotkey confirmation.
+With `doublePressToConfirm` enabled (the default), a terminal letter hotkey **arms** its action and shows a `Press y again to approve.` hint; press the same key again to commit.
+The non-destructive `e` edit step and `p`/`g` summary step open on their first press.
+Set `doublePressToConfirm` to `false` to commit terminal actions on the first press.
 
 Pi's tool-expansion binding (`app.tools.expand`, `Ctrl+O` by default) stays live while the dialog is open, so you can expand a truncated tool preview before deciding.
 It only toggles the display — it never resolves, commits, or arms the pending decision.

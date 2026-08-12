@@ -1,16 +1,10 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import type { PermissionPromptDecision } from "#src/authority/permission-dialog";
-import type {
-  PromptPreferences,
-  requestPermissionDecision,
-} from "#src/authority/permission-prompt-component";
 import type { SubagentSessionRegistry } from "#src/authority/subagent-registry";
-import type { PermissionEventBus } from "#src/permission-events";
 import type { AuthorizerLog, PermissionQuery } from "#src/service";
 import type { DebugReviewLogger } from "#src/session-logger";
 import { ParentAuthorizer } from "./approval-escalator";
 import { DenyingAuthorizer } from "./denying-authorizer";
-import { LocalUserAuthorizer } from "./local-user-authorizer";
 import type { PromptPermissionDetails } from "./permission-prompter";
 import type { SubagentDetector } from "./subagent-detection";
 
@@ -62,12 +56,8 @@ export interface TerminalAuthorizer {
 export interface AuthorizerSelectionDeps {
   /** Single owner of subagent detection; the ParentAuthorizer-selection predicate. */
   detection: SubagentDetector;
-  /** Event bus used by `LocalUserAuthorizer` for the `permissions:ui_prompt` broadcast. */
-  events: PermissionEventBus;
-  /** Read live at prompt time; threaded into `LocalUserAuthorizer`. */
-  getPromptPreferences: () => PromptPreferences;
-  /** Injected for testability; production callers pass the real function. */
-  requestPermissionDecision: typeof requestPermissionDecision;
+  /** Construct the direct local terminal for the active UI context. */
+  createLocalAuthorizer(ctx: ExtensionContext): TerminalAuthorizer;
   /** Forwarding directory `ParentAuthorizer` reads/writes request and response files under. */
   forwardingDir: string;
   /** In-process subagent session registry for forwarding target resolution. */
@@ -88,13 +78,7 @@ export function selectAuthorizer(
   deps: AuthorizerSelectionDeps,
 ): TerminalAuthorizer {
   if (ctx.hasUI) {
-    return new LocalUserAuthorizer({
-      ui: ctx.ui,
-      mode: ctx.mode,
-      events: deps.events,
-      getPromptPreferences: deps.getPromptPreferences,
-      requestPermissionDecision: deps.requestPermissionDecision,
-    });
+    return deps.createLocalAuthorizer(ctx);
   }
   if (deps.detection.isSubagent(ctx)) {
     return new ParentAuthorizer(ctx, {

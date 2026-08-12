@@ -3,6 +3,7 @@ import { LocalUserAuthorizer } from "#src/authority/local-user-authorizer";
 import type { PermissionPromptDecision } from "#src/authority/permission-dialog";
 import type { requestPermissionDecision } from "#src/authority/permission-prompt-component";
 import type { PromptPermissionDetails } from "#src/authority/permission-prompter";
+import type { PersistentApprovalApi } from "#src/persistent-approval-service";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -33,6 +34,7 @@ function makePromptUi() {
 function makeDeps(
   overrides: {
     requestPermissionDecision?: typeof requestPermissionDecision;
+    persistentApprovalService?: PersistentApprovalApi;
   } = {},
 ) {
   const events = {
@@ -50,8 +52,12 @@ function makeDeps(
       ui,
       mode: "tui" as const,
       events,
-      getPromptPreferences: () => ({ doublePressToConfirm: true }),
+      getPromptPreferences: () => ({
+        doublePressToConfirm: true,
+        showPersistenceSummary: true,
+      }),
       requestPermissionDecision: decisionFn,
+      persistentApprovalService: overrides.persistentApprovalService,
     },
     events,
     ui,
@@ -115,7 +121,13 @@ describe("LocalUserAuthorizer", () => {
     await authorizer.authorize(makeDetails());
 
     expect(decisionFn).toHaveBeenCalledWith(
-      { mode: "tui", ui, doublePressToConfirm: true },
+      {
+        mode: "tui",
+        ui,
+        doublePressToConfirm: true,
+        showPersistenceSummary: true,
+        setShowPersistenceSummary: undefined,
+      },
       "Permission Required",
       "Allow read?",
       undefined,
@@ -155,7 +167,10 @@ describe("LocalUserAuthorizer", () => {
       ui,
       mode: "tui",
       events,
-      getPromptPreferences: () => ({ doublePressToConfirm: true }),
+      getPromptPreferences: () => ({
+        doublePressToConfirm: true,
+        showPersistenceSummary: true,
+      }),
       requestPermissionDecision: decisionFn,
     });
 
@@ -212,7 +227,13 @@ describe("LocalUserAuthorizer", () => {
       );
 
       expect(decisionFn).toHaveBeenCalledWith(
-        { mode: "tui", ui, doublePressToConfirm: true },
+        {
+          mode: "tui",
+          ui,
+          doublePressToConfirm: true,
+          showPersistenceSummary: true,
+          setShowPersistenceSummary: undefined,
+        },
         "Permission Required (Subagent)",
         "Allow read?",
         undefined,
@@ -269,6 +290,114 @@ describe("LocalUserAuthorizer", () => {
         undefined,
       );
     });
+  });
+
+  it("persists a durable choice before approving the pending request", async () => {
+    const target = {
+      scope: "project" as const,
+      path: "/project/config.local.json",
+      expectedDir: "/project",
+    };
+    const persist = vi.fn(() => ({ path: target.path }));
+    const service: PersistentApprovalApi = {
+      prepare: vi.fn(() => target),
+      persist,
+    };
+    const { deps } = makeDeps({
+      persistentApprovalService: service,
+      requestPermissionDecision: vi
+        .fn<typeof requestPermissionDecision>()
+        .mockResolvedValue({
+          kind: "persist",
+          scope: "project",
+          proposal: { surface: "bash", patterns: ["git status"] },
+          target,
+          summaryShown: true,
+        }),
+    });
+
+    const result = await new LocalUserAuthorizer(deps).authorize(makeDetails());
+
+    expect(persist).toHaveBeenCalledWith({
+      requestId: "req-123",
+      target,
+      surface: "bash",
+      patterns: ["git status"],
+    });
+    expect(result).toEqual({ approved: true, state: "approved" });
+  });
+
+  it("refuses to persist when an enabled summary was bypassed", async () => {
+    const target = {
+      scope: "project" as const,
+      path: "/project/config.local.json",
+      expectedDir: "/project",
+    };
+    const persist = vi.fn(() => ({ path: target.path }));
+    const { deps } = makeDeps({
+      persistentApprovalService: {
+        prepare: vi.fn(() => target),
+        persist,
+      },
+      requestPermissionDecision: vi
+        .fn<typeof requestPermissionDecision>()
+        .mockResolvedValue({
+          kind: "persist",
+          scope: "project",
+          proposal: { surface: "bash", patterns: ["git status"] },
+          target,
+          summaryShown: false,
+        }),
+    });
+
+    const result = await new LocalUserAuthorizer(deps).authorize(makeDetails());
+
+    expect(persist).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      approved: false,
+      state: "denied_with_reason",
+      denialReason: "Persistent approval summary was not shown.",
+    });
+  });
+
+  it("fails closed without exposing filesystem paths from persistence errors", async () => {
+    const target = {
+      scope: "global" as const,
+      path: "/agent/config.json",
+      expectedDir: "/agent",
+    };
+    const service: PersistentApprovalApi = {
+      prepare: vi.fn(() => target),
+      persist: vi.fn(() => {
+        throw Object.assign(
+          new Error(
+            "EACCES: permission denied, open '/private/user/config.json'",
+          ),
+          { code: "EACCES" },
+        );
+      }),
+    };
+    const { deps } = makeDeps({
+      persistentApprovalService: service,
+      requestPermissionDecision: vi
+        .fn<typeof requestPermissionDecision>()
+        .mockResolvedValue({
+          kind: "persist",
+          scope: "global",
+          proposal: { surface: "bash", patterns: ["git status"] },
+          target,
+          summaryShown: true,
+        }),
+    });
+
+    const result = await new LocalUserAuthorizer(deps).authorize(makeDetails());
+
+    expect(result).toEqual({
+      approved: false,
+      state: "denied_with_reason",
+      denialReason: "Persistent approval failed (EACCES).",
+    });
+    expect(result.denialReason).not.toContain("/private/user");
   });
 
   it("returns the decision from requestPermissionDecision", async () => {

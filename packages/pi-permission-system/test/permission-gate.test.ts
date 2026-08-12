@@ -178,12 +178,32 @@ describe("applyPermissionGate", () => {
       const params = makeParams({
         state: "ask",
         promptForApproval,
-        sessionApproval: { surface: "bash", pattern: "git *" },
+        sessionApproval: { surface: "bash", patterns: ["git *"] },
       });
       const result = await applyPermissionGate(params);
       expect(result).toEqual({
         action: "allow",
-        sessionApproval: { surface: "bash", pattern: "git *" },
+        sessionApproval: { surface: "bash", patterns: ["git *"] },
+      });
+    });
+
+    it("returns the edited session proposal from the decision", async () => {
+      const decision: PermissionPromptDecision = {
+        approved: true,
+        state: "approved_for_session",
+        sessionApproval: { surface: "bash", patterns: ["git status"] },
+      };
+      const result = await applyPermissionGate(
+        makeParams({
+          state: "ask",
+          promptForApproval: vi.fn().mockResolvedValue(decision),
+          sessionApproval: { surface: "bash", patterns: ["git *"] },
+        }),
+      );
+
+      expect(result).toEqual({
+        action: "allow",
+        sessionApproval: { surface: "bash", patterns: ["git status"] },
       });
     });
 
@@ -196,7 +216,7 @@ describe("applyPermissionGate", () => {
       const params = makeParams({
         state: "ask",
         promptForApproval,
-        sessionApproval: { surface: "bash", pattern: "git *" },
+        sessionApproval: { surface: "bash", patterns: ["git *"] },
       });
       const result = await applyPermissionGate(params);
       expect(result).toEqual({ action: "allow" });
@@ -225,7 +245,7 @@ describe("applyPermissionGate", () => {
       const params = makeParams({
         state: "ask",
         promptForApproval,
-        sessionApproval: { surface: "bash", pattern: "git *" },
+        sessionApproval: { surface: "bash", patterns: ["git *"] },
       });
       const result = await applyPermissionGate(params);
       expect(result).toEqual({ action: "block", reason: "User denied." });

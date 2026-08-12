@@ -488,14 +488,21 @@ describe("mergeUnifiedConfigs", () => {
         permissionReviewLog: true,
         yoloMode: false,
         doublePressToConfirm: true,
+        showPersistenceSummary: true,
       },
-      { debugLog: false, yoloMode: true, doublePressToConfirm: false },
+      {
+        debugLog: false,
+        yoloMode: true,
+        doublePressToConfirm: false,
+        showPersistenceSummary: false,
+      },
     );
 
     expect(merged.debugLog).toBe(false);
     expect(merged.permissionReviewLog).toBe(true);
     expect(merged.yoloMode).toBe(true);
     expect(merged.doublePressToConfirm).toBe(false);
+    expect(merged.showPersistenceSummary).toBe(false);
   });
 
   it("returns base unchanged when override is empty", () => {
@@ -696,6 +703,12 @@ describe("loadAndMergeConfigs", () => {
     writeFileSync(join(dir, "config.json"), JSON.stringify(content));
   }
 
+  function writeProjectLocal(content: Record<string, unknown>): void {
+    const dir = join(cwd, ".pi", "extensions", "pi-permission-system");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, "config.local.json"), JSON.stringify(content));
+  }
+
   function writeLegacyGlobalPolicy(content: Record<string, unknown>): void {
     mkdirSync(agentDir, { recursive: true });
     writeFileSync(
@@ -714,6 +727,17 @@ describe("loadAndMergeConfigs", () => {
     mkdirSync(extensionRoot, { recursive: true });
     writeFileSync(join(extensionRoot, "config.json"), JSON.stringify(content));
   }
+
+  it("loads project-local config after shared project config", () => {
+    writeGlobal({ permission: { bash: "deny" } });
+    writeProject({ permission: { bash: "ask", read: "deny" } });
+    writeProjectLocal({ permission: { bash: "allow" } });
+
+    const result = loadAndMergeConfigs(agentDir, cwd, extensionRoot);
+
+    expect(result.project.permission).toEqual({ bash: "allow", read: "deny" });
+    expect(result.merged.permission).toEqual({ bash: "allow", read: "deny" });
+  });
 
   it("merges global and project new-layout configs", () => {
     writeGlobal({
@@ -844,6 +868,18 @@ describe("loadAndMergeConfigs", () => {
 
       // The untrusted project's `bash: allow` must not override global `deny`.
       expect(result.merged.permission).toEqual({ "*": "ask", bash: "deny" });
+      expect(result.project).toEqual({});
+    });
+
+    it("omits project-local config when includeProjectScope is false", () => {
+      writeGlobal({ permission: { bash: "deny" } });
+      writeProjectLocal({ permission: { bash: "allow" } });
+
+      const result = loadAndMergeConfigs(agentDir, cwd, extensionRoot, {
+        includeProjectScope: false,
+      });
+
+      expect(result.merged.permission).toEqual({ bash: "deny" });
       expect(result.project).toEqual({});
     });
 
