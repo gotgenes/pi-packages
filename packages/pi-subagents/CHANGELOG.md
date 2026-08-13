@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [19.3.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v19.2.2...pi-subagents-v19.3.0) (2026-08-13)
+
+
+### Features
+
+* **pi-subagents:** add package-extension exclusion transform ([4b167d6](https://github.com/gotgenes/pi-packages/commit/4b167d680c79973ab61c690c6c784c30241cd8e8))
+* **pi-subagents:** exclude configured package extensions from children ([f847ebf](https://github.com/gotgenes/pi-packages/commit/f847ebfebe8942ca64146fc50530d3e682819edb))
+* **pi-subagents:** read excludedExtensionPackages from layered settings ([f83e706](https://github.com/gotgenes/pi-packages/commit/f83e7066306ba3beaaf85f0822b0213246c8c31e))
+
+
+### Bug Fixes
+
+* **pi-subagents:** preserve excludedExtensionPackages across settings writes ([ad07c0f](https://github.com/gotgenes/pi-packages/commit/ad07c0f8c70fadc81f73847e14326ef1825d5954))
+
+
+### Documentation
+
+* **pi-subagents:** document excludedExtensionPackages ([36fb61c](https://github.com/gotgenes/pi-packages/commit/36fb61ce128ff4e1b0bf60c264963fc0bb9f6eac))
+
 ## [19.2.2](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v19.2.1...pi-subagents-v19.2.2) (2026-08-10)
 
 
