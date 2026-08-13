@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [19.3.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v19.3.0...pi-subagents-v19.3.1) (2026-08-13)
+
+
+### Bug Fixes
+
+* **pi-subagents:** add bounded child session_shutdown emitter ([e7ffc31](https://github.com/gotgenes/pi-packages/commit/e7ffc31c7afaa068d7e8343dc21b6a5d7fc623f4)), closes [#709](https://github.com/gotgenes/pi-packages/issues/709)
+* **pi-subagents:** await child session teardown in Subagent ([c398853](https://github.com/gotgenes/pi-packages/commit/c398853536f8fedae55ac043174410f455c18c99)), closes [#709](https://github.com/gotgenes/pi-packages/issues/709)
+* **pi-subagents:** await child teardown across the manager ([6266416](https://github.com/gotgenes/pi-packages/commit/6266416a495b152605ba228885d22c31c2e36885)), closes [#709](https://github.com/gotgenes/pi-packages/issues/709)
+* **pi-subagents:** await manager teardown on session lifecycle events ([53cb0f1](https://github.com/gotgenes/pi-packages/commit/53cb0f128015ff0d4d9f12869c752e7e32cf8f08)), closes [#709](https://github.com/gotgenes/pi-packages/issues/709)
+* **pi-subagents:** emit session_shutdown before disposing a child session ([886caa4](https://github.com/gotgenes/pi-packages/commit/886caa4f40c727d61a2f552118452f527436e7d3)), closes [#709](https://github.com/gotgenes/pi-packages/issues/709)
+
+
+### Documentation
+
+* **pi-subagents:** document the child session shutdown contract ([bfe8162](https://github.com/gotgenes/pi-packages/commit/bfe816219e73b353776965c538172f691f857385)), closes [#709](https://github.com/gotgenes/pi-packages/issues/709)
+
 ## [19.3.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v19.2.2...pi-subagents-v19.3.0) (2026-08-13)
 
 
