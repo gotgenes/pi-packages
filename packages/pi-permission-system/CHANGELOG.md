@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [25.1.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v25.0.0...pi-permission-system-v25.1.0) (2026-08-13)
+
+
+### Features
+
+* **pi-permission-system:** add a process-global serving-session registry ([2939982](https://github.com/gotgenes/pi-packages/commit/2939982f80669a65df356f17e8110174ff96e68a)), closes [#719](https://github.com/gotgenes/pi-packages/issues/719)
+* **pi-permission-system:** announce the session serving forwarded requests ([74c0259](https://github.com/gotgenes/pi-packages/commit/74c0259141e616b1cb7760427e507fac518ba2e4)), closes [#719](https://github.com/gotgenes/pi-packages/issues/719)
+* **pi-permission-system:** make the forwarding timeout configurable ([fc6190d](https://github.com/gotgenes/pi-packages/commit/fc6190de23eb6347a135bf85e45f3060ac9b6868)), closes [#719](https://github.com/gotgenes/pi-packages/issues/719)
+
+
+### Bug Fixes
+
+* **pi-permission-system:** carry the denial reason into the unavailable block message ([1a0b289](https://github.com/gotgenes/pi-packages/commit/1a0b2894854576d2a171e98a10939c2c4c56794b)), closes [#719](https://github.com/gotgenes/pi-packages/issues/719)
+* **pi-permission-system:** fail fast when no session serves a forwarded request ([5241df0](https://github.com/gotgenes/pi-packages/commit/5241df0d6986fa66e1f21ccab6de956ac9d630ce)), closes [#719](https://github.com/gotgenes/pi-packages/issues/719)
+* **pi-permission-system:** report forwarding failures as unavailable, not user-denied ([6c37d27](https://github.com/gotgenes/pi-packages/commit/6c37d2778c0be51423b9b80569205ce68a0ac977)), closes [#719](https://github.com/gotgenes/pi-packages/issues/719)
+
+
+### Documentation
+
+* **pi-permission-system:** document forwarding liveness and the timeout field ([e493991](https://github.com/gotgenes/pi-packages/commit/e493991d67eb4e305a8a50346b1affed39ecbd96)), closes [#719](https://github.com/gotgenes/pi-packages/issues/719)
+
 ## [25.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v24.0.0...pi-permission-system-v25.0.0) (2026-08-11)
 
 
