@@ -6,6 +6,6 @@
   "packages/pi-permission-model-judge": "1.1.2",
   "packages/pi-permission-system": "25.1.0",
   "packages/pi-session-tools": "1.2.0",
-  "packages/pi-subagents": "19.3.1",
+  "packages/pi-subagents": "19.3.2",
   "packages/pi-subagents-worktrees": "0.3.0"
 }

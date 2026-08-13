@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [19.3.2](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v19.3.1...pi-subagents-v19.3.2) (2026-08-13)
+
+
+### Bug Fixes
+
+* **pi-subagents:** make the child recursion guard durable across tool refreshes ([ba16f63](https://github.com/gotgenes/pi-packages/commit/ba16f6347ee51fc8ffdc0626e858bdef093495ef)), closes [#725](https://github.com/gotgenes/pi-packages/issues/725)
+* **pi-subagents:** parse a YAML sequence tools field without re-splitting entries ([8ddeef3](https://github.com/gotgenes/pi-packages/commit/8ddeef38f230dd8b1fe67faae3930c448bffc32f)), closes [#725](https://github.com/gotgenes/pi-packages/issues/725)
+
+
+### Documentation
+
+* **pi-subagents:** document the child tool allowlist contract ([aa12605](https://github.com/gotgenes/pi-packages/commit/aa126058217e897ab29a12f420a2ce76150a91b8)), closes [#725](https://github.com/gotgenes/pi-packages/issues/725)
+* **pi-subagents:** extract the configuration reference into docs/configuration.md ([1c49ab9](https://github.com/gotgenes/pi-packages/commit/1c49ab977bdfe14ce39140d6a0b293e2085930f0)), closes [#725](https://github.com/gotgenes/pi-packages/issues/725)
+
 ## [19.3.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v19.3.0...pi-subagents-v19.3.1) (2026-08-13)
 
 
