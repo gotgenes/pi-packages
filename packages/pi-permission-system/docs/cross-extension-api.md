@@ -307,6 +307,17 @@ All three broadcasts are best-effort: a throwing listener cannot block permissio
 
 ---
 
+## Herdr Status Compatibility
+
+When [Herdr](https://herdr.dev/) manages the Pi session, the permission system also follows Herdr's `herdr:blocked` event-bus convention around every active user-facing permission dialog.
+It emits `{ active: true, label: "Permission Required" }` immediately before waiting for the human decision and `{ active: false }` after the dialog resolves or rejects.
+A forwarded subagent prompt is bracketed on the parent session's event bus because that session renders the dialog.
+Both emissions are best-effort, and an installation without a Herdr listener behaves unchanged.
+
+This compatibility convention is separate from the typed, package-owned `permissions:*` broadcast contract above.
+
+---
+
 ## UI Prompt Broadcasts
 
 The permission system emits `permissions:ui_prompt` immediately before it invokes the active user-facing permission UI.

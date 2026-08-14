@@ -23,7 +23,7 @@ export interface LocalUserAuthorizerDeps {
   ui: PermissionPromptUi;
   /** The session run mode; the dispatcher renders the inline dialog only in `"tui"`. */
   mode: ExtensionContext["mode"];
-  /** Event bus used for the `permissions:ui_prompt` broadcast. */
+  /** Event bus used for permission and Herdr lifecycle broadcasts. */
   events: PermissionEventBus;
   /** Read live at prompt time so a settings-modal toggle takes effect on the next prompt. */
   getPromptPreferences: () => PromptPreferences;
@@ -40,28 +40,51 @@ export interface LocalUserAuthorizerDeps {
  * forwarded ask carries its provenance on `details.forwarding`, which this
  * class renders (populated `forwarding` context + "(Subagent)" title) so the
  * broadcast stays non-degraded (#292) without a second emission path.
+ * Brackets the human wait with Herdr's blocked-state convention so direct and
+ * forwarded prompts report the serving session as blocked.
  */
 export class LocalUserAuthorizer implements TerminalAuthorizer {
   constructor(private readonly deps: LocalUserAuthorizerDeps) {}
 
-  authorize(
+  async authorize(
     details: PromptPermissionDetails,
   ): Promise<PermissionPromptDecision> {
     const uiPrompt = buildUiPrompt(details);
     emitUiPromptEvent(this.deps.events, uiPrompt);
-    return this.deps.requestPermissionDecision(
-      {
-        mode: this.deps.mode,
-        ui: this.deps.ui,
-        doublePressToConfirm:
-          this.deps.getPromptPreferences().doublePressToConfirm,
-      },
-      details.forwarding
-        ? "Permission Required (Subagent)"
-        : "Permission Required",
-      details.message,
-      buildRequestOptions(details),
+    emitHerdrBlockedEvent(this.deps.events, true);
+    try {
+      return await this.deps.requestPermissionDecision(
+        {
+          mode: this.deps.mode,
+          ui: this.deps.ui,
+          doublePressToConfirm:
+            this.deps.getPromptPreferences().doublePressToConfirm,
+        },
+        details.forwarding
+          ? "Permission Required (Subagent)"
+          : "Permission Required",
+        details.message,
+        buildRequestOptions(details),
+      );
+    } finally {
+      emitHerdrBlockedEvent(this.deps.events, false);
+    }
+  }
+}
+
+function emitHerdrBlockedEvent(
+  events: PermissionEventBus,
+  active: boolean,
+): void {
+  try {
+    events.emit(
+      "herdr:blocked",
+      active
+        ? { active: true, label: "Permission Required" }
+        : { active: false },
     );
+  } catch {
+    // Status integrations are observational and must not affect permission enforcement.
   }
 }
 
