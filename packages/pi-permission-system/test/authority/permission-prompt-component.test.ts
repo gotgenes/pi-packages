@@ -5,6 +5,7 @@ import type {
   RequestPermissionOptions,
 } from "#src/authority/permission-dialog";
 import {
+  highlightOccurrences,
   type PermissionPromptView,
   presentInlinePermissionPrompt,
   requestPermissionDecision,
@@ -16,6 +17,17 @@ function plainTheme() {
   return {
     fg(_color: string, text: string) {
       return text;
+    },
+    bg(_color: string, text: string) {
+      return text;
+    },
+  };
+}
+
+function markedTheme() {
+  return {
+    fg(color: string, text: string) {
+      return color === "warning" ? `<warning>${text}</warning>` : text;
     },
     bg(_color: string, text: string) {
       return text;
@@ -38,7 +50,11 @@ type PromptFactory = (
 /** Pi's default binding for the `app.tools.expand` action. */
 const CTRL_O = "\u000f";
 
-function makeFakeView(doublePressToConfirm: boolean, expandKey = CTRL_O) {
+function makeFakeView(
+  doublePressToConfirm: boolean,
+  expandKey = CTRL_O,
+  theme = plainTheme(),
+) {
   const captured: {
     component?: CapturedComponent;
     options?: unknown;
@@ -56,7 +72,7 @@ function makeFakeView(doublePressToConfirm: boolean, expandKey = CTRL_O) {
     return new Promise<PermissionPromptDecision>((resolve) => {
       captured.component = factory(
         { requestRender: vi.fn() },
-        plainTheme(),
+        theme,
         {
           matches: (data, action) =>
             action === "app.tools.expand" && data === expandKey,
@@ -103,6 +119,65 @@ async function runPrompt(
 
 // ── Tests ─────────────────────────────────────────────────────────────────
 
+describe("highlightOccurrences", () => {
+  const paint = (text: string): string => `<warning>${text}</warning>`;
+
+  it("highlights every exact occurrence of a shell-metacharacter target", () => {
+    const target = 'echo "$HOME"; [ -f /tmp/x ]';
+    const message = `Run ${target}\nThen ${target}`;
+
+    expect(highlightOccurrences(message, target, paint)).toBe(
+      `Run <warning>${target}</warning>\nThen <warning>${target}</warning>`,
+    );
+  });
+
+  it("leaves the message unchanged when the target is absent or blank", () => {
+    const message = "Run git status";
+
+    expect(highlightOccurrences(message, "git push", paint)).toBe(message);
+    expect(highlightOccurrences(message, "", paint)).toBe(message);
+    expect(highlightOccurrences(message, " \t\n", paint)).toBe(message);
+  });
+
+  it("highlights one occurrence without overlapping later matches", () => {
+    expect(highlightOccurrences("Run ls", "ls", paint)).toBe(
+      "Run <warning>ls</warning>",
+    );
+    expect(highlightOccurrences("aaa aaa", "aaa", paint)).toBe(
+      "<warning>aaa</warning> <warning>aaa</warning>",
+    );
+    expect(highlightOccurrences("lsls ls", "ls", paint)).toBe(
+      "lsls <warning>ls</warning>",
+    );
+  });
+
+  it("only highlights whole-token matches", () => {
+    expect(highlightOccurrences("tools lsof ls", "ls", paint)).toBe(
+      "tools lsof <warning>ls</warning>",
+    );
+    expect(highlightOccurrences("Run 'ls'", "ls", paint)).toBe(
+      "Run '<warning>ls</warning>'",
+    );
+    expect(highlightOccurrences("/usr/bin/lsblk", "ls", paint)).toBe(
+      "/usr/bin/lsblk",
+    );
+    expect(highlightOccurrences("Path: /outside/a.ts.", "/outside/a.ts", paint)).toBe(
+      "Path: <warning>/outside/a.ts</warning>.",
+    );
+    expect(highlightOccurrences("Path: /outside/a.ts.bak", "/outside/a.ts", paint)).toBe(
+      "Path: /outside/a.ts.bak",
+    );
+  });
+
+  it("paints multiline targets one line at a time", () => {
+    const target = "printf first\nprintf second";
+
+    expect(highlightOccurrences(`Run:\n${target}`, target, paint)).toBe(
+      "Run:\n<warning>printf first</warning>\n<warning>printf second</warning>",
+    );
+  });
+});
+
 describe("presentInlinePermissionPrompt", () => {
   it("renders inline (not as an overlay) with the message and hotkey labels", () => {
     const { view, captured } = makeFakeView(true);
@@ -134,6 +209,23 @@ describe("presentInlinePermissionPrompt", () => {
     for (const line of lines) {
       expect(visibleWidth(line)).toBeLessThanOrEqual(width);
     }
+  });
+
+  it("highlights the target in decision and reason views", () => {
+    const { view, captured } = makeFakeView(false, CTRL_O, markedTheme());
+    const target = "rm -rf /tmp";
+    const message = `Command:\n${target}\nFlagged: ${target}`;
+    void presentInlinePermissionPrompt(view, "Permission Required", message, {
+      highlightText: target,
+    });
+
+    const decision = captured.component?.render(120).join("\n") ?? "";
+    captured.component?.handleInput("r");
+    const reason = captured.component?.render(120).join("\n") ?? "";
+    const highlighted = `<warning>${target}</warning>`;
+
+    expect(decision.split(highlighted)).toHaveLength(3);
+    expect(reason.split(highlighted)).toHaveLength(3);
   });
 
   describe("double-press to confirm (enabled)", () => {
@@ -265,10 +357,12 @@ describe("presentInlinePermissionPrompt", () => {
         ui: { select, input: vi.fn(), custom },
       } as unknown as PermissionPromptView;
 
-      const decision = await requestPermissionDecision(view, "Title", "Msg");
+      const decision = await requestPermissionDecision(view, "Title", "Msg", {
+        highlightText: "Msg",
+      });
 
       expect(custom).not.toHaveBeenCalled();
-      expect(select).toHaveBeenCalledTimes(1);
+      expect(select).toHaveBeenCalledWith("Title\nMsg", expect.any(Array));
       expect(decision).toEqual({ approved: true, state: "approved" });
     });
   });

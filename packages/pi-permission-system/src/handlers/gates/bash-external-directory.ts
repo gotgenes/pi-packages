@@ -103,6 +103,7 @@ export function describeBashExternalDirectoryGate(
       toolCallId: tcc.toolCallId,
       toolName: tcc.toolName,
       command,
+      highlightText: worstEntry.path.value(),
       accessIntent: accessFactsFromPath("external_directory", worstEntry.path),
     },
     logContext: {

@@ -136,6 +136,7 @@ export function describeBashPathGate(
       toolCallId: tcc.toolCallId,
       toolName: tcc.toolName,
       command,
+      highlightText: worstToken,
       accessIntent: accessFactsFromPath("path", worstEntry.path),
     },
     logContext: {

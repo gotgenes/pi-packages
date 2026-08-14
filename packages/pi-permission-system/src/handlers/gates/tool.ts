@@ -3,6 +3,7 @@ import { PATH_BEARING_TOOLS } from "#src/access-intent/path-surfaces";
 import { getPathBearingToolPath } from "#src/access-intent/tool-input-path";
 import {
   classifyToolKind,
+  isMcpCheck,
   type ShellInvocation,
 } from "#src/access-intent/tool-kind";
 import { suggestSessionPattern } from "#src/pattern-suggest";
@@ -113,6 +114,9 @@ export function describeToolGate(
       sessionLabel: suggestion.label,
       accessIntent,
       ...permissionLogContext,
+      ...(isMcpCheck(check) && check.target
+        ? { highlightText: check.target }
+        : {}),
     },
     logContext: {
       source: "tool_call",

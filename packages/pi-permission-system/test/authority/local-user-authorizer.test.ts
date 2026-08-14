@@ -122,7 +122,30 @@ describe("LocalUserAuthorizer", () => {
     );
   });
 
-  it("passes the sessionLabel option when present", async () => {
+  it("composes command highlighting with the sessionLabel option", async () => {
+    const { deps, decisionFn } = makeDeps();
+    const authorizer = new LocalUserAuthorizer(deps);
+
+    await authorizer.authorize(
+      makeDetails({
+        command: "cat .env",
+        message: "Run command: cat .env",
+        sessionLabel: "Yes, for 'read' tool",
+      }),
+    );
+
+    expect(decisionFn).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.any(String),
+      "Run command: cat .env",
+      {
+        highlightText: "cat .env",
+        sessionLabel: "Yes, for 'read' tool",
+      },
+    );
+  });
+
+  it("passes a sessionLabel without command highlighting", async () => {
     const { deps, decisionFn } = makeDeps();
     const authorizer = new LocalUserAuthorizer(deps);
 
@@ -135,6 +158,53 @@ describe("LocalUserAuthorizer", () => {
       expect.any(String),
       expect.any(String),
       { sessionLabel: "Yes, for 'read' tool" },
+    );
+  });
+
+  it("prefers trimmed UI-only highlight text over the command", async () => {
+    const { deps, decisionFn } = makeDeps();
+    const authorizer = new LocalUserAuthorizer(deps);
+
+    await authorizer.authorize(
+      makeDetails({
+        command: "  cat .env  ",
+        highlightText: "  .env  ",
+      }),
+    );
+
+    expect(decisionFn).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.any(String),
+      expect.any(String),
+      { highlightText: ".env" },
+    );
+  });
+
+  it("falls back to the command when UI-only highlight text is blank", async () => {
+    const { deps, decisionFn } = makeDeps();
+    const authorizer = new LocalUserAuthorizer(deps);
+
+    await authorizer.authorize(makeDetails({ command: "cat .env", highlightText: "   " }));
+
+    expect(decisionFn).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.any(String),
+      expect.any(String),
+      { highlightText: "cat .env" },
+    );
+  });
+
+  it("omits highlighting for a whitespace-only command", async () => {
+    const { deps, decisionFn } = makeDeps();
+    const authorizer = new LocalUserAuthorizer(deps);
+
+    await authorizer.authorize(makeDetails({ command: " \t" }));
+
+    expect(decisionFn).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.any(String),
+      expect.any(String),
+      undefined,
     );
   });
 
@@ -240,6 +310,7 @@ describe("LocalUserAuthorizer", () => {
         "Permission Required (Subagent)",
         expect.any(String),
         {
+          highlightText: "git push",
           sessionScope: {
             subagentLabel: "This subagent ('Explore') only",
             servingSessionLabel:

@@ -7,6 +7,7 @@ import { AuthorizerRegistry } from "#src/authority/authorizer-registry";
 import { AuthorizerSelection } from "#src/authority/authorizer-selection";
 import { encloseInDelegationEnvelope } from "#src/authority/delegation-envelope";
 import { ForwardedRequestServer } from "#src/authority/forwarded-request-server";
+import { highlightOccurrences } from "#src/authority/permission-prompt-component";
 import type { PermissionPromptDecision } from "#src/authority/permission-dialog";
 import type {
   ForwardedPermissionRequest,
@@ -226,6 +227,7 @@ describe("processInbox — recorded-authority resolution", () => {
         "Subagent 'Explore' requested permission.\nSession ID: child-session\n\nAllow git push?",
       surface: "bash",
       value: "git push",
+      highlightText: "git push",
       forwarding: {
         requesterAgentName: "Explore",
         requesterSessionId: "child-session",
@@ -385,6 +387,60 @@ describe("processInbox — child-fixed access facts on the escalated ask", () =>
       ],
       boundaryValue: "/canonical/src/foo.ts",
     });
+  });
+
+  test("uses the forwarded bash match as render-only highlight text", async () => {
+    const details = await escalateForwardedAsk({
+      id: "req-bash-highlight",
+      source: "tool_call",
+      surface: "bash",
+      value: "rm -rf /",
+      message: "Allow rm -rf /?",
+      accessIntent: makeForwardedAccessIntent({
+        surface: "bash",
+        matchValues: ["rm -rf /"],
+      }),
+    });
+
+    const target = details.highlightText;
+    expect(target).toBe("rm -rf /");
+    expect(
+      highlightOccurrences(
+        details.message,
+        target!,
+        (text) => `<warning>${text}</warning>`,
+      ),
+    ).toBe(
+      "Subagent 'Explore' requested permission.\n" +
+        "Session ID: child-session\n\n" +
+        "Allow <warning>rm -rf /</warning>?",
+    );
+  });
+
+  test("does not highlight non-bash or tool-name forwarded matches", async () => {
+    const pathDetails = await escalateForwardedAsk({
+      id: "req-path-highlight",
+      source: "tool_call",
+      surface: "write",
+      value: "/tmp/file",
+      accessIntent: makeForwardedAccessIntent({
+        surface: "path",
+        matchValues: ["/tmp/file"],
+        boundaryValue: "/tmp/file",
+      }),
+    });
+    const toolNameDetails = await escalateForwardedAsk({
+      id: "req-bash-tool-name-highlight",
+      source: "tool_call",
+      value: "bash",
+      accessIntent: makeForwardedAccessIntent({
+        surface: "bash",
+        matchValues: ["bash"],
+      }),
+    });
+
+    expect(pathDetails.highlightText).toBeUndefined();
+    expect(toolNameDetails.highlightText).toBeUndefined();
   });
 
   test("omits accessIntent entirely for a version-skew request that carried none", async () => {

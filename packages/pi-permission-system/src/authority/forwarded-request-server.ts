@@ -106,6 +106,8 @@ function formatForwardedPermissionPrompt(
 function buildForwardedAskDetails(
   request: ForwardedPermissionRequest,
 ): PromptPermissionDetails {
+  const highlightText = forwardedBashHighlightText(request);
+
   return {
     requestId: request.id,
     source: request.source ?? "tool_call",
@@ -113,6 +115,7 @@ function buildForwardedAskDetails(
     message: formatForwardedPermissionPrompt(request),
     surface: request.surface ?? null,
     value: request.value ?? null,
+    ...(highlightText ? { highlightText } : {}),
     forwarding: {
       requesterAgentName: request.requesterAgentName || null,
       requesterSessionId: request.requesterSessionId || null,
@@ -129,6 +132,18 @@ function buildForwardedAskDetails(
       ? { accessIntent: toAccessFacts(request.accessIntent) }
       : {}),
   };
+}
+
+/** Returns a child-fixed bash match for render-only highlighting. */
+function forwardedBashHighlightText(
+  request: ForwardedPermissionRequest,
+): string | undefined {
+  if (request.accessIntent?.surface !== "bash") return undefined;
+
+  const matchValue = request.accessIntent.matchValues[0]?.trim();
+  return matchValue && matchValue !== request.accessIntent.surface
+    ? matchValue
+    : undefined;
 }
 
 /**

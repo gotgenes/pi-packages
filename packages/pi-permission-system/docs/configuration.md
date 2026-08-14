@@ -133,6 +133,12 @@ Pi's tool-expansion binding (`app.tools.expand`, `Ctrl+O` by default) stays live
 It only toggles the display — it never resolves, commits, or arms the pending decision.
 While you are typing a denial reason it is not intercepted, so a rebound printable key still reaches the reason editor.
 
+When an ask supplies highlight text, the TUI highlights exact whole-token occurrences in the rendered prompt.
+Bash command and forwarded bash asks highlight the flagged sub-command.
+Bash path, bash external-directory, tool path, and tool external-directory asks highlight the offending path.
+MCP asks highlight the requested target.
+This display-only rendering does not alter persisted messages, events, logs, or forwarded request payloads.
+
 Non-TUI contexts (RPC / frontend-driven sessions) keep the single-select prompt and are unaffected by `doublePressToConfirm`.
 
 ### `piInfrastructureReadPaths` patterns

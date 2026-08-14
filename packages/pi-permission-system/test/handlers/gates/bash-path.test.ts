@@ -11,6 +11,7 @@ vi.mock("node:os", () => {
 
 import { AccessPath } from "#src/access-intent/access-path";
 import { BashProgram } from "#src/access-intent/bash/program";
+import { highlightOccurrences } from "#src/authority/permission-prompt-component";
 import { describeBashPathGate } from "#src/handlers/gates/bash-path";
 import type {
   GateBypass,
@@ -128,7 +129,18 @@ describe("describeBashPathGate", () => {
       command: "cat .env",
       pathValue: ".env",
     });
-    expect(result.promptDetails.message).toContain(".env");
+    const target = result.promptDetails.highlightText;
+    expect(target).toBe(".env");
+    expect(
+      highlightOccurrences(
+        result.promptDetails.message,
+        target!,
+        (text) => `<warning>${text}</warning>`,
+      ),
+    ).toBe(
+      "Current agent requested tool 'bash' for path " +
+        "'<warning>.env</warning>'. Allow this path access?",
+    );
   });
 
   it("descriptor decision uses surface 'path'", async () => {

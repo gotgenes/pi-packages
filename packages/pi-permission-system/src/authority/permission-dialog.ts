@@ -78,6 +78,8 @@ export function isPermissionDecisionState(
 }
 
 export interface RequestPermissionOptions {
+  /** Sub-string of the message the TUI dialog renders highlighted (the flagged sub-command or path). */
+  highlightText?: string;
   /** Override the "for this session" option label (e.g. to show the suggested pattern). */
   sessionLabel?: string;
   /**

@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { AccessIntent } from "#src/access-intent/access-intent";
 import { BashProgram } from "#src/access-intent/bash/program";
+import { highlightOccurrences } from "#src/authority/permission-prompt-component";
 import { describeBashExternalDirectoryGate } from "#src/handlers/gates/bash-external-directory";
 import type {
   GateBypass,
@@ -162,6 +163,20 @@ describe("describeBashExternalDirectoryGate", () => {
       matchValues: path?.matchValues(),
       boundaryValue: path?.boundaryValue(),
     });
+    expect(result.promptDetails.highlightText).toBe("/outside/a.ts");
+  });
+
+  it("highlights the disclosed path before the formatter's sentence period", async () => {
+    const resolver = makeResolver(makeCheckResult("ask"));
+    const result = (await describeGate(
+      makeTcc({ input: { command: "cat /outside/a.ts" } }),
+      resolver,
+    )) as GateDescriptor;
+    const target = result.promptDetails.highlightText!;
+
+    expect(highlightOccurrences(result.promptDetails.message, target, (text) => `<warning>${text}</warning>`)).toContain(
+      `<warning>${target}</warning>. Allow this external directory access?`,
+    );
   });
 
   it("returns GateBypass when all external paths are session-covered", async () => {

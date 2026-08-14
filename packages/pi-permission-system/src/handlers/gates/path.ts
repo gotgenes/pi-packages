@@ -68,6 +68,7 @@ export function describePathGate(
       toolCallId: tcc.toolCallId,
       toolName: tcc.toolName,
       path: filePath,
+      highlightText: filePath,
       accessIntent: accessFactsFromPath("path", accessPath),
     },
     logContext: {

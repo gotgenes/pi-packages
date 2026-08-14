@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { ShellInvocation } from "#src/access-intent/tool-kind";
+import { highlightOccurrences } from "#src/authority/permission-prompt-component";
 import { describeToolGate } from "#src/handlers/gates/tool";
 import type { ToolCallContext } from "#src/handlers/gates/types";
 import { posixPathFlavor } from "#src/path/path-flavor";
@@ -130,6 +131,17 @@ describe("describeToolGate", () => {
     expect(desc.surface).toBe("mcp");
     expect(desc.decision.surface).toBe("mcp");
     expect(desc.decision.value).toBe("server:tool");
+    expect(desc.promptDetails.highlightText).toBe("server:tool");
+    expect(
+      highlightOccurrences(
+        desc.promptDetails.message,
+        desc.promptDetails.highlightText!,
+        (text) => `<warning>${text}</warning>`,
+      ),
+    ).toBe(
+      "Current agent requested MCP target '<warning>server:tool</warning>' " +
+        "(matched '*'). Allow this call?",
+    );
   });
 
   it("populates denialContext with kind 'tool' and check result", () => {

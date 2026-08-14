@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { highlightOccurrences } from "#src/authority/permission-prompt-component";
 import type {
   GateBypass,
   GateDescriptor,
@@ -146,6 +147,18 @@ describe("describeExternalDirectoryGate", () => {
       matchValues: accessPath.matchValues(),
       boundaryValue: accessPath.boundaryValue(),
     });
+    expect(result.promptDetails.highlightText).toBe(path);
+    expect(
+      highlightOccurrences(
+        result.promptDetails.message,
+        result.promptDetails.highlightText!,
+        (text) => `<warning>${text}</warning>`,
+      ),
+    ).toBe(
+      "Current agent requested tool 'read' for path " +
+        "'<warning>/outside/project/file.ts</warning>' outside working " +
+        "directory '/test/project'. Allow this external directory access?",
+    );
   });
 
   it("carries a precomputed preCheck and an empty input (matching is done by the gate)", () => {

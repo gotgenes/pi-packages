@@ -11,6 +11,7 @@ vi.mock("node:fs", () => ({
 }));
 
 import { AccessPath } from "#src/access-intent/access-path";
+import { highlightOccurrences } from "#src/authority/permission-prompt-component";
 import type { GateDescriptor } from "#src/handlers/gates/descriptor";
 import { isGateDescriptor } from "#src/handlers/gates/descriptor";
 import { describePathGate } from "#src/handlers/gates/path";
@@ -194,6 +195,17 @@ describe("describePathGate", () => {
       matchValues: accessPath.matchValues(),
       boundaryValue: accessPath.boundaryValue(),
     });
+    expect(result.promptDetails.highlightText).toBe(".env");
+    expect(
+      highlightOccurrences(
+        result.promptDetails.message,
+        result.promptDetails.highlightText!,
+        (text) => `<warning>${text}</warning>`,
+      ),
+    ).toBe(
+      "Current agent requested tool 'read' for path " +
+        "'<warning>.env</warning>'. Allow this path access?",
+    );
   });
 
   it("descriptor decision uses surface 'path' and the file path as value", () => {

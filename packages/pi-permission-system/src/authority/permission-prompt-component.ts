@@ -107,6 +107,7 @@ export function presentInlinePermissionPrompt(
         config,
         title,
         message,
+        options?.highlightText,
         (data) => handleToolsExpandAction(data, keybindings, view.ui),
         () => {
           tui.requestRender();
@@ -115,6 +116,67 @@ export function presentInlinePermissionPrompt(
       ),
     { overlay: false },
   );
+}
+
+/**
+ * @internal
+ *
+ * Every exact occurrence is highlighted deliberately, so repeated commands
+ * remain visible during a quick scan.
+ */
+export function highlightOccurrences(
+  message: string,
+  target: string,
+  paint: (text: string) => string,
+): string {
+  if (target.trim().length === 0) return message;
+
+  const parts: string[] = [];
+  let cursor = 0;
+  let matchIndex = message.indexOf(target, cursor);
+  while (matchIndex !== -1) {
+    const matchEnd = matchIndex + target.length;
+    if (hasTokenBoundary(message, matchIndex, matchEnd)) {
+      parts.push(message.slice(cursor, matchIndex), paintLines(target, paint));
+      cursor = matchEnd;
+      matchIndex = message.indexOf(target, cursor);
+    } else {
+      matchIndex = message.indexOf(target, matchIndex + 1);
+    }
+  }
+
+  if (cursor === 0) return message;
+  parts.push(message.slice(cursor));
+  return parts.join("");
+}
+
+function hasTokenBoundary(
+  message: string,
+  start: number,
+  end: number,
+): boolean {
+  return !isWordOrPathCharacter(message[start - 1]) && endsToken(message, end);
+}
+
+/**
+ * A trailing `.` is sentence punctuation, not path continuation, unless a token
+ * character follows it.
+ */
+function endsToken(message: string, end: number): boolean {
+  const next = message[end];
+  if (!isWordOrPathCharacter(next)) return true;
+  return next === "." && !isWordOrPathCharacter(message[end + 1]);
+}
+
+function isWordOrPathCharacter(character: string | undefined): boolean {
+  return character !== undefined && /[A-Za-z0-9_./-]/.test(character);
+}
+
+function paintLines(text: string, paint: (text: string) => string): string {
+  return text
+    .split("\n")
+    .map((line) => (line.length > 0 ? paint(line) : line))
+    .join("\n");
 }
 
 /**
@@ -151,6 +213,7 @@ class PermissionPromptComponent implements Component {
     private readonly config: PromptModelConfig,
     private readonly title: string,
     private readonly message: string,
+    private readonly highlightText: string | undefined,
     private readonly handleAppAction: (data: string) => boolean,
     private readonly requestRender: () => void,
     private readonly done: (decision: PermissionPromptDecision) => void,
@@ -248,7 +311,11 @@ class PermissionPromptComponent implements Component {
   }
 
   private renderDecision(): string[] {
-    const lines = [this.theme.fg("accent", this.title), this.message, ""];
+    const lines = [
+      this.theme.fg("accent", this.title),
+      this.renderMessage(),
+      "",
+    ];
     for (const key of OPTION_ORDER) {
       const label = key === "s" ? this.config.sessionLabel : OPTION_LABELS[key];
       const selected = this.state.highlightedKey === key;
@@ -270,7 +337,7 @@ class PermissionPromptComponent implements Component {
   private renderReason(): string[] {
     const lines = [
       this.theme.fg("accent", this.title),
-      this.message,
+      this.renderMessage(),
       "",
       `Reason (required): ${this.reasonBuffer}\u2588`,
     ];
@@ -280,6 +347,12 @@ class PermissionPromptComponent implements Component {
     lines.push("");
     lines.push(this.theme.fg("muted", "enter submit · esc back"));
     return lines;
+  }
+
+  private renderMessage(): string {
+    return highlightOccurrences(this.message, this.highlightText ?? "", (text) =>
+      this.theme.fg("warning", text),
+    );
   }
 
   private renderScope(): string[] {

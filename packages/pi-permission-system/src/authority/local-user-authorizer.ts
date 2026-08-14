@@ -65,25 +65,38 @@ export class LocalUserAuthorizer implements TerminalAuthorizer {
   }
 }
 
+/** Trimmed value, or `undefined` when it is absent or blank. */
+function nonBlank(value: string | undefined): string | undefined {
+  const trimmed = value?.trim();
+  return trimmed === "" ? undefined : trimmed;
+}
+
 /**
- * A forwarded ask carrying a session-approval suggestion offers the scope
- * choice (subagent vs whole session); any other ask keeps its single
- * "for this session" option (custom label when the gate supplied one).
+ * Supplies trimmed UI-only highlight text for the TUI. A forwarded ask carrying a
+ * session-approval suggestion offers the scope choice (subagent vs whole
+ * session); any other ask keeps its single "for this session" option (custom
+ * label when the gate supplied one).
  */
 function buildRequestOptions(
   details: PromptPermissionDetails,
 ): RequestPermissionOptions | undefined {
+  const options: RequestPermissionOptions = {};
+  const highlightText =
+    nonBlank(details.highlightText) ?? nonBlank(details.command);
+  if (highlightText) {
+    options.highlightText = highlightText;
+  }
+
   const pattern = details.sessionApproval?.patterns[0];
   if (details.forwarding && details.sessionApproval && pattern) {
-    return {
-      sessionScope: buildForwardedScopeLabels(
-        details.forwarding.requesterAgentName,
-        details.sessionApproval.surface,
-        pattern,
-      ),
-    };
+    options.sessionScope = buildForwardedScopeLabels(
+      details.forwarding.requesterAgentName,
+      details.sessionApproval.surface,
+      pattern,
+    );
+  } else if (details.sessionLabel) {
+    options.sessionLabel = details.sessionLabel;
   }
-  return details.sessionLabel
-    ? { sessionLabel: details.sessionLabel }
-    : undefined;
+
+  return Object.keys(options).length > 0 ? options : undefined;
 }

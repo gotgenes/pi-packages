@@ -36,6 +36,11 @@ export interface PromptPermissionDetails {
   toolInputPreview?: string;
   /** Override label for the "for this session" dialog option. */
   sessionLabel?: string;
+  /**
+   * Render-only text to paint in the inline permission prompt.
+   * It is never logged, persisted, or forwarded.
+   */
+  highlightText?: string;
   /** Explicit display-surface override (a forwarded ask carries the child's original). */
   surface?: string | null;
   /** Explicit display-value override (a forwarded ask carries the child's original). */
