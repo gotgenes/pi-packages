@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [25.2.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v25.1.0...pi-permission-system-v25.2.0) (2026-08-14)
+
+
+### Features
+
+* **pi-permission-system:** record which chain links were consulted on each ask ([8bb52ff](https://github.com/gotgenes/pi-packages/commit/8bb52ffe26cfb0c995e8299ebe737a09f1717c57)), closes [#727](https://github.com/gotgenes/pi-packages/issues/727)
+
+
+### Bug Fixes
+
+* **pi-permission-system:** stop reporting a delegated subagent chain as unregistered links ([2a1c082](https://github.com/gotgenes/pi-packages/commit/2a1c08292131e9f7dd71adeac380a997ccc0069a)), closes [#727](https://github.com/gotgenes/pi-packages/issues/727)
+
+
+### Documentation
+
+* **pi-permission-system:** document one-chain-per-node adjudication semantics ([c36980a](https://github.com/gotgenes/pi-packages/commit/c36980ae2cf6d1b115b4b3f20e9513dac61c3d1b)), closes [#727](https://github.com/gotgenes/pi-packages/issues/727)
+
 ## [25.1.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v25.0.0...pi-permission-system-v25.1.0) (2026-08-13)
 
 
