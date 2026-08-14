@@ -863,6 +863,29 @@ describe("bash bare-token path gating (#509, #645)", () => {
   });
 });
 
+describe("process-scoped yolo launcher override", () => {
+  it("rewrites asks while preserving explicit denies", async () => {
+    vi.stubEnv("PI_PERMISSION_SYSTEM_YOLO", "1");
+    writeGlobalConfig({
+      yoloMode: false,
+      permission: { "*": "allow", demo: "ask", blockedDemo: "deny" },
+    });
+    const cwd = mkdtempSync(join(tmpdir(), "pi-perm-yolo-env-cwd-"));
+    const pi = makeFakePi({ toolNames: ["demo", "blockedDemo"] });
+    piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+    await fireSessionStart(pi, makeChildCtx(cwd, "yolo-env-session"));
+
+    const service = getPermissionsService();
+    const allowed = service!.checkPermission("demo");
+    const denied = service!.checkPermission("blockedDemo");
+    expect(allowed.state).toBe("allow");
+    expect(allowed.origin).toBe("yolo");
+    expect(denied.state).toBe("deny");
+    expect(denied.origin).not.toBe("yolo");
+    rmSync(cwd, { recursive: true, force: true });
+  });
+});
+
 describe("multi-instance global service interplay", () => {
   // The fix (#302) scopes the process-global service slot to the publishing
   // instance. The parent publishes at its session_start; an in-process child

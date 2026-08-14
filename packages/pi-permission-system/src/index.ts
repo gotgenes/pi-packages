@@ -38,6 +38,7 @@ import { PermissionManager } from "./permission-manager";
 import { PermissionResolver } from "./permission-resolver";
 import { PermissionSession } from "./permission-session";
 import { LocalPermissionsService } from "./permissions-service";
+import { readPermissionSystemRuntimeOverrides } from "./runtime-config-overrides";
 import { PermissionServiceLifecycle } from "./service-lifecycle";
 import { PermissionSessionLogger } from "./session-logger";
 import { SessionRules } from "./session-rules";
@@ -55,6 +56,7 @@ export default function piPermissionSystemExtension(pi: ExtensionAPI): void {
   // must not read process.platform (enforced by the eslint guard scoped to
   // src/) and never re-derive the win32 flavor — they receive this product.
   const hostFlavor = pathFlavorForPlatform(process.platform);
+  const runtimeOverrides = readPermissionSystemRuntimeOverrides(process.env);
   const sessionRules = new SessionRules();
   const subagentRegistry = getSubagentSessionRegistry();
   // Process-global, like subagentRegistry: an in-process child reads it from a
@@ -103,6 +105,7 @@ export default function piPermissionSystemExtension(pi: ExtensionAPI): void {
     agentDir,
     policyPaths: permissionManager,
     logger,
+    runtimeOverrides,
   });
 
   const prompter = new PermissionPrompter({ logger });

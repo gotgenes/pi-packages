@@ -119,6 +119,11 @@ A downstream extension registers a link via `getPermissionsService().registerAut
 A subagent's ask is reviewed by the chain of the session serving it, one hop up, rather than inside the subagent — see the same section.
 [`@gotgenes/pi-permission-model-judge`](https://github.com/gotgenes/pi-packages/tree/main/packages/pi-permission-model-judge) is a first-party reference implementation of such a link — a deny-first reviewer that auto-denies mistyped out-of-directory paths.
 
+Trusted launchers can enable the existing deny-preserving yolo composition for one Pi process with `PI_PERMISSION_SYSTEM_YOLO=1 pi`.
+Only the exact value `1` enables the override, configuration reloads retain it, and it never changes global or project config files.
+The override converts `ask` results to `allow` while explicit `deny` rules remain enforced.
+See [the launcher-scoped yolo reference](docs/configuration.md#launcher-scoped-yolo-override) for the complete contract.
+
 For the full reference — all surfaces, runtime knobs, per-agent overrides, merge semantics, and common recipes — see [docs/configuration.md](docs/configuration.md).
 
 ## Upgrading
