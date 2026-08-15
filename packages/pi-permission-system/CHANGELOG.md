@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [25.2.2](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v25.2.1...pi-permission-system-v25.2.2) (2026-08-15)
+
+
+### Bug Fixes
+
+* **pi-permission-system:** gate commands hosted in bash redirect targets ([1015bb8](https://github.com/gotgenes/pi-packages/commit/1015bb879234d1d96595b9f995ca88037588e16f)), closes [#741](https://github.com/gotgenes/pi-packages/issues/741)
+* **pi-permission-system:** gate commands hosted in interpolating heredoc bodies ([48978d2](https://github.com/gotgenes/pi-packages/commit/48978d2016c67aa90f291db55d98908ba930f0d1)), closes [#741](https://github.com/gotgenes/pi-packages/issues/741)
+* **pi-permission-system:** project path operands of heredoc-hosted nested commands ([8e2fbee](https://github.com/gotgenes/pi-packages/commit/8e2fbee404677d02c7cc565cf23d1e778994d5f0)), closes [#741](https://github.com/gotgenes/pi-packages/issues/741)
+* **pi-permission-system:** project path operands of redirect-hosted nested commands ([12164f3](https://github.com/gotgenes/pi-packages/commit/12164f3b61b6a4b50281d84b6d741a3736516991)), closes [#741](https://github.com/gotgenes/pi-packages/issues/741)
+
+
+### Documentation
+
+* **pi-permission-system:** document hosted nested-command evaluation ([f24b338](https://github.com/gotgenes/pi-packages/commit/f24b338a42855f96038fdf2efdfe440cef8501c8)), closes [#741](https://github.com/gotgenes/pi-packages/issues/741)
+
 ## [25.2.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v25.2.0...pi-permission-system-v25.2.1) (2026-08-15)
 
 
