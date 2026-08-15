@@ -41,7 +41,8 @@ export class SubagentsServiceAdapter implements SubagentsService {
   ) {}
 
   spawn(type: string, prompt: string, options?: SpawnOptions): string {
-    if (!this.runtime.currentCtx) {
+    const ctx = this.runtime.currentCtx;
+    if (!ctx) {
       throw new Error("No active session — cannot spawn agents outside a session.");
     }
 
@@ -58,6 +59,12 @@ export class SubagentsServiceAdapter implements SubagentsService {
       inheritContext: options?.inheritContext,
       bypassQueue: options?.bypassQueue,
       isBackground,
+      // Parity with the tool path (background-spawner.ts:34) so
+      // create-subagent-session.ts:241 publishes a resolvable parentSessionId.
+      parentSession: {
+        parentSessionId: ctx.sessionManager.getSessionId(),
+        parentSessionFile: ctx.sessionManager.getSessionFile(),
+      },
     });
   }
 
