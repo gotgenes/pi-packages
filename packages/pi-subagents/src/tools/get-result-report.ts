@@ -17,6 +17,17 @@ export interface AgentReport {
 	toolUses: number;
 	/** Pre-formatted lifetime token total; "" when zero. */
 	tokens: string;
+	/** Lifetime token breakdown (accumulated across compactions). */
+	tokensIn?: number;
+	tokensOut?: number;
+	tokensCacheWrite?: number;
+	/** Agentic turns so far. */
+	turnCount?: number;
+	maxTurns?: number;
+	/** Tools currently executing (live activity). */
+	activeTools?: string[];
+	/** Rolling snippet of the assistant's in-flight response text. */
+	responseSnippet?: string;
 	contextPercent: number | null;
 	compactionCount: number;
 	/** Pre-formatted duration string. */
@@ -44,8 +55,28 @@ export function renderStatsParts(report: AgentReport): string[] {
 
 /** Select the per-status body: running note, error line, or trimmed result. */
 export function renderReportBody(report: AgentReport): string {
-	if (report.status === "running")
-		return "Agent is still running. Use wait: true or check back later.";
+	if (report.status === "running") {
+		const lines = [
+			"Agent is still actively working — not waiting for it. Collect its result after the completion notification, or pass wait: true to block explicitly.",
+		];
+		if (report.activeTools?.length)
+			lines.push(`Current activity: running tool(s) ${report.activeTools.join(", ")}`);
+		else if (report.responseSnippet)
+			lines.push(`Current activity: generating response ("${report.responseSnippet}")`);
+		else lines.push("Current activity: idle between turns");
+		if (report.turnCount != null)
+			lines.push(
+				`Turns: ${report.turnCount}${report.maxTurns ? `/${report.maxTurns}` : ""} | Tool calls: ${report.toolUses}`,
+			);
+		if (report.tokensIn != null || report.tokensOut != null)
+			lines.push(
+				`Tokens so far: in ${report.tokensIn ?? 0} / out ${report.tokensOut ?? 0} / cache-write ${report.tokensCacheWrite ?? 0}`,
+			);
+		if (report.contextPercent !== null)
+			lines.push(`Context used: ${Math.round(report.contextPercent)}%`);
+		lines.push(`Elapsed: ${report.duration}`);
+		return lines.join("\n");
+	}
 	if (report.status === "error") return `Error: ${report.error}`;
 	if (report.stoppedWhileQueued)
 		return "Agent was stopped while queued and never started. No work was performed.";

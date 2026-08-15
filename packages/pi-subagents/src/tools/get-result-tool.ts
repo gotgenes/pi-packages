@@ -51,12 +51,20 @@ export class GetResultTool {
 	}
 
 	private buildReport(record: Subagent, verbose?: boolean): AgentReport {
+		const u = record.lifetimeUsage;
 		return {
 			id: record.id,
 			displayName: getDisplayName(record.type, this.registry),
 			status: record.status,
 			toolUses: record.toolUses,
 			tokens: formatLifetimeTokens(record),
+			tokensIn: u.input,
+			tokensOut: u.output,
+			tokensCacheWrite: u.cacheWrite,
+			turnCount: record.turnCount,
+			maxTurns: record.maxTurns,
+			activeTools: [...record.activeTools.values()],
+			responseSnippet: record.responseText?.slice(-200) || undefined,
 			contextPercent: record.getContextPercent(),
 			compactionCount: record.compactionCount,
 			duration: formatDuration(record.startedAt, record.completedAt),
@@ -78,7 +86,7 @@ export class GetResultTool {
 			promptSnippet:
 				"get_subagent_result: Check status and retrieve results from a background agent.",
 			description:
-				"Check status and retrieve results from a background agent. Use the agent ID returned by Agent with run_in_background.",
+				"Check status and retrieve results from a background agent. Non-blocking by default: if the agent is still running you get a kick-back summary (current activity, elapsed runtime, tokens in/out so far, turns and tool calls so far, context used) instead of waiting. Pass wait: true to block explicitly.",
 			parameters: Type.Object({
 				agent_id: Type.String({
 					description: "The agent ID to check.",
@@ -86,7 +94,7 @@ export class GetResultTool {
 				wait: Type.Optional(
 					Type.Boolean({
 						description:
-							"If true, wait for the agent to complete before returning. Default: false.",
+							"Explicit opt-in to block until the agent completes. Default: false — when the agent is still running, the call returns immediately with live status (activity, elapsed time, tokens in/out, turns, tool calls, context used).",
 					}),
 				),
 				verbose: Type.Optional(
