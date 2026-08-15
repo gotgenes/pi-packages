@@ -59,6 +59,9 @@ export class SubagentsServiceAdapter implements SubagentsService {
       inheritContext: options?.inheritContext,
       bypassQueue: options?.bypassQueue,
       isBackground,
+      // Parity with the tool path (background-spawner.ts:34) so the native
+      // widget's roster filter (agent-widget.ts:168) picks up SDK spawns too.
+      invocation: { runInBackground: isBackground },
       // Parity with the tool path (background-spawner.ts:34) so
       // create-subagent-session.ts:241 publishes a resolvable parentSessionId.
       parentSession: {
