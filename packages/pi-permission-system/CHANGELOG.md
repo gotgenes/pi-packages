@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [25.3.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v25.2.2...pi-permission-system-v25.3.0) (2026-08-15)
+
+
+### Features
+
+* **pi-permission-system:** add promptMaxRows and promptFieldMaxWidth ([8dbca30](https://github.com/gotgenes/pi-packages/commit/8dbca303f55769222f6a829d3fc7a1d7461cd334)), closes [#710](https://github.com/gotgenes/pi-packages/issues/710)
+* **pi-permission-system:** expand the permission dialog to the complete request on Ctrl+O ([b741513](https://github.com/gotgenes/pi-packages/commit/b7415137236d6245a41f95255d17425127739a97)), closes [#710](https://github.com/gotgenes/pi-packages/issues/710)
+* **pi-permission-system:** render permission prompts as bounded, aligned fact lines ([2bd18c5](https://github.com/gotgenes/pi-packages/commit/2bd18c57003bdfbd0f95ad2c309e5387031164a0))
+
+
+### Documentation
+
+* **pi-permission-system:** distinguish the redundancy rule from elision ([5b26a46](https://github.com/gotgenes/pi-packages/commit/5b26a466191e5cc4395c2cebba22732c3d867bff)), closes [#710](https://github.com/gotgenes/pi-packages/issues/710)
+* **pi-permission-system:** document the bounded permission dialog ([68fcf58](https://github.com/gotgenes/pi-packages/commit/68fcf583f740cbcd8c5224db96fff85a74a2b0f2)), closes [#710](https://github.com/gotgenes/pi-packages/issues/710)
+
 ## [25.2.2](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v25.2.1...pi-permission-system-v25.2.2) (2026-08-15)
 
 
