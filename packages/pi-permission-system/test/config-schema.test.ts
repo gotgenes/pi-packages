@@ -155,6 +155,46 @@ describe("unifiedConfigSchema", () => {
       expect(result.success).toBe(false);
     });
   });
+
+  describe("logging field", () => {
+    it("accepts a stderr destination", () => {
+      expect(
+        unifiedConfigSchema.safeParse({ logging: { destination: "stderr" } })
+          .success,
+      ).toBe(true);
+    });
+
+    it("accepts a file destination with a custom directory", () => {
+      expect(
+        unifiedConfigSchema.safeParse({
+          logging: { destination: "file", directory: "~/pi-logs" },
+        }).success,
+      ).toBe(true);
+    });
+
+    it("accepts an empty logging object", () => {
+      expect(unifiedConfigSchema.safeParse({ logging: {} }).success).toBe(true);
+    });
+
+    it("rejects an unknown destination", () => {
+      expect(
+        unifiedConfigSchema.safeParse({ logging: { destination: "syslog" } })
+          .success,
+      ).toBe(false);
+    });
+
+    it("rejects an empty-string directory", () => {
+      expect(
+        unifiedConfigSchema.safeParse({ logging: { directory: "" } }).success,
+      ).toBe(false);
+    });
+
+    it("rejects an unknown field inside logging", () => {
+      expect(
+        unifiedConfigSchema.safeParse({ logging: { rotate: true } }).success,
+      ).toBe(false);
+    });
+  });
 });
 
 describe("inferred types match the hand-written domain types", () => {

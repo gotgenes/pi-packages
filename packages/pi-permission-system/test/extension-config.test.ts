@@ -191,6 +191,38 @@ describe("normalizePermissionSystemConfig", () => {
     const result = normalizePermissionSystemConfig({});
     expect("authorizerChain" in result).toBe(false);
   });
+
+  it("omits logging when absent", () => {
+    const result = normalizePermissionSystemConfig({});
+    expect("logging" in result).toBe(false);
+  });
+
+  it("includes logging with the configured destination", () => {
+    const result = normalizePermissionSystemConfig({
+      logging: { destination: "stderr" },
+    });
+    expect(result.logging).toEqual({ destination: "stderr" });
+  });
+
+  it("defaults the logging destination to 'file' when only a directory is set", () => {
+    const result = normalizePermissionSystemConfig({
+      logging: { directory: "~/pi-logs" },
+    });
+    expect(result.logging).toEqual({
+      destination: "file",
+      directory: "~/pi-logs",
+    });
+  });
+
+  it("carries a custom directory alongside the file destination", () => {
+    const result = normalizePermissionSystemConfig({
+      logging: { destination: "file", directory: "/var/log/pi" },
+    });
+    expect(result.logging).toEqual({
+      destination: "file",
+      directory: "/var/log/pi",
+    });
+  });
 });
 
 describe("ensurePermissionSystemLogsDirectory", () => {

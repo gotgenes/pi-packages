@@ -679,6 +679,49 @@ describe("mergeUnifiedConfigs", () => {
     const merged = mergeUnifiedConfigs({ debugLog: true }, { yoloMode: false });
     expect(merged).not.toHaveProperty("shellTools");
   });
+
+  it("base logging survives when override omits it", () => {
+    const merged = mergeUnifiedConfigs(
+      { logging: { destination: "stderr" } },
+      {},
+    );
+    expect(merged.logging).toEqual({ destination: "stderr" });
+  });
+
+  it("override logging survives when base omits it", () => {
+    const merged = mergeUnifiedConfigs(
+      {},
+      { logging: { destination: "stdout" } },
+    );
+    expect(merged.logging).toEqual({ destination: "stdout" });
+  });
+
+  it("shallow-merges logging by field: override directory keeps base destination", () => {
+    const merged = mergeUnifiedConfigs(
+      { logging: { destination: "file" } },
+      { logging: { directory: "~/pi-logs" } },
+    );
+    expect(merged.logging).toEqual({
+      destination: "file",
+      directory: "~/pi-logs",
+    });
+  });
+
+  it("override logging destination wins on a field collision", () => {
+    const merged = mergeUnifiedConfigs(
+      { logging: { destination: "file", directory: "~/pi-logs" } },
+      { logging: { destination: "stderr" } },
+    );
+    expect(merged.logging).toEqual({
+      destination: "stderr",
+      directory: "~/pi-logs",
+    });
+  });
+
+  it("logging is absent when both base and override omit it", () => {
+    const merged = mergeUnifiedConfigs({ debugLog: true }, { yoloMode: false });
+    expect(merged).not.toHaveProperty("logging");
+  });
 });
 
 describe("loadAndMergeConfigs", () => {

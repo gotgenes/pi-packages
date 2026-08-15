@@ -1,90 +1,39 @@
-import {
-  chmodSync,
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  statSync,
-  writeFileSync,
-} from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { beforeEach, describe, expect, test } from "vitest";
 import {
   DEFAULT_EXTENSION_CONFIG,
   type PermissionSystemExtensionConfig,
 } from "#src/extension-config";
-import { createPermissionSystemLogger } from "#src/logging";
+import { createPermissionSystemLogger, type LogStream } from "#src/logging";
 
 describe("createPermissionSystemLogger", () => {
-  let baseDir: string;
-  let logsDir: string;
-  let debugLogPath: string;
-  let reviewLogPath: string;
   let config: PermissionSystemExtensionConfig;
+  let lines: Array<{ stream: LogStream; line: string }>;
 
   beforeEach(() => {
-    baseDir = mkdtempSync(join(tmpdir(), "pi-permission-system-logs-"));
-    logsDir = join(baseDir, "logs");
-    debugLogPath = join(logsDir, "debug.jsonl");
-    reviewLogPath = join(logsDir, "review.jsonl");
     config = { ...DEFAULT_EXTENSION_CONFIG };
-  });
-
-  afterEach(() => {
-    rmSync(baseDir, { recursive: true, force: true });
+    lines = [];
   });
 
   function makeLogger() {
     return createPermissionSystemLogger({
       getConfig: () => config,
-      debugLogPath,
-      reviewLogPath,
-      ensureLogsDirectory: () => {
-        mkdirSync(logsDir, { recursive: true });
+      emit: (stream, line) => {
+        lines.push({ stream, line });
         return undefined;
       },
     });
   }
 
-  describe("file permissions", () => {
-    test("creates the review log owner-only", () => {
-      makeLogger().review("permission_request.waiting", { toolName: "write" });
-
-      expect(statSync(reviewLogPath).mode & 0o777).toBe(0o600);
-    });
-
-    test("creates the debug log owner-only", () => {
-      config.debugLog = true;
-      makeLogger().debug("permission.decision", { toolName: "write" });
-
-      expect(statSync(debugLogPath).mode & 0o777).toBe(0o600);
-    });
-
-    test("tightens a log inherited from an earlier version on next write", () => {
-      mkdirSync(logsDir, { recursive: true });
-      writeFileSync(reviewLogPath, "{}\n", "utf-8");
-      chmodSync(reviewLogPath, 0o644);
-
-      makeLogger().review("permission_request.waiting", { toolName: "write" });
-
-      expect(statSync(reviewLogPath).mode & 0o777).toBe(0o600);
-    });
-  });
-
   describe("redaction", () => {
     test("masks sensitive-keyed values before they reach the review log", () => {
-      const logger = makeLogger();
-
-      logger.review("permission_request.waiting", {
+      makeLogger().review("permission_request.waiting", {
         toolName: "http",
         headers: { authorization: "Bearer TEST_VALUE" },
       });
 
-      const written = readFileSync(reviewLogPath, "utf8");
-      expect(written).not.toContain("TEST_VALUE");
-      expect(JSON.parse(written.trim())).toMatchObject({
+      expect(lines).toHaveLength(1);
+      expect(lines[0].line).not.toContain("TEST_VALUE");
+      expect(JSON.parse(lines[0].line)).toMatchObject({
         toolName: "http",
         headers: { authorization: "[redacted]" },
       });
@@ -92,54 +41,44 @@ describe("createPermissionSystemLogger", () => {
 
     test("masks sensitive-keyed values in the debug log too", () => {
       config.debugLog = true;
-      const logger = makeLogger();
 
-      logger.debug("permission.decision", {
+      makeLogger().debug("permission.decision", {
         toolName: "http",
         apiKey: "sk-real-value",
       });
 
-      const written = readFileSync(debugLogPath, "utf8");
-      expect(written).not.toContain("sk-real-value");
-      expect(JSON.parse(written.trim())).toMatchObject({
+      expect(lines[0].line).not.toContain("sk-real-value");
+      expect(JSON.parse(lines[0].line)).toMatchObject({
         toolName: "http",
         apiKey: "[redacted]",
       });
     });
 
     test("leaves a bash command string unredacted, as documented", () => {
-      const logger = makeLogger();
-
-      logger.review("permission_request.waiting", {
+      makeLogger().review("permission_request.waiting", {
         toolName: "bash",
         command: "deploy --token abc123",
       });
 
-      expect(readFileSync(reviewLogPath, "utf8")).toContain(
-        "deploy --token abc123",
-      );
+      expect(lines[0].line).toContain("deploy --token abc123");
     });
   });
 
   test("respects debug toggle and keeps review log enabled by default", () => {
     const logger = makeLogger();
 
-    const initialDebugWarning = logger.debug("debug.disabled", {
-      sample: true,
-    });
-    const reviewWarning = logger.review("permission_request.waiting", {
-      toolName: "write",
-    });
-
-    expect(initialDebugWarning).toBe(undefined);
-    expect(reviewWarning).toBe(undefined);
-    expect(existsSync(debugLogPath)).toBe(false);
-    expect(existsSync(reviewLogPath)).toBe(true);
+    expect(logger.debug("debug.disabled", { sample: true })).toBe(undefined);
+    expect(
+      logger.review("permission_request.waiting", { toolName: "write" }),
+    ).toBe(undefined);
+    expect(lines.map((l) => l.stream)).toEqual(["review"]);
 
     config.debugLog = true;
-    const enabledDebugWarning = logger.debug("debug.enabled", { sample: true });
-    expect(enabledDebugWarning).toBe(undefined);
-    expect(existsSync(debugLogPath)).toBe(true);
-    expect(readFileSync(debugLogPath, "utf8")).toMatch(/debug\.enabled/);
+    logger.debug("debug.enabled", { sample: true });
+    expect(
+      lines.some(
+        (l) => l.stream === "debug" && l.line.includes("debug.enabled"),
+      ),
+    ).toBe(true);
   });
 });

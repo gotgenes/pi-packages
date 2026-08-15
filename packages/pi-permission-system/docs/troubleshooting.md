@@ -11,10 +11,14 @@
 | External file path blocked                                        | `external_directory` is `ask` without UI or `deny`                | Allow/ask the permission or keep file tools inside the active working directory.                                                                  |
 | Spurious external-path prompt for `cd <subdir> && grep … ../path` | Relative path was resolved against cwd instead of the `cd` target | Fixed in current version — paths after a leading `cd <subdir> &&` are resolved against the cd target, matching actual shell behavior.             |
 | Permission prompt is too verbose                                  | Generic extension tool input is large                             | Built-in file tools are summarized automatically; third-party tools are capped to a bounded one-line JSON preview.                                |
+| Repeated `Failed to create permission-system log directory … EACCES` | Read-only filesystem / sandbox where the default `logs/` dir cannot be created | Set `"logging": { "destination": "stderr" }` (or `stdout`) to stream logs and create no directory, or point `"logging": { "directory": "…" }` at a writable path (see [Log destination](configuration.md#logging--log-destination)). |
 
 ## Diagnostic Logging
 
 Enable `"debugLog": true` in your config to write verbose diagnostics to `logs/pi-permission-system-debug.jsonl`.
+
+By default the logs are written to files under the extension logs directory.
+On a read-only filesystem, or to collect logs from a container, set `"logging": { "destination": "stderr" }` (or `stdout`) to stream them instead — no directory is created (see [Log destination](configuration.md#logging--log-destination)).
 
 On every session start, the extension emits a `config.resolved` entry to both logs listing the resolved config paths and whether each exists.
 This makes it easy to verify which files the extension actually loaded:
