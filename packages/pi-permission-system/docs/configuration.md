@@ -70,6 +70,9 @@ This clamp is deny-preserving and, like `yoloMode`, applied at composition; when
   // Ordered names of registered live-authority chain links (empty = none)
   "authorizerChain": [],
 
+  // Where the logs are written (file | stdout | stderr; file is the default)
+  "logging": { "destination": "file" },
+
   // Flat permission policy
   "permission": {
     "*": "ask",                              // universal fallback
@@ -110,9 +113,48 @@ This clamp is deny-preserving and, like `yoloMode`, applied at composition; when
 | `toolTextSummaryMaxLength`  | `80`     | Max characters of inline pattern/path summaries (grep patterns, find globs, ls paths) in permission prompts. Omit to use the default.                                                              |
 | `piInfrastructureReadPaths` | `[]`     | Extra directories to auto-allow for reads, bypassing the `external_directory` gate. Supports `~`/`$HOME`/`${HOME}` expansion and wildcard patterns (`*`, `?`).                                     |
 | `authorizerChain`           | `[]`     | Ordered names of registered live-authority chain links to consult before the terminal authorizer (see [Authorizer chain](#authorizer-chain--case-by-case-decision-links)).                         |
+| `logging`                   | file     | Where the debug and review logs are written — a file (optionally in a custom `directory`), or `stdout`/`stderr` (see [Log destination](#logging--log-destination)).                                 |
 
-Both logs write to `~/.pi/agent/extensions/pi-permission-system/logs/`.
-No debug output is printed to the terminal.
+By default both logs write to `~/.pi/agent/extensions/pi-permission-system/logs/`, and no output is printed to the terminal.
+Set `logging.destination` to `stdout` or `stderr` to stream the logs instead — the fix for a read-only filesystem where that directory cannot be created (see [Log destination](#logging--log-destination)).
+
+### `logging` — log destination
+
+`logging` controls **where** the debug and review logs are written; `debugLog` and `permissionReviewLog` still control **whether** each stream emits at all.
+
+```jsonc
+{
+  "logging": {
+    "destination": "stderr" // "file" (default) | "stdout" | "stderr"
+    // "directory": "~/pi-logs"  // file destination only; defaults to the extension logs dir
+  }
+}
+```
+
+| Field         | Default | Description                                                                                                                                    |
+| ------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `destination` | `file`  | `file` writes JSONL log files; `stdout` / `stderr` write each JSONL line to that process stream and **create no directory**.                    |
+| `directory`   | —       | Directory for the log files when `destination` is `file`. Defaults to the extension logs directory. Supports `~`/`$HOME`. Ignored for streams. |
+
+**Read-only filesystem / sandboxes.**
+When Pi runs where the default `logs/` directory cannot be created, the file destination fails on every write with a repeated warning like:
+
+```text
+Failed to create permission-system log directory '/home/pi/.pi/agent/extensions/pi-permission-system/logs': EACCES: permission denied, mkdir '…/logs'
+```
+
+Set `"logging": { "destination": "stderr" }` (or `stdout`) and no directory is ever created — the logs stream to the process instead, which a container can collect.
+Alternatively, keep the file destination and point `directory` at a writable path.
+
+**stderr vs stdout.**
+Prefer `stderr`. In a TUI session stdout is the terminal, and in an RPC/frontend session it may carry the protocol — writing logs there can corrupt the display or transport. `stderr` is the safe stream for interleaved logging.
+
+Both the debug and review streams share one destination; every line carries a `stream` field (`"debug"` / `"review"`), so a consumer tailing stdout/stderr can still separate them.
+Redaction of sensitive-keyed values (see [Log file sensitivity](#log-file-sensitivity)) applies to every destination; the owner-only file mode only applies to the file destination.
+
+**Merge semantics.**
+`logging` shallow-merges by field across global → project: a project scope that sets only `directory` still inherits the global `destination` (and vice versa).
+Like the other runtime knobs, a project scope's `logging` is loaded only when the project is trusted.
 
 ### Inline permission dialog (TUI)
 

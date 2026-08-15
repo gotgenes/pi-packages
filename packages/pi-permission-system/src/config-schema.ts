@@ -145,6 +145,39 @@ const shellToolsSchema = z
     ],
   });
 
+// No `id` — this enum is referenced once (by `loggingSchema.destination`), so
+// it inlines rather than becoming a shared `$def` like the reused sub-schemas.
+const logDestinationSchema = z.enum(["file", "stdout", "stderr"]).meta({
+  description:
+    "Where the permission-system logs are written: 'file' (the extension logs directory, or a custom 'directory'), 'stdout', or 'stderr'.",
+});
+
+/** A permission-system log destination: file, stdout, or stderr. */
+export type LogDestination = z.infer<typeof logDestinationSchema>;
+
+const loggingSchema = z
+  .strictObject({
+    destination: logDestinationSchema.optional().meta({
+      description:
+        "Where log lines go. 'file' (default) writes JSONL files under the logs directory; 'stdout' / 'stderr' write each JSONL line to that stream and create no directory (use these on a read-only filesystem or to collect logs from a container).",
+      default: "file",
+    }),
+    directory: z.string().min(1).optional().meta({
+      description:
+        "Directory for the log files when destination is 'file'. Defaults to the extension logs directory (logs/ under the extension config dir). Supports ~ / $HOME expansion. Ignored for the stdout/stderr destinations.",
+    }),
+  })
+  .meta({
+    description:
+      "Controls where the debug and permission-review logs are written. Both the debug and review streams share one destination; each line is tagged with its stream so they stay distinguishable when interleaved on stdout/stderr.",
+    markdownDescription:
+      'Controls where the permission-system logs are written.\n\nBy default both logs are JSONL files under `logs/` in the extension config directory. Set `destination` to redirect them:\n\n- `"file"` (default) — write to log files. Set `directory` to place them somewhere other than the default `logs/` directory (supports `~`/`$HOME`).\n- `"stdout"` / `"stderr"` — write each JSONL line to that process stream and create **no** directory. Use this when Pi runs on a read-only filesystem (where the default `logs/` directory cannot be created) or inside a container that collects stdout/stderr.\n\nThe `debugLog` and `permissionReviewLog` toggles still decide whether each stream emits at all; `logging` only decides *where*. Both streams share one destination, and every line carries a `stream` field (`"debug"` / `"review"`) so a consumer tailing stdout/stderr can separate them.\n\n> **Prefer `stderr` over `stdout`.** In a TUI session stdout is the terminal, and in an RPC/frontend session it may carry the protocol — writing logs there can corrupt the display or transport. `stderr` is the safe stream for interleaved logging.',
+    examples: [
+      { destination: "stderr" },
+      { destination: "file", directory: "~/pi-logs" },
+    ],
+  });
+
 /**
  * The on-disk config file shape.
  *
@@ -220,6 +253,7 @@ export const unifiedConfigSchema = z
         "Ordered names of registered **live-authority chain links** (e.g. a model judge) to consult before the terminal authorizer (the human, or the subagent-forwarding / headless-deny fallback).\n\nA link reviews an `ask` and returns `allow` / `deny` (with an optional teaching reason) / `defer` to the next link. Three invariants govern the chain:\n\n- **Config order wins.** The order here \u2014 not the order extensions register in \u2014 fixes the security-relevant chain order.\n- **Fail-safe skip.** A name with no registered link is skipped with a warning; the `ask` still reaches the terminal (more prompting, never less).\n- **Opt-in activation.** Installing a judge extension grants it no authority; a link decides nothing until you name it here.\n\nThe chain owner caps every verdict with a bounded-delegation checkpoint: a link's `allow` on an excluded surface (`external_directory` or `path`) is downgraded to `defer`, so a link cannot exceed your policy.\n\nDefaults to an empty list (no links).",
       default: [],
     }),
+    logging: loggingSchema.optional(),
     permission: permissionSchema.optional(),
     shellTools: shellToolsSchema.optional(),
   })

@@ -73,6 +73,34 @@
         "minLength": 1
       }
     },
+    "logging": {
+      "type": "object",
+      "properties": {
+        "destination": {
+          "description": "Where log lines go. 'file' (default) writes JSONL files under the logs directory; 'stdout' / 'stderr' write each JSONL line to that stream and create no directory (use these on a read-only filesystem or to collect logs from a container).",
+          "default": "file",
+          "type": "string",
+          "enum": ["file", "stdout", "stderr"]
+        },
+        "directory": {
+          "description": "Directory for the log files when destination is 'file'. Defaults to the extension logs directory (logs/ under the extension config dir). Supports ~ / $HOME expansion. Ignored for the stdout/stderr destinations.",
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false,
+      "description": "Controls where the debug and permission-review logs are written. Both the debug and review streams share one destination; each line is tagged with its stream so they stay distinguishable when interleaved on stdout/stderr.",
+      "markdownDescription": "Controls where the permission-system logs are written.\n\nBy default both logs are JSONL files under `logs/` in the extension config directory. Set `destination` to redirect them:\n\n- `\"file\"` (default) — write to log files. Set `directory` to place them somewhere other than the default `logs/` directory (supports `~`/`$HOME`).\n- `\"stdout\"` / `\"stderr\"` — write each JSONL line to that process stream and create **no** directory. Use this when Pi runs on a read-only filesystem (where the default `logs/` directory cannot be created) or inside a container that collects stdout/stderr.\n\nThe `debugLog` and `permissionReviewLog` toggles still decide whether each stream emits at all; `logging` only decides *where*. Both streams share one destination, and every line carries a `stream` field (`\"debug\"` / `\"review\"`) so a consumer tailing stdout/stderr can separate them.\n\n> **Prefer `stderr` over `stdout`.** In a TUI session stdout is the terminal, and in an RPC/frontend session it may carry the protocol — writing logs there can corrupt the display or transport. `stderr` is the safe stream for interleaved logging.",
+      "examples": [
+        {
+          "destination": "stderr"
+        },
+        {
+          "destination": "file",
+          "directory": "~/pi-logs"
+        }
+      ]
+    },
     "permission": {
       "type": "object",
       "propertyNames": {

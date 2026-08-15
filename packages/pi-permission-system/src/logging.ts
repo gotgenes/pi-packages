@@ -1,14 +1,11 @@
-import { appendFileSync } from "node:fs";
-
 import {
   EXTENSION_ID,
   type PermissionSystemExtensionConfig,
 } from "./extension-config";
-import {
-  OWNER_ONLY_FILE_MODE,
-  restrictExistingPathToOwner,
-} from "./log-file-permissions";
 import { redactedJsonStringify } from "./log-redaction";
+
+/** The two log streams the extension emits. Each line is tagged with its value. */
+export type LogStream = "debug" | "review";
 
 export interface PermissionSystemLogger {
   debug: (
@@ -23,55 +20,35 @@ export interface PermissionSystemLogger {
 
 interface PermissionSystemLoggerOptions {
   getConfig: () => PermissionSystemExtensionConfig;
-  debugLogPath: string;
-  reviewLogPath: string;
-  ensureLogsDirectory: () => string | undefined;
+  /**
+   * Write one already-serialized, newline-free line to its destination.
+   *
+   * Owns everything destination-specific (file vs stdout/stderr) and returns a
+   * human-readable error message on failure, or `undefined` on success. Called
+   * per line so a mid-session config reload can redirect the destination.
+   */
+  emit: (stream: LogStream, line: string) => string | undefined;
 }
 
 export function createPermissionSystemLogger(
   options: PermissionSystemLoggerOptions,
 ): PermissionSystemLogger {
-  const { debugLogPath, reviewLogPath, ensureLogsDirectory } = options;
-  // Per-session, so a log inherited from an earlier version is tightened once
-  // rather than on every line. Lives in the closure because the factory is
-  // re-invoked per session, unlike module scope, which now outlives one.
-  const hardened = new Set<string>();
-
   const writeLine = (
-    stream: "debug" | "review",
-    path: string,
+    stream: LogStream,
     event: string,
     details: Record<string, unknown>,
   ): string | undefined => {
-    const directoryError = ensureLogsDirectory();
-    if (directoryError) {
-      return directoryError;
+    const line = redactedJsonStringify({
+      timestamp: new Date().toISOString(),
+      extension: EXTENSION_ID,
+      stream,
+      event,
+      ...details,
+    });
+    if (!line) {
+      return `Failed to write permission-system ${stream} log: event could not be serialized.`;
     }
-
-    try {
-      const line = redactedJsonStringify({
-        timestamp: new Date().toISOString(),
-        extension: EXTENSION_ID,
-        stream,
-        event,
-        ...details,
-      });
-      if (!line) {
-        return `Failed to write permission-system ${stream} log '${path}': event could not be serialized.`;
-      }
-      appendFileSync(path, `${line}\n`, {
-        encoding: "utf-8",
-        mode: OWNER_ONLY_FILE_MODE,
-      });
-      if (!hardened.has(path)) {
-        hardened.add(path);
-        restrictExistingPathToOwner(path, OWNER_ONLY_FILE_MODE);
-      }
-      return undefined;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      return `Failed to write permission-system ${stream} log '${path}': ${message}`;
-    }
+    return options.emit(stream, line);
   };
 
   const debug = (
@@ -82,7 +59,7 @@ export function createPermissionSystemLogger(
       return undefined;
     }
 
-    return writeLine("debug", debugLogPath, event, details);
+    return writeLine("debug", event, details);
   };
 
   const review = (
@@ -93,7 +70,7 @@ export function createPermissionSystemLogger(
       return undefined;
     }
 
-    return writeLine("review", reviewLogPath, event, details);
+    return writeLine("review", event, details);
   };
 
   return { debug, review };

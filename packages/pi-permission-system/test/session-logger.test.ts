@@ -1,7 +1,15 @@
-import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DEBUG_LOG_FILENAME, REVIEW_LOG_FILENAME } from "#src/config-paths";
 import {
   DEFAULT_EXTENSION_CONFIG,
@@ -17,6 +25,15 @@ let tempDir: string;
 beforeEach(() => {
   tempDir = mkdtempSync(join(tmpdir(), "ps-session-logger-"));
 });
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+/** Spy on a process stream's `write`, suppressing real output and recording calls. */
+function spyOnStream(name: "stdout" | "stderr") {
+  return vi.spyOn(process[name], "write").mockImplementation(() => true);
+}
 
 function makeDeps(
   overrides: {
@@ -195,6 +212,165 @@ describe("PermissionSessionLogger", () => {
       const logger = new PermissionSessionLogger(deps);
 
       expect(() => logger.warn("test")).not.toThrow();
+    });
+  });
+
+  // ── file permissions ──────────────────────────────────────────────────────
+
+  describe("file permissions", () => {
+    it("creates the review log owner-only", () => {
+      new PermissionSessionLogger(makeDeps()).review(
+        "permission_request.waiting",
+        { toolName: "write" },
+      );
+
+      expect(statSync(join(tempDir, REVIEW_LOG_FILENAME)).mode & 0o777).toBe(
+        0o600,
+      );
+    });
+
+    it("creates the debug log owner-only", () => {
+      new PermissionSessionLogger(
+        makeDeps({
+          getConfig: () => ({ ...DEFAULT_EXTENSION_CONFIG, debugLog: true }),
+        }),
+      ).debug("permission.decision", { toolName: "write" });
+
+      expect(statSync(join(tempDir, DEBUG_LOG_FILENAME)).mode & 0o777).toBe(
+        0o600,
+      );
+    });
+
+    it("tightens a log inherited from an earlier version on next write", () => {
+      const reviewLogPath = join(tempDir, REVIEW_LOG_FILENAME);
+      writeFileSync(reviewLogPath, "{}\n", "utf-8");
+      chmodSync(reviewLogPath, 0o644);
+
+      new PermissionSessionLogger(makeDeps()).review(
+        "permission_request.waiting",
+        { toolName: "write" },
+      );
+
+      expect(statSync(reviewLogPath).mode & 0o777).toBe(0o600);
+    });
+  });
+
+  // ── logging destination ─────────────────────────────────────────────────
+
+  describe("logging destination", () => {
+    it("writes review lines to stderr instead of a file", () => {
+      const stderr = spyOnStream("stderr");
+      const deps = makeDeps({
+        getConfig: () => ({
+          ...DEFAULT_EXTENSION_CONFIG,
+          logging: { destination: "stderr" },
+        }),
+      });
+
+      new PermissionSessionLogger(deps).review("permission.granted", {
+        agentName: "coder",
+      });
+
+      expect(existsSync(join(tempDir, REVIEW_LOG_FILENAME))).toBe(false);
+      expect(stderr).toHaveBeenCalledOnce();
+      const line = String(stderr.mock.calls[0][0]);
+      expect(line.endsWith("\n")).toBe(true);
+      expect(JSON.parse(line)).toMatchObject({
+        stream: "review",
+        event: "permission.granted",
+        agentName: "coder",
+      });
+      expect(deps.notify).not.toHaveBeenCalled();
+    });
+
+    it("routes debug lines to stdout when destination is stdout", () => {
+      const stdout = spyOnStream("stdout");
+      const deps = makeDeps({
+        getConfig: () => ({
+          ...DEFAULT_EXTENSION_CONFIG,
+          debugLog: true,
+          logging: { destination: "stdout" },
+        }),
+      });
+
+      new PermissionSessionLogger(deps).debug("permission.decision", {
+        toolName: "write",
+      });
+
+      expect(existsSync(join(tempDir, DEBUG_LOG_FILENAME))).toBe(false);
+      expect(stdout).toHaveBeenCalledOnce();
+      expect(JSON.parse(String(stdout.mock.calls[0][0]))).toMatchObject({
+        stream: "debug",
+        event: "permission.decision",
+      });
+    });
+
+    it("keeps logging on a read-only filesystem when destination is a stream", () => {
+      // The whole point of the feature: the default logs directory cannot be
+      // created, but a stream destination never tries to, so no warning fires.
+      const stderr = spyOnStream("stderr");
+      const deps = makeDeps({
+        globalLogsDir: makeBlockedLogsDir(),
+        getConfig: () => ({
+          ...DEFAULT_EXTENSION_CONFIG,
+          logging: { destination: "stderr" },
+        }),
+      });
+
+      new PermissionSessionLogger(deps).review("permission_request.waiting", {
+        toolName: "write",
+      });
+
+      expect(stderr).toHaveBeenCalledOnce();
+      expect(deps.notify).not.toHaveBeenCalled();
+    });
+
+    it("writes to a configured file directory instead of the default logs dir", () => {
+      const customDir = join(tempDir, "nested", "custom-logs");
+      const deps = makeDeps({
+        getConfig: () => ({
+          ...DEFAULT_EXTENSION_CONFIG,
+          logging: { destination: "file", directory: customDir },
+        }),
+      });
+
+      new PermissionSessionLogger(deps).review("permission.granted");
+
+      expect(existsSync(join(tempDir, REVIEW_LOG_FILENAME))).toBe(false);
+      expect(existsSync(join(customDir, REVIEW_LOG_FILENAME))).toBe(true);
+      expect(deps.notify).not.toHaveBeenCalled();
+    });
+
+    it("defaults to the file destination when no logging config is present", () => {
+      new PermissionSessionLogger(makeDeps()).review("permission.granted");
+
+      expect(readdirSync(tempDir)).toContain(REVIEW_LOG_FILENAME);
+    });
+
+    it("follows a mid-session switch from file to stderr", () => {
+      const stderr = spyOnStream("stderr");
+      let destination: "file" | "stderr" = "file";
+      const deps = makeDeps({
+        getConfig: () => ({
+          ...DEFAULT_EXTENSION_CONFIG,
+          logging: { destination },
+        }),
+      });
+      const logger = new PermissionSessionLogger(deps);
+
+      logger.review("first.event");
+      expect(readFileSync(join(tempDir, REVIEW_LOG_FILENAME), "utf8")).toMatch(
+        /first\.event/,
+      );
+
+      destination = "stderr";
+      logger.review("second.event");
+      expect(stderr).toHaveBeenCalledOnce();
+      expect(String(stderr.mock.calls[0][0])).toMatch(/second\.event/);
+      // The file did not gain the second line.
+      expect(
+        readFileSync(join(tempDir, REVIEW_LOG_FILENAME), "utf8"),
+      ).not.toMatch(/second\.event/);
     });
   });
 });

@@ -252,6 +252,19 @@ export function mergeUnifiedConfigs(
     merged.shellTools = overrideShell;
   }
 
+  // logging: shallow-merge by field so a project scope that sets only
+  // `directory` still inherits the global `destination` (and vice versa),
+  // rather than a project `logging` block wiping unrelated global fields.
+  const baseLogging = base.logging;
+  const overrideLogging = override.logging;
+  if (baseLogging && overrideLogging) {
+    merged.logging = { ...baseLogging, ...overrideLogging };
+  } else if (baseLogging) {
+    merged.logging = baseLogging;
+  } else if (overrideLogging) {
+    merged.logging = overrideLogging;
+  }
+
   // Permission: deep-shallow merge
   const basePerm = base.permission;
   const overridePerm = override.permission;

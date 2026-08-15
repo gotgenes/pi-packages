@@ -5,12 +5,26 @@ import type {
   ShellToolsConfig,
   UnifiedPermissionConfig,
 } from "./config-loader";
+import type { LogDestination } from "./config-schema";
 import {
   OWNER_ONLY_DIRECTORY_MODE,
   restrictExistingPathToOwner,
 } from "./log-file-permissions";
 
 export const EXTENSION_ID = "pi-permission-system";
+
+/**
+ * Where the permission logs are written, after normalization.
+ *
+ * `destination` is always present here (defaulted to `"file"` by
+ * {@link normalizePermissionSystemConfig}); `directory` is only meaningful for
+ * the file destination and defaults to the extension logs directory downstream.
+ */
+export interface LoggingConfig {
+  destination: LogDestination;
+  /** Custom logs directory for the `file` destination. Supports `~`/`$HOME`. */
+  directory?: string;
+}
 
 export interface PermissionSystemExtensionConfig {
   debugLog: boolean;
@@ -30,6 +44,8 @@ export interface PermissionSystemExtensionConfig {
   shellTools?: ShellToolsConfig;
   /** Ordered names of registered live-authority chain links to consult before the terminal authorizer. */
   authorizerChain?: string[];
+  /** Where the debug and permission-review logs are written. Absent means the default file destination. */
+  logging?: LoggingConfig;
 }
 
 export const DEFAULT_EXTENSION_CONFIG: PermissionSystemExtensionConfig = {
@@ -87,6 +103,16 @@ export function normalizePermissionSystemConfig(
   }
   if (raw.authorizerChain !== undefined) {
     result.authorizerChain = raw.authorizerChain;
+  }
+  if (raw.logging !== undefined) {
+    // Default the destination to "file" here so downstream consumers read one
+    // fully-resolved shape; a bare `{ "directory": "…" }` still means file.
+    result.logging = {
+      destination: raw.logging.destination ?? "file",
+      ...(raw.logging.directory !== undefined
+        ? { directory: raw.logging.directory }
+        : {}),
+    };
   }
   return result;
 }

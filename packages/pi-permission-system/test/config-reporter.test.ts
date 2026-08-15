@@ -1,10 +1,4 @@
-import {
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "vitest";
@@ -94,11 +88,6 @@ test("buildResolvedConfigLogEntry surfaces legacy detection flags", () => {
 test("config.resolved entry appears in review log via logger", () => {
   const tempDir = mkdtempSync(join(tmpdir(), "config-resolved-log-"));
   try {
-    const logsDir = join(tempDir, "logs");
-    mkdirSync(logsDir, { recursive: true });
-    const reviewLogPath = join(logsDir, "review.jsonl");
-    const debugLogPath = join(logsDir, "debug.jsonl");
-
     const globalConfigPath = join(tempDir, "pi-permissions.jsonc");
     writeFileSync(globalConfigPath, "{}", "utf-8");
     const agentsDir = join(tempDir, "agents");
@@ -108,6 +97,7 @@ test("config.resolved entry appears in review log via logger", () => {
       agentsDir,
     });
 
+    let reviewLine: string | undefined;
     const logger = createPermissionSystemLogger({
       getConfig: () => ({
         debugLog: false,
@@ -115,9 +105,10 @@ test("config.resolved entry appears in review log via logger", () => {
         yoloMode: false,
         doublePressToConfirm: true,
       }),
-      debugLogPath,
-      reviewLogPath,
-      ensureLogsDirectory: () => undefined,
+      emit: (_stream, line) => {
+        reviewLine = line;
+        return undefined;
+      },
     });
 
     const policyPaths = pm.getResolvedPolicyPaths();
@@ -127,8 +118,7 @@ test("config.resolved entry appears in review log via logger", () => {
       entry as unknown as Record<string, unknown>,
     );
 
-    const logContent = readFileSync(reviewLogPath, "utf-8").trim();
-    const parsed = JSON.parse(logContent) as Record<string, unknown>;
+    const parsed = JSON.parse(reviewLine ?? "") as Record<string, unknown>;
 
     expect(parsed.event).toBe("config.resolved");
     expect(parsed.globalConfigPath).toBe(globalConfigPath);
