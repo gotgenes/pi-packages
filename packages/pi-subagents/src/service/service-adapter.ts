@@ -124,11 +124,16 @@ export function toSubagentRecord(record: Subagent): SubagentRecord {
     startedAt: record.startedAt,
     lifetimeUsage: record.lifetimeUsage,
     compactionCount: record.compactionCount,
+    turnCount: record.turnCount,
+    // activeTools is a ReadonlyMap<key, toolName> on the live record — not
+    // JSON-safe. Serialize to the tool-name values only.
+    activeTools: Array.from(record.activeTools.values()),
   };
 
   if (record.result !== undefined) out.result = record.result;
   if (record.error !== undefined) out.error = record.error;
   if (record.completedAt !== undefined) out.completedAt = record.completedAt;
+  if (record.outputFile !== undefined) out.outputFile = record.outputFile;
 
   return out;
 }

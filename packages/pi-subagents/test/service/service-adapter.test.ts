@@ -37,6 +37,10 @@ describe("toSubagentRecord", () => {
       completedAt: 2000,
       lifetimeUsage: { input: 100, output: 200, cacheWrite: 50 },
       compactionCount: 1,
+      // turnCount/activeTools are now required fields on SubagentRecord,
+      // unconditionally populated by toSubagentRecord().
+      turnCount: 1,
+      activeTools: [],
     });
   });
 
@@ -97,6 +101,9 @@ describe("toSubagentRecord", () => {
       startedAt: 500,
       lifetimeUsage: { input: 0, output: 0, cacheWrite: 0 },
       compactionCount: 0,
+      // turnCount/activeTools are now required fields; see note above.
+      turnCount: 1,
+      activeTools: [],
     });
     expect(result).not.toHaveProperty("result");
     expect(result).not.toHaveProperty("error");

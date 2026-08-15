@@ -49,6 +49,10 @@ export interface SubagentRecord {
   completedAt?: number;
   lifetimeUsage: LifetimeUsage;
   compactionCount: number;
+  turnCount: number;
+  /** Serialized active-tool names (the live field is a ReadonlyMap, not JSON-safe). */
+  activeTools: string[];
+  outputFile?: string;
 }
 
 /** Options for spawning an agent via the service. */
