@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [25.2.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v25.2.0...pi-permission-system-v25.2.1) (2026-08-15)
+
+
+### Bug Fixes
+
+* **pi-permission-system:** auto-approve residual synthetic asks under yolo ([e1706d3](https://github.com/gotgenes/pi-packages/commit/e1706d3ea6497e4ce32d715af6034aea7dd4d0fc))
+* **pi-permission-system:** honor an explicit bash deny for an unparseable command ([2e45633](https://github.com/gotgenes/pi-packages/commit/2e45633fa000c9c67ed62acaaf571f50c45a0d88))
+
+
+### Documentation
+
+* **pi-permission-system:** describe the gate-level yolo grant ([8a8e4a7](https://github.com/gotgenes/pi-packages/commit/8a8e4a72bd52e37efef573ccf023e967206eaf1e)), closes [#712](https://github.com/gotgenes/pi-packages/issues/712)
+
 ## [25.2.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v25.1.0...pi-permission-system-v25.2.0) (2026-08-14)
 
 
