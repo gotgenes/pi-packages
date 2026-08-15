@@ -157,14 +157,23 @@ export default function (pi: ExtensionAPI) {
     unpublishSubagentsService,
   );
 
-  pi.on("session_start", (event, ctx) => lifecycle.handleSessionStart(event, ctx));
-  pi.on("session_before_switch", () => lifecycle.handleSessionBeforeSwitch());
-  pi.on("session_shutdown", () => lifecycle.handleSessionShutdown());
-
   // Live widget: constructed after the manager (it polls listAgents()) and
   // registered as a lifecycle observer so it self-drives its update timer.
   const widget = new AgentWidget(manager, registry);
   observer.add(widget);
+
+  pi.on("session_start", (event, ctx) => {
+    // Capture the UI context here too, not just on the first tool call
+    // (ToolStartHandler below): a spawn path that never triggers a tool
+    // call from the parent agent loop otherwise leaves the widget with no
+    // UI context for its entire run. Same setUICtx() method, same ctx.ui
+    // reference; setUICtx()'s existing `ctx !== this.uiCtx` guard makes the
+    // later ToolStartHandler call a no-op once this has already fired.
+    widget.setUICtx(ctx.ui);
+    return lifecycle.handleSessionStart(event, ctx);
+  });
+  pi.on("session_before_switch", () => lifecycle.handleSessionBeforeSwitch());
+  pi.on("session_shutdown", () => lifecycle.handleSessionShutdown());
 
   // Grab UI context from first tool execution + clear lingering widget on new turn
   const toolStart = new ToolStartHandler(widget);
