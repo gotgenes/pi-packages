@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [25.4.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v25.3.0...pi-permission-system-v25.4.0) (2026-08-15)
+
+
+### Features
+
+* **pi-permission-system:** adopt the requester's request id as the forwarded request id ([3f8d3fd](https://github.com/gotgenes/pi-packages/commit/3f8d3fd69940211c6a92b99f8eae0396936afedf)), closes [#752](https://github.com/gotgenes/pi-packages/issues/752)
+* **pi-permission-system:** carry the request id on permissions:decision ([95c001c](https://github.com/gotgenes/pi-packages/commit/95c001cf6b35c68991143826d8621b1e94fc0b32)), closes [#752](https://github.com/gotgenes/pi-packages/issues/752)
+* **pi-permission-system:** give the gate-error review entry a request id ([172bc68](https://github.com/gotgenes/pi-packages/commit/172bc689ea0f18c88672a22c0b5e84c0f3576fd1)), closes [#752](https://github.com/gotgenes/pi-packages/issues/752)
+* **pi-permission-system:** mint a permission request id at request creation ([336842d](https://github.com/gotgenes/pi-packages/commit/336842de6c34e96bd90ed411eaca9649c4b9fac2)), closes [#752](https://github.com/gotgenes/pi-packages/issues/752)
+
+
+### Documentation
+
+* **pi-permission-system:** record the minted request id in the API and architecture docs ([84f5856](https://github.com/gotgenes/pi-packages/commit/84f5856868a548c9454ef3e23ca75c608ce3f308)), closes [#752](https://github.com/gotgenes/pi-packages/issues/752)
+
 ## [25.3.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v25.2.2...pi-permission-system-v25.3.0) (2026-08-15)
 
 
