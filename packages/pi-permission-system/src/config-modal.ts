@@ -3,7 +3,12 @@ import {
   type ExtensionCommandContext,
   getSettingsListTheme,
 } from "@earendil-works/pi-coding-agent";
-import { type SettingItem, SettingsList } from "@earendil-works/pi-tui";
+import {
+  type SettingItem,
+  SettingsList,
+  Spacer,
+  Text,
+} from "@earendil-works/pi-tui";
 import { BorderedPanel } from "#src/ui/bordered-panel";
 import type { CommandConfigStore } from "./config-store";
 import {
@@ -196,6 +201,14 @@ async function openSettingsModal(
       );
 
       const panel = new BorderedPanel((text) => theme.fg("border", text));
+      panel.addChild(
+        new Text(
+          theme.bold(theme.fg("accent", "Permission System Settings")),
+          0,
+          0,
+        ),
+      );
+      panel.addChild(new Spacer(1));
       panel.addChild(settingsList);
       return panel;
     },
