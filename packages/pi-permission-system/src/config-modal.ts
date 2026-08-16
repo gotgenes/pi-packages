@@ -178,13 +178,6 @@ async function openSettingsModal(
   ctx: ExtensionCommandContext,
   controller: PermissionSystemConfigController,
 ): Promise<void> {
-  const overlayOptions = {
-    anchor: "center" as const,
-    width: 82,
-    maxHeight: "85%" as const,
-    margin: 1,
-  };
-
   // eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- ctx.ui.custom<void> is valid; rule does not allow void in generic fn call type args
   await ctx.ui.custom<void>(
     (_tui, theme, _keybindings, done) => {
@@ -202,11 +195,11 @@ async function openSettingsModal(
         () => done(),
       );
 
-      const panel = new BorderedPanel((text) => theme.fg("accent", text));
+      const panel = new BorderedPanel((text) => theme.fg("border", text));
       panel.addChild(settingsList);
       return panel;
     },
-    { overlay: true, overlayOptions },
+    { overlay: false },
   );
 }
 
