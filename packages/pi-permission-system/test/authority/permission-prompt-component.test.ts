@@ -129,8 +129,8 @@ function makeAsk(value = "/repo/secret.txt"): PromptPayload {
 
 const ASK = makeAsk();
 
-/** Title, blank separator, four decision options, blank, hint. */
-const DECISION_CHROME_ROWS = 8;
+/** Title, blank separator, four decision options, blank, hint, and panel rules. */
+const DECISION_CHROME_ROWS = 10;
 
 async function runPrompt(
   doublePressToConfirm: boolean,
@@ -157,7 +157,10 @@ describe("presentInlinePermissionPrompt", () => {
     const { view, captured } = makeFakeView(true);
     void presentInlinePermissionPrompt(view, "Permission Required", ASK);
     expect(captured.options).toEqual({ overlay: false });
-    const text = captured.component?.render(80).join("\n") ?? "";
+    const lines = captured.component?.render(80) ?? [];
+    const text = lines.join("\n");
+    expect(lines[0]).toBe("─".repeat(80));
+    expect(lines.at(-1)).toBe("─".repeat(80));
     expect(text).toContain("tool : read");
     expect(text).toContain("path : /repo/secret.txt");
     expect(text).toContain("Yes");
@@ -445,12 +448,12 @@ describe("presentInlinePermissionPrompt", () => {
       );
       const bounded = captured.component?.render(120) ?? [];
       expect(bounded).toContain("path : /repo/a/ve…");
-      expect(bounded.at(-1)).toContain("ctrl+o full request");
+      expect(bounded.at(-2)).toContain("ctrl+o full request");
 
       captured.component?.handleInput(CTRL_O);
       const expanded = captured.component?.render(120) ?? [];
       expect(expanded).toContain("path : /repo/a/very/long/secret.txt");
-      expect(expanded.at(-1)).toContain("ctrl+o collapse");
+      expect(expanded.at(-2)).toContain("ctrl+o collapse");
       // The host's own tool expansion still follows the same keystroke (#642).
       expect(setToolsExpanded).toHaveBeenCalledWith(true);
 
@@ -462,7 +465,7 @@ describe("presentInlinePermissionPrompt", () => {
       const { view, captured } = makeFakeView(true);
       void presentInlinePermissionPrompt(view, "Title", ASK);
 
-      expect(captured.component?.render(120).at(-1)).not.toContain("ctrl+o");
+      expect(captured.component?.render(120).at(-2)).not.toContain("ctrl+o");
     });
 
     it("does not intercept the expand key while a denial reason is typed", async () => {
