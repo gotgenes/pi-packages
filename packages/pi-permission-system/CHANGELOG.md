@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [26.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v25.4.0...pi-permission-system-v26.0.0) (2026-08-16)
+
+
+### ⚠ BREAKING CHANGES
+
+* **pi-permission-system:** the `message` field is removed from every `permission_request.*` review-log entry. A consumer parsing it should read the structured fields instead: `surface`, `matchedPattern`, `executedUnit`, `commandContext`, `invokedToolName`, `forwarded`, and `requesterSessionId`, alongside the existing `toolName`, `command`, `path`, `target`, and `toolInputPreview`.
+* **pi-permission-system:** values in the permission review log are now truncated at `reviewLogFieldMaxWidth` (default 1000) with a trailing ellipsis, where a bash `command` was previously written whole. Raise `reviewLogFieldMaxWidth` to keep longer values. `ToolPreviewFormatterOptions.toolInputLogPreviewMaxLength` and `TOOL_INPUT_LOG_PREVIEW_MAX_LENGTH` are removed, superseded by that setting.
+* **pi-permission-system:** `toolInputPreviewMaxLength` and `toolTextSummaryMaxLength` are still accepted but ignored, and a config setting either now logs a deprecation warning at session start. Remove them; use `promptMaxRows` and `promptFieldMaxWidth` to bound what a permission prompt renders.
+* **pi-permission-system:** `PermissionUiPromptEvent.message` is removed. Read `request.value` for the decision-relevant value and `request.matchedPattern` for the rule that fired; `surface`, `value`, `agentName`, and `forwarding` are unchanged. `DirectPromptInput.message` likewise becomes `payload: PromptPayload`.
+* **pi-permission-system:** `ForwardedPermissionRequest.message` is removed and replaced by `payload: PromptPayload`, which carries the ask's complete structured facts. A serving node on this version accepts an older child's `message`-only request and renders it from `surface`, `value`, and the requester provenance; an older *parent* rejects a newer child's request, so upgrade the parent session first.
+
+### Features
+
+* **pi-permission-system:** bound review-log field width with reviewLogFieldMaxWidth ([#746](https://github.com/gotgenes/pi-packages/issues/746)) ([dceb931](https://github.com/gotgenes/pi-packages/commit/dceb93197e5f0e16287d63a68fcb2cad0bec2e97))
+* **pi-permission-system:** carry the prompt payload on the forwarded-request wire ([bf67cd6](https://github.com/gotgenes/pi-packages/commit/bf67cd6673d1e4bf57c339873d8642295bd643c0)), closes [#745](https://github.com/gotgenes/pi-packages/issues/745)
+* **pi-permission-system:** ignore the deprecated tool-preview caps and notice their use ([47d7610](https://github.com/gotgenes/pi-packages/commit/47d7610d1217ebd6c0a968999dbfff4ad426af88)), closes [#745](https://github.com/gotgenes/pi-packages/issues/745)
+* **pi-permission-system:** narrow the ui_prompt broadcast to the request facts ([fcdb174](https://github.com/gotgenes/pi-packages/commit/fcdb17494f73d7a506fe1ab967cf2db8f815b50a)), closes [#745](https://github.com/gotgenes/pi-packages/issues/745)
+* **pi-permission-system:** render a forwarded ask from the child's own payload ([8587269](https://github.com/gotgenes/pi-packages/commit/8587269a066e87007b8e8dea4b85649d0240b697)), closes [#745](https://github.com/gotgenes/pi-packages/issues/745)
+* **pi-permission-system:** render the review log from the prompt payload ([#746](https://github.com/gotgenes/pi-packages/issues/746)) ([b373876](https://github.com/gotgenes/pi-packages/commit/b3738761e572b91a3388b0681d2a34862b11859d))
+* **pi-permission-system:** replace the forwarded-request message with the structured payload ([1af41a9](https://github.com/gotgenes/pi-packages/commit/1af41a9a18cf5850da3bc787c9e0ed0db493921a)), closes [#745](https://github.com/gotgenes/pi-packages/issues/745)
+
+
+### Bug Fixes
+
+* **pi-permission-system:** stop echoing tool input in agent-facing denial text ([#746](https://github.com/gotgenes/pi-packages/issues/746)) ([525b7e4](https://github.com/gotgenes/pi-packages/commit/525b7e4b19cfa997029a178b413a2838b3834021))
+
+
+### Documentation
+
+* **pi-permission-system:** document the payload contracts and mark Phase 13 Step 3 complete ([a2381ac](https://github.com/gotgenes/pi-packages/commit/a2381ac700e08c80c415b31f732a481367226264)), closes [#745](https://github.com/gotgenes/pi-packages/issues/745)
+* **pi-permission-system:** record the agent and review-log renderers ([#746](https://github.com/gotgenes/pi-packages/issues/746)) ([af88cc1](https://github.com/gotgenes/pi-packages/commit/af88cc11e31e98c0fa43d3629c64f31d6b73de05))
+* **pi-permission-system:** retire references to the dissolved denial module ([#746](https://github.com/gotgenes/pi-packages/issues/746)) ([53647b2](https://github.com/gotgenes/pi-packages/commit/53647b2b0930737940714378d8421cd2ce76e66f))
+
 ## [25.4.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v25.3.0...pi-permission-system-v25.4.0) (2026-08-15)
 
 
