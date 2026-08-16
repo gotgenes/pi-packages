@@ -4,7 +4,7 @@ import {
   getSettingsListTheme,
 } from "@earendil-works/pi-coding-agent";
 import { type SettingItem, SettingsList } from "@earendil-works/pi-tui";
-
+import { BorderedPanel } from "#src/ui/bordered-panel";
 import type { CommandConfigStore } from "./config-store";
 import {
   DEFAULT_EXTENSION_CONFIG,
@@ -187,7 +187,7 @@ async function openSettingsModal(
 
   // eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- ctx.ui.custom<void> is valid; rule does not allow void in generic fn call type args
   await ctx.ui.custom<void>(
-    (_tui, _theme, _keybindings, done) => {
+    (_tui, theme, _keybindings, done) => {
       let current = controller.config.current();
       const settingsList = new SettingsList(
         buildSettingItems(current),
@@ -202,7 +202,9 @@ async function openSettingsModal(
         () => done(),
       );
 
-      return settingsList;
+      const panel = new BorderedPanel((text) => theme.fg("accent", text));
+      panel.addChild(settingsList);
+      return panel;
     },
     { overlay: true, overlayOptions },
   );
