@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.3](https://github.com/gotgenes/pi-packages/compare/pi-permission-model-judge-v1.1.2...pi-permission-model-judge-v1.1.3) (2026-08-17)
+
+
+### Bug Fixes
+
+* **pi-permission-model-judge:** resolve the global config scope via getAgentDir ([079e9a6](https://github.com/gotgenes/pi-packages/commit/079e9a6efbcfe36dec2c5dce3ed82e40b4e59499)), closes [#732](https://github.com/gotgenes/pi-packages/issues/732)
+
 ## [1.1.2](https://github.com/gotgenes/pi-packages/compare/pi-permission-model-judge-v1.1.1...pi-permission-model-judge-v1.1.2) (2026-07-22)
 
 
