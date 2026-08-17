@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [26.2.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v26.1.0...pi-permission-system-v26.2.0) (2026-08-17)
+
+
+### Features
+
+* **pi-permission-system:** publish a serving heartbeat while draining the inbox ([2055e35](https://github.com/gotgenes/pi-packages/commit/2055e353e147af6738ddc23c2c755f56f8032f8b)), closes [#721](https://github.com/gotgenes/pi-packages/issues/721)
+
+
+### Bug Fixes
+
+* **pi-permission-system:** fail fast when an out-of-process parent is not serving ([e190af9](https://github.com/gotgenes/pi-packages/commit/e190af9f06c49375432f19bb228e068ade01c912)), closes [#721](https://github.com/gotgenes/pi-packages/issues/721)
+
+
+### Documentation
+
+* **pi-permission-system:** document out-of-process forwarding liveness ([b5a50d5](https://github.com/gotgenes/pi-packages/commit/b5a50d535c97ca0ec388c5f482afb395e15289fa)), closes [#721](https://github.com/gotgenes/pi-packages/issues/721)
+
 ## [26.1.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v26.0.0...pi-permission-system-v26.1.0) (2026-08-17)
 
 
