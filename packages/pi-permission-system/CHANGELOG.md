@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [26.2.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v26.2.0...pi-permission-system-v26.2.1) (2026-08-17)
+
+
+### Bug Fixes
+
+* **pi-permission-system:** accept pasted text in the denial-reason field ([8b33c38](https://github.com/gotgenes/pi-packages/commit/8b33c38084689dbb356fa0a0b7069bc610140736)), closes [#760](https://github.com/gotgenes/pi-packages/issues/760)
+
+
+### Documentation
+
+* **pi-permission-system:** document the delegated denial-reason editor ([e7329f5](https://github.com/gotgenes/pi-packages/commit/e7329f5e81fc66e5317e958c9928262aaf433173)), closes [#760](https://github.com/gotgenes/pi-packages/issues/760)
+
 ## [26.2.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v26.1.0...pi-permission-system-v26.2.0) (2026-08-17)
 
 
