@@ -1,5 +1,26 @@
 # Changelog
 
+## [4.3.0](https://github.com/gotgenes/pi-packages/compare/pi-github-tools-v4.2.1...pi-github-tools-v4.3.0) (2026-08-17)
+
+
+### Features
+
+* **pi-github-tools:** retry transient gh failures in the CI and release-find tools ([658f890](https://github.com/gotgenes/pi-packages/commit/658f890591117f7a0aee13cc13b1e2a9b4f9460b)), closes [#764](https://github.com/gotgenes/pi-packages/issues/764)
+* **pi-github-tools:** retry transient gh failures on read-only calls ([06c06ad](https://github.com/gotgenes/pi-packages/commit/06c06ad4bc8587bb8275f0648bb99a4b73c3e5f9)), closes [#764](https://github.com/gotgenes/pi-packages/issues/764)
+* **pi-github-tools:** verify merge state before reporting a merge failure ([e36b67e](https://github.com/gotgenes/pi-packages/commit/e36b67ea26ca6e488ec39fed91156e59ef75aea0)), closes [#764](https://github.com/gotgenes/pi-packages/issues/764)
+
+
+### Bug Fixes
+
+* **pi-github-tools:** report gh failures as errors instead of user cancellation ([90c11b1](https://github.com/gotgenes/pi-packages/commit/90c11b1c2506da5ef6d4f133ca27d5d363c5b0ed)), closes [#764](https://github.com/gotgenes/pi-packages/issues/764)
+
+
+### Documentation
+
+* document transient retry and merge-state verification ([1391117](https://github.com/gotgenes/pi-packages/commit/139111746ed206d5918df3bafb79093af73cd580)), closes [#764](https://github.com/gotgenes/pi-packages/issues/764)
+* **retro:** add planning stage notes for issue [#764](https://github.com/gotgenes/pi-packages/issues/764) ([0ffeeae](https://github.com/gotgenes/pi-packages/commit/0ffeeaeb8271e12dc4dcf97dd18c982bba6fd70e))
+* **retro:** add TDD stage notes for issue [#764](https://github.com/gotgenes/pi-packages/issues/764) ([8c98505](https://github.com/gotgenes/pi-packages/commit/8c985057aaef2b35863d0b4e5e58f707609d7a29))
+
 ## [4.2.1](https://github.com/gotgenes/pi-packages/compare/pi-github-tools-v4.2.0...pi-github-tools-v4.2.1) (2026-08-10)
 
 
