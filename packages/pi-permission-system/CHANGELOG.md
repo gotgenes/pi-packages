@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [26.1.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v26.0.0...pi-permission-system-v26.1.0) (2026-08-17)
+
+
+### Features
+
+* **pi-permission-system:** attribute absent-authority denials ([225412d](https://github.com/gotgenes/pi-packages/commit/225412d485e68e886b6e958b2f53a87f9ff6cf25)), closes [#726](https://github.com/gotgenes/pi-packages/issues/726)
+* **pi-permission-system:** carry decision provenance across the forwarding boundary ([0dbf13f](https://github.com/gotgenes/pi-packages/commit/0dbf13f86c9f2d070e8b33eb4ffe808331c9185c)), closes [#726](https://github.com/gotgenes/pi-packages/issues/726)
+* **pi-permission-system:** name the authorizer link that decided an ask ([8556724](https://github.com/gotgenes/pi-packages/commit/8556724e5453ee002b24c48bebaf4d96f6502fe5)), closes [#726](https://github.com/gotgenes/pi-packages/issues/726)
+* **pi-permission-system:** record the decider on non-prompting resolutions ([5e24abf](https://github.com/gotgenes/pi-packages/commit/5e24abf6311d13928858e730b14a712e155f2bc2)), closes [#726](https://github.com/gotgenes/pi-packages/issues/726)
+* **pi-permission-system:** record the human decider on prompted decisions ([9f540ba](https://github.com/gotgenes/pi-packages/commit/9f540ba285b546976432733fced08b9fe9dc973c)), closes [#726](https://github.com/gotgenes/pi-packages/issues/726)
+
+
+### Documentation
+
+* **pi-permission-system:** record decision provenance and mark Phase 13 Step 6 complete ([e2739e7](https://github.com/gotgenes/pi-packages/commit/e2739e7f188669ee4878bbe3732958d4e1c54cbd)), closes [#726](https://github.com/gotgenes/pi-packages/issues/726)
+
 ## [26.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v25.4.0...pi-permission-system-v26.0.0) (2026-08-16)
 
 
