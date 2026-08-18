@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [26.3.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v26.2.2...pi-permission-system-v26.3.0) (2026-08-18)
+
+
+### Features
+
+* **pi-permission-system:** broadcast a terminal decision when a gate error blocks a tool call ([2ccb8e5](https://github.com/gotgenes/pi-packages/commit/2ccb8e50a4ef376ced8448efba2d5f9f3658e98f)), closes [#753](https://github.com/gotgenes/pi-packages/issues/753)
+* **pi-permission-system:** broadcast the terminal decision for a served forwarded ask ([f2d6b17](https://github.com/gotgenes/pi-packages/commit/f2d6b176abdd47a2b3ce5c3cf6973ba316d5eea6)), closes [#610](https://github.com/gotgenes/pi-packages/issues/610)
+
+
+### Documentation
+
+* **pi-permission-system:** document the served forwarded decision broadcast ([fc2b00b](https://github.com/gotgenes/pi-packages/commit/fc2b00bb801468b450a725e0cb4e9da7e5279844))
+
 ## [26.2.2](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v26.2.1...pi-permission-system-v26.2.2) (2026-08-18)
 
 
