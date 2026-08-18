@@ -20,9 +20,10 @@ import {
   SettingsManager as SdkSettingsManager,
   SessionManager,
 } from "@earendil-works/pi-coding-agent";
-import { AgentTypeRegistry } from "#src/config/agent-types";
+import { type AgentConfigLookup, AgentTypeRegistry } from "#src/config/agent-types";
 import { loadCustomAgents } from "#src/config/custom-agents";
 import { InterruptHandler, SessionLifecycleHandler, ToolStartHandler } from "#src/handlers/index";
+import { loadLayeredSettings } from "#src/layered-settings";
 import { createChildLifecyclePublisher } from "#src/lifecycle/child-lifecycle";
 import { ConcurrencyLimiter } from "#src/lifecycle/concurrency-limiter";
 import { createSubagentSession, type SubagentSessionDeps } from "#src/lifecycle/create-subagent-session";
@@ -47,6 +48,64 @@ import { SteerTool } from "#src/tools/steer-tool";
 import { AgentWidget } from "#src/ui/agent-widget";
 import { SessionNavigatorHandler } from "#src/ui/session-navigator";
 import { SubagentsSettingsHandler } from "#src/ui/subagents-settings";
+
+// ── Fork divergence (plan/34): user-configured additive tool grants ──────────
+// additionalTools in subagents.json maps an agent-type name (case-insensitive,
+// or "*" for every type) to extra tool names appended to that type's allowlist
+// at spawn time. Read via a second sanitized pass over the same layered
+// subagents.json the SettingsManager loads — frozen settings.ts's sanitize()
+// drops unknown keys, and saveSettings() never rewrites the global file, so a
+// hand-edited global key is durable. The recursion guard (excludeTools) still
+// strips this extension's own three tools even if listed here. Read once at
+// init; config edits need a fresh session. A PROJECT-level additionalTools is
+// erased by the next /subagents:settings write (frozen snapshot() can't
+// round-trip it) — set this key globally.
+
+export function sanitizeAdditionalTools(raw: unknown): Record<string, string[]> | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const out: Record<string, string[]> = {};
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (!Array.isArray(value)) continue;
+    const k = key.trim().toLowerCase();
+    const tools = value
+      .filter((v): v is string => typeof v === "string")
+      .map((v) => v.trim())
+      .filter(Boolean);
+    if (!k || tools.length === 0) continue;
+    out[k] = [...new Set([...(out[k] ?? []), ...tools])];
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+export function readAdditionalTools(agentDir: string, cwd: string): Record<string, string[]> | undefined {
+  return loadLayeredSettings<{ additionalTools: Record<string, string[]> }>({
+    agentDir,
+    cwd,
+    filename: "subagents.json",
+    sanitize: (raw) => {
+      if (!raw || typeof raw !== "object") return {};
+      const cleaned = sanitizeAdditionalTools((raw as Record<string, unknown>).additionalTools);
+      return cleaned ? { additionalTools: cleaned } : {};
+    },
+    warnLabel: "pi-subagents",
+  }).additionalTools;
+}
+
+export function withAdditionalTools(
+  registry: AgentConfigLookup & { resolveType(name: string): string | undefined },
+  config: Record<string, string[]> | undefined,
+): AgentConfigLookup {
+  if (!config) return registry;
+  return {
+    resolveAgentConfig: (type) => registry.resolveAgentConfig(type),
+    getToolNamesForType: (type) => {
+      const base = registry.getToolNamesForType(type);
+      const key = registry.resolveType(type)?.toLowerCase();
+      const extra = [...(config["*"] ?? []), ...(key ? (config[key] ?? []) : [])];
+      return extra.length > 0 ? [...new Set([...base, ...extra])] : base;
+    },
+  };
+}
 
 export default function (pi: ExtensionAPI) {
   // ---- Register custom notification renderer ----
@@ -128,7 +187,7 @@ export default function (pi: ExtensionAPI) {
       },
     },
     exec: (cmd, args, opts) => pi.exec(cmd, args, opts),
-    registry,
+    registry: withAdditionalTools(registry, readAdditionalTools(getAgentDir(), process.cwd())),
     lifecycle: createChildLifecyclePublisher((channel, data) => pi.events.emit(channel, data)),
   };
 
