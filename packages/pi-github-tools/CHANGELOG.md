@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.3.2](https://github.com/gotgenes/pi-packages/compare/pi-github-tools-v4.3.1...pi-github-tools-v4.3.2) (2026-08-19)
+
+
+### Bug Fixes
+
+* **pi-github-tools:** drop the redundant tool-name prefix from promptSnippet ([#778](https://github.com/gotgenes/pi-packages/issues/778)) ([8385f4b](https://github.com/gotgenes/pi-packages/commit/8385f4b956440690d02039805d64acc19c9085b1))
+
 ## [4.3.1](https://github.com/gotgenes/pi-packages/compare/pi-github-tools-v4.3.0...pi-github-tools-v4.3.1) (2026-08-19)
 
 

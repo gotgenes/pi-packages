@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.3](https://github.com/gotgenes/pi-packages/compare/pi-colgrep-v1.5.2...pi-colgrep-v1.5.3) (2026-08-19)
+
+
+### Bug Fixes
+
+* **pi-colgrep:** drop the redundant tool-name prefix from promptSnippet ([#778](https://github.com/gotgenes/pi-packages/issues/778)) ([9832a9f](https://github.com/gotgenes/pi-packages/commit/9832a9f8c4603dfc9c8c67a2a730e41924ca92c3))
+
 ## [1.5.2](https://github.com/gotgenes/pi-packages/compare/pi-colgrep-v1.5.1...pi-colgrep-v1.5.2) (2026-08-19)
 
 
