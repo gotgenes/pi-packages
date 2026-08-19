@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.0.2](https://github.com/gotgenes/pi-packages/compare/pi-nocd-v1.0.1...pi-nocd-v1.0.2) (2026-08-19)
+
+
+### Documentation
+
+* condense scope sections and move them below the usage material ([#775](https://github.com/gotgenes/pi-packages/issues/775)) ([99f5829](https://github.com/gotgenes/pi-packages/commit/99f58298962baac5bdfe5d3cc02dca0ca9b32395))
+* limit charter cross-links to ecosystem and prerequisite ([#775](https://github.com/gotgenes/pi-packages/issues/775)) ([f613f75](https://github.com/gotgenes/pi-packages/commit/f613f757b060f2cb26e1380cf1006ea66dc064f9))
+* **pi-nocd:** document scope and non-goals ([#775](https://github.com/gotgenes/pi-packages/issues/775)) ([4e8e927](https://github.com/gotgenes/pi-packages/commit/4e8e927a2eecc713431926e48d4b4ea6f680d2cc))
+
 ## [1.0.1](https://github.com/gotgenes/pi-packages/compare/pi-nocd-v1.0.0...pi-nocd-v1.0.1) (2026-07-25)
 
 

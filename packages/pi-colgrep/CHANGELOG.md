@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.5.2](https://github.com/gotgenes/pi-packages/compare/pi-colgrep-v1.5.1...pi-colgrep-v1.5.2) (2026-08-19)
+
+
+### Documentation
+
+* condense scope sections and move them below the usage material ([#775](https://github.com/gotgenes/pi-packages/issues/775)) ([99f5829](https://github.com/gotgenes/pi-packages/commit/99f58298962baac5bdfe5d3cc02dca0ca9b32395))
+* **pi-colgrep:** document scope and non-goals ([#775](https://github.com/gotgenes/pi-packages/issues/775)) ([d036500](https://github.com/gotgenes/pi-packages/commit/d0365005f0d161b02c0d332756422f61c1fda27e))
+
 ## [1.5.1](https://github.com/gotgenes/pi-packages/compare/pi-colgrep-v1.5.0...pi-colgrep-v1.5.1) (2026-06-12)
 
 

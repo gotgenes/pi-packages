@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.1.4](https://github.com/gotgenes/pi-packages/compare/pi-permission-model-judge-v1.1.3...pi-permission-model-judge-v1.1.4) (2026-08-19)
+
+
+### Documentation
+
+* condense scope sections and move them below the usage material ([#775](https://github.com/gotgenes/pi-packages/issues/775)) ([99f5829](https://github.com/gotgenes/pi-packages/commit/99f58298962baac5bdfe5d3cc02dca0ca9b32395))
+* **pi-permission-model-judge:** document scope and non-goals ([#775](https://github.com/gotgenes/pi-packages/issues/775)) ([0407747](https://github.com/gotgenes/pi-packages/commit/04077479b7a062c3a2fd4d913fbe00a1f45c65b1))
+* route model-assisted judging to the seam, not to one link ([#775](https://github.com/gotgenes/pi-packages/issues/775)) ([3f30984](https://github.com/gotgenes/pi-packages/commit/3f30984b53eb0a14217cf70ecb05ac1daab48abb))
+
 ## [1.1.3](https://github.com/gotgenes/pi-packages/compare/pi-permission-model-judge-v1.1.2...pi-permission-model-judge-v1.1.3) (2026-08-17)
 
 

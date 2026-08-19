@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [26.3.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v26.3.0...pi-permission-system-v26.3.1) (2026-08-19)
+
+
+### Documentation
+
+* condense scope sections and move them below the usage material ([#775](https://github.com/gotgenes/pi-packages/issues/775)) ([99f5829](https://github.com/gotgenes/pi-packages/commit/99f58298962baac5bdfe5d3cc02dca0ca9b32395))
+* **pi-permission-system:** document scope and non-goals ([#775](https://github.com/gotgenes/pi-packages/issues/775)) ([5fa3960](https://github.com/gotgenes/pi-packages/commit/5fa39609953ad8bf370a0e304a73fdf67df6dae5))
+* **retro:** add retro notes for issue [#610](https://github.com/gotgenes/pi-packages/issues/610) ([2333e6a](https://github.com/gotgenes/pi-packages/commit/2333e6ae57fe77c64e322e520918404995ef1dda))
+* route model-assisted judging to the seam, not to one link ([#775](https://github.com/gotgenes/pi-packages/issues/775)) ([3f30984](https://github.com/gotgenes/pi-packages/commit/3f30984b53eb0a14217cf70ecb05ac1daab48abb))
+
 ## [26.3.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v26.2.2...pi-permission-system-v26.3.0) (2026-08-18)
 
 

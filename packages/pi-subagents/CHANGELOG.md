@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [19.3.3](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v19.3.2...pi-subagents-v19.3.3) (2026-08-19)
+
+
+### Documentation
+
+* condense scope sections and move them below the usage material ([#775](https://github.com/gotgenes/pi-packages/issues/775)) ([99f5829](https://github.com/gotgenes/pi-packages/commit/99f58298962baac5bdfe5d3cc02dca0ca9b32395))
+* **pi-subagents:** document scope and non-goals ([#775](https://github.com/gotgenes/pi-packages/issues/775)) ([24ecb31](https://github.com/gotgenes/pi-packages/commit/24ecb311d5a0760e70857a99e966b0bdf88ded02))
+
 ## [19.3.2](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v19.3.1...pi-subagents-v19.3.2) (2026-08-13)
 
 
