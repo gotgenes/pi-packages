@@ -1,14 +1,24 @@
 /**
- * Cross-extension service accessor backed by `Symbol.for()` on `globalThis`.
+ * Cross-extension service accessors backed by `Symbol.for()` on `globalThis`.
  *
  * `Symbol.for()` is process-global by spec, so it survives jiti's per-extension
  * module isolation (`moduleCache: false`). A consumer doing
- * `import("@gotgenes/pi-permission-system")` gets a fresh module copy, but
- * `getPermissionsService()` reads from the same `globalThis` slot the provider
- * wrote to — enabling direct, synchronous, type-safe function calls.
+ * `import("@gotgenes/pi-permission-system")` gets a fresh module copy, but the
+ * accessors here read from the same `globalThis` slots the provider wrote to —
+ * enabling direct, synchronous, type-safe function calls.
  *
- * Best practice: call `getPermissionsService()` per use rather than caching the
- * reference — this ensures resilience across `/reload` and load-order edge cases.
+ * There are two slots, because one process can host several **nodes** (one Pi
+ * session runtime each — a root session and its in-process subagent children
+ * all load their own instance of this extension):
+ *
+ * - A session-keyed map, written by every node under its own session id.
+ *   `getPermissionsServiceForSession(sessionId)` resolves the service whose
+ *   registries that node's own gates and chain read (ADR 0012 decision 2).
+ * - A single legacy slot holding the process root's service, read by the
+ *   zero-arg `getPermissionsService()`.
+ *
+ * Best practice: resolve per use rather than caching the reference — this
+ * ensures resilience across `/reload` and load-order edge cases.
  */
 
 import type { Authorizer } from "./authority/authorizer";
@@ -62,8 +72,13 @@ export type {
 } from "./presentation/prompt-payload";
 export type { PermissionCheckResult, PermissionState, ToolInputFormatter };
 
-/** Process-global key for the service slot. */
+/** Process-global key for the legacy (process-root) service slot. */
 const SERVICE_KEY = Symbol.for("@gotgenes/pi-permission-system:service");
+
+/** Process-global key for the session-keyed service map (ADR 0012 decision 2). */
+const SESSION_SERVICES_KEY = Symbol.for(
+  "@gotgenes/pi-permission-system:session-services",
+);
 
 /**
  * The narrow, read-only projection of {@link PermissionsService}: answer a
@@ -202,6 +217,76 @@ export function getPermissionsService(): PermissionsService | undefined {
   return (globalThis as Record<symbol, unknown>)[SERVICE_KEY] as
     | PermissionsService
     | undefined;
+}
+
+/**
+ * The process-global map of session id → that node's service, created on first
+ * use.
+ *
+ * Backed by `globalThis` + `Symbol.for()` for the same reason the single slot
+ * above is: each session's `ResourceLoader` builds its own jiti instance, so a
+ * parent and its in-process child share no module state — only process globals.
+ */
+function sessionServices(): Map<string, PermissionsService> {
+  const store = globalThis as Record<symbol, unknown>;
+  const existing = store[SESSION_SERVICES_KEY] as
+    | Map<string, PermissionsService>
+    | undefined;
+  if (existing) {
+    return existing;
+  }
+  const services = new Map<string, PermissionsService>();
+  store[SESSION_SERVICES_KEY] = services;
+  return services;
+}
+
+/**
+ * Publish `service` as the service of the node whose session is `sessionId`
+ * (ADR 0012 decision 2 — node-locality).
+ *
+ * Every node publishes under its own key, including an in-process subagent
+ * child, so there is nothing to clobber: a child's sibling extension registers
+ * an extractor, formatter, or chain link into the registry the child's own
+ * gates and chain read.
+ */
+export function publishPermissionsServiceForSession(
+  sessionId: string,
+  service: PermissionsService,
+): void {
+  sessionServices().set(sessionId, service);
+}
+
+/**
+ * Retrieve the service belonging to the node whose session is `sessionId`, or
+ * `undefined` when that node has published none.
+ *
+ * This is the supported way to obtain a node's service, for registration and
+ * for policy queries alike. Take `sessionId` from the `permissions:ready`
+ * payload (or from `ctx.sessionManager.getSessionId()` inside your own session
+ * handler), and resolve per use rather than caching the reference.
+ */
+export function getPermissionsServiceForSession(
+  sessionId: string,
+): PermissionsService | undefined {
+  return sessionServices().get(sessionId);
+}
+
+/**
+ * Remove the `sessionId` entry, but only when it still holds `service`
+ * (identity compare-and-delete, like {@link unpublishPermissionsService}).
+ *
+ * Scoping the delete to the publishing instance keeps a superseded `/reload`
+ * generation's late shutdown from wiping the new generation's freshly
+ * published service.
+ */
+export function unpublishPermissionsServiceForSession(
+  sessionId: string,
+  service: PermissionsService,
+): void {
+  const services = sessionServices();
+  if (services.get(sessionId) === service) {
+    services.delete(sessionId);
+  }
 }
 
 /**

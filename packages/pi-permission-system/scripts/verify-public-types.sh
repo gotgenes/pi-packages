@@ -25,6 +25,8 @@ if grep -q '#src' "$DTS"; then
   exit 1
 fi
 for sym in getPermissionsService publishPermissionsService unpublishPermissionsService \
+  getPermissionsServiceForSession publishPermissionsServiceForSession \
+  unpublishPermissionsServiceForSession \
   PermissionsService PermissionCheckResult PermissionState ToolInputFormatter \
   PERMISSIONS_UI_PROMPT_CHANNEL PERMISSIONS_READY_CHANNEL PERMISSIONS_DECISION_CHANNEL \
   PermissionUiPromptEvent registerAuthorizer PermissionQuery Authorizer \

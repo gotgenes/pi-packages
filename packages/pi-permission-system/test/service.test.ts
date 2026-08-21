@@ -7,8 +7,11 @@ import { LocalPermissionsService } from "#src/permissions-service";
 import type { PermissionsService } from "#src/service";
 import {
   getPermissionsService,
+  getPermissionsServiceForSession,
   publishPermissionsService,
+  publishPermissionsServiceForSession,
   unpublishPermissionsService,
+  unpublishPermissionsServiceForSession,
 } from "#src/service";
 import { ToolAccessExtractorRegistry } from "#src/tool-access-extractor-registry";
 import { ToolInputFormatterRegistry } from "#src/tool-input-formatter-registry";
@@ -77,6 +80,77 @@ describe("globalThis accessor", () => {
   it("unpublish is safe to call when nothing was published", () => {
     expect(() => unpublishPermissionsService(makeService())).not.toThrow();
     expect(getPermissionsService()).toBeUndefined();
+  });
+});
+
+// ── session-keyed accessor ─────────────────────────────────────────────────
+
+describe("session-keyed accessor", () => {
+  const parentSessionId = "parent-session";
+  const childSessionId = "child-session";
+
+  afterEach(() => {
+    for (const sessionId of [parentSessionId, childSessionId]) {
+      const current = getPermissionsServiceForSession(sessionId);
+      if (current) {
+        unpublishPermissionsServiceForSession(sessionId, current);
+      }
+    }
+  });
+
+  it("returns undefined for a session that published nothing", () => {
+    expect(getPermissionsServiceForSession(parentSessionId)).toBeUndefined();
+  });
+
+  it("returns the service published under that session id", () => {
+    const service = makeService();
+    publishPermissionsServiceForSession(parentSessionId, service);
+    expect(getPermissionsServiceForSession(parentSessionId)).toBe(service);
+  });
+
+  it("keys each node's service separately", () => {
+    const parent = makeService();
+    const child = makeService();
+    publishPermissionsServiceForSession(parentSessionId, parent);
+    publishPermissionsServiceForSession(childSessionId, child);
+    expect(getPermissionsServiceForSession(parentSessionId)).toBe(parent);
+    expect(getPermissionsServiceForSession(childSessionId)).toBe(child);
+  });
+
+  it("does not populate the legacy root slot", () => {
+    publishPermissionsServiceForSession(parentSessionId, makeService());
+    expect(getPermissionsService()).toBeUndefined();
+  });
+
+  it("replaces the entry when a session republishes", () => {
+    const first = makeService();
+    const second = makeService();
+    publishPermissionsServiceForSession(parentSessionId, first);
+    publishPermissionsServiceForSession(parentSessionId, second);
+    expect(getPermissionsServiceForSession(parentSessionId)).toBe(second);
+  });
+
+  it("removes the entry when it still holds the given service", () => {
+    const service = makeService();
+    publishPermissionsServiceForSession(parentSessionId, service);
+    unpublishPermissionsServiceForSession(parentSessionId, service);
+    expect(getPermissionsServiceForSession(parentSessionId)).toBeUndefined();
+  });
+
+  it("leaves a fresh publication alone when a superseded generation unpublishes", () => {
+    const superseded = makeService();
+    const fresh = makeService();
+    publishPermissionsServiceForSession(parentSessionId, superseded);
+    publishPermissionsServiceForSession(parentSessionId, fresh);
+    unpublishPermissionsServiceForSession(parentSessionId, superseded);
+    expect(getPermissionsServiceForSession(parentSessionId)).toBe(fresh);
+  });
+
+  it("unpublish is safe to call for a session that published nothing", () => {
+    expect(() =>
+      unpublishPermissionsServiceForSession(parentSessionId, makeService()),
+    ).not.toThrow();
+    expect(getPermissionsServiceForSession(parentSessionId)).toBeUndefined();
   });
 });
 
