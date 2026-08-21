@@ -112,3 +112,14 @@ Default inheritance is unchanged — an absent or empty list reproduces prior be
 
 Latent extensibility is preserved rather than spent.
 The filtering is applied at the composition root, so if a sandboxing extension ever needs to supply the policy generatively, a provider seam can be added additively without disturbing the settings key or the assembly factory.
+
+## Amendment: the child-announcement contract is specified downstream (#789)
+
+This decision required the core to emit an awaited, ordered `session-created` event before `bindExtensions()`, and the channel names and payload shapes were then declared independently in this package and in `@gotgenes/pi-permission-system`, each with a comment asking that they stay in sync.
+
+That arrangement ends here.
+The contract is now named — the **subagent adapter convention** — and specified in one place: [Subagent Integration](https://github.com/gotgenes/pi-packages/blob/main/packages/pi-permission-system/docs/subagent-integration.md#the-subagent-adapter-convention), per pi-permission-system's [ADR 0012](https://github.com/gotgenes/pi-packages/blob/main/packages/pi-permission-system/docs/decisions/0012-cross-node-extension-contract.md) decision 5.
+Read it there rather than reconstructing it from this record.
+
+Nothing about this package's obligations changed: the core still publishes its lifecycle and knows nothing about its consumers, and the inverted dependency this decision established is untouched.
+What changed is that the convention now has a canonical home, and any implementation — not only this one — can conform to it.
