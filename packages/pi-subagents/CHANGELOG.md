@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [19.3.5](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v19.3.4...pi-subagents-v19.3.5) (2026-08-21)
+
+
+### Documentation
+
+* **pi-subagents:** record the loading-asymmetry condition and cite the adapter convention ([d12ee41](https://github.com/gotgenes/pi-packages/commit/d12ee41b5aca6dbe29bc325ba34b2c1a2c669f93)), closes [#789](https://github.com/gotgenes/pi-packages/issues/789)
+
 ## [19.3.4](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v19.3.3...pi-subagents-v19.3.4) (2026-08-19)
 
 
