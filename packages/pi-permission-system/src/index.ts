@@ -249,13 +249,16 @@ export default function piPermissionSystemExtension(pi: ExtensionAPI): void {
   );
 
   // PermissionServiceLifecycle owns the process-global service publication:
-  // activate() publishes (skipped for registered subagent children — see #302)
-  // and emits ready; teardown() unsubscribes all session listeners and
-  // unpublishes. Deferred to session_start because identifying a child
-  // requires the session id from ctx, unavailable at factory-init time.
+  // activate() publishes this node's service under its own session id (and to
+  // the legacy root slot unless this is a registered subagent child — see
+  // #302), then announces the node's session id and chain role on the ready
+  // channel; teardown() unsubscribes all session listeners and unpublishes.
+  // Deferred to session_start because both facts come from ctx, unavailable at
+  // factory-init time.
   const serviceLifecycle = new PermissionServiceLifecycle(
     permissionsService,
     subagentDetection,
+    authorizerSelection,
     pi.events,
     [unsubSubagentLifecycle],
   );

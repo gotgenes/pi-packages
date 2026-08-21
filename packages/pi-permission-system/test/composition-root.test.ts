@@ -39,7 +39,10 @@ import { getGlobalConfigPath } from "#src/config-paths";
 import { DEFAULT_EXTENSION_CONFIG } from "#src/extension-config";
 import piPermissionSystemExtension from "#src/index";
 import { PERMISSIONS_READY_CHANNEL } from "#src/permission-events";
-import { getPermissionsService } from "#src/service";
+import {
+  getPermissionsService,
+  getPermissionsServiceForSession,
+} from "#src/service";
 import { publishServingHeartbeat } from "#test/helpers/forwarding-fixtures";
 import { makeFakePi } from "#test/helpers/make-fake-pi";
 
@@ -49,6 +52,9 @@ const SUBAGENT_REGISTRY_KEY = Symbol.for(
 );
 const SERVING_REGISTRY_KEY = Symbol.for(
   "@gotgenes/pi-permission-system:serving-registry",
+);
+const SESSION_SERVICES_KEY = Symbol.for(
+  "@gotgenes/pi-permission-system:session-services",
 );
 
 /** The six events the factory must register a handler for. */
@@ -77,6 +83,8 @@ afterEach(() => {
   delete store[SUBAGENT_REGISTRY_KEY];
   // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- Symbol-keyed global property
   delete store[SERVING_REGISTRY_KEY];
+  // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- Symbol-keyed global property
+  delete store[SESSION_SERVICES_KEY];
   vi.unstubAllEnvs();
   rmSync(agentDir, { recursive: true, force: true });
 });
@@ -979,6 +987,112 @@ describe("multi-instance global service interplay", () => {
     // The child's shutdown is a no-op for the slot it never owned.
     await childPi.fire("session_shutdown");
     expect(getPermissionsService()).toBe(parentService);
+
+    rmSync(parentCwd, { recursive: true, force: true });
+    rmSync(childCwd, { recursive: true, force: true });
+  });
+});
+
+describe("session-keyed service publication", () => {
+  // ADR 0012 decision 2: registrations never cross a node boundary. Each node
+  // publishes under its own session id, so a sibling extension loaded into an
+  // in-process child registers into the child's own registries — the ones the
+  // child's gates and chain read — instead of reaching the parent's service.
+  it("gives an in-process child its own service, so a sibling's link registration does not collide", async () => {
+    const parentCwd = mkdtempSync(join(tmpdir(), "pi-perm-parent-keyed-"));
+    const childCwd = mkdtempSync(join(tmpdir(), "pi-perm-child-keyed-"));
+    const parentSessionId = "parent-session-keyed";
+    const childSessionId = "child-session-keyed";
+
+    const parentPi = makeFakePi({ events: createEventBus() });
+    piPermissionSystemExtension(parentPi as unknown as ExtensionAPI);
+    const childPi = makeFakePi({ events: createEventBus() });
+    piPermissionSystemExtension(childPi as unknown as ExtensionAPI);
+
+    await fireSessionStart(parentPi, makeChildCtx(parentCwd, parentSessionId));
+    getSubagentSessionRegistry().register(childSessionId, { parentSessionId });
+    await fireSessionStart(childPi, makeChildCtx(childCwd, childSessionId));
+
+    const parentService = getPermissionsServiceForSession(parentSessionId);
+    const childService = getPermissionsServiceForSession(childSessionId);
+    expect(parentService).toBeDefined();
+    expect(childService).toBeDefined();
+    expect(childService).not.toBe(parentService);
+
+    // The reported #699 symptom: the parent owns the link name, and the
+    // child's sibling registers the same name into the child's own service.
+    parentService!.registerAuthorizer("model-judge", () =>
+      Promise.resolve({ kind: "defer" as const }),
+    );
+    expect(() =>
+      childService!.registerAuthorizer("model-judge", () =>
+        Promise.resolve({ kind: "defer" as const }),
+      ),
+    ).not.toThrow();
+
+    rmSync(parentCwd, { recursive: true, force: true });
+    rmSync(childCwd, { recursive: true, force: true });
+  });
+
+  it("announces the node's session id and chain role on permissions:ready", async () => {
+    const parentCwd = mkdtempSync(join(tmpdir(), "pi-perm-parent-ready-"));
+    const childCwd = mkdtempSync(join(tmpdir(), "pi-perm-child-ready-"));
+    const parentSessionId = "parent-session-ready";
+    const childSessionId = "child-session-ready";
+
+    const parentReady: unknown[] = [];
+    const parentPi = makeFakePi({ events: createEventBus() });
+    parentPi.events.on(PERMISSIONS_READY_CHANNEL, (data) => {
+      parentReady.push(data);
+    });
+    piPermissionSystemExtension(parentPi as unknown as ExtensionAPI);
+
+    const childReady: unknown[] = [];
+    const childPi = makeFakePi({ events: createEventBus() });
+    childPi.events.on(PERMISSIONS_READY_CHANNEL, (data) => {
+      childReady.push(data);
+    });
+    piPermissionSystemExtension(childPi as unknown as ExtensionAPI);
+
+    // A UI-bearing parent adjudicates locally; a headless registered child
+    // relays its asks to the parent, so its chain does not run.
+    await fireSessionStart(parentPi, makeBaseCtx(parentCwd, parentSessionId));
+    getSubagentSessionRegistry().register(childSessionId, { parentSessionId });
+    await fireSessionStart(childPi, makeChildCtx(childCwd, childSessionId));
+
+    expect(parentReady).toEqual([
+      { sessionId: parentSessionId, adjudicatesLocally: true },
+    ]);
+    expect(childReady).toEqual([
+      { sessionId: childSessionId, adjudicatesLocally: false },
+    ]);
+
+    rmSync(parentCwd, { recursive: true, force: true });
+    rmSync(childCwd, { recursive: true, force: true });
+  });
+
+  it("removes only its own keyed entry when a node shuts down", async () => {
+    const parentCwd = mkdtempSync(join(tmpdir(), "pi-perm-parent-teardown-"));
+    const childCwd = mkdtempSync(join(tmpdir(), "pi-perm-child-teardown-"));
+    const parentSessionId = "parent-session-teardown";
+    const childSessionId = "child-session-teardown";
+
+    const parentPi = makeFakePi({ events: createEventBus() });
+    piPermissionSystemExtension(parentPi as unknown as ExtensionAPI);
+    const childPi = makeFakePi({ events: createEventBus() });
+    piPermissionSystemExtension(childPi as unknown as ExtensionAPI);
+
+    await fireSessionStart(parentPi, makeChildCtx(parentCwd, parentSessionId));
+    getSubagentSessionRegistry().register(childSessionId, { parentSessionId });
+    await fireSessionStart(childPi, makeChildCtx(childCwd, childSessionId));
+    const parentService = getPermissionsServiceForSession(parentSessionId);
+
+    await childPi.fire("session_shutdown");
+
+    expect(getPermissionsServiceForSession(childSessionId)).toBeUndefined();
+    expect(getPermissionsServiceForSession(parentSessionId)).toBe(
+      parentService,
+    );
 
     rmSync(parentCwd, { recursive: true, force: true });
     rmSync(childCwd, { recursive: true, force: true });

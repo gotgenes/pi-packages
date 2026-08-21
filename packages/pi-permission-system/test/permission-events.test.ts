@@ -42,16 +42,33 @@ describe("constants", () => {
 // ── emitReadyEvent ─────────────────────────────────────────────────────────
 
 describe("emitReadyEvent", () => {
-  it("emits an empty payload on the permissions:ready channel", () => {
+  const readyFacts: PermissionsReadyEvent = {
+    sessionId: "session-abc",
+    adjudicatesLocally: true,
+  };
+
+  it("emits the emitting node's facts on the permissions:ready channel", () => {
     const bus = makeEventBus();
-    emitReadyEvent(bus);
+    emitReadyEvent(bus, readyFacts);
     expect(bus.emit).toHaveBeenCalledOnce();
-    expect(bus.emit).toHaveBeenCalledWith("permissions:ready", {});
+    expect(bus.emit).toHaveBeenCalledWith("permissions:ready", {
+      sessionId: "session-abc",
+      adjudicatesLocally: true,
+    });
+  });
+
+  it("emits a relaying node's facts unchanged", () => {
+    const bus = makeEventBus();
+    emitReadyEvent(bus, { sessionId: null, adjudicatesLocally: false });
+    expect(bus.emit).toHaveBeenCalledWith("permissions:ready", {
+      sessionId: null,
+      adjudicatesLocally: false,
+    });
   });
 
   it("carries no protocolVersion (the broadcast contract is types + semver)", () => {
     const bus = makeEventBus();
-    emitReadyEvent(bus);
+    emitReadyEvent(bus, readyFacts);
     const payload = bus.emit.mock.calls[0][1] as PermissionsReadyEvent;
     expect(payload).not.toHaveProperty("protocolVersion");
   });
@@ -64,7 +81,7 @@ describe("emitReadyEvent", () => {
       on: vi.fn().mockReturnValue(() => undefined),
     };
 
-    expect(() => emitReadyEvent(bus)).not.toThrow();
+    expect(() => emitReadyEvent(bus, readyFacts)).not.toThrow();
   });
 });
 
@@ -285,6 +302,10 @@ describe("piPermissionSystemExtension ready event wiring", () => {
       ([channel]) => channel === PERMISSIONS_READY_CHANNEL,
     );
     expect(readyCalls).toHaveLength(1);
-    expect(readyCalls[0][1]).toEqual({});
+    // A headless non-subagent node adjudicates locally (DenyingAuthorizer).
+    expect(readyCalls[0][1]).toEqual({
+      sessionId: "top-session",
+      adjudicatesLocally: true,
+    });
   });
 });
