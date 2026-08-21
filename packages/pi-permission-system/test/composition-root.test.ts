@@ -12,6 +12,7 @@
  * do not leak across tests.
  */
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
@@ -35,7 +36,11 @@ import {
 import { getServingSessionRegistry } from "#src/authority/serving-registry";
 import { SUBAGENT_CHILD_SESSION_CREATED } from "#src/authority/subagent-lifecycle-events";
 import { getSubagentSessionRegistry } from "#src/authority/subagent-registry";
-import { getGlobalConfigPath } from "#src/config-paths";
+import {
+  getGlobalConfigPath,
+  getGlobalLogsDir,
+  REVIEW_LOG_FILENAME,
+} from "#src/config-paths";
 import { DEFAULT_EXTENSION_CONFIG } from "#src/extension-config";
 import piPermissionSystemExtension from "#src/index";
 import { PERMISSIONS_READY_CHANNEL } from "#src/permission-events";
@@ -179,6 +184,18 @@ function makeUiCtx(cwd: string, capturedTitles: string[]): { ctx: unknown } {
 
 const sleep = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
+
+/** Read the review-log entries written under the stubbed agent dir. */
+function readReviewLog(): { event: string }[] {
+  const path = join(getGlobalLogsDir(agentDir), REVIEW_LOG_FILENAME);
+  if (!existsSync(path)) {
+    return [];
+  }
+  return readFileSync(path, "utf8")
+    .split("\n")
+    .filter((line) => line.trim())
+    .map((line) => JSON.parse(line) as { event: string });
+}
 
 /** Drive the registered `session_start` handler with a ctx. */
 function fireSessionStart(
@@ -1066,6 +1083,42 @@ describe("session-keyed service publication", () => {
     expect(childReady).toEqual([
       { sessionId: childSessionId, adjudicatesLocally: false },
     ]);
+
+    rmSync(parentCwd, { recursive: true, force: true });
+    rmSync(childCwd, { recursive: true, force: true });
+  });
+
+  // ADR 0012 decision 4: a relaying node has no chain to consult a link with,
+  // so the registration is honored and the vacancy recorded — never silent.
+  it("records a link registered on a relaying child in the review log", async () => {
+    const parentCwd = mkdtempSync(join(tmpdir(), "pi-perm-parent-vacant-"));
+    const childCwd = mkdtempSync(join(tmpdir(), "pi-perm-child-vacant-"));
+    const parentSessionId = "parent-session-vacant";
+    const childSessionId = "child-session-vacant";
+
+    const parentPi = makeFakePi({ events: createEventBus() });
+    piPermissionSystemExtension(parentPi as unknown as ExtensionAPI);
+    const childPi = makeFakePi({ events: createEventBus() });
+    piPermissionSystemExtension(childPi as unknown as ExtensionAPI);
+
+    await fireSessionStart(parentPi, makeBaseCtx(parentCwd, parentSessionId));
+    getSubagentSessionRegistry().register(childSessionId, { parentSessionId });
+    await fireSessionStart(childPi, makeChildCtx(childCwd, childSessionId));
+
+    getPermissionsServiceForSession(parentSessionId)!.registerAuthorizer(
+      "model-judge",
+      () => Promise.resolve({ kind: "defer" as const }),
+    );
+    getPermissionsServiceForSession(childSessionId)!.registerAuthorizer(
+      "model-judge",
+      () => Promise.resolve({ kind: "defer" as const }),
+    );
+
+    const events = readReviewLog().map((entry) => entry.event);
+    expect(events).toContain("authorizer_link_vacant");
+    expect(
+      events.filter((event) => event === "authorizer_link_vacant"),
+    ).toHaveLength(1);
 
     rmSync(parentCwd, { recursive: true, force: true });
     rmSync(childCwd, { recursive: true, force: true });

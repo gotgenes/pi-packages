@@ -2,7 +2,10 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { getAgentDir, getPackageDir } from "@earendil-works/pi-coding-agent";
 import { warmBashParser } from "./access-intent/bash/parser";
 import { buildResolvedIntentFromMatchValues } from "./access-intent/input-normalizer";
-import { AuthorizerRegistry } from "./authority/authorizer-registry";
+import {
+  AuthorizerRegistry,
+  ObservedAuthorizerRegistrar,
+} from "./authority/authorizer-registry";
 import { AuthorizerSelection } from "./authority/authorizer-selection";
 import {
   ForwardedRequestServer,
@@ -46,6 +49,7 @@ import { PermissionResolver } from "./permission-resolver";
 import { PermissionSession } from "./permission-session";
 import { LocalPermissionsService } from "./permissions-service";
 import { resolveRenderBudget } from "./presentation/dialog-renderer";
+import type { PermissionsService } from "./service";
 import { PermissionServiceLifecycle } from "./service-lifecycle";
 import { PermissionSessionLogger } from "./session-logger";
 import { SessionRules } from "./session-rules";
@@ -233,12 +237,24 @@ export default function piPermissionSystemExtension(pi: ExtensionAPI): void {
       ),
   });
 
-  const permissionsService = new LocalPermissionsService(
+  // Explicitly annotated to break a type-inference cycle: the selection's
+  // `getPermissionQuery` thunk closes over this service, and the service's
+  // registrar closes back over the selection. Both are resolved at call time
+  // at runtime; `tsc` needs one of the two typed by hand to unwind them.
+  const permissionsService: PermissionsService = new LocalPermissionsService(
     resolver,
     session,
     formatterRegistry,
     accessExtractorRegistry,
-    authorizerRegistry,
+    // Sibling extensions register through the observing decorator, so a link
+    // offered to a node whose chain never runs is accepted and recorded rather
+    // than vanishing (ADR 0012 decision 4). Chain resolution keeps reading the
+    // undecorated registry above.
+    new ObservedAuthorizerRegistrar(
+      authorizerRegistry,
+      authorizerSelection,
+      logger,
+    ),
   );
 
   // Subscribe to @gotgenes/pi-subagents' child lifecycle events so child
