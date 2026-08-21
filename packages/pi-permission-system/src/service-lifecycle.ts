@@ -5,9 +5,9 @@ import { emitReadyEvent, type PermissionEventBus } from "./permission-events";
 import {
   type PermissionsService,
   publishPermissionsService,
-  publishPermissionsServiceForSession,
+  publishRootPermissionsService,
   unpublishPermissionsService,
-  unpublishPermissionsServiceForSession,
+  unpublishRootPermissionsService,
 } from "./service";
 import { readSessionId } from "./session-identity";
 
@@ -72,11 +72,11 @@ export class PermissionServiceLifecycle
     this.announced = false;
     const sessionId = readSessionId(ctx);
     if (sessionId !== null) {
-      publishPermissionsServiceForSession(sessionId, this.service);
+      publishPermissionsService(sessionId, this.service);
       this.publishedSessionId = sessionId;
     }
     if (!this.detection.isRegisteredChild(ctx)) {
-      publishPermissionsService(this.service);
+      publishRootPermissionsService(this.service);
     }
     this.emitReady(ctx);
   }
@@ -94,13 +94,10 @@ export class PermissionServiceLifecycle
       unsubscribe();
     }
     if (this.publishedSessionId !== null) {
-      unpublishPermissionsServiceForSession(
-        this.publishedSessionId,
-        this.service,
-      );
+      unpublishPermissionsService(this.publishedSessionId, this.service);
       this.publishedSessionId = null;
     }
-    unpublishPermissionsService(this.service);
+    unpublishRootPermissionsService(this.service);
   }
 
   /**

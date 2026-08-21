@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-deprecated -- these cases pin the
-   zero-arg accessor's behavior, which the deprecation window preserves
+   process-root accessor's behavior, which the deprecation window preserves
    unchanged until its removal in a future major (ADR 0012 decision 7). */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AccessIntent } from "#src/access-intent/access-intent";
@@ -10,11 +10,11 @@ import { LocalPermissionsService } from "#src/permissions-service";
 import type { PermissionsService } from "#src/service";
 import {
   getPermissionsService,
-  getPermissionsServiceForSession,
+  getRootPermissionsService,
   publishPermissionsService,
-  publishPermissionsServiceForSession,
+  publishRootPermissionsService,
   unpublishPermissionsService,
-  unpublishPermissionsServiceForSession,
+  unpublishRootPermissionsService,
 } from "#src/service";
 import { ToolAccessExtractorRegistry } from "#src/tool-access-extractor-registry";
 import { ToolInputFormatterRegistry } from "#src/tool-input-formatter-registry";
@@ -39,50 +39,50 @@ function makeService(
 
 describe("globalThis accessor", () => {
   afterEach(() => {
-    const current = getPermissionsService();
+    const current = getRootPermissionsService();
     if (current) {
-      unpublishPermissionsService(current);
+      unpublishRootPermissionsService(current);
     }
   });
 
   it("returns undefined when nothing has been published", () => {
-    expect(getPermissionsService()).toBeUndefined();
+    expect(getRootPermissionsService()).toBeUndefined();
   });
 
   it("returns the published service", () => {
     const service = makeService();
-    publishPermissionsService(service);
-    expect(getPermissionsService()).toBe(service);
+    publishRootPermissionsService(service);
+    expect(getRootPermissionsService()).toBe(service);
   });
 
   it("overwrites a previously published service", () => {
     const first = makeService();
     const second = makeService();
-    publishPermissionsService(first);
-    publishPermissionsService(second);
-    expect(getPermissionsService()).toBe(second);
+    publishRootPermissionsService(first);
+    publishRootPermissionsService(second);
+    expect(getRootPermissionsService()).toBe(second);
   });
 
   it("removes the slot when it still holds the given service", () => {
     const service = makeService();
-    publishPermissionsService(service);
-    unpublishPermissionsService(service);
-    expect(getPermissionsService()).toBeUndefined();
+    publishRootPermissionsService(service);
+    unpublishRootPermissionsService(service);
+    expect(getRootPermissionsService()).toBeUndefined();
   });
 
   it("does not remove the slot when a different service occupies it", () => {
     const parent = makeService();
     const child = makeService();
-    publishPermissionsService(parent);
+    publishRootPermissionsService(parent);
     // A child instance never published `parent`; unpublishing its own service
     // must be a no-op that leaves the parent's slot intact.
-    unpublishPermissionsService(child);
-    expect(getPermissionsService()).toBe(parent);
+    unpublishRootPermissionsService(child);
+    expect(getRootPermissionsService()).toBe(parent);
   });
 
   it("unpublish is safe to call when nothing was published", () => {
-    expect(() => unpublishPermissionsService(makeService())).not.toThrow();
-    expect(getPermissionsService()).toBeUndefined();
+    expect(() => unpublishRootPermissionsService(makeService())).not.toThrow();
+    expect(getRootPermissionsService()).toBeUndefined();
   });
 });
 
@@ -94,72 +94,72 @@ describe("session-keyed accessor", () => {
 
   afterEach(() => {
     for (const sessionId of [parentSessionId, childSessionId]) {
-      const current = getPermissionsServiceForSession(sessionId);
+      const current = getPermissionsService(sessionId);
       if (current) {
-        unpublishPermissionsServiceForSession(sessionId, current);
+        unpublishPermissionsService(sessionId, current);
       }
     }
   });
 
   it("returns undefined for a session that published nothing", () => {
-    expect(getPermissionsServiceForSession(parentSessionId)).toBeUndefined();
+    expect(getPermissionsService(parentSessionId)).toBeUndefined();
   });
 
   it("returns the service published under that session id", () => {
     const service = makeService();
-    publishPermissionsServiceForSession(parentSessionId, service);
-    expect(getPermissionsServiceForSession(parentSessionId)).toBe(service);
+    publishPermissionsService(parentSessionId, service);
+    expect(getPermissionsService(parentSessionId)).toBe(service);
   });
 
   it("keys each node's service separately", () => {
     const parent = makeService();
     const child = makeService();
-    publishPermissionsServiceForSession(parentSessionId, parent);
-    publishPermissionsServiceForSession(childSessionId, child);
-    expect(getPermissionsServiceForSession(parentSessionId)).toBe(parent);
-    expect(getPermissionsServiceForSession(childSessionId)).toBe(child);
+    publishPermissionsService(parentSessionId, parent);
+    publishPermissionsService(childSessionId, child);
+    expect(getPermissionsService(parentSessionId)).toBe(parent);
+    expect(getPermissionsService(childSessionId)).toBe(child);
   });
 
   it("does not populate the legacy root slot", () => {
-    publishPermissionsServiceForSession(parentSessionId, makeService());
-    expect(getPermissionsService()).toBeUndefined();
+    publishPermissionsService(parentSessionId, makeService());
+    expect(getRootPermissionsService()).toBeUndefined();
   });
 
   it("replaces the entry when a session republishes", () => {
     const first = makeService();
     const second = makeService();
-    publishPermissionsServiceForSession(parentSessionId, first);
-    publishPermissionsServiceForSession(parentSessionId, second);
-    expect(getPermissionsServiceForSession(parentSessionId)).toBe(second);
+    publishPermissionsService(parentSessionId, first);
+    publishPermissionsService(parentSessionId, second);
+    expect(getPermissionsService(parentSessionId)).toBe(second);
   });
 
   it("removes the entry when it still holds the given service", () => {
     const service = makeService();
-    publishPermissionsServiceForSession(parentSessionId, service);
-    unpublishPermissionsServiceForSession(parentSessionId, service);
-    expect(getPermissionsServiceForSession(parentSessionId)).toBeUndefined();
+    publishPermissionsService(parentSessionId, service);
+    unpublishPermissionsService(parentSessionId, service);
+    expect(getPermissionsService(parentSessionId)).toBeUndefined();
   });
 
   it("leaves a fresh publication alone when a superseded generation unpublishes", () => {
     const superseded = makeService();
     const fresh = makeService();
-    publishPermissionsServiceForSession(parentSessionId, superseded);
-    publishPermissionsServiceForSession(parentSessionId, fresh);
-    unpublishPermissionsServiceForSession(parentSessionId, superseded);
-    expect(getPermissionsServiceForSession(parentSessionId)).toBe(fresh);
+    publishPermissionsService(parentSessionId, superseded);
+    publishPermissionsService(parentSessionId, fresh);
+    unpublishPermissionsService(parentSessionId, superseded);
+    expect(getPermissionsService(parentSessionId)).toBe(fresh);
   });
 
   it("unpublish is safe to call for a session that published nothing", () => {
     expect(() =>
-      unpublishPermissionsServiceForSession(parentSessionId, makeService()),
+      unpublishPermissionsService(parentSessionId, makeService()),
     ).not.toThrow();
-    expect(getPermissionsServiceForSession(parentSessionId)).toBeUndefined();
+    expect(getPermissionsService(parentSessionId)).toBeUndefined();
   });
 });
 
-// ── zero-arg accessor deprecation ───────────────────────────────────────
+// ── process-root accessor deprecation ──────────────────────────────────
 
-describe("zero-arg accessor deprecation", () => {
+describe("process-root accessor deprecation", () => {
   /**
    * The once-guard is module-scoped, so each case imports a fresh copy of the
    * module — which is also how a consumer sees it under jiti isolation: one
@@ -181,11 +181,11 @@ describe("zero-arg accessor deprecation", () => {
       .mockImplementation(() => undefined);
     const service = await freshServiceModule();
 
-    service.getPermissionsService();
-    service.getPermissionsService();
+    service.getRootPermissionsService();
+    service.getRootPermissionsService();
 
     expect(emitWarning).toHaveBeenCalledExactlyOnceWith(
-      expect.stringContaining("getPermissionsServiceForSession"),
+      expect.stringContaining("getPermissionsService(sessionId)"),
       { type: "DeprecationWarning", code: "PI_PERMISSION_SYSTEM_DEP0001" },
     );
   });
@@ -195,10 +195,10 @@ describe("zero-arg accessor deprecation", () => {
     const service = await freshServiceModule();
     const published = makeService();
 
-    service.publishPermissionsService(published);
+    service.publishRootPermissionsService(published);
 
-    expect(service.getPermissionsService()).toBe(published);
-    service.unpublishPermissionsService(published);
+    expect(service.getRootPermissionsService()).toBe(published);
+    service.unpublishRootPermissionsService(published);
   });
 
   it("does not warn from the package's own publish/unpublish path", async () => {
@@ -208,8 +208,8 @@ describe("zero-arg accessor deprecation", () => {
     const service = await freshServiceModule();
     const published = makeService();
 
-    service.publishPermissionsService(published);
-    service.unpublishPermissionsService(published);
+    service.publishRootPermissionsService(published);
+    service.unpublishRootPermissionsService(published);
 
     expect(emitWarning).not.toHaveBeenCalled();
   });
@@ -221,11 +221,9 @@ describe("zero-arg accessor deprecation", () => {
     const service = await freshServiceModule();
     const published = makeService();
 
-    service.publishPermissionsServiceForSession("node-session", published);
-    expect(service.getPermissionsServiceForSession("node-session")).toBe(
-      published,
-    );
-    service.unpublishPermissionsServiceForSession("node-session", published);
+    service.publishPermissionsService("node-session", published);
+    expect(service.getPermissionsService("node-session")).toBe(published);
+    service.unpublishPermissionsService("node-session", published);
 
     expect(emitWarning).not.toHaveBeenCalled();
   });
@@ -235,9 +233,9 @@ describe("zero-arg accessor deprecation", () => {
 
 describe("service round-trip through the global slot", () => {
   afterEach(() => {
-    const current = getPermissionsService();
+    const current = getRootPermissionsService();
     if (current) {
-      unpublishPermissionsService(current);
+      unpublishRootPermissionsService(current);
     }
   });
 
@@ -261,7 +259,7 @@ describe("service round-trip through the global slot", () => {
   }
 
   function publishLocalService(resolver: ReturnType<typeof makeResolver>) {
-    publishPermissionsService(
+    publishRootPermissionsService(
       new LocalPermissionsService(
         resolver,
         {
@@ -278,7 +276,7 @@ describe("service round-trip through the global slot", () => {
   it("resolves a non-path query via a tool intent", () => {
     const resolver = makeResolver();
     publishLocalService(resolver);
-    const result = getPermissionsService()!.checkPermission(
+    const result = getRootPermissionsService()!.checkPermission(
       "bash",
       "git push",
       "Explore",
@@ -295,7 +293,7 @@ describe("service round-trip through the global slot", () => {
   it("resolves a path-surface query via an access-path intent", () => {
     const resolver = makeResolver();
     publishLocalService(resolver);
-    getPermissionsService()!.checkPermission("read", "/test/project/.env");
+    getRootPermissionsService()!.checkPermission("read", "/test/project/.env");
     const intent = resolver.resolve.mock.calls[0][0];
     expect(intent.kind).toBe("access-path");
     if (intent.kind === "access-path") {
@@ -307,7 +305,7 @@ describe("service round-trip through the global slot", () => {
     const resolver = makeResolver();
     resolver.getToolPermission.mockReturnValue("deny");
     publishLocalService(resolver);
-    const result = getPermissionsService()!.getToolPermission(
+    const result = getRootPermissionsService()!.getToolPermission(
       "write",
       "Explore",
     );
@@ -320,9 +318,9 @@ describe("service round-trip through the global slot", () => {
 
 describe("registerToolInputFormatter delegation", () => {
   afterEach(() => {
-    const current = getPermissionsService();
+    const current = getRootPermissionsService();
     if (current) {
-      unpublishPermissionsService(current);
+      unpublishRootPermissionsService(current);
     }
   });
 
@@ -336,8 +334,8 @@ describe("registerToolInputFormatter delegation", () => {
       },
     });
 
-    publishPermissionsService(service);
-    const dispose = getPermissionsService()!.registerToolInputFormatter(
+    publishRootPermissionsService(service);
+    const dispose = getRootPermissionsService()!.registerToolInputFormatter(
       "my-tool",
       formatter,
     );
@@ -360,9 +358,12 @@ describe("registerToolInputFormatter delegation", () => {
       },
     });
 
-    publishPermissionsService(service);
+    publishRootPermissionsService(service);
     expect(() =>
-      getPermissionsService()!.registerToolInputFormatter("my-tool", () => ""),
+      getRootPermissionsService()!.registerToolInputFormatter(
+        "my-tool",
+        () => "",
+      ),
     ).toThrow("my-tool");
   });
 });
@@ -371,9 +372,9 @@ describe("registerToolInputFormatter delegation", () => {
 
 describe("registerToolAccessExtractor delegation", () => {
   afterEach(() => {
-    const current = getPermissionsService();
+    const current = getRootPermissionsService();
     if (current) {
-      unpublishPermissionsService(current);
+      unpublishRootPermissionsService(current);
     }
   });
 
@@ -387,8 +388,8 @@ describe("registerToolAccessExtractor delegation", () => {
       },
     });
 
-    publishPermissionsService(service);
-    const dispose = getPermissionsService()!.registerToolAccessExtractor(
+    publishRootPermissionsService(service);
+    const dispose = getRootPermissionsService()!.registerToolAccessExtractor(
       "ffgrep",
       extractor,
     );
@@ -409,9 +410,12 @@ describe("registerToolAccessExtractor delegation", () => {
       },
     });
 
-    publishPermissionsService(service);
+    publishRootPermissionsService(service);
     expect(() =>
-      getPermissionsService()!.registerToolAccessExtractor("ffgrep", () => ""),
+      getRootPermissionsService()!.registerToolAccessExtractor(
+        "ffgrep",
+        () => "",
+      ),
     ).toThrow("ffgrep");
   });
 });

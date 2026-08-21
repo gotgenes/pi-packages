@@ -12,10 +12,10 @@
  * all load their own instance of this extension):
  *
  * - A session-keyed map, written by every node under its own session id.
- *   `getPermissionsServiceForSession(sessionId)` resolves the service whose
+ *   `getPermissionsService(sessionId)` resolves the service whose
  *   registries that node's own gates and chain read (ADR 0012 decision 2).
  * - A single legacy slot holding the process root's service, read by the
- *   zero-arg `getPermissionsService()`.
+ *   deprecated `getRootPermissionsService()`.
  *
  * Best practice: resolve per use rather than caching the reference — this
  * ensures resilience across `/reload` and load-order edge cases.
@@ -120,8 +120,8 @@ export interface PermissionQuery {
 
 /**
  * Public interface exposed to other extensions via
- * {@link getPermissionsServiceForSession} (or the deprecated zero-arg
- * {@link getPermissionsService}).
+ * {@link getPermissionsService} (or the deprecated
+ * {@link getRootPermissionsService}).
  *
  * Each instance belongs to one node, and its three registration surfaces are
  * read by that node alone: extractors and formatters by its own gates, chain
@@ -204,15 +204,17 @@ export interface PermissionsService extends PermissionQuery {
 }
 
 /**
- * Store a `PermissionsService` on `globalThis` so other extensions can
- * retrieve it via `getPermissionsService()`.
+ * Store a `PermissionsService` in the legacy process-root slot, read by
+ * `getRootPermissionsService()`.
  *
  * Called at `session_start` by the top-level (parent) instance only — an
  * in-process subagent child skips publishing so it cannot clobber the parent's
  * service. Overwrites any previously published service, which keeps `/reload`
  * working: a reloaded parent re-publishes its fresh service.
  */
-export function publishPermissionsService(service: PermissionsService): void {
+export function publishRootPermissionsService(
+  service: PermissionsService,
+): void {
   (globalThis as Record<symbol, unknown>)[SERVICE_KEY] = service;
 }
 
@@ -224,12 +226,12 @@ export function publishPermissionsService(service: PermissionsService): void {
 let warnedDeprecatedAccessor = false;
 
 const DEPRECATED_ACCESSOR_WARNING =
-  "getPermissionsService() is deprecated: it answers with the process root's " +
+  "getRootPermissionsService() is deprecated: it answers with the process root's " +
   "service, which is the wrong node in every node but the root — inside an " +
   "in-process subagent child it hands back the parent's service, so a " +
   "registration lands where the child's gates never read it and a policy " +
   "query answers against the parent's config. Use " +
-  "getPermissionsServiceForSession(sessionId) with the sessionId from the " +
+  "getPermissionsService(sessionId) with the sessionId from the " +
   "permissions:ready payload. See " +
   "https://github.com/gotgenes/pi-packages/blob/main/packages/pi-permission-system/docs/cross-extension-api.md";
 
@@ -237,12 +239,12 @@ const DEPRECATED_ACCESSOR_WARNING =
  * Retrieve the process root's published `PermissionsService`, or `undefined`
  * if the permission-system extension has not loaded (or has been unloaded).
  *
- * @deprecated Use {@link getPermissionsServiceForSession} with the `sessionId`
+ * @deprecated Use {@link getPermissionsService} with the `sessionId`
  * from the `permissions:ready` payload. This accessor answers "the process
  * root's service", which is the wrong question in every node but the root.
  * Removal is deferred to a future major (ADR 0012 decision 7).
  */
-export function getPermissionsService(): PermissionsService | undefined {
+export function getRootPermissionsService(): PermissionsService | undefined {
   if (!warnedDeprecatedAccessor) {
     warnedDeprecatedAccessor = true;
     process.emitWarning(DEPRECATED_ACCESSOR_WARNING, {
@@ -256,7 +258,7 @@ export function getPermissionsService(): PermissionsService | undefined {
 /**
  * The undeprecated read of the root slot, for this package's own lifecycle.
  *
- * `unpublishPermissionsService` must compare identities without warning the
+ * `unpublishRootPermissionsService` must compare identities without warning the
  * host about a call the host did not make.
  */
 function readRootService(): PermissionsService | undefined {
@@ -295,7 +297,7 @@ function sessionServices(): Map<string, PermissionsService> {
  * an extractor, formatter, or chain link into the registry the child's own
  * gates and chain read.
  */
-export function publishPermissionsServiceForSession(
+export function publishPermissionsService(
   sessionId: string,
   service: PermissionsService,
 ): void {
@@ -311,7 +313,7 @@ export function publishPermissionsServiceForSession(
  * payload (or from `ctx.sessionManager.getSessionId()` inside your own session
  * handler), and resolve per use rather than caching the reference.
  */
-export function getPermissionsServiceForSession(
+export function getPermissionsService(
   sessionId: string,
 ): PermissionsService | undefined {
   return sessionServices().get(sessionId);
@@ -319,13 +321,13 @@ export function getPermissionsServiceForSession(
 
 /**
  * Remove the `sessionId` entry, but only when it still holds `service`
- * (identity compare-and-delete, like {@link unpublishPermissionsService}).
+ * (identity compare-and-delete, like {@link unpublishRootPermissionsService}).
  *
  * Scoping the delete to the publishing instance keeps a superseded `/reload`
  * generation's late shutdown from wiping the new generation's freshly
  * published service.
  */
-export function unpublishPermissionsServiceForSession(
+export function unpublishPermissionsService(
   sessionId: string,
   service: PermissionsService,
 ): void {
@@ -348,7 +350,9 @@ export function unpublishPermissionsServiceForSession(
  * - A superseded `/reload` generation no longer owns the slot, so its late
  *   shutdown cannot wipe the new generation's freshly published service.
  */
-export function unpublishPermissionsService(service: PermissionsService): void {
+export function unpublishRootPermissionsService(
+  service: PermissionsService,
+): void {
   if (readRootService() !== service) {
     return;
   }

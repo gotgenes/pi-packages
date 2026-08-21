@@ -22,10 +22,10 @@ const mockUnpublishKeyedService = vi.hoisted(() => vi.fn<() => void>());
 const mockEmitReadyEvent = vi.hoisted(() => vi.fn<() => void>());
 
 vi.mock("#src/service", () => ({
-  publishPermissionsService: mockPublishRootService,
-  unpublishPermissionsService: mockUnpublishRootService,
-  publishPermissionsServiceForSession: mockPublishKeyedService,
-  unpublishPermissionsServiceForSession: mockUnpublishKeyedService,
+  publishRootPermissionsService: mockPublishRootService,
+  unpublishRootPermissionsService: mockUnpublishRootService,
+  publishPermissionsService: mockPublishKeyedService,
+  unpublishPermissionsService: mockUnpublishKeyedService,
 }));
 vi.mock("#src/permission-events", () => ({
   emitReadyEvent: mockEmitReadyEvent,
@@ -300,7 +300,7 @@ describe("teardown", () => {
     expect(order).toEqual(["unsub", "unpublish"]);
   });
 
-  it("passes the service to unpublishPermissionsService", () => {
+  it("passes the service to unpublishRootPermissionsService", () => {
     const { lifecycle, service } = makeLifecycle();
     lifecycle.teardown();
     expect(mockUnpublishRootService).toHaveBeenCalledWith(service);

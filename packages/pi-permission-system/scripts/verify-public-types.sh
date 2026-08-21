@@ -24,9 +24,9 @@ if grep -q '#src' "$DTS"; then
   grep -n '#src' "$DTS" >&2
   exit 1
 fi
-for sym in getPermissionsService publishPermissionsService unpublishPermissionsService \
-  getPermissionsServiceForSession publishPermissionsServiceForSession \
-  unpublishPermissionsServiceForSession \
+for sym in getRootPermissionsService publishRootPermissionsService unpublishRootPermissionsService \
+  getPermissionsService publishPermissionsService \
+  unpublishPermissionsService \
   PermissionsService PermissionCheckResult PermissionState ToolInputFormatter \
   PERMISSIONS_UI_PROMPT_CHANNEL PERMISSIONS_READY_CHANNEL PERMISSIONS_DECISION_CHANNEL \
   PermissionUiPromptEvent registerAuthorizer PermissionQuery Authorizer \
@@ -59,16 +59,22 @@ cat > "$CONSUMER/tsconfig.json" <<'JSON'
 JSON
 
 # Probe reproduces the exact reported import from #592 (PERMISSIONS_UI_PROMPT_CHANNEL)
-# plus the accessor and a representative type from each re-exported source module.
+# plus both accessors and a representative type from each re-exported source module.
+# The keyed accessor is *called* rather than merely referenced, so the packaged
+# declaration is checked against the required-sessionId signature (#794).
 cat > "$CONSUMER/probe.ts" <<'TS'
 import {
   getPermissionsService,
+  getRootPermissionsService,
   PERMISSIONS_UI_PROMPT_CHANNEL,
   type PermissionCheckResult,
+  type PermissionsService,
   type PermissionUiPromptEvent,
 } from "@gotgenes/pi-permission-system";
 
-void getPermissionsService;
+const _s: PermissionsService | undefined = getPermissionsService("session-id");
+void _s;
+void getRootPermissionsService;
 void PERMISSIONS_UI_PROMPT_CHANNEL;
 const _e: PermissionUiPromptEvent | undefined = undefined;
 const _r: PermissionCheckResult | undefined = undefined;

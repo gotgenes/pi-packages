@@ -50,10 +50,7 @@ import {
   PERMISSIONS_READY_CHANNEL,
   type PermissionsReadyEvent,
 } from "#src/permission-events";
-import {
-  getPermissionsService,
-  getPermissionsServiceForSession,
-} from "#src/service";
+import { getPermissionsService, getRootPermissionsService } from "#src/service";
 import { publishServingHeartbeat } from "#test/helpers/forwarding-fixtures";
 import { makeFakePi } from "#test/helpers/make-fake-pi";
 
@@ -504,12 +501,12 @@ describe("shutdown teardown chain", () => {
 
     // The service is published at session_start, not at factory init.
     await fireSessionStart(pi, makeChildCtx(cwd, "top-session"));
-    expect(getPermissionsService()).toBeDefined();
+    expect(getRootPermissionsService()).toBeDefined();
 
     await pi.fire("session_shutdown");
 
     // Service slot cleared.
-    expect(getPermissionsService()).toBeUndefined();
+    expect(getRootPermissionsService()).toBeUndefined();
 
     // Lifecycle unsubscribed: a post-shutdown session-created must not register.
     pi.events.emit(SUBAGENT_CHILD_SESSION_CREATED, {
@@ -541,7 +538,7 @@ describe("service and gate share one formatter registry", () => {
     await fireSessionStart(pi, ctx);
 
     const previewMarker = "PREVIEW::shared-registry-proof";
-    getPermissionsService()!.registerToolInputFormatter(
+    getRootPermissionsService()!.registerToolInputFormatter(
       "demo",
       () => previewMarker,
     );
@@ -578,8 +575,9 @@ describe("service and gate share one access extractor registry", () => {
 
     // ffgrep carries its path under a non-standard key; without the extractor
     // the default input.path convention would miss it.
-    getPermissionsService()!.registerToolAccessExtractor("ffgrep", (input) =>
-      typeof input.target === "string" ? input.target : undefined,
+    getRootPermissionsService()!.registerToolAccessExtractor(
+      "ffgrep",
+      (input) => (typeof input.target === "string" ? input.target : undefined),
     );
 
     const result = (await pi.fire(
@@ -627,10 +625,9 @@ describe("service and gate share one access extractor registry", () => {
     await fireSessionStart(childPi, childCtx);
 
     // The child's sibling extension registers into the child's own service.
-    getPermissionsServiceForSession(
-      childSessionId,
-    )!.registerToolAccessExtractor("ffgrep", (input) =>
-      typeof input.target === "string" ? input.target : undefined,
+    getPermissionsService(childSessionId)!.registerToolAccessExtractor(
+      "ffgrep",
+      (input) => (typeof input.target === "string" ? input.target : undefined),
     );
 
     const result = (await childPi.fire(
@@ -671,7 +668,7 @@ describe("service and chain share one authorizer registry", () => {
 
     // Registered after session_start via the published service; link resolution
     // is per-ask (ADR 0007 §4), so it is honored on the first ask.
-    getPermissionsService()!.registerAuthorizer("typo-judge", () =>
+    getRootPermissionsService()!.registerAuthorizer("typo-judge", () =>
       Promise.resolve({ kind: "deny", reason: "typo path" }),
     );
 
@@ -701,7 +698,7 @@ describe("service and chain share one authorizer registry", () => {
     const { ctx } = makeUiCtx(cwd, capturedTitles);
     await fireSessionStart(pi, ctx);
 
-    getPermissionsService()!.registerAuthorizer("typo-judge", () =>
+    getRootPermissionsService()!.registerAuthorizer("typo-judge", () =>
       Promise.resolve({ kind: "deny", reason: "typo path" }),
     );
 
@@ -730,12 +727,12 @@ describe("ready emitted after service publication", () => {
     const seenKeyed: string[] = [];
     const pi = makeFakePi();
     pi.events.on(PERMISSIONS_READY_CHANNEL, (data) => {
-      seen.push(getPermissionsService() ? "present" : "missing");
+      seen.push(getRootPermissionsService() ? "present" : "missing");
       // The payload's own sessionId must already resolve: it is the key a
       // consumer registers through the moment this handler runs.
       const { sessionId } = data as PermissionsReadyEvent;
       seenKeyed.push(
-        sessionId !== null && getPermissionsServiceForSession(sessionId)
+        sessionId !== null && getPermissionsService(sessionId)
           ? "present"
           : "missing",
       );
@@ -767,8 +764,7 @@ describe("ready emitted after service publication", () => {
       const payload = data as PermissionsReadyEvent;
       payloads.push(payload);
       resolvable.push(
-        payload.sessionId !== null &&
-          getPermissionsServiceForSession(payload.sessionId)
+        payload.sessionId !== null && getPermissionsService(payload.sessionId)
           ? "present"
           : "missing",
       );
@@ -858,7 +854,7 @@ describe("single source of truth for session state", () => {
 
     // Service accessor must see the session approval.
     // Before the fix this was "ask" — the service read an empty SessionRules.
-    const serviceResult = getPermissionsService()!.checkPermission("demo");
+    const serviceResult = getRootPermissionsService()!.checkPermission("demo");
     expect(serviceResult.state).toBe("allow");
 
     rmSync(cwd, { recursive: true, force: true });
@@ -880,7 +876,7 @@ describe("service path queries evaluate the supplied path (#503)", () => {
     piPermissionSystemExtension(pi as unknown as ExtensionAPI);
     await fireSessionStart(pi, makeChildCtx(cwd, "svc-path-session"));
 
-    const result = getPermissionsService()!.checkPermission("path", target);
+    const result = getRootPermissionsService()!.checkPermission("path", target);
     expect(result.state).toBe("deny");
 
     rmSync(cwd, { recursive: true, force: true });
@@ -902,7 +898,7 @@ describe("project trust gates project-scoped config (#644)", () => {
 
     // Global `deny` survives: the untrusted project scope was never loaded.
     expect(
-      getPermissionsService()!.checkPermission("bash", "echo hi").state,
+      getRootPermissionsService()!.checkPermission("bash", "echo hi").state,
     ).toBe("deny");
 
     rmSync(cwd, { recursive: true, force: true });
@@ -922,7 +918,7 @@ describe("project trust gates project-scoped config (#644)", () => {
 
     // The trusted project override applies (last-match-wins).
     expect(
-      getPermissionsService()!.checkPermission("bash", "echo hi").state,
+      getRootPermissionsService()!.checkPermission("bash", "echo hi").state,
     ).toBe("allow");
 
     rmSync(cwd, { recursive: true, force: true });
@@ -1146,7 +1142,7 @@ describe("multi-instance global service interplay", () => {
       parentPi,
       makeChildCtx(parentCwd, "parent-session-mi"),
     );
-    const parentService = getPermissionsService();
+    const parentService = getRootPermissionsService();
     expect(parentService).toBeDefined();
 
     // The child is registered in the shared global registry before its own
@@ -1157,11 +1153,11 @@ describe("multi-instance global service interplay", () => {
     await fireSessionStart(childPi, makeChildCtx(childCwd, childSessionId));
 
     // Mid-run: the slot resolves the parent's service, never the child's.
-    expect(getPermissionsService()).toBe(parentService);
+    expect(getRootPermissionsService()).toBe(parentService);
 
     // The child's shutdown is a no-op for the slot it never owned.
     await childPi.fire("session_shutdown");
-    expect(getPermissionsService()).toBe(parentService);
+    expect(getRootPermissionsService()).toBe(parentService);
 
     rmSync(parentCwd, { recursive: true, force: true });
     rmSync(childCwd, { recursive: true, force: true });
@@ -1188,8 +1184,8 @@ describe("session-keyed service publication", () => {
     getSubagentSessionRegistry().register(childSessionId, { parentSessionId });
     await fireSessionStart(childPi, makeChildCtx(childCwd, childSessionId));
 
-    const parentService = getPermissionsServiceForSession(parentSessionId);
-    const childService = getPermissionsServiceForSession(childSessionId);
+    const parentService = getPermissionsService(parentSessionId);
+    const childService = getPermissionsService(childSessionId);
     expect(parentService).toBeDefined();
     expect(childService).toBeDefined();
     expect(childService).not.toBe(parentService);
@@ -1263,11 +1259,11 @@ describe("session-keyed service publication", () => {
     getSubagentSessionRegistry().register(childSessionId, { parentSessionId });
     await fireSessionStart(childPi, makeChildCtx(childCwd, childSessionId));
 
-    getPermissionsServiceForSession(parentSessionId)!.registerAuthorizer(
+    getPermissionsService(parentSessionId)!.registerAuthorizer(
       "model-judge",
       () => Promise.resolve({ kind: "defer" as const }),
     );
-    getPermissionsServiceForSession(childSessionId)!.registerAuthorizer(
+    getPermissionsService(childSessionId)!.registerAuthorizer(
       "model-judge",
       () => Promise.resolve({ kind: "defer" as const }),
     );
@@ -1296,14 +1292,12 @@ describe("session-keyed service publication", () => {
     await fireSessionStart(parentPi, makeChildCtx(parentCwd, parentSessionId));
     getSubagentSessionRegistry().register(childSessionId, { parentSessionId });
     await fireSessionStart(childPi, makeChildCtx(childCwd, childSessionId));
-    const parentService = getPermissionsServiceForSession(parentSessionId);
+    const parentService = getPermissionsService(parentSessionId);
 
     await childPi.fire("session_shutdown");
 
-    expect(getPermissionsServiceForSession(childSessionId)).toBeUndefined();
-    expect(getPermissionsServiceForSession(parentSessionId)).toBe(
-      parentService,
-    );
+    expect(getPermissionsService(childSessionId)).toBeUndefined();
+    expect(getPermissionsService(parentSessionId)).toBe(parentService);
 
     rmSync(parentCwd, { recursive: true, force: true });
     rmSync(childCwd, { recursive: true, force: true });
@@ -1357,7 +1351,7 @@ describe("session approvals do not leak across same-cwd session switches", () =>
       { toolName: "demo", toolCallId: "demo-approve", input: { foo: "bar" } },
       firstCtx,
     );
-    expect(getPermissionsService()!.checkPermission("demo").state).toBe(
+    expect(getRootPermissionsService()!.checkPermission("demo").state).toBe(
       "allow",
     );
 
@@ -1372,7 +1366,9 @@ describe("session approvals do not leak across same-cwd session switches", () =>
 
     // The previous session's approval must not be visible: `demo` is back to
     // its configured `ask`, not the carried-over `allow`.
-    expect(getPermissionsService()!.checkPermission("demo").state).toBe("ask");
+    expect(getRootPermissionsService()!.checkPermission("demo").state).toBe(
+      "ask",
+    );
 
     rmSync(cwd, { recursive: true, force: true });
   });

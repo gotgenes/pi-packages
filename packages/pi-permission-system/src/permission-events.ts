@@ -42,7 +42,7 @@ export const PERMISSIONS_DECISION_CHANNEL = "permissions:decision";
  *
  * The bus announces; the locator provides. The payload carries data a consumer
  * can log, serialize, and replay — never a live capability — so the service
- * itself is fetched with `getPermissionsServiceForSession(sessionId)`.
+ * itself is fetched with `getPermissionsService(sessionId)`.
  *
  * There is no `protocolVersion` — the published types plus package semver
  * define the broadcast contract.
@@ -50,7 +50,7 @@ export const PERMISSIONS_DECISION_CHANNEL = "permissions:decision";
 export interface PermissionsReadyEvent {
   /**
    * The emitting node's session id: the key for
-   * `getPermissionsServiceForSession`. `null` when the host exposed no session
+   * `getPermissionsService`. `null` when the host exposed no session
    * id, in which case this node published no keyed service.
    */
   sessionId: string | null;
@@ -181,7 +181,7 @@ export interface PermissionDecisionEvent {
 /**
  * Emit the `permissions:ready` broadcast.
  * Call after the node published its service, so a consumer reacting to ready
- * can immediately resolve `getPermissionsServiceForSession(event.sessionId)`.
+ * can immediately resolve `getPermissionsService(event.sessionId)`.
  * Called twice per session: at `session_start`, and at the first
  * `before_agent_start` so a consumer whose own `session_start` ran later still
  * hears it (ADR 0012 decision 3).
