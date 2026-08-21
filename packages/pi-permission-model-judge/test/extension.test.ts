@@ -277,6 +277,72 @@ describe("createModelJudgeExtension", () => {
   });
 });
 
+describe("an unresolvable permission service", () => {
+  let warned: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    warned = vi.spyOn(console, "warn").mockImplementation(() => {});
+  });
+
+  it("warns once when the ready payload carries no session id", () => {
+    const pi = makeFakePi();
+    createModelJudgeExtension(pi.api as never, {
+      loadConfig: () => CONFIG_RESULT,
+      complete: vi.fn(),
+    });
+    publishPermissionsService(SESSION_ID, service);
+    pi.lifecycle.get("session_start")?.({}, ctxWithRegistry());
+
+    emitReady(pi, null);
+    emitReady(pi, null);
+
+    expect(warned).toHaveBeenCalledTimes(1);
+    expect(warned.mock.calls[0]?.[0]).toContain("27.0.0");
+  });
+
+  it("warns when the node published no service", () => {
+    const pi = makeFakePi();
+    createModelJudgeExtension(pi.api as never, {
+      loadConfig: () => CONFIG_RESULT,
+      complete: vi.fn(),
+    });
+    pi.lifecycle.get("session_start")?.({}, ctxWithRegistry());
+
+    emitReady(pi);
+
+    expect(warned).toHaveBeenCalledTimes(1);
+  });
+
+  it("stays silent when the session simply has no config", () => {
+    const pi = makeFakePi();
+    createModelJudgeExtension(pi.api as never, {
+      loadConfig: () => ({ config: undefined, issues: [] }),
+      complete: vi.fn(),
+    });
+    pi.lifecycle.get("session_start")?.({}, ctxWithRegistry());
+
+    emitReady(pi, null);
+
+    expect(warned).not.toHaveBeenCalled();
+  });
+
+  it("warns again in the next session", () => {
+    const pi = makeFakePi();
+    createModelJudgeExtension(pi.api as never, {
+      loadConfig: () => CONFIG_RESULT,
+      complete: vi.fn(),
+    });
+    pi.lifecycle.get("session_start")?.({}, ctxWithRegistry());
+    emitReady(pi);
+    pi.lifecycle.get("session_shutdown")?.({}, ctxWithRegistry());
+
+    pi.lifecycle.get("session_start")?.({}, ctxWithRegistry());
+    emitReady(pi);
+
+    expect(warned).toHaveBeenCalledTimes(2);
+  });
+});
+
 /**
  * The production seam: `createModelJudgeExtension` with no injected
  * `loadConfig`, so the global scope is resolved the way it is in a real

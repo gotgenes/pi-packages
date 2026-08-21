@@ -61,6 +61,7 @@ export function createModelJudgeExtension(
   let config: ModelJudgeConfig | undefined;
   let registry: ModelRegistryLike | undefined;
   let dispose: (() => void) | undefined;
+  let warnedUnresolvedService = false;
 
   pi.on("session_start", (_event, ctx) => {
     const result = loadConfig(ctx.cwd);
@@ -83,6 +84,7 @@ export function createModelJudgeExtension(
     const service =
       sessionId === null ? undefined : getPermissionsService(sessionId);
     if (!service) {
+      warnUnresolvedService();
       return;
     }
     const authorize = createTypoReviewer({
@@ -98,7 +100,23 @@ export function createModelJudgeExtension(
     dispose = undefined;
     config = undefined;
     registry = undefined;
+    warnedUnresolvedService = false;
   });
+
+  /**
+   * Report, once per session, that the link this session was configured for is
+   * not registered — the vacancy would otherwise be visible only as the
+   * absence of `model_judge` entries in the review log.
+   */
+  function warnUnresolvedService(): void {
+    if (warnedUnresolvedService) {
+      return;
+    }
+    warnedUnresolvedService = true;
+    warn(
+      "this session's node published no permission service, so the model-judge link is not registered — @gotgenes/pi-permission-system 27.0.0 or later must be loaded in the same session.",
+    );
+  }
 }
 
 /** The payload's session id, or `null` for any shape that cannot key the locator. */
