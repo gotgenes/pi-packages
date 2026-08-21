@@ -169,6 +169,9 @@ When the decision settles a structure that will repeat across many files, settle
 A placement or shape choice is only sound for a known size, so show a worked example of the largest instance (Refs #775).
 Define a gate's terms of art before its substance — a term the operator must decode is a question they cannot answer (Refs #786: `node`, chain `link`, and the service accessor each bounced a gate).
 When rejecting a candidate on cost, price its cheapest viable form — #786 dismissed a session-keyed accessor as a semver-major redesign, and its additive variant became the adopted decision.
+When every option adds to the same existing object, name that premise and offer the option that removes it — or say why it is not viable.
+
+## 787's three wiring options all grew `AgentPrepHandler`; the operator's "too many responsibilities" note produced the extraction that made the new dependency unnecessary
 
 ### Background agent guardrails
 
@@ -187,7 +190,7 @@ Check a multi-question report against itself first: #725's trace answered "the `
 The mirror holds for a claim **you** supply: a reviewer cannot verify a coverage assertion handed to it as a premise, so state what you checked, not what you conclude was covered.
 When a change creates N artifacts that cross-reference each other, enumerate the edges rather than sampling them (Refs #775).
 
-### Parallel peer sessions (git worktrees)
+#### Parallel peer sessions (git worktrees)
 
 Run two agents in parallel by giving each its own git worktree and its own interactive Pi session.
 Use `/worktree <issue>` (the project-local `.pi/extensions/worktree.ts` command) or `scripts/worktree-new.sh <issue> [initial-command]` directly.
@@ -226,7 +229,7 @@ Guardrails:
   An intervening root commit to `main` stales the peer's completed `/ship-worktree` rebase, so the ff-merge is rejected and the peer must re-rebase (Refs #549).
 - A first launch in each worktree reinstalls `.pi/npm/` (gitignored, so it does not carry over) — a one-time cost Pi handles automatically.
 
-### Session naming convention
+#### Session naming convention
 
 Each prompt template calls `set_session_name` (from `pi-session-tools`) to label the session automatically:
 
@@ -243,7 +246,7 @@ Each prompt template calls `set_session_name` (from `pi-session-tools`) to label
 
 Each prompt template sets the appropriate name automatically via `set_session_name`.
 
-### Retro file format
+#### Retro file format
 
 Get each stage timestamp from `date -u +"%Y-%m-%dT%H:%M:%SZ"` — never write one from memory; a model has no clock (Refs #653).
 
@@ -293,14 +296,14 @@ issue_title: "Extract ExtensionPaths value object"
 The `### Diagnostic details` subsection is optional — include it only when the `/retro` prompt's diagnostic lenses produce actionable findings.
 Omit it when all lenses find nothing notable.
 
-### Pre-completion reviewer
+#### Pre-completion reviewer
 
 The `pre-completion-reviewer` agent (`.pi/agents/pre-completion-reviewer.md`) is dispatched automatically by `/tdd-plan` and `/build-plan` after all implementation steps are complete.
 It runs as a fresh-context subagent (no implementation bias) and produces a PASS / WARN / FAIL report covering: deterministic checks (`pnpm run check`, `pnpm run lint`, `pnpm run test`, `pnpm fallow dead-code`), acceptance criteria verification, conventional commits, documentation staleness, code design, test artifacts, Mermaid diagrams, cross-step invariant preservation (a later phase step must not regress an earlier step's documented `Outcome:` invariant), and planned follow-up filing (a follow-up the plan names must carry a recorded issue number).
 The `pre-completion` skill (`.pi/skills/pre-completion/SKILL.md`) encodes the dispatch protocol loaded by both templates.
 The agent's `model:` frontmatter must use the `provider/id` alias form the Pi CLI/UI accepts (e.g. `anthropic/claude-sonnet-4-6`); an ID absent from the model registry silently falls back to the parent session's model.
 
-### Craftsmanship subagents
+#### Craftsmanship subagents
 
 Two read-only subagents carry the micro / craftsmanship lens (SOLID at the method scale, Test-Driven **Design**, self-documenting code) so it is examined systematically rather than left to whoever has spare context:
 
@@ -317,12 +320,12 @@ Both use the same `provider/id` model-alias rule as the reviewer above.
 Use `/retro-note` to capture quick observations mid-session without interrupting the workflow.
 Use `scripts/issue-context.sh <N>` to gather all available context for an issue (plan, retro, commits, branches) when bootstrapping a new session.
 
-## Code Style
+### Code Style
 
 This project uses **pnpm** exclusively — never `npm` or `npx`.
 Before implementing, refactoring, or reviewing code, load the `code-design` skill — it covers naming, SOLID and structural design heuristics, TypeScript conventions, pnpm/ES2024 tooling rules, Pi SDK boundaries, and Biome/ESLint conflict workarounds.
 
-## Shell and search
+### Shell and search
 
 Use `colgrep` for intent-based codebase exploration and convention discovery; use `grep` for exact symbol matching.
 `rg -r` is `--replace`, not `--recursive` — `rg -rn pattern path` silently rewrites every match to `n` and drops the line numbers.
@@ -337,19 +340,19 @@ Pass file tool paths repo-relative (`packages/<pkg>/src/x.ts`), not hand-built a
 Before making an existing prose convention machine-read (a grep-able heading, tag, or marker), enumerate its existing spellings first.
 A hand-written convention drifts — `Open-issue sweep dispositions` had three spellings across two packages' archives (Refs #767).
 
-## Markdown
+### Markdown
 
 Before writing or editing markdown files, load the `markdown-conventions` skill — it covers the formatting rules (one-sentence-per-line, fence languages, list numbering, table style) and the YAML frontmatter schema for plans and retros.
 
-## Mermaid
+### Mermaid
 
 Before authoring or reviewing Mermaid diagrams, load the `mermaid` skill.
 
-## Testing
+### Testing
 
 Before writing or debugging tests, load the `testing` skill for Vitest mock patterns and TDD planning rules.
 
-## Commits
+### Commits
 
 Use Conventional Commits.
 Type a commit by what a user can observe once it lands, not by what it adds to the tree.

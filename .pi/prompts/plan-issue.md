@@ -95,6 +95,8 @@ Classify whether the change is breaking — independently of whether it is ambig
 A change is breaking if it alters the observable behavior, output shape, or default of existing code or config on upgrade without a user edit.
 A bug fix that changes a default value is breaking, even when the old behavior was wrong.
 If breaking, state it in Goals and use `feat!:`/`fix!:` with a `BREAKING CHANGE:` footer.
+When the change alters a documented contract (an event's timing guarantee, a default, an output shape), state the classification in the gate's substance message even when an ADR already settled it.
+A settled call and an unasked one look identical to the operator (Refs #787).
 
 Before writing the plan, identify any genuinely ambiguous design choices.
 If there are 1–2 such choices (breaking-vs-non-breaking, result-shape change, fallback semantics, etc.), use the `ask-user` skill once to surface them with a short context summary and concrete options.

@@ -73,6 +73,9 @@ Track repeat deferrals: an issue swept as out-of-scope across multiple consecuti
 Surface each repeat-deferral as an explicit `ask_user` decision (schedule / defer-with-recorded-rationale / close as not-planned), not a self-made call — these are preference-sensitive judgments the user should own; bundle them into the Step 8 composition `ask_user`, not separate round-trips.
 Record the sweep's verdicts under the `#### Open-issue sweep dispositions` heading the Output section prescribes — mid-phase filing sites and `/finish-phase` both append to and grep that exact heading.
 
+Sweep recorded deferred tidyings too: `grep -r -A 5 '#### Deferred tidyings' packages/$1/docs/retro/`.
+Each is a finding a `tidy-first-assessor` judged real but out of scope for the change it was dispatched over — triage like any other candidate, or say why it stays deferred (Refs #787).
+
 ### Step 3: Run fallow for corroboration and baseline
 
 Fallow **corroborates** the cause hypothesis and supplies outcome baselines (LOC, complexity, dead code, duplication) — it does not set the agenda.

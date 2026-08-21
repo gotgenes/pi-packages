@@ -54,7 +54,122 @@ All deterministic gates green at each commit; the pre-completion reviewer return
   The release-please PR [#790] is still open and must stay so until [#789] lands, or the keyed channel ships without the latch.
 - **Wrong-path friction:** one `Edit` was rejected by the permission gate for a hand-built absolute path missing the `packages/` segment — the repo-relative form is the reliable one, as `AGENTS.md` says.
 
+## Stage: Final Retrospective (2026-08-21T18:25:02Z)
+
+### Session summary
+
+One session carried this issue from plan to ship: the `permissions:ready` latch (ADR 0012 decision 3) landed in four commits — a preparatory `SessionTurnPrep` extraction, an uncalled `ReadyAnnouncer`, the wiring plus emission-count tests, and the channel-contract docs.
+The pi-permission-system suite went 3215 → 3227 tests, CI passed on `d39fe1f9`, and the issue closed with the release deliberately deferred behind [#789].
+The defining moment was not in implementation but in the planning gate, where an operator note redirected the design from "add a fifth dependency" to "extract first, then add none."
+
+### Observations
+
+#### What went well
+
+- **The `tidy-first-assessor` earned its dispatch by verifying rather than proposing.**
+  It returned "no preparatory tidying warranted" — nominally a null result — but its report confirmed three plan assumptions I had asserted: that `PermissionSession` satisfies `TurnPrepSession` structurally (no adapter), that both constructor call-site counts were as measured (no lift-and-shift staging), and that `make-fake-pi.ts` needed no change because `before_agent_start` was already registered and in `EXPECTED_HANDLERS`, merely never fired.
+  A null report that de-risks the plan is not a wasted dispatch.
+- **A plan-time risk register actually fired.**
+  The plan named one specific hazard — that `makeSetup` in `before-agent-start.test.ts` must build a **real** `SessionTurnPrep`, since the surviving prompt-sanitization assertions depend on an activated session.
+  When step 3 added the announcer parameter, that fixture failed loudly (`Cannot read properties of undefined (reading 'announceReady')`) instead of silently skipping `session.activate`.
+  Plan-time hazard lists usually rot before implementation; this one paid within two commits.
+- **The package under development caught the agent developing it.**
+  A hand-built absolute path missing the `packages/` segment tripped the `external_directory` gate, and the denial carried a corrective reason naming the exact fix ("This path is missing the `pi-packages/packages/` prefix.
+  The correct location is: …").
+  That is the [#635] corrective-reason feature working on its own author.
+- **Verification was incremental, not terminal.**
+  Every cycle ran a file-scoped `vitest` at Red and at Green, `pnpm run check` after each interface change, and the full package suite before each commit — no end-of-session surprise.
+
+#### What caused friction (agent side)
+
+- `premature-convergence` — the planning gate offered three wiring options (seam into `AgentPrepHandler`, a second `pi.on`, a composition-root lambda) that all shared one unexamined premise: that the latch trigger lands on the existing handler.
+  The operator's note ("I'm starting to worry `AgentPrepHandler` might be getting too many responsibilities") produced the fourth option I had not offered — extract the per-turn preparation first, so the handler gains no dependency at all.
+  I had the evidence in hand (I wrote "5 ctor deps" into option A's own description) and read it as an accepted cost rather than a design question, and the `design-review` skill was loaded but never run as a checklist against that decision.
+  Impact: one extra `ask_user` round; without it the plan would have committed a five-dependency, three-responsibility handler.
+  The correction produced the session's cleanest commit (`694898b9`), so the cost was one round-trip and the gain was structural.
+- `missing-context` — the breaking-vs-non-breaking classification never reached the gate.
+  ADR 0012 decision 7 had settled it (minor, with a release-note callout), so I treated it as closed and planned to state it only in the plan's Goals; the operator had to ask "Is idempotency requirement a breaking change?"
+  as a gate note.
+  The `/plan-issue` template lists breaking-vs-non-breaking as a gate-worthy ambiguity, but a *settled* classification and an *unasked* one look identical from the operator's side.
+  Impact: one extra question in the second gate; no rework, and answering it surfaced the strongest supporting evidence (the hazard already existed on `/reload`), which then went into the plan and the commit body.
+- `instruction-violation` (self-identified) — ran `rg -rn "before_agent_start" …`, where `-r` is `--replace`; every match came back rewritten to the literal `n` (`pi.on("n", …)`) with line numbers dropped.
+  `AGENTS.md` § Shell and search documents this verbatim (Refs [#725]).
+  Impact: one degraded readout I worked around by reading the files directly, plus a later `grep -rn` re-run; no rework.
+- `instruction-violation` (self-identified) — passed a hand-built absolute path to `Edit` instead of the repo-relative form `AGENTS.md` requires (Refs [#726]), tripping the `external_directory` gate.
+  Impact: one rejected tool call, corrected on the next.
+- `other` — an `Edit` batch carried an unsupported `hint` key inside one `edits[]` entry; extra keys are silently ignored while the tool still reports success.
+  Impact: none here (5 intended edits, 5 blocks reported, count verified), but it is exactly the silent-ignore class `AGENTS.md` warns about.
+
+Both `instruction-violation` entries were violations of rules that already exist verbatim in `AGENTS.md`, and both were caught within one tool call — by mangled output and by the permission gate respectively.
+That is a salience blip with working guardrails, not a documentation gap, so no rule change is proposed for either.
+
+#### What caused friction (user side)
+
+- Nothing that cost time.
+  The two gate notes were the highest-leverage interventions of the session: the first reframed a wiring question as a design question, and the second forced the release-classification evidence into the open.
+  Both arrived as questions attached to a chosen option rather than as post-hoc corrections, which is why neither required rework.
+- The second note delegated the scope call back explicitly ("Or if it needs to be its own issue because the scope is so large, we can do that issue, first"), which is the right shape — it let the assessment happen where the file-level evidence was (4 files, one commit) instead of guessing at gate time.
+
+### Diagnostic details
+
+- **Model-performance correlation** — both subagent dispatches ran on `anthropic/claude-sonnet-5` per their agent frontmatter (`.pi/agents/tidy-first-assessor.md`, `.pi/agents/pre-completion-reviewer.md`): appropriate for read-only, judgment-heavy review.
+  Inline transcript labels confirm the TDD and ship turns ran on `anthropic/claude-sonnet-5` and this retrospective on `anthropic/claude-opus-5`.
+  Three `model_change` entries are recorded for the session, consistent with planning on `anthropic/claude-opus-5`, but per the [#737] caveat that is not attributed from an inline label and is left unconfirmed.
+  No mismatch found: the judgment-heavy planning gate and the mechanical TDD execution ran on the models suited to each.
+- **Escalation-delay tracking** — no `rabbit-hole` friction occurred; the longest run on a single error was one tool call (the constructor-arity break in step 3, fixed on the next call).
+  Nothing to flag.
+- **Unused-tool detection** — `colgrep` was loaded but never used; every search targeted a known exact symbol (`AgentPrepHandler`, `permissions:ready`, `new PermissionServiceLifecycle`), which its own decision table assigns to `grep`.
+  No `Explore` dispatch was needed because ADR 0012 supplied the diagnosis the plan was built on.
+  No gap.
+- **Feedback-loop gap analysis** — no gap: file-scoped `vitest` at each Red and Green, `pnpm run check` after each of the three interface-changing steps, full package suite before commits 1 and 3, and root `pnpm run lint` plus `pnpm fallow dead-code` before the docs commit and again before the push.
+
+### Corrected test-count breakdown
+
+The TDD stage note's per-file split was slightly off; the accurate delta for 3215 → 3227 is:
+
+| File                                       | Delta                                                     |
+| ------------------------------------------ | --------------------------------------------------------- |
+| `test/handlers/session-turn-prep.test.ts`  | +7 (4 moved in, 3 new)                                    |
+| `test/handlers/before-agent-start.test.ts` | −3 (4 moved out, 1 delegation test added)                 |
+| `test/service-lifecycle.test.ts`           | +6 (5 `announceReady` cases, 1 interface-shape assertion) |
+| `test/composition-root.test.ts`            | +2 (emission count, latch re-arm)                         |
+
+### Tidy-first effectiveness audit
+
+The operator challenged this session's proposal to reframe a null assessor report, asking how effective `tidy-first` has been overall and how often a real finding was discarded as out of scope.
+Mined from the retro corpus (95 files mention the assessor):
+
+- **Catches with commits.**
+  `d955190a` — the assessor found `program.test.ts` and `path-normalizer.test.ts` fully replacing `node:fs` with a lone `realpathSync` stub, which would have thrown across dozens of unrelated tests and turned a planned Red into noise.
+  `2e9f6db2` — it caught duplication from the *upcoming* diff that the plan missed despite running the `design-review` checklist; landing the extraction first turned that cycle into a one-line change.
+  Elsewhere it found two inline `PromptPreferences` construction sites that a grep obligation added one session earlier still missed, and pre-verified a fixture blast radius as near-zero, cancelling a speculative edit pass across five test files.
+- **Declines.**
+  14 retro files record "nothing warranted," and each judges the decline correct (a 3-line helper with one caller; an inherently atomic interface split; a pure `git mv` over an enumerated import graph).
+- **One documented failure.**
+  A `runGate` fixture wrapper was recommended, was genuinely in scope, and was still wrong — it would have become a zero-value pass-through once the parameter it absorbed was deleted.
+  That produced a corrective rule in `.pi/agents/tidy-first-assessor.md`, so the mechanism has already been tuned once on evidence.
+- **Discards.**
+  Every readable rejection in the corpus was genuinely out of footprint (stepdown reordering, splitting a large test file, a non-target file, an AST walk), and adjacent work was commonly filed as its own issue rather than dropped.
+  No retro reports a lost finding — but this is a sample, not an audit, and the reason it cannot be audited is the defect itself.
+
+The defect: the skill said to "note it for `/plan-improvements`," and `/plan-improvements` had no step that read anything of the kind.
+A rejected-but-valuable finding lived only in a subagent report inside a transcript no later session opens.
+The fix below gives it a written destination and a reader.
+
+### Changes made
+
+1. `AGENTS.md` (§ Clarification gates) — added the rule that when every gate option adds to the same existing object, the premise must be named and the removing option offered, with this session's `AgentPrepHandler` case as the example.
+2. `.pi/prompts/plan-issue.md` (§ Decide) — a breaking/non-breaking classification for a documented-contract change must appear in the gate's substance message even when an ADR settled it, since a settled call and an unasked one look identical to the operator.
+3. `.pi/skills/tidy-first/SKILL.md` (§ Step 3) — replaced the dead-letter "note it for `/plan-improvements`" with a written destination (`#### Deferred tidyings` in the issue's retro stage note), and added that a null report should be read for what it verified.
+4. `.pi/prompts/plan-improvements.md` (§ Step 2) — added the matching reader: the phase sweep greps that heading across the package's retros and triages each finding.
+
+Changes 3 and 4 are one loop and only work together; the writer and reader reference the same literal heading.
+
 [ADR 0012]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-permission-system/docs/decisions/0012-cross-node-extension-contract.md
+[#635]: https://github.com/gotgenes/pi-packages/issues/635
 [#699]: https://github.com/gotgenes/pi-packages/issues/699
+[#725]: https://github.com/gotgenes/pi-packages/issues/725
+[#726]: https://github.com/gotgenes/pi-packages/issues/726
+[#737]: https://github.com/gotgenes/pi-packages/issues/737
 [#789]: https://github.com/gotgenes/pi-packages/issues/789
 [#790]: https://github.com/gotgenes/pi-packages/pull/790
