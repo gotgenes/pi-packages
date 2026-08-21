@@ -250,3 +250,8 @@ Fix: use a `for...of` loop instead of `.forEach()` when a callback mutates a var
 
 Add an `eslint-disable` directive only after the linter reports the rule, never preemptively — the pre-commit auto-fix strips an unused directive and leaves a stray blank line (an inline disable above an object-literal property).
 A `||`-for-defaulting on a non-nullable primitive (e.g. `string`) does not trip `prefer-nullish-coalescing`, so no disable is needed (Refs #596).
+
+### no-deprecated on a deliberate deprecation
+
+Tagging an exported symbol `@deprecated` makes `@typescript-eslint/no-deprecated` an error at every internal call site — including the tests that pin the deprecated path's preserved behavior.
+Add a file-level `eslint-disable` with a reason to those tests; do not drop the tag or migrate them to the replacement (Refs #699).

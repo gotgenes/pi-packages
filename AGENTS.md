@@ -93,7 +93,7 @@ Check an ADR's frontmatter `status:` before citing it.
 The `pi-autoformat` extension emits a `[pi-autoformat] Formatted N file(s)` message after `Edit`/`Write`.
 It is informational — not a turn boundary.
 Continue the current step (e.g. Red→Green→Commit) until it is complete.
-It also reflows what you just wrote (line wrapping, quote style), so an `oldText` built from the layout you emitted can fail to match — re-read a region you just edited before editing it again.
+It also reflows what you just wrote (line wrapping, quote style), so an `oldText` — or a shell/regex pattern — built from the layout you emitted can fail to match; re-read a region you just edited before matching against it again.
 It also joins a line ending in `:` with the sentence after it — to add a sentence there, start a new paragraph, not a new line.
 It fires on `Edit`/`Write` only, so a file appended with a shell heredoc skips formatting entirely and fails `pnpm run lint` — append source with `Write`/`Edit` too, not just markdown.
 
@@ -363,7 +363,7 @@ Commit at meaningful checkpoints without waiting for an explicit reminder.
 Prefer small, reviewable commits that leave the repository in a valid state.
 Do not gate a commit (or any `&&` step) on a check piped through `tail`/`head` — a pipeline's exit status is the filter's, so a failed `pnpm run lint`/`check` is masked and the commit still runs.
 Run the check unpiped, or test `${PIPESTATUS[0]}`.
-To keep the output short without losing the gate, redirect rather than pipe: `pnpm run check >/dev/null && git commit …`.
+To keep the output short without losing the gate, redirect rather than pipe: `pnpm run check >/tmp/check.log 2>&1 || tail -30 /tmp/check.log`.
 That redirect hides Biome findings at **warning** level, which exit 0 — `pnpm run lint` reports PASS while new warnings accumulate.
 After adding or heavily editing files, count them: `pnpm run lint >/tmp/l.log 2>&1; grep -c 'lint/' /tmp/l.log || true` — `grep -c` exits 1 on a zero count (Refs #694).
 `biome check --write` reports `No fixes applied` for a warning, whose fix is unsafe-classified — hand-edit it, or `--write --unsafe` the one file.
