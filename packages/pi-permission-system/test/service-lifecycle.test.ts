@@ -15,17 +15,17 @@ import { makeCtx } from "#test/helpers/handler-fixtures";
 
 const mockIsRegisteredChild = vi.fn<(ctx: unknown) => boolean>();
 const mockAdjudicatesLocally = vi.fn<() => boolean>();
-const mockPublishPermissionsService = vi.hoisted(() => vi.fn<() => void>());
-const mockUnpublishPermissionsService = vi.hoisted(() => vi.fn<() => void>());
-const mockPublishForSession = vi.hoisted(() => vi.fn<() => void>());
-const mockUnpublishForSession = vi.hoisted(() => vi.fn<() => void>());
+const mockPublishRootService = vi.hoisted(() => vi.fn<() => void>());
+const mockUnpublishRootService = vi.hoisted(() => vi.fn<() => void>());
+const mockPublishKeyedService = vi.hoisted(() => vi.fn<() => void>());
+const mockUnpublishKeyedService = vi.hoisted(() => vi.fn<() => void>());
 const mockEmitReadyEvent = vi.hoisted(() => vi.fn<() => void>());
 
 vi.mock("#src/service", () => ({
-  publishPermissionsService: mockPublishPermissionsService,
-  unpublishPermissionsService: mockUnpublishPermissionsService,
-  publishPermissionsServiceForSession: mockPublishForSession,
-  unpublishPermissionsServiceForSession: mockUnpublishForSession,
+  publishPermissionsService: mockPublishRootService,
+  unpublishPermissionsService: mockUnpublishRootService,
+  publishPermissionsServiceForSession: mockPublishKeyedService,
+  unpublishPermissionsServiceForSession: mockUnpublishKeyedService,
 }));
 vi.mock("#src/permission-events", () => ({
   emitReadyEvent: mockEmitReadyEvent,
@@ -89,10 +89,10 @@ beforeEach(() => {
   mockIsRegisteredChild.mockReturnValue(false);
   mockAdjudicatesLocally.mockReset();
   mockAdjudicatesLocally.mockReturnValue(true);
-  mockPublishPermissionsService.mockReset();
-  mockUnpublishPermissionsService.mockReset();
-  mockPublishForSession.mockReset();
-  mockUnpublishForSession.mockReset();
+  mockPublishRootService.mockReset();
+  mockUnpublishRootService.mockReset();
+  mockPublishKeyedService.mockReset();
+  mockUnpublishKeyedService.mockReset();
   mockEmitReadyEvent.mockReset();
 });
 
@@ -118,7 +118,7 @@ describe("activate", () => {
     const { lifecycle, service } = makeLifecycle();
     mockIsRegisteredChild.mockReturnValue(false);
     lifecycle.activate(ctx);
-    expect(mockPublishPermissionsService).toHaveBeenCalledWith(service);
+    expect(mockPublishRootService).toHaveBeenCalledWith(service);
   });
 
   it("skips publishing for a registered child session", () => {
@@ -126,7 +126,7 @@ describe("activate", () => {
     const { lifecycle } = makeLifecycle();
     mockIsRegisteredChild.mockReturnValue(true);
     lifecycle.activate(ctx);
-    expect(mockPublishPermissionsService).not.toHaveBeenCalled();
+    expect(mockPublishRootService).not.toHaveBeenCalled();
   });
 
   it("always emits the ready event, even for a child session", () => {
@@ -143,10 +143,10 @@ describe("activate", () => {
   it("emits ready after publishing the service", () => {
     const ctx = makeCtx();
     const order: string[] = [];
-    mockPublishForSession.mockImplementation(() => order.push("publish-keyed"));
-    mockPublishPermissionsService.mockImplementation(() =>
-      order.push("publish"),
+    mockPublishKeyedService.mockImplementation(() =>
+      order.push("publish-keyed"),
     );
+    mockPublishRootService.mockImplementation(() => order.push("publish"));
     mockEmitReadyEvent.mockImplementation(() => order.push("ready"));
     const { lifecycle } = makeLifecycle();
     lifecycle.activate(ctx);
@@ -164,7 +164,10 @@ describe("activate", () => {
     const ctx = makeCtx({ sessionManager: makeSessionManager("node-session") });
     const { lifecycle, service } = makeLifecycle();
     lifecycle.activate(ctx);
-    expect(mockPublishForSession).toHaveBeenCalledWith("node-session", service);
+    expect(mockPublishKeyedService).toHaveBeenCalledWith(
+      "node-session",
+      service,
+    );
   });
 
   it("publishes a registered child's own keyed service, which it may not clobber the root slot with", () => {
@@ -174,18 +177,18 @@ describe("activate", () => {
     const { lifecycle, service } = makeLifecycle();
     mockIsRegisteredChild.mockReturnValue(true);
     lifecycle.activate(ctx);
-    expect(mockPublishForSession).toHaveBeenCalledWith(
+    expect(mockPublishKeyedService).toHaveBeenCalledWith(
       "child-session",
       service,
     );
-    expect(mockPublishPermissionsService).not.toHaveBeenCalled();
+    expect(mockPublishRootService).not.toHaveBeenCalled();
   });
 
   it("skips the keyed publication when the host exposes no session id", () => {
     const ctx = makeCtx({ sessionManager: makeSessionManager(null) });
     const { lifecycle } = makeLifecycle();
     lifecycle.activate(ctx);
-    expect(mockPublishForSession).not.toHaveBeenCalled();
+    expect(mockPublishKeyedService).not.toHaveBeenCalled();
   });
 
   it("emits the node's session id and chain role on ready", () => {
@@ -291,9 +294,7 @@ describe("teardown", () => {
   it("unpublishes the service after running subscriptions", () => {
     const order: string[] = [];
     const unsub = vi.fn(() => order.push("unsub"));
-    mockUnpublishPermissionsService.mockImplementation(() =>
-      order.push("unpublish"),
-    );
+    mockUnpublishRootService.mockImplementation(() => order.push("unpublish"));
     const { lifecycle } = makeLifecycle({ subscriptions: [unsub] });
     lifecycle.teardown();
     expect(order).toEqual(["unsub", "unpublish"]);
@@ -302,7 +303,7 @@ describe("teardown", () => {
   it("passes the service to unpublishPermissionsService", () => {
     const { lifecycle, service } = makeLifecycle();
     lifecycle.teardown();
-    expect(mockUnpublishPermissionsService).toHaveBeenCalledWith(service);
+    expect(mockUnpublishRootService).toHaveBeenCalledWith(service);
   });
 
   it("removes the keyed entry it published", () => {
@@ -310,7 +311,7 @@ describe("teardown", () => {
     const { lifecycle, service } = makeLifecycle();
     lifecycle.activate(ctx);
     lifecycle.teardown();
-    expect(mockUnpublishForSession).toHaveBeenCalledWith(
+    expect(mockUnpublishKeyedService).toHaveBeenCalledWith(
       "node-session",
       service,
     );
@@ -325,8 +326,8 @@ describe("teardown", () => {
       makeCtx({ sessionManager: makeSessionManager("second-session") }),
     );
     lifecycle.teardown();
-    expect(mockUnpublishForSession).toHaveBeenCalledOnce();
-    expect(mockUnpublishForSession).toHaveBeenCalledWith(
+    expect(mockUnpublishKeyedService).toHaveBeenCalledOnce();
+    expect(mockUnpublishKeyedService).toHaveBeenCalledWith(
       "second-session",
       service,
     );
@@ -335,12 +336,12 @@ describe("teardown", () => {
   it("removes nothing keyed when it never published", () => {
     const { lifecycle } = makeLifecycle();
     lifecycle.teardown();
-    expect(mockUnpublishForSession).not.toHaveBeenCalled();
+    expect(mockUnpublishKeyedService).not.toHaveBeenCalled();
   });
 
   it("works with no subscriptions", () => {
     const { lifecycle } = makeLifecycle({ subscriptions: [] });
     expect(() => lifecycle.teardown()).not.toThrow();
-    expect(mockUnpublishPermissionsService).toHaveBeenCalledOnce();
+    expect(mockUnpublishRootService).toHaveBeenCalledOnce();
   });
 });
