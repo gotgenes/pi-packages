@@ -566,6 +566,60 @@ describe("service and gate share one access extractor registry", () => {
 
     rmSync(cwd, { recursive: true, force: true });
   });
+
+  // The quiet half of #699: a child runs its own gates, so an extractor a
+  // sibling registers in the child has to land in the child's registry. While
+  // every node shared the parent's service, that registration went to the
+  // parent — where the child's gates never look — and path gating for a
+  // custom-path tool silently weakened inside the child, with no error at all.
+  it("path-gates a child's own tool call via an extractor registered in that child", async () => {
+    writeGlobalConfig({
+      permission: { "*": "allow", path: { "*.env": "deny" } },
+    });
+
+    const parentCwd = mkdtempSync(join(tmpdir(), "pi-perm-parent-ext-"));
+    const childCwd = mkdtempSync(join(tmpdir(), "pi-perm-child-ext-"));
+    const parentSessionId = "parent-session-ext";
+    const childSessionId = "child-session-ext";
+
+    const parentPi = makeFakePi({
+      toolNames: ["ffgrep"],
+      events: createEventBus(),
+    });
+    piPermissionSystemExtension(parentPi as unknown as ExtensionAPI);
+    const childPi = makeFakePi({
+      toolNames: ["ffgrep"],
+      events: createEventBus(),
+    });
+    piPermissionSystemExtension(childPi as unknown as ExtensionAPI);
+
+    await fireSessionStart(parentPi, makeBaseCtx(parentCwd, parentSessionId));
+    getSubagentSessionRegistry().register(childSessionId, { parentSessionId });
+    const childCtx = makeChildCtx(childCwd, childSessionId);
+    await fireSessionStart(childPi, childCtx);
+
+    // The child's sibling extension registers into the child's own service.
+    getPermissionsServiceForSession(
+      childSessionId,
+    )!.registerToolAccessExtractor("ffgrep", (input) =>
+      typeof input.target === "string" ? input.target : undefined,
+    );
+
+    const result = (await childPi.fire(
+      "tool_call",
+      {
+        toolName: "ffgrep",
+        toolCallId: "ff-child-1",
+        input: { target: ".env" },
+      },
+      childCtx,
+    )) as { block?: true };
+
+    expect(result.block).toBe(true);
+
+    rmSync(parentCwd, { recursive: true, force: true });
+    rmSync(childCwd, { recursive: true, force: true });
+  });
 });
 
 describe("service and chain share one authorizer registry", () => {
