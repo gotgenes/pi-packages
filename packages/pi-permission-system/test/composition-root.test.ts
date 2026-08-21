@@ -728,6 +728,69 @@ describe("ready emitted after service publication", () => {
 
     rmSync(cwd, { recursive: true, force: true });
   });
+
+  // ADR 0012 decision 3, the ready latch: before_agent_start runs after every
+  // extension's session_start and before any tool call, so re-emitting there
+  // makes the ready event alone a sufficient registration site — a consumer
+  // whose own session_start ran after ours no longer needs a second path.
+  it("re-emits permissions:ready once at the first before_agent_start", async () => {
+    const cwd = mkdtempSync(join(tmpdir(), "pi-perm-latch-cwd-"));
+    const payloads: PermissionsReadyEvent[] = [];
+    const resolvable: string[] = [];
+    const pi = makeFakePi();
+    pi.events.on(PERMISSIONS_READY_CHANNEL, (data) => {
+      const payload = data as PermissionsReadyEvent;
+      payloads.push(payload);
+      resolvable.push(
+        payload.sessionId !== null &&
+          getPermissionsServiceForSession(payload.sessionId)
+          ? "present"
+          : "missing",
+      );
+    });
+
+    piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+    const ctx = makeBaseCtx(cwd, "latch-session");
+    await fireSessionStart(pi, ctx);
+
+    await pi.fire("before_agent_start", { systemPrompt: "" }, ctx);
+    await pi.fire("before_agent_start", { systemPrompt: "" }, ctx);
+
+    // One emission at session_start, one at the *first* before_agent_start —
+    // the second turn adds none.
+    expect(payloads).toEqual([
+      { sessionId: "latch-session", adjudicatesLocally: true },
+      { sessionId: "latch-session", adjudicatesLocally: true },
+    ]);
+    // The service resolves at both emissions, not only the first.
+    expect(resolvable).toEqual(["present", "present"]);
+
+    rmSync(cwd, { recursive: true, force: true });
+  });
+
+  it("re-arms the latch for the next session generation", async () => {
+    const cwd = mkdtempSync(join(tmpdir(), "pi-perm-latch-reload-"));
+    let emissions = 0;
+    const pi = makeFakePi();
+    pi.events.on(PERMISSIONS_READY_CHANNEL, () => {
+      emissions += 1;
+    });
+
+    piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+    const ctx = makeBaseCtx(cwd, "latch-reload-session");
+    await fireSessionStart(pi, ctx);
+    await pi.fire("before_agent_start", { systemPrompt: "" }, ctx);
+    expect(emissions).toBe(2);
+
+    // A reload runs session_start again: the new generation announces at
+    // session_start and once more at its first turn.
+    await fireSessionStart(pi, ctx);
+    await pi.fire("before_agent_start", { systemPrompt: "" }, ctx);
+    await pi.fire("before_agent_start", { systemPrompt: "" }, ctx);
+    expect(emissions).toBe(4);
+
+    rmSync(cwd, { recursive: true, force: true });
+  });
 });
 
 describe("single source of truth for session state", () => {

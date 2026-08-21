@@ -57,7 +57,9 @@ function makeSetup(opts?: {
   // A real SessionTurnPrep over the same session: the tool-filtering and
   // prompt-sanitization assertions below read state an activated session owns,
   // so a `{ prepare: vi.fn() }` double would quietly change what they exercise.
-  const turnPrep = new SessionTurnPrep(session, warmParser);
+  const turnPrep = new SessionTurnPrep(session, warmParser, {
+    announceReady: vi.fn(),
+  });
   const handler = new AgentPrepHandler(
     turnPrep,
     session,

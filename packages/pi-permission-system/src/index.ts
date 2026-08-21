@@ -294,9 +294,13 @@ export default function piPermissionSystemExtension(pi: ExtensionAPI): void {
     logger,
     audit,
   );
-  const turnPrep = new SessionTurnPrep(session, () => {
-    void warmBashParser();
-  });
+  const turnPrep = new SessionTurnPrep(
+    session,
+    () => {
+      void warmBashParser();
+    },
+    serviceLifecycle,
+  );
   const agentPrep = new AgentPrepHandler(
     turnPrep,
     session,
