@@ -176,10 +176,11 @@ Shared communication channels:
 The deprecated event-bus RPC channel (`permissions:rpc:check` / `permissions:rpc:prompt`) was removed in #531; the `Symbol.for()` service accessor is the sole cross-extension policy/prompt surface.
 
 **Registrations are node-local** (ADR 0012, `docs/decisions/0012-cross-node-extension-contract.md`, Refs #699, #786).
-One process hosts several **nodes** — one session runtime each, with its own gates, registries, and chain — and every node publishes its own service into a session-keyed process-global map, read with `getPermissionsServiceForSession(sessionId)`.
+One process hosts several **nodes** — one session runtime each, with its own gates, registries, and chain — and every node publishes its own service into a session-keyed process-global map, read with `getPermissionsService(sessionId)`.
 The key travels as data on the `permissions:ready` payload, which also carries `adjudicatesLocally`; the bus announces, the locator provides, so never put a live capability on a bus payload.
-The zero-arg `getPermissionsService()` still reads the legacy process-root slot (with the #302 child guard intact) but is deprecated, emitting a once-guarded `process.emitWarning` (`PI_PERMISSION_SYSTEM_DEP0001`) — removal is a future major.
+`getRootPermissionsService()` still reads the legacy process-root slot (with the #302 child guard intact) but is deprecated, emitting a once-guarded `process.emitWarning` (`PI_PERMISSION_SYSTEM_DEP0001`) — removal is a future major.
 Use the internal `readRootService()` for any in-package read, or the package warns the host about a call the host did not make.
+The locator's `sessionId` is required, and a no-argument call answers `undefined` with a once-guarded `PI_PERMISSION_SYSTEM_WARN0001` warning rather than falling back to the root slot — the names were reclaimed from the `*ForSession` spelling in #794, so a consumer built against the pre-rename major reaches that path.
 A link registered on a relaying node is **accepted and observed**, never refused: `ObservedAuthorizerRegistrar` (`src/authority/authorizer-registry.ts`) records `authorizer_link_vacant`, so registering everywhere stays the correct default for a sibling author and nothing is silent (ADR 0012 decision 4).
 `permissions:ready` is broadcast **twice** per session generation — at `session_start` after publication, and again at the node's first `before_agent_start`, which runs after every extension's `session_start` and before any ask (ADR 0012 decision 3, the ready latch, #787).
 So the channel fires at least once per session and may repeat: the ready handler alone is a sufficient registration site, and a consumer needs only an idempotence guard, never a second attempt from its own `session_start`.

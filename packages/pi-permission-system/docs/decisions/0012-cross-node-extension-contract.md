@@ -8,6 +8,7 @@ date: 2026-08-20
 ## Status
 
 Accepted.
+Amended 2026-08-21 with decision 7's reclassification ([#794]): the ready latch and the locator's reclaimed spelling both ship as **major**, not the single minor this record originally classified.
 This decision settles the contract between three parties — pi-permission-system, subagent implementations, and sibling permission extensions — for a Pi process that hosts more than one session node.
 It fixes the one architectural lie the parties currently work around (a session-boundary-crossing service accessor), names the one supported adapter convention for subagent implementations, and classifies every adopted mechanism against the events stability guarantee.
 It composes with `docs/decisions/0007-model-judge-authorizer-chain-adr.md` (whose §7, one chain per node, it reaffirms unamended) and with pi-subagents [ADR-0002] (whose inverted dependency it leaves untouched).
@@ -116,7 +117,7 @@ The [#302] clobbering hazard dissolves structurally: a child publishes under its
 The legacy root slot keeps its current guard behavior for compatibility.
 In-process extensions share one trust domain (anything can poke `globalThis`), so a sibling passing another node's session id is not a new exposure and is not defended by mechanism.
 
-The zero-arg `getPermissionsService()` is **deprecated for registration and queries alike**: it answers "the process root's service", which is the wrong question in every node but the root — in an in-process child it hands back the parent's service, making even a policy query dishonest against the child's own (possibly worktree-local) config.
+The process-root reader — spelled `getPermissionsService()` when this record was written, and `getRootPermissionsService()` since [#794] reclaimed the base name for the locator — is **deprecated for registration and queries alike**: it answers "the process root's service", which is the wrong question in every node but the root — in an in-process child it hands back the parent's service, making even a policy query dishonest against the child's own (possibly worktree-local) config.
 Its staging is decision 7.
 
 ### 3. The ready latch
@@ -176,13 +177,14 @@ No loading symmetry is assumed: implementations may load arbitrary extension set
 
 Classification against the stability guarantee in `src/permission-events.ts` ("fields may be added; existing fields will not be removed or renamed without a semver-major version bump") and the service API:
 
-| Change                                                        | Nature                                                          | Classification                     |
-| ------------------------------------------------------------- | --------------------------------------------------------------- | ---------------------------------- |
-| Keyed publication + keyed locator                             | new lookup beside the old; zero-arg accessor behavior untouched | additive — minor                   |
-| `sessionId` + `adjudicatesLocally` on `PermissionsReadyEvent` | fields added to a deliberately-empty payload                    | allowed by the guarantee — minor   |
-| The latch                                                     | "fires once" becomes "at least once, may repeat"                | minor, with a release-note callout |
-| Vacant-cell registration-time review record                   | new review-log event type                                       | additive — minor                   |
-| Zero-arg accessor deprecation                                 | runtime warning, no behavior change                             | minor; removal is a future major   |
+| Change                                                        | Nature                                                          | Classification                                                    |
+| ------------------------------------------------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------- |
+| Keyed publication + keyed locator                             | new lookup beside the old; zero-arg accessor behavior untouched | additive — minor                                                  |
+| `sessionId` + `adjudicatesLocally` on `PermissionsReadyEvent` | fields added to a deliberately-empty payload                    | allowed by the guarantee — minor                                  |
+| The latch                                                     | "fires once" becomes "at least once, may repeat"                | ~~minor, with a release-note callout~~ **major** (amended [#794]) |
+| Vacant-cell registration-time review record                   | new review-log event type                                       | additive — minor                                                  |
+| Zero-arg accessor deprecation                                 | runtime warning, no behavior change                             | minor; removal is a future major                                  |
+| Reclaiming the locator's spelling ([#794])                    | a published zero-arg signature now requires an argument         | **major** (amended)                                               |
 
 The latch callout is the one honest caveat: an unguarded external consumer that registers on every ready emission hits the duplicate-registration throw on the re-emit, surfacing as bus-caught stderr noise rather than breakage.
 The documented contract ("a consumer reacting to ready can immediately resolve the service") is preserved and strengthened, so this is classified minor with a "ready handlers must be idempotent" release note, not major.
@@ -191,6 +193,20 @@ Everything ships as **one minor release** — the mechanisms are one contract, a
 The zero-arg accessor's removal is deferred to an unscheduled future major, contingent on downstream migration.
 Deprecation is announced at runtime with `process.emitWarning(..., { type: "DeprecationWarning", code: ... })` (once-guarded) on the zero-arg call path: it fires only when the deprecated path is actually used, per-consumer under jiti module isolation, `--trace-deprecation` hands the author a stack to their own call site, and `--no-deprecation` lets an operator silence it.
 The message names the keyed replacement and links the docs.
+
+#### Amendment (2026-08-21, [#794])
+
+Two rows above did not survive contact, and the release is a major.
+
+The latch's severity estimate was wrong in kind, not degree.
+The prediction was stderr noise for an unguarded consumer; the observed failure in `pi-permission-model-judge` is a duplicate-registration **throw** on every in-process subagent start, and the throw happens before the consumer's own `dispose` handle is assigned — so the guard never latches and every subsequent emission retries.
+The grounds for calling it minor were that `/reload` already re-emitted `permissions:ready`, which made an unguarded consumer already broken.
+That is true and beside the point: the latch moved the failure from rare and user-initiated to every session, with no edit on the consumer's part, which is this repository's definition of breaking.
+
+The rename is the second row.
+The keyed locator shipped to the working tree as `getPermissionsServiceForSession`, a spelling this record explicitly left open ("exact spelling is an implementation detail").
+It was reclaimed before publication, so `getPermissionsService` — a **published** zero-arg function — now requires a session id.
+The deprecation window itself is unchanged: the process-root reader survives under `getRootPermissionsService()`, and the "major release now" alternative below, which rejected *removing* it in this cut, still stands.
 
 `pi-permission-model-judge` is the migration test case, and the contract's proof: its registration collapses to config loading in `session_start` plus one ready handler — keyed lookup, `registerAuthorizer`, a `dispose` guard.
 The dual path, its explanatory comment, and the ordering caveat all die.
@@ -251,4 +267,5 @@ Removing the zero-arg accessor in the same cut breaks unknown external consumers
 [#787]: https://github.com/gotgenes/pi-packages/issues/787
 [#788]: https://github.com/gotgenes/pi-packages/issues/788
 [#789]: https://github.com/gotgenes/pi-packages/issues/789
+[#794]: https://github.com/gotgenes/pi-packages/issues/794
 [ADR-0002]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-subagents/docs/decisions/0002-extensions-on-a-minimal-core.md

@@ -246,7 +246,7 @@ Three review-log records make the chain observable, all keyed by the ask's `requ
 | `authorizer_chain_unregistered_link` | a configured name had no registered link — a real misconfiguration; the ask still reaches the terminal   |
 | `authorizer_link_vacant`             | a link was registered on a relaying node, which runs no chain — accepted and recorded, never consulted   |
 
-Extension authors: register a link from a `permissions:ready` handler via `getPermissionsServiceForSession(sessionId).registerAuthorizer(name, authorize)`, taking `sessionId` from that event's payload; the callback receives the ask details and a narrow, session-scoped `PermissionQuery` (`checkPermission` / `getToolPermission`) so it can consult the deterministic engine at gate parity.
+Extension authors: register a link from a `permissions:ready` handler via `getPermissionsService(sessionId).registerAuthorizer(name, authorize)`, taking `sessionId` from that event's payload; the callback receives the ask details and a narrow, session-scoped `PermissionQuery` (`checkPermission` / `getToolPermission`) so it can consult the deterministic engine at gate parity.
 Registration returns a disposer, and only one link may hold a given name.
 Register in every session without branching: a session that relays its asks accepts the link and records `authorizer_link_vacant` rather than refusing it.
 For a complete working example, see [`@gotgenes/pi-permission-model-judge`](https://github.com/gotgenes/pi-packages/tree/main/packages/pi-permission-model-judge): it registers a `model-judge` link on `permissions:ready` that reviews `external_directory` asks and auto-denies mistyped paths with a corrective reason.

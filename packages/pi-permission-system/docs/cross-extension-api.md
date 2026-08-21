@@ -20,9 +20,9 @@ pi.events.on("permissions:ready", (data) => {
   if (!sessionId) return;
   void (async () => {
     try {
-      const { getPermissionsServiceForSession } =
+      const { getPermissionsService } =
         await import("@gotgenes/pi-permission-system");
-      const permissions = getPermissionsServiceForSession(sessionId);
+      const permissions = getPermissionsService(sessionId);
       if (permissions) {
         const result = permissions.checkPermission("bash", "git push");
         console.log(result.state); // "allow" | "deny" | "ask"
@@ -46,12 +46,14 @@ A root session and each of its in-process subagent children are separate nodes, 
 Registrations never cross a node boundary: a formatter, an access extractor, or an authorizer link is read by the node it was registered in.
 
 Each node therefore publishes its own service at `session_start`, into a `globalThis` map keyed by that node's session id (`Symbol.for("@gotgenes/pi-permission-system:session-services")`).
-Consumers call `getPermissionsServiceForSession(sessionId)` to retrieve it — even though their `import()` loads a fresh module copy, the accessor reads from the shared `globalThis` slot.
+Consumers call `getPermissionsService(sessionId)` to retrieve it — even though their `import()` loads a fresh module copy, the accessor reads from the shared `globalThis` slot.
 The session id arrives as a field on the `permissions:ready` broadcast, which each node emits at its own `session_start`, right after publishing — and again at that node's first `before_agent_start`, so a consumer whose own `session_start` ran later still hears it.
 
-The zero-arg `getPermissionsService()` remains, reading a separate legacy slot that holds the **process root's** service, but it is deprecated: in any node but the root it answers the wrong question, handing an in-process child the parent's service.
+`getRootPermissionsService()` remains, reading a separate legacy slot that holds the **process root's** service, but it is deprecated: in any node but the root it answers the wrong question, handing an in-process child the parent's service.
 Calling it emits a once-guarded Node `DeprecationWarning` (code `PI_PERMISSION_SYSTEM_DEP0001`); run with `--trace-deprecation` to locate your call site, or `--no-deprecation` to silence it.
 Removal is deferred to a future major release.
+
+Both accessors were renamed in the major that reclaimed `getPermissionsService` for the keyed locator; if you are upgrading from a release whose `getPermissionsService()` took no argument, see [migration/0794-keyed-service-locator.md](migration/0794-keyed-service-locator.md).
 
 All types below are directly importable and type-check with `tsc` out of the box.
 `@gotgenes/pi-permission-system`'s published `exports` resolve `import type { … }` to a self-contained, bundled declaration file with no internal module references, so a downstream `tsconfig.json` needs no special path configuration.
@@ -203,9 +205,9 @@ export default function myExtension(pi: ExtensionAPI): void {
     if (disposeFormatter || !sessionId) return;
     void (async () => {
       try {
-        const { getPermissionsServiceForSession } =
+        const { getPermissionsService } =
           await import("@gotgenes/pi-permission-system");
-        const permissions = getPermissionsServiceForSession(sessionId);
+        const permissions = getPermissionsService(sessionId);
         disposeFormatter = permissions?.registerToolInputFormatter(
           "deploy", // a tool THIS extension registers with Pi
           (input) => {
@@ -295,9 +297,13 @@ Best practice: resolve the service per use rather than caching the reference.
 
 ### Graceful Degradation
 
-`getPermissionsServiceForSession(sessionId)` returns `undefined` when the permission-system extension has not loaded into that node (or has been unloaded).
+`getPermissionsService(sessionId)` returns `undefined` when the permission-system extension has not loaded into that node (or has been unloaded).
 The `import()` throws if the package is not installed.
 Wrap both in `try/catch` + `if` guard as shown in the Quick Start example.
+
+It also returns `undefined` when called with no session id at all — a shape TypeScript rejects but JavaScript reaches — rather than falling back to the process root's service, since answering with another node's service is the defect the keyed locator exists to prevent.
+That call emits a once-guarded Node warning (code `PI_PERMISSION_SYSTEM_WARN0001`), because the guard above turns the missing service into a registration that silently never happens.
+It is deliberately not a `DeprecationWarning`: `--no-deprecation` does not silence it.
 
 ---
 
@@ -477,10 +483,10 @@ That throw is caught by Pi's event bus and reported on stderr — your first reg
 The payload carries plain facts about the node that emitted it, never a live capability: the bus announces, the locator provides.
 It carries no `protocolVersion` — the broadcast contract is defined by the published types plus package semver.
 
-| Field                | Type             | Meaning                                                                                                                                                                         |
-| -------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sessionId`          | `string \| null` | The emitting node's session id — the key for `getPermissionsServiceForSession`. `null` when the host exposed no session id, in which case that node published no keyed service. |
-| `adjudicatesLocally` | `boolean`        | Whether this node's authorizer chain runs, or the node relays its asks to a serving node that runs _its_ chain over the same facts.                                             |
+| Field                | Type             | Meaning                                                                                                                                                               |
+| -------------------- | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sessionId`          | `string \| null` | The emitting node's session id — the key for `getPermissionsService`. `null` when the host exposed no session id, in which case that node published no keyed service. |
+| `adjudicatesLocally` | `boolean`        | Whether this node's authorizer chain runs, or the node relays its asks to a serving node that runs _its_ chain over the same facts.                                   |
 
 ```typescript
 let dispose: (() => void) | undefined;
@@ -490,9 +496,9 @@ pi.events.on("permissions:ready", (data) => {
   // Idempotent: ready may repeat, so a second emission must be a no-op.
   if (dispose || !sessionId) return;
   void (async () => {
-    const { getPermissionsServiceForSession } =
+    const { getPermissionsService } =
       await import("@gotgenes/pi-permission-system");
-    const permissions = getPermissionsServiceForSession(sessionId);
+    const permissions = getPermissionsService(sessionId);
     // This node published before the event fired — resolve and register now.
     dispose = permissions?.registerAuthorizer("my-link", authorize);
   })();
