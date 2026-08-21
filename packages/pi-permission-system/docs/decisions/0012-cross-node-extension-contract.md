@@ -212,6 +212,20 @@ The deprecation window itself is unchanged: the process-root reader survives und
 The dual path, its explanatory comment, and the ordering caveat all die.
 If the migrated code is not smaller than the workaround it replaces, the contract has failed its own test.
 
+#### Amendment (2026-08-21, [#788]): the size test, measured
+
+The migration landed and the test does not pass as written.
+
+Everything the paragraph above predicted structurally is true: `tryRegister`, the `sessionStarted` flag, both call sites, and the nine-line comment explaining the ordering ambiguity are gone — 30 lines of workaround removed.
+But 33 arrived in their place, so `src/extension.ts` measured 106 → 109 lines.
+
+The seven lines that tip the balance narrow the ready payload: the SDK bus hands a handler `unknown`, so a consumer must establish that `sessionId` is a string before it can key the locator.
+That is decision 2's own cost — the price of moving the node's identity onto the wire as data — and it is charged to every consumer of the keyed channel, not just this one.
+A workaround measured against a capability it did not have was the wrong comparison.
+
+The honest restatement: the dual path dies, and the contract removes more machinery than it adds — but not more *lines*, because the channel it replaces the machinery with carries data that has to be read.
+A future consumer should expect the same trade.
+
 ## Consequences
 
 - The [#699] defect family ends structurally: no duplicate throw (the child's sibling registers into the child's own keyed service), no silently weakened child gates (extractors land where the child's gates read), no per-start stderr noise, and the vacancy that remains is recorded where the operator already looks.
