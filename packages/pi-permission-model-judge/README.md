@@ -56,6 +56,9 @@ pnpm add -D @gotgenes/pi-permission-model-judge
 
 This extension does nothing on its own — it requires `@gotgenes/pi-permission-system` (peer dependency) and `@earendil-works/pi-ai` (provided by Pi).
 
+The peer must be **27.0.0 or later**.
+The link registers into the service of the session node that announced itself on `permissions:ready`, and an older pi-permission-system announces no session id — so on one, the link never registers and the extension says so once per session.
+
 ## Enable
 
 Two independent config files are involved — the safety policy lives in pi-permission-system, the model mechanism lives here.
