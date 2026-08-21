@@ -210,10 +210,49 @@ export function publishPermissionsService(service: PermissionsService): void {
 }
 
 /**
- * Retrieve the published `PermissionsService`, or `undefined` if the
- * permission-system extension has not loaded (or has been unloaded).
+ * Warned at most once per module copy, so a consumer hears it on its first
+ * deprecated call and never again. Under jiti isolation each consumer
+ * extension holds its own copy, so each hears it for its own call site.
+ */
+let warnedDeprecatedAccessor = false;
+
+const DEPRECATED_ACCESSOR_WARNING =
+  "getPermissionsService() is deprecated: it answers with the process root's " +
+  "service, which is the wrong node in every node but the root — inside an " +
+  "in-process subagent child it hands back the parent's service, so a " +
+  "registration lands where the child's gates never read it and a policy " +
+  "query answers against the parent's config. Use " +
+  "getPermissionsServiceForSession(sessionId) with the sessionId from the " +
+  "permissions:ready payload. See " +
+  "https://github.com/gotgenes/pi-packages/blob/main/packages/pi-permission-system/docs/cross-extension-api.md";
+
+/**
+ * Retrieve the process root's published `PermissionsService`, or `undefined`
+ * if the permission-system extension has not loaded (or has been unloaded).
+ *
+ * @deprecated Use {@link getPermissionsServiceForSession} with the `sessionId`
+ * from the `permissions:ready` payload. This accessor answers "the process
+ * root's service", which is the wrong question in every node but the root.
+ * Removal is deferred to a future major (ADR 0012 decision 7).
  */
 export function getPermissionsService(): PermissionsService | undefined {
+  if (!warnedDeprecatedAccessor) {
+    warnedDeprecatedAccessor = true;
+    process.emitWarning(DEPRECATED_ACCESSOR_WARNING, {
+      type: "DeprecationWarning",
+      code: "PI_PERMISSION_SYSTEM_DEP0001",
+    });
+  }
+  return readRootService();
+}
+
+/**
+ * The undeprecated read of the root slot, for this package's own lifecycle.
+ *
+ * `unpublishPermissionsService` must compare identities without warning the
+ * host about a call the host did not make.
+ */
+function readRootService(): PermissionsService | undefined {
   return (globalThis as Record<symbol, unknown>)[SERVICE_KEY] as
     | PermissionsService
     | undefined;
@@ -303,7 +342,7 @@ export function unpublishPermissionsServiceForSession(
  *   shutdown cannot wipe the new generation's freshly published service.
  */
 export function unpublishPermissionsService(service: PermissionsService): void {
-  if (getPermissionsService() !== service) {
+  if (readRootService() !== service) {
     return;
   }
   // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- Symbol-keyed global property; Map.delete() is not applicable

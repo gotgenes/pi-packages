@@ -6,11 +6,14 @@
  * completeness, shared-instance contracts across factory invocations, teardown,
  * service↔gate registry sharing, and `ready`-after-publish ordering.
  *
- * Every test runs the factory, which mutates three process-global `Symbol.for()`
+ * Every test runs the factory, which mutates four process-global `Symbol.for()`
  * slots and reads `PI_CODING_AGENT_DIR`. The shared `beforeEach`/`afterEach`
  * isolate the agent dir to a tmpdir and clear every global slot so factory runs
  * do not leak across tests.
  */
+/* eslint-disable @typescript-eslint/no-deprecated -- a root session still
+   publishes to the legacy slot, and these cases pin that behavior for the
+   deprecation window; the session-keyed cases use the supported accessor. */
 import {
   existsSync,
   mkdirSync,

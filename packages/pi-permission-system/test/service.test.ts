@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-deprecated -- these cases pin the
+   zero-arg accessor's behavior, which the deprecation window preserves
+   unchanged until its removal in a future major (ADR 0012 decision 7). */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AccessIntent } from "#src/access-intent/access-intent";
 import { AuthorizerRegistry } from "#src/authority/authorizer-registry";
@@ -151,6 +154,80 @@ describe("session-keyed accessor", () => {
       unpublishPermissionsServiceForSession(parentSessionId, makeService()),
     ).not.toThrow();
     expect(getPermissionsServiceForSession(parentSessionId)).toBeUndefined();
+  });
+});
+
+// ── zero-arg accessor deprecation ───────────────────────────────────────
+
+describe("zero-arg accessor deprecation", () => {
+  /**
+   * The once-guard is module-scoped, so each case imports a fresh copy of the
+   * module — which is also how a consumer sees it under jiti isolation: one
+   * warning per consumer module copy per process.
+   */
+  async function freshServiceModule() {
+    vi.resetModules();
+    return await import("#src/service");
+  }
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.resetModules();
+  });
+
+  it("warns once, naming the keyed replacement", async () => {
+    const emitWarning = vi
+      .spyOn(process, "emitWarning")
+      .mockImplementation(() => undefined);
+    const service = await freshServiceModule();
+
+    service.getPermissionsService();
+    service.getPermissionsService();
+
+    expect(emitWarning).toHaveBeenCalledExactlyOnceWith(
+      expect.stringContaining("getPermissionsServiceForSession"),
+      { type: "DeprecationWarning", code: "PI_PERMISSION_SYSTEM_DEP0001" },
+    );
+  });
+
+  it("still resolves the process-root service", async () => {
+    vi.spyOn(process, "emitWarning").mockImplementation(() => undefined);
+    const service = await freshServiceModule();
+    const published = makeService();
+
+    service.publishPermissionsService(published);
+
+    expect(service.getPermissionsService()).toBe(published);
+    service.unpublishPermissionsService(published);
+  });
+
+  it("does not warn from the package's own publish/unpublish path", async () => {
+    const emitWarning = vi
+      .spyOn(process, "emitWarning")
+      .mockImplementation(() => undefined);
+    const service = await freshServiceModule();
+    const published = makeService();
+
+    service.publishPermissionsService(published);
+    service.unpublishPermissionsService(published);
+
+    expect(emitWarning).not.toHaveBeenCalled();
+  });
+
+  it("does not warn for the session-keyed accessors", async () => {
+    const emitWarning = vi
+      .spyOn(process, "emitWarning")
+      .mockImplementation(() => undefined);
+    const service = await freshServiceModule();
+    const published = makeService();
+
+    service.publishPermissionsServiceForSession("node-session", published);
+    expect(service.getPermissionsServiceForSession("node-session")).toBe(
+      published,
+    );
+    service.unpublishPermissionsServiceForSession("node-session", published);
+
+    expect(emitWarning).not.toHaveBeenCalled();
   });
 });
 
