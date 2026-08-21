@@ -33,6 +33,40 @@ The implementation commit carries two `BREAKING CHANGE:` footers — the rename 
   `pi-permission-system` has no open improvement phase, so the `roadmap-fit` skill exits at its first step.
 - **Verification hook worth keeping for implementation:** the consumer probe in `scripts/verify-public-types.sh` currently only *references* `getPermissionsService`; the plan changes it to call `getPermissionsService("session-id")` so the packed-tarball type-check pins the keyed signature externally.
 
+## Stage: Implementation — TDD (2026-08-21T21:02:24Z)
+
+### Session summary
+
+Landed the rename in three cycles plus one preparatory tidy: the mock-naming `test:` commit the Tidy-First assessor recommended, the atomic `feat!:` rename across `src/`, all three test files and the packaging probe, the additive missing-session-id warning, and the docs commit (six docs, the [ADR 0012] amendment, and the new `docs/migration/0794-keyed-service-locator.md`).
+The pi-permission-system suite went from 3230 to 3233 tests (+3, all in the new `keyed accessor called without a session id` describe).
+Every deterministic gate stayed green at each commit, `verify:public-types` passes against the packed tarball, and the pre-completion reviewer returned **PASS**.
+
+### Observations
+
+- **The Tidy-First assessor found exactly one preparatory commit, and it was a real trap.**
+  `test/service-lifecycle.test.ts`'s root-slot mocks were named `mockPublishPermissionsService` / `mockUnpublishPermissionsService` — the base names this change reassigns to the *keyed* trio — so a mechanical rename would have left every variable meaning the opposite of what it mocks.
+  Renaming them by slot role first (`mockPublishRootService` / `mockPublishKeyedService`) reduced that file's feature-commit diff to the four `vi.mock` factory keys.
+  The assessor also verified the plan's structural claims on the way past: 28 call sites in `composition-root.test.ts` split 17 root / 11 keyed with no ambiguous line, both file-level `no-deprecated` disables already present, and every mocked key exercised by an assertion.
+- **The scripted rename needed a two-pass order**, root first (`getPermissionsService` → `getRootPermissionsService`) and keyed second (`*ForSession` → base names), or the second pass would have collided with the first.
+  `\b` boundaries kept `unpublishPermissionsService` from matching inside `publishPermissionsService` and kept `getPermissionsService` from matching inside `getPermissionsServiceForSession`.
+  A `zsh` gotcha cost one call: an unquoted `$FILES` variable does not word-split, so the file list had to be spelled out inline.
+- **Two of the three new tests passed at Red, by design** — "returns `undefined` rather than another node's service" and "does not warn when a session id is passed" are invariant pins on behavior the map lookup already had; only the warning assertion was genuinely red.
+- **The `no-unnecessary-condition` disable was speculative and got stripped.**
+  A pre-emptive `eslint-disable-next-line` on `typeof sessionId !== "string"` (typed `string`) drew `Unused eslint-disable directive` — the rule does not flag a `typeof` guard on a typed parameter.
+  The skill's rule held: add the directive only after the linter reports the problem.
+- **Prose fixes the script could not make.**
+  "The zero-arg `getRootPermissionsService()`" is a contradiction the substitution happily produced in four docs; each needed a hand edit, as did the guide's `getPermissionsService()` → `getPermissionsService(sessionId)` in the degradation note and the deprecation test's `stringContaining` probe, which was widened to `"getPermissionsService(sessionId)"` so it cannot pass on an unrelated substring.
+- **The ADR amendment is a correction, not a rewrite.**
+  `status: accepted` stands, the Context narrative is untouched as a dated record of the 26.x world, decision 7's table uses `~~minor~~ **major**` strikethrough, and a `#### Amendment` subsection records *why* the estimate failed — the predicted stderr noise is a throw that fires before the consumer's `dispose` handle is assigned, so its idempotence guard never latches.
+- **Deviation from the plan:** one extra commit (the Tidy-First `test:` prep) and one extra improvement inside cycle 1 (the `verify-public-types.sh` probe now imports `PermissionsService` to type the keyed call's result).
+  Every file in the plan's Module-Level Changes table was touched; nothing was added beyond it.
+- Pre-completion reviewer: **PASS**, no warnings.
+  It independently re-ran the judge package's `check` and `test` to confirm `pi-permission-model-judge` still compiles against its registry-pinned `20.10.0` copy, and swept the repo for stale `*ForSession` mentions (only the two deliberate historical ones plus the dated plans/retros remain).
+
+#### Deferred tidyings
+
+- `test/service.test.ts` — the same three-line root-slot `afterEach` cleanup block is repeated across three `describe` blocks (round-trip, formatter delegation, extractor delegation); the assessor rejected deduplicating it as unrelated to this change.
+
 [ADR 0012]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-permission-system/docs/decisions/0012-cross-node-extension-contract.md
 [#699]: https://github.com/gotgenes/pi-packages/issues/699
 [#787]: https://github.com/gotgenes/pi-packages/issues/787
