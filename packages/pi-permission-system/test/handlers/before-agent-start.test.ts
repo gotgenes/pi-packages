@@ -4,6 +4,7 @@ import {
   AgentPrepHandler,
   shouldExposeTool,
 } from "#src/handlers/before-agent-start";
+import { SessionTurnPrep } from "#src/handlers/session-turn-prep";
 import type { ToolRegistry } from "#src/tool-registry";
 
 import { makeCheckResult, makeCtx } from "#test/helpers/handler-fixtures";
@@ -53,14 +54,19 @@ function makeSetup(opts?: {
   vi.mocked(permissionManager.check).mockReturnValue(makeCheckResult());
   const toolRegistry = makeToolRegistry(opts?.toolRegistry);
   const warmParser = vi.fn();
+  // A real SessionTurnPrep over the same session: the tool-filtering and
+  // prompt-sanitization assertions below read state an activated session owns,
+  // so a `{ prepare: vi.fn() }` double would quietly change what they exercise.
+  const turnPrep = new SessionTurnPrep(session, warmParser);
   const handler = new AgentPrepHandler(
+    turnPrep,
     session,
     resolver,
     toolRegistry,
-    warmParser,
   );
   return {
     handler,
+    turnPrep,
     session,
     resolver,
     permissionManager,
@@ -105,34 +111,20 @@ describe("shouldExposeTool", () => {
 // ── AgentPrepHandler.handle ────────────────────────────────────────────────
 
 describe("AgentPrepHandler.handle", () => {
-  it("activates the session with ctx", async () => {
+  it("prepares the session for the turn before reading its state", async () => {
     const ctx = makeCtx();
-    const { handler, forwarding } = makeSetup();
-    await handler.handle(makeEvent(), ctx);
-    // Real session.activate calls forwarding.start
-    expect(forwarding.start).toHaveBeenCalledWith(ctx);
-  });
-
-  it("triggers the bash-parser warm-up", async () => {
-    const { handler, warmParser } = makeSetup();
-    await handler.handle(makeEvent(), makeCtx());
-    expect(warmParser).toHaveBeenCalledTimes(1);
-  });
-
-  it("refreshes config with ctx, gated on project trust", async () => {
-    const ctx = makeCtx();
-    const { handler, configStore } = makeSetup();
-    await handler.handle(makeEvent(), ctx);
-    expect(configStore.refresh).toHaveBeenCalledWith(ctx, true);
-  });
-
-  it("withholds the project scope when the project is untrusted", async () => {
-    const ctx = makeCtx({
-      isProjectTrusted: vi.fn<() => boolean>().mockReturnValue(false),
+    const { handler, turnPrep, session } = makeSetup();
+    const order: string[] = [];
+    vi.spyOn(turnPrep, "prepare").mockImplementation(() => {
+      order.push("prepare");
     });
-    const { handler, configStore } = makeSetup();
+    vi.spyOn(session, "resolveAgentName").mockImplementation(() => {
+      order.push("resolveAgentName");
+      return null;
+    });
     await handler.handle(makeEvent(), ctx);
-    expect(configStore.refresh).toHaveBeenCalledWith(ctx, false);
+    expect(order).toEqual(["prepare", "resolveAgentName"]);
+    expect(turnPrep.prepare).toHaveBeenCalledWith(ctx);
   });
 
   it("resolves agent name using systemPrompt", async () => {

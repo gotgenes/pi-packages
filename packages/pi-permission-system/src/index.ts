@@ -38,6 +38,7 @@ import {
   AgentPrepHandler,
   PermissionGateHandler,
   SessionLifecycleHandler,
+  SessionTurnPrep,
 } from "./handlers";
 import { GateRunner } from "./handlers/gates/runner";
 import { SkillInputGatePipeline } from "./handlers/gates/skill-input-gate-pipeline";
@@ -293,13 +294,14 @@ export default function piPermissionSystemExtension(pi: ExtensionAPI): void {
     logger,
     audit,
   );
+  const turnPrep = new SessionTurnPrep(session, () => {
+    void warmBashParser();
+  });
   const agentPrep = new AgentPrepHandler(
+    turnPrep,
     session,
     resolver,
     toolRegistry,
-    () => {
-      void warmBashParser();
-    },
   );
 
   const gateRunner = new GateRunner(
