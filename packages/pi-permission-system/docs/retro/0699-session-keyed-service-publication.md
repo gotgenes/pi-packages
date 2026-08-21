@@ -32,3 +32,29 @@ Four open design parameters the ADR deliberately left as implementation details 
 [#787]: https://github.com/gotgenes/pi-packages/issues/787
 [#788]: https://github.com/gotgenes/pi-packages/issues/788
 [#789]: https://github.com/gotgenes/pi-packages/issues/789
+
+## Stage: Implementation — TDD (2026-08-21T04:17:33Z)
+
+### Session summary
+
+All eight planned TDD cycles landed in plan order, plus one follow-up commit closing the reviewer's two non-blocking notes: every node now publishes its `PermissionsService` under its own session id, `permissions:ready` carries `sessionId` and `adjudicatesLocally`, a link registered on a relaying node is accepted and recorded as `authorizer_link_vacant`, and the zero-arg `getPermissionsService()` emits a once-guarded `DeprecationWarning`.
+The pi-permission-system suite went 3173 → 3216 tests (146 files); `check`, root `lint`, full `test`, and `fallow dead-code` are green, and `verify:public-types` packs the three new exports.
+Pre-completion reviewer: PASS (re-confirmed after the follow-up commit).
+
+### Observations
+
+- The Tidy-First assessor found **no** preparatory work warranted, and its reasoning held up: `SelectedAuthority.adjudicatesLocally` already existed, the composition-root ctx builders already threaded a real session id, and `index.ts` already constructed `authorizerSelection` before `permissionsService`, so the decorator wiring was a same-order insertion.
+- Two deviations from the plan, both discovered only by `tsc`/`eslint`, never by a failing test:
+  - `index.ts` needed an explicit `const permissionsService: PermissionsService = …` annotation.
+    The new decorator closes the loop (`authorizerSelection` → `getPermissionQuery` thunk → `permissionsService` → `ObservedAuthorizerRegistrar(authorizerSelection)`), which `tsc` reports as `TS7022`/`TS7023` implicit-any.
+    The reviewer independently reproduced the failure without the annotation, so it is load-bearing, not decoration.
+  - Marking `getPermissionsService` `@deprecated` turned `@typescript-eslint/no-deprecated` into 37 lint errors across this package's own two accessor test files.
+    Resolved with file-level disables plus a reason — those cases exist to pin the legacy path the deprecation window deliberately preserves.
+    Worth anticipating in any future plan that deprecates a symbol this repo's own tests exercise.
+- `test/authority/subagent-context.test.ts` needed no edit after `readSessionId` was extracted — the existing cases still cover the delegated read through `isRegisteredSubagentChild`.
+- The quiet-defect proof (a child-registered `ToolAccessExtractor` gating that child's own tool call) was written after its mechanism was green, so it was checked for vacuity by spiking the registration out: the tool call then goes unblocked, confirming the probe discriminates.
+- Reviewer's two non-blocking notes were both taken rather than deferred: the composition-root ready-ordering guard now also asserts the payload's own `sessionId` resolves inside the handler (the plan's Invariants table named that test, and the mechanism had only been pinned at unit level), and the `PermissionsService` doc comment now names the keyed locator instead of only the deprecated accessor.
+- Doc scope held to the planning gate's decision: correctness edits at the four prescription sites (`configuration.md`, `README.md`, the frontmatter guide, `cross-extension-api.md`'s Quick Start / How It Works / channel table / Ready Event) plus the architecture doc and the package skill.
+  The wholesale `cross-extension-api.md` rewrite stays with [#789], and the ready latch stays with [#787].
+- Release remains **mid-batch — defer**: this must ship as one minor with [#787], so `/ship-issue` should leave the release-please PR unmerged.
+  PR [#702] is a close-as-superseded target at ship time.
