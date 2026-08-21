@@ -11,7 +11,10 @@ import { describe, expect, it, vi } from "vitest";
 import { ParentAuthorizer } from "#src/authority/approval-escalator";
 import type { Authorizer } from "#src/authority/authorizer";
 import { AuthorizerRegistry } from "#src/authority/authorizer-registry";
-import { AuthorizerSelection } from "#src/authority/authorizer-selection";
+import {
+  type AdjudicationRole,
+  AuthorizerSelection,
+} from "#src/authority/authorizer-selection";
 import { LocalUserAuthorizer } from "#src/authority/local-user-authorizer";
 import type { PermissionPromptDecision } from "#src/authority/permission-dialog";
 import type { PromptPermissionDetails } from "#src/authority/permission-prompter";
@@ -410,6 +413,53 @@ describe("AuthorizerSelection", () => {
         expect.any(LocalUserAuthorizer),
         expect.anything(),
       );
+    });
+  });
+
+  describe("adjudicatesLocally", () => {
+    it("satisfies the AdjudicationRole seam", () => {
+      const role: AdjudicationRole = new AuthorizerSelection(makeDeps());
+      expect(role).toBeDefined();
+    });
+
+    it("reports true for a node with its own UI", () => {
+      const selection = new AuthorizerSelection(makeDeps());
+      selection.activate(makeCtx({ hasUI: true }));
+      expect(selection.adjudicatesLocally()).toBe(true);
+    });
+
+    it("reports false for a relaying subagent node", () => {
+      const selection = new AuthorizerSelection(
+        makeDeps({ detection: makeDetection(true) }),
+      );
+      selection.activate(makeCtx({ hasUI: false }));
+      expect(selection.adjudicatesLocally()).toBe(false);
+    });
+
+    it("reports true for a subagent node that has its own UI", () => {
+      // selectAuthorizer tests hasUI before isSubagent, so the role cannot be
+      // re-derived from subagent detection alone.
+      const selection = new AuthorizerSelection(
+        makeDeps({ detection: makeDetection(true) }),
+      );
+      selection.activate(makeCtx({ hasUI: true }));
+      expect(selection.adjudicatesLocally()).toBe(true);
+    });
+
+    it("reports true for a headless non-subagent node", () => {
+      const selection = new AuthorizerSelection(makeDeps());
+      selection.activate(makeCtx({ hasUI: false }));
+      expect(selection.adjudicatesLocally()).toBe(true);
+    });
+
+    it("reports true before activation and after deactivation", () => {
+      const selection = new AuthorizerSelection(
+        makeDeps({ detection: makeDetection(true) }),
+      );
+      expect(selection.adjudicatesLocally()).toBe(true);
+      selection.activate(makeCtx({ hasUI: false }));
+      selection.deactivate();
+      expect(selection.adjudicatesLocally()).toBe(true);
     });
   });
 
