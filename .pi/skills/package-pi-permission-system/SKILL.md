@@ -171,10 +171,20 @@ Shared communication channels:
   Use for direct service access.
 
 The deprecated event-bus RPC channel (`permissions:rpc:check` / `permissions:rpc:prompt`) was removed in #531; the `Symbol.for()` service accessor is the sole cross-extension policy/prompt surface.
+
+**Registrations are node-local** (ADR 0012, `docs/decisions/0012-cross-node-extension-contract.md`, Refs #699, #786).
+One process hosts several **nodes** — one session runtime each, with its own gates, registries, and chain — and every node publishes its own service into a session-keyed process-global map, read with `getPermissionsServiceForSession(sessionId)`.
+The key travels as data on the `permissions:ready` payload, which also carries `adjudicatesLocally`; the bus announces, the locator provides, so never put a live capability on a bus payload.
+The zero-arg `getPermissionsService()` still reads the legacy process-root slot (with the #302 child guard intact) but is deprecated, emitting a once-guarded `process.emitWarning` (`PI_PERMISSION_SYSTEM_DEP0001`) — removal is a future major.
+Use the internal `readRootService()` for any in-package read, or the package warns the host about a call the host did not make.
+A link registered on a relaying node is **accepted and observed**, never refused: `ObservedAuthorizerRegistrar` (`src/authority/authorizer-registry.ts`) records `authorizer_link_vacant`, so registering everywhere stays the correct default for a sibling author and nothing is silent (ADR 0012 decision 4).
+The still-unimplemented half of that contract is the ready latch (#787), the judge migration (#788), and the docs consolidation (#789).
+
 The in-process implementation of `PermissionsService` is `LocalPermissionsService` (`src/permissions-service.ts`).
 It routes policy queries through the `PermissionResolver`, not `PermissionManager` directly: a path-shaped surface (`path` / `external_directory` / `read` / `write` / `edit` / `grep` / `find` / `ls`) query builds an `AccessPath` via `buildAccessIntentForSurface` and emits an `access-path` intent, so external queries match the lexical ∪ canonical set the gates do (#503); the normalizer is fetched per call from the session (`getPathNormalizer()`), so the published service answers against the parent cwd.
 A `bash` query routes through `resolveBashAdvisoryCheck` (`src/bash-advisory-check.ts`), which decomposes a chained/nested command into its command-pattern units and resolves most-restrictive at parity with the gate (via the shared `resolveBashCommandCheck`), backed by a parser warmed at `before_agent_start`; in the pre-warm window it falls back to a whole-string match, so the advisory answer is never weaker than the gate (#309).
-The `session_start`-gated publication, #302 subagent-child guard, ready-event emit, and session teardown ordering are all owned by `PermissionServiceLifecycle` (`src/service-lifecycle.ts`), which is injected into `SessionLifecycleHandler`.
+The `session_start`-gated publication (session-keyed plus the #302-guarded root slot), the ready-event emit carrying the node's `sessionId`/`adjudicatesLocally`, and session teardown ordering are all owned by `PermissionServiceLifecycle` (`src/service-lifecycle.ts`), which is injected into `SessionLifecycleHandler`.
+It reads the node's chain role through the `AdjudicationRole` seam on `AuthorizerSelection` (whose `activate` runs first, inside `PermissionSession.resetForNewSession`); do not re-derive that role from `detection.isSubagent(ctx)` — `selectAuthorizer` tests `hasUI` first, so a subagent with its own UI adjudicates locally.
 Changes to publication timing or teardown order should go through `PermissionServiceLifecycle`, not `index.ts`.
 
 Do not propose module-scoped singletons or Node.js module-cache sharing as a cross-extension communication mechanism — module isolation keeps them invisible to other extensions.
@@ -209,7 +219,7 @@ Shared test fixtures live in `test/helpers/`:
   These were extracted from `permission-manager-unified.test.ts` in #525 (Phase 8 Step 1); import them instead of redefining local manager factories.
 - `make-fake-pi.ts` — `makeFakePi` (composition-root harness): runs the real `piPermissionSystemExtension(pi)` factory against a fake `ExtensionAPI` with a real `createEventBus()`, an inspectable `handlers` map, captured `commands`, and a `fire(event, input, ctx)` driver.
   Use it for composition-root wiring tests (handler-registration completeness, shared-instance contracts, teardown, event ordering) — see `test/composition-root.test.ts`.
-  Composition-root tests must `vi.stubEnv("PI_CODING_AGENT_DIR", <tmpdir>)` and clear both `Symbol.for()` global slots (`:service`, `:subagent-registry`) in `afterEach`, since the factory mutates process-global state.
+  Composition-root tests must `vi.stubEnv("PI_CODING_AGENT_DIR", <tmpdir>)` and clear every `Symbol.for()` global slot (`:service`, `:session-services`, `:subagent-registry`, `:serving-registry`) in `afterEach`, since the factory mutates process-global state.
 
 Import from these instead of redefining factories inline.
 When a call site needs different defaults from `makeCheckResult`, pass explicit overrides (e.g. `makeCheckResult({ state: "deny", matchedPattern: "*" })`).
