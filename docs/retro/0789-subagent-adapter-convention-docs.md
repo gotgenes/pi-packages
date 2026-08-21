@@ -83,3 +83,93 @@ Mid-session the operator surfaced a live runtime error that redirected the relea
 - `test/composition-root.test.ts` — the "out-of-process forwarding liveness" block's three tests now share an arrange/act/assert shape around `writeGlobalConfig` / `fireChildRead` / `approveForwardedRequest` with no wrapping helper.
   The tidy-first assessor rejected extracting one as scope creep and as a premature discriminator-parameter abstraction, since the three differ only in which env stubs are set and which outcome is asserted.
   Recorded for `/plan-improvements` rather than acted on.
+
+## Stage: Final Retrospective (2026-08-21T20:07:08Z)
+
+### Session summary
+
+Planning, TDD, and ship all ran in one continuous session: five commits landing the detection `fix:` and the four-surface doc consolidation, plus four filed follow-ups ([#791]–[#794]) and a mid-session semver reversal.
+The issue closed with CI green; the release is deliberately held — PR #790 stays open until [#794] and [#788] land, so the cut becomes a major rather than `26.4.0`.
+The dominant story is that a docs-consolidation issue turned into a contract-correctness issue twice: once when planning found the ADR's stated obligation did not work, and once when a live error in the operator's terminal reopened a settled semver classification.
+
+### Observations
+
+#### What went well
+
+- **TDD earned its keep on what was nominally a docs issue.**
+  The composition-root Red test failed with "Timed out waiting for the forwarded permission request" — the child never wrote one because it was never detected.
+  That is a stronger proof of the ADR-vs-code gap than the plan's reasoning, and the archaeology was equally good: the two *existing* out-of-process tests stub `PI_SUBAGENT_CHILD` beside the parent-session id with a comment explaining why both are needed, which is a prior session documenting a contract violation without recognizing it.
+- **The package under maintenance debugged its own maintainer.**
+  A malformed absolute path (missing the `pi-packages/packages/` prefix) tripped the `external_directory` gate, and the denial reason named the correct path outright.
+  The gate turned a mistake into a one-line correction instead of a hunt.
+- **A cheap check reframed an expensive-looking question.**
+  Comparing `.pi/npm/node_modules/@gotgenes/pi-permission-system/src/service.ts` (the published 26.3.1 copy) against the working tree established that `getPermissionsServiceForSession` has never shipped.
+  "Should we do a painful rename?"
+  became "what should we name a surface we are publishing for the first time?"
+  — and produced [#794].
+- **The ship stage overrode its own template correctly, on the cheaper model.**
+  `/ship-issue` step 6 says merge the release-please PR; the TDD stage's retro said do not.
+  The ship turn read the retro, verified the hold was still live (judge still on the zero-arg accessor, PR #790 still proposing `26.4.0`), skipped step 6, and said why — rather than following the mechanical instruction.
+- **A live error was absorbed without derailing the cycle.**
+  The operator's stack trace arrived mid-Red; the session stopped, diagnosed it as [#699]'s defect family amplified by [#787]'s latch, filed [#794], took a semver decision, and returned to the exact Red step.
+
+#### What caused friction (agent side)
+
+- `missing-context` — the loading-asymmetry clarification gate offered mechanism options (A/B/C/D) before establishing the facts the operator needed to choose among them: which package owns `excludedExtensionPackages`, and what happens today in each concrete configuration.
+  The operator bounced it with exactly that request ("Which tool provides exclusion of packages… Provide me with some concrete scenarios or examples, both current behavior and desired future behavior").
+  Impact: one extra gate round-trip, four tool calls of re-grounding, no rework — and the re-grounding produced the sharpened split-provider condition that shipped, so the bounce improved the outcome.
+- `instruction-violation` (self-identified) — passed a hand-built absolute path to `read` instead of a repo-relative one, tripping the `external_directory` gate.
+  `AGENTS.md` § Shell and search states this rule verbatim (Refs #726).
+  Impact: one wasted tool call, no rework.
+- `instruction-violation` (self-identified) — at ship, the close-comment range was built from a long path-filtered `git log` that pulled in #699/#786/#787 commits, then re-derived with `--grep`, then one false positive (`569d2a27`, which mentions #789 in #786's decision-map prose) had to be checked.
+  The prompt says to anchor on the parent of the issue's first commit, and that parent had already been resolved one call earlier.
+  Impact: three extra tool calls, no rework.
+- `other` — an authoring typo ("a *another* package's tool") reached the file and was caught by re-reading, not by `rumdl`, which does not check grammar.
+  Impact: one extra edit and re-lint before the commit.
+- `other` — invoked `issue_close` as a shell command inside a `bash` call (`command not found`), then re-issued it as a tool call.
+  Impact: one wasted call; the heredoc had already written the comment body, so nothing was lost.
+
+#### What caused friction (user side)
+
+- The operator's terminal had been showing the `model-judge` duplicate-registration stack trace before it was raised — it surfaced when a subagent dispatch made it visible again.
+  Sharing it at the first sighting would have moved the semver decision ahead of the TDD cycle rather than interrupting it.
+  Framed as opportunity: the interruption was handled cleanly, and the error arriving *during* implementation is what made its diagnosis concrete.
+- The `#788`-is-closed recollection was checked with one read-only API call and corrected in a sentence.
+  Worth noting as the cheap path working: the question cost less than acting on the wrong assumption would have.
+
+#### Deferred follow-up
+
+- **The release hold survived only as retro prose.**
+  `/ship-issue` reads a deterministic `**Release:**` marker from the plan, but "do not merge PR #790 until [#794] and [#788] land" lived only in a retro observation, and the ship stage honored it because it happened to read the retro.
+  A cross-issue hold has no machine-readable home today.
+  Too large for a retro commit — it changes a contract `/plan-issue` writes and `/ship-issue` reads.
+  Worth filing if a second hold ever recurs.
+
+### Diagnostic details
+
+- **Model-performance correlation** — planning and TDD ran on `anthropic/claude-opus-5`; the ship stage ran on `anthropic/claude-sonnet-5`; the retro on `claude-opus-5`.
+  Both subagents (`tidy-first-assessor`, `pre-completion-reviewer`) ran on their frontmatter default `anthropic/claude-sonnet-5`.
+  No mismatch: the judgment-heavy work (the ADR-gap diagnosis, three clarification gates, the semver argument) sat on opus, and the ship stage's one judgment call — overriding step 6 — was handled correctly on sonnet.
+  The `pre-completion-reviewer` on sonnet produced a substantive WARN with verified cross-references, which is appropriate for the cost.
+- **Escalation-delay tracking** — no `rabbit-hole` friction points; no sequence of consecutive tool calls on a single error exceeded two.
+- **Feedback-loop gap analysis** — verification ran incrementally rather than only at the end: full baseline before the first change, per-file `vitest` at each Red and Green, `pnpm run check` immediately after the `src/` change, `pnpm run lint` after each doc step, and the full gate before review.
+  No gap found.
+- **Unused-tool detection** — `colgrep` was never dispatched, correctly: every search this session was for an exact symbol or literal string (`SUBAGENT_ENV_HINT_KEYS`, `subagents:child`, `disallowed_tools`), which the `colgrep` skill's decision table assigns to `grep`.
+
+### Changes made
+
+1. `AGENTS.md` § Clarification gates — repaired a malformed `##` heading left by [#787]'s retro, which had structurally orphaned `### Background agent guardrails` and every sibling down to `### Code Style` out of the `## Workflow` section.
+   The defect was **not** a typo: `rumdl fmt` applies MD018 ("no space after hash") to a line-initial `#787`, repairing it into a valid `## 787` heading.
+   The first fix attempt reproduced it exactly — the line was rewritten as a plain sentence starting `#787's…` and the formatter promoted it again on save.
+   The working form starts the line with `Refs #787:`, which is what the `markdown-conventions` skill's line-initial-issue-number rule already prescribes.
+2. `AGENTS.md` § Clarification gates — added the rule that a gate offering mechanisms must first name which component owns the lever and what happens today in each concrete configuration.
+3. `AGENTS.md` § Commits — added the published-surface check that must precede pricing a rename as breaking.
+   The first draft proposed reading `.pi/npm/node_modules/@gotgenes/<pkg>/`; the operator rejected the mechanism as untrustworthy, since that copy is only as fresh as the last `pi update --extensions`.
+   That failure mode is the dangerous direction — a stale copy shows a shipped export as absent and licenses a rename that breaks real consumers.
+   The landed rule pairs `pnpm view @gotgenes/<pkg> version` (the registry, which cannot go stale) with `git show <pkg>-v<version>:<path>` (the file exactly as published), and fails loudly on a missing tag.
+   Verified against this session's own question: at `pi-permission-system-v26.3.1` the file carries only `publishPermissionsService` / `getPermissionsService` / `unpublishPermissionsService`, confirming the `*ForSession` family is unpublished and [#794]'s rename is free.
+
+Not landed: aligning `/ship-issue`'s cross-package range anchor with the `pre-completion` skill's `<plan-commit>^..HEAD` phrasing (offered, not selected).
+
+[#787]: https://github.com/gotgenes/pi-packages/issues/787
+[#788]: https://github.com/gotgenes/pi-packages/issues/788
