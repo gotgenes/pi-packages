@@ -169,8 +169,8 @@ importers:
         specifier: 0.79.1
         version: 0.79.1(ws@8.20.1)(zod@4.4.3)
       '@gotgenes/pi-permission-system':
-        specifier: 20.10.0
-        version: 20.10.0(@earendil-works/pi-coding-agent@0.79.1(ws@8.20.1)(zod@4.4.3))(@earendil-works/pi-tui@0.79.1)
+        specifier: 27.0.0
+        version: 27.0.0(@earendil-works/pi-coding-agent@0.79.1(ws@8.20.1)(zod@4.4.3))(@earendil-works/pi-tui@0.80.5)
       '@types/node':
         specifier: 'catalog:'
         version: 22.19.19
@@ -616,8 +616,8 @@ packages:
       '@modelcontextprotocol/sdk':
         optional: true
 
-  '@gotgenes/pi-permission-system@20.10.0':
-    resolution: {integrity: sha512-7jWdwzfwIYper9jeYkb3f74mPGZp/hYvzHYHgf6WFoSnAPq3nr4a/NeuBSCKax3Kv0r8EwScxNWQ5y25JcOJQg==}
+  '@gotgenes/pi-permission-system@27.0.0':
+    resolution: {integrity: sha512-5WpP2z0Ohxipi2Myfg4ArchXgtMX15HbJl7b2YMK3iB2sRIm57hDXt86e0zsVX+sGOVrDLCkKtLoqMkrPS1rwQ==}
     engines: {node: '>=22'}
     peerDependencies:
       '@earendil-works/pi-coding-agent': '>=0.79.0'
@@ -2556,10 +2556,10 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@gotgenes/pi-permission-system@20.10.0(@earendil-works/pi-coding-agent@0.79.1(ws@8.20.1)(zod@4.4.3))(@earendil-works/pi-tui@0.79.1)':
+  '@gotgenes/pi-permission-system@27.0.0(@earendil-works/pi-coding-agent@0.79.1(ws@8.20.1)(zod@4.4.3))(@earendil-works/pi-tui@0.80.5)':
     dependencies:
       '@earendil-works/pi-coding-agent': 0.79.1(ws@8.20.1)(zod@4.4.3)
-      '@earendil-works/pi-tui': 0.79.1
+      '@earendil-works/pi-tui': 0.80.5
       tree-sitter-bash: 0.25.1
       web-tree-sitter: 0.26.9
       zod: 4.4.3

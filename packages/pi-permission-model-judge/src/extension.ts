@@ -1,15 +1,14 @@
 /**
  * Extension wiring: load the config at `session_start`, register the
- * `"model-judge"` link once the permission service is ready, and dispose on
+ * `"model-judge"` link from the `permissions:ready` handler, and dispose on
  * shutdown.
  *
- * Registration is attempted from both `session_start` and `permissions:ready`
- * behind an idempotency guard, because the two orderings are both possible: the
- * ready event fires inside pi-permission-system's own `session_start`, which may
- * run before or after this extension's. Whichever completes the pair
- * (config loaded here + service published there) triggers the single
- * registration; the guard prevents a duplicate (which `registerAuthorizer`
- * would reject).
+ * The ready event fires at least once per session and may repeat, and its
+ * latch emission at the node's first `before_agent_start` runs after every
+ * extension's `session_start` (ADR 0012 decision 3) — so the handler alone is
+ * a sufficient registration site, needing only an idempotence guard. The
+ * event's `sessionId` keys the service of the node that emitted it, which is
+ * the node whose chain consults this link.
  */
 
 import { complete as realComplete } from "@earendil-works/pi-ai";
@@ -17,6 +16,7 @@ import {
   type ExtensionAPI,
   getAgentDir,
 } from "@earendil-works/pi-coding-agent";
+import type { PermissionsReadyEvent } from "@gotgenes/pi-permission-system";
 import {
   getPermissionsService,
   PERMISSIONS_READY_CHANNEL,
@@ -58,16 +58,30 @@ export function createModelJudgeExtension(
     dependencies.complete ??
     ((model, context, options) => realComplete(model, context, options));
 
-  let sessionStarted = false;
   let config: ModelJudgeConfig | undefined;
   let registry: ModelRegistryLike | undefined;
   let dispose: (() => void) | undefined;
 
-  function tryRegister(): void {
-    if (dispose || !sessionStarted || !config) {
+  pi.on("session_start", (_event, ctx) => {
+    const result = loadConfig(ctx.cwd);
+    config = result.config;
+    registry = ctx.modelRegistry;
+    for (const issue of result.issues) {
+      warn(
+        `config issue at ${issue.sourcePath ?? "(merged)"} — ${issue.path}: ${issue.message}`,
+      );
+    }
+  });
+
+  pi.events.on(PERMISSIONS_READY_CHANNEL, (data) => {
+    // A repeat emission must be a no-op, and a session with no config of its
+    // own registers nothing: that is the operator declining the link.
+    if (dispose || !config) {
       return;
     }
-    const service = getPermissionsService();
+    const sessionId = readySessionId(data);
+    const service =
+      sessionId === null ? undefined : getPermissionsService(sessionId);
     if (!service) {
       return;
     }
@@ -77,30 +91,19 @@ export function createModelJudgeExtension(
       complete,
     });
     dispose = service.registerAuthorizer(LINK_NAME, authorize);
-  }
-
-  pi.on("session_start", (_event, ctx) => {
-    const result = loadConfig(ctx.cwd);
-    config = result.config;
-    registry = ctx.modelRegistry;
-    sessionStarted = true;
-    for (const issue of result.issues) {
-      warn(
-        `config issue at ${issue.sourcePath ?? "(merged)"} — ${issue.path}: ${issue.message}`,
-      );
-    }
-    tryRegister();
-  });
-
-  pi.events.on(PERMISSIONS_READY_CHANNEL, () => {
-    tryRegister();
   });
 
   pi.on("session_shutdown", () => {
     dispose?.();
     dispose = undefined;
-    sessionStarted = false;
     config = undefined;
     registry = undefined;
   });
+}
+
+/** The payload's session id, or `null` for any shape that cannot key the locator. */
+function readySessionId(data: unknown): string | null {
+  const sessionId = (data as Partial<PermissionsReadyEvent> | undefined)
+    ?.sessionId;
+  return typeof sessionId === "string" ? sessionId : null;
 }

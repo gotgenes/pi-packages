@@ -6,6 +6,7 @@ import type { ModelJudgeConfig } from "#src/config-schema";
 import type { CompleteFn, ModelRegistryLike } from "#src/model-review";
 import { createTypoReviewer } from "#src/typo-reviewer";
 import { assistantToolCall } from "#test/fixtures/assistant-message";
+import { makePromptDetails } from "#test/fixtures/permission-details";
 
 const CONFIG: ModelJudgeConfig = {
   provider: "anthropic",
@@ -23,15 +24,7 @@ const MODEL = { provider: "anthropic", id: "claude-haiku" } as Model<any>;
 function makeDetails(
   overrides: Partial<PromptPermissionDetails> = {},
 ): PromptPermissionDetails {
-  return {
-    requestId: "req-1",
-    source: "tool_call",
-    agentName: null,
-    message: "external directory access",
-    surface: "external_directory",
-    path: TYPO_PATH,
-    ...overrides,
-  };
+  return makePromptDetails({ path: TYPO_PATH, ...overrides });
 }
 
 function makeRegistry(model: Model<any> | undefined): ModelRegistryLike {

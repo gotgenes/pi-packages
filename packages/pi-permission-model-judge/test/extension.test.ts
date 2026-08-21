@@ -4,6 +4,7 @@ import { dirname, join } from "node:path";
 
 import type { AssistantMessage, Model } from "@earendil-works/pi-ai";
 import type {
+  PermissionsReadyEvent,
   PermissionsService,
   PromptPermissionDetails,
 } from "@gotgenes/pi-permission-system";
@@ -17,8 +18,12 @@ import { getGlobalConfigPath, type LoadConfigResult } from "#src/config-loader";
 import { createModelJudgeExtension } from "#src/extension";
 import type { CompleteFn } from "#src/model-review";
 import { assistantToolCall } from "#test/fixtures/assistant-message";
+import { makePromptDetails } from "#test/fixtures/permission-details";
 
 const READY_CHANNEL = "permissions:ready";
+
+/** The session id of the node under test — the key its service publishes under. */
+const SESSION_ID = "session-under-test";
 
 const CONFIG_RESULT: LoadConfigResult = {
   config: {
@@ -112,9 +117,15 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  unpublishPermissionsService(service);
+  unpublishPermissionsService(SESSION_ID, service);
   vi.restoreAllMocks();
 });
+
+/** Announce a node the way `PermissionServiceLifecycle` does. */
+function emitReady(pi: FakePi, sessionId: string | null = SESSION_ID): void {
+  const event: PermissionsReadyEvent = { sessionId, adjudicatesLocally: true };
+  pi.events.get(READY_CHANNEL)?.(event);
+}
 
 /**
  * The ordinary session bring-up: the permission system publishes its service,
@@ -125,54 +136,86 @@ afterEach(() => {
  * instead of calling this.
  */
 function bringUpSession(pi: FakePi, cwd?: string): void {
-  publishPermissionsService(service);
+  publishPermissionsService(SESSION_ID, service);
   pi.lifecycle.get("session_start")?.({}, ctxWithRegistry(cwd));
-  pi.events.get(READY_CHANNEL)?.({});
+  emitReady(pi);
 }
 
 describe("createModelJudgeExtension", () => {
-  it("registers the model-judge link when config loads before the service is ready", () => {
+  it("registers the model-judge link from the ready handler", () => {
     const pi = makeFakePi();
     createModelJudgeExtension(pi.api as never, {
       loadConfig: () => CONFIG_RESULT,
       complete: vi.fn(),
     });
 
-    // session_start fires first (config captured), then the service publishes
-    // and emits ready.
-    pi.lifecycle.get("session_start")?.({}, ctxWithRegistry());
-    publishPermissionsService(service);
-    pi.events.get(READY_CHANNEL)?.({});
+    bringUpSession(pi);
 
     expect(service.registerAuthorizer).toHaveBeenCalledTimes(1);
     expect(service.registerAuthorizer.mock.calls[0]?.[0]).toBe("model-judge");
   });
 
-  it("registers when the service is ready before this session_start (pps-first order)", () => {
+  it("registers on the latch emission when ready fired before this session_start", () => {
     const pi = makeFakePi();
     createModelJudgeExtension(pi.api as never, {
       loadConfig: () => CONFIG_RESULT,
       complete: vi.fn(),
     });
 
-    // pps published and emitted ready before this extension's session_start ran.
-    publishPermissionsService(service);
-    pi.events.get(READY_CHANNEL)?.({});
+    // pps published and emitted ready before this extension's session_start
+    // ran, so there is no config yet and nothing to register.
+    publishPermissionsService(SESSION_ID, service);
+    emitReady(pi);
     expect(service.registerAuthorizer).not.toHaveBeenCalled();
 
+    // session_start loads the config, and the latch emission at the node's
+    // first before_agent_start carries the registration.
     pi.lifecycle.get("session_start")?.({}, ctxWithRegistry());
+    expect(service.registerAuthorizer).not.toHaveBeenCalled();
+
+    emitReady(pi);
     expect(service.registerAuthorizer).toHaveBeenCalledTimes(1);
   });
 
-  it("registers only once across both triggers", () => {
+  it("registers only once when ready repeats", () => {
     const pi = makeFakePi();
     createModelJudgeExtension(pi.api as never, {
       loadConfig: () => CONFIG_RESULT,
       complete: vi.fn(),
     });
     bringUpSession(pi);
-    pi.events.get(READY_CHANNEL)?.({});
+    emitReady(pi);
     expect(service.registerAuthorizer).toHaveBeenCalledTimes(1);
+  });
+
+  it("registers into the node the ready payload names, not another node", () => {
+    const otherService = makeService();
+    publishPermissionsService("other-session", otherService);
+    const pi = makeFakePi();
+    createModelJudgeExtension(pi.api as never, {
+      loadConfig: () => CONFIG_RESULT,
+      complete: vi.fn(),
+    });
+
+    bringUpSession(pi);
+
+    expect(service.registerAuthorizer).toHaveBeenCalledTimes(1);
+    expect(otherService.registerAuthorizer).not.toHaveBeenCalled();
+    unpublishPermissionsService("other-session", otherService);
+  });
+
+  it("registers nothing when the ready payload carries no session id", () => {
+    const pi = makeFakePi();
+    createModelJudgeExtension(pi.api as never, {
+      loadConfig: () => CONFIG_RESULT,
+      complete: vi.fn(),
+    });
+    publishPermissionsService(SESSION_ID, service);
+    pi.lifecycle.get("session_start")?.({}, ctxWithRegistry());
+
+    emitReady(pi, null);
+
+    expect(service.registerAuthorizer).not.toHaveBeenCalled();
   });
 
   it("registers nothing when config is absent", () => {
@@ -192,7 +235,7 @@ describe("createModelJudgeExtension", () => {
       complete: vi.fn(),
     });
     pi.lifecycle.get("session_start")?.({}, ctxWithRegistry());
-    pi.events.get(READY_CHANNEL)?.({});
+    emitReady(pi);
     expect(service.registerAuthorizer).not.toHaveBeenCalled();
   });
 
@@ -220,14 +263,9 @@ describe("createModelJudgeExtension", () => {
     const authorize = service.registerAuthorizer.mock
       .calls[0]?.[1] as RegisteredAuthorizer;
     const verdict = await authorize(
-      {
-        requestId: "r1",
-        source: "tool_call",
-        agentName: null,
-        message: "external directory",
-        surface: "external_directory",
+      makePromptDetails({
         path: "/x/packages/pi-permission-system/packages/pi-permission-system/a.ts",
-      },
+      }),
       {},
       { review: vi.fn(), debug: vi.fn() },
     );
@@ -285,14 +323,7 @@ describe("global config scope", () => {
     const authorize = service.registerAuthorizer.mock
       .calls[0]?.[1] as RegisteredAuthorizer;
     await authorize(
-      {
-        requestId: "r1",
-        source: "tool_call",
-        agentName: null,
-        message: "external directory",
-        surface: "external_directory",
-        path: `/x/${SCOPED_PATTERN}/a.ts`,
-      },
+      makePromptDetails({ path: `/x/${SCOPED_PATTERN}/a.ts` }),
       {},
       { review: vi.fn(), debug: vi.fn() },
     );

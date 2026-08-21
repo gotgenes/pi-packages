@@ -41,6 +41,7 @@ minimumReleaseAgeExclude:
   - '@fallow-cli/win32-arm64-msvc@3.2.0'
   - '@fallow-cli/win32-x64-msvc@3.2.0'
   - fallow@3.2.0
+  - '@gotgenes/pi-permission-system@27.0.0'
 
 # A freshly-published first-party sibling (e.g. a same-day @gotgenes/* release a
 # dependent package bumps to) cannot be unblocked via minimumReleaseAgeExclude:
