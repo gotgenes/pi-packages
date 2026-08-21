@@ -125,6 +125,8 @@ That holds only where assertions are exact (`toEqual`/`toHaveBeenCalledWith`).
 A touched `toMatchObject`/`objectContaining` site absorbs a wrong insertion and still passes — re-read those by hand instead of counting the green run as verification (Refs #726).
 A replacement containing backslashes is a trap even as a single-line rename — shell, perl, and the regex engine each consume an escape level.
 Use `Edit` (Refs #653).
+A scripted symbol rename also rewrites the prose *around* the symbol, where the old signature's adjectives survive as contradictions ("the zero-arg `getRootPermissionsService()`").
+Grep the words that described the old shape (`zero-arg`, `takes no`, the old arity) after the script — no gate flags them (Refs #794).
 When wrapping existing lines in a new enclosing block (a `describe`, function, or `try`), emit the opening and closing braces as two `edits[]` entries in one `Edit` call (or use `Write`) — a lone opening brace fails the whole file parse, and the close is too far from the open to anchor in the same `oldText`.
 
 ### Multi-session issue lifecycle
@@ -332,8 +334,10 @@ Use `colgrep` for intent-based codebase exploration and convention discovery; us
 `rg` recurses by default; drop the `-r` (Refs #725).
 Quote a glob pattern meant for a command rather than the shell — `--include='*.ts'`, `find . -name '*.ts'`.
 Unquoted, it expands against the cwd first: bash silently substitutes a matched filename, and zsh aborts with `no matches found`.
+In zsh an unquoted parameter is not word-split, so `perl -pi -e '…' $FILES` passes the whole list as a single filename — spell a multi-file list inline.
 Do not start a bash word with `=` — zsh's `equals` expansion reads `=word` as a command-path lookup, so a decorative `echo ===` separator aborts with `zsh:1: == not found` and discards the rest of an `A; B; C` chain.
 Use `echo ---`.
+A `gh issue comment` / `gh pr comment` body containing backticks or fences belongs in a file passed with `--body-file` — inside single quotes a `` \` `` ships literally (Refs #794).
 A shell snippet quoted inside a `/* */` block comment must not contain `*/` — a `sed 's/,.*//'` closes the comment and breaks the file's parse.
 Use `cut -d, -f1`.
 Pass file tool paths repo-relative (`packages/<pkg>/src/x.ts`), not hand-built absolute ones — a mistyped absolute path trips the `external_directory` gate instead of failing fast (Refs #726).
