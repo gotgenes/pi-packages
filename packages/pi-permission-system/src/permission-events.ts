@@ -18,7 +18,14 @@ export interface PermissionEventBus {
 
 // ── Channel name constants ─────────────────────────────────────────────────
 
-/** Emitted at `session_start`, after the emitting node published its service. */
+/**
+ * Emitted at `session_start` after the emitting node published its service, and
+ * again at that node's first `before_agent_start` (ADR 0012 decision 3).
+ *
+ * Fires at least once per session and may repeat, so a handler must be
+ * idempotent — registering on every emission hits the duplicate-registration
+ * throw.
+ */
 export const PERMISSIONS_READY_CHANNEL = "permissions:ready";
 
 /** Emitted when a permission request is committed to the active UI prompt path. */
@@ -173,9 +180,11 @@ export interface PermissionDecisionEvent {
 
 /**
  * Emit the `permissions:ready` broadcast.
- * Call at `session_start`, after the node published its service, so a consumer
- * reacting to ready can immediately resolve
- * `getPermissionsServiceForSession(event.sessionId)`.
+ * Call after the node published its service, so a consumer reacting to ready
+ * can immediately resolve `getPermissionsServiceForSession(event.sessionId)`.
+ * Called twice per session: at `session_start`, and at the first
+ * `before_agent_start` so a consumer whose own `session_start` ran later still
+ * hears it (ADR 0012 decision 3).
  */
 export function emitReadyEvent(
   events: PermissionEventBus,

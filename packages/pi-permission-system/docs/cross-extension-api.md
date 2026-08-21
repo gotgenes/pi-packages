@@ -47,7 +47,7 @@ Registrations never cross a node boundary: a formatter, an access extractor, or 
 
 Each node therefore publishes its own service at `session_start`, into a `globalThis` map keyed by that node's session id (`Symbol.for("@gotgenes/pi-permission-system:session-services")`).
 Consumers call `getPermissionsServiceForSession(sessionId)` to retrieve it — even though their `import()` loads a fresh module copy, the accessor reads from the shared `globalThis` slot.
-The session id arrives as a field on the `permissions:ready` broadcast, which each node emits at its own `session_start`, right after publishing.
+The session id arrives as a field on the `permissions:ready` broadcast, which each node emits at its own `session_start`, right after publishing — and again at that node's first `before_agent_start`, so a consumer whose own `session_start` ran later still hears it.
 
 The zero-arg `getPermissionsService()` remains, reading a separate legacy slot that holds the **process root's** service, but it is deprecated: in any node but the root it answers the wrong question, handing an in-process child the parent's service.
 Calling it emits a once-guarded Node `DeprecationWarning` (code `PI_PERMISSION_SYSTEM_DEP0001`); run with `--trace-deprecation` to locate your call site, or `--no-deprecation` to silence it.
@@ -316,11 +316,11 @@ All three broadcasts are best-effort: a throwing listener cannot block permissio
 
 ## Channel Reference
 
-| Channel                 | Direction | When                                                      | Payload type              |
-| ----------------------- | --------- | --------------------------------------------------------- | ------------------------- |
-| `permissions:ready`     | Broadcast | At each node's `session_start`, after that node publishes | `PermissionsReadyEvent`   |
-| `permissions:ui_prompt` | Broadcast | Before active UI prompt                                   | `PermissionUiPromptEvent` |
-| `permissions:decision`  | Broadcast | After every gate resolution                               | `PermissionDecisionEvent` |
+| Channel                 | Direction | When                                                                                                  | Payload type              |
+| ----------------------- | --------- | ----------------------------------------------------------------------------------------------------- | ------------------------- |
+| `permissions:ready`     | Broadcast | At each node's `session_start` after that node publishes, and again at its first `before_agent_start` | `PermissionsReadyEvent`   |
+| `permissions:ui_prompt` | Broadcast | Before active UI prompt                                                                               | `PermissionUiPromptEvent` |
+| `permissions:decision`  | Broadcast | After every gate resolution                                                                           | `PermissionDecisionEvent` |
 
 ---
 
@@ -464,7 +464,16 @@ pi.events.on("permissions:decision", (raw) => {
 ## Ready Event
 
 Each node emits `permissions:ready` at its own `session_start`, right after publishing its service — so a consumer reacting to it can immediately resolve that node's service.
-It fires once per `session_start` (including `/reload`).
+It emits again at that node's first `before_agent_start`, which runs after every extension's `session_start` and before any tool call, hence before any permission prompt.
+
+So the channel's contract is: **fires at least once per session, and may repeat.**
+A handler must be idempotent.
+That guarantee is what makes the ready event alone a sufficient registration site: a consumer that needs its own config before it can register no longer has to attempt registration from `session_start` as well, hoping one of the two orderings completes the pair.
+A new session generation (`/reload`, `/new`, `/resume`) starts the cycle over: one emission at `session_start`, one at the first turn that follows.
+
+Guard your registration on the disposer you stored, as the example below does.
+An unguarded handler that calls `registerAuthorizer`, `registerToolInputFormatter`, or `registerToolAccessExtractor` on every emission hits the duplicate-registration throw on the second one.
+That throw is caught by Pi's event bus and reported on stderr — your first registration stays live — but the noise is avoidable, and it was already reachable before the latch existed, since `/reload` re-runs `session_start`.
 
 The payload carries plain facts about the node that emitted it, never a live capability: the bus announces, the locator provides.
 It carries no `protocolVersion` — the broadcast contract is defined by the published types plus package semver.
@@ -475,15 +484,24 @@ It carries no `protocolVersion` — the broadcast contract is defined by the pub
 | `adjudicatesLocally` | `boolean`        | Whether this node's authorizer chain runs, or the node relays its asks to a serving node that runs _its_ chain over the same facts.                                             |
 
 ```typescript
+let dispose: (() => void) | undefined;
+
 pi.events.on("permissions:ready", (data) => {
   const { sessionId } = data as PermissionsReadyEvent;
-  if (!sessionId) return;
+  // Idempotent: ready may repeat, so a second emission must be a no-op.
+  if (dispose || !sessionId) return;
   void (async () => {
     const { getPermissionsServiceForSession } =
       await import("@gotgenes/pi-permission-system");
     const permissions = getPermissionsServiceForSession(sessionId);
-    // This node published just before the event fired — resolve it now.
+    // This node published before the event fired — resolve and register now.
+    dispose = permissions?.registerAuthorizer("my-link", authorize);
   })();
+});
+
+pi.on("session_shutdown", () => {
+  dispose?.();
+  dispose = undefined;
 });
 ```
 
