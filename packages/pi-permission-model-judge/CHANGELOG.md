@@ -1,5 +1,26 @@
 # Changelog
 
+## [2.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-model-judge-v1.1.4...pi-permission-model-judge-v2.0.0) (2026-08-21)
+
+
+### ⚠ BREAKING CHANGES
+
+* **pi-permission-model-judge:** `@gotgenes/pi-permission-system` 20.10.0 through 26.x are no longer supported — their `permissions:ready` payload carries no `sessionId`, so the keyed lookup has no key and the link never registers. Upgrade `@gotgenes/pi-permission-system` to 27.0.0 or later.
+
+### Features
+
+* **pi-permission-model-judge:** warn once when the node's permission service cannot be resolved ([343cf5d](https://github.com/gotgenes/pi-packages/commit/343cf5ded1a305d16522c01c86ec2f916f0e9af2)), closes [#788](https://github.com/gotgenes/pi-packages/issues/788)
+
+
+### Bug Fixes
+
+* **pi-permission-model-judge:** register the model-judge link on the keyed ready channel ([5ea0651](https://github.com/gotgenes/pi-packages/commit/5ea065170cb1c375ba5c28d99273f855330f2667)), closes [#788](https://github.com/gotgenes/pi-packages/issues/788)
+
+
+### Documentation
+
+* **pi-permission-model-judge:** require pi-permission-system 27 for the keyed channel ([de745e2](https://github.com/gotgenes/pi-packages/commit/de745e2277145518c57acbcab53de95eecd837a8)), closes [#788](https://github.com/gotgenes/pi-packages/issues/788)
+
 ## [1.1.4](https://github.com/gotgenes/pi-packages/compare/pi-permission-model-judge-v1.1.3...pi-permission-model-judge-v1.1.4) (2026-08-19)
 
 
