@@ -5,6 +5,7 @@ import type { RegisteredChildDetector } from "#src/authority/subagent-detection"
 import type { PermissionsService } from "#src/service";
 import {
   PermissionServiceLifecycle,
+  type ReadyAnnouncer,
   type ServiceLifecycle,
 } from "#src/service-lifecycle";
 
@@ -103,6 +104,12 @@ it("PermissionServiceLifecycle satisfies ServiceLifecycle", () => {
   expect(_).toBeDefined();
 });
 
+it("PermissionServiceLifecycle satisfies ReadyAnnouncer", () => {
+  const { lifecycle } = makeLifecycle();
+  const _: ReadyAnnouncer = lifecycle;
+  expect(_).toBeDefined();
+});
+
 // ── activate ──────────────────────────────────────────────────────────────
 
 describe("activate", () => {
@@ -198,6 +205,68 @@ describe("activate", () => {
     lifecycle.activate(ctx);
     expect(mockEmitReadyEvent).toHaveBeenCalledWith(events, {
       sessionId: null,
+      adjudicatesLocally: true,
+    });
+  });
+});
+
+// ── announceReady (the ready latch) ───────────────────────────────────────
+
+describe("announceReady", () => {
+  it("emits the node's ready facts", () => {
+    const ctx = makeCtx({ sessionManager: makeSessionManager("node-session") });
+    const { lifecycle, events } = makeLifecycle();
+    mockAdjudicatesLocally.mockReturnValue(false);
+    lifecycle.announceReady(ctx);
+    expect(mockEmitReadyEvent).toHaveBeenCalledWith(events, {
+      sessionId: "node-session",
+      adjudicatesLocally: false,
+    });
+  });
+
+  it("announces only once per session", () => {
+    const ctx = makeCtx();
+    const { lifecycle } = makeLifecycle();
+    lifecycle.activate(ctx);
+    mockEmitReadyEvent.mockClear();
+    lifecycle.announceReady(ctx);
+    lifecycle.announceReady(ctx);
+    lifecycle.announceReady(ctx);
+    expect(mockEmitReadyEvent).toHaveBeenCalledOnce();
+  });
+
+  it("announces again after a further activate re-arms the latch", () => {
+    const ctx = makeCtx();
+    const { lifecycle } = makeLifecycle();
+    lifecycle.activate(ctx);
+    lifecycle.announceReady(ctx);
+    lifecycle.activate(ctx);
+    mockEmitReadyEvent.mockClear();
+    lifecycle.announceReady(ctx);
+    expect(mockEmitReadyEvent).toHaveBeenCalledOnce();
+  });
+
+  it("announces even when no activate preceded it", () => {
+    const ctx = makeCtx();
+    const { lifecycle, events } = makeLifecycle();
+    lifecycle.announceReady(ctx);
+    expect(mockEmitReadyEvent).toHaveBeenCalledWith(events, {
+      sessionId: "test-session",
+      adjudicatesLocally: true,
+    });
+  });
+
+  it("recomputes the facts from the ctx it is handed", () => {
+    const { lifecycle, events } = makeLifecycle();
+    lifecycle.activate(
+      makeCtx({ sessionManager: makeSessionManager("activated-session") }),
+    );
+    mockEmitReadyEvent.mockClear();
+    lifecycle.announceReady(
+      makeCtx({ sessionManager: makeSessionManager("latched-session") }),
+    );
+    expect(mockEmitReadyEvent).toHaveBeenCalledWith(events, {
+      sessionId: "latched-session",
       adjudicatesLocally: true,
     });
   });
