@@ -312,11 +312,48 @@ export function publishPermissionsService(
  * for policy queries alike. Take `sessionId` from the `permissions:ready`
  * payload (or from `ctx.sessionManager.getSessionId()` inside your own session
  * handler), and resolve per use rather than caching the reference.
+ *
+ * A caller the type checker cannot reach — JavaScript, or a consumer compiled
+ * against an earlier major — may still call this with no argument. That answers
+ * `undefined` rather than another node's service, and warns once so the missing
+ * registration is not silent.
  */
 export function getPermissionsService(
   sessionId: string,
 ): PermissionsService | undefined {
+  if (typeof sessionId !== "string") {
+    warnMissingSessionId();
+    return undefined;
+  }
   return sessionServices().get(sessionId);
+}
+
+const MISSING_SESSION_ID_WARNING =
+  "getPermissionsService() was called without a session id and answered " +
+  "undefined. It resolves the service of one node, so it needs the sessionId " +
+  "from the permissions:ready payload: getPermissionsService(sessionId). To " +
+  "read the process root's service — what the zero-arg call used to do — use " +
+  "the deprecated getRootPermissionsService(). See " +
+  "https://github.com/gotgenes/pi-packages/blob/main/packages/pi-permission-system/docs/cross-extension-api.md";
+
+/**
+ * Warned at most once per module copy, like the deprecation guard above, so a
+ * consumer polling the locator every turn reports the defect once.
+ *
+ * Deliberately not a `DeprecationWarning`: an operator who silences those with
+ * `--no-deprecation` still needs to hear that a registration never landed.
+ */
+let warnedMissingSessionId = false;
+
+function warnMissingSessionId(): void {
+  if (warnedMissingSessionId) {
+    return;
+  }
+  warnedMissingSessionId = true;
+  process.emitWarning(MISSING_SESSION_ID_WARNING, {
+    type: "Warning",
+    code: "PI_PERMISSION_SYSTEM_WARN0001",
+  });
 }
 
 /**

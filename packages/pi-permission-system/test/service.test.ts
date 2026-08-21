@@ -159,17 +159,17 @@ describe("session-keyed accessor", () => {
 
 // ── process-root accessor deprecation ──────────────────────────────────
 
-describe("process-root accessor deprecation", () => {
-  /**
-   * The once-guard is module-scoped, so each case imports a fresh copy of the
-   * module — which is also how a consumer sees it under jiti isolation: one
-   * warning per consumer module copy per process.
-   */
-  async function freshServiceModule() {
-    vi.resetModules();
-    return await import("#src/service");
-  }
+/**
+ * Each once-guard is module-scoped, so a case that asserts on it imports a
+ * fresh copy of the module — which is also how a consumer sees it under jiti
+ * isolation: one warning per consumer module copy per process.
+ */
+async function freshServiceModule() {
+  vi.resetModules();
+  return await import("#src/service");
+}
 
+describe("process-root accessor deprecation", () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.resetModules();
@@ -224,6 +224,59 @@ describe("process-root accessor deprecation", () => {
     service.publishPermissionsService("node-session", published);
     expect(service.getPermissionsService("node-session")).toBe(published);
     service.unpublishPermissionsService("node-session", published);
+
+    expect(emitWarning).not.toHaveBeenCalled();
+  });
+});
+
+// ── keyed accessor called without a session id ─────────────────────────────
+
+describe("keyed accessor called without a session id", () => {
+  /** The JS call shape a required parameter cannot prevent. */
+  function callWithoutSessionId(
+    get: (sessionId: string) => PermissionsService | undefined,
+  ): PermissionsService | undefined {
+    return (get as unknown as () => PermissionsService | undefined)();
+  }
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.resetModules();
+  });
+
+  it("returns undefined rather than another node's service", async () => {
+    vi.spyOn(process, "emitWarning").mockImplementation(() => undefined);
+    const service = await freshServiceModule();
+    const published = makeService();
+    service.publishRootPermissionsService(published);
+
+    expect(callWithoutSessionId(service.getPermissionsService)).toBeUndefined();
+
+    service.unpublishRootPermissionsService(published);
+  });
+
+  it("warns once, naming the ready payload and the root reader", async () => {
+    const emitWarning = vi
+      .spyOn(process, "emitWarning")
+      .mockImplementation(() => undefined);
+    const service = await freshServiceModule();
+
+    callWithoutSessionId(service.getPermissionsService);
+    callWithoutSessionId(service.getPermissionsService);
+
+    expect(emitWarning).toHaveBeenCalledExactlyOnceWith(
+      expect.stringContaining("getRootPermissionsService()"),
+      { type: "Warning", code: "PI_PERMISSION_SYSTEM_WARN0001" },
+    );
+  });
+
+  it("does not warn when a session id is passed", async () => {
+    const emitWarning = vi
+      .spyOn(process, "emitWarning")
+      .mockImplementation(() => undefined);
+    const service = await freshServiceModule();
+
+    expect(service.getPermissionsService("node-session")).toBeUndefined();
 
     expect(emitWarning).not.toHaveBeenCalled();
   });
