@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [27.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v26.3.1...pi-permission-system-v27.0.0) (2026-08-21)
+
+
+### ⚠ BREAKING CHANGES
+
+* **pi-permission-system:** `permissions:ready` now fires at least once per session and may repeat. The latch added in #787 re-emits it at each node's first `before_agent_start`, so a consumer that registers unconditionally on every emission hits a duplicate-registration throw on every session instead of the rare user-initiated `/reload` it previously hit. Guard the ready handler with a stored dispose handle so it registers once per session, and release it on `session_shutdown`.
+
+### Features
+
+* **pi-permission-system:** deprecate the zero-arg service accessor ([#699](https://github.com/gotgenes/pi-packages/issues/699)) ([511c87f](https://github.com/gotgenes/pi-packages/commit/511c87f46e1ec85137145442050d53ae41eb8cd1))
+* **pi-permission-system:** publish each node's service under its own session id ([#699](https://github.com/gotgenes/pi-packages/issues/699)) ([d8ce4a8](https://github.com/gotgenes/pi-packages/commit/d8ce4a85ac381b6123b4d1f461d59073953a22b6))
+* **pi-permission-system:** re-emit permissions:ready at the first before_agent_start ([#787](https://github.com/gotgenes/pi-packages/issues/787)) ([405e904](https://github.com/gotgenes/pi-packages/commit/405e904e527645776cab8162293682a71fa5ec65))
+* **pi-permission-system:** reclaim getPermissionsService for the keyed locator ([214b30a](https://github.com/gotgenes/pi-packages/commit/214b30abf3a2ba3dc2f8f9bc3c56932a868c32dd))
+* **pi-permission-system:** record a vacant link cell on a relaying node ([#699](https://github.com/gotgenes/pi-packages/issues/699)) ([f5f08d2](https://github.com/gotgenes/pi-packages/commit/f5f08d2c159504f508b88f9e163be2f9049d558d))
+* **pi-permission-system:** warn when the keyed locator gets no session id ([29824aa](https://github.com/gotgenes/pi-packages/commit/29824aae61b1a4f565b5c456d9f3440d77304be5)), closes [#794](https://github.com/gotgenes/pi-packages/issues/794)
+
+
+### Bug Fixes
+
+* **pi-permission-system:** detect a subagent from its parent-session env var ([bd698da](https://github.com/gotgenes/pi-packages/commit/bd698da14a7d44dfa8dc06be2342a47b8337324e)), closes [#789](https://github.com/gotgenes/pi-packages/issues/789)
+
+
+### Documentation
+
+* **pi-permission-system:** cite the adapter convention instead of restating it ([d9ba637](https://github.com/gotgenes/pi-packages/commit/d9ba6375b29e3e25e53d9324676e7c5220c2bad7)), closes [#789](https://github.com/gotgenes/pi-packages/issues/789)
+* **pi-permission-system:** document session-keyed service publication ([#699](https://github.com/gotgenes/pi-packages/issues/699)) ([8ed137c](https://github.com/gotgenes/pi-packages/commit/8ed137c662a22087edc3623151938c7ae0ea9a86))
+* **pi-permission-system:** document the ready latch and its idempotency requirement ([#787](https://github.com/gotgenes/pi-packages/issues/787)) ([bc31193](https://github.com/gotgenes/pi-packages/commit/bc31193aafa8c6ef1356cc2e096e643f6357c912))
+* **pi-permission-system:** document the reclaimed locator and the ready cadence ([ca585b4](https://github.com/gotgenes/pi-packages/commit/ca585b4fba48a95ddd4dbe51106c02486997a400)), closes [#794](https://github.com/gotgenes/pi-packages/issues/794)
+* **pi-permission-system:** make subagent-integration the adapter convention's canonical spec ([07f9d2b](https://github.com/gotgenes/pi-packages/commit/07f9d2beffb66207aa3b01985b1a28312d431da3)), closes [#789](https://github.com/gotgenes/pi-packages/issues/789)
+
 ## [26.3.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v26.3.0...pi-permission-system-v26.3.1) (2026-08-19)
 
 
