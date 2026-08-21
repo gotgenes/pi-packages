@@ -62,3 +62,66 @@ Pre-completion reviewer: PASS.
 [#787]: https://github.com/gotgenes/pi-packages/issues/787
 [#788]: https://github.com/gotgenes/pi-packages/issues/788
 [#789]: https://github.com/gotgenes/pi-packages/issues/789
+
+## Stage: Final Retrospective (2026-08-20T22:57:13Z)
+
+### Session summary
+
+One session carried three stages: `/build-plan` settled ADR 0012 across five deliberation gates with the operator and authored it, `/ship-issue` pushed and closed #786 (docs-only — both touched paths are release-please `exclude-paths`, so nothing released), and this retrospective.
+Four downstream issues carry the mechanisms: [#699] re-scoped to decisions 2 and 4, plus [#787], [#788], and [#789].
+The two decisions the operator overturned mid-gate — the registration channel and the accessor's disposition — are the two the final contract rests on.
+
+### Observations
+
+#### What went well
+
+- Live verification mid-gate changed a decision.
+  The operator interrupted Gate C to ask why the service carries queries at all and what consumes them; four greps found zero in-repo accessor-based query consumers and two use cases documented for external adopters.
+  That moved the accessor's disposition from "deprecate for registration only" to "deprecate entirely" — a decision no amount of reasoning from memory would have reached correctly.
+- The issue-number write-back landed as its own commit (`569d2a27`) after the ADR (`c87e04b7`), so the decision-to-implementation map never held a guessed number.
+  This is the artifact where that temptation is highest — the map is the ADR's last section and the issues did not exist when it was drafted.
+- The gate sequence absorbed an unplanned eighth axis without losing the plan's parameter order.
+  The operator's per-node-judge and orchestrator-judge scenarios surfaced an author-declared link-placement mode the plan never enumerated; rejecting it (a relaying node's link cannot honor the serving node's policy without forwarding or stale policy replication) dissolved the axis and simplified decisions 4 and 6 rather than expanding them.
+- Build Order step 1 (re-verify the four mechanical claims before drafting) cost four tool calls and found no drift, but it is what let the ADR's Context section assert the SDK handler signature and the activation ordering as verified fact rather than inherited plan prose.
+
+#### What caused friction (agent side)
+
+- `premature-convergence` — Gate B priced candidate C4 (session-keyed accessor) in its most elaborate form only: a full accessor redesign, semver-major, "callers need a `ctx` the bus never hands them."
+  On that pricing I recommended C1 (the service object riding the ready payload).
+  The operator rejected C1 on channel purity ("that's not data, that's a client to a service; it only works because it's all in memory") and named C4 the honest one — at which point re-derivation showed C4's **additive** variant dissolves the `ctx` objection entirely, since the session id travels as data on the same payload.
+  Impact: no rework to artifacts, but the recommendation was wrong on the merits.
+  Had the operator accepted it, the contract would have shipped a live capability on a channel this package's own ADR 0011 §6 defines as data-only.
+- `missing-context` — Gate A's briefing used four terms of art (`node`, chain `link`, "the accessor", adjudicate) without defining them, and the operator bounced the gate twice: first on `node` ("I can't tell if you're using 'node' to reference subagents or something else"), then on the other three ("how do we define links?
+  ... define for me 'the accessor'").
+  The planning stage's retro had already recorded this lesson — brief the operator to parity before offering any option list — and this session read that retro before starting, so the cross-session bridge carried the observation without changing the behavior.
+  Impact: three `ask_user` calls for one gate plus three long elaboration messages; no artifact rework.
+- `missing-context` — ship step 4b assumed `exclude-paths` was a per-package key in `release-please-config.json` and ran two `python3` probes against the package entry before a `grep` found the single top-level array.
+  Reading the planning session's transcript afterwards showed the **same** two-call fumble at its entries 6–7, on a different model: `p.get('exclude-paths')` returning `None`, then a whole-config dump to recover.
+  Impact: four-plus wasted tool calls across two sessions and two models — a reproducible trap rather than a one-off slip, which is what moved it from "not worth a rule" to a proposed note.
+- `other` (prompt gap, user-caught) — the `/retro` prompt gives prior-session-transcript guidance only for the worktree case (`.pi/prompts/retro.md` lines 60–62); for a trunk multi-session issue it points only at the retro file's stage breadcrumbs.
+  This retrospective therefore synthesized the planning stage from its breadcrumb entry alone, and the model-performance lens silently omitted the planning session entirely.
+  The operator supplied the session id (`01a01d4b-0a3a-746e-8beb-ce2eb784eafe`), and reading that transcript immediately recovered a finding the breadcrumbs had lost — the repeated `exclude-paths` fumble above.
+  Impact: one diagnostic lens under-reported and one proposal nearly dropped; both corrected in-session.
+
+#### What caused friction (user side)
+
+- The two Gate A bounces were the correct intervention and produced the session's strongest decisions, so this is about timing rather than substance.
+  The standing preference arrived as a mid-gate aside — "wait to use `ask_user` until it's clear I (the operator) have a solid understanding" — at the second bounce.
+  Stated at the first gate, or recorded as a convention, it would have reshaped Gate A's opening briefing instead of its third revision.
+
+### Diagnostic details
+
+- **Model-performance correlation** — the planning session (`01a01d4b-0a3a-746e-8beb-ce2eb784eafe`, attributed from its transcript's committed tail) and the deliberation-heavy build stage (Gates A–E, ADR authoring) both ran on `anthropic/claude-fable-5`; the mechanical ship stage (lint, push, CI watch, issue close) on `anthropic/claude-sonnet-5`; this retrospective on `anthropic/claude-opus-5`.
+  One subagent dispatch: `pre-completion-reviewer` on `anthropic/claude-sonnet-5` per its frontmatter, reviewing a 22 KB prose artifact and returning PASS with the plan's four invariants checked by content review.
+  No mismatch — the judgment-heavy stage held the strongest model, the mechanical stage a cheaper one.
+- **Feedback-loop gap** — verification was incremental rather than end-loaded: `rumdl check` ran before each of the three doc commits and caught an MD053 violation (a `[#302]` definition whose body reference had been written as bare `#302`) immediately after the ADR was written, not at the reviewer.
+  `pnpm run check` and `pnpm run test` were correctly skipped during the docs-only build and run once by the reviewer.
+- The escalation-delay and unused-tool lenses found nothing notable: no sequence exceeded three consecutive tool calls on one problem, and every search was exact-symbol, so `colgrep`'s absence is not a gap.
+
+### Changes made
+
+1. `AGENTS.md` § Clarification gates — added two rules: define a gate's terms of art before its substance, and price a rejected candidate's cheapest viable form rather than its most elaborate one.
+2. `AGENTS.md` § release-please conventions — recorded that `exclude-paths` is a single top-level array covering every package, not a per-package key.
+3. `.pi/prompts/retro.md` Step 2 — generalized prior-session transcript reading beyond the worktree case, naming `list_session_files` and `read_session_file` for any multi-session issue.
+
+Considered and not adopted: an `ask_user` call-budget rule (each Gate A re-ask carried new evidence and was operator-requested), an ADR/deliberation branch in `/plan-issue` (one data point; the gate structure absorbed the unplanned eighth axis without damage), and moving the parity lesson into the package skill (it governs gates anywhere, not this package).

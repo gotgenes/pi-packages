@@ -31,6 +31,7 @@ Do not remove it, and do not reach for `minimumReleaseAge: 0` (which also disabl
 Refs #626.
 
 When adding a new internal docs subdirectory (retro, plans, architecture, decisions, assets), add its path to `exclude-paths` in `release-please-config.json`.
+`exclude-paths` is a single top-level array covering every package, not a per-package key.
 Commits that only touch excluded paths do not trigger releases.
 
 ### Docs-in-distribution convention
@@ -166,6 +167,8 @@ Present the substance — concrete examples, before/after, trade-offs — in a m
 An option list is a set of choices, not a briefing; context crammed into option descriptions — or into `preview` panes — gets bounced (Refs #635, #737, #746).
 When the decision settles a structure that will repeat across many files, settle its **size budget** in the same gate.
 A placement or shape choice is only sound for a known size, so show a worked example of the largest instance (Refs #775).
+Define a gate's terms of art before its substance — a term the operator must decode is a question they cannot answer (Refs #786: `node`, chain `link`, and the service accessor each bounced a gate).
+When rejecting a candidate on cost, price its cheapest viable form — #786 dismissed a session-keyed accessor as a semver-major redesign, and its additive variant became the adopted decision.
 
 ### Background agent guardrails
 
