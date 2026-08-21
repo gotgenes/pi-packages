@@ -116,6 +116,20 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+/**
+ * The ordinary session bring-up: the permission system publishes its service,
+ * this extension loads its config at `session_start`, and the ready event
+ * announces the node.
+ *
+ * Tests that exist to pin a *different* ordering spell the sequence out
+ * instead of calling this.
+ */
+function bringUpSession(pi: FakePi, cwd?: string): void {
+  publishPermissionsService(service);
+  pi.lifecycle.get("session_start")?.({}, ctxWithRegistry(cwd));
+  pi.events.get(READY_CHANNEL)?.({});
+}
+
 describe("createModelJudgeExtension", () => {
   it("registers the model-judge link when config loads before the service is ready", () => {
     const pi = makeFakePi();
@@ -156,9 +170,7 @@ describe("createModelJudgeExtension", () => {
       loadConfig: () => CONFIG_RESULT,
       complete: vi.fn(),
     });
-    publishPermissionsService(service);
-    pi.lifecycle.get("session_start")?.({}, ctxWithRegistry());
-    pi.events.get(READY_CHANNEL)?.({});
+    bringUpSession(pi);
     pi.events.get(READY_CHANNEL)?.({});
     expect(service.registerAuthorizer).toHaveBeenCalledTimes(1);
   });
@@ -169,9 +181,7 @@ describe("createModelJudgeExtension", () => {
       loadConfig: () => ({ config: undefined, issues: [] }),
       complete: vi.fn(),
     });
-    publishPermissionsService(service);
-    pi.lifecycle.get("session_start")?.({}, ctxWithRegistry());
-    pi.events.get(READY_CHANNEL)?.({});
+    bringUpSession(pi);
     expect(service.registerAuthorizer).not.toHaveBeenCalled();
   });
 
@@ -192,9 +202,7 @@ describe("createModelJudgeExtension", () => {
       loadConfig: () => CONFIG_RESULT,
       complete: vi.fn(),
     });
-    publishPermissionsService(service);
-    pi.lifecycle.get("session_start")?.({}, ctxWithRegistry());
-    pi.events.get(READY_CHANNEL)?.({});
+    bringUpSession(pi);
 
     pi.lifecycle.get("session_shutdown")?.({}, ctxWithRegistry());
     expect(service.disposer).toHaveBeenCalledTimes(1);
@@ -207,9 +215,7 @@ describe("createModelJudgeExtension", () => {
       loadConfig: () => CONFIG_RESULT,
       complete,
     });
-    publishPermissionsService(service);
-    pi.lifecycle.get("session_start")?.({}, ctxWithRegistry());
-    pi.events.get(READY_CHANNEL)?.({});
+    bringUpSession(pi);
 
     const authorize = service.registerAuthorizer.mock
       .calls[0]?.[1] as RegisteredAuthorizer;
@@ -274,9 +280,7 @@ describe("global config scope", () => {
     const pi = makeFakePi();
     const complete: CompleteFn = vi.fn(async () => denyReply());
     createModelJudgeExtension(pi.api as never, { complete });
-    publishPermissionsService(service);
-    pi.lifecycle.get("session_start")?.({}, ctxWithRegistry(projectCwd));
-    pi.events.get(READY_CHANNEL)?.({});
+    bringUpSession(pi, projectCwd);
 
     const authorize = service.registerAuthorizer.mock
       .calls[0]?.[1] as RegisteredAuthorizer;
