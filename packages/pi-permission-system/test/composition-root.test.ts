@@ -469,6 +469,31 @@ describe("out-of-process forwarding liveness", () => {
     rmSync(childCwd, { recursive: true, force: true });
     rmSync(externalDir, { recursive: true, force: true });
   });
+
+  it("forwards for a child that sets only the adapter convention's parent-session variable", async () => {
+    writeGlobalConfig(externalAsk);
+    const childCwd = mkdtempSync(join(tmpdir(), "pi-perm-child-cwd-"));
+    const externalDir = mkdtempSync(join(tmpdir(), "pi-perm-external-"));
+    const forwardingDir = join(agentDir, "sessions", "permission-forwarding");
+    const parentSessionId = "parent-session-oop-convention";
+    // The entire out-of-process obligation of the subagent adapter convention
+    // (ADR 0012 decision 5) — no per-extension hint variable beside it.
+    vi.stubEnv("PI_SUBAGENT_PARENT_SESSION", parentSessionId);
+    publishServingHeartbeat(forwardingDir, parentSessionId);
+
+    const firePromise = fireChildRead(childCwd, externalDir);
+    const request = await approveForwardedRequest(
+      forwardingDir,
+      parentSessionId,
+    );
+    expect(request.targetSessionId).toBe(parentSessionId);
+
+    const result = (await firePromise) as { block?: true };
+    expect(result.block).toBeUndefined();
+
+    rmSync(childCwd, { recursive: true, force: true });
+    rmSync(externalDir, { recursive: true, force: true });
+  });
 });
 
 describe("shutdown teardown chain", () => {

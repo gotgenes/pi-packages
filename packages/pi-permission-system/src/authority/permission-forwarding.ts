@@ -18,7 +18,17 @@ export const PERMISSION_FORWARDING_TIMEOUT_MS = 10 * 60 * 1000;
  */
 export const PERMISSION_FORWARDING_SERVING_GRACE_MS =
   8 * PERMISSION_FORWARDING_POLL_INTERVAL_MS;
-export const SUBAGENT_ENV_HINT_KEYS = [
+/** Ordered list of env var names to check for the parent session ID. First match wins. */
+export const SUBAGENT_PARENT_SESSION_ENV_CANDIDATES: readonly string[] = [
+  // pi-agent-router (original)
+  "PI_AGENT_ROUTER_PARENT_SESSION_ID",
+  // Shared convention for CLI-based subagent extensions
+  // (nicobailon/pi-subagents, HazAT/pi-interactive-subagents, etc.)
+  "PI_SUBAGENT_PARENT_SESSION",
+] as const;
+
+/** Per-extension markers set by known process-based subagent extensions. */
+const THIRD_PARTY_SUBAGENT_ENV_HINTS = [
   // pi-agent-router (original)
   "PI_IS_SUBAGENT",
   "PI_SUBAGENT_SESSION_ID",
@@ -34,14 +44,20 @@ export const SUBAGENT_ENV_HINT_KEYS = [
   "PI_SUBAGENT_SESSION",
   "PI_SUBAGENT_ACTIVITY_FILE",
 ] as const;
-/** Ordered list of env var names to check for the parent session ID. First match wins. */
-export const SUBAGENT_PARENT_SESSION_ENV_CANDIDATES: readonly string[] = [
-  // pi-agent-router (original)
-  "PI_AGENT_ROUTER_PARENT_SESSION_ID",
-  // Shared convention for CLI-based subagent extensions
-  // (nicobailon/pi-subagents, HazAT/pi-interactive-subagents, etc.)
-  "PI_SUBAGENT_PARENT_SESSION",
-] as const;
+
+/**
+ * Env vars whose presence marks the current process as a subagent child.
+ *
+ * A process that names a parent session is a child by definition, so every
+ * parent-session candidate is a detection hint too. That is what makes the
+ * subagent adapter convention's single out-of-process obligation — set
+ * `PI_SUBAGENT_PARENT_SESSION` — sufficient on its own: an implementation owes
+ * the announcement and nothing else, and detection is this package's job.
+ */
+export const SUBAGENT_ENV_HINT_KEYS: readonly string[] = [
+  ...THIRD_PARTY_SUBAGENT_ENV_HINTS,
+  ...SUBAGENT_PARENT_SESSION_ENV_CANDIDATES,
+];
 
 /** @deprecated Use SUBAGENT_PARENT_SESSION_ENV_CANDIDATES */
 export const SUBAGENT_PARENT_SESSION_ENV_KEY =
