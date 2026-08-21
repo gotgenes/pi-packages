@@ -36,3 +36,51 @@ Plan committed at `packages/pi-permission-model-judge/docs/plans/0788-migrate-re
 - No open PR touches this package, and neither package has an open improvement phase, so the `roadmap-fit` skill had nothing to record and the release recommendation is "ship independently".
 
 [#789]: https://github.com/gotgenes/pi-packages/issues/789
+
+## Stage: Implementation — TDD (2026-08-21T22:48:44Z)
+
+### Session summary
+
+Migrated registration onto the ADR 0012 keyed channel in three planned cycles plus one Tidy-First preparatory commit and two review-driven follow-ups — six commits total.
+The `permissions:ready` handler is now the whole registration, keyed by the payload's `sessionId`; `tryRegister`, the `sessionStarted` flag, both call sites, and the nine-line ordering comment are gone.
+Test count 48 → 54 in this package (added: latch-ordering, node-locality, and four vacancy tests; removed: the dual-path `pps-first order` test).
+
+### Observations
+
+- **The plan's size criterion failed, and the failure was the most interesting result.**
+  ADR 0012 decision 7 makes this package the contract's proof: the migrated registration must be smaller than the workaround.
+  Measured, `src/extension.ts` went 106 → 109 for the migration alone (127 with the separately-counted vacancy warning). 30 lines of workaround died and 33 arrived; the seven that tip the balance narrow the `unknown` ready payload, which is decision 2's own cost rather than workaround residue.
+  Surfaced at a clarification gate mid-cycle: the operator chose to keep the named `readySessionId` helper and record the measurement honestly over inlining the narrowing to reach 105 lines.
+  Both `ask_user` options were measured, not estimated — the inline variant was written to a scratch file and counted rather than guessed at.
+- **The version bump broke more than the accessor.**
+  Not in the plan: `27.0.0` also made `PromptPermissionDetails.payload` required and removed `message` (pi-permission-system #746), so three test-fixture sites failed `tsc` after the bump.
+  Repaired with a new shared `test/fixtures/permission-details.ts`, folded into the migration commit.
+  No production code in this package reads either field — `typo-reviewer` works from `accessIntent` / `surface` / `path` / `value` — so this was fixture repair, not a behavior change.
+  A plan that bumps a dependency across six majors should expect collateral type breakage beyond the API it targets.
+- **The red was behavioral, exactly as the plan predicted.**
+  Vitest strips types, so after the bump the unchanged `tryRegister()` called the zero-arg accessor against `27.0.0`, got `undefined`, and every registration assertion failed — with one `PI_PERMISSION_SYSTEM_WARN0001` in the output as corroboration.
+  That is what let the bump, the test rewrite, and the source migration share one commit without the cycle degenerating into satisfying the type checker.
+- **The Tidy-First assessor earned its dispatch.**
+  Its one recommendation — extracting the five-times-duplicated publish/`session_start`/ready sequence into `bringUpSession` — turned the plan's "thread `SESSION_ID` through every call" step into a one-line helper-body edit.
+  It also correctly *declined* to extract a `register()` helper in `src/extension.ts`, reasoning from ADR 0012's size mandate that new indirection there would have to be undone.
+- **A misplaced `describe` seam cost a round-trip.**
+  Inserting the vacancy `describe` mid-file closed the enclosing block early and silently reparented three existing tests under the new heading.
+  The suite still ran, so only a structural `grep -n '^describe\|^});'` caught it.
+  Anchor a new sibling `describe` on the end of the previous one, not on a convenient test boundary inside it.
+- **`pnpm add` handled the release-age gate itself.**
+  It added the version-pinned `minimumReleaseAgeExclude` entry to `pnpm-workspace.yaml` automatically — the plan's manual fallback recipe was never needed.
+
+#### Deferred tidyings
+
+None — the assessor's rejected items (splitting `test/extension.test.ts`, restructuring the `warn()` helper) were declined as unrelated to this change's friction, not deferred.
+
+### Pre-completion review
+
+Round 1: **WARN** — two findings, both put to the operator, both actioned.
+
+1. The ADR 0012 decision 7 size proof did not land as written, and a reader of that record would find a stated proof with no outcome.
+   Operator chose to amend ADR 0012 now (`726a6e30`), beside the existing #794 amendment — reversing the plan's Non-Goal, on the grounds that recording a refuted prediction is not the status-board use #787 ruled out.
+2. Pre-existing `ReturnType<typeof vi.fn>` mock typings.
+   Operator chose to fix them now (`dbc39ff6`); the package-wide sweep also let three `.mock.calls` casts be dropped.
+
+Round 2 (re-dispatched after those two substantive commits): **PASS** — ready for `/ship-issue`.
