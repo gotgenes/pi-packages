@@ -86,6 +86,7 @@ export function makeCtx(
     sessionManager: {
       getEntries: vi.fn().mockReturnValue([]),
       getSessionDir: vi.fn().mockReturnValue("/sessions/test"),
+      getSessionId: vi.fn().mockReturnValue("test-session"),
       addEntry: vi.fn(),
     },
     ...overrides,

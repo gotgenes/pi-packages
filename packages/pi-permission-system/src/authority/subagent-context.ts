@@ -1,6 +1,7 @@
 import { SUBAGENT_ENV_HINT_KEYS } from "#src/authority/permission-forwarding";
 import type { SubagentSessionRegistry } from "#src/authority/subagent-registry";
 import type { PathFlavor } from "#src/path/path-flavor";
+import { readSessionId } from "#src/session-identity";
 
 /**
  * Narrow context for subagent detection — the only session-manager readers
@@ -35,16 +36,9 @@ export function isRegisteredSubagentChild(
   ctx: SubagentDetectionContext,
   registry: SubagentSessionRegistry,
 ): boolean {
-  try {
-    const sessionId = ctx.sessionManager.getSessionId();
-    if (!sessionId) {
-      return false;
-    }
-    return registry.has(sessionId);
-  } catch {
-    // getSessionId() unavailable — treat as not-a-registered-child.
-    return false;
-  }
+  const sessionId = readSessionId(ctx);
+  // An unreachable session id names no registration — treat as not-a-child.
+  return sessionId !== null && registry.has(sessionId);
 }
 
 export function isSubagentExecutionContext(
