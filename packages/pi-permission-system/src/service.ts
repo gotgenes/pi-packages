@@ -119,7 +119,14 @@ export interface PermissionQuery {
 }
 
 /**
- * Public interface exposed to other extensions via `getPermissionsService()`.
+ * Public interface exposed to other extensions via
+ * {@link getPermissionsServiceForSession} (or the deprecated zero-arg
+ * {@link getPermissionsService}).
+ *
+ * Each instance belongs to one node, and its three registration surfaces are
+ * read by that node alone: extractors and formatters by its own gates, chain
+ * links by its own chain. Resolve the service of the node whose behavior you
+ * mean to affect.
  *
  * `checkPermission` takes a surface + optional value + optional agent name,
  * and delegates to `PermissionManager.checkPermission()` with current session

@@ -46,7 +46,10 @@ import {
 } from "#src/config-paths";
 import { DEFAULT_EXTENSION_CONFIG } from "#src/extension-config";
 import piPermissionSystemExtension from "#src/index";
-import { PERMISSIONS_READY_CHANNEL } from "#src/permission-events";
+import {
+  PERMISSIONS_READY_CHANNEL,
+  type PermissionsReadyEvent,
+} from "#src/permission-events";
 import {
   getPermissionsService,
   getPermissionsServiceForSession,
@@ -699,9 +702,18 @@ describe("ready emitted after service publication", () => {
   it("publishes the service before emitting permissions:ready", async () => {
     const cwd = mkdtempSync(join(tmpdir(), "pi-perm-ready-cwd-"));
     const seen: string[] = [];
+    const seenKeyed: string[] = [];
     const pi = makeFakePi();
-    pi.events.on(PERMISSIONS_READY_CHANNEL, () => {
+    pi.events.on(PERMISSIONS_READY_CHANNEL, (data) => {
       seen.push(getPermissionsService() ? "present" : "missing");
+      // The payload's own sessionId must already resolve: it is the key a
+      // consumer registers through the moment this handler runs.
+      const { sessionId } = data as PermissionsReadyEvent;
+      seenKeyed.push(
+        sessionId !== null && getPermissionsServiceForSession(sessionId)
+          ? "present"
+          : "missing",
+      );
     });
 
     piPermissionSystemExtension(pi as unknown as ExtensionAPI);
@@ -712,6 +724,7 @@ describe("ready emitted after service publication", () => {
     await fireSessionStart(pi, makeChildCtx(cwd, "top-session"));
 
     expect(seen).toEqual(["present"]);
+    expect(seenKeyed).toEqual(["present"]);
 
     rmSync(cwd, { recursive: true, force: true });
   });
