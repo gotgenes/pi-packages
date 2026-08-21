@@ -12,6 +12,7 @@ import {
   publishPermissionsService,
   unpublishPermissionsService,
 } from "@gotgenes/pi-permission-system";
+import type { Mock, MockInstance } from "vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getGlobalConfigPath, type LoadConfigResult } from "#src/config-loader";
@@ -44,8 +45,15 @@ interface FakePi {
   lifecycle: Map<string, (event: unknown, ctx: unknown) => void>;
   events: Map<string, (data: unknown) => void>;
   api: {
-    on: ReturnType<typeof vi.fn>;
-    events: { on: ReturnType<typeof vi.fn>; emit: ReturnType<typeof vi.fn> };
+    on: Mock<
+      (name: string, handler: (event: unknown, ctx: unknown) => void) => void
+    >;
+    events: {
+      on: Mock<
+        (channel: string, handler: (data: unknown) => void) => () => void
+      >;
+      emit: Mock<(channel: string, data: unknown) => void>;
+    };
   };
 }
 
@@ -73,8 +81,8 @@ function makeFakePi(): FakePi {
 }
 
 function makeService(): PermissionsService & {
-  registerAuthorizer: ReturnType<typeof vi.fn>;
-  disposer: ReturnType<typeof vi.fn>;
+  registerAuthorizer: Mock<PermissionsService["registerAuthorizer"]>;
+  disposer: Mock<() => void>;
 } {
   const disposer = vi.fn();
   return {
@@ -278,7 +286,7 @@ describe("createModelJudgeExtension", () => {
 });
 
 describe("an unresolvable permission service", () => {
-  let warned: ReturnType<typeof vi.spyOn>;
+  let warned: MockInstance<Console["warn"]>;
 
   beforeEach(() => {
     warned = vi.spyOn(console, "warn").mockImplementation(() => {});

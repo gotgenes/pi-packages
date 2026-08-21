@@ -1,5 +1,6 @@
 import type { Model } from "@earendil-works/pi-ai";
 import type { PromptPermissionDetails } from "@gotgenes/pi-permission-system";
+import type { Mock } from "vitest";
 import { describe, expect, it, vi } from "vitest";
 
 import type { ModelJudgeConfig } from "#src/config-schema";
@@ -38,7 +39,7 @@ function makeRegistry(model: Model<any> | undefined): ModelRegistryLike {
   };
 }
 
-function denyingComplete(): CompleteFn {
+function denyingComplete(): Mock<CompleteFn> {
   return vi.fn(async () =>
     assistantToolCall({
       verdict: "deny",
@@ -213,8 +214,7 @@ describe("createTypoReviewer", () => {
       reason: "Doubled segment; use pi-packages.",
     });
     expect(registry.getApiKeyAndHeaders).toHaveBeenCalledWith(MODEL);
-    const [, , options] = (complete as ReturnType<typeof vi.fn>).mock
-      .calls[0] as [
+    const [, , options] = complete.mock.calls[0] as [
       unknown,
       unknown,
       { apiKey?: string; headers?: Record<string, string> },
