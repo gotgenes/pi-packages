@@ -29,6 +29,32 @@ Four TDD steps: the Tidy First extraction, the uncalled announcer, the wiring pl
   A `{ prepare: vi.fn() }` double would skip `session.activate`, and the surviving prompt-sanitization assertions depend on an activated session's path normalizer.
 - No follow-up issues filed: the only candidate (renaming `AgentPrepHandler`) is recorded as an Open Question, and `pi-permission-system` has no open improvement phase, so the `roadmap-fit` skill exits at its first step.
 
+## Stage: Implementation — TDD (2026-08-21T18:06:50Z)
+
+### Session summary
+
+Landed the ready latch in four commits, exactly the plan's TDD order: extract `SessionTurnPrep` from `AgentPrepHandler` (`refactor:`), add the once-per-session `ReadyAnnouncer` to `PermissionServiceLifecycle` (`refactor:`, no caller yet), wire the trigger and pin the emission count at the composition root (`feat:`), then update the channel-contract docs (`docs:`).
+The pi-permission-system suite went from 3215 to 3227 tests (+12: 7 new in `session-turn-prep.test.ts` after the 4 moved lifecycle tests, 5 in `service-lifecycle.test.ts`, 2 in `composition-root.test.ts`, 1 delegation test replacing the 4 moved ones in `before-agent-start.test.ts`).
+All deterministic gates green at each commit; the pre-completion reviewer returned **PASS**.
+
+### Observations
+
+- **The Tidy First assessor found no additional preparatory work** and verified the plan's own claims instead — `PermissionSession` matches `TurnPrepSession` exactly, both constructor call-site counts were as measured, and the `ReadyAnnouncer`-beside-`ServiceLifecycle` dual-role shape already had a precedent in `SessionLifecycleHandler`'s dependency on the narrow `ServiceLifecycle`.
+  It also confirmed `make-fake-pi.ts` needed no change for the new composition-root test: `before_agent_start` was already registered and in `EXPECTED_HANDLERS`, just never fired by any existing test.
+- **The plan's named test-drift hazard was real and the mitigation held.**
+  `makeSetup` in `before-agent-start.test.ts` builds a real `SessionTurnPrep` over the same real session, so the surviving prompt-sanitization assertions still run against an activated session.
+  When step 3 added the announcer parameter, that fixture failed loudly (`Cannot read properties of undefined`) — a stub double would have silently skipped `session.activate` instead.
+- **Deviation:** `src/handlers/index.ts` (the handlers barrel) was not in the plan's Module-Level Changes table but had to export `SessionTurnPrep` for `index.ts` to import it from the barrel per the `code-design` barrel rule.
+  One line, no behavior; the reviewer confirmed it as the only gap.
+- **Latch semantics pinned at two levels.**
+  The unit tests own the guard (`announces only once per session`, `announces again after a further activate re-arms the latch`, `announces even when no activate preceded it`, `recomputes the facts from the ctx it is handed`); the composition-root tests own the observable count (2 emissions for one generation across two turns, 4 across a reload).
+- **The docs step widened slightly beyond "correctness edits":** the Ready Event example in `docs/cross-extension-api.md` now shows the guarded registration plus its `session_shutdown` disposal, since the contract's whole obligation on a consumer is that guard.
+  The wholesale rewrite stays with [#789].
+- **Release unchanged:** `mid-batch — defer`.
+  The release-please PR [#790] is still open and must stay so until [#789] lands, or the keyed channel ships without the latch.
+- **Wrong-path friction:** one `Edit` was rejected by the permission gate for a hand-built absolute path missing the `packages/` segment — the repo-relative form is the reliable one, as `AGENTS.md` says.
+
 [ADR 0012]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-permission-system/docs/decisions/0012-cross-node-extension-contract.md
 [#699]: https://github.com/gotgenes/pi-packages/issues/699
 [#789]: https://github.com/gotgenes/pi-packages/issues/789
+[#790]: https://github.com/gotgenes/pi-packages/pull/790
