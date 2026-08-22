@@ -84,3 +84,78 @@ Round 1: **WARN** — two findings, both put to the operator, both actioned.
    Operator chose to fix them now (`dbc39ff6`); the package-wide sweep also let three `.mock.calls` casts be dropped.
 
 Round 2 (re-dispatched after those two substantive commits): **PASS** — ready for `/ship-issue`.
+
+## Stage: Final Retrospective (2026-08-22T01:09:53Z)
+
+### Session summary
+
+One continuous session carried #788 from plan through TDD to ship: `pi-permission-model-judge` now registers its chain link from the `permissions:ready` handler alone, keyed by the payload's `sessionId`, and released as `2.0.0` (major, breaking — peer floor `>=27.0.0`).
+Seven commits landed plus the release; the package's suite went 48 → 54 tests.
+The session's defining moment was not the migration but its measurement: ADR 0012 decision 7's own size proof was refuted by the result, and the refutation was recorded in the ADR rather than quietly dropped.
+
+### Observations
+
+#### What went well
+
+- **The extension under migration caught a real defect in its own migration.**
+  Mid-TDD an `Edit` call used `/Users/chris/development/pi/pi-permission-model-judge/test/model-review.test.ts` — the `pi-packages/packages/` prefix dropped.
+  The `model-judge` link denied it with "Dropped `pi-packages/packages/` prefix.
+  The correct path is …", which is precisely the typo class the package exists to catch.
+  The dogfooding loop closed on itself during the change that rewrote its registration.
+- **Both sides of a clarification gate were measured, not estimated.**
+  When the size criterion failed, the inline-narrowing alternative was written to a scratch file and counted (`105`) rather than guessed, so the gate offered two measured numbers against a measured baseline (`106`) instead of an argument.
+- **The plan predicted the shape of its own red.**
+  It called the red "behavioral, not just a type error" — esbuild strips types, so the unchanged `tryRegister()` would call the zero-arg accessor against `27.0.0` and get `undefined`.
+  That is exactly what happened, with a single `PI_PERMISSION_SYSTEM_WARN0001` in the output as corroboration.
+- **The Tidy-First assessor reasoned from the plan's constraints, not just the code.**
+  It declined to extract a `register()` helper in `src/extension.ts` on the grounds that ADR 0012's size mandate would require un-extracting it — a rejection that cited the change's own acceptance criterion.
+- **A refuted prediction became a durable record.**
+  ADR 0012 decision 7 named this package "the contract's proof"; the proof did not land, and `726a6e30` amended the ADR beside its existing #794 amendment rather than leaving a reader to falsify it from git history.
+
+#### What caused friction (agent side)
+
+- `instruction-violation` (self-identified) — the issue close comment contained a **fabricated SHA**.
+  `git rev-parse` ran for three of the five hashes; drafting then introduced two more (`de745e22`, `726a6e30`) that were never resolved, and one of them was invented past its eighth character.
+  Impact: a wrong hash published to a public issue, plus a permanent correction comment.
+  This is the exact failure `AGENTS.md` already names — "including the second and third hash cited mid-draft, which is where the invention happens" — so the rule's presence was not the gap; its *timing* was.
+  Resolving before drafting cannot cover a hash that drafting itself introduces.
+- `other` (silent structural corruption) — inserting the vacancy `describe` block mid-file closed the enclosing `describe` early and reparented three existing tests under the new heading.
+  Impact: two extra tool calls and a corrective `Edit`.
+  Notable because **no automated gate detected it**: `pnpm run check`, `pnpm run lint`, and the full suite all stayed green, since the reparented tests still ran.
+  Only a structural `grep -n '^describe\|^});'` surfaced it.
+- `missing-context` (plan-time) — the plan verified the *targeted* API against the published `27.0.0` tarball but not the rest of the type surface the package consumes.
+  The bump also made `PromptPermissionDetails.payload` required and removed `message` (pi-permission-system #746), breaking three fixture sites.
+  Impact: an unplanned shared fixture (`test/fixtures/permission-details.ts`) and roughly six extra tool calls mid-cycle, folded into the same commit.
+  A six-major bump was treated as an accessor change.
+- `other` (incomplete multi-edit) — removing `sessionStarted` left a dangling `sessionStarted = true;` assignment, so every test failed with a `ReferenceError`.
+  Impact: one extra edit cycle; caught immediately by the test run, which is the feedback loop working.
+- `instruction-violation` (tool-caught, no rework) — an `npm view` call in a planning-stage pipeline was blocked by the repo's pnpm guard, and an `Edit` path missing the `packages/` prefix was blocked by the permission gate.
+  Impact: one retry each.
+  Both guards fired exactly as designed; recorded as evidence they work, not as a rule gap.
+
+#### What caused friction (user side)
+
+- Nothing blocking.
+  Both clarification gates (the size criterion, and the post-review disposition of the ADR amendment and mock typings) were answered decisively and reversed a plan Non-Goal on sound grounds — recording a refuted prediction is not the status-board use #787 ruled out.
+- One opportunity: the operator's answer to fix the mock typings "now" arrived after the pre-completion review, so it landed as a post-review commit that forced a re-dispatch.
+  Surfacing pre-existing test-hygiene debt at the Tidy-First gate instead would have folded it into the preparatory commit.
+
+### Diagnostic details
+
+- **Model-performance correlation** — planning and TDD ran on `anthropic/claude-opus-5`; `/ship-issue` ran on `anthropic/claude-sonnet-5`; this retrospective on `anthropic/claude-opus-5`.
+  All three subagents (`tidy-first-assessor`, `pre-completion-reviewer` ×2) ran on `anthropic/claude-sonnet-5` per their frontmatter — appropriate for read-only review and assessment, and the reviewer's WARN findings were both substantive.
+  The session's one published error (the fabricated SHA) fell in the sonnet-5 ship stage, while the judgment-heavy gates ran on opus-5.
+  One incident is not evidence for a model policy, but the correlation is worth watching: ship looks mechanical and is in fact the stage that writes to permanent public artifacts.
+- **Escalation-delay tracking** — no `rabbit-hole` friction points; the longest run on a single error was three consecutive tool calls (the reparented `describe`).
+  No subagent escalation was warranted.
+- **Feedback-loop gap analysis** — verification ran incrementally and caught two of three defects at the point of introduction: `pnpm run check` immediately after the test-file rewrite (surfacing the `payload`/`message` breakage) and the package suite immediately after each `src/` edit (surfacing the dangling `sessionStarted`).
+  The gap is the third: no gate in this repo detects a reparented block, so structural verification of a mid-file insertion has to be manual.
+- **Unused-tool detection** — for the plan-time `missing-context`, no subagent was needed; the tarball was already fetched, and a wider `grep` over the package's imports from that dependency would have caught it.
+
+### Changes made
+
+1. `.pi/prompts/ship-issue.md` — added a post-draft SHA verification pass to the close-comment step: extract every hex token from the finished body and re-resolve each, because a pre-draft resolve cannot cover a hash drafting itself introduced.
+2. `AGENTS.md` (§ Edit tool batches) — added the reparented-sibling-block hazard: a mid-file `describe`/function insertion can close the enclosing block early, and no gate detects it.
+
+Declined: broadening `/plan-issue`'s published-API verification to the whole consumed type surface on a cross-major dependency bump.
+The `PromptPermissionDetails` breakage that motivated it cost about six tool calls and was caught by `pnpm run check` at the first cycle, so the rule was not judged to earn its permanent place.

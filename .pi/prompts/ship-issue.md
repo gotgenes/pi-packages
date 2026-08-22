@@ -90,6 +90,8 @@ The comment should include:
   Run `git rev-parse` for **every** SHA the comment will contain — the landing commit and any follow-on commits — before you start drafting.
   Paste each exactly; never hand-type or extend a short SHA from memory, and never leave a placeholder to fill in later.
   A fabricated SHA does not auto-link (Refs #704, #777).
+  Then verify the draft, not your intent to cite: extract every hex token from the finished comment body and re-resolve each (`git rev-parse <sha>^{commit}`).
+  A pre-draft resolve cannot cover a hash drafting itself introduced (Refs #788).
   Write them as plain text — no backticks — so GitHub auto-links them to the commits.
 - A short bullet list of feature/breaking commits.
 - One sentence on user-visible behavior change.

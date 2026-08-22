@@ -128,6 +128,8 @@ Use `Edit` (Refs #653).
 A scripted symbol rename also rewrites the prose *around* the symbol, where the old signature's adjectives survive as contradictions ("the zero-arg `getRootPermissionsService()`").
 Grep the words that described the old shape (`zero-arg`, `takes no`, the old arity) after the script — no gate flags them (Refs #794).
 When wrapping existing lines in a new enclosing block (a `describe`, function, or `try`), emit the opening and closing braces as two `edits[]` entries in one `Edit` call (or use `Write`) — a lone opening brace fails the whole file parse, and the close is too far from the open to anchor in the same `oldText`.
+Inserting a new *sibling* block (a second `describe`, a new function) mid-file can close the enclosing block early and reparent everything after the seam.
+`tsc`, lint, and a green suite all miss it, so anchor the insertion on the enclosing block's own closing line and verify with `grep -n '^describe\|^});'` (Refs #788).
 
 ### Multi-session issue lifecycle
 
