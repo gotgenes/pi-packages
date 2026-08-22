@@ -156,6 +156,21 @@ The session's defining moment was not the migration but its measurement: ADR 001
 
 1. `.pi/prompts/ship-issue.md` — added a post-draft SHA verification pass to the close-comment step: extract every hex token from the finished body and re-resolve each, because a pre-draft resolve cannot cover a hash drafting itself introduced.
 2. `AGENTS.md` (§ Edit tool batches) — added the reparented-sibling-block hazard: a mid-file `describe`/function insertion can close the enclosing block early, and no gate detects it.
+3. Filed #796 — schedule the process-root slot's removal.
+   The operator asked whether the arc had left follow-ups behind; a sweep of the #786 / #787 / #789 / #794 plans and ADR 0012 found one whose trigger had just fired.
+   ADR 0012 decision 7 deferred the removal "contingent on downstream migration", and the #794 plan named #788 as the only known downstream.
+   Verified before filing: zero references to `getRootPermissionsService` outside `pi-permission-system`, no production caller inside it, and the slot still written on every non-child `session_start`.
+   The `roadmap-fit` skill exited at Step 1 — `pi-permission-system` has no open improvement phase, so no disposition was recorded.
 
 Declined: broadening `/plan-issue`'s published-API verification to the whole consumed type surface on a cross-major dependency bump.
 The `PromptPermissionDetails` breakage that motivated it cost about six tool calls and was caught by `pnpm run check` at the first cycle, so the rule was not judged to earn its permanent place.
+
+The other arc leftovers were checked and correctly left unfiled, each gated on a named demand signal: machine-readable duplicate-error codes (ADR 0012 decision 4), the `AgentPrepHandler` rename and debug-logging the latch emission (#787 plan), and #788's own two Open Questions.
+ADR 0012's parked "requester-context facts-widening" extension is also unfiled; nothing is blocked on it.
+
+### Follow-up candidate (not implemented)
+
+An **expired deferral has no reader**.
+A condition-gated Open Question in a shipped plan ("deferred until X migrates") becomes actionable the moment X lands, but `/triage-backlog` ranks the filed backlog: Step 2 gathers state from `gh issue list` / `gh pr list`, Step 1 reads plans only for their `**Release:**` marker, its read list omits `docs/decisions/`, and Step 8's keystone detection needs filed dependants to converge from — #796 had zero.
+This is the same dead-letter shape #787 fixed for tidyings by pairing a written destination with a reader that greps it.
+Worth an issue if a second expired deferral goes unnoticed.
