@@ -115,3 +115,54 @@ Four commits: the ADR, the reconciliation, an exclusion-scope fix found by the p
 [#680]: https://github.com/gotgenes/pi-packages/issues/680
 [#698]: https://github.com/gotgenes/pi-packages/issues/698
 [#706]: https://github.com/gotgenes/pi-packages/issues/706
+
+## Stage: Pressure test — NOT SHIPPED (2026-08-23T16:30:18Z)
+
+### Session summary
+
+The operator asked for an adversarial review before shipping.
+A fresh-context reviewer on `anthropic/claude-fable-5` returned **do not ship as written**, and the dispatcher verified the blocking findings independently.
+ADR 0013 is committed on `main` but **must not be shipped or cited until amended** — full report in `0639-pressure-test.md`.
+
+### State on pause
+
+Committed and correct: the ADR's decisions on spelling (`path_read` / `path_write`), sugar expansion, the relational-boundary framing, composition, and the sandbox tier.
+Committed and **wrong**: every measurement in the ADR's "Measured" sections, and the relief claims that rest on them.
+
+Open decisions blocking a ship, both requiring the operator:
+
+1. **F4 — the unknown-direction rule.**
+   Which surface does an access consult when direction cannot be proven?
+   This is 67.5% of external asks and the ADR never states it.
+   A gate was drafted with three options (consult both under most-restrictive; consult write; consult read) and was not answered before the pause.
+2. **F5 — intra-surface merge order** between sugar-expanded entries and explicit directional keys.
+
+### Observations
+
+- **The measurement bug that started it.**
+  The review log has two schemas; entries from 2026-08-17 carry `surface`/`matchedPattern` and no `message`, and every measurement this session keyed on `message`.
+  That silently dropped 72 `external_directory` asks, all in the most recent month — which manufactured the "external pressure fell to 25%" narrative and its monorepo-consolidation explanation.
+  Corrected, the external share is stable at 72–80% across all four months.
+  Lesson: check a log's schema for version drift before aggregating it, and commit the instrument with the number.
+- **I compounded the bug by arguing from it.**
+  Mid-session I told the operator their recollection tracked reality better than my aggregate, on the strength of the artifact.
+  The opposite was true.
+  A derived narrative delivered confidently is worse than no narrative; the correction should have been triggered by the implausibility of a 73% → 25% single-month swing.
+- **The headline came from the mechanism the ADR rejects.**
+  Decision 7 refuses a read-only allowlist because it fails open, and 82.4% was produced by exactly such a table counting `git`, `node`, `sed`, `xargs` as reads.
+  Strict re-run: 29.6% read, 17.8% write, **52.6% unprovable**.
+  Reads still beat writes ~63:37 among classifiable asks, so decision 1's direction holds and its magnitude does not.
+- **The relief story has no working mechanism at any stage.**
+  Step 1 relieves 236 of 918 external asks (20.6% of all human asks) because only read-*tool* direction is knowable from the actor; 620 (67.5%) are bash.
+  Decision 7 routes those to the judge chain, but decision 4's family exclusion caps a link's `allow` on exactly those surfaces — and [#620], the issue decision 7 depends on, exists to *relax* that exclusion.
+  **Decisions 4 and 7 contradict each other**, which no reviewer caught until the adversarial pass.
+- **The earlier `pre-completion-reviewer` PASS did not catch any of this.**
+  It verified internal consistency, conventions, and cross-references — all real — but took the ADR's own measurements as premises.
+  An adversarial reviewer given the raw log instead of the conclusions found four blocking defects in one pass.
+  Naming my own weakest claims in the dispatch prompt is what made it productive, and it is the same move that surfaced the ADR 0007 finding earlier.
+- **One false positive, still useful.**
+  The reviewer judged the OpenCode citation unreproducible; it had checked the v1 docs, while the ADR's claims come from `opencode.ai/v2/docs/permissions` and are verbatim there.
+  The defect it exposes is real: the ADR cites no URL, so a reader lands on v1 and concludes the record is wrong — exactly what happened.
+- **Process note for the next session.**
+  The plan's Build Order never required the unknown-direction rule to be decided, so eight `ask_user` gates settled spelling and posture while the model's central semantic rule went unasked.
+  A deliberative-ADR plan should enumerate the rules the model must define, not only the parameters the issue raised.
