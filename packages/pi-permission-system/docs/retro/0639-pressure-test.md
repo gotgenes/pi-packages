@@ -366,3 +366,126 @@ for (const line of fs.readFileSync(p, "utf8").split("\n")) {
 }
 console.log({ ext, readTool, writeTool, bash, other });
 ```
+
+## Stage: Amendment resolution (2026-08-23T21:13:49Z)
+
+The amendment landed in `f007994d`; every blocking and should-fix finding has a disposition in the amended record:
+
+- **F1, F2, F10** — evidence rewritten: both schemas included, recency-weighted per-month band tables, single-operator hedge, instrument committed below.
+  The dispatcher's "strict" classifier in F2 was itself over-strict — it required file-argument basenames to match the read table, so `cat /etc/hosts` binned unknown; the command-position classifier below supersedes it.
+- **F3** — relief accounting rewritten cause-jointly: staged mechanisms + read grants relieve a measured 51% of current-month prompts, per band, with the first-firing-cause caveat stated.
+- **F4** — decided as the evaluation model's per-token base case: unproven effect consults both directional surfaces (amended §10).
+- **F5** — decided as decision 4's normative merge order: sugar first, explicit directional keys append and win on identical patterns.
+- **F6** — probe claim downgraded to "spot-checked and operator-trusted"; errno discipline named as implementation contract.
+- **F7** — `path_write` non-coverage list and the `rm -rf` sentence added; `delete` has a reserved seat.
+- **F8a** — the floor population's mixed character is now measured (40–55% pure-reader inner) and addressed by wrapper transparency (§11, #803) rather than sampled prose.
+- **F8b** — the seam has a committed consumer: #802.
+- **F9a** — OpenCode cited by v2 URL with the v1/v2 split noted.
+- **F9c** — the family exclusion is stated as a name-resolution rule; #620's charter is intact.
+
+The deliberation also moved beyond the findings: effects became sets with scalar sugar, the read mechanism became an audited argument-independent core plus user `commandEffects` declarations in structured (pattern-free) command description, the evaluation model (recursive verdict fold, blame propagation) became decision 10, and the bash surface's migration to structured rules was chartered as #804.
+
+### Amendment appendix: band and joint-relief classifiers
+
+The amended ADR's band tables and cause-joint relief figures come from these two scripts (same log path and test-fixture exclusion as the scripts above).
+Both are prototypes approximating the parser-based implementation: segment splitting is regex-based, so band boundaries carry a few points of noise.
+
+Per-month band decomposition (bands A/B/C/D; command-position classification with wrapper skip):
+
+```javascript
+const fs = require("node:fs");
+const p = process.env.HOME + "/.pi/agent/extensions/pi-permission-system/logs/pi-permission-system-permission-review.jsonl";
+const isTest = (e) => JSON.stringify(e).includes("/var/folders/");
+const READ_TOOLS = new Set(["read", "grep", "ls", "find", "glob", "read_session_file"]);
+const WRITE_TOOLS = new Set(["write", "edit"]);
+const PURE_READ = new Set(["cat","head","tail","less","more","wc","grep","rg","egrep","fgrep","ls","find","fd","file","stat","diff","cmp","sort","uniq","cut","tr","jq","yq","shasum","md5","sha256sum","dirname","basename","realpath","readlink","column","nl","tree","du","df","which","type","date","pwd","whoami","printenv","env","echo","printf","awk","test","[","true","false","cd","pushd","popd","hexdump","xxd","strings","od"]);
+const WRAPPERS = new Set(["time","nohup","command","builtin","exec","sudo"]);
+const MUTATOR = new Set(["rm","mv","cp","touch","mkdir","rmdir","tee","dd","truncate","install","ln","chmod","chown","unlink","shred","sed","perl","patch"]);
+const GIT_READ = new Set(["log","diff","show","status","branch","blame","rev-parse","remote","describe","shortlog","ls-files","ls-tree","cat-file","config","grep","reflog","tag","interpret-trailers","cherry"]);
+function segments(cmd) { return cmd.split(/(?:\|\||&&|;|\||\n)/).map((s) => s.trim()).filter(Boolean); }
+function headOf(seg) {
+  let toks = seg.split(/\s+/).filter(Boolean);
+  while (toks.length && (/^[A-Za-z_][A-Za-z0-9_]*=/.test(toks[0]) || WRAPPERS.has(toks[0].replace(/^.*\//, "")))) toks.shift();
+  if (toks.length && toks[0].replace(/^.*\//, "") === "timeout") { toks.shift(); if (toks.length && /^[0-9]/.test(toks[0])) toks.shift(); }
+  if (toks.length && toks[0].replace(/^.*\//, "") === "xargs") { toks.shift(); while (toks.length && /^-/.test(toks[0])) toks.shift(); }
+  return toks.length ? { head: toks[0].replace(/^.*\//, ""), rest: toks.slice(1) } : null;
+}
+function realOutRedirect(cmd) {
+  const re = /(^|[^0-9<>&])>>?\s*([^\s&|;()]+)/g;
+  let m;
+  while ((m = re.exec(cmd))) { if (!/^\/dev\/(null|std(out|err|in))$/.test(m[2])) return true; }
+  return false;
+}
+function classify(cmd) {
+  if (realOutRedirect(cmd)) return "write";
+  let unk = false;
+  for (const seg of segments(cmd)) {
+    const h = headOf(seg);
+    if (!h) continue;
+    if (MUTATOR.has(h.head)) return "write";
+    if (h.head === "git") {
+      const sub = h.rest.find((t) => !/^-/.test(t));
+      if (sub && GIT_READ.has(sub)) continue;
+      return "write";
+    }
+    if (PURE_READ.has(h.head)) {
+      if (h.head === "find" && h.rest.some((t) => /^-(exec|execdir|delete|ok|okdir)$/.test(t))) return "write";
+      continue;
+    }
+    unk = true;
+  }
+  return unk ? "unknown" : "read";
+}
+const months = new Map();
+for (const line of fs.readFileSync(p, "utf8").split("\n")) {
+  if (!line.trim()) continue;
+  let e; try { e = JSON.parse(line); } catch { continue; }
+  if (e.event !== "permission_request.waiting" || isTest(e)) continue;
+  const mo = (e.timestamp ?? "").slice(0, 7);
+  if (!months.has(mo)) months.set(mo, { all: 0, nonExt: 0, A: 0, B: 0, C: 0, D: 0 });
+  const b = months.get(mo);
+  b.all++;
+  const msg = e.message ?? "";
+  const surface = e.surface ?? e?.request?.surface ?? "";
+  if (!(/outside working directory/.test(msg) || surface === "external_directory")) { b.nonExt++; continue; }
+  const cmd = e.command ?? e?.request?.command ?? "";
+  if (READ_TOOLS.has(e.toolName)) { b.A++; continue; }
+  if (WRITE_TOOLS.has(e.toolName)) { b.D++; continue; }
+  if (!cmd && e.toolName !== "bash") { b.C++; continue; }
+  const d = classify(cmd);
+  if (d === "read") b.B++;
+  else if (d === "write") b.D++;
+  else b.C++;
+}
+for (const [m, b] of [...months].sort()) console.log(m, JSON.stringify(b));
+```
+
+Cause-joint relief for the recent months (an ask counts as relieved only when every detected cause is addressed; assumes read grants cover the asked roots):
+
+```javascript
+// Reuses classify()/segments()/headOf()/realOutRedirect() and the sets above.
+const months2 = new Map();
+for (const line of fs.readFileSync(p, "utf8").split("\n")) {
+  if (!line.trim()) continue;
+  let e; try { e = JSON.parse(line); } catch { continue; }
+  if (e.event !== "permission_request.waiting" || isTest(e)) continue;
+  const mo = (e.timestamp ?? "").slice(0, 7);
+  if (mo < "2026-07") continue;
+  if (!months2.has(mo)) months2.set(mo, { all: 0, viaGrant: 0, viaFloor: 0, residual: 0 });
+  const b = months2.get(mo);
+  b.all++;
+  const blob = JSON.stringify(e);
+  const msg = e.message ?? "";
+  const surface = e.surface ?? e?.request?.surface ?? "";
+  const isExt = /outside working directory/.test(msg) || surface === "external_directory";
+  const isFloored = blob.includes("bash-wrapper");
+  const cmd = e.command ?? e?.request?.command ?? "";
+  const provRead = READ_TOOLS.has(e.toolName) || (!WRITE_TOOLS.has(e.toolName) && (cmd || e.toolName === "bash") && classify(cmd) === "read");
+  if (!isExt && !isFloored) { b.residual++; continue; }
+  if (provRead) { if (isExt) b.viaGrant++; else b.viaFloor++; }
+  else b.residual++;
+}
+for (const [m, b] of [...months2].sort()) console.log(m, JSON.stringify(b), `relieved=${b.viaGrant + b.viaFloor}/${b.all}`);
+```
+
+Wrapper-floor share and inner-head census (the §11 warrant) comes from filtering waiting entries for the `bash-wrapper` sentinel substrings and extracting the executed inner head past wrapper words — the same `headOf` walk with `find -exec` resolved to the word after the `-exec` flag.

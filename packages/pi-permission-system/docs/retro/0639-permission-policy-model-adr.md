@@ -244,3 +244,21 @@ Not yet written to `AGENTS.md`; recorded here for the terminal `/retro` to weigh
    Eight gates settled naming, defaults, posture, and staging; the rule governing 67.5% of the traffic was never on any of them.
 5. After amending a long document to close a review finding, re-read the whole document against the amendment.
    The contradiction introduced this way was invisible to a reviewer checking the amendment in isolation.
+
+## Stage: Amendment (2026-08-23T21:13:49Z)
+
+### Session summary
+
+Resolved the pressure test's blocking findings through interactive deliberation and landed the amended ADR 0013 (`f007994d`).
+The operator framed the governing tension explicitly — guard against unconsented dubious operations, without frequent supervision of obviously-safe ones — and every decision was resolved against that frame with corrected, recency-weighted measurements.
+Filed #802 (sandbox launcher consumer), #803 (wrapper-floor transparency), and #804 (bash surface to structured command rules, re-chartered mid-session from token patterns); committed the band and joint-relief classifiers into the pressure-test retro appendix the ADR cites.
+
+### Observations
+
+- The pressure test's own "strict" classifier was over-strict (it classified file-argument basenames as command words), understating provable bash reads by ~7×.
+  Band B is ~19% of current prompts, not ~3% — the corrected number is what justified revisiting decision 7's read-refusal.
+- Recency weighting changed the story more than any correction: monthly ask volume fell 4× under mechanisms that already shipped (session approvals, the floor, the judge chain), so the record now addresses a ~150-ask/month residual, honestly framed.
+- The deliberation escalated design quality twice on operator instinct: "commands have structure; patterns are positional but options are position-free" killed pattern-based `commandEffects` in favor of structured command description with retraction guards, and "evaluation is recursive with blame-carrying escalation" became decision 10, later verified as convergent with Codex CLI's shipped classifier and PaSh's annotations.
+- Two settled-then-superseded calls (token-sequence patterns for `commandEffects`; per-pattern merge) were replaced by the structured shape, which dissolved the overlap and merge questions instead of answering them — a reminder that a gate's options are only as good as the shape space explored before gating.
+- Cause-joint accounting (the F3 lesson applied recursively) surfaced that my own earlier band relief figures assumed single causes; the amended ADR states the 51% figure with its first-firing-cause caveat.
+- `external_directory` sugar (bare key = read + write) matched the operator's mental model exactly when checked — worth checking, since decision 4's non-breaking claim rests on it.
