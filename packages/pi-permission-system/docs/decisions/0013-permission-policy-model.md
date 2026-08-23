@@ -9,7 +9,7 @@ date: 2026-08-22
 
 Accepted.
 This decision settles the shape of the deterministic policy model: whether access capability (reading versus writing a path) becomes first-class, how it is spelled in config, what composes with what, and where the enforcement boundary of this package lies.
-It composes with `docs/decisions/0009-bash-path-projection-completeness-contract.md`, whose layering asymmetry it preserves unamended, and with `docs/decisions/0007-model-judge-authorizer-chain-adr.md`, to which it routes every judgment the deterministic layer cannot prove.
+It composes with `docs/decisions/0009-bash-path-projection-completeness-contract.md`, whose layering asymmetry it preserves unamended, and with `docs/decisions/0007-model-judge-authorizer-chain-adr.md`, to which it routes every judgment the deterministic layer cannot prove and whose delegation exclusions it restates as surface families (§4) so they survive the new key names unamended.
 It decides the *shape* of policy only; which channels policy may enter through is decided separately by [#799].
 Nothing changes in code with this record; the decisions here are implemented by downstream issues, staged below.
 
@@ -222,6 +222,17 @@ A user opts into direction by writing the narrower key:
 Bare `path` remains valid and idiomatic indefinitely.
 It is the right spelling whenever direction does not matter, which is most of the time.
 
+One consequence of the expansion is security-relevant, and is decided here rather than left to be discovered during implementation.
+ADR 0007 §5's bounded-delegation envelope caps an authorizer link's `allow` on the `external_directory` and `path` surfaces, and it is enforced by exact string membership — `DELEGATION_EXCLUDED_SURFACES` holds those two literal names and is tested against the gate-authoritative `accessIntent.surface`.
+After expansion the gate surface an authorizer sees is a directional name, so a literal-membership test would stop matching and a link's `allow` on a path write would pass the envelope unchecked.
+
+**The exclusion is therefore over a surface *family*, not a literal name.**
+`path` names the family `path`, `path_read`, `path_write`; `external_directory` names its own.
+Every member is excluded, and a capability added to a family later is excluded by default, because the family is the unit rather than the enumeration.
+
+This does not amend ADR 0007.
+Its envelope covers exactly what it always covered; stating the rule this way is what keeps that true once a surface name can carry a suffix.
+
 ### 5. `external_directory` is a relational scope rule, and stays distinct
 
 `external_directory` is not a pattern surface that happens to be about the outside.
@@ -345,7 +356,9 @@ Supplied as input to [#799], which decides the channel set.
   Users with no explicit `path` rules are unaffected, because ADR 0009's unmatched-promotion guard leaves them unrestricted.
 - ADR 0009's guarantee wording is inaccurate as written and is corrected alongside that fix, not by this record.
 - The architecture doc's sandboxing boundary row and `docs/troubleshooting.md` §Threat Model both change, together, per decision 8.
-- Two config keys and their schema, examples, and documentation follow from decision 3; `PATH_SURFACES` gains both.
+- Two config keys and their schema, examples, and documentation follow from decision 3; `PATH_SURFACES` gains both, and `DELEGATION_EXCLUDED_SURFACES` becomes a family test rather than a literal set (decision 4).
+- ADR 0007's envelope keeps its exact current scope, which is only true because decision 4 restates the exclusion as a family.
+  A literal-membership test surviving the new key names would have silently let an authorizer link grant a path write.
 - The judge chain becomes load-bearing for read classification rather than optional. [#620] is no longer a speculative slice; it is where decision 7 sends the work it declines to do deterministically.
 - `delete` is a known gap, deliberately unshipped, with a recorded reason.
 
@@ -402,6 +415,7 @@ Rejected: a hard dependency on a pre-1.0 external binary, a platform matrix incl
 1. **The direction axis.**
    `path_read`, `path_write`, `external_directory_read`, `external_directory_write`, decision 4's sugar expansion, schema, examples, and docs.
    Ships the measured prompt relief and gives the rest somewhere to land.
+   This step must also convert ADR 0007 §5's delegation exclusion from literal-name membership to family membership, per decision 4, in the same commit as the new surface names — a directional key reaching an authorizer ahead of that conversion is a silent widening of the envelope.
 2. **[#609] and [#785].**
    Redirect operator classification, unconditional projection of output-redirect destinations including bare nonexistent ones, and ADR 0009's wording correction.
    Carries the breaking-change footer.
