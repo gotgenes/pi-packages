@@ -148,8 +148,9 @@ Hardening the gates against bypass, fail-closed corrections (breaking ones inclu
 
 **Non-goals.**
 
-- _Sandboxing._
-  This is a decision layer, not a sandbox — it decides and records, it does not isolate.
+- _Implementing isolation._
+  This is a decision layer — it decides and records; a sandbox contains.
+  The two are complementary: a sandbox settles which paths are in scope and in which direction, and this package decides whether a particular action on an in-scope path may proceed.
   If a dangerous action is reachable through an allowed tool, policy has to restrict it explicitly.
 - _Deciding project trust._
   A policy enforcer, not a trust oracle: whether a project is trusted is Pi's decision and yours, and this package observes it.
@@ -164,11 +165,12 @@ Hardening the gates against bypass, fail-closed corrections (breaking ones inclu
 The [architecture doc](https://github.com/gotgenes/pi-packages/blob/main/packages/pi-permission-system/docs/architecture/architecture.md#scope-and-non-goals) carries the full inventory, with the decision record behind each entry.
 
 **One decision is still open.**
-How policy may _enter_ the system — which channels are admissible, and with what precedence — is being worked out in [issue #639](https://github.com/gotgenes/pi-packages/issues/639), along with whether a capability model replaces the current surface list.
+How policy may _enter_ the system — which channels are admissible, and with what precedence — is being worked out in [issue #799](https://github.com/gotgenes/pi-packages/issues/799).
 Several requested widenings are parked on it rather than declined, durable persistence of an approval among them.
+The companion question — whether a capability model replaces the actor-keyed surface list — is settled: [ADR 0013](https://github.com/gotgenes/pi-packages/blob/main/packages/pi-permission-system/docs/decisions/0013-permission-policy-model.md) adds read/write as an axis beside the existing keys, so a policy can permit reading a path without also permitting writes to it.
 
 **Where adjacent requests belong.**
-True isolation of a permitted action → an agent sandbox.
+True isolation of a permitted action → an agent sandbox, which this package's scope decisions are exported to rather than duplicated in.
 Model-assisted judging of an `ask` → a chain link over the authorizer seam; [@gotgenes/pi-permission-model-judge](https://www.npmjs.com/package/@gotgenes/pi-permission-model-judge) is the first-party one, and judges mistyped paths.
 Approve-and-steer, edit diffs, and risk explanations → a downstream package over the `permissions:decision` event and the presentation seams.
 

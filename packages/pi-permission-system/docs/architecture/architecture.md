@@ -13,6 +13,7 @@ This document describes the internal design of the permission system, informed b
    No side-channel fallbacks.
 6. **Flat config format** - the flat `permission: { ... }` object where each key is a surface.
    The config IS the ruleset in human-friendly form.
+   Capability is a suffix on the surface name, not a nested facet (`path_read`, `external_directory_write`), and a bare `path` / `external_directory` key is load-time sugar expanding into both directions — so every channel keeps speaking one flat `(surface, pattern)` vocabulary ([ADR-0013](../decisions/0013-permission-policy-model.md) §3, §4).
 7. **Preserve the two-phase model** - tool filtering (before_agent_start) and invocation gating (tool_call) remain separate.
 8. **Ask = cache miss** - "ask" is the absence of a matching rule.
    The human is the oracle.
@@ -29,7 +30,7 @@ This is the full inventory, with the decision record or design principle each re
 
 | Non-goal                                                                             | Rests on                                                                                |
 | ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
-| Sandboxing or containment — this decides and records, it does not isolate            | `docs/troubleshooting.md` §Threat Model                                                 |
+| Implementing isolation — this decides and records; a sandbox contains                | [ADR-0013](../decisions/0013-permission-policy-model.md) §8                             |
 | Deciding project trust — a policy enforcer, not a trust oracle                       | [ADR-0001](../decisions/0001-project-trust-adoption.md)                                 |
 | Sanitizing the config merge so a project scope can only tighten                      | [ADR-0001](../decisions/0001-project-trust-adoption.md)                                 |
 | Shipping permissive defaults, trust profiles, or workflow-mode presets               | Operator position; `docs/opencode-compatibility.md` divergence table                    |
@@ -65,7 +66,8 @@ Two entries rest on an operator position rather than a decision record, and are 
 
 The following are **not** boundaries, and must not be written as such.
 Durable persistence of an approval is anticipated by design principle 8 and §"Authority lives in three places", which reserve a place for a ruling that outlives the session.
-Which channels policy may enter through, and whether a capability model (read / write / exec / net) replaces the actor-keyed surface list, are open in issue #639.
+Whether a capability model replaces the actor-keyed surface list is settled: [ADR-0013](../decisions/0013-permission-policy-model.md) adds read/write capability as an axis beside the existing keys, so direction becomes expressible on `path` and on the boundary.
+Which channels policy may enter through remains open in issue #799.
 Multi-hop escalation, three-way grant scope, terminal-replacement registration, and non-TUI presentation are admitted-not-shipped or externally blocked, not declined.
 
 ## Core data model
