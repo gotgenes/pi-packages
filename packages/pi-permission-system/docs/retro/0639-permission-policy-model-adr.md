@@ -166,3 +166,81 @@ Open decisions blocking a ship, both requiring the operator:
 - **Process note for the next session.**
   The plan's Build Order never required the unknown-direction rule to be decided, so eight `ask_user` gates settled spelling and posture while the model's central semantic rule went unasked.
   A deliberative-ADR plan should enumerate the rules the model must define, not only the parameters the issue raised.
+
+## Stage: Session Retrospective — paused before ship (2026-08-23T16:34:09Z)
+
+### Session summary
+
+One session carried [#639] from a stale plan through a refreshed plan, an eight-gate deliberation, ADR 0013, its cross-doc reconciliation, a `pre-completion-reviewer` PASS, and an adversarial pressure test that stopped the ship.
+Seven commits landed; the ADR among them is committed but not shippable.
+This entry is about how the session worked rather than what it produced — the state is recorded in the entry above and the findings in `0639-pressure-test.md`.
+
+### What worked, and why
+
+- **Naming my own weakest claim in a subagent dispatch, twice.**
+  Both reviews found their most valuable defect exactly where I told them to look hardest: the `pre-completion-reviewer` found the ADR 0007 exclusion gap I flagged as least-confident, and the pressure test found four blocking defects among the six weak points I enumerated.
+  This is now a two-for-two pattern and it is cheap.
+  The corollary is uncomfortable: the defects I did *not* anticipate (decisions 4 and 7 contradicting) went unfound by both.
+- **Verifying a claim in code before repeating it.**
+  My own refreshed plan asserted that dotted or nested capability keys carried a grammar ambiguity.
+  Reading `config-schema.ts` showed `permission` is an open `z.record` and nothing splits a surface name, so the ambiguity applies only to nesting.
+  Checking cost one command and prevented the ADR from rejecting a good option on a false premise.
+- **Treating the operator's non-answers as the highest-signal input.**
+  Two gates came back as questions rather than selections — "pause on `ask_user`, ask me about my own pain points" and "what makes external paths so special?"
+  The first inverted the ADR's thesis; the second produced decision 5, which converts a documented gotcha into a consequence.
+  Neither was reachable from the option sets I had written.
+
+### What went wrong, and the pattern behind it
+
+- **I observed the schema drift and failed to generalize it.**
+  The very first measurement script printed resolution values that did not match what the package's own skill documents, and I noted in passing that "the resolution values aren't `user_approved`/`user_denied` in this log version."
+  I adapted that one script and moved on.
+  Four more scripts followed, every one keyed on a `message` field that entries after 2026-08-17 do not carry.
+  The evidence of version drift was in front of me at the start and I treated it as a local nuisance rather than a property of the source.
+- **A suspicious number produced a story instead of a check.**
+  A 73% → 25% single-month collapse is not a finding, it is an instrument alarm.
+  Instead I reached for the May samples, found real sibling-repository paths in them, and built a monorepo-consolidation explanation that fit perfectly — because a plausible cause can always be found for an artifact.
+  The samples were genuine; the effect they explained did not exist.
+  **A causal story assembled after a surprising measurement is the least trustworthy output of a session, and I presented it as the durable fact.**
+- **I corrected the operator using the artifact.**
+  Told them their recollection tracked reality better than my aggregate.
+  The opposite was true: `external_directory` dominates consistently at 72–80%, and wrapper flooring is 6.1%.
+  Their original instinct — that recency bias was in play — was right, and I confirmed it with a bug.
+- **I handed the `pre-completion-reviewer` my conclusions as premises.**
+  `AGENTS.md` says plainly that a reviewer cannot verify an assertion handed to it as a premise, and that one should state what was checked rather than what one concludes was covered.
+  I gave it the ADR's measurement tables as context.
+  It returned PASS on evidence it had no way to test.
+  The pressure test differed in one respect that explains the entire gap in yield: it was given the raw log and told not to accept the ADR's numbers.
+- **A fix introduced a contradiction and I did not re-read for it.**
+  Decision 4's surface-family exclusion was written to close the reviewer's WARN.
+  It closes it, and it also blocks the authorizer chain that decision 7 — written earlier, in another gate — depends on for read classification.
+  I amended a long document at one point and never re-read the whole for consistency with the amendment.
+
+### Diagnostic details
+
+- **Model-performance correlation.**
+  The pressure test ran on `anthropic/claude-fable-5` at high thinking and found four blocking defects; the `pre-completion-reviewer` on its default found none of them.
+  The model was the smaller variable.
+  The larger one was dispatch design — artifacts and a mandate to re-derive, versus conclusions and a checklist.
+  A stronger model given premises would likely have returned PASS too.
+- **Escalation-delay tracking.**
+  Five measurement scripts across the session, zero validations of the input schema against a raw recent sample.
+  The cost of one `tail -1 | jq keys` at the start was seconds; the cost of skipping it was an ADR that cannot ship.
+- **Feedback-loop gap analysis.**
+  `/build-plan` has no step that tests a measurement's instrument, and the plan's own Test Impact Analysis treated the spike as the testable surface — correctly — while the log analysis that became the ADR's entire evidence base was never named as needing verification.
+  The gap is that a measurement feeding a durable record was held to a lower standard than a six-line code spike.
+
+### Candidate durable lessons
+
+Not yet written to `AGENTS.md`; recorded here for the terminal `/retro` to weigh.
+
+1. When a number is load-bearing for a durable record, commit the instrument beside it, and validate the instrument against a raw sample from each distinct era of the source before aggregating.
+   A long-lived JSONL log is a schema-drift surface, not a table.
+2. A large single-period swing in a metric is a trigger to re-check the instrument, never a finding to explain.
+   Explaining it first is how an artifact acquires a citation.
+3. Dispatch a reviewer with artifacts and a mandate to re-derive, not with conclusions.
+   The `pre-completion` skill's protocol should say so for any change whose correctness rests on measurements.
+4. When a plan's deliverable is a *model* rather than a change, enumerate the rules the model must define and gate on each, rather than gating only on the parameters the issue raised.
+   Eight gates settled naming, defaults, posture, and staging; the rule governing 67.5% of the traffic was never on any of them.
+5. After amending a long document to close a review finding, re-read the whole document against the amendment.
+   The contradiction introduced this way was invisible to a reviewer checking the amendment in isolation.
