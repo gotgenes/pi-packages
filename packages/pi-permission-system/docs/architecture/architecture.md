@@ -953,6 +953,259 @@ src/
 └── types.ts                   Core type definitions; the config-shape types (PermissionState, FlatPermissionConfig, etc.) are re-exported from config-schema.ts; domain type guards `isPermissionState`, `isDenyWithReason`
 ```
 
+## Improvement roadmap — Phase 14: The capability axis
+
+### Findings (planned 2026-08-24)
+
+The declared candidate is [ADR-0013](../decisions/0013-permission-policy-model.md), accepted 2026-08-22 and amended 2026-08-23, whose Staging section assigns its decomposition to this planning pass — the same relationship [ADR-0011](../decisions/0011-prompt-presentation-contract.md) had to Phase 13.
+
+The cause is a **missing axis in the policy vocabulary**: a surface names *what is touched* and never *what is done to it*.
+Design principle 6 now names the repair (capability as a suffix on the surface name), but no surface, rule, or intent carries direction today, so the deterministic layer cannot distinguish a read from a write.
+Everything follows from that one gap.
+A user who wants to permit reading outside the working tree must permit writing there too, so they permit neither and absorb the prompt; a redirect destination is provably a write and is governed by nothing; a wrapper's inner command is provably a pure reader and is floored to `ask` anyway.
+ADR 0013 §1 names it as the single defect behind eight open issues ([#706], [#680], [#620], [#698], [#472], [#604], [#603], [#686]) — eight mechanisms aimed at one missing distinction.
+The measured cost is a cause-joint ~51% of current prompts: ~19% tool reads (band A), ~19% provable bash reads (band B), ~13% floored pure-readers.
+
+Phase 14 takes staging slices 1–3, with slice 2 split so that wrapper transparency depends only on the audited core and not on the user-declaration machinery.
+Slices 4–7 (redirect projection [#609], blame threading, the sandbox seam [#802], structured bash rules [#804]) are Phase 15's spine.
+
+Corroboration (fallow + sweeps, 2026-08-24): health 78 (B), dead code 0, duplication 0.1% (the two known clone groups, unchanged).
+The health score fell from the 88 (A) recorded at Phase 13's archive on a new `hotspots -10.0` deduction; ~40 commits landed on the package in the six days after archiving ([#699], [#786], [#787], [#789], [#794], [#639]), which is a churn-window artifact rather than new structural debt — no other deduction moved and the coupling deduction improved.
+The repeated-discriminator sweep found no new family: the survivors are validation-edge `typeof` guards, per-node AST dispatch, and gate-outcome dispatch at a single site, idiomatic per the taxonomy.
+The `value-guards.ts` refactoring target remains rejected (healthy high-fan-in leaf, 17 LOC).
+
+The craftsmanship scout **refuted all five** fallow large-function flags on test files — each is a nested tree of small behavior-named tests, with no over-mocking, implementation-coupled assertions, or fused arrange/act/assert.
+It found one concentrated production cluster, and it sits inside the files this phase already rewrites: `handlers/gates/bash-path.ts` inlines a token-classification loop its two sibling gates extracted into `external-directory-policy.ts`, `handlers/gates/runner.ts`'s `runDescriptor` carries six numbered phases in one 172-line method, and `rule.ts:143` stacks a stale duplicate doc comment describing a different function.
+All three ride Steps 1–2 as tidy-first prep commits rather than earning a step.
+The scout explicitly cleared `src/index.ts` (the 292-line composition-root factory and top hotspot at 17.1): its two forward-declared `let`s exist to satisfy a circular closure, so splitting it would fight the requirement for no readability gain.
+The one recorded deferred tidying (`test/service.test.ts`'s thrice-repeated root-slot `afterEach`) stays deferred as scattered trivia.
+
+Directory check: every module this phase creates belongs to an existing domain directory (`access-intent/bash/`, `handlers/gates/`, `authority/`), and the root-level files it edits (`normalize.ts`, `config-schema.ts`, `rule.ts`, `permission-manager.ts`) are amended rather than rewritten, so they stay put per the recorded convention — grow a domain directory in the phase that rewrites its files, never as a big-bang move.
+
+Trajectory: Phase 12's maximum step priority was 20 and Phase 13's was 20; this phase's is 20 (Step 3).
+No decline, so the regular improvement rotation continues.
+
+#### Open-issue sweep dispositions
+
+- [#803] — adopted as Step 3 (wrapper transparency, ADR 0013 §11 and staging slice 3).
+- [#742] — adopted as Step 4, having been swept out of Phase 13 as "a strong candidate for the next phase's spine".
+  ADR 0013 §10 recasts it as a combinator clause of the verdict fold rather than a patch, so fixing it now is the fold's first clause.
+- [#772] — adopted as Step 5; filed by Phase 13 Step 10's implementation and non-gating since.
+- [#796] — adopted as Step 6; its deferral trigger (the last known downstream migrating) fired during [#788]'s ship.
+- [#792] and [#793] — adopted as Steps 7 and 8, the two ADR 0012 decision-6 residuals filed with [#789].
+- [#799] — deferred with recorded rationale (user composition decision): the channel ADR is deliberative design budget that would compete with the capability axis for the same planning attention, and ADR 0013 §9 has already written its input constraints so nothing decays by waiting.
+  It stays the strongest non-code candidate for Phase 15, and PRs [#675], [#692], and [#638] remain blocked on it.
+- [#609] — deferred to Phase 15 as staging slice 4; it is a consequence of this phase's axis rather than its motivation (ADR 0013 §1), and it carries the phase's only breaking change, which does not belong in the same release as the axis that must be non-breaking by construction.
+- [#802] and [#804] — deferred to Phase 15 as staging slices 6 and 7.
+- [#620] — deferred with recorded rationale (explicit user decision; third consecutive phase).
+  Not a silent re-defer: ADR 0013 §7 **narrows its charter** rather than parking it — the classifier now answers the provable slice at zero tokens, so the chain is no longer the only path to read relief and keeps only what genuinely needs judgment.
+  Scheduling it this phase would contend for the same bash-surface files as Steps 2 and 3.
+  [#698] and [#706] fold into it when it is scheduled.
+- [#519] — deferred with recorded rationale (explicit user decision): still externally blocked on Pi SDK `UIContext` evolution, with no in-repo work that unblocks it.
+  It closes or schedules when the SDK ships the capability.
+- [#751] — deferred with recorded rationale (explicit user decision; second phase).
+  It is the last residual of ADR 0011 §4's reachable-complete-view contract and remains small and self-contained, so it stays a cheap independent candidate for any later phase.
+- [#797] — the package's only open `bug`, and not planned as a step (explicit user decision).
+  `officecli set data.xlsx /Sheet1/B1` passes a spreadsheet cell reference shaped exactly like an absolute path, and ADR 0009 gates an absolute bash token by shape rather than existence — deliberately, because a nonexistent absolute destination is still a write target.
+  No deterministic classifier separates the two, so the answer is a config recipe (`external_directory: {"/Sheet1/*": "allow"}`) rather than a mechanism.
+  This phase answers the issue with that recipe.
+- [#735] scenario 2 and [#722] — unchanged from Phase 13: a parent whose turn is occupied stays with the [#722] diagnosis.
+- [#762] — out of scope: the `pkg:pi-permission-system` label is contextual and the body targets `pi-autoformat`'s own config-path resolution.
+- [#780] — deferred: two ADRs recording the conservative-defaults and outbound-bridge boundaries; documentation work with no dependency on this phase, and the phase's ADR budget is already spent on ADR 0013's implementation.
+- Feature issues [#736], [#720], [#691], [#688], [#687], [#686], [#680], [#658], [#654], [#648], [#604], [#603], [#472] — out of scope for a structural phase.
+  Eight of them are named by ADR 0013 §1 as aimed at this phase's cause, so the axis narrows what each of them still has to ask for; none is closed by it outright.
+
+### Health metrics
+
+| Metric                                                                     | Baseline (2026-08-24) | Phase 14 target |
+| -------------------------------------------------------------------------- | --------------------- | --------------- |
+| Directional surfaces in `PATH_SURFACES`                                    | 0                     | 4               |
+| Directional keys in `config-schema.ts`                                     | 0                     | ≥ 2             |
+| Sugar-expansion site in `normalize.ts`                                     | 0                     | ≥ 1             |
+| Family-resolved delegation exclusion (`delegation-envelope.ts`)            | 0                     | ≥ 1             |
+| Effect-vocabulary module present (`access-intent/bash/command-effects.ts`) | 0                     | 1               |
+| Wrapper-transparency predicate (`wrapper-analysis.ts`)                     | 0                     | ≥ 1             |
+| Nested-execution descent sites in the command enumerator                   | 3                     | ≥ 4             |
+| Authorizer resolution values in `permission-events.ts`                     | 0                     | 2               |
+| ADR 0012 amendments recording the root-slot decision                       | 2                     | ≥ 3             |
+| Absent-child alarm event in `src/`                                         | 0                     | ≥ 1             |
+| Split-provider extractor test files                                        | 0                     | ≥ 1             |
+| fallow health score                                                        | 78 (B)                | ≥ 78            |
+| Production duplication                                                     | 0.1%                  | ≤ 0.2%          |
+| Dead exports                                                               | 0                     | 0               |
+
+Recompute commands (run from the repo root):
+
+- Directional surfaces: `grep -cE 'path_read|path_write|external_directory_read|external_directory_write' packages/pi-permission-system/src/access-intent/path-surfaces.ts`
+- Directional schema keys: `grep -cE 'path_read|path_write' packages/pi-permission-system/src/config-schema.ts`
+- Sugar expansion: `grep -c 'expandDirectionalSugar' packages/pi-permission-system/src/normalize.ts`
+- Family exclusion: `grep -c 'surfaceFamily' packages/pi-permission-system/src/authority/delegation-envelope.ts`
+- Effect module: `ls packages/pi-permission-system/src/access-intent/bash | grep -c 'command-effects'`
+- Wrapper predicate: `grep -c 'isTransparentWrapper' packages/pi-permission-system/src/access-intent/bash/wrapper-analysis.ts`
+- Enumerator descent: `grep -c 'collectHostedCommands' packages/pi-permission-system/src/access-intent/bash/command-enumeration.ts`
+- Authorizer resolutions: `grep -cE 'authorizer_allowed|authorizer_denied' packages/pi-permission-system/src/permission-events.ts`
+- ADR 0012 amendments: `grep -c '#### Amendment' packages/pi-permission-system/docs/decisions/0012-cross-node-extension-contract.md`
+- Absent-child alarm: `grep -rn 'child_node_absent' packages/pi-permission-system/src --include="*.ts" | wc -l`
+- Split-provider tests: `grep -rl 'split-provider' packages/pi-permission-system/test | wc -l`
+- Health/duplication/dead exports: `pnpm fallow health --score --workspace @gotgenes/pi-permission-system` / `pnpm fallow dupes --workspace @gotgenes/pi-permission-system` / `pnpm fallow dead-code --workspace @gotgenes/pi-permission-system`
+
+Seven rows grep for a name this phase has not created yet — `expandDirectionalSugar`, `surfaceFamily`, `command-effects.ts`, `isTransparentWrapper`, `authorizer_allowed`/`authorizer_denied`, `child_node_absent`, and the `split-provider` test phrase.
+The step that creates each (Steps 1, 1, 2, 3, 5, 7, 8 respectively) must either use the roadmap's name or update the metric row in the same commit, or the rename silently breaks the delivered-vs-predicted verification at phase close.
+The fallow health score is carried as a floor rather than a target: it is blind to the type-level wins a cause-driven phase produces, and its current value is depressed by a churn artifact this phase does not set out to fix.
+
+### Steps
+
+#### Step 1: The direction axis — `path_read`, `path_write`, and their boundary twins
+
+**Cause:** the policy vocabulary names the object of an access and never its capability, so no rule can say *this is only a read, so it is fine* — the missing axis itself, expressed as config.
+
+- **Smell:** Category C (a distinction the domain requires has no representation).
+- **Target:** `src/config-schema.ts` (the four directional keys, with `pnpm run gen:schema`), `src/normalize.ts` (`expandDirectionalSugar` — bare `path` / `external_directory` expand into both directions at load, sugar entries inserted first and explicit directional entries appended after, regardless of textual key order, per ADR 0013 §4), `src/access-intent/path-surfaces.ts` (`PATH_SURFACES` gains the four names so win32 folding and the manager's path handling follow), `src/authority/delegation-envelope.ts` (`DELEGATION_EXCLUDED_SURFACES` becomes a surface-**family** test, not literal membership), the path gates in `src/handlers/gates/` (a tool-surface access has a known direction — `READ_ONLY_PATH_BEARING_TOOLS` proves the read, `write`/`edit` prove the write — while a bash token stays unknown and consults **both** directional surfaces, most-restrictive, per §10's base case), plus `config/config.example.json`, `docs/configuration.md`, and `README.md`.
+  Tidy-first prep commits: extract `selectUncoveredPathCandidates` in `handlers/gates/bash-path.ts` mirroring the proven `external-directory-policy.ts` shape, and delete the stale duplicate doc comment at `rule.ts:143`.
+- **Ordering constraint:** the family-membership conversion must land in the **same commit** as the new surface names.
+  A directional key reaching an authorizer link ahead of it is a silent widening of the bounded-delegation envelope (ADR 0013 §4).
+- **Outcome:** direction is expressible; every existing config expands to its current meaning exactly, so nothing prompts differently on upgrade; band A (~19% of current asks) becomes relievable by one directional grant.
+  The four metrics above move off zero.
+- **Impact 5 / Risk 3 / Priority 15.**
+
+Release: batch "capability-axis"
+
+#### Step 2: Effect attribution — syntax proofs and the built-in pure-reader core
+
+**Cause:** the same missing axis, one layer down: even with directional surfaces, a bash path token has no effect to attribute, so every token falls to the fail-closed both-surfaces base case and the axis relieves nothing on the bash surface.
+
+- **Smell:** Category C (a fact the parse tree already establishes is discarded before the gate).
+- **Target:** new `src/access-intent/bash/command-effects.ts` (the `Effect` vocabulary — `read`, `write`, with `delete` reserved — and the frozen, package-audited pure-reader core, matched as bare basenames only, with `find`'s retraction guard on `-exec`/`-execdir`/`-ok`/`-okdir`/`-delete`); `src/access-intent/bash/token-collection.ts` and `bash-path-resolver.ts` attribute an effect per **token**, not per command, so `cat ~/a | tee ~/b` reads `~/a` and writes `~/b` in one unit; `src/handlers/gates/bash-path.ts` and `bash-external-directory.ts` route a proven-effect token to that effect's surfaces and an unproven one to both.
+  Syntax proofs are absolute and unretractable: an output redirect destination is a write, an input redirect is a read, and `2>&1` is not a file access.
+  Tidy-first prep commit: split `runDescriptor`'s six numbered phases in `handlers/gates/runner.ts` into private methods before this step extends that dispatch.
+- **Constraint:** the core is frozen, always active, and not user-removable; a user who distrusts `cat` is served by the ask-everything fallback, not by removal machinery.
+  Admission is argument-independence across GNU and BSD alike, which is what keeps this from being the package-maintained fail-open command table ADR 0009 rejected.
+- **Outcome:** band B (~19% of current asks) becomes relievable by a directional read grant; the review log records which source classified a unit (syntax or core), so a surprising allow is auditable to the line that produced it.
+- **Impact 5 / Risk 3 / Priority 15.**
+
+Release: batch "capability-axis"
+
+#### Step 3: Wrapper transparency — argument-independence defeats the floor's reason ([#803])
+
+**Cause:** the indirection floor guards unknowability of *scope*, but it is applied as if it guarded unknowability of *direction* — so `xargs grep -l foo` is forced to `ask` even though no arguments exist that make `grep` write a file.
+The floor's reason does not hold for the one class the core is defined by.
+
+- **Smell:** Category C (a guard whose trigger is wider than its justification), with the largest measured symptom in the record: floored prompts are 27–28% of all prompts in the two most recent months, 40–55% of them with a pure-reader inner command.
+- **Target:** `src/access-intent/bash/wrapper-analysis.ts` (`isTransparentWrapper` — the executed inner unit's head is a bare-basename core word and the unit carries no real output redirect), consumed by `src/handlers/gates/bash-command.ts` so a transparent wrapper resolves by the inner command's own rules instead of the `WRAPPER_SENTINEL` synthetic `ask`.
+- **Constraint:** everything else keeps the floor untouched — interpreters, `bash -c`/`eval` opaque payloads, mutators, and any wrapper whose inner command is unresolvable (`executedUnitOf` fails to `null`, and that discipline is retained). v1 exempts on the **built-in core only**: a user `commandEffects` declaration participates in classification but does not lift the floor, because a user's argument-independence claim fails open behind a wrapper.
+  An explicit `deny`/`ask` on the wrapper unit is never weakened.
+- **Outcome:** `xargs grep -l foo` under a matching `bash` allow stops prompting while `xargs rm`, `xargs sed`, `time pnpm test`, and `find -exec sh -c '…' \;` still do; ~13% of current prompt volume relieved, the single largest deterministic relief in ADR 0013.
+- **Impact 5 / Risk 2 / Priority 20.**
+
+Release: batch "capability-axis"
+
+#### Step 4: Enumerate commands in every catch-all node type ([#742])
+
+**Cause:** the command enumerator answers "is this node a command?"
+and "can this node host one?"
+correctly for redirects and heredocs since [#741], but its catch-all branch still emits any other named statement whole without descending — so a command inside an `if` body, a `declaration_command`, a `test_command`, or an `unset_command` is matched against the bash rules only as part of the enclosing string, and an `rm *` deny never fires.
+This is the last member of the [#306] / [#741] nested-command bypass family, and ADR 0013 §10 recasts it as a combinator clause ("any unhandled node type: fail closed") rather than a patch.
+
+- **Smell:** Category C (a boundary flaw with a user-visible bypass), commit type `fix:`.
+- **Target:** `src/access-intent/bash/command-enumeration.ts`'s catch-all branch descends for nested executions through the existing `forEachNestedExecution` / `EXECUTION_HOST_TYPES` seam in `nested-execution.ts` rather than adding a third traversal; control-flow conditions and bodies, function definitions, `declaration_command`, `test_command`, `unset_command`, and `variable_assignment` all reach the command surface.
+  The path surface already handles most of these, so this closes an asymmetry rather than opening a surface.
+- **Design question the step must settle:** a control-flow body runs in the current shell, so it has no distinct execution context to tag — whether it emits with no `context` (like a top-level chain member) or earns a `BashCommandContext` variant is a prompt-quality decision, since `context` is what explains *why* a nested command was gated.
+- **Outcome:** `if true; then rm y; fi` resolves `deny` under an `rm *` rule; the enclosing statement is still emitted whole, so the change can only ever be more restrictive, never weaker; `grep -c 'collectHostedCommands'` in the enumerator goes 3 → ≥ 4.
+- **Impact 4 / Risk 2 / Priority 16.**
+
+Release: independent
+
+#### Step 5: An authorizer link's verdict is attributed to the link, not the human ([#772])
+
+**Cause:** `deriveResolution` maps an `ask` gate resolved to `allow` onto `user_approved` unless a session approval or the yolo flag explains it, and the chain runs inside `AskEscalator.escalate` where the runner never learns which link answered — so the one fact [#726] added everywhere else (who decided) is discarded at exactly the collection point that already captures `autoApproved` and `confirmationUnavailable`.
+The review log is correct; the bus event is the single record that mis-attributes.
+
+- **Smell:** Category C (a fact established at the decision point dies before one of its two consumers), the same shape as Phase 13 Steps 6 and 9.
+- **Target:** `src/permission-events.ts` gains `authorizer_allowed` / `authorizer_denied` on `PermissionDecisionResolution`; `src/handlers/gates/runner.ts` reads `decision.decidedBy.kind` at the same point in `runDescriptor` that already reads the other two flags; `src/handlers/gates/helpers.ts`'s `deriveResolution` branches on it.
+- **Note:** this changes the `resolution` an existing local decision reports rather than only adding a value, so whether it warrants a major bump is part of the step's decision — it is not additive the way [#752] was.
+- **Outcome:** a consumer can distinguish "the operator approved this" from "a policy extension approved this" on the bus, matching what the review log has recorded since [#726]; `grep -cE 'authorizer_allowed|authorizer_denied'` goes 0 → 2.
+- **Impact 3 / Risk 1 / Priority 15.**
+
+Release: independent
+
+#### Step 6: Schedule the process-root service slot's removal ([#796])
+
+**Cause:** ADR 0012 decision 7 deferred the root slot's removal on a condition — downstream migration — that has since been met, and nothing tracks it.
+The deferral's trigger fired during [#788]'s ship and its only record was an Open Question in a shipped plan plus a table row, neither of which the backlog sweeps: a decision with a fired trigger and no owner.
+
+- **Smell:** Category A (a mechanism populated every session and read by nothing), scoped as a decision rather than a removal.
+- **Target:** an ADR 0012 amendment deciding three things — whether `getRootPermissionsService()` is removed in the next major or the `DEP0001` deprecation window stays open for consumers we cannot see; whether the slot should stop being **written** (`publishRootPermissionsService` in `src/service-lifecycle.ts`, a separate question from retiring its public reader); and what becomes of the [#302] child guard whose only remaining purpose is protecting that slot from an in-process child.
+- **Outcome:** the decision is recorded where the sweep will find it rather than in a shipped plan's Open Questions; `grep -c '#### Amendment'` on ADR 0012 goes 2 → ≥ 3.
+  Whether code changes in this step is the step's own decision; nothing is blocked either way.
+- **Impact 2 / Risk 2 / Priority 8.**
+
+Release: independent
+
+#### Step 7: Alarm when a registered in-process child session has no permission node ([#792])
+
+**Cause:** gating is node-local (ADR 0012 decision 1), so a child that loads no instance of this extension has no `tool_call` gate, no tool filtering, no `permission:` frontmatter resolution, and no ask-forwarding — and the parent's own gating is unaffected, so the operator watches the permission system work and never learns the child is unguarded.
+One line of `excludedExtensionPackages` in `subagents.json` reaches that state, and so does a load failure inside the child.
+
+- **Smell:** Category C (a policy hole that is observable to the parent node and reported by nobody).
+- **Target:** the parent node already holds both signals — every in-process child session id is registered from `subagents:child:session-created`, and since [#699] every node publishes a keyed service — so a registered child that has published no keyed service by its first turn is a child with no permission node.
+  The alarm writes a `child_node_absent` review-log event and a visible warning; `src/authority/subagent-registry.ts` and `src/service-lifecycle.ts` hold the two halves.
+- **Design questions the step must settle:** where the check fires, since there is no parent-side "the child's first turn" event and the timing needs a real seam rather than a sleep; whether the parent can (or needs to) distinguish deliberate exclusion from a load failure; and whether to warn or refuse — refusing means one package overriding another's settings, which cuts against ADR 0002's separation.
+- **Outcome:** an ungated child is announced rather than silent; `grep -rn 'child_node_absent' src` goes 0 → ≥ 1.
+- **Impact 3 / Risk 2 / Priority 12.**
+
+Release: independent
+
+#### Step 8: Close or announce the split-provider access-extractor gap ([#793])
+
+**Cause:** ADR 0012 decision 6 names a hazard and states the contract cannot prevent it, but checked against pi-subagents' actual exclusion semantics the hazard is **narrower and sharper** than the ADR reads.
+Excluding a package normally removes its tools and their extractors together, so nothing is weakened; a gap needs a **split** between providers — package A registers tool `deploy` whose path lives under `input.target`, package B registers the extractor for it, and the operator excludes B from children.
+The child then gates `deploy` with no extractor, its path never reaches the child's `path` / `external_directory` gates, and the parent gates its own calls correctly, so the weakening is visible nowhere.
+
+- **Smell:** Category C (a security surface degrading silently across a node boundary), and Category F in its cross-package half.
+- **Target:** decide between the issue's two mechanisms and implement it.
+  **A — child-side diagnostic:** warn once per tool name and record it when a child gates a tool whose extractor is registered in the parent node but not locally; reports the gap without closing it, needs a lookup surface `PermissionsService` does not expose today (there is a registrar, no reader), and introduces a cross-node read ADR 0012 currently limits to the forwarded ask and the serving heartbeat.
+  **B — parent read-through fallback:** an in-process child's extractor lookup falls back to the parent node's registry, which makes decision 6's "riding along is harmless by construction" hold unconditionally — at the cost of an ADR 0012 decision 1 amendment distinguishing *where a registration lands* (unchanged: node-local) from *lookup fallback inside one process* (new).
+  Whether that distinction is principled or a crack in the law is the thing to deliberate.
+  Preview formatters split the same way but are cosmetic; only extractors are a security surface.
+  Out-of-process children are out of scope for B — no shared `globalThis`, and the exclusion is in-process only.
+- **Outcome:** the split-provider condition is either impossible or announced, replacing the interim by-hand check [#789] shipped in pi-subagents' `docs/configuration.md`; `grep -rl 'split-provider' test` goes 0 → ≥ 1.
+- **Impact 3 / Risk 2 / Priority 12.**
+
+Release: independent
+
+### Step dependency diagram
+
+```mermaid
+flowchart TD
+    S1["Step 1: the direction axis"] --> S2["Step 2: syntax proofs + pure-reader core"]
+    S2 --> S3["Step 3 (#803): wrapper transparency"]
+    S4["Step 4 (#742): enumerate catch-all node types"]
+    S5["Step 5 (#772): authorizer verdict attribution"]
+    S6["Step 6 (#796): schedule the root-slot removal"]
+    S7["Step 7 (#792): alarm on a child with no node"]
+    S8["Step 8 (#793): split-provider extractor gap"]
+    S7 -.-> S8
+```
+
+The dashed edge is a sequencing preference, not a dependency: Steps 7 and 8 both touch the cross-node reading surface, and Step 7's alarm needs the same parent-side lookup Step 8's mechanism A would introduce — landing Step 7 first tells Step 8 whether that surface already exists.
+
+### Parallel tracks
+
+- **Track A — the capability axis:** Steps 1 → 2 → 3, strictly sequential.
+  Step 2 needs the directional surfaces to route a proven effect to, and Step 3 needs the pure-reader core Step 2 defines.
+  This track owns `src/access-intent/bash/` and `src/handlers/gates/`.
+- **Track B — bash enumeration completeness:** Step 4.
+  It touches `command-enumeration.ts` and `nested-execution.ts`, which Track A's Step 2 also reads — land Step 4 before Step 2 or after Step 3, not concurrently.
+- **Track C — decision attribution:** Step 5, any time; it touches `permission-events.ts`, `runner.ts`, and `gates/helpers.ts`, and Track A's tidy-first prep splits `runDescriptor` in the same file — sequence it against Step 2 rather than running both at once.
+- **Track D — cross-node contract residuals:** Steps 6, 7, 8, disjoint from every other track (`service.ts`, `service-lifecycle.ts`, `authority/subagent-registry.ts`, `tool-access-extractor-registry.ts`).
+
+### Release batches
+
+- **Batch "capability-axis":** Steps 1, 2, 3 (ship together; tail = Step 3; release vehicle = Step 3's `fix:` for [#803], with Step 1's `feat:` for the new config keys riding the same release — Step 2 is a hidden `refactor:` on its own).
+  The batch ships together because Steps 1 and 2 relieve nothing a user can observe until a directional grant exists to write, while Step 3's relief is immediate and unconditional.
+- Independently releasable: Step 4 (`fix:`), Step 5 (`feat:`, possibly `feat!:` — see the step's bump note), Step 7 (`feat:`), Step 8 (`fix:` or `feat:` depending on the mechanism chosen).
+- Step 6 cuts no release on its own: its deliverable is an ADR amendment (`docs:`, hidden), and any code it schedules lands in a later step or a later phase.
+
 ## Refactoring history
 
 The architecture above is the product of thirteen completed improvement phases.
@@ -992,4 +1245,50 @@ Each phase's findings, numbered plan, dependency diagram, and health metrics are
 [#555]: https://github.com/gotgenes/pi-packages/issues/555
 [#710]: https://github.com/gotgenes/pi-packages/issues/710
 [#645]: https://github.com/gotgenes/pi-packages/issues/645
+[#306]: https://github.com/gotgenes/pi-packages/issues/306
+[#472]: https://github.com/gotgenes/pi-packages/issues/472
+[#519]: https://github.com/gotgenes/pi-packages/issues/519
+[#603]: https://github.com/gotgenes/pi-packages/issues/603
+[#604]: https://github.com/gotgenes/pi-packages/issues/604
+[#609]: https://github.com/gotgenes/pi-packages/issues/609
+[#638]: https://github.com/gotgenes/pi-packages/pull/638
+[#639]: https://github.com/gotgenes/pi-packages/issues/639
+[#648]: https://github.com/gotgenes/pi-packages/issues/648
+[#654]: https://github.com/gotgenes/pi-packages/issues/654
+[#658]: https://github.com/gotgenes/pi-packages/issues/658
+[#675]: https://github.com/gotgenes/pi-packages/pull/675
+[#680]: https://github.com/gotgenes/pi-packages/issues/680
+[#686]: https://github.com/gotgenes/pi-packages/issues/686
+[#687]: https://github.com/gotgenes/pi-packages/issues/687
+[#688]: https://github.com/gotgenes/pi-packages/issues/688
+[#691]: https://github.com/gotgenes/pi-packages/issues/691
+[#692]: https://github.com/gotgenes/pi-packages/pull/692
+[#698]: https://github.com/gotgenes/pi-packages/issues/698
+[#699]: https://github.com/gotgenes/pi-packages/issues/699
+[#706]: https://github.com/gotgenes/pi-packages/issues/706
+[#720]: https://github.com/gotgenes/pi-packages/issues/720
+[#722]: https://github.com/gotgenes/pi-packages/issues/722
+[#726]: https://github.com/gotgenes/pi-packages/issues/726
+[#735]: https://github.com/gotgenes/pi-packages/issues/735
+[#736]: https://github.com/gotgenes/pi-packages/issues/736
+[#741]: https://github.com/gotgenes/pi-packages/issues/741
+[#742]: https://github.com/gotgenes/pi-packages/issues/742
+[#751]: https://github.com/gotgenes/pi-packages/issues/751
+[#752]: https://github.com/gotgenes/pi-packages/issues/752
+[#762]: https://github.com/gotgenes/pi-packages/issues/762
+[#772]: https://github.com/gotgenes/pi-packages/issues/772
+[#780]: https://github.com/gotgenes/pi-packages/issues/780
+[#786]: https://github.com/gotgenes/pi-packages/issues/786
+[#787]: https://github.com/gotgenes/pi-packages/issues/787
+[#788]: https://github.com/gotgenes/pi-packages/issues/788
+[#789]: https://github.com/gotgenes/pi-packages/issues/789
+[#792]: https://github.com/gotgenes/pi-packages/issues/792
+[#793]: https://github.com/gotgenes/pi-packages/issues/793
+[#794]: https://github.com/gotgenes/pi-packages/issues/794
+[#796]: https://github.com/gotgenes/pi-packages/issues/796
+[#797]: https://github.com/gotgenes/pi-packages/issues/797
+[#799]: https://github.com/gotgenes/pi-packages/issues/799
+[#802]: https://github.com/gotgenes/pi-packages/issues/802
+[#803]: https://github.com/gotgenes/pi-packages/issues/803
+[#804]: https://github.com/gotgenes/pi-packages/issues/804
 [ADR-0002]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-subagents/docs/decisions/0002-extensions-on-a-minimal-core.md
