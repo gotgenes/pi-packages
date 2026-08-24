@@ -987,6 +987,7 @@ No decline, so the regular improvement rotation continues.
 
 #### Open-issue sweep dispositions
 
+- [#806] and [#807] — filed for Steps 1 and 2, the two staging slices with no pre-existing issue.
 - [#803] — adopted as Step 3 (wrapper transparency, ADR 0013 §11 and staging slice 3).
 - [#742] — adopted as Step 4, having been swept out of Phase 13 as "a strong candidate for the next phase's spine".
   ADR 0013 §10 recasts it as a combinator clause of the verdict fold rather than a patch, so fixing it now is the fold's first clause.
@@ -1055,7 +1056,7 @@ The fallow health score is carried as a floor rather than a target: it is blind 
 
 ### Steps
 
-#### Step 1: The direction axis — `path_read`, `path_write`, and their boundary twins
+#### Step 1: The direction axis — `path_read`, `path_write`, and their boundary twins ([#806])
 
 **Cause:** the policy vocabulary names the object of an access and never its capability, so no rule can say *this is only a read, so it is fine* — the missing axis itself, expressed as config.
 
@@ -1070,7 +1071,7 @@ The fallow health score is carried as a floor rather than a target: it is blind 
 
 Release: batch "capability-axis"
 
-#### Step 2: Effect attribution — syntax proofs and the built-in pure-reader core
+#### Step 2: Effect attribution — syntax proofs and the built-in pure-reader core ([#807])
 
 **Cause:** the same missing axis, one layer down: even with directional surfaces, a bash path token has no effect to attribute, so every token falls to the fail-closed both-surfaces base case and the axis relieves nothing on the bash surface.
 
@@ -1177,7 +1178,7 @@ Release: independent
 
 ```mermaid
 flowchart TD
-    S1["Step 1: the direction axis"] --> S2["Step 2: syntax proofs + pure-reader core"]
+    S1["Step 1 (#806): the direction axis"] --> S2["Step 2 (#807): syntax proofs + pure-reader core"]
     S2 --> S3["Step 3 (#803): wrapper transparency"]
     S4["Step 4 (#742): enumerate catch-all node types"]
     S5["Step 5 (#772): authorizer verdict attribution"]
@@ -1291,4 +1292,6 @@ Each phase's findings, numbered plan, dependency diagram, and health metrics are
 [#802]: https://github.com/gotgenes/pi-packages/issues/802
 [#803]: https://github.com/gotgenes/pi-packages/issues/803
 [#804]: https://github.com/gotgenes/pi-packages/issues/804
+[#806]: https://github.com/gotgenes/pi-packages/issues/806
+[#807]: https://github.com/gotgenes/pi-packages/issues/807
 [ADR-0002]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-subagents/docs/decisions/0002-extensions-on-a-minimal-core.md
