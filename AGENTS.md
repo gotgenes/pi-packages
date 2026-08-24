@@ -143,6 +143,9 @@ The standard flow is:
 4. `/ship-issue #N` — push, verify CI, close the issue, merge the release-please PR.
 5. `/retro` — review the session(s) for workflow improvements, persist retro notes.
 
+A change that lands outside `/tdd-plan` or `/build-plan` fires no automatic `pre-completion-reviewer` dispatch.
+Dispatch one by hand before committing a rewrite of an artifact a prior review rejected (Refs #639).
+
 Each prompt template writes a stage entry to `docs/retro/NNNN-<slug>.md` (or `packages/<PKG>/docs/retro/`) before finishing.
 These entries accumulate across sessions and serve as the cross-session context bridge — when a later stage starts, it reads the retro file to pick up decisions, observations, and warnings from prior sessions.
 
@@ -173,8 +176,9 @@ When the decision settles a structure that will repeat across many files, settle
 A placement or shape choice is only sound for a known size, so show a worked example of the largest instance (Refs #775).
 Define a gate's terms of art before its substance — a term the operator must decode is a question they cannot answer (Refs #786: `node`, chain `link`, and the service accessor each bounced a gate).
 When rejecting a candidate on cost, price its cheapest viable form — #786 dismissed a session-keyed accessor as a semver-major redesign, and its additive variant became the adopted decision.
-When every option adds to the same existing object, name that premise and offer the option that removes it — or say why it is not viable.
+When every option shares a premise — the same object grown, the same representation assumed, the same vocabulary kept — name it and offer the option that removes it, or say why it is not viable.
 Refs #787: three wiring options all grew `AgentPrepHandler`, and the operator's "too many responsibilities" note produced the extraction that made the new dependency unnecessary.
+Refs #639: three gates on `commandEffects` all assumed pattern-keyed matching, and the operator's "done with pattern-based expressions" produced the structured shape that dissolved the overlap, merge, and guard questions at once.
 When a gate offers mechanisms for fixing a hazard, first name which component owns the lever and what happens today in each concrete configuration — a mechanism menu without that grounding gets bounced for it (Refs #789).
 
 ### Background agent guardrails
@@ -193,6 +197,8 @@ Check a multi-question report against itself first: #725's trace answered "the `
 
 The mirror holds for a claim **you** supply: a reviewer cannot verify a coverage assertion handed to it as a premise, so state what you checked, not what you conclude was covered.
 When a change creates N artifacts that cross-reference each other, enumerate the edges rather than sampling them (Refs #775).
+The same holds for a measurement: hand a reviewer the raw source and a mandate to re-derive, not your tables.
+A `pre-completion-reviewer` given ADR 0013's own numbers returned PASS; an adversarial reviewer given the log returned four blocking defects (Refs #639).
 
 #### Parallel peer sessions (git worktrees)
 
