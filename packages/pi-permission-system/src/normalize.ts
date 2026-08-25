@@ -3,8 +3,11 @@ import type { Rule, Ruleset } from "./rule";
 import type { FlatPermissionConfig, PatternValue } from "./types";
 import { isDenyWithReason, isPermissionState } from "./types";
 
-/** A surface's value in a flat permission config: a catch-all or a pattern map. */
-type SurfaceValue = FlatPermissionConfig[string];
+/**
+ * A surface's value in a flat permission config: a catch-all or a pattern map.
+ * `NonNullable` because the four named directional properties are optional.
+ */
+type SurfaceValue = NonNullable<FlatPermissionConfig[string]>;
 
 /** A surface's pattern → action map. */
 type PatternMap = Record<string, PatternValue>;
@@ -31,6 +34,8 @@ export function expandDirectionalSugar(
 ): FlatPermissionConfig {
   const expanded: FlatPermissionConfig = {};
   for (const [surface, value] of Object.entries(permission)) {
+    // A key present with an explicit `undefined` value carries no rules.
+    if (value === undefined) continue;
     const members = surfaceFamilyMembers(surface);
     if (members === null) {
       // A directional key the sugar already absorbed keeps the merged value.

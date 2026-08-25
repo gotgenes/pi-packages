@@ -73,13 +73,58 @@ const permissionMapSchema = z
       "A map of wildcard patterns to permission states.\n\nUse `*` for wildcard matching. When multiple patterns match, the **last matching rule wins** — put broad catch-alls first and specific overrides after them.\n\nPattern keys support home directory expansion:\n- `~/path` or `$HOME/path` — expanded to the OS home directory at match time.\n- `~` or `$HOME` alone — expands to the home directory itself.\n\nThe stored pattern is always shown in logs and approval dialogs as written (e.g. `~/dev/*`).",
   });
 
+const surfaceValueSchema = z.union([
+  permissionStateSchema,
+  permissionMapSchema,
+]);
+
+/**
+ * The `path` and `external_directory` families' directional members
+ * (ADR 0013 §3), named so editors offer autocomplete and hover documentation.
+ *
+ * Naming them as properties rather than leaving them to the catchall is also
+ * what lets the loader tell a legal directional key from a misspelled one —
+ * see {@link rejectMisspelledDirectionalKeys}.
+ */
+const DIRECTIONAL_SURFACE_DESCRIPTIONS: Record<
+  string,
+  { description: string; markdownDescription: string }
+> = {
+  path_read: {
+    description:
+      "Cross-cutting gate for reading a file, by path pattern. The useful directional grant.",
+    markdownDescription:
+      'Cross-cutting gate for **reading** a file, matched by path pattern across all path-aware tools.\n\nThis is the directional key worth granting: `"path_read": { "~/dev/**": "allow" }` permits reads without permitting writes.\n\nA bare `"path"` key is sugar that expands into this key **and** `path_write`, with its entries placed first — so an explicit `path_read` entry always has the final say, whatever the key order in the file.',
+  },
+  path_write: {
+    description:
+      "Cross-cutting gate for writing a file, by path pattern. Earns its keep as a restriction.",
+    markdownDescription:
+      'Cross-cutting gate for **writing** a file, matched by path pattern across all path-aware tools.\n\nThis key earns its keep as a *restriction* rather than a grant: `"path_write": { "**": "deny" }` is a coherent read-only-agent posture. A `"path_write": "allow"` on its own does not silence an `edit`, which also reads — grant `path_read` too, or use the bare `"path"` key.',
+  },
+  external_directory_read: {
+    description:
+      "Boundary gate for reading outside the working directory. The relief most asks want.",
+    markdownDescription:
+      'Boundary gate for **reading** a path outside the session working directory.\n\nThe one-line grant for an external root: `"external_directory_read": { "~/dev/**": "allow" }` silences repeated read prompts on a directory outside the tree while a write to the same path still prompts. No parallel `path_read` entry is needed.',
+  },
+  external_directory_write: {
+    description: "Boundary gate for writing outside the working directory.",
+    markdownDescription:
+      'Boundary gate for **writing** to a path outside the session working directory.\n\nA bare `"external_directory"` key is sugar that expands into this key and `external_directory_read`; write this one only to give the two directions different answers.',
+  },
+};
+
 const permissionSchema = z
-  .record(
-    z.string().min(1).meta({
-      description: "A surface name or the universal fallback key '*'.",
-    }),
-    z.union([permissionStateSchema, permissionMapSchema]),
+  .object(
+    Object.fromEntries(
+      Object.entries(DIRECTIONAL_SURFACE_DESCRIPTIONS).map(([key, meta]) => [
+        key,
+        surfaceValueSchema.optional().meta(meta),
+      ]),
+    ),
   )
+  .catchall(surfaceValueSchema)
   .meta({
     description:
       "Flat permission policy. Each key is a surface name; values are a PermissionState string (catch-all) or a pattern→action map.",
@@ -106,9 +151,53 @@ const permissionSchema = z
         mcp: { "*": "ask", mcp_status: "allow", "exa:*": "allow" },
         skill: { "*": "ask", librarian: "allow" },
         external_directory: { "*": "ask", "~/.cargo/registry/*": "allow" },
+        external_directory_read: { "~/dev/**": "allow" },
       },
     ],
-  });
+  })
+  .superRefine(rejectUnusableSurfaceKeys);
+
+/**
+ * Reject the two surface-key spellings that would otherwise sit inert.
+ *
+ * Neither check serializes into the JSON Schema, so an editor will not flag
+ * them; the loader will, fail-closed, with the offending key named.
+ *
+ * 1. A key shaped like a directional surface but misspelled
+ *    (`path_wrote`, `external_directory_reed`). A typo in a *grant* fails safe
+ *    — the rule never fires and the user just gets more prompts — but a typo
+ *    in a *restriction* fails **open**: `path_wrote: {"**": "deny"}` enforces
+ *    nothing at all. The false-positive population is an extension tool
+ *    literally named `path_*` or `external_directory_*`.
+ * 2. An empty key, which `.catchall()` no longer rejects on its own the way
+ *    the record form's `propertyNames: {minLength: 1}` did.
+ */
+function rejectUnusableSurfaceKeys(
+  permission: Record<string, unknown>,
+  ctx: z.core.$RefinementCtx,
+): void {
+  const legalDirectionalKeys = Object.keys(DIRECTIONAL_SURFACE_DESCRIPTIONS);
+  for (const key of Object.keys(permission)) {
+    if (key === "") {
+      ctx.addIssue({
+        code: "custom",
+        path: [key],
+        message: "A surface key must not be empty.",
+      });
+      continue;
+    }
+    if (
+      /^(path|external_directory)_/.test(key) &&
+      !legalDirectionalKeys.includes(key)
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: [key],
+        message: `Unknown directional surface key "${key}". The legal spellings are ${legalDirectionalKeys.join(", ")}.`,
+      });
+    }
+  }
+}
 
 const shellToolAliasSchema = z
   .strictObject({
