@@ -140,19 +140,6 @@ function ruleMatches(
 }
 
 /**
- * Evaluate a surface against an ordered list of candidate values, stopping at
- * the first candidate that matches a non-default rule (last-match-wins within
- * each candidate, first-non-default-wins across candidates).
- *
- * Used by MCP (multi-candidate target list) and, uniformly, by all other
- * surfaces (single-element candidate list).
- *
- * Returns the matched rule and the candidate value that produced it.
- * When every candidate matches only the synthesized default, falls back to
- * evaluating the first candidate so the caller always receives a concrete
- * result.
- */
-/**
  * Evaluate a surface against multiple values, returning the most restrictive
  * non-allow result (deny > ask > allow).
  *
@@ -180,6 +167,19 @@ export function evaluateMostRestrictive(
   return worst;
 }
 
+/**
+ * Evaluate a surface against an ordered list of candidate values, stopping at
+ * the first candidate that matches a non-default rule (last-match-wins within
+ * each candidate, first-non-default-wins across candidates).
+ *
+ * Used by MCP (multi-candidate target list) and, uniformly, by all other
+ * surfaces (single-element candidate list).
+ *
+ * Returns the matched rule and the candidate value that produced it.
+ * When every candidate matches only the synthesized default, falls back to
+ * evaluating the first candidate so the caller always receives a concrete
+ * result.
+ */
 export function evaluateFirst(
   surface: string,
   values: string[],
