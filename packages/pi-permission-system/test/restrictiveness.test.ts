@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { pickMostRestrictive } from "#src/handlers/gates/candidate-check";
+import { mostRestrictiveOf, pickMostRestrictive } from "#src/restrictiveness";
 
 import { makeGateCheckResult } from "#test/helpers/gate-fixtures";
 
@@ -48,5 +48,43 @@ describe("pickMostRestrictive", () => {
       matchedPattern: "second",
     });
     expect(pickMostRestrictive([allow, ask1, ask2])).toBe(ask1);
+  });
+});
+
+describe("mostRestrictiveOf", () => {
+  it("returns the only result for a single-element tuple", () => {
+    const only = makeGateCheckResult({ state: "allow" });
+    expect(mostRestrictiveOf([only])).toBe(only);
+  });
+
+  it("returns the losing member's own result, not a synthesized one", () => {
+    const allow = makeGateCheckResult({
+      state: "allow",
+      toolName: "path_read",
+      matchedPattern: "~/dev/**",
+    });
+    const deny = makeGateCheckResult({
+      state: "deny",
+      toolName: "path_write",
+      matchedPattern: "**",
+    });
+    expect(mostRestrictiveOf([allow, deny])).toBe(deny);
+  });
+
+  it("prefers deny over ask and allow regardless of position", () => {
+    const allow = makeGateCheckResult({ state: "allow", matchedPattern: "a" });
+    const ask = makeGateCheckResult({ state: "ask", matchedPattern: "b" });
+    const deny = makeGateCheckResult({ state: "deny", matchedPattern: "c" });
+    expect(mostRestrictiveOf([allow, ask, deny])).toBe(deny);
+    expect(mostRestrictiveOf([deny, ask, allow])).toBe(deny);
+  });
+
+  it("keeps the first member on ties", () => {
+    const ask1 = makeGateCheckResult({ state: "ask", matchedPattern: "first" });
+    const ask2 = makeGateCheckResult({
+      state: "ask",
+      matchedPattern: "second",
+    });
+    expect(mostRestrictiveOf([ask1, ask2])).toBe(ask1);
   });
 });

@@ -1,7 +1,7 @@
 import type { AccessPath } from "#src/access-intent/access-path";
 import type { ScopedPermissionResolver } from "#src/permission-resolver";
+import { pickMostRestrictive } from "#src/restrictiveness";
 import type { PermissionCheckResult } from "#src/types";
-import { pickMostRestrictive } from "./candidate-check";
 
 /** An external path whose resolved `external_directory` state is not "allow". */
 export interface UncoveredExternalPath {
