@@ -30,7 +30,7 @@ export function describeBashExternalDirectoryGate(
   if (!bashProgram) return null;
   const command = bashProgram.commandText();
 
-  const externalPaths = bashProgram.externalPaths();
+  const externalPaths = bashProgram.externalAccesses();
   if (externalPaths.length === 0) return null;
 
   // Resolve every external path on the external_directory surface and keep the

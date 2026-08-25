@@ -113,7 +113,7 @@ export class BashProgram {
    * Use `.matchValues()` for `external_directory` pattern matching and
    * `.boundaryValue()` for containment checks; `.value()` for display and logs.
    */
-  externalPaths(): AccessPath[] {
+  externalAccesses(): AccessPath[] {
     return [...this.resolvedExternalPaths];
   }
 
