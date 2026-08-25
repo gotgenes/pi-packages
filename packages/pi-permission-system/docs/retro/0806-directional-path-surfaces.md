@@ -53,7 +53,85 @@ The plan records it as a verified non-touch-point so implementation does not red
 Sugar expansion and the family fold are mutually dependent — expansion alone empties every surface a query names, the fold alone folds surfaces no rule occupies — and ADR 0013 §4's ordering constraint pulls the delegation-envelope conversion in with them.
 The intermediate state between cycles 4 and 5 is strictly more restrictive than the final one (every path access folds both directions until tool routing lands), which is the safe direction and invisible within one release.
 
+## Stage: Implementation — TDD (2026-08-25T05:47:20Z)
+
+### Session summary
+
+Executed all seven TDD cycles plus one post-review fixup, landing the four directional path surfaces, load-time sugar expansion, the resolver's surface-family fold, tool-identity direction routing, the named schema keys with two loader refinements, and the docs.
+Test count went 3233 → 3337 (+104).
+The pre-completion reviewer returned WARN on the first pass and PASS on the re-review after its findings were addressed.
+
+### Observations
+
+**The Tidy-First assessor's most valuable output was not a tidying but a scope correction.**
+It found no preparatory work beyond the plan's own cycles 1–2 — and then reported that the plan's cycle 2 was anchored on the wrong function, and that its test-impact estimate was off by an order of magnitude.
+Both were right.
+The stale comment was not above `evaluateAnyValue` (which has exactly one, correct comment); it was `evaluateFirst`'s own doc comment stranded above `evaluateMostRestrictive`, with `evaluateFirst` left undocumented.
+So the commit **moved** it back rather than deleting it — deleting would have stripped documentation the codebase already had.
+Worth carrying: a null "no tidying warranted" verdict is not a null result, and reading what the assessor verified on the way past is where its value was.
+
+**The plan's "11 direct query sites" undercounted because its measuring grep could not see a default parameter.**
+The baseline was `grep -rhoE 'surface: "(path|external_directory)"' test`, which matches object literals only.
+`permission-manager-unified.test.ts`'s `checkPath` / `checkPathValues` helpers carry `surface = "path"` as a **default parameter**, so dozens of call sites that pass no surface at all were invisible to it.
+Measured reality: 36 failing tests in that file, 7 in `session-rules.test.ts`, 2 in the unlisted `test/path/approval-pattern.test.ts`, and 31 across four handler files.
+The general lesson matches the existing testing-skill rule about grepping the bare callee rather than a literal-argument pattern — a default parameter is the same blind spot one level further in.
+
+**The migration split cleanly into two kinds, and conflating them would have been the mistake.**
+A test that queries `PermissionManager` **directly** sits below the resolver's fold, so it must name a directional surface; those were renamed (`checkPath`'s default became `path_read`), and since a bare `path:` config expands onto both members every assertion is unchanged.
+A test that declares *policy* through a fixture double should keep saying "external directory is denied" without caring about the axis; those were fixed at the **fixture**, by teaching `makeSurfaceCheck`, `makeExtDirDedupCheck`, and `findExtDirDecision` that a family key answers for its members — which models sugar expansion rather than restating it in 31 tests.
+Getting this split right is what kept the diff at 119 insertions in the largest file instead of a rewrite.
+
+**The riskiest bulk edit was safe for a reason worth stating.**
+`AGENTS.md` warns that a scripted test rename cannot tell a mock producer from an assertion.
+Here it could not go wrong, because producer and assertion had to *agree* on the surface name and moved within the same hunk — and because the file has zero `toMatchObject`/`objectContaining` sites, so nothing could absorb a wrong rename and stay green.
+I verified that property before running the script rather than after.
+The config keys stayed bare (`path: {`, unquoted) while the renames targeted quoted string literals, so the two populations were syntactically distinguishable.
+
+**The plan's cycle-4 atomicity claim held under pressure, and cycle 5's ordering mattered.**
+Expansion and the fold genuinely cannot land apart — the first empties every surface a query names, the second folds surfaces no rule occupies.
+The delegation-envelope conversion rode with them per ADR 0013 §4, and cycle 5 (the first commit where a gate emits a directional surface) came strictly after, so a directional key never reached an authorizer link ahead of the family conversion.
+
+**Two production defects surfaced only because the schema conversion changed a type's shape.**
+`z.object().catchall()` makes the four named properties optional, so `FlatPermissionConfig[string]` gained `| undefined` — which `expandDirectionalSugar` had to absorb (`NonNullable` on the local alias, plus an explicit skip for a key present with an undefined value).
+Neither was caught by tests; both were caught by `pnpm run check` immediately after the cycle, which is exactly why the template runs it before committing a shared-type change.
+
+**The example config had no validation guard at all, which the new refinement made dangerous.**
+Nothing in `test/` or `scripts/` parsed `config/config.example.json`.
+That was survivable while the schema was a permissive record; with a refinement that rejects a misspelled directional key, a stale example would have shipped a config the loader refuses.
+Added a test that validates it against `unifiedConfigSchema`.
+
+**The pre-completion reviewer found a citation that could not be true, and fixing it was cheap.**
+The plan pinned invariant 2 (#712, a deny is never masked into an approvable ask) on "the forwarded-deny test in `test/authority/forwarded-request-server.test.ts`" — but every test in that file stubs `policy: { resolve: vi.fn(...) }`, so none of them exercises the real `ServingPolicy` → `PermissionResolver` composition, and the file has zero diff.
+The invariant is the plan's own load-bearing argument for putting the fold at the resolver, so an unpinned version of it was the worst gap to leave.
+Added a `describe` block that rebuilds the real wiring (`buildResolvedIntentFromMatchValues` + a `PermissionResolver` over a filesystem-backed manager) and pins the deny, the one-direction deny, the already-directional passthrough, and the #58 no-pattern case.
+
+**Authoring that test caught an unrealistic fixture through a red that was too green.**
+My first version used `matchValues: ["~/.ssh/id_rsa"]` against a `~/.ssh/*` config and got `allow`, not `deny`.
+The cause is pre-existing and correct: a raw tilde-spelled *value* does not match a tilde pattern, because a real child sends `AccessPath.matchValues()`, which carries the expanded absolute form.
+The fixture, not the code, was wrong.
+The re-review then narrowed it further — an out-of-cwd absolute path has no cwd-relative alias, so `matchValues()` yields exactly one entry, and the second element I had written was inert.
+
+**Two doc claims were overstated in three places each, and one metric row had to be rewritten rather than satisfied.**
+"Both bash path gates needed no diff at all" is true of their *routing* and of `bash-external-directory.ts`, but `bash-path.ts` does change — `PathAskFacts.surface` became required, so it must name the bare family on the ask payload.
+Separately, the roadmap's `Directional surfaces in PATH_SURFACES` metric grepped for the four literal names, and the delivered design derives them from a family set plus a suffix list so each is spelled exactly once — making the row structurally unmeasurable, not merely unmet.
+The roadmap anticipated this exact case ("must either use the roadmap's name or update the metric row in the same commit"), so the row and its recompute command were rewritten to measure the vocabulary that generates the names, with a note explaining why a literal count reads zero.
+
+**Deliberate non-actions, both endorsed on re-review.**
+Invariant 5's win32 case landed in `test/path/approval-pattern.test.ts` rather than the plan-named `test/rule.test.ts`; it routes through the same `pathMatchOptions`/`PATH_SURFACES` path, so a second case would be redundant.
+And the plan file keeps its two inaccurate test citations (lines 291, 299) — a plan is a point-in-time artifact, and the accurate durable claims now live in the architecture doc's `Landed:` note and the package skill.
+
+**Pre-completion reviewer: WARN, then PASS.**
+First pass raised four findings — the missing #712 pin, the "no diff at all" overstatement, an orphaned line-break artifact in `delegation-envelope.ts`'s docblock, and the invariant-5 file placement.
+The first three were fixed in `b8090e3f`; the fourth was declined with reasons.
+Re-review returned PASS with one non-blocking fixture-realism nit, which was folded into the same commit.
+
+#### Deferred tidyings
+
+- `test/permission-manager-unified.test.ts` (3,434 lines) — the assessor declined a file split as unrelated to making this change easy; real craftsmanship debt for `/plan-improvements`.
+- `src/permission-manager.ts` + `src/authority/delegation-envelope.ts` — `SPECIAL_PERMISSION_KEYS` and `DELEGATION_EXCLUDED_SURFACES` are both `{"path", "external_directory"}` today; the assessor declined consolidating them because the plan deliberately keeps the two concerns separable ([#620], [#684] must stay independently landable).
+
 [#620]: https://github.com/gotgenes/pi-packages/issues/620
+[#684]: https://github.com/gotgenes/pi-packages/pull/684
 [#712]: https://github.com/gotgenes/pi-packages/issues/712
 [#807]: https://github.com/gotgenes/pi-packages/issues/807
 [#808]: https://github.com/gotgenes/pi-packages/issues/808
