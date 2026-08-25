@@ -994,6 +994,9 @@ No decline, so the regular improvement rotation continues.
 - [#806] and [#807] — filed for Steps 1 and 2, the two staging slices with no pre-existing issue.
 - [#808] — filed by Step 1's planning; adopted as Step 9.
   Step 1 converts `permissionSchema` to a named-property object so the four directional keys carry their own documentation, which leaves the five surfaces people actually write anonymous under `additionalProperties`; closing that asymmetry is a peer-sized piece of the same config-schema surface.
+- [#810] — filed by Step 2's planning; adopted as Step 10.
+  Step 2 narrows a bash session grant to the direction its gate proved, but `SessionApproval` carries one surface for all its patterns, so a mixed-direction command still records on the bare family.
+  Closing that gap touches the forwarded-approval wire, which Step 2 deliberately keeps out of its scope.
 - [#803] — adopted as Step 3 (wrapper transparency, ADR 0013 §11 and staging slice 3).
 - [#742] — adopted as Step 4, having been swept out of Phase 13 as "a strong candidate for the next phase's spine".
   ADR 0013 §10 recasts it as a combinator clause of the verdict fold rather than a patch, so fixing it now is the fold's first clause.
@@ -1037,6 +1040,7 @@ No decline, so the regular improvement rotation continues.
 | ADR 0012 amendments recording the root-slot decision                        | 2                     | ≥ 3             |
 | Absent-child alarm event in `src/`                                          | 0                     | ≥ 1             |
 | Named permission-surface properties (`surfaceProperty`, `config-schema.ts`) | 0                     | ≥ 9             |
+| Per-pattern surfaces on `SessionApproval` (`session-approval.ts`)           | 0                     | ≥ 1             |
 | Split-provider extractor test files                                         | 0                     | ≥ 1             |
 | fallow health score                                                         | 78 (B)                | ≥ 78            |
 | Production duplication                                                      | 0.1%                  | ≤ 0.2%          |
@@ -1057,6 +1061,7 @@ Recompute commands (run from the repo root):
 - Absent-child alarm: `grep -rn 'child_node_absent' packages/pi-permission-system/src --include="*.ts" | wc -l`
 - Named surface properties: `grep -c 'surfaceProperty' packages/pi-permission-system/src/config-schema.ts`
 - Split-provider tests: `grep -rl 'split-provider' packages/pi-permission-system/test | wc -l`
+- Per-pattern approval surfaces: `grep -c 'ApprovalPattern' packages/pi-permission-system/src/session-approval.ts`
 - Health/duplication/dead exports: `pnpm fallow health --score --workspace @gotgenes/pi-permission-system` / `pnpm fallow dupes --workspace @gotgenes/pi-permission-system` / `pnpm fallow dead-code --workspace @gotgenes/pi-permission-system`
 
 Eight rows greped for a name the phase had not created when it opened — `expandDirectionalSugar`, `surfaceFamily`, `command-effects.ts`, `isTransparentWrapper`, `authorizer_allowed`/`authorizer_denied`, `child_node_absent`, the `split-provider` test phrase, and `surfaceProperty`.
@@ -1204,6 +1209,20 @@ The five surfaces people actually write — `path`, `external_directory`, `bash`
 
 Release: independent
 
+#### Step 10: A session approval records the direction the gate proved ([#810])
+
+**Cause:** Step 2 proves a direction per bash path token and narrows the session grant to it — but only where one direction covers the whole gate.
+`SessionApproval` holds one surface for many patterns, so the external-directory gate, which aggregates every uncovered path into one prompt, falls back to the bare family whenever a command mixes a proven read with a proven write.
+The grant is then wider than the prompt the user answered.
+
+- **Smell:** Category C (a fact established at the decision point is discarded by the shape that carries it).
+- **Target:** `src/session-approval.ts` carries `(surface, pattern)` pairs rather than one surface and a pattern list; `src/session-rules.ts`'s per-pattern loop reads the pair's own surface; `src/handlers/gates/bash-external-directory.ts` stops falling back to the family for a mixed-direction command.
+- **Design question the step must settle:** `ForwardedSessionApproval` is written to a file another process reads, so the pair form either ships as a tolerated alternative shape the reader normalizes, or waits for a major.
+- **Outcome:** approving `grep -r foo ~/dev > ~/other/out.txt` for the session grants a read under `~/dev` and a write to `~/other/out.txt`, not both directions on both; `grep -c 'ApprovalPattern'` on `session-approval.ts` goes 0 → ≥ 1.
+- **Impact 3 / Risk 2 / Priority 12.**
+
+Release: independent
+
 ### Step dependency diagram
 
 ```mermaid
@@ -1216,8 +1235,10 @@ flowchart TD
     S7["Step 7 (#792): alarm on a child with no node"]
     S8["Step 8 (#793): split-provider extractor gap"]
     S9["Step 9 (#808): name the well-known surfaces"]
+    S10["Step 10 (#810): per-pattern approval surfaces"]
     S7 -.-> S8
     S1 --> S9
+    S2 --> S10
 ```
 
 The dashed edge is a sequencing preference, not a dependency: Steps 7 and 8 both touch the cross-node reading surface, and Step 7's alarm needs the same parent-side lookup Step 8's mechanism A would introduce — landing Step 7 first tells Step 8 whether that surface already exists.
@@ -1232,12 +1253,13 @@ The dashed edge is a sequencing preference, not a dependency: Steps 7 and 8 both
 - **Track C — decision attribution:** Step 5, any time; it touches `permission-events.ts`, `runner.ts`, and `gates/helpers.ts`, and Track A's tidy-first prep splits `runDescriptor` in the same file — sequence it against Step 2 rather than running both at once.
 - **Track D — cross-node contract residuals:** Steps 6, 7, 8, disjoint from every other track (`service.ts`, `service-lifecycle.ts`, `authority/subagent-registry.ts`, `tool-access-extractor-registry.ts`).
 - **Track E — config-schema ergonomics:** Step 9, after Step 1 has converted `permissionSchema` to a named-property object; it touches `config-schema.ts` and the generated JSON Schema, which no other step edits once Step 1 has landed.
+- **Track F — session-approval width:** Step 10, after Step 2 has proven a direction to record; it touches `session-approval.ts`, `session-rules.ts`, and the forwarded-approval wire, which Track A leaves alone.
 
 ### Release batches
 
 - **Batch "capability-axis":** Steps 1, 2, 3 (ship together; tail = Step 3; release vehicle = Step 3's `fix:` for [#803], with Step 1's `feat:` for the new config keys riding the same release — Step 2 is a hidden `refactor:` on its own).
   The batch ships together because Steps 1 and 2 relieve nothing a user can observe until a directional grant exists to write, while Step 3's relief is immediate and unconditional.
-- Independently releasable: Step 4 (`fix:`), Step 5 (`feat:`, possibly `feat!:` — see the step's bump note), Step 7 (`feat:`), Step 8 (`fix:` or `feat:` depending on the mechanism chosen), Step 9 (`feat:` — the generated schema ships in the tarball, so new completions and hover text are user-observable).
+- Independently releasable: Step 4 (`fix:`), Step 5 (`feat:`, possibly `feat!:` — see the step's bump note), Step 7 (`feat:`), Step 8 (`fix:` or `feat:` depending on the mechanism chosen), Step 9 (`feat:` — the generated schema ships in the tarball, so new completions and hover text are user-observable), Step 10 (`feat:`, or `feat!:` if the wire shape is not made tolerant).
 - Step 6 cuts no release on its own: its deliverable is an ADR amendment (`docs:`, hidden), and any code it schedules lands in a later step or a later phase.
 
 ## Refactoring history
@@ -1329,4 +1351,5 @@ Each phase's findings, numbered plan, dependency diagram, and health metrics are
 [#806]: https://github.com/gotgenes/pi-packages/issues/806
 [#807]: https://github.com/gotgenes/pi-packages/issues/807
 [#808]: https://github.com/gotgenes/pi-packages/issues/808
+[#810]: https://github.com/gotgenes/pi-packages/issues/810
 [ADR-0002]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-subagents/docs/decisions/0002-extensions-on-a-minimal-core.md
