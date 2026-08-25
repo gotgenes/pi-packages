@@ -15,11 +15,10 @@
  * family name resolves to members, and leaves *which* families are excluded
  * independently relaxable (#620).
  *
- * A
- * finer secret-shaped-`path` exclusion (letting a link allow a non-secret path)
- * is deferred to the allow-capable slice that needs it (#620); until then the
- * conservative whole-surface exclusion ships. The checkpoint is dormant while
- * the only registered links are deny-first (they never `allow`).
+ * A finer secret-shaped-`path` exclusion (letting a link allow a non-secret
+ * path) is deferred to the allow-capable slice that needs it (#620); until then
+ * the conservative whole-family exclusion ships. The checkpoint is dormant
+ * while the only registered links are deny-first (they never `allow`).
  */
 
 import { surfaceFamilyOf } from "#src/access-intent/path-surfaces";

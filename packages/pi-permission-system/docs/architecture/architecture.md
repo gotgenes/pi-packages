@@ -1082,7 +1082,7 @@ The fallow health score is carried as a floor rather than a target: it is blind 
 - **Landed:** the family fold sits in `PermissionResolver.resolve`, not in the gates.
   Tracing the readers of a bare-surface query found three the Target line above had not: the cross-extension policy query, the `PermissionQuery` injected into every authorizer link, and — the load-bearing one — the recorded-authority view a serving node resolves a **forwarded child request** against.
   A gate-side fold leaves that last reader resolving an emptied surface, so a parent's recorded `path` deny would stop hard-denying a child's request and escalate it to an approvable prompt ([#712]'s defect class).
-  Both bash path gates therefore needed no diff at all.
+  Both bash path gates therefore needed no *routing* diff — they still resolve on the bare family surface, and `bash-external-directory.ts` is untouched; `bash-path.ts` changed only to name that surface on the ask payload, which became a required fact.
   The tool-identity attribution table and the two consequences of the independent-bits reading are recorded in ADR 0013's 2026-08-25 amendment.
 - **Impact 5 / Risk 3 / Priority 15.**
 
