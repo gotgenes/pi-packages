@@ -98,6 +98,21 @@ Four layers compose with most-restrictive-wins: `path` (cross-cutting) → `exte
 Because `ask` is more restrictive than `allow`, a `path` allow cannot loosen an `external_directory: ask` boundary — allow outside-CWD directories on `external_directory`.
 See [docs/configuration.md](docs/configuration.md) for the full recipe.
 
+Both path surfaces also carry a **direction**, so you can permit reading somewhere without permitting writing there: `path_read`, `path_write`, `external_directory_read`, and `external_directory_write`.
+A bare `path` or `external_directory` key is sugar that expands into both of its directional keys, so every existing config keeps its exact meaning and remains the right spelling whenever direction does not matter.
+
+```jsonc
+{
+  "permission": {
+    "external_directory": { "*": "ask" },
+    "external_directory_read": { "~/dev/**": "allow" }
+  }
+}
+```
+
+Here a `read` under `~/dev` is silent while a `write` or `edit` to the same path still prompts.
+The useful grants are `*_read: allow` and the bare key; `*_write` earns its keep as a restriction (`path_write: { "**": "deny" }` is a read-only-agent posture) — see [docs/configuration.md](docs/configuration.md#directional-path-surfaces).
+
 ## Configuration
 
 Config lives in one JSON file per scope:
@@ -115,7 +130,7 @@ Within a surface map like `bash` or `mcp`, **last matching rule wins** — put b
 The optional `shellTools` field records which non-`bash` tools carry shell semantics (e.g. an `exec_command` tool that replaces native `bash`), so they are gated at full parity with native `bash` — see [docs/configuration.md](docs/configuration.md#shelltools--gating-aliased-shell-tools).
 
 The optional `authorizerChain` field names registered case-by-case decision links (e.g. a light model judge) to consult when a request lands on `ask`, ahead of the interactive prompt.
-A downstream extension registers a link via `getPermissionsService(sessionId).registerAuthorizer(name, authorize)`; it decides nothing until you name it here (opt-in), config order fixes the chain order, and the chain owner caps any link's `allow` on `external_directory`/`path` to keep it within your policy — see [docs/configuration.md](docs/configuration.md#authorizer-chain--case-by-case-decision-links).
+A downstream extension registers a link via `getPermissionsService(sessionId).registerAuthorizer(name, authorize)`; it decides nothing until you name it here (opt-in), config order fixes the chain order, and the chain owner caps any link's `allow` on the `external_directory`/`path` surface families to keep it within your policy — see [docs/configuration.md](docs/configuration.md#authorizer-chain--case-by-case-decision-links).
 A subagent's ask is reviewed by the chain of the session serving it, one hop up, rather than inside the subagent — see the same section.
 [`@gotgenes/pi-permission-model-judge`](https://github.com/gotgenes/pi-packages/tree/main/packages/pi-permission-model-judge) is a first-party reference implementation of such a link — a deny-first reviewer that auto-denies mistyped out-of-directory paths.
 

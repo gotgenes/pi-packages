@@ -301,6 +301,9 @@ An object value maps patterns to actions.
 
 `normalizeFlatConfig` (`src/normalize.ts`) flattens each `permission` entry into `Rule`s: a string value expands to a single surface catch-all (`{ surface, pattern: "*", action }`), and an object value expands each `pattern → action` pair to one `Rule`.
 
+Ahead of it, `expandDirectionalSugar` runs once per scope inside `mergeScopesWithOrigins`, rewriting a bare `path` / `external_directory` key into its two directional members so origins stay attributed to the authoring scope.
+After expansion no rule lives on a bare family surface; `PermissionResolver.resolve` answers a bare-family query by folding the members most-restrictive.
+
 ## MCP pre-processing
 
 MCP is the one surface that requires pre-processing **before** evaluation.
@@ -797,7 +800,7 @@ The concept and the code role take two grammatical forms of one root, each for w
 ```text
 src/
 ├── rule.ts                   Rule type, Ruleset type, evaluate() (takes an injected `PathFlavor` for win32 path-surface case-folding); exports `pathMatchOptions(surface, flavor)`
-├── normalize.ts              Config → Ruleset normalization (flat format)
+├── normalize.ts              Config → Ruleset normalization (flat format); `expandDirectionalSugar` rewrites a scope's bare `path` / `external_directory` key into its directional members before composition, sugar entries first and explicit directional entries appended after, whatever the file's key order. Constraint: no rule survives on a bare family surface — the resolver's family fold is the read path (ADR 0013 §4)
 ├── synthesize.ts             Universal default + MCP baseline → Ruleset
 ├── wildcard-matcher.ts       Compiled glob matching. `CompiledWildcardPattern.matches(value)` is the only match surface (no exposed `RegExp`). Constraint: the win32 `windowsSeparators` fold applies to the pattern and the matched value alike, and lives on the compiled pattern so it cannot be half-applied — folding only the pattern makes every forward-slash value unmatchable (#653)
 ├── pattern-suggest.ts        Per-surface approval pattern suggestions: `suggestSessionPattern` for a surface's own value vocabulary (bash command, MCP target, skill name), `suggestPathSessionPattern` for a pattern the caller's `PathNormalizer` already derived. Constraint: holds no path-language semantics — a path pattern arrives derived and is labelled verbatim
@@ -809,7 +812,8 @@ src/
 ├── scope-merge.ts            Cross-scope permission merge + origin-map bookkeeping
 ├── permission-manager.ts     Scope loading + rule composition + `check(intent)` (single resolution entry point); delegates I/O to PolicyLoader; floors the composed ruleset `allow`→`ask` (origin `fail-closed`) when a non-global scope is `invalid`, and appends a fail-closed notice to `getConfigIssues`. Constraint: stays string-based — must not import `AccessPath` (the ADR 0002 string boundary, lint-guarded by `no-restricted-imports`)
 ├── permission-gate.ts        Pure deny/ask/allow gate (injected IO)
-├── permission-resolver.ts    `ScopedPermissionResolver` interface - the single `{ resolve(intent) }` role the gate factories / runner / pipeline depend on; `PermissionResolver` concrete class holds `ScopedPermissionManager` + `SessionRules`, owns `resolve(intent)` (unwraps an `access-path` `AccessIntent` via `matchValues()` before calling `manager.check`; the concrete class also accepts a pre-fixed `path-values` intent as a passthrough — the forwarded-serving wire's producer, #597 — while the gate-facing interface stays narrow to `AccessIntent`), raw `checkPermission` (`implements SkillPermissionChecker`, no session rules), `getToolPermission`, and `getConfigIssues`
+├── restrictiveness.ts        The deny > ask > allow ordering, first-wins on ties: `mostRestrictiveOf` over a statically non-empty tuple (total, so the resolver's family fold has no `undefined` branch) and the empty-tolerant `pickMostRestrictive` the bash gates use. Core-layer, so `permission-resolver.ts` can depend on it
+├── permission-resolver.ts    `ScopedPermissionResolver` interface - the single `{ resolve(intent) }` role the gate factories / runner / pipeline depend on; `PermissionResolver` concrete class holds `ScopedPermissionManager` + `SessionRules`, owns `resolve(intent)` (unwraps an `access-path` `AccessIntent` via `matchValues()` before calling `manager.check`; the concrete class also accepts a pre-fixed `path-values` intent as a passthrough — the forwarded-serving wire's producer, #597 — while the gate-facing interface stays narrow to `AccessIntent`), the surface-family fold (an intent naming a bare `path` / `external_directory` surface is resolved against each directional member and combined most-restrictive, returning the losing member's own result). Constraint: the fold lives here, not in the gates — this is the one entry point the gates, `LocalPermissionsService`, and `ServingPolicy` share, and a serving node resolving a forwarded child request against an emptied bare surface would stop hard-denying what the parent's config denies (#712, #806). Also owns raw `checkPermission` (`implements SkillPermissionChecker`, no session rules), `getToolPermission`, and `getConfigIssues`
 ├── decision-reporter.ts      `DecisionBroadcaster` (emit only) + `DecisionReporter` (extends it with the review-log write) + `GateDecisionReporter` class - owns `SessionLogger` and event bus; a collaborator that only announces an outcome depends on the narrow half
 ├── decision-audit.ts         `DecisionRecorder` / `DecisionSummaryWriter` / `AuditLogger` interfaces + `DecisionAudit` class - per-session decision counters; `writeSummary` emits a `permission.session_summary` debug line on shutdown and warns on a `toolCalls != allowed + blocked + errors` invariant violation
 ├── session-approval-recorder.ts `SessionApprovalRecorder` interface - records a granted session-scoped approval into the session ruleset; implemented by `SessionRules`
@@ -824,7 +828,7 @@ src/
 │   ├── input-normalizer.ts   Surface-specific input normalization → NormalizedInput
 │   ├── mcp-targets.ts        MCP multi-name target derivation
 │   ├── tool-input-path.ts    `getToolInputPath` (built-in / MCP / extension path extraction) + `getPathBearingToolPath` (built-in-only)
-│   ├── path-surfaces.ts      Static surface/tool lookup sets: `PATH_BEARING_TOOLS`, `READ_ONLY_PATH_BEARING_TOOLS`, `PATH_SURFACES`
+│   ├── path-surfaces.ts      Static surface/tool lookup sets (`PATH_BEARING_TOOLS`, `READ_ONLY_PATH_BEARING_TOOLS`, `PATH_SURFACES`) plus the capability-axis vocabulary: `surfaceFamilyOf`, `surfaceFamilyMembers`, and `capabilitySurfaceForTool`. The family relation is derived from a family set and a suffix list, so each of the four directional names is spelled exactly once
 │   └── bash/
 │       ├── parser.ts           Lazy tree-sitter-bash parser: `TSNode` interface (exported), `getParser = memoizeAsyncWithRetry(initParser)` (exported); `warmBashParser()` / `getWarmBashParser(): TSParser | null` / `resetWarmBashParser()` (test-only) expose the resolved parser synchronously after a `before_agent_start` warm-up so the advisory bash path can decompose at gate parity
 │       ├── node-text.ts        Quote-aware AST node-text resolver: `resolveNodeText` (pure), `SKIP_SUBTREE_TYPES` (node types whose *text* is never an argument — heredoc/comment), `ARG_NODE_TYPES` (argument-value node-type set); delegates expansion nodes to `shell-variable-expansion.ts`, falling back to the node's literal text
@@ -854,14 +858,13 @@ src/
 │       ├── helpers.ts        deriveDecisionValue, deriveResolution, buildDecisionEvent, resolveYoloGrant (the standing yolo grant covering a resolved check — a ruleset-rewritten allow or, under yolo, a residual ask)
 │       ├── skill-read.ts     describeSkillReadGate - pure descriptor factory
 │       ├── skill-input.ts    describeSkillInputGate - pure descriptor factory; takes a pre-computed check result so the runner reuses the caller's check
-│       ├── external-directory.ts describeExternalDirectoryGate - pure descriptor/bypass factory; builds an `AccessPath`, delegates policy resolution to `resolveExternalDirectoryPolicy`, uses `accessPath.boundaryValue()` for the outside-CWD boundary and infra-read checks, and discloses `accessPath.resolvedAlias()` when it names a location distinct from the typed path
-│       ├── external-directory-policy.ts Shared external-directory policy check for both gates: `resolveExternalDirectoryPolicy(path, resolver, agentName)` emits an `access-path` `AccessIntent` on the `external_directory` surface; `selectUncoveredExternalPaths(paths, resolver, agentName)` resolves a set, keeps the not-allowed entries, and selects the worst via `pickMostRestrictive`
+│       ├── external-directory.ts describeExternalDirectoryGate - pure descriptor/bypass factory; builds an `AccessPath`, delegates policy resolution to `resolveExternalDirectoryPolicy` on the narrowest `external_directory`-family surface the tool's identity proves (`capabilitySurfaceForTool`), uses `accessPath.boundaryValue()` for the outside-CWD boundary and infra-read checks, and discloses `accessPath.resolvedAlias()` when it names a location distinct from the typed path
+│       ├── external-directory-policy.ts Shared external-directory policy check for both gates: `resolveExternalDirectoryPolicy(path, resolver, surface, agentName)` emits an `access-path` `AccessIntent` on the caller's `external_directory`-family surface; `selectUncoveredExternalPaths(paths, resolver, agentName)` resolves a set on the bare family surface (a bash token's direction is unproven), keeps the not-allowed entries, and selects the worst via `pickMostRestrictive`
 │       ├── bash-external-directory.ts describeBashExternalDirectoryGate - pure descriptor/bypass factory over the injected `BashProgram` (`externalPaths()`); delegates the per-path alias matching and worst-uncovered selection to `selectUncoveredExternalPaths`
 │       ├── bash-path.ts      describeBashPathGate - pure descriptor/bypass factory for bash path rules over the injected `BashProgram` (`pathRuleCandidates()`); evaluates each candidate's `AccessPath` via an `access-path` `AccessIntent` and selects the worst uncovered token via `pickMostRestrictive`, keeping the raw token for prompts/logs/approvals and `path.value()` for the approval pattern
-│       ├── candidate-check.ts `pickMostRestrictive` - pure deny > ask > allow selection over PermissionCheckResults (first-wins on ties); shared by the bash gates and the external-directory policy helper
 │       ├── bash-path-extractor.ts Thin facade (`extractExternalPathsFromBashCommand`) over `BashProgram`
 │       ├── bash-command.ts   `resolveBashCommandCheck` - pure combiner over caller-supplied `BashCommand[]` units, checks each unit on the `bash` surface, tags the winning result with the offending command's execution `context`, selects via `pickMostRestrictive`; when empty, resolves the whole command only for a trivially-empty command and otherwise returns an explicit `deny` covering it, else fails closed to a synthetic `ask` with the `<unparseable-bash-command>` sentinel
-│       ├── path.ts           describePathGate - pure descriptor factory for cross-cutting path rules; builds an `AccessPath` and emits an `access-path` `AccessIntent` on the `path` surface so it matches the canonical (symlink-resolved) form like `external_directory`
+│       ├── path.ts           describePathGate - pure descriptor factory for cross-cutting path rules; builds an `AccessPath` and emits an `access-path` `AccessIntent` on the narrowest `path`-family surface the tool's identity proves (`capabilitySurfaceForTool`) so it matches the canonical (symlink-resolved) form like `external_directory`
 │       ├── tool.ts           describeToolGate - pure descriptor factory for the per-tool gate; for path-bearing built-in tools the pipeline builds an `AccessPath` and emits an `access-path` intent on the tool-name surface so per-tool rules match lexical ∪ canonical, and the session-approval value derives from `accessPath.value()`; bash/MCP/extension tools keep the raw `tool` intent
 │       └── index.ts          Barrel re-exports
 │
@@ -876,7 +879,7 @@ src/
 ├── permission-ui-prompt.ts   Centralized construction for `permissions:ui_prompt` event payloads - `buildUiPrompt` is the single builder for direct and forwarded asks, keeping the emitted contract shape in one place. It projects the prompt payload's `request` core onto the event and nothing else: the bus is the narrowest renderer, so no evidence reaches it (ADR 0011 §6)
 ├── config-store.ts           `ConfigStore` class — owns `config` + `lastConfigWarning`; `ConfigReader`, `SessionConfigStore`, `CommandConfigStore` narrow interfaces
 ├── config-loader.ts          File I/O, format detection, strict zod validation (fail-closed) for config files
-├── config-schema.ts          Zod schemas - single source of truth for the config shape; derives the JSON Schema (buildPermissionsJsonSchema) and the config types
+├── config-schema.ts          Zod schemas - single source of truth for the config shape; derives the JSON Schema (buildPermissionsJsonSchema) and the config types. `permissionSchema` names the four directional surfaces as documented properties over a `.catchall(...)` that keeps arbitrary tool-name surfaces validating, and rejects two unusable surface-key spellings at load: a misspelled directional key (which would sit inert, failing **open** as a restriction) and an empty key. Constraint: refinements do not serialize into JSON Schema, so both are loader-only checks
 ├── config-paths.ts           Path derivation
 ├── extension-paths.ts        `ExtensionPaths` value object - immutable path constants derived from `agentDir` (and optional Pi `getPackageDir()`) at startup (`computeExtensionPaths`)
 ├── config-reporter.ts        Structured log entries for resolved config
@@ -899,7 +902,7 @@ src/
 ├── presentation/             Prompt presentation: the payload a gate emits, and the renders over it (ADR 0011)
 │   ├── prompt-payload.ts     `PromptPayload` (the `kind` discriminant, the `request` invariant core, the complete `evidence` list, the `annotations` slot) + `localRequester`/`findEvidence`/`allEvidence` + `asPromptPayload`, the all-or-nothing tolerant guard the forwarded wire's reader narrows through. Constraint: the payload is complete by contract — it never truncates and never decides what a human sees, so elision is a property of a render (ADR 0011 §2). The guard lives beside its type so a new request fact updates it next door rather than in a distant reader
 │   ├── tool-ask-payload.ts   `buildToolAskPayload` — the bash, MCP, and generic-tool asks; carries the invoked tool name when a shell alias re-exposes bash (#574) and the wrapper's executed unit (#713)
-│   ├── path-ask-payload.ts   `buildPathAskPayload`, `buildExternalDirectoryAskPayload`, `buildBashExternalDirectoryAskPayload` — each escaping path carries its canonical alias as that evidence entry's `detail`, so a bounded render cannot show a path while eliding what it resolves to
+│   ├── path-ask-payload.ts   `buildPathAskPayload`, `buildExternalDirectoryAskPayload`, `buildBashExternalDirectoryAskPayload` — each escaping path carries its canonical alias as that evidence entry's `detail`, so a bounded render cannot show a path while eliding what it resolves to. The gate supplies the deciding `surface` (a directional member when the tool proved a direction); the payload `kind` stays coarse so renderer dispatch is independent of the axis
 │   ├── skill-ask-payload.ts  `buildSkillAskPayload`, `buildSkillPathAskPayload` — the skill is the decision-relevant value (it is what the policy names); a skill read carries the path it was reached through as evidence
 │   ├── forwarded-ask-payload.ts `buildForwardedAskPayload` — a two-branch projection, not a synthesizer: the child's own payload with only `requester` re-stamped to the request's authoritative provenance, or a degraded `kind: "forwarded"` render built from the display fields a payload-less request does carry. Constraint: the serving node is the only party that knows the ask arrived over the wire, so it re-stamps the requester and passes every other child fact through untouched
 │   ├── dialog-renderer.ts    `renderPromptDialog(payload, budget, paint)` — the bounded render for the inline dialog and the `select`/`input` fallback: aligned one-fact-per-line layout, a per-field width cap, a row budget over the evidence, and whole-token highlighting of the flagged element. Also `RenderBudget`/`DEFAULT_RENDER_BUDGET`/`resolveRenderBudget` (the configured budget) and `completeViewBudget` (the complete view). Constraint: the row budget bounds evidence and the field cap bounds the core — a core fact is shortened, never dropped (ADR 0011 §3 over §5)
@@ -920,7 +923,7 @@ src/
 │   ├── authorizer-chain.ts    `composeAuthorizerChain(links, terminal, query, log)` - folds non-terminal `NamedAuthorizer` links ahead of the context-selected terminal (`defer` → next link, `allow`/`deny` → decision stamped `decidedBy: {kind: "authorizer", name, verdict, reason}` at the point the loop breaks, so a link that deferred is not credited), injecting `query` and the review-log `log` into each link; zero links returns the terminal instance (identity)
 │   ├── decision-source.ts     `DecisionSource` discriminated union (`user | authorizer | rule | session_approval | yolo | infrastructure_read | unavailable | gate_error | forwarded`) + depth-bounded tolerant guard `asDecisionSource`. Constraint: each variant is self-contained (it repeats its own surface/pattern/origin/name/reason) because the forwarded response file carries no such columns to lean on; the recursive `forwarded` variant is read off disk, so its guard is depth-bounded and rejects an over-deep chain whole rather than truncating it
 │   ├── authorizer-registry.ts `AuthorizerRegistry` (+ `AuthorizerLookup`/`AuthorizerRegistrar` ISP interfaces) - name → link `authorize` map mirroring `ToolAccessExtractorRegistry`; one instance in `index.ts`, exposed cross-extension via `PermissionsService.registerAuthorizer`; throw-on-duplicate, identity-guarded disposer. `ObservedAuthorizerRegistrar` decorates the registrar side: a link registered on a relaying node is accepted (its chain never runs, ADR 0007 §7) and recorded as `authorizer_link_vacant` rather than refused
-│   ├── delegation-envelope.ts `encloseInDelegationEnvelope(authorize)` + `DELEGATION_EXCLUDED_SURFACES` - the bounded-delegation checkpoint (ADR 0007 §5): caps a link's `allow` on an excluded surface (`external_directory`/`path`, or an undetermined surface, fail-safe) to `defer`; deny/defer pass through
+│   ├── delegation-envelope.ts `encloseInDelegationEnvelope(authorize)` + `DELEGATION_EXCLUDED_SURFACES` - the bounded-delegation checkpoint (ADR 0007 §5): caps a link's `allow` on an excluded surface **family** (`external_directory`/`path` and their directional members, or an undetermined surface, fail-safe) to `defer`; deny/defer pass through. Constraint: membership is tested on `surfaceFamilyOf(surface)`, not the literal name, so a directional key cannot escape the envelope (ADR 0013 §4) while *which* families are excluded stays independently relaxable
 │   ├── local-user-authorizer.ts `LocalUserAuthorizer` class - `TerminalAuthorizer` for a session with UI and the single `permissions:ui_prompt` emit site: renders a forwarded ask's provenance as a non-degraded broadcast + `(Subagent)` title, then dispatches to the inline keybind dialog (TUI) or the `select`/`input` fallback
 │   ├── permission-dialog.ts   Dialog option semantics + `requestPermissionDecisionFromUi` (`select`/`input` fallback) + `PermissionPromptDecision` (whose `decidedBy` is required) and `UnattributedDecision` (the same minus it); the mode dispatch lives in `permission-prompt-component.ts`
 │   ├── permission-prompt-decision.ts Pure decision model (`reducePrompt` + `PromptModelConfig`/`PromptViewState`) for the inline keybind dialog - hotkey arming (double-press), step transitions, reason validation; no SDK/TUI imports
@@ -981,6 +984,7 @@ The scout explicitly cleared `src/index.ts` (the 292-line composition-root facto
 The one recorded deferred tidying (`test/service.test.ts`'s thrice-repeated root-slot `afterEach`) stays deferred as scattered trivia.
 
 Directory check: every module this phase creates belongs to an existing domain directory (`access-intent/bash/`, `handlers/gates/`, `authority/`), and the root-level files it edits (`normalize.ts`, `config-schema.ts`, `rule.ts`, `permission-manager.ts`) are amended rather than rewritten, so they stay put per the recorded convention — grow a domain directory in the phase that rewrites its files, never as a big-bang move.
+Step 1 added one root-level module the check did not anticipate, `restrictiveness.ts`, relocated out of `handlers/gates/` because the core-layer resolver may not import from `handlers/`; it has no domain directory to belong to.
 
 Trajectory: Phase 12's maximum step priority was 20 and Phase 13's was 20; this phase's is 20 (Step 3).
 No decline, so the regular improvement rotation continues.
@@ -1022,7 +1026,7 @@ No decline, so the regular improvement rotation continues.
 
 | Metric                                                                      | Baseline (2026-08-24) | Phase 14 target |
 | --------------------------------------------------------------------------- | --------------------- | --------------- |
-| Directional surfaces in `PATH_SURFACES`                                     | 0                     | 4               |
+| Directional surface-family vocabulary in `path-surfaces.ts`                 | 0                     | ≥ 5             |
 | Directional keys in `config-schema.ts`                                      | 0                     | ≥ 2             |
 | Sugar-expansion site in `normalize.ts`                                      | 0                     | ≥ 1             |
 | Family-resolved delegation exclusion (`delegation-envelope.ts`)             | 0                     | ≥ 1             |
@@ -1040,7 +1044,8 @@ No decline, so the regular improvement rotation continues.
 
 Recompute commands (run from the repo root):
 
-- Directional surfaces: `grep -cE 'path_read|path_write|external_directory_read|external_directory_write' packages/pi-permission-system/src/access-intent/path-surfaces.ts`
+- Directional family vocabulary: `grep -cE 'DIRECTIONAL_FAMILIES|CAPABILITY_SUFFIXES|surfaceFamilyOf|surfaceFamilyMembers|capabilitySurfaceForTool' packages/pi-permission-system/src/access-intent/path-surfaces.ts`
+  (Step 1 derives the four names from a family set and a suffix list rather than spelling them out, so each appears exactly once in the codebase and a literal-name count reads zero by design.)
 - Directional schema keys: `grep -cE 'path_read|path_write' packages/pi-permission-system/src/config-schema.ts`
 - Sugar expansion: `grep -c 'expandDirectionalSugar' packages/pi-permission-system/src/normalize.ts`
 - Family exclusion: `grep -c 'surfaceFamily' packages/pi-permission-system/src/authority/delegation-envelope.ts`
@@ -1054,23 +1059,31 @@ Recompute commands (run from the repo root):
 - Split-provider tests: `grep -rl 'split-provider' packages/pi-permission-system/test | wc -l`
 - Health/duplication/dead exports: `pnpm fallow health --score --workspace @gotgenes/pi-permission-system` / `pnpm fallow dupes --workspace @gotgenes/pi-permission-system` / `pnpm fallow dead-code --workspace @gotgenes/pi-permission-system`
 
-Eight rows grep for a name this phase has not created yet — `expandDirectionalSugar`, `surfaceFamily`, `command-effects.ts`, `isTransparentWrapper`, `authorizer_allowed`/`authorizer_denied`, `child_node_absent`, the `split-provider` test phrase, and `surfaceProperty`.
+Eight rows greped for a name the phase had not created when it opened — `expandDirectionalSugar`, `surfaceFamily`, `command-effects.ts`, `isTransparentWrapper`, `authorizer_allowed`/`authorizer_denied`, `child_node_absent`, the `split-provider` test phrase, and `surfaceProperty`.
 The step that creates each (Steps 1, 1, 2, 3, 5, 7, 8, 9 respectively) must either use the roadmap's name or update the metric row in the same commit, or the rename silently breaks the delivered-vs-predicted verification at phase close.
+Step 1 exercised that clause: it created `expandDirectionalSugar` and `surfaceFamily` under their predicted names, and rewrote the directional-surface row, whose literal-name grep the delivered derivation reads as zero.
 The fallow health score is carried as a floor rather than a target: it is blind to the type-level wins a cause-driven phase produces, and its current value is depressed by a churn artifact this phase does not set out to fix.
 
 ### Steps
 
-#### Step 1: The direction axis — `path_read`, `path_write`, and their boundary twins ([#806])
+#### ✅ Step 1: The direction axis — `path_read`, `path_write`, and their boundary twins ([#806])
 
 **Cause:** the policy vocabulary names the object of an access and never its capability, so no rule can say *this is only a read, so it is fine* — the missing axis itself, expressed as config.
 
 - **Smell:** Category C (a distinction the domain requires has no representation).
 - **Target:** `src/config-schema.ts` (the four directional keys, with `pnpm run gen:schema`), `src/normalize.ts` (`expandDirectionalSugar` — bare `path` / `external_directory` expand into both directions at load, sugar entries inserted first and explicit directional entries appended after, regardless of textual key order, per ADR 0013 §4), `src/access-intent/path-surfaces.ts` (`PATH_SURFACES` gains the four names so win32 folding and the manager's path handling follow), `src/authority/delegation-envelope.ts` (`DELEGATION_EXCLUDED_SURFACES` becomes a surface-**family** test, not literal membership), the path gates in `src/handlers/gates/` (a tool-surface access has a known direction — `READ_ONLY_PATH_BEARING_TOOLS` proves the read, `write`/`edit` prove the write — while a bash token stays unknown and consults **both** directional surfaces, most-restrictive, per §10's base case), plus `config/config.example.json`, `docs/configuration.md`, and `README.md`.
-  Tidy-first prep commits: extract `selectUncoveredPathCandidates` in `handlers/gates/bash-path.ts` mirroring the proven `external-directory-policy.ts` shape, and delete the stale duplicate doc comment at `rule.ts:143`.
+  Tidy-first prep commits: relocate the restrictiveness ordering out of `handlers/gates/` so the core-layer resolver can fold with it, and restore the orphaned doc comment above `evaluateFirst` in `rule.ts`.
+  The roadmap's earlier prep suggestion — extracting `selectUncoveredPathCandidates` in `handlers/gates/bash-path.ts` — was dropped: under the delivered design that file has no diff, so Tidy First's own rule excludes it.
+  It is left for Step 2, which rewrites the file for per-token effects.
 - **Ordering constraint:** the family-membership conversion must land in the **same commit** as the new surface names.
   A directional key reaching an authorizer link ahead of it is a silent widening of the bounded-delegation envelope (ADR 0013 §4).
 - **Outcome:** direction is expressible; every existing config expands to its current meaning exactly, so nothing prompts differently on upgrade; band A (~19% of current asks) becomes relievable by one directional grant.
   The four metrics above move off zero.
+- **Landed:** the family fold sits in `PermissionResolver.resolve`, not in the gates.
+  Tracing the readers of a bare-surface query found three the Target line above had not: the cross-extension policy query, the `PermissionQuery` injected into every authorizer link, and — the load-bearing one — the recorded-authority view a serving node resolves a **forwarded child request** against.
+  A gate-side fold leaves that last reader resolving an emptied surface, so a parent's recorded `path` deny would stop hard-denying a child's request and escalate it to an approvable prompt ([#712]'s defect class).
+  Both bash path gates therefore needed no diff at all.
+  The tool-identity attribution table and the two consequences of the independent-bits reading are recorded in ADR 0013's 2026-08-25 amendment.
 - **Impact 5 / Risk 3 / Priority 15.**
 
 Release: batch "capability-axis"
@@ -1195,7 +1208,7 @@ Release: independent
 
 ```mermaid
 flowchart TD
-    S1["Step 1 (#806): the direction axis"] --> S2["Step 2 (#807): syntax proofs + pure-reader core"]
+    S1["✅ Step 1 (#806): the direction axis"] --> S2["Step 2 (#807): syntax proofs + pure-reader core"]
     S2 --> S3["Step 3 (#803): wrapper transparency"]
     S4["Step 4 (#742): enumerate catch-all node types"]
     S5["Step 5 (#772): authorizer verdict attribution"]
@@ -1265,6 +1278,7 @@ Each phase's findings, numbered plan, dependency diagram, and health metrics are
 [#509]: https://github.com/gotgenes/pi-packages/issues/509
 [#555]: https://github.com/gotgenes/pi-packages/issues/555
 [#710]: https://github.com/gotgenes/pi-packages/issues/710
+[#712]: https://github.com/gotgenes/pi-packages/issues/712
 [#645]: https://github.com/gotgenes/pi-packages/issues/645
 [#306]: https://github.com/gotgenes/pi-packages/issues/306
 [#472]: https://github.com/gotgenes/pi-packages/issues/472

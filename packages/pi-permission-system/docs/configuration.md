@@ -227,7 +227,7 @@ Three invariants govern the chain:
 3. **Registration alone grants no authority.**
    Installing a judge extension gives it nothing; a link decides nothing until you name it here (opt-in activation).
 
-The chain owner caps every link with a **bounded-delegation checkpoint**: a link's `allow` on an excluded surface (`external_directory` or the `path` surface) is downgraded to `defer`, so a buggy or over-eager judge can never approve access outside your policy.
+The chain owner caps every link with a **bounded-delegation checkpoint**: a link's `allow` on an excluded surface *family* (`external_directory` or `path`, including each family's directional members) is downgraded to `defer`, so a buggy or over-eager judge can never approve access outside your policy.
 Deny and defer are never capped.
 The excluded surface is the **gate** surface the rule fired on, not the tool name displayed in the prompt — so a `write` blocked by a `path` rule is capped.
 This holds for an ask forwarded up from a subagent exactly as it does for a local one.
@@ -697,6 +697,93 @@ The `external_directory` and `path` gates interpret bash tokens accordingly (too
 - Every other POSIX-absolute token (`/tmp/foo`, `/usr/bin`) has an install-dependent target this extension cannot resolve deterministically (Git Bash mounts `/tmp` to `%TEMP%`, MSYS2 to its own root), so it is treated as an external path matched and displayed exactly as typed, never rewritten to `C:\tmp\foo`.
 
 To allow-list such a path, write the rule using the path as typed — for example `external_directory: { "/tmp/*": "allow" }` — and the Windows separator folding above makes the forward-slash rule match the Git Bash token.
+
+### Directional Path Surfaces
+
+The `path` and `external_directory` surfaces each carry a **direction**, so a policy can permit reading somewhere without permitting writing there.
+Four keys express it:
+
+| Key                        | Governs                                                      |
+| -------------------------- | ------------------------------------------------------------ |
+| `path_read`                | Reading a file, by path pattern, across all path-aware tools |
+| `path_write`               | Writing a file, by path pattern, across all path-aware tools |
+| `external_directory_read`  | Reading a path outside the working directory                 |
+| `external_directory_write` | Writing to a path outside the working directory              |
+
+The two directions are **independent**, not tiers.
+An `allow` on `path_write` does not grant reading, and a `deny` on `path_read` does not restrict writing.
+Each direction is decided on its own surface and composed with the others by the usual most-restrictive-wins rule.
+
+#### Bare `path` and `external_directory` are sugar
+
+A bare key expands at load into both of its directional keys.
+These two configs mean exactly the same thing:
+
+```jsonc
+{ "permission": { "path": { "*": "ask", "~/.ssh/*": "deny" } } }
+```
+
+```jsonc
+{
+  "permission": {
+    "path_read": { "*": "ask", "~/.ssh/*": "deny" },
+    "path_write": { "*": "ask", "~/.ssh/*": "deny" }
+  }
+}
+```
+
+So every config written before this feature existed keeps its exact meaning, and nothing prompts differently on upgrade.
+Bare `path` remains valid and idiomatic indefinitely — it is the right spelling whenever direction does not matter, which is most of the time.
+
+When a bare key and a directional key are both present, the **sugar-derived entries come first and the explicit directional entries append after them**, whatever order the keys appear in the file.
+Since rules are last-match-wins, the explicit entry always has the final say, and a config and its key-order-swapped twin mean the same thing.
+
+#### Which direction is a given access?
+
+A tool's identity establishes its direction:
+
+| Access                        | Consults                  |
+| ----------------------------- | ------------------------- |
+| `read`, `grep`, `find`, `ls`  | the `_read` surface only  |
+| `write`                       | the `_write` surface only |
+| `edit`                        | both, most-restrictive    |
+| An MCP tool or extension tool | both, most-restrictive    |
+| A bash path token             | both, most-restrictive    |
+
+An access whose direction cannot be established consults **both** surfaces and takes the more restrictive answer.
+That is deliberate: an unproven access is never treated as the narrower one.
+
+#### Which key to actually write
+
+The useful *grants* are `*_read: allow` and the bare sugar key.
+
+```jsonc
+{
+  "permission": {
+    "external_directory": { "*": "ask" },
+    "external_directory_read": { "~/dev/**": "allow" }
+  }
+}
+```
+
+A `read` of `~/dev/x` is silent; a `write` or `edit` of the same path still prompts.
+Granting an external root takes one line in one surface — no parallel `path_read` entry is needed, because the `path` family only speaks when one of its own patterns matches.
+
+`*_write` earns its keep as a **restriction** far more than as a grant.
+`path_write: { "**": "deny" }` is a coherent read-only-agent posture.
+
+A `*_write: allow` on its own does not silence an `edit`, which also reads — grant the read direction too, or use the bare key.
+
+A key that looks directional but is misspelled (`path_wrote`, `external_directory_reed`) is rejected when the config loads, rather than sitting inert.
+That matters most for a restriction: a misspelled *grant* merely produces more prompts, but a misspelled *deny* would enforce nothing at all.
+
+#### What you will see change
+
+Prompts, the review log, and the `permissions:decision` event now name the directional surface that decided — `path_read` rather than `path` — when the tool's identity proved a direction.
+`/permission-system show` likewise lists the expanded directional rules for a config written with a bare key, so the display matches what is enforced.
+
+One cross-version note for subagent permission forwarding: a child running a newer version sends a directional surface to a parent running an older one, which has no such rules and falls back to its default — more prompting, never less.
+Upgrade the parent session to match.
 
 ### Home Directory Expansion in Patterns
 

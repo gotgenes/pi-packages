@@ -1,14 +1,14 @@
 ---
 status: accepted
 date: 2026-08-22
-amended: 2026-08-23
+amended: 2026-08-25
 ---
 
 # 0013 — The permission policy model: capability as an axis
 
 ## Status
 
-Accepted, as amended 2026-08-23.
+Accepted, as amended 2026-08-25.
 
 This decision settles the shape of the deterministic policy model: whether access capability (reading versus writing a path) becomes first-class, how it is spelled in config, what composes with what, and where the enforcement boundary of this package lies.
 It composes with `docs/decisions/0009-bash-path-projection-completeness-contract.md`, whose layering asymmetry it preserves and whose per-command-table rejection it deliberately re-scopes (§7), and with `docs/decisions/0007-model-judge-authorizer-chain-adr.md`, to which it routes judgment the deterministic layer cannot supply and whose delegation exclusions it restates as surface families (§4) so they survive the new key names unamended.
@@ -22,6 +22,36 @@ This amendment corrects the evidence (recency-weighted, instrument committed), d
 
 One meta-decision is recorded with it: **this record, like every ADR here, is revisable on new information.**
 Its measurements are dated, its instrument is committed alongside the data, and a future re-run that falsifies a table falsifies the analysis built on it.
+
+### Amendment, 2026-08-25 — tool-identity effect attribution
+
+Staging step 1 ([#806]) landed the axis, and implementing it settled one rule the record left to be derived: **how a tool access establishes its direction.**
+It is recorded here so steps 2 ([#807]) and 3 ([#803]) do not re-derive it.
+
+A tool's *identity* is a structural effect proof in the sense of §7 — the narrowest and least contestable one available, since it needs no command knowledge at all.
+A gate therefore names the narrowest surface the tool name proves:
+
+| Access                           | Proven effects | Surface named    |
+| -------------------------------- | -------------- | ---------------- |
+| `read`, `grep`, `find`, `ls`     | read           | `<family>_read`  |
+| `write`                          | write          | `<family>_write` |
+| `edit`                           | read + write   | `<family>`       |
+| An MCP tool or extension tool    | unknown        | `<family>`       |
+| A bash path token (until [#807]) | unknown        | `<family>`       |
+
+The bare family name carries both meanings at once, and that conflation is intentional: proven-both and unproven-at-all consult the same two surfaces and take the more restrictive answer. §10's fail-closed base case and §2's honest `["read", "write"]` effect set are therefore the same mechanism, not two.
+
+Two consequences of that reading, both settled by the implementation:
+
+1. The **two directions are independent bits, not tiers** — for a tool access as for a bash one.
+   An `allow` on `path_write` grants no read, and a `deny` on `path_read` floors no write.
+   The capability-chain alternative (write implies read; a read deny floors write) is intuitive but reintroduces exactly the cross-surface interaction §4 exists to prevent, needs a new precedence rule for a `path_write: allow` written after a `path_read: deny`, and grants read implicitly wherever write is granted — which is the exfiltration surface the axis exists to let an operator withhold.
+   The intuition it serves is discharged in documentation instead: the useful grants are `*_read: allow` and the bare sugar key, while `*_write` earns its keep as a restriction.
+2. The **family fold is a read-side operation, not a gate-side one.**
+   Expansion (§4) leaves no rule on a bare surface, so a family name is answerable only because the resolver folds it over its members.
+   That fold belongs at the single resolution entry point every reader shares — the gates, the cross-extension policy query, and the recorded-authority view a serving node resolves a **forwarded child request** against.
+   A gate-side fold would leave that last reader resolving an emptied surface, and a parent's recorded `path` deny would stop hard-denying a child's request and escalate it to an approvable prompt instead.
+   The fold returns the losing member's own result, which is the blame fact §10 wants, delivered rather than re-derived.
 
 ## Context
 
@@ -576,7 +606,9 @@ An externally launched sandbox remains the supported containment route (unverifi
 ## Staging
 
 1. **The direction axis.**
+   — landed ([#806]).
    `path_read`, `path_write`, `external_directory_read`, `external_directory_write`, decision 4's sugar expansion and normative merge order, schema, examples, and docs.
+   Tool-identity direction attribution is recorded in the 2026-08-25 amendment above.
    Relieves band A (~19% of current prompts, cause-joint) and gives the rest somewhere to land.
    This step must also convert ADR 0007 §5's delegation exclusion from literal-name membership to family membership, per decision 4, in the same commit as the new surface names — a directional key reaching an authorizer ahead of that conversion is a silent widening of the envelope.
 2. **Effect leaf rules.**
@@ -621,4 +653,6 @@ Issue [#620] carries the judgment slice the chain retains under §7.
 [#802]: https://github.com/gotgenes/pi-packages/issues/802
 [#803]: https://github.com/gotgenes/pi-packages/issues/803
 [#804]: https://github.com/gotgenes/pi-packages/issues/804
+[#806]: https://github.com/gotgenes/pi-packages/issues/806
+[#807]: https://github.com/gotgenes/pi-packages/issues/807
 [openai/codex#28732]: https://github.com/openai/codex/issues/28732
