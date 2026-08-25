@@ -136,6 +136,8 @@ A missing export throws `is not a function` at runtime but surfaces as `TS2305` 
 - When a TDD step narrows a union type (removes variants), grep all test files for fixtures or mocks that use the removed variant — those test fixes must land in the same step as the type change, not in later steps.
 - When adding a field to a shared interface, grep for ALL test files that construct a compatible mock — not just factory helpers.
 - When estimating the call-site count for a test migration, grep the bare callee (`checkTool(`), not `callee(arg, "literal"` — a single-line pattern misses multi-line invocations where args span continuation lines, undercounting scope (Refs #504).
+  A literal-argument pattern also cannot see a call site relying on a **default parameter** — `function checkPath(…, surface = "path")` carries no literal at all.
+  Grep the helper's signature too (Refs #806).
 - When a TDD step removes a field from a shared interface, grep all `src/` files that reference the removed field — every file that reads or passes the field must update in the same step.
   This is the inverse of the excess-property rule: TypeScript rejects reading a property that no longer exists on the type.
 - When a TDD step removes a field from an event payload or shared interface, grep `test/` for assertion literals naming it too — `toHaveBeenCalledWith({ … })` against an untyped `vi.fn()` or event bus is invisible to `tsc` and fails only at the full-suite run (Refs #745).

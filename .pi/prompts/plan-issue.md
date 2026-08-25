@@ -180,6 +180,7 @@ Then an H1 title (e.g., `# <short descriptive title>`) — required by markdownl
   (3) which existing tests must stay as-is because they genuinely exercise the layer being extracted?
   For a prompt or skill change, the shell commands the new text prescribes are its testable surface: dry-run each at planning time and record the expected output, so `/build-plan` can re-run them as verification (Refs #767).
 - **Invariants at risk** — when the change touches a surface a prior phase step already refactored, list that step's documented invariants (the architecture roadmap's `Outcome:`/`Landed:` bullets) and name the test that pins each — add a test if the invariant lives only in prose.
+  Open each test you name — a file that mocks the layer under test pins nothing about it (Refs #806).
   A later step must not regress an earlier step's outcome with a green suite.
   When an invariant is quantitative (a byte-identical prefix, a token budget, a cache or latency characteristic), measure the baseline and predict the post-change value at planning time.
   A prose argument that the change is "at the tail" or "negligible" is not evidence, and a test pinning adjacent content does not pin the number (Refs #640).

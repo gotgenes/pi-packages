@@ -45,6 +45,8 @@ A dated `Baseline (<date>)` column is a fixed phase-open snapshot recomputed at 
   A gate names the narrowest surface a tool's identity proves — `read`/`grep`/`find`/`ls` → `*_read`, `write` → `*_write`, and `edit`, an MCP tool, an extension tool, or a bash token (until #807) → the bare family, which folds both.
   Doc guidance to repeat: the useful *grants* are `*_read: allow` and the bare key; `*_write` earns its keep as a *restriction* (`path_write: {"*": "deny"}` is a read-only-agent posture), and a `*_write: allow` alone does not silence an `edit`, which also reads.
 - Wildcard matching must be explicit and tested — silent over-matching is a permission bypass.
+- `*` already crosses directory boundaries; `**` is not a distinct globstar and compiles identically.
+  Write `~/dev/*`, never `~/dev/**` — in config examples, ADRs, schema descriptions, and tests alike (Refs #806).
 - Prefer config patterns over new runtime mechanisms.
   Mechanism is forever; docs are reversible.
 - Treat any declared config field not read at runtime as a maintenance trap.

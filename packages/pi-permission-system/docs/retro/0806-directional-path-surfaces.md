@@ -131,7 +131,108 @@ Re-review returned PASS with one non-blocking fixture-realism nit, which was fol
 - `src/permission-manager.ts` + `src/authority/delegation-envelope.ts` — `SPECIAL_PERMISSION_KEYS` and `DELEGATION_EXCLUDED_SURFACES` are both `{"path", "external_directory"}` today; the assessor declined consolidating them because the plan deliberately keeps the two concerns separable ([#620], [#684] must stay independently landable).
 
 [#620]: https://github.com/gotgenes/pi-packages/issues/620
+
+## Stage: Final Retrospective (2026-08-25T16:14:21Z)
+
+### Session summary
+
+One session carried the TDD implementation, an operator correction, and the ship: nine commits landing the four directional path surfaces, sugar expansion, the resolver's family fold, tool-identity routing, the named schema keys, and the docs, with the test count going 3233 → 3337.
+The pre-completion reviewer returned WARN then PASS, and its findings produced a real coverage fix rather than a wording tweak.
+The release was deferred at ship time per the plan's `mid-batch` marker; #806 is closed with the work on `main`.
+
+### Observations
+
+#### What went well
+
+1. **The Tidy-First assessor's value was scope correction, not tidying.**
+   It recommended nothing beyond the plan's own cycles 1–2, and in the same report corrected cycle 2's anchor (wrong function) and flagged the test-impact undercount.
+   Both were right, and both were things the plan asserted rather than measured.
+   A null tidying verdict that carries two corrections is a strong argument for reading what the assessor verified on the way past, which the `tidy-first` skill already says.
+
+2. **The pre-completion reviewer found an unpinnable citation.**
+   The plan pinned invariant 2 ([#712]) on "the forwarded-deny test in `test/authority/forwarded-request-server.test.ts`" — but every test in that file stubs `policy: { resolve: vi.fn(...) }`, so none of them can exercise the real `ServingPolicy` → `PermissionResolver` composition, and the file had zero diff.
+   That was the plan's own load-bearing argument for the fold's placement, left unpinned.
+   `b8090e3f` added a block that rebuilds the real wiring.
+
+3. **`pnpm run check` after a shared-type change paid off twice in a row.**
+   The `z.object().catchall()` conversion made the four named properties optional, so `FlatPermissionConfig[string]` silently gained `| undefined`.
+   Two separate call sites in `expandDirectionalSugar` broke on it, and **no test caught either** — only `tsc`.
+   The template's rule to run `check` before committing an interface-touching cycle is what kept both out of a commit.
+
+4. **The fixture-level fix kept a 90-site migration at 119 insertions.**
+   Teaching `makeSurfaceCheck`, `makeExtDirDedupCheck`, and `findExtDirDecision` that a family key answers for its members modeled sugar expansion once instead of restating it in 31 tests.
+
+#### What caused friction (agent side)
+
+1. `other` — **wrote the `**` glob spelling that `docs/configuration.md` forbids, in the section I was adding to that same file.**
+   Not a missing-context failure: I read lines 526–641 of `docs/configuration.md` at the start of the docs cycle, and line 626 says *"Do not write `~/.cargo/registry/**` — `**` is not a distinct globstar, and a single `*` already recurses."*
+   Fifteen turns later I wrote `~/dev/**` into the same document.
+   The cause was **example-mirroring overriding a rule read in the same session**: ADR 0013 §5 (written in the planning session) already carried `external_directory_read: { "~/dev/**": "allow" }`, and every later example was copied from it rather than derived from the matcher's documented semantics.
+   Impact: user-caught; one extra commit (`135ae122`) across 11 files plus a schema regeneration, ~14 tool calls.
+   No behavior was ever wrong — `**` and `*` compile identically — so no gate could have caught it.
+
+2. `instruction-violation` (self-identified) — **called `read_session` with `types: ["model_change"]`.**
+   The retro prompt warns against this exact call two lines above where I made it, naming the phantom-switch failure ([#737]).
+   Impact: one wasted tool call, no rework.
+
+3. `instruction-violation` (self-identified) — **passed an unquoted `$FILES` list to `perl -pi -e`.**
+   `AGENTS.md` describes this exact command shape verbatim: *"In zsh an unquoted parameter is not word-split, so `perl -pi -e '…' $FILES` passes the whole list as a single filename — spell a multi-file list inline."*
+   Impact: one wasted tool call, no rework.
+
+   Observations 2 and 3 share a shape worth naming: both rules exist **verbatim**, are crisply worded, and were violated anyway — one from a prompt injected into the same turn, one from `AGENTS.md`.
+   Neither is a documentation gap, so neither warrants a new rule; restating them would add tokens without adding salience.
+   The signal is that late-session mechanical work is where verbatim rules lapse.
+
+4. `missing-context` (inherited from planning) — **the plan's test-impact estimate was off by roughly an order of magnitude.**
+   Its baseline grep (`surface: "(path|external_directory)"`) matches object literals only, and `permission-manager-unified.test.ts`'s `checkPath`/`checkPathValues` helpers carry `surface = "path"` as a **default parameter**, so dozens of call sites that pass no surface argument at all were invisible to it.
+   Measured reality: 36 failing tests in that file, 7 in `session-rules.test.ts`, 2 in the unlisted `test/path/approval-pattern.test.ts`, and 31 across four handler files.
+   Impact: no rework — the migration was mechanical — but cycle 4 was materially larger than planned, and the assessor rather than the plan is what warned me.
+
+#### What caused friction (user side)
+
+1. **The `**` spelling was seeded in a planning-session artifact the clarification gates did not cover.**
+   ADR 0013 §5's example was reviewed for *semantics* (does a boundary grant need a parallel `path_read` entry?) and the spelling rode along unexamined, then propagated into the config example, README, guide, schema descriptions, skill, and tests.
+   Opportunity, not criticism: a normative example in an ADR is the highest-leverage place to catch a spelling slip, because every downstream doc is mirrored from it.
+
+2. **The correction itself was close to ideal and worth repeating.**
+   *"We don't use globbing (unfortunately), so `~/dev/*` is the correct path above.*
+   *Confirm our docs don't use the `**` pattern."*
+   It named the fix, and then asked for the **generalization** rather than the single-site edit — which is what surfaced the pre-existing ADR instance I would otherwise have left to re-seed the error.
+
+### Diagnostic details
+
+1. **Model-performance correlation** — attributed from the inline `[provider/model]` labels in an unfiltered `read_session` call.
+   TDD implementation and the `**` correction (turns 2–294) ran on `anthropic/claude-opus-5`; the entire `/ship-issue` stage (turns 296–314) ran on `anthropic/claude-sonnet-5`; this retrospective on `anthropic/claude-opus-5`.
+   All three subagents (`tidy-first-assessor`, `pre-completion-reviewer` ×2) ran on `anthropic/claude-sonnet-5` per their frontmatter.
+   **No mismatch found.**
+   The ship stage is largely procedural, and its one judgment-heavy sub-task — deciding whether `da3f11f1` fell inside the pushed range and therefore needed a stacked-issue scan — was re-derived from `git log` rather than assumed, and answered correctly.
+   Sonnet on the reviewer was well-matched: it produced four findings, one of which (the unpinnable `ServingPolicy` citation) required reading every `policy:` site in a 1,100-line test file to establish a negative.
+
+2. **Escalation-delay tracking** — **no sequence exceeded the 5-call threshold.**
+   The two long tool runs were progressive, not thrashing: cycle 4's migration moved 72 → 36 → 31 → 8 → 1 → 0 failures, and cycle 5's moved 24 → 11 → 7 → 1 → 0, each call retiring a distinct failure group.
+   The only non-progressing calls were the two single-call instruction violations above.
+
+3. **Unused-tool detection** — **nothing actionable.**
+   The `**` miss had no tool gap: the prohibition was inside a range I had already read with `Read`.
+   A `colgrep`/`grep` for `globstar` would have found it, but so would attending to the line already in context — this is an attention failure, not a discovery failure.
+
+4. **Feedback-loop gap analysis** — **healthy; no gap.**
+   `pnpm run check` ran after every interface-touching cycle (9 invocations), the package suite before every commit, and root `lint` plus `fallow dead-code` at the baseline and before the push.
+   Verification was incremental throughout rather than deferred to the end; see win 3 for the case where only `tsc` caught a defect.
+
+### Changes made
+
+1. `.pi/skills/package-pi-permission-system/SKILL.md` — added the no-globstar rule beside the existing wildcard bullet: `*` already crosses directory boundaries, `**` compiles identically, so config examples, ADRs, schema descriptions, and tests all write `~/dev/*`.
+   The rule existed only in `docs/configuration.md`, which is user-facing prose an agent reads selectively; the skill is what loads before touching this package.
+2. `.pi/skills/testing/SKILL.md` — extended the migration-estimate bullet ([#504]) with the default-parameter blind spot: a literal-argument grep cannot see a call site that passes no argument at all, so the helper's signature must be grepped too.
+3. `.pi/prompts/plan-issue.md` — added one clause to the "Invariants at risk" bullet: open each test named as a pin, because a file that mocks the layer under test pins nothing about it.
+
+Deliberately not changed: the zsh word-splitting rule and the `read_session` `model_change` warning, both of which exist verbatim and were violated anyway — a second copy adds tokens without adding salience.
+Also left alone: the two pre-existing `**` instances in `docs/decisions/0008-cross-session-access-intent.md` and `docs/configuration.md`'s `piInfrastructureReadPaths` example, the latter of which may be illustrating the documented equivalence on purpose.
+
+[#504]: https://github.com/gotgenes/pi-packages/issues/504
 [#684]: https://github.com/gotgenes/pi-packages/pull/684
 [#712]: https://github.com/gotgenes/pi-packages/issues/712
+[#737]: https://github.com/gotgenes/pi-packages/issues/737
 [#807]: https://github.com/gotgenes/pi-packages/issues/807
 [#808]: https://github.com/gotgenes/pi-packages/issues/808
