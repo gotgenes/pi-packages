@@ -104,7 +104,8 @@ describe("describeBashPathGate", () => {
     expect(result).not.toBeNull();
     expect(isGateDescriptor(result)).toBe(true);
     const desc = result as GateDescriptor;
-    expect(desc.surface).toBe("path");
+    // `cat` is a pure-reader core word, so the token routes directionally.
+    expect(desc.surface).toBe("path_read");
     expect(desc.preCheck?.state).toBe("deny");
   });
 
@@ -130,12 +131,12 @@ describe("describeBashPathGate", () => {
     expect(result.payload.request.value).toBe(".env");
   });
 
-  it("descriptor decision uses surface 'path'", async () => {
+  it("descriptor decision uses the surface the deciding token proved", async () => {
     const result = (await describeGate(
       makeTcc(),
       makeResolver(makeCheckResult({ state: "deny", matchedPattern: "*.env" })),
     )) as GateDescriptor;
-    expect(result.decision.surface).toBe("path");
+    expect(result.decision.surface).toBe("path_read");
   });
 
   it("carries the deciding token's access facts on promptDetails (bash path surface)", async () => {
@@ -149,7 +150,7 @@ describe("describeBashPathGate", () => {
     const path = intent?.kind === "access-path" ? intent.path : undefined;
     expect(path).toBeDefined();
     expect(result.promptDetails.accessIntent).toEqual({
-      surface: "path",
+      surface: "path_read",
       matchValues: path?.matchValues(),
       boundaryValue: path?.boundaryValue(),
     });
@@ -270,7 +271,7 @@ describe("describeBashPathGate", () => {
 
     expect(resolver.resolve).toHaveBeenCalledWith({
       kind: "access-path",
-      surface: "path",
+      surface: "path_read",
       path: AccessPath.forPath("src/file.txt", {
         cwd: "/test/project",
         resolveBase: "/test/project/nested",
@@ -297,7 +298,7 @@ describe("describeBashPathGate", () => {
 
     expect(resolver.resolve).toHaveBeenCalledWith({
       kind: "access-path",
-      surface: "path",
+      surface: "path_read",
       path: AccessPath.forLiteral("src/foo.ts"),
       agentName: undefined,
     });
@@ -316,10 +317,116 @@ describe("describeBashPathGate", () => {
     )) as GateDescriptor;
 
     expect(result.decision.value).toBe(".env");
-    expect(result.sessionApproval?.surface).toBe("path");
+    expect(result.sessionApproval?.surface).toBe("path_read");
     expect(result.sessionApproval?.representativePattern).toBe(
       "/test/project/*",
     );
+  });
+
+  describe("directional routing (#807)", () => {
+    const askEverything = () =>
+      makeResolver(makeCheckResult({ state: "ask", matchedPattern: "*" }));
+
+    it("routes a proven read to the read surface, end to end", async () => {
+      const resolver = askEverything();
+      const result = (await describeGate(
+        makeTcc({ input: { command: "cat .env" }, cwd: "/test/project" }),
+        resolver,
+      )) as GateDescriptor;
+
+      expect(result.surface).toBe("path_read");
+      expect(result.payload.request.surface).toBe("path_read");
+      expect(result.decision.surface).toBe("path_read");
+      expect(result.promptDetails.accessIntent?.surface).toBe("path_read");
+      expect(result.sessionApproval?.surface).toBe("path_read");
+    });
+
+    it("routes a proven write to the write surface", async () => {
+      const result = (await describeGate(
+        makeTcc({
+          input: { command: "echo hi > .env" },
+          cwd: "/test/project",
+        }),
+        askEverything(),
+      )) as GateDescriptor;
+
+      expect(result.surface).toBe("path_write");
+      expect(result.decision.surface).toBe("path_write");
+      expect(result.sessionApproval?.surface).toBe("path_write");
+    });
+
+    it("routes an unproven token to the bare family, which folds both", async () => {
+      const result = (await describeGate(
+        makeTcc({ input: { command: "rm .env" }, cwd: "/test/project" }),
+        askEverything(),
+      )) as GateDescriptor;
+
+      expect(result.surface).toBe("path");
+      expect(result.decision.surface).toBe("path");
+      expect(result.sessionApproval?.surface).toBe("path");
+    });
+
+    it("records the deciding token's effect and blame source in the log", async () => {
+      const result = (await describeGate(
+        makeTcc({ input: { command: "cat .env" }, cwd: "/test/project" }),
+        askEverything(),
+      )) as GateDescriptor;
+
+      expect(result.logContext).toMatchObject({
+        effect: "read",
+        effectSource: "core",
+      });
+    });
+
+    it("records a retraction as the blame source for a guarded word", async () => {
+      const result = (await describeGate(
+        makeTcc({
+          input: { command: "sort -o ./out.txt ./data.txt" },
+          cwd: "/test/project",
+        }),
+        askEverything(),
+      )) as GateDescriptor;
+
+      expect(result.surface).toBe("path");
+      expect(result.logContext).toMatchObject({
+        effect: "unproven",
+        effectSource: "retracted",
+      });
+    });
+
+    it("records nothing to blame when no source claimed the token", async () => {
+      const result = (await describeGate(
+        makeTcc({ input: { command: "rm .env" }, cwd: "/test/project" }),
+        askEverything(),
+      )) as GateDescriptor;
+
+      expect(result.logContext).toMatchObject({
+        effect: "unproven",
+        effectSource: "unproven",
+      });
+    });
+
+    it("routes a redirect destination on its own proof, not the reader's", async () => {
+      const resolver = makePathDispatchResolver(
+        {
+          "/test/project/out.txt": makeCheckResult({
+            state: "ask",
+            matchedPattern: "*",
+          }),
+        },
+        makeCheckResult({ state: "allow", matchedPattern: "*" }),
+      );
+      const result = (await describeGate(
+        makeTcc({
+          input: { command: "cat ./in.txt > ./out.txt" },
+          cwd: "/test/project",
+        }),
+        resolver,
+      )) as GateDescriptor;
+
+      expect(result.decision.value).toBe("./out.txt");
+      expect(result.surface).toBe("path_write");
+    });
   });
 });
 
