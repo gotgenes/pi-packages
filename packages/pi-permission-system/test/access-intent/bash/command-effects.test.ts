@@ -2,11 +2,14 @@ import { describe, expect, it } from "vitest";
 import {
   PURE_READER_CORE,
   proveCommandEffect,
+  redirectDestinationEffect,
 } from "#src/access-intent/bash/command-effects";
 import { UNPROVEN_EFFECT } from "#src/access-intent/effect";
 
 const CORE_READ = { effect: "read", source: "core" } as const;
 const RETRACTED = { effect: "unproven", source: "retracted" } as const;
+const SYNTAX_READ = { effect: "read", source: "syntax" } as const;
+const SYNTAX_WRITE = { effect: "write", source: "syntax" } as const;
 
 /** The frozen v1 roster, spelled out so the test pins it rather than mirrors it. */
 const ROSTER = [
@@ -198,6 +201,56 @@ describe("proveCommandEffect", () => {
 
     it("does not apply fd's guard to find", () => {
       expect(proveCommandEffect("find", [".", "-x"])).toEqual(CORE_READ);
+    });
+  });
+});
+
+describe("redirectDestinationEffect", () => {
+  describe("an output redirect", () => {
+    it.each([
+      ">",
+      ">>",
+      ">|",
+      "&>",
+      "&>>",
+    ])("proves a write for %s", (operator) => {
+      expect(redirectDestinationEffect(operator, false)).toEqual(SYNTAX_WRITE);
+    });
+  });
+
+  describe("an input redirect", () => {
+    it.each(["<", "<<<"])("proves a read for %s", (operator) => {
+      expect(redirectDestinationEffect(operator, false)).toEqual(SYNTAX_READ);
+    });
+  });
+
+  describe("a file-descriptor duplication", () => {
+    it.each([">&", "<&"])("collects no token for %s a descriptor", (op) => {
+      expect(redirectDestinationEffect(op, true)).toBeNull();
+    });
+
+    it("proves a write when >& names a file instead", () => {
+      expect(redirectDestinationEffect(">&", false)).toEqual(SYNTAX_WRITE);
+    });
+
+    it("proves a read when <& names a file instead", () => {
+      expect(redirectDestinationEffect("<&", false)).toEqual(SYNTAX_READ);
+    });
+  });
+
+  describe("an operator outside the table", () => {
+    it.each([
+      "<>",
+      "&",
+      "",
+    ])("proves nothing rather than dropping the token for %s", (operator) => {
+      expect(redirectDestinationEffect(operator, false)).toEqual(
+        UNPROVEN_EFFECT,
+      );
+    });
+
+    it("still collects the token when the destination is a descriptor", () => {
+      expect(redirectDestinationEffect("<>", true)).toEqual(UNPROVEN_EFFECT);
     });
   });
 });

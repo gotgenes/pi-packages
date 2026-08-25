@@ -43,6 +43,60 @@ export const PURE_READER_CORE: ReadonlySet<string> = new Set(
   coreAdmissions().flatMap(({ words }) => words),
 );
 
+/**
+ * The effect a redirect operator proves for its destination token, or `null`
+ * when the redirect names no file at all and no token should be collected.
+ *
+ * The operator is the whole proof: `> out.txt` writes `out.txt` whatever the
+ * command in front of it does, and `< in.txt` reads it. A syntax proof is
+ * therefore absolute — it is applied to the destination after the owning
+ * command's attribution and is never retracted by it.
+ *
+ * `>&` and `<&` are the two operators that may name either a file descriptor
+ * (`2>&1`, a duplication that touches no file) or a real file (`cmd >& out`).
+ * `destinationIsDescriptor` is the parse-tree fact that tells them apart; the
+ * `null` it produces is what keeps `2>&1`'s `1` out of the path surface.
+ *
+ * An operator outside the table proves nothing rather than dropping the token:
+ * dropping it would remove a path from the gates entirely, which is the one
+ * fail-open direction available here.
+ */
+export function redirectDestinationEffect(
+  operator: string,
+  destinationIsDescriptor: boolean,
+): TokenEffect | null {
+  if (DESCRIPTOR_CAPABLE_OPERATORS.has(operator)) {
+    if (destinationIsDescriptor) return null;
+    return operator === ">&" ? SYNTAX_WRITE_EFFECT : SYNTAX_READ_EFFECT;
+  }
+  if (OUTPUT_REDIRECT_OPERATORS.has(operator)) return SYNTAX_WRITE_EFFECT;
+  if (INPUT_REDIRECT_OPERATORS.has(operator)) return SYNTAX_READ_EFFECT;
+  return UNPROVEN_EFFECT;
+}
+
+// ── The redirect operator table ────────────────────────────────────────────
+
+/** Operators whose destination the shell truncates, appends to, or creates. */
+const OUTPUT_REDIRECT_OPERATORS: ReadonlySet<string> = new Set([
+  ">",
+  ">>",
+  ">|",
+  "&>",
+  "&>>",
+]);
+
+/**
+ * Operators whose destination the shell reads.
+ *
+ * `<<<` is a herestring, whose `herestring_redirect` node carries the same
+ * shape; its destination is a literal rather than a file in practice, and
+ * reading it proves no more than a read either way.
+ */
+const INPUT_REDIRECT_OPERATORS: ReadonlySet<string> = new Set(["<", "<<<"]);
+
+/** The two operators that may duplicate a descriptor instead of naming a file. */
+const DESCRIPTOR_CAPABLE_OPERATORS: ReadonlySet<string> = new Set([">&", "<&"]);
+
 // ── The roster ─────────────────────────────────────────────────────────────
 
 /** A group of core words admitted for one shared structural reason. */
@@ -179,6 +233,12 @@ const RETRACTED_EFFECT: TokenEffect = {
   effect: "unproven",
   source: "retracted",
 };
+
+/** A redirect destination the operator proves the shell reads. */
+const SYNTAX_READ_EFFECT: TokenEffect = { effect: "read", source: "syntax" };
+
+/** A redirect destination the operator proves the shell writes. */
+const SYNTAX_WRITE_EFFECT: TokenEffect = { effect: "write", source: "syntax" };
 
 /** The path separators that disqualify a head word from the core, both flavors. */
 const PATH_SEPARATORS = ["/", "\\"];
