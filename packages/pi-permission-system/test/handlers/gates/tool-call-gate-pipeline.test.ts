@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { AccessPath } from "#src/access-intent/access-path";
+import type { BashExternalPath } from "#src/access-intent/bash/bash-path-resolver";
 import { ToolCallGatePipeline } from "#src/handlers/gates/tool-call-gate-pipeline";
 import { PathNormalizer } from "#src/path-normalizer";
 
@@ -37,7 +37,7 @@ function makeMockBashProgram(command = "echo hello") {
     commandText: vi.fn(() => command),
     commands: vi.fn<() => []>(() => []),
     pathRuleCandidates: vi.fn<() => []>(() => []),
-    externalPaths: vi.fn<() => AccessPath[]>(() => []),
+    externalAccesses: vi.fn<() => BashExternalPath[]>(() => []),
   };
 }
 
@@ -239,7 +239,7 @@ describe("ToolCallGatePipeline", () => {
         commandText: vi.fn(() => text),
         commands: vi.fn(() => [{ text }]),
         pathRuleCandidates: vi.fn<() => []>(() => []),
-        externalPaths: vi.fn<() => AccessPath[]>(() => []),
+        externalAccesses: vi.fn<() => BashExternalPath[]>(() => []),
       };
     }
 

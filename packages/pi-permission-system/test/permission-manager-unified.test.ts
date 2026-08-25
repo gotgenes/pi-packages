@@ -82,7 +82,7 @@ describe("PermissionManager — injected platform (#510)", () => {
       "ls /tmp",
       new PathNormalizer(win32PathFlavor, "C:/projects/app"),
     );
-    const values = program.externalAccesses()[0].matchValues();
+    const values = program.externalAccesses()[0].path.matchValues();
     const manager = new PermissionManager({
       globalConfigPath: "/nonexistent/config.json",
       agentsDir: "/nonexistent/agents",

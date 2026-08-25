@@ -30,8 +30,11 @@ export function describeBashExternalDirectoryGate(
   if (!bashProgram) return null;
   const command = bashProgram.commandText();
 
-  const externalPaths = bashProgram.externalAccesses();
-  if (externalPaths.length === 0) return null;
+  const externalAccesses = bashProgram.externalAccesses();
+  if (externalAccesses.length === 0) return null;
+  // Effect-keyed routing lands in the next cycle; today every path resolves on
+  // the bare family, exactly as before.
+  const externalPaths = externalAccesses.map(({ path }) => path);
 
   // Resolve every external path on the external_directory surface and keep the
   // ones not already allowed (config-level allows suppress the prompt just as

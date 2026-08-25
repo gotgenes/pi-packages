@@ -19,6 +19,7 @@ vi.mock("node:fs", async () => {
 });
 
 import { BashProgram } from "#src/access-intent/bash/program";
+import { UNPROVEN_EFFECT } from "#src/access-intent/effect";
 import { pathFlavorForPlatform, win32PathFlavor } from "#src/path/path-flavor";
 import { PathNormalizer } from "#src/path-normalizer";
 import { createTmpFixture } from "#test/helpers/tmp-fixture";
@@ -300,9 +301,9 @@ describe("BashProgram", () => {
     it("returns absolute paths resolving outside cwd", async () => {
       const program = await BashProgram.parse("cat /etc/hosts", normalizer);
       // Subset matcher: the path is normalized before comparison.
-      expect(program.externalAccesses().map((p) => p.value())).toContain(
-        "/etc/hosts",
-      );
+      expect(
+        program.externalAccesses().map(({ path }) => path.value()),
+      ).toContain("/etc/hosts");
     });
 
     describe("operands of nested commands hosted in a redirect (#741)", () => {
@@ -313,9 +314,9 @@ describe("BashProgram", () => {
         ["a concatenated destination", "echo hi > ${DIR}/$(cat /etc/shadow)"],
       ])("projects an operand hosted in %s", async (_label, command) => {
         const program = await BashProgram.parse(command, normalizer);
-        expect(program.externalAccesses().map((p) => p.value())).toContain(
-          "/etc/shadow",
-        );
+        expect(
+          program.externalAccesses().map(({ path }) => path.value()),
+        ).toContain("/etc/shadow");
       });
 
       it("still projects a plain redirect destination", async () => {
@@ -323,9 +324,9 @@ describe("BashProgram", () => {
           "echo hi > /etc/passwd",
           normalizer,
         );
-        expect(program.externalAccesses().map((p) => p.value())).toContain(
-          "/etc/passwd",
-        );
+        expect(
+          program.externalAccesses().map(({ path }) => path.value()),
+        ).toContain("/etc/passwd");
       });
     });
 
@@ -367,7 +368,7 @@ describe("BashProgram", () => {
           probeNormalizer,
         );
         expect(
-          program.externalAccesses().map((p) => p.boundaryValue()),
+          program.externalAccesses().map(({ path }) => path.boundaryValue()),
         ).toContain(secret);
       });
 
@@ -390,7 +391,7 @@ describe("BashProgram", () => {
         tmp.symlink(root, "vault", outsideRoot);
         const program = await BashProgram.parse("ls vault", probeNormalizer);
         expect(
-          program.externalAccesses().map((p) => p.boundaryValue()),
+          program.externalAccesses().map(({ path }) => path.boundaryValue()),
         ).toContain(outsideRoot);
       });
     });
@@ -403,9 +404,9 @@ describe("BashProgram", () => {
         "grep --file=/tmp/pi-permission-patterns target",
         normalizer,
       );
-      expect(program.externalAccesses().map((p) => p.value())).toContain(
-        "/tmp/pi-permission-patterns",
-      );
+      expect(
+        program.externalAccesses().map(({ path }) => path.value()),
+      ).toContain("/tmp/pi-permission-patterns");
     });
 
     it("excludes paths within cwd", async () => {
@@ -435,9 +436,9 @@ describe("BashProgram", () => {
           "cat /etc/hosts",
           winNormalizer,
         );
-        expect(program.externalAccesses().map((p) => p.value())).toEqual([
-          "/etc/hosts",
-        ]);
+        expect(
+          program.externalAccesses().map(({ path }) => path.value()),
+        ).toEqual(["/etc/hosts"]);
       });
 
       it("keeps a non-mount POSIX absolute as a literal rule candidate", async () => {
@@ -453,10 +454,9 @@ describe("BashProgram", () => {
           "cd /c/Other && cat ../x",
           winNormalizer,
         );
-        expect(program.externalAccesses().map((p) => p.value())).toEqual([
-          "c:\\other",
-          "c:\\x",
-        ]);
+        expect(
+          program.externalAccesses().map(({ path }) => path.value()),
+        ).toEqual(["c:\\other", "c:\\x"]);
       });
 
       it("degrades a non-mount POSIX absolute cd to a conservative unknown base", async () => {
@@ -467,10 +467,9 @@ describe("BashProgram", () => {
           "cd /tmp && cat ../x",
           winNormalizer,
         );
-        expect(program.externalAccesses().map((p) => p.value())).toEqual([
-          "/tmp",
-          "c:\\projects\\x",
-        ]);
+        expect(
+          program.externalAccesses().map(({ path }) => path.value()),
+        ).toEqual(["/tmp", "c:\\projects\\x"]);
       });
 
       it("flags a ..-traversal escaping cwd under win32 rules", async () => {
@@ -478,9 +477,9 @@ describe("BashProgram", () => {
           "cat ../sibling/x",
           winNormalizer,
         );
-        expect(program.externalAccesses().map((p) => p.value())).toEqual([
-          "c:\\projects\\sibling\\x",
-        ]);
+        expect(
+          program.externalAccesses().map(({ path }) => path.value()),
+        ).toEqual(["c:\\projects\\sibling\\x"]);
       });
 
       it("folds a current-shell cd so an in-cwd ..-traversal is not flagged", async () => {
@@ -543,16 +542,16 @@ describe("BashProgram", () => {
           'touch "$HOME/pi-permission-system-repro-new"',
           normalizer,
         );
-        expect(program.externalAccesses().map((p) => p.value())).toEqual([
-          join(homedir(), "pi-permission-system-repro-new"),
-        ]);
+        expect(
+          program.externalAccesses().map(({ path }) => path.value()),
+        ).toEqual([join(homedir(), "pi-permission-system-repro-new")]);
       });
 
       it("flags a bare ${HOME}", async () => {
         const program = await BashProgram.parse('ls "${HOME}"', normalizer);
-        expect(program.externalAccesses().map((p) => p.value())).toEqual([
-          homedir(),
-        ]);
+        expect(
+          program.externalAccesses().map(({ path }) => path.value()),
+        ).toEqual([homedir()]);
       });
 
       it("flags ${HOME}/…", async () => {
@@ -560,9 +559,9 @@ describe("BashProgram", () => {
           'ls "${HOME}/somewhere"',
           normalizer,
         );
-        expect(program.externalAccesses().map((p) => p.value())).toEqual([
-          join(homedir(), "somewhere"),
-        ]);
+        expect(
+          program.externalAccesses().map(({ path }) => path.value()),
+        ).toEqual([join(homedir(), "somewhere")]);
       });
 
       it("flags a $HOME redirect destination", async () => {
@@ -570,18 +569,18 @@ describe("BashProgram", () => {
           "echo hi > $HOME/out.txt",
           normalizer,
         );
-        expect(program.externalAccesses().map((p) => p.value())).toEqual([
-          join(homedir(), "out.txt"),
-        ]);
+        expect(
+          program.externalAccesses().map(({ path }) => path.value()),
+        ).toEqual([join(homedir(), "out.txt")]);
       });
 
       it("yields exactly one entry for an existing $HOME target", async () => {
         // Previously the existence probe promoted this token; now the strict
         // shape gate accepts it. It must not be collected through both.
         const program = await BashProgram.parse('ls "$HOME"', normalizer);
-        expect(program.externalAccesses().map((p) => p.value())).toEqual([
-          homedir(),
-        ]);
+        expect(
+          program.externalAccesses().map(({ path }) => path.value()),
+        ).toEqual([homedir()]);
       });
 
       it("gives $HOME/… and its literal spelling the same projection", async () => {
@@ -590,9 +589,9 @@ describe("BashProgram", () => {
           normalizer,
         );
         const spelled = await BashProgram.parse('ls "$HOME/docs"', normalizer);
-        expect(spelled.externalAccesses().map((p) => p.value())).toEqual(
-          expanded.externalAccesses().map((p) => p.value()),
-        );
+        expect(
+          spelled.externalAccesses().map(({ path }) => path.value()),
+        ).toEqual(expanded.externalAccesses().map(({ path }) => path.value()));
       });
 
       it("resolves $HOME/… independently of an unknown effective base", async () => {
@@ -600,9 +599,9 @@ describe("BashProgram", () => {
           'cd "$DIR" && cat "$HOME/.ssh/id_rsa"',
           normalizer,
         );
-        expect(program.externalAccesses().map((p) => p.value())).toEqual([
-          join(homedir(), ".ssh/id_rsa"),
-        ]);
+        expect(
+          program.externalAccesses().map(({ path }) => path.value()),
+        ).toEqual([join(homedir(), ".ssh/id_rsa")]);
       });
 
       it("resolves $PWD against the cd-folded base", async () => {
@@ -612,10 +611,9 @@ describe("BashProgram", () => {
           'cd /etc && ls "$PWD/passwd"',
           normalizer,
         );
-        expect(program.externalAccesses().map((p) => p.value())).toEqual([
-          "/etc",
-          "/etc/passwd",
-        ]);
+        expect(
+          program.externalAccesses().map(({ path }) => path.value()),
+        ).toEqual(["/etc", "/etc/passwd"]);
       });
 
       it("does not flag a $PWD token that stays inside the working directory", async () => {
@@ -659,9 +657,9 @@ describe("BashProgram", () => {
           "cd nested/deep && cd .. && cat ../../etc/passwd",
           normalizer,
         );
-        expect(program.externalAccesses().map((p) => p.value())).toContain(
-          "/projects/etc/passwd",
-        );
+        expect(
+          program.externalAccesses().map(({ path }) => path.value()),
+        ).toContain("/projects/etc/passwd");
       });
 
       it("folds a cd that is not the first command", async () => {
@@ -678,9 +676,9 @@ describe("BashProgram", () => {
         // `cd a &` runs in a subshell, so it must not update the running
         // directory; ../b resolves against cwd and escapes.
         const program = await BashProgram.parse("cd a & cat ../b", normalizer);
-        expect(program.externalAccesses().map((p) => p.value())).toContain(
-          "/projects/b",
-        );
+        expect(
+          program.externalAccesses().map(({ path }) => path.value()),
+        ).toContain("/projects/b");
       });
 
       it("does not fold a cd inside a pipeline", async () => {
@@ -689,9 +687,9 @@ describe("BashProgram", () => {
           "cd nested | cat ../b",
           normalizer,
         );
-        expect(program.externalAccesses().map((p) => p.value())).toContain(
-          "/projects/b",
-        );
+        expect(
+          program.externalAccesses().map(({ path }) => path.value()),
+        ).toContain("/projects/b");
       });
 
       it("folds a cd inside a subshell for paths within that subshell", async () => {
@@ -709,9 +707,9 @@ describe("BashProgram", () => {
           "( cd sub ) && cat ../y",
           normalizer,
         );
-        expect(program.externalAccesses().map((p) => p.value())).toContain(
-          "/projects/y",
-        );
+        expect(
+          program.externalAccesses().map(({ path }) => path.value()),
+        ).toContain("/projects/y");
       });
 
       it("persists a cd inside a brace group to later commands in the group", async () => {
@@ -739,9 +737,9 @@ describe("BashProgram", () => {
           "echo $(cd q && cat ../r)",
           normalizer,
         );
-        expect(program.externalAccesses().map((p) => p.value())).toContain(
-          "/projects/r",
-        );
+        expect(
+          program.externalAccesses().map(({ path }) => path.value()),
+        ).toContain("/projects/r");
       });
 
       it("flags relative paths conservatively after a non-literal cd", async () => {
@@ -751,9 +749,9 @@ describe("BashProgram", () => {
           'cd "$DIR" && cat ../x',
           normalizer,
         );
-        expect(program.externalAccesses().map((p) => p.value())).toContain(
-          "/projects/x",
-        );
+        expect(
+          program.externalAccesses().map(({ path }) => path.value()),
+        ).toContain("/projects/x");
       });
 
       it("flags even a within-cwd relative path after a non-literal cd", async () => {
@@ -763,9 +761,9 @@ describe("BashProgram", () => {
           'cd "$DIR" && cat src/../within.txt',
           normalizer,
         );
-        expect(program.externalAccesses().map((p) => p.value())).toContain(
-          "/projects/my-app/within.txt",
-        );
+        expect(
+          program.externalAccesses().map(({ path }) => path.value()),
+        ).toContain("/projects/my-app/within.txt");
       });
 
       it("still resolves an absolute path normally after a non-literal cd", async () => {
@@ -780,9 +778,9 @@ describe("BashProgram", () => {
 
       it("treats `cd -` as an unknown effective directory", async () => {
         const program = await BashProgram.parse("cd - && cat ../x", normalizer);
-        expect(program.externalAccesses().map((p) => p.value())).toContain(
-          "/projects/x",
-        );
+        expect(
+          program.externalAccesses().map(({ path }) => path.value()),
+        ).toContain("/projects/x");
       });
 
       it("recovers a known base when a later cd is absolute", async () => {
@@ -829,9 +827,9 @@ describe("BashProgram", () => {
           "cd a && cd b 2>&1 | tail ; cat ../../x",
           normalizer,
         );
-        expect(program.externalAccesses().map((p) => p.value())).toContain(
-          "/projects/x",
-        );
+        expect(
+          program.externalAccesses().map(({ path }) => path.value()),
+        ).toContain("/projects/x");
       });
 
       it("resolves a downstream pipe stage against the folded base", async () => {
@@ -860,7 +858,9 @@ describe("BashProgram", () => {
         "cat /projects/my-app/link/hosts",
         normalizer,
       );
-      const external = program.externalAccesses().map((p) => p.value());
+      const external = program
+        .externalAccesses()
+        .map(({ path }) => path.value());
       expect(external).toContain("/projects/my-app/link/hosts");
       expect(external).not.toContain("/etc/hosts");
     });
@@ -1310,7 +1310,7 @@ describe("BashProgram", () => {
       ".env",
       "/etc/hosts",
     ]);
-    const external = program.externalAccesses().map((p) => p.value());
+    const external = program.externalAccesses().map(({ path }) => path.value());
     expect(external).toContain("/etc/hosts");
     expect(external).not.toContain(".env");
   });
@@ -1331,16 +1331,18 @@ describe("BashProgram", () => {
       const program = await BashProgram.parse("echo hi", normalizer, {
         workdir: "/etc",
       });
-      expect(program.externalAccesses().map((p) => p.value())).toContain(
-        "/etc",
-      );
+      expect(
+        program.externalAccesses().map(({ path }) => path.value()),
+      ).toContain("/etc");
     });
 
     it("resolves a relative token against the workdir base", async () => {
       const program = await BashProgram.parse("cat ../secret.txt", normalizer, {
         workdir: "/etc",
       });
-      const external = program.externalAccesses().map((p) => p.value());
+      const external = program
+        .externalAccesses()
+        .map(({ path }) => path.value());
       // ../secret.txt resolves against /etc, not cwd.
       expect(external).toContain("/secret.txt");
       expect(external).toContain("/etc");
@@ -1352,7 +1354,9 @@ describe("BashProgram", () => {
         normalizer,
         { workdir: "/etc" },
       );
-      const external = program.externalAccesses().map((p) => p.value());
+      const external = program
+        .externalAccesses()
+        .map(({ path }) => path.value());
       expect(external).toContain("/var/log/syslog");
       expect(external).not.toContain("/etc/var/log/syslog");
     });
@@ -1379,9 +1383,9 @@ describe("BashProgram", () => {
     it("reproduces cwd-based resolution when no workdir is given", async () => {
       const program = await BashProgram.parse("cat ../secret.txt", normalizer);
       // ../secret.txt from cwd resolves against the parent of cwd.
-      expect(program.externalAccesses().map((p) => p.value())).toContain(
-        "/projects/secret.txt",
-      );
+      expect(
+        program.externalAccesses().map(({ path }) => path.value()),
+      ).toContain("/projects/secret.txt");
     });
 
     it("applies Git Bash drive-mount semantics to a win32 workdir", async () => {
@@ -1390,8 +1394,116 @@ describe("BashProgram", () => {
         workdir: "/c/work",
       });
       // /c/work is the MSYS mount for C:\work — outside the cwd, so flagged.
-      const external = program.externalAccesses().map((p) => p.value());
+      const external = program
+        .externalAccesses()
+        .map(({ path }) => path.value());
       expect(external.some((v) => v.toLowerCase().includes("work"))).toBe(true);
+    });
+
+    it("attributes nothing to the seeded workdir itself", async () => {
+      const program = await BashProgram.parse("echo hi", normalizer, {
+        workdir: "/etc",
+      });
+      const workdirEntry = program
+        .externalAccesses()
+        .find(({ path }) => path.value() === "/etc");
+      expect(workdirEntry?.effect).toEqual(UNPROVEN_EFFECT);
+    });
+  });
+
+  describe("effect attribution (#807)", () => {
+    const cwd = "/projects/my-app";
+    const normalizer = new PathNormalizer(
+      pathFlavorForPlatform(process.platform),
+      cwd,
+    );
+
+    beforeEach(() => {
+      realpathSync.mockReset();
+      realpathSync.mockImplementation((p: string) => p);
+    });
+
+    it("carries a core word's read onto its external access", async () => {
+      const program = await BashProgram.parse("cat /etc/hosts", normalizer);
+      expect(
+        program.externalAccesses().map(({ path, effect }) => ({
+          path: path.value(),
+          effect,
+        })),
+      ).toEqual([
+        { path: "/etc/hosts", effect: { effect: "read", source: "core" } },
+      ]);
+    });
+
+    it("carries a core word's read onto its rule candidate", async () => {
+      const program = await BashProgram.parse("cat /etc/hosts", normalizer);
+      expect(
+        program.pathRuleCandidates().map(({ token, effect }) => ({
+          token,
+          effect,
+        })),
+      ).toEqual([
+        { token: "/etc/hosts", effect: { effect: "read", source: "core" } },
+      ]);
+    });
+
+    it("carries a redirect's write onto its destination", async () => {
+      const program = await BashProgram.parse(
+        "cat /etc/hosts > /tmp/out.txt",
+        normalizer,
+      );
+      expect(
+        program.pathRuleCandidates().map(({ token, effect }) => ({
+          token,
+          effect,
+        })),
+      ).toEqual([
+        { token: "/etc/hosts", effect: { effect: "read", source: "core" } },
+        {
+          token: "/tmp/out.txt",
+          effect: { effect: "write", source: "syntax" },
+        },
+      ]);
+    });
+
+    it("proves nothing for a token a non-core command owns", async () => {
+      const program = await BashProgram.parse("rm -rf /tmp/gone", normalizer);
+      const candidate = program
+        .pathRuleCandidates()
+        .find(({ token }) => token === "/tmp/gone");
+      expect(candidate?.effect).toEqual(UNPROVEN_EFFECT);
+    });
+
+    describe("two attributions of one resolved path", () => {
+      it("folds to a single external access", async () => {
+        const program = await BashProgram.parse(
+          "cat /etc/hosts > /etc/hosts",
+          normalizer,
+        );
+        expect(program.externalAccesses()).toHaveLength(1);
+      });
+
+      it("falls to unproven when the two proofs disagree", async () => {
+        const program = await BashProgram.parse(
+          "cat /etc/hosts > /etc/hosts",
+          normalizer,
+        );
+        expect(program.externalAccesses()[0].effect).toEqual(UNPROVEN_EFFECT);
+        expect(program.pathRuleCandidates()).toHaveLength(1);
+        expect(program.pathRuleCandidates()[0].effect).toEqual(UNPROVEN_EFFECT);
+      });
+
+      it("keeps the effect when the two proofs agree", async () => {
+        const program = await BashProgram.parse(
+          "cat /etc/hosts && head /etc/hosts",
+          normalizer,
+        );
+        expect(program.externalAccesses()).toHaveLength(1);
+        expect(program.externalAccesses()[0].effect).toEqual({
+          effect: "read",
+          source: "core",
+        });
+      });
     });
   });
 });
