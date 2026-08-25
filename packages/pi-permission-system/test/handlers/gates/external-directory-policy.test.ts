@@ -32,7 +32,12 @@ describe("resolveExternalDirectoryPolicy", () => {
     });
     const resolver = makeResolver(makeCheckResult("ask"));
 
-    const result = resolveExternalDirectoryPolicy(path, resolver, undefined);
+    const result = resolveExternalDirectoryPolicy(
+      path,
+      resolver,
+      "external_directory",
+      undefined,
+    );
 
     expect(resolver.resolve).toHaveBeenCalledWith({
       kind: "access-path",
@@ -50,7 +55,12 @@ describe("resolveExternalDirectoryPolicy", () => {
     });
     const resolver = makeResolver(makeCheckResult("allow"));
 
-    resolveExternalDirectoryPolicy(path, resolver, "reviewer");
+    resolveExternalDirectoryPolicy(
+      path,
+      resolver,
+      "external_directory",
+      "reviewer",
+    );
 
     expect(resolver.resolve).toHaveBeenCalledWith({
       kind: "access-path",

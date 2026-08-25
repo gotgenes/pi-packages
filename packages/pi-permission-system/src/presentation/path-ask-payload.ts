@@ -19,11 +19,17 @@ interface PathAskFacts {
   pathValue: string;
   agentName: string | null;
   matchedPattern?: string;
+  /**
+   * The surface that decided — a directional member when the tool's identity
+   * proved a direction, the bare family otherwise. Distinct from the payload
+   * `kind`, which stays coarse so renderer dispatch is untouched.
+   */
+  surface: string;
 }
 
-/** A tool ask gated by an explicit `path` rule. */
+/** A tool ask gated by an explicit `path`-family rule. */
 export function buildPathAskPayload(facts: PathAskFacts): PromptPayload {
-  return pathPayload("path", "path", facts, []);
+  return pathPayload("path", facts, []);
 }
 
 /** The facts the external-directory gate adds: the boundary and the alias. */
@@ -38,7 +44,7 @@ interface ExternalDirectoryAskFacts extends PathAskFacts {
 export function buildExternalDirectoryAskPayload(
   facts: ExternalDirectoryAskFacts,
 ): PromptPayload {
-  return pathPayload("external_directory", "external_directory", facts, [
+  return pathPayload("external_directory", facts, [
     ...resolvedAliasEvidence(facts.resolvedPath),
     workingDirectoryEvidence(facts.cwd),
   ]);
@@ -87,7 +93,6 @@ export function buildBashExternalDirectoryAskPayload(
  */
 function pathPayload(
   kind: "path" | "external_directory",
-  surface: string,
   facts: PathAskFacts,
   evidence: PromptEvidence[],
 ): PromptPayload {
@@ -95,7 +100,7 @@ function pathPayload(
     kind,
     request: {
       requester: localRequester(facts.agentName),
-      surface,
+      surface: facts.surface,
       toolName: facts.toolName,
       invokedToolName: null,
       value: facts.pathValue,

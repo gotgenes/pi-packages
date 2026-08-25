@@ -127,6 +127,9 @@ export function describeBashPathGate(
     pathValue: worstToken,
     agentName: tcc.agentName,
     matchedPattern: worstCheck.matchedPattern,
+    // A bash token's direction is not provable yet (#807), so the bare family
+    // name stands — the resolver folds both directions behind it.
+    surface: "path",
   });
 
   return {

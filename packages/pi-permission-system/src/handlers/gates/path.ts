@@ -1,3 +1,4 @@
+import { capabilitySurfaceForTool } from "#src/access-intent/path-surfaces";
 import { getToolInputPath } from "#src/access-intent/tool-input-path";
 import type { PathNormalizer } from "#src/path-normalizer";
 import type { ScopedPermissionResolver } from "#src/permission-resolver";
@@ -25,13 +26,18 @@ export function describePathGate(
   const filePath = getToolInputPath(tcc.toolName, tcc.input, extractors);
   if (!filePath) return null;
 
+  // The narrowest `path`-family surface this tool's identity proves. A tool
+  // that proves nothing narrower emits the bare family name, which the
+  // resolver folds over both directional members (ADR 0013 §10).
+  const surface = capabilitySurfaceForTool("path", tcc.toolName);
+
   // Emit an access-path intent so the resolver matches the lexical aliases
   // *and* the canonical (symlink-resolved) form, the same set
   // `external_directory` matches (#418, #486).
   const accessPath = normalizer.forPath(filePath);
   const check = resolver.resolve({
     kind: "access-path",
-    surface: "path",
+    surface,
     path: accessPath,
     agentName: tcc.agentName ?? undefined,
   });
@@ -52,20 +58,21 @@ export function describePathGate(
     pathValue: filePath,
     agentName: tcc.agentName,
     matchedPattern: check.matchedPattern,
+    surface,
   });
 
   const descriptor: GateDescriptor = {
-    surface: "path",
+    surface,
     input: { path: filePath },
     payload,
-    sessionApproval: SessionApproval.single("path", pattern),
+    sessionApproval: SessionApproval.single(surface, pattern),
     promptDetails: {
       source: "tool_call",
       agentName: tcc.agentName,
       toolCallId: tcc.toolCallId,
       toolName: tcc.toolName,
       path: filePath,
-      accessIntent: accessFactsFromPath("path", accessPath),
+      accessIntent: accessFactsFromPath(surface, accessPath),
     },
     logContext: {
       source: "tool_call",
@@ -75,7 +82,7 @@ export function describePathGate(
       path: filePath,
     },
     decision: {
-      surface: "path",
+      surface,
       value: filePath,
     },
     preCheck: check,

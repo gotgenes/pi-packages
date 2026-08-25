@@ -81,6 +81,23 @@ describe("renderPromptDialog", () => {
       ).toEqual(["tool : read", "path : /tmp/x"]);
     });
 
+    it("names a directional path surface, which the value label no longer states", () => {
+      // A direction-proven tool ask decides on `path_read`, which differs from
+      // both the tool name and the `path` value label — so the operator now
+      // sees which surface fired (#806).
+      expect(
+        render({
+          kind: "path",
+          request: requestFacts({
+            surface: "path_read",
+            toolName: "read",
+            value: "/tmp/x",
+            matchedPattern: null,
+          }),
+        }),
+      ).toEqual(["tool    : read", "surface : path_read", "path    : /tmp/x"]);
+    });
+
     it("omits the value line when the tool line already carries it", () => {
       expect(
         render({

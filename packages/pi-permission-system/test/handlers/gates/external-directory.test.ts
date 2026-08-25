@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type {
   GateBypass,
@@ -118,11 +118,11 @@ describe("describeExternalDirectoryGate", () => {
 
   // ── GateDescriptor for external paths ─────────────────────────────────��
 
-  it("returns GateDescriptor with surface 'external_directory'", () => {
+  it("returns GateDescriptor with surface 'external_directory_read'", () => {
     const result = gateUnderTest(makeTcc(), ["/test/agent"]);
     expect(isGateDescriptor(result)).toBe(true);
     const desc = result as GateDescriptor;
-    expect(desc.surface).toBe("external_directory");
+    expect(desc.surface).toBe("external_directory_read");
   });
 
   it("decision value is the external path", () => {
@@ -131,10 +131,10 @@ describe("describeExternalDirectoryGate", () => {
       ["/test/agent"],
     ) as GateDescriptor;
     expect(result.decision.value).toBe("/outside/project/file.ts");
-    expect(result.decision.surface).toBe("external_directory");
+    expect(result.decision.surface).toBe("external_directory_read");
   });
 
-  it("carries the child-fixed access facts on promptDetails (external_directory surface)", () => {
+  it("carries the child-fixed access facts on promptDetails (external_directory_read surface)", () => {
     const path = "/outside/project/file.ts";
     const result = gateUnderTest(makeTcc({ input: { path } }), [
       "/test/agent",
@@ -144,7 +144,7 @@ describe("describeExternalDirectoryGate", () => {
       "/test/project",
     ).forPath(path);
     expect(result.promptDetails.accessIntent).toEqual({
-      surface: "external_directory",
+      surface: "external_directory_read",
       matchValues: accessPath.matchValues(),
       boundaryValue: accessPath.boundaryValue(),
     });
@@ -175,7 +175,7 @@ describe("describeExternalDirectoryGate", () => {
     expect(result.preCheck?.state).toBe("ask");
   });
 
-  it("resolves the typed and symlink-resolved aliases on the external_directory surface (#418)", () => {
+  it("resolves the typed and symlink-resolved aliases on the external_directory_read surface (#418)", () => {
     const resolver = makeResolver(
       makeCheckResult({ state: "ask", toolName: "external_directory" }),
     );
@@ -188,7 +188,7 @@ describe("describeExternalDirectoryGate", () => {
     expect(resolver.resolve).toHaveBeenCalledWith(
       expect.objectContaining({
         kind: "access-path",
-        surface: "external_directory",
+        surface: "external_directory_read",
         agentName: undefined,
       }),
     );
@@ -199,12 +199,12 @@ describe("describeExternalDirectoryGate", () => {
     }
   });
 
-  it("records a directory-scoped session approval on the external_directory surface", () => {
+  it("records a directory-scoped session approval on the external_directory_read surface", () => {
     const result = gateUnderTest(
       makeTcc({ input: { path: "/outside/project/file.ts" } }),
       ["/test/agent"],
     ) as GateDescriptor;
-    expect(result.sessionApproval?.surface).toBe("external_directory");
+    expect(result.sessionApproval?.surface).toBe("external_directory_read");
     expect(result.sessionApproval?.patterns).toEqual(["/outside/project/*"]);
   });
 
@@ -299,6 +299,76 @@ describe("describeExternalDirectoryGate — extension and MCP tools (#352)", () 
       ["/test/agent"],
     );
     expect(result).toBeNull();
+  });
+
+  describe("tool-identity direction routing", () => {
+    /** The gate names the narrowest `external_directory`-family surface. */
+    function surfacesFor(toolName: string) {
+      const resolver = makeResolver(makeCheckResult({ state: "ask" }));
+      const descriptor = gateUnderTest(
+        makeTcc({ toolName }),
+        [],
+        undefined,
+        resolver,
+      ) as GateDescriptor;
+      return {
+        intent: vi.mocked(resolver.resolve).mock.calls[0][0].surface,
+        descriptor: descriptor.surface,
+        approval: descriptor.sessionApproval?.surface,
+        facts: descriptor.promptDetails.accessIntent?.surface,
+        decision: descriptor.decision.surface,
+        payload: descriptor.payload.request.surface,
+      };
+    }
+
+    it.each([
+      "read",
+      "grep",
+      "find",
+      "ls",
+    ])("names external_directory_read for %s", (toolName) => {
+      const surface = "external_directory_read";
+      expect(surfacesFor(toolName)).toEqual({
+        intent: surface,
+        descriptor: surface,
+        approval: surface,
+        facts: surface,
+        decision: surface,
+        payload: surface,
+      });
+    });
+
+    it("names external_directory_write for write", () => {
+      const surface = "external_directory_write";
+      expect(surfacesFor("write")).toEqual({
+        intent: surface,
+        descriptor: surface,
+        approval: surface,
+        facts: surface,
+        decision: surface,
+        payload: surface,
+      });
+    });
+
+    it("names the bare family for edit, and for a tool of unknown direction", () => {
+      for (const toolName of ["edit", "my-ext"]) {
+        expect(surfacesFor(toolName)).toEqual({
+          intent: "external_directory",
+          descriptor: "external_directory",
+          approval: "external_directory",
+          facts: "external_directory",
+          decision: "external_directory",
+          payload: "external_directory",
+        });
+      }
+    });
+
+    it("keeps the payload kind 'external_directory' so renderer dispatch is untouched", () => {
+      const result = gateUnderTest(makeTcc({ toolName: "read" }), []);
+      expect((result as GateDescriptor).payload.kind).toBe(
+        "external_directory",
+      );
+    });
   });
 
   it("derives the session approval through the injected flavor, not the host", () => {

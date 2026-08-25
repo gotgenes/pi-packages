@@ -1613,3 +1613,79 @@ describe("yolo grants asks synthesized after resolution", () => {
     expect(outcome).toEqual({ blocked: true, prompts: [] });
   });
 });
+
+describe("directional external-directory relief (#806)", () => {
+  // The change's user-visible payoff: an `external_directory_read` grant
+  // silences a read outside the working tree while a write to the same path
+  // still prompts. Drives the real factory end to end.
+  async function runPathTool(
+    config: Record<string, unknown>,
+    toolName: string,
+    path: string,
+  ): Promise<{ blocked: boolean; prompts: string[] }> {
+    writeGlobalConfig(config);
+    const cwd = mkdtempSync(join(tmpdir(), "pi-perm-directional-cwd-"));
+    const pi = makeFakePi({ toolNames: ["read", "write", "edit"] });
+    piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+
+    const prompts: string[] = [];
+    const { ctx } = makeUiCtx(cwd, prompts);
+    await fireSessionStart(pi, ctx);
+
+    const result = (await pi.fire(
+      "tool_call",
+      { toolName, toolCallId: "dir-1", input: { path } },
+      ctx,
+    )) as { block?: true };
+
+    rmSync(cwd, { recursive: true, force: true });
+    return { blocked: result.block === true, prompts };
+  }
+
+  const externalRoot = "/tmp/pi-perm-directional-target";
+  const externalPath = `${externalRoot}/notes.md`;
+  const readRelief = {
+    permission: {
+      "*": "allow",
+      external_directory: { "*": "ask" },
+      external_directory_read: { [`${externalRoot}/**`]: "allow" },
+    },
+  };
+
+  it("silences a read the directional grant covers", async () => {
+    const outcome = await runPathTool(readRelief, "read", externalPath);
+    expect(outcome).toEqual({ blocked: false, prompts: [] });
+  });
+
+  it("still prompts for a write to the same path", async () => {
+    const outcome = await runPathTool(readRelief, "write", externalPath);
+    expect(outcome.blocked).toBe(false);
+    expect(outcome.prompts).toHaveLength(1);
+  });
+
+  it("still prompts for an edit, which reads and writes", async () => {
+    const outcome = await runPathTool(readRelief, "edit", externalPath);
+    expect(outcome.blocked).toBe(false);
+    expect(outcome.prompts).toHaveLength(1);
+  });
+
+  it("prompts for a read the grant does not cover", async () => {
+    const outcome = await runPathTool(
+      readRelief,
+      "read",
+      "/tmp/pi-perm-directional-elsewhere/notes.md",
+    );
+    expect(outcome.blocked).toBe(false);
+    expect(outcome.prompts).toHaveLength(1);
+  });
+
+  it("keeps a bare external_directory config prompting every direction", async () => {
+    const bare = {
+      permission: { "*": "allow", external_directory: { "*": "ask" } },
+    };
+    for (const toolName of ["read", "write", "edit"]) {
+      const outcome = await runPathTool(bare, toolName, externalPath);
+      expect(outcome.prompts).toHaveLength(1);
+    }
+  });
+});

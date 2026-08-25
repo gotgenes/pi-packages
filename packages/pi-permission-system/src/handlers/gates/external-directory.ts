@@ -1,3 +1,4 @@
+import { capabilitySurfaceForTool } from "#src/access-intent/path-surfaces";
 import { getToolInputPath } from "#src/access-intent/tool-input-path";
 import type { PathNormalizer } from "#src/path-normalizer";
 import type { ScopedPermissionResolver } from "#src/permission-resolver";
@@ -71,10 +72,15 @@ export function describeExternalDirectoryGate(
   // ── Build descriptor for permission check ───────────────────────────────
   const resolvedAlias = accessPath.resolvedAlias();
 
+  // The narrowest `external_directory`-family surface this tool's identity
+  // proves; the bare family name folds both directions (ADR 0013 §10).
+  const surface = capabilitySurfaceForTool("external_directory", tcc.toolName);
+
   // The runner consumes this preCheck and skips its own resolve.
   const preCheck = resolveExternalDirectoryPolicy(
     accessPath,
     resolver,
+    surface,
     tcc.agentName ?? undefined,
   );
   const pattern = normalizer.approvalPatternFor(accessPath);
@@ -86,21 +92,22 @@ export function describeExternalDirectoryGate(
     cwd: tcc.cwd,
     agentName: tcc.agentName,
     matchedPattern: preCheck.matchedPattern,
+    surface,
   });
 
   return {
-    surface: "external_directory",
+    surface,
     input: {},
     preCheck,
     payload,
-    sessionApproval: SessionApproval.single("external_directory", pattern),
+    sessionApproval: SessionApproval.single(surface, pattern),
     promptDetails: {
       source: "tool_call",
       agentName: tcc.agentName,
       toolCallId: tcc.toolCallId,
       toolName: tcc.toolName,
       path: externalDirectoryPath,
-      accessIntent: accessFactsFromPath("external_directory", accessPath),
+      accessIntent: accessFactsFromPath(surface, accessPath),
     },
     logContext: {
       source: "tool_call",
@@ -110,7 +117,7 @@ export function describeExternalDirectoryGate(
       path: externalDirectoryPath,
     },
     decision: {
-      surface: "external_directory",
+      surface,
       value: externalDirectoryPath,
     },
   };

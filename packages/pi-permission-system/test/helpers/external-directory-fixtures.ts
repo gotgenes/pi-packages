@@ -124,10 +124,15 @@ export function makeUnavailablePrompter(): AskEscalator {
 
 // ── Query helpers ──────────────────────────────────────────────────────────
 
-/** Find the `external_directory` decision event from the events mock. */
+/**
+ * Find the `external_directory`-family decision event from the events mock.
+ *
+ * A direction-proven tool decides on a directional member, so the lookup is by
+ * family rather than by the literal name (#806).
+ */
 export function findExtDirDecision(events: ReturnType<typeof makeEvents>) {
   return getDecisionEvents(events).find(
-    (d) => d.surface === "external_directory",
+    (d) => surfaceFamilyOf(d.surface) === "external_directory",
   );
 }
 

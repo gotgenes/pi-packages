@@ -118,7 +118,7 @@ describe("describePathGate", () => {
     expect(result).not.toBeNull();
     expect(isGateDescriptor(result)).toBe(true);
     const desc = result as GateDescriptor;
-    expect(desc.surface).toBe("path");
+    expect(desc.surface).toBe("path_read");
     expect(desc.preCheck?.state).toBe("deny");
   });
 
@@ -130,7 +130,7 @@ describe("describePathGate", () => {
     expect(result).not.toBeNull();
     expect(isGateDescriptor(result)).toBe(true);
     const desc = result as GateDescriptor;
-    expect(desc.surface).toBe("path");
+    expect(desc.surface).toBe("path_read");
     expect(desc.preCheck?.state).toBe("ask");
   });
 
@@ -144,7 +144,7 @@ describe("describePathGate", () => {
       normalizer,
     ) as GateDescriptor;
     expect(result.sessionApproval).toBeDefined();
-    expect(result.sessionApproval?.surface).toBe("path");
+    expect(result.sessionApproval?.surface).toBe("path_read");
     expect(result.sessionApproval?.representativePattern).toBeDefined();
   });
 
@@ -157,7 +157,7 @@ describe("describePathGate", () => {
       resolver,
       normalizer,
     ) as GateDescriptor;
-    expect(result.sessionApproval?.surface).toBe("path");
+    expect(result.sessionApproval?.surface).toBe("path_read");
     expect(result.sessionApproval?.representativePattern).toBe(
       "/test/project/*",
     );
@@ -192,7 +192,7 @@ describe("describePathGate", () => {
       flavor: posixPathFlavor,
     });
     expect(result.promptDetails.accessIntent).toEqual({
-      surface: "path",
+      surface: "path_read",
       matchValues: accessPath.matchValues(),
       boundaryValue: accessPath.boundaryValue(),
     });
@@ -222,7 +222,7 @@ describe("describePathGate", () => {
       resolver,
       normalizer,
     ) as GateDescriptor;
-    expect(result.decision.surface).toBe("path");
+    expect(result.decision.surface).toBe("path_read");
     expect(result.decision.value).toBe(".env");
   });
 
@@ -231,7 +231,7 @@ describe("describePathGate", () => {
     describePathGate(makeTcc({ agentName: "my-agent" }), resolver, normalizer);
     expect(resolver.resolve).toHaveBeenCalledWith({
       kind: "access-path",
-      surface: "path",
+      surface: "path_read",
       path: AccessPath.forPath(".env", {
         cwd: "/test/project",
         flavor: posixPathFlavor,
@@ -281,7 +281,7 @@ describe("describePathGate — home-relative paths", () => {
     expect(result.payload.request.value).toBe("~/.ssh/config");
     expect(resolver.resolve).toHaveBeenCalledWith({
       kind: "access-path",
-      surface: "path",
+      surface: "path_read",
       path: AccessPath.forPath("~/.ssh/config", {
         cwd: "/test/project",
         flavor: posixPathFlavor,
@@ -402,6 +402,77 @@ describe("describePathGate — extension and MCP tools (#352)", () => {
     );
     expect(result).toBeNull();
     expect(resolver.resolve).not.toHaveBeenCalled();
+  });
+
+  describe("tool-identity direction routing", () => {
+    /** The gate names the narrowest `path`-family surface the tool proves. */
+    function surfacesFor(toolName: string) {
+      const resolver = makeResolver(
+        makeCheckResult({ state: "ask", matchedPattern: "*.env" }),
+      );
+      const descriptor = describePathGate(
+        makeTcc({ toolName, input: { path: ".env" } }),
+        resolver,
+        normalizer,
+      ) as GateDescriptor;
+      return {
+        intent: vi.mocked(resolver.resolve).mock.calls[0][0].surface,
+        descriptor: descriptor.surface,
+        approval: descriptor.sessionApproval?.surface,
+        facts: descriptor.promptDetails.accessIntent?.surface,
+        decision: descriptor.decision.surface,
+        payload: descriptor.payload.request.surface,
+      };
+    }
+
+    it.each([
+      "read",
+      "grep",
+      "find",
+      "ls",
+    ])("names path_read for %s, whose read is proven by its identity", (toolName) => {
+      expect(surfacesFor(toolName)).toEqual({
+        intent: "path_read",
+        descriptor: "path_read",
+        approval: "path_read",
+        facts: "path_read",
+        decision: "path_read",
+        payload: "path_read",
+      });
+    });
+
+    it("names path_write for write", () => {
+      expect(surfacesFor("write")).toEqual({
+        intent: "path_write",
+        descriptor: "path_write",
+        approval: "path_write",
+        facts: "path_write",
+        decision: "path_write",
+        payload: "path_write",
+      });
+    });
+
+    it("names the bare family for edit, which reads and writes", () => {
+      expect(surfacesFor("edit")).toEqual({
+        intent: "path",
+        descriptor: "path",
+        approval: "path",
+        facts: "path",
+        decision: "path",
+        payload: "path",
+      });
+    });
+
+    it("keeps the payload kind 'path' so renderer dispatch is untouched", () => {
+      const result = describePathGate(
+        makeTcc({ toolName: "read" }),
+        makeResolver(
+          makeCheckResult({ state: "ask", matchedPattern: "*.env" }),
+        ),
+        normalizer,
+      ) as GateDescriptor;
+      expect(result.payload.kind).toBe("path");
+    });
   });
 
   it("derives the session approval through the injected flavor, not the host", () => {

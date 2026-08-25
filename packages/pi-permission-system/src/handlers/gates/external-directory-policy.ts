@@ -17,7 +17,11 @@ export interface UncoveredExternalPaths {
 }
 
 /**
- * Resolve one external path's policy on the `external_directory` surface.
+ * Resolve one external path's policy on an `external_directory`-family surface.
+ *
+ * `surface` is the narrowest family member the caller can prove — the bare
+ * family name when it can prove nothing narrower, which the resolver folds
+ * over both directions (ADR 0013 §10).
  *
  * Emits an `access-path` {@link AccessIntent}; the resolver unwraps it via
  * {@link AccessPath.matchValues} so a config pattern on either the typed or
@@ -28,11 +32,12 @@ export interface UncoveredExternalPaths {
 export function resolveExternalDirectoryPolicy(
   path: AccessPath,
   resolver: ScopedPermissionResolver,
+  surface: string,
   agentName: string | undefined,
 ): PermissionCheckResult {
   return resolver.resolve({
     kind: "access-path",
-    surface: "external_directory",
+    surface,
     path,
     agentName,
   });
@@ -46,6 +51,9 @@ export function resolveExternalDirectoryPolicy(
  * config-level allow rules suppress the prompt just as session-level allow
  * rules do), and the most restrictive uncovered check is returned so a config
  * "deny" is not downgraded to the catch-all "ask".
+ *
+ * A bash token's direction is not provable yet (#807), so these resolve on the
+ * bare family surface and consult both directions, most-restrictive.
  */
 export function selectUncoveredExternalPaths(
   paths: readonly AccessPath[],
@@ -54,7 +62,12 @@ export function selectUncoveredExternalPaths(
 ): UncoveredExternalPaths {
   const uncovered: UncoveredExternalPath[] = [];
   for (const path of paths) {
-    const check = resolveExternalDirectoryPolicy(path, resolver, agentName);
+    const check = resolveExternalDirectoryPolicy(
+      path,
+      resolver,
+      "external_directory",
+      agentName,
+    );
     if (check.state !== "allow") {
       uncovered.push({ path, check });
     }
