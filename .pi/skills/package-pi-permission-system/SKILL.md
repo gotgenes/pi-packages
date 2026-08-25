@@ -43,7 +43,7 @@ A dated `Baseline (<date>)` column is a fixed phase-open snapshot recomputed at 
   That composition — `buildResolvedIntentFromMatchValues` plus `resolver.resolve` — is pinned by the `ServingPolicy resolves a forwarded request against real recorded authority` block in `test/authority/forwarded-request-server.test.ts`; every other test in that file stubs `policy`, so none of them would catch a regression there.
   The family vocabulary lives in `src/access-intent/path-surfaces.ts` (`surfaceFamilyOf`, `surfaceFamilyMembers`, `capabilitySurfaceForTool`) and derives the relation from a family set plus a suffix list, so each of the four names is spelled exactly once; a literal-name grep therefore reads zero by design.
   A gate names the narrowest surface a tool's identity proves — `read`/`grep`/`find`/`ls` → `*_read`, `write` → `*_write`, and `edit`, an MCP tool, an extension tool, or a bash token (until #807) → the bare family, which folds both.
-  Doc guidance to repeat: the useful *grants* are `*_read: allow` and the bare key; `*_write` earns its keep as a *restriction* (`path_write: {"**": "deny"}` is a read-only-agent posture), and a `*_write: allow` alone does not silence an `edit`, which also reads.
+  Doc guidance to repeat: the useful *grants* are `*_read: allow` and the bare key; `*_write` earns its keep as a *restriction* (`path_write: {"*": "deny"}` is a read-only-agent posture), and a `*_write: allow` alone does not silence an `edit`, which also reads.
 - Wildcard matching must be explicit and tested — silent over-matching is a permission bypass.
 - Prefer config patterns over new runtime mechanisms.
   Mechanism is forever; docs are reversible.

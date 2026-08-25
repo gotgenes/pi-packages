@@ -312,7 +312,8 @@ The boundary is therefore kept distinct from `path`, and it gains direction, whi
 OpenCode v2 preserved the same separation independently.
 
 The everyday consequence, stated so nobody has to derive it: **granting an external root takes one line in one surface.**
-`external_directory_read: { "~/dev/**": "allow" }` needs no parallel `path_read` entry — the `path` family only speaks when one of its own patterns matches, and its idiomatic use is carving denials (`~/.ssh/**`), not boundary grants.
+`external_directory_read: { "~/dev/*": "allow" }` needs no parallel `path_read` entry — the `path` family only speaks when one of its own patterns matches, and its idiomatic use is carving denials (`~/.ssh/*`), not boundary grants.
+A single `*` already crosses directory boundaries here; `**` is not a distinct globstar in this matcher, so the doubled form is redundant rather than more powerful.
 
 ### 6. Composition is unchanged
 

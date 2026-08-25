@@ -104,7 +104,7 @@
       "properties": {
         "path_read": {
           "description": "Cross-cutting gate for reading a file, by path pattern. The useful directional grant.",
-          "markdownDescription": "Cross-cutting gate for **reading** a file, matched by path pattern across all path-aware tools.\n\nThis is the directional key worth granting: `\"path_read\": { \"~/dev/**\": \"allow\" }` permits reads without permitting writes.\n\nA bare `\"path\"` key is sugar that expands into this key **and** `path_write`, with its entries placed first — so an explicit `path_read` entry always has the final say, whatever the key order in the file.",
+          "markdownDescription": "Cross-cutting gate for **reading** a file, matched by path pattern across all path-aware tools.\n\nThis is the directional key worth granting: `\"path_read\": { \"~/dev/*\": \"allow\" }` permits reads without permitting writes.\n\nA bare `\"path\"` key is sugar that expands into this key **and** `path_write`, with its entries placed first — so an explicit `path_read` entry always has the final say, whatever the key order in the file.",
           "anyOf": [
             {
               "$ref": "#/$defs/permissionState"
@@ -116,7 +116,7 @@
         },
         "path_write": {
           "description": "Cross-cutting gate for writing a file, by path pattern. Earns its keep as a restriction.",
-          "markdownDescription": "Cross-cutting gate for **writing** a file, matched by path pattern across all path-aware tools.\n\nThis key earns its keep as a *restriction* rather than a grant: `\"path_write\": { \"**\": \"deny\" }` is a coherent read-only-agent posture. A `\"path_write\": \"allow\"` on its own does not silence an `edit`, which also reads — grant `path_read` too, or use the bare `\"path\"` key.",
+          "markdownDescription": "Cross-cutting gate for **writing** a file, matched by path pattern across all path-aware tools.\n\nThis key earns its keep as a *restriction* rather than a grant: `\"path_write\": { \"*\": \"deny\" }` is a coherent read-only-agent posture. A `\"path_write\": \"allow\"` on its own does not silence an `edit`, which also reads — grant `path_read` too, or use the bare `\"path\"` key.",
           "anyOf": [
             {
               "$ref": "#/$defs/permissionState"
@@ -128,7 +128,7 @@
         },
         "external_directory_read": {
           "description": "Boundary gate for reading outside the working directory. The relief most asks want.",
-          "markdownDescription": "Boundary gate for **reading** a path outside the session working directory.\n\nThe one-line grant for an external root: `\"external_directory_read\": { \"~/dev/**\": \"allow\" }` silences repeated read prompts on a directory outside the tree while a write to the same path still prompts. No parallel `path_read` entry is needed.",
+          "markdownDescription": "Boundary gate for **reading** a path outside the session working directory.\n\nThe one-line grant for an external root: `\"external_directory_read\": { \"~/dev/*\": \"allow\" }` silences repeated read prompts on a directory outside the tree while a write to the same path still prompts. No parallel `path_read` entry is needed.",
           "anyOf": [
             {
               "$ref": "#/$defs/permissionState"
@@ -195,7 +195,7 @@
             "~/.cargo/registry/*": "allow"
           },
           "external_directory_read": {
-            "~/dev/**": "allow"
+            "~/dev/*": "allow"
           }
         }
       ]

@@ -125,7 +125,7 @@ describe("unifiedConfigSchema", () => {
     ])("accepts %s", (surface) => {
       expect(
         unifiedConfigSchema.safeParse({
-          permission: { [surface]: { "~/dev/**": "allow" } },
+          permission: { [surface]: { "~/dev/*": "allow" } },
         }).success,
       ).toBe(true);
     });
@@ -138,7 +138,7 @@ describe("unifiedConfigSchema", () => {
       "external_directory_",
     ])("rejects the misspelled directional key %s, which would sit inert", (surface) => {
       const result = unifiedConfigSchema.safeParse({
-        permission: { [surface]: { "**": "deny" } },
+        permission: { [surface]: { "*": "deny" } },
       });
       expect(result.success).toBe(false);
       if (!result.success) {

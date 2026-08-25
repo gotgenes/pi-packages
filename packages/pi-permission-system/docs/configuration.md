@@ -761,7 +761,7 @@ The useful *grants* are `*_read: allow` and the bare sugar key.
 {
   "permission": {
     "external_directory": { "*": "ask" },
-    "external_directory_read": { "~/dev/**": "allow" }
+    "external_directory_read": { "~/dev/*": "allow" }
   }
 }
 ```
@@ -770,7 +770,7 @@ A `read` of `~/dev/x` is silent; a `write` or `edit` of the same path still prom
 Granting an external root takes one line in one surface — no parallel `path_read` entry is needed, because the `path` family only speaks when one of its own patterns matches.
 
 `*_write` earns its keep as a **restriction** far more than as a grant.
-`path_write: { "**": "deny" }` is a coherent read-only-agent posture.
+`path_write: { "*": "deny" }` is a coherent read-only-agent posture.
 
 A `*_write: allow` on its own does not silence an `edit`, which also reads — grant the read direction too, or use the bare key.
 

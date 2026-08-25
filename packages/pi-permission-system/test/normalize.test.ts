@@ -277,8 +277,8 @@ describe("expandDirectionalSugar", () => {
 
   test("passes an explicit directional key through when no sugar key is present", () => {
     expect(
-      expandDirectionalSugar({ path_read: { "~/dev/**": "allow" } }),
-    ).toEqual({ path_read: { "~/dev/**": "allow" } });
+      expandDirectionalSugar({ path_read: { "~/dev/*": "allow" } }),
+    ).toEqual({ path_read: { "~/dev/*": "allow" } });
   });
 
   describe("intra-surface merge order (ADR 0013 §4)", () => {
@@ -286,13 +286,13 @@ describe("expandDirectionalSugar", () => {
       expect(
         expandDirectionalSugar({
           path: { "*": "ask", "~/.ssh/*": "deny" },
-          path_read: { "~/dev/**": "allow" },
+          path_read: { "~/dev/*": "allow" },
         }),
       ).toEqual({
         path_read: {
           "*": "ask",
           "~/.ssh/*": "deny",
-          "~/dev/**": "allow",
+          "~/dev/*": "allow",
         },
         path_write: { "*": "ask", "~/.ssh/*": "deny" },
       });
@@ -301,17 +301,17 @@ describe("expandDirectionalSugar", () => {
     test("means the same thing when the two keys are written in the other order", () => {
       const sugarFirst = expandDirectionalSugar({
         external_directory: { "*": "ask" },
-        external_directory_read: { "~/dev/**": "allow" },
+        external_directory_read: { "~/dev/*": "allow" },
       });
       const directionalFirst = expandDirectionalSugar({
-        external_directory_read: { "~/dev/**": "allow" },
+        external_directory_read: { "~/dev/*": "allow" },
         external_directory: { "*": "ask" },
       });
       expect(Object.entries(sugarFirst)).toEqual(
         Object.entries(directionalFirst),
       );
       expect(sugarFirst).toEqual({
-        external_directory_read: { "*": "ask", "~/dev/**": "allow" },
+        external_directory_read: { "*": "ask", "~/dev/*": "allow" },
         external_directory_write: { "*": "ask" },
       });
     });
@@ -340,11 +340,11 @@ describe("expandDirectionalSugar", () => {
       expect(
         expandDirectionalSugar({
           path: "ask",
-          path_write: { "~/scratch/**": "allow" },
+          path_write: { "~/scratch/*": "allow" },
         }),
       ).toEqual({
         path_read: "ask",
-        path_write: { "*": "ask", "~/scratch/**": "allow" },
+        path_write: { "*": "ask", "~/scratch/*": "allow" },
       });
     });
   });

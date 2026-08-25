@@ -105,13 +105,13 @@ A bare `path` or `external_directory` key is sugar that expands into both of its
 {
   "permission": {
     "external_directory": { "*": "ask" },
-    "external_directory_read": { "~/dev/**": "allow" }
+    "external_directory_read": { "~/dev/*": "allow" }
   }
 }
 ```
 
 Here a `read` under `~/dev` is silent while a `write` or `edit` to the same path still prompts.
-The useful grants are `*_read: allow` and the bare key; `*_write` earns its keep as a restriction (`path_write: { "**": "deny" }` is a read-only-agent posture) — see [docs/configuration.md](docs/configuration.md#directional-path-surfaces).
+The useful grants are `*_read: allow` and the bare key; `*_write` earns its keep as a restriction (`path_write: { "*": "deny" }` is a read-only-agent posture) — see [docs/configuration.md](docs/configuration.md#directional-path-surfaces).
 
 ## Configuration
 

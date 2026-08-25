@@ -1648,7 +1648,7 @@ describe("directional external-directory relief (#806)", () => {
     permission: {
       "*": "allow",
       external_directory: { "*": "ask" },
-      external_directory_read: { [`${externalRoot}/**`]: "allow" },
+      external_directory_read: { [`${externalRoot}/*`]: "allow" },
     },
   };
 

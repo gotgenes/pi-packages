@@ -46,7 +46,7 @@
       "~/development/*": "allow",
       "~/.cargo/registry/*": "allow"
     },
-    "external_directory_read": { "~/dev/**": "allow" },
-    "path_write": { "~/.ssh/**": "deny" }
+    "external_directory_read": { "~/dev/*": "allow" },
+    "path_write": { "~/.ssh/*": "deny" }
   }
 }

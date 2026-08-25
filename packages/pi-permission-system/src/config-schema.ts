@@ -94,19 +94,19 @@ const DIRECTIONAL_SURFACE_DESCRIPTIONS: Record<
     description:
       "Cross-cutting gate for reading a file, by path pattern. The useful directional grant.",
     markdownDescription:
-      'Cross-cutting gate for **reading** a file, matched by path pattern across all path-aware tools.\n\nThis is the directional key worth granting: `"path_read": { "~/dev/**": "allow" }` permits reads without permitting writes.\n\nA bare `"path"` key is sugar that expands into this key **and** `path_write`, with its entries placed first — so an explicit `path_read` entry always has the final say, whatever the key order in the file.',
+      'Cross-cutting gate for **reading** a file, matched by path pattern across all path-aware tools.\n\nThis is the directional key worth granting: `"path_read": { "~/dev/*": "allow" }` permits reads without permitting writes.\n\nA bare `"path"` key is sugar that expands into this key **and** `path_write`, with its entries placed first — so an explicit `path_read` entry always has the final say, whatever the key order in the file.',
   },
   path_write: {
     description:
       "Cross-cutting gate for writing a file, by path pattern. Earns its keep as a restriction.",
     markdownDescription:
-      'Cross-cutting gate for **writing** a file, matched by path pattern across all path-aware tools.\n\nThis key earns its keep as a *restriction* rather than a grant: `"path_write": { "**": "deny" }` is a coherent read-only-agent posture. A `"path_write": "allow"` on its own does not silence an `edit`, which also reads — grant `path_read` too, or use the bare `"path"` key.',
+      'Cross-cutting gate for **writing** a file, matched by path pattern across all path-aware tools.\n\nThis key earns its keep as a *restriction* rather than a grant: `"path_write": { "*": "deny" }` is a coherent read-only-agent posture. A `"path_write": "allow"` on its own does not silence an `edit`, which also reads — grant `path_read` too, or use the bare `"path"` key.',
   },
   external_directory_read: {
     description:
       "Boundary gate for reading outside the working directory. The relief most asks want.",
     markdownDescription:
-      'Boundary gate for **reading** a path outside the session working directory.\n\nThe one-line grant for an external root: `"external_directory_read": { "~/dev/**": "allow" }` silences repeated read prompts on a directory outside the tree while a write to the same path still prompts. No parallel `path_read` entry is needed.',
+      'Boundary gate for **reading** a path outside the session working directory.\n\nThe one-line grant for an external root: `"external_directory_read": { "~/dev/*": "allow" }` silences repeated read prompts on a directory outside the tree while a write to the same path still prompts. No parallel `path_read` entry is needed.',
   },
   external_directory_write: {
     description: "Boundary gate for writing outside the working directory.",
@@ -151,7 +151,7 @@ const permissionSchema = z
         mcp: { "*": "ask", mcp_status: "allow", "exa:*": "allow" },
         skill: { "*": "ask", librarian: "allow" },
         external_directory: { "*": "ask", "~/.cargo/registry/*": "allow" },
-        external_directory_read: { "~/dev/**": "allow" },
+        external_directory_read: { "~/dev/*": "allow" },
       },
     ],
   })
@@ -166,7 +166,7 @@ const permissionSchema = z
  * 1. A key shaped like a directional surface but misspelled
  *    (`path_wrote`, `external_directory_reed`). A typo in a *grant* fails safe
  *    — the rule never fires and the user just gets more prompts — but a typo
- *    in a *restriction* fails **open**: `path_wrote: {"**": "deny"}` enforces
+ *    in a *restriction* fails **open**: `path_wrote: {"*": "deny"}` enforces
  *    nothing at all. The false-positive population is an extension tool
  *    literally named `path_*` or `external_directory_*`.
  * 2. An empty key, which `.catchall()` no longer rejects on its own the way

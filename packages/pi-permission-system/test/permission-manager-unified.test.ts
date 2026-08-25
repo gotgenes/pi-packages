@@ -387,7 +387,7 @@ describe("checkPermission — source derivation and matchedPattern", () => {
       const { manager, cleanup } = createManagerWithConfig({
         "*": "ask",
         external_directory: { "*": "ask" },
-        external_directory_read: { "/dev-root/**": "allow" },
+        external_directory_read: { "/dev-root/*": "allow" },
       });
       try {
         expect(

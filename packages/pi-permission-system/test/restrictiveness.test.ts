@@ -61,12 +61,12 @@ describe("mostRestrictiveOf", () => {
     const allow = makeGateCheckResult({
       state: "allow",
       toolName: "path_read",
-      matchedPattern: "~/dev/**",
+      matchedPattern: "~/dev/*",
     });
     const deny = makeGateCheckResult({
       state: "deny",
       toolName: "path_write",
-      matchedPattern: "**",
+      matchedPattern: "*",
     });
     expect(mostRestrictiveOf([allow, deny])).toBe(deny);
   });
