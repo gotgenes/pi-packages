@@ -1,3 +1,4 @@
+import { surfaceFamilyMembers } from "#src/access-intent/path-surfaces";
 import type { Ruleset } from "./rule";
 import type { SessionApproval } from "./session-approval";
 import type { SessionApprovalRecorder } from "./session-approval-recorder";
@@ -13,15 +14,25 @@ import type { SessionApprovalRecorder } from "./session-approval-recorder";
 export class SessionRules implements SessionApprovalRecorder {
   private rules: Ruleset = [];
 
-  /** Record a wildcard pattern as approved for the given surface. */
+  /**
+   * Record a wildcard pattern as approved for the given surface.
+   *
+   * A session approval is a policy source under ADR 0013 §9, so it expands the
+   * same way a config key does: an approval on a bare family surface becomes
+   * one rule per directional member, and one on a directional surface stays a
+   * single rule. Without the expansion an approval would sit on a surface no
+   * query names, and the next ask for the same path would prompt again.
+   */
   approve(surface: string, pattern: string): void {
-    this.rules.push({
-      surface,
-      pattern,
-      action: "allow",
-      layer: "session",
-      origin: "session",
-    });
+    for (const target of surfaceFamilyMembers(surface) ?? [surface]) {
+      this.rules.push({
+        surface: target,
+        pattern,
+        action: "allow",
+        layer: "session",
+        origin: "session",
+      });
+    }
   }
 
   /** Return a defensive copy of the current session ruleset. */

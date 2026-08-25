@@ -6,6 +6,7 @@
  * external-directory-session-dedup.test.ts.
  */
 import { vi } from "vitest";
+import { surfaceFamilyOf } from "#src/access-intent/path-surfaces";
 import type { AskEscalator } from "#src/authority/authorizer-selection";
 import { GateDecisionReporter } from "#src/decision-reporter";
 import { GateRunner } from "#src/handlers/gates/runner";
@@ -155,12 +156,10 @@ export function makeExtDirDedupCheck(
       const pathValue =
         intent.kind === "path-values" ? (intent.values[0] ?? null) : null;
 
-      if (surface === "external_directory") {
+      if (surfaceFamilyOf(surface) === "external_directory") {
         if (pathValue && rules && rules.length > 0) {
           const match = rules.findLast(
-            (r) =>
-              r.surface === "external_directory" &&
-              wildcardMatch(r.pattern, pathValue),
+            (r) => r.surface === surface && wildcardMatch(r.pattern, pathValue),
           );
           if (match) {
             return {

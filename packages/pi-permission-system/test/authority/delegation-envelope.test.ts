@@ -54,6 +54,17 @@ describe("encloseInDelegationEnvelope", () => {
       expect(verdict).toEqual({ kind: "defer" });
     });
 
+    it.each([
+      "path_read",
+      "path_write",
+      "external_directory_read",
+      "external_directory_write",
+    ])("downgrades an allow on %s, a member of an excluded family", async (surface) => {
+      const enclosed = encloseInDelegationEnvelope(makeLink({ kind: "allow" }));
+      const verdict = await enclosed(makeDetails(surface), query, log);
+      expect(verdict).toEqual({ kind: "defer" });
+    });
+
     it("downgrades an allow when the surface is undetermined (fail-safe)", async () => {
       const enclosed = encloseInDelegationEnvelope(makeLink({ kind: "allow" }));
       const verdict = await enclosed(makeDetails(undefined, null), query, log);

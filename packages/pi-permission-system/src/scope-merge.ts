@@ -1,3 +1,4 @@
+import { expandDirectionalSugar } from "#src/normalize";
 import { mergeFlatPermissions } from "#src/permission-merge";
 import type { RuleOrigin } from "#src/rule";
 import type { FlatPermissionConfig, ScopeConfig } from "#src/types";
@@ -33,7 +34,12 @@ export function mergeScopesWithOrigins(
   for (const [scopeName, scope] of scopes) {
     if (!scope.permission) continue;
 
-    for (const [surface, value] of Object.entries(scope.permission)) {
+    // Sugar expands per scope, before both the origin bookkeeping and the
+    // merge (ADR 0013 §9): origins are keyed by surface name, so expanding
+    // after composition would attribute every expanded rule to `builtin`.
+    const permission = expandDirectionalSugar(scope.permission);
+
+    for (const [surface, value] of Object.entries(permission)) {
       const baseVal = mergedPermission[surface];
       /* eslint-disable @typescript-eslint/no-unnecessary-condition -- defensive null/type checks; config values may differ at runtime */
       const bothObjects =
@@ -65,7 +71,7 @@ export function mergeScopesWithOrigins(
       }
     }
 
-    mergedPermission = mergeFlatPermissions(mergedPermission, scope.permission);
+    mergedPermission = mergeFlatPermissions(mergedPermission, permission);
   }
 
   return { mergedPermission, origins };

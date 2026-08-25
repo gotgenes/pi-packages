@@ -36,7 +36,7 @@ import {
 
 describe("PermissionManager — injected platform (#510)", () => {
   const winAllow: Ruleset = [
-    sessionRule("external_directory", "C:\\Users\\Foo\\pi\\*"),
+    sessionRule("external_directory_read", "C:\\Users\\Foo\\pi\\*"),
   ];
 
   it("win32 manager folds case for path-surface matching", () => {
@@ -48,7 +48,7 @@ describe("PermissionManager — injected platform (#510)", () => {
     const result = manager.check(
       {
         kind: "path-values",
-        surface: "external_directory",
+        surface: "external_directory_read",
         values: ["c:\\users\\foo\\pi\\docs\\readme.md"],
       },
       winAllow,
@@ -65,7 +65,7 @@ describe("PermissionManager — injected platform (#510)", () => {
     const result = manager.check(
       {
         kind: "path-values",
-        surface: "external_directory",
+        surface: "external_directory_read",
         values: ["c:\\users\\foo\\pi\\docs\\readme.md"],
       },
       winAllow,
@@ -90,13 +90,13 @@ describe("PermissionManager — injected platform (#510)", () => {
     });
 
     const allowed = manager.check(
-      { kind: "path-values", surface: "external_directory", values },
-      [sessionRule("external_directory", "/tmp*")],
+      { kind: "path-values", surface: "external_directory_read", values },
+      [sessionRule("external_directory_read", "/tmp*")],
     );
     expect(allowed.state).toBe("allow");
 
     const noRule = manager.check(
-      { kind: "path-values", surface: "external_directory", values },
+      { kind: "path-values", surface: "external_directory_read", values },
       [],
     );
     expect(noRule.state).not.toBe("allow");
@@ -120,14 +120,17 @@ describe("PermissionManager — injected platform (#510)", () => {
     });
 
     const allowed = manager.check(
-      { kind: "path-values", surface: "path", values },
-      [sessionRule("path", "*", "ask"), sessionRule("path", "/dev/null")],
+      { kind: "path-values", surface: "path_read", values },
+      [
+        sessionRule("path_read", "*", "ask"),
+        sessionRule("path_read", "/dev/null"),
+      ],
     );
     expect(allowed.state).toBe("allow");
 
     const askedWithoutRule = manager.check(
-      { kind: "path-values", surface: "path", values },
-      [sessionRule("path", "*", "ask")],
+      { kind: "path-values", surface: "path_read", values },
+      [sessionRule("path_read", "*", "ask")],
     );
     expect(askedWithoutRule.state).toBe("ask");
   });
@@ -154,7 +157,7 @@ function checkPathValues(
   values: readonly string[],
   agentName?: string,
   sessionRules?: Ruleset,
-  surface = "path",
+  surface = "path_read",
 ): PermissionCheckResult {
   return manager.check(
     { kind: "path-values", surface, values, agentName },
@@ -166,7 +169,7 @@ function checkPath(
   manager: PermissionManager,
   path: string,
   opts: { cwd?: string } = {},
-  surface = "path",
+  surface = "path_read",
   agentName?: string,
   sessionRules?: Ruleset,
 ): PermissionCheckResult {
@@ -191,13 +194,13 @@ describe("checkPermission — session rules", () => {
   it("session rule wins over the universal default (external_directory)", () => {
     const manager = createMissingConfigManager();
     const sessionRules: Ruleset = [
-      sessionRule("external_directory", "/other/project"),
+      sessionRule("external_directory_read", "/other/project"),
     ];
     const result = checkPath(
       manager,
       "/other/project",
       {},
-      "external_directory",
+      "external_directory_read",
       undefined,
       sessionRules,
     );
@@ -314,7 +317,7 @@ describe("checkPermission — source derivation and matchedPattern", () => {
           manager,
           "/trusted/repo",
           {},
-          "external_directory",
+          "external_directory_read",
         );
         expect(result.state).toBe("allow");
         expect(result.source).toBe("special");
@@ -336,6 +339,68 @@ describe("checkPermission — source derivation and matchedPattern", () => {
       const manager = createMissingConfigManager();
       const result = checkPath(manager, "/unknown", {}, "external_directory");
       expect(result.matchedPattern).toBeUndefined();
+    });
+  });
+
+  describe("directional path surfaces (special by family)", () => {
+    it.each([
+      "path_read",
+      "path_write",
+      "external_directory_read",
+      "external_directory_write",
+    ])("source is 'special' for a config-matched %s rule", (surface) => {
+      const { manager, cleanup } = createManagerWithConfig({
+        "*": "ask",
+        [surface]: { "/trusted/*": "allow" },
+      });
+      try {
+        const result = checkPath(manager, "/trusted/repo", {}, surface);
+        expect(result.state).toBe("allow");
+        expect(result.source).toBe("special");
+        expect(result.matchedPattern).toBe("/trusted/*");
+      } finally {
+        cleanup();
+      }
+    });
+
+    it("expands a bare path rule onto both directional surfaces at load", () => {
+      const { manager, cleanup } = createManagerWithConfig({
+        "*": "ask",
+        path: { "/secret/*": "deny" },
+      });
+      try {
+        for (const surface of ["path_read", "path_write"]) {
+          const result = checkPath(manager, "/secret/x", {}, surface);
+          expect(result.state).toBe("deny");
+          expect(result.matchedPattern).toBe("/secret/*");
+        }
+        // Nothing survives on the bare surface — the fold is the read path.
+        expect(checkPath(manager, "/secret/x", {}, "path").matchedPattern).toBe(
+          undefined,
+        );
+      } finally {
+        cleanup();
+      }
+    });
+
+    it("appends an explicit directional rule after the sugar-derived ones", () => {
+      const { manager, cleanup } = createManagerWithConfig({
+        "*": "ask",
+        external_directory: { "*": "ask" },
+        external_directory_read: { "/dev-root/**": "allow" },
+      });
+      try {
+        expect(
+          checkPath(manager, "/dev-root/x", {}, "external_directory_read")
+            .state,
+        ).toBe("allow");
+        expect(
+          checkPath(manager, "/dev-root/x", {}, "external_directory_write")
+            .state,
+        ).toBe("ask");
+      } finally {
+        cleanup();
+      }
     });
   });
 
@@ -523,7 +588,7 @@ describe("checkPermission — home path expansion in external_directory rules", 
         manager,
         join(homedir(), "trusted/repo"),
         {},
-        "external_directory",
+        "external_directory_read",
       );
       expect(result.state).toBe("allow");
       expect(result.source).toBe("special");
@@ -543,7 +608,7 @@ describe("checkPermission — home path expansion in external_directory rules", 
         manager,
         join(homedir(), "trusted/repo"),
         {},
-        "external_directory",
+        "external_directory_read",
       );
       expect(result.state).toBe("allow");
       expect(result.source).toBe("special");
@@ -563,7 +628,7 @@ describe("checkPermission — home path expansion in external_directory rules", 
         manager,
         join(homedir(), "private/secrets.txt"),
         {},
-        "external_directory",
+        "external_directory_read",
       );
       expect(result.state).toBe("deny");
       expect(result.matchedPattern).toBe("~/private/*");
@@ -582,7 +647,7 @@ describe("checkPermission — home path expansion in external_directory rules", 
         manager,
         "/tmp/not-home/file",
         {},
-        "external_directory",
+        "external_directory_read",
       );
       // Falls back to the "*": "ask" default — no allow from the ~/trusted/* rule.
       expect(result.state).toBe("ask");
@@ -860,7 +925,7 @@ describe("PermissionManager with in-memory PolicyLoader", () => {
         manager,
         "/trusted/repo",
         {},
-        "external_directory",
+        "external_directory_read",
       );
       expect(result.state).toBe("allow");
       expect(result.source).toBe("special");
@@ -1207,7 +1272,7 @@ describe("cross-cutting path surface", () => {
       path: { "*": "allow", "*.env": "deny" },
     });
     try {
-      const toolState = manager.getToolPermission("path");
+      const toolState = manager.getToolPermission("path_read");
       expect(toolState).toBe("allow");
     } finally {
       cleanup();
@@ -1219,12 +1284,12 @@ describe("cross-cutting path surface", () => {
       path: { "*": "allow", "*.env": "deny" },
     });
     try {
-      const sessionRules: Ruleset = [sessionRule("path", "/project/.env")];
+      const sessionRules: Ruleset = [sessionRule("path_read", "/project/.env")];
       const result = checkPath(
         manager,
         "/project/.env",
         {},
-        "path",
+        "path_read",
         undefined,
         sessionRules,
       );
@@ -2412,7 +2477,7 @@ test("external_directory permission falls back to universal default when not exp
   const { manager, cleanup } = createManager({ permission: {} });
 
   try {
-    const result = checkTool(manager, "external_directory", {});
+    const result = checkTool(manager, "external_directory_read", {});
     expect(result.state).toBe("ask");
     expect(result.source).toBe("special");
     expect(result.matchedPattern).toBe(undefined);
@@ -2427,7 +2492,7 @@ test("external_directory permission respects explicit deny", () => {
   });
 
   try {
-    const result = checkTool(manager, "external_directory", {});
+    const result = checkTool(manager, "external_directory_read", {});
     expect(result.state).toBe("deny");
     expect(result.source).toBe("special");
     expect(result.matchedPattern).toBe("*");
@@ -2442,7 +2507,7 @@ test("external_directory permission can be explicitly allowed", () => {
   });
 
   try {
-    const result = checkTool(manager, "external_directory", {});
+    const result = checkTool(manager, "external_directory_read", {});
     expect(result.state).toBe("allow");
     expect(result.source).toBe("special");
     expect(result.matchedPattern).toBe("*");
@@ -2467,10 +2532,15 @@ permission:
   );
 
   try {
-    const globalResult = checkTool(manager, "external_directory", {});
+    const globalResult = checkTool(manager, "external_directory_read", {});
     expect(globalResult.state).toBe("deny");
 
-    const agentResult = checkTool(manager, "external_directory", {}, "trusted");
+    const agentResult = checkTool(
+      manager,
+      "external_directory_read",
+      {},
+      "trusted",
+    );
     expect(agentResult.state).toBe("allow");
     expect(agentResult.source).toBe("special");
   } finally {
@@ -2484,7 +2554,7 @@ test("external_directory permission is not affected by unrelated surface keys", 
   });
 
   try {
-    const extResult = checkTool(manager, "external_directory", {});
+    const extResult = checkTool(manager, "external_directory_read", {});
     expect(extResult.state).toBe("allow");
     expect(extResult.matchedPattern).toBe("*");
   } finally {
@@ -2559,7 +2629,7 @@ permission:
       manager,
       `${homedir()}/Downloads/file.txt`,
       {},
-      "external_directory",
+      "external_directory_read",
       "trusted",
     );
     expect(allowed.state).toBe("allow");
@@ -2570,13 +2640,13 @@ permission:
       manager,
       `${homedir()}/Documents/secret.txt`,
       {},
-      "external_directory",
+      "external_directory_read",
       "trusted",
     );
     expect(denied.state).toBe("deny");
     expect(denied.matchedPattern).toBe("*");
 
-    const globalDenied = checkTool(manager, "external_directory", {});
+    const globalDenied = checkTool(manager, "external_directory_read", {});
     expect(globalDenied.state).toBe("deny");
     expect(globalDenied.source).toBe("special");
   } finally {
@@ -2661,11 +2731,11 @@ permission:
   );
 
   try {
-    const result = checkTool(manager, "external_directory", {}, "analyst");
+    const result = checkTool(manager, "external_directory_read", {}, "analyst");
     expect(result.state).toBe("allow");
     expect(result.source).toBe("special");
 
-    const globalResult = checkTool(manager, "external_directory", {});
+    const globalResult = checkTool(manager, "external_directory_read", {});
     expect(globalResult.state).toBe("deny");
   } finally {
     cleanup();
@@ -2745,14 +2815,14 @@ test("checkPermission returns source 'session' when session rules cover the exte
 
   try {
     const sessionRules = [
-      sessionRule("external_directory", "/other/project/*"),
+      sessionRule("external_directory_read", "/other/project/*"),
     ];
 
     const result = checkPath(
       manager,
       "/other/project/src/foo.ts",
       {},
-      "external_directory",
+      "external_directory_read",
       undefined,
       sessionRules,
     );
@@ -2771,12 +2841,12 @@ test("checkPermission falls back to config policy when session rules do not cove
 
   try {
     const sessionRules = [
-      sessionRule("external_directory", "/other/project/*"),
+      sessionRule("external_directory_read", "/other/project/*"),
     ];
 
     const result = checkTool(
       manager,
-      "external_directory",
+      "external_directory_read",
       { path: "/completely/different/path.ts" },
       undefined,
       sessionRules,
@@ -2798,7 +2868,7 @@ test("checkPermission with empty session rules is identical to call without sess
       manager,
       "/other/project/foo.ts",
       {},
-      "external_directory",
+      "external_directory_read",
       undefined,
       [],
     );
@@ -2806,10 +2876,10 @@ test("checkPermission with empty session rules is identical to call without sess
       manager,
       "/other/project/foo.ts",
       {},
-      "external_directory",
+      "external_directory_read",
     );
     const expected: PermissionCheckResult = {
-      toolName: "external_directory",
+      toolName: "external_directory_read",
       state: "deny",
       matchedPattern: "*",
       source: "special",
@@ -2827,7 +2897,7 @@ test("session rules for one surface do not affect checks on other surfaces", () 
 
   try {
     const sessionRules = [
-      sessionRule("external_directory", "/other/project/*"),
+      sessionRule("external_directory_read", "/other/project/*"),
     ];
 
     const bashResult = checkTool(
@@ -2861,14 +2931,14 @@ test("session rules override config deny for external_directory", () => {
 
   try {
     const sessionRules = [
-      sessionRule("external_directory", "/other/project/*"),
+      sessionRule("external_directory_read", "/other/project/*"),
     ];
 
     const result = checkPath(
       manager,
       "/other/project/src/foo.ts",
       {},
-      "external_directory",
+      "external_directory_read",
       undefined,
       sessionRules,
     );
@@ -3160,7 +3230,7 @@ describe("checkPathPolicy", () => {
       expect(result.state).toBe("allow");
       expect(result.matchedPattern).toBe(`${cwd}/*`);
       expect(result.source).toBe("special");
-      expect(result.toolName).toBe("path");
+      expect(result.toolName).toBe("path_read");
     } finally {
       cleanup();
     }
@@ -3187,7 +3257,7 @@ describe("checkPathPolicy", () => {
       path: { "*": "ask", "src/*": "deny" },
     });
     try {
-      const sessionRules: Ruleset = [sessionRule("path", "src/*")];
+      const sessionRules: Ruleset = [sessionRule("path_read", "src/*")];
       const result = checkPathValues(
         manager,
         ["src/App.jsx"],
@@ -3224,12 +3294,12 @@ describe("checkPathPolicy", () => {
         ["/tmp/x"],
         undefined,
         undefined,
-        "external_directory",
+        "external_directory_read",
       );
       expect(result.state).toBe("allow");
       expect(result.matchedPattern).toBe("/tmp/*");
       expect(result.source).toBe("special");
-      expect(result.toolName).toBe("external_directory");
+      expect(result.toolName).toBe("external_directory_read");
     } finally {
       cleanup();
     }
@@ -3243,7 +3313,7 @@ describe("checkPathPolicy", () => {
     try {
       // No path rule denies; the external_directory allow must NOT apply here.
       const result = checkPathValues(manager, ["/tmp/x"]);
-      expect(result.toolName).toBe("path");
+      expect(result.toolName).toBe("path_read");
       expect(result.state).toBe("allow");
       expect(result.matchedPattern).toBe("*");
     } finally {
@@ -3344,14 +3414,14 @@ describe("check — path-values intent", () => {
     try {
       const intent: ResolvedAccessIntent = {
         kind: "path-values",
-        surface: "path",
+        surface: "path_read",
         values: [`${cwd}/src/App.jsx`, "src/App.jsx"],
       };
       const result = manager.check(intent);
       expect(result.state).toBe("allow");
       expect(result.matchedPattern).toBe(`${cwd}/*`);
       expect(result.source).toBe("special");
-      expect(result.toolName).toBe("path");
+      expect(result.toolName).toBe("path_read");
     } finally {
       cleanup();
     }
@@ -3364,14 +3434,14 @@ describe("check — path-values intent", () => {
     try {
       const intent: ResolvedAccessIntent = {
         kind: "path-values",
-        surface: "external_directory",
+        surface: "external_directory_read",
         values: ["/tmp/x"],
       };
       const result = manager.check(intent);
       expect(result.state).toBe("allow");
       expect(result.matchedPattern).toBe("/tmp/*");
       expect(result.source).toBe("special");
-      expect(result.toolName).toBe("external_directory");
+      expect(result.toolName).toBe("external_directory_read");
     } finally {
       cleanup();
     }
@@ -3384,7 +3454,7 @@ describe("check — path-values intent", () => {
     try {
       const intent: ResolvedAccessIntent = {
         kind: "path-values",
-        surface: "path",
+        surface: "path_read",
         values: [],
       };
       const result = manager.check(intent);
@@ -3400,10 +3470,10 @@ describe("check — path-values intent", () => {
       path: { "*": "ask", "src/*": "deny" },
     });
     try {
-      const sessionRules: Ruleset = [sessionRule("path", "src/*")];
+      const sessionRules: Ruleset = [sessionRule("path_read", "src/*")];
       const intent: ResolvedAccessIntent = {
         kind: "path-values",
-        surface: "path",
+        surface: "path_read",
         values: ["src/App.jsx"],
       };
       const result = manager.check(intent, sessionRules);
@@ -3421,7 +3491,7 @@ describe("check — path-values intent", () => {
     try {
       const intent: ResolvedAccessIntent = {
         kind: "path-values",
-        surface: "path",
+        surface: "path_read",
         values: [`${cwd}/src/App.jsx`, "src/App.jsx"],
       };
       const result = manager.check(intent);

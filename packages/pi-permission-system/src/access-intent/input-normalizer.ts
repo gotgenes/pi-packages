@@ -3,7 +3,7 @@ import type { PathNormalizer } from "#src/path-normalizer";
 import { getNonEmptyString, toRecord } from "#src/value-guards";
 import type { AccessIntent, ResolvedAccessIntent } from "./access-intent";
 import { createMcpPermissionTargets } from "./mcp-targets";
-import { PATH_SURFACES } from "./path-surfaces";
+import { PATH_SURFACES, surfaceFamilyOf } from "./path-surfaces";
 import { classifyToolKind } from "./tool-kind";
 
 /**
@@ -95,7 +95,7 @@ function buildInputForSurface(
   const v = value ?? "";
   if (surface === "bash") return { command: v };
   if (surface === "skill") return { name: v };
-  if (surface === "external_directory") return { path: v };
+  if (surfaceFamilyOf(surface) === "external_directory") return { path: v };
   // MCP and tool surfaces: normalizeInput handles them from the surface alone.
   return {};
 }

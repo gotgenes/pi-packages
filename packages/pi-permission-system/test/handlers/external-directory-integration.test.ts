@@ -10,7 +10,7 @@
  */
 
 import { describe, expect, it, vi } from "vitest";
-
+import { surfaceFamilyOf } from "#src/access-intent/path-surfaces";
 import { EXTENSION_TAG } from "#src/presentation/agent-renderer";
 import { buildExternalDirectoryAskPayload } from "#src/presentation/path-ask-payload";
 import type { PermissionCheckResult } from "#src/types";
@@ -407,7 +407,7 @@ describe("external_directory per-agent override", () => {
           _input: unknown,
           agentName?: string,
         ): PermissionCheckResult => {
-          if (surface === "external_directory") {
+          if (surfaceFamilyOf(surface) === "external_directory") {
             const state =
               agentName === "special-agent" ? "allow" : ("deny" as const);
             return {
