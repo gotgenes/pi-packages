@@ -121,7 +121,19 @@ export default function (pi: ExtensionAPI) {
           ...rest,
           sessionManager: sessionManager as SessionManager,
           resourceLoader: resourceLoader as ResourceLoader,
+          // Pi >=0.80.8 dropped `modelRegistry` from CreateAgentSessionOptions in
+          // favour of `modelRuntime`; passing only `modelRegistry` is silently
+          // ignored, so the child builds a fresh runtime from config + auth and
+          // loses any RUNTIME-registered providers the parent added (e.g.
+          // pi-claude-bridge, registered via pi.registerProvider), which surfaces
+          // as "No API key found for <provider>" inside subagents. Forward the
+          // parent registry's underlying runtime so the child inherits every
+          // provider the parent has. Keep `modelRegistry` for older Pi builds
+          // whose option was still the registry facade.
           modelRegistry: modelRegistry as SdkModelRegistry,
+          ...((modelRegistry as unknown as { runtime?: unknown }).runtime !== undefined
+            ? { modelRuntime: (modelRegistry as unknown as { runtime?: unknown }).runtime as never }
+            : {}),
         }),
       assemblerIO: {
         buildAgentPrompt,
