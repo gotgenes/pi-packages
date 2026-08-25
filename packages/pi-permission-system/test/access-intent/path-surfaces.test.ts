@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import {
+  capabilitySurfaceForEffect,
   capabilitySurfaceForTool,
   PATH_BEARING_TOOLS,
   PATH_SURFACES,
@@ -146,6 +147,41 @@ describe("capabilitySurfaceForTool", () => {
     expect(capabilitySurfaceForTool("path", toolName)).toBe("path");
     expect(capabilitySurfaceForTool("external_directory", toolName)).toBe(
       "external_directory",
+    );
+  });
+});
+
+describe("capabilitySurfaceForEffect", () => {
+  test("names the read surface for a proven read", () => {
+    expect(capabilitySurfaceForEffect("path", "read")).toBe("path_read");
+    expect(capabilitySurfaceForEffect("external_directory", "read")).toBe(
+      "external_directory_read",
+    );
+  });
+
+  test("names the write surface for a proven write", () => {
+    expect(capabilitySurfaceForEffect("path", "write")).toBe("path_write");
+    expect(capabilitySurfaceForEffect("external_directory", "write")).toBe(
+      "external_directory_write",
+    );
+  });
+
+  test("names the bare family for an unproven effect, which folds both", () => {
+    expect(capabilitySurfaceForEffect("path", "unproven")).toBe("path");
+    expect(capabilitySurfaceForEffect("external_directory", "unproven")).toBe(
+      "external_directory",
+    );
+  });
+
+  test("agrees with the tool-keyed selector, which routes through it", () => {
+    expect(capabilitySurfaceForEffect("path", "read")).toBe(
+      capabilitySurfaceForTool("path", "read"),
+    );
+    expect(capabilitySurfaceForEffect("path", "write")).toBe(
+      capabilitySurfaceForTool("path", "write"),
+    );
+    expect(capabilitySurfaceForEffect("path", "unproven")).toBe(
+      capabilitySurfaceForTool("path", "edit"),
     );
   });
 });

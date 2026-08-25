@@ -1,3 +1,5 @@
+import type { AttributedEffect } from "#src/access-intent/effect";
+
 /**
  * File tools that only read — never write — the filesystem.
  * Only these tools are eligible for the Pi infrastructure auto-allow.
@@ -81,21 +83,50 @@ export function surfaceFamilyMembers(
 }
 
 /**
+ * The narrowest surface in `family` that an attributed effect names.
+ *
+ * An unproven attribution names the bare family, whose two members the
+ * resolver folds most-restrictive — the fail-closed base case of ADR 0013 §10,
+ * which is also where a proven-both access lands.
+ */
+export function capabilitySurfaceForEffect(
+  family: string,
+  effect: AttributedEffect,
+): string {
+  const [read, write] = CAPABILITY_SUFFIXES;
+  switch (effect) {
+    case "read":
+      return `${family}${read}`;
+    case "write":
+      return `${family}${write}`;
+    case "unproven":
+      return family;
+  }
+}
+
+/**
  * The narrowest surface in `family` that `toolName`'s identity proves.
  *
- * A tool's name already establishes its direction: the read-only file tools
- * prove a read, `write` proves a write, and everything else — `edit` (which
- * does both), an MCP tool, an extension tool, a bash token — proves nothing
- * narrower than the family, whose bare name consults both members.
+ * A tool's name is one of the three proof sources ADR 0013 §7 names, so it
+ * routes through the same effect-keyed selector every other source does:
+ * `edit` and an unproven bash token reach the bare family by the one path.
  */
 export function capabilitySurfaceForTool(
   family: string,
   toolName: string,
 ): string {
-  const [read, write] = CAPABILITY_SUFFIXES;
-  if (READ_ONLY_PATH_BEARING_TOOLS.has(toolName)) return `${family}${read}`;
-  if (toolName === "write") return `${family}${write}`;
-  return family;
+  return capabilitySurfaceForEffect(family, effectProvenByTool(toolName));
+}
+
+/**
+ * The effect a tool's identity proves: the read-only file tools prove a read,
+ * `write` proves a write, and everything else — `edit` (which does both), an
+ * MCP tool, an extension tool — proves nothing.
+ */
+function effectProvenByTool(toolName: string): AttributedEffect {
+  if (READ_ONLY_PATH_BEARING_TOOLS.has(toolName)) return "read";
+  if (toolName === "write") return "write";
+  return "unproven";
 }
 
 function directionalSurfaceNames(): string[] {
