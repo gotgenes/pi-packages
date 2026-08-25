@@ -988,6 +988,8 @@ No decline, so the regular improvement rotation continues.
 #### Open-issue sweep dispositions
 
 - [#806] and [#807] — filed for Steps 1 and 2, the two staging slices with no pre-existing issue.
+- [#808] — filed by Step 1's planning; adopted as Step 9.
+  Step 1 converts `permissionSchema` to a named-property object so the four directional keys carry their own documentation, which leaves the five surfaces people actually write anonymous under `additionalProperties`; closing that asymmetry is a peer-sized piece of the same config-schema surface.
 - [#803] — adopted as Step 3 (wrapper transparency, ADR 0013 §11 and staging slice 3).
 - [#742] — adopted as Step 4, having been swept out of Phase 13 as "a strong candidate for the next phase's spine".
   ADR 0013 §10 recasts it as a combinator clause of the verdict fold rather than a patch, so fixing it now is the fold's first clause.
@@ -1018,22 +1020,23 @@ No decline, so the regular improvement rotation continues.
 
 ### Health metrics
 
-| Metric                                                                     | Baseline (2026-08-24) | Phase 14 target |
-| -------------------------------------------------------------------------- | --------------------- | --------------- |
-| Directional surfaces in `PATH_SURFACES`                                    | 0                     | 4               |
-| Directional keys in `config-schema.ts`                                     | 0                     | ≥ 2             |
-| Sugar-expansion site in `normalize.ts`                                     | 0                     | ≥ 1             |
-| Family-resolved delegation exclusion (`delegation-envelope.ts`)            | 0                     | ≥ 1             |
-| Effect-vocabulary module present (`access-intent/bash/command-effects.ts`) | 0                     | 1               |
-| Wrapper-transparency predicate (`wrapper-analysis.ts`)                     | 0                     | ≥ 1             |
-| Nested-execution descent sites in the command enumerator                   | 3                     | ≥ 4             |
-| Authorizer resolution values in `permission-events.ts`                     | 0                     | 2               |
-| ADR 0012 amendments recording the root-slot decision                       | 2                     | ≥ 3             |
-| Absent-child alarm event in `src/`                                         | 0                     | ≥ 1             |
-| Split-provider extractor test files                                        | 0                     | ≥ 1             |
-| fallow health score                                                        | 78 (B)                | ≥ 78            |
-| Production duplication                                                     | 0.1%                  | ≤ 0.2%          |
-| Dead exports                                                               | 0                     | 0               |
+| Metric                                                                      | Baseline (2026-08-24) | Phase 14 target |
+| --------------------------------------------------------------------------- | --------------------- | --------------- |
+| Directional surfaces in `PATH_SURFACES`                                     | 0                     | 4               |
+| Directional keys in `config-schema.ts`                                      | 0                     | ≥ 2             |
+| Sugar-expansion site in `normalize.ts`                                      | 0                     | ≥ 1             |
+| Family-resolved delegation exclusion (`delegation-envelope.ts`)             | 0                     | ≥ 1             |
+| Effect-vocabulary module present (`access-intent/bash/command-effects.ts`)  | 0                     | 1               |
+| Wrapper-transparency predicate (`wrapper-analysis.ts`)                      | 0                     | ≥ 1             |
+| Nested-execution descent sites in the command enumerator                    | 3                     | ≥ 4             |
+| Authorizer resolution values in `permission-events.ts`                      | 0                     | 2               |
+| ADR 0012 amendments recording the root-slot decision                        | 2                     | ≥ 3             |
+| Absent-child alarm event in `src/`                                          | 0                     | ≥ 1             |
+| Named permission-surface properties (`surfaceProperty`, `config-schema.ts`) | 0                     | ≥ 9             |
+| Split-provider extractor test files                                         | 0                     | ≥ 1             |
+| fallow health score                                                         | 78 (B)                | ≥ 78            |
+| Production duplication                                                      | 0.1%                  | ≤ 0.2%          |
+| Dead exports                                                                | 0                     | 0               |
 
 Recompute commands (run from the repo root):
 
@@ -1047,11 +1050,12 @@ Recompute commands (run from the repo root):
 - Authorizer resolutions: `grep -cE 'authorizer_allowed|authorizer_denied' packages/pi-permission-system/src/permission-events.ts`
 - ADR 0012 amendments: `grep -c '#### Amendment' packages/pi-permission-system/docs/decisions/0012-cross-node-extension-contract.md`
 - Absent-child alarm: `grep -rn 'child_node_absent' packages/pi-permission-system/src --include="*.ts" | wc -l`
+- Named surface properties: `grep -c 'surfaceProperty' packages/pi-permission-system/src/config-schema.ts`
 - Split-provider tests: `grep -rl 'split-provider' packages/pi-permission-system/test | wc -l`
 - Health/duplication/dead exports: `pnpm fallow health --score --workspace @gotgenes/pi-permission-system` / `pnpm fallow dupes --workspace @gotgenes/pi-permission-system` / `pnpm fallow dead-code --workspace @gotgenes/pi-permission-system`
 
-Seven rows grep for a name this phase has not created yet — `expandDirectionalSugar`, `surfaceFamily`, `command-effects.ts`, `isTransparentWrapper`, `authorizer_allowed`/`authorizer_denied`, `child_node_absent`, and the `split-provider` test phrase.
-The step that creates each (Steps 1, 1, 2, 3, 5, 7, 8 respectively) must either use the roadmap's name or update the metric row in the same commit, or the rename silently breaks the delivered-vs-predicted verification at phase close.
+Eight rows grep for a name this phase has not created yet — `expandDirectionalSugar`, `surfaceFamily`, `command-effects.ts`, `isTransparentWrapper`, `authorizer_allowed`/`authorizer_denied`, `child_node_absent`, the `split-provider` test phrase, and `surfaceProperty`.
+The step that creates each (Steps 1, 1, 2, 3, 5, 7, 8, 9 respectively) must either use the roadmap's name or update the metric row in the same commit, or the rename silently breaks the delivered-vs-predicted verification at phase close.
 The fallow health score is carried as a floor rather than a target: it is blind to the type-level wins a cause-driven phase produces, and its current value is depressed by a churn artifact this phase does not set out to fix.
 
 ### Steps
@@ -1174,6 +1178,19 @@ The child then gates `deploy` with no extractor, its path never reaches the chil
 
 Release: independent
 
+#### Step 9: Name the well-known permission surfaces in the config schema ([#808])
+
+**Cause:** Step 1 converts `permissionSchema` from a bare record to a named-property object so the four directional keys carry editor autocomplete and hover documentation.
+The five surfaces people actually write — `path`, `external_directory`, `bash`, `mcp`, `skill` — stay anonymous `additionalProperties`, and their documentation stays fused into one ~2000-character `markdownDescription` on the `permission` object that an editor cannot bind to the key under the cursor.
+
+- **Smell:** Category F (documentation that exists but is not reachable from where it is needed).
+- **Target:** `src/config-schema.ts` gains a `surfaceProperty` helper building one named property per well-known surface, applied to the five above beside Step 1's four directional keys, with `.catchall(...)` retained so tool-name surfaces keep validating; each surface's prose moves out of the object-level `markdownDescription` onto its own property, leaving the object-level text to cover the flat shape, the string-vs-map shorthand, last-match-wins, and the global → project → agent merge order.
+  Regenerated with `pnpm run gen:schema`; the parity test in `test/config-schema.test.ts` guards the drift.
+- **Outcome:** every well-known surface completes and self-documents in a schema-aware editor; `grep -c 'surfaceProperty'` on `config-schema.ts` goes 0 → ≥ 9.
+- **Impact 2 / Risk 1 / Priority 10.**
+
+Release: independent
+
 ### Step dependency diagram
 
 ```mermaid
@@ -1185,7 +1202,9 @@ flowchart TD
     S6["Step 6 (#796): schedule the root-slot removal"]
     S7["Step 7 (#792): alarm on a child with no node"]
     S8["Step 8 (#793): split-provider extractor gap"]
+    S9["Step 9 (#808): name the well-known surfaces"]
     S7 -.-> S8
+    S1 --> S9
 ```
 
 The dashed edge is a sequencing preference, not a dependency: Steps 7 and 8 both touch the cross-node reading surface, and Step 7's alarm needs the same parent-side lookup Step 8's mechanism A would introduce — landing Step 7 first tells Step 8 whether that surface already exists.
@@ -1199,12 +1218,13 @@ The dashed edge is a sequencing preference, not a dependency: Steps 7 and 8 both
   It touches `command-enumeration.ts` and `nested-execution.ts`, which Track A's Step 2 also reads — land Step 4 before Step 2 or after Step 3, not concurrently.
 - **Track C — decision attribution:** Step 5, any time; it touches `permission-events.ts`, `runner.ts`, and `gates/helpers.ts`, and Track A's tidy-first prep splits `runDescriptor` in the same file — sequence it against Step 2 rather than running both at once.
 - **Track D — cross-node contract residuals:** Steps 6, 7, 8, disjoint from every other track (`service.ts`, `service-lifecycle.ts`, `authority/subagent-registry.ts`, `tool-access-extractor-registry.ts`).
+- **Track E — config-schema ergonomics:** Step 9, after Step 1 has converted `permissionSchema` to a named-property object; it touches `config-schema.ts` and the generated JSON Schema, which no other step edits once Step 1 has landed.
 
 ### Release batches
 
 - **Batch "capability-axis":** Steps 1, 2, 3 (ship together; tail = Step 3; release vehicle = Step 3's `fix:` for [#803], with Step 1's `feat:` for the new config keys riding the same release — Step 2 is a hidden `refactor:` on its own).
   The batch ships together because Steps 1 and 2 relieve nothing a user can observe until a directional grant exists to write, while Step 3's relief is immediate and unconditional.
-- Independently releasable: Step 4 (`fix:`), Step 5 (`feat:`, possibly `feat!:` — see the step's bump note), Step 7 (`feat:`), Step 8 (`fix:` or `feat:` depending on the mechanism chosen).
+- Independently releasable: Step 4 (`fix:`), Step 5 (`feat:`, possibly `feat!:` — see the step's bump note), Step 7 (`feat:`), Step 8 (`fix:` or `feat:` depending on the mechanism chosen), Step 9 (`feat:` — the generated schema ships in the tarball, so new completions and hover text are user-observable).
 - Step 6 cuts no release on its own: its deliverable is an ADR amendment (`docs:`, hidden), and any code it schedules lands in a later step or a later phase.
 
 ## Refactoring history
@@ -1294,4 +1314,5 @@ Each phase's findings, numbered plan, dependency diagram, and health metrics are
 [#804]: https://github.com/gotgenes/pi-packages/issues/804
 [#806]: https://github.com/gotgenes/pi-packages/issues/806
 [#807]: https://github.com/gotgenes/pi-packages/issues/807
+[#808]: https://github.com/gotgenes/pi-packages/issues/808
 [ADR-0002]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-subagents/docs/decisions/0002-extensions-on-a-minimal-core.md
