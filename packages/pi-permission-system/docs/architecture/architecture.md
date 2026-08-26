@@ -997,6 +997,8 @@ No decline, so the regular improvement rotation continues.
 - [#810] — filed by Step 2's planning; adopted as Step 10.
   Step 2 narrows a bash session grant to the direction its gate proved, but `SessionApproval` carries one surface for all its patterns, so a mixed-direction command still records on the bare family.
   Closing that gap touches the forwarded-approval wire, which Step 2 deliberately keeps out of its scope.
+- [#813] — filed by Step 2's implementation; adopted as Step 11.
+  Step 2's narrowing costs a second prompt in the read-after-write flow, and relieving it is a prompt affordance rather than a reshape of `SessionApproval`, so it stands as its own step beside Step 10 rather than inside it.
 - [#803] — adopted as Step 3 (wrapper transparency, ADR 0013 §11 and staging slice 3).
 - [#742] — adopted as Step 4, having been swept out of Phase 13 as "a strong candidate for the next phase's spine".
   ADR 0013 §10 recasts it as a combinator clause of the verdict fold rather than a patch, so fixing it now is the fold's first clause.
@@ -1223,6 +1225,20 @@ The grant is then wider than the prompt the user answered.
 
 Release: independent
 
+#### Step 11: The user chooses a session grant's direction width ([#813])
+
+**Cause:** Step 2 narrows a bash session grant to the direction the gate proved, which is what the prompt named and what least privilege requires.
+It also costs a prompt the user had no way to avoid: approving `echo hi > out.txt` for the session grants a write, so a following `cat out.txt` asks again.
+The read-after-write flow is common, the second ask carries no new information, and the only remedy today is to answer it — the user cannot say "and reads too" at the moment they already have the context.
+
+- **Smell:** Category C (a decision the user is qualified to make has no representation at the point they are asked).
+- **Target:** the ask prompt offers a both-directions session grant beside the proven-direction one, and `src/handlers/gates/` records the chosen width; the narrow grant stays the default, so a user who never notices the second option is never granted more than the prompt named.
+- **Design question the step must settle:** whether the choice is a second approve-for-session affordance or a modifier on the existing one — ADR 0011 caps what an ask may render, and a third session option competes for the same prompt real estate the evidence list uses.
+- **Outcome:** approving `echo hi > ~/other/out.txt` at the wider width silences the following `cat ~/other/out.txt`; approving it at the default width still asks, and the review log's `decidedBy` names which width was chosen.
+- **Impact 2 / Risk 1 / Priority 10.**
+
+Release: independent
+
 ### Step dependency diagram
 
 ```mermaid
@@ -1236,12 +1252,17 @@ flowchart TD
     S8["Step 8 (#793): split-provider extractor gap"]
     S9["Step 9 (#808): name the well-known surfaces"]
     S10["Step 10 (#810): per-pattern approval surfaces"]
+    S11["Step 11 (#813): user-chosen grant width"]
     S7 -.-> S8
     S1 --> S9
     S2 --> S10
+    S2 --> S11
+    S10 -.-> S11
 ```
 
-The dashed edge is a sequencing preference, not a dependency: Steps 7 and 8 both touch the cross-node reading surface, and Step 7's alarm needs the same parent-side lookup Step 8's mechanism A would introduce — landing Step 7 first tells Step 8 whether that surface already exists.
+The dashed edges are sequencing preferences, not dependencies.
+Steps 7 and 8 both touch the cross-node reading surface, and Step 7's alarm needs the same parent-side lookup Step 8's mechanism A would introduce — landing Step 7 first tells Step 8 whether that surface already exists.
+Steps 10 and 11 both write a session grant from a bash gate: Step 10 decides whether one approval can carry two surfaces, which is the shape Step 11's wider width would be recorded in, so landing Step 10 first tells Step 11 what it is choosing between.
 
 ### Parallel tracks
 
@@ -1253,13 +1274,14 @@ The dashed edge is a sequencing preference, not a dependency: Steps 7 and 8 both
 - **Track C — decision attribution:** Step 5, any time; it touches `permission-events.ts`, `runner.ts`, and `gates/helpers.ts`, and Track A's tidy-first prep splits `runDescriptor` in the same file — sequence it against Step 2 rather than running both at once.
 - **Track D — cross-node contract residuals:** Steps 6, 7, 8, disjoint from every other track (`service.ts`, `service-lifecycle.ts`, `authority/subagent-registry.ts`, `tool-access-extractor-registry.ts`).
 - **Track E — config-schema ergonomics:** Step 9, after Step 1 has converted `permissionSchema` to a named-property object; it touches `config-schema.ts` and the generated JSON Schema, which no other step edits once Step 1 has landed.
-- **Track F — session-approval width:** Step 10, after Step 2 has proven a direction to record; it touches `session-approval.ts`, `session-rules.ts`, and the forwarded-approval wire, which Track A leaves alone.
+- **Track F — session-approval width:** Steps 10 and 11, after Step 2 has proven a direction to record.
+  Step 10 touches `session-approval.ts`, `session-rules.ts`, and the forwarded-approval wire, which Track A leaves alone; Step 11 touches the ask prompt and the gates that build a `SessionApproval`, so it reads Step 10's shape rather than competing for it.
 
 ### Release batches
 
 - **Batch "capability-axis":** Steps 1, 2, 3 (ship together; tail = Step 3; release vehicle = Step 3's `fix:` for [#803], with Step 1's `feat:` for the new config keys riding the same release — Step 2 is a hidden `refactor:` on its own).
   The batch ships together because Steps 1 and 2 relieve nothing a user can observe until a directional grant exists to write, while Step 3's relief is immediate and unconditional.
-- Independently releasable: Step 4 (`fix:`), Step 5 (`feat:`, possibly `feat!:` — see the step's bump note), Step 7 (`feat:`), Step 8 (`fix:` or `feat:` depending on the mechanism chosen), Step 9 (`feat:` — the generated schema ships in the tarball, so new completions and hover text are user-observable), Step 10 (`feat:`, or `feat!:` if the wire shape is not made tolerant).
+- Independently releasable: Step 4 (`fix:`), Step 5 (`feat:`, possibly `feat!:` — see the step's bump note), Step 7 (`feat:`), Step 8 (`fix:` or `feat:` depending on the mechanism chosen), Step 9 (`feat:` — the generated schema ships in the tarball, so new completions and hover text are user-observable), Step 10 (`feat:`, or `feat!:` if the wire shape is not made tolerant), Step 11 (`feat:` — a new prompt affordance the user acts on).
 - Step 6 cuts no release on its own: its deliverable is an ADR amendment (`docs:`, hidden), and any code it schedules lands in a later step or a later phase.
 
 ## Refactoring history
@@ -1352,4 +1374,5 @@ Each phase's findings, numbered plan, dependency diagram, and health metrics are
 [#807]: https://github.com/gotgenes/pi-packages/issues/807
 [#808]: https://github.com/gotgenes/pi-packages/issues/808
 [#810]: https://github.com/gotgenes/pi-packages/issues/810
+[#813]: https://github.com/gotgenes/pi-packages/issues/813
 [ADR-0002]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-subagents/docs/decisions/0002-extensions-on-a-minimal-core.md
