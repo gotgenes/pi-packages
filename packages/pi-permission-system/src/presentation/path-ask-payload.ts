@@ -59,6 +59,12 @@ interface BashExternalDirectoryAskFacts {
   agentName: string | null;
   toolName: string;
   matchedPattern?: string;
+  /**
+   * The surface that decided — a directional member when the deciding path's
+   * effect was proven, the bare family otherwise. Distinct from the payload
+   * `kind`, which stays coarse so renderer dispatch is untouched.
+   */
+  surface: string;
 }
 
 /** A bash ask whose command references paths outside the working directory. */
@@ -69,7 +75,7 @@ export function buildBashExternalDirectoryAskPayload(
     kind: "bash_external_directory",
     request: {
       requester: localRequester(facts.agentName),
-      surface: "external_directory",
+      surface: facts.surface,
       toolName: facts.toolName,
       invokedToolName: null,
       value: facts.command,

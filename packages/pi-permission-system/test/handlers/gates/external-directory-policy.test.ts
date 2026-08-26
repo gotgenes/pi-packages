@@ -1,15 +1,30 @@
 import { describe, expect, it } from "vitest";
 import { AccessPath } from "#src/access-intent/access-path";
+import type { BashExternalPath } from "#src/access-intent/bash/bash-path-resolver";
+import { type TokenEffect, UNPROVEN_EFFECT } from "#src/access-intent/effect";
 import {
   resolveExternalDirectoryPolicy,
   selectUncoveredExternalPaths,
 } from "#src/handlers/gates/external-directory-policy";
 import { posixPathFlavor } from "#src/path/path-flavor";
 import type { PermissionCheckResult } from "#src/types";
-
 import { makeResolver } from "#test/helpers/gate-fixtures";
 
 const cwd = "/test/project";
+
+const CORE_READ: TokenEffect = { effect: "read", source: "core" };
+const SYNTAX_WRITE: TokenEffect = { effect: "write", source: "syntax" };
+
+/** An external access at `value`, attributed `effect`. */
+function access(
+  value: string,
+  effect: TokenEffect = UNPROVEN_EFFECT,
+): BashExternalPath {
+  return {
+    path: AccessPath.forPath(value, { cwd, flavor: posixPathFlavor }),
+    effect,
+  };
+}
 
 function makeCheckResult(
   state: "allow" | "deny" | "ask",
@@ -73,14 +88,10 @@ describe("resolveExternalDirectoryPolicy", () => {
 
 describe("selectUncoveredExternalPaths", () => {
   it("returns no uncovered paths when every path resolves to allow", () => {
-    const paths = [
-      AccessPath.forPath("/outside/a.ts", { cwd, flavor: posixPathFlavor }),
-      AccessPath.forPath("/outside/b.ts", { cwd, flavor: posixPathFlavor }),
-    ];
     const resolver = makeResolver(makeCheckResult("allow"));
 
     const { uncovered, worstCheck } = selectUncoveredExternalPaths(
-      paths,
+      [access("/outside/a.ts"), access("/outside/b.ts")],
       resolver,
       undefined,
     );
@@ -90,14 +101,8 @@ describe("selectUncoveredExternalPaths", () => {
   });
 
   it("collects only paths whose resolved state is not allow", () => {
-    const allowed = AccessPath.forPath("/outside/ok.ts", {
-      cwd,
-      flavor: posixPathFlavor,
-    });
-    const asked = AccessPath.forPath("/outside/ask.ts", {
-      cwd,
-      flavor: posixPathFlavor,
-    });
+    const allowed = access("/outside/ok.ts");
+    const asked = access("/outside/ask.ts");
     const resolver = makeResolver();
     resolver.resolve.mockImplementation((intent) => {
       const values =
@@ -113,18 +118,53 @@ describe("selectUncoveredExternalPaths", () => {
       undefined,
     );
 
-    expect(uncovered.map(({ path }) => path.value())).toEqual([asked.value()]);
+    expect(uncovered.map(({ path }) => path.value())).toEqual([
+      asked.path.value(),
+    ]);
+  });
+
+  it("routes each path through the surface its own effect names", () => {
+    const resolver = makeResolver(makeCheckResult("ask"));
+
+    const { uncovered } = selectUncoveredExternalPaths(
+      [
+        access("/outside/read.ts", CORE_READ),
+        access("/outside/write.ts", SYNTAX_WRITE),
+        access("/outside/unknown.ts"),
+      ],
+      resolver,
+      undefined,
+    );
+
+    expect(uncovered.map(({ surface }) => surface)).toEqual([
+      "external_directory_read",
+      "external_directory_write",
+      "external_directory",
+    ]);
+    expect(
+      resolver.resolve.mock.calls.map(([intent]) => intent.surface),
+    ).toEqual([
+      "external_directory_read",
+      "external_directory_write",
+      "external_directory",
+    ]);
+  });
+
+  it("returns each uncovered entry's effect for the blame line", () => {
+    const resolver = makeResolver(makeCheckResult("ask"));
+
+    const { uncovered } = selectUncoveredExternalPaths(
+      [access("/outside/read.ts", CORE_READ)],
+      resolver,
+      undefined,
+    );
+
+    expect(uncovered.map(({ effect }) => effect)).toEqual([CORE_READ]);
   });
 
   it("returns the most restrictive uncovered check as worstCheck (deny > ask)", () => {
-    const asked = AccessPath.forPath("/outside/ask.ts", {
-      cwd,
-      flavor: posixPathFlavor,
-    });
-    const denied = AccessPath.forPath("/outside/deny.ts", {
-      cwd,
-      flavor: posixPathFlavor,
-    });
+    const asked = access("/outside/ask.ts");
+    const denied = access("/outside/deny.ts");
     const resolver = makeResolver();
     resolver.resolve.mockImplementation((intent) => {
       const values =

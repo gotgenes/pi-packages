@@ -933,6 +933,7 @@ describe("the bash external-directory ask payload", () => {
       ...facts,
       agentName: facts.agentName ?? null,
       toolName: "bash",
+      surface: "external_directory",
     });
   }
 
@@ -1119,6 +1120,7 @@ describe("the bash external-directory denial the agent sees", () => {
         cwd: "/projects/my-app",
         agentName: null,
         toolName: "bash",
+        surface: "external_directory",
         matchedPattern: "*",
       }),
       null,

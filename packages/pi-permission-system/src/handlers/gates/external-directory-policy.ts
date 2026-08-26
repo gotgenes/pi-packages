@@ -1,4 +1,7 @@
 import type { AccessPath } from "#src/access-intent/access-path";
+import type { BashExternalPath } from "#src/access-intent/bash/bash-path-resolver";
+import type { TokenEffect } from "#src/access-intent/effect";
+import { capabilitySurfaceForEffect } from "#src/access-intent/path-surfaces";
 import type { ScopedPermissionResolver } from "#src/permission-resolver";
 import { pickMostRestrictive } from "#src/restrictiveness";
 import type { PermissionCheckResult } from "#src/types";
@@ -6,6 +9,10 @@ import type { PermissionCheckResult } from "#src/types";
 /** An external path whose resolved `external_directory` state is not "allow". */
 export interface UncoveredExternalPath {
   path: AccessPath;
+  /** The family member the path's own effect named, and the check answered. */
+  surface: string;
+  /** What the effect was, and what established it — the review log's blame. */
+  effect: TokenEffect;
   check: PermissionCheckResult;
 }
 
@@ -44,32 +51,36 @@ export function resolveExternalDirectoryPolicy(
 }
 
 /**
- * Resolve a set of external paths and select those not already allowed.
+ * Resolve a set of external accesses and select those not already allowed.
  *
- * Each path is resolved via {@link resolveExternalDirectoryPolicy}; entries
- * whose state is not "allow" are collected (filtering on state, not source, so
- * config-level allow rules suppress the prompt just as session-level allow
- * rules do), and the most restrictive uncovered check is returned so a config
- * "deny" is not downgraded to the catch-all "ask".
- *
- * A bash token's direction is not provable yet (#807), so these resolve on the
- * bare family surface and consult both directions, most-restrictive.
+ * Each access is resolved via {@link resolveExternalDirectoryPolicy} on the
+ * narrowest family member its own effect names — a proven read on
+ * `external_directory_read`, an unproven one on the bare family, which the
+ * resolver folds over both directions (ADR 0013 §10). Entries whose state is
+ * not "allow" are collected (filtering on state, not source, so config-level
+ * allow rules suppress the prompt just as session-level allow rules do), and
+ * the most restrictive uncovered check is returned so a config "deny" is not
+ * downgraded to the catch-all "ask".
  */
 export function selectUncoveredExternalPaths(
-  paths: readonly AccessPath[],
+  accesses: readonly BashExternalPath[],
   resolver: ScopedPermissionResolver,
   agentName: string | undefined,
 ): UncoveredExternalPaths {
   const uncovered: UncoveredExternalPath[] = [];
-  for (const path of paths) {
+  for (const { path, effect } of accesses) {
+    const surface = capabilitySurfaceForEffect(
+      "external_directory",
+      effect.effect,
+    );
     const check = resolveExternalDirectoryPolicy(
       path,
       resolver,
-      "external_directory",
+      surface,
       agentName,
     );
     if (check.state !== "allow") {
-      uncovered.push({ path, check });
+      uncovered.push({ path, surface, effect, check });
     }
   }
   return {

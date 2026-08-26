@@ -17,6 +17,13 @@ import type { ToolCallContext } from "./types";
  * Returns a `GateBypass` when all paths are allowed (by config or session rule).
  * Returns a `GateDescriptor` with multi-pattern sessionApproval for uncovered paths.
  *
+ * Each path is resolved on the narrowest `external_directory`-family surface
+ * its own attributed effect names. The session approval holds one surface for
+ * all its patterns, so it narrows only when every uncovered path agrees; a
+ * mixed-direction ask falls back to the bare family, which is exactly today's
+ * width. Closing that last gap needs `(surface, pattern)` pairs on the
+ * approval and its forwarded wire form (#810).
+ *
  * The shell command (native `bash` or an aliased shell tool) is read from the
  * injected `BashProgram`, which owns the source text it was parsed from, so
  * this gate does not re-derive the input field name (#574).
@@ -32,9 +39,6 @@ export function describeBashExternalDirectoryGate(
 
   const externalAccesses = bashProgram.externalAccesses();
   if (externalAccesses.length === 0) return null;
-  // Effect-keyed routing lands in the next cycle; today every path resolves on
-  // the bare family, exactly as before.
-  const externalPaths = externalAccesses.map(({ path }) => path);
 
   // Resolve every external path on the external_directory surface and keep the
   // ones not already allowed (config-level allows suppress the prompt just as
@@ -42,7 +46,7 @@ export function describeBashExternalDirectoryGate(
   // matching and the worst-uncovered selection.
   const { uncovered: uncoveredEntries, worstCheck } =
     selectUncoveredExternalPaths(
-      externalPaths,
+      externalAccesses,
       resolver,
       tcc.agentName ?? undefined,
     );
@@ -68,7 +72,7 @@ export function describeBashExternalDirectoryGate(
           toolName: tcc.toolName,
           agentName: tcc.agentName,
           command,
-          externalPaths: externalPaths.map((p) => p.value()),
+          externalPaths: externalAccesses.map(({ path }) => path.value()),
           resolution: "session_approved",
         },
       },
@@ -89,6 +93,7 @@ export function describeBashExternalDirectoryGate(
     resolvedPath: path.resolvedAlias(),
   }));
 
+  const surface = worstEntry.surface;
   const payload = buildBashExternalDirectoryAskPayload({
     command,
     externalPaths: disclosures,
@@ -96,6 +101,7 @@ export function describeBashExternalDirectoryGate(
     agentName: tcc.agentName,
     toolName: tcc.toolName,
     matchedPattern: preCheck.matchedPattern,
+    surface,
   });
 
   const patterns = uncoveredEntries.map(({ path }) =>
@@ -103,17 +109,20 @@ export function describeBashExternalDirectoryGate(
   );
 
   return {
-    surface: "external_directory",
+    surface,
     input: {},
     payload,
-    sessionApproval: SessionApproval.multiple("external_directory", patterns),
+    sessionApproval: SessionApproval.multiple(
+      approvalSurfaceFor(uncoveredEntries),
+      patterns,
+    ),
     promptDetails: {
       source: "tool_call",
       agentName: tcc.agentName,
       toolCallId: tcc.toolCallId,
       toolName: tcc.toolName,
       command,
-      accessIntent: accessFactsFromPath("external_directory", worstEntry.path),
+      accessIntent: accessFactsFromPath(surface, worstEntry.path),
     },
     logContext: {
       source: "tool_call",
@@ -122,11 +131,32 @@ export function describeBashExternalDirectoryGate(
       agentName: tcc.agentName,
       command,
       externalPaths: uncoveredPaths,
+      // The blame line ADR 0013 §7 asks for: `request.surface` already records
+      // the direction, and these two record what established it.
+      effect: worstEntry.effect.effect,
+      effectSource: worstEntry.effect.source,
     },
     decision: {
-      surface: "external_directory",
+      surface,
       value: command,
     },
     preCheck,
   };
+}
+
+/**
+ * The surface one session approval can carry for every uncovered path at once.
+ *
+ * A {@link SessionApproval} holds one surface for all its patterns, so it can
+ * narrow only when the whole ask agrees on a direction. The bare family is the
+ * fallback because it sugar-expands onto both members — exactly the width a
+ * mixed-direction command is granted today, never wider.
+ */
+function approvalSurfaceFor(
+  uncoveredEntries: readonly { readonly surface: string }[],
+): string {
+  const surfaces = new Set(uncoveredEntries.map(({ surface }) => surface));
+  return surfaces.size === 1
+    ? [...surfaces][0]
+    : ("external_directory" as const);
 }

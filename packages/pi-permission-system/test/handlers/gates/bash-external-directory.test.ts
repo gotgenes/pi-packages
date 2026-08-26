@@ -167,7 +167,8 @@ describe("describeBashExternalDirectoryGate", () => {
     const intent = resolver.resolve.mock.calls[0][0];
     expect(intent).toMatchObject({
       kind: "access-path",
-      surface: "external_directory",
+      // `cat` is a pure-reader core word, so the path routes directionally.
+      surface: "external_directory_read",
       agentName: undefined,
     });
     expect(intentValues(intent)).toEqual(["/outside/a.ts"]);
@@ -183,7 +184,7 @@ describe("describeBashExternalDirectoryGate", () => {
     const path = intent.kind === "access-path" ? intent.path : undefined;
     expect(path).toBeDefined();
     expect(result.promptDetails.accessIntent).toEqual({
-      surface: "external_directory",
+      surface: "external_directory_read",
       matchValues: path?.matchValues(),
       boundaryValue: path?.boundaryValue(),
     });
@@ -269,22 +270,93 @@ describe("describeBashExternalDirectoryGate", () => {
     expect(desc.preCheck?.state).toBe("deny");
   });
 
-  it("descriptor surface is 'external_directory'", async () => {
+  it("descriptor surface names what the deciding path proved", async () => {
     const result = await describeGate(
       makeTcc(),
       makeResolver(makeCheckResult("ask")),
     );
     const desc = result as GateDescriptor;
-    expect(desc.surface).toBe("external_directory");
+    expect(desc.surface).toBe("external_directory_read");
   });
 
-  it("descriptor decision surface is 'external_directory'", async () => {
+  it("descriptor decision surface names what the deciding path proved", async () => {
     const result = await describeGate(
       makeTcc(),
       makeResolver(makeCheckResult("ask")),
     );
     const desc = result as GateDescriptor;
-    expect(desc.decision.surface).toBe("external_directory");
+    expect(desc.decision.surface).toBe("external_directory_read");
+  });
+
+  describe("directional routing (#807)", () => {
+    it("routes a proven read to the read surface, end to end", async () => {
+      const result = (await describeGate(
+        makeTcc({ input: { command: "cat /outside/a.ts" } }),
+        makeResolver(makeCheckResult("ask")),
+      )) as GateDescriptor;
+
+      expect(result.surface).toBe("external_directory_read");
+      expect(result.payload.request.surface).toBe("external_directory_read");
+      expect(result.decision.surface).toBe("external_directory_read");
+      expect(result.sessionApproval?.surface).toBe("external_directory_read");
+    });
+
+    it("routes a proven write to the write surface", async () => {
+      const result = (await describeGate(
+        makeTcc({ input: { command: "echo hi > /outside/out.txt" } }),
+        makeResolver(makeCheckResult("ask")),
+      )) as GateDescriptor;
+
+      expect(result.surface).toBe("external_directory_write");
+      expect(result.sessionApproval?.surface).toBe("external_directory_write");
+    });
+
+    it("routes an unproven path to the bare family, which folds both", async () => {
+      const result = (await describeGate(
+        makeTcc({ input: { command: "rm -rf /outside/gone" } }),
+        makeResolver(makeCheckResult("ask")),
+      )) as GateDescriptor;
+
+      expect(result.surface).toBe("external_directory");
+      expect(result.sessionApproval?.surface).toBe("external_directory");
+    });
+
+    it("falls back to the bare family when one ask spans two directions", async () => {
+      const result = (await describeGate(
+        makeTcc({ input: { command: "cat /outside/a.ts > /outside/b.ts" } }),
+        makeResolver(makeCheckResult("ask")),
+      )) as GateDescriptor;
+
+      // One session approval holds one surface for all its patterns, so a
+      // mixed-direction ask grants exactly today's width, never wider.
+      expect(result.sessionApproval?.surface).toBe("external_directory");
+      expect(result.sessionApproval?.patterns.length).toBe(2);
+    });
+
+    it("records the deciding path's effect and blame source in the log", async () => {
+      const result = (await describeGate(
+        makeTcc({ input: { command: "cat /outside/a.ts" } }),
+        makeResolver(makeCheckResult("ask")),
+      )) as GateDescriptor;
+
+      expect(result.logContext).toMatchObject({
+        effect: "read",
+        effectSource: "core",
+      });
+    });
+
+    it("records a retraction as the blame source for a guarded word", async () => {
+      const result = (await describeGate(
+        makeTcc({ input: { command: "find /outside -delete" } }),
+        makeResolver(makeCheckResult("ask")),
+      )) as GateDescriptor;
+
+      expect(result.surface).toBe("external_directory");
+      expect(result.logContext).toMatchObject({
+        effect: "unproven",
+        effectSource: "retracted",
+      });
+    });
   });
 
   it("payload carries the command and the boundary it escaped", async () => {
