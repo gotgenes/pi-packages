@@ -82,6 +82,8 @@ For **each** step in the plan's "TDD Order", in order:
 1. **Red.**
    Write the failing tests the step describes.
    Run only the affected test file: `pnpm --filter @gotgenes/<pkg> exec vitest run <test-path>` and confirm failures (plain `pnpm vitest run` fails at the repo root in this workspace).
+   When the step pins a literal pattern (regex, glob, format string), derive your own input set — the plan's examples are a floor, not the case list.
+   Run the pattern over the values the repo already produces in bulk (`git tag --list`, `gh pr list`) before committing (Refs #817).
 2. **Green.**
    Implement the minimum code to make those tests pass.
    Re-run the same file and confirm green.

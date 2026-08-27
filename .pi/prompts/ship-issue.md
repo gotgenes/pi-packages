@@ -61,7 +61,9 @@ If either fails, fix the issues and commit before pushing.
 
 ## 4b. Check for a stacked release
 
-First check the unreleased range for a releasing commit: `git log --oneline <last-tag>..HEAD -- packages/<pkg>/` (scope to the shipped package's path — a package tag many releases old otherwise dumps every package's commits and truncates the output).
+First check the unreleased range for a releasing commit: `git log --oneline "$(git tag --list '<pkg>-v*' --sort=-creatordate | head -1)"..HEAD -- packages/<pkg>/`, where `<pkg>` is the shipped package from the issue's plan path.
+The path scope is required — a package tag many releases old otherwise dumps every package's commits and truncates the output.
+Derive the tag package-scoped as shown, not `git tag --sort=-version:refname | head -1`, which sorts lexically across all package tags and returns an unrelated package.
 For a repo-root tooling change (plan under `docs/plans/`, no `<pkg>`), skip that command — every commit is outside the package tree, so nothing releases now.
 If every commit is a non-releasing type — the `hidden: true` changelog sections in `release-please-config.json` (`refactor:`/`style:`/`test:`/`build:`/`ci:`) — release-please will cut nothing now; the work auto-batches until a releasing commit lands.
 A `docs:` commit cuts a patch only when it touches a file under `packages/<pkg>/` that is **not** in `exclude-paths`.
@@ -77,13 +79,15 @@ Otherwise continue to step 5 and step 6.
 
 ## 5. Close the issue
 
-Build the close comment from the commits since the shipped package's previous release.
-Derive the previous tag package-scoped (`git tag --list '<pkg>-v*' --sort=-creatordate | head -1`, where `<pkg>` is the shipped package from the issue's plan path), not `git tag --sort=-version:refname | head -1`, which sorts lexically across all package tags and returns an unrelated package.
-For a repo-root tooling change (plan under `docs/plans/`, not `packages/<PKG>/docs/plans/`), there is no `<pkg>` and no package tag — anchor the range on the parent of the issue's first commit (`git log --oneline <parent>..HEAD`), or the most recent release commit (`git log --oneline --grep='^chore(main): release' -1`).
+Build the close comment from this issue's own commits, anchored on the plan commit — not on the package's last tag.
+Each package releases on its own cadence, so a tag range spans every sibling issue that landed since: measured at 165 commits across 32 issues for a 13-commit change (Refs #817).
 
 ```bash
-git log --oneline <pkg-tag>..HEAD
+PLAN=$(git log --format='%H' --grep="docs: plan .*(#$1)" -1)
+git log --oneline "$PLAN"^..HEAD
 ```
+
+If no plan commit matches, anchor on the parent of the issue's first commit.
 
 The comment should include:
 
@@ -111,7 +115,7 @@ The multi-SHA credit list here is where hand-extended short hashes slip in (Refs
 A shipped issue can also supersede open third-party PRs without either being the close target — this repo reimplements rather than merges.
 Close each PR the plan names with `gh pr comment` then `gh pr close`, never merge, crediting the author by `@login` (Refs #670, #690).
 
-Then check whether this push shipped work for **other** issues (a stacked refactor/enabler, other `(#M)` commit refs, or sibling `docs/plans/`/`docs/retro/` files in the `<pkg-tag>..HEAD` range).
+Then check whether this push shipped work for **other** issues (a stacked refactor/enabler, other `(#M)` commit refs, or sibling `docs/plans/`/`docs/retro/` files in the `"$PLAN"^..HEAD` range).
 A mid-batch sibling that shipped on its own `/ship-issue` is already closed by that ship — this scan is for stacked work that never had a ship of its own.
 Close each with its own short summary — release-please omits `refactor:` commits from the changelog, so a stacked refactor issue leaves no reminder.
 

@@ -44,9 +44,16 @@ The peer worktree shares this repo's `.git`, so the branch ref is visible locall
 
 ## 5. Close the issue
 
-Build the close comment from the commits since the shipped package's previous release.
-Derive the previous tag package-scoped (`git tag --list '<pkg>-v*' --sort=-creatordate | head -1`, where `<pkg>` is the shipped package from the issue's plan path), not `git tag --sort=-version:refname | head -1`, which sorts lexically across all package tags and returns an unrelated package.
-Then `git log --oneline <pkg-tag>..HEAD`:
+Build the close comment from this issue's own commits, anchored on the plan commit — not on the package's last tag.
+Each package releases on its own cadence, so a tag range spans every sibling issue that landed since (Refs #817).
+
+```bash
+PLAN=$(git log --format='%H' --grep="docs: plan .*(#$1)" -1)
+git log --oneline "$PLAN"^..HEAD
+```
+
+If no plan commit matches, anchor on the parent of the issue's first commit.
+From that range:
 
 - "Implemented in <sha> …" — SHA as plain text (no backticks) so GitHub auto-links it.
 - A short bullet list of feature/breaking commits.
