@@ -58,18 +58,20 @@ Also close any **other** issues this push shipped (stacked refactors, other `(#M
 
 ## 6. Release (decoupled and serialized)
 
-Releasing is the root's serialized responsibility — only the root merges the single release-please PR, so peers never race on it.
+Releasing is the root's serialized responsibility — only the root merges release-please PRs, so peers never race on them.
 
 1. Read the issue's plan for a `**Release:**` marker.
-   If it says `mid-batch — defer`, **skip releasing**: leave the release-please PR open, note the deferral, and continue to teardown.
+   If it says `mid-batch — defer`, **skip releasing**: leave that package's release-please PR open, note the deferral, and continue to teardown.
+   Deferring holds only this package; sibling packages keep releasing on their own lands.
    Otherwise release now.
-2. To release: `release_pr_find` → check the **full** PR body for which packages it bumps (release-please collapses each in a `<details>` block) → `release_pr_merge` (rebase).
-   - Print the body explicitly with `gh pr view <N> --json body -q .body` — a `--jq` that drops `body` skips the check silently and an unexpected sibling-package bump slips through.
+2. To release: `release_pr_find` with `component: <pkg>` → confirm the **full** PR body bumps `<pkg>` and nothing else → `release_pr_merge` (rebase).
+   - Print the body explicitly with `gh pr view <N> --json body -q .body` — a `--jq` that drops `body` skips the check silently and an unexpected bump slips through.
+   - A component-scoped release PR carries exactly one package, so an unexpected bump means you have the wrong PR; a sibling package's PR sitting open is normal and is not yours to merge.
    - `release_pr_merge` waits out an in-progress check or an undecided (`UNKNOWN`) mergeability state on its own, and retries a transient 5xx — do not add a manual wait loop or a blind retry.
    - On a `failed to merge PR #N` result the merge call itself failed and the tool has already checked whether it landed: `merged: false` is safe to retry, `merged: unknown` is not — run the probe it prints first.
    - On a `reason: no checks reported (statusCheckRollup is empty)` refusal (the `GITHUB_TOKEN` case), fall back to `gh pr merge <N> --rebase`, then `git pull --ff-only`.
    - Never `--merge`; never merge a genuinely blocked PR (any other `reason:`, or a `timeout:` result).
-3. `release_watch` for the tag.
+3. `release_watch` with the same `component: <pkg>` for the tag.
 
 ## 7. Tear down the worktree
 
@@ -96,4 +98,5 @@ Do **not** recommend the next issue to plan here — `/retro` surfaces the next 
 - If the ff-merge is not a fast-forward, stop — the peer re-rebases; the root never merges non-linearly.
 - If CI fails, the issue stays open and nothing is released or torn down.
 - Never merge a genuinely blocked release-please PR; a `reason: no checks reported` refusal is the expected `GITHUB_TOKEN` case.
+- Select the release PR by component, never by position — several are open at once, one per package with a pending release.
 - Never retry `release_pr_merge` on a `merged: unknown` result — verify the PR's state by hand first.

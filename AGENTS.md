@@ -27,6 +27,13 @@ Every release after that publishes automatically (Refs #600).
 
 If `release-please`'s CI job fails after it has already tagged/released, GitHub skips the downstream `publish` job — and a rerun does not recover it, since release-please finds nothing new to release and reports `releases_created: false`.
 Recover with the manual-publish command above for the missing version, then re-derive the baseline (the write-back step is skipped too): run `git fetch --tags && ./scripts/release-baseline-sha.sh`, write its output to `last-release-sha` in `release-please-config.json`, and commit `chore: advance release-please last-release-sha baseline [skip ci]` (Refs #646).
+
+One known upstream failure reaches that same cascade from a different direction.
+[googleapis/release-please#2773](https://github.com/googleapis/release-please/issues/2773) reports a `422 A pull request already exists` when release-please **updates** an already-open PR under `separate-pull-requests` — it pushes the branch, then tries to create a PR for it.
+The action pins the version it was filed against (`release-please-action@v5.0.0` locks `release-please` at 17.6.0), so treat a 422 on a second push touching an already-PR'd package as this bug, not as a local mistake.
+It throws after `createReleases()`, so check for tags before concluding nothing released.
+Recovery: strip the `autorelease: pending` label and re-run, or close the PR and delete its branch to force a clean create.
+Rollback, if it recurs: set `separate-pull-requests` back to `false` in `release-please-config.json`, then close any component release PRs by hand and delete their branches — release-please does not fold abandoned component branches into the combined one.
 Do not write the release commit there by hand — the correct value is the *oldest* component's release, which is rarely the one that just released (Refs #816).
 
 A cross-package change bumping a dependent package to a **same-day-published** sibling hits pnpm's 24h `minimumReleaseAge` supply-chain gate — CI's `--frozen-lockfile` install and local `pnpm exec` hooks fail `ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION`.
@@ -167,7 +174,12 @@ A `refactor:`/`style:`/`test:`/`build:`/`ci:` commit is a `hidden: true` changel
 So a refactor-only plan's `Release Recommendation` rationale must not claim it will cut a release (Refs #479).
 Release is driven by the release-please PR merge over `main` commits, independent of any issue's open/closed state: holding an issue open does not defer its already-merged `fix:`/`feat:` commits from releasing at the next merge, and the only lever to defer a release is leaving the release-please PR unmerged (Refs #625).
 
-Release-please PRs merge by **rebase** (linear `chore: release main`), per `defaultMergeMethod: rebase` (`.pi/extensions/pi-github-tools/config.json`) — set in `cacc724f`.
+That lever is per-package.
+`separate-pull-requests: true` gives each component its own release PR — branch `release-please--branches--main--components--<component>`, title `chore(main): release <component> <version>` — so deferring one package's batch no longer holds every other package's fixes (Refs #817).
+Several open release PRs is therefore the normal state, not a misconfiguration; two for the **same** component still is one.
+Select yours by component (`release_pr_find` and `release_watch` both take one), never by position — without a component `release_pr_find` refuses to guess and lists the candidates.
+
+Release-please PRs merge by **rebase** (linear `chore(main): release <component> <version>`), per `defaultMergeMethod: rebase` (`.pi/extensions/pi-github-tools/config.json`) — set in `cacc724f`.
 Prefer `release_pr_merge` — it waits out an in-progress check or an undecided mergeability state on its own, retries a transient 5xx, and verifies over REST whether a failed merge call actually landed; on its `reason: no checks reported` refusal (the `GITHUB_TOKEN` case), fall back to `gh pr merge <N> --rebase`, never `--merge`.
 A `failed to merge` result carries the answer: `merged: false` is safe to retry, `merged: unknown` is not — verify by hand first.
 Do not infer the method from older history — releases before `cacc724f` are merge commits.
@@ -235,7 +247,7 @@ The trunk `/ship-issue` assumes linear `main` and breaks for a worktree branch, 
    The peer writes only stage breadcrumbs (planning/TDD/ship); the deliberate, interactive final `/retro` does not run here.
 2. Root session — `/land-worktree <N>`: `git merge --ff-only <branch>` into `main`, push, verify CI, `issue_close`, then release.
    If the ff-merge is not a fast-forward (another peer landed first), the peer re-runs `/ship-worktree <N>` to rebase onto the new `origin/main`.
-3. Release is the root's serialized responsibility — only the root merges the single release-please PR (by rebase), so peers never race on it.
+3. Release is the root's serialized responsibility — only the root merges release-please PRs (by rebase), so peers never race on them.
    It honors the plan's `**Release:**` marker: `mid-batch — defer` leaves the PR open.
 4. `/land-worktree` ends by running `scripts/worktree-rm.sh <N> --delete-branch`, then names `/retro <N>` as the final step.
 5. Root session — `/retro <N>`: the deliberate, interactive final retrospective, run at the root on `main` after the land (commits straight to `main`, no branch needed) — mirroring the trunk flow's terminal `/retro`.

@@ -39,6 +39,8 @@ If either fails, fix the issues and commit before pushing.
 ## 5. Merge release-please PR (if present)
 
 1. Use `release_pr_find` to locate an open release-please PR.
+   There is no issue plan here to name a package, so call it without a component.
+   Every package gets its own release PR, so an `ambiguous:` result is the normal multi-package case — show the operator the listed candidates and ask which to merge, then re-run `release_pr_find` with that `component`.
 2. If none is found (timeout), skip to step 6.
 3. If one exists, use `release_pr_merge` with the PR number.
    The tool waits out an in-progress check or an undecided (`UNKNOWN`) mergeability state on its own, streaming progress, and retries a transient 5xx — do not add a manual wait loop or a blind retry.
@@ -46,7 +48,7 @@ If either fails, fix the issues and commit before pushing.
    - If `release_pr_merge` returns an error (not mergeable), read its `reason:` line.
      `reason: no checks reported (statusCheckRollup is empty)` is the expected case for a release-please PR created by the default `GITHUB_TOKEN` (no CI runs); merge with `gh pr merge <N> --rebase` (matches the `defaultMergeMethod: rebase` config so the release lands as a linear commit, not a merge bubble), then `git pull --ff-only`.
      Any other reason, or a `timeout:` result, means the PR is genuinely blocked or still unsettled — stop and report; let the user decide.
-4. Use `release_watch` to wait for the release tag to land on HEAD.
+4. Use `release_watch` to wait for the release tag to land on HEAD, passing the same `component` if one was chosen.
 
 ## 6. Final report
 
@@ -62,4 +64,6 @@ Print:
 - Never merge a release-please PR that is genuinely blocked (`CONFLICTING`/`DIRTY`/`BEHIND` or a failing check); a `reason: no checks reported` refusal is the expected `GITHUB_TOKEN` case (step 5.3).
 - Never retry `release_pr_merge` on a `merged: unknown` result — verify the PR's state by hand first.
 - If CI fails, do not merge anything.
-- If multiple release-please PRs exist for the same component, stop and ask — that's a configuration issue, not a normal merge.
+- Several release-please PRs open at once is normal — one per package with a pending release.
+  Select one by component with the operator's confirmation, never by position.
+  Two PRs for the **same** component is a configuration issue: stop and ask.

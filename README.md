@@ -192,7 +192,7 @@ sequenceDiagram
     Note over Root: git merge --ff-only the peer branch
     Root->>Origin: git push (main advances)
     Root->>Root: verify CI, then issue_close
-    Root->>Origin: merge release-please PR (serialized)
+    Root->>Origin: merge the package's release-please PR (serialized)
     Note over Root: scripts/worktree-rm.sh N --delete-branch
 ```
 
@@ -206,7 +206,8 @@ sequenceDiagram
 Guardrails:
 
 - One package per peer — two peers touching `pnpm-lock.yaml`, `release-please-config.json`, or the same package's source is the main hazard.
-- Release is the root's serialized responsibility — only the root merges the single release-please PR, so peers never race on it.
+- Release is the root's serialized responsibility — only the root merges release-please PRs, so peers never race on them.
+  Each package has its own, so a deferral holds one package rather than all nine.
 - Whoever lands second rebases first — if `/land-worktree`'s ff-merge is rejected because `main` advanced, the peer re-runs `/ship-worktree #N` to rebase onto the new `origin/main`, then the root retries.
 - Tear down a worktree manually with `scripts/worktree-rm.sh <issue> [--delete-branch]`.
 

@@ -71,6 +71,7 @@ Say so in the final report and skip the batch-vs-release question.
 Then apply the decision recorded in the early "Release coordination" section.
 The issue **always** closes in step 5, regardless of this decision — closing records that the work is on `main`; releasing is a separate, batched concern (matches `/land-worktree`'s decoupled close/release contract).
 If the decision was to defer/batch: continue to step 5, then skip step 6 (the release lands later with the batch tail).
+Each package has its own release-please PR, so leaving this one unmerged holds only this package — sibling packages keep releasing on their own ships.
 Note the deferral in the final report.
 Otherwise continue to step 5 and step 6.
 
@@ -78,7 +79,7 @@ Otherwise continue to step 5 and step 6.
 
 Build the close comment from the commits since the shipped package's previous release.
 Derive the previous tag package-scoped (`git tag --list '<pkg>-v*' --sort=-creatordate | head -1`, where `<pkg>` is the shipped package from the issue's plan path), not `git tag --sort=-version:refname | head -1`, which sorts lexically across all package tags and returns an unrelated package.
-For a repo-root tooling change (plan under `docs/plans/`, not `packages/<PKG>/docs/plans/`), there is no `<pkg>` and no package tag — anchor the range on the parent of the issue's first commit (`git log --oneline <parent>..HEAD`), or the most recent `chore: release main` commit.
+For a repo-root tooling change (plan under `docs/plans/`, not `packages/<PKG>/docs/plans/`), there is no `<pkg>` and no package tag — anchor the range on the parent of the issue's first commit (`git log --oneline <parent>..HEAD`), or the most recent release commit (`git log --oneline --grep='^chore(main): release' -1`).
 
 ```bash
 git log --oneline <pkg-tag>..HEAD
@@ -118,11 +119,14 @@ Close each with its own short summary — release-please omits `refactor:` commi
 
 Skip this step entirely if step 4b recorded a defer/batch decision — the release lands later with the batch tail.
 
-1. Use `release_pr_find` to locate an open release-please PR.
+1. Use `release_pr_find` with `component: <pkg>` — the shipped package from the issue's plan path.
+   Every package gets its own release PR, so the component is what says which one you mean.
+   For a repo-root tooling change (plan under `docs/plans/`) there is no `<pkg>`: call it without a component, and on an `ambiguous:` result stop and ask which PR to merge — none of the listed ones is yours to pick blind.
 2. If none is found (timeout), skip to step 7.
-3. If one exists, check which packages/versions the PR bumps.
-   Read the **full** PR body — release-please collapses each package in a separate `<details>` block, so a truncated view hides sibling bumps.
-   If it bumps a package unrelated to the issue being shipped, diagnose before noting it — a bump from a `docs:`-only commit means that package is missing a `docs/<subdir>` entry in `exclude-paths` (Refs #655).
+   A sibling package's release PR sitting open is normal and is not yours to merge.
+3. If one exists, read the **full** PR body (`gh pr view <N> --json body -q .body`) and confirm it bumps `<pkg>` and nothing else.
+   A component-scoped release PR carries exactly one package, so an unexpected bump means you have the wrong PR — stop rather than merge it.
+   A package that releases off a `docs:`-only commit is missing a `docs/<subdir>` entry in `exclude-paths` (Refs #655).
 4. Use `release_pr_merge` with the PR number.
    The tool waits out an in-progress check or an undecided (`UNKNOWN`) mergeability state on its own, streaming progress — do not add a manual wait loop.
    It also retries a transient 5xx, so a single failure is already several attempts — do not retry it blindly.
@@ -130,7 +134,7 @@ Skip this step entirely if step 4b recorded a defer/batch decision — the relea
    - If `release_pr_merge` returns an error (not mergeable), read its `reason:` line.
      `reason: no checks reported (statusCheckRollup is empty)` is the expected case for a release-please PR created by the default `GITHUB_TOKEN` (no CI runs); merge with `gh pr merge <N> --rebase` (matches the `defaultMergeMethod: rebase` config so the release lands as a linear commit, not a merge bubble), then `git pull --ff-only`.
      Any other reason (`check failed: ...`, `mergeable is ...`, `merge state is ...`) or a `timeout:` result means the PR is genuinely blocked or still unsettled — stop and report; let the user decide.
-5. Use `release_watch` to wait for the release tag to land on HEAD.
+5. Use `release_watch` with the same `component: <pkg>` to wait for the release tag to land on HEAD.
 
 ## 6b. Verify the release-triggered CI run
 
@@ -162,4 +166,6 @@ Do **not** recommend the next issue to plan here — `/retro` surfaces the next 
 - Never retry `release_pr_merge` on a `merged: unknown` result — verify the PR's state by hand first (step 6.4).
 - If CI fails, the issue stays open.
 - If the release-triggered CI run (step 6b) fails, do not proceed to step 7 until resolved — see the `AGENTS.md` recovery runbook.
-- If multiple release-please PRs exist for the same component, stop and ask — that's a configuration issue, not a normal merge.
+- Several release-please PRs open at once is normal — one per package with a pending release.
+  Select yours by component, never by position.
+  Two PRs for the **same** component is a configuration issue: stop and ask.
