@@ -169,7 +169,7 @@ A `failed to merge` result carries the answer: `merged: false` is safe to retry,
 Do not infer the method from older history — releases before `cacc724f` are merge commits.
 This holds for releases cut outside `/ship-issue` (e.g. an extended review session), where the ship-prompt guidance is not loaded.
 
-The `release-please` CI job pins a `last-release-sha` baseline in `release-please-config.json`, auto-advanced by a `ci.yml` write-back step after each release, to cap its history walk (Refs #468).
+The `release-please` CI job pins a `last-release-sha` baseline in `release-please-config.json`, auto-advanced after each release by `scripts/advance-release-baseline.sh`, to cap its history walk (Refs #468).
 Do not remove either — without the baseline, release-please walks the default 500 commits every run and the deep walk fails with `Bad credentials` (secondary rate limit) on this monorepo.
 The baseline is a single repo-global floor, so it must sit at or before *every* component's last release, not just the one that released most recently.
 The walk stops at the floor, so a component whose last release is older has the intervening commits collected by nobody — they reach neither its changelog nor its version bump (Refs #816).
