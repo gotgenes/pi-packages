@@ -1,5 +1,24 @@
 # Changelog
 
+## [4.4.0](https://github.com/gotgenes/pi-packages/compare/pi-github-tools-v4.3.2...pi-github-tools-v4.4.0) (2026-08-27)
+
+
+### Features
+
+* **pi-github-tools:** select the release PR by component ([9d24336](https://github.com/gotgenes/pi-packages/commit/9d2433626128ac72102d2c13fca96da3ae902dcc)), closes [#817](https://github.com/gotgenes/pi-packages/issues/817)
+* **pi-github-tools:** select the release tag by component ([44b70d3](https://github.com/gotgenes/pi-packages/commit/44b70d3283856cb718dcad1495735acbb98b935c)), closes [#817](https://github.com/gotgenes/pi-packages/issues/817)
+
+
+### Bug Fixes
+
+* **pi-github-tools:** report the bare version for a component-scoped release tag ([4e4beac](https://github.com/gotgenes/pi-packages/commit/4e4beac52caf6337457d1968a8641c7ce10a9e4f)), closes [#817](https://github.com/gotgenes/pi-packages/issues/817)
+* **pi-github-tools:** split a release tag at its last separator ([e754732](https://github.com/gotgenes/pi-packages/commit/e75473221437d915a5c1bbd1c78301b5c5a1d073)), closes [#817](https://github.com/gotgenes/pi-packages/issues/817)
+
+
+### Documentation
+
+* **pi-github-tools:** document component selection for the release tools ([af72d8f](https://github.com/gotgenes/pi-packages/commit/af72d8f4c39fa0e86053951dc65703b1362d43c0)), closes [#817](https://github.com/gotgenes/pi-packages/issues/817)
+
 ## [4.3.2](https://github.com/gotgenes/pi-packages/compare/pi-github-tools-v4.3.1...pi-github-tools-v4.3.2) (2026-08-19)
 
 
