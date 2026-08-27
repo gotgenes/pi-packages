@@ -113,7 +113,7 @@ A bare `path` or `external_directory` key is sugar that expands into both of its
 Here a `read` under `~/dev` is silent while a `write` or `edit` to the same path still prompts.
 The useful grants are `*_read: allow` and the bare key; `*_write` earns its keep as a restriction (`path_write: { "*": "deny" }` is a read-only-agent posture) — see [docs/configuration.md](docs/configuration.md#directional-path-surfaces).
 
-A read grant reaches bash commands too, not just the file tools: a redirect operator proves its destination's direction (`> out.txt` writes, `< in.txt` reads), and a frozen set of read-only command words — `cat`, `grep`, `ls`, `find`, and 18 others — proves a read for the paths they name.
+A read grant reaches bash commands too, not just the file tools: a redirect operator proves its destination's direction (`> out.txt` writes, `< in.txt` reads), and a frozen set of read-only command words — `cat`, `grep`, `ls`, `find`, and 17 others — proves a read for the paths they name.
 A token nothing proves still consults both directions, so an unrecognized command is never treated as the safer one.
 
 ## Configuration

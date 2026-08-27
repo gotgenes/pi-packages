@@ -436,10 +436,17 @@ The docs cycle records this number beside the script so a later re-run can falsi
 
 **Measured correction (implementation, 2026-08-25).**
 The re-run did falsify it, which is what committing the instrument was for.
-The scan behind the figures above did not apply the retraction guards it describes: with them applied, `scripts/measure-core-coverage.mjs` reports **22.8% recent (52 of 228) and 35.9% all-time (288 of 802)**.
+The scan behind the figures above did not apply the retraction guards it describes: with them applied, `scripts/measure-core-coverage.mjs` reports **23.0% recent (53 of 230) and 35.9% all-time (289 of 804)** as of 2026-08-27.
 The marginal table reproduces row for row when the guards are switched off, so the discrepancy is entirely `find`'s guard.
 All 14 recent asks it excludes are `find … -exec <core reader> {} +`, which the indirection-wrapper floor already sends to `ask` — so the guard forfeits no relief reachable at this step, and those asks are [#803]'s population.
 The design is unchanged: the marginal argument that selected the focused core is measured on the same rows and still holds.
+
+**Roster correction (pre-completion review).**
+The core shipped at **21** words, not 22.
+Pre-completion review found that `file` fails the roster's own bar — `file -C`/`--compile` writes a `magic.mgc` file — and that `find`'s guard omitted `-fprint0`, which GNU findutils writes to a named file exactly as `-fprint` does.
+Both were fail-opens: a written destination could have been attributed `read`.
+`file` was dropped rather than guarded (it appears in one ask out of 804, so the guard would have bought nothing), and `-fprint0` was added.
+The long-stem matcher also now accepts a GNU `getopt_long` abbreviation, so `sort --out=/tmp/x` retracts exactly as `--output` does.
 
 ## TDD Order
 

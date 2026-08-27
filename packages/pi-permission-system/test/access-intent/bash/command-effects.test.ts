@@ -26,7 +26,6 @@ const ROSTER = [
   "diff",
   "ls",
   "stat",
-  "file",
   "pwd",
   "basename",
   "dirname",
@@ -40,7 +39,7 @@ const ROSTER = [
 ];
 
 describe("PURE_READER_CORE", () => {
-  it("holds exactly the 22 audited words", () => {
+  it("holds exactly the 21 audited words", () => {
     expect([...PURE_READER_CORE].sort()).toEqual([...ROSTER].sort());
   });
 
@@ -89,6 +88,8 @@ describe("proveCommandEffect", () => {
       "dd",
       "less",
       "more",
+      // `file -C` writes a magic.mgc file, so it fails the roster's bar.
+      "file",
       "curl",
       "tree",
       "node",
@@ -129,6 +130,7 @@ describe("proveCommandEffect", () => {
       "-okdir",
       "-delete",
       "-fprint",
+      "-fprint0",
       "-fprintf",
       "-fls",
     ])("retracts the read claim on %s", (option) => {
@@ -188,6 +190,28 @@ describe("proveCommandEffect", () => {
       expect(proveCommandEffect("sort", ["--output=/tmp/out", "in"])).toEqual(
         RETRACTED,
       );
+    });
+
+    it.each([
+      "--out",
+      "--outp",
+      "--o",
+    ])("retracts on the GNU long-option abbreviation %s", (option) => {
+      // GNU getopt_long resolves any unambiguous abbreviation to --output,
+      // so an abbreviation reaches the same write the full spelling does.
+      expect(proveCommandEffect("sort", [option, "/tmp/out", "in"])).toEqual(
+        RETRACTED,
+      );
+    });
+
+    it("retracts on an abbreviation carrying an attached value", () => {
+      expect(proveCommandEffect("sort", ["--out=/tmp/out", "in"])).toEqual(
+        RETRACTED,
+      );
+    });
+
+    it("does not treat a bare -- end-of-options marker as an abbreviation", () => {
+      expect(proveCommandEffect("sort", ["--", "in"])).toEqual(CORE_READ);
     });
 
     it("retracts on the attached-value short form", () => {

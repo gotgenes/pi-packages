@@ -39,13 +39,18 @@ export const UNPROVEN_EFFECT: TokenEffect = {
 /**
  * Combine two attributions of the same resolved path.
  *
- * Agreement keeps the effect and the first attribution's source, so a
- * retraction's blame survives a merge with a bare unproven.
+ * Agreement keeps the effect, and prefers whichever source has something to
+ * blame — a `retracted` attribution survives a merge with a bare unproven
+ * whichever order the two tokens were collected in. Order-independence
+ * matters because collection order is an accident of the command's shape, and
+ * the blame line is the only reason the source is recorded at all.
+ *
  * Disagreement falls to {@link UNPROVEN_EFFECT}, because proven-both and
  * unproven-at-all consult the same two surfaces — ADR 0013's 2026-08-25
  * amendment reads them as one mechanism, not two — which is what makes the
  * fold honest rather than lossy.
  */
 export function mergeTokenEffects(a: TokenEffect, b: TokenEffect): TokenEffect {
-  return a.effect === b.effect ? a : UNPROVEN_EFFECT;
+  if (a.effect !== b.effect) return UNPROVEN_EFFECT;
+  return a.source === "unproven" ? b : a;
 }

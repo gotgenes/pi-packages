@@ -33,6 +33,12 @@ describe("mergeTokenEffects", () => {
     it("keeps a retraction's blame over a bare unproven", () => {
       expect(mergeTokenEffects(retracted, UNPROVEN_EFFECT)).toEqual(retracted);
     });
+
+    it("keeps a retraction's blame in either collection order", () => {
+      // Collection order is an accident of the command's shape, and the blame
+      // line is the only reason the source is recorded at all.
+      expect(mergeTokenEffects(UNPROVEN_EFFECT, retracted)).toEqual(retracted);
+    });
   });
 
   describe("when the two attributions disagree", () => {

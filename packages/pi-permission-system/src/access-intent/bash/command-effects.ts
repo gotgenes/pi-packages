@@ -33,7 +33,7 @@ export function proveCommandEffect(
 }
 
 /**
- * The frozen v1 pure-reader core: command words that are read-only for any
+ * The frozen v1 pure-reader core: 21 command words that are read-only for any
  * arguments, in any implementation.
  *
  * Exported so `docs/configuration.md`'s published roster is held to it by a
@@ -123,6 +123,7 @@ interface CoreAdmission {
  * | `uniq`                                          | `uniq IN OUT` writes its second positional                     |
  * | `tee`, `dd`, `split`, `csplit`, `xxd`, `tree`, `curl`, `wget` | Each has a positional or option that writes a file |
  * | `less`, `more`                                  | Interactive shell escape (`!cmd`) and `LESSOPEN` preprocessing |
+ * | `file`                                          | `-C`/`--compile` writes a `magic.mgc` file — it reports on its arguments, but not only |
  * | `git`, `pnpm`, `npm`, `node`, `python3`, `gh`   | Subcommand- and argument-dependent — the `commandEffects` long tail |
  *
  * Widening the roster only ever loosens, so evidence can add a word as a
@@ -141,7 +142,7 @@ function coreAdmissions(): readonly CoreAdmission[] {
       reason: "Writes nothing; `-D` emits merged output to stdout",
     },
     {
-      words: ["ls", "stat", "file", "pwd"],
+      words: ["ls", "stat", "pwd"],
       reason: "Metadata and listing: report only",
     },
     {
@@ -168,10 +169,15 @@ function coreAdmissions(): readonly CoreAdmission[] {
  * The option forms that withdraw a guarded word's read claim.
  *
  * Matching is fail-closed over the forms ADR 0013 §7 names: a long stem
- * matches bare or with an attached `=value`, and a short letter matches
- * anywhere in a single-dash cluster, which covers the attached-value form
- * (`-oFILE`) too. Over-retraction costs one ask; under-retraction misses a
- * write.
+ * matches bare, with an attached `=value`, or as any prefix of itself, and a
+ * short letter matches anywhere in a single-dash cluster, which covers the
+ * attached-value form (`-oFILE`) too. Over-retraction costs one ask;
+ * under-retraction misses a write.
+ *
+ * The prefix rule exists because GNU `getopt_long` accepts any unambiguous
+ * abbreviation, so `sort --out=/tmp/x` reaches the same code `--output` does.
+ * Matching every prefix also retracts on an abbreviation the real program
+ * would reject as ambiguous — the affordable direction.
  */
 interface RetractionGuard {
   /** Whole argument words, for options that neither cluster nor take `=`. */
@@ -202,6 +208,7 @@ const RETRACTION_GUARDS: ReadonlyMap<string, RetractionGuard> = new Map([
         "-okdir",
         "-delete",
         "-fprint",
+        "-fprint0",
         "-fprintf",
         "-fls",
       ]),
@@ -256,14 +263,22 @@ function retractsClaim(word: string, guard: RetractionGuard): boolean {
   return matchesShortCluster(word, guard.shortLetters);
 }
 
-/** A long option, bare or carrying its value inline. */
+/**
+ * A long option, bare, carrying its value inline, or abbreviated.
+ *
+ * The name is taken before the first `=`, so `--out=/tmp/x` is tested as
+ * `--out` — an abbreviation of `--output` that GNU `getopt_long` resolves to
+ * it. A bare `--` abbreviates nothing.
+ */
 function matchesLongStem(
   word: string,
   stems: ReadonlySet<string> | undefined,
 ): boolean {
   if (!stems) return false;
+  const name = word.split("=")[0];
+  if (!name.startsWith("--") || name.length <= 2) return false;
   for (const stem of stems) {
-    if (word === stem || word.startsWith(`${stem}=`)) return true;
+    if (stem.startsWith(name)) return true;
   }
   return false;
 }

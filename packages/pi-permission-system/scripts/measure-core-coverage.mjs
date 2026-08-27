@@ -12,8 +12,10 @@
  * Every unit is the right test because tokens compose most-restrictive — one
  * unproven unit re-floors the whole ask, so a partial match relieves nothing.
  *
- * Measured 2026-08-25 against a 10,856-line local review log (802 bash asks,
- * 228 of them in 2026-07/08): **35.9% all-time, 22.8% recent.**
+ * Measured 2026-08-27 against the local review log (804 bash asks, 230 of them
+ * in 2026-07/08): **35.9% all-time, 23.0% recent.** The log grows with use, so
+ * a later run drifts by a fraction of a point; re-run rather than trusting the
+ * figure to be exact.
  *
  * The retraction guards are applied, and they matter: without them the recent
  * figure reads 28.9%. All 14 recent asks the guards exclude are
@@ -21,6 +23,10 @@
  * to `ask` anyway — so the guards cost no relief reachable at this layer.
  * Lifting that floor by reading the inner command is #803's job, not this one's.
  * An earlier scan that reported 27.9% recent had not applied the guards.
+ *
+ * The roster below is 21 words. The plan's 22nd, `file`, was dropped in
+ * pre-completion review (`file -C` writes a `magic.mgc` file); it appears in
+ * one ask out of 804, so neither figure moved.
  *
  * The head-word split here is deliberately crude (whitespace, after stripping
  * an env-var prefix and following a pipe/`&&`/`;`). It is a measurement
@@ -59,7 +65,6 @@ const CORE = new Set([
   "diff",
   "ls",
   "stat",
-  "file",
   "pwd",
   "basename",
   "dirname",
@@ -83,6 +88,7 @@ const GUARDS = new Map([
       "-okdir",
       "-delete",
       "-fprint",
+      "-fprint0",
       "-fprintf",
       "-fls",
     ],
