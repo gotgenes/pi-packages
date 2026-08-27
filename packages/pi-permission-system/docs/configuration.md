@@ -740,18 +740,53 @@ Since rules are last-match-wins, the explicit entry always has the final say, an
 
 #### Which direction is a given access?
 
-A tool's identity establishes its direction:
+A tool's identity establishes its direction, and on the bash surface a redirect operator or a known read-only command word can establish it too:
 
-| Access                        | Consults                  |
-| ----------------------------- | ------------------------- |
-| `read`, `grep`, `find`, `ls`  | the `_read` surface only  |
-| `write`                       | the `_write` surface only |
-| `edit`                        | both, most-restrictive    |
-| An MCP tool or extension tool | both, most-restrictive    |
-| A bash path token             | both, most-restrictive    |
+| Access                                                                     | Consults                  |
+| -------------------------------------------------------------------------- | ------------------------- |
+| `read`, `grep`, `find`, `ls`                                               | the `_read` surface only  |
+| `write`                                                                    | the `_write` surface only |
+| `edit`                                                                     | both, most-restrictive    |
+| An MCP tool or extension tool                                              | both, most-restrictive    |
+| A bash output redirect destination (`>`, `>>`, `>\|`, `&>`)                | the `_write` surface only |
+| A bash input redirect destination (`<`, `<<<`)                             | the `_read` surface only  |
+| An argument of a [pure-reader core](#the-pure-reader-command-core) command | the `_read` surface only  |
+| Any other bash path token                                                  | both, most-restrictive    |
 
 An access whose direction cannot be established consults **both** surfaces and takes the more restrictive answer.
 That is deliberate: an unproven access is never treated as the narrower one.
+
+Attribution is per **token**, not per command, so one invocation can do both: in `cat notes.md > /backup/notes.md`, `notes.md` is a read and `/backup/notes.md` is a write.
+A redirect operator's proof is absolute — it overrides whatever the command in front of it proved, because `> out.txt` writes `out.txt` however read-only that command is.
+When the same path is reached twice with disagreeing directions (`cat a.txt > a.txt`), the two fold to unproven, which consults both surfaces.
+
+#### The pure-reader command core
+
+A small, frozen set of command words is read-only for any arguments, in any implementation.
+A path token owned by one of them consults the `_read` surface alone:
+
+<!-- BEGIN PURE_READER_CORE -->
+
+`basename`, `cat`, `cd`, `diff`, `dirname`, `echo`, `egrep`, `fd`, `fgrep`, `file`, `find`, `grep`, `head`, `ls`, `pwd`, `realpath`, `rg`, `sort`, `stat`, `tail`, `wc`, `which`
+
+<!-- END PURE_READER_CORE -->
+
+The bar for admission is structural, not popularity: implementation-independent read-only-ness across GNU and BSD alike, no option that redirects output to a file, and effects that do not depend on argument content.
+`awk` and `sed` are excluded because their program text and `-i` flag can write; `uniq`, `tee`, `dd`, and `split` each have a positional or option that writes a file; `less` and `more` can escape to a shell; `git`, `pnpm`, and `node` are subcommand-dependent.
+
+Three members are read-only **until an argument says otherwise**, and naming one of these options withdraws the claim — the token falls back to consulting both surfaces:
+
+| Command | Withdrawn by                                                                   |
+| ------- | ------------------------------------------------------------------------------ |
+| `find`  | `-exec`, `-execdir`, `-ok`, `-okdir`, `-delete`, `-fprint`, `-fprintf`, `-fls` |
+| `fd`    | `-x`, `-X`, `--exec`, `--exec-batch`                                           |
+| `sort`  | `-o`, `--output`                                                               |
+
+A core word counts only as a **bare basename**.
+`./grep`, `/usr/bin/grep`, and `bin\grep` name programs this audit never saw, so they prove nothing and consult both surfaces.
+
+The core cannot be extended or removed from configuration.
+If you do not trust a member of it, deny or ask on the paths themselves — an effect proof only chooses which surface answers, and never overrides the answer.
 
 #### Which key to actually write
 
@@ -992,6 +1027,7 @@ Four existing behaviors keep this allowlist safe — you do not have to enumerat
 2. **`find`/`fd` with an exec flag are floored to `ask`.**
    A bare `find *` search is read-only, so it is safe to allow; the moment an exec flag appears (`find -exec`/`-execdir`/`-ok`/`-okdir`, `fd -x`/`-X`), the [indirection-wrapper floor](#fail-closed-behavior) clamps the decision back to `ask`.
    So `find . -type f -exec rm {} +` still prompts even under `find *: allow`.
+   The same options — plus `find -delete`/`-fprint`/`-fprintf`/`-fls` and `fd --exec`/`--exec-batch` — also withdraw the [pure-reader claim](#the-pure-reader-command-core) on that command's path tokens, so they stop resolving on the `_read` surface alone.
 3. **Chained commands resolve most-restrictive.**
    `find . -name '*.log' && rm -f found.log` decomposes into `find …` and `rm …`; `rm` matches only `"*": "ask"`, and the most restrictive result governs the whole invocation, so the chain prompts.
 4. **Wrappers cannot ride the allowlist.**

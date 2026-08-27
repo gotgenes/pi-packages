@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   PURE_READER_CORE,
@@ -40,6 +42,25 @@ const ROSTER = [
 describe("PURE_READER_CORE", () => {
   it("holds exactly the 22 audited words", () => {
     expect([...PURE_READER_CORE].sort()).toEqual([...ROSTER].sort());
+  });
+
+  it("matches the roster published in docs/configuration.md", () => {
+    // A listed roster drifts from the code, and this one is what a user reads
+    // to decide whether a directional grant will cover their commands.
+    const doc = readFileSync(
+      join(import.meta.dirname, "..", "..", "..", "docs", "configuration.md"),
+      "utf-8",
+    );
+    const listed =
+      /<!-- BEGIN PURE_READER_CORE -->([\s\S]*?)<!-- END PURE_READER_CORE -->/.exec(
+        doc,
+      )?.[1];
+    expect(listed).toBeDefined();
+
+    const documented = [...(listed ?? "").matchAll(/`([^`]+)`/g)].map(
+      ([, word]) => word,
+    );
+    expect(documented).toEqual([...PURE_READER_CORE].sort());
   });
 });
 

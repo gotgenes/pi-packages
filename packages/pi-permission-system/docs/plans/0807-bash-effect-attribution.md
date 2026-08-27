@@ -434,6 +434,13 @@ Step 1's documented outcomes that this change sits directly on top of, and what 
 Against the committed instrument and the 22-word core: 27.9% of recent bash asks (64 of 229) and 36.9% of all-time (296 of 803) have every unit head word in the core — **measured**, and the ceiling on band B relief given a directional read grant covering the asked roots.
 The docs cycle records this number beside the script so a later re-run can falsify it.
 
+**Measured correction (implementation, 2026-08-25).**
+The re-run did falsify it, which is what committing the instrument was for.
+The scan behind the figures above did not apply the retraction guards it describes: with them applied, `scripts/measure-core-coverage.mjs` reports **22.8% recent (52 of 228) and 35.9% all-time (288 of 802)**.
+The marginal table reproduces row for row when the guards are switched off, so the discrepancy is entirely `find`'s guard.
+All 14 recent asks it excludes are `find … -exec <core reader> {} +`, which the indirection-wrapper floor already sends to `ask` — so the guard forfeits no relief reachable at this step, and those asks are [#803]'s population.
+The design is unchanged: the marginal argument that selected the focused core is measured on the same rows and still holds.
+
 ## TDD Order
 
 1. **The effect vocabulary.**
