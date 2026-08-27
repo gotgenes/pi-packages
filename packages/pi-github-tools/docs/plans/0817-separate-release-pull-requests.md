@@ -202,12 +202,17 @@ release_watch   { component: "pi-github-tools" }
 
 ### Compatibility
 
-| Consumer state                               | Before           | After                                                      |
-| -------------------------------------------- | ---------------- | ---------------------------------------------------------- |
-| Combined PR, no component passed             | the one PR       | the one PR                                                 |
-| Combined PR, component passed                | n/a              | the one PR (non-component fallback)                        |
-| Combined release commit, no component passed | last tag on HEAD | last tag on HEAD                                           |
-| Several release PRs, no component passed     | arbitrary        | `ambiguous:` (a state that cannot occur without this flip) |
+| Consumer state                               | Before                 | After                                                      |
+| -------------------------------------------- | ---------------------- | ---------------------------------------------------------- |
+| Combined PR, no component passed             | the one PR             | the one PR, plus a `component: (none)` line                |
+| Component-scoped tag, no component passed    | `version: pi-x-v1.2.3` | `version: 1.2.3`                                           |
+| Combined PR, component passed                | n/a                    | the one PR (non-component fallback)                        |
+| Combined release commit, no component passed | last tag on HEAD       | last tag on HEAD                                           |
+| Several release PRs, no component passed     | arbitrary              | `ambiguous:` (a state that cannot occur without this flip) |
+
+The `component:` line is added to **every** success block, not only when a component was passed, and the `version:` correction applies to every component-scoped tag.
+Those two are why the change carries a `fix:` commit alongside the `feat:` ones rather than being purely additive.
+Neither is breaking: the first is an added line in an unstructured text block no caller parses positionally, and the second replaces a value that was wrong.
 
 ### Rollout and canary
 

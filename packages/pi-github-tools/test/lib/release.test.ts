@@ -879,5 +879,9 @@ describe("watchRelease", () => {
     it("reports a tag that encodes no version as itself", async () => {
       expect(await versionFor("nightly")).toBe("nightly");
     });
+
+    it("splits at the last separator when the component itself looks versioned", async () => {
+      expect(await versionFor("pi-v8-v1.0.0")).toBe("1.0.0");
+    });
   });
 });

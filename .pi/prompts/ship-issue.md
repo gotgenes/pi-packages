@@ -126,6 +126,7 @@ Skip this step entirely if step 4b recorded a defer/batch decision — the relea
    A sibling package's release PR sitting open is normal and is not yours to merge.
 3. If one exists, read the **full** PR body (`gh pr view <N> --json body -q .body`) and confirm it bumps `<pkg>` and nothing else.
    A component-scoped release PR carries exactly one package, so an unexpected bump means you have the wrong PR — stop rather than merge it.
+   Read `release_pr_find`'s `component:` line before applying that rule: `component: (none)` means a **combined** PR covering every package, which the tool falls back to legitimately (the rollback state in `AGENTS.md`), so sibling bumps there are expected rather than wrong.
    A package that releases off a `docs:`-only commit is missing a `docs/<subdir>` entry in `exclude-paths` (Refs #655).
 4. Use `release_pr_merge` with the PR number.
    The tool waits out an in-progress check or an undecided (`UNKNOWN`) mergeability state on its own, streaming progress — do not add a manual wait loop.

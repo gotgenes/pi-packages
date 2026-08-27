@@ -542,7 +542,10 @@ function selectReleaseTag(
   return tags.at(-1);
 }
 
-const VERSION_IN_TAG = /(?:^|-)v(?<version>\d[\w.+-]*)$/;
+// The leading `.*-` is greedy on purpose: it splits at the *last* separator, so
+// a component whose own name looks versioned (`pi-v8-v1.0.0`) still yields the
+// release's version rather than the component's.
+const VERSION_IN_TAG = /^(?:.*-)?v(?<version>\d[\w.+-]*)$/;
 
 /**
  * The bare version a release tag encodes: `pi-subagents-v19.3.5` → `19.3.5`.
