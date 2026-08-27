@@ -16,6 +16,9 @@ When adding a new package, wire it into all of:
    Add the `{ "source": "npm:@gotgenes/<pkg>", "extensions": [], "skills": [] }` disable entry (prevents double-load) **only after the package's first npm publish** — before that, the `npm:` reference makes Pi and the subagent launcher `npm install` a nonexistent package and fail (Refs #600).
 4. `README.md` — add the package to the Packages table, and to the no-dedicated-skill note unless it ships a `package-<pkg>` skill.
 
+A multi-line `run:` block in `.github/workflows/` belongs in `scripts/`, with the workflow keeping a one-line invocation.
+Split a script that pushes from the read-only derivation it calls, and refuse the pushing half outside CI — `scripts/advance-release-baseline.sh` guards on `CI`, `scripts/release-baseline-sha.sh` only prints (Refs #816).
+
 Publishing is automatic — `scripts/publish-released.sh` derives the package list from release-please's `paths_released`, so no publish-script edit is needed.
 A brand-new package's **first** release is the exception: npm Trusted Publishing cannot create a package that does not exist, so the CI `publish` job 404s on `v1.0.0`.
 Publish the first version manually (`pnpm login`, then `pnpm --filter @gotgenes/<pkg> publish --access public --no-git-checks` — no `--provenance`), then configure the Trusted Publisher on npmjs.org (repo `gotgenes/pi-packages`, workflow `ci.yml`).
@@ -99,6 +102,7 @@ It is informational — not a turn boundary.
 Continue the current step (e.g. Red→Green→Commit) until it is complete.
 It also reflows what you just wrote (line wrapping, quote style), so an `oldText` — or a shell/regex pattern — built from the layout you emitted can fail to match; re-read a region you just edited before matching against it again.
 It also joins a line ending in `:` with the sentence after it — to add a sentence there, start a new paragraph, not a new line.
+It likewise joins a sentence onto the previous line when the sentence opens with a lowercase token (a package or command name such as `release-please`) — lead with a capital instead (Refs #816).
 It fires on `Edit`/`Write` only, so a file appended with a shell heredoc skips formatting entirely and fails `pnpm run lint` — append source with `Write`/`Edit` too, not just markdown.
 
 ### Stale prompt-template expansion
