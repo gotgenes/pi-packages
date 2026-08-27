@@ -189,6 +189,8 @@ Then an H1 title (e.g., `# <short descriptive title>`) — required by markdownl
   (2) what existing tests become redundant with the new lower-level tests, and can they be simplified or removed?
   (3) which existing tests must stay as-is because they genuinely exercise the layer being extracted?
   For a prompt or skill change, the shell commands the new text prescribes are its testable surface: dry-run each at planning time and record the expected output, so `/build-plan` can re-run them as verification (Refs #767).
+  When the plan introduces a parser or matcher, its testable surface is the input domain rather than the inputs you can picture.
+  Run the candidate over every real sample available, and include this repo's own authoring conventions among the shapes it must survive — `markdown-conventions`' four-backtick fence is the case this missed (Refs #818).
 - **Invariants at risk** — when the change touches a surface a prior phase step already refactored, list that step's documented invariants (the architecture roadmap's `Outcome:`/`Landed:` bullets) and name the test that pins each — add a test if the invariant lives only in prose.
   Open each test you name — a file that mocks the layer under test pins nothing about it (Refs #806).
   A later step must not regress an earlier step's outcome with a green suite.
