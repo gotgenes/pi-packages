@@ -6,14 +6,19 @@ body:
     id: package
     attributes:
       label: Package
-      description: Which package does this relate to?
+      description: Which package does this relate to? Choose repo-wide for build, CI, tooling, or cross-package docs.
       multiple: true
       options:
         - pi-autoformat
+        - pi-colgrep
         - pi-github-tools
+        - pi-nocd
         - pi-permission-model-judge
         - pi-permission-system
+        - pi-session-tools
         - pi-subagents
+        - pi-subagents-worktrees
+        - repo-wide (not a specific package)
     validations:
       required: true
 
