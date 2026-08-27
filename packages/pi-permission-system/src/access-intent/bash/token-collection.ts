@@ -1,8 +1,5 @@
 import { basename } from "node:path";
-import {
-  proveCommandEffect,
-  redirectDestinationEffect,
-} from "#src/access-intent/bash/command-effects";
+import { proveCommandEffect } from "#src/access-intent/bash/command-effects";
 import {
   EXECUTION_HOST_TYPES,
   forEachNestedExecution,
@@ -14,6 +11,7 @@ import {
   SKIP_SUBTREE_TYPES,
 } from "#src/access-intent/bash/node-text";
 import type { TSNode } from "#src/access-intent/bash/parser";
+import { redirectEffectForDestination } from "#src/access-intent/bash/redirect-analysis";
 import type { TokenEffect } from "#src/access-intent/effect";
 
 /**
@@ -104,18 +102,17 @@ export function collectCommandTokens(node: TSNode): PathToken[] {
  * proved, because `> out.txt` writes `out.txt` however read-only the command
  * in front of it is. A destination the operator names as a file descriptor
  * (`2>&1`) contributes no token at all.
+ *
+ * Reading the redirect node itself belongs to `redirect-analysis.ts`, which
+ * the command enumerator consults for the same fact (#803).
  */
 export function collectRedirectTokens(node: TSNode): PathToken[] {
-  const operator = redirectOperatorOf(node);
   const tokens: PathToken[] = [];
   for (let i = 0; i < node.childCount; i++) {
     const child = node.child(i);
     if (!child) continue;
     if (ARG_NODE_TYPES.has(child.type)) {
-      const effect = redirectDestinationEffect(
-        operator,
-        DESCRIPTOR_NODE_TYPES.has(child.type),
-      );
+      const effect = redirectEffectForDestination(node, child);
       if (effect) tokens.push({ token: resolveNodeText(child), effect });
     }
     tokens.push(...collectHostedExecutionTokens(child));
@@ -183,33 +180,6 @@ export function extractCommandWord(node: TSNode): string | undefined {
 }
 
 // ── Private helpers and config ─────────────────────────────────────────────
-
-/**
- * Destination node types that name a file descriptor rather than a file, so
- * `>&` / `<&` duplicate a stream instead of touching the filesystem.
- *
- * Neither type is in {@link ARG_NODE_TYPES}, so `2>&1`'s `1` is already never
- * collected; the check is what keeps that true if the argument set widens.
- */
-const DESCRIPTOR_NODE_TYPES: ReadonlySet<string> = new Set([
-  "file_descriptor",
-  "number",
-]);
-
-/**
- * The redirect operator of a `file_redirect` node.
- *
- * tree-sitter-bash emits it as an unnamed child whose `type` is the operator
- * text itself, and a `file_redirect`'s only unnamed child is that operator —
- * so the syntax proof is a lookup on the first one found.
- */
-function redirectOperatorOf(node: TSNode): string {
-  for (let i = 0; i < node.childCount; i++) {
-    const child = node.child(i);
-    if (child && !child.isNamed) return child.type;
-  }
-  return "";
-}
 
 /**
  * The command's own argument words, which the retraction guards read.
