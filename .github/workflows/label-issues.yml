@@ -5,31 +5,20 @@ on:
     types: [opened]
 
 permissions:
+  # `contents: read` for the checkout: the labeler reads the package list from
+  # .release-please-manifest.json rather than a hardcoded copy (Refs #818), and
+  # naming any permission defaults every unnamed one to `none`.
+  contents: read
   issues: write
 
 jobs:
   label:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v7
+
       - name: Apply package labels
-        uses: actions/github-script@v9
-        with:
-          script: |
-            const body = context.payload.issue.body || '';
-            const packages = [
-              'pi-autoformat',
-              'pi-github-tools',
-              'pi-permission-system',
-              'pi-subagents',
-            ];
-            const labels = packages
-              .filter(pkg => body.includes(pkg))
-              .map(pkg => `pkg:${pkg}`);
-            if (labels.length > 0) {
-              await github.rest.issues.addLabels({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                labels,
-              });
-            }
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: ./scripts/label-issues.sh "$ISSUE_NUMBER"
