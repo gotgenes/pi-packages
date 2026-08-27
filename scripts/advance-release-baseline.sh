@@ -17,12 +17,25 @@
 # before the derivation runs, and the caller's `continue-on-error` absorbs the
 # whole thing as a baseline that simply did not advance.
 #
-# Usage (from the repository root):
-#   ./scripts/advance-release-baseline.sh
+# Because it pushes, it refuses to run outside CI unless you say so explicitly.
+# The manual recovery in AGENTS.md does not need it: that flow has you run the
+# read-only derivation and commit the result yourself.
+#
+# Usage:
+#   ./scripts/advance-release-baseline.sh                  # CI
+#   ALLOW_LOCAL_PUSH=1 ./scripts/advance-release-baseline.sh  # deliberate local run
 
 set -euo pipefail
 
 CONFIG=release-please-config.json
+
+if [ -z "${CI:-}" ] && [ -z "${ALLOW_LOCAL_PUSH:-}" ]; then
+  echo "Error: this script commits and pushes to main, and CI is not set." >&2
+  echo "       To derive the baseline without changing anything, run:" >&2
+  echo "         ./scripts/release-baseline-sha.sh" >&2
+  echo "       To push from here anyway, re-run with ALLOW_LOCAL_PUSH=1." >&2
+  exit 1
+fi
 
 git fetch --tags --force origin
 
