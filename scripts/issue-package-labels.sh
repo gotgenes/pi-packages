@@ -58,7 +58,24 @@ body=$(jq -r '.body // ""' <<<"$payload")
 # renderings rather than silently dropping every label if it is a list.
 selections=$(
   awk '
-    /^[[:space:]]*(```|~~~)/ { fence = !fence; next }
+    # Track fences the way CommonMark does: a closer must use the opening
+    # marker character and be at least as long. A plain toggle would let the
+    # inner ``` of a 4-backtick block -- the convention this repo uses to embed
+    # markdown that itself contains fences -- close the outer one and leak the
+    # example back in as real content.
+    /^[[:space:]]*(```|~~~)/ {
+      line = $0
+      sub(/^[[:space:]]*/, "", line)
+      match(line, /^(`+|~+)/)
+      if (!fence) {
+        fence = 1
+        open_char = substr(line, 1, 1)
+        open_len = RLENGTH
+      } else if (substr(line, 1, 1) == open_char && RLENGTH >= open_len) {
+        fence = 0
+      }
+      next
+    }
     fence { next }
     /^###[[:space:]]+Package[[:space:]]*$/ { inside = 1; next }
     inside && /^###/ { exit }
