@@ -71,6 +71,9 @@ jobs:
         with:
           ref: main
           token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          # Full history and tags: the baseline step below resolves every
+          # component's release tag to a commit and orders them by ancestry.
+          fetch-depth: 0
 
       - uses: googleapis/release-please-action@v5
         id: release
@@ -79,43 +82,37 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
+      # The action creates this run's tags through the API, after the checkout
+      # above, so they are absent from the local clone until fetched.
+      - name: Fetch tags created by this release
+        if: steps.release.outputs.releases_created == 'true'
+        run: git fetch --tags --force origin
+
       # Advance the commit-search baseline so future runs only walk commits since
-      # the latest release, instead of the default 500. Keeps the per-run API
-      # burst small (avoids the secondary-rate-limit "Bad credentials" failures)
-      # and the run fast in this high-volume monorepo. Runs only when a release
-      # was just cut; [skip ci] prevents the write-back commit from re-triggering.
+      # the oldest component's release, instead of the default 500. Keeps the
+      # per-run API burst small (avoids the secondary-rate-limit "Bad credentials"
+      # failures) and the run fast in this high-volume monorepo. Runs only when a
+      # release was just cut; [skip ci] stops the write-back commit re-triggering.
       #
-      # SHA source: components live at non-root paths, so the action emits no
-      # top-level `sha` output — only path-prefixed `<path>--sha`. Every component
-      # in one release PR is tagged at the same commit, so any released path's
-      # `--sha` is the release commit. Under a rebase-merge that is the rebased
-      # commit on main (release-please reads the PR's merge_commit_sha, which
-      # GitHub sets to the rebased tip), so it is always an ancestor of future
-      # HEADs. github.sha is a belt-and-suspenders fallback.
+      # SHA source: scripts/release-baseline-sha.sh, which derives the floor from
+      # the manifest. The release action's `<path>--sha` outputs cannot be used —
+      # they report only the components that just released, which is exactly the
+      # set that cannot reveal a component lagging behind them (Refs #816).
+      #
+      # continue-on-error: a failure here must not fail the job, because that
+      # would make GitHub skip the `publish` job for an already-tagged release
+      # (Refs #646). A baseline that did not advance only widens the next walk.
       - name: Advance release-please last-release-sha baseline
         if: steps.release.outputs.releases_created == 'true'
-        env:
-          OUTPUTS: ${{ toJSON(steps.release.outputs) }}
-          FALLBACK_SHA: ${{ github.sha }}
+        continue-on-error: true
         run: |
           set -euo pipefail
-          RELEASE_SHA=$(printf '%s' "$OUTPUTS" | jq -r '
-            to_entries
-            | map(select(.key | endswith("--sha")))
-            | map(.value | select(type == "string" and (. | length) == 40))
-            | (.[0] // empty)')
-          if [ -z "$RELEASE_SHA" ]; then
-            RELEASE_SHA="$FALLBACK_SHA"
-          fi
-          if [ -z "$RELEASE_SHA" ]; then
-            echo "Could not determine release sha; leaving baseline unchanged."
-            exit 0
-          fi
+          BASELINE_SHA=$(./scripts/release-baseline-sha.sh)
           tmp=$(mktemp)
-          jq --arg sha "$RELEASE_SHA" '.["last-release-sha"] = $sha' release-please-config.json > "$tmp"
+          jq --arg sha "$BASELINE_SHA" '.["last-release-sha"] = $sha' release-please-config.json > "$tmp"
           mv "$tmp" release-please-config.json
           if git diff --quiet -- release-please-config.json; then
-            echo "last-release-sha already at $RELEASE_SHA."
+            echo "last-release-sha already at $BASELINE_SHA."
             exit 0
           fi
           git config user.name "github-actions[bot]"
