@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [27.1.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v27.0.1...pi-permission-system-v27.1.0) (2026-08-27)
+
+
+### Features
+
+* **pi-permission-system:** add the read/write capability axis to the path surfaces ([#806](https://github.com/gotgenes/pi-packages/issues/806)) ([77d1916](https://github.com/gotgenes/pi-packages/commit/77d191645e60d4bd42981e8b6080332eaac9bb70))
+* **pi-permission-system:** name and validate the directional keys in the config schema ([2893277](https://github.com/gotgenes/pi-packages/commit/2893277a3481a13eda2dfcd50811f431d459bb5f)), closes [#806](https://github.com/gotgenes/pi-packages/issues/806)
+* **pi-permission-system:** record the wrapper floor exemption in the review log ([0f8f482](https://github.com/gotgenes/pi-packages/commit/0f8f4821879f45c67b16f14136ec203efa6286fa)), closes [#803](https://github.com/gotgenes/pi-packages/issues/803)
+* **pi-permission-system:** route a direction-proven tool access to its directional surface ([2204cd8](https://github.com/gotgenes/pi-packages/commit/2204cd833c77d249ede41410631ad160518b122c)), closes [#806](https://github.com/gotgenes/pi-packages/issues/806)
+* **pi-permission-system:** route a proven bash external path to its directional surface ([#807](https://github.com/gotgenes/pi-packages/issues/807)) ([504cfcc](https://github.com/gotgenes/pi-packages/commit/504cfcc44fb1d54f6eebdad22e4a775b6a462ee4))
+* **pi-permission-system:** route a proven bash path token to its directional surface ([9140c24](https://github.com/gotgenes/pi-packages/commit/9140c245c5b4dcd41a5870381e6478ba9c266b00)), closes [#807](https://github.com/gotgenes/pi-packages/issues/807)
+
+
+### Bug Fixes
+
+* **pi-permission-system:** close two fail-opens in the pure-reader core ([50b4210](https://github.com/gotgenes/pi-packages/commit/50b421019d6116a9c0df0ee9b3f0a85738c27882)), closes [#807](https://github.com/gotgenes/pi-packages/issues/807)
+* **pi-permission-system:** stop flooring wrappers that run a proven pure reader ([#803](https://github.com/gotgenes/pi-packages/issues/803)) ([1a4805f](https://github.com/gotgenes/pi-packages/commit/1a4805f89133c4048d6af7e1851bc73122dca277))
+* **pi-permission-system:** withhold the wrapper exemption for an unresolvable redirect ([0e1ed35](https://github.com/gotgenes/pi-packages/commit/0e1ed359e561f7236b00b5dc9a0a319ea762b1c7))
+
+
+### Documentation
+
+* **pi-permission-system:** commit the wrapper-transparency measurement instrument ([cb14723](https://github.com/gotgenes/pi-packages/commit/cb14723008ed39ec61d76715a9628dfa0a3e27fa)), closes [#803](https://github.com/gotgenes/pi-packages/issues/803)
+* **pi-permission-system:** document bash effect attribution and the pure-reader core ([2a8e77b](https://github.com/gotgenes/pi-packages/commit/2a8e77b38fffb69cbdee355bc21eb580a66684f4)), closes [#807](https://github.com/gotgenes/pi-packages/issues/807)
+* **pi-permission-system:** document the directional path surfaces ([#806](https://github.com/gotgenes/pi-packages/issues/806)) ([a75f055](https://github.com/gotgenes/pi-packages/commit/a75f0552dbd07afdabeb5b0e9b9ac7699121141a))
+* **pi-permission-system:** document wrapper transparency and mark Phase 14 Step 3 complete ([bfb67bb](https://github.com/gotgenes/pi-packages/commit/bfb67bbb2ca44592d99f91deb9cd80f65e60afd3)), closes [#803](https://github.com/gotgenes/pi-packages/issues/803)
+* **pi-permission-system:** resolve pre-completion review warnings ([8484bd3](https://github.com/gotgenes/pi-packages/commit/8484bd391e41b309cdb17e52df6525a39d7bc71c)), closes [#803](https://github.com/gotgenes/pi-packages/issues/803)
+* **pi-permission-system:** spell directional examples with a single wildcard ([135ae12](https://github.com/gotgenes/pi-packages/commit/135ae12293091d97af25d32a920481dd8d524626)), closes [#806](https://github.com/gotgenes/pi-packages/issues/806)
+
 ## [27.0.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v27.0.0...pi-permission-system-v27.0.1) (2026-08-24)
 
 

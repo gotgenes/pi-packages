@@ -4,7 +4,7 @@
   "packages/pi-github-tools": "4.3.2",
   "packages/pi-nocd": "1.0.2",
   "packages/pi-permission-model-judge": "2.0.0",
-  "packages/pi-permission-system": "27.0.1",
+  "packages/pi-permission-system": "27.1.0",
   "packages/pi-session-tools": "1.2.1",
   "packages/pi-subagents": "19.3.5",
   "packages/pi-subagents-worktrees": "0.3.1"
