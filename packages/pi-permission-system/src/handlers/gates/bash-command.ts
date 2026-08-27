@@ -85,11 +85,7 @@ export function resolveBashCommandCheck(
     });
     const floored =
       cmd.wrapperKind && base.state === "allow"
-        ? {
-            ...base,
-            state: "ask" as const,
-            matchedPattern: WRAPPER_SENTINEL[cmd.wrapperKind],
-          }
+        ? resolveWrapperUnit(base, cmd.wrapperKind)
         : base;
     const result = cmd.context
       ? { ...floored, commandContext: cmd.context }
@@ -102,6 +98,25 @@ export function resolveBashCommandCheck(
     pickMostRestrictive(results) ??
     resolveWholeCommand(command, agentName, resolver)
   );
+}
+
+/**
+ * Resolve a wrapper unit whose own text resolved to `allow`.
+ *
+ * Separated from the mapping loop because the floor is a decision about the
+ * unit, not a step of the walk: a wrapper hides or indirects the command that
+ * should be gated, so its `allow` is clamped up to a synthetic `ask` naming the
+ * kind that caused it. An explicit `deny`/`ask` never reaches here.
+ */
+function resolveWrapperUnit(
+  base: PermissionCheckResult,
+  wrapperKind: WrapperKind,
+): PermissionCheckResult {
+  return {
+    ...base,
+    state: "ask",
+    matchedPattern: WRAPPER_SENTINEL[wrapperKind],
+  };
 }
 
 /**
