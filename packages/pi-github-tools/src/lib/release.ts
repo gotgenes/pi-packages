@@ -491,7 +491,7 @@ export async function watchRelease(args: WatchReleaseArgs): Promise<string> {
       }
       return [
         `tag: ${tag}`,
-        `version: ${tag.replace(/^v/, "")}`,
+        `version: ${versionOf(tag)}`,
         `sha: ${headSha}`,
         `short_sha: ${headSha.substring(0, 7)}`,
       ].join("\n");
@@ -540,4 +540,17 @@ function selectReleaseTag(
     return tags.find((tag) => tag.startsWith(`${component}-v`));
   }
   return tags.at(-1);
+}
+
+const VERSION_IN_TAG = /(?:^|-)v(?<version>\d[\w.+-]*)$/;
+
+/**
+ * The bare version a release tag encodes: `pi-subagents-v19.3.5` → `19.3.5`.
+ *
+ * `include-component-in-tag` puts the component ahead of the `v`, so stripping
+ * a leading `v` alone leaves the whole tag behind. A tag that encodes no
+ * version stands for itself rather than being mangled.
+ */
+function versionOf(tag: string): string {
+  return VERSION_IN_TAG.exec(tag)?.groups?.version ?? tag;
 }

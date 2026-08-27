@@ -850,4 +850,34 @@ describe("watchRelease", () => {
       });
     });
   });
+
+  describe("version reporting", () => {
+    async function versionFor(tag: string): Promise<string | undefined> {
+      mockCmd("");
+      mockCmd(`${tag}\n`);
+      mockCmd("abc1234567890\n");
+
+      const result = await watchRelease({ timeout: 120 });
+      return result
+        .split("\n")
+        .find((line) => line.startsWith("version: "))
+        ?.slice("version: ".length);
+    }
+
+    it("strips the component prefix from a component-scoped tag", async () => {
+      expect(await versionFor("pi-github-tools-v4.3.2")).toBe("4.3.2");
+    });
+
+    it("strips the leading v from a bare tag", async () => {
+      expect(await versionFor("v1.2.0")).toBe("1.2.0");
+    });
+
+    it("keeps a prerelease suffix", async () => {
+      expect(await versionFor("pi-nocd-v1.0.0-rc.1")).toBe("1.0.0-rc.1");
+    });
+
+    it("reports a tag that encodes no version as itself", async () => {
+      expect(await versionFor("nightly")).toBe("nightly");
+    });
+  });
 });
