@@ -15,6 +15,14 @@ When adding a new package, wire it into all of:
 3. `.pi/settings.json` — add the `../packages/<pkg>` load path.
    Add the `{ "source": "npm:@gotgenes/<pkg>", "extensions": [], "skills": [] }` disable entry (prevents double-load) **only after the package's first npm publish** — before that, the `npm:` reference makes Pi and the subagent launcher `npm install` a nonexistent package and fail (Refs #600).
 4. `README.md` — add the package to the Packages table, and to the no-dedicated-skill note unless it ships a `package-<pkg>` skill.
+5. `.github/ISSUE_TEMPLATE/bug_report.yml` and `.github/ISSUE_TEMPLATE/feature_request.yml` — add the package to the `Package` dropdown in **both** forms.
+   The dropdown is `required: true` and `blank_issues_enabled: false`, so a package missing here cannot be reported at all.
+   These are static YAML that GitHub reads from the default branch, so they cannot derive the list at run time the way the labeler does (Refs #818).
+6. `gh label create pkg:<pkg> --description "Issues related to <pkg>" --color 0075ca` — the label must exist before an issue selects the package, or `scripts/label-issues.sh` fails on `gh issue edit`.
+
+The issue auto-labeler is **not** on that list: `scripts/issue-package-labels.sh` derives its package list from `.release-please-manifest.json`, so step 2 is the only edit it needs (Refs #818).
+Repo-level work — build, CI, tooling, cross-package docs — is labeled `scope:repo` rather than with every package's label.
+That scope is always asserted (the forms' repo-wide option, or `gh issue create --label scope:repo`), never inferred from the absence of a package.
 
 A multi-line `run:` block in `.github/workflows/` belongs in `scripts/`, with the workflow keeping a one-line invocation.
 Split a script that pushes from the read-only derivation it calls, and refuse the pushing half outside CI — `scripts/advance-release-baseline.sh` guards on `CI`, `scripts/release-baseline-sha.sh` only prints (Refs #816).
