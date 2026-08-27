@@ -276,6 +276,8 @@ This resolver-internal boundary is a deliberate, formalized seam, not transition
   See the `subagent registry sharing` and `out-of-process forwarding liveness` tests in `test/composition-root.test.ts`.
   A `ParentAuthorizer` unit test builds its deps with `makeParentAuthorizerDeps` (`test/helpers/forwarding-fixtures.ts`), whose `serving` default reports every target as serving and whose `getTimeoutMs` override makes the timeout path testable without waiting it out.
   A test that targets a liveness path passes `makeLivenessJudge({ forwardingDir, registry?, isProcessAlive? })` instead — the real judge over real records, so a double cannot drift from the routing under test.
+- A `test/authority/` forwarding-liveness failure reporting an absurd duration (minutes for a sub-second test) is host load, not a regression — the poll loops are wall-clock.
+  A different pair fails on each run and all pass in isolation; re-run the file alone before investigating (Refs #803).
 
 ## Debugging
 

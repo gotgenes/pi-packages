@@ -51,6 +51,8 @@ Modified files since last tag:
   AGENTS.md
 ```
 
+When the change removes or narrows a guard, add a re-derivation mandate to the prompt: name the invariants to verify, and require the reviewer to enumerate its own candidate inputs rather than check the ones the tests already cover (Refs #803).
+
 Wait for the reviewer to complete and return its report before continuing.
 
 ## Step 3: Handle the report

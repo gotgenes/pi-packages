@@ -82,7 +82,87 @@ Test count went 3501 → 3618 passing (+117) plus 2 deliberate `it.fails`.
   After the fix, the re-review independently re-derived all five security claims live (including a ten-shape sweep of heredocs, herestrings, multiple redirects, subshell and nested-execution redirects, and both `<>` spellings) and found no remaining gap.
   Its three WARNs — a stale `redirectProvesFileWrite` name in the architecture module tree, the plan's undelivered doc rows, and a new Biome `noTemplateCurlyInString` warning — are all resolved in `8484bd39`.
 
+## Stage: Final Retrospective (2026-08-27T17:01:46Z)
+
+### Session summary
+
+Planned, implemented, and shipped Phase 14 Step 3 in one session — 15 commits, released as `pi-permission-system-v27.1.0` (the `capability-axis` batch tail carrying [#806], [#807], and this issue).
+The wrapper floor no longer applies to a wrapper running a proven pure reader, relieving a measured 13.1% of all prompts.
+One blocking fail-open was introduced during implementation and caught by pre-completion review before it landed; one pre-existing fail-open ([#814]) was found, filed, and dispositioned as a new roadmap step.
+
+### Observations
+
+#### What went well
+
+- **A `refactor:` extraction became a security defect, and a fresh-context reviewer on a weaker model caught what the implementing model missed.**
+  The implementation ran on `claude-opus-5`; the `pre-completion-reviewer` runs on `claude-sonnet-5` by frontmatter.
+  The reviewer found that `redirectProvesFileWrite` had inherited `token-collection.ts`'s `ARG_NODE_TYPES` filter, so `xargs grep foo > $OUT` was exempted.
+  Fresh context plus an explicit re-derivation mandate beat raw model strength on this class of defect — the implementing model had written the tests, the docs, and the plan's own risk table, and none of them covered the shape.
+- **Dispatching the reviewer adversarially is what produced the finding.**
+  The dispatch named the change as a security boundary, listed five claims to re-derive rather than accept, and required the reviewer to *enumerate its own candidate input shapes* instead of checking the ones the tests cover.
+  It enumerated `$VAR`, `${VAR}`, and `$(cmd)` destinations, which no test in the suite touched.
+  A generic "review this issue" dispatch would have found nothing — every deterministic check was green.
+- **Mutation-checking every new pin caught nothing but proved everything.**
+  Three pins were verified by reverting the implementation to its plausible-wrong form: the naive `executedUnitOf`-string predicate failed exactly the four opaque-payload tests, removing the `writesViaRedirect` relay failed exactly the six redirect tests, and dropping the `logContext` stamp failed exactly the one audit test.
+  Since each test was written after its implementation in the same cycle, the mutation is the only thing separating a pin from a tautology.
+- **The planning-stage spike paid for the whole session.**
+  Running the *real* modules over the real review log (rather than reimplementing them, as the earlier `measure-core-coverage.mjs` precedent invited) exposed that `executedUnitOf` unwraps through an opaque payload — a fail-open the issue's own wording and ADR 0013 §11's own wording would both have shipped.
+
+#### What caused friction (agent side)
+
+- `missing-context` — the extracted `redirectProvesFileWrite` reused the token collector's `ARG_NODE_TYPES` destination filter without asking what a `false` meant to the *new* caller.
+  The extraction was genuinely behavior-preserving for its original consumer, which is what made it read as safe; the new consumer was deciding whether to remove a guard, where "unrecognized" must mean "unsafe", not "no write".
+  Impact: the single blocking review finding, one extra `fix:` commit (`0e1ed359`), a rename, three new test blocks, and a re-dispatch of the reviewer.
+  This is the one defect of the session and it is worth more than the rest combined.
+- `instruction-violation` (user-caught) — the first `sudo`/`doas` `ask_user` gate offered include/exclude on a security framing without naming who owns the lever or what happens in each concrete configuration.
+  `AGENTS.md` line 186 states exactly this rule (Refs #789), and the operator bounced the gate for exactly that reason.
+  Impact: one extra gate round-trip; the re-ask with a per-configuration table produced a decision immediately.
+- `other` (malformed tool call) — an `Edit` call carried a stray top-level `"rm *"` parameter and a `newText` truncated mid-sentence, which silently swallowed the `#### Which key to actually write` heading in `docs/configuration.md` while reporting `Successfully replaced 2 block(s)`.
+  `AGENTS.md`'s existing "count reported blocks against intended edits" check would not have caught it — two blocks were reported and two were intended.
+  Impact: one corrupted doc region, self-caught by the immediately following `grep`, repaired in the next edit.
+  No rework beyond that.
+- `other` (environment) — diagnosing the flaky `test/authority/` failures took roughly six tool calls (two full-suite runs, one subset run, `uptime`, `ps`, a 60-second sleep, a re-run) before concluding it was host load rather than a regression.
+  Impact: added friction, no rework; the conclusion was correct and the suite was green at lower load.
+- `missing-context` — the first `redirect-analysis.test.ts` case asserted `{ effect: "unproven", source: "none" }` for `cat <> rw.txt`; `none` is not a member of the `EffectSource` union, and the real answer was `read`.
+  Impact: one failed test run — but it is what surfaced [#814], so the cost was negative on net.
+- `other` — the first Biome suppression comment was written across two lines, so the `biome-ignore` directive did not attach to the offending line.
+  Impact: one extra lint round-trip.
+
+#### What caused friction (user side)
+
+- Nothing that cost the session time.
+  Two interventions were strictly load-bearing:
+  1. The `sudo` gate bounce supplied the reframing the gate should have contained — that a user rule (`bash: {"sudo *": "ask"}`) already owns the lever, which under the chosen verdict semantics is a complete answer.
+     This turned a security-posture question into a documentation question.
+  2. Choosing "New step in Phase 14" for [#814] over the recommended "defer to Phase 15" corrected a conservative default: the phase had just built the module the defect lives in, so fixing it there is cheaper than reopening the file next phase.
+- Pattern worth noting across both: the agent's proposals defaulted to the more conservative option and the operator's judgment expanded them in both cases.
+
+### Diagnostic details
+
+- **Model-performance correlation** — attributed from inline `[provider/model]` labels in an unfiltered `read_session`, cross-checked against three `model_change` events.
+  Planning and TDD implementation ran on `anthropic/claude-opus-5`; the ship stage ran on `anthropic/claude-sonnet-5`; this retro runs on `anthropic/claude-opus-5`.
+  Both subagents (`tidy-first-assessor`, `pre-completion-reviewer` ×2) ran on `anthropic/claude-sonnet-5` per their frontmatter.
+  No mismatch: judgment-heavy design work drew the stronger model, and the mechanical ship stage (push, CI watch, close, merge) drew the cheaper one.
+  The notable data point is that the sonnet-5 reviewer found a defect the opus-5 implementer had written tests and docs around — evidence that the fresh-context dispatch is doing more work here than the model tier.
+- **Escalation-delay tracking** — no sequence exceeded five consecutive tool calls on the same error.
+  The flaky-test diagnosis (~6 calls) is the longest run, but each call tested a different hypothesis rather than retrying the same one, and it correctly terminated at "environmental".
+- **Unused-tool detection** — `colgrep` was loaded per the `/plan-issue` prompt but never invoked; every exploration targeted a known symbol (`WRAPPER_SENTINEL`, `executedUnitOf`, `ARG_NODE_TYPES`), which the `colgrep` skill's own decision table assigns to `grep`.
+  Not a miss.
+  No `Explore` dispatch was warranted — the issue supplied a numbered source trace, which `AGENTS.md` explicitly exempts from the hunt-dispatch rule.
+- **Feedback-loop gap analysis** — no gap.
+  `pnpm run check` and a targeted `vitest run` ran inside every one of the seven TDD cycles, `pnpm run lint` at each commit boundary, and the full workspace suite plus `pnpm fallow dead-code` at cycle 3, cycle 5, and before each of the two reviewer dispatches.
+  The one verification that ran late — the full suite after the final doc commit — is what surfaced the load-induced flakes, not a real defect.
+
+### Changes made
+
+1. `.pi/skills/code-design/SKILL.md` — added a "Shared predicate, different burden of proof" heuristic under Structural Design, generalizing this session's blocking defect: a classifier's `false` and a guard's `false` mean different things, and reusing one as the other turns every unrecognized shape into a silent pass.
+   Placed beside "Structural reasons before extracting duplication", whose mirror image it is.
+2. `.pi/skills/pre-completion/SKILL.md` — added a sentence to Step 2 requiring a re-derivation mandate when the change removes or narrows a guard, including the enumeration clause (the reviewer must enumerate its own candidate inputs rather than check the tested ones) that is what actually produced this session's finding.
+3. `.pi/skills/package-pi-permission-system/SKILL.md` — added two lines to the Testing section identifying a `test/authority/` forwarding-liveness failure with an absurd reported duration as host load rather than a regression, beside the `ParentAuthorizer` polling guidance that causes it.
+4. `AGENTS.md` — widened the clarification-gate rule at line 186 from "which component owns the lever" to "which component or config rule owns the lever", and added `#803` to its refs; the `sudo` gate's lever was a user config rule, which the component-only framing did not prompt for.
+
 [#481]: https://github.com/gotgenes/pi-packages/issues/481
 [#609]: https://github.com/gotgenes/pi-packages/issues/609
+[#806]: https://github.com/gotgenes/pi-packages/issues/806
 [#807]: https://github.com/gotgenes/pi-packages/issues/807
 [#814]: https://github.com/gotgenes/pi-packages/issues/814

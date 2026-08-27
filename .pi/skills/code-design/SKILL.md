@@ -149,6 +149,15 @@ If the difference is incidental, extract.
 
 Sandi Metz: "duplication is far cheaper than the wrong abstraction."
 
+### Shared predicate, different burden of proof
+
+When a second consumer reuses an existing predicate, ask what it does with a `false`.
+A classifier answering "what is this?"
+may return "not X" for anything it does not recognize; a guard answering "is it safe to proceed?"
+must return "not safe" for the same input.
+Reusing the first as the second turns every unrecognized shape into a silent pass.
+Name the two apart — `provesX` versus `mayX` — so each call site reads its own burden (Refs #803).
+
 ### Decision provenance
 
 When a system decides on the user's behalf, record what decided and on what basis — not only the outcome.

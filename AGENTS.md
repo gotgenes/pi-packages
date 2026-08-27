@@ -183,7 +183,7 @@ When rejecting a candidate on cost, price its cheapest viable form — #786 dism
 When every option shares a premise — the same object grown, the same representation assumed, the same vocabulary kept — name it and offer the option that removes it, or say why it is not viable.
 Refs #787: three wiring options all grew `AgentPrepHandler`, and the operator's "too many responsibilities" note produced the extraction that made the new dependency unnecessary.
 Refs #639: three gates on `commandEffects` all assumed pattern-keyed matching, and the operator's "done with pattern-based expressions" produced the structured shape that dissolved the overlap, merge, and guard questions at once.
-When a gate offers mechanisms for fixing a hazard, first name which component owns the lever and what happens today in each concrete configuration — a mechanism menu without that grounding gets bounced for it (Refs #789).
+When a gate offers mechanisms for fixing a hazard, first name which component or config rule owns the lever and what happens today in each concrete configuration — a mechanism menu without that grounding gets bounced for it (Refs #789, #803).
 
 ### Background agent guardrails
 
