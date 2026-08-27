@@ -1,0 +1,21 @@
+# Watches the GitHub Actions pinned in .github/workflows/. Three of the five
+# had drifted a major behind before anyone noticed (Refs #816).
+#
+# npm dependencies are deliberately out of scope here; they are handled through
+# the review process in docs/plans/0370-higher-impact-dependency-updates.md.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    # For github-actions this must be "/" — Dependabot then searches
+    # .github/workflows/ and any action.yml at the repository root.
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    # One PR for the whole action surface rather than one per action; there are
+    # only five, and this repo's release flow is already PR-heavy.
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "build(ci)"
