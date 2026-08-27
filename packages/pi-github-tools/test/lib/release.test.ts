@@ -48,18 +48,33 @@ function mockSleepAborts(controller: AbortController) {
   });
 }
 
+interface ReleasePRFixture {
+  number: number;
+  title: string;
+  headRefName: string;
+  url: string;
+  mergeable: string;
+  mergeStateStatus: string;
+}
+
+/** One entry of the `gh pr list` payload `findReleasePR` reads. */
+function releasePR(
+  overrides: Partial<ReleasePRFixture> = {},
+): ReleasePRFixture {
+  return {
+    number: 42,
+    title: "chore(main): release 1.2.0",
+    headRefName: "release-please--branches--main",
+    url: "https://github.com/o/r/pull/42",
+    mergeable: "MERGEABLE",
+    mergeStateStatus: "CLEAN",
+    ...overrides,
+  };
+}
+
 describe("findReleasePR", () => {
   it("finds a release-please PR on first poll", async () => {
-    mockGhJson([
-      {
-        number: 42,
-        title: "chore(main): release 1.2.0",
-        headRefName: "release-please--branches--main",
-        url: "https://github.com/o/r/pull/42",
-        mergeable: "MERGEABLE",
-        mergeStateStatus: "CLEAN",
-      },
-    ]);
+    mockGhJson([releasePR()]);
 
     const result = await findReleasePR({ timeout: 120 });
     expect(result).toContain("pr_number: 42");
@@ -106,16 +121,7 @@ describe("findReleasePR", () => {
 
   it("retries a transient failure and reports the wait", async () => {
     mockCmdFail("HTTP 503");
-    mockGhJson([
-      {
-        number: 42,
-        title: "chore(main): release 1.2.0",
-        headRefName: "release-please--branches--main",
-        url: "https://github.com/o/r/pull/42",
-        mergeable: "MERGEABLE",
-        mergeStateStatus: "CLEAN",
-      },
-    ]);
+    mockGhJson([releasePR()]);
 
     const onProgress = vi.fn();
     const result = await findReleasePR({ timeout: 120, onProgress });
