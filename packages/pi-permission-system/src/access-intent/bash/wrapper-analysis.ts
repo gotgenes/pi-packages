@@ -28,19 +28,6 @@ export interface CommandWord {
 export type WrapperKind = "opaque-payload" | "indirection";
 
 /**
- * Why an indirection wrapper's floor does not apply after all (#803).
- *
- * `"core-reader"` — the command the wrapper runs is in the built-in pure-reader
- * core, so it is read-only for any argument feed.
- *
- * A named reason rather than a boolean, so the review log states *why* a
- * wrapper was let through, and so a later source (a chain verdict, a user
- * declaration) is an added member rather than a second flag. ADR 0013 §11
- * keeps v1 at the audited core alone.
- */
-export type FloorExemption = "core-reader";
-
-/**
  * Classify a command unit's words as a floored wrapper, or `undefined` for an
  * ordinary command. `words[0]` is the command name; a leading
  * `variable_assignment` prefix is already stripped by the caller. The command

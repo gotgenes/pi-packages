@@ -130,6 +130,7 @@ function resolveWrapperUnit(
   return {
     ...resolveOnBashSurface(inner, agentName, resolver),
     command: base.command,
+    floorExemption: cmd.floorExemption,
   };
 }
 

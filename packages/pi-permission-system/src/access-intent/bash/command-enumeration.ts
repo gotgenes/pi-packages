@@ -8,16 +8,12 @@ import {
   type CommandWord,
   classifyWrapperWords,
   executedUnitOf,
-  type FloorExemption,
   isTransparentWrapper,
   type WrapperKind,
 } from "#src/access-intent/bash/wrapper-analysis";
-import type { BashCommandContext } from "#src/types";
+import type { BashCommandContext, FloorExemption } from "#src/types";
 
-export type {
-  FloorExemption,
-  WrapperKind,
-} from "#src/access-intent/bash/wrapper-analysis";
+export type { WrapperKind } from "#src/access-intent/bash/wrapper-analysis";
 
 // ── Command type ─────────────────────────────────────────────────────────────
 

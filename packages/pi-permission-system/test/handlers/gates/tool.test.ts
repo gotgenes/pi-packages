@@ -345,6 +345,44 @@ describe("describeToolGate", () => {
     expect(desc.logContext.command).toBe("ls");
   });
 
+  describe("wrapper floor exemption in the review log (#803)", () => {
+    function bashGate(check: PermissionCheckResult) {
+      return describeToolGate(
+        makeTcc({ toolName: "bash", input: { command: check.command } }),
+        check,
+        makeFormatter(),
+      );
+    }
+
+    it("records why an exempt wrapper was let through", () => {
+      const desc = bashGate(
+        makeCheckResult("allow", {
+          toolName: "bash",
+          source: "bash",
+          command: "xargs grep -l foo",
+          matchedPattern: "grep *",
+          executedUnit: "grep -l foo",
+          floorExemption: "core-reader",
+        }),
+      );
+
+      expect(desc.logContext.floorExemption).toBe("core-reader");
+    });
+
+    it("omits the fact for a decision no exemption produced", () => {
+      const desc = bashGate(
+        makeCheckResult("ask", {
+          toolName: "bash",
+          source: "bash",
+          command: "xargs rm -rf",
+          matchedPattern: "<indirection-bash-wrapper>",
+        }),
+      );
+
+      expect("floorExemption" in desc.logContext).toBe(false);
+    });
+  });
+
   it("uses toolName as input for checkPermission surface", () => {
     const desc = describeToolGate(
       makeTcc({ toolName: "edit", input: { path: "/a.ts" } }),
