@@ -40,7 +40,7 @@ export interface GateNotifier {
 
 /**
  * Owns the skill-input gate assembly: raw permission pre-check, deny notify,
- * `describeSkillInputGate` descriptor, request-id mint, and `runner.run(...)`.
+ * `describeSkillInputGate` descriptor, and `runner.run(...)`.
  *
  * Constructed once in the composition root and injected into
  * `PermissionGateHandler`, mirroring `ToolCallGatePipeline` for the `input`
@@ -70,7 +70,6 @@ export class SkillInputGatePipeline {
     return runner.run(
       describeSkillInputGate(skillName, agentName, check),
       agentName,
-      createSkillInputRequestId(),
     );
   }
 }
@@ -78,21 +77,11 @@ export class SkillInputGatePipeline {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /**
- * Mint a unique id for a skill-input permission request.
- *
- * Format is `skill-input-<timestamp>-<random>-<pid>`, matching the
- * `createPermissionRequestId("skill-input")` pattern it replaces (#330).
- */
-export function createSkillInputRequestId(): string {
-  return `skill-input-${Date.now()}-${Math.random().toString(36).slice(2, 10)}-${process.pid}`;
-}
-
-/**
  * Format the deny warning shown in the UI when a skill is blocked.
  *
  * Intentionally untagged (no `[pi-permission-system]` prefix) — this is a
- * UI notify distinct from the gate deny reasons the runner routes through
- * `formatDenyReason`.
+ * UI notify distinct from the agent-facing deny reasons the runner routes
+ * through `renderPolicyDenial`.
  */
 export function formatSkillDenyNotice(
   skillName: string,

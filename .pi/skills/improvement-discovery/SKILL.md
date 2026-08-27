@@ -33,6 +33,7 @@ Run `gh issue list --label "pkg:<PKG>" --state open` and cross-check it against 
 An open issue that already names a cause-level finding is a pre-discovered candidate — adopt it as a phase step under its existing number rather than re-deriving it; read each labeled issue's body first, since a package label is sometimes contextual and the real work targets another package.
 Track repeat deferrals: an issue swept as out-of-scope across multiple consecutive phases gets an explicit decision this phase — schedule it into the phase, or recommend closing it as not-planned — never a silent re-defer.
 Structural phases must not starve feature and bug work indefinitely.
+Record the verdicts under the `#### Open-issue sweep dispositions` heading (see Output format) — the list stays live for the whole phase, not just planning.
 
 ### 3. Run fallow for corroboration and baseline
 
@@ -215,6 +216,7 @@ The plan should produce:
 
 1. **Updated health metrics** — table comparing before/after for the phase.
    Prefer cause-level metrics recomputable by a single command (a `grep -c`, `wc -l`, or fallow field — e.g. `canConfirm` occurrences in `src/`, role-interface count) and record the recompute command with the metric, so `/finish-phase` can verify delivered vs. predicted deterministically.
+   Verify the command against the _predicted_ end state, not only today's tree — a command counting the mechanism being replaced reads 0, not the target, once the replacement lands.
    The fallow health score alone is a poor phase metric — it is blind to the type-level wins (a bug class made unrepresentable) that cause-driven phases produce.
 2. **Step list** — numbered steps, each with:
    - Title and issue reference
@@ -243,6 +245,10 @@ The plan should produce:
    Agents locate the data by grepping for the `Release:` line (per step) and the `Release batches` heading (per phase) — never by parsing prose.
    A step with no `Release:` tag defaults to independently releasable.
    A phase may mix commit types: a `fix:` (or unhidden `docs:`) step is the phase's release vehicle, while `refactor:`/`test:` steps are hidden changelog types that cut no release on their own — name the release vehicle in the `Release batches` subsection instead of assuming a refactor-only phase.
+6. **Open-issue sweep dispositions** — the Step 2 verdicts, under a `#### Open-issue sweep dispositions` heading inside the roadmap's `### Findings (planned YYYY-MM-DD)` section.
+   Use that exact spelling: the `roadmap-fit` skill appends a bullet to it whenever an issue is spun off mid-phase, and `/finish-phase` greps it to reconcile phase-born issues before archiving.
+   A bold prose lead-in or a per-phase variant (`Deferred work (explicit dispositions, …)`) breaks both.
+   Each entry is `[#N] — <disposition>` plus a sentence of rationale; several issues sharing one verdict may share one bullet.
 
 ## Lessons from prior phases
 

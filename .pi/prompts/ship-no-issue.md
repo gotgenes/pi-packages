@@ -41,7 +41,8 @@ If either fails, fix the issues and commit before pushing.
 1. Use `release_pr_find` to locate an open release-please PR.
 2. If none is found (timeout), skip to step 6.
 3. If one exists, use `release_pr_merge` with the PR number.
-   The tool waits out an in-progress check or an undecided (`UNKNOWN`) mergeability state on its own, streaming progress — do not add a manual wait loop.
+   The tool waits out an in-progress check or an undecided (`UNKNOWN`) mergeability state on its own, streaming progress, and retries a transient 5xx — do not add a manual wait loop or a blind retry.
+   - If `release_pr_merge` returns `failed to merge PR #N`, the merge call itself failed and the tool has already checked whether it landed: `merged: false` is safe to retry, `merged: unknown` is not — run the probe it prints first.
    - If `release_pr_merge` returns an error (not mergeable), read its `reason:` line.
      `reason: no checks reported (statusCheckRollup is empty)` is the expected case for a release-please PR created by the default `GITHUB_TOKEN` (no CI runs); merge with `gh pr merge <N> --rebase` (matches the `defaultMergeMethod: rebase` config so the release lands as a linear commit, not a merge bubble), then `git pull --ff-only`.
      Any other reason, or a `timeout:` result, means the PR is genuinely blocked or still unsettled — stop and report; let the user decide.
@@ -59,5 +60,6 @@ Print:
 
 - Never force-push.
 - Never merge a release-please PR that is genuinely blocked (`CONFLICTING`/`DIRTY`/`BEHIND` or a failing check); a `reason: no checks reported` refusal is the expected `GITHUB_TOKEN` case (step 5.3).
+- Never retry `release_pr_merge` on a `merged: unknown` result — verify the PR's state by hand first.
 - If CI fails, do not merge anything.
 - If multiple release-please PRs exist for the same component, stop and ask — that's a configuration issue, not a normal merge.

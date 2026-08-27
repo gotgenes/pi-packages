@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { AskEscalator } from "#src/authority/authorizer-selection";
 import { extractSkillNameFromInput } from "#src/handlers/permission-gate-handler";
-
+import { DECIDED_BY_HUMAN } from "#test/helpers/decision-fixtures";
 import { makeCtx, makeHandler } from "#test/helpers/handler-fixtures";
 
 // ── helpers ────────────────────────────────────────────────────────────────
@@ -127,6 +127,7 @@ describe("handleInput", () => {
           approved: false,
           state: "denied",
           confirmationUnavailable: true,
+          decidedBy: DECIDED_BY_HUMAN,
         }),
       },
     });
@@ -138,9 +139,11 @@ describe("handleInput", () => {
   });
 
   it("prompts and returns continue when skill ask is approved", async () => {
-    const approvePrompt = vi
-      .fn<AskEscalator["escalate"]>()
-      .mockResolvedValue({ approved: true, state: "approved" });
+    const approvePrompt = vi.fn<AskEscalator["escalate"]>().mockResolvedValue({
+      approved: true,
+      state: "approved",
+      decidedBy: DECIDED_BY_HUMAN,
+    });
     const { handler, prompter } = makeHandler({
       session: {
         checkPermission: vi.fn().mockReturnValue({ state: "ask" }),
@@ -163,9 +166,11 @@ describe("handleInput", () => {
         checkPermission: vi.fn().mockReturnValue({ state: "ask" }),
       },
       prompter: {
-        escalate: vi
-          .fn<AskEscalator["escalate"]>()
-          .mockResolvedValue({ approved: false, state: "denied" }),
+        escalate: vi.fn<AskEscalator["escalate"]>().mockResolvedValue({
+          approved: false,
+          state: "denied",
+          decidedBy: DECIDED_BY_HUMAN,
+        }),
       },
     });
     const result = await handler.handleInput(
@@ -176,9 +181,11 @@ describe("handleInput", () => {
   });
 
   it("passes agentName in the prompt permission request", async () => {
-    const approvePrompt = vi
-      .fn<AskEscalator["escalate"]>()
-      .mockResolvedValue({ approved: true, state: "approved" });
+    const approvePrompt = vi.fn<AskEscalator["escalate"]>().mockResolvedValue({
+      approved: true,
+      state: "approved",
+      decidedBy: DECIDED_BY_HUMAN,
+    });
     const { handler, prompter } = makeHandler({
       session: {
         checkPermission: vi.fn().mockReturnValue({ state: "ask" }),

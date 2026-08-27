@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.2.1](https://github.com/gotgenes/pi-packages/compare/pi-session-tools-v1.2.0...pi-session-tools-v1.2.1) (2026-08-19)
+
+
+### Documentation
+
+* condense scope sections and move them below the usage material ([#775](https://github.com/gotgenes/pi-packages/issues/775)) ([99f5829](https://github.com/gotgenes/pi-packages/commit/99f58298962baac5bdfe5d3cc02dca0ca9b32395))
+* limit charter cross-links to ecosystem and prerequisite ([#775](https://github.com/gotgenes/pi-packages/issues/775)) ([f613f75](https://github.com/gotgenes/pi-packages/commit/f613f757b060f2cb26e1380cf1006ea66dc064f9))
+* **pi-session-tools:** document scope and non-goals ([#775](https://github.com/gotgenes/pi-packages/issues/775)) ([e339683](https://github.com/gotgenes/pi-packages/commit/e339683f0aa3e3b7a25c298f40f1430db46ecbd2))
+* reconcile cross-package scope boundaries ([#775](https://github.com/gotgenes/pi-packages/issues/775)) ([43c3668](https://github.com/gotgenes/pi-packages/commit/43c36685d49d5dd825156a74e11c85bd9844cb8e))
+
 ## [1.2.0](https://github.com/gotgenes/pi-packages/compare/pi-session-tools-v1.1.1...pi-session-tools-v1.2.0) (2026-07-06)
 
 

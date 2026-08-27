@@ -33,7 +33,7 @@ describe("SteerTool", () => {
 	it("includes promptSnippet", () => {
 		const tool = new SteerTool(makeManager(), makeEvents());
 		expect(tool.toToolDefinition().promptSnippet).toBe(
-			"steer_subagent: Send a mid-run message to redirect a running background agent.",
+			"Send a mid-run message to redirect a running background agent.",
 		);
 	});
 

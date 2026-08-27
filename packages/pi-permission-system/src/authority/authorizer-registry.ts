@@ -10,9 +10,16 @@
  * operator names it in the `authorizerChain` config (the opt-in activation
  * model). `AuthorizerSelection` owns that config-order resolution; this registry
  * is storage only.
+ *
+ * A node that relays its asks runs no chain at all (ADR 0007 §7), so a link
+ * registered there is accepted and never consulted — the vacant link cell.
+ * {@link ObservedAuthorizerRegistrar} records that fact rather than refusing
+ * the registration (ADR 0012 decision 4).
  */
 
+import type { ReviewLogger } from "#src/session-logger";
 import type { Authorizer } from "./authorizer";
+import type { AdjudicationRole } from "./authorizer-selection";
 
 /**
  * Read-only lookup used by chain composition (ISP — exposes only the read side,
@@ -65,5 +72,48 @@ export class AuthorizerRegistry
 
   get(name: string): Authorizer["authorize"] | undefined {
     return this.links.get(name);
+  }
+}
+
+/**
+ * The registrar a sibling extension reaches through `registerAuthorizer`:
+ * accepts every registration, and records the ones this node will never
+ * consult (ADR 0012 decision 4 — accept and observe).
+ *
+ * Registering everywhere is the correct default for a link author: the
+ * architecture consults a link where adjudication happens, so a link needs no
+ * placement ceremony and cannot be registered "in the wrong node". On a
+ * relaying node that makes the registration vacant by the system's own routing
+ * decision, not by author error — so it is honored (a working disposer comes
+ * back) and written to the review log beside the per-ask
+ * `authorizer_chain_delegated`, where an operator already looks to find out
+ * where adjudication went.
+ *
+ * A decorator rather than a branch inside {@link AuthorizerRegistry}: storage
+ * stays storage, and the chain's own lookup keeps reading the undecorated
+ * registry.
+ */
+export class ObservedAuthorizerRegistrar implements AuthorizerRegistrar {
+  constructor(
+    private readonly registrar: AuthorizerRegistrar,
+    private readonly role: AdjudicationRole,
+    private readonly logger: ReviewLogger,
+  ) {}
+
+  /**
+   * Register `name` into the underlying registry and return its disposer.
+   *
+   * The role is read per registration, not captured at construction: this
+   * registrar outlives a session (the composition root owns it) while the
+   * node's selected authority is per-activation. A duplicate registration
+   * still throws, and records nothing — under the cross-node contract that is
+   * a genuine author bug, not a vacancy.
+   */
+  register(name: string, authorize: Authorizer["authorize"]): () => void {
+    const dispose = this.registrar.register(name, authorize);
+    if (!this.role.adjudicatesLocally()) {
+      this.logger.review("authorizer_link_vacant", { name });
+    }
+    return dispose;
   }
 }

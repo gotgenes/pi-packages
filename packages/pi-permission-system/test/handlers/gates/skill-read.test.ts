@@ -123,16 +123,29 @@ describe("describeSkillReadGate", () => {
     });
   });
 
-  it("denialContext contains the skill name and read path", () => {
+  it("emits a skill_read payload keeping the skill as the decision value", () => {
+    const result = describeSkillReadGate(makeTcc(), normalizer, () => [
+      makeSkillEntry({ name: "my-skill" }),
+    ])!;
+
+    expect(result.payload.kind).toBe("skill_read");
+    expect(result.payload.request.value).toBe("my-skill");
+  });
+
+  it("payload contains the skill name and the path it was reached through", () => {
     const result = describeSkillReadGate(makeTcc(), normalizer, () => [
       makeSkillEntry({ name: "librarian" }),
     ])!;
-    expect(result.denialContext).toEqual({
-      kind: "skill_read",
-      skillName: "librarian",
-      readPath: "/skills/librarian/SKILL.md",
-      agentName: undefined,
-    });
+    expect(result.payload.kind).toBe("skill_read");
+    expect(result.payload.request.value).toBe("librarian");
+    expect(result.payload.request.requester.agentName).toBeNull();
+    expect(result.payload.evidence).toEqual([
+      {
+        label: "read path",
+        text: "/skills/librarian/SKILL.md",
+        detail: null,
+      },
+    ]);
   });
 
   it("promptDetails includes skill_read source and skillName", () => {
@@ -148,7 +161,6 @@ describe("describeSkillReadGate", () => {
       toolName: "read",
       skillName: "my-skill",
     });
-    expect(result.promptDetails.message).toBeDefined();
   });
 
   it("logContext includes skill_read source and skillName", () => {

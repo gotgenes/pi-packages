@@ -78,6 +78,8 @@ service-adapter ─wraps─→ SubagentManager
   The one carve-out is **prevent-load**, which cannot be reduced to observation: the global/project `excludedExtensionPackages` setting keeps named packages' extensions out of children (#696).
   It is package-scoped and settings-scoped only — never per agent type, and never tool permissions.
   The policy is resolved in `index.ts` and reaches `createSubagentSession` as a ready-made settings view, so the assembly factory stays policy-free; keep it that way.
+  Excluding a permission extension is an optimization, never a correctness requirement, with one hazard: a tool and its path extractor supplied by *different* packages, with only the extractor's package excluded, leaves that tool ungated in the child (#793).
+  `docs/configuration.md` carries the operator-facing condition; the rule itself lives in pi-permission-system's `docs/subagent-integration.md` § Loading asymmetry, which is also the canonical spec for the child-announcement contract ADR 0002 requires.
 - Typed API boundary - export `SubagentsService` via `Symbol.for()` accessors so other extensions can spawn agents without importing this package directly (done, #48).
 - Remove scheduling subsystem (done); ad-hoc RPC and group-join (done); output-file porting to Pi session format tracked in #61.
 - Cherry-pick upstream fixes when they align with this fork's scope; do not track upstream as a merge target.

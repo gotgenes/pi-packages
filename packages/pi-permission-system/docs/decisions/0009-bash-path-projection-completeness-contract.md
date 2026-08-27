@@ -67,6 +67,10 @@ A path reaches the `path` and `external_directory` surfaces when it appears as:
   `$HOME/x` is therefore gated exactly as `~/x` and as the literal absolute spelling, independent of whether the target exists; `$PWD/x` is gated exactly as `./x`.
 - Any of the above resolved against the **effective working directory** after literal current-shell `cd` folding; a non-literal `cd` renders the base unknown and keeps tokens literal-only ([#393]).
 
+These guarantees are **positional-invariant**: they hold for a command's own operands wherever that command appears.
+A command nested in a substitution is itself gated ([#306]), so its operands are projected whether the substitution sits in argument position (`diff <(cat /etc/shadow)`), in a redirect destination (`echo hi > $(cat /etc/shadow)`), or in an interpolating heredoc body ([#741]).
+This is a guarantee, not a residual — see the note under "Computed paths" below for the boundary it is easily confused with.
+
 Opacity is handled separately and conservatively: a wrapper command that hides its payload (`bash -c`, `eval`, `sudo`, `xargs`, …) is floored from `allow` to `ask` rather than projected.
 
 ### What the projection deliberately omits
@@ -77,6 +81,9 @@ These are **accepted residuals**, not open bugs:
   Redirect targets, the common creation path, are collected separately and unaffected.
 - **Glued short-option values** (`-f/tmp/x`) — distinguishing a glued value from a cluster of boolean flags (`-rf`) requires per-command option knowledge.
 - **Computed paths** other than the plain `HOME`/`PWD` references above — any other `$VAR`, a command substitution (`$(cmd)`), an operator-bearing expansion (`${HOME:-/tmp}`, `${#HOME}`), and a variable reached through an assignment (`CURRENT="$HOME"; ls "$CURRENT"`).
+  The residual here is the **value the substitution evaluates to** — the filename `> $(cmd)` ultimately writes to is not knowable without running `cmd`.
+  It is **not** the nested command's own literal operands, which the positional-invariance guarantee above covers.
+  Reading this bullet as sanctioning the latter is what let [#741] persist.
   Where a computed value affects the working directory, the unknown-base machinery already degrades conservatively.
   Two ways to close the assignment case were considered and declined during [#694], measured over 2767 deduplicated real bash commands from the permission review log: same-program literal-assignment dataflow, which reaches **45 (1.6%)** of commands but adds stateful dataflow to the AST walk; and flooring any command carrying an unresolved-expansion path operand to `ask`, which would newly prompt on **194 (7.0%)** — the prompt-firehose outcome this ADR rejects for the bare-token case below.
 - **Per-command argument semantics** — which positional argument of `grep`/`git`/`kubectl` is a file.
@@ -129,6 +136,9 @@ Cost is ~0.04 ms p95 per command, ~19% of the already-paid tree-sitter parse.
   This is the durable outcome; the recurrence in Context was a symptom of having no such test.
   [#694] is the first report triaged this way, and it split: its `$HOME`/`${HOME}` half was **inside** (the package resolved `$HOME` for patterns and path literals but not for bash tokens, so a guarantee was inconsistently met) and was fixed; its assignment-dataflow half was **outside** and was declined with the numbers above.
   A single report landing on both sides is the expected outcome of having the line drawn.
+- [#741] is the second report triaged this way, and it landed **inside**: a substitution's operands were projected in argument position but not when the substitution sat in a redirect destination or an interpolating heredoc body, so a guarantee was met inconsistently across positions — the same shape as [#694]'s `$HOME` half.
+  The fix names the hosting concept once (`EXECUTION_HOST_TYPES` in `access-intent/bash/nested-execution.ts`), shared by the command surface and the path surface so the two cannot drift on what counts as a nested execution.
+  Measured over 2950 deduplicated real bash commands, **0** hosted a substitution in a redirect target and **0** carried an unquoted heredoc with one, so closing it produced no new prompting on realistic traffic.
 - The [#509] promotion thread is deleted: `PathRuleTokenMatcher`, `PermissionManager.getPromotablePathTokenMatcher`, and the five-layer parameter thread from manager to resolver.
   The classifier is once again pure and policy-free.
 - `PathNormalizer` gains `entryExists`, keeping the filesystem edge in the same object that owns canonicalization; the classifiers stay pure shape functions.
@@ -149,3 +159,5 @@ Cost is ~0.04 ms p95 per command, ~19% of the already-paid tree-sitter parse.
 [#620]: https://github.com/gotgenes/pi-packages/issues/620
 [#645]: https://github.com/gotgenes/pi-packages/issues/645
 [#694]: https://github.com/gotgenes/pi-packages/issues/694
+[#306]: https://github.com/gotgenes/pi-packages/issues/306
+[#741]: https://github.com/gotgenes/pi-packages/issues/741

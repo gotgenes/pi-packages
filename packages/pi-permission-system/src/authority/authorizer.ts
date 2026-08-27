@@ -1,10 +1,10 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { TargetServingLookup } from "#src/authority/forwarding-liveness";
 import type { PermissionPromptDecision } from "#src/authority/permission-dialog";
 import type {
   PromptPreferences,
   requestPermissionDecision,
 } from "#src/authority/permission-prompt-component";
-import type { ServingLookup } from "#src/authority/serving-registry";
 import type { SubagentSessionRegistry } from "#src/authority/subagent-registry";
 import type { PermissionEventBus } from "#src/permission-events";
 import type { AuthorizerLog, PermissionQuery } from "#src/service";
@@ -43,15 +43,28 @@ export interface Authorizer {
 }
 
 /**
+ * A resolved chain link together with the operator-configured name it came
+ * from.
+ *
+ * `AuthorizerRegistry` already keys links by name, and `AuthorizerSelection`
+ * has the name in scope when it resolves the operator's `authorizerChain`; the
+ * name is carried through composition so a decision record can say *which*
+ * link decided rather than only which links were consulted.
+ */
+export interface NamedAuthorizer extends Authorizer {
+  readonly name: string;
+}
+
+/**
  * The terminal link: on `ask`, rules on a single request and is told the
  * decision. Structurally cannot defer — it always returns a full
  * {@link PermissionPromptDecision}, which is the type-level enforcement of
  * ADR 0007's terminal-cannot-defer invariant.
  *
  * One method, one responsibility. `DenyingAuthorizer` ignores `details`;
- * `LocalUserAuthorizer` reads `message`/`sessionLabel` and derives the UI
- * event from it; `ParentAuthorizer` reads `message` and derives the
- * forwarded display from it.
+ * `LocalUserAuthorizer` renders `payload` for the human and derives the UI
+ * event from the request facts; `ParentAuthorizer` ships `payload` over the
+ * wire so the serving node renders it under its own budget.
  */
 export interface TerminalAuthorizer {
   authorize(
@@ -95,8 +108,8 @@ export interface AuthorizerSelectionDeps {
   forwardingDir: string;
   /** In-process subagent session registry for forwarding target resolution. */
   registry?: SubagentSessionRegistry;
-  /** Which sessions are draining a forwarded-permission inbox. */
-  servingRegistry: ServingLookup;
+  /** Whether a forwarding target is draining its inbox, on whichever channel can say. */
+  serving: TargetServingLookup;
   /** The forwarding timeout, read live so a config edit applies to the next ask. */
   getForwardingTimeoutMs: () => number;
   logger: DebugReviewLogger;
@@ -132,7 +145,7 @@ export function selectAuthorizer(
       terminal: new ParentAuthorizer(ctx, {
         forwardingDir: deps.forwardingDir,
         registry: deps.registry,
-        serving: deps.servingRegistry,
+        serving: deps.serving,
         getTimeoutMs: deps.getForwardingTimeoutMs,
         logger: deps.logger,
       }),

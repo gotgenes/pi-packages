@@ -1,4 +1,5 @@
 import type { AssistantMessage, Context } from "@earendil-works/pi-ai";
+import type { Mock } from "vitest";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { ModelJudgeConfig } from "#src/config-schema";
@@ -24,7 +25,7 @@ const CONFIG: ModelJudgeConfig = {
 const MODEL = { provider: "anthropic", id: "claude-haiku" } as never;
 
 /** A `complete` seam that returns a forced tool call carrying `args`. */
-function completeReporting(args: Record<string, unknown>): CompleteFn {
+function completeReporting(args: Record<string, unknown>): Mock<CompleteFn> {
   return vi.fn(async () => assistantToolCall(args));
 }
 
@@ -147,8 +148,11 @@ describe("reviewPath", () => {
       complete,
     });
     expect(complete).toHaveBeenCalledTimes(1);
-    const [model, context, options] = (complete as ReturnType<typeof vi.fn>)
-      .mock.calls[0] as [unknown, Context, { toolChoice?: string } | undefined];
+    const [model, context, options] = complete.mock.calls[0] as [
+      unknown,
+      Context,
+      { toolChoice?: string } | undefined,
+    ];
     expect(model).toBe(MODEL);
     expect(context.systemPrompt).toBe(CONFIG.instructions);
     const firstMessage = context.messages[0] as { content: string };
@@ -170,8 +174,7 @@ describe("reviewPath", () => {
       headers: { "x-custom": "1" },
     });
     expect(complete).toHaveBeenCalledTimes(1);
-    const [, , options] = (complete as ReturnType<typeof vi.fn>).mock
-      .calls[0] as [
+    const [, , options] = complete.mock.calls[0] as [
       unknown,
       unknown,
       {

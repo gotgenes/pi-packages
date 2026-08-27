@@ -100,7 +100,7 @@ export function registerColGrep(
       "Complements the built-in grep: use colgrep for intent-based exploration, grep for exact pattern matching. " +
       "At least one of query or regex is required.",
     promptSnippet:
-      "colgrep: Semantic and hybrid code search — find code by intent, not just text.",
+      "Semantic and hybrid code search — find code by intent, not just text.",
     promptGuidelines: [
       "Prefer colgrep for intent-based searches and exploration (e.g. 'error handling for database connections').",
       "Use grep for exact pattern or symbol matching; use colgrep when keywords may not match exactly.",

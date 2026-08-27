@@ -9,6 +9,7 @@ import {
   writeFileSync,
 } from "node:fs";
 
+import { asDecisionSource } from "#src/authority/decision-source";
 import { isPermissionDecisionState } from "#src/authority/permission-dialog";
 import {
   createPermissionForwardingLocation,
@@ -23,6 +24,7 @@ import {
   OWNER_ONLY_FILE_MODE,
 } from "#src/log-file-permissions";
 import type { PermissionUiPromptSource } from "#src/permission-events";
+import { asPromptPayload } from "#src/presentation/prompt-payload";
 import type { DebugReviewLogger } from "#src/session-logger";
 
 /** Valid `permissions:ui_prompt` source values, for tolerant request reads. */
@@ -396,8 +398,7 @@ export function readForwardedPermissionRequest(
       typeof parsed.createdAt !== "number" ||
       typeof parsed.requesterSessionId !== "string" ||
       typeof parsed.targetSessionId !== "string" ||
-      typeof parsed.requesterAgentName !== "string" ||
-      typeof parsed.message !== "string"
+      typeof parsed.requesterAgentName !== "string"
     ) {
       logPermissionForwardingWarning(
         logger,
@@ -412,9 +413,11 @@ export function readForwardedPermissionRequest(
       requesterSessionId: parsed.requesterSessionId,
       targetSessionId: parsed.targetSessionId,
       requesterAgentName: parsed.requesterAgentName,
-      message: parsed.message,
-      // Tolerant read: display fields are optional and may be absent (older
-      // child) or malformed; reconstruct only the well-formed ones.
+      // Tolerant read: the payload and display fields are optional and may be
+      // absent (older child) or malformed; reconstruct only the well-formed
+      // ones. An older child's `message` is deliberately not salvaged — a
+      // skewed ask renders from the fields it does carry (ADR 0011 §9).
+      payload: asPromptPayload(parsed.payload),
       source: asUiPromptSource(parsed.source),
       surface: asNullableDisplayString(parsed.surface),
       value: asNullableDisplayString(parsed.value),
@@ -464,6 +467,10 @@ export function readForwardedPermissionResponse(
         typeof parsed.respondedAt === "number"
           ? parsed.respondedAt
           : Date.now(),
+      // Tolerant like the request's `accessIntent`: an unusable provenance
+      // record is dropped, but the decision itself still has to reach the
+      // requester, so it never rejects the response.
+      decidedBy: asDecisionSource(parsed.decidedBy),
     };
   } catch (error) {
     logPermissionForwardingWarning(

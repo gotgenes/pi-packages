@@ -19,11 +19,13 @@ export function registerReleasePrMerge(pi: ExtensionAPI): void {
       "Merge a release-please PR after confirming it is clean. " +
       "Checks MERGEABLE + CLEAN status, merges, and runs git pull --ff-only. " +
       "Waits out an in-progress check or an undecided mergeability state, streaming progress, " +
-      "up to the timeout. " +
+      "up to the timeout, and retries transient GitHub failures. " +
+      "If the merge call itself fails, re-reads the PR over REST and reports whether it " +
+      "merged, did not merge (safe to retry), or could not be verified. " +
       "Returns merge confirmation with new HEAD SHA, or a structured error if not mergeable.",
     promptSnippet:
-      "release_pr_merge: Merge a release-please PR after confirming it's clean, " +
-      "waiting out any in-progress checks.",
+      "Merge a release-please PR after confirming it's clean, " +
+      "waiting out any in-progress checks and verifying the outcome of a failed merge call.",
     parameters: Type.Object({
       pr_number: Type.Number({
         description: "The PR number to merge.",

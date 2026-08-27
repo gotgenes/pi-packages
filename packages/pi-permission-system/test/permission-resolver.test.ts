@@ -139,13 +139,24 @@ describe("PermissionResolver", () => {
         }),
       });
 
+      // The approval expanded into both directional members at record time.
       const passedRules = vi.mocked(pm.check).mock.calls[0][1];
-      expect(passedRules).toHaveLength(1);
-      expect(passedRules?.[0]).toMatchObject({
-        surface: "path",
-        pattern: "src/*",
-        action: "allow",
-      });
+      expect(passedRules).toEqual([
+        {
+          surface: "path_read",
+          pattern: "src/*",
+          action: "allow",
+          layer: "session",
+          origin: "session",
+        },
+        {
+          surface: "path_write",
+          pattern: "src/*",
+          action: "allow",
+          layer: "session",
+          origin: "session",
+        },
+      ]);
     });
   });
 
@@ -164,15 +175,23 @@ describe("PermissionResolver", () => {
         agentName: "agent-x",
       });
 
-      expect(permissionManager.check).toHaveBeenCalledWith(
+      // The family folds, so each member sees the same unwrapped values.
+      expect(
+        vi.mocked(permissionManager.check).mock.calls.map(([intent]) => intent),
+      ).toEqual([
         {
           kind: "path-values",
-          surface: "external_directory",
+          surface: "external_directory_read",
           values: accessPath.matchValues(),
           agentName: "agent-x",
         },
-        [],
-      );
+        {
+          kind: "path-values",
+          surface: "external_directory_write",
+          values: accessPath.matchValues(),
+          agentName: "agent-x",
+        },
+      ]);
     });
 
     it("returns the manager's check result for an access-path intent", () => {
@@ -222,19 +241,33 @@ describe("PermissionResolver", () => {
         agentName: "Explore",
       });
 
+      // Values and agentName pass through untouched; only the surface varies,
+      // one call per directional member of the family.
       const [passedIntent, passedRules] = vi.mocked(pm.check).mock.calls[0];
       expect(passedIntent).toEqual({
         kind: "path-values",
-        surface: "external_directory",
+        surface: "external_directory_read",
         values: ["/tmp/x", "/real/tmp/x"],
         agentName: "Explore",
       });
-      expect(passedRules).toHaveLength(1);
-      expect(passedRules?.[0]).toMatchObject({
-        surface: "external_directory",
-        pattern: "/tmp/*",
-        action: "allow",
-      });
+      expect(
+        passedRules?.map(({ surface, pattern, action }) => ({
+          surface,
+          pattern,
+          action,
+        })),
+      ).toEqual([
+        {
+          surface: "external_directory_read",
+          pattern: "/tmp/*",
+          action: "allow",
+        },
+        {
+          surface: "external_directory_write",
+          pattern: "/tmp/*",
+          action: "allow",
+        },
+      ]);
     });
 
     it("returns the manager's check result for a path-values intent", () => {
@@ -312,6 +345,166 @@ describe("PermissionResolver", () => {
 
       expect(pm.getToolPermission).toHaveBeenCalledWith("write", "my-agent");
       expect(result).toBe("deny");
+    });
+  });
+
+  describe("resolve — surface-family fold", () => {
+    /** A manager whose verdict is keyed by the surface it is asked about. */
+    function makeSurfaceKeyedManager(
+      bySurface: Record<string, PermissionState>,
+    ) {
+      const pm = makePermissionManager();
+      vi.mocked(pm.check).mockImplementation((intent) => ({
+        state: bySurface[intent.surface] ?? "ask",
+        toolName: intent.surface,
+        source: "special",
+        origin: "global",
+        matchedPattern: `${intent.surface}-pattern`,
+      }));
+      return pm;
+    }
+
+    it("consults both directional members for a bare family surface", () => {
+      const pm = makeSurfaceKeyedManager({ path_read: "allow" });
+      const { resolver } = makeResolver(pm);
+
+      resolver.resolve({
+        kind: "access-path",
+        surface: "path",
+        path: AccessPath.forPath("/tmp/x", {
+          cwd: "/workspace",
+          flavor: posixPathFlavor,
+        }),
+        agentName: "agent-x",
+      });
+
+      expect(vi.mocked(pm.check).mock.calls.map(([i]) => i.surface)).toEqual([
+        "path_read",
+        "path_write",
+      ]);
+    });
+
+    it("returns the losing member's own result, so blame names the surface that decided", () => {
+      const pm = makeSurfaceKeyedManager({
+        path_read: "allow",
+        path_write: "deny",
+      });
+      const { resolver } = makeResolver(pm);
+
+      const result = resolver.resolve({
+        kind: "access-path",
+        surface: "path",
+        path: AccessPath.forPath("/tmp/x", {
+          cwd: "/workspace",
+          flavor: posixPathFlavor,
+        }),
+      });
+
+      expect(result).toEqual({
+        state: "deny",
+        toolName: "path_write",
+        source: "special",
+        origin: "global",
+        matchedPattern: "path_write-pattern",
+      });
+    });
+
+    it("never masks a deny into an approvable ask (#712)", () => {
+      const pm = makeSurfaceKeyedManager({
+        external_directory_read: "deny",
+        external_directory_write: "allow",
+      });
+      const { resolver } = makeResolver(pm);
+
+      const result = resolver.resolve({
+        kind: "path-values",
+        surface: "external_directory",
+        values: ["/tmp/x"],
+        agentName: "agent-x",
+      });
+
+      expect(result.state).toBe("deny");
+      expect(result.toolName).toBe("external_directory_read");
+    });
+
+    it("keeps the read member on a tie, per the members' normative order", () => {
+      const pm = makeSurfaceKeyedManager({
+        path_read: "ask",
+        path_write: "ask",
+      });
+      const { resolver } = makeResolver(pm);
+
+      const result = resolver.resolve({
+        kind: "path-values",
+        surface: "path",
+        values: ["/tmp/x"],
+      });
+
+      expect(result.toolName).toBe("path_read");
+    });
+
+    it("does not synthesize a matchedPattern when neither member matched (#58)", () => {
+      const pm = makePermissionManager();
+      vi.mocked(pm.check).mockImplementation((intent) => ({
+        state: "ask",
+        toolName: intent.surface,
+        source: "special",
+        origin: "builtin",
+      }));
+      const { resolver } = makeResolver(pm);
+
+      const result = resolver.resolve({
+        kind: "path-values",
+        surface: "path",
+        values: ["/tmp/x"],
+      });
+
+      expect(result.matchedPattern).toBeUndefined();
+    });
+
+    it("passes the session ruleset to every member query", () => {
+      const pm = makeSurfaceKeyedManager({});
+      const sessionRules = new SessionRules();
+      const { resolver } = makeResolver(pm, sessionRules);
+      sessionRules.approve("path", "/tmp/*");
+
+      resolver.resolve({
+        kind: "path-values",
+        surface: "path",
+        values: ["/tmp/x"],
+      });
+
+      const rulesets = vi.mocked(pm.check).mock.calls.map(([, r]) => r);
+      expect(rulesets).toHaveLength(2);
+      expect(rulesets[0]).toEqual(rulesets[1]);
+      expect(rulesets[0]).toHaveLength(2);
+    });
+
+    it("does not fold a directional surface — it names one member already", () => {
+      const pm = makeSurfaceKeyedManager({ path_read: "allow" });
+      const { resolver } = makeResolver(pm);
+
+      const result = resolver.resolve({
+        kind: "path-values",
+        surface: "path_read",
+        values: ["/tmp/x"],
+      });
+
+      expect(vi.mocked(pm.check)).toHaveBeenCalledTimes(1);
+      expect(result.state).toBe("allow");
+    });
+
+    it("does not fold a non-path surface", () => {
+      const pm = makeSurfaceKeyedManager({ bash: "allow" });
+      const { resolver } = makeResolver(pm);
+
+      resolver.resolve({
+        kind: "tool",
+        surface: "bash",
+        input: { command: "ls" },
+      });
+
+      expect(vi.mocked(pm.check)).toHaveBeenCalledTimes(1);
     });
   });
 

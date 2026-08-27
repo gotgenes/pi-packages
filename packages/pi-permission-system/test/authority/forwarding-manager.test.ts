@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ForwardingManager } from "#src/authority/forwarding-manager";
-import { ServingSessionRegistry } from "#src/authority/serving-registry";
+import {
+  type ServingAnnouncer,
+  ServingSessionRegistry,
+} from "#src/authority/serving-registry";
 import type { SubagentDetector } from "#src/authority/subagent-detection";
 
 // ── Mocks ─────────────────────────────────────────────────────────────────
@@ -29,9 +32,12 @@ function makeDetection(): SubagentDetector {
   return { isSubagent: mockIsSubagent };
 }
 
-function makeManager(
-  serving: ServingSessionRegistry = new ServingSessionRegistry(),
-) {
+/** A `ServingAnnouncer` whose calls can be counted, for the refresh tests. */
+function makeAnnouncer() {
+  return { markServing: vi.fn(), clearServing: vi.fn() };
+}
+
+function makeManager(serving: ServingAnnouncer = new ServingSessionRegistry()) {
   return new ForwardingManager({
     detection: makeDetection(),
     forwarder: makeForwarder(),
@@ -262,6 +268,57 @@ describe("ForwardingManager", () => {
       );
 
       expect(serving.servingIds()).toEqual([]);
+    });
+  });
+
+  describe("serving refresh", () => {
+    it("re-announces on every poll tick, so the announcement cannot decay", async () => {
+      const serving = makeAnnouncer();
+      makeManager(serving).start(makeCtx({ sessionId: "sess-1" }));
+      serving.markServing.mockClear();
+
+      await vi.advanceTimersByTimeAsync(750);
+
+      expect(serving.markServing).toHaveBeenCalledTimes(3);
+      expect(serving.markServing).toHaveBeenCalledWith("sess-1");
+    });
+
+    it("re-announces while a drain is still in flight", async () => {
+      // A human deliberating at a forwarded dialog holds `processInbox` open
+      // for as long as they take. That session is serving, and must not read as
+      // gone to another child while it waits — so the refresh cannot sit behind
+      // the processing guard.
+      mockProcessInbox.mockReturnValue(new Promise<void>(() => undefined));
+      const serving = makeAnnouncer();
+      makeManager(serving).start(makeCtx({ sessionId: "sess-1" }));
+      await vi.advanceTimersByTimeAsync(250);
+      expect(mockProcessInbox).toHaveBeenCalledTimes(1);
+      serving.markServing.mockClear();
+
+      await vi.advanceTimersByTimeAsync(750);
+
+      expect(serving.markServing).toHaveBeenCalledTimes(3);
+    });
+
+    it("adds no review entry per refresh", async () => {
+      makeManager(makeAnnouncer()).start(makeCtx({ sessionId: "sess-1" }));
+      mockReview.mockClear();
+
+      await vi.advanceTimersByTimeAsync(1000);
+
+      expect(mockReview).not.toHaveBeenCalled();
+    });
+
+    it("stops re-announcing once stopped", async () => {
+      const serving = makeAnnouncer();
+      const manager = makeManager(serving);
+      manager.start(makeCtx({ sessionId: "sess-1" }));
+      manager.stop();
+      serving.markServing.mockClear();
+
+      await vi.advanceTimersByTimeAsync(750);
+
+      expect(serving.markServing).not.toHaveBeenCalled();
     });
   });
 });

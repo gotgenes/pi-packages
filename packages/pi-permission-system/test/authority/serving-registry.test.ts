@@ -1,5 +1,6 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  composeServingAnnouncers,
   getServingSessionRegistry,
   SERVING_SESSION_REGISTRY_KEY,
   ServingSessionRegistry,
@@ -70,6 +71,38 @@ describe("ServingSessionRegistry", () => {
     it("is empty for a fresh registry", () => {
       expect(new ServingSessionRegistry().servingIds()).toEqual([]);
     });
+  });
+});
+
+describe("composeServingAnnouncers", () => {
+  function makeAnnouncer() {
+    return { markServing: vi.fn(), clearServing: vi.fn() };
+  }
+
+  it("marks on every channel a serving session publishes to", () => {
+    const first = makeAnnouncer();
+    const second = makeAnnouncer();
+
+    composeServingAnnouncers(first, second).markServing("sess-1");
+
+    expect(first.markServing).toHaveBeenCalledExactlyOnceWith("sess-1");
+    expect(second.markServing).toHaveBeenCalledExactlyOnceWith("sess-1");
+  });
+
+  it("clears on every channel", () => {
+    const first = makeAnnouncer();
+    const second = makeAnnouncer();
+
+    composeServingAnnouncers(first, second).clearServing("sess-1");
+
+    expect(first.clearServing).toHaveBeenCalledExactlyOnceWith("sess-1");
+    expect(second.clearServing).toHaveBeenCalledExactlyOnceWith("sess-1");
+  });
+
+  it("is a no-op with no channels", () => {
+    expect(() => {
+      composeServingAnnouncers().markServing("sess-1");
+    }).not.toThrow();
   });
 });
 

@@ -1,6 +1,6 @@
 {
   "name": "@gotgenes/pi-permission-model-judge",
-  "version": "1.1.2",
+  "version": "2.0.0",
   "description": "Deny-first typo-path model judge — a pi-permission-system Authorizer chain link",
   "type": "module",
   "imports": {
@@ -62,13 +62,13 @@
   "peerDependencies": {
     "@earendil-works/pi-ai": ">=0.79.0",
     "@earendil-works/pi-coding-agent": ">=0.79.0",
-    "@gotgenes/pi-permission-system": ">=20.10.0"
+    "@gotgenes/pi-permission-system": ">=27.0.0"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
     "@earendil-works/pi-ai": "0.79.1",
     "@earendil-works/pi-coding-agent": "0.79.1",
-    "@gotgenes/pi-permission-system": "20.10.0",
+    "@gotgenes/pi-permission-system": "27.0.0",
     "@types/node": "catalog:",
     "rumdl": "catalog:",
     "typescript": "catalog:",

@@ -21,6 +21,7 @@ import type { DEFAULT_EXTENSION_CONFIG } from "#src/extension-config";
 import { win32PathFlavor } from "#src/path/path-flavor";
 import { SessionApproval } from "#src/session-approval";
 import type { SkillPromptEntry } from "#src/skill-prompt-sanitizer";
+import { resolveToolPreviewLimits } from "#src/tool-preview-formatter";
 import { makeCtx } from "#test/helpers/handler-fixtures";
 import {
   makeConfigStore,
@@ -324,7 +325,7 @@ describe("PermissionSession", () => {
       expect(session.config).toBe(fakeConfig);
     });
 
-    it("getToolPreviewLimits returns resolved preview limits from config", () => {
+    it("getToolPreviewLimits returns the built-in limits regardless of config", () => {
       const configStore = makeConfigStore({
         current: vi.fn().mockReturnValue({
           toolInputPreviewMaxLength: 400,
@@ -332,17 +333,16 @@ describe("PermissionSession", () => {
         }),
       });
       const { session } = createSession({ configStore });
-      const limits = session.getToolPreviewLimits();
-      expect(limits.toolInputPreviewMaxLength).toBe(400);
-      expect(limits.toolTextSummaryMaxLength).toBe(120);
+      expect(session.getToolPreviewLimits()).toEqual(
+        resolveToolPreviewLimits(),
+      );
     });
 
-    it("getToolPreviewLimits falls back to built-in defaults when config omits fields", () => {
+    it("getToolPreviewLimits returns positive built-in defaults", () => {
       const { session } = createSession();
       const limits = session.getToolPreviewLimits();
       expect(limits.toolInputPreviewMaxLength).toBeGreaterThan(0);
       expect(limits.toolTextSummaryMaxLength).toBeGreaterThan(0);
-      expect(limits.toolInputLogPreviewMaxLength).toBeGreaterThan(0);
     });
   });
 

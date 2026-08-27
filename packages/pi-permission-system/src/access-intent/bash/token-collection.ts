@@ -1,10 +1,32 @@
 import { basename } from "node:path";
 import {
+  proveCommandEffect,
+  redirectDestinationEffect,
+} from "#src/access-intent/bash/command-effects";
+import {
+  EXECUTION_HOST_TYPES,
+  forEachNestedExecution,
+  NESTED_EXECUTION_CONTEXTS,
+} from "#src/access-intent/bash/nested-execution";
+import {
   ARG_NODE_TYPES,
   resolveNodeText,
   SKIP_SUBTREE_TYPES,
 } from "#src/access-intent/bash/node-text";
 import type { TSNode } from "#src/access-intent/bash/parser";
+import type { TokenEffect } from "#src/access-intent/effect";
+
+/**
+ * A collected path-candidate token paired with the effect its position proved.
+ *
+ * The pairing is made where the token is *produced*, never by mapping a whole
+ * result: a nested execution's tokens carry their own command's attribution
+ * and must not be overwritten by the enclosing one.
+ */
+export interface PathToken {
+  readonly token: string;
+  readonly effect: TokenEffect;
+}
 
 // ── Public surface ─────────────────────────────────────────────────────────
 
@@ -12,19 +34,27 @@ import type { TSNode } from "#src/access-intent/bash/parser";
  * Recursively visit the AST and collect resolved text of nodes that
  * represent command arguments or redirect destinations.
  *
- * Skips `heredoc_body`, `heredoc_end`, and `comment` subtrees entirely.
+ * Reads no text from `heredoc_body`, `heredoc_end`, or `comment` subtrees, but
+ * still descends an execution host for the commands it hosts — an interpolating
+ * heredoc body runs its substitution even though its prose is never an operand
+ * (#741). That is why the {@link EXECUTION_HOST_TYPES} branch sits above the
+ * {@link SKIP_SUBTREE_TYPES} check: `heredoc_body` is in both sets, and the
+ * host reading is the one that must win.
  *
  * For commands in `PATTERN_FIRST_COMMANDS`, uses position-based
  * argument skipping to avoid collecting inline patterns/scripts
  * as path candidates. For all other commands, collects all
  * arguments generically.
  */
-export function collectPathCandidateTokens(node: TSNode): string[] {
-  if (SKIP_SUBTREE_TYPES.has(node.type)) return [];
+export function collectPathCandidateTokens(node: TSNode): PathToken[] {
   if (node.type === "command") return collectCommandTokens(node);
   if (node.type === "file_redirect") return collectRedirectTokens(node);
+  if (EXECUTION_HOST_TYPES.has(node.type)) {
+    return collectHostedExecutionTokens(node);
+  }
+  if (SKIP_SUBTREE_TYPES.has(node.type)) return [];
 
-  const tokens: string[] = [];
+  const tokens: PathToken[] = [];
   for (let i = 0; i < node.childCount; i++) {
     const child = node.child(i);
     if (child) tokens.push(...collectPathCandidateTokens(child));
@@ -36,30 +66,82 @@ export function collectPathCandidateTokens(node: TSNode): string[] {
  * Select the collection strategy for a `command` node: pattern-first
  * commands use `collectPatternCommandTokens`; all others use
  * `collectGenericCommandTokens`.
+ *
+ * Every token the command owns carries the effect its head word proves — the
+ * pure-reader core, read through the *raw* head word so a path-qualified
+ * spelling proves nothing. A nested execution collected along the way keeps
+ * its own command's attribution instead.
  */
-export function collectCommandTokens(node: TSNode): string[] {
+export function collectCommandTokens(node: TSNode): PathToken[] {
+  const effect = proveCommandEffect(
+    extractCommandWord(node) ?? "",
+    commandArgumentWords(node),
+  );
   const commandName = extractCommandName(node);
   const config = commandName
     ? PATTERN_FIRST_COMMANDS.get(commandName)
     : undefined;
   const tokens = config
-    ? collectPatternCommandTokens(node, config)
-    : collectGenericCommandTokens(node);
-  return [...tokens, ...collectEmbeddedOptionValues(node)];
+    ? collectPatternCommandTokens(node, config, effect)
+    : collectGenericCommandTokens(node, effect);
+  return [...tokens, ...collectEmbeddedOptionValues(node, effect)];
 }
 
 /**
  * Collect redirect-destination tokens from a `file_redirect` node.
+ *
+ * The destination itself is an argument value (`> out.txt`), but it can also
+ * host a command that really runs (`> $(cat /etc/shadow)`, `< <(cmd)`), whose
+ * own operands are path candidates too — so each child is both read for its
+ * text and searched for nested executions (#741).
+ *
+ * Both passes are needed: a substitution can be the destination outright, or be
+ * concatenated into it (`> ${DIR}/$(cmd)`), and a `concatenation` is itself an
+ * argument node.
+ *
+ * The operator proves the destination's effect outright, and that proof is
+ * absolute: it overrides whatever the redirected command's own head word
+ * proved, because `> out.txt` writes `out.txt` however read-only the command
+ * in front of it is. A destination the operator names as a file descriptor
+ * (`2>&1`) contributes no token at all.
  */
-export function collectRedirectTokens(node: TSNode): string[] {
-  const tokens: string[] = [];
+export function collectRedirectTokens(node: TSNode): PathToken[] {
+  const operator = redirectOperatorOf(node);
+  const tokens: PathToken[] = [];
   for (let i = 0; i < node.childCount; i++) {
     const child = node.child(i);
     if (!child) continue;
     if (ARG_NODE_TYPES.has(child.type)) {
-      tokens.push(resolveNodeText(child));
+      const effect = redirectDestinationEffect(
+        operator,
+        DESCRIPTOR_NODE_TYPES.has(child.type),
+      );
+      if (effect) tokens.push({ token: resolveNodeText(child), effect });
     }
+    tokens.push(...collectHostedExecutionTokens(child));
   }
+  return tokens;
+}
+
+/**
+ * Collect the path-candidate tokens of every command nested inside `node`'s
+ * execution contexts, reading none of the host subtree's own text.
+ *
+ * This is what lets a heredoc body contribute its substitution's operands while
+ * its prose stays out of the path surface entirely.
+ *
+ * `node` may be a context outright (`> $(cmd)`) or merely contain one
+ * (`> ${DIR}/$(cmd)`); `forEachNestedExecution` searches strictly within a
+ * subtree, so the first case is checked here.
+ */
+function collectHostedExecutionTokens(node: TSNode): PathToken[] {
+  if (NESTED_EXECUTION_CONTEXTS.has(node.type)) {
+    return collectPathCandidateTokens(node);
+  }
+  const tokens: PathToken[] = [];
+  forEachNestedExecution(node, (contextNode) => {
+    tokens.push(...collectPathCandidateTokens(contextNode));
+  });
   return tokens;
 }
 
@@ -67,20 +149,86 @@ export function collectRedirectTokens(node: TSNode): string[] {
  * Extract the command name from a `command` node.
  * Returns the basename (e.g. `/usr/bin/sed` → `sed`), or undefined
  * if the command name cannot be determined (e.g. variable expansion).
+ *
+ * The basename is what {@link PATTERN_FIRST_COMMANDS} needs: `/usr/bin/sed`
+ * parses its arguments exactly as `sed` does. It is the wrong question for a
+ * capability claim, where the directory prefix is the whole point — use
+ * {@link extractCommandWord} there.
  */
 export function extractCommandName(node: TSNode): string | undefined {
+  const word = extractCommandWord(node);
+  return word === undefined ? undefined : basename(word);
+}
+
+/**
+ * Extract the head word of a `command` node exactly as it was written, or
+ * undefined when it cannot be determined (e.g. variable expansion).
+ *
+ * Unbasenamed on purpose: `./grep` and `/tmp/evil/grep` name programs the
+ * pure-reader core's audit never saw, so an effect proof must be able to tell
+ * them from a bare `grep` — the Codex lesson the bare-basename rule encodes.
+ * Documented against {@link extractCommandName}, which answers the other
+ * question.
+ */
+export function extractCommandWord(node: TSNode): string | undefined {
   for (let i = 0; i < node.childCount; i++) {
     const child = node.child(i);
     if (!child) continue;
     if (child.type === "command_name") {
       const text = resolveNodeText(child);
-      return text ? basename(text) : undefined;
+      return text === "" ? undefined : text;
     }
   }
   return undefined;
 }
 
 // ── Private helpers and config ─────────────────────────────────────────────
+
+/**
+ * Destination node types that name a file descriptor rather than a file, so
+ * `>&` / `<&` duplicate a stream instead of touching the filesystem.
+ *
+ * Neither type is in {@link ARG_NODE_TYPES}, so `2>&1`'s `1` is already never
+ * collected; the check is what keeps that true if the argument set widens.
+ */
+const DESCRIPTOR_NODE_TYPES: ReadonlySet<string> = new Set([
+  "file_descriptor",
+  "number",
+]);
+
+/**
+ * The redirect operator of a `file_redirect` node.
+ *
+ * tree-sitter-bash emits it as an unnamed child whose `type` is the operator
+ * text itself, and a `file_redirect`'s only unnamed child is that operator —
+ * so the syntax proof is a lookup on the first one found.
+ */
+function redirectOperatorOf(node: TSNode): string {
+  for (let i = 0; i < node.childCount; i++) {
+    const child = node.child(i);
+    if (child && !child.isNamed) return child.type;
+  }
+  return "";
+}
+
+/**
+ * The command's own argument words, which the retraction guards read.
+ *
+ * Reads the argument nodes directly rather than the collected tokens, because
+ * a guard fires on an *option* (`find -delete`) and no collector emits one.
+ */
+function commandArgumentWords(node: TSNode): string[] {
+  const words: string[] = [];
+  for (let i = 0; i < node.childCount; i++) {
+    const child = node.child(i);
+    if (!child) continue;
+    if (child.type === "command_name" || child.type === "variable_assignment")
+      continue;
+    if (!ARG_NODE_TYPES.has(child.type)) continue;
+    words.push(resolveNodeText(child));
+  }
+  return words;
+}
 
 /**
  * A long or short option carrying its value inline: one or two leading dashes,
@@ -103,8 +251,11 @@ const OPTION_VALUE_PATTERN = /^-{1,2}[^=\s]+=(.+)$/;
  * here is what lets the projection see option-embedded paths without per-command
  * option tables (ADR 0009, #645).
  */
-function collectEmbeddedOptionValues(node: TSNode): string[] {
-  const values: string[] = [];
+function collectEmbeddedOptionValues(
+  node: TSNode,
+  effect: TokenEffect,
+): PathToken[] {
+  const values: PathToken[] = [];
   for (let i = 0; i < node.childCount; i++) {
     const child = node.child(i);
     if (!child) continue;
@@ -113,7 +264,7 @@ function collectEmbeddedOptionValues(node: TSNode): string[] {
     if (!ARG_NODE_TYPES.has(child.type)) continue;
 
     const value = OPTION_VALUE_PATTERN.exec(resolveNodeText(child))?.[1];
-    if (value !== undefined) values.push(value);
+    if (value !== undefined) values.push({ token: value, effect });
   }
   return values;
 }
@@ -277,13 +428,14 @@ function classifyPatternCommandFlag(
 function collectPatternCommandTokens(
   node: TSNode,
   config: PatternCommandConfig,
-): string[] {
+  effect: TokenEffect,
+): PathToken[] {
   const patternPositionals = config.patternPositionals ?? 1;
   let hasExplicitScript = false;
   let positionalsSeen = 0;
   let nextArgAction: "skip" | "extract" | null = null;
   let pastEndOfFlags = false;
-  const tokens: string[] = [];
+  const tokens: PathToken[] = [];
 
   for (let i = 0; i < node.childCount; i++) {
     const child = node.child(i);
@@ -308,7 +460,7 @@ function collectPatternCommandTokens(
       continue;
     }
     if (nextArgAction === "extract") {
-      tokens.push(text);
+      tokens.push({ token: text, effect });
       nextArgAction = null;
       continue;
     }
@@ -342,7 +494,7 @@ function collectPatternCommandTokens(
     }
 
     // File argument — collect as path candidate.
-    tokens.push(text);
+    tokens.push({ token: text, effect });
   }
 
   return tokens;
@@ -352,8 +504,11 @@ function collectPatternCommandTokens(
  * Collect all argument tokens from a generic (non-pattern-first) command node,
  * skipping the command name and variable assignments.
  */
-function collectGenericCommandTokens(node: TSNode): string[] {
-  const tokens: string[] = [];
+function collectGenericCommandTokens(
+  node: TSNode,
+  effect: TokenEffect,
+): PathToken[] {
+  const tokens: PathToken[] = [];
   let seenCommandName = false;
 
   for (let i = 0; i < node.childCount; i++) {
@@ -376,7 +531,7 @@ function collectGenericCommandTokens(node: TSNode): string[] {
 
     // Argument nodes: resolve their text and collect.
     if (ARG_NODE_TYPES.has(child.type)) {
-      tokens.push(resolveNodeText(child));
+      tokens.push({ token: resolveNodeText(child), effect });
       continue;
     }
 

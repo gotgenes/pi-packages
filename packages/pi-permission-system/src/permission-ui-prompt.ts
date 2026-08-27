@@ -11,6 +11,7 @@
  * prompter or forwarding modules (no import cycles, correct layering).
  */
 
+import type { PromptPayload } from "#src/presentation/prompt-payload";
 import type {
   ForwardedPromptContext,
   PermissionUiPromptEvent,
@@ -21,7 +22,8 @@ export interface DirectPromptInput {
   requestId: string;
   source: "tool_call" | "skill_input" | "skill_read";
   agentName: string | null;
-  message: string;
+  /** The ask's complete payload; the event carries its invariant core alone. */
+  payload: PromptPayload;
   toolName?: string;
   skillName?: string;
   path?: string;
@@ -62,7 +64,7 @@ export function buildUiPrompt(input: UiPromptInput): PermissionUiPromptEvent {
     surface: input.surface !== undefined ? input.surface : directSurface(input),
     value: input.value !== undefined ? input.value : directValue(input),
     agentName: input.agentName,
-    message: input.message,
+    request: input.payload.request,
     forwarding: input.forwarding ?? null,
   };
 }

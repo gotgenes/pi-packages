@@ -1,1 +1,5 @@
 blank_issues_enabled: false
+contact_links:
+  - name: Contributing guide
+    url: https://github.com/gotgenes/pi-packages/blob/main/CONTRIBUTING.md
+    about: How contributions work here — start with an issue, and check the package's scope and non-goals first.

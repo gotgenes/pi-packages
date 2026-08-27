@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { getEventInput } from "#src/handlers/permission-gate-handler";
+import { findEvidence } from "#src/presentation/prompt-payload";
 
 import {
   makeBashCommandCheck,
@@ -392,7 +393,7 @@ describe("handleToolCall — generic ask prompt content", () => {
     await handler.handleToolCall(event, makeCtx());
     expect(vi.mocked(prompter.escalate)).toHaveBeenCalledTimes(1);
     const promptDetails = vi.mocked(prompter.escalate).mock.calls[0][0];
-    expect(promptDetails.message).toMatch(
+    expect(findEvidence(promptDetails.payload, "input")?.text).toMatch(
       /\{"city":"Chicago","units":"metric"\}/,
     );
   });

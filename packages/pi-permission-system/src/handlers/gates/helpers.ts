@@ -1,11 +1,9 @@
 import type { AccessPath } from "#src/access-intent/access-path";
 import { classifyToolKind } from "#src/access-intent/tool-kind";
 import type { ForwardedAccessFacts } from "#src/authority/permission-forwarding";
-import type {
-  PermissionDecisionEvent,
-  PermissionDecisionResolution,
-} from "#src/permission-events";
+import type { PermissionDecisionResolution } from "#src/permission-events";
 import type { PermissionCheckResult } from "#src/types";
+import type { DecisionEventFacts } from "./descriptor";
 
 /**
  * Build the child-fixed access facts for a path-shaped gate from its
@@ -62,11 +60,12 @@ export function deriveDecisionValue(
 }
 
 /**
- * Build a `PermissionDecisionEvent` from the gate's inputs.
+ * Build a decision event's facts from the gate's inputs.
  *
  * Centralises the `origin / agentName / matchedPattern ?? null` normalization
  * that is otherwise duplicated across the session-hit path and the gate-result
- * path in `runGateCheck`.
+ * path in `runGateCheck`. The request id is stamped by the runner, which is
+ * where it was minted.
  */
 export function buildDecisionEvent(
   decision: { surface: string; value: string },
@@ -74,7 +73,7 @@ export function buildDecisionEvent(
   agentName: string | null,
   result: "allow" | "deny",
   resolution: PermissionDecisionResolution,
-): PermissionDecisionEvent {
+): DecisionEventFacts {
   return {
     surface: decision.surface,
     value: decision.value,

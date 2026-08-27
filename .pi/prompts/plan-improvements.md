@@ -71,6 +71,10 @@ Read each labeled issue's body before counting it in scope: a package label is s
 When the sweep exposes doc/tracker drift in prose outside the roadmap sections (e.g. a stale "remaining open issues" claim), fix it in the roadmap commit rather than leaving it for the next reader.
 Track repeat deferrals: an issue swept as out-of-scope across multiple consecutive phases (check the prior phase retros/roadmaps) gets an explicit decision this phase — schedule it, or recommend closing it as not-planned — never a silent re-defer.
 Surface each repeat-deferral as an explicit `ask_user` decision (schedule / defer-with-recorded-rationale / close as not-planned), not a self-made call — these are preference-sensitive judgments the user should own; bundle them into the Step 8 composition `ask_user`, not separate round-trips.
+Record the sweep's verdicts under the `#### Open-issue sweep dispositions` heading the Output section prescribes — mid-phase filing sites and `/finish-phase` both append to and grep that exact heading.
+
+Sweep recorded deferred tidyings too: `grep -r -A 5 '#### Deferred tidyings' packages/$1/docs/retro/`.
+Each is a finding a `tidy-first-assessor` judged real but out of scope for the change it was dispatched over — triage like any other candidate, or say why it stays deferred (Refs #787).
 
 ### Step 3: Run fallow for corroboration and baseline
 
@@ -176,7 +180,8 @@ Write the proposed plan as a new `## Improvement roadmap — Phase N: <title>` s
 
 The section should include:
 
-1. A summary of findings (updated health metrics table).
+1. A summary of findings (updated health metrics table), under a `### Findings (planned YYYY-MM-DD)` heading whose date is the phase-window start `/finish-phase` reconciles against.
+   The Step 2 sweep's verdicts go in that section under a `#### Open-issue sweep dispositions` heading — that exact spelling, never a bold prose lead-in or a per-phase variant, because the `roadmap-fit` skill appends to it mid-phase and `/finish-phase` greps it at close.
    Prefer cause-level metrics recomputable by a single command (a `grep -c`, `wc -l`, or fallow field) and record the recompute command with the metric, so `/finish-phase` can verify delivered vs. predicted deterministically.
    When a metric greps for a symbol or filename the phase has not created yet (a predicted name), the step whose work creates it must either use the roadmap's name or update the metric row in the same commit — note this on that step, or a rename silently breaks `/finish-phase`'s recompute.
    Run each recompute command before committing and confirm it reproduces the stated baseline — a wrong command silently breaks `/finish-phase`'s delivered-vs-predicted verification.

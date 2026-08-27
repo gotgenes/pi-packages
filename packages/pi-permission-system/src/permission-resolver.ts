@@ -3,7 +3,9 @@ import type {
   PathValuesAccessIntent,
   ResolvedAccessIntent,
 } from "./access-intent/access-intent";
+import { surfaceFamilyMembers } from "./access-intent/path-surfaces";
 import type { ScopedPermissionManager } from "./permission-manager";
+import { mostRestrictiveOf } from "./restrictiveness";
 import type { Rule } from "./rule";
 import type { SessionRules } from "./session-rules";
 import type { SkillPermissionChecker } from "./skill-prompt-sanitizer";
@@ -79,14 +81,31 @@ export class PermissionResolver
    * gate-facing {@link ScopedPermissionResolver} interface stays narrow
    * (`AccessIntent` only); this wider acceptance is available only through the
    * concrete `PermissionResolver` instance the composition root holds.
+   *
+   * An intent naming a bare surface family (`path`, `external_directory`) is
+   * folded over the family's directional members, most-restrictive (ADR 0013
+   * §10's fail-closed base case). The fold lives here rather than in the gates
+   * because this is the one entry point the gates, `LocalPermissionsService`,
+   * and `ServingPolicy` all share — a serving node resolving a forwarded child
+   * request against an emptied bare surface would stop hard-denying what the
+   * parent's config denies (the #712 defect class).
    */
   resolve(
     intent: AccessIntent | PathValuesAccessIntent,
   ): PermissionCheckResult {
-    return this.permissionManager.check(
-      toResolvedIntent(intent),
-      this.sessionRules.getRuleset(),
-    );
+    const resolved = toResolvedIntent(intent);
+    const sessionRuleset = this.sessionRules.getRuleset();
+    const members = surfaceFamilyMembers(resolved.surface);
+    if (members === null) {
+      return this.permissionManager.check(resolved, sessionRuleset);
+    }
+    const [first, ...rest] = members;
+    const checkMember = (surface: string): PermissionCheckResult =>
+      this.permissionManager.check({ ...resolved, surface }, sessionRuleset);
+    return mostRestrictiveOf([
+      checkMember(first),
+      ...rest.map((surface) => checkMember(surface)),
+    ]);
   }
 
   /**

@@ -6,6 +6,7 @@
  * external-directory-session-dedup.test.ts.
  */
 import { vi } from "vitest";
+import { surfaceFamilyOf } from "#src/access-intent/path-surfaces";
 import type { AskEscalator } from "#src/authority/authorizer-selection";
 import { GateDecisionReporter } from "#src/decision-reporter";
 import { GateRunner } from "#src/handlers/gates/runner";
@@ -16,6 +17,7 @@ import type { ScopedPermissionManager } from "#src/permission-manager";
 import type { SessionLogger } from "#src/session-logger";
 import type { PermissionCheckResult, PermissionState } from "#src/types";
 import { wildcardMatch } from "#src/wildcard-matcher";
+import { DECIDED_BY_HUMAN } from "#test/helpers/decision-fixtures";
 
 import {
   getDecisionEvents,
@@ -77,9 +79,11 @@ export function makeExtDirCheck(
 /** AskEscalator stub that approves with `state: "approved"`. */
 export function makeApprovingPrompter(): AskEscalator {
   return {
-    escalate: vi
-      .fn<AskEscalator["escalate"]>()
-      .mockResolvedValue({ approved: true, state: "approved" }),
+    escalate: vi.fn<AskEscalator["escalate"]>().mockResolvedValue({
+      approved: true,
+      state: "approved",
+      decidedBy: DECIDED_BY_HUMAN,
+    }),
   };
 }
 
@@ -90,13 +94,16 @@ export function makeApprovingPrompter(): AskEscalator {
  */
 export function makeDenyingPrompter(denialReason?: string): AskEscalator {
   return {
-    escalate: vi
-      .fn<AskEscalator["escalate"]>()
-      .mockResolvedValue(
-        denialReason !== undefined
-          ? { approved: false, state: "denied", denialReason }
-          : { approved: false, state: "denied" },
-      ),
+    escalate: vi.fn<AskEscalator["escalate"]>().mockResolvedValue(
+      denialReason !== undefined
+        ? {
+            approved: false,
+            state: "denied",
+            denialReason,
+            decidedBy: DECIDED_BY_HUMAN,
+          }
+        : { approved: false, state: "denied", decidedBy: DECIDED_BY_HUMAN },
+    ),
   };
 }
 
@@ -110,16 +117,22 @@ export function makeUnavailablePrompter(): AskEscalator {
       approved: false,
       state: "denied",
       confirmationUnavailable: true,
+      decidedBy: DECIDED_BY_HUMAN,
     }),
   };
 }
 
 // ── Query helpers ──────────────────────────────────────────────────────────
 
-/** Find the `external_directory` decision event from the events mock. */
+/**
+ * Find the `external_directory`-family decision event from the events mock.
+ *
+ * A direction-proven tool decides on a directional member, so the lookup is by
+ * family rather than by the literal name (#806).
+ */
 export function findExtDirDecision(events: ReturnType<typeof makeEvents>) {
   return getDecisionEvents(events).find(
-    (d) => d.surface === "external_directory",
+    (d) => surfaceFamilyOf(d.surface) === "external_directory",
   );
 }
 
@@ -148,12 +161,10 @@ export function makeExtDirDedupCheck(
       const pathValue =
         intent.kind === "path-values" ? (intent.values[0] ?? null) : null;
 
-      if (surface === "external_directory") {
+      if (surfaceFamilyOf(surface) === "external_directory") {
         if (pathValue && rules && rules.length > 0) {
           const match = rules.findLast(
-            (r) =>
-              r.surface === "external_directory" &&
-              wildcardMatch(r.pattern, pathValue),
+            (r) => r.surface === surface && wildcardMatch(r.pattern, pathValue),
           );
           if (match) {
             return {
@@ -186,9 +197,11 @@ export function makeExtDirDedupCheck(
 /** AskEscalator stub that approves for the session (`state: "approved_for_session"`). */
 function makeSessionApprovingPrompter(): AskEscalator {
   return {
-    escalate: vi
-      .fn<AskEscalator["escalate"]>()
-      .mockResolvedValue({ approved: true, state: "approved_for_session" }),
+    escalate: vi.fn<AskEscalator["escalate"]>().mockResolvedValue({
+      approved: true,
+      state: "approved_for_session",
+      decidedBy: DECIDED_BY_HUMAN,
+    }),
   };
 }
 

@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.3.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-worktrees-v0.3.0...pi-subagents-worktrees-v0.3.1) (2026-08-19)
+
+
+### Documentation
+
+* condense scope sections and move them below the usage material ([#775](https://github.com/gotgenes/pi-packages/issues/775)) ([99f5829](https://github.com/gotgenes/pi-packages/commit/99f58298962baac5bdfe5d3cc02dca0ca9b32395))
+* limit charter cross-links to ecosystem and prerequisite ([#775](https://github.com/gotgenes/pi-packages/issues/775)) ([f613f75](https://github.com/gotgenes/pi-packages/commit/f613f757b060f2cb26e1380cf1006ea66dc064f9))
+* **pi-subagents-worktrees:** document scope and non-goals ([#775](https://github.com/gotgenes/pi-packages/issues/775)) ([6efeb7a](https://github.com/gotgenes/pi-packages/commit/6efeb7afc9176c0e07da6919c7f7e7908b16eabe))
+
 ## [0.3.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-worktrees-v0.2.4...pi-subagents-worktrees-v0.3.0) (2026-08-10)
 
 

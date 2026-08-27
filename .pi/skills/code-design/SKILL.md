@@ -199,6 +199,7 @@ When a shared function parameter must accept SDK content types (e.g., `TextConte
 SDK interfaces lack index signatures; index-signature parameters force `as unknown as` double-casts at call sites.
 
 When writing `promptGuidelines` for a tool registration, name the tool in every bullet — Pi flattens all tools' guidelines into one `Guidelines:` block without per-tool attribution ([earendil-works/pi#4879](https://github.com/earendil-works/pi/issues/4879)).
+Reserve `promptGuidelines` for guidance an agent needs _before_ choosing the tool — the block sits in every session's system prompt, so post-result guidance ("do not retry on X") belongs in the tool's `description` or its result text (Refs #764).
 
 When a tool's `execute` returns a discriminated-union `details` (e.g. `{ kind: "transcript" } | { kind: "status" }`), `defineTool` infers its `TDetails` generic from the first narrowed return and rejects the other branch.
 Cast each return's `details` `as <Union>` so the full union flows into the generic — `satisfies <Union>` keeps the narrowed branch type and does not fix the inference.
@@ -249,3 +250,8 @@ Fix: use a `for...of` loop instead of `.forEach()` when a callback mutates a var
 
 Add an `eslint-disable` directive only after the linter reports the rule, never preemptively — the pre-commit auto-fix strips an unused directive and leaves a stray blank line (an inline disable above an object-literal property).
 A `||`-for-defaulting on a non-nullable primitive (e.g. `string`) does not trip `prefer-nullish-coalescing`, so no disable is needed (Refs #596).
+
+### no-deprecated on a deliberate deprecation
+
+Tagging an exported symbol `@deprecated` makes `@typescript-eslint/no-deprecated` an error at every internal call site — including the tests that pin the deprecated path's preserved behavior.
+Add a file-level `eslint-disable` with a reason to those tests; do not drop the tag or migrate them to the replacement (Refs #699).

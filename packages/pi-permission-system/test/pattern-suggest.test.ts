@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   suggestBashPattern,
   suggestMcpPattern,
+  suggestPathSessionPattern,
   suggestSessionPattern,
 } from "#src/pattern-suggest";
 
@@ -132,61 +133,10 @@ describe("suggestSessionPattern", () => {
     });
   });
 
-  describe("external_directory surface", () => {
-    it("returns parent-directory glob from deriveApprovalPattern", () => {
-      const result = suggestSessionPattern(
-        "external_directory",
-        "/tmp/foo.txt",
-      );
-      expect(result).toMatchObject({
-        surface: "external_directory",
-        pattern: "/tmp/*",
-      });
-    });
-  });
-
-  describe("path surface", () => {
-    it("returns directory-scoped pattern for a file path", () => {
-      const result = suggestSessionPattern("path", "src/.env");
-      expect(result).toMatchObject({
-        surface: "path",
-        pattern: "src/*",
-      });
-    });
-
-    it("label includes path pattern", () => {
-      const result = suggestSessionPattern("path", "src/.env");
-      expect(result.label).toBe('Yes, allow path "src/*" for this session');
-    });
-  });
-
   describe("path-bearing tool surfaces", () => {
-    it("returns directory-scoped pattern for read with a file path", () => {
-      const result = suggestSessionPattern("read", "/outside/project/file.ts");
-      expect(result).toMatchObject({
-        surface: "read",
-        pattern: "/outside/project/*",
-      });
-    });
-
-    it("returns directory-scoped pattern for write with a file path", () => {
-      const result = suggestSessionPattern("write", "src/main.ts");
-      expect(result).toMatchObject({
-        surface: "write",
-        pattern: "src/*",
-      });
-    });
-
-    it("returns * when value is '*' (fallback)", () => {
+    it("returns * for a path-bearing tool with no resolved path", () => {
       const result = suggestSessionPattern("read", "*");
       expect(result).toMatchObject({ surface: "read", pattern: "*" });
-    });
-
-    it("label includes the path pattern for path-bearing tools", () => {
-      const result = suggestSessionPattern("read", "/tmp/data/file.txt");
-      expect(result.label).toBe(
-        'Yes, allow read "/tmp/data/*" for this session',
-      );
     });
 
     it("label shows tool name when pattern is *", () => {
@@ -225,24 +175,31 @@ describe("suggestSessionPattern", () => {
       );
     });
 
-    it("external_directory label includes surface prefix", () => {
-      const result = suggestSessionPattern(
-        "external_directory",
-        "/tmp/foo.txt",
-      );
-      expect(result.label).toBe(
-        'Yes, allow access to external directory "/tmp/*" for this session',
-      );
-    });
-
-    it("path-bearing tool label includes path pattern", () => {
-      const result = suggestSessionPattern("edit", "src/file.ts");
-      expect(result.label).toBe('Yes, allow edit "src/*" for this session');
-    });
-
     it("tool label shows tool name when value is *", () => {
       const result = suggestSessionPattern("edit", "*");
       expect(result.label).toBe('Yes, allow tool "edit" for this session');
+    });
+  });
+});
+
+describe("suggestPathSessionPattern", () => {
+  it("passes the caller-derived pattern through unchanged", () => {
+    expect(suggestPathSessionPattern("edit", "/outside/project/*")).toEqual({
+      surface: "edit",
+      pattern: "/outside/project/*",
+      label: 'Yes, allow edit "/outside/project/*" for this session',
+    });
+  });
+
+  it("preserves a windows-shaped pattern verbatim", () => {
+    // The derivation belongs to the caller's PathNormalizer (#655); this
+    // module must not re-interpret the separators it is handed.
+    expect(
+      suggestPathSessionPattern("read", "c:\\projects\\app\\src\\*"),
+    ).toEqual({
+      surface: "read",
+      pattern: "c:\\projects\\app\\src\\*",
+      label: 'Yes, allow read "c:\\projects\\app\\src\\*" for this session',
     });
   });
 });

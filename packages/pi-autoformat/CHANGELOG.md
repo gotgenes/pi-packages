@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.1.9](https://github.com/gotgenes/pi-packages/compare/pi-autoformat-v5.1.8...pi-autoformat-v5.1.9) (2026-08-19)
+
+
+### Documentation
+
+* condense scope sections and move them below the usage material ([#775](https://github.com/gotgenes/pi-packages/issues/775)) ([99f5829](https://github.com/gotgenes/pi-packages/commit/99f58298962baac5bdfe5d3cc02dca0ca9b32395))
+* **pi-autoformat:** document scope and non-goals ([#775](https://github.com/gotgenes/pi-packages/issues/775)) ([25aa5cc](https://github.com/gotgenes/pi-packages/commit/25aa5cc29d008b2b352db113840f5b52112c26de))
+
 ## [5.1.8](https://github.com/gotgenes/pi-packages/compare/pi-autoformat-v5.1.7...pi-autoformat-v5.1.8) (2026-07-29)
 
 

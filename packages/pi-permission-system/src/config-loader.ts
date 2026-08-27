@@ -222,6 +222,9 @@ export function mergeUnifiedConfigs(
   // Number scalars: override replaces base when defined
   for (const key of [
     "forwardingTimeoutMs",
+    "promptMaxRows",
+    "promptFieldMaxWidth",
+    "reviewLogFieldMaxWidth",
     "toolInputPreviewMaxLength",
     "toolTextSummaryMaxLength",
   ] as const) {
@@ -372,6 +375,9 @@ export function loadAndMergeConfigs(
   const bashFallbackIssue = detectPermissiveBashFallback(merged.permission);
   if (bashFallbackIssue) allIssues.push(bashFallbackIssue);
 
+  const deprecatedCapsIssue = detectDeprecatedPreviewCaps(merged);
+  if (deprecatedCapsIssue) allIssues.push(deprecatedCapsIssue);
+
   return {
     global: globalConfig,
     project: projectConfig,
@@ -409,6 +415,33 @@ export function detectPermissiveBashFallback(
     "Permission config sets a permissive top-level '*': 'allow' with no 'bash' '*' policy, " +
     "so bash commands silently inherit 'allow'. Set an explicit 'bash' policy " +
     '(e.g. "bash": { "*": "ask" }) to gate bash commands.'
+  );
+}
+
+/**
+ * Detect a config still setting one of the two superseded tool-preview caps.
+ *
+ * `toolInputPreviewMaxLength` and `toolTextSummaryMaxLength` bounded one
+ * preview inside a prompt, never the prompt itself, which is why they never
+ * bounded it; `promptMaxRows` and `promptFieldMaxWidth` supersede them
+ * (ADR 0011 §5). Both stay valid in the schema so an existing config is not
+ * rejected fail-closed — they are simply no longer read.
+ *
+ * Pure, following `detectPermissiveBashFallback`: it takes the merged config
+ * and returns a message; the caller owns pushing it onto the issue list.
+ */
+export function detectDeprecatedPreviewCaps(
+  config: UnifiedPermissionConfig,
+): string | undefined {
+  const set = (
+    ["toolInputPreviewMaxLength", "toolTextSummaryMaxLength"] as const
+  ).filter((key) => config[key] !== undefined);
+  if (set.length === 0) return undefined;
+
+  return (
+    `Permission config sets ${set.map((key) => `'${key}'`).join(" and ")}, ` +
+    "which is deprecated and ignored. The prompt is bounded by " +
+    "'promptMaxRows' and 'promptFieldMaxWidth' instead; remove the setting."
   );
 }
 

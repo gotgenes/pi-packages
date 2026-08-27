@@ -87,3 +87,62 @@ describe("bash command gate — metamorphic totality", () => {
     });
   }
 });
+
+/**
+ * The same totality property for nested execution hosts (#741).
+ *
+ * A command hosted in a redirect target or an interpolating heredoc body really
+ * executes, so hosting a gated command there must not weaken its decision — the
+ * enclosing `echo`/`cat` resolves to a permissive allow, and only the nested
+ * unit carries the restriction.
+ */
+describe("bash command gate — nested execution hosts do not weaken", () => {
+  const hosts: { label: string; wrap: (cmd: string) => string }[] = [
+    { label: "a stdout redirect", wrap: (c) => `echo hi > $(${c})` },
+    { label: "an appending redirect", wrap: (c) => `echo hi >> $(${c})` },
+    { label: "a stderr redirect", wrap: (c) => `echo hi 2> \`${c}\`` },
+    { label: "an input process substitution", wrap: (c) => `cat < <(${c})` },
+    {
+      label: "an interpolating heredoc",
+      wrap: (c) => `cat <<EOF\n$(${c})\nEOF`,
+    },
+  ];
+
+  const cases: { bare: string; state: PermissionState }[] = [
+    { bare: "rm -rf build", state: "deny" },
+    { bare: "git push", state: "ask" },
+  ];
+
+  for (const { label, wrap } of hosts) {
+    for (const { bare, state } of cases) {
+      it(`hosting "${bare}" in ${label} does not weaken its ${state} decision`, async () => {
+        const resolver = makeKeyedResolver([
+          { match: bare.split(" ")[0] ?? bare, state },
+        ]);
+
+        const bareDecision = await decide(bare, resolver);
+        const hostedDecision = await decide(wrap(bare), resolver);
+
+        expect(STRENGTH[hostedDecision]).toBeGreaterThanOrEqual(
+          STRENGTH[bareDecision],
+        );
+        expect(hostedDecision).toBe(state);
+      });
+    }
+  }
+
+  it("denies the reported repro when the enclosing command is allowed", async () => {
+    // #741: `echo *` allowed, `rm *` denied — the redirect-hosted `rm` decides.
+    const resolver = makeKeyedResolver([{ match: "rm", state: "deny" }]);
+
+    expect(await decide('echo "hello world" > $(rm *.txt)', resolver)).toBe(
+      "deny",
+    );
+  });
+
+  it("leaves a quoted heredoc body literal, so it does not gate", async () => {
+    const resolver = makeKeyedResolver([{ match: "rm", state: "deny" }]);
+
+    expect(await decide("cat <<'EOF'\n$(rm x)\nEOF", resolver)).toBe("allow");
+  });
+});

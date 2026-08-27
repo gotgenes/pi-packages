@@ -189,6 +189,28 @@ What this does and does not do:
 This key is hand-edited in the global or project `subagents.json`; `/subagents:settings` does not expose it, but it is preserved when you change other settings there.
 An absent or empty list reproduces the default behavior, in which children inherit every parent extension.
 
+#### Excluding a permission extension
+
+When [`@gotgenes/pi-permission-system`](https://github.com/gotgenes/pi-packages/tree/main/packages/pi-permission-system) is installed, it rides into children harmlessly by construction, so exclusion is an optimization and never a correctness requirement.
+Excluding an extension that only registers an authorizer chain link costs nothing but saves its load time: the node that adjudicates an ask still judges every descendant's request.
+
+One case does weaken a child, and it is worth checking before you add an entry.
+An extension can declare the filesystem path *another* package's tool accesses, so that the permission system's `path` and `external_directory` gates can see it.
+Excluding such a declaring package leaves the tool present in the child with its path undeclared, and the child's own gates stop seeing it — silently, because the parent's gating is unaffected and still looks correct.
+
+The condition needs both halves, so most exclusions cannot hit it:
+
+- Package **A** registers a tool whose path lives under a non-standard input key.
+- Package **B** registers the path extractor for A's tool.
+- You exclude **B** but not **A**.
+
+If one package supplies both the tool and its extractor, excluding it removes both together and no gap opens.
+Preview formatters split the same way but are cosmetic — they change prompt text, not gating.
+Closing or announcing this gap is tracked in [#793](https://github.com/gotgenes/pi-packages/issues/793); until then, treat it as a hand check at the moment you add an entry.
+
+Excluding `@gotgenes/pi-permission-system` itself is a different matter: a child then loads no permission node at all, so nothing gates its tool calls, no `permission:` frontmatter applies, and no `ask` is forwarded.
+See [Subagent Integration](https://github.com/gotgenes/pi-packages/blob/main/packages/pi-permission-system/docs/subagent-integration.md#loading-asymmetry) for the full rule.
+
 ### Abort on interrupt
 
 By default, pressing ESC to interrupt the parent agent also aborts every subagent.

@@ -99,6 +99,12 @@ If the deviation is large, stop and ask.
 Before a decision record narrows or replaces a published contract (an event payload, a wire format, a service method), list that contract's current fields and their stability guarantees.
 A field the record never mentions is a field an implementer drops (Refs #737).
 
+## Filing an issue mid-implementation
+
+When a step surfaces work outside the plan's scope, file it and keep going — do not scope-creep the step.
+Then load the `roadmap-fit` skill and follow it: an issue spun off while its package has an open improvement phase gets a recorded disposition at filing time, not at phase close, which is too late to fold anything in.
+The skill exits at its first step when no phase is open, and recording a disposition never authorizes implementing the work now.
+
 ## After the last step
 
 1. If any `src/` or `test/` files were touched (even tangentially), run the full suite: `pnpm run test`.

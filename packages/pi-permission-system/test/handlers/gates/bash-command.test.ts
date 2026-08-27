@@ -290,6 +290,41 @@ describe("resolveBashCommandCheck", () => {
       expect(result.command).toBe("sudo aws s3 rm s3://bucket");
     });
 
+    it("carries the winning unit's executed command onto the result", () => {
+      const resolver = makeResolver(bashResult("allow", "sudo aws s3 rm", "*"));
+
+      const result = resolveBashCommandCheck(
+        "sudo aws s3 rm",
+        [
+          {
+            text: "sudo aws s3 rm",
+            wrapperKind: "indirection",
+            executedUnit: "aws s3 rm",
+          },
+        ],
+        undefined,
+        resolver,
+      );
+
+      expect(result.executedUnit).toBe("aws s3 rm");
+      // The gate still decides on the unit text, not the inner command.
+      expect(result.command).toBe("sudo aws s3 rm");
+      expect(result.matchedPattern).toBe("<indirection-bash-wrapper>");
+    });
+
+    it("leaves the executed command absent for an ordinary unit", () => {
+      const resolver = makeResolver(bashResult("ask", "rm x", "rm *"));
+
+      const result = resolveBashCommandCheck(
+        "rm x",
+        [{ text: "rm x" }],
+        undefined,
+        resolver,
+      );
+
+      expect(result.executedUnit).toBeUndefined();
+    });
+
     it("keeps an explicit deny on an indirection wrapper", () => {
       const resolver = makeResolver(
         bashResult("deny", "sudo rm -rf /", "sudo *"),

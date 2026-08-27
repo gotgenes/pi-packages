@@ -120,6 +120,35 @@ Outside the TUI, summaries are written as prefixed log lines on `stdout` / `stde
 Set `hideSummariesInTui` to `true` to suppress the success status line.
 To surface failed-run stderr (or stdout+stderr), see [`formatterOutput`](docs/configuration.md#formatteroutput).
 
+## Scope and non-goals
+
+**Purpose.**
+Formatters that run at commit time or in CI mutate files after the agent has moved on, so commits fail and the agent has to recover from changes it did not make.
+This extension formats the files the agent just touched, between turns, so a commit sees already-formatted files.
+
+**In scope.**
+Widening which mutations are noticed (always opt-in and explicit), the formatter dispatch model, flush timing, and the reporting surface.
+
+**Non-goals.**
+
+- _Whole-repository formatting._
+  Only files the agent touched are formatted — no watchers, no repo-wide rescans, no `git status` sweep, each of which trades precision for false positives.
+- _Blocking an edit on a formatter failure._
+  Formatting reports; it does not gate.
+  Enforcement belongs to the pre-commit hooks and CI that can actually block.
+- _Inferring what a repository "really" uses._
+  No default chains ship and no formatter is auto-detected, because a default conflicting with your chosen tool is worse than doing nothing.
+  Formatters find their own project config; this extension does not model that.
+- _Per-formatter working directories._
+  There is deliberately no `baseDir`: one directory cannot express a tool serving several subprojects, and it conflicts with batch dispatch.
+- _Git staging or commit orchestration._
+  Formatted files are not re-staged and `git commit` is not intercepted.
+
+**Where adjacent requests belong.**
+Subdirectory-scoped formatters in a monorepo → `treefmt` / `treefmt-nix`, declared as a chain step.
+Mutations from another extension's tools → the `autoformat:touched` event channel, or `customMutationTools`.
+Commit-time enforcement → your existing pre-commit hooks, left in place.
+
 ## Development
 
 ```bash

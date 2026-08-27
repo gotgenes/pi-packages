@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import type { ResolvedAccessIntent } from "./access-intent/access-intent";
 import { normalizeInput } from "./access-intent/input-normalizer";
-import { PATH_SURFACES } from "./access-intent/path-surfaces";
+import { PATH_SURFACES, surfaceFamilyOf } from "./access-intent/path-surfaces";
 import { classifyToolKind } from "./access-intent/tool-kind";
 import {
   getGlobalConfigPath,
@@ -408,7 +408,8 @@ function deriveSource(
   toolName: string,
 ): PermissionCheckResult["source"] {
   if (rule.layer === "session") return "session";
-  if (SPECIAL_PERMISSION_KEYS.has(toolName)) return "special";
+  // Family membership, so a directional surface keeps reporting "special".
+  if (SPECIAL_PERMISSION_KEYS.has(surfaceFamilyOf(toolName))) return "special";
 
   switch (classifyToolKind(toolName)) {
     case "mcp":

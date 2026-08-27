@@ -65,6 +65,12 @@ export class ForwardingManager {
       return;
     }
     this.timer = setInterval(() => {
+      // Ahead of the processing guard: a session whose human is deliberating at
+      // a forwarded dialog holds `processInbox` open for as long as they take,
+      // and it is serving throughout. Refreshing behind the guard would let its
+      // announcement decay exactly when it is most demonstrably alive, and
+      // every other forwarding child would give up on it.
+      this.refreshServing();
       if (!this.context || this.processing) {
         return;
       }
@@ -105,6 +111,21 @@ export class ForwardingManager {
     this.deps.logger.review("forwarded_permission.serving_started", {
       sessionId,
     });
+  }
+
+  /**
+   * Re-announce the served session, keeping a decayable channel current.
+   *
+   * Separate from {@link announceServing} because that one detects a change to
+   * write its log line, and this one deliberately writes none — four review
+   * entries a second would drown the log the announcement exists to make
+   * readable.
+   */
+  private refreshServing(): void {
+    if (this.servingSessionId === null) {
+      return;
+    }
+    this.deps.serving.markServing(this.servingSessionId);
   }
 
   /** Withdraw the published session, if any. */

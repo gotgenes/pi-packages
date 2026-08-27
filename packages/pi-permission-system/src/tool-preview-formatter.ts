@@ -1,10 +1,8 @@
 import { classifyToolKind, isMcpCheck } from "./access-intent/tool-kind";
-import type { PermissionSystemExtensionConfig } from "./extension-config";
 import type { ToolInputFormatterLookup } from "./tool-input-formatter-registry";
 import {
   serializeRedactedToolInputPreview,
   serializeToolInputPreview,
-  TOOL_INPUT_LOG_PREVIEW_MAX_LENGTH,
   TOOL_INPUT_PREVIEW_MAX_LENGTH,
   TOOL_TEXT_SUMMARY_MAX_LENGTH,
   truncateInlineText,
@@ -21,27 +19,21 @@ import { getNonEmptyString, toRecord } from "./value-guards";
 export interface ToolPreviewFormatterOptions {
   toolInputPreviewMaxLength: number;
   toolTextSummaryMaxLength: number;
-  toolInputLogPreviewMaxLength: number;
 }
 
-type ConfigurablePreviewLimits = Pick<
-  PermissionSystemExtensionConfig,
-  "toolInputPreviewMaxLength" | "toolTextSummaryMaxLength"
->;
-
 /**
- * Resolve `ToolPreviewFormatterOptions` from a config object, falling back to
- * the built-in defaults for any field that is absent.
+ * The built-in `ToolPreviewFormatterOptions`.
+ *
+ * Takes no config: `toolInputPreviewMaxLength` and `toolTextSummaryMaxLength`
+ * are subsumed by the renderer budgets (`promptMaxRows` / `promptFieldMaxWidth`,
+ * ADR 0011 §5), so an operator's values no longer take effect. The constants
+ * remain because they still shape a *prompt* preview; what the review log
+ * persists is bounded by `reviewLogFieldMaxWidth` at the writer instead.
  */
-export function resolveToolPreviewLimits(
-  config: ConfigurablePreviewLimits,
-): ToolPreviewFormatterOptions {
+export function resolveToolPreviewLimits(): ToolPreviewFormatterOptions {
   return {
-    toolInputPreviewMaxLength:
-      config.toolInputPreviewMaxLength ?? TOOL_INPUT_PREVIEW_MAX_LENGTH,
-    toolTextSummaryMaxLength:
-      config.toolTextSummaryMaxLength ?? TOOL_TEXT_SUMMARY_MAX_LENGTH,
-    toolInputLogPreviewMaxLength: TOOL_INPUT_LOG_PREVIEW_MAX_LENGTH,
+    toolInputPreviewMaxLength: TOOL_INPUT_PREVIEW_MAX_LENGTH,
+    toolTextSummaryMaxLength: TOOL_TEXT_SUMMARY_MAX_LENGTH,
   };
 }
 
@@ -135,7 +127,7 @@ export class ToolPreviewFormatter {
       case "ls":
         return this.formatSearchInputForPrompt(toolName, inputRecord);
       case "mcp":
-        // The MCP target is already surfaced in formatAskPrompt's MCP branch.
+        // The MCP target is already a request fact on the prompt payload.
         // When no custom formatter is registered (or it declines), produce no
         // additional preview rather than leaking the raw event JSON.
         return "";
@@ -147,14 +139,16 @@ export class ToolPreviewFormatter {
   // ── Log formatting ──────────────────────────────────────────────────────
 
   /**
-   * Serialize `input` to inline JSON and truncate at
-   * `toolInputLogPreviewMaxLength`, masking sensitive-keyed values.
+   * Serialize `input` to inline JSON for the review log, masking
+   * sensitive-keyed values.
+   *
+   * Unbounded here: the writer narrows every field it persists to
+   * `reviewLogFieldMaxWidth`, so a second bound at the producer would be a
+   * limit the operator cannot see or change.
    */
   formatGenericToolInputForLog(input: unknown): string | undefined {
     const inline = serializeRedactedToolInputPreview(input);
-    return inline
-      ? `input ${truncateInlineText(inline, this.options.toolInputLogPreviewMaxLength)}`
-      : undefined;
+    return inline ? `input ${inline}` : undefined;
   }
 
   /** Derive a loggable input preview string for the review log. */
@@ -168,16 +162,7 @@ export class ToolPreviewFormatter {
     }
 
     if (pathBearingTools.has(result.toolName)) {
-      const inputPreview = this.formatToolInputForPrompt(
-        result.toolName,
-        input,
-      );
-      return inputPreview
-        ? truncateInlineText(
-            inputPreview,
-            this.options.toolInputLogPreviewMaxLength,
-          )
-        : undefined;
+      return this.formatToolInputForPrompt(result.toolName, input) || undefined;
     }
 
     return this.formatGenericToolInputForLog(input);

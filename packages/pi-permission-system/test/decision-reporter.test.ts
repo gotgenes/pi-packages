@@ -31,6 +31,7 @@ function makeDecisionEvent(
   overrides: Partial<PermissionDecisionEvent> = {},
 ): PermissionDecisionEvent {
   return {
+    requestId: "perm-00000000-0000-4000-8000-000000000000",
     surface: "read",
     value: "read",
     result: "allow",

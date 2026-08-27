@@ -1,16 +1,88 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockRunCommand = vi.hoisted(() => vi.fn());
+const mockSleep = vi.hoisted(() => vi.fn());
 
 vi.mock("../../src/lib/process", () => ({
   runCommand: mockRunCommand,
+  sleep: mockSleep,
 }));
 
-import { detectRepo, gh, ghJson, git, resetRepoCache } from "#src/lib/github";
+import {
+  detectRepo,
+  gh,
+  ghJson,
+  ghJsonRetrying,
+  git,
+  resetRepoCache,
+} from "#src/lib/github";
 
 beforeEach(() => {
   mockRunCommand.mockReset();
+  mockSleep.mockReset();
+  mockSleep.mockResolvedValue(undefined);
   resetRepoCache();
+});
+
+describe("ghJsonRetrying", () => {
+  it("parses JSON stdout on the first attempt", async () => {
+    mockRunCommand.mockResolvedValue({
+      stdout: '{"merged":true}\n',
+      stderr: "",
+      exitCode: 0,
+    });
+
+    const result = await ghJsonRetrying<{ merged: boolean }>([
+      "api",
+      "repos/{owner}/{repo}/pulls/42",
+    ]);
+
+    expect(result).toEqual({ merged: true });
+    expect(mockRunCommand).toHaveBeenCalledTimes(1);
+    expect(mockSleep).not.toHaveBeenCalled();
+  });
+
+  it("retries a transient failure and forwards the signal", async () => {
+    const controller = new AbortController();
+    mockRunCommand.mockResolvedValueOnce({
+      stdout: "",
+      stderr: "HTTP 503",
+      exitCode: 1,
+    });
+    mockRunCommand.mockResolvedValueOnce({
+      stdout: '{"merged":false}',
+      stderr: "",
+      exitCode: 0,
+    });
+    const onRetry = vi.fn();
+
+    const result = await ghJsonRetrying<{ merged: boolean }>(
+      ["api", "repos/{owner}/{repo}/pulls/42"],
+      { signal: controller.signal, onRetry },
+    );
+
+    expect(result).toEqual({ merged: false });
+    expect(mockRunCommand).toHaveBeenCalledWith({
+      cmd: "gh",
+      args: ["api", "repos/{owner}/{repo}/pulls/42"],
+      signal: controller.signal,
+    });
+    expect(mockSleep).toHaveBeenCalledWith(1000, controller.signal);
+    expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+
+  it("rethrows a permanent failure without retrying", async () => {
+    mockRunCommand.mockResolvedValue({
+      stdout: "",
+      stderr: "HTTP 404: Not Found",
+      exitCode: 1,
+    });
+
+    await expect(ghJsonRetrying(["api", "repos/o/r/pulls/42"])).rejects.toThrow(
+      /HTTP 404/,
+    );
+    expect(mockRunCommand).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("gh", () => {

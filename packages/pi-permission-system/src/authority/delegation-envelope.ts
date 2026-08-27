@@ -7,17 +7,25 @@
  * the terminal (a prompt) instead. The checkpoint only ever *tightens* a
  * verdict — it never turns a `defer`/`deny` into an `allow`.
  *
- * The excluded set is the whole `path` surface plus `external_directory`. A
- * finer secret-shaped-`path` exclusion (letting a link allow a non-secret path)
- * is deferred to the allow-capable slice that needs it (#620); until then the
- * conservative whole-surface exclusion ships. The checkpoint is dormant while
- * the only registered links are deny-first (they never `allow`).
+ * The excluded set is the whole `path` surface **family** plus the
+ * `external_directory` family — membership is tested on the family a surface
+ * belongs to, so a directional member (`path_write`) is excluded by
+ * construction and a later capability suffix joins its family for free (ADR
+ * 0013 §4). That is a name-resolution rule, not a scope freeze: it says how a
+ * family name resolves to members, and leaves *which* families are excluded
+ * independently relaxable (#620).
+ *
+ * A finer secret-shaped-`path` exclusion (letting a link allow a non-secret
+ * path) is deferred to the allow-capable slice that needs it (#620); until then
+ * the conservative whole-family exclusion ships. The checkpoint is dormant
+ * while the only registered links are deny-first (they never `allow`).
  */
 
+import { surfaceFamilyOf } from "#src/access-intent/path-surfaces";
 import type { Authorizer } from "./authorizer";
 import type { PromptPermissionDetails } from "./permission-prompter";
 
-/** Surfaces on which a link may never grant an `allow` (ADR 0007 §5). */
+/** Surface families on which a link may never grant an `allow` (ADR 0007 §5). */
 export const DELEGATION_EXCLUDED_SURFACES: ReadonlySet<string> = new Set([
   "external_directory",
   "path",
@@ -49,5 +57,8 @@ export function encloseInDelegationEnvelope(
  */
 function isExcludedSurface(details: PromptPermissionDetails): boolean {
   const surface = details.accessIntent?.surface ?? details.surface ?? undefined;
-  return surface === undefined || DELEGATION_EXCLUDED_SURFACES.has(surface);
+  return (
+    surface === undefined ||
+    DELEGATION_EXCLUDED_SURFACES.has(surfaceFamilyOf(surface))
+  );
 }

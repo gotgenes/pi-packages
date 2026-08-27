@@ -28,6 +28,9 @@ The boundary that keeps this from becoming scope creep:
 Beck's rule: each tidying is separate from the behavior change and lands first, so the diff that changes behavior is small and reviewable.
 Sandi Metz's corollary: prefer duplication over the wrong abstraction — if the "preparation" invents a discriminator parameter to paper over a real structural difference, it is not tidying; flag it as such and leave the duplication.
 
+A tidying must leave the code better **after** the change lands, not only during it.
+A wrapper or indirection whose only value is absorbing a one-time mechanical migration becomes dead weight the moment the migration completes — count the call sites and let the migration be mechanical instead.
+
 ## Input
 
 The dispatching agent provides:

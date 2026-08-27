@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [19.3.5](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v19.3.4...pi-subagents-v19.3.5) (2026-08-21)
+
+
+### Documentation
+
+* **pi-subagents:** record the loading-asymmetry condition and cite the adapter convention ([d12ee41](https://github.com/gotgenes/pi-packages/commit/d12ee41b5aca6dbe29bc325ba34b2c1a2c669f93)), closes [#789](https://github.com/gotgenes/pi-packages/issues/789)
+
+## [19.3.4](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v19.3.3...pi-subagents-v19.3.4) (2026-08-19)
+
+
+### Bug Fixes
+
+* **pi-subagents:** drop the redundant tool-name prefix from promptSnippet ([#778](https://github.com/gotgenes/pi-packages/issues/778)) ([403d5e9](https://github.com/gotgenes/pi-packages/commit/403d5e9ab8423825ba3742aa4897a3c4e586eec6))
+
+## [19.3.3](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v19.3.2...pi-subagents-v19.3.3) (2026-08-19)
+
+
+### Documentation
+
+* condense scope sections and move them below the usage material ([#775](https://github.com/gotgenes/pi-packages/issues/775)) ([99f5829](https://github.com/gotgenes/pi-packages/commit/99f58298962baac5bdfe5d3cc02dca0ca9b32395))
+* **pi-subagents:** document scope and non-goals ([#775](https://github.com/gotgenes/pi-packages/issues/775)) ([24ecb31](https://github.com/gotgenes/pi-packages/commit/24ecb311d5a0760e70857a99e966b0bdf88ded02))
+
 ## [19.3.2](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v19.3.1...pi-subagents-v19.3.2) (2026-08-13)
 
 

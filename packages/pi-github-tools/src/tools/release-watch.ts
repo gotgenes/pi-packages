@@ -12,8 +12,7 @@ export function registerReleaseWatch(pi: ExtensionAPI): void {
       "Wait for a release tag to appear on HEAD after merging a release-please PR. " +
       "Polls for a new git tag every 10 s until one appears or the timeout expires (default: 180 s). " +
       "Returns the tag name, version, and SHA.",
-    promptSnippet:
-      "release_watch: Wait for a release tag after merging release-please.",
+    promptSnippet: "Wait for a release tag after merging release-please.",
     parameters: Type.Object({
       timeout: Type.Optional(
         Type.Number({

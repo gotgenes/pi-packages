@@ -62,6 +62,34 @@ Example — disable startup indexing for a large non-code directory:
 
 A missing config file is fine (defaults apply); a malformed file is ignored with a warning.
 
+## Scope and non-goals
+
+**Purpose.**
+The built-in `grep` finds text matching a pattern, but not code by intent when you do not know the exact wording.
+This extension exposes the external ColGrep CLI as an agent tool and keeps its index warm across a session.
+
+**In scope.**
+The tool surface, the index lifecycle, and agent guidance about when semantic search is the right instrument.
+
+**Non-goals.**
+
+- _Replacing `grep`._
+  Exact string, regex, and symbol matching stay with the built-in tools; the shipped skill exists to stop the agent defaulting to semantic search for everything.
+- _Owning the ColGrep binary._
+  It is a user-supplied prerequisite — not bundled, installed, patched, or vendored — and a CLI bug is reported upstream.
+  ColGrep is the backend, not one of several interchangeable engines.
+- _Blocking startup on indexing._
+  Startup indexing is fire-and-forget, so a session is usable immediately.
+- _Indexing a directory nobody searched._
+  Auto-reindex is gated on an index already existing, and there are no trigger heuristics beyond that plus one `indexOnStartup` boolean.
+- _Full CLI parity._
+  The tool exposes a curated parameter subset; other flags remain reachable by running `colgrep` through `bash`.
+
+**Where adjacent requests belong.**
+Exact pattern or symbol matching → the built-in `grep`.
+Finding files by name → the built-in `find`.
+Advanced filtering and multi-directory search → `colgrep` invoked through `bash`.
+
 ## License
 
 MIT

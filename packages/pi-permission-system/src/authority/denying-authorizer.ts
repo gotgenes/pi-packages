@@ -1,6 +1,9 @@
 import type { PermissionPromptDecision } from "#src/authority/permission-dialog";
 import type { TerminalAuthorizer } from "./authorizer";
 
+/** Why this authorizer denies; the provenance record's `reason` (#726). */
+const NO_AUTHORITY_REASON = "No live authority was reachable for this session";
+
 /**
  * Least-privilege Authorizer: no authority is reachable for this session
  * (no UI, not a subagent), so every ask is denied.
@@ -15,6 +18,7 @@ export class DenyingAuthorizer implements TerminalAuthorizer {
       approved: false,
       state: "denied",
       confirmationUnavailable: true,
+      decidedBy: { kind: "unavailable", reason: NO_AUTHORITY_REASON },
     });
   }
 }

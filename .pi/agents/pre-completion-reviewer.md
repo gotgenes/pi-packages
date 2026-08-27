@@ -112,6 +112,8 @@ Check in both directions:
   Are existing skills that describe what you changed still accurate?
   When the change renames a symbol (tool name, export, config key), grep `.pi/skills/` and `.pi/prompts/` for the old name.
 - Prompt templates (`.pi/prompts/`) — if agent infrastructure changed, are stale references updated?
+- Source and test **comments** — when the change removes a module, export, or type, grep `src/` and `test/` for its name.
+  A deleted symbol survives in comments and docstrings that no compiler checks (Refs #746).
 - READMEs — check the root `README.md` and any package `README.md` files that describe affected modules.
   When a change removes or renames a slash command or user-facing feature, grep the package `README.md` for the command/feature name — a README documents commands, not module filenames, so a module-name match misses it (Refs #470).
 - Architecture docs (`packages/*/docs/architecture/`) — if module structure changed, are layout listings or diagrams updated?

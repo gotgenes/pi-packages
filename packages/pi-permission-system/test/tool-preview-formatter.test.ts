@@ -12,41 +12,25 @@ vi.mock("../src/json-safe-stringify.js", async (importActual) => ({
 
 import { safeJsonStringify } from "#src/json-safe-stringify";
 import {
-  TOOL_INPUT_LOG_PREVIEW_MAX_LENGTH,
   TOOL_INPUT_PREVIEW_MAX_LENGTH,
   TOOL_TEXT_SUMMARY_MAX_LENGTH,
 } from "#src/tool-input-preview";
-import {
-  resolveToolPreviewLimits,
-  ToolPreviewFormatter,
-  type ToolPreviewFormatterOptions,
-} from "#src/tool-preview-formatter";
+import { resolveToolPreviewLimits } from "#src/tool-preview-formatter";
 import type { PermissionCheckResult } from "#src/types";
+import {
+  makeToolPreviewFormatter as makeFormatter,
+  makePermissionCheckResult,
+} from "#test/helpers/presentation-fixtures";
 
 const mockedStringify = vi.mocked(safeJsonStringify);
 
-function makeFormatter(
-  overrides: Partial<ToolPreviewFormatterOptions> = {},
-): ToolPreviewFormatter {
-  return new ToolPreviewFormatter({
-    toolInputPreviewMaxLength: TOOL_INPUT_PREVIEW_MAX_LENGTH,
-    toolTextSummaryMaxLength: TOOL_TEXT_SUMMARY_MAX_LENGTH,
-    toolInputLogPreviewMaxLength: TOOL_INPUT_LOG_PREVIEW_MAX_LENGTH,
-    ...overrides,
-  });
-}
-
+// This file's subject is the allow-path preview, so the wrapper defaults to
+// `allow`.
 function makeResult(
   toolName: string,
   overrides: Partial<PermissionCheckResult> = {},
 ): PermissionCheckResult {
-  return {
-    toolName,
-    state: "allow",
-    source: "tool",
-    origin: "builtin",
-    ...overrides,
-  };
+  return makePermissionCheckResult(toolName, { state: "allow", ...overrides });
 }
 
 beforeEach(() => {
@@ -220,28 +204,14 @@ describe("ToolPreviewFormatter.formatToolInputForPrompt — custom formatter sea
 
   test("uses a custom formatter's string result verbatim, bypassing the switch", () => {
     const lookup = makeLookup("my-tool", "custom preview");
-    const f = new ToolPreviewFormatter(
-      {
-        toolInputPreviewMaxLength: TOOL_INPUT_PREVIEW_MAX_LENGTH,
-        toolTextSummaryMaxLength: TOOL_TEXT_SUMMARY_MAX_LENGTH,
-        toolInputLogPreviewMaxLength: TOOL_INPUT_LOG_PREVIEW_MAX_LENGTH,
-      },
-      lookup,
-    );
+    const f = makeFormatter({}, lookup);
     expect(f.formatToolInputForPrompt("my-tool", {})).toBe("custom preview");
   });
 
   test("falls through to the built-in switch when custom formatter returns undefined", () => {
     mockedStringify.mockReturnValue('{"x":1}');
     const lookup = makeLookup("unknown-tool", undefined);
-    const f = new ToolPreviewFormatter(
-      {
-        toolInputPreviewMaxLength: TOOL_INPUT_PREVIEW_MAX_LENGTH,
-        toolTextSummaryMaxLength: TOOL_TEXT_SUMMARY_MAX_LENGTH,
-        toolInputLogPreviewMaxLength: TOOL_INPUT_LOG_PREVIEW_MAX_LENGTH,
-      },
-      lookup,
-    );
+    const f = makeFormatter({}, lookup);
     // Falls through to JSON default for unknown tools
     expect(f.formatToolInputForPrompt("unknown-tool", { x: 1 })).toContain(
       '{"x":1}',
@@ -250,14 +220,7 @@ describe("ToolPreviewFormatter.formatToolInputForPrompt — custom formatter sea
 
   test("custom formatter for a built-in tool overrides the built-in preview", () => {
     const lookup = makeLookup("read", "custom read summary");
-    const f = new ToolPreviewFormatter(
-      {
-        toolInputPreviewMaxLength: TOOL_INPUT_PREVIEW_MAX_LENGTH,
-        toolTextSummaryMaxLength: TOOL_TEXT_SUMMARY_MAX_LENGTH,
-        toolInputLogPreviewMaxLength: TOOL_INPUT_LOG_PREVIEW_MAX_LENGTH,
-      },
-      lookup,
-    );
+    const f = makeFormatter({}, lookup);
     // Would normally use formatReadInputForPrompt; custom overrides it
     expect(f.formatToolInputForPrompt("read", { path: "/foo.ts" })).toBe(
       "custom read summary",
@@ -265,11 +228,7 @@ describe("ToolPreviewFormatter.formatToolInputForPrompt — custom formatter sea
   });
 
   test("absent lookup preserves current behaviour for all tool types", () => {
-    const f = new ToolPreviewFormatter({
-      toolInputPreviewMaxLength: TOOL_INPUT_PREVIEW_MAX_LENGTH,
-      toolTextSummaryMaxLength: TOOL_TEXT_SUMMARY_MAX_LENGTH,
-      toolInputLogPreviewMaxLength: TOOL_INPUT_LOG_PREVIEW_MAX_LENGTH,
-    });
+    const f = makeFormatter();
     // Built-in path still works
     expect(f.formatToolInputForPrompt("read", { path: "/foo.ts" })).toContain(
       "/foo.ts",
@@ -292,13 +251,10 @@ describe("ToolPreviewFormatter.formatGenericToolInputForLog", () => {
     expect(f.formatGenericToolInputForLog({ k: "v" })).toBe('input {"k":"v"}');
   });
 
-  test("truncates at constructor toolInputLogPreviewMaxLength", () => {
-    const f = makeFormatter({ toolInputLogPreviewMaxLength: 10 });
-    const result = f.formatGenericToolInputForLog({ k: "x".repeat(50) });
-    expect(result).toBeDefined();
-    const preview = result!.slice("input ".length);
-    expect(preview.length).toBe(11); // 10 + "…"
-    expect(preview.endsWith("…")).toBe(true);
+  test("does not truncate — the log writer bounds what it persists", () => {
+    const f = makeFormatter();
+    const result = f.formatGenericToolInputForLog({ k: "x".repeat(2000) });
+    expect(result).toBe(`input {"k":"${"x".repeat(2000)}"}`);
   });
 
   test("masks a sensitive-keyed value in the logged preview", () => {
@@ -391,16 +347,16 @@ describe("ToolPreviewFormatter.getToolInputPreviewForLog", () => {
     expect(preview).toContain("/src/foo.ts");
   });
 
-  test("truncates path preview at toolInputLogPreviewMaxLength", () => {
-    const f = makeFormatter({ toolInputLogPreviewMaxLength: 15 });
-    const longPath = `/src/${"a".repeat(50)}.ts`;
+  test("does not truncate a path preview — the log writer bounds it", () => {
+    const f = makeFormatter();
+    const longPath = `/src/${"a".repeat(2000)}.ts`;
     const preview = f.getToolInputPreviewForLog(
       makeResult("read"),
       { path: longPath },
       pathBearingTools,
     );
     expect(preview).toBeDefined();
-    expect(preview!.length).toBeLessThanOrEqual(16); // 15 + "…"
+    expect(preview).toContain(longPath);
   });
 
   test("returns generic JSON preview for non-path-bearing tools", () => {
@@ -447,61 +403,27 @@ describe("ToolPreviewFormatter.getPermissionLogContext", () => {
     expect(ctx.origin).toBe("project");
   });
 
-  test("toolInputPreview respects toolInputLogPreviewMaxLength", () => {
-    const f = makeFormatter({ toolInputLogPreviewMaxLength: 15 });
-    const longPath = `/src/${"a".repeat(50)}.ts`;
+  test("toolInputPreview carries the whole path, for the writer to bound", () => {
+    const f = makeFormatter();
+    const longPath = `/src/${"a".repeat(2000)}.ts`;
     const ctx = f.getPermissionLogContext(
       makeResult("read"),
       { path: longPath },
       pathBearingTools,
     );
-    expect(ctx.toolInputPreview).toBeDefined();
-    expect(ctx.toolInputPreview!.length).toBeLessThanOrEqual(16);
+    expect(ctx.toolInputPreview).toContain(longPath);
   });
 });
 
 // ── resolveToolPreviewLimits ───────────────────────────────────────────────
 
+// The two operator-facing caps are subsumed by the renderer budgets (ADR 0011
+// §5), so the limits are now the built-in constants alone — no config is read.
 describe("resolveToolPreviewLimits", () => {
-  test("uses configured toolInputPreviewMaxLength when provided", () => {
-    const opts = resolveToolPreviewLimits({ toolInputPreviewMaxLength: 400 });
-    expect(opts.toolInputPreviewMaxLength).toBe(400);
-  });
-
-  test("falls back to TOOL_INPUT_PREVIEW_MAX_LENGTH when toolInputPreviewMaxLength is absent", () => {
-    const opts = resolveToolPreviewLimits({});
-    expect(opts.toolInputPreviewMaxLength).toBe(TOOL_INPUT_PREVIEW_MAX_LENGTH);
-  });
-
-  test("uses configured toolTextSummaryMaxLength when provided", () => {
-    const opts = resolveToolPreviewLimits({ toolTextSummaryMaxLength: 120 });
-    expect(opts.toolTextSummaryMaxLength).toBe(120);
-  });
-
-  test("falls back to TOOL_TEXT_SUMMARY_MAX_LENGTH when toolTextSummaryMaxLength is absent", () => {
-    const opts = resolveToolPreviewLimits({});
-    expect(opts.toolTextSummaryMaxLength).toBe(TOOL_TEXT_SUMMARY_MAX_LENGTH);
-  });
-
-  test("always sets toolInputLogPreviewMaxLength to TOOL_INPUT_LOG_PREVIEW_MAX_LENGTH", () => {
-    const opts = resolveToolPreviewLimits({
-      toolInputPreviewMaxLength: 999,
-      toolTextSummaryMaxLength: 999,
-    });
-    expect(opts.toolInputLogPreviewMaxLength).toBe(
-      TOOL_INPUT_LOG_PREVIEW_MAX_LENGTH,
-    );
-  });
-
-  test("returns all three options when both fields are configured", () => {
-    const opts = resolveToolPreviewLimits({
-      toolInputPreviewMaxLength: 400,
-      toolTextSummaryMaxLength: 120,
-    });
-    expect(opts).toEqual({
-      toolInputPreviewMaxLength: 400,
-      toolTextSummaryMaxLength: 120,
-      toolInputLogPreviewMaxLength: TOOL_INPUT_LOG_PREVIEW_MAX_LENGTH,
+  test("returns the three built-in constants", () => {
+    expect(resolveToolPreviewLimits()).toEqual({
+      toolInputPreviewMaxLength: TOOL_INPUT_PREVIEW_MAX_LENGTH,
+      toolTextSummaryMaxLength: TOOL_TEXT_SUMMARY_MAX_LENGTH,
     });
   });
 });

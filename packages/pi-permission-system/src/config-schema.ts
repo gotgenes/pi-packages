@@ -73,13 +73,58 @@ const permissionMapSchema = z
       "A map of wildcard patterns to permission states.\n\nUse `*` for wildcard matching. When multiple patterns match, the **last matching rule wins** — put broad catch-alls first and specific overrides after them.\n\nPattern keys support home directory expansion:\n- `~/path` or `$HOME/path` — expanded to the OS home directory at match time.\n- `~` or `$HOME` alone — expands to the home directory itself.\n\nThe stored pattern is always shown in logs and approval dialogs as written (e.g. `~/dev/*`).",
   });
 
+const surfaceValueSchema = z.union([
+  permissionStateSchema,
+  permissionMapSchema,
+]);
+
+/**
+ * The `path` and `external_directory` families' directional members
+ * (ADR 0013 §3), named so editors offer autocomplete and hover documentation.
+ *
+ * Naming them as properties rather than leaving them to the catchall is also
+ * what lets the loader tell a legal directional key from a misspelled one —
+ * see {@link rejectMisspelledDirectionalKeys}.
+ */
+const DIRECTIONAL_SURFACE_DESCRIPTIONS: Record<
+  string,
+  { description: string; markdownDescription: string }
+> = {
+  path_read: {
+    description:
+      "Cross-cutting gate for reading a file, by path pattern. The useful directional grant.",
+    markdownDescription:
+      'Cross-cutting gate for **reading** a file, matched by path pattern across all path-aware tools.\n\nThis is the directional key worth granting: `"path_read": { "~/dev/*": "allow" }` permits reads without permitting writes.\n\nA bare `"path"` key is sugar that expands into this key **and** `path_write`, with its entries placed first — so an explicit `path_read` entry always has the final say, whatever the key order in the file.',
+  },
+  path_write: {
+    description:
+      "Cross-cutting gate for writing a file, by path pattern. Earns its keep as a restriction.",
+    markdownDescription:
+      'Cross-cutting gate for **writing** a file, matched by path pattern across all path-aware tools.\n\nThis key earns its keep as a *restriction* rather than a grant: `"path_write": { "*": "deny" }` is a coherent read-only-agent posture. A `"path_write": "allow"` on its own does not silence an `edit`, which also reads — grant `path_read` too, or use the bare `"path"` key.',
+  },
+  external_directory_read: {
+    description:
+      "Boundary gate for reading outside the working directory. The relief most asks want.",
+    markdownDescription:
+      'Boundary gate for **reading** a path outside the session working directory.\n\nThe one-line grant for an external root: `"external_directory_read": { "~/dev/*": "allow" }` silences repeated read prompts on a directory outside the tree while a write to the same path still prompts. No parallel `path_read` entry is needed.',
+  },
+  external_directory_write: {
+    description: "Boundary gate for writing outside the working directory.",
+    markdownDescription:
+      'Boundary gate for **writing** to a path outside the session working directory.\n\nA bare `"external_directory"` key is sugar that expands into this key and `external_directory_read`; write this one only to give the two directions different answers.',
+  },
+};
+
 const permissionSchema = z
-  .record(
-    z.string().min(1).meta({
-      description: "A surface name or the universal fallback key '*'.",
-    }),
-    z.union([permissionStateSchema, permissionMapSchema]),
+  .object(
+    Object.fromEntries(
+      Object.entries(DIRECTIONAL_SURFACE_DESCRIPTIONS).map(([key, meta]) => [
+        key,
+        surfaceValueSchema.optional().meta(meta),
+      ]),
+    ),
   )
+  .catchall(surfaceValueSchema)
   .meta({
     description:
       "Flat permission policy. Each key is a surface name; values are a PermissionState string (catch-all) or a pattern→action map.",
@@ -106,9 +151,53 @@ const permissionSchema = z
         mcp: { "*": "ask", mcp_status: "allow", "exa:*": "allow" },
         skill: { "*": "ask", librarian: "allow" },
         external_directory: { "*": "ask", "~/.cargo/registry/*": "allow" },
+        external_directory_read: { "~/dev/*": "allow" },
       },
     ],
-  });
+  })
+  .superRefine(rejectUnusableSurfaceKeys);
+
+/**
+ * Reject the two surface-key spellings that would otherwise sit inert.
+ *
+ * Neither check serializes into the JSON Schema, so an editor will not flag
+ * them; the loader will, fail-closed, with the offending key named.
+ *
+ * 1. A key shaped like a directional surface but misspelled
+ *    (`path_wrote`, `external_directory_reed`). A typo in a *grant* fails safe
+ *    — the rule never fires and the user just gets more prompts — but a typo
+ *    in a *restriction* fails **open**: `path_wrote: {"*": "deny"}` enforces
+ *    nothing at all. The false-positive population is an extension tool
+ *    literally named `path_*` or `external_directory_*`.
+ * 2. An empty key, which `.catchall()` no longer rejects on its own the way
+ *    the record form's `propertyNames: {minLength: 1}` did.
+ */
+function rejectUnusableSurfaceKeys(
+  permission: Record<string, unknown>,
+  ctx: z.core.$RefinementCtx,
+): void {
+  const legalDirectionalKeys = Object.keys(DIRECTIONAL_SURFACE_DESCRIPTIONS);
+  for (const key of Object.keys(permission)) {
+    if (key === "") {
+      ctx.addIssue({
+        code: "custom",
+        path: [key],
+        message: "A surface key must not be empty.",
+      });
+      continue;
+    }
+    if (
+      /^(path|external_directory)_/.test(key) &&
+      !legalDirectionalKeys.includes(key)
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: [key],
+        message: `Unknown directional surface key "${key}". The legal spellings are ${legalDirectionalKeys.join(", ")}.`,
+      });
+    }
+  }
+}
 
 const shellToolAliasSchema = z
   .strictObject({
@@ -194,17 +283,40 @@ export const unifiedConfigSchema = z
         "How long a subagent waits for the parent session to answer a forwarded permission request, in milliseconds.\n\nOmit to use the default (`600000`, ten minutes). A child whose in-process parent is not draining its inbox at all gives up in a couple of seconds regardless of this value, so lower it only to bound how long you are willing to leave an *unanswered* prompt pending.",
       default: 600000,
     }),
-    toolInputPreviewMaxLength: z.number().int().min(1).optional().meta({
+    promptMaxRows: z.number().int().min(1).optional().meta({
       description:
-        "Maximum character length of the inline-JSON tool-input preview shown in permission prompts. Omit to use the default (200). Set to a large value to disable truncation.",
+        "Maximum rows a permission prompt renders before eliding its evidence. Omit to use the default (24).",
       markdownDescription:
-        "Maximum character length of the inline-JSON tool-input preview shown in permission prompts.\n\nOmit to use the default (200). Set to a large value (e.g. `10000`) to effectively disable truncation and see the full input.",
+        "Maximum rows a permission prompt renders before eliding its evidence.\n\nOmit to use the default (24). The request's own facts — the requesting agent, the tool, the matched rule, the decision-relevant value — are never elided by this budget; what gives way is the supporting evidence, and `Ctrl+O` expands the prompt to the complete request.",
+      default: 24,
+    }),
+    promptFieldMaxWidth: z.number().int().min(1).optional().meta({
+      description:
+        "Maximum characters of any one field shown in a permission prompt. Omit to use the default (400).",
+      markdownDescription:
+        "Maximum characters of any one field shown in a permission prompt.\n\nOmit to use the default (400). This is what bounds a single pathological field — a long here-string command, say — that would otherwise fill the prompt through wrapping. A shortened field is marked with an ellipsis, and `Ctrl+O` shows it in full.",
+      default: 400,
+    }),
+    reviewLogFieldMaxWidth: z.number().int().min(1).optional().meta({
+      description:
+        "Maximum characters of any one value written to the permission review log. Omit to use the default (1000).",
+      markdownDescription:
+        "Maximum characters of any one value written to the permission review log.\n\nOmit to use the default (1000). Every string the review log writes is narrowed to this width and marked with an ellipsis, so the log's growth is a decision you make rather than a side effect of how long a command happened to be. Raise it to keep longer values \u2014 a bash command exceeding the width is stored shortened.\n\nThis is a length bound, not redaction: it never inspects a value to decide what to hide. Key-name masking is unchanged and applies independently.",
+      default: 1000,
+    }),
+    toolInputPreviewMaxLength: z.number().int().min(1).optional().meta({
+      deprecated: true,
+      description:
+        "Deprecated and ignored. Superseded by promptMaxRows and promptFieldMaxWidth, which bound the whole prompt rather than one preview. Still accepted so an existing config is not rejected; remove it.",
+      markdownDescription:
+        "**Deprecated and ignored.** Superseded by `promptMaxRows` and `promptFieldMaxWidth`, which bound the whole permission prompt rather than one preview inside it.\n\nStill accepted so an existing config is not rejected fail-closed, but the value no longer takes effect. Remove it.",
     }),
     toolTextSummaryMaxLength: z.number().int().min(1).optional().meta({
+      deprecated: true,
       description:
-        "Maximum character length of inline pattern/path summaries (e.g. grep patterns, find globs, ls paths) in permission prompts. Omit to use the default (80).",
+        "Deprecated and ignored. Superseded by promptMaxRows and promptFieldMaxWidth, which bound the whole prompt rather than one summary. Still accepted so an existing config is not rejected; remove it.",
       markdownDescription:
-        "Maximum character length of inline pattern/path summaries (e.g. grep patterns, find globs, ls paths) shown in permission prompts.\n\nOmit to use the default (80). Increase this when working with long regexes or deep paths that are being cut off.",
+        "**Deprecated and ignored.** Superseded by `promptMaxRows` and `promptFieldMaxWidth`, which bound the whole permission prompt rather than one summary inside it.\n\nStill accepted so an existing config is not rejected fail-closed, but the value no longer takes effect. Remove it.",
     }),
     piInfrastructureReadPaths: z.array(z.string().min(1)).optional().meta({
       description:

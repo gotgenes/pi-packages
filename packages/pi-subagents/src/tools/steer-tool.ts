@@ -84,7 +84,7 @@ export class SteerTool {
 			name: "steer_subagent" as const,
 			label: "Steer Agent",
 			promptSnippet:
-				"steer_subagent: Send a mid-run message to redirect a running background agent.",
+				"Send a mid-run message to redirect a running background agent.",
 			description:
 				"Send a steering message to a running agent. The message will interrupt the agent after its current tool execution " +
 				"and be injected into its conversation, allowing you to redirect its work mid-run. Only works on running agents.",

@@ -14,7 +14,13 @@ import {
   collectPathCandidateTokens,
   collectRedirectTokens,
   extractCommandName,
+  type PathToken,
 } from "#src/access-intent/bash/token-collection";
+import {
+  mergeTokenEffects,
+  type TokenEffect,
+  UNPROVEN_EFFECT,
+} from "#src/access-intent/effect";
 import { normalizePathPolicyLiteral } from "#src/access-intent/path-normalization";
 import type { PathNormalizer } from "#src/path-normalizer";
 import { isSafeSystemPath } from "#src/safe-system-paths";
@@ -37,11 +43,19 @@ type EffectiveBase =
 
 /**
  * A path-candidate token paired with the effective working directory projected
- * onto the point in the command stream where it appears.
+ * onto the point in the command stream where it appears, and the effect its
+ * position proved.
  */
 interface PathCandidate {
   readonly token: string;
   readonly base: EffectiveBase;
+  readonly effect: TokenEffect;
+}
+
+/** A promoted bare token and its resolved path, before an effect is attached. */
+interface ProbedToken {
+  readonly token: string;
+  readonly path: AccessPath;
 }
 
 // ── Public output types ──────────────────────────────────────────────────────
@@ -51,6 +65,14 @@ export interface BashPathRuleCandidate {
   readonly token: string;
   /** The path's lexical and canonical forms for permission policy matching. */
   readonly path: AccessPath;
+  /** The attributed effect that routes the token to a directional surface. */
+  readonly effect: TokenEffect;
+}
+
+/** A path resolving outside the working directory, with its attributed effect. */
+export interface BashExternalPath {
+  readonly path: AccessPath;
+  readonly effect: TokenEffect;
 }
 
 /**
@@ -58,8 +80,8 @@ export interface BashPathRuleCandidate {
  * directory and platform — the two typed slices {@link BashProgram} exposes.
  */
 export interface ResolvedBashPaths {
-  /** Deduplicated paths resolving outside the working directory (#418). */
-  readonly externalPaths: readonly AccessPath[];
+  /** Deduplicated accesses resolving outside the working directory (#418). */
+  readonly externalAccesses: readonly BashExternalPath[];
   /** Every path-rule token paired with its cd-aware policy values (#393). */
   readonly ruleCandidates: readonly BashPathRuleCandidate[];
 }
@@ -116,7 +138,7 @@ export class BashPathResolver {
         : this.deriveBaseFromCdTarget(CWD_BASE, this.workdir);
     const candidates = this.collectPathCandidates(rootNode, initialBase);
     return {
-      externalPaths: this.withWorkdirExternal(
+      externalAccesses: this.withWorkdirExternal(
         this.projectExternalPaths(candidates),
       ),
       ruleCandidates: this.projectRuleCandidates(candidates),
@@ -128,10 +150,15 @@ export class BashPathResolver {
    * resolves outside the cwd. A real `cd /etc` flags `/etc` via its argument
    * token; the seeded base carries no such token, so it is added explicitly and
    * deduplicated against the command's own external tokens (#574).
+   *
+   * It carries {@link UNPROVEN_EFFECT}: no command word was observed for it and
+   * no redirect proved it. When the command's own tokens already named it, the
+   * token's attribution stands — an implicit base is not evidence against a
+   * proof.
    */
   private withWorkdirExternal(
-    tokenExternals: readonly AccessPath[],
-  ): AccessPath[] {
+    tokenExternals: readonly BashExternalPath[],
+  ): BashExternalPath[] {
     if (this.workdir === undefined) return [...tokenExternals];
     const wdPath = this.normalizer.forBashToken(this.workdir);
     const canonical = wdPath.boundaryValue();
@@ -141,9 +168,11 @@ export class BashPathResolver {
     if (!isExternal) return [...tokenExternals];
     const key = canonical || wdPath.value();
     const alreadyPresent = tokenExternals.some(
-      (p) => (p.boundaryValue() || p.value()) === key,
+      ({ path }) => (path.boundaryValue() || path.value()) === key,
     );
-    return alreadyPresent ? [...tokenExternals] : [wdPath, ...tokenExternals];
+    return alreadyPresent
+      ? [...tokenExternals]
+      : [{ path: wdPath, effect: UNPROVEN_EFFECT }, ...tokenExternals];
   }
 
   // ── AST walk — collect PathCandidates ──────────────────────────────────
@@ -414,18 +443,20 @@ export class BashPathResolver {
    */
   private projectExternalPaths(
     candidates: readonly PathCandidate[],
-  ): AccessPath[] {
-    const seen = new Set<string>();
-    const externalPaths: AccessPath[] = [];
+  ): BashExternalPath[] {
+    const seen = new Map<string, number>();
+    const externalPaths: BashExternalPath[] = [];
 
-    for (const { token, base } of candidates) {
+    for (const { token, base, effect } of candidates) {
       const candidate = classifyTokenAsPathCandidate(token);
       if (!candidate) {
         // A bare token the strict shape gate rejects can still escape the tree
         // through a symlink, so probe it and apply the ordinary boundary
         // decision to whatever it resolves to (#645).
         const probed = this.probeBareToken(token, base);
-        if (probed) this.collectIfExternal(probed.path, seen, externalPaths);
+        if (probed) {
+          this.collectIfExternal(probed.path, effect, seen, externalPaths);
+        }
         continue;
       }
 
@@ -436,9 +467,8 @@ export class BashPathResolver {
       if (base.kind === "unknown" && this.isRelativeCandidate(candidate)) {
         const accessPath = this.normalizer.forPath(candidate);
         const canonical = accessPath.boundaryValue();
-        if (canonical && !isSafeSystemPath(canonical) && !seen.has(canonical)) {
-          seen.add(canonical);
-          externalPaths.push(accessPath);
+        if (canonical && !isSafeSystemPath(canonical)) {
+          recordExternal(accessPath, effect, canonical, seen, externalPaths);
         }
         continue;
       }
@@ -449,6 +479,7 @@ export class BashPathResolver {
           : undefined;
       this.collectIfExternal(
         this.normalizer.forBashToken(candidate, { resolveBase }),
+        effect,
         seen,
         externalPaths,
       );
@@ -475,8 +506,9 @@ export class BashPathResolver {
    */
   private collectIfExternal(
     accessPath: AccessPath,
-    seen: Set<string>,
-    out: AccessPath[],
+    effect: TokenEffect,
+    seen: Map<string, number>,
+    out: BashExternalPath[],
   ): void {
     const lexical = accessPath.value();
     if (!lexical) return;
@@ -484,11 +516,8 @@ export class BashPathResolver {
     const isExternal = canonical
       ? this.normalizer.isBoundaryOutsideWorkingDirectory(canonical)
       : true;
-    const dedupKey = canonical || lexical;
-    if (isExternal && !seen.has(dedupKey)) {
-      seen.add(dedupKey);
-      out.push(accessPath);
-    }
+    if (!isExternal) return;
+    recordExternal(accessPath, effect, canonical || lexical, seen, out);
   }
 
   /**
@@ -511,27 +540,38 @@ export class BashPathResolver {
   private projectRuleCandidates(
     candidates: readonly PathCandidate[],
   ): BashPathRuleCandidate[] {
-    const seen = new Set<string>();
+    const seen = new Map<string, number>();
     const result: BashPathRuleCandidate[] = [];
 
-    for (const { token, base } of candidates) {
+    for (const { token, base, effect } of candidates) {
       const shaped = classifyTokenAsRuleCandidate(
         token,
         this.normalizer.flavor,
       );
-      const candidate =
+      const probed =
         shaped === null
           ? this.probeBareToken(token, base)
           : { token: shaped, path: this.buildRuleCandidatePath(shaped, base) };
-      if (!candidate) continue;
+      if (!probed) continue;
 
-      const matchValues = candidate.path.matchValues();
+      const matchValues = probed.path.matchValues();
       if (matchValues.length === 0) continue;
 
       const key = matchValues.join("\0");
-      if (seen.has(key)) continue;
-      seen.add(key);
-      result.push(candidate);
+      const index = seen.get(key);
+      if (index !== undefined) {
+        // The same resolved path, reached again with its own attribution: fold
+        // rather than split, so `cat ~/a > ~/a` stays one entry in the prompt's
+        // evidence and two disagreeing proofs land on the bare family.
+        const existing = result[index];
+        result[index] = {
+          ...existing,
+          effect: mergeTokenEffects(existing.effect, effect),
+        };
+        continue;
+      }
+      seen.set(key, result.length);
+      result.push({ ...probed, effect });
     }
 
     return result;
@@ -558,7 +598,7 @@ export class BashPathResolver {
   private probeBareToken(
     token: string,
     base: EffectiveBase,
-  ): BashPathRuleCandidate | null {
+  ): ProbedToken | null {
     const bare = classifyBareTokenCandidate(token);
     if (bare === null) return null;
     if (base.kind !== "known") return null;
@@ -618,11 +658,41 @@ function isBackgrounded(seqNode: TSNode, index: number): boolean {
 }
 
 function tagTokens(
-  tokens: readonly string[],
+  tokens: readonly PathToken[],
   base: EffectiveBase,
   out: PathCandidate[],
 ): void {
-  for (const token of tokens) out.push({ token, base });
+  for (const { token, effect } of tokens) out.push({ token, base, effect });
+}
+
+/**
+ * Record an external access under `dedupKey`, merging into the entry already
+ * there rather than adding a second one.
+ *
+ * Keeping the effect out of the dedup key is deliberate: `cat ~/a > ~/a` is one
+ * path, and splitting it would show `~/a` twice in the ask prompt. Two
+ * disagreeing proofs fold to unproven, which routes to the bare family —
+ * precisely "consult both" — so the fold loses nothing the gates would have
+ * used.
+ */
+function recordExternal(
+  accessPath: AccessPath,
+  effect: TokenEffect,
+  dedupKey: string,
+  seen: Map<string, number>,
+  out: BashExternalPath[],
+): void {
+  const index = seen.get(dedupKey);
+  if (index === undefined) {
+    seen.set(dedupKey, out.length);
+    out.push({ path: accessPath, effect });
+    return;
+  }
+  const existing = out[index];
+  out[index] = {
+    path: existing.path,
+    effect: mergeTokenEffects(existing.effect, effect),
+  };
 }
 
 /**

@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  createSkillInputRequestId,
   formatSkillDenyNotice,
   SkillInputGatePipeline,
 } from "#src/handlers/gates/skill-input-gate-pipeline";
@@ -12,20 +11,6 @@ import {
   makeSkillInputInputs,
 } from "#test/helpers/gate-fixtures";
 import { makeCheckResult } from "#test/helpers/handler-fixtures";
-
-// ── createSkillInputRequestId ─────────────────────────────────────────────
-
-describe("createSkillInputRequestId", () => {
-  it("starts with 'skill-input-'", () => {
-    expect(createSkillInputRequestId().startsWith("skill-input-")).toBe(true);
-  });
-
-  it("returns a unique id on each call", () => {
-    const id1 = createSkillInputRequestId();
-    const id2 = createSkillInputRequestId();
-    expect(id1).not.toBe(id2);
-  });
-});
 
 // ── formatSkillDenyNotice ─────────────────────────────────────────────────
 

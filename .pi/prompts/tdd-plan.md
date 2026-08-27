@@ -103,6 +103,12 @@ If a step uncovers a problem the plan didn't anticipate (e.g. a downstream test 
 If the deviation is large, stop and ask.
 If a plan's quantitative target (LOC, clone count, complexity) does not fall out as the plan predicted, treat that as a deviation: re-decide via `ask_user` rather than escalating the abstraction to force the number.
 
+## Filing an issue mid-implementation
+
+When a step surfaces work outside the plan's scope, file it and keep going — do not scope-creep the step.
+Then load the `roadmap-fit` skill and follow it: an issue spun off while its package has an open improvement phase gets a recorded disposition at filing time, not at phase close, which is too late to fold anything in.
+The skill exits at its first step when no phase is open, and recording a disposition never authorizes implementing the work now.
+
 ## After the last TDD step
 
 1. Run the full suite: `pnpm run test`.
@@ -128,7 +134,9 @@ If a plan's quantitative target (LOC, clone count, complexity) does not fall out
    If the issue completes a numbered roadmap step, prefix `✅` on both the step heading and its Mermaid diagram node — a `Landed:` detail line is not a substitute for the `✅`.
    Flip the phase status row only when every step in the phase is done.
 8. Commit doc updates as `docs: <summary>`.
-9. **Do not edit `CHANGELOG.md`** — release-please owns it and will generate entries from your Conventional Commit messages on the next release.
+9. Preview the changelog: `git log --format='%s' <plan-commit>..HEAD | grep -E '^(feat|fix)'`.
+   Every surviving line must name a user-observable outcome — a line describing an internal seam means that commit should have been `refactor:`; retype it now, while nothing is pushed.
+10. **Do not edit `CHANGELOG.md`** — release-please owns it and will generate entries from your Conventional Commit messages on the next release.
 
 ## Pre-completion review
 

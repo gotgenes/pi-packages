@@ -84,7 +84,7 @@ export class GetResultTool {
 			name: "get_subagent_result" as const,
 			label: "Get Agent Result",
 			promptSnippet:
-				"get_subagent_result: Check status and retrieve results from a background agent.",
+				"Check status and retrieve results from a background agent.",
 			description:
 				"Check status and retrieve results from a background agent. Non-blocking by default: if the agent is still running you get a kick-back summary (current activity, elapsed runtime, tokens in/out so far, turns and tool calls so far, context used) instead of waiting. Pass wait: true to block explicitly.",
 			parameters: Type.Object({

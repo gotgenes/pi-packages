@@ -61,6 +61,34 @@ This is a **hard gate**:
 
 Run `gh` from the repo root (it must execute inside the repository).
 
+### Reconcile phase-born issues
+
+The gate above sees only issues carrying a numbered step.
+An issue spun off *during* the phase — by a step's implementation, by one step's planning, or by a retrospective — has no step, so the gate is blind to it and the archive drops it from the phase's history entirely.
+The `roadmap-fit` skill dispositions these at filing time; this is the net for the ones that escaped it, including any filed by hand outside a prompt.
+
+1. Take the phase-window start from the roadmap's `### Findings (planned YYYY-MM-DD)` heading.
+   When it carries no date, fall back to the commit that added the roadmap section:
+
+   ```bash
+   git log --diff-filter=M --format=%ad --date=short -S'Improvement roadmap — Phase N' -- packages/$1/docs/architecture/architecture.md | tail -1
+   ```
+
+2. List the issues created inside the window:
+
+   ```bash
+   gh issue list --state all --label "pkg:$1" --search "created:>=<date>" --json number,title,state
+   ```
+
+   The query keys on the package label, so an issue born from the phase but filed without one does not surface — label it at filing time.
+3. Drop the ones already accounted for: the phase's step issues from Step 1, and any number already named in the roadmap's `#### Open-issue sweep dispositions` list (grep `architecture.md` for each `[#N]`).
+4. Propose a disposition for each survivor and put the whole set to the user in **one** `ask_user` pass — not one round-trip per issue.
+   Issues sharing a verdict share one bullet, matching the list's existing convention (`Feature issues [#736], [#720], … — out of scope for a structural phase`).
+5. Append the agreed entries — and their `[#N]:` link definitions — to the dispositions list **before** Step 5 archives the roadmap; an entry added after the move lands in the wrong file.
+
+Expect a non-trivial residual: against pi-permission-system Phase 13's window the query returned 15 issues, 7 of them already stepped or dispositioned.
+The survivors mix genuine phase-born work with ordinary tracker noise, and the grouped bullet is what keeps the pass bounded.
+
 ## Step 3: Reconcile the architecture document with delivered code
 
 The architecture document describes the **current** architecture; after a phase lands it must match what shipped — not what was planned.

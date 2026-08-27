@@ -1,14 +1,24 @@
 /**
- * Cross-extension service accessor backed by `Symbol.for()` on `globalThis`.
+ * Cross-extension service accessors backed by `Symbol.for()` on `globalThis`.
  *
  * `Symbol.for()` is process-global by spec, so it survives jiti's per-extension
  * module isolation (`moduleCache: false`). A consumer doing
- * `import("@gotgenes/pi-permission-system")` gets a fresh module copy, but
- * `getPermissionsService()` reads from the same `globalThis` slot the provider
- * wrote to — enabling direct, synchronous, type-safe function calls.
+ * `import("@gotgenes/pi-permission-system")` gets a fresh module copy, but the
+ * accessors here read from the same `globalThis` slots the provider wrote to —
+ * enabling direct, synchronous, type-safe function calls.
  *
- * Best practice: call `getPermissionsService()` per use rather than caching the
- * reference — this ensures resilience across `/reload` and load-order edge cases.
+ * There are two slots, because one process can host several **nodes** (one Pi
+ * session runtime each — a root session and its in-process subagent children
+ * all load their own instance of this extension):
+ *
+ * - A session-keyed map, written by every node under its own session id.
+ *   `getPermissionsService(sessionId)` resolves the service whose
+ *   registries that node's own gates and chain read (ADR 0012 decision 2).
+ * - A single legacy slot holding the process root's service, read by the
+ *   deprecated `getRootPermissionsService()`.
+ *
+ * Best practice: resolve per use rather than caching the reference — this
+ * ensures resilience across `/reload` and load-order edge cases.
  */
 
 import type { Authorizer } from "./authority/authorizer";
@@ -49,10 +59,26 @@ export {
   PERMISSIONS_READY_CHANNEL,
   PERMISSIONS_UI_PROMPT_CHANNEL,
 } from "./permission-events";
+// The declaration bundle already inlines these through `PromptPermissionDetails`
+// and `PermissionUiPromptEvent`; the named exports are what a consumer needs to
+// annotate a variable of their own.
+export type {
+  PromptAnnotation,
+  PromptEvidence,
+  PromptPayload,
+  PromptPayloadKind,
+  PromptRequester,
+  PromptRequestFacts,
+} from "./presentation/prompt-payload";
 export type { PermissionCheckResult, PermissionState, ToolInputFormatter };
 
-/** Process-global key for the service slot. */
+/** Process-global key for the legacy (process-root) service slot. */
 const SERVICE_KEY = Symbol.for("@gotgenes/pi-permission-system:service");
+
+/** Process-global key for the session-keyed service map (ADR 0012 decision 2). */
+const SESSION_SERVICES_KEY = Symbol.for(
+  "@gotgenes/pi-permission-system:session-services",
+);
 
 /**
  * The narrow, read-only projection of {@link PermissionsService}: answer a
@@ -93,7 +119,14 @@ export interface PermissionQuery {
 }
 
 /**
- * Public interface exposed to other extensions via `getPermissionsService()`.
+ * Public interface exposed to other extensions via
+ * {@link getPermissionsService} (or the deprecated
+ * {@link getRootPermissionsService}).
+ *
+ * Each instance belongs to one node, and its three registration surfaces are
+ * read by that node alone: extractors and formatters by its own gates, chain
+ * links by its own chain. Resolve the service of the node whose behavior you
+ * mean to affect.
  *
  * `checkPermission` takes a surface + optional value + optional agent name,
  * and delegates to `PermissionManager.checkPermission()` with current session
@@ -171,26 +204,174 @@ export interface PermissionsService extends PermissionQuery {
 }
 
 /**
- * Store a `PermissionsService` on `globalThis` so other extensions can
- * retrieve it via `getPermissionsService()`.
+ * Store a `PermissionsService` in the legacy process-root slot, read by
+ * `getRootPermissionsService()`.
  *
  * Called at `session_start` by the top-level (parent) instance only — an
  * in-process subagent child skips publishing so it cannot clobber the parent's
  * service. Overwrites any previously published service, which keeps `/reload`
  * working: a reloaded parent re-publishes its fresh service.
  */
-export function publishPermissionsService(service: PermissionsService): void {
+export function publishRootPermissionsService(
+  service: PermissionsService,
+): void {
   (globalThis as Record<symbol, unknown>)[SERVICE_KEY] = service;
 }
 
 /**
- * Retrieve the published `PermissionsService`, or `undefined` if the
- * permission-system extension has not loaded (or has been unloaded).
+ * Warned at most once per module copy, so a consumer hears it on its first
+ * deprecated call and never again. Under jiti isolation each consumer
+ * extension holds its own copy, so each hears it for its own call site.
  */
-export function getPermissionsService(): PermissionsService | undefined {
+let warnedDeprecatedAccessor = false;
+
+const DEPRECATED_ACCESSOR_WARNING =
+  "getRootPermissionsService() is deprecated: it answers with the process root's " +
+  "service, which is the wrong node in every node but the root — inside an " +
+  "in-process subagent child it hands back the parent's service, so a " +
+  "registration lands where the child's gates never read it and a policy " +
+  "query answers against the parent's config. Use " +
+  "getPermissionsService(sessionId) with the sessionId from the " +
+  "permissions:ready payload. See " +
+  "https://github.com/gotgenes/pi-packages/blob/main/packages/pi-permission-system/docs/cross-extension-api.md";
+
+/**
+ * Retrieve the process root's published `PermissionsService`, or `undefined`
+ * if the permission-system extension has not loaded (or has been unloaded).
+ *
+ * @deprecated Use {@link getPermissionsService} with the `sessionId`
+ * from the `permissions:ready` payload. This accessor answers "the process
+ * root's service", which is the wrong question in every node but the root.
+ * Removal is deferred to a future major (ADR 0012 decision 7).
+ */
+export function getRootPermissionsService(): PermissionsService | undefined {
+  if (!warnedDeprecatedAccessor) {
+    warnedDeprecatedAccessor = true;
+    process.emitWarning(DEPRECATED_ACCESSOR_WARNING, {
+      type: "DeprecationWarning",
+      code: "PI_PERMISSION_SYSTEM_DEP0001",
+    });
+  }
+  return readRootService();
+}
+
+/**
+ * The undeprecated read of the root slot, for this package's own lifecycle.
+ *
+ * `unpublishRootPermissionsService` must compare identities without warning the
+ * host about a call the host did not make.
+ */
+function readRootService(): PermissionsService | undefined {
   return (globalThis as Record<symbol, unknown>)[SERVICE_KEY] as
     | PermissionsService
     | undefined;
+}
+
+/**
+ * The process-global map of session id → that node's service, created on first
+ * use.
+ *
+ * Backed by `globalThis` + `Symbol.for()` for the same reason the single slot
+ * above is: each session's `ResourceLoader` builds its own jiti instance, so a
+ * parent and its in-process child share no module state — only process globals.
+ */
+function sessionServices(): Map<string, PermissionsService> {
+  const store = globalThis as Record<symbol, unknown>;
+  const existing = store[SESSION_SERVICES_KEY] as
+    | Map<string, PermissionsService>
+    | undefined;
+  if (existing) {
+    return existing;
+  }
+  const services = new Map<string, PermissionsService>();
+  store[SESSION_SERVICES_KEY] = services;
+  return services;
+}
+
+/**
+ * Publish `service` as the service of the node whose session is `sessionId`
+ * (ADR 0012 decision 2 — node-locality).
+ *
+ * Every node publishes under its own key, including an in-process subagent
+ * child, so there is nothing to clobber: a child's sibling extension registers
+ * an extractor, formatter, or chain link into the registry the child's own
+ * gates and chain read.
+ */
+export function publishPermissionsService(
+  sessionId: string,
+  service: PermissionsService,
+): void {
+  sessionServices().set(sessionId, service);
+}
+
+/**
+ * Retrieve the service belonging to the node whose session is `sessionId`, or
+ * `undefined` when that node has published none.
+ *
+ * This is the supported way to obtain a node's service, for registration and
+ * for policy queries alike. Take `sessionId` from the `permissions:ready`
+ * payload (or from `ctx.sessionManager.getSessionId()` inside your own session
+ * handler), and resolve per use rather than caching the reference.
+ *
+ * A caller the type checker cannot reach — JavaScript, or a consumer compiled
+ * against an earlier major — may still call this with no argument. That answers
+ * `undefined` rather than another node's service, and warns once so the missing
+ * registration is not silent.
+ */
+export function getPermissionsService(
+  sessionId: string,
+): PermissionsService | undefined {
+  if (typeof sessionId !== "string") {
+    warnMissingSessionId();
+    return undefined;
+  }
+  return sessionServices().get(sessionId);
+}
+
+const MISSING_SESSION_ID_WARNING =
+  "getPermissionsService() was called without a session id and answered " +
+  "undefined. It resolves the service of one node, so it needs the sessionId " +
+  "from the permissions:ready payload: getPermissionsService(sessionId). To " +
+  "read the process root's service — what the zero-arg call used to do — use " +
+  "the deprecated getRootPermissionsService(). See " +
+  "https://github.com/gotgenes/pi-packages/blob/main/packages/pi-permission-system/docs/cross-extension-api.md";
+
+/**
+ * Warned at most once per module copy, like the deprecation guard above, so a
+ * consumer polling the locator every turn reports the defect once.
+ *
+ * Deliberately not a `DeprecationWarning`: an operator who silences those with
+ * `--no-deprecation` still needs to hear that a registration never landed.
+ */
+let warnedMissingSessionId = false;
+
+function warnMissingSessionId(): void {
+  if (warnedMissingSessionId) {
+    return;
+  }
+  warnedMissingSessionId = true;
+  process.emitWarning(MISSING_SESSION_ID_WARNING, {
+    type: "Warning",
+    code: "PI_PERMISSION_SYSTEM_WARN0001",
+  });
+}
+
+/**
+ * Remove the `sessionId` entry, but only when it still holds `service`
+ * (identity compare-and-delete, like {@link unpublishRootPermissionsService}).
+ *
+ * Scoping the delete to the publishing instance keeps a superseded `/reload`
+ * generation's late shutdown from wiping the new generation's freshly
+ * published service.
+ */
+export function unpublishPermissionsService(
+  sessionId: string,
+  service: PermissionsService,
+): void {
+  const services = sessionServices();
+  if (services.get(sessionId) === service) {
+    services.delete(sessionId);
+  }
 }
 
 /**
@@ -206,8 +387,10 @@ export function getPermissionsService(): PermissionsService | undefined {
  * - A superseded `/reload` generation no longer owns the slot, so its late
  *   shutdown cannot wipe the new generation's freshly published service.
  */
-export function unpublishPermissionsService(service: PermissionsService): void {
-  if (getPermissionsService() !== service) {
+export function unpublishRootPermissionsService(
+  service: PermissionsService,
+): void {
+  if (readRootService() !== service) {
     return;
   }
   // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- Symbol-keyed global property; Map.delete() is not applicable

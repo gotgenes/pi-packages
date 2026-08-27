@@ -146,6 +146,28 @@ Or add it to your Pi settings (`.pi/settings.json`):
 }
 ```
 
+## Scope and non-goals
+
+**Purpose.**
+A multi-session workflow needs two things Pi does not otherwise expose to an extension: a way to label the current session, and a way to read a session's transcript — including a parent's or a sibling's.
+
+**In scope.**
+Rendering a transcript more usefully for whoever reads it, and reaching a session the existing tools cannot reach.
+A new capability arrives as a new tool rather than as another parameter on an existing one.
+
+**Non-goals.**
+
+- _Mutating transcript content._
+  Session metadata is writable; transcript entries are read-only — no editing, redacting, replaying, or pruning.
+- _A raw or JSON passthrough mode._
+  Anything needing unrendered entries can read the session `.jsonl` directly.
+- _Owning Pi's session storage format._
+  The directory encoding and entry schema belong to Pi; this package matches them rather than improving them.
+- _Path allowlisting for `read_session_file`._
+  The agent already has `Read` and `Bash` on any file, so restricting one tool adds friction without a security boundary.
+- _Analytics and roll-ups._
+  Per-turn attribution and flat counts are emitted; interpreting them is the calling prompt's job.
+
 ## License
 
 MIT

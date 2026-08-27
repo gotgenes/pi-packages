@@ -8,6 +8,8 @@
  * removed or renamed without a semver-major version bump.
  */
 
+import type { PromptRequestFacts } from "#src/presentation/prompt-payload";
+
 /** Minimal event bus interface required by the emit helpers. */
 export interface PermissionEventBus {
   emit(channel: string, data: unknown): void;
@@ -16,7 +18,14 @@ export interface PermissionEventBus {
 
 // ── Channel name constants ─────────────────────────────────────────────────
 
-/** Emitted at `session_start`, after the service is published. */
+/**
+ * Emitted at `session_start` after the emitting node published its service, and
+ * again at that node's first `before_agent_start` (ADR 0012 decision 3).
+ *
+ * Fires at least once per session and may repeat, so a handler must be
+ * idempotent — registering on every emission hits the duplicate-registration
+ * throw.
+ */
 export const PERMISSIONS_READY_CHANNEL = "permissions:ready";
 
 /** Emitted when a permission request is committed to the active UI prompt path. */
@@ -28,13 +37,34 @@ export const PERMISSIONS_DECISION_CHANNEL = "permissions:decision";
 // ── permissions:ready ──────────────────────────────────────────────────────
 
 /**
- * Payload emitted on `permissions:ready`.
+ * Payload emitted on `permissions:ready`: plain facts about the node that
+ * emitted it (ADR 0012 decision 2).
  *
- * Intentionally empty: the channel is a readiness signal. There is no
- * `protocolVersion` — the published types plus package semver define the
- * broadcast contract.
+ * The bus announces; the locator provides. The payload carries data a consumer
+ * can log, serialize, and replay — never a live capability — so the service
+ * itself is fetched with `getPermissionsService(sessionId)`.
+ *
+ * There is no `protocolVersion` — the published types plus package semver
+ * define the broadcast contract.
  */
-export type PermissionsReadyEvent = Record<string, never>;
+export interface PermissionsReadyEvent {
+  /**
+   * The emitting node's session id: the key for
+   * `getPermissionsService`. `null` when the host exposed no session
+   * id, in which case this node published no keyed service.
+   */
+  sessionId: string | null;
+  /**
+   * Whether this node adjudicates its own asks (its authorizer chain runs) or
+   * relays them to a serving node, which runs *its* chain over the same facts
+   * (ADR 0007 §7).
+   *
+   * A registration needs no branch on this: extractors and formatters are read
+   * by every node's own gates, and a chain link registered where no chain runs
+   * is accepted and recorded rather than refused (ADR 0012 decision 4).
+   */
+  adjudicatesLocally: boolean;
+}
 
 // ── permissions:ui_prompt ──────────────────────────────────────────────────
 
@@ -79,8 +109,19 @@ export interface PermissionUiPromptEvent {
   value: string | null;
   /** Agent name (when known). */
   agentName: string | null;
-  /** Message displayed to the user. */
-  message: string;
+  /**
+   * The ask's invariant core (ADR 0011 §3), verbatim from the prompt payload.
+   *
+   * Nested rather than flattened so the event and the payload share one shape:
+   * a fact added to `PromptRequestFacts` reaches the bus without a second
+   * hand-maintained declaration. Carries no evidence and no annotations — the
+   * bus is the narrowest renderer (ADR 0011 §6), observable by any loaded
+   * extension without the operator having named it.
+   *
+   * `request.surface` is the *gate* surface the rule fired on; the top-level
+   * `surface` is the display projection. Both are here on purpose.
+   */
+  request: PromptRequestFacts;
   /** Forwarding context, or null for a direct prompt. */
   forwarding: ForwardedPromptContext | null;
 }
@@ -97,10 +138,18 @@ export type PermissionDecisionResolution =
   | "user_approved_for_session"
   | "user_denied"
   | "auto_approved"
-  | "confirmation_unavailable";
+  | "confirmation_unavailable"
+  /** The gate threw, or an escalation failed, and the request was blocked. */
+  | "gate_error";
 
 /** Payload emitted on `permissions:decision`. */
 export interface PermissionDecisionEvent {
+  /**
+   * Identifies the permission request this decision resolves, minted when the
+   * request was created. Distinct from the host's tool-call id: one tool call
+   * runs several gates and so raises several requests.
+   */
+  requestId: string;
   /** Permission surface: "bash", "read", "mcp", "skill", "external_directory", etc. */
   surface: string;
   /** The value that was evaluated (command, tool name, skill name, path). */
@@ -115,19 +164,34 @@ export interface PermissionDecisionEvent {
   agentName: string | null;
   /** Matched pattern from the winning rule (when available). */
   matchedPattern: string | null;
+  /**
+   * Forwarding context for a decision this session made while serving another
+   * session's forwarded request; absent on an ordinary local decision.
+   *
+   * The same `ForwardedPromptContext` the request's `permissions:ui_prompt`
+   * carried, so a consumer that never saw the prompt can still tell a served
+   * ask from a local one. Requester identity beyond it — the requester's cwd
+   * and principal — stays off the bus.
+   */
+  forwarding?: ForwardedPromptContext | null;
 }
 
 // ── Emit helpers ───────────────────────────────────────────────────────────
 
 /**
  * Emit the `permissions:ready` broadcast.
- * Call at `session_start`, after the service is published, so a consumer
- * reacting to ready can immediately resolve `getPermissionsService()`.
+ * Call after the node published its service, so a consumer reacting to ready
+ * can immediately resolve `getPermissionsService(event.sessionId)`.
+ * Called twice per session: at `session_start`, and at the first
+ * `before_agent_start` so a consumer whose own `session_start` ran later still
+ * hears it (ADR 0012 decision 3).
  */
-export function emitReadyEvent(events: PermissionEventBus): void {
-  const payload: PermissionsReadyEvent = {};
+export function emitReadyEvent(
+  events: PermissionEventBus,
+  event: PermissionsReadyEvent,
+): void {
   try {
-    events.emit(PERMISSIONS_READY_CHANNEL, payload);
+    events.emit(PERMISSIONS_READY_CHANNEL, event);
   } catch {
     // Broadcasts are best-effort. A throwing listener must not block the
     // permission system from completing session startup.

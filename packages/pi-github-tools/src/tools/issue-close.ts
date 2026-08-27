@@ -10,8 +10,7 @@ export function registerIssueClose(pi: ExtensionAPI): void {
     description:
       "Close a GitHub issue with an optional comment. " +
       "Validates the reason (completed or not_planned) and wraps gh issue close.",
-    promptSnippet:
-      "issue_close: Close a GitHub issue with an optional comment.",
+    promptSnippet: "Close a GitHub issue with an optional comment.",
     parameters: Type.Object({
       issue_number: Type.Number({
         description: "The issue number to close.",

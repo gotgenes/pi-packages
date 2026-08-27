@@ -163,6 +163,18 @@ describe("PathNormalizer", () => {
         kind: "relative",
       });
     });
+
+    test("approvalPatternFor scopes a resolved path to its directory", () => {
+      expect(
+        normalizer.approvalPatternFor(normalizer.forPath("src/foo.ts")),
+      ).toBe("/projects/my-app/src/*");
+    });
+
+    test("approvalPatternFor scopes an absolute path outside the cwd", () => {
+      expect(
+        normalizer.approvalPatternFor(normalizer.forPath("/other/pkg/x.ts")),
+      ).toBe("/other/pkg/*");
+    });
   });
 
   describe("win32 flavor", () => {
@@ -290,6 +302,32 @@ describe("PathNormalizer", () => {
       expect(
         normalizer.isBoundaryOutsideWorkingDirectory("c:\\other\\dir"),
       ).toBe(true);
+    });
+
+    test("approvalPatternFor scopes a native windows path with backslashes", () => {
+      expect(
+        normalizer.approvalPatternFor(normalizer.forPath("src\\foo.ts")),
+      ).toBe("c:\\projects\\app\\src\\*");
+    });
+
+    test("approvalPatternFor keeps a Git Bash device token POSIX-shaped", () => {
+      expect(
+        normalizer.approvalPatternFor(normalizer.forBashToken("/dev/null")),
+      ).toBe("/dev/*");
+    });
+
+    test("approvalPatternFor scopes a POSIX-absolute directory token to itself", () => {
+      // A trailing separator names the directory, so the grant must not widen
+      // to its parent — the win32 defect #655 fixes.
+      expect(
+        normalizer.approvalPatternFor(normalizer.forBashToken("/tmp/logs/")),
+      ).toBe("/tmp/logs/*");
+    });
+
+    test("approvalPatternFor scopes a POSIX-absolute file token to its parent", () => {
+      expect(
+        normalizer.approvalPatternFor(normalizer.forBashToken("/tmp/logs")),
+      ).toBe("/tmp/*");
     });
   });
 

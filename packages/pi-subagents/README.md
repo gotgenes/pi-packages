@@ -167,7 +167,7 @@ Creating and editing agent definitions is not a command — write an agent `.md`
 
 Instead of hard-aborting at the turn limit, agents get a graceful shutdown:
 
-1. At `max_turns` — steering message: *"Wrap up immediately — provide your final answer now."*
+1. At `max_turns` — steering message: _"Wrap up immediately — provide your final answer now."_
 2. Up to 5 grace turns to finish cleanly
 3. Hard abort only after the grace period
 
@@ -315,6 +315,38 @@ const config = loadLayeredSettings<MyConfig>({
 
 `loadLayeredSettings` returns `Partial<T>` (all fields optional); apply your defaults after the call.
 It never throws — all error conditions produce a `console.warn` and return `{}`.
+
+## Scope and non-goals
+
+**Purpose.**
+A minimal, in-process sub-agent core.
+It spawns a child session derived from the parent, runs the turn loop, streams and collects the result, gates concurrency, supports resume, and publishes its lifecycle.
+Everything else is a consumer.
+
+**In scope.**
+Defects in the surfaces the core already owns, completeness of the public lifecycle-event contract, and internal work toward the minimal-core target.
+Anything attaching to the core either subscribes to a lifecycle event, or registers a provider if it must return a value the core consumes — see [ADR-0002](./docs/decisions/0002-extensions-on-a-minimal-core.md).
+
+**Non-goals.**
+
+- _Capability the fork deliberately left behind._
+  Scheduling, cross-extension RPC, model-scope enforcement, and a built-in tool denylist belong to upstream — see [Relationship to upstream](#relationship-to-upstream).
+- _Policy about what a child may do._
+  Tool restriction is allow/ask/deny in a permission layer, not a binary hide in a spawner — see [Migrating from `disallowed_tools`](#migrating-from-disallowed_tools).
+- _Widening a child's tool allowlist on the agent's behalf._
+  An agent's `tools:` frontmatter is the complete allowlist and the only mechanism that widens it, because a settings-level list would hand a read-only `Explore` agent write-capable tools from a file its author never saw.
+- _A global run-mode default._
+  Foreground or background is a per-invocation argument and a per-agent frontmatter key; a global flip changes every existing agent file at once.
+- _Provider seams with no consumer._
+  A seam nobody supplies is a speculative abstraction that taxes every reader; the architecture may admit one without shipping it until a real consumer exists.
+
+The [architecture doc](./docs/architecture/architecture.md#scope-and-non-goals) carries the full inventory, including the removed UI surfaces and the reasoning behind each.
+
+**Where adjacent requests belong.**
+Tool restriction and per-agent permission policy → [@gotgenes/pi-permission-system](https://www.npmjs.com/package/@gotgenes/pi-permission-system).
+Worktree isolation → [@gotgenes/pi-subagents-worktrees](https://www.npmjs.com/package/@gotgenes/pi-subagents-worktrees).
+Timed dispatch, telemetry, and alternate UIs → a consumer over the lifecycle events and the typed service.
+A batteries-included alternative → upstream [`tintinweb/pi-subagents`](https://github.com/tintinweb/pi-subagents).
 
 ## Documentation
 

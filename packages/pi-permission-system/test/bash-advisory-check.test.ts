@@ -145,5 +145,30 @@ describe("resolveBashAdvisoryCheck", () => {
       expect(result.state).toBe("deny");
       expect(result.commandContext).toBe("command_substitution");
     });
+
+    it("evaluates a nested command hosted in a redirect target (#741)", () => {
+      const resolver = makeBashResolver({
+        'echo "hello world"': makeCheckResult({
+          state: "allow",
+          toolName: "bash",
+          matchedPattern: "echo *",
+        }),
+        "rm *.txt": makeCheckResult({
+          state: "deny",
+          toolName: "bash",
+          matchedPattern: "rm *",
+        }),
+      });
+
+      const result = resolveBashAdvisoryCheck(
+        'echo "hello world" > $(rm *.txt)',
+        undefined,
+        resolver,
+      );
+
+      expect(result.state).toBe("deny");
+      expect(result.matchedPattern).toBe("rm *");
+      expect(result.commandContext).toBe("command_substitution");
+    });
   });
 });

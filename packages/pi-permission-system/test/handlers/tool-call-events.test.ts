@@ -5,6 +5,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { AskEscalator } from "#src/authority/authorizer-selection";
+import { DECIDED_BY_HUMAN } from "#test/helpers/decision-fixtures";
 import {
   getDecisionEvents,
   makeCheckResult,
@@ -113,9 +114,11 @@ describe("handleToolCall decision events — user_approved", () => {
           .mockReturnValue(makeCheckResult({ state: "ask" })),
       },
       prompter: {
-        escalate: vi
-          .fn<AskEscalator["escalate"]>()
-          .mockResolvedValue({ approved: true, state: "approved" }),
+        escalate: vi.fn<AskEscalator["escalate"]>().mockResolvedValue({
+          approved: true,
+          state: "approved",
+          decidedBy: DECIDED_BY_HUMAN,
+        }),
       },
     });
 
@@ -140,6 +143,7 @@ describe("handleToolCall decision events — user_approved", () => {
         escalate: vi.fn<AskEscalator["escalate"]>().mockResolvedValue({
           approved: true,
           state: "approved_for_session",
+          decidedBy: DECIDED_BY_HUMAN,
         }),
       },
     });
@@ -166,9 +170,11 @@ describe("handleToolCall decision events — user_denied", () => {
           .mockReturnValue(makeCheckResult({ state: "ask" })),
       },
       prompter: {
-        escalate: vi
-          .fn<AskEscalator["escalate"]>()
-          .mockResolvedValue({ approved: false, state: "denied" }),
+        escalate: vi.fn<AskEscalator["escalate"]>().mockResolvedValue({
+          approved: false,
+          state: "denied",
+          decidedBy: DECIDED_BY_HUMAN,
+        }),
       },
     });
 
@@ -198,6 +204,7 @@ describe("handleToolCall decision events — confirmation_unavailable", () => {
           approved: false,
           state: "denied",
           confirmationUnavailable: true,
+          decidedBy: DECIDED_BY_HUMAN,
         }),
       },
     });
@@ -260,6 +267,7 @@ describe("handleToolCall decision events — auto_approved", () => {
           approved: true,
           state: "approved",
           autoApproved: true,
+          decidedBy: DECIDED_BY_HUMAN,
         }),
       },
     });

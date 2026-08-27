@@ -1,5 +1,4 @@
-import { dirname, sep } from "node:path";
-
+import { surfaceFamilyMembers } from "#src/access-intent/path-surfaces";
 import type { Ruleset } from "./rule";
 import type { SessionApproval } from "./session-approval";
 import type { SessionApprovalRecorder } from "./session-approval-recorder";
@@ -15,15 +14,25 @@ import type { SessionApprovalRecorder } from "./session-approval-recorder";
 export class SessionRules implements SessionApprovalRecorder {
   private rules: Ruleset = [];
 
-  /** Record a wildcard pattern as approved for the given surface. */
+  /**
+   * Record a wildcard pattern as approved for the given surface.
+   *
+   * A session approval is a policy source under ADR 0013 §9, so it expands the
+   * same way a config key does: an approval on a bare family surface becomes
+   * one rule per directional member, and one on a directional surface stays a
+   * single rule. Without the expansion an approval would sit on a surface no
+   * query names, and the next ask for the same path would prompt again.
+   */
   approve(surface: string, pattern: string): void {
-    this.rules.push({
-      surface,
-      pattern,
-      action: "allow",
-      layer: "session",
-      origin: "session",
-    });
+    for (const target of surfaceFamilyMembers(surface) ?? [surface]) {
+      this.rules.push({
+        surface: target,
+        pattern,
+        action: "allow",
+        layer: "session",
+        origin: "session",
+      });
+    }
   }
 
   /** Return a defensive copy of the current session ruleset. */
@@ -47,33 +56,4 @@ export class SessionRules implements SessionApprovalRecorder {
   clear(): void {
     this.rules = [];
   }
-}
-
-/**
- * Derive the wildcard glob pattern to approve from a normalized path.
- *
- * Returns `<parent-dir>/*` so that `evaluate()` / `wildcardMatch()` matches
- * all paths under the approved directory — identical semantics to the former
- * `SessionApprovalCache` prefix matching, using the unified wildcard engine.
- *
- * For paths that already end with a separator (directories), the separator
- * is treated as the directory boundary and `*` is appended directly.
- *
- * The path is expected to be the canonical (cwd-resolved, absolute) form used
- * for policy matching, so the derived pattern matches the same policy values a
- * later tool call produces. Callers that hold a working directory resolve the
- * path to that form first; the function itself stays free of cwd state.
- */
-export function deriveApprovalPattern(normalizedPath: string): string {
-  // If the path already ends with a separator, it's a directory — glob its contents.
-  if (normalizedPath.endsWith(sep)) {
-    return `${normalizedPath}*`;
-  }
-  const dir = dirname(normalizedPath);
-  if (dir === normalizedPath) {
-    // Root path — dirname('/') === '/'
-    return `${dir}*`;
-  }
-  const prefix = dir.endsWith(sep) ? dir : `${dir}${sep}`;
-  return `${prefix}*`;
 }

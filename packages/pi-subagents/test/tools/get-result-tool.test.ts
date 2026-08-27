@@ -33,7 +33,7 @@ describe("GetResultTool", () => {
 	it("includes promptSnippet", () => {
 		const tool = new GetResultTool(makeManager(), testRegistry);
 		expect(tool.toToolDefinition().promptSnippet).toBe(
-			"get_subagent_result: Check status and retrieve results from a background agent.",
+			"Check status and retrieve results from a background agent.",
 		);
 	});
 

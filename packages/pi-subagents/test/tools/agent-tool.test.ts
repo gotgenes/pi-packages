@@ -40,7 +40,7 @@ describe("AgentTool", () => {
 	it("includes promptSnippet", () => {
 		const def = makeTool(createToolDeps()).toToolDefinition();
 		expect(def.promptSnippet).toBe(
-			"subagent: Launch a specialized agent for complex, multi-step tasks.",
+			"Launch a specialized agent for complex, multi-step tasks.",
 		);
 	});
 

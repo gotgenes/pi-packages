@@ -22,6 +22,11 @@
       "extensions": [],
       "skills": []
     },
+    {
+      "source": "npm:@gotgenes/pi-permission-model-judge",
+      "extensions": [],
+      "skills": []
+    },
     { "source": "npm:@gotgenes/pi-subagents", "extensions": [], "skills": [] },
     {
       "source": "npm:@gotgenes/pi-session-tools",

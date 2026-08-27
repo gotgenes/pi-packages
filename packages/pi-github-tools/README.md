@@ -96,13 +96,33 @@ Merge method precedence (highest to lowest):
 3. `"merge"` (hardcoded fallback)
 
 Returns merge confirmation with new HEAD SHA on success.
-On failure, returns a structured error with a `reason:` line naming the specific cause:
+
+When the merge call itself fails (a transport error, not a refusal), the tool re-reads the PR over REST before reporting, so a caller never has to guess whether a retry is safe:
+
+- Merged anyway — the pull completes and the normal success block is returned, followed by a `note:` naming the transport error and a `verified: merged via REST` line.
+- Not merged — an error headed `failed to merge PR #N` with `merged: false` and `safe to retry: yes`.
+- Verification also failed — the same header with `merged: unknown`, a `verification_error:` line, and the manual probe to run.
+
+When the PR is refused _before_ any merge is attempted, the error is headed `PR #N is not mergeable` and carries a `reason:` line naming the specific cause:
 
 - `no checks reported (statusCheckRollup is empty)` — the PR has no CI runs at all (the legacy `GITHUB_TOKEN`-does-not-trigger-workflows case); merge manually if appropriate.
 - `check failed: <names>` — one or more checks concluded with a failure.
 - `mergeable is <value>` / `merge state is <value>` — the PR is genuinely blocked (conflicting, dirty, behind, etc.).
 
 A `timeout:` result (also an error) means checks or mergeability did not resolve within `timeout`; retry or investigate.
+
+### Transient-failure retry
+
+Every read-only `gh` call these tools make — `ci_find`, `ci_watch`, `ci_list`, `release_pr_find`, and `release_pr_merge`'s precheck and verification — retries a transient failure up to three times, waiting 1 s, 4 s, then 9 s.
+The retry count and backoff curve match [`@octokit/plugin-retry`](https://github.com/octokit/plugin-retry.js)'s defaults.
+
+Retried: HTTP 5xx, GitHub's `no server is currently available` GraphQL error, and transport errors (connection reset, unexpected EOF, i/o timeout, TLS handshake timeout).
+Not retried: any 4xx, including rate limiting — retrying those is useless or harmful.
+
+Mutations (`gh pr merge`, `gh issue close`) are never retried automatically.
+For a merge, the verification described above is what makes a retry decision safe.
+
+In a polling tool the backoff counts against the call's `timeout`, so retries cannot silently extend the wait the caller asked for.
 
 #### `release_watch`
 
@@ -165,6 +185,32 @@ Two locations are supported — project config takes precedence over global:
   "defaultMergeMethod": "squash"
 }
 ```
+
+## Scope and non-goals
+
+**Purpose.**
+The ship workflow used to have the agent `sleep` and re-invoke `gh` in a prose loop, which burned turns and behaved differently every run.
+These tools replace that loop with bounded polling, streamed progress, and structured success, timeout, and failure states.
+
+**In scope.**
+Making a tool wait where a human would otherwise wait, making a failure legible as a named `reason` a prompt can branch on, surviving transient GitHub errors on reads, and refusing to leave an outcome ambiguous.
+
+**Non-goals.**
+
+- _A general-purpose GitHub toolkit._
+  The surface is scoped to the CI, release, and issue-close flow an agent runs end to end.
+  An operation with no polling problem — opening a PR, editing labels, dispatching a workflow — is a plain `gh` call and stays one.
+- _Release automations other than release-please._
+  The three release tools encode its conventions; the CI tools stay generic to any GitHub Actions repository.
+- _A GitHub API client._
+  The `gh` CLI is the sole external binary dependency, and there are no runtime dependencies at all.
+- _Auto-retrying mutations._
+  Reads retry on transient failures; `release_pr_merge` and `issue_close` do not, since a retried close would post a duplicate comment.
+- _Merging a PR the tool refuses today._
+  When a release PR reports no checks at all, `release_pr_merge` refuses with a named reason rather than merging through.
+
+**Where adjacent requests belong.**
+Whether to release now, and which packages a release PR bumps → the calling prompt, not the tool.
 
 ## Architecture
 

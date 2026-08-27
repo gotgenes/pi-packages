@@ -1,5 +1,5 @@
-import type { AccessPath } from "#src/access-intent/access-path";
 import {
+  type BashExternalPath,
   BashPathResolver,
   type BashPathRuleCandidate,
 } from "#src/access-intent/bash/bash-path-resolver";
@@ -10,7 +10,7 @@ import {
 import { getParser } from "#src/access-intent/bash/parser";
 import type { PathNormalizer } from "#src/path-normalizer";
 
-export type { BashCommand, BashPathRuleCandidate };
+export type { BashCommand, BashExternalPath, BashPathRuleCandidate };
 
 /**
  * A bash command parsed once into a born-ready representation.
@@ -26,7 +26,7 @@ export class BashProgram {
   private constructor(
     private readonly sourceCommand: string,
     private readonly commandUnits: readonly BashCommand[],
-    private readonly resolvedExternalPaths: readonly AccessPath[],
+    private readonly resolvedExternalAccesses: readonly BashExternalPath[],
     private readonly resolvedRuleCandidates: readonly BashPathRuleCandidate[],
   ) {}
 
@@ -59,14 +59,14 @@ export class BashProgram {
     if (!tree) return new BashProgram(command, [], [], []);
 
     try {
-      const { externalPaths, ruleCandidates } = new BashPathResolver(
+      const { externalAccesses, ruleCandidates } = new BashPathResolver(
         normalizer,
         options?.workdir,
       ).resolve(tree.rootNode);
       return new BashProgram(
         command,
         collectCommands(tree.rootNode),
-        externalPaths,
+        externalAccesses,
         ruleCandidates,
       );
     } finally {
@@ -104,21 +104,25 @@ export class BashProgram {
   }
 
   /**
-   * Deduplicated paths that resolve outside `cwd`, as {@link AccessPath} value
-   * objects holding both the lexical (as-typed) and canonical (symlink-resolved)
-   * forms behind distinct accessors.
+   * Deduplicated accesses that resolve outside `cwd`: each an
+   * {@link AccessPath} value object holding both the lexical (as-typed) and
+   * canonical (symlink-resolved) forms behind distinct accessors, paired with
+   * the effect the command stream proved for it.
    *
    * Resolved eagerly at parse time through the `PathNormalizer` supplied to
    * `parse()` (platform + cwd baked in).
    * Use `.matchValues()` for `external_directory` pattern matching and
    * `.boundaryValue()` for containment checks; `.value()` for display and logs.
+   * Two attributions of the same resolved path fold rather than split, so the
+   * entry count is a function of the paths alone (#807).
    */
-  externalPaths(): AccessPath[] {
-    return [...this.resolvedExternalPaths];
+  externalAccesses(): BashExternalPath[] {
+    return [...this.resolvedExternalAccesses];
   }
 
   /**
-   * Path-rule candidates paired with their policy lookup values.
+   * Path-rule candidates paired with their policy lookup values and the
+   * effect the command stream proved for each (#807).
    *
    * Resolved eagerly at parse time through the `PathNormalizer` supplied to
    * `parse()` (platform + cwd baked in).

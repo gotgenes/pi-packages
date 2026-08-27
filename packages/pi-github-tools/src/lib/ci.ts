@@ -6,9 +6,15 @@
  *   - watchRun → ci_watch
  *   - listRuns → ci_list
  */
-import { type CIJob, findRetryDelay, formatProgress } from "./ci-helpers";
-import { ghJson } from "./github";
+import {
+  type CIJob,
+  findRetryDelay,
+  formatAborted,
+  formatProgress,
+} from "./ci-helpers";
+import { ghJsonRetrying } from "./github";
 import { sleep } from "./process";
+import { formatRetryNotice, type RetryOptions } from "./retry";
 
 interface RunSummary {
   status: string;
@@ -87,28 +93,31 @@ export async function findRun(args: FindRunArgs): Promise<string> {
   let attempt = 0;
   let lastSeenRun: RunSummary | null = null;
 
+  const retryOptions: RetryOptions = {
+    signal,
+    onRetry: (info) => {
+      // The backoff is wall clock the caller asked us to bound, so it counts
+      // against `timeout` just like a poll interval does.
+      elapsed += Math.round(info.delayMs / 1000);
+      onProgress?.(formatRetryNotice(info));
+    },
+  };
+
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- intentional infinite loop with explicit return/break
   while (true) {
     attempt++;
 
     if (signal?.aborted) {
-      return [
-        "aborted: cancelled by user",
-        `  retries: ${attempt}`,
-        `  elapsed: ${elapsed}s`,
-      ].join("\n");
+      return formatAborted(`  retries: ${attempt}`, `  elapsed: ${elapsed}s`);
     }
 
     const delay = findRetryDelay(attempt);
     if (delay > 0) {
       try {
         await sleep(delay * 1000, signal);
-      } catch {
-        return [
-          "aborted: cancelled by user",
-          `  retries: ${attempt}`,
-          `  elapsed: ${elapsed}s`,
-        ].join("\n");
+      } catch (error) {
+        if (!signal?.aborted) throw error;
+        return formatAborted(`  retries: ${attempt}`, `  elapsed: ${elapsed}s`);
       }
       elapsed += delay;
     }
@@ -121,7 +130,7 @@ export async function findRun(args: FindRunArgs): Promise<string> {
 
     let runs: RunSummary[];
     try {
-      runs = await ghJson<RunSummary[]>(
+      runs = await ghJsonRetrying<RunSummary[]>(
         [
           "run",
           "list",
@@ -132,14 +141,11 @@ export async function findRun(args: FindRunArgs): Promise<string> {
           "--json",
           "databaseId,url,status,conclusion,headSha,displayTitle,name",
         ],
-        signal,
+        retryOptions,
       );
-    } catch {
-      return [
-        "aborted: cancelled by user",
-        `  retries: ${attempt}`,
-        `  elapsed: ${elapsed}s`,
-      ].join("\n");
+    } catch (error) {
+      if (!signal?.aborted) throw error;
+      return formatAborted(`  retries: ${attempt}`, `  elapsed: ${elapsed}s`);
     }
 
     if (runs.length > 0) {
@@ -150,16 +156,13 @@ export async function findRun(args: FindRunArgs): Promise<string> {
     if (matchingRun) {
       let jobs: CIJob[];
       try {
-        ({ jobs } = await ghJson<RunJobs>(
+        ({ jobs } = await ghJsonRetrying<RunJobs>(
           ["run", "view", String(matchingRun.databaseId), "--json", "jobs"],
-          signal,
+          retryOptions,
         ));
-      } catch {
-        return [
-          "aborted: cancelled by user",
-          `  retries: ${attempt}`,
-          `  elapsed: ${elapsed}s`,
-        ].join("\n");
+      } catch (error) {
+        if (!signal?.aborted) throw error;
+        return formatAborted(`  retries: ${attempt}`, `  elapsed: ${elapsed}s`);
       }
       return formatFind(matchingRun, jobs);
     }
@@ -198,19 +201,23 @@ export async function watchRun(args: WatchRunArgs): Promise<string> {
   let elapsed = 0;
   const progressLog: string[] = [];
 
+  const retryOptions: RetryOptions = {
+    signal,
+    onRetry: (info) => {
+      elapsed += Math.round(info.delayMs / 1000);
+      onProgress?.(formatRetryNotice(info));
+    },
+  };
+
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- intentional infinite loop with explicit return/break
   while (true) {
     if (signal?.aborted) {
-      return [
-        "aborted: cancelled by user",
-        `  elapsed: ${elapsed}s`,
-        `  run_id: ${runId}`,
-      ].join("\n");
+      return formatAborted(`  elapsed: ${elapsed}s`, `  run_id: ${runId}`);
     }
 
     let run: WatchPoll;
     try {
-      run = await ghJson<WatchPoll>(
+      run = await ghJsonRetrying<WatchPoll>(
         [
           "run",
           "view",
@@ -218,14 +225,11 @@ export async function watchRun(args: WatchRunArgs): Promise<string> {
           "--json",
           "status,conclusion,name,headSha,jobs",
         ],
-        signal,
+        retryOptions,
       );
-    } catch {
-      return [
-        "aborted: cancelled by user",
-        `  elapsed: ${elapsed}s`,
-        `  run_id: ${runId}`,
-      ].join("\n");
+    } catch (error) {
+      if (!signal?.aborted) throw error;
+      return formatAborted(`  elapsed: ${elapsed}s`, `  run_id: ${runId}`);
     }
 
     const progressLine = formatProgress(run.jobs, elapsed);
@@ -247,12 +251,9 @@ export async function watchRun(args: WatchRunArgs): Promise<string> {
 
     try {
       await sleep(pollInterval * 1000, signal);
-    } catch {
-      return [
-        "aborted: cancelled by user",
-        `  elapsed: ${elapsed}s`,
-        `  run_id: ${runId}`,
-      ].join("\n");
+    } catch (error) {
+      if (!signal?.aborted) throw error;
+      return formatAborted(`  elapsed: ${elapsed}s`, `  run_id: ${runId}`);
     }
     elapsed += pollInterval;
   }
@@ -267,7 +268,7 @@ export async function listRuns(args: ListRunsArgs): Promise<string> {
   const workflowFile = `${args.workflow}.yml`;
   const limit = args.limit ?? 5;
 
-  const runs = await ghJson<RunSummary[]>([
+  const runs = await ghJsonRetrying<RunSummary[]>([
     "run",
     "list",
     "--limit",

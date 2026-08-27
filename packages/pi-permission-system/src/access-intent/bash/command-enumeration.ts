@@ -1,5 +1,17 @@
+import {
+  EXECUTION_HOST_TYPES,
+  forEachNestedExecution,
+} from "#src/access-intent/bash/nested-execution";
 import type { TSNode } from "#src/access-intent/bash/parser";
+import {
+  type CommandWord,
+  classifyWrapperWords,
+  executedUnitOf,
+  type WrapperKind,
+} from "#src/access-intent/bash/wrapper-analysis";
 import type { BashCommandContext } from "#src/types";
+
+export type { WrapperKind } from "#src/access-intent/bash/wrapper-analysis";
 
 // ── Command type ─────────────────────────────────────────────────────────────
 
@@ -11,16 +23,6 @@ import type { BashCommandContext } from "#src/types";
  * The type is the stable extension point: #306 adds an execution `context`,
  * #307 adds per-command path candidates and an effective working directory.
  */
-/**
- * Why a command unit's decision is floored to at least `ask`.
- * `"opaque-payload"` — an inline-shell payload (`bash -c`/`eval`) whose inner
- * program is not re-parsed (#481).
- * `"indirection"` — a prefix/exec wrapper (`sudo`/`env`/`xargs`/`find -exec`/…)
- * whose inner command is a visible argument but is not gated on its own (#490).
- * The kind selects the audit sentinel; both floor identically.
- */
-export type WrapperKind = "opaque-payload" | "indirection";
-
 export interface BashCommand {
   readonly text: string;
   /**
@@ -34,6 +36,13 @@ export interface BashCommand {
    * Absent for an ordinary command.
    */
   readonly wrapperKind?: WrapperKind;
+  /**
+   * The command this wrapper unit actually runs (#713). Display-only — it is
+   * never gated on its own, so the wrapper floor still applies. Absent for an
+   * ordinary command, and for a wrapper whose inner command cannot be
+   * established.
+   */
+  readonly executedUnit?: string;
 }
 
 // ── Command enumeration ──────────────────────────────────────────────────────
@@ -49,32 +58,19 @@ const COMMAND_ENUM_DESCEND = new Set([
 ]);
 
 /**
- * Named node types skipped during command enumeration: redirect targets,
- * comments, and heredoc bodies — none is a command to evaluate.
+ * Named node types abandoned during command enumeration: they are neither
+ * commands nor able to host one, so nothing in their subtree ever runs.
+ *
+ * A redirect and a heredoc body are deliberately NOT listed here. Neither is a
+ * command, but each can host a substitution that really executes, so both are
+ * {@link EXECUTION_HOST_TYPES} members instead — conflating the two questions
+ * ("is this a command?" and "can this host one?") is the bypass #741 fixed.
+ *
  * Anonymous tokens (chain operators `&&`/`;`/`|`, substitution and subshell
  * delimiters `$(`/`)`/`` ` ``/`(`) are filtered by the `isNamed` guard, not
  * listed here.
  */
-const COMMAND_ENUM_SKIP = new Set([
-  "file_redirect",
-  "heredoc_redirect",
-  "herestring_redirect",
-  "comment",
-  "heredoc_body",
-  "heredoc_end",
-]);
-
-/**
- * Nested execution contexts whose interior commands really execute and must be
- * evaluated too: command substitution (`$(…)`, backticks) and process
- * substitution (`<(…)`/`>(…)`).
- * Subshells (`( … )`) are handled separately because they are also emitted
- * whole.
- */
-const NESTED_EXECUTION_CONTEXTS = new Map<string, BashCommandContext>([
-  ["command_substitution", "command_substitution"],
-  ["process_substitution", "process_substitution"],
-]);
+const COMMAND_ENUM_SKIP = new Set(["comment", "heredoc_end"]);
 
 /**
  * Enumerate the command units of a bash program, in source order.
@@ -114,12 +110,17 @@ function collectCommandsInto(
   if (COMMAND_ENUM_SKIP.has(node.type)) return;
 
   if (node.type === "command") {
-    out.push(
-      makeUnit(commandUnitText(node), context, classifyWrapperCommand(node)),
-    );
+    out.push(makeCommandUnit(node, context));
     // A command's text already contains any substitution; descend its subtree
     // to ALSO emit the inner commands of command/process substitutions.
-    collectSubstitutionCommands(node, out);
+    collectHostedCommands(node, out);
+    return;
+  }
+
+  if (EXECUTION_HOST_TYPES.has(node.type)) {
+    // Not a command itself, but its subtree can host one that really runs
+    // (`> $(rm x)`, `< <(rm c)`). Emit only what it hosts (#741).
+    collectHostedCommands(node, out);
     return;
   }
 
@@ -143,125 +144,50 @@ function makeUnit(
   text: string,
   context: BashCommandContext | undefined,
   wrapperKind?: WrapperKind,
+  executedUnit?: string,
 ): BashCommand {
   const unit: BashCommand = context ? { text, context } : { text };
-  return wrapperKind ? { ...unit, wrapperKind } : unit;
+  const flagged = wrapperKind ? { ...unit, wrapperKind } : unit;
+  return executedUnit === undefined ? flagged : { ...flagged, executedUnit };
 }
 
 /**
- * Shell command names whose `-c` flag introduces an opaque inline program.
+ * Build the unit for a `command` node, reading its words once to answer both
+ * wrapper questions: whether the unit is floored, and what it actually runs.
  */
-const SHELL_WRAPPER_NAMES = new Set(["bash", "sh", "dash", "zsh", "ksh"]);
-
-/**
- * Indirection wrappers that always invoke a following command, so the wrapper
- * (not the inner command) is what a bash rule matches. Floored by command-name
- * basename alone. Extend this set to cover another always-invoking wrapper.
- */
-const INDIRECTION_WRAPPER_NAMES = new Set([
-  "sudo",
-  "env",
-  "xargs",
-  "time",
-  "nohup",
-  "timeout",
-  "nice",
-  // Exec-capable rewrites and prefix wrappers surveyed in #575: parallelizers
-  // (parallel/rust-parallel/rush), a sudo rewrite (doas), and prefix wrappers
-  // (setsid/stdbuf/watch/flock) that all always invoke a following command.
-  "parallel",
-  "rust-parallel",
-  "rush",
-  "doas",
-  "setsid",
-  "stdbuf",
-  "watch",
-  "flock",
-]);
-
-/**
- * Search tools that invoke a command per result only when an exec flag is
- * present; a bare search runs no subcommand. Floored only when an argument
- * exactly matches one of the tool's exec flags. Extend by adding a tool with
- * its exec-flag set.
- */
-const EXEC_CONDITIONAL_WRAPPERS = new Map<string, ReadonlySet<string>>([
-  ["find", new Set(["-exec", "-execdir", "-ok", "-okdir"])],
-  ["fd", new Set(["-x", "--exec", "-X", "--exec-batch"])],
-]);
-
-/**
- * Classify a `command` node as a floored wrapper, or `undefined` for an
- * ordinary command. Reads only the node's own named children (a shallow walk),
- * skipping any leading `variable_assignment` prefix, and matches the command
- * name on its basename (so `/bin/bash -c …` counts).
- *
- * `"opaque-payload"`: `eval`, or a shell (`bash`/`sh`/`dash`/`zsh`/`ksh`) with a
- * `-c` short-flag cluster (`-c`, `-ec`, `-xc`) — the inner program is a quoted
- * argument the enumerator does not re-parse (#481).
- *
- * `"indirection"`: an always-invoking prefix/exec wrapper
- * (`INDIRECTION_WRAPPER_NAMES`), or a search tool (`EXEC_CONDITIONAL_WRAPPERS`,
- * `find`/`fd`) carrying a per-result exec flag — the inner command is a visible
- * argument that a `<cmd> *` rule would otherwise never match (#490). A bare
- * `find`/`fd` search runs no subcommand and is not flagged.
- */
-function classifyWrapperCommand(node: TSNode): WrapperKind | undefined {
-  const { commandName, args } = readWrapperCommand(node);
-  if (commandName === undefined) return undefined;
-  if (commandName === "eval") return "opaque-payload";
-  if (SHELL_WRAPPER_NAMES.has(commandName) && hasShortFlagC(args)) {
-    return "opaque-payload";
-  }
-  if (INDIRECTION_WRAPPER_NAMES.has(commandName)) return "indirection";
-  const execFlags = EXEC_CONDITIONAL_WRAPPERS.get(commandName);
-  if (execFlags && args.some((arg) => execFlags.has(arg))) return "indirection";
-  return undefined;
+function makeCommandUnit(
+  node: TSNode,
+  context: BashCommandContext | undefined,
+): BashCommand {
+  const text = commandUnitText(node);
+  const words = readCommandWords(node);
+  return makeUnit(
+    text,
+    context,
+    classifyWrapperWords(words),
+    executedUnitOf(text, words) ?? undefined,
+  );
 }
 
 /**
- * A `command` node's name basename and its argument texts, skipping any leading
- * `variable_assignment` prefix (matching `commandUnitText`). `commandName` is
- * `undefined` for a pure assignment with no `command_name`.
+ * A `command` node's words — its `command_name` followed by its arguments — each
+ * carrying its offset into the unit text `commandUnitText` produces.
+ *
+ * A leading `variable_assignment` prefix is skipped (matching
+ * `commandUnitText`), so offsets are relative to the `command_name`. An empty
+ * list means a pure assignment with no `command_name`.
  */
-function readWrapperCommand(node: TSNode): {
-  commandName: string | undefined;
-  args: string[];
-} {
-  let commandName: string | undefined;
-  const args: string[] = [];
+function readCommandWords(node: TSNode): CommandWord[] {
+  const words: CommandWord[] = [];
+  let unitStart: number | undefined;
   for (let i = 0; i < node.childCount; i++) {
     const child = node.child(i);
     if (!child?.isNamed) continue;
     if (child.type === "variable_assignment") continue;
-    if (commandName === undefined) {
-      commandName = basename(child.text);
-      continue;
-    }
-    args.push(child.text);
+    unitStart ??= child.startIndex;
+    words.push({ text: child.text, offset: child.startIndex - unitStart });
   }
-  return { commandName, args };
-}
-
-/**
- * True when an argument list has a short-flag cluster containing `c` before any
- * `--` end-of-options marker (`-c`, `-ec`, `-xc`) — the inline-shell payload
- * flag for `bash`/`sh`/`dash`/`zsh`/`ksh`.
- */
-function hasShortFlagC(args: string[]): boolean {
-  for (const arg of args) {
-    if (arg === "--") return false;
-    if (arg.startsWith("-") && !arg.startsWith("--") && arg.includes("c")) {
-      return true;
-    }
-  }
-  return false;
-}
-
-/** The final path segment of a command name (`/bin/bash` → `bash`). */
-function basename(name: string): string {
-  const slash = name.lastIndexOf("/");
-  return slash === -1 ? name : name.slice(slash + 1);
+  return words;
 }
 
 /**
@@ -297,20 +223,15 @@ function descendCommandChildren(
 }
 
 /**
- * Search a command's subtree for command/process substitutions and enumerate
- * the commands inside them, tagged with the substitution's execution context.
- * A substitution can nest under `command_name` (when the whole command is
- * `$(…)`) or under an argument, so the entire subtree is searched.
+ * Enumerate the commands of every nested execution context in a subtree, each
+ * tagged with the context it was found in.
+ *
+ * The traversal itself lives in `nested-execution.ts` so the bash path surface
+ * shares one definition of what counts as a nested execution (#741); this
+ * function supplies the command-surface interpretation of each one found.
  */
-function collectSubstitutionCommands(node: TSNode, out: BashCommand[]): void {
-  for (let i = 0; i < node.childCount; i++) {
-    const child = node.child(i);
-    if (!child) continue;
-    const nestedContext = NESTED_EXECUTION_CONTEXTS.get(child.type);
-    if (nestedContext) {
-      descendCommandChildren(child, nestedContext, out);
-    } else {
-      collectSubstitutionCommands(child, out);
-    }
-  }
+function collectHostedCommands(node: TSNode, out: BashCommand[]): void {
+  forEachNestedExecution(node, (contextNode, context) => {
+    descendCommandChildren(contextNode, context, out);
+  });
 }

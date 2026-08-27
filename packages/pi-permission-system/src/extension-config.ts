@@ -22,10 +22,12 @@ export interface PermissionSystemExtensionConfig {
   piInfrastructureReadPaths?: string[];
   /** How long a subagent waits for the parent's answer to a forwarded ask, in ms. Defaults to 600000. */
   forwardingTimeoutMs?: number;
-  /** Max length of the inline-JSON input preview shown in permission prompts. Defaults to 200. */
-  toolInputPreviewMaxLength?: number;
-  /** Max length of inline pattern/path summaries (grep/find/ls) in permission prompts. Defaults to 80. */
-  toolTextSummaryMaxLength?: number;
+  /** Max rows a permission prompt renders before eliding its evidence. Defaults to 24. */
+  promptMaxRows?: number;
+  /** Max characters of any one field shown in a permission prompt. Defaults to 400. */
+  promptFieldMaxWidth?: number;
+  /** Max characters of any one value written to the permission review log. Defaults to 1000. */
+  reviewLogFieldMaxWidth?: number;
   /** Non-bash tools that carry shell semantics, keyed by tool name. */
   shellTools?: ShellToolsConfig;
   /** Ordered names of registered live-authority chain links to consult before the terminal authorizer. */
@@ -76,12 +78,19 @@ export function normalizePermissionSystemConfig(
   if (raw.forwardingTimeoutMs !== undefined) {
     result.forwardingTimeoutMs = raw.forwardingTimeoutMs;
   }
-  if (raw.toolInputPreviewMaxLength !== undefined) {
-    result.toolInputPreviewMaxLength = raw.toolInputPreviewMaxLength;
+  if (raw.promptMaxRows !== undefined) {
+    result.promptMaxRows = raw.promptMaxRows;
   }
-  if (raw.toolTextSummaryMaxLength !== undefined) {
-    result.toolTextSummaryMaxLength = raw.toolTextSummaryMaxLength;
+  if (raw.promptFieldMaxWidth !== undefined) {
+    result.promptFieldMaxWidth = raw.promptFieldMaxWidth;
   }
+  if (raw.reviewLogFieldMaxWidth !== undefined) {
+    result.reviewLogFieldMaxWidth = raw.reviewLogFieldMaxWidth;
+  }
+  // `toolInputPreviewMaxLength` / `toolTextSummaryMaxLength` are deliberately
+  // absent: the schema and the merge still accept them so the deprecation
+  // detector can see an operator's setting, but no runtime consumer may read
+  // one (ADR 0011 §5, #745).
   if (raw.shellTools !== undefined) {
     result.shellTools = raw.shellTools;
   }

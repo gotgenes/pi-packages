@@ -136,7 +136,8 @@ try {
   const { getPermissionsService } = await import(
     "@gotgenes/pi-permission-system"
   );
-  const permissions = getPermissionsService();
+  // Your own session's id; inside a handler, ctx.sessionManager.getSessionId().
+  const permissions = getPermissionsService(sessionId);
   if (permissions) {
     const result = permissions.checkPermission("bash", "git push", "Worker");
     console.log(result.state); // "allow" | "deny" | "ask"
@@ -146,7 +147,11 @@ try {
 }
 ```
 
-If `pi-permission-system` is not installed, `import()` throws; if it has not published a service yet (or has been unloaded), `getPermissionsService()` returns `undefined`.
+Query the service belonging to the session whose policy you mean.
+Each session that loads the permission system publishes its own — a subagent child's config (and cwd) may differ from its parent's, so the parent's service is not a stand-in for the child's.
+The deprecated `getRootPermissionsService()` always answers with the process root's service, which is why it is the wrong call inside a child.
+
+If `pi-permission-system` is not installed, `import()` throws; if that session has published no service yet (or has been unloaded), `getPermissionsService(sessionId)` returns `undefined`.
 Guard both cases as shown above.
 
 Prompt forwarding for headless child agents is an internal subagent-to-parent mechanism, not a public cross-extension operation — there is no service-accessor equivalent to call directly.

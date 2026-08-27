@@ -32,6 +32,22 @@ function mockCmd(stdout: string) {
   });
 }
 
+function mockCmdFail(stderr: string) {
+  mockRunCommand.mockResolvedValueOnce({
+    stdout: "",
+    stderr,
+    exitCode: 1,
+  });
+}
+
+/** Make the next sleep abort the controller, as a real abort would. */
+function mockSleepAborts(controller: AbortController) {
+  mockSleep.mockImplementationOnce(() => {
+    controller.abort();
+    return Promise.reject(new Error("The operation was aborted."));
+  });
+}
+
 describe("findReleasePR", () => {
   it("finds a release-please PR on first poll", async () => {
     mockGhJson([
@@ -70,7 +86,7 @@ describe("findReleasePR", () => {
   it("returns abort message when signal fires during sleep", async () => {
     const controller = new AbortController();
     mockGhJson([]);
-    mockSleep.mockRejectedValueOnce(new Error("The operation was aborted."));
+    mockSleepAborts(controller);
 
     const result = await findReleasePR({
       timeout: 120,
@@ -78,6 +94,47 @@ describe("findReleasePR", () => {
     });
     expect(result).toContain("aborted:");
     expect(result).toContain("cancelled by user");
+  });
+
+  it("surfaces a gh failure instead of blaming the user", async () => {
+    mockCmdFail("HTTP 404: Not Found");
+
+    await expect(findReleasePR({ timeout: 120 })).rejects.toThrow(
+      /HTTP 404: Not Found/,
+    );
+  });
+
+  it("retries a transient failure and reports the wait", async () => {
+    mockCmdFail("HTTP 503");
+    mockGhJson([
+      {
+        number: 42,
+        title: "chore(main): release 1.2.0",
+        headRefName: "release-please--branches--main",
+        url: "https://github.com/o/r/pull/42",
+        mergeable: "MERGEABLE",
+        mergeStateStatus: "CLEAN",
+      },
+    ]);
+
+    const onProgress = vi.fn();
+    const result = await findReleasePR({ timeout: 120, onProgress });
+
+    expect(result).toContain("pr_number: 42");
+    expect(mockSleep).toHaveBeenCalledWith(1000, undefined);
+    expect(onProgress).toHaveBeenCalledWith(
+      expect.stringContaining("transient gh failure, retry 1/3 in 1s"),
+    );
+  });
+
+  it("charges the retry backoff against the timeout", async () => {
+    mockCmdFail("HTTP 503");
+    mockGhJson([]);
+
+    const result = await findReleasePR({ timeout: 0 });
+
+    expect(result).toContain("timeout: no release-please PR found");
+    expect(result).toContain("elapsed: 1s");
   });
 });
 
@@ -360,7 +417,7 @@ describe("mergeReleasePR", () => {
         },
       ],
     });
-    mockSleep.mockRejectedValueOnce(new Error("The operation was aborted."));
+    mockSleepAborts(controller);
 
     const result = await mergeReleasePR({
       prNumber: 42,
@@ -370,6 +427,170 @@ describe("mergeReleasePR", () => {
     expect(result.content).toContain("aborted:");
     expect(result.content).toContain("cancelled by user");
     expect(mockSleep).toHaveBeenCalledWith(10000, controller.signal);
+  });
+
+  describe("when a read fails transiently", () => {
+    function mockCleanPR() {
+      mockGhJson({
+        number: 42,
+        title: "chore(main): release 1.2.0",
+        mergeable: "MERGEABLE",
+        mergeStateStatus: "CLEAN",
+        statusCheckRollup: [],
+      });
+    }
+
+    it("retries the precheck and merges once it succeeds", async () => {
+      mockCmdFail("HTTP 503");
+      mockCleanPR();
+      mockCmd("merged");
+      mockCmd("Already up to date.\n");
+      mockCmd("abc1234567890\n");
+
+      const onProgress = vi.fn();
+      const result = await mergeReleasePR({ prNumber: 42, onProgress });
+
+      expect(result.isError).toBe(false);
+      expect(result.content).toContain("Merged PR #42");
+      expect(mockSleep).toHaveBeenCalledWith(1000, undefined);
+      expect(onProgress).toHaveBeenCalledWith(
+        "transient gh failure, retry 1/3 in 1s: gh pr view 42 --json number,title,mergeable,mergeStateStatus,statusCheckRollup failed (exit 1): HTTP 503",
+      );
+    });
+
+    it("charges the retry backoff against the timeout", async () => {
+      mockCmdFail("HTTP 503");
+      mockCmdFail("HTTP 503");
+      mockGhJson({
+        number: 42,
+        title: "chore(main): release 1.2.0",
+        mergeable: "UNKNOWN",
+        mergeStateStatus: "UNKNOWN",
+        statusCheckRollup: [],
+      });
+
+      const result = await mergeReleasePR({ prNumber: 42, timeout: 3 });
+
+      expect(result.content).toContain(
+        "timeout: PR #42 did not become mergeable within 3s",
+      );
+      expect(result.content).toContain(
+        "waiting for GitHub to compute mergeability... (5s)",
+      );
+      expect(mockSleep.mock.calls.map((call) => call[0])).toEqual([1000, 4000]);
+    });
+  });
+
+  describe("when the merge call itself fails", () => {
+    const mergeError =
+      "gh pr merge 42 --merge failed (exit 1): HTTP 503" as const;
+
+    function mockReadyThenFailedMerge() {
+      mockGhJson({
+        number: 42,
+        title: "chore(main): release 1.2.0",
+        mergeable: "MERGEABLE",
+        mergeStateStatus: "CLEAN",
+        statusCheckRollup: [],
+      });
+      mockCmdFail("HTTP 503");
+    }
+
+    it("reports success when the merge landed anyway", async () => {
+      mockReadyThenFailedMerge();
+      mockGhJson({
+        merged: true,
+        state: "closed",
+        merge_commit_sha: "e1292fd5d598b79c94a23968b42b86ad5ba9647f",
+      });
+      mockCmd("Already up to date.\n");
+      mockCmd("abc1234567890\n");
+
+      const result = await mergeReleasePR({ prNumber: 42 });
+
+      expect(result.isError).toBe(false);
+      expect(result.content).toBe(
+        [
+          "Merged PR #42: chore(main): release 1.2.0",
+          "head_sha: abc1234567890",
+          "short_sha: abc1234",
+          `note: the merge call failed (${mergeError}) but the merge landed`,
+          "verified: merged via REST (merge_commit_sha: e1292fd5d598b79c94a23968b42b86ad5ba9647f)",
+        ].join("\n"),
+      );
+      expect(mockRunCommand).toHaveBeenNthCalledWith(3, {
+        cmd: "gh",
+        args: [
+          "api",
+          "repos/{owner}/{repo}/pulls/42",
+          "--jq",
+          "{state:.state,merged:.merged,merge_commit_sha:.merge_commit_sha}",
+        ],
+        signal: undefined,
+      });
+      expect(mockRunCommand).toHaveBeenNthCalledWith(4, {
+        cmd: "git",
+        args: ["pull", "--ff-only"],
+        signal: undefined,
+      });
+    });
+
+    it("reports a retryable failure when the merge did not land", async () => {
+      mockReadyThenFailedMerge();
+      mockGhJson({ merged: false, state: "open", merge_commit_sha: null });
+
+      const result = await mergeReleasePR({ prNumber: 42 });
+
+      expect(result.isError).toBe(true);
+      expect(result.content).toBe(
+        [
+          "failed to merge PR #42",
+          "  merged: false",
+          "  state: open",
+          `  error: ${mergeError}`,
+          "  verified: not merged via REST",
+          "  safe to retry: yes",
+        ].join("\n"),
+      );
+      expect(mockRunCommand).toHaveBeenCalledTimes(3);
+    });
+
+    it("refuses to guess when the verification also fails", async () => {
+      mockReadyThenFailedMerge();
+      mockCmdFail("HTTP 404: Not Found");
+
+      const result = await mergeReleasePR({ prNumber: 42 });
+
+      expect(result.isError).toBe(true);
+      expect(result.content).toBe(
+        [
+          "failed to merge PR #42",
+          "  merged: unknown",
+          `  error: ${mergeError}`,
+          "  verification_error: gh api repos/{owner}/{repo}/pulls/42 --jq {state:.state,merged:.merged,merge_commit_sha:.merge_commit_sha} failed (exit 1): HTTP 404: Not Found",
+          "  safe to retry: no — verify by hand with: gh api 'repos/{owner}/{repo}/pulls/42' --jq '{state:.state,merged:.merged}'",
+        ].join("\n"),
+      );
+    });
+
+    it("threads the signal through the verification", async () => {
+      const controller = new AbortController();
+      mockReadyThenFailedMerge();
+      mockGhJson({ merged: false, state: "open", merge_commit_sha: null });
+
+      await mergeReleasePR({ prNumber: 42, signal: controller.signal });
+
+      expect(mockRunCommand).toHaveBeenNthCalledWith(3, {
+        cmd: "gh",
+        args: [
+          "api",
+          "repos/{owner}/{repo}/pulls/42",
+          "--jq",
+          "{state:.state,merged:.merged,merge_commit_sha:.merge_commit_sha}",
+        ],
+        signal: controller.signal,
+      });
+    });
   });
 });
 
@@ -430,8 +651,7 @@ describe("watchRelease", () => {
     mockCmd("");
     // No tags
     mockCmd("\n");
-    // sleep rejects to simulate abort
-    mockSleep.mockRejectedValueOnce(new Error("The operation was aborted."));
+    mockSleepAborts(controller);
 
     const result = await watchRelease({
       timeout: 180,
@@ -439,5 +659,13 @@ describe("watchRelease", () => {
     });
     expect(result).toContain("aborted:");
     expect(result).toContain("cancelled by user");
+  });
+
+  it("surfaces a git failure instead of blaming the user", async () => {
+    mockCmdFail("fatal: unable to access remote");
+
+    await expect(watchRelease({ timeout: 180 })).rejects.toThrow(
+      /git fetch --tags failed/,
+    );
   });
 });

@@ -1,3 +1,5 @@
+import type { DecisionSource } from "#src/authority/decision-source";
+
 export type PermissionDecisionState =
   | "approved"
   | "approved_for_session"
@@ -26,7 +28,26 @@ export type PermissionPromptDecision = {
    * denial — a user who was never asked denied nothing (#719).
    */
   confirmationUnavailable?: true;
+  /**
+   * What decided this request, stamped by the site that decided it.
+   *
+   * Required: every decision names its decider, and the type is what
+   * guarantees it rather than a convention each producer has to remember — the
+   * same discipline `PromptPermissionDetails.payload` carries (#726).
+   */
+  decidedBy: DecisionSource;
 };
+
+/**
+ * A decision before its decider is known.
+ *
+ * The inner producers — the dialog's decision model, the `select`/`input`
+ * fallback, the verdict mapper — state the outcome; which decider to attribute
+ * it to is settled one layer up, at the site that chose the producer. The same
+ * shape `GateBypass.decision` uses for the request id: a producer emits only
+ * what it knows.
+ */
+export type UnattributedDecision = Omit<PermissionPromptDecision, "decidedBy">;
 
 export interface PermissionDecisionUi {
   select(title: string, options: string[]): Promise<string | undefined>;
@@ -51,7 +72,7 @@ export function normalizePermissionDenialReason(
 
 export function createDeniedPermissionDecision(
   denialReason?: string,
-): PermissionPromptDecision {
+): UnattributedDecision {
   const normalizedReason = normalizePermissionDenialReason(denialReason);
   return normalizedReason
     ? {
@@ -96,7 +117,7 @@ export async function requestPermissionDecisionFromUi(
   title: string,
   message: string,
   options?: RequestPermissionOptions,
-): Promise<PermissionPromptDecision> {
+): Promise<UnattributedDecision> {
   const sessionOption = options?.sessionLabel ?? APPROVE_FOR_SESSION_OPTION;
   const decisionOptions = [
     APPROVE_OPTION,

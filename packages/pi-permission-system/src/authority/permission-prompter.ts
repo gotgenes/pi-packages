@@ -1,8 +1,11 @@
+import type { DecisionSource } from "#src/authority/decision-source";
 import type { PermissionPromptDecision } from "#src/authority/permission-dialog";
 import type {
   ForwardedAccessFacts,
   ForwardedSessionApproval,
 } from "#src/authority/permission-forwarding";
+import type { PromptPayload } from "#src/presentation/prompt-payload";
+import { renderReviewLogFacts } from "#src/presentation/review-log-renderer";
 import type { ReviewLogger } from "#src/session-logger";
 import type { TerminalAuthorizer } from "./authorizer";
 
@@ -26,7 +29,15 @@ export interface PromptPermissionDetails {
   requestId: string;
   source: PermissionReviewSource;
   agentName: string | null;
-  message: string;
+  /**
+   * The complete structured description of this ask (ADR 0011 §2).
+   *
+   * Required: every ask carries one, and the type is what guarantees it rather
+   * than a convention each gate has to remember. Every consumer — the dialog,
+   * the wire, the broadcast, the review log, the agent-facing denial text — is
+   * a render over it, so no two of them can disagree.
+   */
+  payload: PromptPayload;
   toolCallId?: string;
   toolName?: string;
   skillName?: string;
@@ -121,6 +132,7 @@ export class PermissionPrompter implements PermissionPrompterApi {
           ? "confirmation_unavailable"
           : decision.state,
         denialReason: decision.denialReason,
+        decidedBy: decision.decidedBy,
       },
     );
 
@@ -129,18 +141,24 @@ export class PermissionPrompter implements PermissionPrompterApi {
 
   // ── Private helpers ──────────────────────────────────────────────────────
 
+  /**
+   * The `waiting` entry carries no `decidedBy` — nothing has decided yet, and
+   * a `null` there would read as "decided by nobody" rather than "not yet".
+   */
   private writeReviewEntry(
     event: string,
     details: PromptPermissionDetails & {
       resolution?: string;
       denialReason?: string;
+      decidedBy?: DecisionSource;
     },
   ): void {
     this.deps.logger.review(event, {
+      ...(details.decidedBy ? { decidedBy: details.decidedBy } : {}),
       requestId: details.requestId,
       source: details.source,
       agentName: details.agentName,
-      message: details.message,
+      ...renderReviewLogFacts(details.payload),
       toolCallId: details.toolCallId ?? null,
       toolName: details.toolName ?? null,
       skillName: details.skillName ?? null,

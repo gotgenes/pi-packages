@@ -9,8 +9,11 @@
 1. **Review log — waiting** — write `permission_request.waiting` before the authorizer is consulted.
 2. **`authorizer.authorize(details)`** — the selected `Authorizer` (`LocalUserAuthorizer`, `ParentAuthorizer`, or `DenyingAuthorizer`) resolves the decision.
    The UI-prompt broadcast and the UI/forwarding branching this class previously owned now live on the individual `Authorizer` implementations — see [architecture.md's authority model](architecture.md#the-authority-model).
-3. **Review log — outcome** — write `permission_request.approved` or `permission_request.denied` with the final decision state and any denial reason.
+3. **Review log — outcome** — write `permission_request.approved` or `permission_request.denied` with the final decision state, any denial reason, and the decision's `decidedBy` provenance ([#726]).
    The denied entry's `resolution` is the decision state, or `confirmation_unavailable` when the decision carries that marker — a `DenyingAuthorizer` denial, i.e. no live authority was reachable (a no-UI, non-subagent session) ([#556]).
+
+Only the outcome entries carry `decidedBy`; the waiting entry does not, because nothing has decided yet and a `null` there would read as decided-by-nobody.
+The prompter records what the decision states rather than deriving it — which is what lets one entry distinguish a human at the dialog, a chain link, an unreachable authority, and another session's answer, where the shape alone cannot.
 
 Yolo-mode auto-approval is resolved upstream: at the composition stage (`PermissionManager.check`'s `rewriteAsksToYolo`) for a rule-driven ask, and at `GateRunner`'s auto-approve fast path (`resolveYoloGrant`) for an ask synthesized after resolution, which no rule rewrite can reach ([#712]).
 An `ask` never reaches this class under yolo, so `PermissionPrompter` has no yolo-mode knowledge.
@@ -78,4 +81,5 @@ The Authorizer spine is entirely behind that seam.
 
 [#555]: https://github.com/gotgenes/pi-packages/issues/555
 [#556]: https://github.com/gotgenes/pi-packages/issues/556
+[#726]: https://github.com/gotgenes/pi-packages/issues/726
 [#712]: https://github.com/gotgenes/pi-packages/issues/712

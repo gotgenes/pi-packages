@@ -1,15 +1,25 @@
 import { describe, expect, it } from "vitest";
 
 import { buildUiPrompt } from "#src/permission-ui-prompt";
+import type { PromptRequestFacts } from "#src/presentation/prompt-payload";
+import { makePromptPayload } from "#test/helpers/prompt-details-fixtures";
+
+/** A payload whose request facts carry the given overrides. */
+function payloadWith(request: Partial<PromptRequestFacts> = {}) {
+  return makePromptPayload({
+    request: { ...makePromptPayload().request, ...request },
+  });
+}
 
 describe("buildUiPrompt", () => {
   it("normalizes a skill prompt to the skill surface and skill-name value", () => {
+    const payload = payloadWith({ surface: "skill", value: "deploy-helper" });
     expect(
       buildUiPrompt({
         requestId: "req-2",
         source: "skill_input",
         agentName: null,
-        message: "Allow skill?",
+        payload,
         skillName: "deploy-helper",
       }),
     ).toEqual({
@@ -18,7 +28,7 @@ describe("buildUiPrompt", () => {
       surface: "skill",
       value: "deploy-helper",
       agentName: null,
-      message: "Allow skill?",
+      request: payload.request,
       forwarding: null,
     });
   });
@@ -29,7 +39,7 @@ describe("buildUiPrompt", () => {
         requestId: "req-3",
         source: "tool_call",
         agentName: null,
-        message: "m",
+        payload: makePromptPayload(),
         toolName: "read",
         path: "/etc/hosts",
         target: "ignored",
@@ -38,12 +48,18 @@ describe("buildUiPrompt", () => {
   });
 
   it("derives surface and value from direct fields and defaults forwarding to null", () => {
+    const payload = payloadWith({
+      surface: "bash",
+      toolName: "bash",
+      value: "git push",
+      matchedPattern: "git *",
+    });
     expect(
       buildUiPrompt({
         requestId: "req-u1",
         source: "tool_call",
         agentName: "Explore",
-        message: "Allow git push?",
+        payload,
         toolName: "bash",
         command: "git push",
       }),
@@ -53,18 +69,61 @@ describe("buildUiPrompt", () => {
       surface: "bash",
       value: "git push",
       agentName: "Explore",
-      message: "Allow git push?",
+      request: payload.request,
       forwarding: null,
     });
   });
 
+  it("carries the payload's invariant core verbatim, with no evidence or annotations", () => {
+    const payload = makePromptPayload({
+      kind: "bash",
+      request: {
+        requester: { agentName: "Explore", forwarded: false, sessionId: null },
+        surface: "bash",
+        toolName: "bash",
+        invokedToolName: "exec_command",
+        value: "git push",
+        matchedPattern: "git *",
+        commandContext: "subshell",
+        executedUnit: "git push --force",
+      },
+      evidence: [{ label: "full command", text: "secret-ish", detail: null }],
+      annotations: [{ source: "judge", text: "advisory" }],
+    });
+
+    const event = buildUiPrompt({
+      requestId: "req-core",
+      source: "tool_call",
+      agentName: "Explore",
+      payload,
+      toolName: "bash",
+      command: "git push",
+    });
+
+    expect(event.request).toEqual({
+      requester: { agentName: "Explore", forwarded: false, sessionId: null },
+      surface: "bash",
+      toolName: "bash",
+      invokedToolName: "exec_command",
+      value: "git push",
+      matchedPattern: "git *",
+      commandContext: "subshell",
+      executedUnit: "git push --force",
+    });
+    // The bus is the narrowest renderer (ADR 0011 §6): no evidence reaches it.
+    expect(event).not.toHaveProperty("message");
+    expect(event).not.toHaveProperty("evidence");
+    expect(event).not.toHaveProperty("annotations");
+  });
+
   it("uses explicit surface and value overrides in place of the derived projection", () => {
+    const payload = payloadWith({ surface: "external_directory" });
     expect(
       buildUiPrompt({
         requestId: "req-u2",
         source: "tool_call",
         agentName: "Explore",
-        message: "m",
+        payload,
         toolName: "bash",
         command: "git push",
         surface: "external_directory",
@@ -76,18 +135,19 @@ describe("buildUiPrompt", () => {
       surface: "external_directory",
       value: "/etc/hosts",
       agentName: "Explore",
-      message: "m",
+      request: payload.request,
       forwarding: null,
     });
   });
 
   it("treats an explicit null surface/value override as intentional, not a fallback trigger", () => {
+    const payload = makePromptPayload();
     expect(
       buildUiPrompt({
         requestId: "req-u3",
         source: "tool_call",
         agentName: null,
-        message: "m",
+        payload,
         toolName: "bash",
         command: "git push",
         surface: null,
@@ -99,18 +159,28 @@ describe("buildUiPrompt", () => {
       surface: null,
       value: null,
       agentName: null,
-      message: "m",
+      request: payload.request,
       forwarding: null,
     });
   });
 
   it("passes forwarding context through alongside explicit display fields", () => {
+    const payload = payloadWith({
+      requester: {
+        agentName: "Explore",
+        forwarded: true,
+        sessionId: "child-session",
+      },
+      surface: "bash",
+      toolName: "bash",
+      value: "git push",
+    });
     expect(
       buildUiPrompt({
         requestId: "req-u4",
         source: "tool_call",
         agentName: "Explore",
-        message: "Subagent 'Explore' requested permission.\n\nAllow git push?",
+        payload,
         surface: "bash",
         value: "git push",
         forwarding: {
@@ -124,7 +194,7 @@ describe("buildUiPrompt", () => {
       surface: "bash",
       value: "git push",
       agentName: "Explore",
-      message: "Subagent 'Explore' requested permission.\n\nAllow git push?",
+      request: payload.request,
       forwarding: {
         requesterAgentName: "Explore",
         requesterSessionId: "child-session",
@@ -133,12 +203,13 @@ describe("buildUiPrompt", () => {
   });
 
   it("passes forwarding context with null requester identity through unchanged", () => {
+    const payload = makePromptPayload();
     expect(
       buildUiPrompt({
         requestId: "req-fwd-null",
         source: "tool_call",
         agentName: null,
-        message: "Allow?",
+        payload,
         surface: null,
         value: null,
         forwarding: { requesterAgentName: null, requesterSessionId: null },
@@ -149,7 +220,7 @@ describe("buildUiPrompt", () => {
       surface: null,
       value: null,
       agentName: null,
-      message: "Allow?",
+      request: payload.request,
       forwarding: { requesterAgentName: null, requesterSessionId: null },
     });
   });

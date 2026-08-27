@@ -6,9 +6,36 @@ import {
   collectPathCandidateTokens,
   collectRedirectTokens,
   extractCommandName,
+  extractCommandWord,
+  type PathToken,
 } from "#src/access-intent/bash/token-collection";
+import { UNPROVEN_EFFECT } from "#src/access-intent/effect";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+/**
+ * The token strings a collector produced.
+ *
+ * The collectors answer two questions at once — which tokens are path
+ * candidates, and what effect each carries. These wrappers keep the projection
+ * assertions reading as projection assertions; the effect assertions call the
+ * collectors directly.
+ */
+function commandTokens(node: TSNode): string[] {
+  return tokenTextsOf(collectCommandTokens(node));
+}
+
+function redirectTokens(node: TSNode): string[] {
+  return tokenTextsOf(collectRedirectTokens(node));
+}
+
+function pathCandidateTokens(node: TSNode): string[] {
+  return tokenTextsOf(collectPathCandidateTokens(node));
+}
+
+function tokenTextsOf(tokens: readonly PathToken[]): string[] {
+  return tokens.map(({ token }) => token);
+}
 
 /** Depth-first search for the first node of the given type. */
 function findNode(node: TSNode, type: string): TSNode | null {
@@ -93,7 +120,7 @@ describe("collectCommandTokens — pattern-first commands", () => {
   it("sed: skips the first positional (inline pattern) and collects the rest", async () => {
     const { node, tree } = await parseCommandNode("sed 's/x/y/' a.txt b.txt");
     try {
-      expect(collectCommandTokens(node)).toEqual(["a.txt", "b.txt"]);
+      expect(commandTokens(node)).toEqual(["a.txt", "b.txt"]);
     } finally {
       tree.delete();
     }
@@ -104,7 +131,7 @@ describe("collectCommandTokens — pattern-first commands", () => {
     try {
       // -e consumes the next argument (the script), so file.txt is the first positional
       // Since hasExplicitScript is set by -e, the positional is not skipped
-      expect(collectCommandTokens(node)).toEqual(["file.txt"]);
+      expect(commandTokens(node)).toEqual(["file.txt"]);
     } finally {
       tree.delete();
     }
@@ -116,10 +143,7 @@ describe("collectCommandTokens — pattern-first commands", () => {
     );
     try {
       // -f consumes the next arg as a file path (extracted), and sets hasExplicitScript
-      expect(collectCommandTokens(node)).toEqual([
-        "/scripts/script.sed",
-        "file.txt",
-      ]);
+      expect(commandTokens(node)).toEqual(["/scripts/script.sed", "file.txt"]);
     } finally {
       tree.delete();
     }
@@ -130,7 +154,7 @@ describe("collectCommandTokens — pattern-first commands", () => {
       "grep pattern /etc/hosts /etc/passwd",
     );
     try {
-      expect(collectCommandTokens(node)).toEqual(["/etc/hosts", "/etc/passwd"]);
+      expect(commandTokens(node)).toEqual(["/etc/hosts", "/etc/passwd"]);
     } finally {
       tree.delete();
     }
@@ -139,7 +163,7 @@ describe("collectCommandTokens — pattern-first commands", () => {
   it("grep -e: with explicit -e flag, all positionals are file arguments", async () => {
     const { node, tree } = await parseCommandNode("grep -e pattern /etc/hosts");
     try {
-      expect(collectCommandTokens(node)).toEqual(["/etc/hosts"]);
+      expect(commandTokens(node)).toEqual(["/etc/hosts"]);
     } finally {
       tree.delete();
     }
@@ -150,7 +174,7 @@ describe("collectCommandTokens — pattern-first commands", () => {
     try {
       // After --, both 'pattern' (first positional) and '/etc/hosts' are positionals.
       // pattern is the pattern positional and is skipped; /etc/hosts is collected.
-      expect(collectCommandTokens(node)).toEqual(["/etc/hosts"]);
+      expect(commandTokens(node)).toEqual(["/etc/hosts"]);
     } finally {
       tree.delete();
     }
@@ -161,7 +185,7 @@ describe("collectCommandTokens — pattern-first commands", () => {
       "sd find replace file.txt other.txt",
     );
     try {
-      expect(collectCommandTokens(node)).toEqual(["file.txt", "other.txt"]);
+      expect(commandTokens(node)).toEqual(["file.txt", "other.txt"]);
     } finally {
       tree.delete();
     }
@@ -170,7 +194,7 @@ describe("collectCommandTokens — pattern-first commands", () => {
   it("rg: skips the pattern positional and collects file/dir arguments", async () => {
     const { node, tree } = await parseCommandNode("rg pattern /etc/");
     try {
-      expect(collectCommandTokens(node)).toEqual(["/etc/"]);
+      expect(commandTokens(node)).toEqual(["/etc/"]);
     } finally {
       tree.delete();
     }
@@ -183,7 +207,7 @@ describe("collectCommandTokens — generic commands", () => {
   it("collects all argument tokens after the command name", async () => {
     const { node, tree } = await parseCommandNode("cat /etc/hosts /etc/passwd");
     try {
-      expect(collectCommandTokens(node)).toEqual(["/etc/hosts", "/etc/passwd"]);
+      expect(commandTokens(node)).toEqual(["/etc/hosts", "/etc/passwd"]);
     } finally {
       tree.delete();
     }
@@ -192,7 +216,7 @@ describe("collectCommandTokens — generic commands", () => {
   it("skips variable assignment prefixes", async () => {
     const { node, tree } = await parseCommandNode("FOO=/bar cat /etc/hosts");
     try {
-      expect(collectCommandTokens(node)).toEqual(["/etc/hosts"]);
+      expect(commandTokens(node)).toEqual(["/etc/hosts"]);
     } finally {
       tree.delete();
     }
@@ -201,7 +225,7 @@ describe("collectCommandTokens — generic commands", () => {
   it("collects no tokens for a bare command with no arguments", async () => {
     const { node, tree } = await parseCommandNode("ls");
     try {
-      expect(collectCommandTokens(node)).toEqual([]);
+      expect(commandTokens(node)).toEqual([]);
     } finally {
       tree.delete();
     }
@@ -216,7 +240,7 @@ describe("collectRedirectTokens", () => {
       "cat /etc/hosts > /tmp/out.txt",
     );
     try {
-      expect(collectRedirectTokens(node)).toEqual(["/tmp/out.txt"]);
+      expect(redirectTokens(node)).toEqual(["/tmp/out.txt"]);
     } finally {
       tree.delete();
     }
@@ -227,7 +251,7 @@ describe("collectRedirectTokens", () => {
       "echo hello >> /tmp/log.txt",
     );
     try {
-      expect(collectRedirectTokens(node)).toEqual(["/tmp/log.txt"]);
+      expect(redirectTokens(node)).toEqual(["/tmp/log.txt"]);
     } finally {
       tree.delete();
     }
@@ -236,10 +260,48 @@ describe("collectRedirectTokens", () => {
   it("collects the source path from a stdin redirect", async () => {
     const { node, tree } = await parseRedirectNode("cat < /etc/hosts");
     try {
-      expect(collectRedirectTokens(node)).toEqual(["/etc/hosts"]);
+      expect(redirectTokens(node)).toEqual(["/etc/hosts"]);
     } finally {
       tree.delete();
     }
+  });
+
+  describe("operands of a hosted nested command (#741)", () => {
+    it("collects the operand of a substitution used as the destination", async () => {
+      const { node, tree } = await parseRedirectNode(
+        "echo hi > $(cat /etc/shadow)",
+      );
+      try {
+        expect(redirectTokens(node)).toEqual(["/etc/shadow"]);
+      } finally {
+        tree.delete();
+      }
+    });
+
+    it("collects the operand of a process substitution read as input", async () => {
+      const { node, tree } = await parseRedirectNode(
+        "cat < <(cat /etc/shadow)",
+      );
+      try {
+        expect(redirectTokens(node)).toEqual(["/etc/shadow"]);
+      } finally {
+        tree.delete();
+      }
+    });
+
+    it("collects both the destination text and a concatenated operand", async () => {
+      const { node, tree } = await parseRedirectNode(
+        "echo hi > /tmp/$(cat /etc/shadow)",
+      );
+      try {
+        expect(redirectTokens(node)).toEqual([
+          "/tmp/$(cat /etc/shadow)",
+          "/etc/shadow",
+        ]);
+      } finally {
+        tree.delete();
+      }
+    });
   });
 });
 
@@ -251,7 +313,7 @@ describe("collectPathCandidateTokens", () => {
     const tree = parser.parse("cat /etc/hosts");
     try {
       if (!tree) throw new Error("parse returned null");
-      expect(collectPathCandidateTokens(tree.rootNode)).toEqual(["/etc/hosts"]);
+      expect(pathCandidateTokens(tree.rootNode)).toEqual(["/etc/hosts"]);
     } finally {
       tree?.delete();
     }
@@ -262,7 +324,7 @@ describe("collectPathCandidateTokens", () => {
     const tree = parser.parse("cat /etc/hosts > /tmp/out.txt");
     try {
       if (!tree) throw new Error("parse returned null");
-      expect(collectPathCandidateTokens(tree.rootNode)).toEqual([
+      expect(pathCandidateTokens(tree.rootNode)).toEqual([
         "/etc/hosts",
         "/tmp/out.txt",
       ]);
@@ -277,11 +339,51 @@ describe("collectPathCandidateTokens", () => {
     try {
       if (!tree) throw new Error("parse returned null");
       // heredoc_body is in SKIP_SUBTREE_TYPES — its text must not be collected
-      const tokens = collectPathCandidateTokens(tree.rootNode);
+      const tokens = pathCandidateTokens(tree.rootNode);
       expect(tokens).not.toContain("hello");
     } finally {
       tree?.delete();
     }
+  });
+
+  describe("operands hosted in a heredoc body (#741)", () => {
+    async function collectFrom(command: string): Promise<string[]> {
+      const parser = await getParser();
+      const tree = parser.parse(command);
+      if (!tree) throw new Error("parse returned null");
+      try {
+        return pathCandidateTokens(tree.rootNode);
+      } finally {
+        tree.delete();
+      }
+    }
+
+    it("collects the operand of an interpolating heredoc body", async () => {
+      expect(await collectFrom("cat <<EOF\n$(cat /etc/shadow)\nEOF")).toEqual([
+        "/etc/shadow",
+      ]);
+    });
+
+    it.each([
+      ["single-quoted", "cat <<'EOF'\n$(cat /etc/shadow)\nEOF"],
+      ["double-quoted", 'cat <<"EOF"\n$(cat /etc/shadow)\nEOF'],
+    ])("collects nothing from a %s heredoc body", async (_label, command) => {
+      expect(await collectFrom(command)).toEqual([]);
+    });
+
+    it("never collects heredoc prose, even alongside a substitution", async () => {
+      expect(
+        await collectFrom(
+          "cat <<EOF\n/etc/passwd is prose\n$(cat /etc/shadow)\nEOF",
+        ),
+      ).toEqual(["/etc/shadow"]);
+    });
+
+    it("collects the operand of a herestring substitution", async () => {
+      expect(await collectFrom("cat <<< $(cat /etc/shadow)")).toEqual([
+        "/etc/shadow",
+      ]);
+    });
   });
 
   it("recurses into command substitution to collect nested tokens", async () => {
@@ -290,7 +392,7 @@ describe("collectPathCandidateTokens", () => {
     try {
       if (!tree) throw new Error("parse returned null");
       // The command_substitution is a non-command, non-redirect node — recurse
-      const tokens = collectPathCandidateTokens(tree.rootNode);
+      const tokens = pathCandidateTokens(tree.rootNode);
       // /etc/hosts is inside the substitution, collected by recursion
       expect(tokens).toContain("/etc/hosts");
     } finally {
@@ -303,7 +405,7 @@ describe("embedded --opt=value extraction (#645)", () => {
   async function tokensOf(cmd: string): Promise<string[]> {
     const { node, tree } = await parseCommandNode(cmd);
     try {
-      return collectCommandTokens(node);
+      return commandTokens(node);
     } finally {
       tree.delete();
     }
@@ -347,5 +449,128 @@ describe("embedded --opt=value extraction (#645)", () => {
 
   it("keeps only the first '=' as the separator", async () => {
     expect(await tokensOf("cat --opt=/tmp/a=b")).toContain("/tmp/a=b");
+  });
+});
+
+// ── extractCommandWord ─────────────────────────────────────────────────
+
+describe("extractCommandWord", () => {
+  it("returns a bare head word unchanged", async () => {
+    const { node, tree } = await parseCommandNode("grep pattern file.txt");
+    try {
+      expect(extractCommandWord(node)).toBe("grep");
+    } finally {
+      tree.delete();
+    }
+  });
+
+  it.each([
+    "/usr/bin/grep",
+    "./grep",
+    "../bin/grep",
+  ])("keeps the directory prefix of %s, which extractCommandName strips", async (headWord) => {
+    const { node, tree } = await parseCommandNode(`${headWord} p file.txt`);
+    try {
+      expect(extractCommandWord(node)).toBe(headWord);
+      expect(extractCommandName(node)).toBe("grep");
+    } finally {
+      tree.delete();
+    }
+  });
+});
+
+// ── Per-token effect attribution (#807) ───────────────────────────────────
+
+describe("effect attribution", () => {
+  async function attributedTokens(command: string): Promise<PathToken[]> {
+    const parser = await getParser();
+    const tree = parser.parse(command);
+    if (!tree) throw new Error("parse returned null");
+    try {
+      return collectPathCandidateTokens(tree.rootNode);
+    } finally {
+      tree.delete();
+    }
+  }
+
+  it("attributes a core word's read to every token it owns", async () => {
+    expect(await attributedTokens("cat /etc/hosts /etc/passwd")).toEqual([
+      { token: "/etc/hosts", effect: { effect: "read", source: "core" } },
+      { token: "/etc/passwd", effect: { effect: "read", source: "core" } },
+    ]);
+  });
+
+  it("attributes a pattern-first command's read to its file arguments", async () => {
+    expect(await attributedTokens("grep needle /etc/hosts")).toEqual([
+      { token: "/etc/hosts", effect: { effect: "read", source: "core" } },
+    ]);
+  });
+
+  it("attributes a core word's read to an embedded option value", async () => {
+    expect(await attributedTokens("grep --file=/tmp/patterns target")).toEqual([
+      { token: "/tmp/patterns", effect: { effect: "read", source: "core" } },
+    ]);
+  });
+
+  it("proves nothing for a command outside the core", async () => {
+    expect(await attributedTokens("pnpm test /etc/hosts")).toEqual([
+      { token: "test", effect: UNPROVEN_EFFECT },
+      { token: "/etc/hosts", effect: UNPROVEN_EFFECT },
+    ]);
+  });
+
+  it("proves nothing for a path-qualified core word", async () => {
+    expect(await attributedTokens("/tmp/evil/cat /etc/hosts")).toEqual([
+      { token: "/etc/hosts", effect: UNPROVEN_EFFECT },
+    ]);
+  });
+
+  it("retracts a guarded word's claim when an option withdraws it", async () => {
+    const retracted = { effect: "unproven", source: "retracted" };
+    expect(await attributedTokens("find /etc -delete")).toEqual([
+      { token: "/etc", effect: retracted },
+      { token: "-delete", effect: retracted },
+    ]);
+  });
+
+  it("proves a write for an output redirect destination", async () => {
+    expect(await attributedTokens("cat /etc/hosts > /tmp/out.txt")).toEqual([
+      { token: "/etc/hosts", effect: { effect: "read", source: "core" } },
+      { token: "/tmp/out.txt", effect: { effect: "write", source: "syntax" } },
+    ]);
+  });
+
+  it("proves a write for an append redirect even under a core reader", async () => {
+    expect(await attributedTokens("echo hi >> /tmp/log.txt")).toEqual([
+      { token: "hi", effect: { effect: "read", source: "core" } },
+      { token: "/tmp/log.txt", effect: { effect: "write", source: "syntax" } },
+    ]);
+  });
+
+  it("proves a read for an input redirect destination", async () => {
+    expect(await attributedTokens("pnpm x < /tmp/in.txt")).toEqual([
+      { token: "x", effect: UNPROVEN_EFFECT },
+      { token: "/tmp/in.txt", effect: { effect: "read", source: "syntax" } },
+    ]);
+  });
+
+  it("collects no token for a file-descriptor duplication", async () => {
+    expect(await attributedTokens("pnpm x 2>&1")).toEqual([
+      { token: "x", effect: UNPROVEN_EFFECT },
+    ]);
+  });
+
+  it("gives a nested execution's tokens their own command's attribution", async () => {
+    expect(await attributedTokens("pnpm x > $(cat /etc/shadow)")).toEqual([
+      { token: "x", effect: UNPROVEN_EFFECT },
+      { token: "/etc/shadow", effect: { effect: "read", source: "core" } },
+    ]);
+  });
+
+  it("attributes each unit of a pipeline separately", async () => {
+    expect(await attributedTokens("cat /etc/hosts | tee /tmp/copy")).toEqual([
+      { token: "/etc/hosts", effect: { effect: "read", source: "core" } },
+      { token: "/tmp/copy", effect: UNPROVEN_EFFECT },
+    ]);
   });
 });

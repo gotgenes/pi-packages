@@ -56,6 +56,7 @@ Review what happened across this session — the user prompts, your tool calls, 
 If the retro file already contains stage entries from prior sessions (sections headed `## Stage: <name> (<timestamp>)`), read them as primary context.
 Your synthesis should span all stages — not just this session.
 Look for patterns that recur across stages, friction that compounds, and whether earlier observations led to adjustments.
+When the issue spanned multiple sessions, read the prior stages' transcripts, not only their breadcrumbs: `list_session_files({ cwd })` lists this repo's sessions newest-first (the filename embeds the session id), and `read_session_file({ path })` renders one — repeated friction shows only in the transcript (Refs #786).
 
 For a worktree issue, the implementation happened in a **separate peer session** whose transcript `read_session` cannot reach (it reads only the current session; the peer is a sibling, not a parent).
 The `## Stage: Ship (worktree)` breadcrumb records a **Peer session transcript** path (a `.jsonl` under `~/.pi/agent/sessions/`, which survives the worktree teardown) — read it with `read_session_file({ path: "<path>" })` when a diagnostic lens (e.g. model-performance correlation) needs message-level detail the breadcrumbs do not carry; it renders the peer transcript through the same pipeline as `read_session`.
@@ -98,6 +99,7 @@ Skip a lens entirely when it finds nothing notable.
    If the `read_session`, `read_parent_session`, or `read_session_file` tools are available, use them to inspect model assignments: attribute each turn to the inline `[provider/model]` label the transcript renders on it.
    Attribute each turn from the inline `[provider/model]` label in an **unfiltered** `read_session` call.
    A `types: ["model_change"]`-filtered call bypasses that suppression and renders phantom switches that never ran a turn (Refs #737).
+   `pi-session-tools` is this repo's own tooling for exactly this — use `read_session`/`read_session_file`, not `jq` over `$PI_SESSION_FILE`, and never `PI_MODEL`/`PI_PROVIDER`, which report only the session's *current* model and invent an attribution when extrapolated across stages (Refs #778).
 2. **Escalation-delay tracking** — for each `rabbit-hole` friction point, count how many consecutive tool calls the agent spent on the same error or approach before resolving or changing strategy.
    Flag sequences longer than 5 consecutive tool calls on the same error as "should have dispatched an Explore or Plan subagent" or "should have asked the user."
 3. **Unused-tool detection** — for each `rabbit-hole` or `missing-context` friction point, check whether a subagent type or tool was available that could have helped but was never dispatched.
@@ -177,6 +179,9 @@ A retro commit (`docs(retro): ...`) should land the retro file plus small (~1–
 If a proposed change is larger — touches more than ~3 files, restructures content significantly, or rewrites a prompt's scope — record it in the retro file as a follow-up but **do not** implement it inline.
 Suggest the user open a GitHub issue and run `/plan-issue` on it.
 
+When an issue is actually filed during the retro, load the `roadmap-fit` skill and follow it for each one — an issue spun off while its package has an open improvement phase gets a recorded disposition now, not at phase close.
+The skill exits at its first step when no phase is open.
+
 ## Step 7 — Verbosity check before landing changes
 
 Retro-driven additions to `AGENTS.md` and prompt bodies should land as **rule + tight example**, not **rule + rationale + worked example**.
@@ -184,7 +189,7 @@ The retro file is the right home for rationale and worked examples.
 
 Before landing any change, ask:
 
-1. **Rationale placement** — is the _why_ in the retro file, or has it leaked into `AGENTS.md`/prompt?
+1. **Rationale placement** — is the *why* in the retro file, or has it leaked into `AGENTS.md`/prompt?
    If the latter, move it back and leave a one-clause justification (or a `Refs #N` pointer).
 2. **Example tightness** — can the example fit in one or two lines?
 3. **Hedging audit** — phrases like "should generally," "typically," "usually" often signal the rule isn't crisp enough.
@@ -200,6 +205,7 @@ Do not split this into multiple sections; one coherent list per retro.
 
 1. `git add` the retro file (`packages/<PKG>/docs/retro/` or `docs/retro/`), `AGENTS.md`, `.pi/prompts/`, and any other touched files.
 2. Commit as `docs(retro): add retro notes for issue #N`.
+   Split any `packages/<PKG>/src/` or `test/` change into its own `test:`/`refactor:` commit first — `docs:` is an unhidden changelog type, so bundling code under it cuts a pointless patch release (Refs #610).
 3. `git push`.
 
 If the user suggests further refinements after the commit, implement them, append to the same `### Changes made` section, and commit again.

@@ -63,6 +63,9 @@ Do not proceed to "Summarize" on an uncaptured or banner-only result.
 Proceed to the "Summarize" step in the template.
 Include the one-line verdict in the stage notes ("Pre-completion reviewer: PASS").
 
+A PASS is scoped to the commit it reviewed.
+If substantive commits land afterward — not just the stage-notes commit — re-dispatch before recommending `/ship-issue` (Refs #775).
+
 ### Overall: WARN
 
 Proceed to "Summarize."

@@ -12,8 +12,7 @@ export function registerReleasePrFind(pi: ExtensionAPI): void {
       "Find the release-please PR after a push to main. " +
       "Polls until an open release-please PR appears or the timeout expires (default: 120 s). " +
       "Returns PR number, title, head branch, mergeable status, and URL.",
-    promptSnippet:
-      "release_pr_find: Find the release-please PR after pushing to main.",
+    promptSnippet: "Find the release-please PR after pushing to main.",
     parameters: Type.Object({
       timeout: Type.Optional(
         Type.Number({

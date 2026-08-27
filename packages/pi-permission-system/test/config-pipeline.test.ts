@@ -5,6 +5,10 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { loadAndMergeConfigs } from "#src/config-loader";
 import { normalizePermissionSystemConfig } from "#src/extension-config";
+import {
+  DEFAULT_RENDER_BUDGET,
+  resolveRenderBudget,
+} from "#src/presentation/dialog-renderer";
 
 /**
  * Full-pipeline seam tests: write a temp config.json → loadAndMergeConfigs →
@@ -37,31 +41,60 @@ describe("config pipeline seam", () => {
     writeFileSync(join(dir, "config.json"), JSON.stringify(content));
   }
 
-  it("runtime knob and preview-length field both survive the full pipeline", () => {
-    writeGlobal({
-      debugLog: true,
-      toolInputPreviewMaxLength: 1000,
-    });
+  it("a runtime knob survives the full pipeline", () => {
+    writeGlobal({ debugLog: true });
 
     const mergeResult = loadAndMergeConfigs(agentDir, cwd, extensionRoot);
     const config = normalizePermissionSystemConfig(mergeResult.merged);
 
     expect(config.debugLog).toBe(true);
-    expect(config.toolInputPreviewMaxLength).toBe(1000);
   });
 
-  it("text summary length field survives the full pipeline", () => {
-    writeGlobal({
-      toolTextSummaryMaxLength: 250,
-    });
+  // The deprecated caps traverse the pipeline backwards from every other field:
+  // they must reach the merge intermediate (so the deprecation detector sees an
+  // operator's setting) and stop there, never reaching a runtime consumer.
+  it("a deprecated preview cap reaches the merge intermediate but not the runtime config", () => {
+    writeGlobal({ toolInputPreviewMaxLength: 1000 });
 
     const mergeResult = loadAndMergeConfigs(agentDir, cwd, extensionRoot);
     const config = normalizePermissionSystemConfig(mergeResult.merged);
 
-    expect(config.toolTextSummaryMaxLength).toBe(250);
+    expect(mergeResult.merged.toolInputPreviewMaxLength).toBe(1000);
+    expect(config).not.toHaveProperty("toolInputPreviewMaxLength");
   });
 
-  it("project config overrides global preview-length field end to end", () => {
+  it("dialog budget fields survive the full pipeline and resolve to a render budget", () => {
+    writeGlobal({ promptMaxRows: 12, promptFieldMaxWidth: 80 });
+
+    const mergeResult = loadAndMergeConfigs(agentDir, cwd, extensionRoot);
+    const config = normalizePermissionSystemConfig(mergeResult.merged);
+
+    expect(config.promptMaxRows).toBe(12);
+    expect(config.promptFieldMaxWidth).toBe(80);
+    expect(resolveRenderBudget(config)).toEqual({
+      maxRows: 12,
+      fieldMaxWidth: 80,
+    });
+  });
+
+  it("falls back to the default render budget when the config names neither field", () => {
+    const mergeResult = loadAndMergeConfigs(agentDir, cwd, extensionRoot);
+    const config = normalizePermissionSystemConfig(mergeResult.merged);
+
+    expect(resolveRenderBudget(config)).toEqual(DEFAULT_RENDER_BUDGET);
+  });
+
+  it("a deprecated text-summary cap likewise stops at the merge intermediate", () => {
+    writeGlobal({ toolTextSummaryMaxLength: 250 });
+
+    const mergeResult = loadAndMergeConfigs(agentDir, cwd, extensionRoot);
+    const config = normalizePermissionSystemConfig(mergeResult.merged);
+
+    expect(mergeResult.merged.toolTextSummaryMaxLength).toBe(250);
+    expect(config).not.toHaveProperty("toolTextSummaryMaxLength");
+  });
+
+  it("project config still overrides a global deprecated cap in the merge", () => {
     writeGlobal({ toolInputPreviewMaxLength: 200 });
     const projectDir = join(cwd, ".pi", "extensions", "pi-permission-system");
     mkdirSync(projectDir, { recursive: true });
@@ -71,9 +104,8 @@ describe("config pipeline seam", () => {
     );
 
     const mergeResult = loadAndMergeConfigs(agentDir, cwd, extensionRoot);
-    const config = normalizePermissionSystemConfig(mergeResult.merged);
 
-    expect(config.toolInputPreviewMaxLength).toBe(500);
+    expect(mergeResult.merged.toolInputPreviewMaxLength).toBe(500);
   });
 
   it("defaults apply when config file is absent", () => {
@@ -84,7 +116,5 @@ describe("config pipeline seam", () => {
     expect(config.debugLog).toBe(false);
     expect(config.permissionReviewLog).toBe(true);
     expect(config.yoloMode).toBe(false);
-    expect(config.toolInputPreviewMaxLength).toBeUndefined();
-    expect(config.toolTextSummaryMaxLength).toBeUndefined();
   });
 });

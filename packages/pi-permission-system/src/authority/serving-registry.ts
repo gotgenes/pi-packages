@@ -35,8 +35,41 @@ export const SERVING_SESSION_REGISTRY_KEY = Symbol.for(
  * neither reads the store nor gains a query it has no business making (ISP).
  */
 export interface ServingAnnouncer {
+  /**
+   * Record that `sessionId` is polling its inbox.
+   *
+   * Idempotent, and called on every poll tick rather than once per session: an
+   * announcement that can decay (the filesystem heartbeat) has to be kept
+   * current, and one that cannot (this registry) costs a set insertion to say
+   * so again.
+   */
   markServing(sessionId: string): void;
   clearServing(sessionId: string): void;
+}
+
+/**
+ * Fan an announcement out to every channel a serving session publishes on.
+ *
+ * A session announces to the process-global registry (for its in-process
+ * children) and to the filesystem (for children in other processes). Composing
+ * them keeps `ForwardingManager` holding one collaborator, so adding or
+ * removing a channel never reaches the poll loop.
+ */
+export function composeServingAnnouncers(
+  ...announcers: readonly ServingAnnouncer[]
+): ServingAnnouncer {
+  return {
+    markServing(sessionId: string): void {
+      for (const announcer of announcers) {
+        announcer.markServing(sessionId);
+      }
+    },
+    clearServing(sessionId: string): void {
+      for (const announcer of announcers) {
+        announcer.clearServing(sessionId);
+      }
+    },
+  };
 }
 
 /**

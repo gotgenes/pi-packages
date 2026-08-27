@@ -1,6 +1,7 @@
+import type { DecisionSource } from "#src/authority/decision-source";
 import type { PromptPermissionDetails } from "#src/authority/permission-prompter";
-import type { DenialContext } from "#src/denial-messages";
 import type { PermissionDecisionEvent } from "#src/permission-events";
+import type { PromptPayload } from "#src/presentation/prompt-payload";
 import type { SessionApproval } from "#src/session-approval";
 import type { PermissionCheckResult, PermissionState } from "#src/types";
 
@@ -18,16 +19,27 @@ export interface GateDescriptor {
   surface: string;
   /** Input passed to checkPermission. */
   input: unknown;
-  /** Structured denial context — the runner formats messages from this. */
-  denialContext: DenialContext;
+  /**
+   * The complete structured description of this ask (ADR 0011 §2).
+   *
+   * The descriptor's one presentation fact: every render over it — the dialog,
+   * the agent-facing denial text, the review log — reads this and nothing
+   * else, so a gate states its facts once.
+   */
+  payload: PromptPayload;
   /**
    * Session-approval suggestion for the "for this session" option.
    * Wraps either a single pattern or multiple patterns behind a unified
    * interface — the runner never needs to know which case applies.
    */
   sessionApproval?: SessionApproval;
-  /** Details passed to the interactive permission prompt (requestId is added by the runner). */
-  promptDetails: Omit<PromptPermissionDetails, "requestId">;
+  /**
+   * Details passed to the interactive permission prompt.
+   *
+   * The runner stamps both `requestId` (which it mints) and `payload` (which
+   * the descriptor owns), so neither is a gate's to supply twice.
+   */
+  promptDetails: Omit<PromptPermissionDetails, "requestId" | "payload">;
   /** Extra context fields written to the review log alongside gate outcomes. */
   logContext: Record<string, unknown>;
   /** Surface and value for the decision event (may differ from the check surface). */
@@ -52,6 +64,15 @@ export interface GateDescriptor {
 }
 
 /**
+ * A decision event's facts, before the runner stamps the request id it minted.
+ *
+ * A gate knows what was decided but not which request it was deciding — the id
+ * is minted in `GateRunner.run`. Producing this type rather than the full event
+ * is what routes every emit through the runner's single stamping site.
+ */
+export type DecisionEventFacts = Omit<PermissionDecisionEvent, "requestId">;
+
+/**
  * Early allow result — gate has determined the action without needing the runner.
  *
  * Used for cases like Pi infrastructure read bypass where the gate short-circuits
@@ -59,10 +80,18 @@ export interface GateDescriptor {
  */
 export interface GateBypass {
   action: "allow";
+  /**
+   * What decided this short-circuit.
+   *
+   * The gate that bypasses *is* the decider, so it states its own provenance
+   * and the runner relays it onto the log entry rather than inferring one from
+   * the event name (#726). Required, so a bypass added later cannot omit it.
+   */
+  decidedBy: DecisionSource;
   /** Optional review log entry to emit. */
   log?: { event: string; details: Record<string, unknown> };
   /** Optional decision event to emit. */
-  decision?: PermissionDecisionEvent;
+  decision?: DecisionEventFacts;
 }
 
 /** Union of possible gate function return values. */

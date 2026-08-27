@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
+  detectDeprecatedPreviewCaps,
   loadAndMergeConfigs,
   loadUnifiedConfig,
   mergeUnifiedConfigs,
@@ -512,6 +513,32 @@ describe("mergeUnifiedConfigs", () => {
     expect(merged.doublePressToConfirm).toBe(false);
   });
 
+  it("replaces the prompt-budget scalars (project wins)", () => {
+    const merged = mergeUnifiedConfigs(
+      { promptMaxRows: 24, promptFieldMaxWidth: 400 },
+      { promptMaxRows: 10 },
+    );
+
+    expect(merged.promptMaxRows).toBe(10);
+    expect(merged.promptFieldMaxWidth).toBe(400);
+  });
+
+  it("replaces the review-log field width (project wins)", () => {
+    expect(
+      mergeUnifiedConfigs(
+        { reviewLogFieldMaxWidth: 1000 },
+        { reviewLogFieldMaxWidth: 200 },
+      ).reviewLogFieldMaxWidth,
+    ).toBe(200);
+  });
+
+  it("carries the review-log field width from the base when unoverridden", () => {
+    expect(
+      mergeUnifiedConfigs({ reviewLogFieldMaxWidth: 200 }, {})
+        .reviewLogFieldMaxWidth,
+    ).toBe(200);
+  });
+
   it("returns base unchanged when override is empty", () => {
     const base = {
       debugLog: true,
@@ -894,5 +921,71 @@ describe("loadAndMergeConfigs", () => {
 
       expect(result.merged.permission).toEqual({ "*": "ask", bash: "allow" });
     });
+  });
+
+  describe("deprecated tool-preview caps", () => {
+    it("notices a config that sets either cap", () => {
+      writeGlobal({
+        permission: { "*": "ask" },
+        toolInputPreviewMaxLength: 400,
+      });
+
+      const result = loadAndMergeConfigs(agentDir, cwd, extensionRoot);
+
+      expect(result.issues).toHaveLength(1);
+      expect(result.issues[0]).toContain("toolInputPreviewMaxLength");
+    });
+
+    it("keeps accepting the config rather than rejecting it fail-closed", () => {
+      writeGlobal({
+        permission: { "*": "ask", bash: "deny" },
+        toolTextSummaryMaxLength: 120,
+      });
+
+      const result = loadAndMergeConfigs(agentDir, cwd, extensionRoot);
+
+      expect(result.merged.permission).toEqual({ "*": "ask", bash: "deny" });
+    });
+
+    it("stays silent when neither cap is set", () => {
+      writeGlobal({ permission: { "*": "ask", bash: "deny" } });
+
+      const result = loadAndMergeConfigs(agentDir, cwd, extensionRoot);
+
+      expect(result.issues).toEqual([]);
+    });
+  });
+});
+
+// ── detectDeprecatedPreviewCaps ────────────────────────────────────────────
+
+describe("detectDeprecatedPreviewCaps", () => {
+  it("names the input-preview cap when it alone is set", () => {
+    const notice = detectDeprecatedPreviewCaps({
+      toolInputPreviewMaxLength: 400,
+    });
+    expect(notice).toContain("toolInputPreviewMaxLength");
+    expect(notice).not.toContain("toolTextSummaryMaxLength");
+  });
+
+  it("names the text-summary cap when it alone is set", () => {
+    const notice = detectDeprecatedPreviewCaps({
+      toolTextSummaryMaxLength: 120,
+    });
+    expect(notice).toContain("toolTextSummaryMaxLength");
+    expect(notice).not.toContain("toolInputPreviewMaxLength");
+  });
+
+  it("names both caps when both are set", () => {
+    const notice = detectDeprecatedPreviewCaps({
+      toolInputPreviewMaxLength: 400,
+      toolTextSummaryMaxLength: 120,
+    });
+    expect(notice).toContain("toolInputPreviewMaxLength");
+    expect(notice).toContain("toolTextSummaryMaxLength");
+  });
+
+  it("returns undefined when neither cap is set", () => {
+    expect(detectDeprecatedPreviewCaps({})).toBeUndefined();
   });
 });

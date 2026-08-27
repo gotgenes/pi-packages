@@ -53,3 +53,69 @@ The `pi-permission-system` suite went 2769 → 2784 tests; check, root lint, and
   Finding 1 — the `runner.ts` module-tree entry cited `#712` as bare provenance; fixed by rewording to the constraint itself ("the sole place a post-resolution ask is reconciled with yolo") and amended into the docs commit.
   Finding 2 — the plan's deferred advisory-parity question carries no issue number; left as an accepted, reasoned deferral recorded in the plan.
 - Reviewer confirmed the [#452] fail-closed, [#481]/[#490] wrapper-floor, and [#526] parity invariants survive by diff, not prose.
+
+## Stage: Final Retrospective (2026-08-15T00:35:32Z)
+
+### Session summary
+
+One Pi session carried #712 from planning through ship: a third-party bug report was verified with a live composition-root spike, planned as four cycles, implemented with one tidy-first preparatory commit, and released as `pi-permission-system@25.2.1`.
+The spike found a second, unreported defect (an explicit `bash` `deny` masked by the `<unparseable-bash-command>` synthetic ask), which became the first TDD cycle and a prerequisite for the yolo grant.
+Suite went 2769 → 2784 tests; both CI runs (push and release) were green, and the issue closed with a behavior summary.
+
+### Observations
+
+#### What went well
+
+- The planning-time spike was an instrument, not a formality.
+  Running the **real factory** through `makeFakePi` with a `ui.select`-recording ctx reproduced the issue's exact prompt string, then a ten-command probe batch established which inputs actually reach the unparseable branch (`> out.txt` and `2>&1` do; `cat <<'EOF'`, `((1+1))`, and `arr=(1 2 3)` all parse normally).
+  The same harness then exposed the deny-masking hole — an adjacent defect the report never mentioned — exactly as [#493]'s live repro exposed [#507].
+- The `tidy-first-assessor` beat the plan's own design review.
+  The plan ran the `design-review` checklist and still missed that `resolveBashCommandCheck` already inlined the same five-field whole-command resolve twice and the fix would add a third; the assessor caught it from the *upcoming* diff and the extraction landed first (`2e9f6db2`), turning cycle 1's change into a one-line call.
+- Bundling the third-party gate paid off: direction, placement, and the deny-masking scope question went into a single `ask_user` call after a measured-evidence message, and no follow-up question was needed for the rest of the session.
+- Every predicted breakage landed as predicted — both `expect(resolver.resolve).not.toHaveBeenCalled()` inversions and the [#526] parity test staying untouched — so the TDD stage produced no unplanned rework.
+
+#### What caused friction (agent side)
+
+1. `other` — the first spike run printed nothing: Vitest's default reporter hides `console.log` from passing tests, so the measurement had to be re-run with reporter flags.
+   Impact: one wasted run plus one re-run; no rework.
+   A follow-up measurement this session pinned the actual cause — `--silent=false` alone still hides the log; `--reporter=verbose` is what surfaces it.
+2. `instruction-violation` (self-identified) — the `architecture.md` doc edit carried stray `oldText2`/`newText2` keys in one `edits[]` entry, the exact trap `AGENTS.md` § Edit tool batches documents.
+   Impact: none — the keys were empty and all four intended blocks applied, verified by counting reported blocks against intended edits.
+   Evidence the rule is correct but low-salience mid-flow.
+3. `missing-context` — the new `resolveYoloGrant` test block was written against invented fixture names (`makeAllow`/`makeAsk`) instead of the builders `helpers.test.ts` already uses, and the corrective `Edit` then failed to match because `pi-autoformat` had reflowed the just-written block.
+   Impact: three extra tool calls (rejected edit → re-read → five-entry corrective batch).
+   Both halves are documented rules — check the file's existing conventions first, and re-read a region you just edited.
+4. `other` — the composition-root tests were appended with a shell heredoc, which bypasses the `pi-autoformat` hook that fires on `Edit`/`Write`; `pnpm run lint` then failed on formatting and needed `pnpm exec biome check --write`.
+   Impact: one failed lint plus one fix call.
+   The "no heredoc" rule exists in the repo but is scoped to markdown.
+5. `other` — a brief false start at ship time ("need to check where #737's commits end") over the release range, self-corrected in the same turn.
+   Impact: one extra tool call.
+6. `other` — a `Read` call used a doubled package path (`pi-packages` dropped), which the extension under test denied with a corrective message.
+   Impact: one wasted call; mildly instructive that `external_directory` caught it.
+
+#### What caused friction (user side)
+
+- Nothing material.
+  The three `ask_user` answers were decisive and unblocked the whole session; the operator's involvement was strategic (direction, placement, scope) rather than mechanical.
+- Small opportunity: #712 re-files a NOT_PLANNED issue whose "verified patch" lives on a fork.
+  An upfront steer ("treat the linked patch as reference, not a merge candidate") would have saved fetching [#570]'s body — one tool call — though the issue body did carry the provenance.
+
+### Diagnostic details
+
+- **Model-performance correlation** — the plan/TDD/ship turns ran on `anthropic/claude-sonnet-5`; the retrospective stage on `anthropic/claude-opus-5`.
+  Both subagents (`tidy-first-assessor`, `pre-completion-reviewer`) declare `anthropic/claude-sonnet-5` and both did judgment-heavy work (preparatory-refactor design, invariant verification by diff).
+  No mismatch in either direction.
+- **Escalation-delay tracking** — no `rabbit-hole` friction points; the longest streak on a single error was two calls (the rejected `Edit`), far below the five-call escalation threshold.
+- **Unused-tool detection** — no `Explore` dispatch was warranted: the issue supplied a numbered source trace, which the plan prompt keeps inline.
+  `colgrep` went unused because every hunt was exact-symbol (`state: "ask"`, `new GateRunner`, `<indirection-bash-wrapper>`) — the case the `colgrep` skill's decision table assigns to `grep`.
+- **Feedback-loop gap analysis** — verification was incremental, not end-loaded: per-cycle `vitest run <file>`, `pnpm run check` before each commit, the full package suite after cycles 1 and 2, and root `lint` + `fallow dead-code` both at the end of the TDD stage and again as pre-push gates.
+  The one gap was formatting, caught only by the end-of-cycle lint (friction point 4).
+
+### Changes made
+
+1. `AGENTS.md` § Tool-injected messages — recorded that `pi-autoformat` fires on `Edit`/`Write` only, so a heredoc-appended source file skips formatting and fails `pnpm run lint`.
+2. `.pi/skills/package-pi-permission-system/SKILL.md` Debugging rule 5 — widened the live-repro trigger from a claimed bypass to any report of a concrete prompt or decision the gate should not have produced, citing this issue alongside [#493]/[#507].
+3. `.pi/skills/testing/SKILL.md` — replaced the spike-output guidance with the measured fix (`--reporter=verbose`; `--silent=false` alone does not surface the log), keeping file-writing for output that must outlive the run.
+
+[#493]: https://github.com/gotgenes/pi-packages/issues/493
+[#507]: https://github.com/gotgenes/pi-packages/issues/507

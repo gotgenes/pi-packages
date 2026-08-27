@@ -9,8 +9,8 @@
  */
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { vi } from "vitest";
-
 import type { ResolvedAccessIntent } from "#src/access-intent/access-intent";
+import { surfaceFamilyOf } from "#src/access-intent/path-surfaces";
 import type { AskEscalator } from "#src/authority/authorizer-selection";
 import type { ShellToolsConfig } from "#src/config-schema";
 import { GateDecisionReporter } from "#src/decision-reporter";
@@ -31,6 +31,7 @@ import type { Rule } from "#src/rule";
 import { SessionRules } from "#src/session-rules";
 import type { ToolRegistry } from "#src/tool-registry";
 import type { PermissionCheckResult, PermissionState } from "#src/types";
+import { DECIDED_BY_HUMAN } from "#test/helpers/decision-fixtures";
 import {
   makeConfigStore,
   makeRealResolver,
@@ -86,6 +87,7 @@ export function makeCtx(
     sessionManager: {
       getEntries: vi.fn().mockReturnValue([]),
       getSessionDir: vi.fn().mockReturnValue("/sessions/test"),
+      getSessionId: vi.fn().mockReturnValue("test-session"),
       addEntry: vi.fn(),
     },
     ...overrides,
@@ -143,6 +145,12 @@ export function makeToolRegistry(
  * Pass the returned function as `session.checkPermission` in a `makeHandler`
  * override bag — it is applied to `permissionManager.checkPermission`.
  *
+ * A `bySurface` key naming a bare surface family (`path`,
+ * `external_directory`) answers for its directional members too, modeling the
+ * load-time sugar expansion a real config gets: a test declaring
+ * `{ external_directory: "deny" }` means the whole family is denied. Key on a
+ * directional surface directly to give the two directions different verdicts.
+ *
  * Return type is intentionally unannotated so callers retain full `vi.fn()`
  * mock access (`mock.calls`, `toHaveBeenCalledWith`, etc.).
  */
@@ -158,7 +166,11 @@ export function makeSurfaceCheck(
   return vi
     .fn<MockGateHandlerSession["checkPermission"]>()
     .mockImplementation((surface): PermissionCheckResult => {
-      const base = bySurface[surface] ?? defaultResult;
+      // A family key answers for its members, as sugar expansion would.
+      const key = Object.hasOwn(bySurface, surface)
+        ? surface
+        : surfaceFamilyOf(surface);
+      const base = bySurface[key] ?? defaultResult;
       return {
         toolName: surface,
         source: "tool",
@@ -314,9 +326,11 @@ export function makeHandler(overrides?: {
   const skillInputPipeline = new SkillInputGatePipeline(resolver);
   const reporter = new GateDecisionReporter(logger, events);
   const prompter: AskEscalator = overrides?.prompter ?? {
-    escalate: vi
-      .fn<AskEscalator["escalate"]>()
-      .mockResolvedValue({ approved: true, state: "approved" }),
+    escalate: vi.fn<AskEscalator["escalate"]>().mockResolvedValue({
+      approved: true,
+      state: "approved",
+      decidedBy: DECIDED_BY_HUMAN,
+    }),
   };
   const runner = new GateRunner(
     resolver,

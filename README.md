@@ -47,6 +47,10 @@ If installed individually via npm:
 pi remove npm:@gotgenes/<package-name>
 ```
 
+## Contributing
+
+Issues are the front door — see [CONTRIBUTING.md](./CONTRIBUTING.md) for how contributions work here.
+
 ## Development
 
 ### Prerequisites

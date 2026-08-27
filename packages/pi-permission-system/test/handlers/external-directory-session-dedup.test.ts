@@ -115,32 +115,78 @@ describe("external-directory session dedup", () => {
       const { handler, prompter } = makeDeduplicatingHandler();
       const ctx = makeCtx();
 
-      // First call — bash referencing /tmp/out.txt
-      const event1 = makeExtDirBashEvent("echo hello > /tmp/out.txt", "tc-1");
+      // First call — bash reading /tmp/out.txt
+      const event1 = makeExtDirBashEvent("cat /tmp/out.txt", "tc-1");
       const result1 = await handler.handleToolCall(event1, ctx);
       expect(result1).toEqual({ action: "allow" });
       expect(prompter.escalate).toHaveBeenCalledTimes(1);
 
-      // Second call — different bash command, same external path
-      const event2 = makeExtDirBashEvent("cat /tmp/out.txt", "tc-2");
+      // Second call — different bash command, same external path, same direction
+      const event2 = makeExtDirBashEvent("head -n 5 /tmp/out.txt", "tc-2");
       const result2 = await handler.handleToolCall(event2, ctx);
       expect(result2).toEqual({ action: "allow" });
       expect(prompter.escalate).toHaveBeenCalledTimes(1);
     });
 
-    it("does not re-prompt for read after bash already approved the same directory", async () => {
+    it("does not re-prompt for read after bash already read the same directory", async () => {
       const { handler, prompter } = makeDeduplicatingHandler();
       const ctx = makeCtx();
 
-      // First call — bash writes to /tmp/out.txt
-      const event1 = makeExtDirBashEvent("echo hello > /tmp/out.txt", "tc-1");
+      // First call — bash reads /tmp/out.txt
+      const event1 = makeExtDirBashEvent("cat /tmp/out.txt", "tc-1");
       await handler.handleToolCall(event1, ctx);
       expect(prompter.escalate).toHaveBeenCalledTimes(1);
 
-      // Second call — read from /tmp/out.txt (same directory, different tool)
+      // Second call — read from /tmp/out.txt (same directory, different tool,
+      // same direction: `read`'s identity proves the same read the core word did)
       const event2 = makeExtDirToolEvent("read", "/tmp/out.txt", "tc-2");
       await handler.handleToolCall(event2, ctx);
       expect(prompter.escalate).toHaveBeenCalledTimes(1);
+    });
+
+    describe("the read/write axis narrows a session grant (#807)", () => {
+      it("re-prompts for a read after only a write was approved", async () => {
+        const { handler, prompter } = makeDeduplicatingHandler();
+        const ctx = makeCtx();
+
+        // The redirect proves a write, so the grant is recorded on
+        // `external_directory_write` — the direction the prompt named.
+        const event1 = makeExtDirBashEvent("echo hello > /tmp/out.txt", "tc-1");
+        await handler.handleToolCall(event1, ctx);
+        expect(prompter.escalate).toHaveBeenCalledTimes(1);
+
+        // A read is the other direction, and the two are independent bits
+        // rather than tiers (ADR 0013 §3–§4), so a write grant does not cover it.
+        const event2 = makeExtDirBashEvent("cat /tmp/out.txt", "tc-2");
+        await handler.handleToolCall(event2, ctx);
+        expect(prompter.escalate).toHaveBeenCalledTimes(2);
+      });
+
+      it("re-prompts for the read tool after only a bash write was approved", async () => {
+        const { handler, prompter } = makeDeduplicatingHandler();
+        const ctx = makeCtx();
+
+        const event1 = makeExtDirBashEvent("echo hello > /tmp/out.txt", "tc-1");
+        await handler.handleToolCall(event1, ctx);
+        expect(prompter.escalate).toHaveBeenCalledTimes(1);
+
+        const event2 = makeExtDirToolEvent("read", "/tmp/out.txt", "tc-2");
+        await handler.handleToolCall(event2, ctx);
+        expect(prompter.escalate).toHaveBeenCalledTimes(2);
+      });
+
+      it("covers a later write with an approved write", async () => {
+        const { handler, prompter } = makeDeduplicatingHandler();
+        const ctx = makeCtx();
+
+        const event1 = makeExtDirBashEvent("echo hello > /tmp/out.txt", "tc-1");
+        await handler.handleToolCall(event1, ctx);
+        expect(prompter.escalate).toHaveBeenCalledTimes(1);
+
+        const event2 = makeExtDirBashEvent("echo bye >> /tmp/out.txt", "tc-2");
+        await handler.handleToolCall(event2, ctx);
+        expect(prompter.escalate).toHaveBeenCalledTimes(1);
+      });
     });
   });
 });

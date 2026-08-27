@@ -7,6 +7,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { AskEscalator } from "#src/authority/authorizer-selection";
+import { DECIDED_BY_HUMAN } from "#test/helpers/decision-fixtures";
 import {
   getDecisionEvents,
   makeBashCommandCheck,
@@ -19,9 +20,11 @@ import {
 /** An AskEscalator that denies every prompt, so a floored allow→ask blocks. */
 function denyingPrompter(): AskEscalator {
   return {
-    escalate: vi
-      .fn<AskEscalator["escalate"]>()
-      .mockResolvedValue({ approved: false, state: "denied" }),
+    escalate: vi.fn<AskEscalator["escalate"]>().mockResolvedValue({
+      approved: false,
+      state: "denied",
+      decidedBy: DECIDED_BY_HUMAN,
+    }),
   };
 }
 

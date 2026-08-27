@@ -258,6 +258,31 @@ describe("isSubagentExecutionContext — env hint detection", () => {
     ).toBe(true);
   });
 
+  // The adapter convention's parent-session variables (ADR 0012 decision 5).
+  // A process that names a parent session is a child by definition, so naming
+  // one is sufficient on its own — an implementation owes no second marker.
+  test("returns true when PI_SUBAGENT_PARENT_SESSION is set alone", () => {
+    vi.stubEnv("PI_SUBAGENT_PARENT_SESSION", "parent-session-id");
+    expect(
+      isSubagentExecutionContext(
+        makeCtx(null),
+        "/sessions/subagents",
+        posixPathFlavor,
+      ),
+    ).toBe(true);
+  });
+
+  test("returns true when PI_AGENT_ROUTER_PARENT_SESSION_ID is set alone", () => {
+    vi.stubEnv("PI_AGENT_ROUTER_PARENT_SESSION_ID", "parent-session-id");
+    expect(
+      isSubagentExecutionContext(
+        makeCtx(null),
+        "/sessions/subagents",
+        posixPathFlavor,
+      ),
+    ).toBe(true);
+  });
+
   test("covers all declared SUBAGENT_ENV_HINT_KEYS", () => {
     // Verify the keys we test match what the module declares.
     expect(SUBAGENT_ENV_HINT_KEYS).toContain("PI_IS_SUBAGENT");
@@ -273,6 +298,11 @@ describe("isSubagentExecutionContext — env hint detection", () => {
     expect(SUBAGENT_ENV_HINT_KEYS).toContain("PI_SUBAGENT_ID");
     expect(SUBAGENT_ENV_HINT_KEYS).toContain("PI_SUBAGENT_SESSION");
     expect(SUBAGENT_ENV_HINT_KEYS).toContain("PI_SUBAGENT_ACTIVITY_FILE");
+    // The parent-session candidates are hints too.
+    expect(SUBAGENT_ENV_HINT_KEYS).toContain(
+      "PI_AGENT_ROUTER_PARENT_SESSION_ID",
+    );
+    expect(SUBAGENT_ENV_HINT_KEYS).toContain("PI_SUBAGENT_PARENT_SESSION");
   });
 
   test("returns false when env hint value is empty string", () => {

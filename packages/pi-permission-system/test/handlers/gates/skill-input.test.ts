@@ -42,30 +42,25 @@ describe("describeSkillInputGate", () => {
     expect(descriptor.preCheck).toBe(check);
   });
 
-  it("sets denialContext with kind skill_input and skill name", () => {
+  it("makes the skill the payload's decision-relevant value", () => {
     const descriptor = describeSkillInputGate(
       "librarian",
       null,
       makeSkillCheck("allow"),
     );
-    expect(descriptor.denialContext).toEqual({
-      kind: "skill_input",
-      skillName: "librarian",
-      agentName: undefined,
-    });
+    expect(descriptor.payload.kind).toBe("skill");
+    expect(descriptor.payload.request.surface).toBe("skill");
+    expect(descriptor.payload.request.value).toBe("librarian");
+    expect(descriptor.payload.request.requester.agentName).toBeNull();
   });
 
-  it("includes agentName in denialContext when provided", () => {
+  it("names the requesting agent on the payload when provided", () => {
     const descriptor = describeSkillInputGate(
       "librarian",
       "code-agent",
       makeSkillCheck("allow"),
     );
-    expect(descriptor.denialContext).toEqual({
-      kind: "skill_input",
-      skillName: "librarian",
-      agentName: "code-agent",
-    });
+    expect(descriptor.payload.request.requester.agentName).toBe("code-agent");
   });
 
   it("sets promptDetails source to 'skill_input' with skill name and agent", () => {
@@ -81,14 +76,24 @@ describe("describeSkillInputGate", () => {
     });
   });
 
-  it("includes a non-empty message in promptDetails", () => {
+  it("emits a skill payload naming the skill as the decision value", () => {
+    const descriptor = describeSkillInputGate(
+      "librarian",
+      "code-agent",
+      makeSkillCheck("ask"),
+    );
+
+    expect(descriptor.payload.kind).toBe("skill");
+    expect(descriptor.payload.request.value).toBe("librarian");
+  });
+
+  it("names the skill in promptDetails so the prompt can identify it", () => {
     const descriptor = describeSkillInputGate(
       "librarian",
       null,
       makeSkillCheck("ask"),
     );
-    expect(typeof descriptor.promptDetails.message).toBe("string");
-    expect(descriptor.promptDetails.message.length).toBeGreaterThan(0);
+    expect(descriptor.promptDetails.skillName).toBe("librarian");
   });
 
   it("sets logContext source to 'skill_input' with skill name and agent", () => {

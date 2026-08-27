@@ -1,8 +1,8 @@
 import {
   createDeniedPermissionDecision,
   normalizePermissionDenialReason,
-  type PermissionPromptDecision,
   type RequestPermissionOptions,
+  type UnattributedDecision,
 } from "#src/authority/permission-dialog";
 
 /**
@@ -52,7 +52,6 @@ export interface PromptViewState {
   armedKey?: PromptKey;
   /** "Press y again to approve." while armed; empty otherwise. */
   hint: string;
-  reasonDraft: string;
   /** Set when an empty reason submit is rejected. */
   reasonError?: string;
   /** Scope step: false = subagent-only (default), true = whole serving session. */
@@ -70,7 +69,7 @@ export type PromptEvent =
 /** Either a re-render or a terminal decision. */
 export type PromptOutcome =
   | { kind: "render"; state: PromptViewState }
-  | { kind: "decision"; decision: PermissionPromptDecision };
+  | { kind: "decision"; decision: UnattributedDecision };
 
 export function initialPromptState(
   _config: PromptModelConfig,
@@ -80,7 +79,6 @@ export function initialPromptState(
     highlightedKey: "y",
     armedKey: undefined,
     hint: "",
-    reasonDraft: "",
     reasonError: undefined,
     scopeServing: false,
   };
@@ -88,7 +86,11 @@ export function initialPromptState(
 
 /**
  * Advance the dialog by one input event, returning either the next view state
- * to render or the committed {@link PermissionPromptDecision}.
+ * to render or the committed {@link UnattributedDecision}.
+ *
+ * The model states the outcome and not the decider: which human surface this
+ * is gets attributed by the dispatcher that chose to render this dialog, so
+ * the two cannot disagree about the surface.
  */
 export function reducePrompt(
   config: PromptModelConfig,
@@ -165,7 +167,6 @@ function commit(
         highlightedKey: "r",
         armedKey: undefined,
         hint: "",
-        reasonDraft: "",
         reasonError: undefined,
       });
     case "s":
@@ -196,7 +197,6 @@ function reduceReasonStep(
       step: "decision",
       armedKey: undefined,
       hint: "",
-      reasonDraft: "",
       reasonError: undefined,
     });
   }
@@ -205,7 +205,6 @@ function reduceReasonStep(
     if (reason === undefined) {
       return render({
         ...state,
-        reasonDraft: event.draft,
         reasonError: "A reason is required.",
       });
     }

@@ -5,6 +5,196 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [27.0.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v27.0.0...pi-permission-system-v27.0.1) (2026-08-24)
+
+
+### Documentation
+
+* **pi-permission-system:** reconcile architecture with ADR 0013 ([#639](https://github.com/gotgenes/pi-packages/issues/639)) ([8a899da](https://github.com/gotgenes/pi-packages/commit/8a899da1884b8c4657e689ab2d4c86406eaa1add))
+
+## [27.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v26.3.1...pi-permission-system-v27.0.0) (2026-08-21)
+
+
+### ⚠ BREAKING CHANGES
+
+* **pi-permission-system:** `permissions:ready` now fires at least once per session and may repeat. The latch added in #787 re-emits it at each node's first `before_agent_start`, so a consumer that registers unconditionally on every emission hits a duplicate-registration throw on every session instead of the rare user-initiated `/reload` it previously hit. Guard the ready handler with a stored dispose handle so it registers once per session, and release it on `session_shutdown`.
+
+### Features
+
+* **pi-permission-system:** deprecate the zero-arg service accessor ([#699](https://github.com/gotgenes/pi-packages/issues/699)) ([511c87f](https://github.com/gotgenes/pi-packages/commit/511c87f46e1ec85137145442050d53ae41eb8cd1))
+* **pi-permission-system:** publish each node's service under its own session id ([#699](https://github.com/gotgenes/pi-packages/issues/699)) ([d8ce4a8](https://github.com/gotgenes/pi-packages/commit/d8ce4a85ac381b6123b4d1f461d59073953a22b6))
+* **pi-permission-system:** re-emit permissions:ready at the first before_agent_start ([#787](https://github.com/gotgenes/pi-packages/issues/787)) ([405e904](https://github.com/gotgenes/pi-packages/commit/405e904e527645776cab8162293682a71fa5ec65))
+* **pi-permission-system:** reclaim getPermissionsService for the keyed locator ([214b30a](https://github.com/gotgenes/pi-packages/commit/214b30abf3a2ba3dc2f8f9bc3c56932a868c32dd))
+* **pi-permission-system:** record a vacant link cell on a relaying node ([#699](https://github.com/gotgenes/pi-packages/issues/699)) ([f5f08d2](https://github.com/gotgenes/pi-packages/commit/f5f08d2c159504f508b88f9e163be2f9049d558d))
+* **pi-permission-system:** warn when the keyed locator gets no session id ([29824aa](https://github.com/gotgenes/pi-packages/commit/29824aae61b1a4f565b5c456d9f3440d77304be5)), closes [#794](https://github.com/gotgenes/pi-packages/issues/794)
+
+
+### Bug Fixes
+
+* **pi-permission-system:** detect a subagent from its parent-session env var ([bd698da](https://github.com/gotgenes/pi-packages/commit/bd698da14a7d44dfa8dc06be2342a47b8337324e)), closes [#789](https://github.com/gotgenes/pi-packages/issues/789)
+
+
+### Documentation
+
+* **pi-permission-system:** cite the adapter convention instead of restating it ([d9ba637](https://github.com/gotgenes/pi-packages/commit/d9ba6375b29e3e25e53d9324676e7c5220c2bad7)), closes [#789](https://github.com/gotgenes/pi-packages/issues/789)
+* **pi-permission-system:** document session-keyed service publication ([#699](https://github.com/gotgenes/pi-packages/issues/699)) ([8ed137c](https://github.com/gotgenes/pi-packages/commit/8ed137c662a22087edc3623151938c7ae0ea9a86))
+* **pi-permission-system:** document the ready latch and its idempotency requirement ([#787](https://github.com/gotgenes/pi-packages/issues/787)) ([bc31193](https://github.com/gotgenes/pi-packages/commit/bc31193aafa8c6ef1356cc2e096e643f6357c912))
+* **pi-permission-system:** document the reclaimed locator and the ready cadence ([ca585b4](https://github.com/gotgenes/pi-packages/commit/ca585b4fba48a95ddd4dbe51106c02486997a400)), closes [#794](https://github.com/gotgenes/pi-packages/issues/794)
+* **pi-permission-system:** make subagent-integration the adapter convention's canonical spec ([07f9d2b](https://github.com/gotgenes/pi-packages/commit/07f9d2beffb66207aa3b01985b1a28312d431da3)), closes [#789](https://github.com/gotgenes/pi-packages/issues/789)
+
+## [26.3.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v26.3.0...pi-permission-system-v26.3.1) (2026-08-19)
+
+
+### Documentation
+
+* condense scope sections and move them below the usage material ([#775](https://github.com/gotgenes/pi-packages/issues/775)) ([99f5829](https://github.com/gotgenes/pi-packages/commit/99f58298962baac5bdfe5d3cc02dca0ca9b32395))
+* **pi-permission-system:** document scope and non-goals ([#775](https://github.com/gotgenes/pi-packages/issues/775)) ([5fa3960](https://github.com/gotgenes/pi-packages/commit/5fa39609953ad8bf370a0e304a73fdf67df6dae5))
+* **retro:** add retro notes for issue [#610](https://github.com/gotgenes/pi-packages/issues/610) ([2333e6a](https://github.com/gotgenes/pi-packages/commit/2333e6ae57fe77c64e322e520918404995ef1dda))
+* route model-assisted judging to the seam, not to one link ([#775](https://github.com/gotgenes/pi-packages/issues/775)) ([3f30984](https://github.com/gotgenes/pi-packages/commit/3f30984b53eb0a14217cf70ecb05ac1daab48abb))
+
+## [26.3.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v26.2.2...pi-permission-system-v26.3.0) (2026-08-18)
+
+
+### Features
+
+* **pi-permission-system:** broadcast a terminal decision when a gate error blocks a tool call ([2ccb8e5](https://github.com/gotgenes/pi-packages/commit/2ccb8e50a4ef376ced8448efba2d5f9f3658e98f)), closes [#753](https://github.com/gotgenes/pi-packages/issues/753)
+* **pi-permission-system:** broadcast the terminal decision for a served forwarded ask ([f2d6b17](https://github.com/gotgenes/pi-packages/commit/f2d6b176abdd47a2b3ce5c3cf6973ba316d5eea6)), closes [#610](https://github.com/gotgenes/pi-packages/issues/610)
+
+
+### Documentation
+
+* **pi-permission-system:** document the served forwarded decision broadcast ([fc2b00b](https://github.com/gotgenes/pi-packages/commit/fc2b00bb801468b450a725e0cb4e9da7e5279844))
+
+## [26.2.2](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v26.2.1...pi-permission-system-v26.2.2) (2026-08-18)
+
+
+### Bug Fixes
+
+* **pi-permission-system:** derive session-approval patterns through the injected PathFlavor ([cf561de](https://github.com/gotgenes/pi-packages/commit/cf561de4c19895ed9495d82f22280fe3ba215aa5)), closes [#655](https://github.com/gotgenes/pi-packages/issues/655)
+
+## [26.2.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v26.2.0...pi-permission-system-v26.2.1) (2026-08-17)
+
+
+### Bug Fixes
+
+* **pi-permission-system:** accept pasted text in the denial-reason field ([8b33c38](https://github.com/gotgenes/pi-packages/commit/8b33c38084689dbb356fa0a0b7069bc610140736)), closes [#760](https://github.com/gotgenes/pi-packages/issues/760)
+
+
+### Documentation
+
+* **pi-permission-system:** document the delegated denial-reason editor ([e7329f5](https://github.com/gotgenes/pi-packages/commit/e7329f5e81fc66e5317e958c9928262aaf433173)), closes [#760](https://github.com/gotgenes/pi-packages/issues/760)
+
+## [26.2.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v26.1.0...pi-permission-system-v26.2.0) (2026-08-17)
+
+
+### Features
+
+* **pi-permission-system:** publish a serving heartbeat while draining the inbox ([2055e35](https://github.com/gotgenes/pi-packages/commit/2055e353e147af6738ddc23c2c755f56f8032f8b)), closes [#721](https://github.com/gotgenes/pi-packages/issues/721)
+
+
+### Bug Fixes
+
+* **pi-permission-system:** fail fast when an out-of-process parent is not serving ([e190af9](https://github.com/gotgenes/pi-packages/commit/e190af9f06c49375432f19bb228e068ade01c912)), closes [#721](https://github.com/gotgenes/pi-packages/issues/721)
+
+
+### Documentation
+
+* **pi-permission-system:** document out-of-process forwarding liveness ([b5a50d5](https://github.com/gotgenes/pi-packages/commit/b5a50d535c97ca0ec388c5f482afb395e15289fa)), closes [#721](https://github.com/gotgenes/pi-packages/issues/721)
+
+## [26.1.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v26.0.0...pi-permission-system-v26.1.0) (2026-08-17)
+
+
+### Features
+
+* **pi-permission-system:** attribute absent-authority denials ([225412d](https://github.com/gotgenes/pi-packages/commit/225412d485e68e886b6e958b2f53a87f9ff6cf25)), closes [#726](https://github.com/gotgenes/pi-packages/issues/726)
+* **pi-permission-system:** carry decision provenance across the forwarding boundary ([0dbf13f](https://github.com/gotgenes/pi-packages/commit/0dbf13f86c9f2d070e8b33eb4ffe808331c9185c)), closes [#726](https://github.com/gotgenes/pi-packages/issues/726)
+* **pi-permission-system:** name the authorizer link that decided an ask ([8556724](https://github.com/gotgenes/pi-packages/commit/8556724e5453ee002b24c48bebaf4d96f6502fe5)), closes [#726](https://github.com/gotgenes/pi-packages/issues/726)
+* **pi-permission-system:** record the decider on non-prompting resolutions ([5e24abf](https://github.com/gotgenes/pi-packages/commit/5e24abf6311d13928858e730b14a712e155f2bc2)), closes [#726](https://github.com/gotgenes/pi-packages/issues/726)
+* **pi-permission-system:** record the human decider on prompted decisions ([9f540ba](https://github.com/gotgenes/pi-packages/commit/9f540ba285b546976432733fced08b9fe9dc973c)), closes [#726](https://github.com/gotgenes/pi-packages/issues/726)
+
+
+### Documentation
+
+* **pi-permission-system:** record decision provenance and mark Phase 13 Step 6 complete ([e2739e7](https://github.com/gotgenes/pi-packages/commit/e2739e7f188669ee4878bbe3732958d4e1c54cbd)), closes [#726](https://github.com/gotgenes/pi-packages/issues/726)
+
+## [26.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v25.4.0...pi-permission-system-v26.0.0) (2026-08-16)
+
+
+### ⚠ BREAKING CHANGES
+
+* **pi-permission-system:** the `message` field is removed from every `permission_request.*` review-log entry. A consumer parsing it should read the structured fields instead: `surface`, `matchedPattern`, `executedUnit`, `commandContext`, `invokedToolName`, `forwarded`, and `requesterSessionId`, alongside the existing `toolName`, `command`, `path`, `target`, and `toolInputPreview`.
+* **pi-permission-system:** values in the permission review log are now truncated at `reviewLogFieldMaxWidth` (default 1000) with a trailing ellipsis, where a bash `command` was previously written whole. Raise `reviewLogFieldMaxWidth` to keep longer values. `ToolPreviewFormatterOptions.toolInputLogPreviewMaxLength` and `TOOL_INPUT_LOG_PREVIEW_MAX_LENGTH` are removed, superseded by that setting.
+* **pi-permission-system:** `toolInputPreviewMaxLength` and `toolTextSummaryMaxLength` are still accepted but ignored, and a config setting either now logs a deprecation warning at session start. Remove them; use `promptMaxRows` and `promptFieldMaxWidth` to bound what a permission prompt renders.
+* **pi-permission-system:** `PermissionUiPromptEvent.message` is removed. Read `request.value` for the decision-relevant value and `request.matchedPattern` for the rule that fired; `surface`, `value`, `agentName`, and `forwarding` are unchanged. `DirectPromptInput.message` likewise becomes `payload: PromptPayload`.
+* **pi-permission-system:** `ForwardedPermissionRequest.message` is removed and replaced by `payload: PromptPayload`, which carries the ask's complete structured facts. A serving node on this version accepts an older child's `message`-only request and renders it from `surface`, `value`, and the requester provenance; an older *parent* rejects a newer child's request, so upgrade the parent session first.
+
+### Features
+
+* **pi-permission-system:** bound review-log field width with reviewLogFieldMaxWidth ([#746](https://github.com/gotgenes/pi-packages/issues/746)) ([dceb931](https://github.com/gotgenes/pi-packages/commit/dceb93197e5f0e16287d63a68fcb2cad0bec2e97))
+* **pi-permission-system:** carry the prompt payload on the forwarded-request wire ([bf67cd6](https://github.com/gotgenes/pi-packages/commit/bf67cd6673d1e4bf57c339873d8642295bd643c0)), closes [#745](https://github.com/gotgenes/pi-packages/issues/745)
+* **pi-permission-system:** ignore the deprecated tool-preview caps and notice their use ([47d7610](https://github.com/gotgenes/pi-packages/commit/47d7610d1217ebd6c0a968999dbfff4ad426af88)), closes [#745](https://github.com/gotgenes/pi-packages/issues/745)
+* **pi-permission-system:** narrow the ui_prompt broadcast to the request facts ([fcdb174](https://github.com/gotgenes/pi-packages/commit/fcdb17494f73d7a506fe1ab967cf2db8f815b50a)), closes [#745](https://github.com/gotgenes/pi-packages/issues/745)
+* **pi-permission-system:** render a forwarded ask from the child's own payload ([8587269](https://github.com/gotgenes/pi-packages/commit/8587269a066e87007b8e8dea4b85649d0240b697)), closes [#745](https://github.com/gotgenes/pi-packages/issues/745)
+* **pi-permission-system:** render the review log from the prompt payload ([#746](https://github.com/gotgenes/pi-packages/issues/746)) ([b373876](https://github.com/gotgenes/pi-packages/commit/b3738761e572b91a3388b0681d2a34862b11859d))
+* **pi-permission-system:** replace the forwarded-request message with the structured payload ([1af41a9](https://github.com/gotgenes/pi-packages/commit/1af41a9a18cf5850da3bc787c9e0ed0db493921a)), closes [#745](https://github.com/gotgenes/pi-packages/issues/745)
+
+
+### Bug Fixes
+
+* **pi-permission-system:** stop echoing tool input in agent-facing denial text ([#746](https://github.com/gotgenes/pi-packages/issues/746)) ([525b7e4](https://github.com/gotgenes/pi-packages/commit/525b7e4b19cfa997029a178b413a2838b3834021))
+
+
+### Documentation
+
+* **pi-permission-system:** document the payload contracts and mark Phase 13 Step 3 complete ([a2381ac](https://github.com/gotgenes/pi-packages/commit/a2381ac700e08c80c415b31f732a481367226264)), closes [#745](https://github.com/gotgenes/pi-packages/issues/745)
+* **pi-permission-system:** record the agent and review-log renderers ([#746](https://github.com/gotgenes/pi-packages/issues/746)) ([af88cc1](https://github.com/gotgenes/pi-packages/commit/af88cc11e31e98c0fa43d3629c64f31d6b73de05))
+* **pi-permission-system:** retire references to the dissolved denial module ([#746](https://github.com/gotgenes/pi-packages/issues/746)) ([53647b2](https://github.com/gotgenes/pi-packages/commit/53647b2b0930737940714378d8421cd2ce76e66f))
+
+## [25.4.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v25.3.0...pi-permission-system-v25.4.0) (2026-08-15)
+
+
+### Features
+
+* **pi-permission-system:** adopt the requester's request id as the forwarded request id ([3f8d3fd](https://github.com/gotgenes/pi-packages/commit/3f8d3fd69940211c6a92b99f8eae0396936afedf)), closes [#752](https://github.com/gotgenes/pi-packages/issues/752)
+* **pi-permission-system:** carry the request id on permissions:decision ([95c001c](https://github.com/gotgenes/pi-packages/commit/95c001cf6b35c68991143826d8621b1e94fc0b32)), closes [#752](https://github.com/gotgenes/pi-packages/issues/752)
+* **pi-permission-system:** give the gate-error review entry a request id ([172bc68](https://github.com/gotgenes/pi-packages/commit/172bc689ea0f18c88672a22c0b5e84c0f3576fd1)), closes [#752](https://github.com/gotgenes/pi-packages/issues/752)
+* **pi-permission-system:** mint a permission request id at request creation ([336842d](https://github.com/gotgenes/pi-packages/commit/336842de6c34e96bd90ed411eaca9649c4b9fac2)), closes [#752](https://github.com/gotgenes/pi-packages/issues/752)
+
+
+### Documentation
+
+* **pi-permission-system:** record the minted request id in the API and architecture docs ([84f5856](https://github.com/gotgenes/pi-packages/commit/84f5856868a548c9454ef3e23ca75c608ce3f308)), closes [#752](https://github.com/gotgenes/pi-packages/issues/752)
+
+## [25.3.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v25.2.2...pi-permission-system-v25.3.0) (2026-08-15)
+
+
+### Features
+
+* **pi-permission-system:** add promptMaxRows and promptFieldMaxWidth ([8dbca30](https://github.com/gotgenes/pi-packages/commit/8dbca303f55769222f6a829d3fc7a1d7461cd334)), closes [#710](https://github.com/gotgenes/pi-packages/issues/710)
+* **pi-permission-system:** expand the permission dialog to the complete request on Ctrl+O ([b741513](https://github.com/gotgenes/pi-packages/commit/b7415137236d6245a41f95255d17425127739a97)), closes [#710](https://github.com/gotgenes/pi-packages/issues/710)
+* **pi-permission-system:** render permission prompts as bounded, aligned fact lines ([2bd18c5](https://github.com/gotgenes/pi-packages/commit/2bd18c57003bdfbd0f95ad2c309e5387031164a0))
+
+
+### Documentation
+
+* **pi-permission-system:** distinguish the redundancy rule from elision ([5b26a46](https://github.com/gotgenes/pi-packages/commit/5b26a466191e5cc4395c2cebba22732c3d867bff)), closes [#710](https://github.com/gotgenes/pi-packages/issues/710)
+* **pi-permission-system:** document the bounded permission dialog ([68fcf58](https://github.com/gotgenes/pi-packages/commit/68fcf583f740cbcd8c5224db96fff85a74a2b0f2)), closes [#710](https://github.com/gotgenes/pi-packages/issues/710)
+
+## [25.2.2](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v25.2.1...pi-permission-system-v25.2.2) (2026-08-15)
+
+
+### Bug Fixes
+
+* **pi-permission-system:** gate commands hosted in bash redirect targets ([1015bb8](https://github.com/gotgenes/pi-packages/commit/1015bb879234d1d96595b9f995ca88037588e16f)), closes [#741](https://github.com/gotgenes/pi-packages/issues/741)
+* **pi-permission-system:** gate commands hosted in interpolating heredoc bodies ([48978d2](https://github.com/gotgenes/pi-packages/commit/48978d2016c67aa90f291db55d98908ba930f0d1)), closes [#741](https://github.com/gotgenes/pi-packages/issues/741)
+* **pi-permission-system:** project path operands of heredoc-hosted nested commands ([8e2fbee](https://github.com/gotgenes/pi-packages/commit/8e2fbee404677d02c7cc565cf23d1e778994d5f0)), closes [#741](https://github.com/gotgenes/pi-packages/issues/741)
+* **pi-permission-system:** project path operands of redirect-hosted nested commands ([12164f3](https://github.com/gotgenes/pi-packages/commit/12164f3b61b6a4b50281d84b6d741a3736516991)), closes [#741](https://github.com/gotgenes/pi-packages/issues/741)
+
+
+### Documentation
+
+* **pi-permission-system:** document hosted nested-command evaluation ([f24b338](https://github.com/gotgenes/pi-packages/commit/f24b338a42855f96038fdf2efdfe440cef8501c8)), closes [#741](https://github.com/gotgenes/pi-packages/issues/741)
+
 ## [25.2.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v25.2.0...pi-permission-system-v25.2.1) (2026-08-15)
 
 

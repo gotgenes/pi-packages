@@ -4,6 +4,7 @@ import { encloseInDelegationEnvelope } from "#src/authority/delegation-envelope"
 import type { PromptPermissionDetails } from "#src/authority/permission-prompter";
 import type { PermissionQuery } from "#src/service";
 import { makeAuthorizerLog } from "#test/helpers/authorizer-log-fixtures";
+import { makePromptDetails } from "#test/helpers/prompt-details-fixtures";
 
 function makeQuery(): PermissionQuery {
   return { checkPermission: vi.fn(), getToolPermission: vi.fn() };
@@ -14,11 +15,7 @@ function makeDetails(
   accessIntentSurface: string | undefined,
   displaySurface?: string | null,
 ): PromptPermissionDetails {
-  return {
-    requestId: "req-1",
-    source: "tool_call",
-    agentName: null,
-    message: "Allow this?",
+  return makePromptDetails({
     surface: displaySurface,
     accessIntent:
       accessIntentSurface === undefined
@@ -28,7 +25,7 @@ function makeDetails(
             matchValues: ["/some/value"],
             boundaryValue: null,
           },
-  };
+  });
 }
 
 /** A link whose fixed verdict the envelope may cap. */
@@ -54,6 +51,17 @@ describe("encloseInDelegationEnvelope", () => {
     it("downgrades an allow on the path surface", async () => {
       const enclosed = encloseInDelegationEnvelope(makeLink({ kind: "allow" }));
       const verdict = await enclosed(makeDetails("path"), query, log);
+      expect(verdict).toEqual({ kind: "defer" });
+    });
+
+    it.each([
+      "path_read",
+      "path_write",
+      "external_directory_read",
+      "external_directory_write",
+    ])("downgrades an allow on %s, a member of an excluded family", async (surface) => {
+      const enclosed = encloseInDelegationEnvelope(makeLink({ kind: "allow" }));
+      const verdict = await enclosed(makeDetails(surface), query, log);
       expect(verdict).toEqual({ kind: "defer" });
     });
 

@@ -4,6 +4,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { AskEscalator } from "#src/authority/authorizer-selection";
+import { DECIDED_BY_HUMAN } from "#test/helpers/decision-fixtures";
 import {
   getDecisionEvents,
   makeCheckResult,
@@ -73,9 +74,11 @@ describe("handleInput decision events — skill gate", () => {
         checkPermission: makeSkillCheckPermission("ask"),
       },
       prompter: {
-        escalate: vi
-          .fn<AskEscalator["escalate"]>()
-          .mockResolvedValue({ approved: true, state: "approved" }),
+        escalate: vi.fn<AskEscalator["escalate"]>().mockResolvedValue({
+          approved: true,
+          state: "approved",
+          decidedBy: DECIDED_BY_HUMAN,
+        }),
       },
     });
     await handler.handleInput({ text: "/skill:explorer" }, makeCtx());
@@ -96,9 +99,11 @@ describe("handleInput decision events — skill gate", () => {
         checkPermission: makeSkillCheckPermission("ask"),
       },
       prompter: {
-        escalate: vi
-          .fn<AskEscalator["escalate"]>()
-          .mockResolvedValue({ approved: false, state: "denied" }),
+        escalate: vi.fn<AskEscalator["escalate"]>().mockResolvedValue({
+          approved: false,
+          state: "denied",
+          decidedBy: DECIDED_BY_HUMAN,
+        }),
       },
     });
     await handler.handleInput({ text: "/skill:explorer" }, makeCtx());
@@ -123,6 +128,7 @@ describe("handleInput decision events — skill gate", () => {
           approved: false,
           state: "denied",
           confirmationUnavailable: true,
+          decidedBy: DECIDED_BY_HUMAN,
         }),
       },
     });
@@ -151,6 +157,7 @@ describe("handleInput decision events — skill gate", () => {
           approved: true,
           state: "approved",
           autoApproved: true,
+          decidedBy: DECIDED_BY_HUMAN,
         }),
       },
     });

@@ -153,7 +153,7 @@ export class AgentTool {
 		return defineTool({
 			name: "subagent" as const,
 			label: "Subagent",
-			promptSnippet: "subagent: Launch a specialized agent for complex, multi-step tasks.",
+			promptSnippet: "Launch a specialized agent for complex, multi-step tasks.",
 			description: `Launch a new agent to handle complex, multi-step tasks autonomously.
 
 The subagent tool launches specialized agents that autonomously handle complex tasks. Each agent type has specific capabilities and tools available to it.

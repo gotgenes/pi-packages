@@ -8,7 +8,7 @@ Pi extension that appends an instruction to the system prompt forbidding the age
 
 Pi already tells the agent the resolved CWD: its system prompt ends with a `Current working directory: <path>` footer, and that line survives downstream shaping (for example [pi-anthropic-auth](https://github.com/gotgenes/pi-anthropic-auth), which only rewrites the preamble span and preserves the footer).
 
-What Pi ships **nowhere** — default or shaped — is any *instruction* against `cd`-prefixing the CWD.
+What Pi ships **nowhere** — default or shaped — is any _instruction_ against `cd`-prefixing the CWD.
 The footer is a bare statement of fact, not a rule, so the habit of prefixing commands with `cd $(pwd) &&` survives.
 
 This extension hooks `before_agent_start` and appends a block that adds the missing prohibition — forbidding both the literal `cd <path> &&` form and the generic `cd $(pwd) &&` form.
@@ -45,14 +45,34 @@ Just run the command directly.
 ```
 
 The result is idempotent: a prompt that already carries the block for this directory is returned unchanged, so chained `before_agent_start` handlers do not stack duplicates.
-A block naming a *different* directory — one inherited from a parent session — is rewritten in place, keeping its position stable across turns.
-A section under the same heading that this extension did not write (e.g. another handler's) is left alone: a block is recognized by its heading *and* its `Shell commands already execute in` sentence, not the heading alone.
+A block naming a _different_ directory — one inherited from a parent session — is rewritten in place, keeping its position stable across turns.
+A section under the same heading that this extension did not write (e.g. another handler's) is left alone: a block is recognized by its heading _and_ its `Shell commands already execute in` sentence, not the heading alone.
 
 ## How it works
 
 | Hook                 | Behavior                                                                                                               |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | `before_agent_start` | Ensures the prompt carries the working-directory block for the resolved `ctx.cwd`, appending or rewriting it as needed |
+
+## Scope and non-goals
+
+**Purpose.**
+Pi tells the agent its working directory but never forbids `cd`-prefixing it.
+This extension supplies the missing prohibition — and nothing else.
+
+**In scope.**
+The wording of the injected block, and correct path resolution when a child session inherits a parent's prompt or runs in an isolated workspace.
+
+**Non-goals.**
+
+- _Enforcing the rule._
+  This extension instructs; it does not gate a command at execution time.
+- _Owning the `# Working Directory` heading._
+  A block written by another handler is left alone; only content this extension wrote is ever rewritten.
+- _Telling the agent what its working directory is._
+  Pi's own footer already does that; the literal path appears here only to make the forbidden example concrete.
+- _Registering tools or commands._
+  The entire surface is one `before_agent_start` hook, with no configuration.
 
 ## License
 

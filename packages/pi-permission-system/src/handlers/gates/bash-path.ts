@@ -1,13 +1,15 @@
 import type { AccessPath } from "#src/access-intent/access-path";
 import type { BashProgram } from "#src/access-intent/bash/program";
+import type { TokenEffect } from "#src/access-intent/effect";
+import { capabilitySurfaceForEffect } from "#src/access-intent/path-surfaces";
+import type { PathNormalizer } from "#src/path-normalizer";
 import type { ScopedPermissionResolver } from "#src/permission-resolver";
+import { buildPathAskPayload } from "#src/presentation/path-ask-payload";
+import { pickMostRestrictive } from "#src/restrictiveness";
 import { SessionApproval } from "#src/session-approval";
-import { deriveApprovalPattern } from "#src/session-rules";
 import type { PermissionCheckResult } from "#src/types";
-import { pickMostRestrictive } from "./candidate-check";
 import type { GateResult } from "./descriptor";
 import { accessFactsFromPath } from "./helpers";
-import { formatPathAskPrompt } from "./path";
 import type { ToolCallContext } from "./types";
 
 /**
@@ -15,10 +17,17 @@ import type { ToolCallContext } from "./types";
  *
  * Reads path-rule candidates from the injected `BashProgram` (the broader
  * `path`-rule filter, accepting dot-files and relative paths). Each candidate
- * pairs the raw token with cd-aware policy values; the gate evaluates those
- * values against the `path` permission surface and returns the most
- * restrictive result, while prompts, logs, and session approvals use the raw
- * token.
+ * pairs the raw token with cd-aware policy values and the effect its position
+ * proved; the gate evaluates those values against the narrowest `path`-family
+ * surface that effect names and returns the most restrictive result, while
+ * prompts, logs, and session approvals use the raw token.
+ *
+ * A proven read resolves on `path_read`, a proven write on `path_write`, and
+ * an unproven token on the bare family, whose two members the resolver folds
+ * most-restrictive (ADR 0013 §10). The deciding token's surface is the one the
+ * descriptor, the payload, the access facts, the decision, and the session
+ * approval all carry — a session grant is never wider than what the gate
+ * proved.
  *
  * Returns `null` when the gate does not apply (not a shell invocation, no
  * command, no tokens extracted, or all tokens evaluate to `allow`).
@@ -33,6 +42,7 @@ export function describeBashPathGate(
   tcc: ToolCallContext,
   bashProgram: BashProgram | null,
   resolver: ScopedPermissionResolver,
+  normalizer: PathNormalizer,
 ): GateResult {
   if (!bashProgram) return null;
   const command = bashProgram.commandText();
@@ -47,14 +57,17 @@ export function describeBashPathGate(
   const uncovered: Array<{
     token: string;
     path: AccessPath;
+    surface: string;
+    effect: TokenEffect;
     check: PermissionCheckResult;
   }> = [];
   let allSessionCovered = true;
 
-  for (const { token, path } of candidates) {
+  for (const { token, path, effect } of candidates) {
+    const surface = capabilitySurfaceForEffect("path", effect.effect);
     const check = resolver.resolve({
       kind: "access-path",
-      surface: "path",
+      surface,
       path,
       agentName: tcc.agentName ?? undefined,
     });
@@ -72,11 +85,11 @@ export function describeBashPathGate(
     }
 
     if (check.state === "deny") {
-      uncovered.push({ token, path, check });
+      uncovered.push({ token, path, surface, effect, check });
       break; // Short-circuit on deny.
     }
     if (check.state === "ask") {
-      uncovered.push({ token, path, check });
+      uncovered.push({ token, path, surface, effect, check });
     }
   }
 
@@ -84,6 +97,14 @@ export function describeBashPathGate(
   if (allSessionCovered) {
     return {
       action: "allow",
+      // Every token was covered, each possibly by a different session pattern
+      // -- the surface is one value and the pattern is not. The entry's
+      // `tokens` lists what was covered.
+      decidedBy: {
+        kind: "session_approval",
+        surface: "path",
+        pattern: null,
+      },
       log: {
         event: "permission_request.session_approved",
         details: {
@@ -112,31 +133,28 @@ export function describeBashPathGate(
   // Derive the pattern from the lexical absolute form (the cd-aware resolved
   // path), so it matches the values a later call produces. For an unknown base
   // (`forLiteral`) `value()` is the raw token.
-  const pattern = deriveApprovalPattern(worstEntry.path.value());
-  const askMessage = formatPathAskPrompt(
-    tcc.toolName,
-    worstToken,
-    tcc.agentName ?? undefined,
-  );
+  const pattern = normalizer.approvalPatternFor(worstEntry.path);
+  const surface = worstEntry.surface;
+  const payload = buildPathAskPayload({
+    toolName: tcc.toolName,
+    pathValue: worstToken,
+    agentName: tcc.agentName,
+    matchedPattern: worstCheck.matchedPattern,
+    surface,
+  });
 
   return {
-    surface: "path",
+    surface,
     input: { path: worstToken },
-    denialContext: {
-      kind: "bash_path",
-      command,
-      pathValue: worstToken,
-      agentName: tcc.agentName ?? undefined,
-    },
-    sessionApproval: SessionApproval.single("path", pattern),
+    payload,
+    sessionApproval: SessionApproval.single(surface, pattern),
     promptDetails: {
       source: "tool_call",
       agentName: tcc.agentName,
-      message: askMessage,
       toolCallId: tcc.toolCallId,
       toolName: tcc.toolName,
       command,
-      accessIntent: accessFactsFromPath("path", worstEntry.path),
+      accessIntent: accessFactsFromPath(surface, worstEntry.path),
     },
     logContext: {
       source: "tool_call",
@@ -145,9 +163,13 @@ export function describeBashPathGate(
       agentName: tcc.agentName,
       command,
       path: worstToken,
+      // The blame line ADR 0013 §7 asks for: `request.surface` already records
+      // the direction, and these two record what established it.
+      effect: worstEntry.effect.effect,
+      effectSource: worstEntry.effect.source,
     },
     decision: {
-      surface: "path",
+      surface,
       value: worstToken,
     },
     preCheck: worstCheck,

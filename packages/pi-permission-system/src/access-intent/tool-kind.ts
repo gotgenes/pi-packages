@@ -10,7 +10,7 @@ import { PATH_BEARING_TOOLS } from "./path-surfaces";
  * `toolName === "bash"`/`"mcp"` re-derivation across the extraction consumers
  * (`input-normalizer`, `tool-input-path`, the tool-call gate pipeline, and
  * `permission-manager`'s source derivation) and the presentation consumers
- * (`tool-preview-formatter`, `permission-prompts`, `denial-messages`, and
+ * (`tool-preview-formatter`, `permission-prompts`, the payload builders, and
  * `deriveDecisionValue`), which dispatch on {@link classifyToolKind} or
  * {@link isMcpCheck}. Adding a tool kind means editing {@link classifyToolKind}
  * plus the exhaustive switches the compiler flags — an OCP win over silent

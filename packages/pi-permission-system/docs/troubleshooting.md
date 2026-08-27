@@ -50,9 +50,13 @@ This makes it easy to verify which files the extension actually loaded:
 **Limitations:**
 
 - If a dangerous action is possible via an allowed tool, policy must explicitly restrict it
-- This is a permission decision layer, not a sandbox — for true isolation see [Agent Sandboxes](https://engine.build/lab/agent-sandboxes)
-- The review log records bash command strings verbatim.
+- This is a permission decision layer, not a sandbox — for true isolation see [Agent Sandboxes](https://engine.build/lab/agent-sandboxes).
+  The two are complementary rather than alternatives: a sandbox enforces which paths are in scope and in which direction, while this package decides whether a particular action on an in-scope path may proceed.
+  [ADR 0013] §8 records that division and the seam that exports this package's scope decisions to a sandbox launcher.
+- The review log records bash command strings unredacted.
   Log files are created owner-only (`0600`), and values bound to a sensitive key name (`authorization`, `token`, `password`, …) are masked — but a secret embedded in a command string is not.
+  Review-log values are shortened at `reviewLogFieldMaxWidth` (1000 characters by default), which bounds the file's growth but is a length cap, not redaction.
   See [Log file sensitivity](configuration.md#log-file-sensitivity) and [ADR 0010].
 
 [ADR 0010]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-permission-system/docs/decisions/0010-permission-log-secret-exposure.md
+[ADR 0013]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-permission-system/docs/decisions/0013-permission-policy-model.md

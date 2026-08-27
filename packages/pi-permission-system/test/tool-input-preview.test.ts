@@ -10,7 +10,6 @@ import {
   countTextLines,
   formatCount,
   serializeToolInputPreview,
-  TOOL_INPUT_LOG_PREVIEW_MAX_LENGTH,
   TOOL_INPUT_PREVIEW_MAX_LENGTH,
   TOOL_TEXT_SUMMARY_MAX_LENGTH,
   truncateInlineText,
@@ -29,10 +28,6 @@ afterEach(() => {
 describe("constants", () => {
   test("TOOL_INPUT_PREVIEW_MAX_LENGTH is 200", () => {
     expect(TOOL_INPUT_PREVIEW_MAX_LENGTH).toBe(200);
-  });
-
-  test("TOOL_INPUT_LOG_PREVIEW_MAX_LENGTH is 1000", () => {
-    expect(TOOL_INPUT_LOG_PREVIEW_MAX_LENGTH).toBe(1000);
   });
 
   test("TOOL_TEXT_SUMMARY_MAX_LENGTH is 80", () => {

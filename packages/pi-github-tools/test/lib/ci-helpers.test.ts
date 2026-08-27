@@ -2,8 +2,21 @@ import { describe, expect, it } from "vitest";
 import {
   type CIJob,
   findRetryDelay,
+  formatAborted,
   formatProgress,
 } from "#src/lib/ci-helpers";
+
+describe("formatAborted", () => {
+  it("returns the bare cancellation line with no extra lines", () => {
+    expect(formatAborted()).toBe("aborted: cancelled by user");
+  });
+
+  it("appends each extra line verbatim", () => {
+    expect(formatAborted("  retries: 3", "  elapsed: 20s")).toBe(
+      "aborted: cancelled by user\n  retries: 3\n  elapsed: 20s",
+    );
+  });
+});
 
 describe("findRetryDelay", () => {
   it("returns 0 for the first attempt", () => {

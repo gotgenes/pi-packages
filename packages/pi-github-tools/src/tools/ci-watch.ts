@@ -13,7 +13,7 @@ export function registerCiWatch(pi: ExtensionAPI): void {
       "Emits a compact job-level progress line on each poll cycle (e.g., [2/5] deploy — in_progress (120s)). " +
       "Returns the full progress log and final status on completion.",
     promptSnippet:
-      "ci_watch: Poll a CI run until it completes. Streams job-level progress.",
+      "Poll a CI run until it completes. Streams job-level progress.",
     parameters: Type.Object({
       workflow: Type.String({
         description:

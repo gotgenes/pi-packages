@@ -1,11 +1,13 @@
 import type { Model } from "@earendil-works/pi-ai";
 import type { PromptPermissionDetails } from "@gotgenes/pi-permission-system";
+import type { Mock } from "vitest";
 import { describe, expect, it, vi } from "vitest";
 
 import type { ModelJudgeConfig } from "#src/config-schema";
 import type { CompleteFn, ModelRegistryLike } from "#src/model-review";
 import { createTypoReviewer } from "#src/typo-reviewer";
 import { assistantToolCall } from "#test/fixtures/assistant-message";
+import { makePromptDetails } from "#test/fixtures/permission-details";
 
 const CONFIG: ModelJudgeConfig = {
   provider: "anthropic",
@@ -23,15 +25,7 @@ const MODEL = { provider: "anthropic", id: "claude-haiku" } as Model<any>;
 function makeDetails(
   overrides: Partial<PromptPermissionDetails> = {},
 ): PromptPermissionDetails {
-  return {
-    requestId: "req-1",
-    source: "tool_call",
-    agentName: null,
-    message: "external directory access",
-    surface: "external_directory",
-    path: TYPO_PATH,
-    ...overrides,
-  };
+  return makePromptDetails({ path: TYPO_PATH, ...overrides });
 }
 
 function makeRegistry(model: Model<any> | undefined): ModelRegistryLike {
@@ -45,7 +39,7 @@ function makeRegistry(model: Model<any> | undefined): ModelRegistryLike {
   };
 }
 
-function denyingComplete(): CompleteFn {
+function denyingComplete(): Mock<CompleteFn> {
   return vi.fn(async () =>
     assistantToolCall({
       verdict: "deny",
@@ -220,8 +214,7 @@ describe("createTypoReviewer", () => {
       reason: "Doubled segment; use pi-packages.",
     });
     expect(registry.getApiKeyAndHeaders).toHaveBeenCalledWith(MODEL);
-    const [, , options] = (complete as ReturnType<typeof vi.fn>).mock
-      .calls[0] as [
+    const [, , options] = complete.mock.calls[0] as [
       unknown,
       unknown,
       { apiKey?: string; headers?: Record<string, string> },

@@ -5,7 +5,7 @@
 Git worktree isolation for [`@gotgenes/pi-subagents`](https://github.com/gotgenes/pi-packages/tree/main/packages/pi-subagents).
 
 This extension registers a `WorkspaceProvider` with the subagents core: opted-in agents run in a temporary git worktree (an isolated copy of the repo), and any changes they make are saved to a branch when they finish.
-Worktrees are one *workspace strategy*, not core behavior — so the git plumbing lives here, outside the minimal subagents core (see [ADR-0002] in the pi-subagents package).
+Worktrees are one _workspace strategy_, not core behavior — so the git plumbing lives here, outside the minimal subagents core (see [ADR-0002] in the pi-subagents package).
 
 ## Install
 
@@ -67,6 +67,30 @@ A worktree belonging to a **different** Pi process running against the same repo
 
 Earlier versions of `@gotgenes/pi-subagents` accepted an `isolation: "worktree"` spawn flag.
 That flag was removed from the core; install this package and list the agent types you want isolated in `worktreeAgents` instead.
+
+## Scope and non-goals
+
+**Purpose.**
+The subagents core asks a `WorkspaceProvider` where each child session should run.
+This package is one answer: opted-in agents get a temporary git worktree, and whatever they produce is rescued to a branch when they finish.
+
+**In scope.**
+The git plumbing bracketing a child run, not losing the child's work when cleanup fails, and making a preserved worktree discoverable and removable.
+
+**Non-goals.**
+
+- _Workspaces for anything but subagent child sessions._
+  Worktrees for parallel human-driven Pi sessions are a different mechanism, with different lifetimes and naming, and are not served from here.
+- _Anything after the rescue branch._
+  Merging it, opening a PR from it, or cleaning up old `pi-agent-*` branches is your workflow.
+- _Deleting a preserved worktree automatically._
+  A failed cleanup is exactly the case where the content is not safe to discard on the extension's judgment.
+- _Handing removal to the agent._
+  Recovery is a slash command rather than a tool, keeping a destructive `git worktree remove --force` out of the model's reach.
+- _Worktree knowledge in the subagents core._ `git` does not appear there; uninstalling this package leaves children running in the parent's directory.
+
+**Where adjacent requests belong.**
+Whether a child gets an isolated workspace at all, the seam that asks, and a child's system prompt or working-directory claim → [@gotgenes/pi-subagents](https://www.npmjs.com/package/@gotgenes/pi-subagents).
 
 ## License
 

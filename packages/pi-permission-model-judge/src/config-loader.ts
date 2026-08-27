@@ -9,7 +9,6 @@
  */
 
 import { existsSync, readFileSync } from "node:fs";
-import { homedir } from "node:os";
 import { join } from "node:path";
 
 import {
@@ -33,12 +32,8 @@ export interface LoadConfigResult {
   issues: ConfigIssue[];
 }
 
-function defaultAgentDir(): string {
-  return join(homedir(), ".pi", "agent");
-}
-
 /** Global scope: `<agentDir>/extensions/<id>/config.json`. */
-export function getGlobalConfigPath(agentDir = defaultAgentDir()): string {
+export function getGlobalConfigPath(agentDir: string): string {
   return join(
     agentDir,
     "extensions",
@@ -99,16 +94,19 @@ function readLayer(
  * Load the merged, validated model-judge config from the global and project
  * scopes.
  *
+ * Both scopes are supplied by the caller: the extension resolves `agentDir`
+ * from the SDK's `getAgentDir()` (which honors `PI_CODING_AGENT_DIR`) and `cwd`
+ * from the session context, so this module reads no process globals of its own.
+ *
  * When neither file exists, returns `{ config: undefined, issues: [] }` — the
  * normal not-configured state, reported without noise. When a present config is
  * invalid, returns `{ config: undefined }` with the validation issues.
  */
-export function loadModelJudgeConfig(options?: {
-  cwd?: string;
-  agentDir?: string;
+export function loadModelJudgeConfig(options: {
+  cwd: string;
+  agentDir: string;
 }): LoadConfigResult {
-  const cwd = options?.cwd ?? process.cwd();
-  const agentDir = options?.agentDir ?? defaultAgentDir();
+  const { cwd, agentDir } = options;
   const issues: ConfigIssue[] = [];
 
   const global = readLayer(getGlobalConfigPath(agentDir), issues);

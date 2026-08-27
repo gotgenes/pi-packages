@@ -8,6 +8,7 @@ import {
   normalizePathForComparison,
   normalizePathPolicyLiteral,
 } from "./access-intent/path-normalization";
+import { deriveApprovalPattern } from "./path/approval-pattern";
 import { isPathOutsideWorkingDirectory } from "./path/path-containment";
 import { isPiInfrastructureRead } from "./path/pi-infrastructure-read";
 
@@ -97,6 +98,20 @@ export class PathNormalizer {
       case "plain":
         return this.forPath(token, options);
     }
+  }
+
+  /**
+   * The session-approval glob for an accessed path: its directory scope plus
+   * `*`, derived through the baked flavor.
+   *
+   * Takes the already-built {@link AccessPath} — the lexical form is what a
+   * later tool call is matched on, so the pattern must be derived from the
+   * same representation the decision displayed (#438). Deriving it here rather
+   * than at each gate keeps the platform's separator alphabet with the object
+   * that owns the flavor, instead of an ambient `node:path` read (#655).
+   */
+  approvalPatternFor(accessPath: AccessPath): string {
+    return deriveApprovalPattern(accessPath.value(), this.flavor);
   }
 
   /** Platform-aware absoluteness (`win32` vs `posix` rules). */

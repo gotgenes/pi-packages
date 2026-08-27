@@ -19,6 +19,7 @@ import {
   logPermissionForwardingError,
   logPermissionForwardingWarning,
   readForwardedPermissionRequest,
+  readForwardedPermissionResponse,
   tryRemoveDirectoryIfEmpty,
   writeJsonFileAtomic,
 } from "#src/authority/forwarding-io";
@@ -28,6 +29,7 @@ import {
   type ForwardedPermissionRequest,
 } from "#src/authority/permission-forwarding";
 import type { DebugReviewLogger } from "#src/session-logger";
+import { makePromptPayload } from "#test/helpers/prompt-details-fixtures";
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
@@ -196,7 +198,7 @@ describe("readForwardedPermissionRequest — accessIntent field", () => {
       requesterSessionId: "child-session",
       targetSessionId: "parent-session",
       requesterAgentName: "researcher",
-      message: "Allow this path access?",
+      surface: "read",
     };
   }
 
@@ -253,7 +255,7 @@ describe("readForwardedPermissionRequest — accessIntent field", () => {
     const parsed = writeAndRead(baseRequest());
     expect(parsed?.accessIntent).toBeUndefined();
     // Display/routing fields still reconstruct.
-    expect(parsed?.message).toBe("Allow this path access?");
+    expect(parsed?.surface).toBe("read");
     expect(parsed?.requesterAgentName).toBe("researcher");
   });
 
@@ -282,6 +284,187 @@ describe("readForwardedPermissionRequest — accessIntent field", () => {
       },
     });
     expect(parsed?.accessIntent).toBeUndefined();
+  });
+});
+
+describe("readForwardedPermissionRequest — payload field", () => {
+  let root: string;
+
+  afterEach(() => {
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  function baseRequest(): ForwardedPermissionRequest {
+    return {
+      id: "req-1",
+      createdAt: 1000,
+      requesterSessionId: "child-session",
+      targetSessionId: "parent-session",
+      requesterAgentName: "researcher",
+    };
+  }
+
+  function writeAndRead(raw: unknown): ForwardedPermissionRequest | null {
+    root = mkdtempSync(join(tmpdir(), "io-payload-"));
+    const filePath = join(root, "req.json");
+    writeJsonFileAtomic(null, filePath, raw);
+    return readForwardedPermissionRequest(null, filePath);
+  }
+
+  it("round-trips the child's complete prompt payload", () => {
+    const payload = makePromptPayload({
+      kind: "bash",
+      request: {
+        requester: { agentName: "Explore", forwarded: false, sessionId: null },
+        surface: "bash",
+        toolName: "bash",
+        invokedToolName: null,
+        value: "git push",
+        matchedPattern: "git *",
+        commandContext: null,
+        executedUnit: null,
+      },
+      evidence: [{ label: "command", text: "git push", detail: null }],
+    });
+    const parsed = writeAndRead({ ...baseRequest(), payload });
+    expect(parsed?.payload).toEqual(payload);
+  });
+
+  it("reads a request with no payload as undefined (version skew)", () => {
+    const parsed = writeAndRead(baseRequest());
+    expect(parsed?.payload).toBeUndefined();
+    expect(parsed?.requesterAgentName).toBe("researcher");
+  });
+
+  it("drops a payload with an unrecognized kind", () => {
+    const parsed = writeAndRead({
+      ...baseRequest(),
+      payload: { ...makePromptPayload(), kind: "telepathy" },
+    });
+    expect(parsed?.payload).toBeUndefined();
+  });
+
+  it("drops a payload whose request facts are malformed", () => {
+    const payload = makePromptPayload();
+    const parsed = writeAndRead({
+      ...baseRequest(),
+      payload: { ...payload, request: { ...payload.request, value: 42 } },
+    });
+    expect(parsed?.payload).toBeUndefined();
+  });
+
+  it("drops a payload whose requester is malformed", () => {
+    const payload = makePromptPayload();
+    const parsed = writeAndRead({
+      ...baseRequest(),
+      payload: {
+        ...payload,
+        request: { ...payload.request, requester: { forwarded: true } },
+      },
+    });
+    expect(parsed?.payload).toBeUndefined();
+  });
+
+  it("drops a payload whose evidence entries are malformed", () => {
+    const parsed = writeAndRead({
+      ...baseRequest(),
+      payload: {
+        ...makePromptPayload(),
+        evidence: [{ label: "command", text: null, detail: null }],
+      },
+    });
+    expect(parsed?.payload).toBeUndefined();
+  });
+
+  it("drops a payload whose annotations are malformed", () => {
+    const parsed = writeAndRead({
+      ...baseRequest(),
+      payload: { ...makePromptPayload(), annotations: [{ source: "judge" }] },
+    });
+    expect(parsed?.payload).toBeUndefined();
+  });
+
+  it("accepts a legacy message-only request and reconstructs no message", () => {
+    // An older child writes `message` and no `payload`. The required-core gate
+    // no longer demands the field, so the request is served (from its display
+    // fields) rather than rejected outright — and the sentence is not salvaged.
+    const parsed = writeAndRead({
+      ...baseRequest(),
+      message: "Allow this path access?",
+      surface: "read",
+      value: "/tmp/x",
+    });
+    expect(parsed).not.toHaveProperty("message");
+    expect(parsed?.surface).toBe("read");
+    expect(parsed?.value).toBe("/tmp/x");
+    expect(parsed?.payload).toBeUndefined();
+  });
+});
+
+describe("readForwardedPermissionResponse — decidedBy field", () => {
+  let root: string;
+
+  afterEach(() => {
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  function writeAndRead(raw: unknown) {
+    root = mkdtempSync(join(tmpdir(), "io-decided-by-"));
+    const filePath = join(root, "res.json");
+    writeJsonFileAtomic(null, filePath, raw);
+    return readForwardedPermissionResponse(null, filePath);
+  }
+
+  function baseResponse() {
+    return {
+      approved: true,
+      state: "approved",
+      responderSessionId: "parent-session",
+      respondedAt: 1000,
+    };
+  }
+
+  it("round-trips the responder's decider", () => {
+    const decidedBy = { kind: "user", via: "dialog" } as const;
+
+    // The reader rebuilds an allowlist of known fields, so an added one is
+    // silently dropped until it is listed — which is invisible to tsc.
+    expect(writeAndRead({ ...baseResponse(), decidedBy })?.decidedBy).toEqual(
+      decidedBy,
+    );
+  });
+
+  it("round-trips a nested forwarded decider from a relay hop", () => {
+    const decidedBy = {
+      kind: "forwarded",
+      responderSessionId: "root-session",
+      decision: {
+        kind: "rule",
+        surface: "bash",
+        pattern: "*",
+        origin: "global",
+      },
+    } as const;
+
+    expect(writeAndRead({ ...baseResponse(), decidedBy })?.decidedBy).toEqual(
+      decidedBy,
+    );
+  });
+
+  it("drops a malformed decider without rejecting the response", () => {
+    const parsed = writeAndRead({
+      ...baseResponse(),
+      decidedBy: { kind: "user", via: "smoke-signal" },
+    });
+
+    // The decision itself still has to reach the child; only its unusable
+    // provenance is discarded.
+    expect(parsed?.approved).toBe(true);
+    expect(parsed?.decidedBy).toBeUndefined();
+  });
+
+  it("leaves decidedBy absent for an older responder", () => {
+    expect(writeAndRead(baseResponse())?.decidedBy).toBeUndefined();
   });
 });
 

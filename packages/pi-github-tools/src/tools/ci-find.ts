@@ -14,7 +14,7 @@ export function registerCiFind(pi: ExtensionAPI): void {
       "Returns run_id, url, status, sha, title, and jobs on success. " +
       "Returns a structured timeout message (not an error) if the run does not appear within the timeout.",
     promptSnippet:
-      "ci_find: Wait for a CI run matching a pushed SHA. Returns run ID and jobs.",
+      "Wait for a CI run matching a pushed SHA. Returns run ID and jobs.",
     parameters: Type.Object({
       workflow: Type.String({
         description:

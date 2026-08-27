@@ -39,16 +39,42 @@
       "minimum": 1,
       "maximum": 9007199254740991
     },
+    "promptMaxRows": {
+      "description": "Maximum rows a permission prompt renders before eliding its evidence. Omit to use the default (24).",
+      "markdownDescription": "Maximum rows a permission prompt renders before eliding its evidence.\n\nOmit to use the default (24). The request's own facts — the requesting agent, the tool, the matched rule, the decision-relevant value — are never elided by this budget; what gives way is the supporting evidence, and `Ctrl+O` expands the prompt to the complete request.",
+      "default": 24,
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "promptFieldMaxWidth": {
+      "description": "Maximum characters of any one field shown in a permission prompt. Omit to use the default (400).",
+      "markdownDescription": "Maximum characters of any one field shown in a permission prompt.\n\nOmit to use the default (400). This is what bounds a single pathological field — a long here-string command, say — that would otherwise fill the prompt through wrapping. A shortened field is marked with an ellipsis, and `Ctrl+O` shows it in full.",
+      "default": 400,
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "reviewLogFieldMaxWidth": {
+      "description": "Maximum characters of any one value written to the permission review log. Omit to use the default (1000).",
+      "markdownDescription": "Maximum characters of any one value written to the permission review log.\n\nOmit to use the default (1000). Every string the review log writes is narrowed to this width and marked with an ellipsis, so the log's growth is a decision you make rather than a side effect of how long a command happened to be. Raise it to keep longer values — a bash command exceeding the width is stored shortened.\n\nThis is a length bound, not redaction: it never inspects a value to decide what to hide. Key-name masking is unchanged and applies independently.",
+      "default": 1000,
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
     "toolInputPreviewMaxLength": {
-      "description": "Maximum character length of the inline-JSON tool-input preview shown in permission prompts. Omit to use the default (200). Set to a large value to disable truncation.",
-      "markdownDescription": "Maximum character length of the inline-JSON tool-input preview shown in permission prompts.\n\nOmit to use the default (200). Set to a large value (e.g. `10000`) to effectively disable truncation and see the full input.",
+      "deprecated": true,
+      "description": "Deprecated and ignored. Superseded by promptMaxRows and promptFieldMaxWidth, which bound the whole prompt rather than one preview. Still accepted so an existing config is not rejected; remove it.",
+      "markdownDescription": "**Deprecated and ignored.** Superseded by `promptMaxRows` and `promptFieldMaxWidth`, which bound the whole permission prompt rather than one preview inside it.\n\nStill accepted so an existing config is not rejected fail-closed, but the value no longer takes effect. Remove it.",
       "type": "integer",
       "minimum": 1,
       "maximum": 9007199254740991
     },
     "toolTextSummaryMaxLength": {
-      "description": "Maximum character length of inline pattern/path summaries (e.g. grep patterns, find globs, ls paths) in permission prompts. Omit to use the default (80).",
-      "markdownDescription": "Maximum character length of inline pattern/path summaries (e.g. grep patterns, find globs, ls paths) shown in permission prompts.\n\nOmit to use the default (80). Increase this when working with long regexes or deep paths that are being cut off.",
+      "deprecated": true,
+      "description": "Deprecated and ignored. Superseded by promptMaxRows and promptFieldMaxWidth, which bound the whole prompt rather than one summary. Still accepted so an existing config is not rejected; remove it.",
+      "markdownDescription": "**Deprecated and ignored.** Superseded by `promptMaxRows` and `promptFieldMaxWidth`, which bound the whole permission prompt rather than one summary inside it.\n\nStill accepted so an existing config is not rejected fail-closed, but the value no longer takes effect. Remove it.",
       "type": "integer",
       "minimum": 1,
       "maximum": 9007199254740991
@@ -75,10 +101,55 @@
     },
     "permission": {
       "type": "object",
-      "propertyNames": {
-        "type": "string",
-        "minLength": 1,
-        "description": "A surface name or the universal fallback key '*'."
+      "properties": {
+        "path_read": {
+          "description": "Cross-cutting gate for reading a file, by path pattern. The useful directional grant.",
+          "markdownDescription": "Cross-cutting gate for **reading** a file, matched by path pattern across all path-aware tools.\n\nThis is the directional key worth granting: `\"path_read\": { \"~/dev/*\": \"allow\" }` permits reads without permitting writes.\n\nA bare `\"path\"` key is sugar that expands into this key **and** `path_write`, with its entries placed first — so an explicit `path_read` entry always has the final say, whatever the key order in the file.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/permissionState"
+            },
+            {
+              "$ref": "#/$defs/permissionMap"
+            }
+          ]
+        },
+        "path_write": {
+          "description": "Cross-cutting gate for writing a file, by path pattern. Earns its keep as a restriction.",
+          "markdownDescription": "Cross-cutting gate for **writing** a file, matched by path pattern across all path-aware tools.\n\nThis key earns its keep as a *restriction* rather than a grant: `\"path_write\": { \"*\": \"deny\" }` is a coherent read-only-agent posture. A `\"path_write\": \"allow\"` on its own does not silence an `edit`, which also reads — grant `path_read` too, or use the bare `\"path\"` key.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/permissionState"
+            },
+            {
+              "$ref": "#/$defs/permissionMap"
+            }
+          ]
+        },
+        "external_directory_read": {
+          "description": "Boundary gate for reading outside the working directory. The relief most asks want.",
+          "markdownDescription": "Boundary gate for **reading** a path outside the session working directory.\n\nThe one-line grant for an external root: `\"external_directory_read\": { \"~/dev/*\": \"allow\" }` silences repeated read prompts on a directory outside the tree while a write to the same path still prompts. No parallel `path_read` entry is needed.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/permissionState"
+            },
+            {
+              "$ref": "#/$defs/permissionMap"
+            }
+          ]
+        },
+        "external_directory_write": {
+          "description": "Boundary gate for writing outside the working directory.",
+          "markdownDescription": "Boundary gate for **writing** to a path outside the session working directory.\n\nA bare `\"external_directory\"` key is sugar that expands into this key and `external_directory_read`; write this one only to give the two directions different answers.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/permissionState"
+            },
+            {
+              "$ref": "#/$defs/permissionMap"
+            }
+          ]
+        }
       },
       "additionalProperties": {
         "anyOf": [
@@ -122,6 +193,9 @@
           "external_directory": {
             "*": "ask",
             "~/.cargo/registry/*": "allow"
+          },
+          "external_directory_read": {
+            "~/dev/*": "allow"
           }
         }
       ]

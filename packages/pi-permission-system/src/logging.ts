@@ -4,6 +4,7 @@ import {
   EXTENSION_ID,
   type PermissionSystemExtensionConfig,
 } from "./extension-config";
+import { capLogFieldWidths, resolveReviewLogFieldWidth } from "./log-field-cap";
 import {
   OWNER_ONLY_FILE_MODE,
   restrictExistingPathToOwner,
@@ -37,11 +38,20 @@ export function createPermissionSystemLogger(
   // re-invoked per session, unlike module scope, which now outlives one.
   const hardened = new Set<string>();
 
+  /**
+   * The only place a log line is produced.
+   *
+   * `maxFieldWidth` bounds every string the line carries; it is supplied for
+   * the review stream and withheld for the debug stream, which is opt-in and
+   * exists to be read in full. Capping happens before redaction, which masks
+   * by key name and so still masks a sensitive value whole.
+   */
   const writeLine = (
     stream: "debug" | "review",
     path: string,
     event: string,
     details: Record<string, unknown>,
+    maxFieldWidth?: number,
   ): string | undefined => {
     const directoryError = ensureLogsDirectory();
     if (directoryError) {
@@ -49,12 +59,16 @@ export function createPermissionSystemLogger(
     }
 
     try {
+      const bounded =
+        maxFieldWidth === undefined
+          ? details
+          : capLogFieldWidths(details, maxFieldWidth);
       const line = redactedJsonStringify({
         timestamp: new Date().toISOString(),
         extension: EXTENSION_ID,
         stream,
         event,
-        ...details,
+        ...bounded,
       });
       if (!line) {
         return `Failed to write permission-system ${stream} log '${path}': event could not be serialized.`;
@@ -89,11 +103,18 @@ export function createPermissionSystemLogger(
     event: string,
     details: Record<string, unknown> = {},
   ): string | undefined => {
-    if (!options.getConfig().permissionReviewLog) {
+    const config = options.getConfig();
+    if (!config.permissionReviewLog) {
       return undefined;
     }
 
-    return writeLine("review", reviewLogPath, event, details);
+    return writeLine(
+      "review",
+      reviewLogPath,
+      event,
+      details,
+      resolveReviewLogFieldWidth(config),
+    );
   };
 
   return { debug, review };

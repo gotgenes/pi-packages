@@ -17,7 +17,8 @@ import type { WildcardMatchOptions } from "#src/wildcard-matcher";
  * fold or separator fold is a silent bypass (the #382 / #508 class). `PathFlavor`
  * captures that mapping once so the leaves consume the resolved capability
  * instead of re-interpreting a raw `NodeJS.Platform` string. It owns platform
- * **semantics** — syntax ({@link hasPathSeparator}), token shape
+ * **semantics** — syntax ({@link hasPathSeparator} /
+ * {@link lastSeparatorIndex}), token shape
  * ({@link bashTokenShape}), and the equivalence relation ({@link fold} /
  * {@link comparable} / {@link isWithin} / {@link matchOptions}); domain policy
  * (lexical cleanup, alias generation, safe-system-path exclusions, rule
@@ -51,6 +52,15 @@ export interface PathFlavor {
    */
   hasPathSeparator(token: string): boolean;
   /**
+   * Index of the last path separator in `value`, or `-1` when it holds none.
+   *
+   * Reads the same separator alphabet as {@link hasPathSeparator}, so a caller
+   * that must split a path at its directory boundary uses the separator the
+   * value was written with rather than this platform's default `sep` — the two
+   * differ for a Git Bash token on a win32 host (`/dev/null`, `/tmp/logs/`).
+   */
+  lastSeparatorIndex(value: string): number;
+  /**
    * The MSYS/Git-Bash interpretation of a bash-command token. On win32 this
    * carries device / drive-mount / posix-absolute / plain semantics; on POSIX
    * every token is an ordinary path, so the shape is always `{ kind: "plain" }`.
@@ -60,6 +70,8 @@ export interface PathFlavor {
 
 class PlatformPathFlavor implements PathFlavor {
   readonly matchOptions: WildcardMatchOptions | undefined;
+  /** Every separator spelling this platform recognizes, the one alphabet both separator answers read. */
+  private readonly separators: readonly string[];
 
   constructor(
     readonly impl: PlatformPath,
@@ -68,6 +80,7 @@ class PlatformPathFlavor implements PathFlavor {
     this.matchOptions = windows
       ? { caseInsensitive: true, windowsSeparators: true }
       : undefined;
+    this.separators = windows ? ["/", "\\"] : ["/"];
   }
 
   fold(value: string): string {
@@ -91,7 +104,14 @@ class PlatformPathFlavor implements PathFlavor {
   }
 
   hasPathSeparator(token: string): boolean {
-    return token.includes("/") || (this.windows && token.includes("\\"));
+    return this.lastSeparatorIndex(token) >= 0;
+  }
+
+  lastSeparatorIndex(value: string): number {
+    return this.separators.reduce(
+      (last, separator) => Math.max(last, value.lastIndexOf(separator)),
+      -1,
+    );
   }
 
   bashTokenShape(token: string): BashTokenShape {

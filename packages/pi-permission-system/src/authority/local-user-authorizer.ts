@@ -53,13 +53,12 @@ export class LocalUserAuthorizer implements TerminalAuthorizer {
       {
         mode: this.deps.mode,
         ui: this.deps.ui,
-        doublePressToConfirm:
-          this.deps.getPromptPreferences().doublePressToConfirm,
+        ...this.deps.getPromptPreferences(),
       },
       details.forwarding
         ? "Permission Required (Subagent)"
         : "Permission Required",
-      details.message,
+      details.payload,
       buildRequestOptions(details),
     );
   }

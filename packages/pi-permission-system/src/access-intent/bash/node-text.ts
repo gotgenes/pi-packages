@@ -2,8 +2,13 @@ import type { TSNode } from "#src/access-intent/bash/parser";
 import { resolvePlainVariableExpansion } from "#src/access-intent/bash/shell-variable-expansion";
 
 /**
- * Node types whose subtrees must never be descended into for
- * path extraction — their text content is not a command argument.
+ * Node types whose text content is never a command argument, so no path
+ * candidate is ever read from it.
+ *
+ * This governs the subtree's *text*, not whether it is visited at all: an
+ * interpolating `heredoc_body` is also an execution host, so it is still
+ * descended for the commands it runs while its prose stays out of the path
+ * surface (#741). See `EXECUTION_HOST_TYPES` in `nested-execution.ts`.
  */
 export const SKIP_SUBTREE_TYPES = new Set([
   "heredoc_body",

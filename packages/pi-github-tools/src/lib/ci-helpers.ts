@@ -1,5 +1,5 @@
 /**
- * Shared CI types and utilities used by the CI tool modules.
+ * Shared polling types and utilities used by the CI and release tool modules.
  * Platform-independent — no Pi SDK imports.
  */
 
@@ -8,6 +8,14 @@ export interface CIJob {
   name: string;
   status: string;
   conclusion: string | null;
+}
+
+/**
+ * Format the result a polling loop returns when its abort signal fires.
+ * Each extra line is appended verbatim, already indented by the caller.
+ */
+export function formatAborted(...extraLines: string[]): string {
+  return ["aborted: cancelled by user", ...extraLines].join("\n");
 }
 
 /**

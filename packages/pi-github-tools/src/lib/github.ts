@@ -3,6 +3,7 @@
  * Platform-independent — no Pi SDK imports.
  */
 import { runCommand } from "./process";
+import { type RetryOptions, withRetry } from "./retry";
 
 export interface RepoInfo {
   owner: string;
@@ -71,6 +72,20 @@ export async function ghJson<T>(
 ): Promise<T> {
   const text = await gh(args, signal);
   return JSON.parse(text) as T;
+}
+
+/**
+ * Run a read-only `gh` command, retrying transient failures, and parse stdout
+ * as JSON.
+ *
+ * Retry is opt-in at the call site rather than a property of `gh()`, so a
+ * mutation (`gh pr merge`, `gh issue close`) cannot acquire it by accident.
+ */
+export function ghJsonRetrying<T>(
+  args: string[],
+  options: RetryOptions = {},
+): Promise<T> {
+  return withRetry(() => ghJson<T>(args, options.signal), options);
 }
 
 /**

@@ -1,3 +1,4 @@
+import type { DecisionSource } from "#src/authority/decision-source";
 import type { PermissionPromptDecision } from "#src/authority/permission-dialog";
 
 /** Result of applying the permission gate. */
@@ -30,6 +31,15 @@ export interface PermissionGateParams {
   /** Log context fields shared across all log calls for this gate. */
   logContext: Record<string, unknown>;
 
+  /**
+   * The rule that resolved this gate, for the deny arm's review entry.
+   *
+   * A sibling of `logContext` rather than a member of it: the context holds
+   * what every resolution of this gate shares, and the decider is by
+   * definition not shared (#726).
+   */
+  decidedByRule: DecisionSource;
+
   /** Message strings/factories for each outcome. */
   messages: {
     denyReason: string;
@@ -52,6 +62,7 @@ export async function applyPermissionGate(
     writeLog("permission_request.blocked", {
       ...logContext,
       resolution: "policy_denied",
+      decidedBy: params.decidedByRule,
     });
     return { action: "block", reason: messages.denyReason };
   }

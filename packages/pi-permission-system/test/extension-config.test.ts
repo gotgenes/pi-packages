@@ -140,27 +140,43 @@ describe("normalizePermissionSystemConfig", () => {
     expect("forwardingTimeoutMs" in result).toBe(false);
   });
 
-  it("includes toolInputPreviewMaxLength when a valid positive integer is provided", () => {
+  it("includes the prompt-budget knobs when provided", () => {
+    const result = normalizePermissionSystemConfig({
+      promptMaxRows: 12,
+      promptFieldMaxWidth: 80,
+    });
+    expect(result.promptMaxRows).toBe(12);
+    expect(result.promptFieldMaxWidth).toBe(80);
+  });
+
+  it("omits the prompt-budget knobs when absent, leaving the renderer's defaults", () => {
+    const result = normalizePermissionSystemConfig({});
+    expect("promptMaxRows" in result).toBe(false);
+    expect("promptFieldMaxWidth" in result).toBe(false);
+  });
+
+  it("includes the review-log field width when provided", () => {
+    expect(
+      normalizePermissionSystemConfig({ reviewLogFieldMaxWidth: 200 })
+        .reviewLogFieldMaxWidth,
+    ).toBe(200);
+  });
+
+  it("omits the review-log field width when absent, leaving the writer's default", () => {
+    expect(
+      "reviewLogFieldMaxWidth" in normalizePermissionSystemConfig({}),
+    ).toBe(false);
+  });
+
+  // Deliberately dropped rather than carried: a declared config field no
+  // runtime consumer reads is a maintenance trap, so the deprecated caps stop
+  // at the merge intermediate the detector reads (#745).
+  it("drops the deprecated preview caps even when the config sets them", () => {
     const result = normalizePermissionSystemConfig({
       toolInputPreviewMaxLength: 400,
-    });
-    expect(result.toolInputPreviewMaxLength).toBe(400);
-  });
-
-  it("omits toolInputPreviewMaxLength when absent", () => {
-    const result = normalizePermissionSystemConfig({});
-    expect("toolInputPreviewMaxLength" in result).toBe(false);
-  });
-
-  it("includes toolTextSummaryMaxLength when a valid positive integer is provided", () => {
-    const result = normalizePermissionSystemConfig({
       toolTextSummaryMaxLength: 120,
     });
-    expect(result.toolTextSummaryMaxLength).toBe(120);
-  });
-
-  it("omits toolTextSummaryMaxLength when absent", () => {
-    const result = normalizePermissionSystemConfig({});
+    expect("toolInputPreviewMaxLength" in result).toBe(false);
     expect("toolTextSummaryMaxLength" in result).toBe(false);
   });
 

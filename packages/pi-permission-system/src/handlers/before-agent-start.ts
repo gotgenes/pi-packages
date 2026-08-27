@@ -2,6 +2,7 @@ import type {
   BeforeAgentStartEventResult,
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
+import type { TurnPreparation } from "#src/handlers/session-turn-prep";
 import type { PermissionResolver } from "#src/permission-resolver";
 import type { PermissionSession } from "#src/permission-session";
 import { resolveSkillPromptEntries } from "#src/skill-prompt-sanitizer";
@@ -37,19 +38,18 @@ export function shouldExposeTool(
  * than letting Pi reset to its skill-unfiltered base prompt on a cache hit.
  *
  * Constructor deps:
+ * - `turnPrep` — brings the node up to date for the turn before anything reads
+ *   session state
  * - `session` — encapsulates all mutable session state and lifecycle operations
  * - `resolver` — owns permission-query surface: `getToolPermission`, skill check
  * - `toolRegistry` — Pi tool API subset (getActive + setActive)
- * - `warmParser` — warms the tree-sitter parser so the synchronous advisory
- *   bash path can decompose at gate parity; `before_agent_start` precedes any
- *   tool call, so triggering it here closes the pre-warm window (#309)
  */
 export class AgentPrepHandler {
   constructor(
+    private readonly turnPrep: TurnPreparation,
     private readonly session: PermissionSession,
     private readonly resolver: PermissionResolver,
     private readonly toolRegistry: ToolRegistry,
-    private readonly warmParser: () => void,
   ) {}
 
   // eslint-disable-next-line @typescript-eslint/require-await
@@ -57,16 +57,7 @@ export class AgentPrepHandler {
     event: BeforeAgentStartPayload,
     ctx: ExtensionContext,
   ): Promise<BeforeAgentStartEventResult> {
-    // Fire-and-forget: warming is idempotent and best-effort, so it never
-    // delays agent start. A bash advisory query before it completes falls back
-    // to whole-string matching.
-    this.warmParser();
-    this.session.activate(ctx);
-    // Gate the mid-session runtime-config refresh on project trust too, so an
-    // untrusted project cannot slip its runtime config (e.g. `yoloMode`) in
-    // right before agent start after session_start withheld it (#644). The
-    // session_start handler already warned; do not re-warn on every start.
-    this.session.refreshConfig(ctx, ctx.isProjectTrusted());
+    this.turnPrep.prepare(ctx);
 
     const agentName = this.session.resolveAgentName(ctx, event.systemPrompt);
     const activeTools = this.toolRegistry.getActive();

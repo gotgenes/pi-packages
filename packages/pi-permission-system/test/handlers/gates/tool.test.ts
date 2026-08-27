@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import type { ShellInvocation } from "#src/access-intent/tool-kind";
+import type { ToolPathAccess } from "#src/handlers/gates/tool";
 import { describeToolGate } from "#src/handlers/gates/tool";
 import type { ToolCallContext } from "#src/handlers/gates/types";
-import { posixPathFlavor } from "#src/path/path-flavor";
+import { posixPathFlavor, win32PathFlavor } from "#src/path/path-flavor";
 import { PathNormalizer } from "#src/path-normalizer";
 import {
-  TOOL_INPUT_LOG_PREVIEW_MAX_LENGTH,
   TOOL_INPUT_PREVIEW_MAX_LENGTH,
   TOOL_TEXT_SUMMARY_MAX_LENGTH,
 } from "#src/tool-input-preview";
@@ -19,7 +19,6 @@ function makeFormatter(): ToolPreviewFormatter {
   return new ToolPreviewFormatter({
     toolInputPreviewMaxLength: TOOL_INPUT_PREVIEW_MAX_LENGTH,
     toolTextSummaryMaxLength: TOOL_TEXT_SUMMARY_MAX_LENGTH,
-    toolInputLogPreviewMaxLength: TOOL_INPUT_LOG_PREVIEW_MAX_LENGTH,
   });
 }
 
@@ -51,6 +50,15 @@ function makeCheckResult(
 // The per-tool gate now receives the AccessPath the pipeline builds, bound to
 // the makeTcc default cwd; approval values derive from `accessPath.value()`.
 const normalizer = new PathNormalizer(posixPathFlavor, "/test/project");
+
+/** Pair the pipeline hands the gate: the resolved path and its approval scope. */
+function pathAccessFor(
+  pathValue: string,
+  n: PathNormalizer = normalizer,
+): ToolPathAccess {
+  const path = n.forPath(pathValue);
+  return { path, approvalPattern: n.approvalPatternFor(path) };
+}
 
 // ── tests ──────────────────────────────────────────────────────────────────
 
@@ -115,6 +123,11 @@ describe("describeToolGate", () => {
     // The invoked tool name is preserved for the review log and prompt.
     expect(desc.logContext.toolName).toBe("exec_command");
     expect(desc.promptDetails.toolName).toBe("exec_command");
+    // "Gated as bash, invoked as exec_command" is two facts, and the payload
+    // records both rather than collapsing them.
+    expect(desc.payload.kind).toBe("bash");
+    expect(desc.payload.request.toolName).toBe("bash");
+    expect(desc.payload.request.invokedToolName).toBe("exec_command");
   });
 
   it("returns mcp surface with target in decision.value for MCP tools", () => {
@@ -132,38 +145,37 @@ describe("describeToolGate", () => {
     expect(desc.decision.value).toBe("server:tool");
   });
 
-  it("populates denialContext with kind 'tool' and check result", () => {
-    const check = makeCheckResult("deny", { toolName: "read" });
-    const desc = describeToolGate(makeTcc(), check, makeFormatter());
-    expect(desc.denialContext).toEqual({
-      kind: "tool",
-      check,
-      agentName: undefined,
-      input: {},
+  it("carries the checked tool and its matched rule on the payload", () => {
+    const check = makeCheckResult("deny", {
+      toolName: "read",
+      matchedPattern: "re*",
     });
+    const desc = describeToolGate(makeTcc(), check, makeFormatter());
+    expect(desc.payload.kind).toBe("tool");
+    expect(desc.payload.request.toolName).toBe("read");
+    expect(desc.payload.request.matchedPattern).toBe("re*");
+    expect(desc.payload.request.requester.agentName).toBeNull();
   });
 
-  it("populates denialContext with agent name when provided", () => {
+  it("names the requesting agent on the payload when provided", () => {
     const check = makeCheckResult("ask", { toolName: "read" });
     const desc = describeToolGate(
       makeTcc({ agentName: "my-agent" }),
       check,
       makeFormatter(),
     );
-    expect(desc.denialContext.agentName).toBe("my-agent");
+    expect(desc.payload.request.requester.agentName).toBe("my-agent");
   });
 
-  it("populates denialContext with input for tool context", () => {
+  it("carries the command as the decision-relevant value for a bash ask", () => {
     const check = makeCheckResult("ask", { toolName: "bash", command: "ls" });
     const desc = describeToolGate(
       makeTcc({ toolName: "bash", input: { command: "ls" } }),
       check,
       makeFormatter(),
     );
-    expect(desc.denialContext).toMatchObject({
-      kind: "tool",
-      input: { command: "ls" },
-    });
+    expect(desc.payload.kind).toBe("bash");
+    expect(desc.payload.request.value).toBe("ls");
   });
 
   it("populates sessionApproval via suggestSessionPattern", () => {
@@ -191,7 +203,7 @@ describe("describeToolGate", () => {
       }),
       check,
       makeFormatter(),
-      normalizer.forPath("index.html"),
+      pathAccessFor("index.html"),
     );
     expect(desc.sessionApproval?.surface).toBe("edit");
     expect(desc.sessionApproval?.representativePattern).toBe("/test/project/*");
@@ -211,7 +223,7 @@ describe("describeToolGate", () => {
       }),
       check,
       makeFormatter(),
-      normalizer.forPath("src/foo.ts"),
+      pathAccessFor("src/foo.ts"),
     );
     expect(desc.sessionApproval?.representativePattern).toBe(
       "/test/project/src/*",
@@ -243,13 +255,12 @@ describe("describeToolGate", () => {
       toolCallId: "tc-42",
       toolName: "read",
     });
-    expect(desc.promptDetails.message).toBeDefined();
     expect(desc.promptDetails.sessionLabel).toBeDefined();
   });
 
   it("carries the AccessPath's facts on promptDetails for a path-bearing tool", () => {
     const check = makeCheckResult("ask", { toolName: "edit" });
-    const accessPath = normalizer.forPath("src/foo.ts");
+    const pathAccess = pathAccessFor("src/foo.ts");
     const desc = describeToolGate(
       makeTcc({
         toolName: "edit",
@@ -258,13 +269,49 @@ describe("describeToolGate", () => {
       }),
       check,
       makeFormatter(),
-      accessPath,
+      pathAccess,
     );
     expect(desc.promptDetails.accessIntent).toEqual({
       surface: "edit",
-      matchValues: accessPath.matchValues(),
-      boundaryValue: accessPath.boundaryValue(),
+      matchValues: pathAccess.path.matchValues(),
+      boundaryValue: pathAccess.path.boundaryValue(),
     });
+  });
+
+  it("records the approval pattern the pipeline derived", () => {
+    const desc = describeToolGate(
+      makeTcc({ toolName: "edit", input: { path: "src/foo.ts" } }),
+      makeCheckResult("ask", { toolName: "edit" }),
+      makeFormatter(),
+      pathAccessFor("src/foo.ts"),
+    );
+    expect(desc.sessionApproval?.patterns).toEqual(["/test/project/src/*"]);
+    expect(desc.promptDetails.sessionLabel).toBe(
+      'Yes, allow edit "/test/project/src/*" for this session',
+    );
+  });
+
+  it("derives the approval through the injected flavor, not the host", () => {
+    // A native Windows path carries backslash separators the *host* POSIX
+    // `node:path` cannot see, so an ambient derivation collapses it to `./*`
+    // and the recorded grant matches nothing (#655).
+    const win32Normalizer = new PathNormalizer(
+      win32PathFlavor,
+      "C:\\Projects\\App",
+    );
+    const desc = describeToolGate(
+      makeTcc({
+        toolName: "edit",
+        input: { path: "src\\foo.ts" },
+        cwd: "C:\\Projects\\App",
+      }),
+      makeCheckResult("ask", { toolName: "edit" }),
+      makeFormatter(),
+      pathAccessFor("src\\foo.ts", win32Normalizer),
+    );
+    expect(desc.sessionApproval?.patterns).toEqual([
+      "c:\\projects\\app\\src\\*",
+    ]);
   });
 
   it("carries the single decision value on promptDetails for a non-path tool (bash)", () => {
@@ -303,7 +350,7 @@ describe("describeToolGate", () => {
       makeTcc({ toolName: "edit", input: { path: "/a.ts" } }),
       makeCheckResult("ask", { toolName: "edit" }),
       makeFormatter(),
-      normalizer.forPath("/a.ts"),
+      pathAccessFor("/a.ts"),
     );
     expect(desc.surface).toBe("edit");
     expect(desc.input).toEqual({ path: "/a.ts" });

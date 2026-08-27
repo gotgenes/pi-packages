@@ -18,6 +18,7 @@ import {
   PERMISSIONS_READY_CHANNEL,
   PERMISSIONS_UI_PROMPT_CHANNEL,
 } from "#src/permission-events";
+import { makePromptPayload } from "#test/helpers/prompt-details-fixtures";
 
 // ── Minimal EventBus stub ──────────────────────────────────────────────────
 
@@ -41,16 +42,33 @@ describe("constants", () => {
 // ── emitReadyEvent ─────────────────────────────────────────────────────────
 
 describe("emitReadyEvent", () => {
-  it("emits an empty payload on the permissions:ready channel", () => {
+  const readyFacts: PermissionsReadyEvent = {
+    sessionId: "session-abc",
+    adjudicatesLocally: true,
+  };
+
+  it("emits the emitting node's facts on the permissions:ready channel", () => {
     const bus = makeEventBus();
-    emitReadyEvent(bus);
+    emitReadyEvent(bus, readyFacts);
     expect(bus.emit).toHaveBeenCalledOnce();
-    expect(bus.emit).toHaveBeenCalledWith("permissions:ready", {});
+    expect(bus.emit).toHaveBeenCalledWith("permissions:ready", {
+      sessionId: "session-abc",
+      adjudicatesLocally: true,
+    });
+  });
+
+  it("emits a relaying node's facts unchanged", () => {
+    const bus = makeEventBus();
+    emitReadyEvent(bus, { sessionId: null, adjudicatesLocally: false });
+    expect(bus.emit).toHaveBeenCalledWith("permissions:ready", {
+      sessionId: null,
+      adjudicatesLocally: false,
+    });
   });
 
   it("carries no protocolVersion (the broadcast contract is types + semver)", () => {
     const bus = makeEventBus();
-    emitReadyEvent(bus);
+    emitReadyEvent(bus, readyFacts);
     const payload = bus.emit.mock.calls[0][1] as PermissionsReadyEvent;
     expect(payload).not.toHaveProperty("protocolVersion");
   });
@@ -63,7 +81,7 @@ describe("emitReadyEvent", () => {
       on: vi.fn().mockReturnValue(() => undefined),
     };
 
-    expect(() => emitReadyEvent(bus)).not.toThrow();
+    expect(() => emitReadyEvent(bus, readyFacts)).not.toThrow();
   });
 });
 
@@ -79,7 +97,7 @@ describe("emitUiPromptEvent", () => {
       surface: "bash",
       value: "git status",
       agentName: "Explore",
-      message: "Allow git status?",
+      request: makePromptPayload().request,
       forwarding: null,
       ...overrides,
     };
@@ -120,6 +138,7 @@ describe("emitDecisionEvent", () => {
     overrides: Partial<PermissionDecisionEvent> = {},
   ): PermissionDecisionEvent {
     return {
+      requestId: "perm-00000000-0000-4000-8000-000000000000",
       surface: "bash",
       value: "git status",
       result: "allow",
@@ -130,6 +149,13 @@ describe("emitDecisionEvent", () => {
       ...overrides,
     };
   }
+
+  it("carries the request id that identifies the decided request", () => {
+    const bus = makeEventBus();
+    emitDecisionEvent(bus, makeDecisionEvent({ requestId: "perm-abc" }));
+    const payload = bus.emit.mock.calls[0][1] as PermissionDecisionEvent;
+    expect(payload.requestId).toBe("perm-abc");
+  });
 
   it("emits on the permissions:decision channel", () => {
     const bus = makeEventBus();
@@ -276,6 +302,10 @@ describe("piPermissionSystemExtension ready event wiring", () => {
       ([channel]) => channel === PERMISSIONS_READY_CHANNEL,
     );
     expect(readyCalls).toHaveLength(1);
-    expect(readyCalls[0][1]).toEqual({});
+    // A headless non-subagent node adjudicates locally (DenyingAuthorizer).
+    expect(readyCalls[0][1]).toEqual({
+      sessionId: "top-session",
+      adjudicatesLocally: true,
+    });
   });
 });

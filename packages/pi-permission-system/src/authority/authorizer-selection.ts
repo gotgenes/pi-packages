@@ -2,8 +2,8 @@ import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import type { PermissionPromptDecision } from "#src/authority/permission-dialog";
 import type { PermissionQuery } from "#src/service";
 import {
-  type Authorizer,
   type AuthorizerSelectionDeps,
+  type NamedAuthorizer,
   type SelectedAuthority,
   selectAuthorizer,
 } from "./authorizer";
@@ -40,6 +40,23 @@ export interface AskEscalator {
 }
 
 /**
+ * The node's chain role, as a fact a collaborator can read: does this node's
+ * authorizer chain run, or does it relay its asks to a serving node
+ * (ADR 0007 §7)?
+ *
+ * Consumed by the service lifecycle (which broadcasts it on `permissions:ready`
+ * so a sibling extension learns it without knowing what a subagent is) and by
+ * the registration observer (which records a link registered where no chain
+ * runs). Both depend on this single-method view rather than the selection
+ * itself, and neither may re-derive the role from `detection.isSubagent(ctx)`:
+ * `selectAuthorizer` tests `hasUI` first, so a subagent with its own UI
+ * adjudicates locally.
+ */
+export interface AdjudicationRole {
+  adjudicatesLocally(): boolean;
+}
+
+/**
  * Context-owning selection root for the Authorizer spine.
  *
  * The rewrite of `PromptingGateway`: owns the stored `ExtensionContext`, runs
@@ -52,7 +69,7 @@ export interface AskEscalator {
  * predicate survives (#556 dissolved `canConfirm()`).
  */
 export class AuthorizerSelection
-  implements AskEscalator, AuthorizerSelectionLifecycle
+  implements AskEscalator, AuthorizerSelectionLifecycle, AdjudicationRole
 {
   private authority: SelectedAuthority | null = null;
 
@@ -93,7 +110,7 @@ export class AuthorizerSelection
   private linksFor(
     authority: SelectedAuthority,
     requestId: string,
-  ): Authorizer[] {
+  ): NamedAuthorizer[] {
     const configured = this.deps.getAuthorizerChain();
     if (configured.length === 0) {
       return [];
@@ -123,8 +140,8 @@ export class AuthorizerSelection
   private resolveConfiguredLinks(
     configured: readonly string[],
     requestId: string,
-  ): Authorizer[] {
-    const links: Authorizer[] = [];
+  ): NamedAuthorizer[] {
+    const links: NamedAuthorizer[] = [];
     const resolved: string[] = [];
     for (const name of configured) {
       const authorize = this.deps.authorizerRegistry.get(name);
@@ -136,7 +153,7 @@ export class AuthorizerSelection
         continue;
       }
       resolved.push(name);
-      links.push({ authorize: encloseInDelegationEnvelope(authorize) });
+      links.push({ name, authorize: encloseInDelegationEnvelope(authorize) });
     }
     if (resolved.length > 0) {
       this.deps.logger.review("authorizer_chain_resolved", {
@@ -145,6 +162,21 @@ export class AuthorizerSelection
       });
     }
     return links;
+  }
+
+  /**
+   * Whether this node adjudicates its own asks. Implements
+   * {@link AdjudicationRole}.
+   *
+   * Reports `true` with no selection stored — before activation, or after
+   * deactivation. Production never reads it there (`activate` runs inside
+   * `PermissionSession.resetForNewSession`, ahead of every consumer), and
+   * "this node adjudicates" is the fail-soft answer: it tells a sibling to
+   * register, which a relaying node accepts and records rather than refusing
+   * (ADR 0012 decision 4).
+   */
+  adjudicatesLocally(): boolean {
+    return this.authority?.adjudicatesLocally ?? true;
   }
 
   /** Clear the stored selection. */

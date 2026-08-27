@@ -6,13 +6,24 @@ import {
 import type { SessionLogger } from "./session-logger";
 
 /**
+ * Broadcasts a terminal permission decision on the `permissions:decision`
+ * channel.
+ *
+ * Narrow by design (ISP): a collaborator that only announces an outcome — the
+ * serving session answering another session's forwarded request — depends on
+ * this rather than on the review-log half it never writes.
+ */
+export interface DecisionBroadcaster {
+  emitDecision(event: PermissionDecisionEvent): void;
+}
+
+/**
  * Reports a permission gate's outcome to the review log and the decision
  * channel. Groups the two side effects that always travel together:
  * writing a structured review-log entry and broadcasting a decision event.
  */
-export interface DecisionReporter {
+export interface DecisionReporter extends DecisionBroadcaster {
   writeReviewLog(event: string, details: Record<string, unknown>): void;
-  emitDecision(event: PermissionDecisionEvent): void;
 }
 
 /**

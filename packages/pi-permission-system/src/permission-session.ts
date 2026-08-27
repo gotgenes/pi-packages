@@ -219,7 +219,7 @@ export class PermissionSession implements ToolCallGateInputs {
    * so the pipeline reads a clean value rather than pulling raw config.
    */
   getToolPreviewLimits(): ToolPreviewFormatterOptions {
-    return resolveToolPreviewLimits(this.config);
+    return resolveToolPreviewLimits();
   }
 
   /**

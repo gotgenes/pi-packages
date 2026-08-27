@@ -1,6 +1,5 @@
 import { PATH_BEARING_TOOLS } from "./access-intent/path-surfaces";
 import { prefix, stripBashCommentLines } from "./bash-arity";
-import { deriveApprovalPattern } from "./session-rules";
 
 /** The suggestion returned for a "Yes, for this session" dialog option. */
 export interface SessionApprovalSuggestion {
@@ -115,14 +114,16 @@ function buildLabel(pattern: string, surface: string): string {
 }
 
 /**
- * Suggest a session-approval pattern for the given permission surface and value.
+ * Suggest a session-approval pattern from a surface's own value vocabulary —
+ * a bash command, an MCP target, a skill name.
  *
  * Returns a `SessionApprovalSuggestion` with the surface, the wildcard pattern
- * to store in `SessionRules`, and a human-readable dialog label.
+ * to store in `SessionRules`, and a human-readable dialog label. Any surface
+ * with no vocabulary of its own falls back to the catch-all wildcard, which is
+ * also what a path-bearing tool invoked without a path resolves to.
  *
- * `value` is expected to be the canonical (cwd-resolved, absolute) path for
- * path surfaces — callers resolve it before suggesting, so the derived pattern
- * matches the policy values a later tool call produces.
+ * A path surface goes through {@link suggestPathSessionPattern} instead: its
+ * pattern is a path-language product, and this module holds no path semantics.
  */
 export function suggestSessionPattern(
   surface: string,
@@ -140,22 +141,30 @@ export function suggestSessionPattern(
     case "skill":
       pattern = value;
       break;
-    case "external_directory":
-      pattern = deriveApprovalPattern(value);
-      break;
-    case "path":
-      pattern = deriveApprovalPattern(value);
-      break;
     default:
-      // Path-bearing tools: derive a directory-scoped pattern from the path.
-      if (PATH_BEARING_TOOLS.has(surface) && value !== "*") {
-        pattern = deriveApprovalPattern(value);
-        break;
-      }
-      // Extension tools / fallback.
+      // Extension tools, and path-bearing tools invoked without a path.
       pattern = "*";
       break;
   }
 
   return { surface, pattern, label: buildLabel(pattern, surface) };
+}
+
+/**
+ * Build the suggestion for a path surface from a pattern the caller already
+ * derived through its `PathNormalizer` (#655).
+ *
+ * The derivation belongs to the normalizer, which owns the session's
+ * `PathFlavor`; this module labels the result and must not re-interpret the
+ * separators it is handed.
+ */
+export function suggestPathSessionPattern(
+  surface: string,
+  approvalPattern: string,
+): SessionApprovalSuggestion {
+  return {
+    surface,
+    pattern: approvalPattern,
+    label: buildLabel(approvalPattern, surface),
+  };
 }

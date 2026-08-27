@@ -58,6 +58,12 @@ export interface PermissionCheckResult {
    * (top-level) commands.
    */
   commandContext?: BashCommandContext;
+  /**
+   * The command the winning bash unit actually runs, when it is a wrapper whose
+   * inner command differs from the unit text (#713). Display-only: the gate
+   * still decides on `command`, so this never widens or narrows a decision.
+   */
+  executedUnit?: string;
 }
 
 export function isPermissionState(value: unknown): value is PermissionState {

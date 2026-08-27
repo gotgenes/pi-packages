@@ -1,4 +1,4 @@
-import { formatSkillAskPrompt } from "#src/permission-prompts";
+import { buildSkillAskPayload } from "#src/presentation/skill-ask-payload";
 import type { PermissionCheckResult } from "#src/types";
 import type { GateDescriptor } from "./descriptor";
 import { accessFactsFromValue } from "./helpers";
@@ -15,20 +15,15 @@ export function describeSkillInputGate(
   agentName: string | null,
   preCheck: PermissionCheckResult,
 ): GateDescriptor {
-  const message = formatSkillAskPrompt(skillName, agentName ?? undefined);
+  const payload = buildSkillAskPayload(skillName, agentName);
   return {
     surface: "skill",
     input: { name: skillName },
     preCheck,
-    denialContext: {
-      kind: "skill_input",
-      skillName,
-      agentName: agentName ?? undefined,
-    },
+    payload,
     promptDetails: {
       source: "skill_input",
       agentName,
-      message,
       skillName,
       accessIntent: accessFactsFromValue("skill", skillName),
     },
@@ -36,7 +31,6 @@ export function describeSkillInputGate(
       source: "skill_input",
       skillName,
       agentName,
-      message,
     },
     decision: {
       surface: "skill",

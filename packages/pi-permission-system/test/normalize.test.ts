@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { normalizeFlatConfig } from "#src/normalize";
+import { expandDirectionalSugar, normalizeFlatConfig } from "#src/normalize";
 
 describe("normalizeFlatConfig", () => {
   describe("string shorthand", () => {
@@ -243,5 +243,116 @@ describe("normalizeFlatConfig", () => {
       });
       expect(result).toEqual([]);
     });
+  });
+});
+
+describe("expandDirectionalSugar", () => {
+  test("expands a bare path key into both directional keys", () => {
+    expect(
+      expandDirectionalSugar({
+        path: { "*": "ask", "~/.ssh/*": "deny" },
+      }),
+    ).toEqual({
+      path_read: { "*": "ask", "~/.ssh/*": "deny" },
+      path_write: { "*": "ask", "~/.ssh/*": "deny" },
+    });
+  });
+
+  test("expands a bare external_directory key the same way", () => {
+    expect(expandDirectionalSugar({ external_directory: "ask" })).toEqual({
+      external_directory_read: "ask",
+      external_directory_write: "ask",
+    });
+  });
+
+  test("leaves the bare surfaces empty — no rule survives on them", () => {
+    const expanded = expandDirectionalSugar({ path: "deny" });
+    expect(Object.hasOwn(expanded, "path")).toBe(false);
+  });
+
+  test("passes a non-family surface through untouched", () => {
+    const written = { read: "allow", bash: { "git *": "ask" } } as const;
+    expect(expandDirectionalSugar(written)).toEqual(written);
+  });
+
+  test("passes an explicit directional key through when no sugar key is present", () => {
+    expect(
+      expandDirectionalSugar({ path_read: { "~/dev/*": "allow" } }),
+    ).toEqual({ path_read: { "~/dev/*": "allow" } });
+  });
+
+  describe("intra-surface merge order (ADR 0013 §4)", () => {
+    test("appends explicit directional entries after the sugar-derived ones", () => {
+      expect(
+        expandDirectionalSugar({
+          path: { "*": "ask", "~/.ssh/*": "deny" },
+          path_read: { "~/dev/*": "allow" },
+        }),
+      ).toEqual({
+        path_read: {
+          "*": "ask",
+          "~/.ssh/*": "deny",
+          "~/dev/*": "allow",
+        },
+        path_write: { "*": "ask", "~/.ssh/*": "deny" },
+      });
+    });
+
+    test("means the same thing when the two keys are written in the other order", () => {
+      const sugarFirst = expandDirectionalSugar({
+        external_directory: { "*": "ask" },
+        external_directory_read: { "~/dev/*": "allow" },
+      });
+      const directionalFirst = expandDirectionalSugar({
+        external_directory_read: { "~/dev/*": "allow" },
+        external_directory: { "*": "ask" },
+      });
+      expect(Object.entries(sugarFirst)).toEqual(
+        Object.entries(directionalFirst),
+      );
+      expect(sugarFirst).toEqual({
+        external_directory_read: { "*": "ask", "~/dev/*": "allow" },
+        external_directory_write: { "*": "ask" },
+      });
+    });
+
+    test("moves a pattern the explicit entry redefines to the end", () => {
+      expect(
+        expandDirectionalSugar({
+          path: { "*": "ask", "~/.ssh/*": "deny" },
+          path_read: { "*": "allow" },
+        }),
+      ).toEqual({
+        path_read: { "~/.ssh/*": "deny", "*": "allow" },
+        path_write: { "*": "ask", "~/.ssh/*": "deny" },
+      });
+      expect(
+        Object.keys(
+          expandDirectionalSugar({
+            path: { "*": "ask", "~/.ssh/*": "deny" },
+            path_read: { "*": "allow" },
+          }).path_read as Record<string, unknown>,
+        ),
+      ).toEqual(["~/.ssh/*", "*"]);
+    });
+
+    test("normalizes a string sugar value to a catch-all when merging", () => {
+      expect(
+        expandDirectionalSugar({
+          path: "ask",
+          path_write: { "~/scratch/*": "allow" },
+        }),
+      ).toEqual({
+        path_read: "ask",
+        path_write: { "*": "ask", "~/scratch/*": "allow" },
+      });
+    });
+  });
+
+  test("does not share a pattern map between the two directional keys", () => {
+    const expanded = expandDirectionalSugar({ path: { "*": "ask" } });
+    const read = expanded.path_read as Record<string, unknown>;
+    read.injected = "allow";
+    expect(expanded.path_write).toEqual({ "*": "ask" });
   });
 });

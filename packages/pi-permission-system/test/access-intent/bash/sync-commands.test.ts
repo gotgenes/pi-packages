@@ -42,7 +42,11 @@ describe("parseBashCommandsSync", () => {
 
     it("flags an opaque wrapper", () => {
       expect(parseBashCommandsSync('bash -c "rm -rf /"')).toEqual([
-        { text: 'bash -c "rm -rf /"', wrapperKind: "opaque-payload" },
+        {
+          text: 'bash -c "rm -rf /"',
+          wrapperKind: "opaque-payload",
+          executedUnit: "rm -rf /",
+        },
       ]);
     });
 

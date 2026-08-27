@@ -66,6 +66,24 @@ describe("win32PathFlavor", () => {
     expect(win32PathFlavor.hasPathSeparator("plain")).toBe(false);
   });
 
+  it("locates the last separator of either spelling", () => {
+    expect(win32PathFlavor.lastSeparatorIndex("C:\\a\\b")).toBe(4);
+    expect(win32PathFlavor.lastSeparatorIndex("/a/b")).toBe(2);
+    expect(win32PathFlavor.lastSeparatorIndex("C:\\a/b")).toBe(4);
+    expect(win32PathFlavor.lastSeparatorIndex("dir\\file")).toBe(3);
+    expect(win32PathFlavor.lastSeparatorIndex("/")).toBe(0);
+    expect(win32PathFlavor.lastSeparatorIndex("plain")).toBe(-1);
+    expect(win32PathFlavor.lastSeparatorIndex("")).toBe(-1);
+  });
+
+  it("answers hasPathSeparator consistently with lastSeparatorIndex", () => {
+    for (const token of ["dir/file", "dir\\file", "plain", "", "/"]) {
+      expect(win32PathFlavor.hasPathSeparator(token)).toBe(
+        win32PathFlavor.lastSeparatorIndex(token) >= 0,
+      );
+    }
+  });
+
   it("classifies bash tokens with MSYS semantics", () => {
     expect(win32PathFlavor.bashTokenShape("/dev/null")).toEqual({
       kind: "device",
@@ -126,6 +144,22 @@ describe("posixPathFlavor", () => {
     expect(posixPathFlavor.hasPathSeparator("dir/file")).toBe(true);
     expect(posixPathFlavor.hasPathSeparator("dir\\file")).toBe(false);
     expect(posixPathFlavor.hasPathSeparator("plain")).toBe(false);
+  });
+
+  it("locates the last forward slash only", () => {
+    expect(posixPathFlavor.lastSeparatorIndex("/a/b")).toBe(2);
+    expect(posixPathFlavor.lastSeparatorIndex("dir\\file")).toBe(-1);
+    expect(posixPathFlavor.lastSeparatorIndex("/")).toBe(0);
+    expect(posixPathFlavor.lastSeparatorIndex("plain")).toBe(-1);
+    expect(posixPathFlavor.lastSeparatorIndex("")).toBe(-1);
+  });
+
+  it("answers hasPathSeparator consistently with lastSeparatorIndex", () => {
+    for (const token of ["dir/file", "dir\\file", "plain", "", "/"]) {
+      expect(posixPathFlavor.hasPathSeparator(token)).toBe(
+        posixPathFlavor.lastSeparatorIndex(token) >= 0,
+      );
+    }
   });
 
   it("treats every bash token as an ordinary path", () => {

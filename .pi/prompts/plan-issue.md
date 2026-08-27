@@ -28,13 +28,15 @@ Before investigating the issue, load skills relevant to the change:
 - Load the `package-<PKG>` skill for each affected package (e.g., `package-pi-permission-system`) for package-specific architecture, priorities, and testing context.
 - Load the `colgrep` skill before code exploration — it contains the decision table for when to use semantic search vs. exact grep, which shapes how you approach unfamiliar modules.
 - Load the `code-design` skill for design principles and structural heuristics.
-- Load the `testing` skill if the plan involves test changes or TDD steps.
+- Load the `testing` skill if the plan involves test changes or TDD steps, or if investigation will run a disposable spike test.
 - Load the `markdown-conventions` skill — it contains project-specific rules (one-sentence-per-line, frontmatter schema) that differ from standard markdown conventions.
 - Load the `design-review` skill and run its checklist before finalizing the design for any refactor, extraction, or change to shared interfaces or layer wiring — judge this from the issue, not from a plan that already shows wiring changes.
 
 ## Gather context
 
-1. Run `gh issue view $1 --json number,title,author,body,labels` to read the issue body, labels, and author.
+1. Run `gh issue view $1 --json number,title,author,body,labels,state,comments` to read the issue body, labels, author, state, and discussion.
+   `comments` must be a `--json` field — a separate `--comments` flag is silently ignored when `--json` is present.
+   A closed issue, or one whose latest comment reports the fix is incomplete, changes the job: plan the residual as a new issue rather than re-planning the closed one (Refs #741).
    After fetching the issue, call `set_session_name` with name `#N Planning — <issue title>` to identify this session in the session selector.
    Then check the issue author against the gh CLI user: run `gh api user --jq .login` to get the authenticated user's login and compare it to the issue's `author.login`.
    If they match, the issue reflects the operator's own intent — treat the "Proposed change" as the working hypothesis (subject to the `Decide` gate below) and proceed normally.
@@ -60,6 +62,8 @@ Before investigating the issue, load skills relevant to the change:
 7. When the plan introduces a public API pattern (package `exports`, `Symbol.for()` accessor, service interface) or agent-facing message formatting (attribution tags, error prefixes, log labels), use colgrep or grep to search sibling packages for the established convention and follow it unless there is a documented reason to diverge.
    When a config key or public field names an SDK/domain concept (a tool-call part, event, or content type), use the SDK's own term for it — verify against the SDK types — rather than adopting a term from the issue body verbatim (Refs #580: `commandField` shipped, then needed renaming to `commandArgument` to match `ToolCall.arguments`).
    When the change introduces a mechanism a mature ecosystem already standardizes (log redaction, retry/backoff, caching, rate limiting), check what established libraries in that space actually do before building the `ask_user` option set — a set built only from first principles can omit the standard, lowest-maintenance choice (Refs #647).
+   When the plan **removes** an existing repo-wide convention rather than introducing one, find why it was introduced before planning its removal: `git log -S'<literal>'` to the first commit, then read that commit's plan and retro.
+   A rationale that turns out to govern a *different* mechanism belongs in the plan's Non-Goals, or the convention gets restored later on the strength of the same memory (Refs #778: the `promptSnippet` name prefix had no recorded rationale; the remembered one was `promptGuidelines` attribution).
 8. Determine the issue's **release recommendation** from the package's architecture roadmap, if it is part of one.
    Grep `packages/<PKG>/docs/architecture/architecture.md` for the step that references this issue (`(#$1)` / `[#$1]`) and read its `Release:` tag (defined by the `improvement-discovery` skill):
    - `Release: independent` (or no tag, or the issue is not in any roadmap) → **ship independently**.
@@ -91,6 +95,8 @@ Classify whether the change is breaking — independently of whether it is ambig
 A change is breaking if it alters the observable behavior, output shape, or default of existing code or config on upgrade without a user edit.
 A bug fix that changes a default value is breaking, even when the old behavior was wrong.
 If breaking, state it in Goals and use `feat!:`/`fix!:` with a `BREAKING CHANGE:` footer.
+When the change alters a documented contract (an event's timing guarantee, a default, an output shape), state the classification in the gate's substance message even when an ADR already settled it.
+A settled call and an unasked one look identical to the operator (Refs #787).
 
 Before writing the plan, identify any genuinely ambiguous design choices.
 If there are 1–2 such choices (breaking-vs-non-breaking, result-shape change, fallback semantics, etc.), use the `ask-user` skill once to surface them with a short context summary and concrete options.
@@ -144,6 +150,7 @@ Then an H1 title (e.g., `# <short descriptive title>`) — required by markdownl
   Fix upstream API gaps in the plan before planning the extraction.
   When a new exported function accepts domain objects, verify the parameter type follows ISP — list which fields the function reads and confirm the type doesn't carry unused fields.
   When the plan consolidates code from multiple methods into a shared helper, verify the methods have the same lifecycle semantics — different guards, cleanup scopes, or shutdown-vs-normal-operation contexts indicate structural duplication that should not be extracted.
+  When the design has N sibling call sites each supply the same derived fact, check whether a shared downstream point already stamps per-call fields (a runner, a writer, a factory) — a fact every sibling merely relays belongs there, not in N places (Refs #746).
   When the issue proposes moving or relocating a class to a new owner, list every method's callers and what fields/state each method touches.
   If most methods operate on the target owner's fields, the class may be an intermediary that should be dissolved into the owner rather than relocated intact.
 - **Module-Level Changes** — file-by-file list of what's added, changed, or removed.
@@ -166,10 +173,14 @@ Then an H1 title (e.g., `# <short descriptive title>`) — required by markdownl
   When a step adds a field to a serialized contract (a request/response persisted to disk or sent over the wire) whose reader reconstructs only an allowlist of known fields (a tolerant `asX`-style parser), list that reader as a touch point — an added field is silently dropped on read otherwise, and the gap surfaces only in a cross-consumer round-trip test, not `tsc` (Refs #558).
   When a step tightens a shared helper's parameter type (e.g. `unknown` → a concrete type with required fields), grep `test/` fixtures as well as `src/` callers and list them as touch points — a partial literal that satisfied the loose type fails the tightened type at compile time, and a `src/`-only call-site grep misses the test fixtures (Refs #539).
   When a step tightens an **optional** interface field to required (drops `| undefined`), grep the exact `<field>: undefined` literal across all `test/` files — an incidental fixture sets the field to `undefined` without ever reading it, so a grep for the field's *use* sites under-catches (Refs #611).
+  When a step adds a **new required** field to a shared interface, grep for constructors of that type — inline object literals and `test/helpers/` factories — not its use sites.
+  The field never existed, so the grep above has no `<field>: undefined` literal to match; a shared test fixture is the common miss (Refs #744).
 - **Test Impact Analysis** — for extraction and refactoring issues: (1) what new unit tests does the extraction enable that were previously impossible or impractical?
   (2) what existing tests become redundant with the new lower-level tests, and can they be simplified or removed?
   (3) which existing tests must stay as-is because they genuinely exercise the layer being extracted?
+  For a prompt or skill change, the shell commands the new text prescribes are its testable surface: dry-run each at planning time and record the expected output, so `/build-plan` can re-run them as verification (Refs #767).
 - **Invariants at risk** — when the change touches a surface a prior phase step already refactored, list that step's documented invariants (the architecture roadmap's `Outcome:`/`Landed:` bullets) and name the test that pins each — add a test if the invariant lives only in prose.
+  Open each test you name — a file that mocks the layer under test pins nothing about it (Refs #806).
   A later step must not regress an earlier step's outcome with a green suite.
   When an invariant is quantitative (a byte-identical prefix, a token budget, a cache or latency characteristic), measure the baseline and predict the post-change value at planning time.
   A prose argument that the change is "at the tail" or "negligible" is not evidence, and a test pinning adjacent content does not pin the number (Refs #640).
@@ -191,6 +202,9 @@ If the change is breaking, say so explicitly in Goals and use `feat!:` in the su
 If planning identified work to defer to a separate issue (a follow-up named in Design Overview, Non-Goals, or Open Questions), create it now with `gh issue create` — before the plan commit, while this session holds full context.
 Record each new issue number in the plan's Non-Goals / Open Questions.
 File nothing speculative — only follow-ups the plan concretely names.
+
+After filing, load the `roadmap-fit` skill and follow it for each new issue — an issue spun off while its package has an open improvement phase gets a recorded disposition now, not at phase close.
+The skill exits at its first step when no phase is open.
 
 ## Commit
 

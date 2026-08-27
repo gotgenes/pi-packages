@@ -10,7 +10,7 @@ export function registerCiList(pi: ExtensionAPI): void {
     description:
       "Return recent GitHub Actions runs for a workflow, for diagnostics and browsing. " +
       "Returns status, name, sha, runId, and url for each run.",
-    promptSnippet: "ci_list: List recent CI runs for a workflow.",
+    promptSnippet: "List recent CI runs for a workflow.",
     parameters: Type.Object({
       workflow: Type.String({
         description:

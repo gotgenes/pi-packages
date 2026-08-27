@@ -25,6 +25,103 @@ function mockGhJson(value: unknown) {
   });
 }
 
+/** Helper to make gh fail for a given call. */
+function mockGhFail(stderr: string) {
+  mockRunCommand.mockResolvedValueOnce({
+    stdout: "",
+    stderr,
+    exitCode: 1,
+  });
+}
+
+/** Make the next sleep abort the controller, as a real abort would. */
+function mockSleepAborts(controller: AbortController) {
+  mockSleep.mockImplementationOnce(() => {
+    controller.abort();
+    return Promise.reject(new Error("The operation was aborted."));
+  });
+}
+
+describe("transient failures", () => {
+  const sha = "abc1234567890abcdef1234567890abcdef123456";
+
+  function mockMatchingRun() {
+    mockGhJson([
+      {
+        databaseId: 100,
+        url: "https://github.com/o/r/actions/runs/100",
+        status: "in_progress",
+        conclusion: null,
+        headSha: sha,
+        displayTitle: "CI",
+        name: "CI",
+      },
+    ]);
+  }
+
+  it("findRun retries the run list and reports the wait", async () => {
+    mockGhFail("HTTP 503");
+    mockMatchingRun();
+    mockGhJson({
+      jobs: [{ name: "build", status: "in_progress", conclusion: null }],
+    });
+
+    const onProgress = vi.fn();
+    const result = await findRun({
+      workflow: "ci",
+      expectedSha: sha,
+      timeout: 120,
+      onProgress,
+    });
+
+    expect(result).toContain("run_id: 100");
+    expect(mockSleep).toHaveBeenCalledWith(1000, undefined);
+    expect(onProgress).toHaveBeenCalledWith(
+      expect.stringContaining("transient gh failure, retry 1/3 in 1s"),
+    );
+  });
+
+  it("findRun charges the retry backoff against the timeout", async () => {
+    mockGhFail("HTTP 503");
+    mockGhJson([]);
+
+    const result = await findRun({
+      workflow: "ci",
+      expectedSha: sha,
+      timeout: 0,
+    });
+
+    expect(result).toContain("timeout: no run found");
+    expect(result).toContain("elapsed: 1s");
+  });
+
+  it("watchRun retries the run view", async () => {
+    mockGhFail("HTTP 503");
+    mockGhJson({
+      status: "completed",
+      conclusion: "success",
+      name: "CI",
+      headSha: sha,
+      jobs: [{ name: "build", status: "completed", conclusion: "success" }],
+    });
+
+    const result = await watchRun({ workflow: "ci", runId: 100 });
+
+    expect(result).toContain("success");
+    expect(mockSleep).toHaveBeenCalledWith(1000, undefined);
+  });
+
+  it("listRuns retries the run list", async () => {
+    mockGhFail("HTTP 503");
+    mockGhJson([]);
+
+    const result = await listRuns({ workflow: "ci" });
+
+    expect(result).toContain("No runs found");
+    expect(mockSleep).toHaveBeenCalledWith(1000, undefined);
+  });
+});
+
 describe("findRun", () => {
   const sha = "abc1234567890abcdef1234567890abcdef123456";
 
@@ -138,8 +235,7 @@ describe("findRun", () => {
     const controller = new AbortController();
     // First poll: no match
     mockGhJson([]);
-    // sleep rejects to simulate abort
-    mockSleep.mockRejectedValueOnce(new Error("The operation was aborted."));
+    mockSleepAborts(controller);
 
     const result = await findRun({
       workflow: "ci",
@@ -149,6 +245,14 @@ describe("findRun", () => {
     });
     expect(result).toContain("aborted:");
     expect(result).toContain("cancelled by user");
+  });
+
+  it("surfaces a gh failure instead of blaming the user", async () => {
+    mockGhFail("HTTP 404: Not Found");
+
+    await expect(
+      findRun({ workflow: "ci", expectedSha: sha, timeout: 120 }),
+    ).rejects.toThrow(/HTTP 404: Not Found/);
   });
 });
 
@@ -245,8 +349,7 @@ describe("watchRun", () => {
       headSha: "abc1234",
       jobs: [{ name: "build", status: "in_progress", conclusion: null }],
     });
-    // sleep rejects to simulate abort
-    mockSleep.mockRejectedValueOnce(new Error("The operation was aborted."));
+    mockSleepAborts(controller);
 
     const result = await watchRun({
       workflow: "ci",
@@ -256,6 +359,14 @@ describe("watchRun", () => {
     });
     expect(result).toContain("aborted:");
     expect(result).toContain("cancelled by user");
+  });
+
+  it("surfaces a gh failure instead of blaming the user", async () => {
+    mockGhFail("HTTP 404: Not Found");
+
+    await expect(watchRun({ workflow: "ci", runId: 100 })).rejects.toThrow(
+      /HTTP 404: Not Found/,
+    );
   });
 });
 
