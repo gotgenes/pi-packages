@@ -209,6 +209,7 @@ describe("bash command gate — a transparent wrapper does not weaken", () => {
     "xargs grep -l foo > out.txt",
     "xargs grep -l foo >> out.txt",
     "xargs grep -l foo > $OUT",
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: a bash brace expansion, the destination shape under test
     "xargs grep -l foo >${OUT}",
     "xargs grep -l foo > $(mktemp)",
   ])("floors %s despite the pure-reader inner command", async (command) => {

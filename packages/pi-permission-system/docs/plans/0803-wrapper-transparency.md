@@ -331,8 +331,10 @@ Both are Tell-Don't-Ask over data records the caller owns, with no reach-through
   - `### Read-Only Bash Command Allowlist` items 2 and 4 — item 2's `find -exec rm` claim still holds (`rm` is not core) but must say why; item 4's "`sudo grep …`, `env X=1 cat …` … are floored to `ask`" is no longer the reason those prompt under that recipe — under `bash: {"*": "ask"}` the wrapper text matches only `*` and the floor never fires.
     Reword to the real reason.
 - `README.md` line 22 — the fail-closed bullet's wrapper clause gains the exception.
-- `docs/cross-extension-api.md` and `docs/migration/0746-review-log-fields.md` — add the `floorExemption` row to the review-log field tables.
-  Verified: `PromptRequestFacts` itself is unchanged, so `docs/migration/0745-prompt-payload-contracts.md` needs no edit.
+- `docs/cross-extension-api.md` and `docs/migration/0746-review-log-fields.md` — **not delivered, deliberately.**
+  Both tables document `PromptRequestFacts`, which this change leaves untouched: `floorExemption` rides the gate's `logContext`, the same routing [#807] gave `effect`/`effectSource`, and those are recorded in `docs/architecture/architecture.md` and the package skill rather than in either table.
+  `docs/migration/0745-prompt-payload-contracts.md` needs no edit for the same reason.
+  The user-facing home for the field is `docs/configuration.md`'s Wrapper transparency section.
 - `docs/architecture/architecture.md`
   - module tree: `wrapper-analysis.ts` (gains `isTransparentWrapper` and the opaque-refusal constraint), `command-enumeration.ts` (the `floorExemption` field), `program.ts` (its "flagging wrapper units with a `wrapperKind` so their decision floors to `ask`" clause), plus a new `redirect-analysis.ts` entry;
   - line 649's yolo note names both wrapper floors as post-resolution synthetics — still true, but the exempt path is not synthesised, so the sentence needs one clause;
