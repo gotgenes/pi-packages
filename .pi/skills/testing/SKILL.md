@@ -68,6 +68,7 @@ Load this skill when writing, debugging, or planning tests.
   A near-miss probe (`void runRpcSession;` against a guard matching `runRpcSession(`) leaves the guard silent and looks like proof it is broken (Refs #678).
 - A new test that passes during the Red step is either an invariant pin or a broken probe — decide which before moving to Green.
   The broken case is a probe string that also appears elsewhere in the output: `toContain("x")` matched the unrelated fixture path `secret.txt` and passed pre-fix (Refs #760).
+  Decide by mutation: break the code the pin covers and confirm the pin fails — a pin that survives its own mutation is a broken probe (Refs #807).
 - When a fix replaces an ambient global read (`node:path`'s `sep`, `process.platform`, `Date.now`) with an injected value, pick a red-probe input where the ambient and injected values **differ on the CI host**.
   A `win32PathFlavor` probe on `/tmp/logs/` passes pre-fix on POSIX CI — the host `sep` is `/` too; a native `c:\dir\file.ts` collapses to `./*` and goes red (Refs #655).
 - An equivalence test (incremental vs. freshly built, cached vs. uncached) pins self-consistency, not correctness, when both sides run the code under test.

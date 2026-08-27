@@ -62,6 +62,9 @@ It answers "what is out of scope for this change", never "what is out of scope f
 So **a plan Non-Goal is a lead, not a citation** — use it to find the ADR or numbered design principle, and cite that.
 A Non-Goal decays fastest in the most active packages: `pi-colgrep`'s plan `0092` declared `promptGuidelines` out of scope and `fa164a19` changed one the same day under the same issue, and `pi-github-tools`' plan `0005` forbade retry/timeout on one-shot tools before #673 and #764 added both (Refs #775).
 
+The same holds for a plan's enumerated **external** facts — a command's options, an API surface, a spec's values.
+Verify each against the real surface (`man`, `--help`, the schema) before it lands in a security boundary; #807's plan omitted `find -fprint0` and admitted `file` as read-only, and both shipped as fail-opens.
+
 Pull-request status is an **inverted** signal here, because the repo reimplements adopted third-party changes through its own TDD cycle rather than merging them.
 Seven of nine closed-unmerged external PRs on `pi-permission-system`, and six on `pi-subagents`, shipped as capability with `Co-authored-by` credit — so "closed unmerged" usually means *accepted*.
 Read the close comment, never the close status.
@@ -123,6 +126,7 @@ A multi-line `perl -0777`/`sed` regex substitution across many similar blocks is
 A scripted bulk edit across test files cannot tell a mock **producer** from an **assertion**, whatever its regex safety, so its correctness rests on the suite rather than the script.
 That holds only where assertions are exact (`toEqual`/`toHaveBeenCalledWith`).
 A touched `toMatchObject`/`objectContaining` site absorbs a wrong insertion and still passes — re-read those by hand instead of counting the green run as verification (Refs #726).
+Run the full package suite, not the files the rename's own grep matched — a mock *producer* spells the symbol as an object key (`externalPaths:`), which a call-site grep (`\.externalPaths\(`) never sees (Refs #807).
 A replacement containing backslashes is a trap even as a single-line rename — shell, perl, and the regex engine each consume an escape level.
 Use `Edit` (Refs #653).
 A scripted symbol rename also rewrites the prose *around* the symbol, where the old signature's adjectives survive as contradictions ("the zero-arg `getRootPermissionsService()`").
