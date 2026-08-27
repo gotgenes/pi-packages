@@ -82,12 +82,6 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
-      # The action creates this run's tags through the API, after the checkout
-      # above, so they are absent from the local clone until fetched.
-      - name: Fetch tags created by this release
-        if: steps.release.outputs.releases_created == 'true'
-        run: git fetch --tags --force origin
-
       # Advance the commit-search baseline so future runs only walk commits since
       # the oldest component's release, instead of the default 500. Keeps the
       # per-run API burst small (avoids the secondary-rate-limit "Bad credentials"
@@ -102,11 +96,20 @@ jobs:
       # continue-on-error: a failure here must not fail the job, because that
       # would make GitHub skip the `publish` job for an already-tagged release
       # (Refs #646). A baseline that did not advance only widens the next walk.
+      #
+      # The tag fetch belongs in this step rather than its own: the action creates
+      # this run's tags through the API after the checkout above, and if that
+      # fetch fails the just-released components look untagged to the script,
+      # which would floor them at their package.json-adding commits and blow the
+      # walk far past the #468 threshold. Sharing the step means `pipefail` stops
+      # before the script runs and `continue-on-error` absorbs it as a baseline
+      # that simply did not advance.
       - name: Advance release-please last-release-sha baseline
         if: steps.release.outputs.releases_created == 'true'
         continue-on-error: true
         run: |
           set -euo pipefail
+          git fetch --tags --force origin
           BASELINE_SHA=$(./scripts/release-baseline-sha.sh)
           tmp=$(mktemp)
           jq --arg sha "$BASELINE_SHA" '.["last-release-sha"] = $sha' release-please-config.json > "$tmp"

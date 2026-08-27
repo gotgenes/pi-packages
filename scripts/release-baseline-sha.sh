@@ -42,7 +42,12 @@ done
 # The component name comes from the config rather than the path basename because
 # that is the key release-please itself builds the tag from; the two happen to
 # coincide today.
-mapfile -t entries < <(jq -r --slurpfile cfg "$CONFIG" '
+# Read with a `while` loop rather than `mapfile`, which needs bash 4+ and so is
+# unavailable under the /bin/bash 3.2 that ships with macOS.
+entries=()
+while IFS= read -r entry; do
+  entries+=("$entry")
+done < <(jq -r --slurpfile cfg "$CONFIG" '
   to_entries[]
   | .key as $path
   | ($cfg[0].packages[$path].component // ($path | sub(".*/"; ""))) as $component
@@ -50,7 +55,7 @@ mapfile -t entries < <(jq -r --slurpfile cfg "$CONFIG" '
 ' "$MANIFEST")
 
 if [ ${#entries[@]} -eq 0 ]; then
-  echo "Error: no components found in $MANIFEST" >&2
+  echo "Error: no components found in $MANIFEST (is it valid JSON?)" >&2
   exit 1
 fi
 
@@ -76,7 +81,13 @@ for entry in "${entries[@]}"; do
   release_shas+=("$sha")
 done
 
-floor=$(git merge-base --octopus "${release_shas[@]}")
+# `git merge-base --octopus` exits nonzero with no message when the inputs share
+# no common ancestor, which happens if a tag points outside HEAD's history.
+if ! floor=$(git merge-base --octopus "${release_shas[@]}" 2>/dev/null); then
+  echo "Error: no common ancestor across release commits; a tag may point outside this history:" >&2
+  printf '  %s\n' "${release_shas[@]}" >&2
+  exit 1
+fi
 
 # A common ancestor is at or before every input by construction, so it is always
 # a safe floor. On linear history it *is* the oldest input; if it is not, the
