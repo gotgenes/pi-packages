@@ -3,15 +3,21 @@ import {
   forEachNestedExecution,
 } from "#src/access-intent/bash/nested-execution";
 import type { TSNode } from "#src/access-intent/bash/parser";
+import { redirectProvesFileWrite } from "#src/access-intent/bash/redirect-analysis";
 import {
   type CommandWord,
   classifyWrapperWords,
   executedUnitOf,
+  type FloorExemption,
+  isTransparentWrapper,
   type WrapperKind,
 } from "#src/access-intent/bash/wrapper-analysis";
 import type { BashCommandContext } from "#src/types";
 
-export type { WrapperKind } from "#src/access-intent/bash/wrapper-analysis";
+export type {
+  FloorExemption,
+  WrapperKind,
+} from "#src/access-intent/bash/wrapper-analysis";
 
 // ── Command type ─────────────────────────────────────────────────────────────
 
@@ -37,25 +43,55 @@ export interface BashCommand {
    */
   readonly wrapperKind?: WrapperKind;
   /**
-   * The command this wrapper unit actually runs (#713). Display-only — it is
-   * never gated on its own, so the wrapper floor still applies. Absent for an
-   * ordinary command, and for a wrapper whose inner command cannot be
-   * established.
+   * The command this wrapper unit actually runs (#713). Absent for an ordinary
+   * command, and for a wrapper whose inner command cannot be established.
+   *
+   * Display-only, and deliberately looks past an `sh -c` layer the gate must
+   * not look past — {@link floorExemption} is the gateable answer, established
+   * by its own walk rather than read off this string (#803).
    */
   readonly executedUnit?: string;
+  /**
+   * Set when this wrapper unit's floor has no reason left to hold, naming the
+   * reason (#803). Only ever present alongside `wrapperKind: "indirection"`
+   * and an established {@link executedUnit}.
+   */
+  readonly floorExemption?: FloorExemption;
 }
+
+/**
+ * What the statement enclosing a command unit establishes about it.
+ *
+ * Both facts flow down the walk together because both are the *statement's*,
+ * not the command's: a subshell's commands run in a subshell however they are
+ * spelled, and a redirected statement writes a file however read-only the
+ * command in front of the operator is.
+ */
+interface UnitScope {
+  /**
+   * Execution context for a nested command (substitution or subshell); absent
+   * for a current-shell (top-level) command.
+   */
+  readonly context?: BashCommandContext;
+  /**
+   * True when the enclosing statement redirects output into a real file, which
+   * withholds the floor exemption from any wrapper unit beneath it.
+   */
+  readonly writesViaRedirect: boolean;
+}
+
+/** A top-level command in the current shell, writing no file. */
+const TOP_LEVEL_SCOPE: UnitScope = { writesViaRedirect: false };
 
 // ── Command enumeration ──────────────────────────────────────────────────────
 
 /**
- * Container node types descended into when enumerating command units.
+ * Container node types descended into with the enclosing scope unchanged.
+ *
+ * `redirected_statement` is descended too, but has its own branch: it is the
+ * node that can establish a write, so it descends with a scope of its own.
  */
-const COMMAND_ENUM_DESCEND = new Set([
-  "program",
-  "list",
-  "pipeline",
-  "redirected_statement",
-]);
+const COMMAND_ENUM_DESCEND = new Set(["program", "list", "pipeline"]);
 
 /**
  * Named node types abandoned during command enumeration: they are neither
@@ -95,13 +131,13 @@ const COMMAND_ENUM_SKIP = new Set(["comment", "heredoc_end"]);
  */
 export function collectCommands(node: TSNode): BashCommand[] {
   const out: BashCommand[] = [];
-  collectCommandsInto(node, undefined, out);
+  collectCommandsInto(node, TOP_LEVEL_SCOPE, out);
   return out;
 }
 
 function collectCommandsInto(
   node: TSNode,
-  context: BashCommandContext | undefined,
+  scope: UnitScope,
   out: BashCommand[],
 ): void {
   // Anonymous tokens (operators `&&`/`;`/`|`, delimiters `$(`/`)`/`` ` ``/`(`)
@@ -110,10 +146,15 @@ function collectCommandsInto(
   if (COMMAND_ENUM_SKIP.has(node.type)) return;
 
   if (node.type === "command") {
-    out.push(makeCommandUnit(node, context));
+    out.push(makeCommandUnit(node, scope));
     // A command's text already contains any substitution; descend its subtree
     // to ALSO emit the inner commands of command/process substitutions.
     collectHostedCommands(node, out);
+    return;
+  }
+
+  if (node.type === "redirected_statement") {
+    descendCommandChildren(node, redirectedScope(node, scope), out);
     return;
   }
 
@@ -125,48 +166,79 @@ function collectCommandsInto(
   }
 
   if (node.type === "subshell") {
-    out.push(makeUnit(node.text, context)); // never-weaker whole emit
-    descendCommandChildren(node, "subshell", out);
+    out.push(makeUnit(node.text, scope)); // never-weaker whole emit
+    descendCommandChildren(node, { ...scope, context: "subshell" }, out);
     return;
   }
 
   if (COMMAND_ENUM_DESCEND.has(node.type)) {
-    descendCommandChildren(node, context, out);
+    descendCommandChildren(node, scope, out);
     return;
   }
 
   // Any other named statement (compound_statement `{ … }`, if/while/for/case,
   // function_definition): emit whole, do not descend — deferred (#306).
-  out.push(makeUnit(node.text, context));
+  out.push(makeUnit(node.text, scope));
+}
+
+/** The wrapper facts a `command` node's words establish about its unit. */
+interface WrapperFacts {
+  readonly wrapperKind?: WrapperKind;
+  readonly executedUnit?: string;
+  readonly floorExemption?: FloorExemption;
 }
 
 function makeUnit(
   text: string,
-  context: BashCommandContext | undefined,
-  wrapperKind?: WrapperKind,
-  executedUnit?: string,
+  scope: UnitScope,
+  wrapper: WrapperFacts = {},
 ): BashCommand {
-  const unit: BashCommand = context ? { text, context } : { text };
-  const flagged = wrapperKind ? { ...unit, wrapperKind } : unit;
-  return executedUnit === undefined ? flagged : { ...flagged, executedUnit };
+  const { wrapperKind, executedUnit, floorExemption } = wrapper;
+  const scoped: BashCommand = scope.context
+    ? { text, context: scope.context }
+    : { text };
+  const flagged = wrapperKind ? { ...scoped, wrapperKind } : scoped;
+  const named =
+    executedUnit === undefined ? flagged : { ...flagged, executedUnit };
+  return floorExemption === undefined ? named : { ...named, floorExemption };
 }
 
 /**
- * Build the unit for a `command` node, reading its words once to answer both
- * wrapper questions: whether the unit is floored, and what it actually runs.
+ * Build the unit for a `command` node, reading its words once to answer all
+ * three wrapper questions: whether the unit is floored, what it actually runs,
+ * and whether the floor still has a reason to hold.
  */
-function makeCommandUnit(
-  node: TSNode,
-  context: BashCommandContext | undefined,
-): BashCommand {
+function makeCommandUnit(node: TSNode, scope: UnitScope): BashCommand {
   const text = commandUnitText(node);
   const words = readCommandWords(node);
-  return makeUnit(
-    text,
-    context,
-    classifyWrapperWords(words),
-    executedUnitOf(text, words) ?? undefined,
-  );
+  return makeUnit(text, scope, {
+    wrapperKind: classifyWrapperWords(words),
+    executedUnit: executedUnitOf(text, words) ?? undefined,
+    floorExemption: isTransparentWrapper(words, scope)
+      ? "core-reader"
+      : undefined,
+  });
+}
+
+/**
+ * The scope a `redirected_statement`'s children run under: the enclosing one,
+ * plus a write if any of its redirects names a real file.
+ *
+ * The redirect belongs to the last element of a pipeline, but it hangs off the
+ * whole statement in the parse tree, so every command beneath it is marked.
+ * Over-attributing is the fail-closed direction — the flag can only withhold an
+ * exemption, never grant one.
+ */
+function redirectedScope(node: TSNode, scope: UnitScope): UnitScope {
+  if (scope.writesViaRedirect) return scope;
+  for (let i = 0; i < node.childCount; i++) {
+    const child = node.child(i);
+    if (child?.type !== "file_redirect") continue;
+    if (redirectProvesFileWrite(child)) {
+      return { ...scope, writesViaRedirect: true };
+    }
+  }
+  return scope;
 }
 
 /**
@@ -213,12 +285,12 @@ function commandUnitText(node: TSNode): string {
 
 function descendCommandChildren(
   node: TSNode,
-  context: BashCommandContext | undefined,
+  scope: UnitScope,
   out: BashCommand[],
 ): void {
   for (let i = 0; i < node.childCount; i++) {
     const child = node.child(i);
-    if (child) collectCommandsInto(child, context, out);
+    if (child) collectCommandsInto(child, scope, out);
   }
 }
 
@@ -232,6 +304,13 @@ function descendCommandChildren(
  */
 function collectHostedCommands(node: TSNode, out: BashCommand[]): void {
   forEachNestedExecution(node, (contextNode, context) => {
-    descendCommandChildren(contextNode, context, out);
+    // A nested execution starts fresh: an enclosing statement's redirect is
+    // that statement's, not the substitution's, exactly as #807 attributes a
+    // nested command's path tokens to its own command.
+    descendCommandChildren(
+      contextNode,
+      { context, writesViaRedirect: false },
+      out,
+    );
   });
 }

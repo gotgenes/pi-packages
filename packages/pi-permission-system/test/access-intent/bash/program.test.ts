@@ -1207,17 +1207,32 @@ describe("BashProgram", () => {
         ["/usr/bin/sudo aws s3 ls", "/usr/bin/sudo aws s3 ls", "aws s3 ls"],
         // Exec-capable rewrites and prefix wrappers (#575).
         ["parallel rm ::: x", "parallel rm ::: x", "rm ::: x"],
-        ["rust-parallel echo", "rust-parallel echo", "echo"],
-        ["rush echo", "rush echo", "echo"],
         ["doas aws s3 ls", "doas aws s3 ls", "aws s3 ls"],
         ["setsid aws s3 ls", "setsid aws s3 ls", "aws s3 ls"],
         ["stdbuf -oL aws s3 ls", "stdbuf -oL aws s3 ls", "aws s3 ls"],
-        ["watch ls", "watch ls", "ls"],
         ["flock /tmp/lock aws s3 ls", "flock /tmp/lock aws s3 ls", "aws s3 ls"],
       ])("flags %s as an indirection wrapper", async (command, text, executedUnit) => {
         const program = await BashProgram.parse(command, normalizer);
         expect(program.commands()).toEqual([
           { text, wrapperKind: "indirection", executedUnit },
+        ]);
+      });
+
+      // The remaining #575 wrappers, whose realistic inner commands are core
+      // readers, so the unit also carries the floor exemption (#803).
+      it.each([
+        ["rust-parallel echo", "echo"],
+        ["rush echo", "echo"],
+        ["watch ls", "ls"],
+      ])("flags %s as an indirection wrapper running a pure reader", async (command, executedUnit) => {
+        const program = await BashProgram.parse(command, normalizer);
+        expect(program.commands()).toEqual([
+          {
+            text: command,
+            wrapperKind: "indirection",
+            executedUnit,
+            floorExemption: "core-reader",
+          },
         ]);
       });
 
@@ -1295,6 +1310,93 @@ describe("BashProgram", () => {
         expect(program.commands()).toEqual([
           { text: "xargs", wrapperKind: "indirection" },
         ]);
+      });
+    });
+
+    describe("floor exemption", () => {
+      /** The exemption recorded for each unit of a parsed command. */
+      async function exemptions(
+        command: string,
+      ): Promise<(string | undefined)[]> {
+        const program = await BashProgram.parse(command, normalizer);
+        return program.commands().map((unit) => unit.floorExemption);
+      }
+
+      it.each([
+        "xargs grep foo",
+        "xargs -0 rg pattern",
+        "find . -name '*.ts' -exec wc -l {} +",
+        "sudo timeout 5 xargs grep foo",
+      ])("exempts %s", async (command) => {
+        await expect(exemptions(command)).resolves.toEqual(["core-reader"]);
+      });
+
+      it.each([
+        ["xargs pnpm test", "the inner command is not in the core"],
+        ["xargs -I{} sh -c 'grep -l x {}'", "the payload is not re-parsed"],
+        ["find . -exec sh -c 'grep x' \\;", "the payload is not re-parsed"],
+        ["xargs sort -o /tmp/x", "`-o` withdraws sort's read claim"],
+      ])("does not exempt %s (%s)", async (command) => {
+        await expect(exemptions(command)).resolves.toEqual([undefined]);
+      });
+
+      it("is absent for a command that is not a wrapper", async () => {
+        await expect(exemptions("grep foo")).resolves.toEqual([undefined]);
+      });
+
+      describe("a statement that writes through a redirect", () => {
+        it("withholds the exemption from the redirected wrapper", async () => {
+          await expect(exemptions("xargs grep foo > out.txt")).resolves.toEqual(
+            [undefined],
+          );
+        });
+
+        it.each([
+          ">>",
+          ">|",
+          "&>",
+        ])("withholds it for a %s redirect too", async (operator) => {
+          await expect(
+            exemptions(`xargs grep foo ${operator} out.txt`),
+          ).resolves.toEqual([undefined]);
+        });
+
+        it("withholds it from every unit of a redirected pipeline", async () => {
+          // The redirect applies to the last element, but it hangs off the whole
+          // pipeline in the parse tree. Over-attributing is the fail-closed
+          // direction: the flag can only ever withhold an exemption.
+          await expect(
+            exemptions("cat a | xargs grep b > out"),
+          ).resolves.toEqual([undefined, undefined]);
+        });
+
+        it("withholds it from a redirected subshell's commands", async () => {
+          await expect(exemptions("( xargs grep foo ) > out")).resolves.toEqual(
+            [undefined, undefined],
+          );
+        });
+      });
+
+      describe("a redirect that writes no file", () => {
+        it("keeps the exemption for a descriptor duplication", async () => {
+          await expect(exemptions("xargs grep foo 2>&1")).resolves.toEqual([
+            "core-reader",
+          ]);
+        });
+
+        it("keeps the exemption for an input redirect", async () => {
+          await expect(exemptions("xargs grep foo < in.txt")).resolves.toEqual([
+            "core-reader",
+          ]);
+        });
+      });
+
+      it("gives a nested execution its own scope", async () => {
+        // The redirect belongs to the enclosing statement, not to the command
+        // substitution hosted in its destination.
+        await expect(
+          exemptions("echo hi > $(xargs grep foo)"),
+        ).resolves.toEqual([undefined, "core-reader"]);
       });
     });
   });
