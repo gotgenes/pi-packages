@@ -86,7 +86,7 @@ Nine steps is a ceiling, not a target — a phase may have one step, or none.
 If discovery surfaced no cause-level finding (Category A–C) and the candidates are polish-only (Category B unit-size, D, E, G symptoms), do not manufacture a full phase — but split the "polish" verdict before defaulting to defer:
 
 - **Scattered trivia** (isolated findings across cold, low-churn files) → **defer**.
-  A phase step is an _area_, not a scattered list; a rename here and a split there is boy-scout-rule work for the implementation prompts (`/tdd-plan`, `/build-plan` via the `tidy-first` skill), not a planned phase.
+  A phase step is an _area_, not a scattered list; a rename here and a split there is boy-scout-rule work for `/plan-issue`'s Tidy-First assessment (via the `tidy-first` skill), not a planned phase.
 - **Concentrated quality/test debt in a hot area** (3+ findings clustered in one churn hotspot or one oversized test file) → a legitimate **craftsmanship lean phase**, whose spine is "pay down concentrated debt in `<area>`."
   This is Beck/Metz craftsmanship, not filler: a hot file whose test-design or naming debt taxes every change earns a focused phase the same way a coupling flaw does.
   Present it as a first-class `ask_user` option alongside defer.

@@ -148,7 +148,7 @@ Identify dependency ordering and parallel tracks.
 If discovery surfaced no cause-level finding (Category A–C — structural fusion, coupling/boundary flaws, dead subsystems) and the candidate list is polish-only (Category B unit-size, Category D, Category E, Category G symptoms), do not manufacture a full phase — but split the "polish" verdict before defaulting to defer, using the craftsmanship scout's concentrated/scattered flags:
 
 - **Scattered trivia** (isolated findings across cold, low-churn files) → present **"defer"** as a first-class `ask_user` option.
-  This work belongs to the boy-scout rule in the implementation prompts (the `tidy-first` skill), not a planned phase.
+  This work belongs to the boy-scout rule in `/plan-issue`'s Tidy-First assessment (the `tidy-first` skill), which picks it up whenever a change touches those files, not a planned phase.
 - **Concentrated quality/test debt in a hot area** (3+ scout findings clustered in one churn hotspot or one oversized test file) → present a **"craftsmanship lean phase"** (spine: "pay down concentrated debt in `<area>`") as a first-class `ask_user` option alongside defer.
   This is legitimate Beck/Metz craftsmanship, not filler.
 

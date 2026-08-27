@@ -31,6 +31,7 @@ Before investigating the issue, load skills relevant to the change:
 - Load the `testing` skill if the plan involves test changes or TDD steps, or if investigation will run a disposable spike test.
 - Load the `markdown-conventions` skill — it contains project-specific rules (one-sentence-per-line, frontmatter schema) that differ from standard markdown conventions.
 - Load the `design-review` skill and run its checklist before finalizing the design for any refactor, extraction, or change to shared interfaces or layer wiring — judge this from the issue, not from a plan that already shows wiring changes.
+- Load the `tidy-first` skill if the change will create or modify `src/`/`test/` files — you will use it after the design is settled to dispatch the Tidy-First assessor, whose recommendations become preparatory steps in the plan's TDD Order (a docs-only or config-only change skips it).
 
 ## Gather context
 
@@ -116,6 +117,15 @@ If the issue is a decision-record or ADR issue (its deliverable is a decision, n
 The deliberation is the deliverable: existing architecture-doc prose is an input to put to the operator, not a settled spec to transcribe.
 Surface the open parameters (and any the prose treats as closed but the issue's own motivation reopens) for the operator's confirmation before planning (Refs #581).
 
+## Tidy First assessment
+
+With the design settled and the target files known — but before writing the plan — follow the `tidy-first` skill: dispatch the `tidy-first-assessor` subagent over the `src/`/`test/` files the change will touch, then fold its **Recommended** preparatory refactorings into the plan's TDD Order as `refactor:`/`test:` steps ahead of the work each prepares.
+Make the change easy, then make the easy change.
+The assessment runs in a subagent so the many-files read does not consume this session's context.
+Skip when the change touches no `src/`/`test/` files (the skill's applicability gate) and note the skip.
+
+The assessor reads the real files against your design summary, so treat a contradiction it reports — a function that does not exist, an interface with a different shape, a call-site count that is off — as a correction to the design before the plan records it.
+
 ## Write the plan
 
 File: `packages/<PKG>/docs/plans/NNNN-<short-slug>.md` (single-package) or `docs/plans/NNNN-<short-slug>.md` (cross-package).
@@ -187,6 +197,9 @@ Then an H1 title (e.g., `# <short descriptive title>`) — required by markdownl
   When the plan removes the mechanism an existing test's comment credits, spike the removal and run that test at planning time — that the test stays green is a measurement, not an argument (Refs #653).
 - **TDD Order** — numbered red→green→commit cycles.
   Each item names the test surface, what's covered, and the suggested commit message (`test:`, `feat:`, `feat!:`, `fix:`, `docs:`).
+  The Tidy-First assessment's accepted preparatory refactorings are steps here like any other, each with its `refactor:`/`test:` commit message and a sentence naming the friction it prepares.
+  Place each one before the step it prepares — leading the whole order when every later step depends on it, immediately before the relevant part when a larger plan needs its tidying split across several points.
+  The implementing session executes them in order; it runs no second assessment.
   When a refactor replaces a type, interface, or function that a large test file depends on, use lift-and-shift: introduce the new thing alongside the old, migrate callers and fixtures incrementally across steps, then remove the old in a final step.
   Never plan a single step that requires rewriting an entire large test file at once.
   When a step removes a factory or export that has a single call site (e.g., `index.ts`), include the call-site update in the same step — the type checker will not allow them in separate commits.
@@ -253,6 +266,7 @@ Before stopping, persist planning observations for cross-session continuity:
    Keep it concise — this is a breadcrumb trail for future sessions, not a full retrospective.
    ```
 
+   When the Tidy-First assessor rejected candidates as scope creep, add a `#### Deferred tidyings` subsection under `### Observations`, one line per item naming the file and the friction — `/plan-improvements` greps this exact heading across retro files to triage them in a later improvement round (Refs #787).
 4. Commit: `git add <retro-file> && git commit -m "docs(retro): add planning stage notes for issue #N"`.
 
 Wrap code identifiers, filenames, and text containing underscores in backticks in the retro file.

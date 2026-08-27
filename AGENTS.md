@@ -153,8 +153,9 @@ Larger issues span multiple sessions, each handling one stage.
 The standard flow is:
 
 1. `/plan-issue #N` — read the issue, explore the codebase, produce a numbered plan, commit it.
+   For a code-touching change, a fresh-context `tidy-first-assessor` runs after the design is settled and before the plan is written; its accepted preparatory refactorings become `refactor:`/`test:` steps in the plan's TDD Order (Kent Beck's Tidy First).
 2. `/tdd-plan` or `/build-plan` — execute the plan (TDD for code changes, build for docs/config).
-   Two fresh-context subagents bracket the implementation: a `tidy-first-assessor` at the **start** (after the green baseline, before the first change) proposes preparatory refactorings that make the change easy (Kent Beck's Tidy First), and a `pre-completion-reviewer` at the **end** runs the quality gate.
+   The preparatory steps are ordinary plan steps here; a fresh-context `pre-completion-reviewer` runs the quality gate at the **end**.
 3. Pre-completion review — dispatched automatically at the end of step 2; a fresh-context `pre-completion-reviewer` subagent runs deterministic checks and a judgment checklist before recommending `/ship-issue`.
 4. `/ship-issue #N` — push, verify CI, close the issue, merge the release-please PR.
 5. `/retro` — review the session(s) for workflow improvements, persist retro notes.
@@ -341,10 +342,11 @@ The agent's `model:` frontmatter must use the `provider/id` alias form the Pi CL
 
 Two read-only subagents carry the micro / craftsmanship lens (SOLID at the method scale, Test-Driven **Design**, self-documenting code) so it is examined systematically rather than left to whoever has spare context:
 
-- `tidy-first-assessor` (`.pi/agents/tidy-first-assessor.md`) — dispatched at the **start** of `/tdd-plan` (and `/build-plan` for code-touching plans) via the `tidy-first` skill (`.pi/skills/tidy-first/SKILL.md`).
+- `tidy-first-assessor` (`.pi/agents/tidy-first-assessor.md`) — dispatched during `/plan-issue` via the `tidy-first` skill (`.pi/skills/tidy-first/SKILL.md`), after the design is settled and before the plan is written.
   It reads the files the change will touch and proposes preparatory `refactor:`/`test:` commits that shrink the change (make the change easy, then make the easy change).
-  Advisory; the impl agent triages.
-  Strictly change-scoped — it must not propose tidying code the change will not touch.
+  Advisory; the planning agent triages them into the plan's TDD Order, so the implementing session executes them as ordinary steps and runs no second assessment.
+  Planning is the dispatch point because the plan is what must absorb the answer — an assessment arriving at implementation time can only contradict a frozen plan, and a contradiction it reports (a function that does not exist, a call-site count that is off) is a correction to the design while the design is still cheap to change.
+  Strictly change-scoped — it must not propose tidying code the change will not touch; rejections are recorded under `#### Deferred tidyings` in the Planning stage note for `/plan-improvements` to sweep.
 - `craftsmanship-scout` (`.pi/agents/craftsmanship-scout.md`) — dispatched during `/plan-improvements` discovery (Step 5).
   It **opens** (does not grep) the largest test files and sweeps method-level design, naming, and test-code quality (taxonomy Category G) into a scored debt inventory, flagging each cluster concentrated vs. scattered.
   The concentrated/scattered split drives the deferral gate: concentrated debt in a hot area is a legitimate craftsmanship lean phase; scattered trivia defers to the `tidy-first` boy-scout path.
