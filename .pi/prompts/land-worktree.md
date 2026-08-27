@@ -66,8 +66,9 @@ Releasing is the root's serialized responsibility — only the root merges relea
    Otherwise release now.
 2. To release: `release_pr_find` with `component: <pkg>` → confirm the **full** PR body bumps `<pkg>` and nothing else → `release_pr_merge` (rebase).
    - Print the body explicitly with `gh pr view <N> --json body -q .body` — a `--jq` that drops `body` skips the check silently and an unexpected bump slips through.
-   - A component-scoped release PR carries exactly one package, so an unexpected bump means you have the wrong PR; a sibling package's PR sitting open is normal and is not yours to merge.
-   - Read `release_pr_find`'s `component:` line first: `component: (none)` means a **combined** PR covering every package, which the tool falls back to legitimately (the rollback state in `AGENTS.md`), so sibling bumps there are expected.
+   - `release_pr_find`'s `component:` line says which check applies: a named component means one package, while `component: (none)` means a **combined** PR covering every package, which the tool falls back to legitimately (the rollback state in `AGENTS.md`).
+   - For a component-scoped PR an unexpected bump means you have the wrong PR; for a combined one sibling bumps are expected.
+     Either way, a sibling package's own PR sitting open is normal and is not yours to merge.
    - `release_pr_merge` waits out an in-progress check or an undecided (`UNKNOWN`) mergeability state on its own, and retries a transient 5xx — do not add a manual wait loop or a blind retry.
    - On a `failed to merge PR #N` result the merge call itself failed and the tool has already checked whether it landed: `merged: false` is safe to retry, `merged: unknown` is not — run the probe it prints first.
    - On a `reason: no checks reported (statusCheckRollup is empty)` refusal (the `GITHUB_TOKEN` case), fall back to `gh pr merge <N> --rebase`, then `git pull --ff-only`.
