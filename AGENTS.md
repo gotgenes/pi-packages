@@ -23,7 +23,8 @@ The publish needs an interactive terminal when the registry requires an OTP (`ER
 Every release after that publishes automatically (Refs #600).
 
 If `release-please`'s CI job fails after it has already tagged/released, GitHub skips the downstream `publish` job — and a rerun does not recover it, since release-please finds nothing new to release and reports `releases_created: false`.
-Recover with the manual-publish command above for the missing version, then advance `last-release-sha` in `release-please-config.json` to the release commit (the write-back step is skipped too) and commit `chore: advance release-please last-release-sha baseline [skip ci]` (Refs #646).
+Recover with the manual-publish command above for the missing version, then re-derive the baseline (the write-back step is skipped too): run `git fetch --tags && ./scripts/release-baseline-sha.sh`, write its output to `last-release-sha` in `release-please-config.json`, and commit `chore: advance release-please last-release-sha baseline [skip ci]` (Refs #646).
+Do not write the release commit there by hand — the correct value is the *oldest* component's release, which is rarely the one that just released (Refs #816).
 
 A cross-package change bumping a dependent package to a **same-day-published** sibling hits pnpm's 24h `minimumReleaseAge` supply-chain gate — CI's `--frozen-lockfile` install and local `pnpm exec` hooks fail `ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION`.
 `minimumReleaseAgeExclude` does not fix it (honored at resolution, ignored by pnpm's lockfile verification pass); the repo sets `trustLockfile: true` in `pnpm-workspace.yaml` to trust the reviewed lockfile and skip that re-verification.
@@ -170,7 +171,10 @@ This holds for releases cut outside `/ship-issue` (e.g. an extended review sessi
 
 The `release-please` CI job pins a `last-release-sha` baseline in `release-please-config.json`, auto-advanced by a `ci.yml` write-back step after each release, to cap its history walk (Refs #468).
 Do not remove either — without the baseline, release-please walks the default 500 commits every run and the deep walk fails with `Bad credentials` (secondary rate limit) on this monorepo.
-The write-back reads the release commit from a path-prefixed `<path>--sha` output, not a top-level `sha`: every component lives at a non-root path, so release-please emits no top-level `sha`.
+The baseline is a single repo-global floor, so it must sit at or before *every* component's last release, not just the one that released most recently.
+The walk stops at the floor, so a component whose last release is older has the intervening commits collected by nobody — they reach neither its changelog nor its version bump (Refs #816).
+The write-back therefore derives the floor from `.release-please-manifest.json` via `scripts/release-baseline-sha.sh`, which resolves each component's release tag and takes the oldest; the release action's `<path>--sha` outputs cannot serve, because they report only the components that just released.
+This costs nothing against the bound above: release-please already ends its own walk once it has seen every component's release commit, which is the same commit the script prints.
 
 ### Clarification gates
 
