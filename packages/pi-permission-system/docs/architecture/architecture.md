@@ -1002,6 +1002,8 @@ No decline, so the regular improvement rotation continues.
 - [#813] — filed by Step 2's implementation; adopted as Step 11.
   Step 2's narrowing costs a second prompt in the read-after-write flow, and relieving it is a prompt affordance rather than a reshape of `SessionApproval`, so it stands as its own step beside Step 10 rather than inside it.
 - [#803] — adopted as Step 3 (wrapper transparency, ADR 0013 §11 and staging slice 3).
+- [#814] — filed by Step 3's implementation; adopted as Step 12.
+  Step 3 extracts the `file_redirect` reading into its own module, and writing that module's first direct tests exposed a defect in the operator proof Step 2 shipped — so the correction lands against the surface this phase created rather than waiting for Phase 15's redirect slice ([#609]) to reopen the same file.
 - [#742] — adopted as Step 4, having been swept out of Phase 13 as "a strong candidate for the next phase's spine".
   ADR 0013 §10 recasts it as a combinator clause of the verdict fold rather than a patch, so fixing it now is the fold's first clause.
 - [#772] — adopted as Step 5; filed by Phase 13 Step 10's implementation and non-gating since.
@@ -1251,6 +1253,20 @@ The read-after-write flow is common, the second ask carries no new information, 
 
 Release: independent
 
+#### Step 12: An unresolvable redirect proves nothing ([#814])
+
+**Cause:** Step 2's operator table answers by operator spelling, and `redirectOperatorOf` reads whichever operator survives the parse — but tree-sitter-bash has no node for the read-write open `<>`, so it degrades to an `ERROR` whose placement depends on the destination's shape.
+Measured on `main` against the real collector: `cat <> rw.txt` proves `read` and `cat <> ~/rw.txt` proves `write`.
+The first is a fail-open in the one direction ADR 0013 §10 is careful about everywhere else, and the second makes the answer a function of the filename rather than the syntax.
+
+- **Smell:** Category C (a proof is synthesized from a parse the parser itself did not resolve).
+- **Target:** `src/access-intent/bash/redirect-analysis.ts` — refuse a redirect carrying an unresolved parse and return `UNPROVEN_EFFECT`, so the destination consults both directional surfaces per §10's base case, rather than guessing from a partial operator.
+- **Constraint:** every currently-proven operator (`>`, `>>`, `>|`, `&>`, `&>>`, `<`, `<<<`, `2>&1`, `>& out`, `<& in`) keeps its answer; the change may only move an unresolvable form to unproven.
+- **Outcome:** `cat <> rw.txt` and `cat <> ~/rw.txt` attribute the same effect, and it is not a bare `read`; the `it.fails` characterization test Step 3 left in `test/access-intent/bash/redirect-analysis.test.ts` flips to a plain assertion.
+- **Impact 3 / Risk 1 / Priority 12.**
+
+Release: independent
+
 ### Step dependency diagram
 
 ```mermaid
@@ -1265,6 +1281,7 @@ flowchart TD
     S9["Step 9 (#808): name the well-known surfaces"]
     S10["Step 10 (#810): per-pattern approval surfaces"]
     S11["Step 11 (#813): user-chosen grant width"]
+    S3 --> S12["Step 12 (#814): unresolvable redirect proves nothing"]
     S7 -.-> S8
     S1 --> S9
     S2 --> S10
@@ -1387,4 +1404,5 @@ Each phase's findings, numbered plan, dependency diagram, and health metrics are
 [#808]: https://github.com/gotgenes/pi-packages/issues/808
 [#810]: https://github.com/gotgenes/pi-packages/issues/810
 [#813]: https://github.com/gotgenes/pi-packages/issues/813
+[#814]: https://github.com/gotgenes/pi-packages/issues/814
 [ADR-0002]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-subagents/docs/decisions/0002-extensions-on-a-minimal-core.md
