@@ -45,6 +45,8 @@ export interface ToolResult {
 // ---------- findReleasePR ----------
 
 export interface FindReleasePRArgs {
+  /** release-please component (package directory name) whose PR to return. */
+  component?: string;
   timeout?: number;
   onProgress?: (line: string) => void;
   signal?: AbortSignal;
@@ -54,6 +56,7 @@ export async function findReleasePR(args: FindReleasePRArgs): Promise<string> {
   const timeout = args.timeout ?? 120;
   const onProgress = args.onProgress;
   const signal = args.signal;
+  const component = args.component;
 
   let elapsed = 0;
   let attempt = 0;
@@ -104,7 +107,7 @@ export async function findReleasePR(args: FindReleasePRArgs): Promise<string> {
           "--json",
           "number,title,headRefName,url,mergeable,mergeStateStatus",
           "--limit",
-          "5",
+          "30",
         ],
         retryOptions,
       );
@@ -113,26 +116,83 @@ export async function findReleasePR(args: FindReleasePRArgs): Promise<string> {
       return formatAborted(`  retries: ${attempt}`, `  elapsed: ${elapsed}s`);
     }
 
-    if (prs.length > 0) {
-      const pr = prs[0];
-      return [
-        `pr_number: ${pr.number}`,
-        `title: ${pr.title}`,
-        `head_branch: ${pr.headRefName}`,
-        `url: ${pr.url}`,
-        `mergeable: ${pr.mergeable}`,
-        `merge_state: ${pr.mergeStateStatus}`,
-      ].join("\n");
+    const settled = selectReleasePR(prs, component);
+    if (settled) {
+      return settled;
     }
 
     if (elapsed >= timeout) {
       return [
-        `timeout: no release-please PR found`,
+        component === undefined
+          ? `timeout: no release-please PR found`
+          : `timeout: no release-please PR found for component ${component}`,
         `  retries: ${attempt}`,
         `  elapsed: ${elapsed}s`,
       ].join("\n");
     }
   }
+}
+
+/**
+ * The formatted result for the PR this poll settled on, or `undefined` when
+ * the caller should keep polling.
+ *
+ * Without a component, more than one open PR is unanswerable rather than a
+ * coin flip: under `separate-pull-requests` each component has its own PR, so
+ * picking the first would merge whichever one GitHub happened to list first.
+ */
+function selectReleasePR(
+  prs: ReleasePR[],
+  component: string | undefined,
+): string | undefined {
+  if (component !== undefined) {
+    const match =
+      prs.find((pr) => componentOf(pr) === component) ??
+      // A combined release PR carries every component, so it answers for the
+      // requested one too.
+      prs.find((pr) => componentOf(pr) === undefined);
+    return match ? formatReleasePR(match) : undefined;
+  }
+
+  if (prs.length > 1) {
+    return formatAmbiguousPRs(prs);
+  }
+
+  return prs.length === 1 ? formatReleasePR(prs[0]) : undefined;
+}
+
+const COMPONENT_BRANCH = /--components--(?<component>.+)$/;
+
+/**
+ * The component whose release a PR carries, or `undefined` for a combined PR.
+ *
+ * release-please names a component branch
+ * `release-please--branches--<target>--components--<component>`, so the suffix
+ * is an exact match — no title parsing needed.
+ */
+function componentOf(pr: ReleasePR): string | undefined {
+  return COMPONENT_BRANCH.exec(pr.headRefName)?.groups?.component;
+}
+
+function formatReleasePR(pr: ReleasePR): string {
+  return [
+    `pr_number: ${pr.number}`,
+    `title: ${pr.title}`,
+    `component: ${componentOf(pr) ?? "(none)"}`,
+    `head_branch: ${pr.headRefName}`,
+    `url: ${pr.url}`,
+    `mergeable: ${pr.mergeable}`,
+    `merge_state: ${pr.mergeStateStatus}`,
+  ].join("\n");
+}
+
+function formatAmbiguousPRs(prs: ReleasePR[]): string {
+  return [
+    `ambiguous: ${prs.length} open release-please PRs; pass component to select one`,
+    ...prs.map(
+      (pr) => `  #${pr.number}  ${componentOf(pr) ?? "(none)"}  ${pr.title}`,
+    ),
+  ].join("\n");
 }
 
 // ---------- mergeReleasePR ----------

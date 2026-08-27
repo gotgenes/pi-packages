@@ -11,9 +11,17 @@ export function registerReleasePrFind(pi: ExtensionAPI): void {
     description:
       "Find the release-please PR after a push to main. " +
       "Polls until an open release-please PR appears or the timeout expires (default: 120 s). " +
-      "Returns PR number, title, head branch, mergeable status, and URL.",
+      "Returns PR number, title, component, head branch, mergeable status, and URL. " +
+      "Each package gets its own release PR, so pass the component to say which one you mean; " +
+      "without it, several open PRs return an ambiguous result listing the candidates.",
     promptSnippet: "Find the release-please PR after pushing to main.",
     parameters: Type.Object({
+      component: Type.Optional(
+        Type.String({
+          description:
+            'release-please component whose PR to find — the package directory name, e.g. "pi-subagents".',
+        }),
+      ),
       timeout: Type.Optional(
         Type.Number({
           description:
@@ -24,6 +32,7 @@ export function registerReleasePrFind(pi: ExtensionAPI): void {
     async execute(_toolCallId, params, signal, onUpdate) {
       try {
         const content = await findReleasePR({
+          component: params.component,
           timeout: params.timeout,
           signal,
           onProgress: createProgressCallback(onUpdate),

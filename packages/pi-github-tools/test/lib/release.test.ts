@@ -142,6 +142,122 @@ describe("findReleasePR", () => {
     expect(result).toContain("timeout: no release-please PR found");
     expect(result).toContain("elapsed: 1s");
   });
+
+  it("requests enough PRs to cover every component", async () => {
+    mockGhJson([releasePR()]);
+
+    await findReleasePR({ timeout: 120 });
+
+    expect(mockRunCommand).toHaveBeenCalledWith({
+      cmd: "gh",
+      args: [
+        "pr",
+        "list",
+        "--label",
+        "autorelease: pending",
+        "--json",
+        "number,title,headRefName,url,mergeable,mergeStateStatus",
+        "--limit",
+        "30",
+      ],
+      signal: undefined,
+    });
+  });
+
+  describe("component selection", () => {
+    const toolsPR = releasePR({
+      number: 142,
+      title: "chore(main): release pi-github-tools 4.4.0",
+      headRefName:
+        "release-please--branches--main--components--pi-github-tools",
+    });
+    const subagentsPR = releasePR({
+      number: 143,
+      title: "chore(main): release pi-subagents 19.3.6",
+      headRefName: "release-please--branches--main--components--pi-subagents",
+    });
+    const worktreesPR = releasePR({
+      number: 144,
+      title: "chore(main): release pi-subagents-worktrees 0.3.2",
+      headRefName:
+        "release-please--branches--main--components--pi-subagents-worktrees",
+    });
+
+    it("selects the PR whose branch names the requested component", async () => {
+      mockGhJson([toolsPR, subagentsPR, worktreesPR]);
+
+      const result = await findReleasePR({
+        component: "pi-subagents",
+        timeout: 120,
+      });
+
+      expect(result).toContain("pr_number: 143");
+      expect(result).toContain("component: pi-subagents");
+      expect(result).toContain(
+        "head_branch: release-please--branches--main--components--pi-subagents",
+      );
+    });
+
+    it("does not confuse a component with a longer-named sibling", async () => {
+      mockGhJson([worktreesPR]);
+
+      const result = await findReleasePR({
+        component: "pi-subagents",
+        timeout: 0,
+      });
+
+      expect(result).toContain(
+        "timeout: no release-please PR found for component pi-subagents",
+      );
+    });
+
+    it("falls back to a combined PR that covers every component", async () => {
+      mockGhJson([releasePR()]);
+
+      const result = await findReleasePR({
+        component: "pi-subagents",
+        timeout: 120,
+      });
+
+      expect(result).toContain("pr_number: 42");
+      expect(result).toContain("component: (none)");
+    });
+
+    it("keeps polling while other components' PRs are open", async () => {
+      mockGhJson([toolsPR]);
+      mockGhJson([toolsPR, subagentsPR]);
+
+      const result = await findReleasePR({
+        component: "pi-subagents",
+        timeout: 120,
+      });
+
+      expect(result).toContain("pr_number: 143");
+    });
+
+    it("refuses to guess when several PRs are open and no component is given", async () => {
+      mockGhJson([toolsPR, subagentsPR, releasePR()]);
+
+      const result = await findReleasePR({ timeout: 120 });
+
+      expect(result).toBe(
+        [
+          "ambiguous: 3 open release-please PRs; pass component to select one",
+          "  #142  pi-github-tools  chore(main): release pi-github-tools 4.4.0",
+          "  #143  pi-subagents  chore(main): release pi-subagents 19.3.6",
+          "  #42  (none)  chore(main): release 1.2.0",
+        ].join("\n"),
+      );
+    });
+
+    it("reports the component of the single PR it found", async () => {
+      mockGhJson([toolsPR]);
+
+      const result = await findReleasePR({ timeout: 120 });
+
+      expect(result).toContain("component: pi-github-tools");
+    });
+  });
 });
 
 describe("mergeReleasePR", () => {
