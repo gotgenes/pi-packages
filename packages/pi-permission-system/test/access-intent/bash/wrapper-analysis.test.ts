@@ -3,6 +3,7 @@ import {
   type CommandWord,
   classifyWrapperWords,
   executedUnitOf,
+  isTransparentWrapper,
 } from "#src/access-intent/bash/wrapper-analysis";
 
 /**
@@ -182,6 +183,106 @@ describe("executedUnitOf", () => {
 
     it("returns null for an empty word list", () => {
       expect(executedUnitOf("", [])).toBeNull();
+    });
+  });
+});
+
+describe("isTransparentWrapper", () => {
+  /** The predicate over a unit that carries no write-proving redirect. */
+  function isTransparent(unitText: string): boolean {
+    return isTransparentWrapper(words(unitText), { writesViaRedirect: false });
+  }
+
+  describe("a wrapper running a proven pure reader", () => {
+    it.each([
+      "xargs grep foo",
+      "xargs -0 rg pattern",
+      "xargs -I{} basename {}",
+      "xargs cat",
+      "time cat x",
+      "env FOO=bar grep x",
+      "sudo grep foo /etc/hosts",
+      "find . -name '*.ts' -exec wc -l {} +",
+      "fd -e ts -x cat",
+    ])("is transparent: %s", (unit) => {
+      expect(isTransparent(unit)).toBe(true);
+    });
+
+    it("unwraps nested indirection to the innermost command", () => {
+      expect(isTransparent("sudo timeout 5 xargs grep foo")).toBe(true);
+    });
+  });
+
+  describe("a wrapper running anything else", () => {
+    it.each([
+      ["xargs pnpm test", "the inner command is not in the core"],
+      ["time pnpm test", "the inner command is not in the core"],
+      ["xargs git commit", "the inner command is subcommand-dependent"],
+      ["xargs ./grep foo", "a path-qualified head word is never core"],
+      ["xargs /usr/bin/grep foo", "a path-qualified head word is never core"],
+      ["xargs sort -o /tmp/x", "`-o` withdraws sort's read claim"],
+      ["xargs find . -delete", "`-delete` withdraws find's read claim"],
+      ["xargs fd -x rm", "`-x` withdraws fd's read claim"],
+    ])("is not transparent: %s (%s)", (unit) => {
+      expect(isTransparent(unit)).toBe(false);
+    });
+  });
+
+  describe("an opaque payload is never transparent", () => {
+    // `executedUnitOf` deliberately unwraps *through* an opaque payload to name
+    // what runs, so its head word can be a core word while the payload is an
+    // unparsed shell program. The predicate must refuse there, and these pin the
+    // two functions disagreeing on the same input (#803).
+    it.each([
+      "xargs -I{} sh -c 'grep -l x {}'",
+      "find . -exec sh -c 'grep x' \\;",
+      "sudo bash -c 'cat /etc/shadow'",
+      "eval 'grep foo'",
+      "bash -c 'grep foo'",
+    ])("is not transparent: %s", (unit) => {
+      expect(isTransparent(unit)).toBe(false);
+    });
+
+    it("still names the payload for display", () => {
+      const unit = "xargs -I{} sh -c 'grep -l x {}'";
+      expect(executedUnitOf(unit, words(unit))).toBe("grep -l x {}");
+      expect(isTransparent(unit)).toBe(false);
+    });
+  });
+
+  describe("an unresolvable inner command is never transparent", () => {
+    it.each([
+      ["xargs --unknown-opt", "the wrapper's own options run out first"],
+      ["find . -exec", "the exec flag ends the command"],
+      ["sudo timeout 5 xargs --unknown-opt", "peeling stops at the wrapper"],
+    ])("is not transparent: %s (%s)", (unit) => {
+      expect(isTransparent(unit)).toBe(false);
+    });
+  });
+
+  describe("a unit that is not a floored wrapper", () => {
+    it.each([
+      ["grep foo", "an ordinary command has no floor to lift"],
+      ["find . -name '*.ts'", "a bare search runs no subcommand"],
+      ["cat a", "an ordinary command has no floor to lift"],
+    ])("is not transparent: %s (%s)", (unit) => {
+      expect(isTransparent(unit)).toBe(false);
+    });
+
+    it("is not transparent for an empty word list", () => {
+      expect(isTransparentWrapper([], { writesViaRedirect: false })).toBe(
+        false,
+      );
+    });
+  });
+
+  describe("a write-proving redirect", () => {
+    it("withholds the exemption from an otherwise transparent wrapper", () => {
+      const unit = "xargs grep foo";
+      expect(isTransparent(unit)).toBe(true);
+      expect(
+        isTransparentWrapper(words(unit), { writesViaRedirect: true }),
+      ).toBe(false);
     });
   });
 });

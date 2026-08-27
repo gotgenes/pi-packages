@@ -1,12 +1,15 @@
 /**
  * Wrapper interpretation for a bash command unit: what kind of wrapper it is,
- * and — where it can be established — what it actually runs.
+ * what it actually runs, and whether its floor still has a reason to hold.
  *
  * Pure and word-based; the AST walk that produces the words lives in
- * `command-enumeration.ts`. Both questions live here together deliberately: the
- * shape that floors a unit to `ask` and the shape that names its inner command
- * must agree, and two classifiers over the same vocabulary would drift.
+ * `command-enumeration.ts`. The three questions live here together
+ * deliberately: the shape that floors a unit to `ask`, the shape that names its
+ * inner command, and the shape that exempts it must agree, and separate
+ * classifiers over the same vocabulary would drift.
  */
+
+import { proveCommandEffect } from "#src/access-intent/bash/command-effects";
 
 /** One word of a command unit: its text, and its offset into the unit's text. */
 export interface CommandWord {
@@ -62,11 +65,12 @@ export function classifyWrapperWords(
  * The command a wrapper unit actually runs, or `null` when it cannot be
  * established or adds nothing over the unit itself.
  *
- * Display-only (ADR 0011 §3.5, #713): the result is never gated and never
- * becomes a `BashCommand`, so the wrapper floor is untouched. Because it is
- * shown on a decision surface, the rule is to fail to `null` rather than to a
- * guess — an unrecognized option shape yields nothing rather than a remainder
- * that might name the wrong command.
+ * Display-only (ADR 0011 §3.5, #713): the result names what runs, including
+ * the payload of an inline shell, so it deliberately looks *past* a `sh -c`
+ * layer that the gate must not look past. Because it is shown on a decision
+ * surface, the rule is to fail to `null` rather than to a guess — an
+ * unrecognized option shape yields nothing rather than a remainder that might
+ * name the wrong command.
  *
  * Nested wrappers unwrap to the innermost command (`sudo timeout 5 xargs grep
  * foo` → `grep foo`), bounded by {@link MAX_UNWRAP_DEPTH}.
@@ -75,8 +79,93 @@ export function executedUnitOf(
   unitText: string,
   words: readonly CommandWord[],
 ): string | null {
+  const unwrapped = unwrapIndirection(words, unitText);
+  const text = unwrapped.kind === "opaque" ? unwrapped.payload : unwrapped.text;
+  return nothingNew(text, unitText);
+}
+
+/**
+ * True when a wrapper unit's floor has no reason left to hold: the command it
+ * runs is in the pure-reader core, so its *direction* is provable however
+ * unknown its argument feed is (ADR 0013 §11, #803).
+ *
+ * The floor exists because a wrapper hides the command that should be gated,
+ * and the unknowability it guards is unknowability of scope — which stays the
+ * projection's and the path surfaces' job, for wrapped and unwrapped commands
+ * alike. Argument-independence is the core's admission bar, so there are no
+ * arguments that make `grep` write a file.
+ *
+ * Four things must hold, and each is a way the reason could still hold:
+ *
+ * 1. The unit is an indirection wrapper — an ordinary command has no floor.
+ * 2. Unwrapping reached the inner command without passing through an opaque
+ *    payload. `sh -c '…'` carries an unparsed program whose first word says
+ *    nothing about the rest of it, which is why this cannot consult
+ *    {@link executedUnitOf}'s string.
+ * 3. The inner command *proves* a read — bare-basename core word, retraction
+ *    guards applied, so `xargs sort -o /tmp/x` and `xargs find . -delete` are
+ *    not transparent.
+ * 4. The unit writes no file through a redirect, which the caller reads off
+ *    the parse tree and this module never sees.
+ */
+export function isTransparentWrapper(
+  words: readonly CommandWord[],
+  statement: { readonly writesViaRedirect: boolean },
+): boolean {
+  if (statement.writesViaRedirect) return false;
+  if (classifyWrapperWords(words) !== "indirection") return false;
+
+  // Only the peeled words matter here, so the walk is handed no source span to
+  // cut from — the text slice is `executedUnitOf`'s product, not this one's.
+  const unwrapped = unwrapIndirection(words, "");
+  if (unwrapped.kind === "opaque" || unwrapped.layers === 0) return false;
+
+  const head = unwrapped.words.at(0)?.text ?? "";
+  const args = unwrapped.words.slice(1).map((word) => word.text);
+  return proveCommandEffect(head, args).effect === "read";
+}
+
+// ── Unwrapping ───────────────────────────────────────────────────────────────
+
+/**
+ * How an unwrap ended: at the innermost command reachable by peeling
+ * indirection layers, or at an inline-shell payload.
+ *
+ * The two are kept apart because they are different kinds of answer. A peeled
+ * result is a slice of this command line, with words the caller can inspect;
+ * a payload is an inner *program* the enumerator never parsed, so it has text
+ * and nothing else. Collapsing them is how a core-looking first word inside
+ * `sh -c '…'` would come to stand for the whole payload (#803).
+ */
+type UnwrapResult =
+  | { readonly kind: "opaque"; readonly payload: string | null }
+  | {
+      readonly kind: "peeled";
+      readonly text: string;
+      readonly words: readonly CommandWord[];
+      /** How many indirection layers came off; `0` means none did. */
+      readonly layers: number;
+    };
+
+/**
+ * Peel indirection layers off a command unit until an ordinary command, an
+ * opaque payload, or an unrecognized option shape stops the walk.
+ *
+ * Stopping early is not an error: the words peeled so far are returned, and
+ * each caller decides what an incomplete peel is worth — `executedUnitOf`
+ * shows it, {@link isTransparentWrapper} declines it because the head word it
+ * would judge is the wrapper's own.
+ *
+ * `unitText` is the span the peeled `text` is cut from; a caller that wants
+ * only the words passes the empty string and ignores it.
+ */
+function unwrapIndirection(
+  words: readonly CommandWord[],
+  unitText: string,
+): UnwrapResult {
   let text = unitText;
   let current = words;
+  let layers = 0;
 
   for (let depth = 0; depth < MAX_UNWRAP_DEPTH; depth++) {
     const kind = classifyWrapperWords(current);
@@ -85,7 +174,7 @@ export function executedUnitOf(
     if (kind === "opaque-payload") {
       // The payload is an inner *program*, not a slice of this command line, so
       // it is unquoted and terminal — unwrapping it further would need a parse.
-      return nothingNew(opaquePayload(current), unitText);
+      return { kind: "opaque", payload: opaquePayload(current) };
     }
 
     const start = innerCommandIndex(current);
@@ -93,9 +182,10 @@ export function executedUnitOf(
     const end = execTerminatorIndex(current, start);
     text = sliceWords(text, current, start, end).trimEnd();
     current = rebase(current, start, end);
+    layers++;
   }
 
-  return nothingNew(text, unitText);
+  return { kind: "peeled", text, words: current, layers };
 }
 
 /** How many wrapper layers to unwrap before giving up. */
