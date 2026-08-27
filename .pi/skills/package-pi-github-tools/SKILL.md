@@ -26,7 +26,7 @@ src/
 │   ├── ci-helpers.ts     # CIJob, findRetryDelay, formatProgress
 │   ├── config.ts         # config loading and normalization
 │   ├── merge-state.ts    # classifyMergeState: PR merge readiness from gh pr view
-│   ├── release.ts        # findReleasePR, mergeReleasePR, watchRelease
+│   ├── release.ts        # findReleasePR, mergeReleasePR, watchRelease; selects PR and tag by component
 │   ├── issue.ts          # closeIssue
 │   ├── github.ts         # gh(), ghJson(), ghJsonRetrying(), git(), detectRepo()
 │   ├── retry.ts          # isTransientError, withRetry: 3 retries at 1/4/9 s
@@ -40,6 +40,9 @@ src/
 - The `gh` CLI is the sole external binary dependency.
 - Retry is opt-in at the call site: read-only calls go through `ghJsonRetrying`, and `gh()` stays single-shot so a mutation cannot acquire retry by accident.
   A failed `gh pr merge` is resolved by re-reading the PR over REST (`gh api repos/{owner}/{repo}/pulls/N`), never by guessing or blind-retrying.
+- The repo runs release-please with `separate-pull-requests`, so several release PRs are open at once — one per component.
+  `findReleasePR` and `watchRelease` take an optional `component` and match the `--components--<component>` branch suffix and the `<component>-v` tag prefix respectively; neither picks by position.
+  Without a component `findReleasePR` returns an `ambiguous:` listing rather than guessing, while `watchRelease` keeps its last-tag fallback for repositories still on a combined release PR.
 
 ## Configuration
 

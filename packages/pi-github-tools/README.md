@@ -71,11 +71,26 @@ Useful for diagnostics without constructing `gh` invocations.
 Find the release-please PR after a push to `main`.
 Polls until an open release-please PR appears or the timeout expires.
 
-| Parameter | Type   | Required | Description                    |
-| --------- | ------ | -------- | ------------------------------ |
-| `timeout` | number | no       | Seconds to wait (default: 120) |
+| Parameter   | Type   | Required | Description                               |
+| ----------- | ------ | -------- | ----------------------------------------- |
+| `component` | string | no       | release-please component whose PR to find |
+| `timeout`   | number | no       | Seconds to wait (default: 120)            |
 
-Returns PR number, title, head branch, mergeable status, and URL.
+Returns PR number, title, component, head branch, mergeable status, and URL.
+
+Under [`separate-pull-requests`](https://github.com/googleapis/release-please/blob/main/docs/manifest-releaser.md), each component has its own release PR on a `release-please--branches--<target>--components--<component>` branch.
+`component` selects by that branch suffix, so it is the package directory name as written in `release-please-config.json` — `"pi-subagents"`, not `"@gotgenes/pi-subagents"`.
+When only a combined release PR is open, a requested component still resolves to it, since that PR covers every component.
+
+Without `component` the tool answers when exactly one release PR is open.
+When several are open it refuses to pick, listing the candidates instead:
+
+```text
+ambiguous: 3 open release-please PRs; pass component to select one
+  #142  pi-github-tools  chore(main): release pi-github-tools 4.4.0
+  #143  pi-subagents  chore(main): release pi-subagents 19.3.6
+  #144  (none)  chore: release main
+```
 
 #### `release_pr_merge`
 
@@ -129,11 +144,16 @@ In a polling tool the backoff counts against the call's `timeout`, so retries ca
 Wait for a release tag to appear on HEAD after merging a release-please PR.
 Polls every 10 s until a tag appears or the timeout expires.
 
-| Parameter | Type   | Required | Description                    |
-| --------- | ------ | -------- | ------------------------------ |
-| `timeout` | number | no       | Seconds to wait (default: 180) |
+| Parameter   | Type   | Required | Description                                    |
+| ----------- | ------ | -------- | ---------------------------------------------- |
+| `component` | string | no       | release-please component whose tag to wait for |
+| `timeout`   | number | no       | Seconds to wait (default: 180)                 |
 
 Returns the tag name, version, and SHA.
+The version is read out of the tag wherever the `v` sits, so `pi-subagents-v19.3.5` reports `19.3.5`.
+
+`component` waits for that package's `<component>-v*` tag specifically, rather than answering with a sibling's.
+Without it, the last tag on HEAD is reported — a guess when a combined release commit carries one tag per released component.
 
 ### Issue tools
 
@@ -156,9 +176,9 @@ A typical CI + release flow using these tools:
 2. Use ci_find with the pushed SHA to locate the CI run.
 3. Use ci_watch to wait for the CI run to complete.
 4. Merge the PR.
-5. Use release_pr_find to locate the release-please PR.
+5. Use release_pr_find with the shipped package's component to locate its release PR.
 6. Use release_pr_merge to merge it.
-7. Use release_watch to wait for the release tag to land.
+7. Use release_watch with the same component to wait for the release tag to land.
 8. Use issue_close to close the shipped issue.
 ```
 
