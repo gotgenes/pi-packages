@@ -47,17 +47,24 @@ payload=$(gh issue view "$issue_number" --json title,body)
 title=$(jq -r '.title // ""' <<<"$payload")
 body=$(jq -r '.body // ""' <<<"$payload")
 
-# Collect the `### Package` section. GitHub renders a multi-select
-# comma-separated, but consume to the blank line so a one-per-line rendering
-# works too. The heading pattern anchors its end so `### Package version`, which
-# bug_report.yml also emits, is not mistaken for it.
+# Collect the `### Package` section. The heading pattern anchors its end so
+# `### Package version`, which bug_report.yml also emits, is not mistaken for
+# it, and fenced blocks are skipped entirely so an issue that quotes a rendered
+# form in a code block does not draw that package's label.
+#
+# The value is split on commas and on newlines, and a leading list bullet is
+# stripped: GitHub renders a multi-select comma-separated, but this repo has no
+# multi-select issue on record to confirm that, so accept the plausible
+# renderings rather than silently dropping every label if it is a list.
 selections=$(
   awk '
+    /^[[:space:]]*(```|~~~)/ { fence = !fence; next }
+    fence { next }
     /^###[[:space:]]+Package[[:space:]]*$/ { inside = 1; next }
     inside && /^###/ { exit }
     inside && /^[[:space:]]*$/ { if (seen) exit; next }
     inside { seen = 1; print }
-  ' <<<"$body" | tr ',' '\n' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' | grep -v '^$' || true
+  ' <<<"$body" | tr ',' '\n' | sed 's/^[[:space:]]*[-*][[:space:]]*//; s/^[[:space:]]*//; s/[[:space:]]*$//' | grep -v '^$' || true
 )
 
 if [[ -z $selections ]]; then
