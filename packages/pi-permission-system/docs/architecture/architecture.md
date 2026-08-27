@@ -1138,13 +1138,15 @@ The floor's reason does not hold for the one class the core is defined by.
 - **Outcome:** `xargs grep -l foo` under a matching `bash` allow stops prompting while `xargs rm`, `xargs sed`, `time pnpm test`, and `find -exec sh -c '…' \;` still do; ~13% of current prompt volume relieved, the single largest deterministic relief in ADR 0013.
 - **Impact 5 / Risk 2 / Priority 20.**
 
-Landed: measured by `scripts/measure-wrapper-transparency.mjs` (2026-08-27), wrapper-floored asks are 91 of 326 prompts across 2026-07 and 2026-08 (27.9%) and 43 of them are relieved — 13.2% of all prompts, 47.3% of floored ones.
+Landed: measured by `scripts/measure-wrapper-transparency.mjs` (2026-08-27), wrapper-floored asks are 91 of 328 prompts across 2026-07 and 2026-08 (27.7%) and 43 of them are relieved — 13.1% of all prompts, 47.3% of floored ones.
+That script also prices each conservative clause, so no figure here rests on prose: dropping the opaque-payload refusal would relieve 6 more asks, and the redirect clause and the rejected `sudo`/`doas` carve-out cost 0 each.
 The predicate could not be built on `executedUnitOf`, which the step's Target line named: it unwraps *through* an opaque payload by design, so `xargs -I{} sh -c 'grep -l x {}'` names `grep -l x {}` and a predicate reading that string would exempt an unparsed shell program.
-The two functions share one `unwrapIndirection` walk and part company at the opaque layer instead; four asks in the log take exactly that shape.
+The two functions share one `unwrapIndirection` walk and part company at the opaque layer instead.
 Core *membership* was likewise the wrong test — `xargs sort -o /tmp/x` has a core head word and writes — so the predicate proves the inner command through `proveCommandEffect` and inherits Step 2's retraction guards behind the wrapper.
 The verdict is the inner command's own rule rather than a lifted floor, so a `deny` on the inner command now reaches the wrapper, which the floor had softened to a prompt.
 `sudo`/`doas` are ordinary wrappers by explicit decision: the path surfaces gate `sudo cat X` exactly as `cat X`, modelling OS refusal would be a principal axis this package has nowhere else, and `bash: {"sudo *": "ask"}` settles it in one line (shipped as a `docs/configuration.md` recipe; measured cost of the rejected carve-out: 0 asks).
 The redirect fact needed a new `redirect-analysis.ts` owner, since tree-sitter-bash hangs `file_redirect` off the parent statement and `TSNode` exposes no parent; giving it one surfaced [#814], adopted as Step 12.
+That owner answers the exemption with a **refusal** rather than a write proof, which pre-completion review established the hard way: the first implementation reused the token collector's `ARG_NODE_TYPES` filter, so `xargs grep foo > $OUT`, `>${OUT}`, and `> $(mktemp)` were exempted — a real write to a run-time-chosen path, and the one shape the path projection does not collect either ([#609]), so the floor had been its only guard.
 The audit fact rides the gate's `logContext` rather than `PromptRequestFacts`, leaving that published contract untouched.
 
 Release: batch "capability-axis"

@@ -201,4 +201,26 @@ describe("bash command gate — a transparent wrapper does not weaken", () => {
 
     expect(await decide("xargs pnpm test", resolver)).toBe("ask");
   });
+
+  // A redirect makes the statement write whatever the wrapped command reads, so
+  // the exemption must not survive one — including a destination the parse
+  // cannot resolve, which is the shape no other surface sees either (#609).
+  it.each([
+    "xargs grep -l foo > out.txt",
+    "xargs grep -l foo >> out.txt",
+    "xargs grep -l foo > $OUT",
+    "xargs grep -l foo >${OUT}",
+    "xargs grep -l foo > $(mktemp)",
+  ])("floors %s despite the pure-reader inner command", async (command) => {
+    const resolver = makeKeyedResolver([]);
+
+    expect(await decide(command, resolver)).toBe("ask");
+  });
+
+  it("keeps the exemption when the redirect only reads", async () => {
+    const resolver = makeKeyedResolver([]);
+
+    expect(await decide("xargs grep -l foo < in.txt", resolver)).toBe("allow");
+    expect(await decide("xargs grep -l foo 2>&1", resolver)).toBe("allow");
+  });
 });

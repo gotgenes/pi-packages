@@ -1375,6 +1375,24 @@ describe("BashProgram", () => {
             [undefined, undefined],
           );
         });
+
+        it.each([
+          ["xargs grep foo > $OUT", "an unquoted variable"],
+          ["xargs grep foo >${OUT}", "a brace expansion"],
+          ["xargs grep foo > ${DIR}/log", "an expansion plus a literal"],
+        ])("withholds it for a destination named by %s (%s)", async (command) => {
+          // The destination is chosen at run time, so the parse cannot say
+          // which file it is — and it is invisible to the path projection too
+          // (#609), which makes the floor the only guard that ever covered it.
+          await expect(exemptions(command)).resolves.toEqual([undefined]);
+        });
+
+        it("withholds it for a command-substitution destination", async () => {
+          // Two units: the wrapper, and the `mktemp` hosted in the destination.
+          await expect(
+            exemptions("xargs grep foo > $(mktemp)"),
+          ).resolves.toEqual([undefined, undefined]);
+        });
       });
 
       describe("a redirect that writes no file", () => {

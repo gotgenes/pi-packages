@@ -18,11 +18,12 @@
  * | Month   | prompts | wrapper-floored | exempt      |
  * | ------- | ------- | --------------- | ----------- |
  * | 2026-07 | 164     | 44 (26.8%)      | 24 (14.6%)  |
- * | 2026-08 | 162     | 47 (29.0%)      | 19 (11.7%)  |
+ * | 2026-08 | 164     | 47 (28.7%)      | 19 (11.6%)  |
  *
- * Together: 91 of 326 prompts floored (27.9%), 43 of them relieved — 13.2% of
+ * Together: 91 of 328 prompts floored (27.7%), 43 of them relieved — 13.1% of
  * all prompts and 47.3% of floored ones. The log grows with use, so a later
- * run drifts; re-run rather than trusting the figure to be exact.
+ * run drifts by a fraction of a point; re-run rather than trusting the figure
+ * to be exact. Clause costs at the same run: 6, 0, 0.
  *
  * Only the sentinel era is totalled. The floor sentinels reach the review log
  * from 2026-07 — earlier entries carry no `matchedPattern` field and no
@@ -31,16 +32,14 @@
  * matches the sentinel substring anywhere in the entry rather than reading a
  * field, because the older era spells it inside `message`.
  *
- * Three conservative clauses cost, respectively, 4 asks, 0 asks, and 0 asks
- * against this log:
+ * The run also prices each conservative clause: how many more asks would be
+ * relieved if that clause alone were dropped. Those are the per-clause costs
+ * the plan and the roadmap cite, so they are re-derivable here rather than
+ * asserted — do not quote a clause cost this script does not print.
  *
- * - Refusing to unwrap through an opaque payload. All four are
- *   `xargs -I{} sh -c '<payload>'`, whose payload happens to start with a core
- *   word; the gate must not read a first word as standing for an unparsed
- *   program, so these are correctly kept.
- * - Disqualifying a statement that writes through a redirect.
- * - Treating `sudo`/`doas` as ordinary wrappers (recorded as the cost of the
- *   rejected carve-out, not of a shipped clause).
+ * The `sudo`/`doas` row prices the *rejected* carve-out rather than a shipped
+ * clause: it counts asks that would be relieved if privilege-elevating wrappers
+ * were exempted from transparency, which is the option the design declined.
  *
  * The tables below are transcribed from `src/access-intent/bash/` rather than
  * imported, for the reason `measure-core-coverage.mjs` states: this script runs
@@ -247,13 +246,25 @@ function innerCommandIndex(words) {
  * slice of this command line, so its first word says nothing about the rest.
  * This is the clause a predicate reading `executedUnitOf`'s string would miss.
  */
-function peelToInner(words) {
+function peelToInner(words, unwrapOpaque = false) {
   let current = words;
   let layers = 0;
   for (let depth = 0; depth < MAX_UNWRAP_DEPTH; depth++) {
     const kind = classifyWrapper(current);
     if (kind === undefined) break;
-    if (kind === "opaque-payload") return null;
+    if (kind === "opaque-payload") {
+      if (!unwrapOpaque) return null;
+      // The relaxed reading: judge the payload's first word as if it stood for
+      // the whole program. This is the fail-open the shipped clause refuses.
+      const flagIndex = shortFlagCIndex(current.slice(1));
+      const payload = current[flagIndex + 2];
+      return payload === undefined
+        ? null
+        : payload
+            .replace(/^['"]|['"]$/g, "")
+            .split(/\s+/)
+            .filter(Boolean);
+    }
     const start = innerCommandIndex(current);
     if (start === -1 || start >= current.length) break;
     const end = current.findIndex(
@@ -293,18 +304,38 @@ function writesViaRedirect(command) {
   return false;
 }
 
-/** True when every floored unit of a command is exempt from the floor. */
-function everyFlooredUnitIsExempt(command) {
+/**
+ * True when every floored unit of a command is exempt from the floor.
+ *
+ * `relaxed` drops one clause so its cost can be priced: `"opaque"` unwraps
+ * through an inline-shell payload and judges its first word, `"redirect"`
+ * ignores the statement's redirect, and `"sudo"` exempts a privilege-elevating
+ * wrapper outright (the rejected carve-out).
+ */
+function everyFlooredUnitIsExempt(command, relaxed = null) {
   const wrapped = splitUnits(command)
     .map((unit) => wordsOf(unit))
     .filter((words) => classifyWrapper(words) !== undefined);
   if (wrapped.length === 0) return false;
-  if (writesViaRedirect(command)) return false;
+  if (relaxed !== "redirect" && writesViaRedirect(command)) return false;
   return wrapped.every((words) => {
-    const inner = peelToInner(words);
+    if (
+      relaxed === "sudo" &&
+      ["sudo", "doas"].includes(basename(words[0] ?? ""))
+    ) {
+      return true;
+    }
+    const inner = peelToInner(words, relaxed === "opaque");
     return inner !== null && provesRead(inner);
   });
 }
+
+/** The clauses priced in the run's cost table, in the order they are printed. */
+const RELAXATIONS = [
+  ["opaque", "unwrap through an inline-shell payload"],
+  ["redirect", "ignore a write-proving redirect"],
+  ["sudo", "exempt sudo/doas outright (rejected carve-out)"],
+];
 
 // ── The scan ───────────────────────────────────────────────────────────────
 
@@ -312,6 +343,7 @@ function main() {
   const logPath = process.argv[2] ?? DEFAULT_LOG;
   const months = new Map();
   const remainingHeads = new Map();
+  const clauseCosts = new Map(RELAXATIONS.map(([key]) => [key, 0]));
 
   for (const line of readFileSync(logPath, "utf-8").split("\n")) {
     if (line.trim() === "") continue;
@@ -344,6 +376,11 @@ function main() {
     if (everyFlooredUnitIsExempt(command)) {
       bucket.exempt++;
     } else {
+      for (const [key] of RELAXATIONS) {
+        if (everyFlooredUnitIsExempt(command, key)) {
+          clauseCosts.set(key, clauseCosts.get(key) + 1);
+        }
+      }
       for (const unit of splitUnits(command)) {
         const words = wordsOf(unit);
         if (classifyWrapper(words) === undefined) continue;
@@ -377,6 +414,13 @@ function main() {
   console.log(
     `${SENTINEL_ERA_START} onward: ${floored}/${all} floored (${pct(floored, all)}); ${exempt} relieved (${pct(exempt, all)} of all prompts, ${pct(exempt, floored)} of floored)`,
   );
+  console.log("");
+  console.log("cost of each conservative clause (asks it forfeits):");
+  for (const [key, description] of RELAXATIONS) {
+    console.log(
+      `  ${String(clauseCosts.get(key)).padStart(3)}  ${description}`,
+    );
+  }
   console.log("");
   console.log("inner commands still floored:");
   for (const [head, count] of [...remainingHeads].sort((a, b) => b[1] - a[1])) {

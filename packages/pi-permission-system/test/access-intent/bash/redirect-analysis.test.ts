@@ -3,7 +3,7 @@ import { ARG_NODE_TYPES } from "#src/access-intent/bash/node-text";
 import { getParser, type TSNode } from "#src/access-intent/bash/parser";
 import {
   redirectEffectForDestination,
-  redirectProvesFileWrite,
+  redirectMayWriteFile,
 } from "#src/access-intent/bash/redirect-analysis";
 import type { TokenEffect } from "#src/access-intent/effect";
 
@@ -58,12 +58,9 @@ function destinationEffect(
   return withRedirect(command, type, effectForFirstDestination);
 }
 
-/** Whether a redirect proves a write to a real file. */
-function provesWrite(
-  command: string,
-  type = "file_redirect",
-): Promise<boolean> {
-  return withRedirect(command, type, redirectProvesFileWrite);
+/** Whether a redirect fails to prove it only reads. */
+function mayWrite(command: string, type = "file_redirect"): Promise<boolean> {
+  return withRedirect(command, type, redirectMayWriteFile);
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -156,23 +153,47 @@ describe("redirectEffectForDestination", () => {
   });
 });
 
-describe("redirectProvesFileWrite", () => {
-  it.each([
-    ["cat a > out.txt", true],
-    ["cat a >> out.txt", true],
-    ["cat a &> out.txt", true],
-    ["pnpm x 2> err.log", true],
-    ["pnpm x >& out.txt", true],
-    ["cat < in.txt", false],
-    ["pnpm x 2>&1", false],
-    ["pnpm x <& in.txt", false],
-  ])("answers %s with %s", async (command, expected) => {
-    await expect(provesWrite(command)).resolves.toBe(expected);
+describe("redirectMayWriteFile", () => {
+  describe("a redirect that writes", () => {
+    it.each([
+      "cat a > out.txt",
+      "cat a >> out.txt",
+      "cat a &> out.txt",
+      "pnpm x 2> err.log",
+      "pnpm x >& out.txt",
+    ])("answers true for %s", async (command) => {
+      await expect(mayWrite(command)).resolves.toBe(true);
+    });
+
+    it("does not read a file descriptor source as a destination", async () => {
+      // `2` is the redirected descriptor and `err.log` the destination; a reader
+      // that stopped at the first named child would clear this wrongly.
+      await expect(mayWrite("pnpm x 2> err.log")).resolves.toBe(true);
+    });
   });
 
-  it("does not read a file descriptor source as a destination", async () => {
-    // `2` is the redirected descriptor, `err.log` the destination — reading the
-    // first argument-shaped child would otherwise stop at neither.
-    await expect(provesWrite("pnpm x 2> err.log")).resolves.toBe(true);
+  describe("a redirect that provably only reads", () => {
+    it.each([
+      "cat < in.txt",
+      "pnpm x 2>&1",
+      "pnpm x <& in.txt",
+    ])("answers false for %s", async (command) => {
+      await expect(mayWrite(command)).resolves.toBe(false);
+    });
+  });
+
+  describe("a destination the parse cannot resolve", () => {
+    // The answer is a refusal, not the negation of a write proof. These name a
+    // file chosen at run time, so the parse says nothing about which — and the
+    // caller is deciding whether to remove a guard.
+    it.each([
+      ["cat a > $OUT", "an unquoted variable"],
+      ["cat a >${OUT}", "a brace expansion"],
+      ["cat a > $(mktemp)", "a command substitution"],
+      ["cat a > ${DIR}/log", "an expansion concatenated with a literal"],
+      ["cat <> rw.txt", "a read-write open the grammar could not parse"],
+    ])("answers true for %s (%s)", async (command) => {
+      await expect(mayWrite(command)).resolves.toBe(true);
+    });
   });
 });

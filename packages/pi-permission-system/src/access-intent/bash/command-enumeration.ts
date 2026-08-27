@@ -3,7 +3,7 @@ import {
   forEachNestedExecution,
 } from "#src/access-intent/bash/nested-execution";
 import type { TSNode } from "#src/access-intent/bash/parser";
-import { redirectProvesFileWrite } from "#src/access-intent/bash/redirect-analysis";
+import { redirectMayWriteFile } from "#src/access-intent/bash/redirect-analysis";
 import {
   type CommandWord,
   classifyWrapperWords,
@@ -218,19 +218,20 @@ function makeCommandUnit(node: TSNode, scope: UnitScope): BashCommand {
 
 /**
  * The scope a `redirected_statement`'s children run under: the enclosing one,
- * plus a write if any of its redirects names a real file.
+ * plus a write unless every one of its redirects provably only reads.
  *
  * The redirect belongs to the last element of a pipeline, but it hangs off the
  * whole statement in the parse tree, so every command beneath it is marked.
  * Over-attributing is the fail-closed direction — the flag can only withhold an
- * exemption, never grant one.
+ * exemption, never grant one — which is also why the question asked of each
+ * redirect is a refusal rather than a proof.
  */
 function redirectedScope(node: TSNode, scope: UnitScope): UnitScope {
   if (scope.writesViaRedirect) return scope;
   for (let i = 0; i < node.childCount; i++) {
     const child = node.child(i);
     if (child?.type !== "file_redirect") continue;
-    if (redirectProvesFileWrite(child)) {
+    if (redirectMayWriteFile(child)) {
       return { ...scope, writesViaRedirect: true };
     }
   }

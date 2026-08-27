@@ -1,5 +1,4 @@
 import { redirectDestinationEffect } from "#src/access-intent/bash/command-effects";
-import { ARG_NODE_TYPES } from "#src/access-intent/bash/node-text";
 import type { TSNode } from "#src/access-intent/bash/parser";
 import type { TokenEffect } from "#src/access-intent/effect";
 
@@ -12,11 +11,12 @@ import type { TokenEffect } from "#src/access-intent/effect";
  * telling a destination that names a file from one that names a descriptor.
  *
  * The split exists because two callers need different answers from the same
- * read. The token collector asks what effect to attribute to a destination it
- * is about to emit; the command enumerator asks only whether the statement
- * writes a file at all, because a wrapper unit carrying a write is not
- * transparent however read-only the command it runs is (#803). One reader
- * answering both keeps them from drifting.
+ * read, and — importantly — they need them under different burdens of proof.
+ * The token collector asks what effect to *attribute* to a destination it is
+ * about to emit, so it answers with a proof. The command enumerator asks
+ * whether it is safe to *remove* the wrapper floor, so it answers with a
+ * refusal: anything it cannot resolve counts against the exemption (#803).
+ * One reader of the node keeps the two from drifting on what a redirect is.
  */
 
 /**
@@ -38,16 +38,32 @@ export function redirectEffectForDestination(
 }
 
 /**
- * True when `redirect` proves a write to a real file.
+ * True unless `redirect` provably only reads — the fail-closed question the
+ * floor exemption asks.
  *
- * A descriptor duplication (`2>&1`) is not a write, and neither is an input
- * redirect — reading a file alongside a pure reader leaves it a pure reader.
+ * Deliberately **not** the negation of a write proof. A destination this module
+ * cannot resolve counts as a write here, because the caller is deciding whether
+ * to remove a guard: `> $OUT`, `>${OUT}`, and `> $(mktemp)` name a file chosen
+ * at run time, and the parse can say nothing about which. Reading those as "no
+ * write proved, therefore no write" would hand the exemption to exactly the
+ * shapes least visible to every other surface — the path projection does not
+ * collect them either (#609).
+ *
+ * Only two things clear it: a descriptor duplication (`2>&1`), which names no
+ * file, and an operator that proves a read — reading a file alongside a pure
+ * reader leaves it a pure reader.
  */
-export function redirectProvesFileWrite(redirect: TSNode): boolean {
+export function redirectMayWriteFile(redirect: TSNode): boolean {
   for (let i = 0; i < redirect.childCount; i++) {
     const child = redirect.child(i);
-    if (!child || !ARG_NODE_TYPES.has(child.type)) continue;
-    if (redirectEffectForDestination(redirect, child)?.effect === "write") {
+    // The operator itself is the redirect's only unnamed child.
+    if (!child?.isNamed) continue;
+    // A source or duplicated descriptor (`2`, `&1`) names no file.
+    if (DESCRIPTOR_NODE_TYPES.has(child.type)) continue;
+    // A shape the grammar could not resolve (`<>` degrades to one) says nothing
+    // about direction, so it cannot clear the check.
+    if (child.type === "ERROR") return true;
+    if (redirectEffectForDestination(redirect, child)?.effect !== "read") {
       return true;
     }
   }

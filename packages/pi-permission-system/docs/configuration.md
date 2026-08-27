@@ -807,7 +807,8 @@ All four of these must hold, and each is a way the floor's reason could still ap
 2. The command it runs can be established without passing through an inline shell.
 3. That command **proves** a read: a bare-basename core word with no option that withdraws the claim.
    So `xargs sort -o /tmp/x` and `xargs find . -delete` stay floored, and so does `xargs ./grep foo`.
-4. The unit writes no file through a redirect.
+4. The enclosing statement provably writes no file through a redirect.
+   A destination the parse cannot resolve — `> $OUT`, `> $(mktemp)` — counts against the exemption rather than for it.
 
 So `xargs grep -l foo`, `xargs wc -l`, and `find . -name '*.ts' -exec cat {} +` stop prompting under a matching `bash` allow, while `xargs rm`, `xargs sed -i`, `time pnpm test`, and `find . -exec sh -c '…' \;` still prompt.
 
@@ -817,8 +818,9 @@ Three things this does **not** change:
   Only a unit whose own text already resolved to `allow` is affected, so `bash: {"xargs *": "ask"}` still asks.
 - A `deny` on the inner command now reaches the wrapper.
   Under `bash: {"*": "allow", "grep *": "deny"}`, `xargs grep foo` is denied rather than merely prompted.
-- Paths are gated exactly as before.
-  The exemption decides the `bash` surface only; every path token the command carries still goes through `path` and `external_directory`.
+- Path gating is untouched.
+  The exemption decides the `bash` surface only, and every path token the command projects still goes through `path` and `external_directory` with the direction its command proved.
+  Clause 4 is what keeps that from being a weaker promise than it sounds: a redirect destination the parse cannot resolve (`> $OUT`, `> $(mktemp)`) is not projected onto those surfaces either, so the wrapper keeps its floor rather than relying on a gate that would not see the write.
 
 A user `commandEffects` declaration participates in effect classification but does **not** lift the floor.
 The core's argument-independence is audited here; a claim about a wrapped command is not, and a wrong claim behind a wrapper fails open.
