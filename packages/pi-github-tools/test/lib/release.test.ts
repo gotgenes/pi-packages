@@ -790,4 +790,64 @@ describe("watchRelease", () => {
       /git fetch --tags failed/,
     );
   });
+
+  describe("component selection", () => {
+    it("picks the requested component's tag off a multi-tag commit", async () => {
+      mockCmd("");
+      mockCmd(
+        "pi-colgrep-v1.5.3\npi-github-tools-v4.3.2\npi-subagents-v19.3.4\n",
+      );
+      mockCmd("abc1234567890\n");
+
+      const result = await watchRelease({
+        component: "pi-github-tools",
+        timeout: 120,
+      });
+
+      expect(result).toContain("tag: pi-github-tools-v4.3.2");
+    });
+
+    it("does not confuse a component with a longer-named sibling", async () => {
+      mockCmd("");
+      mockCmd("pi-subagents-worktrees-v0.3.1\n");
+
+      const result = await watchRelease({
+        component: "pi-subagents",
+        timeout: 0,
+      });
+
+      expect(result).toContain(
+        "timeout: no release tag found on HEAD for component pi-subagents",
+      );
+    });
+
+    it("keeps polling while only other components are tagged", async () => {
+      mockCmd("");
+      mockCmd("pi-colgrep-v1.5.3\n");
+      mockCmd("");
+      mockCmd("pi-colgrep-v1.5.3\npi-subagents-v19.3.4\n");
+      mockCmd("abc1234567890\n");
+
+      const result = await watchRelease({
+        component: "pi-subagents",
+        timeout: 120,
+      });
+
+      expect(result).toContain("tag: pi-subagents-v19.3.4");
+    });
+
+    it("leaves the git commands alone so the filter cannot mask a bad query", async () => {
+      mockCmd("");
+      mockCmd("pi-nocd-v1.0.2\n");
+      mockCmd("abc1234567890\n");
+
+      await watchRelease({ component: "pi-nocd", timeout: 120 });
+
+      expect(mockRunCommand).toHaveBeenNthCalledWith(2, {
+        cmd: "git",
+        args: ["tag", "--points-at", "HEAD"],
+        signal: undefined,
+      });
+    });
+  });
 });

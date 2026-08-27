@@ -445,6 +445,8 @@ function messageOf(error: unknown): string {
 // ---------- watchRelease ----------
 
 export interface WatchReleaseArgs {
+  /** release-please component whose tag to wait for. */
+  component?: string;
   timeout?: number;
   onProgress?: (line: string) => void;
   signal?: AbortSignal;
@@ -454,6 +456,7 @@ export async function watchRelease(args: WatchReleaseArgs): Promise<string> {
   const timeout = args.timeout ?? 180;
   const onProgress = args.onProgress;
   const signal = args.signal;
+  const component = args.component;
 
   const pollInterval = 10;
   let elapsed = 0;
@@ -477,8 +480,8 @@ export async function watchRelease(args: WatchReleaseArgs): Promise<string> {
       .map((t) => t.trim())
       .filter(Boolean);
 
-    if (tags.length > 0) {
-      const tag = tags[tags.length - 1]; // most recent tag
+    const tag = selectReleaseTag(tags, component);
+    if (tag) {
       let headSha: string;
       try {
         headSha = await git(["rev-parse", "HEAD"], signal);
@@ -496,7 +499,9 @@ export async function watchRelease(args: WatchReleaseArgs): Promise<string> {
 
     if (elapsed >= timeout) {
       return [
-        `timeout: no release tag found on HEAD`,
+        component === undefined
+          ? `timeout: no release tag found on HEAD`
+          : `timeout: no release tag found on HEAD for component ${component}`,
         `  elapsed: ${elapsed}s`,
       ].join("\n");
     }
@@ -513,4 +518,26 @@ export async function watchRelease(args: WatchReleaseArgs): Promise<string> {
     }
     elapsed += pollInterval;
   }
+}
+
+/**
+ * The tag this poll settled on, or `undefined` when the caller should keep
+ * polling.
+ *
+ * The filter runs here rather than as `git tag --list '<component>-v*'` so the
+ * git commands stay identical whether or not a component was asked for.
+ *
+ * Without a component the last tag stands in for the release that just landed.
+ * A combined release commit carries one tag per released component, so that is
+ * a guess — but refusing would strand a caller whose repository still releases
+ * every component in one pull request.
+ */
+function selectReleaseTag(
+  tags: string[],
+  component: string | undefined,
+): string | undefined {
+  if (component !== undefined) {
+    return tags.find((tag) => tag.startsWith(`${component}-v`));
+  }
+  return tags.at(-1);
 }
