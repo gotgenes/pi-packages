@@ -1563,10 +1563,16 @@ describe("yolo grants asks synthesized after resolution", () => {
     permission: { "*": "allow", bash: { "*": "allow" } },
   };
 
+  // The inner command must be one the pure-reader core does not cover, or the
+  // wrapper is exempt from the floor and there is no synthesized ask left for
+  // yolo to reconcile — which would make both tests below pass for the wrong
+  // reason (#803).
+  const flooredWrapper = "git status | xargs rm -rf";
+
   it("auto-approves an indirection wrapper under yolo", async () => {
     const outcome = await runBashCommand(
       { ...permissiveBash, yoloMode: true },
-      "git status | xargs grep foo",
+      flooredWrapper,
     );
 
     expect(outcome).toEqual({ blocked: false, prompts: [] });
@@ -1575,12 +1581,23 @@ describe("yolo grants asks synthesized after resolution", () => {
   it("still floors an indirection wrapper to a prompt with yolo off", async () => {
     const outcome = await runBashCommand(
       { ...permissiveBash, yoloMode: false },
-      "git status | xargs grep foo",
+      flooredWrapper,
     );
 
     expect(outcome.blocked).toBe(false);
     expect(outcome.prompts).toHaveLength(1);
     expect(outcome.prompts[0]).toContain("<indirection-bash-wrapper>");
+  });
+
+  it("never raises the ask for a wrapper running a pure reader", async () => {
+    // The relief #803 ships, end to end through the real extension: no floor is
+    // synthesized, so yolo has nothing to reconcile and the user sees nothing.
+    const outcome = await runBashCommand(
+      { ...permissiveBash, yoloMode: false },
+      "git status | xargs grep foo",
+    );
+
+    expect(outcome).toEqual({ blocked: false, prompts: [] });
   });
 
   it("auto-approves an unparseable command under yolo", async () => {

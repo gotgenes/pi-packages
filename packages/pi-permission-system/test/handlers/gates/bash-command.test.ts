@@ -355,4 +355,190 @@ describe("resolveBashCommandCheck", () => {
       expect(result.matchedPattern).toBe("sudo *");
     });
   });
+
+  describe("wrapper transparency", () => {
+    /** The exempt `xargs grep -l foo` unit the enumerator produces (#803). */
+    const exemptUnit = {
+      text: "xargs grep -l foo",
+      wrapperKind: "indirection",
+      executedUnit: "grep -l foo",
+      floorExemption: "core-reader",
+    } as const;
+
+    /**
+     * A resolver answering per command text, wrapper and inner alike.
+     *
+     * Unlisted commands fall through to the universal `*` rule, echoing the
+     * command they were asked about the way the real resolver does — a fixed
+     * `command` here would hide which unit forced the chain's verdict.
+     */
+    function resolverByCommand(
+      answers: Record<string, PermissionCheckResult>,
+      fallbackState: PermissionCheckResult["state"] = "allow",
+    ) {
+      const resolver = makeResolver();
+      resolver.resolve.mockImplementation((intent) => {
+        const { command } = (intent as { input: { command: string } }).input;
+        return answers[command] ?? bashResult(fallbackState, command, "*");
+      });
+      return resolver;
+    }
+
+    it("resolves an exempt wrapper by the inner command's own rules", () => {
+      const resolver = resolverByCommand({
+        "grep -l foo": bashResult("allow", "grep -l foo", "grep *"),
+      });
+
+      const result = resolveBashCommandCheck(
+        "xargs grep -l foo",
+        [exemptUnit],
+        undefined,
+        resolver,
+      );
+
+      expect(result.state).toBe("allow");
+      expect(result.matchedPattern).toBe("grep *");
+    });
+
+    it("names the wrapper unit as the command, not the inner fragment", () => {
+      const resolver = resolverByCommand({
+        "grep -l foo": bashResult("ask", "grep -l foo", "grep *"),
+      });
+
+      const result = resolveBashCommandCheck(
+        "xargs grep -l foo",
+        [exemptUnit],
+        undefined,
+        resolver,
+      );
+
+      // The prompt, the decision value, and the session-approval suggestion all
+      // read `command`; it must name what runs.
+      expect(result.command).toBe("xargs grep -l foo");
+      expect(result.executedUnit).toBe("grep -l foo");
+    });
+
+    it("lets a deny on the inner command reach the wrapper", () => {
+      const resolver = resolverByCommand({
+        "grep -l foo": bashResult("deny", "grep -l foo", "grep *"),
+      });
+
+      const result = resolveBashCommandCheck(
+        "xargs grep -l foo",
+        [exemptUnit],
+        undefined,
+        resolver,
+      );
+
+      expect(result.state).toBe("deny");
+      expect(result.matchedPattern).toBe("grep *");
+      expect(result.command).toBe("xargs grep -l foo");
+    });
+
+    it.each([
+      "deny",
+      "ask",
+    ] as const)("leaves an explicit %s on the wrapper untouched, consulting no inner rule", (state) => {
+      const resolver = makeResolver(
+        bashResult(state, "xargs grep -l foo", "xargs *"),
+      );
+
+      const result = resolveBashCommandCheck(
+        "xargs grep -l foo",
+        [exemptUnit],
+        undefined,
+        resolver,
+      );
+
+      expect(result.state).toBe(state);
+      expect(result.matchedPattern).toBe("xargs *");
+      expect(resolver.resolve).toHaveBeenCalledTimes(1);
+    });
+
+    it("still floors a wrapper the enumerator did not exempt", () => {
+      const resolver = makeResolver(bashResult("allow", "xargs rm -rf", "*"));
+
+      const result = resolveBashCommandCheck(
+        "xargs rm -rf",
+        [
+          {
+            text: "xargs rm -rf",
+            wrapperKind: "indirection",
+            executedUnit: "rm -rf",
+          },
+        ],
+        undefined,
+        resolver,
+      );
+
+      expect(result.state).toBe("ask");
+      expect(result.matchedPattern).toBe("<indirection-bash-wrapper>");
+    });
+
+    it("floors an exemption that names no inner command", () => {
+      // Defensive: the enumerator never produces this pair, and the gate must
+      // not resolve an absent command text if it ever did.
+      const resolver = makeResolver(bashResult("allow", "xargs", "*"));
+
+      const result = resolveBashCommandCheck(
+        "xargs",
+        [
+          {
+            text: "xargs",
+            wrapperKind: "indirection",
+            floorExemption: "core-reader",
+          },
+        ],
+        undefined,
+        resolver,
+      );
+
+      expect(result.state).toBe("ask");
+      expect(result.matchedPattern).toBe("<indirection-bash-wrapper>");
+    });
+
+    it("keeps the chain most-restrictive across an exempt and a floored unit", () => {
+      const resolver = resolverByCommand({
+        "grep -l foo": bashResult("allow", "grep -l foo", "grep *"),
+      });
+
+      const result = resolveBashCommandCheck(
+        "xargs grep -l foo && xargs rm -rf",
+        [
+          exemptUnit,
+          {
+            text: "xargs rm -rf",
+            wrapperKind: "indirection",
+            executedUnit: "rm -rf",
+          },
+        ],
+        undefined,
+        resolver,
+      );
+
+      expect(result.state).toBe("ask");
+      expect(result.matchedPattern).toBe("<indirection-bash-wrapper>");
+      expect(result.command).toBe("xargs rm -rf");
+    });
+
+    it("resolves the inner command on the bash surface with the agent name", () => {
+      const resolver = resolverByCommand({
+        "grep -l foo": bashResult("allow", "grep -l foo", "grep *"),
+      });
+
+      resolveBashCommandCheck(
+        "xargs grep -l foo",
+        [exemptUnit],
+        "reviewer",
+        resolver,
+      );
+
+      expect(resolver.resolve).toHaveBeenCalledWith({
+        kind: "tool",
+        surface: "bash",
+        input: { command: "grep -l foo" },
+        agentName: "reviewer",
+      });
+    });
+  });
 });
