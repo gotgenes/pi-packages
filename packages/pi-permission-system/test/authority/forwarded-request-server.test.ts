@@ -1365,6 +1365,31 @@ describe("ServingPolicy resolves a forwarded request against real recorded autho
     }
   });
 
+  test("hard-denies a directional child request the parent's bare path config denies (#807)", () => {
+    // Since #807 a child's bash gate can prove a direction, so `path_read` is
+    // the first surface a *bash* child sends. The parent's config names only
+    // the bare family, and the deny must still reach it — here through
+    // load-time sugar expansion rather than through the resolver's fold, which
+    // a directional request bypasses entirely.
+    const policy = servingPolicyOver({
+      "*": "allow",
+      path: { "/secrets/*": "deny" },
+    });
+    try {
+      const result = policy.resolve(
+        makeForwardedAccessIntent({
+          surface: "path_read",
+          matchValues: secretMatchValues,
+          boundaryValue: "/secrets/id_rsa",
+        }),
+      );
+      expect(result.state).toBe("deny");
+      expect(result.matchedPattern).toBe("/secrets/*");
+    } finally {
+      policy.cleanup();
+    }
+  });
+
   test("leaves an unmatched path request without a pattern, so no gate fires (#58)", () => {
     const policy = servingPolicyOver({ "*": "allow", read: "allow" });
     try {
