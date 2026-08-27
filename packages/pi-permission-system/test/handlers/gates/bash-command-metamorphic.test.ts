@@ -146,3 +146,59 @@ describe("bash command gate — nested execution hosts do not weaken", () => {
     expect(await decide("cat <<'EOF'\n$(rm x)\nEOF", resolver)).toBe("allow");
   });
 });
+
+/**
+ * The same never-weaker property for wrapper transparency (#803).
+ *
+ * An exempt wrapper resolves by its inner command's own rule instead of the
+ * floor, which means the gate returns a result assembled from two resolves —
+ * the inner one's verdict, the outer one's command. This is the property that
+ * composite has to satisfy, and it is stronger than any single table row:
+ * wrapping a command in a transparent wrapper may only hold the decision or
+ * strengthen it, never weaken it.
+ */
+describe("bash command gate — a transparent wrapper does not weaken", () => {
+  const wrappers = [
+    (cmd: string) => `xargs ${cmd}`,
+    (cmd: string) => `time ${cmd}`,
+    (cmd: string) => `sudo timeout 5 xargs ${cmd}`,
+  ];
+
+  const cases: { bare: string; state: PermissionState }[] = [
+    { bare: "grep -l foo", state: "allow" },
+    { bare: "grep -l foo", state: "ask" },
+    { bare: "grep -l foo", state: "deny" },
+    { bare: "cat notes.txt", state: "deny" },
+    { bare: "wc -l", state: "ask" },
+  ];
+
+  for (const wrap of wrappers) {
+    for (const { bare, state } of cases) {
+      it(`wrapping "${bare}" in "${wrap("…")}" does not weaken its ${state} decision`, async () => {
+        const resolver = makeKeyedResolver([
+          { match: bare.split(" ")[0] ?? bare, state },
+        ]);
+
+        const bareDecision = await decide(bare, resolver);
+        const wrappedDecision = await decide(wrap(bare), resolver);
+
+        expect(STRENGTH[wrappedDecision]).toBeGreaterThanOrEqual(
+          STRENGTH[bareDecision],
+        );
+      });
+    }
+  }
+
+  it("holds the decision rather than flooring it, for an allowed pure reader", async () => {
+    // The relief itself: without the exemption this is `ask` (the floor).
+    const resolver = makeKeyedResolver([]);
+
+    expect(await decide("xargs grep -l foo", resolver)).toBe("allow");
+  });
+
+  it("still floors a wrapper whose inner command is not a pure reader", async () => {
+    const resolver = makeKeyedResolver([]);
+
+    expect(await decide("xargs pnpm test", resolver)).toBe("ask");
+  });
+});

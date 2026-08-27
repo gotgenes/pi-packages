@@ -101,6 +101,54 @@ describe("resolveBashAdvisoryCheck", () => {
       expect(result.matchedPattern).toBe("<opaque-bash-wrapper>");
     });
 
+    // The advisory answer must never be weaker than the gate's, and it reaches
+    // that by delegating to the same `resolveBashCommandCheck` (#309). These
+    // pin that the delegation carries #803's exemption rather than the advisory
+    // path growing a branch of its own.
+    it("answers a transparent wrapper by the inner command's rule", () => {
+      const resolver = makeBashResolver({
+        // Both resolves are spelled out: the wrapper's own text answers first,
+        // and only its `allow` lets the inner command's rule decide.
+        "xargs grep -l foo": makeCheckResult({
+          state: "allow",
+          toolName: "bash",
+          command: "xargs grep -l foo",
+          matchedPattern: "*",
+        }),
+        "grep -l foo": makeCheckResult({
+          state: "allow",
+          toolName: "bash",
+          command: "grep -l foo",
+          matchedPattern: "grep *",
+        }),
+      });
+
+      const result = resolveBashAdvisoryCheck(
+        "xargs grep -l foo",
+        undefined,
+        resolver,
+      );
+
+      expect(result.state).toBe("allow");
+      expect(result.matchedPattern).toBe("grep *");
+      expect(result.command).toBe("xargs grep -l foo");
+    });
+
+    it("still floors an indirection wrapper running a mutator", () => {
+      const resolver = makeBashResolver({
+        "xargs rm -rf": makeCheckResult({ state: "allow", toolName: "bash" }),
+      });
+
+      const result = resolveBashAdvisoryCheck(
+        "xargs rm -rf",
+        undefined,
+        resolver,
+      );
+
+      expect(result.state).toBe("ask");
+      expect(result.matchedPattern).toBe("<indirection-bash-wrapper>");
+    });
+
     it("fails closed for a non-empty command that parses to zero units", () => {
       const resolver = makeBashResolver();
       const result = resolveBashAdvisoryCheck("> out.txt", undefined, resolver);
