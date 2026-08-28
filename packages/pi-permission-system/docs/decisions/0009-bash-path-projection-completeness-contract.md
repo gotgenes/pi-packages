@@ -43,7 +43,7 @@ A redirect hosted on the `command` node (a herestring) is the one exclusion, and
 Which spellings may be listed follows from the direction of failure, and the rule is the durable part:
 
 > **Under**-listing a consuming flag over-surfaces; **over**-listing drops an operand.
-> So a flag is listed as consuming only when it consumes on every supported platform, verified against that tool's documented option list.
+> So a flag is listed as consuming only when it consumes on every supported platform **and in every command that shares the entry**, verified against each tool's parser rather than against a shared spelling.
 
 An unrecognized spaced flag merely shifts *which* positional is eaten, and the last operand still survives — `rg --pre CMD pattern /etc/passwd` surfaces the file both before and after.
 A flag wrongly listed as consuming eats the script and then the operand, which is exactly how `sed -i` — separate-argument on BSD, glued-only on GNU — became a silent write bypass.
@@ -127,9 +127,15 @@ These are **accepted residuals**, not open bugs:
   Each of these spends the pattern positional on the wrong token, which **over-surfaces** — the last operand still reaches the surfaces — so all four sit on the recoverable side of the layering principle below.
   Widening flag detection to quoted tokens is deliberately declined: it would reclassify a quoted leading-`-` *pattern* as a flag and drop the operand instead, trading a recoverable failure for an unrecoverable one.
 - **An optional-argument flag's separated spelling.**
-  Two flags in the table take their argument optionally rather than mandatorily, and a long option declared that way never consumes a separate `argv` at all: `grep --context 2` does not consume the `2` the way `--after-context 2` does, and BSD `sed -i bak` accepts a separate non-empty suffix the `suffix` role declines.
-  Both spend the pattern positional on the wrong token and both **over-surface**; neither drops an operand, because a numeric or computed argument spends a positional whether or not a flag claimed it.
-  The `--context` row is kept for its `=`-embedded spelling and carries a comment saying so — the row is not evidence that the separated form consumes, which is the reading the rule above would otherwise invite.
+  BSD `sed -i bak` accepts a separate non-empty suffix that the `suffix` role declines, so the suffix spends the pattern positional and the script over-surfaces as a candidate.
+  The file operand survives, so this one sits on the recoverable side.
+
+  The same class also produced the amendment's sharpest lesson, and it is recorded here because the rule alone did not prevent it.
+  `--context` is spelled identically by `grep` and `rg` and has **opposite arity** in the two: grep parses with getopt, which declares it with an *optional* argument, and a long option declared that way never takes a separate `argv` — `grep --context 2 pat f` searches for `2` in the files `pat` and `f`.
+  `rg` parses with clap, where the same spelling consumes.
+  Listing it once for both, as a synonym of the shared `-C`, therefore over-listed it for grep and **dropped** `pat`, a real file operand — precisely the unrecoverable failure the rule above forbids, reached by verifying the *spelling* against a man page instead of the *arity* against each tool.
+  It is now listed per tool.
+  So the rule's test is not "does this tool document the long form" but "does this tool's parser take a separate argument for it", and a shared table row asserts that of every command that inherits it.
 - **Glob-filter option values** (`--include=`, `--exclude=`, `--exclude-dir=`) — their values are split like any unrecognized option's and reach the surfaces on their own shape, so `grep --exclude-dir=node_modules` contributes a `node_modules` candidate.
   This over-surfaces and is left alone rather than given table entries ([#823]); an unmatched candidate is unrestricted by the universal-fallback exclusion above.
 - **Computed paths** other than the plain `HOME`/`PWD` references above — any other `$VAR`, a command substitution (`$(cmd)`), an operator-bearing expansion (`${HOME:-/tmp}`, `${#HOME}`), and a variable reached through an assignment (`CURRENT="$HOME"; ls "$CURRENT"`).

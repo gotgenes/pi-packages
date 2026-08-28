@@ -367,6 +367,30 @@ describe("collectCommandTokens — pattern-first commands", () => {
       });
     });
 
+    it("reads --context per tool, since grep's is optional-argument and rg's is not", async () => {
+      // grep parses with getopt, where a long option declared with an optional
+      // argument never takes a separate `argv`: `grep --context 2 pattern f`
+      // really searches for `2` in `pattern` and `f`, so both are operands.
+      // rg parses with clap, where the same spelling consumes.
+      expect(await tokensOf("grep --context 2 pattern /etc/passwd")).toEqual([
+        "pattern",
+        "/etc/passwd",
+      ]);
+      expect(await tokensOf("rg --context 2 pattern /etc/passwd")).toEqual([
+        "/etc/passwd",
+      ]);
+      // The short form is required-argument on both.
+      expect(await tokensOf("grep -C 2 pattern /etc/passwd")).toEqual([
+        "/etc/passwd",
+      ]);
+      // Unlisted long form: the `=`-embedded value falls back to the blind
+      // split and yields a bare `2` the existence probe drops.
+      expect(await tokensOf("grep --context=2 pattern /etc/passwd")).toEqual([
+        "2",
+        "/etc/passwd",
+      ]);
+    });
+
     it("leaves a quoted glued value unrecognized", async () => {
       // `-g'!docs'` parses as a `concatenation`, not a `word`, so the flag
       // branch never sees it and the pattern positional is spent on the flag

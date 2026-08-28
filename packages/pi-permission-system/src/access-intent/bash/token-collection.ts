@@ -305,14 +305,14 @@ const GREP_FLAGS = new Map<string, PatternFlagRole>([
   ["-B", "value"],
   ["--before-context", "value"],
   ["-C", "value"],
-  // `--context` is an *optional*-argument long option in both BSD and GNU grep
-  // (`-C[NUM]`'s history), so `grep --context 2 pat f` does not consume the
-  // `2` the way `--after-context 2` does. The entry is listed for the
-  // `--context=2` spelling, which does carry a value; the separated spelling
-  // projects identically listed or not, because its argument is always a
-  // number and a number spends a positional either way (measured). Do not read
-  // this row as a claim that the separated form consumes.
-  ["--context", "value"],
+  // `--context` is deliberately absent, though `-C` is present and `rg` lists
+  // the long form below. grep parses with getopt, which declares `context`
+  // with an *optional* argument (`-C[NUM]`'s history), and a long option
+  // declared that way never takes a separate `argv`: `grep --context 2 pat f`
+  // searches for `2` in the files `pat` and `f`. Listing it would consume the
+  // `2`, leaving `pat` — a real file operand — to be skipped as the inline
+  // pattern. Its absence costs only a bare `2` token from `--context=2`, which
+  // names nothing and the existence probe drops (#823).
   ["-m", "value"],
   ["--max-count", "value"],
 ]);
@@ -345,6 +345,12 @@ const GREP_CONFIG: PatternCommandConfig = { flags: GREP_FLAGS };
 const RG_CONFIG: PatternCommandConfig = {
   flags: new Map<string, PatternFlagRole>([
     ...GREP_FLAGS,
+    // rg parses with clap rather than getopt, where `--context` takes a
+    // required argument, so its separated spelling really does consume:
+    // `rg --context 2 pat f` searches for `pat` in `f`. Same spelling as
+    // grep's, opposite arity — which is why it is listed per tool rather than
+    // shared above (#823).
+    ["--context", "value"],
     ["-g", "value"],
     ["--glob", "value"],
     ["-t", "value"],
