@@ -415,23 +415,22 @@ function collectPatternCommandTokens(
     if (child.type === "command_name" || child.type === "variable_assignment")
       continue;
 
-    // Only process argument-like nodes; recurse into others
-    // (e.g. command_substitution) for nested commands.
-    if (!ARG_NODE_TYPES.has(child.type)) {
-      tokens.push(...collectPathCandidateTokens(child));
-      continue;
-    }
-
+    const isArgNode = ARG_NODE_TYPES.has(child.type);
     const text = resolveNodeText(child);
 
-    // Handle consumed argument from previous flag.
-    if (nextArgAction === "skip") {
+    // Handle the argument a previous flag consumed. The discharge is gated on
+    // ARG_NODE_TYPES, so a `number`/expansion/substitution argument carries the
+    // consumption onto the next word instead — see #823.
+    if (nextArgAction !== null && isArgNode) {
+      if (nextArgAction === "extract") tokens.push({ token: text, effect });
       nextArgAction = null;
       continue;
     }
-    if (nextArgAction === "extract") {
-      tokens.push({ token: text, effect });
-      nextArgAction = null;
+
+    // Only process argument-like nodes; recurse into others
+    // (e.g. command_substitution) for nested commands.
+    if (!isArgNode) {
+      tokens.push(...collectPathCandidateTokens(child));
       continue;
     }
 
