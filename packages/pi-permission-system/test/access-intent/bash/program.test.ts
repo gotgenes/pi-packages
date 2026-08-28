@@ -345,6 +345,29 @@ describe("BashProgram", () => {
       });
     });
 
+    describe("flag spellings of a pattern-first command (#823)", () => {
+      it.each([
+        ["a spaced numeric flag argument", "grep -A 3 pattern /etc/passwd"],
+        ["an expansion flag argument", "grep -A $N pattern /etc/passwd"],
+        ["an =-embedded pattern flag", "grep --regexp=harmless /etc/passwd"],
+        ["a glued short pattern flag", "grep -eharmless /etc/passwd"],
+        ["a GNU in-place edit", "sed -i 's/a/b/' /etc/passwd"],
+      ])("projects the file operand behind %s", async (_label, command) => {
+        const program = await BashProgram.parse(command, normalizer);
+        expect(
+          program.externalAccesses().map(({ path }) => path.value()),
+        ).toEqual(["/etc/passwd"]);
+      });
+
+      it("does not project a pattern flag's own value", async () => {
+        const program = await BashProgram.parse(
+          "grep --regexp=/etc/passwd file.txt",
+          normalizer,
+        );
+        expect(program.externalAccesses()).toHaveLength(0);
+      });
+    });
+
     describe("operands of nested commands hosted in a redirect (#741)", () => {
       it.each([
         ["a redirect destination", "echo hi > $(cat /etc/shadow)"],

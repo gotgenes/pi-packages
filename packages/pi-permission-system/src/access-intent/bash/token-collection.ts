@@ -79,10 +79,11 @@ export function collectCommandTokens(node: TSNode): PathToken[] {
   const config = commandName
     ? PATTERN_FIRST_COMMANDS.get(commandName)
     : undefined;
-  const tokens = config
-    ? collectPatternCommandTokens(node, config, effect)
-    : collectGenericCommandTokens(node, effect);
-  return [...tokens, ...collectEmbeddedOptionValues(node, effect)];
+  if (config) return collectPatternCommandTokens(node, config, effect);
+  return [
+    ...collectGenericCommandTokens(node, effect),
+    ...collectEmbeddedOptionValues(node, effect),
+  ];
 }
 
 /**
@@ -208,11 +209,11 @@ function commandArgumentWords(node: TSNode): string[] {
 const OPTION_VALUE_PATTERN = /^-{1,2}[^=\s]+=(.+)$/;
 
 /**
- * The values embedded in this command's `--opt=value` argument tokens.
+ * The values embedded in a **generic** command's `--opt=value` argument tokens.
  *
  * Read straight from the argument nodes rather than from the collected token
- * list, because a pattern-first command's collector classifies a flag and never
- * emits it — so `grep --file=/tmp/patterns` would otherwise lose the path.
+ * list, because a collector classifies a flag and never emits it — so
+ * `tar --directory=/etc` would otherwise lose the path.
  *
  * This is token *preprocessing*, not classification: the extracted value is
  * handed to the ordinary shape classifiers and existence probe, so
@@ -220,6 +221,10 @@ const OPTION_VALUE_PATTERN = /^-{1,2}[^=\s]+=(.+)$/;
  * yields a bare `json` that names nothing and is dropped. Keeping the split
  * here is what lets the projection see option-embedded paths without per-command
  * option tables (ADR 0009, #645).
+ *
+ * A pattern-first command runs the same split from inside its own walker
+ * instead, because there the flag's *role* is known: splitting blindly emits a
+ * pattern flag's value as a path candidate (#823).
  */
 function collectEmbeddedOptionValues(
   node: TSNode,
@@ -239,11 +244,44 @@ function collectEmbeddedOptionValues(
   return values;
 }
 
+/** The value embedded in a single `--opt=value` token, if it carries one. */
+function embeddedOptionValueToken(
+  text: string,
+  effect: TokenEffect,
+): PathToken[] {
+  const value = OPTION_VALUE_PATTERN.exec(text)?.[1];
+  return value === undefined ? [] : [{ token: value, effect }];
+}
+
+/**
+ * What a recognized flag's argument is, for the pattern-first walker.
+ *
+ * `script` and `script-file` mark the inline pattern positional as already
+ * supplied; `value` and `suffix` do not. Only `script-file` contributes a path
+ * candidate — the others name a pattern, a count, or a backup suffix.
+ */
+type PatternFlagRole =
+  /** Supplies the pattern/script inline (`grep -e`, `sed --expression`). */
+  | "script"
+  /** Supplies the pattern/script from a file (`grep -f`, `sed --file`). */
+  | "script-file"
+  /** Consumes a value that is neither pattern nor path (`grep -A`, `rg -g`). */
+  | "value"
+  /**
+   * Consumes the following argument only when it is empty.
+   *
+   * BSD `sed` requires a separate suffix argument (`sed -i '' 's/a/b/' f`)
+   * while GNU `sed` requires it glued (`-i`, `-i.bak`). Consuming
+   * unconditionally is right for one and eats the *script* on the other,
+   * leaving the file operand to be skipped as the inline pattern — a write
+   * target that reaches no path surface. The argument's own emptiness decides
+   * it, so the walk needs no knowledge of which sed is installed (#823).
+   */
+  | "suffix";
+
 interface PatternCommandConfig {
-  /** Flags that consume the next argument as a non-path value (pattern, separator, etc.) */
-  readonly argConsumingFlags: ReadonlySet<string>;
-  /** Flags that consume the next argument as a file path */
-  readonly fileConsumingFlags: ReadonlySet<string>;
+  /** Recognized flag spellings, short and long, mapped to their roles. */
+  readonly flags: ReadonlyMap<string, PatternFlagRole>;
   /**
    * Number of leading positional arguments that are patterns/scripts, not paths.
    * Default: 1 (covers sed, awk, grep, rg).
@@ -252,38 +290,73 @@ interface PatternCommandConfig {
   readonly patternPositionals?: number;
 }
 
+const GREP_FLAGS = new Map<string, PatternFlagRole>([
+  ["-e", "script"],
+  ["--regexp", "script"],
+  ["-f", "script-file"],
+  ["--file", "script-file"],
+  ["-A", "value"],
+  ["--after-context", "value"],
+  ["-B", "value"],
+  ["--before-context", "value"],
+  ["-C", "value"],
+  ["--context", "value"],
+  ["-m", "value"],
+  ["--max-count", "value"],
+]);
+
 const SED_CONFIG: PatternCommandConfig = {
-  argConsumingFlags: new Set(["-e", "-i"]),
-  fileConsumingFlags: new Set(["-f"]),
+  flags: new Map<string, PatternFlagRole>([
+    ["-e", "script"],
+    ["--expression", "script"],
+    ["-f", "script-file"],
+    ["--file", "script-file"],
+    ["-i", "suffix"],
+  ]),
 };
 
 const AWK_CONFIG: PatternCommandConfig = {
-  argConsumingFlags: new Set(["-e", "-F", "-v"]),
-  fileConsumingFlags: new Set(["-f"]),
+  flags: new Map<string, PatternFlagRole>([
+    ["-e", "script"],
+    ["--source", "script"],
+    ["-f", "script-file"],
+    ["--file", "script-file"],
+    ["-F", "value"],
+    ["--field-separator", "value"],
+    ["-v", "value"],
+    ["--assign", "value"],
+  ]),
 };
 
-const GREP_CONFIG: PatternCommandConfig = {
-  argConsumingFlags: new Set(["-e", "-A", "-B", "-C", "-m"]),
-  fileConsumingFlags: new Set(["-f"]),
-};
+const GREP_CONFIG: PatternCommandConfig = { flags: GREP_FLAGS };
 
 const RG_CONFIG: PatternCommandConfig = {
-  argConsumingFlags: new Set([
-    ...GREP_CONFIG.argConsumingFlags,
-    "-g",
-    "-t",
-    "-T",
-    "-j",
-    "-M",
-    "-r",
-    "-E",
+  flags: new Map<string, PatternFlagRole>([
+    ...GREP_FLAGS,
+    ["-g", "value"],
+    ["--glob", "value"],
+    ["-t", "value"],
+    ["--type", "value"],
+    ["-T", "value"],
+    ["--type-not", "value"],
+    ["-j", "value"],
+    ["--threads", "value"],
+    ["-M", "value"],
+    ["--max-columns", "value"],
+    ["-r", "value"],
+    ["--replace", "value"],
+    ["-E", "value"],
+    ["--encoding", "value"],
   ]),
-  fileConsumingFlags: new Set(["-f"]),
 };
 
 const SD_CONFIG: PatternCommandConfig = {
-  argConsumingFlags: new Set(["-n", "-f"]),
-  fileConsumingFlags: new Set([]),
+  flags: new Map<string, PatternFlagRole>([
+    ["-f", "value"],
+    ["--flags", "value"],
+    ["-n", "value"],
+    ["--max-replacements", "value"],
+  ]),
   patternPositionals: 2,
 };
 
@@ -312,40 +385,53 @@ const PATTERN_FIRST_COMMANDS: ReadonlyMap<string, PatternCommandConfig> =
 /**
  * Describes what the walker should do when it encounters a flag word inside
  * a pattern-first command.  Using a discriminated union lets the `switch` in
- * `collectPatternCommandTokens` narrow `nextArgAction` without a non-null
+ * `collectPatternCommandTokens` narrow the flag's role without a non-null
  * assertion (which would trigger the Biome/ESLint assertion conflict).
  */
 type PatternCommandFlagDirective =
   | { kind: "end-of-flags" }
   | { kind: "regular-flag" }
-  | {
-      kind: "consume-arg";
-      nextArgAction: "skip" | "extract";
-      setsExplicitScript: boolean;
-    };
+  /** A recognized flag whose value is the argument that follows it. */
+  | { kind: "consume-next"; role: PatternFlagRole }
+  /** A recognized flag carrying its value in the same token. */
+  | { kind: "inline-value"; role: PatternFlagRole; value: string };
+
+/** A long option carrying its value inline: `--name=value`. */
+const LONG_OPTION_VALUE_PATTERN = /^(--[^=\s]+)=(.+)$/;
 
 /**
  * Classify a flag word from a pattern-first command into a directive that
- * tells the walker how to handle the flag and its following argument.
+ * tells the walker how to handle the flag and its value.
+ *
+ * Matched in the order the tools accept: the exact spelling (short or long),
+ * then a long option's `=`-embedded value, then a glued short value. The glued
+ * form matches only the **first** short flag, which is getopt's own rule —
+ * `grep -ei pattern` really is `-e` with the value `i`. A cluster whose
+ * argument-taking flag is not first (`grep -ie pattern`) therefore stays a
+ * plain flag, which over-surfaces the pattern rather than dropping the
+ * command's operand (ADR 0009's recoverable direction).
  */
 function classifyPatternCommandFlag(
   text: string,
   config: PatternCommandConfig,
 ): PatternCommandFlagDirective {
   if (text === "--") return { kind: "end-of-flags" };
-  if (config.argConsumingFlags.has(text)) {
-    return {
-      kind: "consume-arg",
-      nextArgAction: "skip",
-      setsExplicitScript: text === "-e" || text === "-f",
-    };
+
+  const exact = config.flags.get(text);
+  if (exact) return { kind: "consume-next", role: exact };
+
+  const longOption = LONG_OPTION_VALUE_PATTERN.exec(text);
+  if (longOption) {
+    const [, name, value] = longOption;
+    const role = config.flags.get(name);
+    return role === undefined
+      ? { kind: "regular-flag" }
+      : { kind: "inline-value", role, value };
   }
-  if (config.fileConsumingFlags.has(text)) {
-    return {
-      kind: "consume-arg",
-      nextArgAction: "extract",
-      setsExplicitScript: true,
-    };
+
+  if (!text.startsWith("--") && text.length > 2) {
+    const role = config.flags.get(text.slice(0, 2));
+    if (role) return { kind: "inline-value", role, value: text.slice(2) };
   }
   return { kind: "regular-flag" };
 }
@@ -359,11 +445,13 @@ function classifyPatternCommandFlag(
  * inline patterns/scripts and are skipped. Remaining positional
  * arguments are collected as path candidates.
  *
- * Flags listed in `argConsumingFlags` consume the next argument
- * (skipped). Flags in `fileConsumingFlags` consume the next
- * argument as a file path (collected). The flags `-e` and `-f`
- * additionally signal that an explicit script was provided via
- * flag, so no inline positional script is expected.
+ * A recognized flag's role (see {@link PatternFlagRole}) decides three things
+ * at once: whether the pattern positional is still expected, whether the
+ * flag's value is a path candidate, and — for `suffix` — whether the
+ * following argument belongs to the flag at all. The `=`-embedded and glued
+ * spellings carry the value in the flag's own token, so the walker splits it
+ * here rather than letting {@link collectEmbeddedOptionValues} emit a
+ * pattern's text as a path (#823).
  */
 function collectPatternCommandTokens(
   node: TSNode,
@@ -373,7 +461,7 @@ function collectPatternCommandTokens(
   const patternPositionals = config.patternPositionals ?? 1;
   let hasExplicitScript = false;
   let positionalsSeen = 0;
-  let pendingConsumption: PendingConsumption | null = null;
+  let pendingConsumption: PatternFlagRole | null = null;
   let pastEndOfFlags = false;
   const tokens: PathToken[] = [];
 
@@ -427,11 +515,19 @@ function collectPatternCommandTokens(
         case "end-of-flags":
           pastEndOfFlags = true;
           break;
-        case "consume-arg":
-          pendingConsumption = directive.nextArgAction;
-          if (directive.setsExplicitScript) hasExplicitScript = true;
+        case "consume-next":
+          pendingConsumption = directive.role;
+          if (suppliesScript(directive.role)) hasExplicitScript = true;
+          break;
+        case "inline-value":
+          if (directive.role === "script-file")
+            tokens.push({ token: directive.value, effect });
+          if (suppliesScript(directive.role)) hasExplicitScript = true;
           break;
         case "regular-flag":
+          // Unrecognized: fall back to the blind `--opt=value` split, which is
+          // safe precisely because the flag's role is unknown (#645).
+          tokens.push(...embeddedOptionValueToken(text, effect));
           break;
       }
       continue;
@@ -439,25 +535,28 @@ function collectPatternCommandTokens(
 
     // Positional argument.
     if (!hasExplicitScript && positionalsSeen < patternPositionals) {
-      positionalsSeen++;
-      continue; // Skip: this is an inline pattern/script.
+      positionalsSeen++; // Skip: this is an inline pattern/script.
+    } else {
+      tokens.push({ token: text, effect });
     }
-
-    // File argument — collect as path candidate.
-    tokens.push({ token: text, effect });
+    // A quoted flag never reaches the flag branch above, so its embedded value
+    // is split here instead.
+    tokens.push(...embeddedOptionValueToken(text, effect));
   }
 
   return tokens;
 }
 
-/** What a pending flag consumption does with the argument that follows it. */
-type PendingConsumption = "skip" | "extract";
+/** Whether a flag in this role means the inline pattern positional is spent. */
+function suppliesScript(role: PatternFlagRole): boolean {
+  return role === "script" || role === "script-file";
+}
 
 /**
  * What a pending flag consumption made of the argument node that followed it.
  *
- * `consumed` is the flag's own verdict, not the walker's: a flag whose argument
- * is optional can decline the node, which the walker then reads as an ordinary
+ * `consumed` is the flag's own verdict, not the walker's: a `suffix` flag
+ * declines a non-empty argument, which the walker then reads as an ordinary
  * argument.
  */
 interface ConsumptionDischarge {
@@ -468,13 +567,19 @@ interface ConsumptionDischarge {
 
 /** Apply a pending consumption to the argument text that follows its flag. */
 function dischargePendingConsumption(
-  consumption: PendingConsumption,
+  role: PatternFlagRole,
   text: string,
   effect: TokenEffect,
 ): ConsumptionDischarge {
-  return consumption === "extract"
-    ? { consumed: true, token: { token: text, effect } }
-    : { consumed: true };
+  switch (role) {
+    case "script-file":
+      return { consumed: true, token: { token: text, effect } };
+    case "script":
+    case "value":
+      return { consumed: true };
+    case "suffix":
+      return { consumed: text === "" };
+  }
 }
 
 /**

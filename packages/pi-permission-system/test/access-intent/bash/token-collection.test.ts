@@ -117,6 +117,15 @@ describe("extractCommandName", () => {
 // ── collectCommandTokens — pattern-first commands ─────────────────────────────
 
 describe("collectCommandTokens — pattern-first commands", () => {
+  async function tokensOf(cmd: string): Promise<string[]> {
+    const { node, tree } = await parseCommandNode(cmd);
+    try {
+      return commandTokens(node);
+    } finally {
+      tree.delete();
+    }
+  }
+
   it("sed: skips the first positional (inline pattern) and collects the rest", async () => {
     const { node, tree } = await parseCommandNode("sed 's/x/y/' a.txt b.txt");
     try {
@@ -201,15 +210,6 @@ describe("collectCommandTokens — pattern-first commands", () => {
   });
 
   describe("a consumed flag argument, whatever node type it is (#823)", () => {
-    async function tokensOf(cmd: string): Promise<string[]> {
-      const { node, tree } = await parseCommandNode(cmd);
-      try {
-        return commandTokens(node);
-      } finally {
-        tree.delete();
-      }
-    }
-
     // tree-sitter-bash types a bare number as `number`, which is not in
     // ARG_NODE_TYPES. Discharging the consumption only on an argument node let
     // the pending skip land on the *pattern* instead, shifting the positional
@@ -260,6 +260,94 @@ describe("collectCommandTokens — pattern-first commands", () => {
     it("collects the file operand of sd past a numeric argument", async () => {
       expect(await tokensOf("sd -n 3 find replace /etc/hosts")).toEqual([
         "/etc/hosts",
+      ]);
+    });
+  });
+
+  describe("flag spellings a pattern-first command accepts (#823)", () => {
+    it.each([
+      ["grep --regexp harmless /etc/passwd", ["/etc/passwd"]],
+      ["grep --regexp=harmless /etc/passwd", ["/etc/passwd"]],
+      ["grep -eharmless /etc/passwd", ["/etc/passwd"]],
+      ["grep -e harmless /etc/passwd", ["/etc/passwd"]],
+      ["sed --expression 's/a/b/' /etc/hosts", ["/etc/hosts"]],
+      ["sed --expression=s/a/b/ /etc/hosts", ["/etc/hosts"]],
+      ["sed -e s/a/b/ /etc/hosts", ["/etc/hosts"]],
+      ["awk --source '{print}' /etc/passwd", ["/etc/passwd"]],
+    ])("%s marks the script supplied and yields no pattern token", async (command, expected) => {
+      expect(await tokensOf(command)).toEqual(expected);
+    });
+
+    it.each([
+      ["grep --file /tmp/patterns /etc/passwd"],
+      ["grep --file=/tmp/patterns /etc/passwd"],
+      ["grep -f/tmp/patterns /etc/passwd"],
+      ["grep -f /tmp/patterns /etc/passwd"],
+    ])("%s yields the pattern file and the operand", async (command) => {
+      expect(await tokensOf(command)).toEqual(["/tmp/patterns", "/etc/passwd"]);
+    });
+
+    it.each([
+      ["grep -A3 pattern /etc/passwd"],
+      ["grep --after-context=3 pattern /etc/passwd"],
+      ["grep --after-context 3 pattern /etc/passwd"],
+      ["rg --glob '!docs' pattern /etc/passwd"],
+      ["rg -g!docs pattern /etc/passwd"],
+      ["rg --replace X pattern /etc/passwd"],
+      ["rg -tpy pattern /etc/passwd"],
+    ])("%s consumes its value without supplying the script", async (command) => {
+      expect(await tokensOf(command)).toEqual(["/etc/passwd"]);
+    });
+
+    it("reads sd's -f as regex flags, not as a script file", async () => {
+      // `sd -f` is `--flags`; treating it as a script file disabled sd's own
+      // two-positional pattern skipping and surfaced FIND and REPLACE_WITH.
+      expect(await tokensOf("sd -f i find replace /etc/hosts")).toEqual([
+        "/etc/hosts",
+      ]);
+      expect(await tokensOf("sd --flags i find replace /etc/hosts")).toEqual([
+        "/etc/hosts",
+      ]);
+    });
+
+    describe("sed -i, whose argument is separate on BSD and glued on GNU", () => {
+      it("consumes an empty suffix argument (the BSD idiom)", async () => {
+        expect(await tokensOf("sed -i '' 's/a/b/' /etc/hosts")).toEqual([
+          "/etc/hosts",
+        ]);
+      });
+
+      it("declines a non-empty argument, which GNU reads as the script", async () => {
+        expect(await tokensOf("sed -i 's/a/b/' /etc/hosts")).toEqual([
+          "/etc/hosts",
+        ]);
+      });
+
+      it("leaves a glued suffix alone", async () => {
+        expect(await tokensOf("sed -i.bak 's/a/b/' /etc/hosts")).toEqual([
+          "/etc/hosts",
+        ]);
+      });
+    });
+
+    it("leaves a quoted glued value unrecognized", async () => {
+      // `-g'!docs'` parses as a `concatenation`, not a `word`, so the flag
+      // branch never sees it and the pattern positional is spent on the flag
+      // token. The residual over-surfaces `pattern` rather than dropping the
+      // operand — widening flag detection to quoted tokens would reclassify a
+      // quoted leading-`-` pattern as a flag and eat the operand instead.
+      expect(await tokensOf("rg -g'!docs' pattern /etc/passwd")).toEqual([
+        "pattern",
+        "/etc/passwd",
+      ]);
+    });
+
+    it("leaves a cluster whose consuming flag is not first unrecognized", async () => {
+      // Getopt reads `-ie` as `-i` then `-e`, but only the first short flag is
+      // matched. The residual over-surfaces the pattern rather than dropping
+      // the operand — ADR 0009's recoverable direction.
+      expect(await tokensOf("grep -ie pattern /etc/passwd")).toEqual([
+        "/etc/passwd",
       ]);
     });
   });
@@ -515,68 +603,31 @@ describe("embedded --opt=value extraction (#645)", () => {
     expect(await tokensOf("cat --opt=/tmp/a=b")).toContain("/tmp/a=b");
   });
 
-  describe("long-form flags of a pattern-first command — accepted residual (#823)", () => {
-    it("emits a pattern-first command's embedded pattern value", async () => {
+  describe("a pattern-first command's own flags are not split blindly (#823)", () => {
+    it("suppresses a recognized pattern flag's embedded value", async () => {
       // `--regexp=` is grep's long form of `-e`, and `--expression=` is sed's:
-      // neither names a file. The split runs ahead of the pattern-first walker
-      // and knows nothing of `argConsumingFlags`, so the pattern is emitted as
-      // an ordinary token and classified like any other value. Pinned as the
-      // current behavior, not endorsed — the fix is #823, and ADR 0009 records
-      // it as a residual.
-      expect(await tokensOf("grep --regexp=/etc/passwd file.txt")).toContain(
-        "/etc/passwd",
-      );
-      expect(await tokensOf("sed --expression=/etc/shadow file.txt")).toContain(
-        "/etc/shadow",
-      );
+      // neither names a file, so neither value is a path candidate. The split
+      // is the pattern-first walker's own, so it knows the flag's role.
+      expect(
+        await tokensOf("grep --regexp=/etc/passwd file.txt"),
+      ).not.toContain("/etc/passwd");
+      expect(
+        await tokensOf("sed --expression=/etc/shadow file.txt"),
+      ).not.toContain("/etc/shadow");
     });
 
     it("suppresses the same pattern in its short-flag form", async () => {
-      // The contrast that makes the residual precise: `-e /etc/passwd` is a
-      // consumed argument the pattern-first walker skips, so only the
-      // `=`-embedded spelling escapes.
       expect(await tokensOf("grep -e /etc/passwd file.txt")).not.toContain(
         "/etc/passwd",
       );
     });
 
-    it("drops the real file operand behind an unrecognized long flag", async () => {
-      // The severe half of the same root cause: `--regexp=` never sets
-      // `hasExplicitScript`, so the walker still expects an inline pattern and
-      // eats `/etc/passwd` as that positional — a fail-open the path surfaces
-      // never see. Pinned as current behavior; the fix is #823.
+    it("still splits an unrecognized option's embedded value", async () => {
+      // The #645 contract survives for a flag the table does not name: the
+      // value is emitted and left to the ordinary shape gates.
       expect(
-        await tokensOf("grep --regexp=harmless /etc/passwd"),
-      ).not.toContain("/etc/passwd");
-      expect(
-        await tokensOf("sed --expression=s/a/b/ /etc/hosts"),
-      ).not.toContain("/etc/hosts");
-    });
-
-    it("drops the real file operand behind a glued short flag", async () => {
-      // `-epattern` is valid getopt syntax that fails the set's exact match.
-      expect(await tokensOf("grep -epattern /etc/passwd")).not.toContain(
-        "/etc/passwd",
-      );
-    });
-
-    it("keeps the operand for every spelling the walker does track", async () => {
-      expect(await tokensOf("grep -e harmless /etc/passwd")).toContain(
-        "/etc/passwd",
-      );
-      expect(await tokensOf("sed -e s/a/b/ /etc/hosts")).toContain(
-        "/etc/hosts",
-      );
-      // Glued numeric argument: one token, so no consumption is pending.
-      expect(await tokensOf("grep -A3 pattern /etc/passwd")).toContain(
-        "/etc/passwd",
-      );
-      // Space-separated long form of an arg-consuming flag: unrecognized, so
-      // the following word is skipped as the inline positional anyway and the
-      // operand survives. Pinned so a #823 fix does not regress it.
-      expect(await tokensOf("grep --regexp harmless /etc/passwd")).toContain(
-        "/etc/passwd",
-      );
+        await tokensOf("grep --exclude-dir=/etc/skel pattern f"),
+      ).toContain("/etc/skel");
     });
   });
 });
@@ -636,8 +687,11 @@ describe("effect attribution", () => {
   });
 
   it("attributes a core word's read to an embedded option value", async () => {
+    // `--file=` supplies the script, so `target` is a file operand rather than
+    // the inline pattern (#823); both carry grep's proven read.
     expect(await attributedTokens("grep --file=/tmp/patterns target")).toEqual([
       { token: "/tmp/patterns", effect: { effect: "read", source: "core" } },
+      { token: "target", effect: { effect: "read", source: "core" } },
     ]);
   });
 
