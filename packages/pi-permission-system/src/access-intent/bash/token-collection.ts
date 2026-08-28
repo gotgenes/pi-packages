@@ -282,7 +282,22 @@ type PatternFlagRole =
    * and the script surfaces as a candidate. The file operand still survives,
    * so the residual is on ADR 0009's recoverable side.
    */
-  | "suffix";
+  | "suffix"
+  /**
+   * Recognized, but whose arity depends on which implementation the command's
+   * *name* resolves to — so it takes neither the following argument nor the
+   * pattern positional.
+   *
+   * `awk` is GNU awk on Fedora/RHEL, where `--file prog.awk` reads `prog.awk`,
+   * and one-true-awk or mawk elsewhere, where the long option is ignored
+   * outright and `prog.awk` is the program *text*. Asserting either arity
+   * drops a real operand on the other family, and the projection cannot see
+   * which binary the name will reach. Claiming neither over-surfaces on both
+   * — the recoverable direction — and the extra token names nothing, so the
+   * existence probe discards it. Prefer a precise role wherever the name does
+   * fix the parser: `gawk` gets the real ones (#823).
+   */
+  | "unknown-arity";
 
 interface PatternCommandConfig {
   /** Recognized flag spellings, short and long, mapped to their roles. */
@@ -328,14 +343,15 @@ const SED_CONFIG: PatternCommandConfig = {
 };
 
 /**
- * Short flags only — they are POSIX and consume on every awk.
+ * The short flags are POSIX and consume on every awk; the GNU long forms are
+ * `unknown-arity` because the bare name does not fix the parser.
  *
- * The long forms are GNU extensions, and `awk`/`nawk` name one-true-awk, mawk,
- * or BSD awk on many hosts, none of which parses a long option at all: BSD awk
- * warns and consumes nothing, so `awk --field-separator 1 script.awk data.txt`
- * runs the program `1` over *both* files. Listing the long form here consumed
- * the `1` and dropped `script.awk` — a real operand, the unrecoverable
- * direction. Only `gawk` names GNU awk unambiguously (#823).
+ * `awk` is GNU awk on Fedora/RHEL, where `--file prog.awk` reads `prog.awk`,
+ * and one-true-awk or mawk on macOS and Debian/Ubuntu, where the long option
+ * is ignored outright (`awk: unknown option --field-separator ignored`) and
+ * the following words are the program text and its input files. Asserting
+ * either arity drops a real operand on the other family, so the table asserts
+ * neither. `nawk` shares this for the same reason (#823).
  */
 const AWK_CONFIG: PatternCommandConfig = {
   flags: new Map<string, PatternFlagRole>([
@@ -343,9 +359,14 @@ const AWK_CONFIG: PatternCommandConfig = {
     ["-f", "script-file"],
     ["-F", "value"],
     ["-v", "value"],
+    ["--source", "unknown-arity"],
+    ["--file", "unknown-arity"],
+    ["--field-separator", "unknown-arity"],
+    ["--assign", "unknown-arity"],
   ]),
 };
 
+/** `gawk` names GNU awk outright, so its long forms carry their real roles. */
 const GAWK_CONFIG: PatternCommandConfig = {
   flags: new Map<string, PatternFlagRole>([
     ...AWK_CONFIG.flags,
@@ -601,9 +622,17 @@ function collectPatternCommandTokens(
   return tokens;
 }
 
-/** Whether a flag in this role means the inline pattern positional is spent. */
+/**
+ * Whether a flag in this role means the inline pattern positional is spent.
+ *
+ * `unknown-arity` says so for the opposite reason to the others: not because
+ * the script was supplied, but because the walker cannot tell which word the
+ * script is, and skipping the wrong one drops a real operand.
+ */
 function suppliesScript(role: PatternFlagRole): boolean {
-  return role === "script" || role === "script-file";
+  return (
+    role === "script" || role === "script-file" || role === "unknown-arity"
+  );
 }
 
 /**
@@ -633,6 +662,8 @@ function dischargePendingConsumption(
       return { consumed: true };
     case "suffix":
       return { consumed: text === "" };
+    case "unknown-arity":
+      return { consumed: false };
   }
 }
 

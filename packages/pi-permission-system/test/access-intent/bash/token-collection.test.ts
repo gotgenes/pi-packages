@@ -310,7 +310,7 @@ describe("collectCommandTokens — pattern-first commands", () => {
       ["sed --expression 's/a/b/' /etc/hosts", ["/etc/hosts"]],
       ["sed --expression=s/a/b/ /etc/hosts", ["/etc/hosts"]],
       ["sed -e s/a/b/ /etc/hosts", ["/etc/hosts"]],
-      ["awk --source '{print}' /etc/passwd", ["/etc/passwd"]],
+      ["gawk --source '{print}' /etc/passwd", ["/etc/passwd"]],
     ])("%s marks the script supplied and yields no pattern token", async (command, expected) => {
       expect(await tokensOf(command)).toEqual(expected);
     });
@@ -391,23 +391,38 @@ describe("collectCommandTokens — pattern-first commands", () => {
       ]);
     });
 
-    it("reads awk's long forms only for gawk, which is the only name that means GNU awk", async () => {
-      // `awk` and `nawk` resolve to one-true-awk, mawk, or BSD awk on many
-      // hosts, none of which parses long options at all: BSD awk warns and
-      // consumes nothing, so `awk --field-separator 1 script.awk data.txt`
-      // runs the program `1` over *both* files. Listing the long form for
-      // those names consumed the `1` and dropped `script.awk`.
+    it("claims no arity for awk's long forms, whose parser the bare name does not fix", async () => {
+      // `awk` is GNU awk on Fedora/RHEL, where `--file script.awk` reads
+      // `script.awk`, and one-true-awk or mawk on macOS and Debian/Ubuntu,
+      // where the long option is ignored outright and the following words are
+      // the program text and its input files. Either arity drops a real
+      // operand on the other family, so neither is asserted: every operand
+      // survives on both, and the extra token names nothing.
       expect(
         await tokensOf("awk --field-separator 1 script.awk data.txt"),
       ).toEqual(["script.awk", "data.txt"]);
       expect(await tokensOf("nawk --assign x=1 script.awk data.txt")).toEqual([
+        "x=1",
         "script.awk",
         "data.txt",
       ]);
+      expect(await tokensOf("awk --file script.awk data.txt")).toEqual([
+        "script.awk",
+        "data.txt",
+      ]);
+      expect(await tokensOf("awk --source '{print}' data.txt")).toEqual([
+        "{print}",
+        "data.txt",
+      ]);
+
       // `gawk` names GNU awk unambiguously, so its long forms are honored.
       expect(
         await tokensOf("gawk --field-separator , '{print}' /etc/passwd"),
       ).toEqual(["/etc/passwd"]);
+      expect(await tokensOf("gawk --file /tmp/prog.awk data.txt")).toEqual([
+        "/tmp/prog.awk",
+        "data.txt",
+      ]);
       // The short forms are POSIX and consume on every implementation.
       expect(await tokensOf("awk -F, '{print $1}' /etc/passwd")).toEqual([
         "/etc/passwd",
