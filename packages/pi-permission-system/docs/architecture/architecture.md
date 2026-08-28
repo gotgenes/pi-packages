@@ -1027,6 +1027,10 @@ No decline, so the regular improvement rotation continues.
   `officecli set data.xlsx /Sheet1/B1` passes a spreadsheet cell reference shaped exactly like an absolute path, and ADR 0009 gates an absolute bash token by shape rather than existence — deliberately, because a nonexistent absolute destination is still a write target.
   No deterministic classifier separates the two, so the answer is a config recipe (`external_directory: {"/Sheet1/*": "allow"}`) rather than a mechanism.
   This phase answers the issue with that recipe.
+- [#821] — a third-party fail-open report (a bracket-glob path token is dropped before any gate sees it); out of scope for the roadmap and fixed independently.
+  No Phase 14 step names `access-intent/bash/token-classification.ts`, and the fix is a prelude deletion that ships on its own release.
+- [#822] — filed by [#821]'s planning; deferred to a later phase with recorded rationale.
+  Gating a glob token by its expansions rather than its literal text is ADR 0009 projection completeness, and it belongs beside the sandbox seam ([#802]) and [#686] in Phase 15 — a sandbox would subsume static expansion, so building the expansion mechanism ahead of that seam risks replacing it immediately.
 - [#735] scenario 2 and [#722] — unchanged from Phase 13: a parent whose turn is occupied stays with the [#722] diagnosis.
 - [#762] — out of scope: the `pkg:pi-permission-system` label is contextual and the body targets `pi-autoformat`'s own config-path resolution.
 - [#780] — deferred: two ADRs recording the conservative-defaults and outbound-bridge boundaries; documentation work with no dependency on this phase, and the phase's ADR budget is already spent on ADR 0013's implementation.
@@ -1418,4 +1422,6 @@ Each phase's findings, numbered plan, dependency diagram, and health metrics are
 [#810]: https://github.com/gotgenes/pi-packages/issues/810
 [#813]: https://github.com/gotgenes/pi-packages/issues/813
 [#814]: https://github.com/gotgenes/pi-packages/issues/814
+[#821]: https://github.com/gotgenes/pi-packages/issues/821
+[#822]: https://github.com/gotgenes/pi-packages/issues/822
 [ADR-0002]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-subagents/docs/decisions/0002-extensions-on-a-minimal-core.md
