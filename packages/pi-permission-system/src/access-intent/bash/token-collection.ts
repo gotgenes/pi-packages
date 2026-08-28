@@ -327,15 +327,31 @@ const SED_CONFIG: PatternCommandConfig = {
   ]),
 };
 
+/**
+ * Short flags only — they are POSIX and consume on every awk.
+ *
+ * The long forms are GNU extensions, and `awk`/`nawk` name one-true-awk, mawk,
+ * or BSD awk on many hosts, none of which parses a long option at all: BSD awk
+ * warns and consumes nothing, so `awk --field-separator 1 script.awk data.txt`
+ * runs the program `1` over *both* files. Listing the long form here consumed
+ * the `1` and dropped `script.awk` — a real operand, the unrecoverable
+ * direction. Only `gawk` names GNU awk unambiguously (#823).
+ */
 const AWK_CONFIG: PatternCommandConfig = {
   flags: new Map<string, PatternFlagRole>([
     ["-e", "script"],
-    ["--source", "script"],
     ["-f", "script-file"],
-    ["--file", "script-file"],
     ["-F", "value"],
-    ["--field-separator", "value"],
     ["-v", "value"],
+  ]),
+};
+
+const GAWK_CONFIG: PatternCommandConfig = {
+  flags: new Map<string, PatternFlagRole>([
+    ...AWK_CONFIG.flags,
+    ["--source", "script"],
+    ["--file", "script-file"],
+    ["--field-separator", "value"],
     ["--assign", "value"],
   ]),
 };
@@ -384,14 +400,17 @@ const SD_CONFIG: PatternCommandConfig = {
  * the walker can correctly identify which arguments are consumed by flags
  * vs. which are positional.
  *
- * A command's aliases share one configuration object: `egrep`/`fgrep` parse
- * their arguments exactly as `grep` does, and `gawk`/`nawk` as `awk` does.
+ * Names share a configuration object only when they share a *parser*, which is
+ * narrower than being aliases: `egrep`/`fgrep` are the same binary as `grep`
+ * here, and `nawk` is one-true-awk like `awk` — but `gawk` has its own config,
+ * because it is the only one of the three that certainly means GNU awk and so
+ * the only one whose long options certainly consume (#823).
  */
 const PATTERN_FIRST_COMMANDS: ReadonlyMap<string, PatternCommandConfig> =
   new Map([
     ["sed", SED_CONFIG],
     ["awk", AWK_CONFIG],
-    ["gawk", AWK_CONFIG],
+    ["gawk", GAWK_CONFIG],
     ["nawk", AWK_CONFIG],
     ["grep", GREP_CONFIG],
     ["egrep", GREP_CONFIG],

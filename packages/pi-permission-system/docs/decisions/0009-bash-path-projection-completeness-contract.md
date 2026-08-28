@@ -135,7 +135,12 @@ These are **accepted residuals**, not open bugs:
   `rg` parses with clap, where the same spelling consumes.
   Listing it once for both, as a synonym of the shared `-C`, therefore over-listed it for grep and **dropped** `pat`, a real file operand — precisely the unrecoverable failure the rule above forbids, reached by verifying the *spelling* against a man page instead of the *arity* against each tool.
   It is now listed per tool.
-  So the rule's test is not "does this tool document the long form" but "does this tool's parser take a separate argument for it", and a shared table row asserts that of every command that inherits it.
+
+  The same audit found the mirror case in `awk`: the GNU long forms (`--field-separator`, `--assign`, `--source`, `--file`) were shared across `awk`/`gawk`/`nawk`, but `awk` and `nawk` name one-true-awk, mawk, or BSD awk on many hosts, and none of those parses a long option at all — BSD awk warns and consumes **nothing**, so `awk --field-separator 1 script.awk data.txt` runs the program `1` over both files.
+  Consuming the `1` dropped `script.awk`.
+  Only `gawk` certainly names GNU awk, so it alone carries the long forms.
+
+  So the rule's test is not "does this tool document the long form" but "does this tool's parser take a separate argument for it", and a shared table row asserts that of every command that inherits it — including every implementation a *name* may resolve to on a supported host, which is why `awk` and `gawk` are now separate entries even though one is nominally an alias of the other.
 - **Glob-filter option values** (`--include=`, `--exclude=`, `--exclude-dir=`) — their values are split like any unrecognized option's and reach the surfaces on their own shape, so `grep --exclude-dir=node_modules` contributes a `node_modules` candidate.
   This over-surfaces and is left alone rather than given table entries ([#823]); an unmatched candidate is unrestricted by the universal-fallback exclusion above.
 - **Computed paths** other than the plain `HOME`/`PWD` references above — any other `$VAR`, a command substitution (`$(cmd)`), an operator-bearing expansion (`${HOME:-/tmp}`, `${#HOME}`), and a variable reached through an assignment (`CURRENT="$HOME"; ls "$CURRENT"`).

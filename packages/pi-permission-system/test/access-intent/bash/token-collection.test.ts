@@ -391,6 +391,32 @@ describe("collectCommandTokens — pattern-first commands", () => {
       ]);
     });
 
+    it("reads awk's long forms only for gawk, which is the only name that means GNU awk", async () => {
+      // `awk` and `nawk` resolve to one-true-awk, mawk, or BSD awk on many
+      // hosts, none of which parses long options at all: BSD awk warns and
+      // consumes nothing, so `awk --field-separator 1 script.awk data.txt`
+      // runs the program `1` over *both* files. Listing the long form for
+      // those names consumed the `1` and dropped `script.awk`.
+      expect(
+        await tokensOf("awk --field-separator 1 script.awk data.txt"),
+      ).toEqual(["script.awk", "data.txt"]);
+      expect(await tokensOf("nawk --assign x=1 script.awk data.txt")).toEqual([
+        "script.awk",
+        "data.txt",
+      ]);
+      // `gawk` names GNU awk unambiguously, so its long forms are honored.
+      expect(
+        await tokensOf("gawk --field-separator , '{print}' /etc/passwd"),
+      ).toEqual(["/etc/passwd"]);
+      // The short forms are POSIX and consume on every implementation.
+      expect(await tokensOf("awk -F, '{print $1}' /etc/passwd")).toEqual([
+        "/etc/passwd",
+      ]);
+      expect(await tokensOf("awk -v x=1 '{print}' /etc/passwd")).toEqual([
+        "/etc/passwd",
+      ]);
+    });
+
     it("leaves a quoted glued value unrecognized", async () => {
       // `-g'!docs'` parses as a `concatenation`, not a `word`, so the flag
       // branch never sees it and the pattern positional is spent on the flag
