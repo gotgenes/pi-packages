@@ -403,7 +403,7 @@ function collectPatternCommandTokens(
   const patternPositionals = config.patternPositionals ?? 1;
   let hasExplicitScript = false;
   let positionalsSeen = 0;
-  let nextArgAction: "skip" | "extract" | null = null;
+  let pendingConsumption: PendingConsumption | null = null;
   let pastEndOfFlags = false;
   const tokens: PathToken[] = [];
 
@@ -421,10 +421,15 @@ function collectPatternCommandTokens(
     // Handle the argument a previous flag consumed. The discharge is gated on
     // ARG_NODE_TYPES, so a `number`/expansion/substitution argument carries the
     // consumption onto the next word instead — see #823.
-    if (nextArgAction !== null && isArgNode) {
-      if (nextArgAction === "extract") tokens.push({ token: text, effect });
-      nextArgAction = null;
-      continue;
+    if (pendingConsumption !== null && isArgNode) {
+      const discharge = dischargePendingConsumption(
+        pendingConsumption,
+        text,
+        effect,
+      );
+      pendingConsumption = null;
+      if (discharge.token) tokens.push(discharge.token);
+      if (discharge.consumed) continue;
     }
 
     // Only process argument-like nodes; recurse into others
@@ -447,7 +452,7 @@ function collectPatternCommandTokens(
           pastEndOfFlags = true;
           break;
         case "consume-arg":
-          nextArgAction = directive.nextArgAction;
+          pendingConsumption = directive.nextArgAction;
           if (directive.setsExplicitScript) hasExplicitScript = true;
           break;
         case "regular-flag":
@@ -467,6 +472,33 @@ function collectPatternCommandTokens(
   }
 
   return tokens;
+}
+
+/** What a pending flag consumption does with the argument that follows it. */
+type PendingConsumption = "skip" | "extract";
+
+/**
+ * What a pending flag consumption made of the argument node that followed it.
+ *
+ * `consumed` is the flag's own verdict, not the walker's: a flag whose argument
+ * is optional can decline the node, which the walker then reads as an ordinary
+ * argument.
+ */
+interface ConsumptionDischarge {
+  readonly consumed: boolean;
+  /** The path candidate the consumed argument contributes, if any. */
+  readonly token?: PathToken;
+}
+
+/** Apply a pending consumption to the argument text that follows its flag. */
+function dischargePendingConsumption(
+  consumption: PendingConsumption,
+  text: string,
+  effect: TokenEffect,
+): ConsumptionDischarge {
+  return consumption === "extract"
+    ? { consumed: true, token: { token: text, effect } }
+    : { consumed: true };
 }
 
 /**
