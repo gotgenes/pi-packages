@@ -96,6 +96,9 @@ These are **accepted residuals**, not open bugs:
 - **Nonexistent bare write targets** (`touch newfile`, `mv a newfile`) — the probe cannot see a file that does not exist yet.
   Redirect targets, the common creation path, are collected separately and unaffected.
 - **Glued short-option values** (`-f/tmp/x`) — distinguishing a glued value from a cluster of boolean flags (`-rf`) requires per-command option knowledge.
+- **Flag-role blindness in the `--opt=value` split** — the split runs ahead of, and independently of, `PATTERN_FIRST_COMMANDS`, so it cannot tell `--file=/tmp/patterns` (a path) from `--regexp=/etc/passwd` (grep's long form of `-e`, a pattern) and classifies both as operands.
+  The short form of the same flag is skipped correctly, so only the `=`-embedded spelling escapes.
+  This is a false positive in the surfacing direction, never a bypass, and it is the residual the deleted regex character test partially masked ([#821], [#823]).
 - **Computed paths** other than the plain `HOME`/`PWD` references above — any other `$VAR`, a command substitution (`$(cmd)`), an operator-bearing expansion (`${HOME:-/tmp}`, `${#HOME}`), and a variable reached through an assignment (`CURRENT="$HOME"; ls "$CURRENT"`).
   The residual here is the **value the substitution evaluates to** — the filename `> $(cmd)` ultimately writes to is not knowable without running `cmd`.
   It is **not** the nested command's own literal operands, which the positional-invariance guarantee above covers.
@@ -160,6 +163,7 @@ Cost is ~0.04 ms p95 per command, ~19% of the already-paid tree-sitter parse.
 - [#821] is the third report triaged this way, and it landed **inside**: the *shape-classified token* guarantee was met inconsistently depending on which metacharacters a token happened to contain, the same shape as [#694]'s `$HOME` half and [#741]'s redirect-hosted operands.
   Measured over 3995 deduplicated real bash commands, deleting the character test newly surfaces an external path for **2** (both true positives) and adds a `path` rule candidate for **66** (1.65%), all of them `jq` filters, `sed` scripts, and prose strings that a rule must name explicitly to restrict.
   The heuristic's own motivating commands project identically without it, because `PATTERN_FIRST_COMMANDS` — added after it — already suppresses them.
+  That subsumption is complete for a pattern-first command's *positional* and *short-flag* pattern arguments, and not for its `=`-embedded long-flag form, which the character test had been masking by accident; that residual is recorded above as [#823].
 - The [#509] promotion thread is deleted: `PathRuleTokenMatcher`, `PermissionManager.getPromotablePathTokenMatcher`, and the five-layer parameter thread from manager to resolver.
   The classifier is once again pure and policy-free.
 - `PathNormalizer` gains `entryExists`, keeping the filesystem edge in the same object that owns canonicalization; the classifiers stay pure shape functions.
@@ -184,3 +188,4 @@ Cost is ~0.04 ms p95 per command, ~19% of the already-paid tree-sitter parse.
 [#741]: https://github.com/gotgenes/pi-packages/issues/741
 [#821]: https://github.com/gotgenes/pi-packages/issues/821
 [#822]: https://github.com/gotgenes/pi-packages/issues/822
+[#823]: https://github.com/gotgenes/pi-packages/issues/823

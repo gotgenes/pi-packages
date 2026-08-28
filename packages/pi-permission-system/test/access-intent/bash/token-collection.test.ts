@@ -450,6 +450,32 @@ describe("embedded --opt=value extraction (#645)", () => {
   it("keeps only the first '=' as the separator", async () => {
     expect(await tokensOf("cat --opt=/tmp/a=b")).toContain("/tmp/a=b");
   });
+
+  describe("flag-role blindness — accepted residual (#823)", () => {
+    it("emits a pattern-first command's embedded pattern value", async () => {
+      // `--regexp=` is grep's long form of `-e`, and `--expression=` is sed's:
+      // neither names a file. The split runs ahead of the pattern-first walker
+      // and knows nothing of `argConsumingFlags`, so the pattern is emitted as
+      // an ordinary token and classified like any other value. Pinned as the
+      // current behavior, not endorsed — the fix is #823, and ADR 0009 records
+      // it as a residual.
+      expect(await tokensOf("grep --regexp=/etc/passwd file.txt")).toContain(
+        "/etc/passwd",
+      );
+      expect(await tokensOf("sed --expression=/etc/shadow file.txt")).toContain(
+        "/etc/shadow",
+      );
+    });
+
+    it("suppresses the same pattern in its short-flag form", async () => {
+      // The contrast that makes the residual precise: `-e /etc/passwd` is a
+      // consumed argument the pattern-first walker skips, so only the
+      // `=`-embedded spelling escapes.
+      expect(await tokensOf("grep -e /etc/passwd file.txt")).not.toContain(
+        "/etc/passwd",
+      );
+    });
+  });
 });
 
 // ── extractCommandWord ─────────────────────────────────────────────────
