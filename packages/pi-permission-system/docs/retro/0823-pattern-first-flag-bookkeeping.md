@@ -46,3 +46,66 @@ A spike over 4057 deduplicated real bash commands measured the whole change at 1
 
 [#807]: https://github.com/gotgenes/pi-packages/issues/807
 [#821]: https://github.com/gotgenes/pi-packages/issues/821
+
+## Stage: User Note (2026-08-28T23:56:19Z)
+
+### Observation
+
+> I cant recall a session where we went back and forth with pre-completion this much.
+> What could we have done differently?
+> Could we have divided the work in another way?
+> Could we have prepared more to make this easy (nemawashi, "Make the change easy, then make the easy change")?
+
+### Analysis
+
+Five review rounds (FAIL, WARN, WARN, WARN, WARN), and every finding after the first was the **same defect class**: a table row asserting an argument arity that does not hold for every binary the command *name* can reach.
+`--context` (grep's getopt says optional-argument, rg's clap says required), then awk's GNU long forms shared with one-true-awk, then the bare name `awk` being GNU awk on Fedora/RHEL.
+One class, discovered one binary at a time.
+
+#### The mechanism half was never wrong; the data half was wrong six times
+
+The change had two independent halves, and fusing them is what made each defect expensive:
+
+- **Mechanism** — the discharge on any node type, the positional counting, the role vocabulary, the walker restructure, moving the `=`-value split inside the pattern-first walker.
+  **Zero** defects across five rounds.
+  This is the half the plan prepared well and the Tidy-First assessor tidied well; its three preparatory refactors all paid off exactly as predicted.
+- **Data** — which spelling sits in which table with which role.
+  **Every** defect lived here.
+
+Because they shipped as one change, each data defect forced a re-review of the whole thing.
+Split, the mechanism could have been reviewed once and shipped after round 1, with the table landing family-by-family behind a cheap targeted check.
+
+#### The verification method was wrong in kind, not in thoroughness
+
+The plan's `External facts, verified` table has six rows keyed by **source document** (`man grep`, `rg --help`, `sd --help`, man7 `gawk(1)`, man7 `sed(1)`, BSD `sed` usage).
+It answered "does this flag exist and take an argument" and was diligent about it.
+The question that actually governs the security boundary is "does **every binary this name reaches on a supported host** take a *separate* argument for it" — and no amount of care with the first question produces the second.
+
+A table keyed by `(command name × spelling)` with a column for *which implementations this name resolves to* would have exposed all three defects on sight: `awk` has three implementations, `grep` and `rg` share `--context` while parsing it differently, `sed` splits BSD/GNU.
+The table's **shape** was the missing analysis, not its contents.
+
+#### The nemawashi that would have made this easy
+
+An executable arity oracle, built before the fix: for each `(command, spelling)` row, run the real binary with a probe that reveals arity — `<cmd> <flag> SENTINEL nonexistent-file`, then observe whether `SENTINEL` was consumed — and assert the table's role matches.
+Roughly thirty lines.
+It would have caught `--context` and the awk long forms **at planning time, before the first line of the fix**, and it would have made every later table edit self-checking.
+That is the literal "make the change easy, then make the easy change": build the instrument that makes the data verifiable, then write the data.
+
+Its limit is worth recording too, because it is exactly how the last defect escaped: an oracle can only run binaries **present on the host**, and the gawk-as-`awk` case required reasoning about an implementation that is absent here.
+So the oracle covers present implementations and the ADR rule has to cover absent ones — and that rule needed rewriting three times before it said the right thing, ending at "where no single answer holds, decline the question" (the `unknown-arity` role).
+
+#### Two self-inflicted rounds
+
+- Round 2 existed because I defended a measurement instead of re-deriving it.
+  The "projection is byte-identical with and without the `--context` entry" claim was true when measured and false three commits later, because `dce4d3f0` changed how an unclaimed node spends a positional.
+  A measurement is scoped to the commit it was taken at; re-running it costs seconds and defending it cost a round.
+- The corpus figure in the plan (`1` external set changed) is actually **2**.
+  I re-derived it three times and got `1` every time, because I diffed against a baseline JSON captured at planning time while the filesystem underneath drifted.
+  The reviewer got the right answer by swapping `token-collection.ts` at each commit and re-running against the *current* filesystem.
+  A corpus baseline whose projection depends on filesystem state cannot be cached across a session — it must be re-captured, not reused.
+
+#### What worked
+
+Scoping each re-dispatch to the delta and naming the rounds already reviewed.
+Rounds 3, 4, and 5 each returned a *new* instance rather than relitigating, and the round-5 dispatch cost roughly half of round 1's.
+The adversarial mandate also kept earning its place: rounds 3 and 4 found defects in rows I had personally verified against a man page hours earlier.
