@@ -85,3 +85,6 @@ Report the reviewer's "Fix required" block to the user and ask how to proceed:
 - **Skip and proceed:** note in the stage notes that the reviewer returned FAIL and the user chose to proceed anyway, then continue to "Summarize."
 
 Do not proceed automatically — let the user decide.
+
+A finding in code the change never touched is a defect in the **record**, not a regression: correct the ADR or issue text, file or widen the follow-up, and offer that as the fix option.
+Scope the next dispatch to the delta — name the new commit and the rounds already reviewed (Refs #821).

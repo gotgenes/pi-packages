@@ -72,6 +72,10 @@ Cite an issue in a module-tree entry **only** when the ref encodes an active con
 Without this discipline, the per-change doc-update commits that append provenance re-inflate the tree — the debt #601 and #605 paid down in bulk for pi-permission-system and pi-subagents.
 `/finish-phase`'s bounded doc-hygiene step holds each phase's touched module-tree entries to this standard (Refs #601, #605, #606, #607).
 
+An accepted residual — an ADR bullet, a follow-up issue body — is a claim about the **mechanism**, not the symptom that exposed it.
+Enumerate the mechanism's inputs before writing it.
+The residual recorded for #821 was rewritten three times because each draft generalized from its last probe.
+
 ### Reading this repo's own artifacts
 
 When mining history for a **durable** claim — a scope charter, a triage verdict, an ADR, a README boundary — this repo's artifacts answer narrower questions than they appear to.
@@ -92,7 +96,7 @@ An **open** PR is not a decline either: #692 sits unmerged because the policy-so
 Check an ADR's frontmatter `status:` before citing it.
 `pi-subagents` `docs/decisions/0001-deferred-patches.md` is `superseded`, and it is still the only record of the `pi -e` ephemeral-extension limitation.
 
-## Workflow
+### Workflow
 
 - Keep scope tight.
 - Prefer small, reversible changes.
@@ -110,7 +114,7 @@ Check an ADR's frontmatter `status:` before citing it.
   Read it for mechanism, but confirm any API you design around exists in the installed version first — `grep` the types under `node_modules/.pnpm/@earendil-works+pi-coding-agent@*/` (Refs #661).
   Existence is not enough for a seam you design *around*: a callback's position in the call order, and the data populated by the time it fires, are visible only in the compiled `.js`, never in the `.d.ts` (Refs #696).
 
-### Tool-injected messages
+#### Tool-injected messages
 
 The `pi-autoformat` extension emits a `[pi-autoformat] Formatted N file(s)` message after `Edit`/`Write`.
 It is informational — not a turn boundary.
@@ -120,12 +124,12 @@ It also joins a line ending in `:` with the sentence after it — to add a sente
 It likewise joins a sentence onto the previous line when the sentence opens with a lowercase token (a package or command name such as `release-please`) — lead with a capital instead (Refs #816).
 It fires on `Edit`/`Write` only, so a file appended with a shell heredoc skips formatting entirely and fails `pnpm run lint` — append source with `Write`/`Edit` too, not just markdown.
 
-### Stale prompt-template expansion
+#### Stale prompt-template expansion
 
 A slash command's expanded body is a snapshot from when the Pi process loaded it — so after this session edits a `.pi/prompts/*.md` template, a later same-process invocation of that command can run the **pre-edit** copy.
 When the pasted prompt body contradicts the on-disk file (e.g. you just changed `/ship-issue` and its steps read stale), treat the **on-disk file as authoritative** and follow it, not the injected text (Refs #586).
 
-### Stale in-process extension code
+#### Stale in-process extension code
 
 Pi loads each package's extension once at session start, so a session that edits `packages/<pkg>/src/` keeps running the **pre-edit** tool for the rest of its life.
 When the change targets a tool the workflow itself calls (`release_pr_merge`, `ci_watch`, `issue_close`), restart Pi before the step that uses it — otherwise `/ship-issue` exercises the old behavior and the new code looks broken (Refs #673).
@@ -133,7 +137,7 @@ When the change targets a tool the workflow itself calls (`release_pr_merge`, `c
 The same staleness makes the session's own system prompt a reliable witness for the **published** behavior: a defect in prompt assembly (a tool's `Available tools:` line, a guideline bullet, an injected block) is readable in context at zero tool cost.
 Read it before hunting the SDK — but never to verify your own fix, which the running session cannot see (Refs #778).
 
-### Edit tool batches
+#### Edit tool batches
 
 A multi-edit `Edit` call is atomic: if one `oldText` fails to match, the whole batch is rejected and nothing is applied.
 Each `edits[]` entry has exactly one `oldText`/`newText` — put a second replacement in a second array entry, never as `oldText2`/`newText2`.
@@ -155,7 +159,7 @@ When wrapping existing lines in a new enclosing block (a `describe`, function, o
 Inserting a new *sibling* block (a second `describe`, a new function) mid-file can close the enclosing block early and reparent everything after the seam.
 `tsc`, lint, and a green suite all miss it, so anchor the insertion on the enclosing block's own closing line and verify with `grep -n '^describe\|^});'` (Refs #788).
 
-### Multi-session issue lifecycle
+#### Multi-session issue lifecycle
 
 Larger issues span multiple sessions, each handling one stage.
 The standard flow is:
@@ -201,7 +205,7 @@ The walk stops at the floor, so a component whose last release is older has the 
 The write-back therefore derives the floor from `.release-please-manifest.json` via `scripts/release-baseline-sha.sh`, which resolves each component's release tag and takes the oldest; the release action's `<path>--sha` outputs cannot serve, because they report only the components that just released.
 This costs nothing against the bound above: release-please already ends its own walk once it has seen every component's release commit, which is the same commit the script prints.
 
-### Clarification gates
+#### Clarification gates
 
 Present the substance — concrete examples, before/after, trade-offs — in a message first, then call `ask_user` with options that reference it.
 An option list is a set of choices, not a briefing; context crammed into option descriptions — or into `preview` panes — gets bounced (Refs #635, #737, #746).
@@ -214,7 +218,7 @@ Refs #787: three wiring options all grew `AgentPrepHandler`, and the operator's 
 Refs #639: three gates on `commandEffects` all assumed pattern-keyed matching, and the operator's "done with pattern-based expressions" produced the structured shape that dissolved the overlap, merge, and guard questions at once.
 When a gate offers mechanisms for fixing a hazard, first name which component or config rule owns the lever and what happens today in each concrete configuration — a mechanism menu without that grounding gets bounced for it (Refs #789, #803).
 
-### Background agent guardrails
+#### Background agent guardrails
 
 When delegating lint-fix or refactoring work to a background agent:
 
@@ -233,7 +237,7 @@ When a change creates N artifacts that cross-reference each other, enumerate the
 The same holds for a measurement: hand a reviewer the raw source and a mandate to re-derive, not your tables.
 A `pre-completion-reviewer` given ADR 0013's own numbers returned PASS; an adversarial reviewer given the log returned four blocking defects (Refs #639).
 
-#### Parallel peer sessions (git worktrees)
+##### Parallel peer sessions (git worktrees)
 
 Run two agents in parallel by giving each its own git worktree and its own interactive Pi session.
 Use `/worktree <issue>` (the project-local `.pi/extensions/worktree.ts` command) or `scripts/worktree-new.sh <issue> [initial-command]` directly.
@@ -272,7 +276,7 @@ Guardrails:
   An intervening root commit to `main` stales the peer's completed `/ship-worktree` rebase, so the ff-merge is rejected and the peer must re-rebase (Refs #549).
 - A first launch in each worktree reinstalls `.pi/npm/` (gitignored, so it does not carry over) — a one-time cost Pi handles automatically.
 
-##### Session naming convention
+###### Session naming convention
 
 Each prompt template calls `set_session_name` (from `pi-session-tools`) to label the session automatically:
 
@@ -289,7 +293,7 @@ Each prompt template calls `set_session_name` (from `pi-session-tools`) to label
 
 Each prompt template sets the appropriate name automatically via `set_session_name`.
 
-##### Retro file format
+###### Retro file format
 
 Get each stage timestamp from `date -u +"%Y-%m-%dT%H:%M:%SZ"` — never write one from memory; a model has no clock (Refs #653).
 
@@ -339,14 +343,14 @@ issue_title: "Extract ExtensionPaths value object"
 The `### Diagnostic details` subsection is optional — include it only when the `/retro` prompt's diagnostic lenses produce actionable findings.
 Omit it when all lenses find nothing notable.
 
-##### Pre-completion reviewer
+###### Pre-completion reviewer
 
 The `pre-completion-reviewer` agent (`.pi/agents/pre-completion-reviewer.md`) is dispatched automatically by `/tdd-plan` and `/build-plan` after all implementation steps are complete.
 It runs as a fresh-context subagent (no implementation bias) and produces a PASS / WARN / FAIL report covering: deterministic checks (`pnpm run check`, `pnpm run lint`, `pnpm run test`, `pnpm fallow dead-code`), acceptance criteria verification, conventional commits, documentation staleness, code design, test artifacts, Mermaid diagrams, cross-step invariant preservation (a later phase step must not regress an earlier step's documented `Outcome:` invariant), and planned follow-up filing (a follow-up the plan names must carry a recorded issue number).
 The `pre-completion` skill (`.pi/skills/pre-completion/SKILL.md`) encodes the dispatch protocol loaded by both templates.
 The agent's `model:` frontmatter must use the `provider/id` alias form the Pi CLI/UI accepts (e.g. `anthropic/claude-sonnet-4-6`); an ID absent from the model registry silently falls back to the parent session's model.
 
-##### Craftsmanship subagents
+###### Craftsmanship subagents
 
 Two read-only subagents carry the micro / craftsmanship lens (SOLID at the method scale, Test-Driven **Design**, self-documenting code) so it is examined systematically rather than left to whoever has spare context:
 
@@ -364,12 +368,12 @@ Both use the same `provider/id` model-alias rule as the reviewer above.
 Use `/retro-note` to capture quick observations mid-session without interrupting the workflow.
 Use `scripts/issue-context.sh <N>` to gather all available context for an issue (plan, retro, commits, branches) when bootstrapping a new session.
 
-#### Code Style
+##### Code Style
 
 This project uses **pnpm** exclusively — never `npm` or `npx`.
 Before implementing, refactoring, or reviewing code, load the `code-design` skill — it covers naming, SOLID and structural design heuristics, TypeScript conventions, pnpm/ES2024 tooling rules, Pi SDK boundaries, and Biome/ESLint conflict workarounds.
 
-#### Shell and search
+##### Shell and search
 
 Use `colgrep` for intent-based codebase exploration and convention discovery; use `grep` for exact symbol matching.
 `rg -r` is `--replace`, not `--recursive` — `rg -rn pattern path` silently rewrites every match to `n` and drops the line numbers.
@@ -386,19 +390,19 @@ Pass file tool paths repo-relative (`packages/<pkg>/src/x.ts`), not hand-built a
 Before making an existing prose convention machine-read (a grep-able heading, tag, or marker), enumerate its existing spellings first.
 A hand-written convention drifts — `Open-issue sweep dispositions` had three spellings across two packages' archives (Refs #767).
 
-#### Markdown
+##### Markdown
 
 Before writing or editing markdown files, load the `markdown-conventions` skill — it covers the formatting rules (one-sentence-per-line, fence languages, list numbering, table style) and the YAML frontmatter schema for plans and retros.
 
-#### Mermaid
+##### Mermaid
 
 Before authoring or reviewing Mermaid diagrams, load the `mermaid` skill.
 
-#### Testing
+##### Testing
 
 Before writing or debugging tests, load the `testing` skill for Vitest mock patterns and TDD planning rules.
 
-#### Commits
+##### Commits
 
 Use Conventional Commits.
 Type a commit by what a user can observe once it lands, not by what it adds to the tree.

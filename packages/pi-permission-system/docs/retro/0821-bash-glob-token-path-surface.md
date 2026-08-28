@@ -84,3 +84,83 @@ Pre-completion reviewer: FAIL → FAIL → WARN → **PASS**, across four rounds
 [#583]: https://github.com/gotgenes/pi-packages/issues/583
 [#645]: https://github.com/gotgenes/pi-packages/issues/645
 [#821]: https://github.com/gotgenes/pi-packages/issues/821
+
+## Stage: Final Retrospective (2026-08-28T06:06:56Z)
+
+### Session summary
+
+Planned, implemented, and shipped [#821] in one session: a two-line deletion in `src/access-intent/bash/token-classification.ts` that stops a path-shaped bash token carrying `[...]`, `.*`, or `.+` from being dropped before the `path` and `external_directory` gates, released as `pi-permission-system` 27.1.1.
+Eight commits, +27 tests, and two follow-up issues — [#822] (gate a glob by its expansions) and [#823] (a pattern-first command's flag bookkeeping drops the real file operand).
+Four pre-completion-reviewer rounds ran before PASS; every one of them attacked the *residual record* the change wrote, never the change itself.
+
+### Observations
+
+#### What went well
+
+- **The corpus spike was the deciding instrument, and it ran before the gate.**
+  Three candidate variants were projected through `BashProgram` over 3995 deduplicated real bash commands from the local review log, so the `ask_user` gate offered measured costs (2 / 2 / 2 external-changed; 66 / 46 / 0 rule-changed) instead of a judgment call.
+  The operator picked the widest, most fail-closed variant on that evidence — the opposite of what the prose argument alone ("the heuristic prevents prompt noise") would have supported.
+- **Re-running the deleted heuristic's own motivating corpus settled the safety question for its original purpose.**
+  Commit `9eab66cf` shipped the heuristic with six tests; re-running those exact commands with it deleted produced byte-identical projections, which is a measurement rather than an argument that `PATTERN_FIRST_COMMANDS` had subsumed it.
+- **Mutation-checking a green pin caught a vacuous probe before it landed.**
+  The step-1 characterization pin was green on arrival, so it was verified by renaming `awk`/`rg` in `PATTERN_FIRST_COMMANDS` with the heuristic deleted.
+  A first draft (`rg "^src/.*\.ts$" -l`) survived the mutation — that token is not path-shaped, so the assertion could never fail — and was replaced with `rg "/etc/.*passwd" -l`, which does go red.
+  The `testing` skill's rule working exactly as written.
+- **The fresh-context reviewer out-analyzed the implementer on the implementer's own change, three rounds running.**
+  Each round returned a real, reproducible defect the implementing session had not found, escalating in severity: a false positive, then an operand drop, then two further spellings including the everyday `-A 3`.
+  Strong evidence for the fresh-context design — and the reviewer ran on `claude-sonnet-5` against an implementer on `claude-opus-5`, so the win is context, not horsepower.
+
+#### What caused friction (agent side)
+
+- `missing-context` — the plan's central safety claim ("`PATTERN_FIRST_COMMANDS` subsumes the deleted heuristic's noise-suppression role") was derived from re-running the heuristic's *motivating commands*, never from reading the collector that provides it.
+  `collectEmbeddedOptionValues` and `collectPatternCommandTokens`'s exact-match flag sets were not opened during planning, and both turned out to escape the claim.
+  Impact: three extra commits (`9821ed06`, `5cc80d19`, `4dbc9b53`), three extra reviewer rounds (~38 min of subagent wall time, ~536k tokens), two issue-body rewrites, and one roadmap-disposition rewrite.
+- `premature-convergence` — each residual record was written from the single symptom just measured.
+  "Never a bypass" went into ADR 0009 and [#823] after one probe; the next round found the operand drop; the round after that found the glued short flag and the `-A 3` numeric argument; the last generalized it to any node type outside `ARG_NODE_TYPES`.
+  Impact: the ADR bullet rewritten twice, [#823] retitled twice and rebodied three times, and a Phase 14 disposition revised from "deferred" to "fixed independently, next" once severity was understood.
+- `instruction-violation` (self-identified; the gate caught it) — an `Edit` call passed a hand-built absolute path missing the `pi-packages/packages/` segment, which tripped `external_directory` instead of failing fast.
+  `AGENTS.md` § Shell and search states the repo-relative rule, and [#726] records this exact failure.
+  Impact: one rejected call, no rework.
+  Fitting that the package under test is what caught it.
+- `instruction-violation` (self-identified) — `echo ====` in a chained bash command hit zsh's `equals` expansion (`zsh:1: == not found`) and discarded the rest of the chain, which `AGENTS.md` warns about verbatim.
+  Impact: lost the tail of one inspection command; re-read the region instead.
+- `other` — two `Edit` calls carried a stray `oldText2: ""` key.
+  `AGENTS.md` warns that extra suffixed keys are silently ignored while the tool still reports success; the reported block count was checked against the intended edits both times, so nothing was dropped.
+  Impact: none, but it is the exact shape of the failure that rule exists to prevent.
+- `missing-context` (minor) — `--regexp=` / `--expression=` / `--file=` option semantics were written into a shipped ADR bullet and a public issue from memory.
+  `AGENTS.md` § Reading this repo's own artifacts requires verifying an external fact against `man` / `--help` *before* it lands in a security boundary (the #807 lesson).
+  They were verified during this retrospective (`man grep`: `-e pattern, --regexp=pattern`; `-f file, --file=file`; `rg --help` likewise) and are correct.
+  Impact: none materialized — but the verification order was backwards for a doc that ships.
+
+#### What caused friction (user side)
+
+- Nothing obstructive.
+  The operator's gate answers changed direction twice on evidence — choosing the widest classifier relaxation over the two narrower ones, and broadening [#823] rather than filing a third issue for the same root cause — and both calls held up under later scrutiny.
+- Opportunity: five separate `ask_user` calls fired across the session, and two of them concerned [#823].
+  Its roadmap disposition was recorded minutes before the record-and-timing gate that changed the issue's own scope, so the operator answered about the same issue twice and the first answer had to be rewritten.
+  Bundling a roadmap-fit disposition with the decision that sets the issue's scope would have asked once.
+
+### Diagnostic details
+
+- **Model-performance correlation** — attribution from the session transcript's inline labels: planning and TDD (messages 2–309) ran on `anthropic/claude-opus-5`, the ship sequence (311–358) on `anthropic/claude-sonnet-5`, and this retrospective on `anthropic/claude-opus-5`.
+  Both subagent types (`tidy-first-assessor`, `pre-completion-reviewer`) are pinned to `anthropic/claude-sonnet-5`.
+  No mismatch: judgment-heavy planning ran on the stronger model, the deterministic ship sequence on the cheaper one.
+  Worth recording that the `sonnet-5` reviewer beat the `opus-5` implementer's own analysis of the same code three rounds running — the advantage is fresh context and an adversarial mandate, not model strength.
+- **Escalation-delay tracking** — no `rabbit-hole` friction to measure.
+  The longest single-target sequence was the four-round review loop (480s / 1142s / 725s / 425s, 200 tool uses, ~728k tokens), and each round terminated with a new verified finding rather than a repeat of the last.
+  The fourth round was deliberately scoped to the delta commit and cost 425s against the second round's 1142s.
+- **Unused-tool detection** — one gap, tied to the minor `missing-context` above: `man` / `--help` (or `web_search`) was available and unused when the option semantics were written into the ADR and issue.
+  No `Explore` or `colgrep` gap: the change was symbol-exact and the target file was known from the report.
+- **Feedback-loop gap analysis** — no gap.
+  `pnpm run check`, root `pnpm run lint`, `pnpm run test`, and `pnpm fallow dead-code` all ran before the first TDD cycle to establish the baseline, file-scoped `vitest` ran on every red and green, and the full four-gate set ran again after each commit and before the push.
+
+### Changes made
+
+1. `AGENTS.md` § Architecture-doc conventions — added the residual-record rule: an accepted residual is a claim about the mechanism, not the symptom that exposed it, so enumerate the mechanism's inputs before writing it.
+2. `.pi/skills/pre-completion/SKILL.md` § Overall: FAIL — added the response for a finding in code the change never touched (a record defect, not a regression: correct the text, file or widen the follow-up) and the instruction to scope the next dispatch to the delta.
+3. `packages/pi-permission-system/docs/retro/0821-bash-glob-token-path-surface.md` — this Final Retrospective entry.
+
+One self-inflicted lesson landed while writing change 1: the sentence originally opened with `#821's residual…`, and the autoformatter promoted the line to an `##` heading, mangling it.
+The `markdown-conventions` skill states the rule (an issue number must not begin a line outside a code fence); the sentence was reworded to open with "The residual recorded for #821".
+
+[#726]: https://github.com/gotgenes/pi-packages/issues/726
