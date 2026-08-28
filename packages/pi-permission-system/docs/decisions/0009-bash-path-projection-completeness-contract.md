@@ -1,14 +1,14 @@
 ---
 status: accepted
 date: 2026-07-24
-amended: 2026-08-28
+amended: 2026-08-29
 ---
 
 # 0009 — The bash path projection is a completeness contract, not a best-effort heuristic
 
 ## Status
 
-Accepted, as amended 2026-08-28.
+Accepted, as amended 2026-08-29.
 This decision states the contract the bash path projection upholds, and settles how a "the gate missed my path" report is triaged.
 It is the framing for [#645], which closes two gaps the contract names as in-scope; it composes with `docs/decisions/0003-git-bash-posix-path-semantics.md` (win32 token shapes) and `docs/decisions/0007-model-judge-authorizer-chain-adr.md` (the judge that absorbs false positives).
 
@@ -25,6 +25,27 @@ Position is readable from the parse tree; intent is not.
 
 A glob-bearing token is gated by its **literal** text, exactly as `?` and `*` tokens always were: the boundary decision resolves the literal against the effective working directory, so a glob naming somewhere outside the tree prompts.
 Gating it by what it *expands to* is a separate mechanism, deferred as a residual below ([#822]).
+
+### Amendment, 2026-08-29 — a pattern-first command's flag table carries the spellings its flags really have
+
+The amendment above rests on `PATTERN_FIRST_COMMANDS` deciding a pattern argument by position.
+It did so only for the spellings its table happened to hold — the **short** forms, exact-matched, with the consumed argument discharged only on an `ARG_NODE_TYPES` node.
+Four other spellings left the walker still expecting an inline pattern, so it skipped the command's real file operand as though it were that pattern and the path reached no surface ([#823]): an `=`-embedded long flag (`--regexp=`), a glued short flag (`-epattern`), an argument tree-sitter types outside `ARG_NODE_TYPES` (`-A 3`, `-A $N`, `-A $(echo 3)`), and `sed -i` in its GNU spelling, whose dropped operand is a **write** target.
+
+The table therefore carries the long and glued forms of the flags it already lists, and the consumption discharges on whatever node follows.
+This is a bounded amendment, not the per-command option table rejected below: the set of *flags* is unchanged, only their spellings are complete.
+
+Which spellings may be listed follows from the direction of failure, and the rule is the durable part:
+
+> **Under**-listing a consuming flag over-surfaces; **over**-listing drops an operand.
+> So a flag is listed as consuming only when it consumes on every supported platform, verified against that tool's documented option list.
+
+An unrecognized spaced flag merely shifts *which* positional is eaten, and the last operand still survives — `rg --pre CMD pattern /etc/passwd` surfaces the file both before and after.
+A flag wrongly listed as consuming eats the script and then the operand, which is exactly how `sed -i` — separate-argument on BSD, glued-only on GNU — became a silent write bypass.
+It is resolved by the argument's own emptiness (`-i ''` is the BSD idiom and no GNU spelling produces it), so the projection still reads nothing about the host.
+
+The same knowledge fixes the mirror-image false positive: `collectEmbeddedOptionValues` split every `--opt=value` token with no flag-role awareness, so `grep --regexp=/etc/passwd file.txt` emitted the *pattern* as a path candidate.
+A pattern-first command now runs that split from inside its own walker, where the role is known; a generic command keeps the blind split, which is safe precisely because it has no role to contradict.
 
 ## Context
 
@@ -95,12 +116,13 @@ These are **accepted residuals**, not open bugs:
 
 - **Nonexistent bare write targets** (`touch newfile`, `mv a newfile`) — the probe cannot see a file that does not exist yet.
   Redirect targets, the common creation path, are collected separately and unaffected.
-- **Glued short-option values** (`-f/tmp/x`) — distinguishing a glued value from a cluster of boolean flags (`-rf`) requires per-command option knowledge.
-- **A pattern-first command's flag bookkeeping** — `collectPatternCommandTokens` tracks "a flag consumed the next argument" and "an inline pattern is still expected" by exact-matching the **short** spellings in `PATTERN_FIRST_COMMANDS`, and discharges the consumption only on an `ARG_NODE_TYPES` node.
-  Three spellings defeat that and each drops the command's real file operand — a bypass, not a false positive: an `=`-embedded long flag (`--regexp=`), a glued short flag (`-epattern`), and a space-separated numeric argument (`-A 3`), which tree-sitter types `number`.
-  In the opposite direction `collectEmbeddedOptionValues`, which splits `--opt=value` ahead of and independently of that walker, emits a pattern flag's value as a candidate.
-  One root cause, one fix ([#823]); the deleted regex character test masked part of the false-positive half by accident ([#821]).
-  This is the guarantee gap [#821]'s report belongs to, restated: a *shape-classified token* must reach the surfaces wherever its command puts it.
+- **Glued short-option values of a flag no table lists** (`tar -f/tmp/x`) — distinguishing a glued value from a cluster of boolean flags (`-rf`) requires per-command option knowledge.
+  A pattern-first command's own listed flags are the bounded exception ([#823]): there the table already names the flag, so `grep -f/tmp/patterns` is read as getopt reads it.
+- **A pattern-first flag spelling the table does not name** — an unlisted argument-consuming flag (`rg --pre CMD`), a GNU long-option abbreviation (`grep --reg=x`), a cluster whose argument-taking short flag is not first (`grep -ie pattern`), and a quoted glued value (`rg -g'!docs'`), which parses as a `concatenation` rather than a `word` and so never reaches flag detection.
+  Each of these spends the pattern positional on the wrong token, which **over-surfaces** — the last operand still reaches the surfaces — so all four sit on the recoverable side of the layering principle below.
+  Widening flag detection to quoted tokens is deliberately declined: it would reclassify a quoted leading-`-` *pattern* as a flag and drop the operand instead, trading a recoverable failure for an unrecoverable one.
+- **Glob-filter option values** (`--include=`, `--exclude=`, `--exclude-dir=`) — their values are split like any unrecognized option's and reach the surfaces on their own shape, so `grep --exclude-dir=node_modules` contributes a `node_modules` candidate.
+  This over-surfaces and is left alone rather than given table entries ([#823]); an unmatched candidate is unrestricted by the universal-fallback exclusion above.
 - **Computed paths** other than the plain `HOME`/`PWD` references above — any other `$VAR`, a command substitution (`$(cmd)`), an operator-bearing expansion (`${HOME:-/tmp}`, `${#HOME}`), and a variable reached through an assignment (`CURRENT="$HOME"; ls "$CURRENT"`).
   The residual here is the **value the substitution evaluates to** — the filename `> $(cmd)` ultimately writes to is not knowable without running `cmd`.
   It is **not** the nested command's own literal operands, which the positional-invariance guarantee above covers.
@@ -152,12 +174,18 @@ Cost is ~0.04 ms p95 per command, ~19% of the already-paid tree-sitter parse.
   Rejected: this defeats any `bash` allow rule under a restrictive path policy, which is the configuration users reach for precisely to reduce prompting.
 - **Per-command argument tables.**
   Rejected as a deterministic-layer mechanism: unbounded maintenance surface, and it duplicates in brittle static data what the judge link ([#620]) does with the command in context.
+  Completing the *spellings* of the flags `PATTERN_FIRST_COMMANDS` already lists is not this ([#823]): the maintained set of flags is unchanged, and every added spelling is a synonym verified against that tool's own option list.
+  Auditing each tool's full option list for unlisted consuming flags was considered at the same time and declined on the direction-of-failure rule — the omissions it would fix over-surface, while each new entry is a fresh chance to over-list and drop an operand.
+- **Adding `number` to `ARG_NODE_TYPES`** to fix the `-A 3` discharge.
+  Rejected: that set also feeds `commandArgumentWords` (the effect-retraction guards) and generic collection, so widening it would change effect attribution and emit numeric tokens for every command in the package.
+  The consumption is discharged on whatever node follows instead — the question is "whose argument is this", which is local to the walker ([#823]).
 
 ## Consequences
 
 - A "the bash gate missed my path" report is now triaged against this contract: it is either **inside** it (a bug — the projection failed a guarantee) or **outside** it (an accepted residual, or a judge-layer concern).
   This is the durable outcome; the recurrence in Context was a symptom of having no such test.
-  [#694] is the first report triaged this way, and it split: its `$HOME`/`${HOME}` half was **inside** (the package resolved `$HOME` for patterns and path literals but not for bash tokens, so a guarantee was inconsistently met) and was fixed; its assignment-dataflow half was **outside** and was declined with the numbers above.
+  Four reports have been triaged this way so far, and all four landed **inside** the contract on the same shape: a guarantee met inconsistently depending on how the token happened to be spelled or positioned.
+  [#694] is the first, and it split: its `$HOME`/`${HOME}` half was **inside** (the package resolved `$HOME` for patterns and path literals but not for bash tokens, so a guarantee was inconsistently met) and was fixed; its assignment-dataflow half was **outside** and was declined with the numbers above.
   A single report landing on both sides is the expected outcome of having the line drawn.
 - [#741] is the second report triaged this way, and it landed **inside**: a substitution's operands were projected in argument position but not when the substitution sat in a redirect destination or an interpolating heredoc body, so a guarantee was met inconsistently across positions — the same shape as [#694]'s `$HOME` half.
   The fix names the hosting concept once (`EXECUTION_HOST_TYPES` in `access-intent/bash/nested-execution.ts`), shared by the command surface and the path surface so the two cannot drift on what counts as a nested execution.
@@ -165,7 +193,11 @@ Cost is ~0.04 ms p95 per command, ~19% of the already-paid tree-sitter parse.
 - [#821] is the third report triaged this way, and it landed **inside**: the *shape-classified token* guarantee was met inconsistently depending on which metacharacters a token happened to contain, the same shape as [#694]'s `$HOME` half and [#741]'s redirect-hosted operands.
   Measured over 3995 deduplicated real bash commands, deleting the character test newly surfaces an external path for **2** (both true positives) and adds a `path` rule candidate for **66** (1.65%), all of them `jq` filters, `sed` scripts, and prose strings that a rule must name explicitly to restrict.
   The heuristic's own motivating commands project identically without it, because `PATTERN_FIRST_COMMANDS` — added after it — already suppresses them.
-  That subsumption is complete for a pattern-first command's *positional* and *space-separated short-flag* pattern arguments, and not for the flag spellings its walker mis-tracks, whose separate defect the character test had been masking in part; it is recorded above as [#823].
+  That subsumption was complete for a pattern-first command's *positional* and *space-separated short-flag* pattern arguments, and not for the flag spellings its walker mis-tracked, whose separate defect the character test had been masking in part; that defect is [#823], fixed next.
+- [#823] is the fourth report triaged this way, and it landed **inside**: the guarantee held for a pattern-first command's short flag spellings and failed for the long, `=`-embedded, and glued forms of the *same* flags — [#694]'s shape once more, this time across a flag's own synonyms.
+  Its severity is the reverse of [#821]'s: what was dropped is the command's real **operand**, not a pattern, so `grep -A 3 pattern /etc/passwd` and `sed -i 's/a/b/' /etc/hosts` reached no surface at all.
+  Measured over 4057 deduplicated real bash commands, closing it changes the external set for **1** (a true positive, gaining a token) and the rule-candidate set for **3**, with **0** tokens lost anywhere — two of the three recover operands and the third correctly stops emitting `rg --glob` filter values as paths.
+  The GNU-only spellings are absent from that corpus (macOS traffic), so `sed -i 's/…/'` and `--in-place=` are covered by hand-written cases instead.
 - The [#509] promotion thread is deleted: `PathRuleTokenMatcher`, `PermissionManager.getPromotablePathTokenMatcher`, and the five-layer parameter thread from manager to resolver.
   The classifier is once again pure and policy-free.
 - `PathNormalizer` gains `entryExists`, keeping the filesystem edge in the same object that owns canonicalization; the classifiers stay pure shape functions.
