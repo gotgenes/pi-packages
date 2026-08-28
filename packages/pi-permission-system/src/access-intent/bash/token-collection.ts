@@ -252,91 +252,61 @@ interface PatternCommandConfig {
   readonly patternPositionals?: number;
 }
 
+const SED_CONFIG: PatternCommandConfig = {
+  argConsumingFlags: new Set(["-e", "-i"]),
+  fileConsumingFlags: new Set(["-f"]),
+};
+
+const AWK_CONFIG: PatternCommandConfig = {
+  argConsumingFlags: new Set(["-e", "-F", "-v"]),
+  fileConsumingFlags: new Set(["-f"]),
+};
+
+const GREP_CONFIG: PatternCommandConfig = {
+  argConsumingFlags: new Set(["-e", "-A", "-B", "-C", "-m"]),
+  fileConsumingFlags: new Set(["-f"]),
+};
+
+const RG_CONFIG: PatternCommandConfig = {
+  argConsumingFlags: new Set([
+    ...GREP_CONFIG.argConsumingFlags,
+    "-g",
+    "-t",
+    "-T",
+    "-j",
+    "-M",
+    "-r",
+    "-E",
+  ]),
+  fileConsumingFlags: new Set(["-f"]),
+};
+
+const SD_CONFIG: PatternCommandConfig = {
+  argConsumingFlags: new Set(["-n", "-f"]),
+  fileConsumingFlags: new Set([]),
+  patternPositionals: 2,
+};
+
 /**
  * Commands whose first N positional arguments are inline patterns/scripts,
  * not filesystem paths. The map stores per-command flag configuration so
  * the walker can correctly identify which arguments are consumed by flags
  * vs. which are positional.
+ *
+ * A command's aliases share one configuration object: `egrep`/`fgrep` parse
+ * their arguments exactly as `grep` does, and `gawk`/`nawk` as `awk` does.
  */
 const PATTERN_FIRST_COMMANDS: ReadonlyMap<string, PatternCommandConfig> =
   new Map([
-    [
-      "sed",
-      {
-        argConsumingFlags: new Set(["-e", "-i"]),
-        fileConsumingFlags: new Set(["-f"]),
-      },
-    ],
-    [
-      "awk",
-      {
-        argConsumingFlags: new Set(["-e", "-F", "-v"]),
-        fileConsumingFlags: new Set(["-f"]),
-      },
-    ],
-    [
-      "gawk",
-      {
-        argConsumingFlags: new Set(["-e", "-F", "-v"]),
-        fileConsumingFlags: new Set(["-f"]),
-      },
-    ],
-    [
-      "nawk",
-      {
-        argConsumingFlags: new Set(["-e", "-F", "-v"]),
-        fileConsumingFlags: new Set(["-f"]),
-      },
-    ],
-    [
-      "grep",
-      {
-        argConsumingFlags: new Set(["-e", "-A", "-B", "-C", "-m"]),
-        fileConsumingFlags: new Set(["-f"]),
-      },
-    ],
-    [
-      "egrep",
-      {
-        argConsumingFlags: new Set(["-e", "-A", "-B", "-C", "-m"]),
-        fileConsumingFlags: new Set(["-f"]),
-      },
-    ],
-    [
-      "fgrep",
-      {
-        argConsumingFlags: new Set(["-e", "-A", "-B", "-C", "-m"]),
-        fileConsumingFlags: new Set(["-f"]),
-      },
-    ],
-    [
-      "rg",
-      {
-        argConsumingFlags: new Set([
-          "-e",
-          "-A",
-          "-B",
-          "-C",
-          "-m",
-          "-g",
-          "-t",
-          "-T",
-          "-j",
-          "-M",
-          "-r",
-          "-E",
-        ]),
-        fileConsumingFlags: new Set(["-f"]),
-      },
-    ],
-    [
-      "sd",
-      {
-        argConsumingFlags: new Set(["-n", "-f"]),
-        fileConsumingFlags: new Set([]),
-        patternPositionals: 2,
-      },
-    ],
+    ["sed", SED_CONFIG],
+    ["awk", AWK_CONFIG],
+    ["gawk", AWK_CONFIG],
+    ["nawk", AWK_CONFIG],
+    ["grep", GREP_CONFIG],
+    ["egrep", GREP_CONFIG],
+    ["fgrep", GREP_CONFIG],
+    ["rg", RG_CONFIG],
+    ["sd", SD_CONFIG],
   ]);
 
 /**
