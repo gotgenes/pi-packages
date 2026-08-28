@@ -793,7 +793,12 @@ describe("extractExternalPathsFromBashCommand", () => {
     });
   });
 
-  describe("regex patterns are not mistaken for paths", () => {
+  // These arguments reach no path surface because `PATTERN_FIRST_COMMANDS`
+  // (token-collection.ts) skips a pattern-first command's inline pattern
+  // positional — not because the classifier inspects the token's characters.
+  // The character-level regex heuristic was deleted in #821; this block pins
+  // that the command-aware collector is what keeps these quiet.
+  describe("regex arguments of pattern-first commands are not mistaken for paths", () => {
     test("grep -v with //.*pattern is not flagged", async () => {
       const result = await extractExternalPathsFromBashCommand(
         'grep -n "glob" src/foo.ts 2>/dev/null | grep -v "//.*glob\\|globalConfig" | head -30',
@@ -829,6 +834,22 @@ describe("extractExternalPathsFromBashCommand", () => {
     test("sed with regex containing slashes is not flagged", async () => {
       const result = await extractExternalPathsFromBashCommand(
         'sed "s/foo.*/bar/g" file.txt',
+        cwd,
+      );
+      expect(result).toHaveLength(0);
+    });
+
+    test("awk pattern containing an escaped absolute path is not flagged", async () => {
+      const result = await extractExternalPathsFromBashCommand(
+        'awk "/\\/etc\\/.*/" file.txt',
+        cwd,
+      );
+      expect(result).toHaveLength(0);
+    });
+
+    test("rg pattern shaped like an absolute path is not flagged", async () => {
+      const result = await extractExternalPathsFromBashCommand(
+        'rg "/etc/.*passwd" -l',
         cwd,
       );
       expect(result).toHaveLength(0);
