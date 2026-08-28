@@ -126,6 +126,28 @@ describe("BashProgram", () => {
       expect(fileCandidate?.path.boundaryValue()).toBe("");
     });
 
+    describe("glob-bearing path tokens (#821)", () => {
+      it("projects a bracket glob in a relative token", async () => {
+        const program = await BashProgram.parse(
+          "cat src/[s]ecret.env",
+          normalizer,
+        );
+        expect(program.pathRuleCandidates().map(({ token }) => token)).toEqual([
+          "src/[s]ecret.env",
+        ]);
+      });
+
+      it("projects a dot-star glob in an absolute token", async () => {
+        const program = await BashProgram.parse(
+          "rm -rf /tmp/tmp.*",
+          normalizer,
+        );
+        expect(program.pathRuleCandidates().map(({ token }) => token)).toEqual([
+          "/tmp/tmp.*",
+        ]);
+      });
+    });
+
     describe("existence-probe bare-token promotion (#645)", () => {
       // Candidacy comes from the filesystem, so these run against a real
       // tmpdir cwd with real lstat/realpath rather than the fake cwd above.
@@ -304,6 +326,23 @@ describe("BashProgram", () => {
       expect(
         program.externalAccesses().map(({ path }) => path.value()),
       ).toContain("/etc/hosts");
+    });
+
+    describe("glob-bearing path tokens (#821)", () => {
+      it.each([
+        ["a bracket glob", "cat /etc/[p]asswd", "/etc/[p]asswd"],
+        [
+          "a bracket glob inside a directory name",
+          "ls /et[c]/pa*",
+          "/et[c]/pa*",
+        ],
+        ["a dot-star glob", "rm -rf /tmp/tmp.*", "/tmp/tmp.*"],
+      ])("projects %s outside the tree", async (_label, command, expected) => {
+        const program = await BashProgram.parse(command, normalizer);
+        expect(
+          program.externalAccesses().map(({ path }) => path.value()),
+        ).toEqual([expected]);
+      });
     });
 
     describe("operands of nested commands hosted in a redirect (#741)", () => {

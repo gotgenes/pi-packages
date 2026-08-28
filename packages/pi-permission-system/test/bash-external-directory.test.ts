@@ -71,6 +71,51 @@ describe("extractExternalPathsFromBashCommand", () => {
     });
   });
 
+  // The reported bypass (#821): a shell glob is expanded by the shell, so a
+  // path-shaped token carrying one names a real access. It is gated by its
+  // literal text, exactly as `?` and `*` tokens already were.
+  describe("glob-bearing paths (#821)", () => {
+    test("detects a bracket glob in an absolute path", async () => {
+      const result = await extractExternalPathsFromBashCommand(
+        "cat /etc/[p]asswd",
+        cwd,
+      );
+      expect(result).toEqual(["/etc/[p]asswd"]);
+    });
+
+    test("detects a bracket glob inside a directory name", async () => {
+      const result = await extractExternalPathsFromBashCommand(
+        "ls /et[c]/pa*",
+        cwd,
+      );
+      expect(result).toEqual(["/et[c]/pa*"]);
+    });
+
+    test("detects a dot-star glob in an absolute path", async () => {
+      const result = await extractExternalPathsFromBashCommand(
+        "rm -rf /tmp/tmp.*",
+        cwd,
+      );
+      expect(result).toEqual(["/tmp/tmp.*"]);
+    });
+
+    test("detects a bracket glob in a home-relative path", async () => {
+      const result = await extractExternalPathsFromBashCommand(
+        "cat ~/.ssh/[i]d_rsa",
+        cwd,
+      );
+      expect(result).toEqual(["/mock/home/.ssh/[i]d_rsa"]);
+    });
+
+    test("does not flag a glob resolving within CWD", async () => {
+      const result = await extractExternalPathsFromBashCommand(
+        "cat /projects/my-app/src/[i]ndex.ts",
+        cwd,
+      );
+      expect(result).toHaveLength(0);
+    });
+  });
+
   describe("home-relative paths", () => {
     test("detects ~/path outside CWD", async () => {
       const result = await extractExternalPathsFromBashCommand(

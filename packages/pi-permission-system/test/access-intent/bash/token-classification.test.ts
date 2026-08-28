@@ -10,7 +10,7 @@ import { posixPathFlavor, win32PathFlavor } from "#src/path/path-flavor";
 // ── Shared rejection behaviour ─────────────────────────────────────────────
 //
 // Both classifiers delegate to the private `rejectNonPathToken` predicate for
-// the six shared rejection cases tested below.  Testing via both exports
+// the five shared rejection cases tested below.  Testing via both exports
 // pins that predicate through each caller.
 
 describe("classifyTokenAsPathCandidate", () => {
@@ -58,8 +58,10 @@ describe("classifyTokenAsPathCandidate", () => {
       expect(classifyTokenAsPathCandidate("@/foo/bar")).toBeNull();
     });
 
-    test("regex metacharacters → null", () => {
-      // REGEX_METACHAR_PATTERN: .*, .+, \|, \(, \), [...], ^/
+    test("shapeless regex-like token → null (acceptance gate, not the prelude)", () => {
+      // The prelude no longer inspects metacharacters (#821). These stay null
+      // because none carries a path shape the strict gate accepts — no leading
+      // `/`, no `~/`, no `..`, no drive letter.
       expect(classifyTokenAsPathCandidate("foo.*")).toBeNull();
       expect(classifyTokenAsPathCandidate("bar.+")).toBeNull();
       expect(classifyTokenAsPathCandidate("a\\|b")).toBeNull();
@@ -152,6 +154,37 @@ describe("classifyTokenAsPathCandidate", () => {
       expect(classifyTokenAsPathCandidate("C:foo")).toBeNull();
     });
   });
+
+  describe("glob-bearing path shapes (#821)", () => {
+    // A shell glob is syntax, not evidence against path-hood: the shell
+    // expands `[p]` and `.*` against the filesystem, so a path-shaped token
+    // carrying them names a real access the gates must see.
+    test("bracket glob in an absolute path → returned as-is", () => {
+      expect(classifyTokenAsPathCandidate("/etc/[p]asswd")).toBe(
+        "/etc/[p]asswd",
+      );
+      expect(classifyTokenAsPathCandidate("/et[c]/pa*")).toBe("/et[c]/pa*");
+    });
+
+    test("dot-star glob in an absolute path → returned as-is", () => {
+      expect(classifyTokenAsPathCandidate("/tmp/tmp.*")).toBe("/tmp/tmp.*");
+      expect(classifyTokenAsPathCandidate("/var/log/sys.+")).toBe(
+        "/var/log/sys.+",
+      );
+    });
+
+    test("bracket glob in a home-relative path → returned as-is", () => {
+      expect(classifyTokenAsPathCandidate("~/.ssh/[i]d_rsa")).toBe(
+        "~/.ssh/[i]d_rsa",
+      );
+    });
+
+    test("bracket glob in a parent-traversal path → returned as-is", () => {
+      expect(classifyTokenAsPathCandidate("../[e]tc/passwd")).toBe(
+        "../[e]tc/passwd",
+      );
+    });
+  });
 });
 
 describe("classifyTokenAsRuleCandidate", () => {
@@ -205,14 +238,23 @@ describe("classifyTokenAsRuleCandidate", () => {
       ).toBeNull();
     });
 
-    test("regex metacharacters → null", () => {
+    test("shapeless regex-like token → null (acceptance gate, not the prelude)", () => {
+      // The prelude no longer inspects metacharacters (#821); these carry no
+      // separator, no leading `.`, and no `..`, so the broad gate rejects them.
       expect(classifyTokenAsRuleCandidate("foo.*", posixPathFlavor)).toBeNull();
       expect(classifyTokenAsRuleCandidate("bar.+", posixPathFlavor)).toBeNull();
       expect(classifyTokenAsRuleCandidate("a\\|b", posixPathFlavor)).toBeNull();
       expect(classifyTokenAsRuleCandidate("[abc]", posixPathFlavor)).toBeNull();
-      expect(
-        classifyTokenAsRuleCandidate("^/start", posixPathFlavor),
-      ).toBeNull();
+    });
+
+    test("separator-bearing regex-like token → accepted for the rules to judge", () => {
+      // `^/start` carries a `/`, so the broad gate accepts it. A rule candidate
+      // that matches no explicit `path` rule is unrestricted (ADR 0009), and
+      // admitting it is the fail-closed direction: a token this shape can also
+      // be a real operand.
+      expect(classifyTokenAsRuleCandidate("^/start", posixPathFlavor)).toBe(
+        "^/start",
+      );
     });
   });
 
@@ -317,6 +359,26 @@ describe("classifyTokenAsRuleCandidate", () => {
     });
   });
 
+  describe("glob-bearing path shapes (#821)", () => {
+    test("bracket glob in a relative path → returned as-is", () => {
+      expect(
+        classifyTokenAsRuleCandidate("src/[s]ecret.env", posixPathFlavor),
+      ).toBe("src/[s]ecret.env");
+    });
+
+    test("bracket glob in a dot-file → returned as-is", () => {
+      expect(classifyTokenAsRuleCandidate(".[e]nv", posixPathFlavor)).toBe(
+        ".[e]nv",
+      );
+    });
+
+    test("dot-star glob in a relative path → returned as-is", () => {
+      expect(classifyTokenAsRuleCandidate("logs/app.*", posixPathFlavor)).toBe(
+        "logs/app.*",
+      );
+    });
+  });
+
   describe("Windows backslash-relative acceptance gate (win32 flavor, #520)", () => {
     test("backslash-relative token accepted under the win32 flavor", () => {
       expect(classifyTokenAsRuleCandidate("dir\\file", win32PathFlavor)).toBe(
@@ -330,13 +392,16 @@ describe("classifyTokenAsRuleCandidate", () => {
       ).toBeNull();
     });
 
-    test("backslash regex-metacharacter token still rejected under the win32 flavor", () => {
-      // rejectNonPathToken's REGEX_METACHAR_PATTERN fires before the separator
-      // branch is reached, regardless of flavor.
-      expect(classifyTokenAsRuleCandidate("a\\|b", win32PathFlavor)).toBeNull();
-      expect(
-        classifyTokenAsRuleCandidate("\\(group\\)", win32PathFlavor),
-      ).toBeNull();
+    test("backslash-bearing token accepted under the win32 flavor, whatever else it contains", () => {
+      // The win32 flavor counts `\` as a separator, and the prelude no longer
+      // second-guesses that on metacharacters (#821): under win32 these are
+      // `dir\file`-shaped tokens like any other.
+      expect(classifyTokenAsRuleCandidate("a\\|b", win32PathFlavor)).toBe(
+        "a\\|b",
+      );
+      expect(classifyTokenAsRuleCandidate("\\(group\\)", win32PathFlavor)).toBe(
+        "\\(group\\)",
+      );
     });
 
     test("backslash traversal accepted regardless of flavor (already via ..)", () => {
@@ -417,6 +482,11 @@ describe("classifyBareTokenCandidate", () => {
     expect(classifyBareTokenCandidate("anything")).toBe("anything");
   });
 
+  test("glob-bearing bare token → returned for the probe to settle (#821)", () => {
+    expect(classifyBareTokenCandidate("[a]bc")).toBe("[a]bc");
+    expect(classifyBareTokenCandidate("tmp.*")).toBe("tmp.*");
+  });
+
   describe("shared rejection prelude", () => {
     test("flag (leading dash) → null", () => {
       expect(classifyBareTokenCandidate("-r")).toBeNull();
@@ -435,8 +505,11 @@ describe("classifyBareTokenCandidate", () => {
       expect(classifyBareTokenCandidate("@foo/bar")).toBeNull();
     });
 
-    test("regex metacharacters → null", () => {
-      expect(classifyBareTokenCandidate("foo.*")).toBeNull();
+    test("metacharacters are not a rejection — the probe settles it (#821)", () => {
+      // The bare classifier has no acceptance gate beyond the prelude, so a
+      // token carrying `.*` is returned and the resolver's existence probe
+      // decides whether it names anything.
+      expect(classifyBareTokenCandidate("foo.*")).toBe("foo.*");
     });
 
     test("empty string → null", () => {

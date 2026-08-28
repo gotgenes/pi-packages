@@ -16,8 +16,16 @@
  * `docs/decisions/0009-bash-path-projection-completeness-contract.md`.
  *
  * All three classifiers share the private `rejectNonPathToken` predicate that
- * captures the six rejection cases common to them (the production clone this
+ * captures the five rejection cases common to them (the production clone this
  * module was extracted to eliminate).
+ *
+ * None of them reads a token's glob or regex metacharacters. A shell bracket
+ * glob and a regex character class are spelled identically, so "contains a
+ * metacharacter" cannot decide path-hood — and it silently dropped tokens the
+ * shell really does expand into filesystem paths (`/etc/[p]asswd`,
+ * `rm -rf /tmp/tmp.*`, #821). What a pattern argument is instead settled by
+ * *position*: `PATTERN_FIRST_COMMANDS` in `token-collection.ts` skips a
+ * pattern-first command's inline pattern positional at collection time.
  *
  * Both `classifyTokenAsPathCandidate` and `classifyTokenAsRuleCandidate` recognize
  * Windows drive-letter absolute paths (`C:/…`, `C:\…`) unconditionally on all
@@ -106,8 +114,8 @@ export function classifyTokenAsRuleCandidate(
  * *shape* name a path at all?
  *
  * It runs only the shared `rejectNonPathToken` prelude, so a flag,
- * env-assignment, URL, `@scope` token, or regex-shaped token is never a
- * candidate. Everything else is returned for the caller to probe.
+ * env-assignment, URL, or `@scope` token is never a candidate. Everything else
+ * is returned for the caller to probe.
  *
  * Deliberately consults no policy: candidacy is settled by the filesystem and
  * the decision by the ruleset, which keeps this module a pure shape function
@@ -138,18 +146,13 @@ const WINDOWS_DRIVE_PATH_PATTERN = /^[a-zA-Z]:[/\\]/;
 const URL_PATTERN = /^[a-z][a-z0-9+.-]*:\/\//i;
 
 /**
- * Regex metacharacter sequences that are never found in real filesystem paths.
- * If a token contains any of these, it is almost certainly a regex pattern
- * (e.g. a grep argument) rather than a path.
- */
-const REGEX_METACHAR_PATTERN = /\.\*|\.\+|\\\||\\\(|\\\)|\[.*?\]|\^\//;
-
-/**
  * Shared rejection prelude: returns `true` when a token can never be a
  * filesystem path, regardless of which classifier is asking.
  *
  * Rejects: empty tokens, flags (leading `-`), env assignments (`FOO=/bar`),
- * URLs, `@scope/package` patterns, and regex metacharacter sequences.
+ * URLs, and `@scope/package` patterns. Each rules a token out by syntax; a
+ * glob or regex metacharacter does not, since the two are indistinguishable
+ * and the shell expands the former into real paths (#821).
  *
  * A bare `/` (or `//`, `///`) is NOT rejected: it denotes the filesystem root,
  * a deliberate external-directory access (`find /`, `ls /`), so it must reach
@@ -171,8 +174,6 @@ function rejectNonPathToken(token: string): boolean {
   // @scope/package patterns (npm scoped packages) — but @/ is allowed through
   // since it looks like an absolute-rooted path, not an npm scope.
   if (token.startsWith("@") && !token.startsWith("@/")) return true;
-
-  if (REGEX_METACHAR_PATTERN.test(token)) return true;
 
   return false;
 }
