@@ -451,7 +451,7 @@ describe("embedded --opt=value extraction (#645)", () => {
     expect(await tokensOf("cat --opt=/tmp/a=b")).toContain("/tmp/a=b");
   });
 
-  describe("flag-role blindness — accepted residual (#823)", () => {
+  describe("long-form flags of a pattern-first command — accepted residual (#823)", () => {
     it("emits a pattern-first command's embedded pattern value", async () => {
       // `--regexp=` is grep's long form of `-e`, and `--expression=` is sed's:
       // neither names a file. The split runs ahead of the pattern-first walker
@@ -473,6 +473,28 @@ describe("embedded --opt=value extraction (#645)", () => {
       // `=`-embedded spelling escapes.
       expect(await tokensOf("grep -e /etc/passwd file.txt")).not.toContain(
         "/etc/passwd",
+      );
+    });
+
+    it("drops the real file operand behind an unrecognized long flag", async () => {
+      // The severe half of the same root cause: `--regexp=` never sets
+      // `hasExplicitScript`, so the walker still expects an inline pattern and
+      // eats `/etc/passwd` as that positional — a fail-open the path surfaces
+      // never see. Pinned as current behavior; the fix is #823.
+      expect(
+        await tokensOf("grep --regexp=harmless /etc/passwd"),
+      ).not.toContain("/etc/passwd");
+      expect(
+        await tokensOf("sed --expression=s/a/b/ /etc/hosts"),
+      ).not.toContain("/etc/hosts");
+    });
+
+    it("keeps the operand when the same flag is spelled short", async () => {
+      expect(await tokensOf("grep -e harmless /etc/passwd")).toContain(
+        "/etc/passwd",
+      );
+      expect(await tokensOf("sed -e s/a/b/ /etc/hosts")).toContain(
+        "/etc/hosts",
       );
     });
   });

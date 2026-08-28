@@ -1031,9 +1031,9 @@ No decline, so the regular improvement rotation continues.
   No Phase 14 step names `access-intent/bash/token-classification.ts`, and the fix is a prelude deletion that ships on its own release.
 - [#822] — filed by [#821]'s planning; deferred to a later phase with recorded rationale.
   Gating a glob token by its expansions rather than its literal text is ADR 0009 projection completeness, and it belongs beside the sandbox seam ([#802]) and [#686] in Phase 15 — a sandbox would subsume static expansion, so building the expansion mechanism ahead of that seam risks replacing it immediately.
-- [#823] — filed by [#821]'s pre-completion review; deferred to a later phase with recorded rationale.
-  An `=`-embedded pattern flag (`grep --regexp=/etc/passwd`) is split without flag-role awareness and projected as a path operand, a false positive predating [#821].
-  It is the same bash-projection family as [#822], and Phase 15 already carries the bash-surface slices ([#609], [#804]) that decide where per-command option semantics should live.
+- [#823] — filed by [#821]'s pre-completion review; out of scope for the roadmap and fixed independently, next (explicit user decision).
+  Its first framing as a false positive was wrong: a long-form pattern flag also stops the pattern-first walker from learning the script was supplied, so it eats the command's first real operand and `grep --regexp=harmless /etc/passwd` reaches no path surface — a fail-open predating [#821] and untouched by it.
+  Recorded here rather than adopted as a step because it is an ordinary bug against `token-collection.ts`, not part of the capability axis; the initial deferral was revised once the bypass half was measured.
 - [#735] scenario 2 and [#722] — unchanged from Phase 13: a parent whose turn is occupied stays with the [#722] diagnosis.
 - [#762] — out of scope: the `pkg:pi-permission-system` label is contextual and the body targets `pi-autoformat`'s own config-path resolution.
 - [#780] — deferred: two ADRs recording the conservative-defaults and outbound-bridge boundaries; documentation work with no dependency on this phase, and the phase's ADR budget is already spent on ADR 0013's implementation.
