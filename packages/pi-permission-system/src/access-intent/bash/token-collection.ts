@@ -388,16 +388,22 @@ function collectPatternCommandTokens(
     const isArgNode = ARG_NODE_TYPES.has(child.type);
     const text = resolveNodeText(child);
 
-    // Handle the argument a previous flag consumed. The discharge is gated on
-    // ARG_NODE_TYPES, so a `number`/expansion/substitution argument carries the
-    // consumption onto the next word instead — see #823.
-    if (pendingConsumption !== null && isArgNode) {
-      const discharge = dischargePendingConsumption(
-        pendingConsumption,
-        text,
-        effect,
-      );
+    // Handle the argument a previous flag consumed. The consumption discharges
+    // on whatever node type follows, not only on an ARG_NODE_TYPES one: a bare
+    // number (`-A 3`), an expansion (`-A $N`), and a substitution
+    // (`-A $(echo 3)`) are all this flag's argument, and carrying the pending
+    // skip past them lands it on the *pattern* — shifting the positional count
+    // by one and eating the command's real file operand (#823).
+    if (pendingConsumption !== null) {
+      const consumption = pendingConsumption;
       pendingConsumption = null;
+      if (!isArgNode) {
+        // Contributes no operand text of its own, but may host a nested
+        // execution whose operands are candidates (#741).
+        tokens.push(...collectPathCandidateTokens(child));
+        continue;
+      }
+      const discharge = dischargePendingConsumption(consumption, text, effect);
       if (discharge.token) tokens.push(discharge.token);
       if (discharge.consumed) continue;
     }

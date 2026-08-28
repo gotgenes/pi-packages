@@ -199,6 +199,70 @@ describe("collectCommandTokens — pattern-first commands", () => {
       tree.delete();
     }
   });
+
+  describe("a consumed flag argument, whatever node type it is (#823)", () => {
+    async function tokensOf(cmd: string): Promise<string[]> {
+      const { node, tree } = await parseCommandNode(cmd);
+      try {
+        return commandTokens(node);
+      } finally {
+        tree.delete();
+      }
+    }
+
+    // tree-sitter-bash types a bare number as `number`, which is not in
+    // ARG_NODE_TYPES. Discharging the consumption only on an argument node let
+    // the pending skip land on the *pattern* instead, shifting the positional
+    // count by one and eating the command's real file operand.
+    it.each([
+      "grep -A 3 pattern /etc/passwd",
+      "grep -B 2 pattern /etc/passwd",
+      "grep -C 4 pattern /etc/passwd",
+      "grep -m 5 pattern /etc/passwd",
+      "rg -C 10 pattern /etc/passwd",
+    ])("collects the file operand of %s", async (command) => {
+      expect(await tokensOf(command)).toEqual(["/etc/passwd"]);
+    });
+
+    it("collects the file operand past a variable-expansion argument", async () => {
+      expect(await tokensOf("grep -A $N pattern /etc/passwd")).toEqual([
+        "/etc/passwd",
+      ]);
+      expect(await tokensOf("grep -A ${N} pattern /etc/passwd")).toEqual([
+        "/etc/passwd",
+      ]);
+    });
+
+    it("collects the file operand past a command-substitution argument", async () => {
+      expect(await tokensOf("grep -A $(echo 3) pattern /etc/passwd")).toEqual([
+        "/etc/passwd",
+      ]);
+    });
+
+    it("still projects the operands of a command hosted in a consumed argument", async () => {
+      // The substitution really runs, so its own command is gated too (#741
+      // positional invariance) — discharging the consumption must not stop the
+      // walk from descending into it.
+      expect(
+        await tokensOf("grep -A $(cat /etc/shadow) pattern /etc/passwd"),
+      ).toEqual(["/etc/shadow", "/etc/passwd"]);
+    });
+
+    it("collects a file-consuming flag's nested execution operands", async () => {
+      // `-f` cannot extract a path from a substitution, but the command inside
+      // it is still gated, and `-f` still marks the script supplied.
+      expect(await tokensOf("grep -f $(echo x) /etc/passwd")).toEqual([
+        "x",
+        "/etc/passwd",
+      ]);
+    });
+
+    it("collects the file operand of sd past a numeric argument", async () => {
+      expect(await tokensOf("sd -n 3 find replace /etc/hosts")).toEqual([
+        "/etc/hosts",
+      ]);
+    });
+  });
 });
 
 // ── collectCommandTokens — generic commands ───────────────────────────────────
@@ -492,19 +556,6 @@ describe("embedded --opt=value extraction (#645)", () => {
     it("drops the real file operand behind a glued short flag", async () => {
       // `-epattern` is valid getopt syntax that fails the set's exact match.
       expect(await tokensOf("grep -epattern /etc/passwd")).not.toContain(
-        "/etc/passwd",
-      );
-    });
-
-    it("drops the real file operand behind a spaced numeric flag argument", async () => {
-      // tree-sitter types a bare number as `number`, which is not in
-      // ARG_NODE_TYPES, so the pending skip never discharges on it and lands on
-      // the pattern instead — shifting the positional count by one. This is the
-      // everyday spelling of -A/-B/-C/-m.
-      expect(await tokensOf("grep -A 3 pattern /etc/passwd")).not.toContain(
-        "/etc/passwd",
-      );
-      expect(await tokensOf("rg -C 10 pattern /etc/passwd")).not.toContain(
         "/etc/passwd",
       );
     });
