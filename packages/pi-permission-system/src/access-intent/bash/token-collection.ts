@@ -276,6 +276,11 @@ type PatternFlagRole =
    * leaving the file operand to be skipped as the inline pattern — a write
    * target that reaches no path surface. The argument's own emptiness decides
    * it, so the walk needs no knowledge of which sed is installed (#823).
+   *
+   * BSD also accepts a separate *non-empty* suffix (`sed -i bak 's/a/b/' f`),
+   * which this rule declines: the suffix then spends the pattern positional
+   * and the script surfaces as a candidate. The file operand still survives,
+   * so the residual is on ADR 0009's recoverable side.
    */
   | "suffix";
 
@@ -300,6 +305,13 @@ const GREP_FLAGS = new Map<string, PatternFlagRole>([
   ["-B", "value"],
   ["--before-context", "value"],
   ["-C", "value"],
+  // `--context` is an *optional*-argument long option in both BSD and GNU grep
+  // (`-C[NUM]`'s history), so `grep --context 2 pat f` does not consume the
+  // `2` the way `--after-context 2` does. The entry is listed for the
+  // `--context=2` spelling, which does carry a value; the separated spelling
+  // projects identically listed or not, because its argument is always a
+  // number and a number spends a positional either way (measured). Do not read
+  // this row as a claim that the separated form consumes.
   ["--context", "value"],
   ["-m", "value"],
   ["--max-count", "value"],

@@ -35,6 +35,11 @@ Four other spellings left the walker still expecting an inline pattern, so it sk
 The table therefore carries the long and glued forms of the flags it already lists, and the consumption discharges on whatever node follows.
 This is a bounded amendment, not the per-command option table rejected below: the set of *flags* is unchanged, only their spellings are complete.
 
+The same fix closes a fifth spelling with no flag in it at all, found by re-deriving the fourth.
+The pattern positional was spent only by a token the parser types as an argument, so a **computed or numeric pattern** passed unseen and the slot was spent on the command's real operand instead: `grep 42 /etc/passwd`, `grep $PATTERN /etc/passwd`, and `rg 3 /etc/passwd` reached no surface at all.
+What spends the slot is one word the shell passes, whatever node type it wears — the same correction as the discharge above, one level up.
+A redirect hosted on the `command` node (a herestring) is the one exclusion, and it is deliberately the narrow side: miscounting an argument as a redirect drops an operand, while the reverse only over-surfaces.
+
 Which spellings may be listed follows from the direction of failure, and the rule is the durable part:
 
 > **Under**-listing a consuming flag over-surfaces; **over**-listing drops an operand.
@@ -121,6 +126,10 @@ These are **accepted residuals**, not open bugs:
 - **A pattern-first flag spelling the table does not name** — an unlisted argument-consuming flag (`rg --pre CMD`), a GNU long-option abbreviation (`grep --reg=x`), a cluster whose argument-taking short flag is not first (`grep -ie pattern`), and a quoted glued value (`rg -g'!docs'`), which parses as a `concatenation` rather than a `word` and so never reaches flag detection.
   Each of these spends the pattern positional on the wrong token, which **over-surfaces** — the last operand still reaches the surfaces — so all four sit on the recoverable side of the layering principle below.
   Widening flag detection to quoted tokens is deliberately declined: it would reclassify a quoted leading-`-` *pattern* as a flag and drop the operand instead, trading a recoverable failure for an unrecoverable one.
+- **An optional-argument flag's separated spelling.**
+  Two flags in the table take their argument optionally rather than mandatorily, and a long option declared that way never consumes a separate `argv` at all: `grep --context 2` does not consume the `2` the way `--after-context 2` does, and BSD `sed -i bak` accepts a separate non-empty suffix the `suffix` role declines.
+  Both spend the pattern positional on the wrong token and both **over-surface**; neither drops an operand, because a numeric or computed argument spends a positional whether or not a flag claimed it.
+  The `--context` row is kept for its `=`-embedded spelling and carries a comment saying so — the row is not evidence that the separated form consumes, which is the reading the rule above would otherwise invite.
 - **Glob-filter option values** (`--include=`, `--exclude=`, `--exclude-dir=`) — their values are split like any unrecognized option's and reach the surfaces on their own shape, so `grep --exclude-dir=node_modules` contributes a `node_modules` candidate.
   This over-surfaces and is left alone rather than given table entries ([#823]); an unmatched candidate is unrestricted by the universal-fallback exclusion above.
 - **Computed paths** other than the plain `HOME`/`PWD` references above — any other `$VAR`, a command substitution (`$(cmd)`), an operator-bearing expansion (`${HOME:-/tmp}`, `${#HOME}`), and a variable reached through an assignment (`CURRENT="$HOME"; ls "$CURRENT"`).
@@ -197,7 +206,8 @@ Cost is ~0.04 ms p95 per command, ~19% of the already-paid tree-sitter parse.
 - [#823] is the fourth report triaged this way, and it landed **inside**: the guarantee held for a pattern-first command's short flag spellings and failed for the long, `=`-embedded, and glued forms of the *same* flags — [#694]'s shape once more, this time across a flag's own synonyms.
   Its severity is the reverse of [#821]'s: what was dropped is the command's real **operand**, not a pattern, so `grep -A 3 pattern /etc/passwd` and `sed -i 's/a/b/' /etc/hosts` reached no surface at all.
   Measured over 4057 deduplicated real bash commands, closing it changes the external set for **1** (a true positive, gaining a token) and the rule-candidate set for **3**, with **0** tokens lost anywhere — two of the three recover operands and the third correctly stops emitting `rg --glob` filter values as paths.
-  The GNU-only spellings are absent from that corpus (macOS traffic), so `sed -i 's/…/'` and `--in-place=` are covered by hand-written cases instead.
+  The GNU-only spellings are absent from that corpus (macOS traffic), so `sed -i 's/…/'` and `--in-place=` are covered by hand-written cases instead, as is the computed-pattern spelling — closing it changes **no** projection over the same 4057 commands.
+  Two of the residuals above were found by the pre-completion review and by re-deriving its own finding, not by the corpus: a measurement over real traffic prices a change, and does not enumerate a mechanism's inputs.
 - The [#509] promotion thread is deleted: `PathRuleTokenMatcher`, `PermissionManager.getPromotablePathTokenMatcher`, and the five-layer parameter thread from manager to resolver.
   The classifier is once again pure and policy-free.
 - `PathNormalizer` gains `entryExists`, keeping the filesystem edge in the same object that owns canonicalization; the classifiers stay pure shape functions.
