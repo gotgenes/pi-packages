@@ -1,15 +1,30 @@
 ---
 status: accepted
 date: 2026-07-24
+amended: 2026-08-28
 ---
 
 # 0009 — The bash path projection is a completeness contract, not a best-effort heuristic
 
 ## Status
 
-Accepted.
+Accepted, as amended 2026-08-28.
 This decision states the contract the bash path projection upholds, and settles how a "the gate missed my path" report is triaged.
 It is the framing for [#645], which closes two gaps the contract names as in-scope; it composes with `docs/decisions/0003-git-bash-posix-path-semantics.md` (win32 token shapes) and `docs/decisions/0007-model-judge-authorizer-chain-adr.md` (the judge that absorbs false positives).
+
+### Amendment, 2026-08-28 — glob metacharacters are shell syntax, not regex evidence
+
+The original record listed "a regex" among the shapes that put a token in the *definitely not a path* branch, and the implementation read that as a character test: any token containing `.*`, `.+`, `\|`, `\(`, `\)`, `[...]`, or `^/` was dropped in the shared prelude, ahead of every shape classifier.
+
+A shell bracket glob and a regex character class are spelled identically, so no character test can separate them — and the shell **expands** the glob into real filesystem paths.
+The test therefore collapsed a *definitely a path* token into *definitely not*, which is the silent fail-open this record exists to forbid: `cat /etc/[p]asswd` and `rm -rf /tmp/tmp.*` reached no gate at all ([#821]).
+
+The amendment removes the regex shape from the *definitely not a path* branch.
+What a pattern argument is is settled by **position**, not spelling: `PATTERN_FIRST_COMMANDS` skips a pattern-first command's inline pattern positional at collection time, which is where the knowledge that `grep`'s first operand is a pattern belongs.
+Position is readable from the parse tree; intent is not.
+
+A glob-bearing token is gated by its **literal** text, exactly as `?` and `*` tokens always were: the boundary decision resolves the literal against the effective working directory, so a glob naming somewhere outside the tree prompts.
+Gating it by what it *expands to* is a separate mechanism, deferred as a residual below ([#822]).
 
 ## Context
 
@@ -28,7 +43,8 @@ That recurrence is the signal worth acting on: the reports are not independent b
 The structural cause is that token classification was **binary** — a token is a path candidate or it is not — while the domain is **three-valued**:
 
 - **Definitely a path** — the shape says so (leading `/`, `~/`, `..`, a separator, a drive letter).
-- **Definitely not a path** — the shape rules it out (a flag, a URL, an env assignment, an `@scope` package, a regex).
+- **Definitely not a path** — the shape rules it out (a flag, a URL, an env assignment, an `@scope` package).
+  A regex was listed here until the 2026-08-28 amendment; it is not decidable from a token's characters, and treating it as such dropped real glob operands.
 - **Unknown** — a bare word (`status`, `id_rsa`, `outside-link`), which may name a file or may be a subcommand, branch, or search pattern.
 
 Binary classification collapses *unknown* into *not a path*, and that collapse is silent and fail-open: an unknown token is dropped before any gate sees it, so a permissive bash rule (`cat *`) decides the call and the `path`/`external_directory` policy never runs.
@@ -86,6 +102,8 @@ These are **accepted residuals**, not open bugs:
   Reading this bullet as sanctioning the latter is what let [#741] persist.
   Where a computed value affects the working directory, the unknown-base machinery already degrades conservatively.
   Two ways to close the assignment case were considered and declined during [#694], measured over 2767 deduplicated real bash commands from the permission review log: same-program literal-assignment dataflow, which reaches **45 (1.6%)** of commands but adds stateful dataflow to the AST walk; and flooring any command carrying an unresolved-expansion path operand to `ask`, which would newly prompt on **194 (7.0%)** — the prompt-firehose outcome this ADR rejects for the bare-token case below.
+- **Glob expansion** — a glob-bearing token is gated by its literal text, never by the set of paths the shell will expand it into.
+  The containment boundary still sees it, because the literal resolves against the effective working directory; an **explicit rule pattern** does not, because it is matched against the token's spelling — `path: {".env": "deny"}` does not match the token `[.]env` ([#822]).
 - **Per-command argument semantics** — which positional argument of `grep`/`git`/`kubectl` is a file.
   `PATTERN_FIRST_COMMANDS` encodes a deliberately small exception for pattern-first commands; generalizing it means shipping and maintaining an option table per tool.
 
@@ -139,6 +157,9 @@ Cost is ~0.04 ms p95 per command, ~19% of the already-paid tree-sitter parse.
 - [#741] is the second report triaged this way, and it landed **inside**: a substitution's operands were projected in argument position but not when the substitution sat in a redirect destination or an interpolating heredoc body, so a guarantee was met inconsistently across positions — the same shape as [#694]'s `$HOME` half.
   The fix names the hosting concept once (`EXECUTION_HOST_TYPES` in `access-intent/bash/nested-execution.ts`), shared by the command surface and the path surface so the two cannot drift on what counts as a nested execution.
   Measured over 2950 deduplicated real bash commands, **0** hosted a substitution in a redirect target and **0** carried an unquoted heredoc with one, so closing it produced no new prompting on realistic traffic.
+- [#821] is the third report triaged this way, and it landed **inside**: the *shape-classified token* guarantee was met inconsistently depending on which metacharacters a token happened to contain, the same shape as [#694]'s `$HOME` half and [#741]'s redirect-hosted operands.
+  Measured over 3995 deduplicated real bash commands, deleting the character test newly surfaces an external path for **2** (both true positives) and adds a `path` rule candidate for **66** (1.65%), all of them `jq` filters, `sed` scripts, and prose strings that a rule must name explicitly to restrict.
+  The heuristic's own motivating commands project identically without it, because `PATTERN_FIRST_COMMANDS` — added after it — already suppresses them.
 - The [#509] promotion thread is deleted: `PathRuleTokenMatcher`, `PermissionManager.getPromotablePathTokenMatcher`, and the five-layer parameter thread from manager to resolver.
   The classifier is once again pure and policy-free.
 - `PathNormalizer` gains `entryExists`, keeping the filesystem edge in the same object that owns canonicalization; the classifiers stay pure shape functions.
@@ -161,3 +182,5 @@ Cost is ~0.04 ms p95 per command, ~19% of the already-paid tree-sitter parse.
 [#694]: https://github.com/gotgenes/pi-packages/issues/694
 [#306]: https://github.com/gotgenes/pi-packages/issues/306
 [#741]: https://github.com/gotgenes/pi-packages/issues/741
+[#821]: https://github.com/gotgenes/pi-packages/issues/821
+[#822]: https://github.com/gotgenes/pi-packages/issues/822
