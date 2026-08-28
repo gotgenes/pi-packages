@@ -496,9 +496,26 @@ function collectPatternCommandTokens(
       if (discharge.consumed) continue;
     }
 
-    // Only process argument-like nodes; recurse into others
-    // (e.g. command_substitution) for nested commands.
+    // A node outside ARG_NODE_TYPES is still one word the shell passes as an
+    // argument (`grep 42 f`, `grep $PATTERN f`, `grep $(cmd) f`), so it spends
+    // a pattern positional even though no reliable operand text can be read
+    // from it. Counting only argument nodes left a numeric or computed pattern
+    // unseen, so the slot was spent on the command's real operand instead and
+    // the operand reached no path surface (#823).
+    //
+    // A redirect hosted on the command node is not an argument and is excluded;
+    // counting it would push the real pattern out as an operand token. The
+    // exclusion is the narrow side on purpose: miscounting an argument as a
+    // redirect drops an operand, while the reverse only over-surfaces.
     if (!isArgNode) {
+      if (
+        !EXECUTION_HOST_TYPES.has(child.type) &&
+        !hasExplicitScript &&
+        positionalsSeen < patternPositionals
+      ) {
+        positionalsSeen++;
+      }
+      // Recurse for nested commands (e.g. command_substitution).
       tokens.push(...collectPathCandidateTokens(child));
       continue;
     }

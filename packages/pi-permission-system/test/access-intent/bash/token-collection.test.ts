@@ -264,6 +264,43 @@ describe("collectCommandTokens — pattern-first commands", () => {
     });
   });
 
+  describe("a pattern positional the parser does not type as an argument (#823)", () => {
+    // The pattern slot is spent by whatever word the shell passes, whatever
+    // node type tree-sitter gives it. Counting only ARG_NODE_TYPES nodes let a
+    // numeric or computed pattern pass unseen, so the slot was spent on the
+    // command's real operand instead and the operand reached no surface.
+    it.each([
+      ["a bare number", "grep 42 /etc/passwd"],
+      ["a variable expansion", "grep $PATTERN /etc/passwd"],
+      ["a braced expansion", "grep ${PATTERN} /etc/passwd"],
+      ["an arithmetic expansion", "grep $((1 + 2)) /etc/passwd"],
+      ["an ANSI-C string", "grep $'x' /etc/passwd"],
+      ["a number under rg", "rg 3 /etc/passwd"],
+    ])("collects the operand past %s", async (_label, command) => {
+      expect(await tokensOf(command)).toEqual(["/etc/passwd"]);
+    });
+
+    it("spends both of sd's pattern positionals on numbers", async () => {
+      expect(await tokensOf("sd 1 2 /etc/hosts")).toEqual(["/etc/hosts"]);
+    });
+
+    it("collects the operand past a substitution pattern, and the nested operand", async () => {
+      expect(await tokensOf("grep $(cat /tmp/p) /etc/passwd")).toEqual([
+        "/tmp/p",
+        "/etc/passwd",
+      ]);
+    });
+
+    it("does not spend the pattern slot on a redirect hosted by the command", async () => {
+      // A herestring hangs off the `command` node like an argument but is a
+      // redirect, so counting it would spend the pattern slot and push the real
+      // pattern out as an operand token.
+      expect(await tokensOf("grep <<< text pattern /etc/passwd")).toEqual([
+        "/etc/passwd",
+      ]);
+    });
+  });
+
   describe("flag spellings a pattern-first command accepts (#823)", () => {
     it.each([
       ["grep --regexp harmless /etc/passwd", ["/etc/passwd"]],
