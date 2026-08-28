@@ -96,10 +96,10 @@ These are **accepted residuals**, not open bugs:
 - **Nonexistent bare write targets** (`touch newfile`, `mv a newfile`) — the probe cannot see a file that does not exist yet.
   Redirect targets, the common creation path, are collected separately and unaffected.
 - **Glued short-option values** (`-f/tmp/x`) — distinguishing a glued value from a cluster of boolean flags (`-rf`) requires per-command option knowledge.
-- **Long-form flags of a pattern-first command** — `PATTERN_FIRST_COMMANDS` lists only short spellings, so `--regexp=`/`--expression=`/`--file=` fall through as ordinary flags.
-  This breaks the contract in **both** directions, and the failing one is a bypass: the walker never learns the script was supplied, so it skips the command's first real operand as the inline pattern and `grep --regexp=harmless /etc/passwd` reaches no path surface at all.
-  In the other direction `collectEmbeddedOptionValues`, which splits `--opt=value` ahead of and independently of the pattern-first walker, emits the pattern itself as a candidate.
-  Both are one root cause with one fix ([#823]); the deleted regex character test masked part of the false-positive half by accident ([#821]).
+- **A pattern-first command's flag bookkeeping** — `collectPatternCommandTokens` tracks "a flag consumed the next argument" and "an inline pattern is still expected" by exact-matching the **short** spellings in `PATTERN_FIRST_COMMANDS`, and discharges the consumption only on an `ARG_NODE_TYPES` node.
+  Three spellings defeat that and each drops the command's real file operand — a bypass, not a false positive: an `=`-embedded long flag (`--regexp=`), a glued short flag (`-epattern`), and a space-separated numeric argument (`-A 3`), which tree-sitter types `number`.
+  In the opposite direction `collectEmbeddedOptionValues`, which splits `--opt=value` ahead of and independently of that walker, emits a pattern flag's value as a candidate.
+  One root cause, one fix ([#823]); the deleted regex character test masked part of the false-positive half by accident ([#821]).
   This is the guarantee gap [#821]'s report belongs to, restated: a *shape-classified token* must reach the surfaces wherever its command puts it.
 - **Computed paths** other than the plain `HOME`/`PWD` references above — any other `$VAR`, a command substitution (`$(cmd)`), an operator-bearing expansion (`${HOME:-/tmp}`, `${#HOME}`), and a variable reached through an assignment (`CURRENT="$HOME"; ls "$CURRENT"`).
   The residual here is the **value the substitution evaluates to** — the filename `> $(cmd)` ultimately writes to is not knowable without running `cmd`.
@@ -165,7 +165,7 @@ Cost is ~0.04 ms p95 per command, ~19% of the already-paid tree-sitter parse.
 - [#821] is the third report triaged this way, and it landed **inside**: the *shape-classified token* guarantee was met inconsistently depending on which metacharacters a token happened to contain, the same shape as [#694]'s `$HOME` half and [#741]'s redirect-hosted operands.
   Measured over 3995 deduplicated real bash commands, deleting the character test newly surfaces an external path for **2** (both true positives) and adds a `path` rule candidate for **66** (1.65%), all of them `jq` filters, `sed` scripts, and prose strings that a rule must name explicitly to restrict.
   The heuristic's own motivating commands project identically without it, because `PATTERN_FIRST_COMMANDS` — added after it — already suppresses them.
-  That subsumption is complete for a pattern-first command's *positional* and *short-flag* pattern arguments, and not for its long-form flags, whose separate defect the character test had been masking in part; it is recorded above as [#823].
+  That subsumption is complete for a pattern-first command's *positional* and *space-separated short-flag* pattern arguments, and not for the flag spellings its walker mis-tracks, whose separate defect the character test had been masking in part; it is recorded above as [#823].
 - The [#509] promotion thread is deleted: `PathRuleTokenMatcher`, `PermissionManager.getPromotablePathTokenMatcher`, and the five-layer parameter thread from manager to resolver.
   The classifier is once again pure and policy-free.
 - `PathNormalizer` gains `entryExists`, keeping the filesystem edge in the same object that owns canonicalization; the classifiers stay pure shape functions.

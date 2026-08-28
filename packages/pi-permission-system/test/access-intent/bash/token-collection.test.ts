@@ -489,12 +489,42 @@ describe("embedded --opt=value extraction (#645)", () => {
       ).not.toContain("/etc/hosts");
     });
 
-    it("keeps the operand when the same flag is spelled short", async () => {
+    it("drops the real file operand behind a glued short flag", async () => {
+      // `-epattern` is valid getopt syntax that fails the set's exact match.
+      expect(await tokensOf("grep -epattern /etc/passwd")).not.toContain(
+        "/etc/passwd",
+      );
+    });
+
+    it("drops the real file operand behind a spaced numeric flag argument", async () => {
+      // tree-sitter types a bare number as `number`, which is not in
+      // ARG_NODE_TYPES, so the pending skip never discharges on it and lands on
+      // the pattern instead — shifting the positional count by one. This is the
+      // everyday spelling of -A/-B/-C/-m.
+      expect(await tokensOf("grep -A 3 pattern /etc/passwd")).not.toContain(
+        "/etc/passwd",
+      );
+      expect(await tokensOf("rg -C 10 pattern /etc/passwd")).not.toContain(
+        "/etc/passwd",
+      );
+    });
+
+    it("keeps the operand for every spelling the walker does track", async () => {
       expect(await tokensOf("grep -e harmless /etc/passwd")).toContain(
         "/etc/passwd",
       );
       expect(await tokensOf("sed -e s/a/b/ /etc/hosts")).toContain(
         "/etc/hosts",
+      );
+      // Glued numeric argument: one token, so no consumption is pending.
+      expect(await tokensOf("grep -A3 pattern /etc/passwd")).toContain(
+        "/etc/passwd",
+      );
+      // Space-separated long form of an arg-consuming flag: unrecognized, so
+      // the following word is skipped as the inline positional anyway and the
+      // operand survives. Pinned so a #823 fix does not regress it.
+      expect(await tokensOf("grep --regexp harmless /etc/passwd")).toContain(
+        "/etc/passwd",
       );
     });
   });
