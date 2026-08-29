@@ -300,6 +300,44 @@ describe("SubagentsServiceAdapter — spawn", () => {
     );
   });
 
+  describe("thinking level", () => {
+    it("throws for an unrecognized level rather than letting the SDK clamp it to off", () => {
+      const svc = new SubagentsServiceAdapter(createManagerStub(), vi.fn(), makeRuntimeStub());
+
+      expect(() => svc.spawn("Explore", "task", { thinkingLevel: "turbo" })).toThrow(
+        'Invalid thinking level "turbo". Valid levels: off, minimal, low, medium, high, xhigh, max.',
+      );
+    });
+
+    it("passes a recognized level through to the manager", () => {
+      const mgr = createManagerStub();
+      const svc = new SubagentsServiceAdapter(mgr, vi.fn(), makeRuntimeStub());
+
+      svc.spawn("Explore", "task", { thinkingLevel: "xhigh" });
+
+      expect(mgr.spawn).toHaveBeenCalledWith(
+        expect.anything(),
+        "Explore",
+        "task",
+        expect.objectContaining({ thinkingLevel: "xhigh" }),
+      );
+    });
+
+    it("leaves the level unset when the caller omits it", () => {
+      const mgr = createManagerStub();
+      const svc = new SubagentsServiceAdapter(mgr, vi.fn(), makeRuntimeStub());
+
+      svc.spawn("Explore", "task");
+
+      expect(mgr.spawn).toHaveBeenCalledWith(
+        expect.anything(),
+        "Explore",
+        "task",
+        expect.objectContaining({ thinkingLevel: undefined }),
+      );
+    });
+  });
+
   it("delegates to manager.spawn with resolved model", () => {
     const resolvedModel = makeModel({ id: "claude-sonnet", provider: "anthropic" });
     const mgr = createManagerStub();

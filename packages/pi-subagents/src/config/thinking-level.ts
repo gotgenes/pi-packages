@@ -40,6 +40,19 @@ export function parseThinkingLevel(value: unknown): SubagentThinkingLevel | unde
 }
 
 /** The message a door reports for a value {@link parseThinkingLevel} rejected. */
-export function thinkingLevelError(value: string): string {
-  return `Invalid thinking level "${value}". Valid levels: ${THINKING_LEVELS.join(", ")}.`;
+export function thinkingLevelError(value: unknown): string {
+  return `Invalid thinking level ${describeRejected(value)}. Valid levels: ${THINKING_LEVELS.join(", ")}.`;
+}
+
+/**
+ * Render a rejected value for an error message.
+ *
+ * The value arrives unvalidated from YAML frontmatter or a tool call, so it may be
+ * any shape at all — anything past a primitive is named by type rather than serialized.
+ */
+function describeRejected(value: unknown): string {
+  if (typeof value === "string") return `"${value}"`;
+  if (value === null) return "null";
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  return `of type ${typeof value}`;
 }

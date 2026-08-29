@@ -180,16 +180,34 @@ Comma entry.`);
     });
   });
 
-  it("passes through thinking level as-is (no validation)", () => {
-    writeAgent("anythink", `---
-thinking: turbo
----
+  describe("thinking level", () => {
+    it.each(["off", "minimal", "low", "medium", "high", "xhigh", "max"])(
+      "keeps %s",
+      (level) => {
+        writeAgent("thinker", `---\nthinking: ${level}\n---\n\nA thinker.`);
 
-Any thinking.`);
+        expect(loadCustomAgents(tmpDir).get("thinker")!.thinking).toBe(level);
+      },
+    );
 
-    const result = loadCustomAgents(tmpDir);
-    // Pi validates at session creation — we just pass through
-    expect(result.get("anythink")!.thinking).toBe("turbo");
+    /**
+     * Pi does not reject an unrecognized level — clampThinkingLevel misses it in
+     * its ordered table and falls to the first supported level, which is always
+     * "off". Passing it through would silently disable thinking for an agent whose
+     * author asked for more of it, so the loader drops the field and the agent
+     * inherits the parent's level instead (Refs #834).
+     */
+    it("drops an unrecognized level rather than letting the SDK clamp it to off", () => {
+      writeAgent("anythink", `---\nthinking: turbo\n---\n\nAny thinking.`);
+
+      expect(loadCustomAgents(tmpDir).get("anythink")!.thinking).toBeUndefined();
+    });
+
+    it("drops a level that differs only in case", () => {
+      writeAgent("shouty", `---\nthinking: HIGH\n---\n\nShouting.`);
+
+      expect(loadCustomAgents(tmpDir).get("shouty")!.thinking).toBeUndefined();
+    });
   });
 
   it("accepts max_turns: 0 as unlimited", () => {

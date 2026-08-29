@@ -64,4 +64,16 @@ describe("thinkingLevelError", () => {
       'Invalid thinking level "bananas". Valid levels: off, minimal, low, medium, high, xhigh, max.',
     );
   });
+
+  it("renders a primitive verbatim", () => {
+    expect(thinkingLevelError(5)).toBe(
+      "Invalid thinking level 5. Valid levels: off, minimal, low, medium, high, xhigh, max.",
+    );
+  });
+
+  it("names a non-primitive by type rather than serializing it", () => {
+    expect(thinkingLevelError({ level: "high" })).toBe(
+      "Invalid thinking level of type object. Valid levels: off, minimal, low, medium, high, xhigh, max.",
+    );
+  });
 });

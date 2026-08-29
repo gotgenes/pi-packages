@@ -6,6 +6,7 @@
  */
 
 import type { Model } from "@earendil-works/pi-ai";
+import { parseThinkingLevel, thinkingLevelError } from "#src/config/thinking-level";
 import type { ParentSnapshot } from "#src/lifecycle/parent-snapshot";
 import type { AgentSpawnConfig } from "#src/lifecycle/subagent-manager";
 import type { WorkspaceProvider } from "#src/lifecycle/workspace";
@@ -60,9 +61,7 @@ export class SubagentsServiceAdapter implements SubagentsService {
       // Subagent.toolCallId reporting undefined there is the truth.
       parentSession: { parentSessionFile, parentSessionId },
       maxTurns: options?.maxTurns,
-      // SpawnOptions widens this to `string` for the public surface; the tool door
-      // casts the same way in resolveAgentInvocationConfig. Neither door validates — see #834.
-      thinkingLevel: options?.thinkingLevel as ThinkingLevel | undefined,
+      thinkingLevel: this.resolveThinkingLevel(options?.thinkingLevel),
       inheritContext: options?.inheritContext,
       bypassQueue: options?.bypassQueue,
       // A caller that names `foreground` has committed; one that omits it has
@@ -107,6 +106,20 @@ export class SubagentsServiceAdapter implements SubagentsService {
 
   registerWorkspaceProvider(provider: WorkspaceProvider): () => void {
     return this.manager.registerWorkspaceProvider(provider);
+  }
+
+  /**
+   * Narrow an optional thinking-level override, rejecting one the SDK does not know.
+   *
+   * `SpawnOptions` widens the field to `string` for the public surface, and Pi clamps an
+   * unrecognized level down to `off` rather than reporting it — so a typo would silently
+   * disable thinking in the child. Throwing matches the adapter's other input failures.
+   */
+  private resolveThinkingLevel(input: string | undefined): ThinkingLevel | undefined {
+    if (input == null) return undefined;
+    const level = parseThinkingLevel(input);
+    if (level === undefined) throw new Error(thinkingLevelError(input));
+    return level;
   }
 
   /** Resolve an optional model-string override against the current session's registry. */

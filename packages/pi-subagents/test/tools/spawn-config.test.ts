@@ -221,6 +221,32 @@ describe("resolveSpawnConfig — detailBase and tags", () => {
   });
 });
 
+describe("resolveSpawnConfig — thinking level", () => {
+  it("returns an error naming the valid levels for an unrecognized thinking param", () => {
+    const result = resolveSpawnConfig(
+      { subagent_type: "Explore", prompt: "test", description: "d", thinking: "turbo" },
+      testRegistry,
+      makeModelInfo(),
+      defaultSettings,
+    );
+    expect(result).toEqual({
+      error:
+        'Invalid thinking level "turbo". Valid levels: off, minimal, low, medium, high, xhigh, max.',
+    });
+  });
+
+  it("resolves a recognized thinking param", () => {
+    const result = resolveSpawnConfig(
+      { subagent_type: "Explore", prompt: "test", description: "d", thinking: "xhigh" },
+      testRegistry,
+      makeModelInfo(),
+      defaultSettings,
+    );
+    if ("error" in result) throw new Error(result.error);
+    expect(result.execution.thinking).toBe("xhigh");
+  });
+});
+
 describe("resolveSpawnConfig — notes", () => {
   it("carries no note for a known agent type", () => {
     const result = resolveSpawnConfig(
