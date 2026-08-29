@@ -127,6 +127,10 @@ function makeRuntimeStub(override: Partial<ServiceRuntimeLike> = {}): ServiceRun
   return {
     currentCtx: makeStubCtx(),
     buildSnapshot: vi.fn((_: boolean): ParentSnapshot => STUB_SNAPSHOT),
+    getSessionInfo: vi.fn(() => ({
+      parentSessionFile: "/sessions/parent.jsonl",
+      parentSessionId: "parent-session-123",
+    })),
     ...override,
   };
 }
@@ -261,6 +265,33 @@ describe("SubagentsServiceAdapter — spawn", () => {
         maxTurns: 5,
       }),
     );
+  });
+
+  /**
+   * An SDK spawn has no tool call, so `toolCallId` is legitimately absent — but
+   * the session identity is not, and permission forwarding routes on
+   * `parentSessionId`. Asserted with toEqual rather than objectContaining so a
+   * stray toolCallId would fail rather than be absorbed.
+   */
+  describe("parent session", () => {
+    it("passes the runtime's session identity, without a toolCallId", () => {
+      const mgr = createManagerStub();
+      const svc = new SubagentsServiceAdapter(mgr, vi.fn(), makeRuntimeStub());
+
+      svc.spawn("Explore", "check TODOs");
+
+      expect(mgr.spawn).toHaveBeenCalledWith(
+        expect.anything(), // snapshot
+        "Explore",
+        "check TODOs",
+        expect.objectContaining({
+          parentSession: {
+            parentSessionFile: "/sessions/parent.jsonl",
+            parentSessionId: "parent-session-123",
+          },
+        }),
+      );
+    });
   });
 
   /**

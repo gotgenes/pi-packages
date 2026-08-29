@@ -31,6 +31,8 @@ export interface SubagentManagerLike {
 export interface ServiceRuntimeLike {
   readonly currentCtx: SessionContext | undefined;
   buildSnapshot(inheritContext: boolean): ParentSnapshot;
+  /** Parent session identity, so an SDK-spawned child nests under its parent. */
+  getSessionInfo(): { parentSessionFile: string; parentSessionId: string };
 }
 
 /** Adapter that wraps SubagentManager to satisfy SubagentsService. */
@@ -50,9 +52,13 @@ export class SubagentsServiceAdapter implements SubagentsService {
     const description = options?.description ?? prompt.slice(0, 80);
 
     const snapshot = this.runtime.buildSnapshot(options?.inheritContext ?? false);
+    const { parentSessionFile, parentSessionId } = this.runtime.getSessionInfo();
     return this.manager.spawn(snapshot, type, prompt, {
       description,
       model,
+      // No toolCallId — an SDK spawn has no originating tool call, and
+      // Subagent.toolCallId reporting undefined there is the truth.
+      parentSession: { parentSessionFile, parentSessionId },
       maxTurns: options?.maxTurns,
       // SpawnOptions widens this to `string` for the public surface; the tool door
       // casts the same way in resolveAgentInvocationConfig. Neither door validates — see #834.
