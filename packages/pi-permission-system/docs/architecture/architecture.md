@@ -995,6 +995,8 @@ No decline, so the regular improvement rotation continues.
 
 #### Open-issue sweep dispositions
 
+- [#837] — filed by the [#724] retrospective (a `pi-subagents` issue); adopted as Step 13 by operator decision. 62 of 147 `src` files sit at the package root while the directories most of them belong in already exist, and past phases reorganized inconsistently because no target layout was ever written down.
+  Folded in here rather than deferred because the phase already carries disruptive work; the move itself is non-breaking, since `service.ts` is the only path-reachable export and nothing imports a deep path.
 - [#806] and [#807] — filed for Steps 1 and 2, the two staging slices with no pre-existing issue.
 - [#808] — filed by Step 1's planning; adopted as Step 9.
   Step 1 converts `permissionSchema` to a named-property object so the four directional keys carry their own documentation, which leaves the five surfaces people actually write anonymous under `additionalProperties`; closing that asymmetry is a peer-sized piece of the same config-schema surface.
@@ -1287,6 +1289,21 @@ The first is a fail-open in the one direction ADR 0013 §10 is careful about eve
 
 Release: independent
 
+#### Step 13: Apply the package's own directory vocabulary to the 62 root files ([#837])
+
+**Cause:** the package has an organizing vocabulary (`authority/`, `handlers/gates/`, `access-intent/bash/`, `presentation/`, `path/`) and stopped applying it — 42% of `src` files sit at the root, several with an unambiguous existing home (`path-normalizer`, `expand-home`, `normalize` → `path/`; `bash-arity`, `bash-advisory-check` → `access-intent/bash/`).
+Past phases reorganized periodically but inconsistently and then lapsed, because the target layout was re-derived each time rather than recorded.
+
+- **Smell:** Category C (a stated structure the code does not follow).
+- **Target:** `packages/pi-permission-system/src/` — one-shot bulk move, plus the resulting layout written into this document's module tree so later work conforms rather than re-derives.
+- **Constraint:** non-breaking (`refactor:`, not `refactor!:`) — `exports` declares only `.` → `src/service.ts`, and no deep import of this package exists in the repo; the `exports` map moves with the file if `service.ts` relocates.
+  Intra-package imports use the eslint-enforced `#src/` alias, so every move is a mechanical specifier rewrite `tsc` verifies exhaustively.
+  Needs a quiet trunk — file moves conflict badly with peer worktree sessions.
+- **Outcome:** root-level `src/*.ts` drops from 62 to the entry points that belong there, the partition is documented in the module tree, and `pnpm run check` plus the full suite pass unchanged.
+- **Impact 3 / Risk 2 / Priority 12.**
+
+Release: independent
+
 ### Step dependency diagram
 
 ```mermaid
@@ -1302,6 +1319,7 @@ flowchart TD
     S10["Step 10 (#810): per-pattern approval surfaces"]
     S11["Step 11 (#813): user-chosen grant width"]
     S3 --> S12["Step 12 (#814): unresolvable redirect proves nothing"]
+    S13["Step 13 (#837): apply the directory vocabulary"]
     S7 -.-> S8
     S1 --> S9
     S2 --> S10
@@ -1427,5 +1445,7 @@ Each phase's findings, numbered plan, dependency diagram, and health metrics are
 [#814]: https://github.com/gotgenes/pi-packages/issues/814
 [#821]: https://github.com/gotgenes/pi-packages/issues/821
 [#822]: https://github.com/gotgenes/pi-packages/issues/822
+[#724]: https://github.com/gotgenes/pi-packages/issues/724
 [#823]: https://github.com/gotgenes/pi-packages/issues/823
+[#837]: https://github.com/gotgenes/pi-packages/issues/837
 [ADR-0002]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-subagents/docs/decisions/0002-extensions-on-a-minimal-core.md
