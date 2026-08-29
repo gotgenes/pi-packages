@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [20.0.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v20.0.0...pi-subagents-v20.0.1) (2026-08-29)
+
+
+### Bug Fixes
+
+* **pi-subagents:** enforce disabled-agent rejection for SDK-spawned agents ([7b202e9](https://github.com/gotgenes/pi-packages/commit/7b202e9bc13dd930db3fa268cb37050364b517e0)), closes [#724](https://github.com/gotgenes/pi-packages/issues/724)
+* **pi-subagents:** scope SDK-spawned child sessions to their parent ([0731bad](https://github.com/gotgenes/pi-packages/commit/0731badaf894ce79aecd8a954a9eadfc741ff2ea)), closes [#724](https://github.com/gotgenes/pi-packages/issues/724)
+* **pi-subagents:** show SDK-spawned background agents in the widget ([8e19739](https://github.com/gotgenes/pi-packages/commit/8e197396399c15ad44c75a700a88f8676717613e)), closes [#724](https://github.com/gotgenes/pi-packages/issues/724)
+
+
+### Documentation
+
+* **pi-subagents:** document the SDK spawn contract and the manager's registry edge ([4bbd4b5](https://github.com/gotgenes/pi-packages/commit/4bbd4b583d15c788321198cd31e780ecf7d8dd19)), closes [#724](https://github.com/gotgenes/pi-packages/issues/724)
+
 ## [20.0.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v19.3.5...pi-subagents-v20.0.0) (2026-08-29)
 
 
