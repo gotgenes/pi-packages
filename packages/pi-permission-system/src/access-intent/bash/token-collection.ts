@@ -2,8 +2,7 @@ import { basename } from "node:path";
 import { proveCommandEffect } from "#src/access-intent/bash/command-effects";
 import {
   EXECUTION_HOST_TYPES,
-  forEachNestedExecution,
-  NESTED_EXECUTION_CONTEXTS,
+  forEachExecutionIn,
 } from "#src/access-intent/bash/nested-execution";
 import {
   ARG_NODE_TYPES,
@@ -129,15 +128,12 @@ export function collectRedirectTokens(node: TSNode): PathToken[] {
  * its prose stays out of the path surface entirely.
  *
  * `node` may be a context outright (`> $(cmd)`) or merely contain one
- * (`> ${DIR}/$(cmd)`); `forEachNestedExecution` searches strictly within a
- * subtree, so the first case is checked here.
+ * (`> ${DIR}/$(cmd)`), so the traversal is the root-inclusive
+ * `forEachExecutionIn`.
  */
 function collectHostedExecutionTokens(node: TSNode): PathToken[] {
-  if (NESTED_EXECUTION_CONTEXTS.has(node.type)) {
-    return collectPathCandidateTokens(node);
-  }
   const tokens: PathToken[] = [];
-  forEachNestedExecution(node, (contextNode) => {
+  forEachExecutionIn(node, (contextNode) => {
     tokens.push(...collectPathCandidateTokens(contextNode));
   });
   return tokens;

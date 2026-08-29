@@ -48,6 +48,24 @@ export const EXECUTION_HOST_TYPES: ReadonlySet<string> = new Set([
 ]);
 
 /**
+ * Visit every execution context `node` *is or contains*, in source order.
+ *
+ * The root-inclusive question, and the one nearly every consumer asks: a node
+ * handed in can be a substitution outright (`> $(cmd)`) or merely host one
+ * (`> ${DIR}/$(cmd)`), and both really execute. {@link forEachNestedExecution}
+ * answers the strictly-within question instead, which is what a visitor needs
+ * once it has already decided to treat a context's interior itself.
+ */
+export function forEachExecutionIn(
+  node: TSNode,
+  visit: (contextNode: TSNode, context: BashCommandContext) => void,
+): void {
+  const context = NESTED_EXECUTION_CONTEXTS.get(node.type);
+  if (context) visit(node, context);
+  else forEachNestedExecution(node, visit);
+}
+
+/**
  * Visit every nested execution context in `node`'s subtree, in source order.
  *
  * The walk does not descend *past* a context it finds: `visit` receives the
@@ -58,6 +76,10 @@ export const EXECUTION_HOST_TYPES: ReadonlySet<string> = new Set([
  * A substitution can nest under `command_name` (when the whole command is
  * `$(…)`), under an argument, inside a redirect destination, or inside an
  * interpolating heredoc body, so the entire subtree is searched.
+ *
+ * `node` itself is never visited, however it is typed — use
+ * {@link forEachExecutionIn} when it may *be* a context rather than merely
+ * contain one.
  */
 export function forEachNestedExecution(
   node: TSNode,

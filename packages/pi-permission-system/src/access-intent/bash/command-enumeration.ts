@@ -1,6 +1,6 @@
 import {
   EXECUTION_HOST_TYPES,
-  forEachNestedExecution,
+  forEachExecutionIn,
 } from "#src/access-intent/bash/nested-execution";
 import type { TSNode } from "#src/access-intent/bash/parser";
 import { redirectMayWriteFile } from "#src/access-intent/bash/redirect-analysis";
@@ -298,9 +298,12 @@ function descendCommandChildren(
  * The traversal itself lives in `nested-execution.ts` so the bash path surface
  * shares one definition of what counts as a nested execution (#741); this
  * function supplies the command-surface interpretation of each one found.
+ *
+ * `node` may be a context outright or merely host one, so the traversal is the
+ * root-inclusive `forEachExecutionIn`.
  */
 function collectHostedCommands(node: TSNode, out: BashCommand[]): void {
-  forEachNestedExecution(node, (contextNode, context) => {
+  forEachExecutionIn(node, (contextNode, context) => {
     // A nested execution starts fresh: an enclosing statement's redirect is
     // that statement's, not the substitution's, exactly as #807 attributes a
     // nested command's path tokens to its own command.
