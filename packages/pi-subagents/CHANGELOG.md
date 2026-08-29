@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [20.1.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v20.0.1...pi-subagents-v20.1.0) (2026-08-29)
+
+
+### Features
+
+* **pi-subagents:** report turn count, background mode, turn limit, and transcript path in agent snapshots ([ad59849](https://github.com/gotgenes/pi-packages/commit/ad598497949682b36188eec23a9b44010cec8e20)), closes [#830](https://github.com/gotgenes/pi-packages/issues/830)
+
+
+### Bug Fixes
+
+* **pi-subagents:** stop agent snapshots from aliasing live token totals ([d7278f8](https://github.com/gotgenes/pi-packages/commit/d7278f89b8294f7cf6b95ba77d724fde0fa45914)), closes [#830](https://github.com/gotgenes/pi-packages/issues/830)
+
+
+### Documentation
+
+* **pi-subagents:** document the public agent-snapshot contract ([df6132c](https://github.com/gotgenes/pi-packages/commit/df6132c1f9d3166a79472b5228db914bee3ad3b2)), closes [#830](https://github.com/gotgenes/pi-packages/issues/830)
+
 ## [20.0.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v20.0.0...pi-subagents-v20.0.1) (2026-08-29)
 
 
