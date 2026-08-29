@@ -199,6 +199,7 @@ Then an H1 title (e.g., `# <short descriptive title>`) — required by markdownl
   When the plan removes the mechanism an existing test's comment credits, spike the removal and run that test at planning time — that the test stays green is a measurement, not an argument (Refs #653).
 - **TDD Order** — numbered red→green→verify→commit cycles.
   Each item names the test surface, what's covered, and the suggested commit message (`test:`, `feat:`, `feat!:`, `fix:`, `docs:`).
+  A suggested `feat:`/`fix:` subject names the observable outcome, not the seam it edits — it ships to the changelog verbatim (Refs #724).
   Each item that adds tests also names its **killing mutation**: the one-line change to the code under test that must turn the step's new tests red.
   Write it as an edit a reader could apply ("make `resolveBackgroundMode` return `request.isBackground` unconditionally"), not as a description of intent.
   This is where a test's discriminating power is cheapest to specify — stating it forces you to name the signal that distinguishes the step's two outcomes, which is the check that catches an assertion passing under both (Refs #724).

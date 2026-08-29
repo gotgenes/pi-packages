@@ -177,3 +177,91 @@ Three non-blocking findings, all fixed:
 
 [#665]: https://github.com/gotgenes/pi-packages/issues/665
 [#834]: https://github.com/gotgenes/pi-packages/issues/834
+
+## Stage: Final Retrospective (2026-08-29T18:58:02Z)
+
+### Session summary
+
+Shipped [#724] as `@gotgenes/pi-subagents@20.0.1` — Phase 22's Step 1 — across a single session covering TDD, ship, and this retrospective, with planning in a prior session.
+Seven plan steps plus two unplanned commits landed: an operator-directed restructure of the package's largest test file, and a repo-tooling commit converting two testing near-misses into durable rules.
+The dominant theme across all three stages is that **verification of the verification** paid off repeatedly — mutation on tests, multiset diffing on a mechanical restructure, and an independent reviewer on my own claims each caught something the green suite did not.
+
+### Observations
+
+#### What went well
+
+- **A mechanical restructure was verified as mechanical, and that caught a real loss.**
+  Wrapping 20 flat describes into a nested tree was scripted because this package disables the Biome formatter, so nothing re-indents automatically.
+  Comparing the whitespace-stripped line multiset before and after showed three inter-block comments silently dropped — one of them @daoguademeng's contribution attribution from [#665].
+  Test count was identical and the suite was green both before and after, so neither would have caught it.
+  The technique generalizes to any scripted whole-file transformation.
+- **Mutation per equivalence class, not per file.**
+  Two complementary mutations were needed to validate five background-mode pins: ignoring frontmatter killed the three `default`-request cases and correctly left the two `explicit` ones green.
+  A single mutation would have looked like proof while covering three-fifths of the claims.
+- **Both Tidy-First steps paid off, one beyond its stated purpose.**
+  Step 1 narrowed `SubagentManagerLike.spawn`'s `unknown` options to make a later required field a compile error; it *also* immediately exposed an unrelated pre-existing hole (`SpawnOptions.thinkingLevel` is `string`, unvalidated on both doors), filed as [#834].
+  Step 2's payoff was exactly as predicted — the required `isBackground` broke one construction site instead of six.
+- **Model selection tracked task character across stages.**
+  See `### Diagnostic details`.
+
+#### What caused friction (agent side)
+
+- `instruction-violation` (self-identified, then rationalized away) — `tdd-plan.md` step 9 says every surviving `feat:`/`fix:` changelog line must name a user-observable outcome.
+  I ran the check, observed that all three subjects named mechanisms (`stamp background mode on the subagent record`), and then talked myself out of acting because the rule's only stated remedy is "retype it to `refactor:`" — which was wrong here, since all three genuinely changed behavior.
+  Having no path for "correct type, wrong subject," I recorded it as an observation and moved on.
+  Impact: the `pre-completion-reviewer` independently flagged it, costing a review round-trip and a history-rewriting `git rebase` at ship time — the riskiest operation of the session, run on already-verified commits.
+- `other` — I matched the file's existing convention (17 sibling `describe`s sharing a `SubagentManager —` prefix) rather than the organizing principle, adding three more prefixed siblings.
+  Local precedent beat the better structure, and the `testing` skill's Test organization section did not name prefix repetition as a smell.
+  Impact: user correction mid-implementation, rework of the new blocks, and a 1,288-line restructure commit (`446c6378`).
+- `missing-context` — asserted `status === "running"` to prove foreground resolution without checking that `DEFAULT_MAX_CONCURRENT = 4` lets the limiter admit a background agent immediately, so the signal reads `running` in both branches.
+  Impact: caught pre-commit by its own twin failing, not by review; the block was rewritten to discriminate on `onSubagentCreated`.
+- `missing-context` — arranged a foreground-bypasses-the-queue test across **two** managers, not noticing `createManager` builds a fresh `ConcurrencyLimiter` per manager, so occupying one manager's slot proved nothing about the other.
+  Impact: caught pre-commit during the restructure re-read; rewritten to a single manager with a first-call-only blocking factory.
+- `scope-drift` — when the operator paused for process improvement, I answered about mutation verification (what I was mid-doing) rather than test organization (what they raised).
+  Impact: one `ask_user` round spent on the wrong axis; its answers were still adopted, so no rework, but the operator had to redirect.
+- `missing-context` — used `timeout 600 …`, which macOS does not provide.
+  Impact: one wasted tool call.
+
+#### What caused friction (user side)
+
+- The describe-nesting correction was high-leverage and well-timed — it arrived while the tests were still uncommitted, and the follow-up **"Or maybe they are related"** was the richer half of the signal, since it reframed organization as upstream of correctness rather than as tidiness.
+  Opportunity: leading with the organizing principle ("nest by unit, then scenario") rather than the local symptom ("don't repeat a prefix") would have let me fix my blocks and the surrounding 17 in one pass, instead of my-blocks-first and a whole-file restructure two steps later.
+- The question **"How can we set aside time and effort to take similar actions?"**
+  was a budgeting question, and only half of it is answered.
+  Enforcement now exists (a Verify step in the cycle, a per-step killing mutation in plans, a scout lens), but nothing budgets the *test re-reading* that found the two-manager defect.
+  The standing per-phase audit option was offered and declined, so this is recorded as an open question rather than a proposal.
+
+### Diagnostic details
+
+- **Model-performance correlation** — all three recorded model changes were real, each followed by turns on the new model (verified from inline `[provider/model]` labels in an unfiltered `read_session`, not the `model_change` filter).
+  TDD implementation ran on `claude-opus-5` (design decisions, mutation reasoning, the restructure), the ship stage on `claude-sonnet-5` (procedural: gates, push, CI watch, release merge), and this retrospective on `claude-opus-5`.
+  No mismatch — the downshift for the procedural stage and the return for synthesis is the correct pairing, and worth repeating.
+  The `pre-completion-reviewer` subagent ran on its configured `anthropic/claude-sonnet-5` for 2,236 s / 81 tool calls / 353.5k tokens; it re-derived all four mandate claims independently and caught a staleness defect I had missed, so sonnet was adequate for the judgment load.
+- **Escalation-delay tracking** — no `rabbit-hole` friction points; no sequence exceeded five consecutive tool calls on one error.
+  The longest repair loop was three calls (the orphaned `makeAgentConfig` helper after deleting the relocated disabled-agent cases).
+- **Feedback-loop gap analysis** — verification ran incrementally rather than only at the end: a targeted `vitest run <file>` at each Red and Green, `pnpm run check` after every step touching a shared type, and the full root-level gates after each commit.
+  One warning-level finding (`noUnusedVariables` on the orphaned helper) surfaced only because the `lint/` occurrence count was checked explicitly — `pnpm run lint` reported PASS, exactly the masked-warning case `AGENTS.md` documents.
+- **Unused-tool detection** — not applicable to the `missing-context` points above; each was a fact about a fixture default in a file already open, resolvable by reading rather than by dispatching a subagent or a semantic search.
+
+### Changes made
+
+1. `.pi/prompts/tdd-plan.md` — step 9's changelog preview now names both defects behind a seam-named line: a mistyped commit (retype to `refactor:`) or a correct `fix:`/`feat:` with a mechanism-named subject (reword to the symptom).
+   The rule previously offered only the retype remedy, which is why I ran the check, saw the problem, and stopped.
+2. `.pi/prompts/plan-issue.md` — the TDD Order bullet now requires a suggested `feat:`/`fix:` subject to name the observable outcome, since it ships to the changelog verbatim.
+   All three of this issue's mechanism-named subjects came from the plan at lines 406, 411, and 415.
+3. `.pi/agents/tidy-first-assessor.md` — added a **Nest** candidate to the Step 2 list, beside the existing **Migrate** one.
+   The assessor read `subagent-manager.test.ts` during `/plan-issue` (its deferred-tidying note names the file's inline `mgr.spawn` sites) and did not flag the 20 flat prefix-sharing describes it was about to have three more added to.
+   Its only test candidate covered mock style, not tree shape.
+4. Filed [#837] and adopted it as `pi-permission-system` Phase 14 Step 13 (`ec2c5d70`), with the disposition recorded under that roadmap's `#### Open-issue sweep dispositions` per the `roadmap-fit` skill.
+
+### Follow-up recorded, not implemented
+
+The operator raised package file layout as a standing pain point.
+Measurement scoped it: `pi-permission-system` has 62 of 147 `src` files at the root (42%), while `pi-subagents` has 6 of 62 (10%) and those six are the ones its package skill documents as deliberate — so only the former is affected.
+The package already owns the destination vocabulary (`authority/`, `handlers/gates/`, `access-intent/bash/`, `presentation/`, `path/`), and several root files have unambiguous existing homes.
+
+The diagnosis worth carrying forward is that the previous reorganizations lapsed for want of a **written target layout**, not for want of the right cadence — each phase re-derived the structure, so consistency depended on who was planning.
+This is also the point where the `describe`-nesting analogy breaks: tidy-first suits per-file test structure because the blast radius is one file, but issue-by-issue module moves only ever relocate files that issues happen to touch, leaving cold files behind — reproducing the lapse.
+The operator chose the one-shot bulk form and folded it into the open phase.
+
+[#837]: https://github.com/gotgenes/pi-packages/issues/837

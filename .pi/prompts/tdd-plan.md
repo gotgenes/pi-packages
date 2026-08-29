@@ -143,7 +143,9 @@ The skill exits at its first step when no phase is open, and recording a disposi
    Flip the phase status row only when every step in the phase is done.
 8. Commit doc updates as `docs: <summary>`.
 9. Preview the changelog: `git log --format='%s' <plan-commit>..HEAD | grep -E '^(feat|fix)'`.
-   Every surviving line must name a user-observable outcome — a line describing an internal seam means that commit should have been `refactor:`; retype it now, while nothing is pushed.
+   Every surviving line must name a user-observable outcome, not an internal seam.
+   A seam-named line is either a mistyped commit (retype to `refactor:`) or a correct `fix:`/`feat:` with a mechanism-named subject (reword to the symptom).
+   Fix either now, while nothing is pushed (Refs #724).
 10. **Do not edit `CHANGELOG.md`** — release-please owns it and will generate entries from your Conventional Commit messages on the next release.
 
 ## Pre-completion review

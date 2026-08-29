@@ -59,6 +59,7 @@ Candidates, each tied to a specific friction the change will hit:
 - **Narrow** an interface at the seam the new call site sits on (ISP), so the change depends on a few fields, not a bag.
 - **Split** a function the change would otherwise push past a reasonable length.
 - **Migrate** the tests the new tests will sit beside onto a shared fixture (so the new tests are not written against the old inline-mock style).
+- **Nest** the `describe` tree the new tests will join, by unit then scenario, when it is a flat list of siblings sharing a name prefix (so the new tests land in a readable grid instead of extending the flat list).
 - **Reorder** to stepdown so the new helper lands below its caller, not above.
 
 Reject any candidate that does not trace to a specific friction in Step 1 — an untied "improvement" is scope creep.
