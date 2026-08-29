@@ -35,6 +35,7 @@
     "test:watch": "vitest",
     "verify:public-types": "bash scripts/verify-public-types.sh",
     "measure:core-coverage": "node scripts/measure-core-coverage.mjs",
+    "measure:statement-descent": "node scripts/measure-statement-descent.mjs",
     "measure:wrapper-transparency": "node scripts/measure-wrapper-transparency.mjs",
     "lint:md": "rumdl check *.md docs/**/*.md",
     "lint": "biome check . && eslint . && pnpm run lint:md"

@@ -1191,8 +1191,9 @@ An `ERROR` node's recovered structure is deliberately not descended — tree-sit
 The scope relays unchanged into a compound statement, so [#803]'s floor exemption is still withheld from every wrapper under a write-establishing redirect.
 
 The path surface's matching hole closed in the same change: both token walkers skipped a `command_name` and a `variable_assignment` child without searching them, so a substitution in either prefix position projected no candidate at all while the same substitution in argument position always did.
-Measured over 4344 intact local review-log commands at the landing commit, 191 (4.4%) gain command units (+842) and `pathRuleCandidates()` / `externalAccesses()` change on **zero**.
-Eleven added units carry a wrapper head and floor `allow` to `ask` through the pre-existing wrapper floor; none newly denies, and no user needs to edit config.
+Measured by `scripts/measure-statement-descent.mjs` (2026-08-29) over 4348 intact local review-log commands, 191 (4.4%) gain command units (+842).
+Eleven of those added units carry a wrapper head and floor `allow` to `ask` through the pre-existing wrapper floor; none newly denies, and no user needs to edit config.
+The same run reports **zero** commands carrying a prefix-position substitution, which bounds the path half's blast radius from above — `pathRuleCandidates()` and `externalAccesses()` change on no command in the log, re-derivable without checking out the pre-change source.
 
 Release: independent
 
