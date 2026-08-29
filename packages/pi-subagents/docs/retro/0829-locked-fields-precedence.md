@@ -48,3 +48,41 @@ The two forms also differ on the bare-lock case deliberately — a list entry de
 [#641]: https://github.com/gotgenes/pi-packages/issues/641
 [#828]: https://github.com/gotgenes/pi-packages/issues/828
 [#834]: https://github.com/gotgenes/pi-packages/issues/834
+
+## Stage: Implementation — TDD (2026-08-29T23:05:01Z)
+
+### Session summary
+
+Executed all eight plan steps as eleven commits, plus two review-driven follow-ups.
+The `subagent` tool door now lets a caller's parameter win, with `locked: true` / `locked: [<fields>]` as the opt-in guard; [#834] landed alongside as `src/config/thinking-level.ts` with validation at all three producers. pi-subagents tests went 1266 → 1337 (+71); `pnpm run check`, root `pnpm run lint`, `pnpm run test`, and `pnpm fallow dead-code` are green.
+
+### Observations
+
+The plan's killing mutation for the thinking-level step did not kill, and finding that out is the session's most useful result.
+The planned SDK-parity test built its `thinkingLevelMap` from `THINKING_LEVELS` itself, so dropping `"max"` from the list also dropped it from the map, `getSupportedThinkingLevels` stopped reporting it, and the test stayed green.
+The check was vacuous for exactly the levels that could plausibly drift — `xhigh` and `max` are the only gated ones.
+Replaced with two directional checks: an ungated-parity assertion (catches a level the SDK adds without a gate) and a per-level `clampThinkingLevel(model, level) === level` loop (catches an entry the SDK does not know, since it clamps an unknown level to `off`).
+Both were verified with mutations that do kill.
+The residual — a level the SDK adds *and* gates — is recorded in the module's doc comment rather than left implicit.
+
+[#834]'s open question ("I have not traced what the SDK does with an unrecognized level") was answered by measurement during planning, and the answer drove the design: `clampThinkingLevel` misses an unknown level in its ordered table and returns `availableLevels[0]`, which is always `off`.
+A typo therefore *disables* thinking rather than being ignored, which is why all three producers reject or drop rather than pass through.
+
+Two deviations from the plan's Module-Level Changes, both deliberate.
+The planned lock-note test in `test/tools/foreground-runner.test.ts` was not added: steps 1 and 2 already pin both runners rendering `config.notes` content-independently, so a lock-note variant would re-assert the same mechanism with different strings.
+A fallback-plus-lock ordering test went into `test/tools/spawn-config.test.ts` instead — that composition was the genuinely unpinned claim, and it needs a registry whose `general-purpose` override is itself locked.
+Step 1 also revealed that `background-spawner.ts` rendered no notes at all, so an unknown agent type routed to background fell back silently; fixing that became its own `fix:` step rather than riding along in a `refactor:`.
+
+The `locked: true` / list split earned its keep during implementation.
+`true` locks only what the file sets and the list locks what it names, so the two forms are not redundant: `true` is the exact pre-change behavior (hence the one-line migration in the `BREAKING CHANGE:` footer), while the list can deny an override for a field the file supplies no value for.
+The four-case precedence table needed a mutation per form to prove the distinction was pinned.
+
+Pre-completion reviewer: WARN → WARN → PASS over three rounds.
+Round 1 caught a README sentence *this PR added* that overclaimed — the SDK door fills `model`, `thinkingLevel`, and `maxTurns` from frontmatter but never `inheritContext`, which `service-adapter.ts` resolves to `false` before the manager sees it.
+Round 1 also flagged that `resolveField`'s `!== undefined` presence check was correct but unpinned, a bug class this package has shipped before; round 2 flagged the remaining `model: ""` gap and, usefully, that filing the README correction under `test:` would leave an incorrect public claim shipped visibly under `docs:` with its fix hidden.
+Split into a `docs:` commit and a `test:` commit before pushing.
+
+### Diagnostic details
+
+- **Feedback-loop gap analysis** — the plan's own predicted metric (`agentConfig?.` merges 5 → 0) was re-measured at step 8 rather than asserted; it landed at 0 as predicted.
+- **Escalation-delay tracking** — three consecutive lint failures on the same helper (`describeRejected`) before abandoning `JSON.stringify` for an explicit `typeof` ladder; `@typescript-eslint/no-base-to-string` and `no-unnecessary-condition` pulled in opposite directions because `JSON.stringify`'s declared return type omits the `undefined` it returns for functions and symbols.
