@@ -29,18 +29,23 @@ interface MakeSubagentOptions extends SubagentStateInit {
 	description?: string;
 	invocation?: AgentInvocation;
 	execution?: SubagentExecution;
+	/**
+	 * A caller-owned SubagentState, for tests that mutate it after construction to
+	 * observe the record delegating live. Wins over the flat state overrides.
+	 */
+	state?: SubagentState;
 }
 
 /** Construct a Subagent with default identity and a stub execution, overridable per test. */
 function makeSubagent(overrides: MakeSubagentOptions = {}): Subagent {
-	const { id, type, description, invocation, execution, ...stateOverrides } = overrides;
+	const { id, type, description, invocation, execution, state, ...stateOverrides } = overrides;
 	return new Subagent({
 		id: id ?? "1",
 		type: type ?? "general-purpose",
 		description: description ?? "test",
 		invocation,
 		execution: execution ?? makeStubExecution(),
-		state: Object.keys(stateOverrides).length > 0 ? new SubagentState(stateOverrides) : undefined,
+		state: state ?? (Object.keys(stateOverrides).length > 0 ? new SubagentState(stateOverrides) : undefined),
 	});
 }
 
@@ -136,14 +141,14 @@ describe("convenience getters", () => {
 
 		it("turnCount reflects state mutations via incrementTurnCount", () => {
 			const state = new SubagentState();
-			const record = new Subagent({ id: "1", type: "general-purpose", description: "test", execution: makeStubExecution(), state });
+			const record = makeSubagent({ state });
 			state.incrementTurnCount();
 			expect(record.turnCount).toBe(2);
 		});
 
 		it("activeTools reflects state mutations via addActiveTool", () => {
 			const state = new SubagentState();
-			const record = new Subagent({ id: "1", type: "general-purpose", description: "test", execution: makeStubExecution(), state });
+			const record = makeSubagent({ state });
 			state.addActiveTool("Read");
 			expect(record.activeTools.size).toBe(1);
 			expect([...record.activeTools.values()]).toContain("Read");
@@ -151,7 +156,7 @@ describe("convenience getters", () => {
 
 		it("responseText reflects state mutations via appendResponseText", () => {
 			const state = new SubagentState();
-			const record = new Subagent({ id: "1", type: "general-purpose", description: "test", execution: makeStubExecution(), state });
+			const record = makeSubagent({ state });
 			state.appendResponseText("Hello");
 			expect(record.responseText).toBe("Hello");
 		});
@@ -166,7 +171,7 @@ describe("convenience getters", () => {
 
 		it("markConsumed delegates to SubagentState", () => {
 			const state = new SubagentState({ status: "completed" });
-			const record = new Subagent({ id: "1", type: "general-purpose", description: "test", execution: makeStubExecution(), state });
+			const record = makeSubagent({ state });
 			record.markConsumed(5000);
 			expect(record.consumed).toBe(true);
 			expect(record.consumedAt).toBe(5000);
@@ -599,9 +604,8 @@ function createRunnableAgent(overrides?: {
 	const createSubagentSession = overrides?.createSubagentSession ?? defaultFactory();
 	const observer = overrides?.observer ?? {};
 	const provider = overrides?.workspaceProvider;
-	return new Subagent({
+	return makeSubagent({
 		id: "run-1",
-		type: "general-purpose",
 		description: "run test",
 		execution: {
 			createSubagentSession,
@@ -903,12 +907,12 @@ function createResumableAgent(overrides?: {
 }) {
 	const session = overrides?.session ?? createMockSession();
 	const stub = overrides?.stub ?? createSubagentSessionStub(session);
-	const agent = new Subagent({
+	const agent = makeSubagent({
 		id: "resume-1",
-		type: "general-purpose",
 		description: "resume test",
 		execution: makeStubExecution({ observer: overrides?.observer ?? {} }),
-		state: new SubagentState({ status: "completed", result: "first" }),
+		status: "completed",
+		result: "first",
 	});
 	agent.subagentSession = toSubagentSession(stub);
 	return { agent, session, stub };
