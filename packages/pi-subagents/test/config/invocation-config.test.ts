@@ -79,6 +79,54 @@ describe("resolveAgentInvocationConfig", () => {
     });
   });
 
+  /**
+   * A `??`-based merge treats a caller's `0` or `false` as "nothing passed" and
+   * silently keeps the agent's value. `resolveField` tests presence with `!== undefined`
+   * for that reason, and these pin it — `max_turns: 0` means unlimited, so the two
+   * readings differ in effect, not just in provenance.
+   */
+  describe("with a falsy value on either side", () => {
+    it("lets the caller turn an agent's turn limit off", () => {
+      const resolved = resolveAgentInvocationConfig(makeOpinionatedConfig(), { max_turns: 0 });
+
+      expect(resolved.maxTurns).toBe(0);
+    });
+
+    it("keeps an agent's turn limit of zero when the caller passes none", () => {
+      const resolved = resolveAgentInvocationConfig(makeConfig({ maxTurns: 0 }), {});
+
+      expect(resolved.maxTurns).toBe(0);
+    });
+
+    it("lets the caller switch off booleans the agent turned on", () => {
+      const resolved = resolveAgentInvocationConfig(
+        makeConfig({ inheritContext: true, runInBackground: true }),
+        { inherit_context: false, run_in_background: false },
+      );
+
+      expect(resolved.inheritContext).toBe(false);
+      expect(resolved.runInBackground).toBe(false);
+    });
+
+    it("lets the caller clear an agent's model with an empty string", () => {
+      const resolved = resolveAgentInvocationConfig(makeOpinionatedConfig(), { model: "" });
+
+      expect(resolved.modelInput).toBe("");
+      expect(resolved.modelFromParams).toBe(true);
+    });
+
+    it("reports a discarded falsy override rather than reading it as absent", () => {
+      const resolved = resolveAgentInvocationConfig(
+        makeConfig({ locked: true, maxTurns: 42, runInBackground: true }),
+        { max_turns: 0, run_in_background: false },
+      );
+
+      expect(resolved.maxTurns).toBe(42);
+      expect(resolved.runInBackground).toBe(true);
+      expect(resolved.discarded).toEqual(["max_turns", "run_in_background"]);
+    });
+  });
+
   describe("with `locked: true`", () => {
     it("holds every field the agent file sets", () => {
       const resolved = resolveAgentInvocationConfig(
