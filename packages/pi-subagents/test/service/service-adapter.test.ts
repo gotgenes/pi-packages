@@ -74,6 +74,30 @@ describe("toSubagentRecord", () => {
     expect(result).not.toHaveProperty("invocation");
   });
 
+  it("withholds momentary activity and package-internal bookkeeping", () => {
+    const record = createTestSubagent({
+      activeTools: ["read", "grep"],
+      responseText: "partial answer",
+      consumedAt: 5000,
+      stoppedWhileQueued: true,
+    });
+    // The source really carries all four, so the assertions below are not vacuous.
+    expect([...record.activeTools.values()]).toEqual(["read", "grep"]);
+    expect(record.responseText).toBe("partial answer");
+    expect(record.consumedAt).toBe(5000);
+    expect(record.stoppedWhileQueued).toBe(true);
+
+    const result = toSubagentRecord(record);
+
+    // Momentary state is reactive by nature and stale the instant it is pulled;
+    // consumedAt and stoppedWhileQueued are internal bookkeeping. See
+    // docs/decisions/0005-subagent-record-admission-policy.md.
+    expect(result).not.toHaveProperty("activeTools");
+    expect(result).not.toHaveProperty("responseText");
+    expect(result).not.toHaveProperty("consumedAt");
+    expect(result).not.toHaveProperty("stoppedWhileQueued");
+  });
+
   it("omits optional fields when undefined on the source", () => {
     const minimal = createTestSubagent({
       id: "min-1",
