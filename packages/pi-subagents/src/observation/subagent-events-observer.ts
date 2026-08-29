@@ -101,7 +101,7 @@ export class SubagentEventsObserver implements SubagentManagerObserver {
 			id: record.id,
 			type: record.type,
 			description: record.description,
-			isBackground: true,
+			isBackground: record.isBackground,
 		});
 	}
 }

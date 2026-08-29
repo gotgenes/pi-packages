@@ -242,6 +242,18 @@ describe("SubagentManager", () => {
         expect(onCreated).not.toHaveBeenCalled();
       });
 
+      it("stamps the resolved mode on the record when it resolves to background", () => {
+        const id = spawnExplore({ kind: "default", isBackground: false }, true);
+
+        expect(manager.getRecord(id)!.isBackground).toBe(true);
+      });
+
+      it("stamps the resolved mode on the record when it resolves to foreground", () => {
+        const id = spawnExplore({ kind: "default", isBackground: true }, false);
+
+        expect(manager.getRecord(id)!.isBackground).toBe(false);
+      });
+
       it("queues a resolved-background agent behind a full concurrency limit", () => {
         onCreated = vi.fn();
         ({ manager } = createManager({
@@ -287,6 +299,14 @@ describe("SubagentManager", () => {
     });
 
     describe("foreground commitment", () => {
+      it("stamps isBackground false on the record", async () => {
+        ({ manager } = createManager({ registry: registryWith("Explore", { runInBackground: true }) }));
+
+        const record = await manager.spawnAndWait(STUB_SNAPSHOT, "Explore", "test", { description: "d" });
+
+        expect(record.isBackground).toBe(false);
+      });
+
       it("stays foreground for an agent whose frontmatter declares runInBackground: true", async () => {
         const onCreated = vi.fn();
         ({ manager } = createManager({

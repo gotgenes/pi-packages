@@ -156,7 +156,7 @@ export class SubagentManager {
   }
 
   /** Compose a per-agent lifecycle observer from manager and spawn-config concerns. */
-  private buildObserver(options: AgentSpawnConfig, isBackground: boolean): SubagentLifecycleObserver {
+  private buildObserver(options: AgentSpawnConfig): SubagentLifecycleObserver {
     return {
       onStarted: (agent) => {
         this.observer?.onSubagentStarted(agent);
@@ -165,12 +165,12 @@ export class SubagentManager {
         ? (agent) => options.observer!.onSessionCreated!(agent)
         : undefined,
       onRunFinished: (agent) => {
-        if (isBackground) {
+        if (agent.isBackground) {
           try { this.observer?.onSubagentCompleted(agent); } catch (err) { debugLog("onSubagentCompleted observer", err); }
         }
       },
       onResumeFinished: (agent) => {
-        if (isBackground) {
+        if (agent.isBackground) {
           try { this.observer?.onSubagentResumed(agent); } catch (err) { debugLog("onSubagentResumed observer", err); }
         }
       },
@@ -247,6 +247,7 @@ export class SubagentManager {
       id,
       type,
       description: options.description,
+      isBackground,
       invocation: options.invocation,
       state: new SubagentState({
         status: isBackground ? "queued" : "running",
@@ -257,7 +258,7 @@ export class SubagentManager {
         snapshot,
         prompt,
         baseCwd: this.baseCwd,
-        observer: this.buildObserver(options, isBackground),
+        observer: this.buildObserver(options),
         getRunConfig: this.getRunConfig,
         getWorkspaceProvider: () => this._workspaceProvider,
         model: options.model,

@@ -25,6 +25,8 @@ export interface TestSubagentOptions {
 	id?: string;
 	type?: SubagentType;
 	description?: string;
+	/** Defaults to true so a fixture survives the widget's background-only filter. */
+	isBackground?: boolean;
 	invocation?: AgentInvocation;
 	execution?: SubagentExecution;
 	/** Shorthand to set execution.parentSession.toolCallId. Ignored when execution is supplied. */
@@ -59,7 +61,7 @@ export interface TestSubagentOptions {
 }
 
 export function createTestSubagent(overrides: TestSubagentOptions = {}): Subagent {
-	const { id, type, description, invocation, execution, toolCallId, toolUses, lifetimeUsage, compactionCount, turnCount, activeTools, responseText, maxTurns, ...stateOverrides } =
+	const { id, type, description, isBackground, invocation, execution, toolCallId, toolUses, lifetimeUsage, compactionCount, turnCount, activeTools, responseText, maxTurns, ...stateOverrides } =
 		overrides;
 	const state = new SubagentState({
 		status: "completed",
@@ -78,6 +80,7 @@ export function createTestSubagent(overrides: TestSubagentOptions = {}): Subagen
 		id: id ?? "agent-1",
 		type: type ?? "general-purpose",
 		description: description ?? "Test task",
+		isBackground: isBackground ?? true,
 		invocation,
 		execution: execution ?? makeStubExecution({
 			...(toolCallId ? { parentSession: { toolCallId } } : {}),

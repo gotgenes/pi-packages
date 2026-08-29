@@ -29,6 +29,7 @@ interface MakeSubagentOptions extends SubagentStateInit {
 	description?: string;
 	invocation?: AgentInvocation;
 	execution?: SubagentExecution;
+	isBackground?: boolean;
 	/**
 	 * A caller-owned SubagentState, for tests that mutate it after construction to
 	 * observe the record delegating live. Wins over the flat state overrides.
@@ -38,11 +39,12 @@ interface MakeSubagentOptions extends SubagentStateInit {
 
 /** Construct a Subagent with default identity and a stub execution, overridable per test. */
 function makeSubagent(overrides: MakeSubagentOptions = {}): Subagent {
-	const { id, type, description, invocation, execution, state, ...stateOverrides } = overrides;
+	const { id, type, description, isBackground, invocation, execution, state, ...stateOverrides } = overrides;
 	return new Subagent({
 		id: id ?? "1",
 		type: type ?? "general-purpose",
 		description: description ?? "test",
+		isBackground: isBackground ?? true,
 		invocation,
 		execution: execution ?? makeStubExecution(),
 		state: state ?? (Object.keys(stateOverrides).length > 0 ? new SubagentState(stateOverrides) : undefined),

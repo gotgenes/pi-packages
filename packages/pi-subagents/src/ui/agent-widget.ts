@@ -163,9 +163,13 @@ export class AgentWidget implements SubagentManagerObserver {
    * Foreground runs are rendered by the `subagent` tool's inline `onUpdate` stream,
    * so funneling both `listAgents()` call sites through this accessor applies the
    * background predicate exactly once at the source.
+   *
+   * The predicate reads the record's own resolved mode. It formerly read the
+   * `invocation` display snapshot, which only the tool door builds — so every
+   * SDK-spawned agent was filtered out permanently (#724).
    */
   private listBackgroundAgents(): Subagent[] {
-    return this.manager.listAgents().filter(record => record.invocation?.runInBackground === true);
+    return this.manager.listAgents().filter(record => record.isBackground);
   }
 
   /** Project a live Subagent record onto a pure-data WidgetAgent snapshot. */

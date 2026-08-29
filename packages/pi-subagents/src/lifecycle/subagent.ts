@@ -78,6 +78,8 @@ export interface SubagentInit {
 	id: string;
 	type: SubagentType;
 	description: string;
+	/** The mode SubagentManager resolved for this spawn; drives scheduling and announcement. */
+	isBackground: boolean;
 	invocation?: AgentInvocation;
 
 	/** Execution machinery — always supplied; construct-complete, no test fallbacks. */
@@ -92,6 +94,12 @@ export class Subagent {
 	readonly id: string;
 	readonly type: SubagentType;
 	readonly description: string;
+	/**
+	 * Whether this agent runs in the background. Resolved once at the manager
+	 * choke point, so a consumer asks the record rather than re-deriving it from
+	 * the `invocation` display snapshot, which only the tool door builds.
+	 */
+	readonly isBackground: boolean;
 	readonly invocation?: AgentInvocation;
 
 	// Lifecycle status and metrics — owned by a private value object; getters and
@@ -215,6 +223,7 @@ export class Subagent {
 		this.id = init.id;
 		this.type = init.type;
 		this.description = init.description;
+		this.isBackground = init.isBackground;
 		this.invocation = init.invocation;
 
 		// Lifecycle status and metrics — fresh queued state unless one is supplied
