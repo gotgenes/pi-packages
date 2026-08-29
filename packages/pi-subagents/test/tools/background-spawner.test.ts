@@ -101,6 +101,23 @@ describe("spawnBackground", () => {
     expect(result.content[0].text).toContain("/sessions/bg.jsonl");
   });
 
+  it("leads the result with the spawn's notes", () => {
+    const { manager } = createToolDeps();
+    const result = spawnBackground(
+      manager,
+      makeParams({ config: makeConfig({ fellBack: true, rawType: "unknown-type" }) }),
+    );
+    expect(result.content[0].text).toMatch(
+      /^Note: Unknown agent type "unknown-type" — using general-purpose\.\n\nAgent (started|queued) in background\./,
+    );
+  });
+
+  it("leads the result with the launch message when there are no notes", () => {
+    const { manager } = createToolDeps();
+    const result = spawnBackground(manager, makeParams());
+    expect(result.content[0].text).toMatch(/^Agent (started|queued) in background\./);
+  });
+
   it("returns error text when manager.spawn throws", () => {
     const deps = createToolDeps({
       manager: {

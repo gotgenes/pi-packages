@@ -1,6 +1,6 @@
 import type { ParentSnapshot } from "#src/lifecycle/parent-snapshot";
 import type { AgentSpawnConfig } from "#src/lifecycle/subagent-manager";
-import { textResult } from "#src/tools/helpers";
+import { renderSpawnNotes, textResult } from "#src/tools/helpers";
 import type { ResolvedSpawnConfig } from "#src/tools/spawn-config";
 import type { ParentSessionInfo, Subagent } from "#src/types";
 
@@ -26,7 +26,7 @@ export function spawnBackground(
   manager: BackgroundManagerDeps,
   params: BackgroundParams,
 ) {
-  const { identity, execution, presentation } = params.config;
+  const { identity, execution, presentation, notes } = params.config;
 
   let id: string;
   try {
@@ -50,7 +50,8 @@ export function spawnBackground(
 
   const isQueued = record?.status === "queued";
   return textResult(
-    `Agent ${isQueued ? "queued" : "started"} in background.\n` +
+    renderSpawnNotes(notes) +
+      `Agent ${isQueued ? "queued" : "started"} in background.\n` +
       `Agent ID: ${id}\n` +
       `Type: ${identity.displayName}\n` +
       `Description: ${execution.description}\n` +
