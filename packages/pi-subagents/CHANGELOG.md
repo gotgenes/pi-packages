@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [20.0.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v19.3.5...pi-subagents-v20.0.0) (2026-08-29)
+
+
+### ⚠ BREAKING CHANGES
+
+* **pi-subagents:** @earendil-works/pi-coding-agent must now be >=0.81.0, narrowed from >=0.80.5. Replaying a native provider registration needs ModelRegistry.getRegisteredNativeProvider() and the registerProvider(provider) overload, and 0.81.0 is the first release carrying both; 0.80.8 through 0.80.10 expose neither, and 0.80.5 through 0.80.7 lack the modelRuntime session option and the public ModelRegistry constructor as well. Run `pi update --self` to upgrade, or stay on @gotgenes/pi-subagents 19.3.5.
+
+### Bug Fixes
+
+* **pi-subagents:** inherit runtime-registered providers in child sessions ([f805ffc](https://github.com/gotgenes/pi-packages/commit/f805ffc4a6ae1849c4d396cd7697f09ea38b6ec6))
+
+
+### Documentation
+
+* **pi-subagents:** document provider inheritance in child sessions ([f3afdf4](https://github.com/gotgenes/pi-packages/commit/f3afdf46e1897731aaf7e6e1b2c1dba66031ac13)), closes [#812](https://github.com/gotgenes/pi-packages/issues/812)
+
 ## [19.3.5](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v19.3.4...pi-subagents-v19.3.5) (2026-08-21)
 
 
