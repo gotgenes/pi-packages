@@ -40,39 +40,15 @@ describe("toSubagentRecord", () => {
     });
   });
 
-  it("strips the session from the serialized record", () => {
-    const record = createTestSubagent();
+  it("strips live objects, collaborators, and the invocation display snapshot", () => {
+    const record = createTestSubagent({ invocation: { modelName: "haiku" }, toolCallId: "tc-1" });
     record.subagentSession = toSubagentSession(createSubagentSessionStub(createMockSession()));
     const result = toSubagentRecord(record);
     expect(result).not.toHaveProperty("subagentSession");
-  });
-
-  it("strips abortController from the record", () => {
-    const record = createTestSubagent();
-    const result = toSubagentRecord(record);
-    expect(result).not.toHaveProperty("abortController");
-  });
-
-  it("strips promise from the record", () => {
-    const record = createTestSubagent();
-    const result = toSubagentRecord(record);
-    expect(result).not.toHaveProperty("promise");
-  });
-
-  it("strips abortController, promise, and collaborator fields from the record", () => {
-    const record = createTestSubagent();
-    const result = toSubagentRecord(record);
     expect(result).not.toHaveProperty("abortController");
     expect(result).not.toHaveProperty("promise");
     expect(result).not.toHaveProperty("execution");
     expect(result).not.toHaveProperty("notification");
-  });
-
-  it("strips invocation and collaborator fields from the serialized output", () => {
-    const record = createTestSubagent({ invocation: { modelName: "haiku" }, toolCallId: "tc-1" });
-    const result = toSubagentRecord(record);
-    expect(result).not.toHaveProperty("notification");
-    expect(result).not.toHaveProperty("execution");
     expect(result).not.toHaveProperty("invocation");
   });
 
