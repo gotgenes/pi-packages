@@ -7,14 +7,15 @@
 
 import type { Model } from "@earendil-works/pi-ai";
 import type { ParentSnapshot } from "#src/lifecycle/parent-snapshot";
+import type { AgentSpawnConfig } from "#src/lifecycle/subagent-manager";
 import type { WorkspaceProvider } from "#src/lifecycle/workspace";
 import type { SpawnOptions, SubagentRecord, SubagentsService } from "#src/service/service";
 import type { ModelRegistry } from "#src/session/model-resolver";
-import type { SessionContext, Subagent } from "#src/types";
+import type { SessionContext, Subagent, ThinkingLevel } from "#src/types";
 
 /** Narrow interface for the SubagentManager — avoids coupling to the concrete class. */
 export interface SubagentManagerLike {
-  spawn(snapshot: ParentSnapshot, type: string, prompt: string, options: unknown): string;
+  spawn(snapshot: ParentSnapshot, type: string, prompt: string, options: AgentSpawnConfig): string;
   getRecord(id: string): Subagent | undefined;
   listAgents(): Subagent[];
   abort(id: string): boolean;
@@ -54,7 +55,9 @@ export class SubagentsServiceAdapter implements SubagentsService {
       description,
       model,
       maxTurns: options?.maxTurns,
-      thinkingLevel: options?.thinkingLevel,
+      // SpawnOptions widens this to `string` for the public surface; the tool door
+      // casts the same way in resolveAgentInvocationConfig. Neither door validates — see #834.
+      thinkingLevel: options?.thinkingLevel as ThinkingLevel | undefined,
       inheritContext: options?.inheritContext,
       bypassQueue: options?.bypassQueue,
       isBackground,
