@@ -304,7 +304,8 @@ It throws in four cases:
 - a `thinkingLevel` is not one of `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`;
 - the named agent type exists but is disabled (`enabled: false`).
 
-Agent frontmatter fills the options you omit, and never overrides one you pass.
+Agent frontmatter never overrides an option you pass.
+It fills `model`, `thinkingLevel`, and `maxTurns` when you omit them; `inheritContext` is the exception, and defaults to `false` whatever the agent file declares.
 An agent file's [`locked`](./docs/configuration.md#locking-fields-against-callers) frontmatter does not apply here — it guards against a model guessing harness settings, and an SDK caller is not that.
 
 Background mode follows the caller's degree of commitment.
