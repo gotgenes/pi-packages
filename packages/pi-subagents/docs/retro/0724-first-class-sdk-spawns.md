@@ -109,3 +109,71 @@ Release coordination the phase should settle: [#828] and [#829] are both semver-
 [#829]: https://github.com/gotgenes/pi-packages/issues/829
 [#830]: https://github.com/gotgenes/pi-packages/issues/830
 [ADR-0004]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-subagents/docs/decisions/0004-reconsider-ui-direction.md
+
+## Stage: Implementation — TDD (2026-08-29T18:27:57Z)
+
+### Session summary
+
+Executed all seven TDD steps from the plan, landing [#724] as Phase 22's Step 1.
+The package suite went 1238 → 1264 (+26).
+Two unplanned commits joined the range: a restructure of `subagent-manager.test.ts` (operator-directed) and a repo-tooling commit encoding the testing lessons this session produced.
+Both preparatory tidyings paid off measurably, and the pre-completion reviewer returned WARN with three non-blocking findings, all fixed.
+
+### Observations
+
+#### Both Tidy-First steps paid off, and one paid off immediately in an unplanned way
+
+Step 1 narrowed `SubagentManagerLike.spawn`'s options from `unknown` to `AgentSpawnConfig`, and `tsc` promptly reported a **second** hole the `unknown` had hidden: `SpawnOptions.thinkingLevel` is `string` while `AgentSpawnConfig.thinkingLevel` is `ThinkingLevel`.
+The tool door performs the same unchecked widening at `invocation-config.ts:26`, so neither door validates and the SDK door's runtime behavior was never different — the cast was simply implicit.
+Mirroring the tool door's cast kept the commit behavior-preserving; the gap became [#834], folded into Step 3 by operator decision.
+
+Step 2's payoff was exact.
+Routing `subagent.test.ts`'s five bypassing construction sites through the local `makeSubagent` meant that adding a required `isBackground` to `SubagentInit` in Step 5 broke **one** site instead of six.
+
+#### A false-green test, and what actually caught it
+
+A Step 4 test asserted `status === "running"` to prove foreground resolution.
+Under `DEFAULT_MAX_CONCURRENT = 4` the limiter admits a background agent immediately, so `status` is `running` in both branches — the signal was legitimate and could not discriminate.
+It was caught not by review but by its **twin**: a sibling asserting `"queued"` failed for the same root cause, retroactively convicting the passing one.
+The fix was to discriminate on `onSubagentCreated`, which fires for background agents alone.
+
+A second defect surfaced during the describe-nesting restructure: a test occupied one manager's limiter slot while asserting about a *second* manager, whose limiter was unrelated.
+A purely organizational prompt produced a correctness find, because reorganizing forces the question "where does this belong?"
+rather than "does it pass?".
+
+#### The operator paused implementation to convert both into process
+
+The resulting `c4bc1f6a` records that test organization is upstream of probe adequacy: choosing a `describe` parent forces naming the claim, and parallel structure turns coverage into a readable grid.
+It also scoped the existing mutation rule, which had failed to fire for three reasons — it keys on "passes during the Red step", but tests rewritten after Green never have a Red step; a bulk red from a signature change (21 tests failing for one missing field) says nothing about per-test discrimination; and one mutation kills one equivalence class, so surviving tests are not evidence of soundness.
+Landed in the `testing` skill, `craftsmanship-scout`, and both TDD prompts, with `/plan-issue` now budgeting a per-step killing mutation.
+
+The scout gap was specific and grounded: `subagent-manager.test.ts` is the package's **largest** test file, so Phase 22's discovery almost certainly opened it, and the scout reported "no concentrated debt" while praising a *smaller* file's nested tree as healthy.
+It had a lens for a nested tree as health and none for a flat one as debt.
+
+#### The restructure verification earned its keep
+
+Wrapping 20 flat prefix-sharing describes into a nested tree is mechanical, but the package **disables the Biome formatter**, so nothing re-indents automatically and the transformation had to be scripted.
+Comparing the whitespace-stripped line multiset before and after caught three inter-block comments the first pass silently dropped — one of them @daoguademeng's contribution attribution from [#665].
+A green suite and a matching test count would both have missed it.
+
+#### Deviation: four predicted test files needed no change, and one of those was a real gap
+
+The plan predicted edits to `background-spawner`, `foreground-runner`, `agent-tool`, and `subagent-events-observer` tests.
+None were required — the observer fixture inherits `createTestSubagent`'s new `isBackground` default, and the tool-door tests never asserted on the field.
+Investigating rather than accepting that revealed nothing pinned the tool door's `{ kind: "explicit" }` commitment.
+That is unobservable today (the tool reaches `spawnBackground` only when the merged value was already `true`, where both kinds resolve alike) but it is the contract [#829] builds on, so a mutation-verified pin was added in `44b15c75`.
+
+#### Reviewer verdict
+
+**WARN**, no FAILs.
+The reviewer independently re-derived all four mandate claims — the relocated [#448] guard is unbypassable across the three real callers, the tool door is byte-identical because `resolveBackgroundMode`'s frontmatter branch is unreachable from it, all three `new Subagent(` sites pass a correct value, and the public bundle contains neither changed symbol.
+
+Three non-blocking findings, all fixed:
+
+- `tdd-plan.md`'s frontmatter still described a `red→green→commit` cycle after its body gained the Verify step, and `AGENTS.md:126` carried the same stale phrase.
+- All three `fix:` subjects named the mechanism rather than the observable defect — a suspicion I had raised in the dispatch and the reviewer confirmed.
+  Reworded via scripted rebase to name symptoms (widget invisibility, disabled-agent enforcement, session scoping), verified with `git diff` against a backup tag showing byte-identical content.
+  Worth noting for future planning: these subjects came from the **plan**, so a plan's suggested commit messages should name outcomes, not seams.
+
+[#665]: https://github.com/gotgenes/pi-packages/issues/665
+[#834]: https://github.com/gotgenes/pi-packages/issues/834
