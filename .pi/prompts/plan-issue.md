@@ -272,6 +272,7 @@ Before stopping, persist planning observations for cross-session continuity:
    ```
 
    When the Tidy-First assessor rejected candidates as scope creep, add a `#### Deferred tidyings` subsection under `### Observations`, one line per item naming the file and the friction — `/plan-improvements` greps this exact heading across retro files to triage them in a later improvement round (Refs #787).
+   When the operator decides during this session that an improvement phase should open before this issue's implementation, record the candidate cause and the sequencing call under a `#### Phase handoff` subsection there too — `/plan-improvements` greps this exact heading in its Step 1, and a handoff recorded under an ad-hoc heading surfaces only by luck (Refs #724).
 4. Commit: `git add <retro-file> && git commit -m "docs(retro): add planning stage notes for issue #N"`.
 
 Wrap code identifiers, filenames, and text containing underscores in backticks in the retro file.

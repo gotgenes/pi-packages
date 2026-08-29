@@ -51,10 +51,13 @@ Read that history file's Findings before deep-tracing.
 If it (or `architecture.md`) already declares a direction, treat it as a hypothesis, not a commitment — but put the declared candidate in front of the user in your **first** `ask_user`, up front, not a follow-up: a declared candidate surfaced late forces a second round-trip after the composition is already drafted.
 When no explicit candidate line exists, the history file still carries **implicit candidates**: a ⚠️ metric miss recorded in its health-metrics table, and any "deferred" remark inside a step's Landed notes — treat both as declared-candidate carriers with the same first-`ask_user` treatment.
 Every ⚠️ metric miss in the prior history file gets an explicit disposition in the new roadmap — re-target it, accept it with recorded rationale, or supersede it — never a silent drop (Phase 21 planning silently dropped one; this rule closes that gap).
+A phase triggered mid-lifecycle carries its candidate in a **third** location: when an operator decides during an issue's planning that a phase should open before that issue's implementation, the session records the candidate cause under a `#### Phase handoff` heading in the issue retro.
+Sweep for it — `grep -rn -e '#### Phase handoff' -e 'phase opens before implementation' packages/$1/docs/retro/` (the second pattern catches pre-convention notes) — and give any hit the same first-`ask_user` treatment (Phase 22's declared candidate lived only in an issue retro's ad-hoc sequencing note and surfaced by luck).
 Let the discovery findings decide.
 
 Before touching any tool, write down a **cause hypothesis**: the first-principles structural problem you expect the next phase to dissolve (structural fusion, a coupling/boundary flaw, a dead subsystem), read against the architecture doc's first-principles section.
 The later steps corroborate, refine, or refute it — they do not replace it.
+When discovery refutes the hypothesis because the doc prose that spawned it is stale — it describes a state a completed phase already changed — fix or flag that prose in the roadmap commit, mirroring Step 2's drift rule; leaving it plants the same wrong hypothesis for the next planner (Phase 22's initial hypothesis came from a first-principles sentence Phase 18 had already resolved).
 A cause-level finding must trace to a named target concept in the architecture doc's first-principles section; when no such section exists, writing one — naming the organizing concept and recording resolved design directions — is itself a phase deliverable.
 
 ### Step 2: Sweep open issues
@@ -69,7 +72,10 @@ Cross-check each open issue against the architecture doc's claims about which is
 An open issue that already names a cause-level finding is a **pre-discovered candidate** — adopt it as a phase step under its existing number rather than re-deriving or re-filing it (Phase 21's two strongest steps were adopted this way).
 Read each labeled issue's body before counting it in scope: a package label is sometimes contextual (the body targets another package), and a mislabeled issue must not pull cross-package work into the phase.
 When the sweep exposes doc/tracker drift in prose outside the roadmap sections (e.g. a stale "remaining open issues" claim), fix it in the roadmap commit rather than leaving it for the next reader.
+Sweep open pull requests too: `gh pr list --state open`, reading any whose title or changed files touch `packages/$1/` — this repo reimplements adopted external PRs rather than merging them, so an open PR is a pre-discovered candidate or a step's close target, never noise (three Phase 22 steps cite open PRs that surfaced only because issue bodies happened to mention them).
+Record each relevant PR's disposition alongside the issue it serves.
 Track repeat deferrals: an issue swept as out-of-scope across multiple consecutive phases (check the prior phase retros/roadmaps) gets an explicit decision this phase — schedule it, or recommend closing it as not-planned — never a silent re-defer.
+State the ordinal in the disposition itself — each deferral bullet carries its consecutive-sweep count (`2nd consecutive sweep`) so the next phase reads the count instead of re-deriving it from prior archives.
 Surface each repeat-deferral as an explicit `ask_user` decision (schedule / defer-with-recorded-rationale / close as not-planned), not a self-made call — these are preference-sensitive judgments the user should own; bundle them into the Step 8 composition `ask_user`, not separate round-trips.
 Record the sweep's verdicts under the `#### Open-issue sweep dispositions` heading the Output section prescribes — mid-phase filing sites and `/finish-phase` both append to and grep that exact heading.
 
@@ -185,6 +191,8 @@ The section should include:
    Prefer cause-level metrics recomputable by a single command (a `grep -c`, `wc -l`, or fallow field) and record the recompute command with the metric, so `/finish-phase` can verify delivered vs. predicted deterministically.
    When a metric greps for a symbol or filename the phase has not created yet (a predicted name), the step whose work creates it must either use the roadmap's name or update the metric row in the same commit — note this on that step, or a rename silently breaks `/finish-phase`'s recompute.
    Run each recompute command before committing and confirm it reproduces the stated baseline — a wrong command silently breaks `/finish-phase`'s delivered-vs-predicted verification.
+   A command containing `|` cannot sit in a table cell verbatim: the cell requires `\|`, so the raw source — what `/finish-phase` copies and runs — carries a corrupted command.
+   Prefer pipe-free forms (`grep -c`, multiple `-e` patterns, a single-path `grep -rc`); when a pipeline is unavoidable, put the command in a fenced block below the table and point the row at it.
 2. Numbered steps with:
    - Title
    - **Cause** — the first-principles structural cause the step dissolves, named explicitly; a fallow signal is cited as the _symptom_ of that cause, never as the step's motivation (a step justified only by a fallow finding is symptom-driven — trace it to a cause or drop it).
@@ -210,7 +218,8 @@ git push
 ## File the issues
 
 The roadmap is not done until each step has a GitHub issue and the document links back to it.
-After the plan is committed, ask whether to file the issues now; if confirmed:
+When **every** step adopts an existing issue, there is nothing to file: add the heading/diagram link-backs and reference definitions **before** the roadmap commit, skip the filing ask, and go straight to the working sequence — one commit, no second round-trip (Phase 22 shipped this way).
+Otherwise, after the plan is committed, ask whether to file the issues now; if confirmed:
 
 1. Steps adopted from already-filed issues need no new issue — skip creation and link the existing number; file only the steps without one.
    Load the `github-voice` skill, then file the issues **one `gh issue create --label "enhancement,pkg:$1"` call per issue**, with the title and `--body-file` paired literally in the same command — never via shell-array index arithmetic (the shell is zsh; its 1-indexed arrays silently shift titles relative to bodies).
