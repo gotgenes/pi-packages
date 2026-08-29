@@ -123,7 +123,7 @@ Check an ADR's frontmatter `status:` before citing it.
 
 The `pi-autoformat` extension emits a `[pi-autoformat] Formatted N file(s)` message after `Edit`/`Write`.
 It is informational — not a turn boundary.
-Continue the current step (e.g. Red→Green→Commit) until it is complete.
+Continue the current step (e.g. Red→Green→Verify→Commit) until it is complete.
 It also reflows what you just wrote (line wrapping, quote style), so an `oldText` — or a shell/regex pattern — built from the layout you emitted can fail to match; re-read a region you just edited before matching against it again.
 It also joins a line ending in `:` with the sentence after it — to add a sentence there, start a new paragraph, not a new line.
 It likewise joins a sentence onto the previous line when the sentence opens with a lowercase token (a package or command name such as `release-please`) — lead with a capital instead (Refs #816).

@@ -1,5 +1,5 @@
 ---
-description: Execute the TDD steps from a package docs/plans/ plan as red→green→commit cycles
+description: Execute the TDD steps from a package docs/plans/ plan as red→green→verify→commit cycles
 ---
 
 # Execute a plan with TDD
