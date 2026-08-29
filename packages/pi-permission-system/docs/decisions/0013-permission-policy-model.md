@@ -8,7 +8,7 @@ amended: 2026-08-25
 
 ## Status
 
-Accepted, as amended 2026-08-25.
+Accepted, as amended 2026-08-29.
 
 This decision settles the shape of the deterministic policy model: whether access capability (reading versus writing a path) becomes first-class, how it is spelled in config, what composes with what, and where the enforcement boundary of this package lies.
 It composes with `docs/decisions/0009-bash-path-projection-completeness-contract.md`, whose layering asymmetry it preserves and whose per-command-table rejection it deliberately re-scopes (§7), and with `docs/decisions/0007-model-judge-authorizer-chain-adr.md`, to which it routes judgment the deterministic layer cannot supply and whose delegation exclusions it restates as surface families (§4) so they survive the new key names unamended.
@@ -52,6 +52,27 @@ Two consequences of that reading, both settled by the implementation:
    That fold belongs at the single resolution entry point every reader shares — the gates, the cross-extension policy query, and the recorded-authority view a serving node resolves a **forwarded child request** against.
    A gate-side fold would leave that last reader resolving an emptied surface, and a parent's recorded `path` deny would stop hard-denying a child's request and escalate it to an approvable prompt instead.
    The fold returns the losing member's own result, which is the blame fact §10 wants, delivered rather than re-derived.
+
+### Amendment, 2026-08-29 — which §10 combinator clauses exist, and what an `ERROR` node is
+
+Staging step 4 ([#742]) wrote the *subshell, substitution, heredoc-hosted command* clause out to the statement node types, so §10's combinator list is now partly implemented and partly not.
+What exists, in `src/access-intent/bash/command-enumeration.ts`, is the enumeration half: every node is emitted whole and its children are enumerated beneath it, so the fold's most-restrictive property is delivered by the existing flat unit list rather than by a tree of verdicts.
+Blame propagation, per-node verdict objects, and the effect judgment as a second ordered value remain unwritten.
+
+One clause is decided against for a specific node type: **an `ERROR` node's recovered structure is not evidence, so the unparsed blob is emitted whole and never descended.**
+Tree-sitter's error recovery *invents* structure rather than reporting it.
+Measured on the local review log, descending an `ERROR` subtree turns an unterminated heredoc's backtick-quoted prose into command units named after whatever the prose mentions — so a plan mentioning `` `rm -rf node_modules` `` would deny the command writing it.
+
+That is a fail-open on its face, and it is deliberate for now: `ERROR` is usually malformed input but not always.
+`git commit -F - <<'MSG' 2>&1 | tail -4` is valid bash that `tree-sitter-bash` 0.25.1 cannot parse (each pairing parses alone; the three together do not), and 0.25.1 is npm's latest, so no upgrade lever exists.
+When the parse fails on *valid* bash, the recovered structure is certainly not the real structure — which is the argument for emitting whole rather than for descending.
+
+The *any unhandled node type: fail closed* clause is therefore the one part of §10 still unwritten, and step 4 made it reachable rather than satisfying it: the unparsed blob is now a first-class unit that a permissive fallback allows.
+Flooring it needs a marker on `BashCommand` plus a sentinel in `bash-command.ts` — the verdict fold's behavior, not the enumerator's — and is tracked as [#840].
+
+§10's *control-flow body* case earns no `BashCommandContext` variant.
+A body runs in the current shell, so it has no distinct execution context to name, and the enum is validated by `BASH_COMMAND_CONTEXTS` in the tolerant reader a serving node uses on a forwarded request read off disk (ADR 0012) — an unknown value there makes an older node reject the whole payload.
+The "why is the gate showing me this fragment" question the variant would have served is §10's blame propagation, still unwritten.
 
 ## Context
 
@@ -649,6 +670,7 @@ Issue [#620] carries the judgment slice the chain retains under §7.
 [#698]: https://github.com/gotgenes/pi-packages/issues/698
 [#706]: https://github.com/gotgenes/pi-packages/issues/706
 [#741]: https://github.com/gotgenes/pi-packages/issues/741
+[#742]: https://github.com/gotgenes/pi-packages/issues/742
 [#785]: https://github.com/gotgenes/pi-packages/issues/785
 [#799]: https://github.com/gotgenes/pi-packages/issues/799
 [#802]: https://github.com/gotgenes/pi-packages/issues/802
@@ -656,4 +678,5 @@ Issue [#620] carries the judgment slice the chain retains under §7.
 [#804]: https://github.com/gotgenes/pi-packages/issues/804
 [#806]: https://github.com/gotgenes/pi-packages/issues/806
 [#807]: https://github.com/gotgenes/pi-packages/issues/807
+[#840]: https://github.com/gotgenes/pi-packages/issues/840
 [openai/codex#28732]: https://github.com/openai/codex/issues/28732

@@ -131,8 +131,12 @@ A path reaches the `path` and `external_directory` surfaces when it appears as:
 - Any of the above resolved against the **effective working directory** after literal current-shell `cd` folding; a non-literal `cd` renders the base unknown and keeps tokens literal-only ([#393]).
 
 These guarantees are **positional-invariant**: they hold for a command's own operands wherever that command appears.
-A command nested in a substitution is itself gated ([#306]), so its operands are projected whether the substitution sits in argument position (`diff <(cat /etc/shadow)`), in a redirect destination (`echo hi > $(cat /etc/shadow)`), or in an interpolating heredoc body ([#741]).
+A command nested in a substitution is itself gated ([#306]), so its operands are projected whether the substitution sits in argument position (`diff <(cat /etc/shadow)`), in a redirect destination (`echo hi > $(cat /etc/shadow)`), in an interpolating heredoc body ([#741]), in command-name position (`$(cat /etc/shadow)`, `while $(cat /etc/shadow); do …`), or in an env-var prefix assignment (`FOO=$(cat /etc/shadow) echo hi`) ([#742]).
 This is a guarantee, not a residual — see the note under "Computed paths" below for the boundary it is easily confused with.
+
+The invariance is about a **command's operands**, and a path that is nobody's operand is outside it.
+The collector reads text only from `command` and `file_redirect` nodes, so a path named directly as a statement's own word — `for f in /etc/shadow`, `select f in /etc/shadow`, `case /etc/shadow in` — reaches neither surface ([#839]).
+That is a known gap, not a covered case: unlike the positions above, closing it produces new prompts (17 of 4401 measured log commands carry a path-shaped `for`/`case` operand), so it is tracked separately rather than read into this list.
 
 Opacity is handled separately and conservatively: a wrapper command that hides its payload (`bash -c`, `eval`, `sudo`, `xargs`, …) is floored from `allow` to `ask` rather than projected.
 
@@ -266,6 +270,8 @@ Cost is ~0.04 ms p95 per command, ~19% of the already-paid tree-sitter parse.
 [#694]: https://github.com/gotgenes/pi-packages/issues/694
 [#306]: https://github.com/gotgenes/pi-packages/issues/306
 [#741]: https://github.com/gotgenes/pi-packages/issues/741
+[#742]: https://github.com/gotgenes/pi-packages/issues/742
+[#839]: https://github.com/gotgenes/pi-packages/issues/839
 [#821]: https://github.com/gotgenes/pi-packages/issues/821
 [#822]: https://github.com/gotgenes/pi-packages/issues/822
 [#823]: https://github.com/gotgenes/pi-packages/issues/823
