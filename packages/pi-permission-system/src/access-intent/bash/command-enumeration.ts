@@ -79,7 +79,7 @@ interface UnitScope {
 /** A top-level command in the current shell, writing no file. */
 const TOP_LEVEL_SCOPE: UnitScope = { writesViaRedirect: false };
 
-// ── Command enumeration ──────────────────────────────────────────────────────
+// ── Node-type vocabulary ─────────────────────────────────────────────────────
 
 /**
  * Container node types descended into with the enclosing scope unchanged.
@@ -88,6 +88,22 @@ const TOP_LEVEL_SCOPE: UnitScope = { writesViaRedirect: false };
  * node that can establish a write, so it descends with a scope of its own.
  */
 const COMMAND_ENUM_DESCEND = new Set(["program", "list", "pipeline"]);
+
+/**
+ * Compound statements: emitted whole, then descended for their statements.
+ *
+ * The whole emit is what keeps the #306 never-weaker invariant — the commands
+ * found inside are additional units, never a replacement.
+ */
+const COMPOUND_STATEMENT_TYPES = new Set(["for_statement"]);
+
+/**
+ * Syntactic groupings inside a compound statement: descended, never emitted.
+ *
+ * A `do_group` is nothing anybody runs; it is the loop body's punctuation, and
+ * emitting its text would produce a `do rm $f; done` unit.
+ */
+const STATEMENT_GROUP_TYPES = new Set(["do_group"]);
 
 /**
  * Named node types abandoned during command enumeration: they are neither
@@ -103,6 +119,33 @@ const COMMAND_ENUM_DESCEND = new Set(["program", "list", "pipeline"]);
  * listed here.
  */
 const COMMAND_ENUM_SKIP = new Set(["comment", "heredoc_end"]);
+
+/**
+ * Every node type the enumerator recognizes as a statement.
+ *
+ * This is the enumerator's third question, beside "is this a command?" and
+ * "can this host one?": "is this a *statement*, so that descending an enclosing
+ * compound reaches it?" A compound statement's named children are a mix —
+ * `for_statement` carries its loop variable and word list, `case_statement` its
+ * subject, `function_definition` its name — and descending all of them emits
+ * operand words as bash command units, naming `a` as the offending *command* in
+ * a prompt. Membership is what {@link descendStatementChildren} filters on.
+ */
+const STATEMENT_TYPES = new Set([
+  "command",
+  "redirected_statement",
+  "subshell",
+  "declaration_command",
+  "variable_assignment",
+  "test_command",
+  "unset_command",
+  "ERROR",
+  ...COMMAND_ENUM_DESCEND,
+  ...COMPOUND_STATEMENT_TYPES,
+  ...STATEMENT_GROUP_TYPES,
+]);
+
+// ── Command enumeration ──────────────────────────────────────────────
 
 /**
  * Enumerate the command units of a bash program, in source order.
@@ -169,6 +212,17 @@ function collectCommandsInto(
 
   if (COMMAND_ENUM_DESCEND.has(node.type)) {
     descendCommandChildren(node, scope, out);
+    return;
+  }
+
+  if (COMPOUND_STATEMENT_TYPES.has(node.type)) {
+    out.push(makeUnit(node.text, scope)); // never-weaker whole emit
+    descendStatementChildren(node, scope, out);
+    return;
+  }
+
+  if (STATEMENT_GROUP_TYPES.has(node.type)) {
+    descendStatementChildren(node, scope, out);
     return;
   }
 
@@ -301,6 +355,35 @@ function descendCommandChildren(
   for (let i = 0; i < node.childCount; i++) {
     const child = node.child(i);
     if (child) collectCommandsInto(child, scope, out);
+  }
+}
+
+/**
+ * Descend a compound statement's children, enumerating only the ones that are
+ * themselves statements.
+ *
+ * The filter is the whole difference from {@link descendCommandChildren}, whose
+ * container types (`program` / `list` / `pipeline` / `redirected_statement` /
+ * `subshell`) have nothing but statement children. Here the children are a mix,
+ * and a non-statement one is an operand word rather than something that runs.
+ *
+ * A non-statement child is not abandoned, though: `for f in $(rm x)` hosts a
+ * real execution in its word list, which is what the second branch reaches.
+ *
+ * The scope is relayed unchanged — a compound statement's body runs in the
+ * current shell, so a write established by an enclosing `redirected_statement`
+ * covers every unit beneath it (#803).
+ */
+function descendStatementChildren(
+  node: TSNode,
+  scope: UnitScope,
+  out: BashCommand[],
+): void {
+  for (let i = 0; i < node.childCount; i++) {
+    const child = node.child(i);
+    if (!child?.isNamed) continue;
+    if (STATEMENT_TYPES.has(child.type)) collectCommandsInto(child, scope, out);
+    else collectHostedCommands(child, out);
   }
 }
 

@@ -1154,6 +1154,45 @@ describe("BashProgram", () => {
       });
     });
 
+    describe("commands inside a for loop (#742)", () => {
+      it("emits the body's commands, but not the loop variable or word list", async () => {
+        // `f`, `a`, and `b` are operand words, not commands: emitting them
+        // would name `a` as the offending *command* in a prompt.
+        const program = await BashProgram.parse(
+          "for f in a b; do rm $f; done",
+          normalizer,
+        );
+        expect(program.commands()).toEqual([
+          { text: "for f in a b; do rm $f; done" },
+          { text: "rm $f" },
+        ]);
+      });
+
+      it("emits every command of a multi-statement body", async () => {
+        const program = await BashProgram.parse(
+          "for f in a; do cd /t && rm $f; done",
+          normalizer,
+        );
+        expect(program.commands()).toEqual([
+          { text: "for f in a; do cd /t && rm $f; done" },
+          { text: "cd /t" },
+          { text: "rm $f" },
+        ]);
+      });
+
+      it("descends into a substitution in the word list", async () => {
+        const program = await BashProgram.parse(
+          "for f in $(rm x); do echo $f; done",
+          normalizer,
+        );
+        expect(program.commands()).toEqual([
+          { text: "for f in $(rm x); do echo $f; done" },
+          { text: "rm x", context: "command_substitution" },
+          { text: "echo $f" },
+        ]);
+      });
+    });
+
     it("descends into command substitution, tagging the inner command", async () => {
       const program = await BashProgram.parse("echo $(rm -rf foo)", normalizer);
       expect(program.commands()).toEqual([
