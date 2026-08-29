@@ -64,5 +64,19 @@ Pre-completion reviewer: PASS, with all four re-derivation mandates independentl
 - **The contract direction, not the field list, decided the release.**
   Confirming that the repo has exactly one `SubagentRecord` producer and one `SubagentsService` implementor is what made the `feat:` classification defensible, and it is what moved Phase 22 Step 2 out of batch `"front-door-majors"` (tail stays Step 3, [#829]).
 
+## Stage: Ship (worktree) (2026-08-29T21:16:18Z)
+
+### Session summary
+
+Pre-push checks passed clean on the first run: `pnpm run lint` (root) and `pnpm fallow dead-code` both reported no issues, so no fixup commit was needed before rebasing.
+The plan's `**Release:** ship independently` marker holds — the `feat:`/`fix:` commits release on their own, not batched with Phase 22's other steps.
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-830--/2026-08-29T19-18-15-903Z_01a04ef5-545f-79df-82fc-cda8d184c648.jsonl` — read with `read_session_file({ path: "..." })` for message-level verification at land/retro time.
+
+### Observations
+
+No deferred work and no new follow-ups surfaced at ship time; the plan's Open Questions section already declined to file one (lifecycle event-payload stability), and that stands.
+Ready to rebase onto `origin/main` and hand off to `/land-worktree 830`.
+
 [#748]: https://github.com/gotgenes/pi-packages/pull/748
 [#829]: https://github.com/gotgenes/pi-packages/issues/829
