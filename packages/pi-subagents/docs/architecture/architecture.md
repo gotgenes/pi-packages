@@ -753,6 +753,174 @@ Files with highest commit frequency × complexity:
 
 Production duplication is 0 lines — the last clone group was eliminated in Phase 19 Step 6 ([#441]).
 
+## Improvement roadmap — Phase 22: Front-door contract parity and delivery fixes
+
+### Findings (planned 2026-08-29)
+
+Phase 22 is trigger-driven: it opens on the bug cluster surfaced by [#724]'s planning audit, not on the calendar.
+The primary cause is a coupling/boundary flaw the first-principles section already names: the "Reactive versus discrete (not internal versus external)" refinement rules `SubagentsService` a first-class front door "in-package or not", but the code was never audited against that claim — the `subagent` tool door runs a config-resolution pipeline the SDK door skips entirely, and the audit found six behavioral divergences (widget invisibility, lost `parentSessionId` breaking permission forwarding, an unenforced disabled-agent block, uncanonicalized types, and more).
+Four pre-filed issues express the same cause and form the spine: [#724] (parity at the manager choke point — plan already committed at `docs/plans/0724-first-class-sdk-spawns.md`), [#830] (the public snapshot's allowlist has no stated policy), [#829] (frontmatter precedence applies a guard against model guessing to deterministic callers too), and [#828] (a vacant field on the public workspace seam).
+Three independent delivery-boundary defects join as side tracks ([#801], [#827], [#798]), and the operator scheduled the ask-back capability ([#465]) now that its prerequisite [#466] landed in Phase 21.
+
+Fallow corroborates but did not source the spine: health 78/100 (B), 0 dead code, 0 duplication, 0 refactoring targets; the repeated-discriminator sweep is clean (`_status !== "stopped"` ×4 all inside the owning `subagent-state.ts`).
+The craftsmanship scout found **no concentrated debt**: the fallow large-function flag on `test/settings.test.ts:312` is refuted (a healthy 17-`describe` tree of short behavior-named tests), the hot production files are well-factored linear procedures, and Phase 21's four boy-scout items persist unchanged but stay scattered — no craftsmanship step is warranted.
+Phase 21 recorded no ⚠️ metric misses; its one measurement caveat carries forward — recompute the health score with the `--hotspots --targets` form (the bare `--score` form reports 88 A on this workspace and is not comparable to the 78 B baseline).
+
+Trajectory: max step priority ran 15 (Phase 20 band) → 16 (Phase 21) → 16 (this phase), and every prior churn hotspot is cooling or stable.
+The operator's cadence decision: keep the regular improvement rotation after this phase.
+
+| Metric                                                                                           | Baseline   | Phase 22 target | Recompute                                                                                                                                               |
+| ------------------------------------------------------------------------------------------------ | ---------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Health score                                                                                     | 78/100 (B) | ≥ 78 (B)        | `pnpm fallow health --score --hotspots --targets --workspace @gotgenes/pi-subagents`                                                                    |
+| `invocation` storage-chain and widget-filter sites (`src/lifecycle/` + `src/ui/agent-widget.ts`) | 8          | 0               | `grep -rEn 'invocation\??:\|\.invocation\b' packages/pi-subagents/src/lifecycle packages/pi-subagents/src/ui/agent-widget.ts --include='*.ts' \| wc -l` |
+| Blanket `agentConfig?.<field> ?? params` precedence merges in `invocation-config.ts`             | 5          | 0               | `grep -cE 'agentConfig\?\..*\?\?' packages/pi-subagents/src/config/invocation-config.ts`                                                                |
+| Foreground result text carries the resume handle (`Agent ID` in `foreground-runner.ts`)          | 0          | ≥ 1             | `grep -c 'Agent ID' packages/pi-subagents/src/tools/foreground-runner.ts`                                                                               |
+| Inherited-prompt skills-block strip present in `prompts.ts`                                      | 0          | ≥ 1             | `grep -c 'available_skills' packages/pi-subagents/src/session/prompts.ts`                                                                               |
+| Dead code / production duplication                                                               | 0 / 0      | 0 / 0           | `pnpm fallow dead-code --workspace @gotgenes/pi-subagents` / `pnpm fallow dupes --workspace @gotgenes/pi-subagents`                                     |
+
+The `Agent ID` and `available_skills` rows grep for names the fix has not created yet; Steps 5 and 7 must either use those spellings or update the row in the same commit.
+The `agentConfig?.` row counts the mechanism Step 3 replaces; if the adopted locked-fields shape legitimately retains a merge of that spelling, Step 3 updates the row with its rationale.
+Steps 2, 6, and 8 have design-dependent shapes and are verified by their plans' pinned regression tests rather than a grep row.
+
+#### Open-issue sweep dispositions
+
+- [#724], [#830], [#829], [#828] — adopted as Steps 1–4 (the pre-discovered front-door cluster; [#724]'s plan is already committed).
+- [#801], [#827], [#798] — adopted as Steps 5–7 (independent delivery-boundary bugs).
+- [#465] — scheduled as Step 8 by operator decision (2nd sweep; its prerequisite [#466] landed in Phase 21, so it is now actionable).
+- [#641] — folded into Step 3 as design input: operator-configured floors versus model-passed values is the same precedence family [#829] settles.
+- [#451] — relabeled `scope:repo` and the `pkg:pi-subagents` label dropped (3rd consecutive sweep; it is repo-level CI tooling, not package structure — the relabel ends the per-phase re-sweep without losing the idea).
+- [#608], [#519] — deferred with rationale (2nd sweep, explicit): [#608] is an unverified third-party integration ask whose `AsyncLocalStorage` store shape the no-vacant-hooks rule declines without a concrete verified consumer; [#519] is blocked on upstream SDK clarity and is pi-permission-system-primary.
+- [#779] — deferred by operator decision (offered as a phase track and declined): boundary-ADR documentation does not gate the bug-cluster spine; note PRs #613 and #740 wait on its foreground-default record.
+- [#791] — deferred by operator decision (offered and declined): small self-contained warning, suitable for pickup outside a phase.
+- [#733] — deferred: TUI overlay defect requiring SDK-level rendering investigation, unrelated to this phase's cause.
+- [#755], [#711], [#636], [#695], [#676], [#660] — deferred: feature/UX requests that do not gate a structural phase ([#660] overlaps [#695]/[#676]).
+- [#683] — deferred: glyph-audit polish at boy-scout scale.
+- [#793], [#792], [#722], [#735] — pi-permission-system-primary; [#564] — pi-github-tools-primary; the `pkg:pi-subagents` labels are contextual and pull no work into this phase.
+- Scout inventory (all scattered, persisting from Phase 21) — remains on the `tidy-first` boy-scout path: `settings.ts` `sanitize()` range-check triplication, `mock.calls[N][idx]` indexing (17 sites, 9 files), `createManager()` observer-default merge density, `(manager as any).sweep()` private reach (7 sites, one file), and the `subagent-events-observer.ts` inline `{id, type, description}` payload triad.
+
+### Steps
+
+#### Step 1 — Land first-class SDK spawns at the manager choke point ([#724])
+
+Cause: the two front doors were never held to the same contract — `SubagentManager.spawn` is the one point both doors already traverse, but it stamps no invariants, so the tool door's resolution pipeline (canonical type, disabled-agent check, background mode, parent linkage) is skipped by the SDK door.
+The widget's `record.invocation?.runInBackground` read is the symptom fallow cannot see: the manager computes background-ness five times and stores it nowhere, so a consumer reconstructs it from a display snapshot one door forgets to build.
+Smell: Category C (coupling/boundary flaw; scattered decision).
+Target files: `src/lifecycle/subagent-manager.ts`, `src/lifecycle/subagent.ts`, `src/service/service-adapter.ts`, `src/tools/spawn-config.ts`, `src/tools/background-spawner.ts`, `src/ui/agent-widget.ts` — per the committed plan `docs/plans/0724-first-class-sdk-spawns.md`.
+Outcome: `Subagent.isBackground` is first-class record state; the widget filter reads it; SDK-spawned children carry `parentSession`; the disabled-agent block holds at the choke point; the widget-filter read drops 1 of the 8 `invocation` sites.
+Commit type: `fix:` — the phase's first release vehicle.
+Impact 4 / Risk 2 / Priority 16.
+
+Release: independent
+
+#### Step 2 — Decide and document the `SubagentRecord` allowlist policy ([#830])
+
+Cause: the public snapshot — the discrete-query half of the reactive/discrete split — is produced by an allowlist with no stated admission policy, so every widening (PR #748's `turnCount`/`activeTools`, [#724]'s deferred `isBackground`) re-litigates the same trade-off case by case, including the undecided question of whether third parties implement the interface at all.
+Smell: Category C (boundary contract left implicit).
+Target files: `src/service/service.ts`, `src/service/service-adapter.ts` (`toSubagentRecord`), plus a policy record in this document or a new ADR; PR #748's second commit is the close target for the chosen shape.
+Outcome: a written admission policy (what earns a field a place; required versus optional for additions; whether the interface is a contract third parties satisfy), and the specific candidates (`turnCount`, `activeTools`, `outputFile`, `maxTurns`, `responseText`, `consumedAt`, `isBackground`) each dispositioned under it, pinned by updated service tests.
+Impact 3 / Risk 2 / Priority 12.
+
+Release: batch "front-door-majors"
+
+#### Step 3 — Narrow the frontmatter guard to explicitly locked fields ([#829])
+
+Cause: upstream's config-wins precedence guards against a non-deterministic _model_ guessing harness knobs, but it was applied as a blanket over every field and every caller — so a deliberate operator override (`model: "sonnet-5"` on `Explore`) is silently discarded alongside a model's guess, contradicting the tool schema and `AGENTS.md`.
+Smell: Category C (a decision made at the wrong boundary — per-field policy fused into a single global precedence) plus `bug`.
+Target files: `src/config/invocation-config.ts`, `src/config/custom-agents.ts` (frontmatter `locked:` shape), `src/tools/agent-tool.ts` (schema text), `docs/configuration.md`.
+Design input: [#641]'s operator-configured floors belong to the same precedence family — settle or explicitly exclude it in the step's plan.
+Builds on Step 1's `BackgroundRequest` two-variant mechanism (each door states commitment versus fallback).
+Outcome: blanket `agentConfig?.<field> ?? params` merges drop 5 → 0; caller-explicit wins unless the agent file locks the field; a discarded override is reported, not silent; migration note shipped.
+Commit type: `fix(pi-subagents)!:` — semver-major (changes effective model/thinking/turns for agent files relying on the blanket).
+Impact 4 / Risk 3 / Priority 12.
+
+Release: batch "front-door-majors"
+
+#### Step 4 — Remove the vacant `WorkspacePrepareContext.invocation` field and its dead storage chain ([#828])
+
+Cause: a provider-seam field no consumer has ever read — the exact case the no-vacant-hooks rule names — kept alive by a storage chain (`AgentSpawnConfig.invocation` → `SubagentInit.invocation` → `Subagent.invocation` → seam) whose only other terminal reader Step 1 removes.
+Smell: Category A (vacant hook; a dead subsystem once Step 1 lands).
+Target files: `src/lifecycle/workspace.ts`, `src/lifecycle/subagent-manager.ts`, `src/lifecycle/subagent.ts`, `src/tools/background-spawner.ts`, `src/tools/foreground-runner.ts`, `packages/pi-subagents-worktrees/test/workspace-provider.test.ts`; the `AgentInvocation` type survives as `spawn-config.ts`'s local display snapshot.
+Hard dependency: after Step 1 (otherwise the widget read keeps the chain alive and `pnpm fallow dead-code` gates the partial removal).
+Outcome: `invocation` storage-chain and widget-filter sites drop 8 → 0; `dist/public.d.ts` loses the field (semver-major with migration note).
+Commit type: `refactor(pi-subagents)!:`.
+Impact 3 / Risk 2 / Priority 12.
+
+Release: batch "front-door-majors"
+
+#### Step 5 — Strip the inherited `available_skills` block from child prompts ([#801])
+
+Cause: `buildAgentPrompt` embeds the parent's effective system prompt verbatim for KV-cache reuse, but Pi regenerates per-session appendages for the child — so the child gets two skills blocks, exactly the class [#640] fixed for the cwd footer, where the strip is per-appendage rather than principled.
+Smell: Category C (boundary flaw in prompt inheritance) plus `bug`.
+Target files: `src/session/prompts.ts` (extend the inherited-appendage handling beside `withoutContradictoryCwdFooter`), `test/session/prompts.test.ts`.
+Design note: match [#640]'s discipline — strip only when the duplication is real, and preserve the byte-identical cacheable prefix where possible; the step's plan decides whether other Pi-appended blocks belong to the same strip.
+Outcome: an assembled child prompt contains one `available_skills` block, pinned by a regression test; the `prompts.ts` grep row goes 0 → ≥ 1.
+Commit type: `fix:`.
+Impact 3 / Risk 2 / Priority 12.
+
+Release: independent
+
+#### Step 6 — Capture `UICtx` outside the tool-call path so the widget can render ([#827])
+
+Cause: temporal coupling — the widget's ability to render is keyed to an unrelated event (`tool_execution_start` is the sole `setUICtx` site), so a session whose model never calls a tool has a permanently dark widget even for agents passing its roster filter; reachable today from any command-driven `SubagentsService.spawn`.
+Smell: Category C (coupling/boundary flaw) plus `bug`.
+Target files: `src/ui/agent-widget.ts`, `src/handlers/tool-start.ts`, `src/index.ts` (composition-root wiring); PR #748's first commit carries candidate approach 1.
+Design decision at plan time: push at `session_start` versus a lazy `getUICtx` supplier; either way, settle the `finishedTurnAge` aging loose end (rows currently age only via `onTurnStart`).
+SDK facts pre-verified in the issue against `@earendil-works/pi-coding-agent@0.79.1` (TUI starts before extension init; `ctx.ui` is per-session stable; headless binds `noOpUIContext`) — re-verify against the pinned version at plan time.
+Outcome: the widget renders in a session with no model tool call, pinned by a regression test.
+Commit type: `fix:`.
+Impact 3 / Risk 2 / Priority 12.
+
+Release: independent
+
+#### Step 7 — Deliver the resume handle in foreground results ([#798])
+
+Cause: door asymmetry in result delivery — the background path puts the agent ID in the model-visible text and the foreground path leaves it only in renderer `details`, so a foreground child that ends by asking a question cannot be answered; the resume-return edge shares the shape.
+Smell: Category C (asymmetric boundary) plus `bug`.
+Target files: `src/tools/foreground-runner.ts`, `src/tools/agent-tool.ts` (resume-return edge), `src/tools/helpers.ts`.
+Outcome: foreground and resume result text carry the agent ID; the `foreground-runner.ts` grep row goes 0 → ≥ 1; pinned by tests.
+Commit type: `fix:`.
+Impact 2 / Risk 1 / Priority 10.
+
+Release: independent
+
+#### Step 8 — Ask-back: let a child's question reach the parent ([#465])
+
+Cause: a child that ends its run by asking a question terminates into a dead end — the result channel is fire-and-forget, so the ask-back loop (child question → parent notified → parent resumes with the answer) has no supported path, even though resume itself works and Phase 21's [#466] gave resumed completions first-class events.
+Smell: feature with a structural seam (the delivery-domain follow-on the first-principles section anticipates).
+Target files: to be settled by the step's plan — candidates are the notification layer (`src/observation/`), the result renderers, and the completion event payloads; scheduled by operator decision, design-first.
+Soft dependency: after Step 7 (the resume handle must be deliverable before an ask-back nudge is actionable in the foreground path).
+Outcome: a completed child whose result is a question is surfaced to the parent as answerable (mechanism per plan), pinned by an end-to-end test.
+Commit type: `feat:`.
+Impact 3 / Risk 3 / Priority 9.
+
+Release: independent
+
+### Step dependencies
+
+```mermaid
+flowchart TD
+    S1["Step 1 (#724)<br/>Choke-point parity"] --> S3["Step 3 (#829)<br/>Locked-fields precedence"]
+    S1 --> S4["Step 4 (#828)<br/>Remove vacant seam field"]
+    S1 -.soft.-> S2["Step 2 (#830)<br/>SubagentRecord policy"]
+    S7["Step 7 (#798)<br/>Foreground resume handle"] -.soft.-> S8["Step 8 (#465)<br/>Ask-back"]
+    S5["Step 5 (#801)<br/>Skills-block strip"]
+    S6["Step 6 (#827)<br/>UICtx capture"]
+```
+
+### Parallel tracks
+
+- **Track A — Front-door contract:** Steps 1 → 2, 3, 4 (the spine; Step 1 unblocks the rest).
+- **Track B — Prompt assembly:** Step 5 (fully independent).
+- **Track C — Widget activation:** Step 6 (fully independent; complements Step 1 — parity makes SDK agents _eligible_, this makes the widget _present_).
+- **Track D — Result delivery and ask-back:** Steps 7 → 8 (soft ordering).
+
+### Release batches
+
+- **Batch "front-door-majors":** Steps 2, 4, 3 (ship together as one semver-major bump; tail = Step 3).
+  Step 3 is `fix!:` and Step 4 is `refactor!:` with a `BREAKING CHANGE:` footer; Step 2 joins the batch so its required/optional decision rides the same major if it comes out breaking — if its resolution is non-breaking, its plan may downgrade it to independently releasable and update this line.
+- Independently releasable: Steps 1, 5, 6, 7, 8.
+  Steps 1, 5, 6, 7 are `fix:` and Step 8 is `feat:` — each an unhidden release vehicle on its own.
+
 ## Refactoring history
 
 The architecture above is the product of twenty completed improvement phases; Phase 6 (UI extraction to a separate package) was folded into [ADR-0004] rather than executed.
@@ -810,7 +978,8 @@ Each phase's findings, numbered plan, dependency diagram, and health metrics are
 | Phase 20             | #535, #536, #537, #538, #539, #540, #541, #542, #543       | Extract result delivery, decompose get-result-tool, steer outcome, type model boundary, narrow tui/theme, table-driven settings, decompose notification renderer, full-value SubagentStateInit, consolidate test clones |
 | Phase 21             | #563, #466, #611                                           | Classification predicates, resume completion channel, model boundary typing                                                                                                                                             |
 
-Issue #22 (parent-session resolution) has been closed; the feature and cross-package tracks recorded under Phase 21's deferred-work dispositions ([#451], [#465], [#482], [#519], [#600], [#608], [#610]) remain open but do not gate a package structural phase.
+Issue #22 (parent-session resolution) has been closed.
+Of the tracks recorded under Phase 21's deferred-work dispositions, [#482], [#600], and [#610] have since closed; [#451] was relabeled `scope:repo` at Phase 22 planning; [#465] is scheduled as Phase 22 Step 8; [#519] and [#608] remain open and still do not gate a package structural phase.
 
 ## Relationship with upstream
 
@@ -831,10 +1000,35 @@ The upstream test suite is run periodically as a regression canary for the sessi
 [#442]: https://github.com/gotgenes/pi-packages/issues/442
 [#451]: https://github.com/gotgenes/pi-packages/issues/451
 [#465]: https://github.com/gotgenes/pi-packages/issues/465
+[#466]: https://github.com/gotgenes/pi-packages/issues/466
 [#482]: https://github.com/gotgenes/pi-packages/issues/482
 [#519]: https://github.com/gotgenes/pi-packages/issues/519
+[#564]: https://github.com/gotgenes/pi-packages/issues/564
 [#600]: https://github.com/gotgenes/pi-packages/issues/600
 [#608]: https://github.com/gotgenes/pi-packages/issues/608
 [#610]: https://github.com/gotgenes/pi-packages/issues/610
+[#636]: https://github.com/gotgenes/pi-packages/issues/636
+[#640]: https://github.com/gotgenes/pi-packages/issues/640
+[#641]: https://github.com/gotgenes/pi-packages/issues/641
+[#660]: https://github.com/gotgenes/pi-packages/issues/660
+[#676]: https://github.com/gotgenes/pi-packages/issues/676
+[#683]: https://github.com/gotgenes/pi-packages/issues/683
+[#695]: https://github.com/gotgenes/pi-packages/issues/695
+[#711]: https://github.com/gotgenes/pi-packages/issues/711
+[#722]: https://github.com/gotgenes/pi-packages/issues/722
+[#724]: https://github.com/gotgenes/pi-packages/issues/724
+[#733]: https://github.com/gotgenes/pi-packages/issues/733
+[#735]: https://github.com/gotgenes/pi-packages/issues/735
+[#755]: https://github.com/gotgenes/pi-packages/issues/755
+[#779]: https://github.com/gotgenes/pi-packages/issues/779
+[#791]: https://github.com/gotgenes/pi-packages/issues/791
+[#792]: https://github.com/gotgenes/pi-packages/issues/792
+[#793]: https://github.com/gotgenes/pi-packages/issues/793
+[#798]: https://github.com/gotgenes/pi-packages/issues/798
+[#801]: https://github.com/gotgenes/pi-packages/issues/801
+[#827]: https://github.com/gotgenes/pi-packages/issues/827
+[#828]: https://github.com/gotgenes/pi-packages/issues/828
+[#829]: https://github.com/gotgenes/pi-packages/issues/829
+[#830]: https://github.com/gotgenes/pi-packages/issues/830
 [ADR-0002]: ../decisions/0002-extensions-on-a-minimal-core.md
 [ADR-0004]: ../decisions/0004-reconsider-ui-direction.md
