@@ -1016,6 +1016,9 @@ No decline, so the regular improvement rotation continues.
 - [#799] — deferred with recorded rationale (user composition decision): the channel ADR is deliberative design budget that would compete with the capability axis for the same planning attention, and ADR 0013 §9 has already written its input constraints so nothing decays by waiting.
   It stays the strongest non-code candidate for Phase 15, and PRs [#675], [#692], and [#638] remain blocked on it.
 - [#609] — deferred to Phase 15 as staging slice 4; it is a consequence of this phase's axis rather than its motivation (ADR 0013 §1), and it carries the phase's only breaking change, which does not belong in the same release as the axis that must be non-breaking by construction.
+- [#840] — filed by Step 4's planning; adopted as Step 14 by operator decision.
+  Step 4 settled that an `ERROR` node is emitted whole and never descended, which makes the unparsed blob a first-class unit and leaves ADR 0013 §10's fail-closed clause the one part of that section still unwritten.
+  It stands beside Step 4 rather than inside it because the floor lives in the verdict fold (`bash-command.ts`) rather than the enumerator, and because Step 4 is otherwise a zero-prompt hardening change while this one newly prompts.
 - [#839] — filed by Step 4's planning; deferred to Phase 15 beside [#609].
   Step 4's planning measured the whole nested-command bypass family and found one member that is not a command at all: a path named directly as a `for`/`select` operand or a `case` subject is a child of the statement node, so the path collector — which reads text only from `command` and `file_redirect` nodes — never sees it.
   Step 4 and its `command_name`-position half change zero path candidates across 4276 real commands, while this one newly asks on `external_directory` for 17 of them, so it does not belong in the same release as an axis that is non-breaking by construction; it also reopens `token-collection.ts`, which Phase 15's redirect slice already returns to.
@@ -1307,6 +1310,22 @@ Past phases reorganized periodically but inconsistently and then lapsed, because
 
 Release: independent
 
+#### Step 14: An unparsed bash subtree fails closed ([#840])
+
+**Cause:** ADR 0013 §10's last combinator clause — "any unhandled node type: fail closed (`ask`, `unknown`)" — is unimplemented.
+`resolveBashCommandCheck` fails closed only on a **zero-unit** parse (the `<unparseable-bash-command>` sentinel from [#452]); a *partial* failure emits the unparsed subtree's text as one ordinary unit, which the `bash:` patterns match like any string and a permissive fallback allows.
+Step 4 makes that emission an explicit branch and deliberately stops there, because the floor is the fold's behavior rather than the enumerator's.
+
+- **Smell:** Category C (a fail-open the model's own decision record already forbids), commit type `fix:`.
+- **Target:** a marker on `BashCommand` (`src/access-intent/bash/command-enumeration.ts`) set on the `ERROR` branch Step 4 introduces, read by `src/handlers/gates/bash-command.ts` to floor an `allow` to a synthetic `ask` beside the existing `WRAPPER_SENTINEL` entries.
+  The floor is synthesized after the resolver returns, like the other three sentinels, so `resolveYoloGrant` still reconciles it ([#712]).
+- **Constraint:** an explicit `deny`/`ask` on the blob's text is left untouched, as with the wrapper floors.
+- **Outcome:** a subtree the fold did not understand can no longer ride the universal fallback; measured cost is 1 command in 4276 intact review-log commands (0.02%).
+  `grep -c '<unparsed' packages/pi-permission-system/src/handlers/gates/bash-command.ts` goes 0 → ≥ 1.
+- **Impact 3 / Risk 1 / Priority 15.**
+
+Release: independent
+
 ### Step dependency diagram
 
 ```mermaid
@@ -1323,6 +1342,7 @@ flowchart TD
     S11["Step 11 (#813): user-chosen grant width"]
     S3 --> S12["Step 12 (#814): unresolvable redirect proves nothing"]
     S13["Step 13 (#837): apply the directory vocabulary"]
+    S4 --> S14["Step 14 (#840): an unparsed subtree fails closed"]
     S7 -.-> S8
     S1 --> S9
     S2 --> S10
@@ -1339,8 +1359,9 @@ Steps 10 and 11 both write a session grant from a bash gate: Step 10 decides whe
 - **Track A — the capability axis:** Steps 1 → 2 → 3, strictly sequential.
   Step 2 needs the directional surfaces to route a proven effect to, and Step 3 needs the pure-reader core Step 2 defines.
   This track owns `src/access-intent/bash/` and `src/handlers/gates/`.
-- **Track B — bash enumeration completeness:** Step 4.
-  It touches `command-enumeration.ts` and `nested-execution.ts`, which Track A's Step 2 also reads — land Step 4 before Step 2 or after Step 3, not concurrently.
+- **Track B — bash enumeration completeness:** Steps 4 → 14, in that order.
+  Step 14 reads the `ERROR` branch Step 4 introduces, so it cannot precede it.
+  The track touches `command-enumeration.ts`, `nested-execution.ts`, `token-collection.ts`, and `handlers/gates/bash-command.ts`, which Track A's Steps 2 and 3 also read — land it before Step 2 or after Step 3, not concurrently.
 - **Track C — decision attribution:** Step 5, any time; it touches `permission-events.ts`, `runner.ts`, and `gates/helpers.ts`, and Track A's tidy-first prep splits `runDescriptor` in the same file — sequence it against Step 2 rather than running both at once.
 - **Track D — cross-node contract residuals:** Steps 6, 7, 8, disjoint from every other track (`service.ts`, `service-lifecycle.ts`, `authority/subagent-registry.ts`, `tool-access-extractor-registry.ts`).
 - **Track E — config-schema ergonomics:** Step 9, after Step 1 has converted `permissionSchema` to a named-property object; it touches `config-schema.ts` and the generated JSON Schema, which no other step edits once Step 1 has landed.
@@ -1351,7 +1372,7 @@ Steps 10 and 11 both write a session grant from a bash gate: Step 10 decides whe
 
 - **Batch "capability-axis":** Steps 1, 2, 3 (ship together; tail = Step 3; release vehicle = Step 3's `fix:` for [#803], with Step 1's `feat:` for the new config keys riding the same release — Step 2 is a hidden `refactor:` on its own).
   The batch ships together because Steps 1 and 2 relieve nothing a user can observe until a directional grant exists to write, while Step 3's relief is immediate and unconditional.
-- Independently releasable: Step 4 (`fix:`), Step 5 (`feat:`, possibly `feat!:` — see the step's bump note), Step 7 (`feat:`), Step 8 (`fix:` or `feat:` depending on the mechanism chosen), Step 9 (`feat:` — the generated schema ships in the tarball, so new completions and hover text are user-observable), Step 10 (`feat:`, or `feat!:` if the wire shape is not made tolerant), Step 11 (`feat:` — a new prompt affordance the user acts on).
+- Independently releasable: Step 4 (`fix:`), Step 14 (`fix:`), Step 5 (`feat:`, possibly `feat!:` — see the step's bump note), Step 7 (`feat:`), Step 8 (`fix:` or `feat:` depending on the mechanism chosen), Step 9 (`feat:` — the generated schema ships in the tarball, so new completions and hover text are user-observable), Step 10 (`feat:`, or `feat!:` if the wire shape is not made tolerant), Step 11 (`feat:` — a new prompt affordance the user acts on).
 - Step 6 cuts no release on its own: its deliverable is an ADR amendment (`docs:`, hidden), and any code it schedules lands in a later step or a later phase.
 
 ## Refactoring history
@@ -1392,6 +1413,7 @@ Each phase's findings, numbered plan, dependency diagram, and health metrics are
 [#509]: https://github.com/gotgenes/pi-packages/issues/509
 [#555]: https://github.com/gotgenes/pi-packages/issues/555
 [#710]: https://github.com/gotgenes/pi-packages/issues/710
+[#452]: https://github.com/gotgenes/pi-packages/issues/452
 [#712]: https://github.com/gotgenes/pi-packages/issues/712
 [#645]: https://github.com/gotgenes/pi-packages/issues/645
 [#306]: https://github.com/gotgenes/pi-packages/issues/306
@@ -1452,4 +1474,5 @@ Each phase's findings, numbered plan, dependency diagram, and health metrics are
 [#823]: https://github.com/gotgenes/pi-packages/issues/823
 [#837]: https://github.com/gotgenes/pi-packages/issues/837
 [#839]: https://github.com/gotgenes/pi-packages/issues/839
+[#840]: https://github.com/gotgenes/pi-packages/issues/840
 [ADR-0002]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-subagents/docs/decisions/0002-extensions-on-a-minimal-core.md
