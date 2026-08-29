@@ -85,7 +85,16 @@ For **each** step in the plan's "TDD Order", in order:
    Implement the minimum code to make those tests pass.
    Re-run the same file and confirm green.
    When the step adds or changes a shared type/interface (or a loop/consumer over one), run `pnpm run check` before committing — Vitest does not typecheck, and a type error caught only at end-of-cycle forces a commit reorder.
-3. **Commit.**
+3. **Verify the pins.**
+   Apply the killing mutation the plan named for this step, confirm the step's new tests go red, then revert it.
+   Fixing a vacuous test costs nothing here and costs an amended commit later, which is why this sits before the commit rather than in the end-of-cycle review.
+   Three cases make this mandatory rather than optional, because the Red step's own evidence does not cover them:
+   - The step's red came from a **signature change** (a required field that did not exist yet), so every test failed for the same reason and none of them demonstrated that its own assertion discriminates.
+   - A test was **authored or rewritten after Green**, so it never had a Red step at all.
+   - The step's tests span more than one equivalence class — one mutation kills one class, so a surviving test is only evidence when you can say which mutation should have killed it.
+
+   Revert the mutation with `git checkout -- <file>` (or a saved copy) and re-run before committing; never commit with a mutation in the tree.
+4. **Commit.**
    Use the commit message the plan suggests, or a Conventional Commits message that matches:
    - `test:` for test-only commits (rare; usually folded into the feat).
    - `feat:` for new behavior.

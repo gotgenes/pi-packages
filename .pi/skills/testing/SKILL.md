@@ -66,9 +66,18 @@ Load this skill when writing, debugging, or planning tests.
   Use `toEqual` for a full-shape assertion, or assert a discriminating field the negative case cannot produce.
 - When proving a guard test is not vacuous, build the probe to match the guard's exact predicate.
   A near-miss probe (`void runRpcSession;` against a guard matching `runRpcSession(`) leaves the guard silent and looks like proof it is broken (Refs #678).
+- Before asserting, name both outcomes and confirm your assertion's value differs between them **under the fixture's defaults**.
+  A signal can be legitimate and still fail to discriminate: asserting `status === "running"` to prove foreground resolution passes for a background agent too, because the default concurrency limit admits it immediately.
+  Pick a signal only one branch can produce — there, the observer callback that fires for background agents alone (Refs #724).
 - A new test that passes during the Red step is either an invariant pin or a broken probe — decide which before moving to Green.
   The broken case is a probe string that also appears elsewhere in the output: `toContain("x")` matched the unrelated fixture path `secret.txt` and passed pre-fix (Refs #760).
   Decide by mutation: break the code the pin covers and confirm the pin fails — a pin that survives its own mutation is a broken probe (Refs #807).
+- A mutation is scoped to one claim, so it kills one equivalence class and no more.
+  Ignoring frontmatter entirely killed the three `default`-request pins and correctly left the two `explicit` pins green — "I mutated and saw reds" is not evidence the whole set is sound (Refs #724).
+- A bulk red caused by a signature change masks per-test probe quality.
+  Twenty-one tests failing because a required field does not exist yet says nothing about whether any individual assertion discriminates; that is not the per-test red the rule above asks for.
+- A test authored or rewritten **after** Green never had a Red step, so the rule above never triggers for it.
+  Mutate it explicitly before committing.
 - When a fix replaces an ambient global read (`node:path`'s `sep`, `process.platform`, `Date.now`) with an injected value, pick a red-probe input where the ambient and injected values **differ on the CI host**.
   A `win32PathFlavor` probe on `/tmp/logs/` passes pre-fix on POSIX CI — the host `sep` is `/` too; a native `c:\dir\file.ts` collapses to `./*` and goes red (Refs #655).
 - An equivalence test (incremental vs. freshly built, cached vs. uncached) pins self-consistency, not correctness, when both sides run the code under test.
@@ -84,6 +93,17 @@ Load this skill when writing, debugging, or planning tests.
 ## Test organization
 
 Group tests by the behavior or concern they exercise — open a nested `describe("<concern>", () => { ... })` per concern rather than appending `it` blocks to a flat list.
+Nest by the unit under test and then the scenario; do not repeat a shared prefix across sibling blocks.
+Twenty sibling `describe("SubagentManager — <concern>")` blocks carry the unit's name as a repeated string fragment, where one `describe("SubagentManager")` holding `describe("spawn")` and `describe("spawnAndWait")` carries it in the structure.
+Nesting is for grouping and organization, not only for a shared `beforeEach`.
+
+The tree is a correctness tool, not cosmetics.
+Choosing a parent forces you to name what each test claims, and a test that will not sit cleanly under any parent usually has a fuzzy claim — which is where a broken probe hides.
+Two tests grouped under "foreground commitment" turned out to assert on the resolved type: they had been grouped by the method they called rather than the behavior they pinned, and nesting made the mismatch visible (Refs #724).
+Parallel structure also turns coverage into a grid — once `spawn > type resolution` and `spawnAndWait > type resolution` sit side by side, an asymmetry between them is legible in a way a hole in a flat list never is.
+
+Name a `describe` after the behavior or scenario, never after a historical bug or issue number.
+`describe("SubagentManager — Bug 1 race condition")` references a numbering no later reader can resolve, and the file holding it has no `Bug 2`.
 When adding tests for a new concern (e.g. a `details` field alongside existing content assertions), start a new `describe` block instead of extending the existing one.
 When consolidating duplicated test arrangements, group the shared setup in a describe-scoped `beforeEach` and keep the act (the call under test) explicit in each test.
 Do not wrap the system-under-test call in a helper to eliminate a duplication-metric clone — the repeated act is the test subject, not duplication to remove.

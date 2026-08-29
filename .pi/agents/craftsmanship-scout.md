@@ -40,6 +40,10 @@ For each, assess against the `testing` and `code-design` skills (load them):
   Note the file, the line span, and roughly how many distinct behaviors are entangled.
 - **Test-per-method vs. test-per-behavior** — tests named after methods (`describe("resolve")`) that assert mechanics, versus tests named after behaviors (`it("denies an outside-cwd path")`).
   The former couples the test to the shape, not the contract.
+- **Flat describe trees and prefix repetition** — sibling top-level `describe`s sharing a string prefix (`describe("Foo — a")`, `describe("Foo — b")`) carry the unit's name as repeated text where nesting would carry it as structure.
+  A nested tree makes each test's claim explicit and turns coverage into a visible grid; a flat prefixed list hides both, so a hole or an asymmetry between two doors is unreadable.
+  Step 1's adjudication note treats a nested tree as evidence of *health* — its **absence** in a large, high-churn test file is debt, and is an inventory item in its own right.
+  Also flag `describe`s named after historical bug or issue numbers (`"Bug 1 race condition"`) rather than behavior, especially where the numbering has gaps no reader can resolve.
 - **Over-mocking** — a test that stubs 10+ methods to exercise one, or mocks a collaborator it could construct for real.
   This is a *production* constructibility smell surfacing in the test; name the production object.
 - **Assert-on-implementation** — `mock.calls[0]![0]`, reaching into private state, asserting call order where order is incidental.
