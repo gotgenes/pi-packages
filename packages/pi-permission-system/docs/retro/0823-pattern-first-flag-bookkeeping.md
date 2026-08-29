@@ -230,6 +230,7 @@ Measured over 4057 deduplicated real bash commands the whole change alters 1 com
 3. `.pi/prompts/plan-issue.md` § TDD Order — added mechanism/data step sequencing: sequence a mechanism half and a data half as separate steps, and when the data is a table of external facts, write the check that verifies one row before writing the rows.
 4. `.pi/skills/package-pi-permission-system/SKILL.md` — corrected the arity rule, which my own later commits in this issue had superseded: "every supported platform" → "every implementation the command name reaches", now naming the `--context` per-tool split and the `unknown-arity` role.
 5. This retro file — the Final Retrospective entry, plus a correction to the User Note stage's corpus-figure bullet, which had accepted a reviewer claim that later re-derivation refuted.
+6. `packages/pi-permission-system/docs/decisions/0009-bash-path-projection-completeness-contract.md` — a `#### Where the bound sits` subsection in the 2026-08-29 amendment, naming the three in-scope edits to `PATTERN_FIRST_COMMANDS`, pricing a row at the arity assertion it makes rather than at its line, and recording the arity oracle as considered-and-declined with the condition that would revive it; the Rejected-alternatives bullet now points at it instead of restating the "verified against that tool's own option list" claim this issue disproved.
 
 #### Attribution of these changes to the mid-session `/retro-note`
 
@@ -239,3 +240,31 @@ Without it this retrospective would have counted six defects and concluded "veri
 Change 1 is partly theirs: the finding was reachable from the round-3 and round-4 defects alone, but the reframing from *thoroughness* to *kind* (the plan's table was keyed by source document when the question was keyed by name→implementation) came from that exchange.
 Changes 2 and 4 are not: the staleness rule came from the round-2 failure at the time it happened, and the skill fix from grepping for text this issue's own commits had superseded.
 Worth recording that the note landed after the fifth round, so it could explain the session but not change it — the same observation as the user-side opportunity above.
+
+#### Post-retro: the operator challenged the maintenance cost, and the numbers moved
+
+After the retro was committed the operator pushed back that the issue had grown "beyond a bugfix" into expensive functionality.
+Measuring it rather than defending it produced a sharper picture than either of us held:
+
+|                      | before          | after      |
+| -------------------- | --------------- | ---------- |
+| code lines           | 312             | 371 (+19%) |
+| comment lines        | 166             | 289 (+74%) |
+| written flag entries | 48              | **47**     |
+| roles                | 2 implicit sets | 5 explicit |
+
+The table did **not** grow: deduplicating the triplicated `grep`/`egrep`/`fgrep` and `awk`/`nawk` aliases removed thirty duplicated entries and the twenty-five long forms added fewer back.
+Nearly two-thirds of the file's growth is doc comments explaining platform hazards.
+So the cost is neither rows nor code volume — it is that the table now asserts arities of **real binaries on real hosts**, a different kind of fact from "`grep`'s first operand is a pattern", and nothing re-checks them.
+
+Two things are worth recording about how that exchange went.
+First, the decomposition that answers the operator's instinct: the two highest-value fixes (the `-A 3` discharge, the computed-pattern positional) needed **no table at all** — about eighteen lines of walker logic — while two of the six defects were *created by* the table growth, in spellings with zero occurrences in the 4057-command corpus.
+Value and maintenance cost ran in opposite directions across the change, and the retro had not said so.
+Second, I quoted "17 → 47 flag table entries" in the first reply and it was wrong: 17 counted distinct short spellings before, 47 counted written rows after.
+Mixing units while arguing about the cost of an issue whose entire lesson was "check the unit of the fact you are asserting" is the sharpest instance of that failure in the whole session, and it was caught only because the next command re-measured both sides in one unit.
+
+Operator decision: build nothing, and amend ADR 0009 to state where the bound sits.
+The arity oracle is recorded there as considered-and-declined, with the condition that would revive it.
+
+One process note: inserting `#### Where the bound sits` reparented four residual bullets, because the anchor text sat inside a **list item** rather than at a section end.
+`markdown-conventions` warns about exactly this, and the heading census (`grep -nE '^#{2,4} '`) that caught it should have run before the edit rather than after.

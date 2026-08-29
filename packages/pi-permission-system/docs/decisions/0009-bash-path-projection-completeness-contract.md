@@ -52,6 +52,27 @@ It is resolved by the argument's own emptiness (`-i ''` is the BSD idiom and no 
 The same knowledge fixes the mirror-image false positive: `collectEmbeddedOptionValues` split every `--opt=value` token with no flag-role awareness, so `grep --regexp=/etc/passwd file.txt` emitted the *pattern* as a path candidate.
 A pattern-first command now runs that split from inside its own walker, where the role is known; a generic command keeps the blind split, which is safe precisely because it has no role to contradict.
 
+#### Where the bound sits
+
+`PATTERN_FIRST_COMMANDS` may hold facts about **argument structure** — which positional is a pattern, and whether a flag takes a separate argument — for the commands and flags it already names.
+Three edits are in scope:
+
+1. A further spelling of a listed flag (a long form, a glued form).
+2. A split, when one spelling has different arity across the implementations a name reaches.
+3. A role correction on an existing row.
+
+Adding a **flag** the table does not name, or a **command** it does not name, is the per-command option table rejected below and needs its own decision.
+There is no pressure to: the direction-of-failure rule makes an omission over-surface, so an unlisted flag costs a prompt, never an operand.
+
+The bound is not row count — [#823] left the table one row *smaller* than it found it (48 written entries to 47), because deduplicating the `grep`/`egrep`/`fgrep` and `awk`/`nawk` aliases returned more than the long forms consumed.
+It is that each row asserts an arity of a **real binary on a real host**, a different kind of fact from "`grep`'s first operand is a pattern" and the only kind this record has had trouble with.
+Nothing in the repo re-checks those assertions, so they rot silently as tools change, and two of [#823]'s six defects were rows [#823] itself added in spellings absent from the 4057-command corpus.
+A row is therefore priced at more than its line, and the question before adding one is whether a real command drops a real operand today — not whether the tool documents the spelling.
+
+An executable arity oracle — running each listed spelling against the installed binary and failing when the table disagrees — would convert these assertions into verified facts, covering roughly 21 of the 25 long-form rows across the macOS and Ubuntu hosts this repo uses.
+It was considered and deliberately not built: the table is at its bound, so the oracle would guard a surface that is not expected to grow.
+It is the first thing to build if edit 1 or 2 above is ever exercised at scale.
+
 ## Context
 
 The bash path gates decide which argument tokens of a shell command are filesystem operands, so the `path` and `external_directory` surfaces can rule on them.
@@ -198,7 +219,7 @@ Cost is ~0.04 ms p95 per command, ~19% of the already-paid tree-sitter parse.
   Rejected: this defeats any `bash` allow rule under a restrictive path policy, which is the configuration users reach for precisely to reduce prompting.
 - **Per-command argument tables.**
   Rejected as a deterministic-layer mechanism: unbounded maintenance surface, and it duplicates in brittle static data what the judge link ([#620]) does with the command in context.
-  Completing the *spellings* of the flags `PATTERN_FIRST_COMMANDS` already lists is not this ([#823]): the maintained set of flags is unchanged, and every added spelling is a synonym verified against that tool's own option list.
+  Completing the *spellings* of the flags `PATTERN_FIRST_COMMANDS` already lists is not this ([#823]); the 2026-08-29 amendment states where that bound sits.
   Auditing each tool's full option list for unlisted consuming flags was considered at the same time and declined on the direction-of-failure rule — the omissions it would fix over-surface, while each new entry is a fresh chance to over-list and drop an operand.
 - **Adding `number` to `ARG_NODE_TYPES`** to fix the `-A 3` discharge.
   Rejected: that set also feeds `commandArgumentWords` (the effect-retraction guards) and generic collection, so widening it would change effect attribution and emit numeric tokens for every command in the package.
