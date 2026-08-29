@@ -1016,6 +1016,9 @@ No decline, so the regular improvement rotation continues.
 - [#799] — deferred with recorded rationale (user composition decision): the channel ADR is deliberative design budget that would compete with the capability axis for the same planning attention, and ADR 0013 §9 has already written its input constraints so nothing decays by waiting.
   It stays the strongest non-code candidate for Phase 15, and PRs [#675], [#692], and [#638] remain blocked on it.
 - [#609] — deferred to Phase 15 as staging slice 4; it is a consequence of this phase's axis rather than its motivation (ADR 0013 §1), and it carries the phase's only breaking change, which does not belong in the same release as the axis that must be non-breaking by construction.
+- [#839] — filed by Step 4's planning; deferred to Phase 15 beside [#609].
+  Step 4's planning measured the whole nested-command bypass family and found one member that is not a command at all: a path named directly as a `for`/`select` operand or a `case` subject is a child of the statement node, so the path collector — which reads text only from `command` and `file_redirect` nodes — never sees it.
+  Step 4 and its `command_name`-position half change zero path candidates across 4276 real commands, while this one newly asks on `external_directory` for 17 of them, so it does not belong in the same release as an axis that is non-breaking by construction; it also reopens `token-collection.ts`, which Phase 15's redirect slice already returns to.
 - [#802] and [#804] — deferred to Phase 15 as staging slices 6 and 7.
 - [#620] — deferred with recorded rationale (explicit user decision; third consecutive phase).
   Not a silent re-defer: ADR 0013 §7 **narrows its charter** rather than parking it — the classifier now answers the provable slice at zero tokens, so the chain is no longer the only path to read relief and keeps only what genuinely needs judgment.
@@ -1448,4 +1451,5 @@ Each phase's findings, numbered plan, dependency diagram, and health metrics are
 [#724]: https://github.com/gotgenes/pi-packages/issues/724
 [#823]: https://github.com/gotgenes/pi-packages/issues/823
 [#837]: https://github.com/gotgenes/pi-packages/issues/837
+[#839]: https://github.com/gotgenes/pi-packages/issues/839
 [ADR-0002]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-subagents/docs/decisions/0002-extensions-on-a-minimal-core.md
