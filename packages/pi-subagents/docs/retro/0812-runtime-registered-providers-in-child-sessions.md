@@ -190,3 +190,77 @@ Test count moved from 1230 to 1238 across 68 → 70 files in `pi-subagents`.
 - **Pre-completion reviewer: FAIL (round 1) → PASS (round 2).**
   Round 1's blocking defect was the peer floor.
   Round 2 was scoped to the delta and confirmed `>=0.81.0` is both correct and minimal, the footer's every factual claim holds, all three commits retained the `Co-authored-by` trailer through the rewrite, and the shell-command-cache note is accurate.
+
+## Stage: Final Retrospective (2026-08-29T02:35:09Z)
+
+### Session summary
+
+One session carried #812 through all four stages — third-party PR triage, planning, TDD implementation, and ship — landing `@gotgenes/pi-subagents@20.0.0` with a breaking peer-range narrowing.
+The capability from @georgeharker's PR [#811] was adopted with a different mechanism: replay the parent's runtime provider registrations onto an isolated child `ModelRuntime` through public `ModelRegistry` accessors, rather than forwarding the parent's runtime instance through a private-field reach.
+The session's decisive moments were both external to the implementing agent — an operator question that dissolved the private-field reach, and a `pre-completion-reviewer` FAIL that caught a wrong dependency floor before it shipped.
+
+### Observations
+
+#### What went well
+
+- **The `pre-completion-reviewer` caught a defect that would have shipped, and it was a design-level catch, not a lint-level one.**
+  The plan pinned the peer floor at `>=0.80.8`.
+  `inheritRegisteredProviders` calls `getRegisteredNativeProvider()` unconditionally for every registered id, and that accessor does not exist until `v0.81.0` — so on Pi `0.80.8`–`0.80.10` every subagent spawn would have thrown `TypeError`, a worse failure than the bug being fixed.
+  This is the strongest validation of that agent so far: the wrong floor was already in the plan, `package.json`, the `BREAKING CHANGE:` footer, and `docs/configuration.md`, and every deterministic gate (`check`, `lint`, `test`, `fallow`) was green over it.
+- **The operator's one substantive intervention changed the design.**
+  After the PR-review evaluation concluded the private-field reach into `ModelRegistry.runtime` was "currently unavoidable", the operator asked whether the omission might be intentional and what Pi's own docs say.
+  It is intentional (`sdk.md` lines 1177-1178 split `ModelRuntime` as the SDK-application surface from `ModelRegistry` as the extension facade) — and the facade already exposed `getRegisteredProviderIds()` / `getRegisteredNativeProvider()` / `getRegisteredProviderConfig()`, which made the reach unnecessary.
+  The resulting design also removed a hazard the PR carried: sharing one mutable provider pool between parent and every child.
+- **Measurement replaced argument at three separate decision points.**
+  A throwaway script against the installed 0.84.3 bundle proved the defect (`child sees claude-bridge = false`) rather than trusting the PR body; a second proved the replay alternative end-to-end including both registration forms and three isolation properties; a scratch-worktree spike established that the SDK bump leaves exactly one type error before the plan was written.
+- **Mutation-testing a new pin, cheaply.**
+  Swapping the native/config branch order in `inheritRegisteredProviders` failed exactly one test ("prefers the native form"), confirming the pin was not vacuous — about 30 seconds of work.
+- **The `tidy-first-assessor` correctly returned "none".**
+  Its reasoning was that the plan's own new-module step *was* the tidy-first move, mirroring `package-exclusions.ts`'s established shape — a more useful answer than manufacturing a preparatory commit.
+
+#### What caused friction (agent side)
+
+- `missing-context` — the peer floor was derived from `git tag --contains 9993c9690`, a commit that added the public `ModelRegistry` constructor, `getRegisteredProviderIds()`, and `getRegisteredProviderConfig()` — but **not** `getRegisteredNativeProvider()` or the native `registerProvider(provider)` overload, which landed three days later in `019e4ad68` (first tagged `v0.81.0`).
+  One commit was checked; a claim was then made about a set of five APIs.
+  Reviewer-caught, not self-caught, and not user-caught.
+  Impact: the wrong floor propagated into four artifacts before detection, and correcting it required rewriting two unpushed commits (the `BREAKING CHANGE:` footer ships verbatim to an uneditable `CHANGELOG.md`, so a follow-up commit could not fix it) plus one extra correction commit, `be47ef70`.
+- `other` — the PR-review evaluation asserted the private-field reach was "currently unavoidable" after checking that `ExtensionContext` exposes no `modelRuntime` and that `ModelRegistry` has no `runtime` accessor, but without enumerating what `ModelRegistry` *does* expose.
+  The negative was verified; the alternative surface was not.
+  Impact: no rework — the operator's question caught it before the plan was written — but the recorded evaluation would otherwise have committed the repo to a private-field design.
+- `instruction-violation` (self-identified) — `/plan-issue` instructs checking `docs/architecture/` for "layout listings, complexity tables, health metrics" affected by added modules; the plan's Module-Level Changes table listed the Mermaid node and module tree but omitted the health-metrics row.
+  Caught at `/tdd-plan`'s own plan-vs-actual cross-check step.
+  Impact: none beyond folding the row into the existing docs commit; the stale figures were re-measured (`fallow health`, direct line count) rather than incremented, which also corrected a pre-existing 13-line drift.
+
+#### What caused friction (user side)
+
+- None.
+  The single intervention was strategic rather than mechanical, and it arrived at the cheapest possible moment — after the evaluation was written but before the plan committed to a design.
+  It is the model case for a redirecting question over a correction.
+
+### Diagnostic details
+
+- **Model-performance correlation** — directly observed from inline transcript labels: the ship stage ran on `anthropic/claude-sonnet-5`, the retrospective on `anthropic/claude-opus-5`.
+  All three subagent dispatches (one `tidy-first-assessor`, two `pre-completion-reviewer`) ran `anthropic/claude-sonnet-5` per their agent frontmatter.
+  The session recorded three model changes (`opus-5` → `sonnet-5` → `opus-5`), which places the PR-review, planning, and TDD stages on `opus-5`.
+  No quality mismatch found, and one finding worth keeping: the peer-floor defect was *made* on `opus-5` during planning and *caught* on `sonnet-5` by the fresh-context reviewer.
+  The corrective is procedural (verify each symbol), not a model upgrade — the stronger model made the error, and fresh context, not more capability, is what found it.
+- **Escalation-delay tracking** — no `rabbit-hole` friction points; longest single-error sequence was two iterations on `composition-root.test.ts` lint findings (mock parameter typing, then an unnecessary optional chain), well under the five-call threshold.
+- **Unused-tool detection** — nothing actionable.
+  `colgrep` went unused all session, correctly: every search was for an exact symbol in a sibling checkout, which is grep's case per the `colgrep` skill's own decision table.
+  An `Explore` dispatch for the SDK archaeology was considered and correctly skipped — `AGENTS.md` reserves it for multi-hop hunts, and these were targeted reads of known files.
+- **Feedback-loop gap analysis** — no gap.
+  A full green baseline (`check`, `lint`, `test`, `fallow dead-code`) was established before the first TDD cycle; `pnpm run check` ran after each step; root-level `pnpm run lint` ran before committing step 2 and caught two errors that a package-scoped run would have surfaced identically but later.
+  The one thing no gate could see was the peer floor — it is a claim about *other* installations, invisible to every local check, which is precisely why it needed a source-level per-symbol verification rather than a green suite.
+
+### Changes made
+
+1. `AGENTS.md` — added the dependency-floor verification rule to the enumerated-external-facts paragraph: a floor is a claim about each symbol the change uses, `git tag --contains <sha>` answers only which release carries one commit, and every symbol needs resolving against the candidate floor before pinning it.
+2. `packages/pi-subagents/docs/retro/0812-runtime-registered-providers-in-child-sessions.md` — this Final Retrospective stage entry.
+
+#### Proposed and declined
+
+- An `AGENTS.md` rule requiring the owning type's full public surface to be enumerated before recording a private-field reach, cast, or shim as unavoidable — drawn from the "currently unavoidable" conclusion the operator's question overturned.
+  Declined this round: the operator judged it sufficiently covered by the existing universal-claim and SDK-seam guidance, and it cost no rework here.
+  Revisit only if the same shape recurs.
+
+[#811]: https://github.com/gotgenes/pi-packages/pull/811

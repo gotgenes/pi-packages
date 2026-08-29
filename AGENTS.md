@@ -89,6 +89,9 @@ The same holds for a plan's enumerated **external** facts — a command's option
 Verify each against the real surface (`man`, `--help`, the schema) before it lands in a security boundary; #807's plan omitted `find -fprint0` and admitted `file` as read-only, and both shipped as fail-opens.
 Documentation answers whether a flag exists, not what a given binary does with it — run the tool when the answer gates a security boundary.
 A shared table row asserts its fact of every implementation the *name* reaches: `grep --context` takes no separate argument and `rg --context` does, and `awk` is GNU awk on Fedora and one-true-awk elsewhere (Refs #823).
+A dependency floor is a claim about **each** symbol the change uses, not about the release that introduced the feature.
+`git tag --contains <sha>` answers which release carries one commit; sibling accessors can land in a later one.
+Resolve every symbol against the candidate floor (`git show <tag>:<path> | grep <symbol>`) before pinning it (Refs #812).
 
 Pull-request status is an **inverted** signal here, because the repo reimplements adopted third-party changes through its own TDD cycle rather than merging them.
 Seven of nine closed-unmerged external PRs on `pi-permission-system`, and six on `pi-subagents`, shipped as capability with `Co-authored-by` credit — so "closed unmerged" usually means *accepted*.
