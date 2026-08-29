@@ -33,6 +33,10 @@ export type ModelResolution = ModelResolutionResult | ModelResolutionError;
  * 3. `modelInput` fails:
  *    - `modelFromParams` true  → return `{ error }` so the caller can surface it.
  *    - `modelFromParams` false → silent fallback to `parentModel`.
+ *
+ * `modelFromParams` reports which side supplied the winning string, not merely whether
+ * the caller passed one — a caller whose value an agent's `locked:` frontmatter discarded
+ * did not win, so its typo is not the string being resolved here.
  */
 export function resolveInvocationModel(
   parentModel: Model<any> | undefined,
