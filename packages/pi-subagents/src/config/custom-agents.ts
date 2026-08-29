@@ -6,6 +6,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { getAgentDir, parseFrontmatter } from "@earendil-works/pi-coding-agent";
 import { BUILTIN_TOOL_NAMES } from "#src/config/agent-types";
+import { isLockableField, type LockDeclaration } from "#src/config/invocation-config";
 import { parseThinkingLevel, thinkingLevelError } from "#src/config/thinking-level";
 import { debugLog } from "#src/debug";
 import type { AgentConfig } from "#src/types";
@@ -66,6 +67,7 @@ function loadFromDir(dir: string, agents: Map<string, AgentConfig>, source: "pro
       promptMode: fm.prompt_mode === "replace" ? "replace" : "append",
       inheritContext: fm.inherit_context != null ? fm.inherit_context === true : undefined,
       runInBackground: fm.run_in_background != null ? fm.run_in_background === true : undefined,
+      locked: lockDeclaration(fm.locked, name),
       enabled: fm.enabled !== false,  // default true; explicitly false disables
       source,
     });
@@ -78,6 +80,27 @@ function loadFromDir(dir: string, agents: Map<string, AgentConfig>, source: "pro
 /** Extract a string or undefined. */
 function str(val: unknown): string | undefined {
   return typeof val === "string" ? val : undefined;
+}
+
+/**
+ * Parse the `locked:` key into a lock declaration, or undefined when it claims nothing.
+ *
+ * `true` is the whole-file form; anything else parses as a field list, so both YAML
+ * spellings `tools:` accepts work here too. An entry naming no lockable field is
+ * dropped rather than failing the agent's load.
+ */
+function lockDeclaration(val: unknown, agentName: string): LockDeclaration | undefined {
+  if (typeof val === "boolean") return val ? true : undefined;
+
+  const entries = parseListField(val);
+  if (entries === undefined) return undefined;
+
+  const fields = entries.filter(isLockableField);
+  const unknownEntries = entries.filter((entry) => !isLockableField(entry));
+  if (unknownEntries.length > 0) {
+    debugLog(`agent ${agentName} frontmatter locked`, `unknown fields: ${unknownEntries.join(", ")}`);
+  }
+  return fields.length > 0 ? fields : undefined;
 }
 
 /**

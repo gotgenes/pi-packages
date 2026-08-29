@@ -180,6 +180,68 @@ Comma entry.`);
     });
   });
 
+  describe("locked field", () => {
+    it("is undefined when the key is absent", () => {
+      writeAgent("open", `---\nmodel: haiku\n---\n\nOpen.`);
+
+      expect(loadCustomAgents(tmpDir).get("open")!.locked).toBeUndefined();
+    });
+
+    it("reads `true` as locking every field the file sets", () => {
+      writeAgent("pinned", `---\nmodel: haiku\nlocked: true\n---\n\nPinned.`);
+
+      expect(loadCustomAgents(tmpDir).get("pinned")!.locked).toBe(true);
+    });
+
+    it("reads `false` as no lock at all", () => {
+      writeAgent("unpinned", `---\nmodel: haiku\nlocked: false\n---\n\nUnpinned.`);
+
+      expect(loadCustomAgents(tmpDir).get("unpinned")!.locked).toBeUndefined();
+    });
+
+    it("reads a comma-separated scalar", () => {
+      writeAgent("scalar", `---\nlocked: model, thinking\n---\n\nScalar.`);
+
+      expect(loadCustomAgents(tmpDir).get("scalar")!.locked).toEqual(["model", "thinking"]);
+    });
+
+    it("reads a YAML flow sequence", () => {
+      writeAgent("seq", `---\nlocked: [model, max_turns]\n---\n\nSequence.`);
+
+      expect(loadCustomAgents(tmpDir).get("seq")!.locked).toEqual(["model", "max_turns"]);
+    });
+
+    it("reads every lockable field name", () => {
+      writeAgent("all", `---\nlocked: [model, thinking, max_turns, inherit_context, run_in_background]\n---\n\nAll.`);
+
+      expect(loadCustomAgents(tmpDir).get("all")!.locked).toEqual([
+        "model",
+        "thinking",
+        "max_turns",
+        "inherit_context",
+        "run_in_background",
+      ]);
+    });
+
+    it("drops an entry that is not a lockable field", () => {
+      writeAgent("typo", `---\nlocked: [model, tools]\n---\n\nTypo.`);
+
+      expect(loadCustomAgents(tmpDir).get("typo")!.locked).toEqual(["model"]);
+    });
+
+    it("is undefined when every entry is dropped", () => {
+      writeAgent("alltypo", `---\nlocked: [tools]\n---\n\nAll typo.`);
+
+      expect(loadCustomAgents(tmpDir).get("alltypo")!.locked).toBeUndefined();
+    });
+
+    it("reads `none` as no lock", () => {
+      writeAgent("nolock", `---\nlocked: none\n---\n\nNo lock.`);
+
+      expect(loadCustomAgents(tmpDir).get("nolock")!.locked).toBeUndefined();
+    });
+  });
+
   describe("thinking level", () => {
     it.each(["off", "minimal", "low", "medium", "high", "xhigh", "max"])(
       "keeps %s",

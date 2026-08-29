@@ -1,6 +1,35 @@
 import type { AgentConfig, ThinkingLevel } from "#src/types";
 
 /**
+ * The fields a `subagent` tool caller may pass, spelled as the frontmatter key an
+ * agent author writes rather than the camelCase `AgentConfig` property.
+ */
+export const LOCKABLE_FIELDS = [
+  "model",
+  "thinking",
+  "max_turns",
+  "inherit_context",
+  "run_in_background",
+] as const;
+
+/** One field an agent file may withhold from its callers. */
+export type LockableField = (typeof LOCKABLE_FIELDS)[number];
+
+/**
+ * An agent file's claim over the fields a caller may not override.
+ *
+ * `true` locks every field the file sets, which is the pre-#829 blanket behavior. A
+ * list locks exactly the fields it names, whether or not the file supplies a value —
+ * so an author can deny an override without pinning one.
+ */
+export type LockDeclaration = true | readonly LockableField[];
+
+/** True when `name` is a field an agent file may lock. */
+export function isLockableField(name: string): name is LockableField {
+  return (LOCKABLE_FIELDS as readonly string[]).includes(name);
+}
+
+/**
  * A front door's answer to "should this agent run in the background?".
  *
  * `explicit` is a commitment the door has already acted on — the foreground

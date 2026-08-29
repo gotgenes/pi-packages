@@ -4,6 +4,7 @@
 
 import type { Model } from "@earendil-works/pi-ai";
 import type { AgentSessionEvent, SessionContext as SdkSessionContext } from "@earendil-works/pi-coding-agent";
+import type { LockDeclaration } from "#src/config/invocation-config";
 import type { SubagentThinkingLevel } from "#src/config/thinking-level";
 import type { ModelRegistry } from "#src/session/model-resolver";
 
@@ -66,6 +67,8 @@ export interface AgentConfig extends AgentIdentity, AgentPromptConfig {
   inheritContext?: boolean;
   /** Default for spawn: run in background. undefined = caller decides. */
   runInBackground?: boolean;
+  /** Fields a `subagent` tool caller may not override. Omitted — every field is overridable. */
+  locked?: LockDeclaration;
   /** One-line usage guideline for the subagent tool's Guidelines: block. Omitted — no guideline line. */
   toolGuideline?: string;
   /** true = this is an embedded default agent (informational) */
