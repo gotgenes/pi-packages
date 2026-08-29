@@ -10,6 +10,7 @@ describe("createResolvedSpawnConfig", () => {
         fellBack: false,
         displayName: "Agent",
       },
+      notes: [],
       execution: {
         prompt: "do the task",
         description: "task",
@@ -63,6 +64,12 @@ describe("createResolvedSpawnConfig", () => {
     const fallback = createResolvedSpawnConfig({ fellBack: true, rawType: "unknown-type" });
     expect(fallback.identity.fellBack).toBe(true);
     expect(fallback.identity.rawType).toBe("unknown-type");
+  });
+
+  it("derives the unknown-type note from fellBack and rawType", () => {
+    expect(createResolvedSpawnConfig({ fellBack: true, rawType: "unknown-type" }).notes).toEqual([
+      'Note: Unknown agent type "unknown-type" — using general-purpose.',
+    ]);
   });
 
   it("mirrors displayName, description, subagentType, and model into presentation.detailBase", () => {

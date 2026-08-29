@@ -47,6 +47,11 @@ export function buildDetails(
   };
 }
 
+/** Render a spawn's advisories as the prefix a result's leading line follows, or "" when there are none. */
+export function renderSpawnNotes(notes: readonly string[]): string {
+  return notes.length > 0 ? `${notes.join("\n")}\n\n` : "";
+}
+
 /** Tool execute return value for a text response. */
 export function textResult(msg: string, details?: AgentDetails) {
   return { content: [{ type: "text" as const, text: msg }], details };

@@ -58,6 +58,8 @@ export interface ResolvedSpawnConfig {
   identity: SpawnIdentity;
   execution: SpawnExecution;
   presentation: SpawnPresentation;
+  /** Model-visible advisories about how this spawn resolved. Both runners render them. */
+  notes: string[];
 }
 
 /** Error result when model resolution fails. */
@@ -139,6 +141,7 @@ export function resolveSpawnConfig(
 
   return {
     identity: { subagentType, rawType, fellBack, displayName },
+    notes: buildSpawnNotes(rawType, fellBack),
     execution: {
       prompt: params.prompt as string,
       description: params.description as string,
@@ -151,4 +154,9 @@ export function resolveSpawnConfig(
     },
     presentation: { modelName, agentTags, detailBase },
   };
+}
+
+/** Advisories a spawn's resolution produced, in the order a runner renders them. */
+export function buildSpawnNotes(rawType: SubagentType, fellBack: boolean): string[] {
+  return fellBack ? [`Note: Unknown agent type "${rawType}" — using general-purpose.`] : [];
 }

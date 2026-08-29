@@ -221,6 +221,32 @@ describe("resolveSpawnConfig — detailBase and tags", () => {
   });
 });
 
+describe("resolveSpawnConfig — notes", () => {
+  it("carries no note for a known agent type", () => {
+    const result = resolveSpawnConfig(
+      { subagent_type: "Explore", prompt: "test", description: "d" },
+      testRegistry,
+      makeModelInfo(),
+      defaultSettings,
+    );
+    if ("error" in result) return;
+    expect(result.notes).toEqual([]);
+  });
+
+  it("carries the unknown-type note when the type fell back", () => {
+    const result = resolveSpawnConfig(
+      { subagent_type: "unknown-type", prompt: "test", description: "d" },
+      testRegistry,
+      makeModelInfo(),
+      defaultSettings,
+    );
+    if ("error" in result) return;
+    expect(result.notes).toEqual([
+      'Note: Unknown agent type "unknown-type" — using general-purpose.',
+    ]);
+  });
+});
+
 describe("resolveSpawnConfig — prompt and rawType passthrough", () => {
   it("passes through prompt and rawType", () => {
     const result = resolveSpawnConfig(

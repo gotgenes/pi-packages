@@ -5,6 +5,7 @@ import {
   buildDetails,
   formatLifetimeTokens,
   getStatusNote,
+  renderSpawnNotes,
   textResult,
 } from "#src/tools/helpers";
 import type { ResolvedSpawnConfig } from "#src/tools/spawn-config";
@@ -112,19 +113,17 @@ export async function runForeground(
   const tokenText = formatLifetimeTokens(record);
   const details = buildDetails(presentation.detailBase, record, { tokens: tokenText });
 
-  const fallbackNote = identity.fellBack
-    ? `Note: Unknown agent type "${identity.rawType}" — using general-purpose.\n\n`
-    : "";
+  const noteText = renderSpawnNotes(params.config.notes);
 
   if (record.status === "error") {
-    return textResult(`${fallbackNote}Agent failed: ${record.error}`, details);
+    return textResult(`${noteText}Agent failed: ${record.error}`, details);
   }
 
   const durationMs = (record.completedAt ?? Date.now()) - record.startedAt;
   const statsParts = [`${record.toolUses} tool uses`];
   if (tokenText) statsParts.push(tokenText);
   return textResult(
-    `${fallbackNote}Agent completed in ${formatMs(durationMs)} (${statsParts.join(", ")})${getStatusNote(record.status)}.\n\n` +
+    `${noteText}Agent completed in ${formatMs(durationMs)} (${statsParts.join(", ")})${getStatusNote(record.status)}.\n\n` +
       (record.result?.trim() ?? "No output."),
     details,
   );
