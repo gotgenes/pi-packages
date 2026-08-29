@@ -57,6 +57,58 @@ describe("BashProgram", () => {
       });
     });
 
+    describe("operands of a command hosted in a prefix position (#742)", () => {
+      it.each([
+        ["a substitution as the whole command", "$(cat /etc/shadow)"],
+        ["a backtick substitution as the whole command", "`cat /etc/shadow`"],
+        [
+          "a substitution in a while condition",
+          "while $(cat /etc/shadow); do echo a; done",
+        ],
+        [
+          "a substitution in an if condition",
+          "if $(cat /etc/shadow); then echo a; fi",
+        ],
+        [
+          "a substitution in an until condition",
+          "until $(cat /etc/shadow); do echo a; done",
+        ],
+        [
+          "a substitution in an env-var prefix",
+          "FOO=$(cat /etc/shadow) echo hi",
+        ],
+        [
+          "a substitution in the env-var prefix of a pattern-first command",
+          "FOO=$(cat /etc/shadow) grep -f p x",
+        ],
+      ])("projects the operand of %s", async (_label, command) => {
+        const program = await BashProgram.parse(command, normalizer);
+        expect(
+          program.pathRuleCandidates().map(({ token }) => token),
+        ).toContain("/etc/shadow");
+      });
+
+      it("leaves a prefix assignment's literal value unprojected", async () => {
+        // The value is assigned, never accessed — only a *hosted execution* in
+        // that position runs, and only its operands are candidates.
+        const program = await BashProgram.parse(
+          "FOO=/etc/shadow echo hi",
+          normalizer,
+        );
+        expect(program.pathRuleCandidates()).toEqual([]);
+      });
+
+      it("projects an argument-position operand exactly as before", async () => {
+        const program = await BashProgram.parse(
+          "echo $(cat /etc/shadow)",
+          normalizer,
+        );
+        expect(program.pathRuleCandidates().map(({ token }) => token)).toEqual([
+          "/etc/shadow",
+        ]);
+      });
+    });
+
     it("adds absolute and relative policy values for relative tokens", async () => {
       const program = await BashProgram.parse("cat src/foo.ts", normalizer);
       const candidates = program.pathRuleCandidates();

@@ -484,6 +484,52 @@ describe("collectCommandTokens — generic commands", () => {
       tree.delete();
     }
   });
+
+  describe("a command hosted in a prefix position (#742)", () => {
+    // `command_name` and `variable_assignment` are skipped as operands — the
+    // head word is not one, and a prefix assignment's value is assigned rather
+    // than accessed — but either can *host* a substitution that really runs,
+    // whose own operands are candidates like any other position (ADR 0009).
+    it("collects the operand of a substitution in command-name position", async () => {
+      const { node, tree } = await parseCommandNode("$(cat /etc/shadow)");
+      try {
+        expect(commandTokens(node)).toEqual(["/etc/shadow"]);
+      } finally {
+        tree.delete();
+      }
+    });
+
+    it("collects the operand of a substitution in a prefix assignment", async () => {
+      const { node, tree } = await parseCommandNode(
+        "FOO=$(cat /etc/shadow) echo hi",
+      );
+      try {
+        expect(commandTokens(node)).toEqual(["/etc/shadow", "hi"]);
+      } finally {
+        tree.delete();
+      }
+    });
+
+    it("collects a prefix-hosted operand for a pattern-first command too", async () => {
+      const { node, tree } = await parseCommandNode(
+        "FOO=$(cat /etc/shadow) grep -f p x",
+      );
+      try {
+        expect(commandTokens(node)).toEqual(["/etc/shadow", "p", "x"]);
+      } finally {
+        tree.delete();
+      }
+    });
+
+    it("leaves a prefix assignment's literal value uncollected", async () => {
+      const { node, tree } = await parseCommandNode("FOO=/etc/shadow echo hi");
+      try {
+        expect(commandTokens(node)).toEqual(["hi"]);
+      } finally {
+        tree.delete();
+      }
+    });
+  });
 });
 
 // ── collectRedirectTokens ─────────────────────────────────────────────────────

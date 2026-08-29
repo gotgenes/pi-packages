@@ -198,6 +198,23 @@ function commandArgumentWords(node: TSNode): string[] {
 }
 
 /**
+ * The children of a `command` node that supply no operand text of their own:
+ * its head word, and any env-var prefix assignment.
+ *
+ * Both are skipped as operands — the head word is not an argument, and a prefix
+ * assignment's value is assigned rather than accessed — but either can *host* a
+ * substitution that really runs (`$(cat /etc/shadow)`,
+ * `FOO=$(cat /etc/shadow) echo hi`), whose own operands are candidates like any
+ * other position (ADR 0009's positional invariance). The two walkers below are
+ * different state machines and so each carry their own skip, which is why the
+ * question is named here once rather than spelled twice (#742).
+ */
+const COMMAND_PREFIX_TYPES: ReadonlySet<string> = new Set([
+  "command_name",
+  "variable_assignment",
+]);
+
+/**
  * A long or short option carrying its value inline: one or two leading dashes,
  * a name containing no `=` or whitespace, then `=` and a non-empty value.
  * Only the first `=` separates, so `--opt=/tmp/a=b` yields `/tmp/a=b`.
@@ -523,9 +540,11 @@ function collectPatternCommandTokens(
     const child = node.child(i);
     if (!child) continue;
 
-    // Skip command_name and variable_assignment nodes.
-    if (child.type === "command_name" || child.type === "variable_assignment")
+    if (COMMAND_PREFIX_TYPES.has(child.type)) {
+      // Supplies no operand of its own, but may host one that really runs.
+      tokens.push(...collectHostedExecutionTokens(child));
       continue;
+    }
 
     const isArgNode = ARG_NODE_TYPES.has(child.type);
     const text = resolveNodeText(child);
@@ -678,12 +697,12 @@ function collectGenericCommandTokens(
     const child = node.child(i);
     if (!child) continue;
 
-    if (child.type === "command_name") {
-      seenCommandName = true;
+    if (COMMAND_PREFIX_TYPES.has(child.type)) {
+      // Supplies no operand of its own, but may host one that really runs.
+      if (child.type === "command_name") seenCommandName = true;
+      tokens.push(...collectHostedExecutionTokens(child));
       continue;
     }
-    // Skip variable_assignment nodes (FOO=/bar)
-    if (child.type === "variable_assignment") continue;
 
     // If there was no explicit command_name node, the first word-like
     // child is the command name itself — skip it.
