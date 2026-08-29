@@ -126,7 +126,12 @@ export class SubagentsServiceAdapter implements SubagentsService {
 
 /**
  * Convert an internal Subagent to a serializable SubagentRecord.
- * Uses an explicit allowlist — new fields must be opted in.
+ *
+ * The allowlist is explicit because the snapshot admits only discrete facts —
+ * identity, resolved spawn decisions, cumulative metrics, and pointers to
+ * durable artifacts. Live objects, momentary activity, and package-internal
+ * bookkeeping stay out; see
+ * `docs/decisions/0005-subagent-record-admission-policy.md`.
  */
 export function toSubagentRecord(record: Subagent): SubagentRecord {
   const out: SubagentRecord = {
@@ -134,7 +139,9 @@ export function toSubagentRecord(record: Subagent): SubagentRecord {
     type: record.type,
     description: record.description,
     status: record.status,
+    isBackground: record.isBackground,
     toolUses: record.toolUses,
+    turnCount: record.turnCount,
     startedAt: record.startedAt,
     lifetimeUsage: record.lifetimeUsage,
     compactionCount: record.compactionCount,
@@ -143,6 +150,8 @@ export function toSubagentRecord(record: Subagent): SubagentRecord {
   if (record.result !== undefined) out.result = record.result;
   if (record.error !== undefined) out.error = record.error;
   if (record.completedAt !== undefined) out.completedAt = record.completedAt;
+  if (record.maxTurns !== undefined) out.maxTurns = record.maxTurns;
+  if (record.outputFile !== undefined) out.outputFile = record.outputFile;
 
   return out;
 }

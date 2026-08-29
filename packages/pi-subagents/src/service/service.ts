@@ -36,19 +36,34 @@ export type {
   WorkspaceProvider,
 };
 
-/** Serializable snapshot of an agent's state — no live session objects. */
+/**
+ * Serializable by-value snapshot of an agent's state.
+ *
+ * Produced by this package and read by consumers — not a contract third
+ * parties implement, so a new field is a minor release. What earns a field a
+ * place here (and what the snapshot deliberately withholds) is decided in
+ * `docs/decisions/0005-subagent-record-admission-policy.md`.
+ */
 export interface SubagentRecord {
   id: string;
   type: string;
   description: string;
   status: SubagentStatus;
+  /** Scheduling and announcement mode, resolved once at the manager choke point. */
+  isBackground: boolean;
   result?: string;
   error?: string;
   toolUses: number;
+  /** Turns consumed so far; starts at 1. */
+  turnCount: number;
+  /** Turn ceiling for this run, when one was set. */
+  maxTurns?: number;
   startedAt: number;
   completedAt?: number;
   lifetimeUsage: LifetimeUsage;
   compactionCount: number;
+  /** Path to the agent's session JSONL, once the session exists. */
+  outputFile?: string;
 }
 
 /** Options for spawning an agent via the service. */

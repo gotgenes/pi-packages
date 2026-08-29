@@ -31,13 +31,35 @@ describe("toSubagentRecord", () => {
       type: "Explore",
       description: "Check stale TODOs",
       status: "completed",
+      isBackground: true,
       result: "Found 3 stale TODOs",
       toolUses: 5,
+      turnCount: 1,
       startedAt: 1000,
       completedAt: 2000,
       lifetimeUsage: { input: 100, output: 200, cacheWrite: 50 },
       compactionCount: 1,
     });
+  });
+
+  it("reports the background mode resolved for the agent", () => {
+    const result = toSubagentRecord(createTestSubagent({ isBackground: false }));
+    expect(result.isBackground).toBe(false);
+  });
+
+  it("reports the turns consumed so far", () => {
+    const result = toSubagentRecord(createTestSubagent({ turnCount: 4 }));
+    expect(result.turnCount).toBe(4);
+  });
+
+  it("reports the turn ceiling and the transcript path when the agent has them", () => {
+    const record = createTestSubagent({ maxTurns: 12 });
+    record.subagentSession = toSubagentSession(
+      createSubagentSessionStub(createMockSession(), "/sessions/child.jsonl"),
+    );
+    const result = toSubagentRecord(record);
+    expect(result.maxTurns).toBe(12);
+    expect(result.outputFile).toBe("/sessions/child.jsonl");
   });
 
   it("strips live objects, collaborators, and the invocation display snapshot", () => {
@@ -69,7 +91,9 @@ describe("toSubagentRecord", () => {
       type: "general-purpose",
       description: "test",
       status: "running",
+      isBackground: true,
       toolUses: 0,
+      turnCount: 1,
       startedAt: 500,
       lifetimeUsage: { input: 0, output: 0, cacheWrite: 0 },
       compactionCount: 0,
@@ -77,6 +101,8 @@ describe("toSubagentRecord", () => {
     expect(result).not.toHaveProperty("result");
     expect(result).not.toHaveProperty("error");
     expect(result).not.toHaveProperty("completedAt");
+    expect(result).not.toHaveProperty("maxTurns");
+    expect(result).not.toHaveProperty("outputFile");
   });
 });
 
