@@ -76,16 +76,46 @@ All fields are optional — sensible defaults for everything.
 | `display_name`      | —              | Display name for UI (e.g. widget, agent list)                                                                                                                                                                                                                                                                           |
 | `tools`             | all 7          | The agent's complete tool allowlist — built-in or extension-registered names. `none` for no tools. See [Tool selection](#tool-selection)                                                                                                                                                                                |
 | `model`             | inherit parent | Model — `provider/modelId` or fuzzy name (`"haiku"`, `"sonnet"`)                                                                                                                                                                                                                                                        |
-| `thinking`          | inherit        | off, minimal, low, medium, high, xhigh                                                                                                                                                                                                                                                                                  |
+| `thinking`          | inherit        | off, minimal, low, medium, high, xhigh, max. An unrecognized value is dropped, and the agent inherits the parent's level                                                                                                                                                                                                |
 | `max_turns`         | unlimited      | Max agentic turns before graceful shutdown. `0` or omit for unlimited                                                                                                                                                                                                                                                   |
 | `prompt_mode`       | `append`       | `replace`: parent prompt is the cacheable base; body is appended last with full control (no `<sub_agent_context>` bridge, no `<agent_instructions>` wrapper). `append`: parent prompt is the base; body is wrapped in `<agent_instructions>` and a sub-agent context bridge is injected (agent acts as a "parent twin") |
 | `inherit_context`   | `false`        | Fork parent conversation into agent                                                                                                                                                                                                                                                                                     |
 | `run_in_background` | `false`        | Run in background by default                                                                                                                                                                                                                                                                                            |
 | `enabled`           | `true`         | Set to `false` to disable an agent (useful for hiding a default agent per-project)                                                                                                                                                                                                                                      |
+| `locked`            | —              | Fields a `subagent` tool caller may not override. `true` or a list of field names. See [Locking fields against callers](#locking-fields-against-callers)                                                                                                                                                                |
 
-Frontmatter is authoritative.
-If an agent file sets `model`, `thinking`, `max_turns`, `inherit_context`, or `run_in_background`, those values are locked for that agent.
-`subagent` tool parameters only fill fields the agent config leaves unspecified.
+The caller decides, and the agent file fills the gaps.
+A `subagent` tool parameter wins over the agent file's value for `model`, `thinking`, `max_turns`, `inherit_context`, and `run_in_background`; the agent file supplies whichever of those the caller left unset.
+
+### Locking fields against callers
+
+An agent whose model, thinking level, or turn limit is a correctness requirement rather than a default can withhold it from callers with `locked`.
+
+```yaml
+---
+model: anthropic/claude-haiku-4-5
+max_turns: 10
+locked: true
+---
+```
+
+`locked: true` withholds every field this file sets — here `model` and `max_turns`, while `thinking`, `inherit_context`, and `run_in_background` stay open because the file names no value for them.
+This is the behavior every agent file had before locking became opt-in, so it is the one-line way to keep an existing file working unchanged.
+
+A list withholds exactly the fields it names, in either YAML spelling:
+
+```yaml
+locked: model, thinking            # comma-separated
+locked: [model, max_turns]         # flow sequence
+```
+
+The list form also withholds a field this file leaves unset — `locked: [model]` with no `model:` denies the caller a model override and lets the child inherit the parent's.
+An entry naming anything other than `model`, `thinking`, `max_turns`, `inherit_context`, or `run_in_background` is ignored.
+
+A lock is never silent: when a caller passes a value for a locked field, the tool result says which agent locked which parameters.
+
+A lock binds the `subagent` tool only.
+[`SubagentsService.spawn`](../README.md#for-extension-authors) is a programmatic caller rather than a model guessing at harness settings, so its options win regardless.
 
 ### Tool selection
 

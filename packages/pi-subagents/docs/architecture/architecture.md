@@ -72,6 +72,7 @@ flowchart TB
         DefaultAgents["default-agents<br/>(built-in types)"]
         CustomAgents["custom-agents<br/>(user .md files)"]
         InvocationConfig["invocation-config<br/>(per-call merge)"]
+        ThinkingLevelModule["thinking-level<br/>(level vocabulary)"]
     end
 
     subgraph session["Session domain"]
@@ -127,6 +128,8 @@ flowchart TB
     SessionConfig --> AgentTypeRegistry
     SessionConfig --> Prompts & Env
     AgentTypeRegistry --> DefaultAgents & CustomAgents
+    SpawnConfig --> InvocationConfig & ThinkingLevelModule
+    CustomAgents --> ThinkingLevelModule
     RecordObserver -.->|subscribes| SubagentSession
     Widget -.->|polls| SubagentManager
     SubagentManager -.->|notifies| Widget
@@ -336,7 +339,8 @@ src/
 │   ├── agent-types.ts              AgentTypeRegistry class
 │   ├── default-agents.ts           built-in agent configs (general-purpose, Explore, Plan)
 │   ├── custom-agents.ts            user-defined agent .md file loader
-│   └── invocation-config.ts        per-call config merge; background-mode resolution
+│   ├── invocation-config.ts        per-call config merge (caller wins unless `locked`); background-mode resolution
+│   └── thinking-level.ts           thinking-level vocabulary and parser, wider than pi-ai's `ThinkingLevel`
 │
 ├── session/                        session assembly and preparation
 │   ├── session-config.ts           pure assembler (main entry)
@@ -714,7 +718,7 @@ That method — testability friction as a boundary probe, with its limits — is
 | Metric                     | Value                                                                   |
 | -------------------------- | ----------------------------------------------------------------------- |
 | Health score               | 78/100 (B), end of Phase 21                                             |
-| Total LOC                  | 8,416 (62 files)                                                        |
+| Total LOC                  | 8,836 (63 files)                                                        |
 | Dead code                  | 0 files, 0 exports                                                      |
 | Maintainability index      | 91.1 (good)                                                             |
 | Avg cyclomatic complexity  | 1.3                                                                     |
@@ -776,7 +780,7 @@ The operator's cadence decision: keep the regular improvement rotation after thi
 | ------------------------------------------------------------------------------------------------ | ---------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Health score                                                                                     | 78/100 (B) | ≥ 78 (B)        | `pnpm fallow health --score --hotspots --targets --workspace @gotgenes/pi-subagents`                                                                    |
 | `invocation` storage-chain and widget-filter sites (`src/lifecycle/` + `src/ui/agent-widget.ts`) | 8          | 0               | `grep -rEn 'invocation\??:\|\.invocation\b' packages/pi-subagents/src/lifecycle packages/pi-subagents/src/ui/agent-widget.ts --include='*.ts' \| wc -l` |
-| Blanket `agentConfig?.<field> ?? params` precedence merges in `invocation-config.ts`             | 5          | 0               | `grep -cE 'agentConfig\?\..*\?\?' packages/pi-subagents/src/config/invocation-config.ts`                                                                |
+| Blanket `agentConfig?.<field> ?? params` precedence merges in `invocation-config.ts`             | 5          | 0 ✅            | `grep -cE 'agentConfig\?\..*\?\?' packages/pi-subagents/src/config/invocation-config.ts`                                                                |
 | Foreground result text carries the resume handle (`Agent ID` in `foreground-runner.ts`)          | 0          | ≥ 1             | `grep -c 'Agent ID' packages/pi-subagents/src/tools/foreground-runner.ts`                                                                               |
 | Inherited-prompt skills-block strip present in `prompts.ts`                                      | 0          | ≥ 1             | `grep -c 'available_skills' packages/pi-subagents/src/session/prompts.ts`                                                                               |
 | Dead code / production duplication                                                               | 0 / 0      | 0 / 0           | `pnpm fallow dead-code --workspace @gotgenes/pi-subagents` / `pnpm fallow dupes --workspace @gotgenes/pi-subagents`                                     |
@@ -832,7 +836,7 @@ The contract direction made the widening semver-minor, so this step left the bat
 
 Release: independent
 
-#### Step 3 — Narrow the frontmatter guard to explicitly locked fields ([#829], with [#834])
+#### ✅ Step 3 — Narrow the frontmatter guard to explicitly locked fields ([#829], with [#834])
 
 Cause: upstream's config-wins precedence guards against a non-deterministic _model_ guessing harness knobs, but it was applied as a blanket over every field and every caller — so a deliberate operator override (`model: "sonnet-5"` on `Explore`) is silently discarded alongside a model's guess, contradicting the tool schema and `AGENTS.md`.
 Smell: Category C (a decision made at the wrong boundary — per-field policy fused into a single global precedence) plus `bug`.
@@ -844,6 +848,12 @@ Builds on Step 1's `BackgroundRequest` two-variant mechanism (each door states c
 Outcome: blanket `agentConfig?.<field> ?? params` merges drop 5 → 0; caller-explicit wins unless the agent file locks the field; a discarded override is reported, not silent; an unsupported `thinking` value no longer reaches the child session unchecked through either door; migration note shipped.
 Commit type: `fix(pi-subagents)!:` — semver-major (changes effective model/thinking/turns for agent files relying on the blanket).
 Impact 4 / Risk 3 / Priority 12.
+
+Landed: a caller's `subagent` parameter now wins and the agent file fills what the call leaves unset, unless the file declares `locked: true` (every field it sets — the pre-change behavior in one line) or `locked: [<fields>]` (exactly those, including fields it leaves unset).
+A discarded override is reported in the tool result, on the background path as well as the foreground one — which also gave the background path the unknown-agent-type note it had never rendered.
+The blanket merge row went 5 → 0.
+[#834] landed with it: `src/config/thinking-level.ts` owns the level vocabulary, and both doors reject an unrecognized value rather than passing one Pi silently clamps to `off`.
+The lock binds the tool door only; [#641] was excluded with rationale (a settings-layer clamp is a different mechanism at a different layer).
 
 Release: batch "front-door-majors"
 
@@ -911,7 +921,7 @@ Release: independent
 
 ```mermaid
 flowchart TD
-    S1["✅ Step 1 (#724)<br/>Choke-point parity"] --> S3["Step 3 (#829)<br/>Locked-fields precedence"]
+    S1["✅ Step 1 (#724)<br/>Choke-point parity"] --> S3["✅ Step 3 (#829)<br/>Locked-fields precedence"]
     S1 --> S4["Step 4 (#828)<br/>Remove vacant seam field"]
     S1 -.soft.-> S2["✅ Step 2 (#830)<br/>SubagentRecord policy"]
     S7["Step 7 (#798)<br/>Foreground resume handle"] -.soft.-> S8["Step 8 (#465)<br/>Ask-back"]

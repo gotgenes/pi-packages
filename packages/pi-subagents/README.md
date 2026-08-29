@@ -117,11 +117,14 @@ Launch a sub-agent.
 | `description`       | string       | yes      | Short 3-5 word summary (shown in UI)                             |
 | `subagent_type`     | string       | yes      | Agent type (built-in or custom)                                  |
 | `model`             | string       | no       | Model — `provider/modelId` or fuzzy name (`"haiku"`, `"sonnet"`) |
-| `thinking`          | string       | no       | Thinking level: off, minimal, low, medium, high, xhigh           |
-| `max_turns`         | number       | no       | Max agentic turns. Omit for unlimited (default)                  |
+| `thinking`          | string       | no       | Thinking level: off, minimal, low, medium, high, xhigh, max      |
+| `max_turns`         | number       | no       | Max agentic turns. Omit for the agent's own limit                |
 | `run_in_background` | boolean      | no       | Run without blocking                                             |
 | `resume`            | string       | no       | Agent ID to resume a previous session                            |
 | `inherit_context`   | boolean      | no       | Fork parent conversation into agent                              |
+
+These five parameters win over the agent file's own values, which fill whichever the call leaves unset.
+An agent file can withhold one with [`locked`](./docs/configuration.md#locking-fields-against-callers); the result then names the agent and the parameters it ignored.
 
 ### `get_subagent_result`
 
@@ -294,11 +297,15 @@ Use `getRecord(id)` to poll, `steer` to send a message, and the `subagents:compl
 The agent type is canonicalized, so `"explore"` and `"Explore"` reach the same agent.
 An unrecognized type falls back to `general-purpose` rather than throwing, matching the `subagent` tool's behavior.
 
-It throws in three cases:
+It throws in four cases:
 
 - there is no active session, so there is no parent to spawn from;
 - a `model` string does not resolve against the session's model registry;
+- a `thinkingLevel` is not one of `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`;
 - the named agent type exists but is disabled (`enabled: false`).
+
+Agent frontmatter fills the options you omit, and never overrides one you pass.
+An agent file's [`locked`](./docs/configuration.md#locking-fields-against-callers) frontmatter does not apply here — it guards against a model guessing harness settings, and an SDK caller is not that.
 
 Background mode follows the caller's degree of commitment.
 Omit `foreground` and the agent's own `run_in_background` frontmatter decides, defaulting to background when the agent declares nothing.
