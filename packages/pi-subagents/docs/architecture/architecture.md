@@ -795,6 +795,8 @@ Steps 2, 6, and 8 have design-dependent shapes and are verified by their plans' 
 - [#733] — deferred: TUI overlay defect requiring SDK-level rendering investigation, unrelated to this phase's cause.
 - [#755], [#711], [#636], [#695], [#676], [#660] — deferred: feature/UX requests that do not gate a structural phase ([#660] overlaps [#695]/[#676]).
 - [#683] — deferred: glyph-audit polish at boy-scout scale.
+- [#834] — filed by Step 1's implementation; folded into Step 3.
+  Narrowing `SubagentManagerLike.spawn`'s `unknown` options exposed a second hole the typing had hidden — neither door validates `thinking`, and Step 3 already rewrites the precedence for that exact field family on the exact line that holds the unchecked cast.
 - [#793], [#792], [#722], [#735] — pi-permission-system-primary; [#564] — pi-github-tools-primary; the `pkg:pi-subagents` labels are contextual and pull no work into this phase.
 - Scout inventory (all scattered, persisting from Phase 21) — remains on the `tidy-first` boy-scout path: `settings.ts` `sanitize()` range-check triplication, `mock.calls[N][idx]` indexing (17 sites, 9 files), `createManager()` observer-default merge density, `(manager as any).sweep()` private reach (7 sites, one file), and the `subagent-events-observer.ts` inline `{id, type, description}` payload triad.
 
@@ -822,14 +824,16 @@ Impact 3 / Risk 2 / Priority 12.
 
 Release: batch "front-door-majors"
 
-#### Step 3 — Narrow the frontmatter guard to explicitly locked fields ([#829])
+#### Step 3 — Narrow the frontmatter guard to explicitly locked fields ([#829], with [#834])
 
 Cause: upstream's config-wins precedence guards against a non-deterministic _model_ guessing harness knobs, but it was applied as a blanket over every field and every caller — so a deliberate operator override (`model: "sonnet-5"` on `Explore`) is silently discarded alongside a model's guess, contradicting the tool schema and `AGENTS.md`.
 Smell: Category C (a decision made at the wrong boundary — per-field policy fused into a single global precedence) plus `bug`.
-Target files: `src/config/invocation-config.ts`, `src/config/custom-agents.ts` (frontmatter `locked:` shape), `src/tools/agent-tool.ts` (schema text), `docs/configuration.md`.
+Target files: `src/config/invocation-config.ts`, `src/config/custom-agents.ts` (frontmatter `locked:` shape), `src/tools/agent-tool.ts` (schema text), `src/service/service-adapter.ts` ([#834]'s cast), `docs/configuration.md`.
 Design input: [#641]'s operator-configured floors belong to the same precedence family — settle or explicitly exclude it in the step's plan.
+[#834] adds value validation to the same field family: neither door checks the level it receives, so `invocation-config.ts:26` and the mirrored cast at `service-adapter.ts` both widen an arbitrary `string` to `ThinkingLevel`.
+Trace what the SDK does with an unrecognized level before choosing between rejection, warned fallback, and narrowing the public `SpawnOptions.thinkingLevel` union.
 Builds on Step 1's `BackgroundRequest` two-variant mechanism (each door states commitment versus fallback).
-Outcome: blanket `agentConfig?.<field> ?? params` merges drop 5 → 0; caller-explicit wins unless the agent file locks the field; a discarded override is reported, not silent; migration note shipped.
+Outcome: blanket `agentConfig?.<field> ?? params` merges drop 5 → 0; caller-explicit wins unless the agent file locks the field; a discarded override is reported, not silent; an unsupported `thinking` value no longer reaches the child session unchecked through either door; migration note shipped.
 Commit type: `fix(pi-subagents)!:` — semver-major (changes effective model/thinking/turns for agent files relying on the blanket).
 Impact 4 / Risk 3 / Priority 12.
 
@@ -1030,5 +1034,6 @@ The upstream test suite is run periodically as a regression canary for the sessi
 [#828]: https://github.com/gotgenes/pi-packages/issues/828
 [#829]: https://github.com/gotgenes/pi-packages/issues/829
 [#830]: https://github.com/gotgenes/pi-packages/issues/830
+[#834]: https://github.com/gotgenes/pi-packages/issues/834
 [ADR-0002]: ../decisions/0002-extensions-on-a-minimal-core.md
 [ADR-0004]: ../decisions/0004-reconsider-ui-direction.md
