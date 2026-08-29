@@ -53,6 +53,44 @@ Two residuals were filed and dispositioned against Phase 14 during the session: 
   per node type is a redesign of working code rather than a preparation, and readability holds at ~70 lines with this comment density.
 - `src/access-intent/bash/command-enumeration.ts` — merging `descendCommandChildren` and `descendStatementChildren` into one parameterized loop; rejected as the wrong-abstraction trap, since the discriminator would sit over a real behavioral difference (unconditional recurse vs. recurse-or-fallback).
 
+## Stage: Implementation — TDD (2026-08-29T22:24:59Z)
+
+### Session summary
+
+Executed all six TDD steps on branch `issue-742-pi-permission-system-commands-inside-con`, each as its own commit leaving the tree green, plus two follow-on `docs:` commits from pre-completion review.
+The enumerator gained a third node-type question (`STATEMENT_TYPES` plus a filtered `descendStatementChildren`), an explicit non-descending `ERROR` branch, and a hosted-execution descent on the catch-all; the path surface gained `COMMAND_PREFIX_TYPES`, closing the command-name and env-var-prefix positions.
+The pi-permission-system suite went 3699 → 3752 passing (+53 tests, 2 expected fail unchanged).
+
+### Observations
+
+- **The plan's design survived contact intact; every one of its named killing mutations killed.**
+  Ten mutations were applied and reverted across steps 1–5, including one per node type in `COMPOUND_STATEMENT_TYPES` and `STATEMENT_GROUP_TYPES`.
+  Each removed type failed exactly and only its own row, which is what the plan wanted from writing every row as a real parse rather than as an assertion about a set's contents.
+  The one test that passed during its Red step — "leaves a function's own name unemitted" — was resolved by mutation rather than assumed: dropping the `STATEMENT_TYPES` filter kills it, so it is a genuine pin and not a broken probe.
+- **A `git checkout HEAD -- src` inside a measurement loop silently reverted an uncommitted Green step, twice.**
+  The before/after measurement swapped `src/` between the landing state and `6ffdf1af`, and restoring with `git checkout HEAD` restores *HEAD*, which at that moment was the previous step's commit — not the working tree.
+  The suite caught it both times, but the second occurrence also fought a denied `rm -rf` in the restore command, leaving the tree in a three-file mixed state.
+  The rule this teaches: back up with `cp` to a temp path before a measurement that swaps source, and never use `git checkout <ref> -- <path>` as the restore half when the thing being protected is uncommitted.
+- **`c_style_for_statement` emits its arithmetic initializer as a unit, and that is correct rather than a leak.**
+  `for ((i=0; i<3; i++))` yields a `variable_assignment` child, which `STATEMENT_TYPES` names, so `i=0` becomes a unit.
+  It reads like the operand-word leak the filter exists to prevent, but it is not: the initializer really can host an execution (`for ((i=$(rm x); …))`), and a top-level `X=$(rm q)` produces the same shape.
+  The distinction between the two positions is not expressible in a node-type set, and emitting is the never-weaker direction.
+- **The plan's measured numbers reproduced in kind, not exactly, and the difference was the corpus.**
+  Re-measured at the landing commit: 191 of 4348 intact commands gain units (plan: 189 of 4276) and +842 units (plan: +829), with `pathRuleCandidates()` / `externalAccesses()` changing on **zero** — the number that carries the non-breaking claim, and the one that reproduced exactly.
+  The wrapper-headed count read 11 against the plan's 5; six are `/usr/bin/time -p wezterm …` entries the planning corpus did not contain.
+  Re-measuring rather than defending the plan's figures is what surfaced that.
+- **The pre-completion reviewer's one WARN was a real convention violation, and fixing it produced a better instrument than the one it replaced.**
+  The numbers were produced by a throwaway vitest file that diffed HEAD against `6ffdf1af` — not re-runnable by a later reader, which this package's own precedent (`measure-core-coverage.mjs`, `measure-wrapper-transparency.mjs`) forbids.
+  The committed replacement transcribes *both* enumerators and diffs them over one real parse, so the delta is derivable at any commit with no baseline checkout, and it independently reproduced 191 / +842 / 11.
+  It also added a row the throwaway could not: `prefix-position substitution: 0` bounds the path half's blast radius from above, which re-derives "zero path-slice changes" as a forward measurement instead of a historical diff.
+- **A second reviewer round on the delta caught that the upper-bound argument was stated on the diff's footprint rather than on behavior.**
+  The same commit range also rewrites `collectHostedExecutionTokens` onto `forEachExecutionIn`, which reaches call sites well outside prefix position; it is output-identical, so the bound holds, but a reader re-deriving it has to know to check that first.
+  The script header now says so.
+- **Pre-completion reviewer: PASS** (second round, scoped to the WARN fix).
+  The first round returned WARN with the single instrument finding above; its six-item re-derivation mandate came back clean, including an independently-parsed sweep for statement types missing from the sets.
+  It found one pre-existing grammar limitation worth recording: `coproc NAME { … }` is not recognized as a distinct construct by `tree-sitter-bash` 0.25.1 at all — it parses as two garbled `command` nodes, so a coprocess body's commands are unreachable to the enumerator.
+  Unchanged by this work and claimed nowhere, but it is the one shape a reader might assume the statement descent now covers.
+
 [#306]: https://github.com/gotgenes/pi-packages/issues/306
 [#645]: https://github.com/gotgenes/pi-packages/issues/645
 [#741]: https://github.com/gotgenes/pi-packages/issues/741
