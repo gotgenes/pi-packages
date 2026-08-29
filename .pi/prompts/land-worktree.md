@@ -55,7 +55,7 @@ git log --oneline "$PLAN"^..HEAD
 If no plan commit matches, anchor on the parent of the issue's first commit.
 From that range:
 
-- "Implemented in <sha> …" — SHA as plain text (no backticks) so GitHub auto-links it.
+- "Implemented in <sha> …" — the commit carrying the behavior, not the range's last commit; SHA as plain text (no backticks) so GitHub auto-links it.
 - A short bullet list of feature/breaking commits.
 - One sentence on user-visible behavior change.
 - A note flagging any breaking change (`feat!:`).

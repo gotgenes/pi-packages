@@ -78,5 +78,62 @@ The plan's `**Release:** ship independently` marker holds — the `feat:`/`fix:`
 No deferred work and no new follow-ups surfaced at ship time; the plan's Open Questions section already declined to file one (lifecycle event-payload stability), and that stands.
 Ready to rebase onto `origin/main` and hand off to `/land-worktree 830`.
 
+## Stage: Final Retrospective (2026-08-29T21:29:30Z)
+
+### Session summary
+
+Four stages across two sessions (peer worktree: planning + TDD + ship; root: land + retro) turned an undocumented allowlist into a written policy plus the four field admissions and one aliasing fix that follow from it.
+Shipped as `pi-subagents-v20.1.0` — six commits, `service-adapter.test.ts` 30 → 32 tests, package suite 1264 → 1266, all gates green at every checkpoint.
+The land ran end to end without an intervention: ff-merge, CI, `issue_close`, release-PR merge, teardown.
+
+### Observations
+
+#### What went well
+
+- **The clarification gate followed `AGENTS.md` § Clarification gates to the letter and settled in one pass.**
+  The planning turn opened with a `**Terms used below**` block defining *allowlist*, *producer-only type*, and *reactive vs discrete* (the Refs #786 rule), then gave an eight-row candidate inventory table, then three defensible policies each priced by what it admits and what it costs.
+  It also named the premise every option shared — that the record's contents are decided per field — and replaced it with a stated rule.
+  No bounce, no second gate.
+- **The declined-field pin has exactly one killing mutation, and it is a third party's diff.**
+  TypeScript's excess-property check rejects any narrower leak into `toSubagentRecord`'s `SubagentRecord`-typed literal, so mutation E had to widen the interface *and* populate it — reproducing [#748]'s change.
+  A test whose only kill is the proposal it declines is a stronger pin than an assertion list, and it is the shape to reach for whenever a step's deliverable is a *refusal*.
+- **Reading for a policy found a defect the policy then made in-scope.**
+  `toSubagentRecord` aliased `lifetimeUsage` to the object `SubagentState.addUsage()` mutates in place.
+  Defining "snapshot" as *by value* in ADR 0005 is what made the fix belong in this change rather than a follow-up issue — the decision framed the bug, not the reverse.
+
+#### What caused friction (agent side)
+
+- `other` — **`/tdd-plan`'s prescribed mutation-revert is unsafe at the point it prescribes it.**
+  Step 3 ("Verify the pins") sits *before* step 4 ("Commit"), so the green edit is always uncommitted when the mutation is applied — yet the prompt names `git checkout -- <file>` as the primary revert, with "(or a saved copy)" parenthetical.
+  The revert wiped the step's own implementation, and mutations B and C then ran against pre-feature code, producing five reds that read as over-broad kills.
+  The tell was that a mutation to `isBackground` reddened the `turnCount` test.
+  Impact: self-caught after 3 tool calls; the green edit was re-applied and all four mutations redone against a `cp`-saved copy.
+  No rework in committed history, ~5 extra tool calls.
+- `instruction-violation` (not self-identified) — **`/plan-issue` names the `colgrep` and `testing` skills as loads; the planning session loaded neither.**
+  It read `package-pi-subagents`, `code-design`, `design-review`, `markdown-conventions`, and `tidy-first`, then ran six exact-symbol greps for `SubagentRecord`/`getRecord`/`listAgents`.
+  Impact: none observable — consumer discovery by exact symbol is what the `colgrep` skill's decision table routes to `grep` anyway, and the `testing` skill was loaded at the TDD stage where it was used.
+- `other` — **the issue close comment anchored "Implemented in" on the range's last commit rather than the behavior commit.**
+  `df6132c1` is the `docs:` commit; `ad598497` carries the feature.
+  Impact: cosmetic — the bullet list directly below names both correctly.
+
+#### What caused friction (user side)
+
+None.
+The operator's single decision (policy 3 plus the producer-only contract direction and the folded-in `lifetimeUsage` fix) determined the field list, the release classification, and the roadmap batch downgrade in one answer, and nothing after it needed a correction.
+
+### Diagnostic details
+
+- **Model-performance correlation** — planning, TDD, land, and this retro ran on `anthropic/claude-opus-5`; the `/ship-worktree` stage ran on `anthropic/claude-sonnet-5`, and both subagents (`tidy-first-assessor`, `pre-completion-reviewer`) on `anthropic/claude-sonnet-5` per their frontmatter.
+  No mismatch: the ship stage is mechanical (two gates, one breadcrumb, one no-op rebase) and finished in 14 turns, while the two judgment-heavy dispatches got sonnet-5 rather than haiku.
+- **Escalation-delay tracking** — the mutation-revert incident resolved in 3 consecutive tool calls, under the 5-call escalation threshold; no other repeated-error sequence occurred.
+- **Feedback-loop gap analysis** — no gap.
+  The TDD session verified a green baseline before step 1 (`check`, root `lint`, `test`, `fallow dead-code`), ran the affected test file at every red and green, and ran `pnpm run check` immediately after each interface-touching green rather than only at end of cycle.
+
+### Changes made
+
+1. `.pi/prompts/tdd-plan.md` — step 3 ("Verify the pins") now prescribes a `cp`-saved copy as the mutation revert and names `git checkout -- <file>` as the trap it is at that point in the cycle.
+2. `.pi/prompts/land-worktree.md` — the close-comment spec now says the "Implemented in" SHA is the commit carrying the behavior, not the range's last commit.
+3. `.pi/prompts/ship-issue.md` — same clarification on its equivalent line, so the trunk and worktree ship flows agree.
+
 [#748]: https://github.com/gotgenes/pi-packages/pull/748
 [#829]: https://github.com/gotgenes/pi-packages/issues/829

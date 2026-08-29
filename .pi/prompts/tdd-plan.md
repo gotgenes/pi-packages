@@ -93,7 +93,8 @@ For **each** step in the plan's "TDD Order", in order:
    - A test was **authored or rewritten after Green**, so it never had a Red step at all.
    - The step's tests span more than one equivalence class — one mutation kills one class, so a surviving test is only evidence when you can say which mutation should have killed it.
 
-   Revert the mutation with `git checkout -- <file>` (or a saved copy) and re-run before committing; never commit with a mutation in the tree.
+   Save the green file first (`cp <file> /tmp/green.ts`) and restore from that copy; `git checkout -- <file>` reverts to HEAD, discarding the step's own uncommitted green edit (Refs #830).
+   Re-run before committing; never commit with a mutation in the tree.
 4. **Commit.**
    Use the commit message the plan suggests, or a Conventional Commits message that matches:
    - `test:` for test-only commits (rare; usually folded into the feat).

@@ -91,7 +91,7 @@ If no plan commit matches, anchor on the parent of the issue's first commit.
 
 The comment should include:
 
-- The commit hash that lands the change ("Implemented in <sha> …").
+- The commit hash that lands the change ("Implemented in <sha> …") — the commit carrying the behavior, not the range's last commit.
   Run `git rev-parse` for **every** SHA the comment will contain — the landing commit and any follow-on commits — before you start drafting.
   Paste each exactly; never hand-type or extend a short SHA from memory, and never leave a placeholder to fill in later.
   A fabricated SHA does not auto-link (Refs #704, #777).
