@@ -196,7 +196,7 @@ ${guidelines}
 				run_in_background: Type.Optional(
 					Type.Boolean({
 						description:
-							"Set to true to run in background. Returns agent ID immediately. You will be notified when it completes.",
+							"Run in background. Default: true (agents launch asynchronously and notify on completion). Set to false only for foreground execution.",
 					}),
 				),
 				resume: Type.Optional(
