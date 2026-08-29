@@ -150,3 +150,43 @@ The Tidy-First assessor recommended no preparatory refactorings.
 #### Deferred tidyings
 
 - `packages/pi-subagents/src/index.ts` — the `subagentSessionDeps.io` object literal holds several multi-statement inline lambdas (`createLoaderSettingsManager`, `createSession`) that could be extracted to named functions; the assessor declined it as general composition-root tidiness that would not shrink this change.
+
+## Stage: Implementation — TDD (2026-08-29T02:12:34Z)
+
+### Session summary
+
+Completed all three planned TDD cycles: the SDK-free `provider-inheritance.ts` replay seam with unit tests, the composition-root rewiring with the SDK bump and peer narrowing, and the doc updates.
+The pre-completion reviewer returned FAIL on the first round with one blocking defect — a wrong peer floor — which was fixed and re-reviewed to PASS.
+Test count moved from 1230 to 1238 across 68 → 70 files in `pi-subagents`.
+
+### Observations
+
+- **The reviewer caught a real, shipped-if-missed defect, and it was mine.**
+  The plan asserted the peer floor was `>=0.80.8`, verified with `git tag --contains 9993c9690`.
+  That commit added the public `ModelRegistry` constructor, `getRegisteredProviderIds()`, and `getRegisteredProviderConfig()` — but **not** `getRegisteredNativeProvider()` or the native `registerProvider(provider)` overload, which landed three days later in `019e4ad68`, first tagged `v0.81.0`.
+  `inheritRegisteredProviders` calls `getRegisteredNativeProvider` unconditionally for every registered id, so on Pi `0.80.8`–`0.80.10` every subagent spawn would have thrown `TypeError: modelRegistry.getRegisteredNativeProvider is not a function` — a worse failure than the bug being fixed.
+- **The generalization is the lesson.**
+  I checked *one* commit for a *set* of three accessors and quantified over all of them.
+  This is exactly the universal-claim failure AGENTS.md warns about, made against an external surface rather than a subagent report.
+  The correct check enumerates each API independently: `git show <tag>:<path> | grep <symbol>` per symbol per candidate tag, which is what the fix used.
+- **Rewriting history was the right call, not a convenience.**
+  The wrong floor lived in the `BREAKING CHANGE:` footer, which release-please copies verbatim into an uneditable `CHANGELOG.md`.
+  Nothing had been pushed (6 commits ahead of `origin/main`), so `git reset --soft` + rebuild produced a correct footer; a follow-up commit could not have.
+  Verified the rewrite with `git diff backup-812 HEAD`, which showed exactly the two intended edits and nothing else.
+- **The plan's false claim was corrected in place rather than deleted.**
+  A blockquote above the wrong sentence records what was wrong and why the verification method missed it, so the gap stays legible to anyone reusing `git tag --contains` the same way.
+- **The composition-root test earned its cost.**
+  The `inheritRegisteredProviders` unit tests pass whether or not the root calls them, so they never satisfied the fails-without-the-fix bar.
+  Only `test/composition-root.test.ts` goes red on a reverted wiring; the reviewer independently traced that it fails on four separate assertions.
+- **Mutation-tested the branch-order pin.**
+  Swapping the native/config order in the implementation failed exactly one test ("prefers the native form"), confirming that pin is not vacuous.
+- **Deviation from the plan's Module-Level Changes.**
+  The architecture doc's health-metrics row also needed updating (LOC `8,323` → `8,416`, files `61` → `62`, maintainability `91.0` → `91.1`), which the plan's table did not list.
+  Values were re-measured with `fallow health` and a direct line count rather than incremented by hand; the old LOC figure was already 13 lines stale.
+- **Reviewer's non-blocking find, folded in.**
+  Provider *registrations* are isolated per child, but Pi's `resolve-config-value.ts` keeps a module-scope `commandResultCache` shared process-wide, so a shell-command API key (`"apiKey": "!cmd"`) resolves once for parent and children together.
+  Pre-existing SDK behavior, but adjacent enough to the isolation claim that `docs/configuration.md` now says so.
+- **The SDK bump was far cheaper than feared** — the planning spike had already established that bumping `pi-coding-agent`, `pi-ai`, and `pi-tui` together leaves exactly one type error (the one being fixed), so implementation hit no surprises there.
+- **Pre-completion reviewer: FAIL (round 1) → PASS (round 2).**
+  Round 1's blocking defect was the peer floor.
+  Round 2 was scoped to the delta and confirmed `>=0.81.0` is both correct and minimal, the footer's every factual claim holds, all three commits retained the `Co-authored-by` trailer through the rewrite, and the shell-command-cache note is accurate.
