@@ -51,7 +51,7 @@
   },
   "peerDependencies": {
     "@earendil-works/pi-ai": ">=0.75.0",
-    "@earendil-works/pi-coding-agent": ">=0.80.5",
+    "@earendil-works/pi-coding-agent": ">=0.81.0",
     "@earendil-works/pi-tui": ">=0.75.0"
   },
   "dependencies": {
@@ -72,9 +72,9 @@
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
-    "@earendil-works/pi-ai": "0.80.5",
-    "@earendil-works/pi-coding-agent": "0.80.5",
-    "@earendil-works/pi-tui": "0.80.5",
+    "@earendil-works/pi-ai": "0.84.4",
+    "@earendil-works/pi-coding-agent": "0.84.4",
+    "@earendil-works/pi-tui": "0.84.4",
     "@types/node": "catalog:",
     "rollup": "catalog:",
     "rollup-plugin-dts": "catalog:",

@@ -42,6 +42,13 @@ minimumReleaseAgeExclude:
   - '@fallow-cli/win32-x64-msvc@3.2.0'
   - fallow@3.2.0
   - '@gotgenes/pi-permission-system@27.0.0'
+  - '@earendil-works/pi-agent-core@0.84.4'
+  - '@earendil-works/pi-ai@0.84.4'
+  - '@earendil-works/pi-client@0.84.4'
+  - '@earendil-works/pi-coding-agent@0.84.4'
+  - '@earendil-works/pi-protocol@0.84.4'
+  - '@earendil-works/pi-telemetry@0.84.4'
+  - '@earendil-works/pi-tui@0.84.4'
 
 # A freshly-published first-party sibling (e.g. a same-day @gotgenes/* release a
 # dependent package bumps to) cannot be unblocked via minimumReleaseAgeExclude:

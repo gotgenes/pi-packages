@@ -10,11 +10,13 @@
  */
 
 import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import {
   createAgentSession,
   DefaultResourceLoader,
   type ExtensionAPI,
   getAgentDir,
+  ModelRuntime,
   type ResourceLoader,
   ModelRegistry as SdkModelRegistry,
   SettingsManager as SdkSettingsManager,
@@ -39,6 +41,7 @@ import { detectEnv } from "#src/session/env";
 import { resolveModel } from "#src/session/model-resolver";
 import { createExcludedPackagesStorage } from "#src/session/package-exclusions";
 import { buildAgentPrompt } from "#src/session/prompts";
+import { inheritRegisteredProviders } from "#src/session/provider-inheritance";
 import { deriveSubagentSessionDir } from "#src/session/session-dir";
 import { SettingsManager } from "#src/settings";
 import { AgentTool } from "#src/tools/agent-tool";
@@ -116,13 +119,34 @@ export default function (pi: ExtensionAPI) {
       // it can be tested with plain stubs. Here at the composition root the
       // values really are the SDK objects, so widen those three and let every
       // other option type-check against the SDK signature.
-      createSession: ({ sessionManager, resourceLoader, modelRegistry, ...rest }) =>
-        createAgentSession({
+      createSession: async ({ sessionManager, resourceLoader, modelRegistry, ...rest }) => {
+        // Pi builds the child a fresh ModelRuntime whenever it is not given
+        // one, and runtime registrations live on the instance rather than in
+        // models.json or auth.json — so the child would lose every provider the
+        // parent registered via pi.registerProvider. Build the runtime here
+        // instead and replay those registrations onto it. The child keeps its
+        // own pool, so a child-loaded extension cannot mutate the parent's
+        // (Refs #812). The path derivation mirrors the SDK's own.
+        const childRuntime = await ModelRuntime.create({
+          authPath: join(rest.agentDir, "auth.json"),
+          modelsPath: join(rest.agentDir, "models.json"),
+        });
+        const childRegistry = new SdkModelRegistry(childRuntime);
+        inheritRegisteredProviders(modelRegistry as SdkModelRegistry, {
+          registerNative: (provider) => {
+            childRegistry.registerProvider(provider);
+          },
+          registerConfigured: (id, config) => {
+            childRegistry.registerProvider(id, config);
+          },
+        });
+        return createAgentSession({
           ...rest,
           sessionManager: sessionManager as SessionManager,
           resourceLoader: resourceLoader as ResourceLoader,
-          modelRegistry: modelRegistry as SdkModelRegistry,
-        }),
+          modelRuntime: childRuntime,
+        });
+      },
       assemblerIO: {
         buildAgentPrompt,
       },
