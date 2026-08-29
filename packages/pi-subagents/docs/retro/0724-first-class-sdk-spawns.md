@@ -86,6 +86,20 @@ The `tidy-first-assessor` corrected two counts I had asserted: `options.isBackgr
 It also flagged the highest-value preparatory step — `SubagentManagerLike.spawn` types its options `unknown` (`service-adapter.ts:20`), which is the precise reason `tsc` never caught the omission this issue reports.
 Narrowing it to `AgentSpawnConfig` first turns the later required-field addition into a compile error at the SDK door.
 
+#### Sequencing decision — a phase opens before implementation
+
+After the plan was committed, the four spun-off issues plus [#724] were judged a **bug cluster**, which `improvement-discovery` names as a legitimate trigger for a new phase.
+The operator's call: run `/plan-improvements` for `pi-subagents` with full discovery, **before** `/tdd-plan` on [#724], so the phase takes a clean pre-change health baseline and [#724] enters as a step carrying a grep-able `Release:` tag.
+
+The candidate cause — to be tested by the sweep, not assumed — is *the two front doors were never held to the same contract*. [#724] (the SDK door bypasses the tool door's resolution pipeline), [#829] (precedence is uniform across doors with different callers), [#830] (the public snapshot's allowlist has no stated policy), and [#828] (a vacant field on the public seam) all express it; it traces to the architecture doc's "Reactive versus discrete (not internal versus external)" section, which rules `SubagentsService.getRecord` a query "in-package or not" but was never audited against the code.
+[#827] does **not** fit the cause — it is widget activation, not the public surface — and should be triaged out of the spine rather than carried as a symptom-driven step.
+
+Run the discovery in a **fresh session**.
+This planning session formed the hypothesis above, so it is the least able to refute it.
+Expect the sweep to reshape or reject the cause; that is the process working.
+
+Release coordination the phase should settle: [#828] and [#829] are both semver-major and are candidates for one batched bump rather than two.
+
 [#262]: https://github.com/gotgenes/pi-packages/issues/262
 [#448]: https://github.com/gotgenes/pi-packages/issues/448
 [#724]: https://github.com/gotgenes/pi-packages/issues/724
@@ -93,4 +107,5 @@ Narrowing it to `AgentSpawnConfig` first turns the later required-field addition
 [#827]: https://github.com/gotgenes/pi-packages/issues/827
 [#828]: https://github.com/gotgenes/pi-packages/issues/828
 [#829]: https://github.com/gotgenes/pi-packages/issues/829
+[#830]: https://github.com/gotgenes/pi-packages/issues/830
 [ADR-0004]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-subagents/docs/decisions/0004-reconsider-ui-direction.md
