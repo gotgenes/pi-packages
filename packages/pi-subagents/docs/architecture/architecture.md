@@ -139,6 +139,7 @@ classDiagram
         +id: string
         +type: SubagentType
         +description: string
+        +isBackground: boolean
         -state: SubagentState
         -execution: SubagentExecution
         +status: SubagentStatus
@@ -204,6 +205,7 @@ classDiagram
     }
 
     class SubagentManager {
+        -registry: SpawnTypeResolver
         +spawn(snapshot, type, prompt, config)
         +spawnAndWait(snapshot, type, prompt, config)
         +resume(id, prompt, signal)
@@ -333,7 +335,7 @@ src/
 │   ├── agent-types.ts              AgentTypeRegistry class
 │   ├── default-agents.ts           built-in agent configs (general-purpose, Explore, Plan)
 │   ├── custom-agents.ts            user-defined agent .md file loader
-│   └── invocation-config.ts        per-call config merge
+│   └── invocation-config.ts        per-call config merge; background-mode resolution
 │
 ├── session/                        session assembly and preparation
 │   ├── session-config.ts           pure assembler (main entry)
@@ -802,7 +804,7 @@ Steps 2, 6, and 8 have design-dependent shapes and are verified by their plans' 
 
 ### Steps
 
-#### Step 1 — Land first-class SDK spawns at the manager choke point ([#724])
+#### ✅ Step 1 — Land first-class SDK spawns at the manager choke point ([#724])
 
 Cause: the two front doors were never held to the same contract — `SubagentManager.spawn` is the one point both doors already traverse, but it stamps no invariants, so the tool door's resolution pipeline (canonical type, disabled-agent check, background mode, parent linkage) is skipped by the SDK door.
 The widget's `record.invocation?.runInBackground` read is the symptom fallow cannot see: the manager computes background-ness five times and stores it nowhere, so a consumer reconstructs it from a display snapshot one door forgets to build.
@@ -903,7 +905,7 @@ Release: independent
 
 ```mermaid
 flowchart TD
-    S1["Step 1 (#724)<br/>Choke-point parity"] --> S3["Step 3 (#829)<br/>Locked-fields precedence"]
+    S1["✅ Step 1 (#724)<br/>Choke-point parity"] --> S3["Step 3 (#829)<br/>Locked-fields precedence"]
     S1 --> S4["Step 4 (#828)<br/>Remove vacant seam field"]
     S1 -.soft.-> S2["Step 2 (#830)<br/>SubagentRecord policy"]
     S7["Step 7 (#798)<br/>Foreground resume handle"] -.soft.-> S8["Step 8 (#465)<br/>Ask-back"]

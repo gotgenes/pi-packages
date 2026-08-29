@@ -286,6 +286,26 @@ svc?.spawn("Explore", "Check for stale TODOs");
 Declare this package as an optional peer dependency.
 See `src/service/service.ts` for the full `SubagentsService` interface and the `WorkspaceProvider` seam.
 
+#### `spawn` contract
+
+`spawn` returns the new agent's id immediately — it never waits for the run.
+Use `getRecord(id)` to poll, `steer` to send a message, and the `subagents:completed` event to learn when it finished.
+
+The agent type is canonicalized, so `"explore"` and `"Explore"` reach the same agent.
+An unrecognized type falls back to `general-purpose` rather than throwing, matching the `subagent` tool's behavior.
+
+It throws in three cases:
+
+- there is no active session, so there is no parent to spawn from;
+- a `model` string does not resolve against the session's model registry;
+- the named agent type exists but is disabled (`enabled: false`).
+
+Background mode follows the caller's degree of commitment.
+Omit `foreground` and the agent's own `run_in_background` frontmatter decides, defaulting to background when the agent declares nothing.
+Pass `foreground` explicitly and it wins outright, whatever the frontmatter says.
+
+A spawned agent is a first-class citizen of the runtime: it appears in the background widget, carries its parent's session identity so permission prompts route correctly, and nests its session file under the parent's.
+
 ### `@gotgenes/pi-subagents/settings` — layered config loader
 
 Extensions that store configuration in JSON files can use the shared layered loader, which reads a global file (`<agentDir>/<filename>`) and a project file (`<cwd>/.pi/<filename>`) and merges them — project wins on conflicts, missing files are silent, malformed files warn and fall back:
