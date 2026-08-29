@@ -105,6 +105,83 @@ No deferred work remains — both residuals the planning session identified are 
 
 Concise breadcrumb only — the final `/retro 742` at the root captures the retrospective proper, including the TDD-stage observations already recorded above.
 
+## Stage: Final Retrospective (2026-08-29T23:00:38Z)
+
+### Session summary
+
+Landed the peer worktree branch onto `main` as a clean fast-forward, verified CI, closed [#742] with a four-SHA close comment, released `pi-permission-system` 27.1.3, and tore down the worktree.
+The issue spanned four sessions — planning and TDD in the peer worktree on `claude-opus-5`, the worktree ship on `claude-sonnet-5`, and land plus this retrospective at the root on `claude-opus-5`.
+Across all four the design survived contact intact, the operator's three planning elaborations each corrected a real defect, and the one substantial friction was a measurement harness that twice destroyed uncommitted work.
+
+### Observations
+
+#### What went well
+
+- **The measure-then-plan discipline paid three separate times, and each payment was a different kind.**
+  Planning prototyped the whole change and reverted it, which caught the operand-word leak that made the statement-typed descent filter the design's load-bearing idea.
+  TDD re-measured rather than restating the plan's figures, which surfaced a corpus difference (11 wrapper-headed units against the plan's 5).
+  Pre-completion review then rejected the numbers for having no committed instrument, and the replacement `scripts/measure-statement-descent.mjs` is strictly better than what it replaced — it derives the delta at any commit with no baseline checkout, and its `prefix-position substitution: 0` row converts "zero path-slice changes" from a historical diff into a forward bound.
+- **The three planning `ask_user` rounds were the highest-value thing in the issue, and all three were elaboration requests rather than answers.**
+  The operator's "is the bash command *actually* malformed?"
+  collapsed a 111-command `ERROR` population to 1 and voided an entire option set priced on it.
+  "Are you showing me a command stack, represented as a LIFO array?"
+  rejected raw JSON as a before/after presentation.
+  "Is it our ability to correctly assess … or merely about the presentation?"
+  was settled by a one-line grep the first gate should have carried.
+  None of the three was a preference question; each was a defect report against the gate.
+- **Per-step killing mutations caught a vacuous test that the Red step could not have.**
+  Step 4's "leaves a function's own name unemitted" passed during its own Red step.
+  Rather than assuming it was a broken probe, the session mutated away the `STATEMENT_TYPES` filter and confirmed the test dies — so it is a genuine pin.
+  Ten mutations across steps 1–5, one per node type, each failing exactly and only its own row.
+- **Incremental verification is what made the destroyed-work incident survivable.**
+  The full package suite ran after every step, so both silent reverts were caught within one tool call of happening.
+  A session that verified only at the end would have committed a reverted Step 4.
+
+#### What caused friction (agent side)
+
+- `rabbit-hole` — the Step 4 blast-radius measurement swapped `src/` between the landing state and the pre-change commit using `git checkout <ref> -- src`, and restored with `git checkout HEAD -- src`.
+  HEAD was the *previous step's commit*, so the restore silently reverted the uncommitted Green step — twice.
+  The second recovery compounded it: the restore command led with `rm -rf packages/pi-permission-system/src`, which this package's own gate denied mid-command, leaving three files in a mixed state.
+  Impact: roughly 13 consecutive tool calls (peer TDD turns 76–91) spent on restore-and-reverify rather than on the step, and two full-suite runs to prove the tree was whole again.
+  The working shape was found only on the third attempt — `git show <ref>:<path>` into a temp dir for the baseline, `cp` for the current state, and `cp` in both directions to swap.
+- `missing-context` — the planning session read the package skill, which already says a command longer than `reviewLogFieldMaxWidth` is stored with a trailing `…` and that a scan needing whole commands must exclude those.
+  It then scanned the log for parse failures without that filter and reported 111 `ERROR` commands.
+  Impact: an entire `ask_user` option set was drafted and priced on "108 commands would newly prompt", and only the operator's question retired it.
+  The rule existed and was read; it did not fire at the moment it applied, which makes this a salience problem rather than a documentation gap.
+- `other` — a Step 3 `Edit` failed against a decorative `// ── … ──` comment rule the change needed to rename, costing about five calls before the session recomputed the pad width with a short `python3` script.
+  Impact: added friction, no rework.
+  `AGENTS.md` already warns about this class and prescribes copying the rule line from a fresh `Read`; the programmatic width recompute is arguably the better technique for the rename case.
+- `other` — one measurement harness run failed on a guessed module path (`#src/access-intent/path-normalization` for what is `#src/path-normalizer`).
+  Impact: three tool calls, no rework.
+
+#### What caused friction (user side)
+
+- Nothing to correct — the three planning elaborations were the ideal intervention shape: a question that redirects rather than a correction that patches.
+  The one opportunity worth naming is that the `ERROR`-population question ("is the bash command *actually* malformed?") was available to the agent as a self-check, and the operator should not have had to be the one to ask it.
+  That is an agent-side salience fix, recorded above, not a request for different user behavior.
+
+### Diagnostic details
+
+- **Model-performance correlation** — planning and TDD ran on `anthropic/claude-opus-5` (judgment-heavy: design gates, mutation reasoning, ADR amendments) and the worktree ship on `anthropic/claude-sonnet-5` (mechanical: two gates, a stage note, a rebase).
+  Both assignments fit the work.
+  The `tidy-first-assessor` subagent cost 141.6s and 81k tokens to return no required tidyings and one structural confirmation — a correct dispatch whose value was the verification, not the suggestions.
+  The `pre-completion-reviewer` ran twice; round one's WARN is what produced the committed instrument.
+- **Escalation-delay tracking** — the `git checkout` incident ran about 13 consecutive tool calls on the same failure mode, well past the 5-call threshold.
+  A subagent was not the missing lever here; the missing move was stopping after the *first* silent revert to re-derive why the restore did not restore, instead of retrying variations of the same command shape.
+- **Feedback-loop gap analysis** — no gap.
+  `pnpm run check` and the package suite ran inside every step, killing mutations were verified before each commit, and root-level `lint` / `fallow dead-code` ran at end-of-cycle and again at ship.
+  This is the discipline that bounded the one real incident to rework rather than a bad commit.
+
+### Changes made
+
+1. `AGENTS.md` — added the `git checkout <ref> -- <path>` A/B-measurement hazard to the git-hazards cluster: the restore half restores HEAD, not the working tree, so back both sides up as files and swap with `cp`, never leading the restore with `rm -rf`.
+2. `.pi/skills/package-pi-permission-system/SKILL.md` — sharpened the existing review-log truncation caveat from a hedge ("should exclude or account for those") into a directive that names the filter and the concrete failure it prevents.
+   Net zero lines; the rule already existed and was read without firing.
+3. `packages/pi-permission-system/docs/retro/0742-enumerate-catch-all-node-types.md` — this Final Retrospective stage entry.
+
+One proposal was declined at the clarification gate: an `AGENTS.md` bullet requiring a gate that proposes a new data-structure field to name that field's read sites first.
+It had the smallest evidence base of the three — a single bounced question.
+
 [#306]: https://github.com/gotgenes/pi-packages/issues/306
 [#645]: https://github.com/gotgenes/pi-packages/issues/645
 [#741]: https://github.com/gotgenes/pi-packages/issues/741
