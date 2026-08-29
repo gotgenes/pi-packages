@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [27.1.3](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v27.1.2...pi-permission-system-v27.1.3) (2026-08-29)
+
+
+### Bug Fixes
+
+* **pi-permission-system:** gate commands hosted by declarations, test commands, and assignments ([dfde822](https://github.com/gotgenes/pi-packages/commit/dfde8227d3bf11de5258dcbe376dd0b8b75045e0)), closes [#742](https://github.com/gotgenes/pi-packages/issues/742)
+* **pi-permission-system:** gate commands inside a for loop's body and word list ([6e96464](https://github.com/gotgenes/pi-packages/commit/6e9646486db849afdf80819150a203d293b3847c)), closes [#742](https://github.com/gotgenes/pi-packages/issues/742)
+* **pi-permission-system:** gate commands inside control-flow bodies and function definitions ([3a2f232](https://github.com/gotgenes/pi-packages/commit/3a2f232d9c12588ea1feacf41cade0e56e66a44b)), closes [#742](https://github.com/gotgenes/pi-packages/issues/742)
+* **pi-permission-system:** project a command-name substitution's path operands ([9807d44](https://github.com/gotgenes/pi-packages/commit/9807d444b6d81526b01bc542cd4a829a1b2640c3)), closes [#742](https://github.com/gotgenes/pi-packages/issues/742)
+
+
+### Documentation
+
+* **pi-permission-system:** bound the path-slice claim on behavior, not diff footprint ([91ef5c9](https://github.com/gotgenes/pi-packages/commit/91ef5c9f2d0578fb64fe317bcddd3ec7d9418d4c)), closes [#742](https://github.com/gotgenes/pi-packages/issues/742)
+* **pi-permission-system:** commit the instrument behind Step 4's measurement ([e634c2c](https://github.com/gotgenes/pi-packages/commit/e634c2cf068340cc0deae86648330e44c2741f06)), closes [#742](https://github.com/gotgenes/pi-packages/issues/742)
+
 ## [27.1.2](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v27.1.1...pi-permission-system-v27.1.2) (2026-08-29)
 
 
