@@ -1,28 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { AgentTypeRegistry } from "#src/config/agent-types";
 import { resolveSpawnConfig } from "#src/tools/spawn-config";
-import type { AgentConfig } from "#src/types";
 import { makeModel } from "#test/helpers/make-model";
-
-function makeAgentConfig(overrides: Partial<AgentConfig> = {}): AgentConfig {
-  return {
-    name: "test-agent",
-    description: "Test agent",
-    toolNames: ["read", "grep"],
-    systemPrompt: "You are a test agent.",
-    promptMode: "replace",
-    inheritContext: false,
-    runInBackground: false,
-    ...overrides,
-  };
-}
-
-/** Registry with a single disabled Plan override. */
-function makeDisabledPlanRegistry(): AgentTypeRegistry {
-  return new AgentTypeRegistry(
-    () => new Map([["Plan", makeAgentConfig({ name: "Plan", description: "Disabled", enabled: false })]]),
-  );
-}
 
 /** Minimal registry with default agents only. */
 const testRegistry = new AgentTypeRegistry(() => new Map());
@@ -74,34 +53,6 @@ describe("resolveSpawnConfig — type resolution", () => {
     );
     if ("error" in result) return;
     expect(result.identity.displayName).toBe("Explore");
-  });
-
-  it("returns an error for a disabled agent type (exact match)", () => {
-    const registry = makeDisabledPlanRegistry();
-    const result = resolveSpawnConfig(
-      { subagent_type: "Plan", prompt: "test", description: "d" },
-      registry,
-      makeModelInfo(),
-      defaultSettings,
-    );
-    expect("error" in result).toBe(true);
-    if ("error" in result) {
-      expect(result.error).toBe('Agent type "Plan" is disabled');
-    }
-  });
-
-  it("reports the canonical casing in the disabled-agent error (case-insensitive input)", () => {
-    const registry = makeDisabledPlanRegistry();
-    const result = resolveSpawnConfig(
-      { subagent_type: "plan", prompt: "test", description: "d" },
-      registry,
-      makeModelInfo(),
-      defaultSettings,
-    );
-    expect("error" in result).toBe(true);
-    if ("error" in result) {
-      expect(result.error).toBe('Agent type "Plan" is disabled');
-    }
   });
 
   it("uses displayName from agent config when available", () => {

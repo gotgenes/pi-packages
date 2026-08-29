@@ -8,6 +8,7 @@
 
 import { randomUUID } from "node:crypto";
 import type { Model } from "@earendil-works/pi-ai";
+import { type BackgroundRequest, resolveBackgroundMode } from "#src/config/invocation-config";
 import { debugLog } from "#src/debug";
 import type { ConcurrencyLimiter } from "#src/lifecycle/concurrency-limiter";
 import type { CreateSubagentSessionParams } from "#src/lifecycle/create-subagent-session";
@@ -18,7 +19,23 @@ import { SubagentState } from "#src/lifecycle/subagent-state";
 import type { WorkspaceProvider } from "#src/lifecycle/workspace";
 
 import type { RunConfig } from "#src/runtime";
-import type { AgentInvocation, CompactionInfo, ParentSessionInfo, SubagentType, ThinkingLevel } from "#src/types";
+import type { AgentConfig, AgentInvocation, CompactionInfo, ParentSessionInfo, SubagentType, ThinkingLevel } from "#src/types";
+
+/**
+ * The agent-registry slice the manager needs to resolve a spawn. Deliberately
+ * narrower than AgentConfigLookup, whose slice serves session assembly (ISP).
+ */
+export interface SpawnTypeResolver {
+  resolveType(name: string): string | undefined;
+  isValidType(type: string): boolean;
+  resolveAgentConfig(type: string): AgentConfig;
+}
+
+/** A spawn's resolved identity and mode — the invariants every front door shares. */
+interface ResolvedSpawn {
+  type: SubagentType;
+  isBackground: boolean;
+}
 
 /**
  * Session-retention windows (minutes). `SettingsManager` satisfies this
@@ -57,6 +74,8 @@ export interface SubagentManagerOptions {
   /** Live accessor for the session-retention windows; defaults applied when absent. */
   getRetentionPolicy?: () => RetentionPolicy;
   observer?: SubagentManagerObserver;
+  /** Agent registry, consulted to canonicalize a spawn's type and resolve its config. */
+  registry: SpawnTypeResolver;
 }
 
 export interface AgentSpawnConfig {
@@ -65,7 +84,12 @@ export interface AgentSpawnConfig {
   maxTurns?: number;
   inheritContext?: boolean;
   thinkingLevel?: ThinkingLevel;
-  isBackground?: boolean;
+  /**
+   * Whether this door has committed to a background mode or is offering a
+   * default the agent's frontmatter may override. Required so a new front door
+   * cannot silently inherit another's policy.
+   */
+  background: BackgroundRequest;
   /**
    * Skip the maxConcurrent queue check for this spawn - start immediately even
    * if the configured concurrency limit would otherwise queue it. Useful for
@@ -91,6 +115,7 @@ export class SubagentManager {
   private readonly baseCwd: string;
   private getRunConfig?: () => RunConfig;
   private getRetentionPolicy?: () => RetentionPolicy;
+  private readonly registry: SpawnTypeResolver;
   private _workspaceProvider?: WorkspaceProvider;
 
   /** The registered workspace provider, or undefined when none is registered. */
@@ -105,6 +130,7 @@ export class SubagentManager {
     this.observer = options.observer;
     this.getRunConfig = options.getRunConfig;
     this.getRetentionPolicy = options.getRetentionPolicy;
+    this.registry = options.registry;
     // Periodically release the heavy session of terminal agents past their
     // retention window. The lightweight record (with its result) is kept for the
     // session lifetime, so get_subagent_result never misses in-session.
@@ -130,7 +156,7 @@ export class SubagentManager {
   }
 
   /** Compose a per-agent lifecycle observer from manager and spawn-config concerns. */
-  private buildObserver(options: AgentSpawnConfig): SubagentLifecycleObserver {
+  private buildObserver(options: AgentSpawnConfig, isBackground: boolean): SubagentLifecycleObserver {
     return {
       onStarted: (agent) => {
         this.observer?.onSubagentStarted(agent);
@@ -139,12 +165,12 @@ export class SubagentManager {
         ? (agent) => options.observer!.onSessionCreated!(agent)
         : undefined,
       onRunFinished: (agent) => {
-        if (options.isBackground) {
+        if (isBackground) {
           try { this.observer?.onSubagentCompleted(agent); } catch (err) { debugLog("onSubagentCompleted observer", err); }
         }
       },
       onResumeFinished: (agent) => {
-        if (options.isBackground) {
+        if (isBackground) {
           try { this.observer?.onSubagentResumed(agent); } catch (err) { debugLog("onSubagentResumed observer", err); }
         }
       },
@@ -157,6 +183,8 @@ export class SubagentManager {
   /**
    * Spawn an agent and return its ID immediately (for background use).
    * If the concurrency limit is reached, the agent is queued.
+   *
+   * Throws when the named agent type is disabled.
    */
   spawn(
     snapshot: ParentSnapshot,
@@ -164,6 +192,56 @@ export class SubagentManager {
     prompt: string,
     options: AgentSpawnConfig,
   ): string {
+    return this.create(snapshot, this.resolveSpawn(type, options.background), prompt, options);
+  }
+
+  /**
+   * Spawn an agent and wait for completion (foreground use).
+   * Foreground agents bypass the concurrency queue.
+   *
+   * The caller holds the result, which is a delivery commitment: the agent must
+   * not be queued and must not be announced, whatever its frontmatter declares.
+   *
+   * Rejects when the named agent type is disabled.
+   */
+  async spawnAndWait(
+    snapshot: ParentSnapshot,
+    type: SubagentType,
+    prompt: string,
+    options: Omit<AgentSpawnConfig, "background">,
+  ): Promise<Subagent> {
+    const foreground: BackgroundRequest = { kind: "explicit", isBackground: false };
+    const id = this.create(snapshot, this.resolveSpawn(type, foreground), prompt, {
+      ...options,
+      background: foreground,
+    });
+    const record = this.agents.get(id)!;
+    await record.promise;
+    return record;
+  }
+
+  /**
+   * Stamp the invariants every front door shares: a canonical agent type, a
+   * rejection for a disabled one, and the effective background mode.
+   */
+  private resolveSpawn(type: string, background: BackgroundRequest): ResolvedSpawn {
+    const canonical = this.registry.resolveType(type);
+    if (canonical !== undefined && !this.registry.isValidType(canonical)) {
+      throw new Error(`Agent type "${canonical}" is disabled`);
+    }
+    const resolvedType = canonical ?? "general-purpose";
+    const agentConfig = this.registry.resolveAgentConfig(resolvedType);
+    return { type: resolvedType, isBackground: resolveBackgroundMode(agentConfig, background) };
+  }
+
+  /** Create, register, and start (or queue) a record for an already-resolved spawn. */
+  private create(
+    snapshot: ParentSnapshot,
+    resolved: ResolvedSpawn,
+    prompt: string,
+    options: AgentSpawnConfig,
+  ): string {
+    const { type, isBackground } = resolved;
     const id = randomUUID().slice(0, 17);
     const record = new Subagent({
       id,
@@ -171,7 +249,7 @@ export class SubagentManager {
       description: options.description,
       invocation: options.invocation,
       state: new SubagentState({
-        status: options.isBackground ? "queued" : "running",
+        status: isBackground ? "queued" : "running",
         startedAt: Date.now(),
       }),
       execution: {
@@ -179,7 +257,7 @@ export class SubagentManager {
         snapshot,
         prompt,
         baseCwd: this.baseCwd,
-        observer: this.buildObserver(options),
+        observer: this.buildObserver(options, isBackground),
         getRunConfig: this.getRunConfig,
         getWorkspaceProvider: () => this._workspaceProvider,
         model: options.model,
@@ -191,11 +269,11 @@ export class SubagentManager {
     });
     this.agents.set(id, record);
 
-    if (options.isBackground) {
+    if (isBackground) {
       this.observer?.onSubagentCreated(record);
     }
 
-    if (options.isBackground && !options.bypassQueue) {
+    if (isBackground && !options.bypassQueue) {
       // Schedule on the limiter — scheduleVia captures the limiter promise
       // eagerly, so a queued agent is awaitable from spawn; guardedRun guards
       // against abort-while-queued when the slot frees.
@@ -205,22 +283,6 @@ export class SubagentManager {
 
     record.start();
     return id;
-  }
-
-  /**
-   * Spawn an agent and wait for completion (foreground use).
-   * Foreground agents bypass the concurrency queue.
-   */
-  async spawnAndWait(
-    snapshot: ParentSnapshot,
-    type: SubagentType,
-    prompt: string,
-    options: Omit<AgentSpawnConfig, "isBackground">,
-  ): Promise<Subagent> {
-    const id = this.spawn(snapshot, type, prompt, { ...options, isBackground: false });
-    const record = this.agents.get(id)!;
-    await record.promise;
-    return record;
   }
 
   /**

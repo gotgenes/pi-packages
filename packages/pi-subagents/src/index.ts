@@ -167,6 +167,7 @@ export default function (pi: ExtensionAPI) {
     limiter,
     getRunConfig: () => settings,
     getRetentionPolicy: () => settings,
+    registry,
   });
 
   // Typed service published via Symbol.for() for cross-extension access.

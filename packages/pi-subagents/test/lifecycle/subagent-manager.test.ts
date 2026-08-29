@@ -1,12 +1,14 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
+import { AgentTypeRegistry } from "#src/config/agent-types";
 import { ConcurrencyLimiter } from "#src/lifecycle/concurrency-limiter";
 import type { CreateSubagentSessionParams } from "#src/lifecycle/create-subagent-session";
+import type { AgentSpawnConfig } from "#src/lifecycle/subagent-manager";
 import { SubagentManager, type SubagentManagerObserver } from "#src/lifecycle/subagent-manager";
 import type { SubagentSession } from "#src/lifecycle/subagent-session";
 import type { WorkspaceProvider } from "#src/lifecycle/workspace";
 import { NotificationManager } from "#src/observation/notification";
 import type { RunConfig } from "#src/runtime";
-import type { Subagent } from "#src/types";
+import type { AgentConfig, Subagent } from "#src/types";
 import { createBlockingFactory, createSessionFactory } from "#test/helpers/manager-stubs";
 import { createMockSession, createSubagentSessionStub, emitResumeUsageAndCompaction, toSubagentSession } from "#test/helpers/mock-session";
 import { STUB_SNAPSHOT } from "#test/helpers/stub-ctx";
@@ -21,6 +23,29 @@ function defaultFactory(): SessionFactory {
   return vi.fn(async (_params: CreateSubagentSessionParams) => toSubagentSession(createSubagentSessionStub()));
 }
 
+function makeAgentConfig(overrides: Partial<AgentConfig> = {}): AgentConfig {
+  return {
+    name: "test-agent",
+    description: "Test agent",
+    toolNames: ["read", "grep"],
+    systemPrompt: "You are a test agent.",
+    promptMode: "replace",
+    inheritContext: false,
+    runInBackground: false,
+    ...overrides,
+  };
+}
+
+/** Registry with default agents only. */
+function defaultRegistry(): AgentTypeRegistry {
+  return new AgentTypeRegistry(() => new Map());
+}
+
+/** Registry with a single custom agent override, keyed by its canonical name. */
+function registryWith(name: string, overrides: Partial<AgentConfig>): AgentTypeRegistry {
+  return new AgentTypeRegistry(() => new Map([[name, makeAgentConfig({ name, ...overrides })]]));
+}
+
 /** Test helper: construct an SubagentManager with injected stubs. */
 function createManager(overrides?: {
   createSubagentSession?: SessionFactory;
@@ -29,6 +54,7 @@ function createManager(overrides?: {
   getRunConfig?: () => RunConfig;
   getRetentionPolicy?: () => { consumedSessionRetentionMinutes: number; unconsumedSessionRetentionMinutes: number };
   baseCwd?: string;
+  registry?: AgentTypeRegistry;
 }) {
   const createSubagentSession: SessionFactory = overrides?.createSubagentSession ?? defaultFactory();
   const observer: SubagentManagerObserver | undefined = overrides?.observer
@@ -48,6 +74,7 @@ function createManager(overrides?: {
     baseCwd: overrides?.baseCwd ?? "/repo",
     getRunConfig: overrides?.getRunConfig,
     getRetentionPolicy: overrides?.getRetentionPolicy,
+    registry: overrides?.registry ?? defaultRegistry(),
   });
   return { manager: mgr, createSubagentSession, limiter };
 }
@@ -56,7 +83,7 @@ function createManager(overrides?: {
 function spawnBg(mgr: SubagentManager, prompt = "test", desc = prompt) {
   return mgr.spawn(STUB_SNAPSHOT, "general-purpose", prompt, {
     description: desc,
-    isBackground: true,
+    background: { kind: "explicit", isBackground: true },
   });
 }
 
@@ -71,7 +98,7 @@ function spawnFg(mgr: SubagentManager, prompt = "test", desc = prompt) {
 function spawnBgWithToolCall(mgr: SubagentManager, toolCallId: string, prompt = "test", desc = prompt) {
   return mgr.spawn(STUB_SNAPSHOT, "general-purpose", prompt, {
     description: desc,
-    isBackground: true,
+    background: { kind: "explicit", isBackground: true },
     parentSession: { toolCallId },
   });
 }
@@ -576,7 +603,7 @@ describe("SubagentManager — parent session threading", () => {
 
     manager.spawn(STUB_SNAPSHOT, "general-purpose", "test", {
       description: "test",
-      isBackground: true,
+      background: { kind: "explicit", isBackground: true },
       parentSession: { parentSessionFile: "/sessions/parent.jsonl", parentSessionId: "parent-session-123" },
     });
 
@@ -890,7 +917,7 @@ describe("SubagentManager — onSubagentCreated observer", () => {
 
     const id = manager.spawn(STUB_SNAPSHOT, "general-purpose", "test", {
       description: "test agent",
-      isBackground: true,
+      background: { kind: "explicit", isBackground: true },
     });
 
     expect(onCreated).toHaveBeenCalledOnce();
@@ -921,7 +948,7 @@ describe("SubagentManager — onSubagentCreated observer", () => {
 
     const id = manager.spawn(STUB_SNAPSHOT, "general-purpose", "test", {
       description: "bg agent",
-      isBackground: true,
+      background: { kind: "explicit", isBackground: true },
     });
     await manager.getRecord(id)!.promise;
 
@@ -946,7 +973,7 @@ describe("SubagentManager — lifecycle observer forwarding", () => {
 
     const id = manager.spawn(STUB_SNAPSHOT, "general-purpose", "test", {
       description: "test",
-      isBackground: true,
+      background: { kind: "explicit", isBackground: true },
       observer: {
         onSessionCreated: (agent) => {
           received.agent = agent;
@@ -998,7 +1025,7 @@ describe("SubagentManager — toolCallId notification wiring", () => {
 
     const id = manager.spawn(STUB_SNAPSHOT, "general-purpose", "test", {
       description: "bg",
-      isBackground: true,
+      background: { kind: "explicit", isBackground: true },
     });
     const record = manager.getRecord(id)!;
 
@@ -1062,5 +1089,200 @@ describe("SubagentManager — registerWorkspaceProvider", () => {
     disposeFirst();
 
     expect(manager.workspaceProvider).toBe(second);
+  });
+});
+
+describe("SubagentManager", () => {
+  describe("spawn", () => {
+    let manager: SubagentManager;
+
+    afterEach(() => {
+      manager.abortAll();
+    });
+
+    describe("type resolution", () => {
+      it("stores the canonical type for case-variant input", () => {
+        ({ manager } = createManager());
+
+        const id = manager.spawn(STUB_SNAPSHOT, "explore", "test", {
+          description: "d",
+          background: { kind: "explicit", isBackground: true },
+        });
+
+        expect(manager.getRecord(id)!.type).toBe("Explore");
+      });
+
+      it("falls back to general-purpose for an unknown type", () => {
+        ({ manager } = createManager());
+
+        const id = manager.spawn(STUB_SNAPSHOT, "no-such-agent", "test", {
+          description: "d",
+          background: { kind: "explicit", isBackground: true },
+        });
+
+        expect(manager.getRecord(id)!.type).toBe("general-purpose");
+      });
+
+      it("throws for a known-but-disabled type", () => {
+        ({ manager } = createManager({ registry: registryWith("Plan", { enabled: false }) }));
+
+        expect(() =>
+          manager.spawn(STUB_SNAPSHOT, "Plan", "test", {
+            description: "d",
+            background: { kind: "explicit", isBackground: true },
+          }),
+        ).toThrow('Agent type "Plan" is disabled');
+      });
+
+      it("reports the canonical casing in the disabled-agent error for case-insensitive input", () => {
+        ({ manager } = createManager({ registry: registryWith("Plan", { enabled: false }) }));
+
+        expect(() =>
+          manager.spawn(STUB_SNAPSHOT, "plan", "test", {
+            description: "d",
+            background: { kind: "explicit", isBackground: true },
+          }),
+        ).toThrow('Agent type "Plan" is disabled');
+      });
+
+      it("does not create a record for a rejected spawn", () => {
+        ({ manager } = createManager({ registry: registryWith("Plan", { enabled: false }) }));
+
+        expect(() =>
+          manager.spawn(STUB_SNAPSHOT, "Plan", "test", {
+            description: "d",
+            background: { kind: "explicit", isBackground: true },
+          }),
+        ).toThrow();
+
+        expect(manager.listAgents()).toEqual([]);
+      });
+    });
+
+    /**
+     * onSubagentCreated fires only for a background agent, so it is the
+     * discriminator here. Record status cannot serve: under the default
+     * concurrency limit a background agent is admitted immediately and reaches
+     * "running" too, so asserting on it passes whichever mode resolves.
+     */
+    describe("background-mode resolution", () => {
+      let onCreated: Mock<(record: Subagent) => void>;
+
+      function spawnExplore(background: AgentSpawnConfig["background"], runInBackground: boolean) {
+        onCreated = vi.fn();
+        ({ manager } = createManager({
+          registry: registryWith("Explore", { runInBackground }),
+          observer: { onSubagentCreated: onCreated },
+        }));
+        return manager.spawn(STUB_SNAPSHOT, "Explore", "test", { description: "d", background });
+      }
+
+      it("defers to frontmatter declaring background when the request is a default", () => {
+        spawnExplore({ kind: "default", isBackground: false }, true);
+
+        expect(onCreated).toHaveBeenCalledOnce();
+      });
+
+      it("defers to frontmatter declaring foreground when the request is a default", () => {
+        spawnExplore({ kind: "default", isBackground: true }, false);
+
+        expect(onCreated).not.toHaveBeenCalled();
+      });
+
+      it("ignores frontmatter declaring foreground when the request is explicit", () => {
+        spawnExplore({ kind: "explicit", isBackground: true }, false);
+
+        expect(onCreated).toHaveBeenCalledOnce();
+      });
+
+      it("ignores frontmatter declaring background when the request is explicit", () => {
+        spawnExplore({ kind: "explicit", isBackground: false }, true);
+
+        expect(onCreated).not.toHaveBeenCalled();
+      });
+
+      it("queues a resolved-background agent behind a full concurrency limit", () => {
+        onCreated = vi.fn();
+        ({ manager } = createManager({
+          registry: registryWith("Explore", { runInBackground: true }),
+          getMaxConcurrent: () => 1,
+          createSubagentSession: createBlockingFactory(),
+        }));
+        spawnBg(manager, "occupies-the-only-slot");
+
+        const id = manager.spawn(STUB_SNAPSHOT, "Explore", "test", {
+          description: "d",
+          background: { kind: "default", isBackground: false },
+        });
+
+        expect(manager.getRecord(id)!.status).toBe("queued");
+      });
+    });
+  });
+
+  describe("spawnAndWait", () => {
+    let manager: SubagentManager;
+
+    afterEach(() => {
+      manager.abortAll();
+    });
+
+    describe("type resolution", () => {
+      it("stores the canonical type for case-variant input", async () => {
+        ({ manager } = createManager());
+
+        const record = await manager.spawnAndWait(STUB_SNAPSHOT, "explore", "test", { description: "d" });
+
+        expect(record.type).toBe("Explore");
+      });
+
+      it("rejects for a known-but-disabled type", async () => {
+        ({ manager } = createManager({ registry: registryWith("Plan", { enabled: false }) }));
+
+        await expect(
+          manager.spawnAndWait(STUB_SNAPSHOT, "Plan", "test", { description: "d" }),
+        ).rejects.toThrow('Agent type "Plan" is disabled');
+      });
+    });
+
+    describe("foreground commitment", () => {
+      it("stays foreground for an agent whose frontmatter declares runInBackground: true", async () => {
+        const onCreated = vi.fn();
+        ({ manager } = createManager({
+          registry: registryWith("Explore", { runInBackground: true }),
+          observer: { onSubagentCreated: onCreated },
+        }));
+
+        const record = await manager.spawnAndWait(STUB_SNAPSHOT, "Explore", "test", { description: "d" });
+
+        // The caller holds the result promise, so the frontmatter must not route
+        // it through the limiter or announce it as a background agent.
+        expect(record.status).toBe("completed");
+        expect(onCreated).not.toHaveBeenCalled();
+      });
+
+      it("runs immediately rather than queueing behind a full concurrency limit", async () => {
+        // Only the first session creation blocks, so the background agent holds
+        // the single limiter slot open while the foreground agent runs.
+        let creations = 0;
+        const factory = vi.fn((_params: CreateSubagentSessionParams) => {
+          creations += 1;
+          return creations === 1
+            ? new Promise<SubagentSession>(() => {})
+            : Promise.resolve(toSubagentSession(createSubagentSessionStub()));
+        });
+        ({ manager } = createManager({
+          registry: registryWith("Explore", { runInBackground: true }),
+          getMaxConcurrent: () => 1,
+          createSubagentSession: factory,
+        }));
+        spawnBg(manager, "occupies-the-only-slot");
+
+        // Were this routed through the limiter, the await would never settle.
+        const record = await manager.spawnAndWait(STUB_SNAPSHOT, "Explore", "test", { description: "d" });
+
+        expect(record.status).toBe("completed");
+      });
+    });
   });
 });

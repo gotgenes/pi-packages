@@ -18,7 +18,7 @@ export interface ForegroundManagerDeps {
     snapshot: ParentSnapshot,
     type: string,
     prompt: string,
-    opts: Omit<AgentSpawnConfig, "isBackground">,
+    opts: Omit<AgentSpawnConfig, "background">,
   ): Promise<Subagent>;
 }
 

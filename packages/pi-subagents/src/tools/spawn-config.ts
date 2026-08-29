@@ -80,11 +80,8 @@ export function resolveSpawnConfig(
   const rawType = params.subagent_type as SubagentType;
   const resolved = registry.resolveType(rawType);
 
-  // A known-but-disabled type is an explicit error, not a silent unknown-type fallback.
-  if (resolved !== undefined && !registry.isValidType(resolved)) {
-    return { error: `Agent type "${resolved}" is disabled` };
-  }
-
+  // A disabled type is rejected by SubagentManager.resolveSpawn, the choke point
+  // every front door shares.
   const subagentType = resolved ?? "general-purpose";
   const fellBack = resolved === undefined;
 

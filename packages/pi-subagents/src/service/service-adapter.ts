@@ -48,7 +48,6 @@ export class SubagentsServiceAdapter implements SubagentsService {
 
     const model = this.resolveModelOption(options?.model);
     const description = options?.description ?? prompt.slice(0, 80);
-    const isBackground = !(options?.foreground ?? false);
 
     const snapshot = this.runtime.buildSnapshot(options?.inheritContext ?? false);
     return this.manager.spawn(snapshot, type, prompt, {
@@ -60,7 +59,13 @@ export class SubagentsServiceAdapter implements SubagentsService {
       thinkingLevel: options?.thinkingLevel as ThinkingLevel | undefined,
       inheritContext: options?.inheritContext,
       bypassQueue: options?.bypassQueue,
-      isBackground,
+      // A caller that names `foreground` has committed; one that omits it has
+      // not, so the agent's own frontmatter decides and background is the
+      // SDK-door default.
+      background:
+        options?.foreground === undefined
+          ? { kind: "default", isBackground: true }
+          : { kind: "explicit", isBackground: !options.foreground },
     });
   }
 

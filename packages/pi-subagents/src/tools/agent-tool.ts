@@ -19,7 +19,7 @@ import { GLYPHS } from "#src/ui/glyphs";
 /** Narrow manager interface — only the methods the Agent tool calls. */
 export interface AgentToolManager {
 	spawn: (snapshot: ParentSnapshot, type: string, prompt: string, opts: AgentSpawnConfig) => string;
-	spawnAndWait: (snapshot: ParentSnapshot, type: string, prompt: string, opts: Omit<AgentSpawnConfig, "isBackground">) => Promise<Subagent>;
+	spawnAndWait: (snapshot: ParentSnapshot, type: string, prompt: string, opts: Omit<AgentSpawnConfig, "background">) => Promise<Subagent>;
 	resume: (id: string, prompt: string, signal: AbortSignal) => Promise<Subagent | undefined>;
 	getRecord: (id: string) => Subagent | undefined;
 }

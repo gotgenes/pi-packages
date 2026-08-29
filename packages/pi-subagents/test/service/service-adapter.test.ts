@@ -259,25 +259,57 @@ describe("SubagentsServiceAdapter — spawn", () => {
       expect.objectContaining({
         model: resolvedModel,
         maxTurns: 5,
-        isBackground: true,
       }),
     );
   });
 
-  it("spawns as foreground when options.foreground is true", () => {
-    const mgr = createManagerStub();
-    const svc = new SubagentsServiceAdapter(
-      mgr,
-      vi.fn(),
-      makeRuntimeStub(),
-    );
-    svc.spawn("Plan", "plan work", { foreground: true });
-    expect(mgr.spawn).toHaveBeenCalledWith(
-      expect.anything(), // snapshot
-      "Plan",
-      "plan work",
-      expect.objectContaining({ isBackground: false }),
-    );
+  /**
+   * A caller that names `foreground` has committed to a mode; one that omits it
+   * has not, and the agent's own frontmatter decides. The manager reads the
+   * `kind` to tell those apart, so each case must pin the whole request object —
+   * the isBackground value alone cannot distinguish an explicit answer from a
+   * default that happens to agree.
+   */
+  describe("background mode", () => {
+    function spawnAndCaptureBackground(options?: { foreground?: boolean }) {
+      const mgr = createManagerStub();
+      const svc = new SubagentsServiceAdapter(mgr, vi.fn(), makeRuntimeStub());
+      svc.spawn("Plan", "plan work", options);
+      return mgr.spawn;
+    }
+
+    it("defers to the agent config when foreground is omitted", () => {
+      const spawn = spawnAndCaptureBackground();
+
+      expect(spawn).toHaveBeenCalledWith(
+        expect.anything(), // snapshot
+        "Plan",
+        "plan work",
+        expect.objectContaining({ background: { kind: "default", isBackground: true } }),
+      );
+    });
+
+    it("commits to foreground when foreground is true", () => {
+      const spawn = spawnAndCaptureBackground({ foreground: true });
+
+      expect(spawn).toHaveBeenCalledWith(
+        expect.anything(), // snapshot
+        "Plan",
+        "plan work",
+        expect.objectContaining({ background: { kind: "explicit", isBackground: false } }),
+      );
+    });
+
+    it("commits to background when foreground is false", () => {
+      const spawn = spawnAndCaptureBackground({ foreground: false });
+
+      expect(spawn).toHaveBeenCalledWith(
+        expect.anything(), // snapshot
+        "Plan",
+        "plan work",
+        expect.objectContaining({ background: { kind: "explicit", isBackground: true } }),
+      );
+    });
   });
 
   it("uses truncated prompt as default description", () => {

@@ -8,7 +8,7 @@ describe("createToolDeps", () => {
 	describe("manager defaults", () => {
 		it("spawn returns 'agent-1'", () => {
 			const { manager } = createToolDeps();
-			expect(manager.spawn(STUB_SNAPSHOT, "general-purpose", "prompt", { description: "test" })).toBe("agent-1");
+			expect(manager.spawn(STUB_SNAPSHOT, "general-purpose", "prompt", { description: "test", background: { kind: "explicit", isBackground: true } })).toBe("agent-1");
 		});
 
 		it("spawnAndWait resolves to a completed record", async () => {
@@ -60,7 +60,7 @@ describe("createToolDeps", () => {
 			const deps = createToolDeps({
 				manager: { ...createToolDeps().manager, spawn: customSpawn },
 			});
-			deps.manager.spawn(STUB_SNAPSHOT, "t", "p", { description: "test" });
+			deps.manager.spawn(STUB_SNAPSHOT, "t", "p", { description: "test", background: { kind: "explicit", isBackground: true } });
 			expect(customSpawn).toHaveBeenCalledOnce();
 		});
 
