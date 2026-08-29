@@ -94,16 +94,33 @@ const COMMAND_ENUM_DESCEND = new Set(["program", "list", "pipeline"]);
  *
  * The whole emit is what keeps the #306 never-weaker invariant — the commands
  * found inside are additional units, never a replacement.
+ *
+ * `select` parses as `for_statement` and `until` as `while_statement`, so each
+ * pair is one entry.
  */
-const COMPOUND_STATEMENT_TYPES = new Set(["for_statement"]);
+const COMPOUND_STATEMENT_TYPES = new Set([
+  "if_statement",
+  "while_statement",
+  "for_statement",
+  "c_style_for_statement",
+  "case_statement",
+  "function_definition",
+  "compound_statement",
+  "negated_command",
+]);
 
 /**
  * Syntactic groupings inside a compound statement: descended, never emitted.
  *
- * A `do_group` is nothing anybody runs; it is the loop body's punctuation, and
- * emitting its text would produce a `do rm $f; done` unit.
+ * None of these is something anybody runs — a `do_group` is the loop body's
+ * punctuation — so emitting one would produce a `do rm $f; done` unit.
  */
-const STATEMENT_GROUP_TYPES = new Set(["do_group"]);
+const STATEMENT_GROUP_TYPES = new Set([
+  "do_group",
+  "case_item",
+  "elif_clause",
+  "else_clause",
+]);
 
 /**
  * Named node types abandoned during command enumeration: they are neither
@@ -157,10 +174,14 @@ const STATEMENT_TYPES = new Set([
  * subshells (`( … )`) — emitting each inner command as its own unit *in
  * addition to* the enclosing command, since those inner commands really execute
  * (#306).
- * Control-flow bodies and `{ … }` brace groups are emitted whole without
- * descending (deferred).
+ * A compound statement (control flow, a function definition, a `{ … }` brace
+ * group) is emitted whole and then descended for the statements it contains,
+ * while its operand words — a loop variable, a word list, a `case` subject, a
+ * function's own name — are not commands and are left unemitted. An `ERROR`
+ * node is the one exception: its recovered structure is invented rather than
+ * observed, so the unparsed blob is emitted whole and never descended (#742).
  *
- * The enclosing command/subshell is always still emitted whole, so adding the
+ * The enclosing command/statement is always still emitted whole, so adding the
  * nested units can only ever produce a more-restrictive decision, never weaker.
  *
  * Each emitted command unit has any leading `variable_assignment` prefix

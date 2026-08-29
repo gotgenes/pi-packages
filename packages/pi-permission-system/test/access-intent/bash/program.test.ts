@@ -1193,6 +1193,84 @@ describe("BashProgram", () => {
       });
     });
 
+    describe("commands inside the remaining compound statements (#742)", () => {
+      // Each row is written as a real parse of the construct rather than as an
+      // assertion about a node-type set, because the node-type names are
+      // external facts about the tree-sitter-bash grammar: `select` parses as
+      // `for_statement` and `until` as `while_statement`, and a typo in a set
+      // fails invisibly.
+      it.each([
+        ["if true; then rm y; fi", ["true", "rm y"]],
+        [
+          "if true; then rm y; elif false; then rm z; else rm w; fi",
+          ["true", "rm y", "false", "rm z", "rm w"],
+        ],
+        ["while true; do rm y; done", ["true", "rm y"]],
+        ["until true; do rm y; done", ["true", "rm y"]],
+        ["select f in a b; do rm $f; done", ["rm $f"]],
+        ["for ((i=0; i<3; i++)); do rm $i; done", ["i=0", "rm $i"]],
+        ["case /etc/shadow in a) rm y;; b) rm z;; esac", ["rm y", "rm z"]],
+        ["myfn() { rm y; }", ["{ rm y; }", "rm y"]],
+        ["function myfn { rm y; }", ["{ rm y; }", "rm y"]],
+        ["{ rm y; }", ["rm y"]],
+        ["! rm y", ["rm y"]],
+      ])("descends into %s", async (command, inner) => {
+        const program = await BashProgram.parse(command, normalizer);
+        expect(program.commands()).toEqual([
+          { text: command },
+          ...inner.map((text) => ({ text })),
+        ]);
+      });
+
+      it("leaves a case subject and its patterns unemitted", async () => {
+        // `/etc/shadow` and `a` are operand words, not commands.
+        const program = await BashProgram.parse(
+          "case /etc/shadow in a) rm y;; esac",
+          normalizer,
+        );
+        expect(program.commands()).toEqual([
+          { text: "case /etc/shadow in a) rm y;; esac" },
+          { text: "rm y" },
+        ]);
+      });
+
+      it("leaves a function's own name unemitted", async () => {
+        const program = await BashProgram.parse(
+          "deploy() { rm y; }",
+          normalizer,
+        );
+        expect(program.commands().map((unit) => unit.text)).not.toContain(
+          "deploy",
+        );
+      });
+
+      it("descends into a substitution in condition position", async () => {
+        const program = await BashProgram.parse(
+          "if $(rm x); then echo a; fi",
+          normalizer,
+        );
+        expect(program.commands()).toEqual([
+          { text: "if $(rm x); then echo a; fi" },
+          { text: "$(rm x)" },
+          { text: "rm x", context: "command_substitution" },
+          { text: "echo a" },
+        ]);
+      });
+
+      it("relays the enclosing execution context to a compound's commands", async () => {
+        const program = await BashProgram.parse(
+          "( if true; then rm y; fi )",
+          normalizer,
+        );
+        expect(program.commands()).toEqual([
+          { text: "( if true; then rm y; fi )" },
+          { text: "if true; then rm y; fi", context: "subshell" },
+          { text: "true", context: "subshell" },
+          { text: "rm y", context: "subshell" },
+        ]);
+      });
+    });
+
     it("descends into command substitution, tagging the inner command", async () => {
       const program = await BashProgram.parse("echo $(rm -rf foo)", normalizer);
       expect(program.commands()).toEqual([
@@ -1537,6 +1615,15 @@ describe("BashProgram", () => {
           await expect(exemptions("( xargs grep foo ) > out")).resolves.toEqual(
             [undefined, undefined],
           );
+        });
+
+        it("withholds it from a redirected compound statement's commands", async () => {
+          // A compound statement's body runs in the current shell, so the
+          // enclosing statement's write reaches every unit beneath it — the
+          // scope is relayed unchanged rather than restarted (#742).
+          await expect(
+            exemptions("if true; then xargs grep -l x; fi > out.txt"),
+          ).resolves.toEqual([undefined, undefined, undefined]);
         });
 
         it.each([
