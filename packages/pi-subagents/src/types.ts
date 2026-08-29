@@ -2,14 +2,23 @@
  * types.ts — Type definitions for the subagent system.
  */
 
-import type { Model, ThinkingLevel } from "@earendil-works/pi-ai";
+import type { Model } from "@earendil-works/pi-ai";
 import type { AgentSessionEvent, SessionContext as SdkSessionContext } from "@earendil-works/pi-coding-agent";
+import type { SubagentThinkingLevel } from "#src/config/thinking-level";
 import type { ModelRegistry } from "#src/session/model-resolver";
 
 
 export type { SteerOutcome } from "#src/lifecycle/subagent";
 export { Subagent } from "#src/lifecycle/subagent";
-export type { AgentSessionEvent, ThinkingLevel };
+export type { AgentSessionEvent };
+
+/**
+ * The thinking levels this package accepts.
+ *
+ * Wider than pi-ai's `ThinkingLevel`, which omits `off` — Pi honors it, and agent
+ * frontmatter has always documented it.
+ */
+export type ThinkingLevel = SubagentThinkingLevel;
 
 /**
  * One message in a child session's history, typed from Pi's `SessionContext`.
