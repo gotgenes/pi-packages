@@ -110,3 +110,43 @@ Co-authored-by: George Harker <george@georgeharker.com>
 
 The PR close comment thanks `@georgeharker` by name, links the implementing SHA(s), and credits the diagnosis — the root-cause analysis pinpointing the 0.80.8 option rename is what made the fix tractable.
 Reference the PR as `Refs #811`, never `Closes #811`.
+
+## Stage: Planning (2026-08-29T01:46:40Z)
+
+### Session summary
+
+Wrote `docs/plans/0812-runtime-registered-providers-in-child-sessions.md`, a three-step plan implementing the replay design the PR-review stage settled.
+A scratch-worktree spike de-risked the two load-bearing unknowns before the plan was written: bumping the three Pi SDK devDependencies to `0.84.4` leaves exactly one type error (the `modelRegistry` option this change removes), and the full design compiles clean with all 68 test files / 1230 tests still green.
+The Tidy-First assessor recommended no preparatory refactorings.
+
+### Observations
+
+- **The spike changed the plan's shape.**
+  Before measuring, the SDK bump looked like it might be a large migration across `SessionManager`, `ResourceLoader`, and `AgentSession` surfaces.
+  It is not — after bumping `pi-coding-agent`, `pi-ai`, and `pi-tui` together, the only error is the one being fixed.
+  Bumping `pi-coding-agent` alone leaves two dual-version `pi-tui` errors, which is why all three move as a set.
+- **Step 2 is deliberately unsplittable.**
+  Bumping the SDK without rewiring leaves `src/index.ts` failing `tsc`; rewiring without bumping is impossible because `0.80.5` has neither the `modelRuntime` option nor a public `ModelRegistry` constructor.
+  The peer-range narrowing was folded in rather than split off so no commit on `main` advertises support for a Pi version its own code cannot run on.
+- **The regression test had to be the composition-root test, not the unit test.**
+  The `inheritRegisteredProviders` unit tests pass whether or not the root is wired, so they do not satisfy the fails-without-the-fix bar.
+  `test/print-mode.test.ts` establishes that the extension factory can be driven with a fake `pi` and a mocked `createSubagentSession`, which is what makes capturing `subagentSessionDeps` and calling `io.createSession` directly feasible.
+  The file name follows `packages/pi-permission-system/test/composition-root.test.ts`.
+- **The registrar interface splits an SDK overload on purpose.**
+  `ModelRegistry.registerProvider` is overloaded; a structural interface mirroring it cannot be satisfied by a plain `vi.fn()` without a cast.
+  Two distinct method names plus a four-line adapter at the root keeps the native-versus-configured branch — the part most likely to regress — under test.
+- **Alternative rejected: typing the seam as the SDK `ModelRegistry`.**
+  It would have removed the generics, but `ModelRegistry` carries a private field, so test doubles would need `as unknown as` casts, which both `code-design` and the `testing` skill warn against.
+  Generics were also forced by the SDK not exporting `ProviderConfigInput` from its package entry.
+- **Peer floor verified rather than assumed.**
+  `git tag --contains 9993c9690` in the sibling Pi checkout lists `v0.80.8` first, confirming the public `ModelRegistry` constructor and the three `getRegistered*` accessors landed exactly there.
+  The published `@gotgenes/pi-subagents@19.3.5` declares `>=0.80.5`, so narrowing is breaking against a shipped contract.
+- **Migration remediation verified.**
+  `pi update --help` confirms `pi update --self`; the note does not guess a flag.
+- **No follow-up issues filed.**
+  The only tangential item — the other eight packages still pinning SDK `0.79.1` — is unrelated churn, so the plan records it as an explicit Non-Goal rather than a tracked follow-up.
+  `roadmap-fit` was therefore not exercised.
+
+#### Deferred tidyings
+
+- `packages/pi-subagents/src/index.ts` — the `subagentSessionDeps.io` object literal holds several multi-statement inline lambdas (`createLoaderSettingsManager`, `createSession`) that could be extracted to named functions; the assessor declined it as general composition-root tidiness that would not shrink this change.
