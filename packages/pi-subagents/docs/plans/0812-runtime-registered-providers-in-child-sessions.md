@@ -27,6 +27,7 @@ Runtime registrations live on the runtime instance, not in either file, so the c
 - The replay logic lives in a unit-tested module rather than the untested composition root.
 - The child's provider pool is **isolated** from the parent's, so a child-loaded extension cannot mutate the parent's registrations.
 - Move the package's Pi SDK devDependencies to `0.84.4` and narrow the `@earendil-works/pi-coding-agent` peer floor from `>=0.80.5` to `>=0.80.8`.
+  **Corrected during implementation to `>=0.81.0`** — see the note below and the TDD stage entry in the retro.
 - **This change is breaking.**
   Narrowing a published peer range drops support for Pi `0.80.5`–`0.80.7`, so the commit carries `fix(pi-subagents)!:` and a `BREAKING CHANGE:` footer.
   The behavioral half is not breaking on its own — a child gains providers it previously lacked and loses none.
@@ -61,6 +62,12 @@ The extension-facing split is intentional.
 `ModelRegistry`'s doc comment reads "Synchronous compatibility facade exposed to extensions.
 Coding-agent internals use `ModelRuntime` directly", and `ExtensionContext` exposes only `modelRegistry` — no `session`, no `modelRuntime`. pi-subagents is the unanticipated case: an extension that behaves like an SDK application.
 On `>=0.80.8` the facade nonetheless exposes a public constructor plus the three `getRegistered*` accessors, so no private access is required.
+
+> **Correction (implementation).**
+> This is wrong, and the pre-completion reviewer caught it.
+> `v0.80.8` added the public constructor, `getRegisteredProviderIds()`, and `getRegisteredProviderConfig()`, but `getRegisteredNativeProvider()` and the `registerProvider(provider)` native overload arrived three days later in `v0.81.0`.
+> The shipped peer floor is `>=0.81.0`.
+> Every `>=0.80.8` claim below should be read as `>=0.81.0`.
 
 AGENTS.md constraints that apply:
 
@@ -255,7 +262,7 @@ Reference the PR as `Refs #811` in the body, never `Closes #811`.
 | Narrowing the peer range strands users on Pi `0.80.5`-`0.80.7`                                | Those versions cannot support the fix at all; the `BREAKING CHANGE:` footer names `pi update --self`, and `19.3.5` remains installable for anyone pinned to old Pi                                                                                                 |
 | Mocking three SDK exports in the composition-root test blanks the rest of the module          | Spread `await vi.importActual<typeof import("@earendil-works/pi-coding-agent")>(...)` and override only `ModelRuntime`, `ModelRegistry`, and `createAgentSession`                                                                                                  |
 | Bumping to a freshly published `0.84.4` trips pnpm's 24h `minimumReleaseAge` gate             | The repo sets `trustLockfile: true`; stage whatever `minimumReleaseAgeExclude` entries `pnpm install` adds                                                                                                                                                         |
-| A future Pi release changes the `getRegistered*` accessors                                    | They are public API introduced together with `ModelRuntime` in `v0.80.8` (verified: `git tag --contains 9993c9690` lists `v0.80.8` first); a signature change would fail `tsc` at the composition root, not silently                                               |
+| A future Pi release changes the `getRegistered*` accessors                                    | They are public API; a signature change would fail `tsc` at the composition root, not silently. (The floor claim originally recorded here was wrong — `git tag --contains 9993c9690` covers only two of the three accessors, and the third ships in `v0.81.0`.)    |
 | PR [#748] also edits `packages/pi-subagents/src/index.ts`                                     | Different region (widget UI context at `session_start`); rebase conflict is textual at worst, and it remains unmerged                                                                                                                                              |
 
 ## Open Questions
