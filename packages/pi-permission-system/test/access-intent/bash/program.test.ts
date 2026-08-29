@@ -1092,6 +1092,68 @@ describe("BashProgram", () => {
       });
     });
 
+    describe("commands hosted by a declaration, test, or assignment (#742)", () => {
+      it.each([
+        ["local x=$(rm y)", "rm y"],
+        ["export X=$(rm x)", "rm x"],
+        ["declare x=$(rm y)", "rm y"],
+        ["readonly Y=$(rm z)", "rm z"],
+        ["typeset q=$(rm w)", "rm w"],
+        ["[[ $(rm x) ]]", "rm x"],
+        ["[ $(rm x) ]", "rm x"],
+        ["unset $(rm x)", "rm x"],
+        ["X=$(rm q)", "rm q"],
+        ["X=`rm q`", "rm q"],
+      ])("descends into %s", async (command, inner) => {
+        const program = await BashProgram.parse(command, normalizer);
+        expect(program.commands()).toEqual([
+          { text: command },
+          { text: inner, context: "command_substitution" },
+        ]);
+      });
+
+      it("descends into a process substitution hosted by a declaration", async () => {
+        const program = await BashProgram.parse("local f=<(rm y)", normalizer);
+        expect(program.commands()).toEqual([
+          { text: "local f=<(rm y)" },
+          { text: "rm y", context: "process_substitution" },
+        ]);
+      });
+
+      it("leaves a declaration hosting no execution alone", async () => {
+        const program = await BashProgram.parse("local x=1", normalizer);
+        expect(program.commands()).toEqual([{ text: "local x=1" }]);
+      });
+    });
+
+    describe("an unparsed ERROR node (#742)", () => {
+      it.each([
+        [
+          "an unterminated heredoc, whose body re-parses as garbage",
+          "cat <<'EOF'\nsee `rm -rf x` here",
+          "cat",
+          "<<'EOF'\nsee `rm -rf x` here",
+        ],
+        ["an unbalanced quote", 'echo "$(rm x)', "echo", '"$(rm x)'],
+      ])("emits %s whole, taking nothing from inside it", async (_label, command, enclosing, blob) => {
+        // Tree-sitter's error recovery *invents* structure, so a node type
+        // inside an ERROR subtree is not evidence that a command runs.
+        const program = await BashProgram.parse(command, normalizer);
+        expect(program.commands()).toEqual([
+          { text: enclosing },
+          { text: blob },
+        ]);
+      });
+
+      it("emits an unterminated control-flow statement whole", async () => {
+        const program = await BashProgram.parse(
+          "for f in a; do rm $f",
+          normalizer,
+        );
+        expect(program.commands()).toEqual([{ text: "for f in a; do rm $f" }]);
+      });
+    });
+
     it("descends into command substitution, tagging the inner command", async () => {
       const program = await BashProgram.parse("echo $(rm -rf foo)", normalizer);
       expect(program.commands()).toEqual([

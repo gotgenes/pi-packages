@@ -172,9 +172,22 @@ function collectCommandsInto(
     return;
   }
 
+  if (node.type === "ERROR") {
+    // Tree-sitter's error recovery *invents* structure, so the node types
+    // inside an ERROR subtree are not evidence that anything runs: descending
+    // one turns backtick-quoted prose in an unterminated heredoc into command
+    // units. Emit the unparsed blob whole and stop (#742).
+    out.push(makeUnit(node.text, scope));
+    return;
+  }
+
   // Any other named statement (compound_statement `{ … }`, if/while/for/case,
   // function_definition): emit whole, do not descend — deferred (#306).
+  // A declaration, assignment, test, or `unset` still hosts executions that
+  // really run (`local x=$(rm y)`, `[[ $(rm x) ]]`), so those are enumerated
+  // in addition to the statement (#742).
   out.push(makeUnit(node.text, scope));
+  collectHostedCommands(node, out);
 }
 
 /** The wrapper facts a `command` node's words establish about its unit. */
