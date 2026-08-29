@@ -91,6 +91,20 @@ The pi-permission-system suite went 3699 → 3752 passing (+53 tests, 2 expected
   It found one pre-existing grammar limitation worth recording: `coproc NAME { … }` is not recognized as a distinct construct by `tree-sitter-bash` 0.25.1 at all — it parses as two garbled `command` nodes, so a coprocess body's commands are unreachable to the enumerator.
   Unchanged by this work and claimed nowhere, but it is the one shape a reader might assume the statement descent now covers.
 
+## Stage: Ship (worktree) (2026-08-29T22:28:58Z)
+
+### Session summary
+
+Pre-push checks pass clean from the worktree root: `pnpm run lint` and `pnpm fallow dead-code` both report zero issues.
+All six TDD steps plus two pre-completion follow-on `docs:` commits are already on this branch; the plan's `**Release:**` marker is "ship independently," so the root should release at land time rather than deferring.
+No deferred work remains — both residuals the planning session identified are filed and dispositioned ([#839] deferred to Phase 15, [#840] adopted as Phase 14 Step 14).
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-742--/2026-08-29T21-39-47-258Z_01a04f76-e5ba-746d-8d08-cc5ad957270e.jsonl` — read with `read_session_file({ path: "<path>" })` for message-level verification at land/retro time.
+
+### Observations
+
+Concise breadcrumb only — the final `/retro 742` at the root captures the retrospective proper, including the TDD-stage observations already recorded above.
+
 [#306]: https://github.com/gotgenes/pi-packages/issues/306
 [#645]: https://github.com/gotgenes/pi-packages/issues/645
 [#741]: https://github.com/gotgenes/pi-packages/issues/741
