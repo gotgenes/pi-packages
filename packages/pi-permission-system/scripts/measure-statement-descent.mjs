@@ -40,11 +40,18 @@
  * split would measure nothing.
  *
  * The last row is what makes the companion claim re-derivable. Step 4's path
- * half changed one thing only: a substitution in `command_name` or env-var
+ * half changed one *behavior* only: a substitution in `command_name` or env-var
  * prefix position now projects its operands. So the count of commands carrying
  * such a substitution bounds the path-slice delta from above — at zero, the
  * "`pathRuleCandidates()` and `externalAccesses()` change on zero commands"
  * claim follows without re-running the resolver against a checked-out baseline.
+ *
+ * The bound is on behavior, not on the diff's footprint, and the distinction
+ * matters when re-checking it: the same commit range also rewrites
+ * `collectHostedExecutionTokens` onto the shared `forEachExecutionIn`, which
+ * reaches call sites well outside prefix position. That rewrite only inlines
+ * the root check the function already performed, so it is output-identical
+ * everywhere — verify that before reading the bound off this row.
  *
  * A command longer than `reviewLogFieldMaxWidth` (1000) is stored shortened
  * with a trailing ellipsis and re-parses as garbage, so those are excluded —
