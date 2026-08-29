@@ -75,6 +75,12 @@ export interface AgentInvocationConfig {
   maxTurns?: number;
   inheritContext: boolean;
   runInBackground: boolean;
+  /**
+   * Locked fields whose caller value was thrown away, in `LOCKABLE_FIELDS` order.
+   *
+   * A caller that passed the agent's own value discarded nothing and is absent here.
+   */
+  discarded: LockableField[];
 }
 
 /**
@@ -91,29 +97,41 @@ export function resolveAgentInvocationConfig(
 ): AgentInvocationConfig {
   const locked = agentConfig.locked;
   const model = resolveField("model", agentConfig.model, params.model, locked);
+  const thinking = resolveField("thinking", agentConfig.thinking, params.thinking, locked);
+  const maxTurns = resolveField("max_turns", agentConfig.maxTurns, params.max_turns, locked);
+  const inheritContext = resolveField(
+    "inherit_context",
+    agentConfig.inheritContext,
+    params.inherit_context,
+    locked,
+  );
+  const runInBackground = resolveField(
+    "run_in_background",
+    agentConfig.runInBackground,
+    params.run_in_background,
+    locked,
+  );
 
   return {
     modelInput: model.value,
     modelFromParams: model.source === "caller",
-    thinking: resolveField("thinking", agentConfig.thinking, params.thinking, locked).value,
-    maxTurns: resolveField("max_turns", agentConfig.maxTurns, params.max_turns, locked).value,
-    inheritContext:
-      resolveField("inherit_context", agentConfig.inheritContext, params.inherit_context, locked)
-        .value ?? false,
-    runInBackground:
-      resolveField(
-        "run_in_background",
-        agentConfig.runInBackground,
-        params.run_in_background,
-        locked,
-      ).value ?? false,
+    thinking: thinking.value,
+    maxTurns: maxTurns.value,
+    inheritContext: inheritContext.value ?? false,
+    runInBackground: runInBackground.value ?? false,
+    discarded: [model, thinking, maxTurns, inheritContext, runInBackground]
+      .filter((resolution) => resolution.discarded)
+      .map((resolution) => resolution.field),
   };
 }
 
 /** One field's precedence outcome; `source` names the side that supplied the value. */
 interface FieldResolution<T> {
+  field: LockableField;
   value: T | undefined;
   source: "caller" | "agent" | "none";
+  /** True when a lock threw away a caller value that differed from the agent's. */
+  discarded: boolean;
 }
 
 /** Apply the precedence rule to a single field. */
@@ -124,11 +142,12 @@ function resolveField<T>(
   locked: LockDeclaration | undefined,
 ): FieldResolution<T> {
   if (!isLocked(field, agentValue, locked) && callerValue !== undefined) {
-    return { value: callerValue, source: "caller" };
+    return { field, value: callerValue, source: "caller", discarded: false };
   }
+  const discarded = callerValue !== undefined && callerValue !== agentValue;
   return agentValue !== undefined
-    ? { value: agentValue, source: "agent" }
-    : { value: undefined, source: "none" };
+    ? { field, value: agentValue, source: "agent", discarded }
+    : { field, value: undefined, source: "none", discarded };
 }
 
 /**

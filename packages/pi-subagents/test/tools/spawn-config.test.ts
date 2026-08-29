@@ -259,6 +259,71 @@ describe("resolveSpawnConfig — notes", () => {
     expect(result.notes).toEqual([]);
   });
 
+  it("carries a lock note naming the discarded parameters", () => {
+    const lockedRegistry = new AgentTypeRegistry(
+      () =>
+        new Map([
+          [
+            "pinned",
+            {
+              name: "pinned",
+              description: "Pinned",
+              systemPrompt: "",
+              promptMode: "append" as const,
+              model: "provider/pinned",
+              maxTurns: 7,
+              locked: true as const,
+            },
+          ],
+        ]),
+    );
+    const result = resolveSpawnConfig(
+      {
+        subagent_type: "pinned",
+        prompt: "test",
+        description: "d",
+        model: "other",
+        max_turns: 3,
+      },
+      lockedRegistry,
+      makeModelInfo(),
+      defaultSettings,
+    );
+    if ("error" in result) throw new Error(result.error);
+    expect(result.notes).toEqual([
+      'Note: agent "pinned" locks model, max_turns, so those parameters were ignored.',
+    ]);
+  });
+
+  it("names a single discarded parameter in the singular", () => {
+    const lockedRegistry = new AgentTypeRegistry(
+      () =>
+        new Map([
+          [
+            "pinned",
+            {
+              name: "pinned",
+              description: "Pinned",
+              systemPrompt: "",
+              promptMode: "append" as const,
+              model: "provider/pinned",
+              locked: ["model"] as const,
+            },
+          ],
+        ]),
+    );
+    const result = resolveSpawnConfig(
+      { subagent_type: "pinned", prompt: "test", description: "d", model: "other" },
+      lockedRegistry,
+      makeModelInfo(),
+      defaultSettings,
+    );
+    if ("error" in result) throw new Error(result.error);
+    expect(result.notes).toEqual([
+      'Note: agent "pinned" locks model, so the model parameter was ignored.',
+    ]);
+  });
+
   it("carries the unknown-type note when the type fell back", () => {
     const result = resolveSpawnConfig(
       { subagent_type: "unknown-type", prompt: "test", description: "d" },
@@ -269,6 +334,36 @@ describe("resolveSpawnConfig — notes", () => {
     if ("error" in result) return;
     expect(result.notes).toEqual([
       'Note: Unknown agent type "unknown-type" — using general-purpose.',
+    ]);
+  });
+
+  it("reports the fallback before the lock when a project pins the fallback agent", () => {
+    const pinnedFallback = new AgentTypeRegistry(
+      () =>
+        new Map([
+          [
+            "general-purpose",
+            {
+              name: "general-purpose",
+              description: "Pinned general-purpose",
+              systemPrompt: "",
+              promptMode: "append" as const,
+              maxTurns: 7,
+              locked: true as const,
+            },
+          ],
+        ]),
+    );
+    const result = resolveSpawnConfig(
+      { subagent_type: "unknown-type", prompt: "test", description: "d", max_turns: 3 },
+      pinnedFallback,
+      makeModelInfo(),
+      defaultSettings,
+    );
+    if ("error" in result) throw new Error(result.error);
+    expect(result.notes).toEqual([
+      'Note: Unknown agent type "unknown-type" — using general-purpose.',
+      'Note: agent "general-purpose" locks max_turns, so the max_turns parameter was ignored.',
     ]);
   });
 });

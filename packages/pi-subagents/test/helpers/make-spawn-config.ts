@@ -1,4 +1,4 @@
-import { buildSpawnNotes, type ResolvedSpawnConfig } from "#src/tools/spawn-config";
+import { buildFallbackNote, type ResolvedSpawnConfig } from "#src/tools/spawn-config";
 
 /** Flat options for {@link createResolvedSpawnConfig}; only the scalars tests vary. */
 export interface ResolvedSpawnConfigOptions {
@@ -33,7 +33,7 @@ export function createResolvedSpawnConfig(
 
   return {
     identity: { subagentType, rawType, fellBack, displayName },
-    notes: buildSpawnNotes(rawType, fellBack),
+    notes: buildFallbackNote(rawType, fellBack),
     execution: {
       prompt: options.prompt ?? "do the task",
       description,

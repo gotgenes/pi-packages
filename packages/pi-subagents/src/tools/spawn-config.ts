@@ -8,7 +8,7 @@
 
 import type { Model } from "@earendil-works/pi-ai";
 import type { AgentTypeRegistry } from "#src/config/agent-types";
-import { resolveAgentInvocationConfig } from "#src/config/invocation-config";
+import { type LockableField, resolveAgentInvocationConfig } from "#src/config/invocation-config";
 import { parseThinkingLevel, thinkingLevelError } from "#src/config/thinking-level";
 import { normalizeMaxTurns } from "#src/lifecycle/turn-limits";
 import type { ModelRegistry } from "#src/session/model-resolver";
@@ -153,7 +153,10 @@ export function resolveSpawnConfig(
 
   return {
     identity: { subagentType, rawType, fellBack, displayName },
-    notes: buildSpawnNotes(rawType, fellBack),
+    notes: [
+      ...buildFallbackNote(rawType, fellBack),
+      ...buildLockNote(subagentType, resolvedConfig.discarded),
+    ],
     execution: {
       prompt: params.prompt as string,
       description: params.description as string,
@@ -168,7 +171,22 @@ export function resolveSpawnConfig(
   };
 }
 
-/** Advisories a spawn's resolution produced, in the order a runner renders them. */
-export function buildSpawnNotes(rawType: SubagentType, fellBack: boolean): string[] {
+/** Advise that the named type does not exist, so general-purpose ran instead. */
+export function buildFallbackNote(rawType: SubagentType, fellBack: boolean): string[] {
   return fellBack ? [`Note: Unknown agent type "${rawType}" — using general-purpose.`] : [];
+}
+
+/**
+ * Advise that the agent's `locked:` frontmatter threw away parameters this call passed.
+ *
+ * The caller cannot see an agent file, so a silent discard reads as the tool ignoring
+ * a parameter its own schema documents — which is the defect #829 reports.
+ */
+function buildLockNote(agentName: string, discarded: readonly LockableField[]): string[] {
+  if (discarded.length === 0) return [];
+  const tail =
+    discarded.length === 1
+      ? `so the ${discarded[0]} parameter was ignored`
+      : "so those parameters were ignored";
+  return [`Note: agent "${agentName}" locks ${discarded.join(", ")}, ${tail}.`];
 }

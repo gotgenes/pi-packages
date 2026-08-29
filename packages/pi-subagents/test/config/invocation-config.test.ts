@@ -143,6 +143,63 @@ describe("resolveAgentInvocationConfig", () => {
     });
   });
 
+  describe("discarded", () => {
+    it("is empty when no lock is declared", () => {
+      const resolved = resolveAgentInvocationConfig(makeOpinionatedConfig(), overridingParams);
+
+      expect(resolved.discarded).toEqual([]);
+    });
+
+    it("is empty when the caller passed nothing to discard", () => {
+      const resolved = resolveAgentInvocationConfig(makeOpinionatedConfig({ locked: true }), {});
+
+      expect(resolved.discarded).toEqual([]);
+    });
+
+    it("lists every locked field the caller tried to override", () => {
+      const resolved = resolveAgentInvocationConfig(
+        makeOpinionatedConfig({ locked: true }),
+        overridingParams,
+      );
+
+      expect(resolved.discarded).toEqual([
+        "model",
+        "thinking",
+        "max_turns",
+        "inherit_context",
+        "run_in_background",
+      ]);
+    });
+
+    it("lists only the fields the lock names", () => {
+      const resolved = resolveAgentInvocationConfig(
+        makeOpinionatedConfig({ locked: ["model", "max_turns"] }),
+        overridingParams,
+      );
+
+      expect(resolved.discarded).toEqual(["model", "max_turns"]);
+    });
+
+    it("lists a bare lock the caller tried to fill", () => {
+      const resolved = resolveAgentInvocationConfig(
+        makeConfig({ locked: ["model"], model: undefined }),
+        overridingParams,
+      );
+
+      expect(resolved.discarded).toEqual(["model"]);
+    });
+
+    it("omits a field whose caller value matched the agent's own", () => {
+      const resolved = resolveAgentInvocationConfig(
+        makeOpinionatedConfig({ locked: true }),
+        { ...overridingParams, model: "provider/config-model" },
+      );
+
+      expect(resolved.discarded).not.toContain("model");
+      expect(resolved.discarded).toContain("thinking");
+    });
+  });
+
   /**
    * `modelFromParams` decides whether an unresolvable model string surfaces as an
    * error or falls back to the parent model silently. The caller is present to read
