@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [27.1.2](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v27.1.1...pi-permission-system-v27.1.2) (2026-08-29)
+
+
+### Bug Fixes
+
+* **pi-permission-system:** claim no arity for awk's long forms, whose parser the bare name does not fix ([#823](https://github.com/gotgenes/pi-packages/issues/823)) ([6c8e4a0](https://github.com/gotgenes/pi-packages/commit/6c8e4a0b813d17750296cbd065aec20377c82d2a))
+* **pi-permission-system:** discharge a flag argument on whatever node type follows ([#823](https://github.com/gotgenes/pi-packages/issues/823)) ([228f6fb](https://github.com/gotgenes/pi-packages/commit/228f6fb235310b304557ec501567373e33d4cfab))
+* **pi-permission-system:** read --context per tool, whose arity differs between grep and rg ([#823](https://github.com/gotgenes/pi-packages/issues/823)) ([bba8317](https://github.com/gotgenes/pi-packages/commit/bba83175d1f9f8079cd9613412c65868e4a2fa09))
+* **pi-permission-system:** read awk's long forms only for gawk ([#823](https://github.com/gotgenes/pi-packages/issues/823)) ([52488f0](https://github.com/gotgenes/pi-packages/commit/52488f02cc902b8669f893cc1cfee090482f2e72))
+* **pi-permission-system:** recognize the long, embedded, and glued spellings of a pattern-first flag ([#823](https://github.com/gotgenes/pi-packages/issues/823)) ([ce7b65e](https://github.com/gotgenes/pi-packages/commit/ce7b65eb607cc2e6f61a6eceda1d1a9bb22aea85))
+* **pi-permission-system:** spend a pattern positional on a computed or numeric pattern ([#823](https://github.com/gotgenes/pi-packages/issues/823)) ([dce4d3f](https://github.com/gotgenes/pi-packages/commit/dce4d3f06b164f6f45df3c5550ec624f3acba896))
+
+
+### Documentation
+
+* **pi-permission-system:** record the optional-argument flag residuals ([#823](https://github.com/gotgenes/pi-packages/issues/823)) ([94e51fc](https://github.com/gotgenes/pi-packages/commit/94e51fc5a05acf3b2c4bc49479b45b0b7797b9ac))
+
 ## [27.1.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v27.1.0...pi-permission-system-v27.1.1) (2026-08-28)
 
 
