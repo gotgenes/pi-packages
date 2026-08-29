@@ -202,6 +202,9 @@ Then an H1 title (e.g., `# <short descriptive title>`) — required by markdownl
   The Tidy-First assessment's accepted preparatory refactorings are steps here like any other, each with its `refactor:`/`test:` commit message and a sentence naming the friction it prepares.
   Place each one before the step it prepares — leading the whole order when every later step depends on it, immediately before the relevant part when a larger plan needs its tidying split across several points.
   The implementing session executes them in order; it runs no second assessment.
+  When a change has a mechanism half and a data half — a walker plus its lookup table, a parser plus its keyword list — sequence them as separate steps.
+  They have different failure rates and different verification instruments, and fusing them makes every data defect re-review the mechanism.
+  When the data is a table of external facts, write the check that verifies one row before writing the rows (Refs #823).
   When a refactor replaces a type, interface, or function that a large test file depends on, use lift-and-shift: introduce the new thing alongside the old, migrate callers and fixtures incrementally across steps, then remove the old in a final step.
   Never plan a single step that requires rewriting an entire large test file at once.
   When a step removes a factory or export that has a single call site (e.g., `index.ts`), include the call-site update in the same step — the type checker will not allow them in separate commits.

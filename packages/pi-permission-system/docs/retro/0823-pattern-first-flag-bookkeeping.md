@@ -104,6 +104,11 @@ So the oracle covers present implementations and the ADR rule has to cover absen
   The reviewer got the right answer by swapping `token-collection.ts` at each commit and re-running against the *current* filesystem.
   A corpus baseline whose projection depends on filesystem state cannot be cached across a session — it must be re-captured, not reused.
 
+  **Correction, added at the Final Retrospective:** this bullet is wrong, and it is wrong in exactly the way it warns against.
+  It was written accepting the reviewer's round-5 claim without re-deriving it.
+  Three minutes later I did re-derive, with the reviewer's own instrument (both source versions against the current filesystem), and got **1** — the third changed command gains a *rule candidate*, not an external access, and its external set is byte-identical.
+  The methodological half of the bullet stands (do not cache a filesystem-dependent baseline); the number does not.
+
 #### What worked
 
 Scoping each re-dispatch to the delta and naming the rounds already reviewed.
@@ -146,3 +151,91 @@ Pre-completion reviewer: FAIL → WARN → WARN → WARN → WARN, with both rou
   The plan document is left as written; its residual list is superseded by ADR 0009's, which is the record that ships.
 - **Reviewer warnings at hand-off:** none outstanding.
   Round 5's two findings were the `architecture.md` dangling clause (fixed in `2202a560`) and the corpus-figure correction (refuted above); the three earlier rounds' findings all landed as commits.
+
+## Stage: Final Retrospective (2026-08-29T00:21:30Z)
+
+### Session summary
+
+Planned, implemented, and shipped [#823] across one continuous session: seventeen commits closing six operand-dropping defects in the bash path projection's pattern-first walker, released as `pi-permission-system` 27.1.2.
+Five pre-completion review rounds ran before hand-off (FAIL, WARN, WARN, WARN, WARN), every one of them finding a real defect, and four of the six defects fixed were never in the issue's own report.
+Measured over 4057 deduplicated real bash commands the whole change alters 1 command's external-access set, gaining a token, and loses none.
+
+### Observations
+
+#### What went well
+
+- **The mechanism/data asymmetry is the durable finding, and it is measurable.**
+  Across five adversarial review rounds the walker redesign — role vocabulary, discharge on any node type, positional counting, moving the `=`-value split inside the pattern-first walker — drew **zero** findings.
+  The lookup table of external facts drew **six**.
+  Same plan, same session, same author; a 0-vs-6 split between two halves of one change is strong evidence they are different kinds of work and want different instruments.
+- **Refusing two reviewer findings on measurement was correct both times.**
+  Round 1's blocking claim and round 5's corpus correction were each refuted by re-running the projection rather than by argument, and in round 1 the reviewer's proposed fix measured strictly *worse* than the code it objected to.
+  An adversarial reviewer earns deference on findings, not on impact claims — those are re-derivable and should be re-derived.
+- **Every operator gate was answered with measured rows, not reasoning.**
+  Four `ask_user` gates fired (the `sed -i` variants, the finding-3 disposition, the `--context` split, the awk arity role) and each carried a table of before/after projections against the real tools.
+  The operator chose the fail-safe option every time, and on the `--context` gate reversed an earlier decision once the evidence behind it was shown to have gone stale.
+- **Mutation-checking a green-on-arrival pin caught a vacuous test.**
+  `grep -f $(echo x) /etc/passwd` passed during the step-4 Red, so I broke the recursion it covers and confirmed it went red — and separately discovered `grep -A $(echo 3) …` asserted a token (`3`) the package never emits, replacing it with `$(cat /etc/shadow)`, which does.
+
+#### What caused friction (agent side)
+
+- `missing-context` — the plan verified its flag table against **documentation** (`man grep`, `rg --help`, `sd --help`, man7 `gawk(1)`/`sed(1)`) and recorded the result in an `External facts, verified` table keyed by *source document*.
+  Documentation answers "does this flag exist and take an argument"; the security boundary asked "does every binary this *name* reaches take a *separate* argument".
+  No amount of diligence with the first question produces the second, and `AGENTS.md` § Reading this repo's own artifacts already told me to verify against `man`/`--help` — which I did, and which was not enough.
+  Impact: three of the six defects (`--context`, awk's long forms, the `awk`-as-gawk case), three review rounds, four extra commits (`bba83175`, `52488f02`, `6c8e4a0b`, `2202a560`), and two operator gates that would not have been needed.
+- `other` — defending a measurement instead of re-deriving it.
+  My "the `--context` entry is output-neutral" evidence was captured before `dce4d3f0`, which changed how an unclaimed node spends a positional; the claim silently went false and the operator's decision rested on it until round 2 surfaced the mismatch.
+  Impact: one full review round, one reversed operator decision, one commit (`bba83175`).
+- `other` — the same failure recurred **inside the retro file itself**: the User Note stage accepted round 5's "the count is 2" correction as fact, and the TDD stage written three minutes later refuted it by re-derivation, leaving the file self-contradictory until this entry corrected it.
+  Impact: no rework, but a wrong number sat in a durable artifact.
+- `instruction-violation` (self-identified) — an `Edit` call used a hand-built absolute path with a doubled package segment (`/Users/chris/development/pi/pi-permission-system/src/…`), tripping the `external_directory` gate instead of failing fast.
+  `AGENTS.md` § Shell and search states the repo-relative rule and [#726] records this exact failure; it is also the second consecutive session in this package to hit it.
+  Impact: one rejected call, no rework.
+- `other` — a `git checkout` to restore a mutation-test file silently reverted the step-4 green change with it, which I caught only by re-reading the file.
+  A mutation probe edits the same file the change lives in, so restoring by `git checkout` discards both.
+  Impact: one re-applied edit, no lost work.
+- `other` — an `Edit` call carried a stray `oldText2` key, which the tool silently ignores while reporting success.
+  `AGENTS.md` warns about exactly this; the reported block count was checked against intent, so nothing was dropped.
+  Impact: none.
+- `other` — during this retrospective, `list_session_files` was called to locate prior-stage transcripts and returned all **524** session files for the repo, flooding the context for no benefit; the model attribution I needed came from a 12-entry `read_session` and two `head` calls on the agent frontmatter.
+  Impact: wasted context, no rework.
+
+#### What caused friction (user side)
+
+- Nothing obstructive; the operator's four gate answers were all fail-safe and all held up under later scrutiny, including the one that reversed an earlier decision on corrected evidence.
+- Opportunity: the mid-session question ("could we have divided the work in another way?") produced the sharpest analysis of the session and arrived *after* the fifth review round.
+  The same question asked after round 2 — when the second same-class defect appeared — would have reframed the remaining work while three defects were still unfound.
+  A recurring defect *class*, rather than a count of rounds, is the signal worth interrupting on.
+
+### Diagnostic details
+
+- **Model-performance correlation** — planning, TDD, and this retrospective ran on `anthropic/claude-opus-5`; the ship sequence ran on `anthropic/claude-sonnet-5` (attributed from the inline transcript labels).
+  Both subagent types are pinned to `anthropic/claude-sonnet-5` by their frontmatter (`.pi/agents/pre-completion-reviewer.md`, `.pi/agents/tidy-first-assessor.md`).
+  No mismatch: judgment-heavy planning on the stronger model, the deterministic ship sequence on the cheaper one.
+  Worth recording for the second consecutive issue that a `sonnet-5` reviewer with fresh context and an adversarial mandate out-found an `opus-5` implementer on the implementer's own change — five rounds running here, three in [#821].
+  The advantage is context and mandate, not capability.
+- **Escalation-delay tracking** — no `rabbit-hole` friction to measure.
+  The longest single-target sequence was the five-round review loop, and each round terminated with a new verified finding rather than a repeat, so no sequence exceeded five consecutive calls on the same error.
+- **Unused-tool detection** — one gap, and it is the session's central one: no tool was dispatched to verify the flag table, because none was written.
+  `bash` was available throughout and is what finally answered every arity question; the missing instrument was a probe script, not a subagent.
+  No `Explore`/`colgrep` gap — the target file was named in the issue.
+- **Feedback-loop gap analysis** — no gap.
+  All four gates ran to establish the baseline before the first cycle, file-scoped `vitest` ran on every Red and Green, and the full four-gate set ran after every commit and before the push.
+  The corpus projection was re-measured after each behavior commit — with the one staleness failure noted above, which was a re-use of a cached baseline rather than a skipped run.
+
+### Changes made
+
+1. `AGENTS.md` § Reading this repo's own artifacts — sharpened the external-facts rule: documentation answers whether a flag exists, not what a given binary does with it, so run the tool when the answer gates a security boundary; and a shared table row asserts its fact of every implementation the *name* reaches.
+2. `AGENTS.md` § Background agent guardrails — added that a measurement is scoped to the commit it was taken at: re-run it after any behavior change rather than defending it, and never re-use a cached baseline whose result depends on filesystem state.
+3. `.pi/prompts/plan-issue.md` § TDD Order — added mechanism/data step sequencing: sequence a mechanism half and a data half as separate steps, and when the data is a table of external facts, write the check that verifies one row before writing the rows.
+4. `.pi/skills/package-pi-permission-system/SKILL.md` — corrected the arity rule, which my own later commits in this issue had superseded: "every supported platform" → "every implementation the command name reaches", now naming the `--context` per-tool split and the `unknown-arity` role.
+5. This retro file — the Final Retrospective entry, plus a correction to the User Note stage's corpus-figure bullet, which had accepted a reviewer claim that later re-derivation refuted.
+
+#### Attribution of these changes to the mid-session `/retro-note`
+
+The operator asked which changes their mid-session question produced.
+Change 3 is substantially theirs: the mechanism/data decomposition exists because they asked whether the work could have been divided differently, and its "write the check before the rows" clause is the nemawashi half of the same question.
+Without it this retrospective would have counted six defects and concluded "verify harder" — a count rather than a structure.
+Change 1 is partly theirs: the finding was reachable from the round-3 and round-4 defects alone, but the reframing from *thoroughness* to *kind* (the plan's table was keyed by source document when the question was keyed by name→implementation) came from that exchange.
+Changes 2 and 4 are not: the staleness rule came from the round-2 failure at the time it happened, and the skill fix from grepping for text this issue's own commits had superseded.
+Worth recording that the note landed after the fifth round, so it could explain the session but not change it — the same observation as the user-side opportunity above.

@@ -87,6 +87,8 @@ A Non-Goal decays fastest in the most active packages: `pi-colgrep`'s plan `0092
 
 The same holds for a plan's enumerated **external** facts — a command's options, an API surface, a spec's values.
 Verify each against the real surface (`man`, `--help`, the schema) before it lands in a security boundary; #807's plan omitted `find -fprint0` and admitted `file` as read-only, and both shipped as fail-opens.
+Documentation answers whether a flag exists, not what a given binary does with it — run the tool when the answer gates a security boundary.
+A shared table row asserts its fact of every implementation the *name* reaches: `grep --context` takes no separate argument and `rg --context` does, and `awk` is GNU awk on Fedora and one-true-awk elsewhere (Refs #823).
 
 Pull-request status is an **inverted** signal here, because the repo reimplements adopted third-party changes through its own TDD cycle rather than merging them.
 Seven of nine closed-unmerged external PRs on `pi-permission-system`, and six on `pi-subagents`, shipped as capability with `Co-authored-by` credit — so "closed unmerged" usually means *accepted*.
@@ -235,6 +237,7 @@ Check a multi-question report against itself first: #725's trace answered "the `
 The mirror holds for a claim **you** supply: a reviewer cannot verify a coverage assertion handed to it as a premise, so state what you checked, not what you conclude was covered.
 When a change creates N artifacts that cross-reference each other, enumerate the edges rather than sampling them (Refs #775).
 The same holds for a measurement: hand a reviewer the raw source and a mandate to re-derive, not your tables.
+A measurement is also scoped to the commit it was taken at: re-run it after any behavior change rather than defending it, and never re-use a cached baseline whose result depends on filesystem state (Refs #823).
 A `pre-completion-reviewer` given ADR 0013's own numbers returned PASS; an adversarial reviewer given the log returned four blocking defects (Refs #639).
 
 ##### Parallel peer sessions (git worktrees)
