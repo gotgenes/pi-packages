@@ -60,23 +60,89 @@ interface AgentInvocationParams {
   inherit_context?: boolean;
 }
 
-export function resolveAgentInvocationConfig(
-  agentConfig: AgentConfig | undefined,
-  params: AgentInvocationParams,
-): {
+/** The per-call values the Agent tool door resolved from its caller and the agent file. */
+export interface AgentInvocationConfig {
   modelInput?: string;
+  /**
+   * True when the winning model string came from the caller.
+   *
+   * Decides whether an unresolvable string surfaces as an error or falls back to the
+   * parent model silently: the caller is present to read an error, an agent file's
+   * author is not.
+   */
   modelFromParams: boolean;
   thinking?: ThinkingLevel;
   maxTurns?: number;
   inheritContext: boolean;
   runInBackground: boolean;
-} {
+}
+
+/**
+ * Merge an agent file's frontmatter with the `subagent` tool call's parameters.
+ *
+ * The caller wins by default and the agent file fills what the caller left unset. The
+ * upstream guard this inverts existed because the *model* guesses harness knobs it does
+ * not understand — an agent author who wants that guard back declares `locked:`, which
+ * is the only case where a caller's value is discarded (Refs #829).
+ */
+export function resolveAgentInvocationConfig(
+  agentConfig: AgentConfig,
+  params: AgentInvocationParams,
+): AgentInvocationConfig {
+  const locked = agentConfig.locked;
+  const model = resolveField("model", agentConfig.model, params.model, locked);
+
   return {
-    modelInput: agentConfig?.model ?? params.model,
-    modelFromParams: agentConfig?.model == null && params.model != null,
-    thinking: agentConfig?.thinking ?? params.thinking,
-    maxTurns: agentConfig?.maxTurns ?? params.max_turns,
-    inheritContext: agentConfig?.inheritContext ?? params.inherit_context ?? false,
-    runInBackground: agentConfig?.runInBackground ?? params.run_in_background ?? false,
+    modelInput: model.value,
+    modelFromParams: model.source === "caller",
+    thinking: resolveField("thinking", agentConfig.thinking, params.thinking, locked).value,
+    maxTurns: resolveField("max_turns", agentConfig.maxTurns, params.max_turns, locked).value,
+    inheritContext:
+      resolveField("inherit_context", agentConfig.inheritContext, params.inherit_context, locked)
+        .value ?? false,
+    runInBackground:
+      resolveField(
+        "run_in_background",
+        agentConfig.runInBackground,
+        params.run_in_background,
+        locked,
+      ).value ?? false,
   };
+}
+
+/** One field's precedence outcome; `source` names the side that supplied the value. */
+interface FieldResolution<T> {
+  value: T | undefined;
+  source: "caller" | "agent" | "none";
+}
+
+/** Apply the precedence rule to a single field. */
+function resolveField<T>(
+  field: LockableField,
+  agentValue: T | undefined,
+  callerValue: T | undefined,
+  locked: LockDeclaration | undefined,
+): FieldResolution<T> {
+  if (!isLocked(field, agentValue, locked) && callerValue !== undefined) {
+    return { value: callerValue, source: "caller" };
+  }
+  return agentValue !== undefined
+    ? { value: agentValue, source: "agent" }
+    : { value: undefined, source: "none" };
+}
+
+/**
+ * Whether an agent file withholds `field` from its callers.
+ *
+ * The two declaration forms differ deliberately on a field the file leaves unset:
+ * `true` means "what I set is mine", so it locks nothing it did not supply, while a
+ * list names fields outright and denies an override with no value of its own.
+ */
+function isLocked(
+  field: LockableField,
+  agentValue: unknown,
+  locked: LockDeclaration | undefined,
+): boolean {
+  if (locked === undefined) return false;
+  return locked === true ? agentValue !== undefined : locked.includes(field);
 }

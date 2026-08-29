@@ -177,26 +177,26 @@ ${guidelines}
 				model: Type.Optional(
 					Type.String({
 						description:
-							'Optional model override. Accepts "provider/modelId" or fuzzy name (e.g. "haiku", "sonnet"). Omit to use the agent type\'s default.',
+							'Optional model override. Accepts "provider/modelId" or fuzzy name (e.g. "haiku", "sonnet"). Omit to use the agent type\'s default. An agent that locks this field keeps its own model and says so in the result.',
 					}),
 				),
 				thinking: Type.Optional(
 					Type.String({
 						description:
-							"Thinking level: off, minimal, low, medium, high, xhigh. Overrides agent default.",
+							"Thinking level: off, minimal, low, medium, high, xhigh, max. Overrides the agent's default unless the agent locks this field.",
 					}),
 				),
 				max_turns: Type.Optional(
 					Type.Number({
 						description:
-							"Maximum number of agentic turns before stopping. Omit for unlimited (default).",
+							"Maximum number of agentic turns before stopping. Omit to use the agent's own limit, or unlimited when it declares none.",
 						minimum: 1,
 					}),
 				),
 				run_in_background: Type.Optional(
 					Type.Boolean({
 						description:
-							"Set to true to run in background. Returns agent ID immediately. You will be notified when it completes.",
+							"Set to true to run in background. Returns agent ID immediately. You will be notified when it completes. Omit to use the agent's own default.",
 					}),
 				),
 				resume: Type.Optional(
@@ -207,7 +207,7 @@ ${guidelines}
 				inherit_context: Type.Optional(
 					Type.Boolean({
 						description:
-							"If true, fork parent conversation into the agent. Default: false (fresh context).",
+							"If true, fork parent conversation into the agent. Omit to use the agent's own default, which is fresh context unless it declares otherwise.",
 					}),
 				),
 			}),

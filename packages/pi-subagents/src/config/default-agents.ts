@@ -18,7 +18,8 @@ export const DEFAULT_AGENTS: Map<string, AgentConfig> = new Map([
       toolGuideline: "- Use general-purpose for complex tasks that need file editing.",
       // toolNames omitted — means "all available tools" (resolved at lookup time)
       // inheritContext / runInBackground omitted — strategy fields, callers decide per-call.
-      // Setting them to false would lock callsite intent (see resolveAgentInvocationConfig in invocation-config.ts).
+      // No built-in declares `locked`: Explore's haiku is a cost default, not a
+      // correctness one, so a caller that knows better may override it (#829).
       systemPrompt: "",
       promptMode: "append",
       isDefault: true,
