@@ -86,3 +86,16 @@ Split into a `docs:` commit and a `test:` commit before pushing.
 
 - **Feedback-loop gap analysis** — the plan's own predicted metric (`agentConfig?.` merges 5 → 0) was re-measured at step 8 rather than asserted; it landed at 0 as predicted.
 - **Escalation-delay tracking** — three consecutive lint failures on the same helper (`describeRejected`) before abandoning `JSON.stringify` for an explicit `typeof` ladder; `@typescript-eslint/no-base-to-string` and `no-unnecessary-condition` pulled in opposite directions because `JSON.stringify`'s declared return type omits the `undefined` it returns for functions and symbols.
+
+## Stage: Ship (worktree) (2026-08-29T23:17:46Z)
+
+### Session summary
+
+Pre-push checks (`pnpm run lint`, `pnpm fallow dead-code`) both passed clean on the first run — no fixes needed.
+The plan's `**Release:** mid-batch — defer (batch "front-door-majors")` marker carries forward: [#828] (`refactor!:`, the batch's other member) has not landed, so the root should leave the `pi-subagents` release-please PR open until [#828]'s commit joins this one, per `AGENTS.md`'s per-package release-PR guidance.
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-829--/2026-08-29T21-44-24-322Z_01a04f7b-2002-754d-9958-37f16a660d21.jsonl` — read with `read_session_file({ path: "<path>" })` for message-level verification at land/retro time.
+
+### Observations
+
+No new friction at this stage — the TDD stage's three pre-completion review rounds already caught and closed everything substantive before this branch reached ship.
