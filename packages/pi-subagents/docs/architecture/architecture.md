@@ -80,6 +80,7 @@ flowchart TB
         Context["context<br/>(parent history)"]
         Env["env<br/>(git/platform)"]
         ModelResolver["model-resolver<br/>(fuzzy match)"]
+        ProviderInheritance["provider-inheritance<br/>(replay parent providers)"]
     end
 
     subgraph lifecycle["Lifecycle domain"]
@@ -343,6 +344,7 @@ src/
 │   ├── env.ts                      git/platform detection
 │   ├── model-resolver.ts           fuzzy model name resolution
 │   ├── package-exclusions.ts       child settings view that disables excluded packages' extensions
+│   ├── provider-inheritance.ts     replays the parent's runtime-registered providers onto the child's own runtime, so the child inherits them without sharing the parent's mutable pool
 │   └── session-dir.ts              session directory derivation
 │
 ├── lifecycle/                      agent execution and state tracking
@@ -709,9 +711,9 @@ That method — testability friction as a boundary probe, with its limits — is
 | Metric                     | Value                                                                   |
 | -------------------------- | ----------------------------------------------------------------------- |
 | Health score               | 78/100 (B), end of Phase 21                                             |
-| Total LOC                  | 8,323 (61 files)                                                        |
+| Total LOC                  | 8,416 (62 files)                                                        |
 | Dead code                  | 0 files, 0 exports                                                      |
-| Maintainability index      | 91.0 (good)                                                             |
+| Maintainability index      | 91.1 (good)                                                             |
 | Avg cyclomatic complexity  | 1.3                                                                     |
 | P90 cyclomatic complexity  | 2                                                                       |
 | Production duplication     | 0 lines                                                                 |

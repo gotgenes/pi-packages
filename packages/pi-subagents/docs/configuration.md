@@ -220,3 +220,21 @@ A foreground agent aborts on ESC regardless of this setting.
 It holds the parent's own run signal for the duration of its blocking tool call, so the interrupt reaches it directly; the policy governs background and queued agents.
 
 The policy is read at the moment ESC fires, so flipping it mid-session applies to the very next interrupt.
+
+## Model providers in child sessions
+
+A subagent inherits every model provider the parent can reach, including providers an extension registered at runtime with `pi.registerProvider` rather than through `models.json` or `auth.json`.
+This is what lets a child run under a dynamically registered provider such as `pi-claude-bridge`.
+
+The child does not share the parent's provider pool — it gets its own, with the parent's registrations copied onto it.
+An extension loaded in a child can therefore register or unregister providers without disturbing the parent or any sibling agent.
+
+Inheritance is a **snapshot taken when the agent spawns**.
+A provider registered in the parent after a child has started does not appear in that running child; agents spawned afterwards pick it up.
+This matches the rest of the parent state a child captures at spawn — working directory, model, and system prompt are all frozen the same way.
+
+Provider inheritance needs no configuration.
+It does require Pi 0.81.0 or newer, which is the floor this package declares — that is the release where the model registry began exposing every runtime registration for replay.
+
+One thing the child does still share with the parent: when a provider's API key is a shell command (`"apiKey": "!my-command"`), Pi caches the command's resolved output process-wide, so parent and children reuse one result rather than re-running it per agent.
+That cache is Pi's, not this extension's, and it predates provider inheritance.
