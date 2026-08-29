@@ -55,7 +55,8 @@ Extracting the surviving UI to a separate package is a **not now with criteria**
 
 The following are **not** boundaries.
 Pi's client-server split is a deferral pending an upstream capability (`docs/architecture/client-server-opportunities.md`), not a declined direction.
-The parity status of the SDK `spawn()` path against the tool path, the stability guarantee carried by `SubagentRecord` and the event payloads, parent-data redaction for SDK-spawned children, and ownership of `get_subagent_result` presentation are all unstated rather than settled.
+The parity status of the SDK `spawn()` path against the tool path, the stability guarantee carried by the lifecycle event payloads, parent-data redaction for SDK-spawned children, and ownership of `get_subagent_result` presentation are all unstated rather than settled.
+`SubagentRecord`'s own guarantee is no longer among them: [decision 0005](../decisions/0005-subagent-record-admission-policy.md) settles what the public snapshot admits and which direction the contract runs.
 
 The reimplement-don't-merge contribution pattern, applied across eight closed pull requests, is a repo-wide process rather than a scope boundary, and is documented in the repository's [contributing guide](https://github.com/gotgenes/pi-packages/blob/main/CONTRIBUTING.md).
 
@@ -515,7 +516,7 @@ See `src/service.ts` for the canonical definition.
 Key types:
 
 - `SubagentsService` — `spawn`, `getRecord`, `listAgents`, `abort`, `steer`, `waitForAll`, `hasRunning`.
-- `SubagentRecord` — serializable agent snapshot (no live session objects).
+- `SubagentRecord` — serializable by-value agent snapshot; admission policy in [decision 0005](../decisions/0005-subagent-record-admission-policy.md).
 - `SpawnOptions` — `description`, `model`, `maxTurns`, `thinkingLevel`, `inheritContext`, `foreground`, `bypassQueue`.
 - `SUBAGENT_EVENTS` — channel constants for `pi.events` subscriptions.
 
@@ -816,7 +817,7 @@ Impact 4 / Risk 2 / Priority 16.
 
 Release: independent
 
-#### Step 2 — Decide and document the `SubagentRecord` allowlist policy ([#830])
+#### ✅ Step 2 — Decide and document the `SubagentRecord` allowlist policy ([#830])
 
 Cause: the public snapshot — the discrete-query half of the reactive/discrete split — is produced by an allowlist with no stated admission policy, so every widening (PR #748's `turnCount`/`activeTools`, [#724]'s deferred `isBackground`) re-litigates the same trade-off case by case, including the undecided question of whether third parties implement the interface at all.
 Smell: Category C (boundary contract left implicit).
@@ -824,7 +825,12 @@ Target files: `src/service/service.ts`, `src/service/service-adapter.ts` (`toSub
 Outcome: a written admission policy (what earns a field a place; required versus optional for additions; whether the interface is a contract third parties satisfy), and the specific candidates (`turnCount`, `activeTools`, `outputFile`, `maxTurns`, `responseText`, `consumedAt`, `isBackground`) each dispositioned under it, pinned by updated service tests.
 Impact 3 / Risk 2 / Priority 12.
 
-Release: batch "front-door-majors"
+Landed: `docs/decisions/0005-subagent-record-admission-policy.md` states the four admission rules, the four exclusion classes, and the produced-not-implemented contract direction.
+`isBackground`, `turnCount`, `maxTurns`, and `outputFile` are admitted; `activeTools`, `responseText`, `consumedAt`, and `stoppedWhileQueued` are declined, and both halves are pinned in `test/service/service-adapter.test.ts`.
+The policy's by-value definition also surfaced and fixed a snapshot aliasing the agent's live `lifetimeUsage` accumulator.
+The contract direction made the widening semver-minor, so this step left the batch (see `Release batches`).
+
+Release: independent
 
 #### Step 3 — Narrow the frontmatter guard to explicitly locked fields ([#829], with [#834])
 
@@ -907,7 +913,7 @@ Release: independent
 flowchart TD
     S1["✅ Step 1 (#724)<br/>Choke-point parity"] --> S3["Step 3 (#829)<br/>Locked-fields precedence"]
     S1 --> S4["Step 4 (#828)<br/>Remove vacant seam field"]
-    S1 -.soft.-> S2["Step 2 (#830)<br/>SubagentRecord policy"]
+    S1 -.soft.-> S2["✅ Step 2 (#830)<br/>SubagentRecord policy"]
     S7["Step 7 (#798)<br/>Foreground resume handle"] -.soft.-> S8["Step 8 (#465)<br/>Ask-back"]
     S5["Step 5 (#801)<br/>Skills-block strip"]
     S6["Step 6 (#827)<br/>UICtx capture"]
@@ -922,10 +928,11 @@ flowchart TD
 
 ### Release batches
 
-- **Batch "front-door-majors":** Steps 2, 4, 3 (ship together as one semver-major bump; tail = Step 3).
-  Step 3 is `fix!:` and Step 4 is `refactor!:` with a `BREAKING CHANGE:` footer; Step 2 joins the batch so its required/optional decision rides the same major if it comes out breaking — if its resolution is non-breaking, its plan may downgrade it to independently releasable and update this line.
-- Independently releasable: Steps 1, 5, 6, 7, 8.
-  Steps 1, 5, 6, 7 are `fix:` and Step 8 is `feat:` — each an unhidden release vehicle on its own.
+- **Batch "front-door-majors":** Steps 4, 3 (ship together as one semver-major bump; tail = Step 3).
+  Step 3 is `fix!:` and Step 4 is `refactor!:` with a `BREAKING CHANGE:` footer.
+  Step 2 was provisionally batched here in case its required/optional decision came out breaking; it did not — `SubagentRecord` is produced, never implemented, so its widening is semver-minor and it left the batch as the batch's own line anticipated.
+- Independently releasable: Steps 1, 2, 5, 6, 7, 8.
+  Steps 1, 5, 6, 7 are `fix:`, Step 2 is `feat:`, and Step 8 is `feat:` — each an unhidden release vehicle on its own.
 
 ## Refactoring history
 

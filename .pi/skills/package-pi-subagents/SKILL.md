@@ -121,6 +121,9 @@ This package publishes two public subpath entries, each with a rolled self-conta
 Use `loadLayeredSettings<T>({ agentDir, cwd, filename, sanitize, warnLabel })` from `@gotgenes/pi-subagents/settings` to read global + project JSON config with the standard `@gotgenes/pi-*` layering convention.
 See the `## For Extension Authors` section of `README.md` for the full wiring example.
 
+What `SubagentRecord` may carry is settled by `docs/decisions/0005-subagent-record-admission-policy.md`, not by a per-field vote: the snapshot admits identity, resolved spawn facts, cumulative metrics, and durable-artifact pointers, and withholds live objects, momentary activity (`activeTools`, `responseText`), package-internal bookkeeping, and display snapshots.
+It is produced by this package and read by consumers — never implemented by them — so adding a field is semver-minor while removing or retyping one is semver-major, and the snapshot is by value (copy anything the agent keeps mutating).
+
 ## Build
 
 This package is otherwise ship-source (Pi runs `./src/index.ts` directly), but it carries the repo's only build step: type-declaration bundles for both public entries ([ADR-0003]).

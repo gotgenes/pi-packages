@@ -306,6 +306,19 @@ Pass `foreground` explicitly and it wins outright, whatever the frontmatter says
 
 A spawned agent is a first-class citizen of the runtime: it appears in the background widget, carries its parent's session identity so permission prompts route correctly, and nests its session file under the parent's.
 
+#### `getRecord` / `listAgents` contract
+
+Both return `SubagentRecord`, a by-value snapshot: nothing in it changes after you receive it, and writing to it cannot reach the agent.
+Poll again for fresh data.
+
+The snapshot carries identity (`id`, `type`, `description`), lifecycle status (`status`, `startedAt`, `completedAt`, `result`, `error`), the resolved spawn facts (`isBackground`, `maxTurns`), cumulative metrics (`toolUses`, `turnCount`, `compactionCount`, `lifetimeUsage`), and `outputFile` — the path to the agent's session JSONL, which you can read with Pi's own `parseSessionEntries`.
+
+It deliberately withholds momentary activity (the tools running right now, the partial response text) and this package's internal bookkeeping.
+A pulled snapshot of momentary state would be stale on arrival; [decision 0005](docs/decisions/0005-subagent-record-admission-policy.md) records the full policy and what would reopen it.
+
+`SubagentRecord` and `SubagentsService` are types this package produces and you read — not contracts to implement.
+A new field is therefore a minor release; use a cast or a `Partial<>` for a test double rather than implementing either type.
+
 ### `@gotgenes/pi-subagents/settings` — layered config loader
 
 Extensions that store configuration in JSON files can use the shared layered loader, which reads a global file (`<agentDir>/<filename>`) and a project file (`<cwd>/.pi/<filename>`) and merges them — project wins on conflicts, missing files are silent, malformed files warn and fall back:
