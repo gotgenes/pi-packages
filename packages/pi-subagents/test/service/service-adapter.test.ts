@@ -1,12 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ParentSnapshot } from "#src/lifecycle/parent-snapshot";
+import { SubagentState } from "#src/lifecycle/subagent-state";
 import type { WorkspaceProvider } from "#src/lifecycle/workspace";
 import type { SubagentsService } from "#src/service/service";
 import type { ServiceRuntimeLike, SubagentManagerLike } from "#src/service/service-adapter";
 import { SubagentsServiceAdapter, toSubagentRecord } from "#src/service/service-adapter";
-import type { SessionContext, Subagent } from "#src/types";
+import { type SessionContext, Subagent } from "#src/types";
 import { makeModel } from "#test/helpers/make-model";
-import { createTestSubagent } from "#test/helpers/make-subagent";
+import { createTestSubagent, makeStubExecution } from "#test/helpers/make-subagent";
 import { createMockSession, createSubagentSessionStub, toSubagentSession } from "#test/helpers/mock-session";
 import { STUB_SNAPSHOT } from "#test/helpers/stub-ctx";
 
@@ -96,6 +97,33 @@ describe("toSubagentRecord", () => {
     expect(result).not.toHaveProperty("responseText");
     expect(result).not.toHaveProperty("consumedAt");
     expect(result).not.toHaveProperty("stoppedWhileQueued");
+  });
+
+  it("does not drift when the agent keeps accumulating usage", () => {
+    const state = new SubagentState({ lifetimeUsage: { input: 100, output: 200, cacheWrite: 50 } });
+    const agent = new Subagent({
+      id: "usage-1",
+      type: "Explore",
+      description: "Check stale TODOs",
+      isBackground: true,
+      execution: makeStubExecution(),
+      state,
+    });
+
+    const snapshot = toSubagentRecord(agent);
+    state.addUsage({ input: 25, output: 0, cacheWrite: 0 });
+
+    expect(snapshot.lifetimeUsage).toEqual({ input: 100, output: 200, cacheWrite: 50 });
+    expect(agent.lifetimeUsage.input).toBe(125);
+  });
+
+  it("does not let a consumer write into the agent's own totals", () => {
+    const agent = createTestSubagent({ lifetimeUsage: { input: 100, output: 200, cacheWrite: 50 } });
+
+    const snapshot = toSubagentRecord(agent);
+    snapshot.lifetimeUsage.input = 999;
+
+    expect(agent.lifetimeUsage.input).toBe(100);
   });
 
   it("omits optional fields when undefined on the source", () => {

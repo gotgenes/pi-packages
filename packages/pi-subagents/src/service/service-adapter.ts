@@ -143,7 +143,10 @@ export function toSubagentRecord(record: Subagent): SubagentRecord {
     toolUses: record.toolUses,
     turnCount: record.turnCount,
     startedAt: record.startedAt,
-    lifetimeUsage: record.lifetimeUsage,
+    // Copy: the agent accumulates into its own object on every message_end, so
+    // an aliased snapshot would drift, and a consumer could write into the
+    // agent's totals.
+    lifetimeUsage: { ...record.lifetimeUsage },
     compactionCount: record.compactionCount,
   };
 
