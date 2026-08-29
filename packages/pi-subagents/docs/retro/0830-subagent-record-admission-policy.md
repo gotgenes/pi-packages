@@ -38,5 +38,31 @@ The plan is committed at `packages/pi-subagents/docs/plans/0830-subagent-record-
 - `packages/pi-subagents/src/service/service-adapter.ts` — collapsing the per-field `if (x !== undefined)` lines into a loop over an optional-field list was rejected: the explicitness *is* the allowlist's self-documentation.
 - `packages/pi-subagents/test/helpers/make-subagent.ts` — an `outputFile` shorthand on `createTestSubagent` was rejected as feature-scoped rather than preparatory; the implementing step decides whether its tests want one.
 
+## Stage: Implementation — TDD (2026-08-29T20:56:08Z)
+
+### Session summary
+
+Executed all six planned steps in order: the Tidy-First test consolidation, ADR 0005, the four admitted fields, the declined-field pin, the `lifetimeUsage` copy, and the doc/roadmap updates.
+`test/service/service-adapter.test.ts` went 30 → 32 tests (five overlapping strip tests collapsed into one, seven new), and the package suite went 1264 → 1266 with every gate green (`check`, root `lint`, `test`, `fallow dead-code`, `verify:public-types`).
+Pre-completion reviewer: PASS, with all four re-derivation mandates independently confirmed.
+
+### Observations
+
+- **No deviations from the plan.**
+  Every file in the plan's Module-Level Changes table was touched and nothing extra; `test/helpers/make-subagent.ts` already carried options for all eight candidate fields, so the fixture change the plan flagged as "not forced" was indeed not needed.
+- **`git checkout -- <file>` reverted uncommitted work during mutation testing.**
+  Step 3's mutations were run before the green edit was committed, so the first `git checkout --` revert wiped the implementation itself, and two mutations then ran against pre-feature code — producing five reds that looked like over-broad kills.
+  The tell was that a mutation to `isBackground` reddened the `turnCount` test.
+  Redone with a `cp`-saved copy of the green file; each of the four mutations then killed exactly its own class.
+  Mutation testing on uncommitted work needs a file copy, not a git revert.
+- **The declined-field pin can only be killed by an interface change.**
+  TypeScript's excess-property check rejects any narrower leak into `toSubagentRecord`'s `SubagentRecord`-typed literal, so the killing mutation had to add `activeTools` to the interface *and* populate it — exactly [#748]'s diff.
+  The test's populated-source assertions (`expect(record.responseText).toBe("partial answer")` and friends) are what keep it from passing vacuously if a fixture ever stops seeding those fields.
+- **The `lifetimeUsage` drift test needed the real accumulation path.**
+  `Subagent` exposes no `addUsage` (accumulation runs through the private `SubagentState` from `record-observer`), so the test constructs a `SubagentState` and a `Subagent` directly rather than casting away the getter's `Readonly`.
+  That also made the test read as the production scenario: snapshot taken, then the agent keeps accumulating.
+- **The contract direction, not the field list, decided the release.**
+  Confirming that the repo has exactly one `SubagentRecord` producer and one `SubagentsService` implementor is what made the `feat:` classification defensible, and it is what moved Phase 22 Step 2 out of batch `"front-door-majors"` (tail stays Step 3, [#829]).
+
 [#748]: https://github.com/gotgenes/pi-packages/pull/748
 [#829]: https://github.com/gotgenes/pi-packages/issues/829
