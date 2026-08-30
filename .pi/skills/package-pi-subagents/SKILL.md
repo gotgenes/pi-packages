@@ -27,9 +27,11 @@ Extension tool names are therefore supported `tools:` entries — that is the do
 
 Upstream PRs for these patches ([#71](https://github.com/tintinweb/pi-subagents/pull/71), [#72](https://github.com/tintinweb/pi-subagents/pull/72), [#73](https://github.com/tintinweb/pi-subagents/pull/73)) are open but the fork continues independently regardless.
 
-`buildAgentPrompt` also strips the inherited parent prompt's `Current working directory:` footer (whole-line match, separator-normalized) before embedding it — but only when the child's cwd differs from the parent's.
-Pi's `buildSystemPrompt` appends that footer to every prompt and appends a fresh one for the child afterwards, so leaving the inherited line in place gave a workspace-isolated child two claims in identical phrasing — and children followed the stale one back into the parent's directory (Refs #640).
-The equal-cwd case is left untouched deliberately: the inherited claim is already correct there, and editing it would shorten the byte-identical prefix the child shares with the parent (measured ~86 tokens, since the parent's trailing extension-appended blocks shift offset) for no correctness gain.
+`buildAgentPrompt` embeds only the **identity** region of the inherited parent prompt, per `docs/decisions/0006-inherited-prompt-is-identity-only.md`.
+Pi's `buildSystemPrompt` ends every prompt with layers it resolves per session — the `<available_skills>` catalogue, then a `Current working directory:` footer — and extensions append further blocks after those from `before_agent_start`, rebuilt from the base prompt every turn.
+The child's own session rebuilds all of them, so `inheritedIdentity` cuts the inherited prompt at the first such layer and keeps what precedes it (Refs #640, #801).
+The catalogue is found by searching back from a `</available_skills>` line for Pi's heading, so prose quoting that heading is not mistaken for the section; the footer is the anchor only when the parent resolved no skills, and both anchors match whole lines.
+Do not re-add the equal-cwd exception #640 originally carried: the catalogue precedes the footer, so once the catalogue is cut the footer is already past the divergence point and the exception preserves no shared prefix.
 
 ## Architecture
 

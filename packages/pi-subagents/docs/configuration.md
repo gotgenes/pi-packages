@@ -16,11 +16,31 @@ For the tools, commands, events, and service API, see the [README](../README.md)
 The `general-purpose` agent is a **parent twin** — it receives the parent's entire system prompt plus a sub-agent context bridge, so it follows the same rules the parent does.
 Explore and Plan use `replace` mode: the parent prompt is the cacheable base and their specialist read-only instructions are appended last, giving them the final say.
 
-In every mode, a child that runs somewhere other than the parent — one given an isolated workspace by a `WorkspaceProvider` — does not inherit the parent's `Current working directory:` footer.
-That line is stripped from the inherited prompt, leaving the fresh footer Pi appends for the child session's own directory as the single, correct claim; without the strip, the child follows the parent's path instead.
-A child sharing the parent's directory inherits the prompt untouched, so its prefix stays byte-identical to the parent's.
-
 Default agents can be **overridden** by creating a `.md` file with the same name (e.g. `.pi/agents/general-purpose.md`), or **disabled** per-project with `enabled: false` frontmatter.
+
+## What a child inherits from the parent's prompt
+
+Pi assembles a system prompt in layers.
+Its own preamble and tool guidelines come first, then your `AGENTS.md` or `CLAUDE.md` project context, then the catalogue of available skills, then a `Current working directory:` footer — and finally whatever extensions append each turn.
+
+A child inherits only the **stable identity** layers: everything up to, but not including, the skills catalogue.
+The layers after it are resolved against one session, so Pi and the child's own extensions rebuild them for the child rather than the child borrowing the parent's:
+
+| Layer                                         | Where a child's copy comes from                          |
+| --------------------------------------------- | -------------------------------------------------------- |
+| Pi preamble, tool guidelines, project context | inherited from the parent, byte for byte                 |
+| Skills catalogue                              | rebuilt by Pi for the child's own directory and tool set |
+| `Current working directory:`                  | rebuilt by Pi for the child's own directory              |
+| Extension-appended blocks                     | rebuilt by the child's own extensions                    |
+
+This matters most for a child that runs somewhere other than the parent — one given an isolated workspace by a `WorkspaceProvider`.
+Its skills resolve from its own workspace, and its working-directory claim names that workspace.
+Inheriting the parent's copies instead would give such a child a catalogue of skills it may not have and a directory claim that walks it back out of its workspace.
+
+Inheriting the identity rather than the whole prompt also keeps the child's leading text byte-identical to the parent's, which prefix-caching providers and local inference engines reuse instead of reprocessing.
+
+If you write extensions that add to the system prompt, see [Extensions that append to the system prompt](../README.md#extensions-that-append-to-the-system-prompt).
+The reasoning behind the boundary is recorded in [ADR 0006](decisions/0006-inherited-prompt-is-identity-only.md).
 
 ## Custom Agents
 

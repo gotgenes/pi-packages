@@ -357,6 +357,24 @@ const config = loadLayeredSettings<MyConfig>({
 `loadLayeredSettings` returns `Partial<T>` (all fields optional); apply your defaults after the call.
 It never throws — all error conditions produce a `console.warn` and return `{}`.
 
+### Extensions that append to the system prompt
+
+If your extension appends to the system prompt from a `before_agent_start` handler, your parent-session block does **not** ride into child sessions.
+A child inherits only the stable part of the parent's prompt — everything Pi assembled ahead of the skills catalogue — so anything appended after that is dropped.
+See [What a child inherits from the parent's prompt](./docs/configuration.md#what-a-child-inherits-from-the-parents-prompt) for the full layer breakdown.
+
+This is usually invisible to you, because your handler runs in the child too: a child binds the parent's extension set, and its turn loop fires `before_agent_start` the same way the parent's does.
+An unconditional appender therefore writes a fresh block built for the child's own session — which is what you want, since the parent's copy named the parent's directory, model, and session.
+
+Two cases need care:
+
+- A handler gated on something a child lacks — an interactive UI, a terminal, or state your extension cached at `session_start` — appends nothing in the child.
+  That child now carries no block at all, where previously it inherited one built for the parent.
+  If your guidance applies to children, make the handler unconditional or derive its inputs from the event context rather than from cached session state.
+- An extension excluded from children through [`excludedExtensionPackages`](./docs/configuration.md#excluding-package-extensions-from-children) contributes nothing to a child by design, and no longer leaks its parent-session block in either.
+
+Extensions that _shape_ the prompt at the provider boundary rather than appending to it are unaffected — the region they rewrite is the identity a child inherits verbatim.
+
 ## Scope and non-goals
 
 **Purpose.**
