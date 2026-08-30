@@ -34,6 +34,8 @@ export interface InheritedPrompt {
  * per-agent policy inside the child session by parsing the system prompt.
  * The tag follows the cacheable parent prefix in both modes.
  *
+ * Only the parent prompt's identity is inherited — see `inheritedIdentity`.
+ *
  * @param inherited  The parent agent's effective system prompt and the cwd it names.
  */
 export function buildAgentPrompt(
@@ -50,7 +52,7 @@ ${env.isGitRepo ? `Git repository: yes\nBranch: ${env.branch}` : "Not a git repo
 Platform: ${env.platform}`;
 
   const identity = inherited
-    ? withoutContradictoryCwdFooter(inherited.systemPrompt, inherited.cwd, cwd)
+    ? inheritedIdentity(inherited.systemPrompt, inherited.cwd)
     : genericBase;
 
   if (config.promptMode === "append") {
@@ -95,42 +97,76 @@ You are operating as a sub-agent invoked to handle a specific task.
   return identity + "\n\n" + activeAgentTag + envBlock + "\n\n" + config.systemPrompt;
 }
 
-/**
- * Remove the parent's `Current working directory:` footer from the prompt the
- * child inherits, when it names a different directory than the child's.
- *
- * Pi's `buildSystemPrompt` ends every prompt with that footer and appends a
- * fresh one — naming the child session's own cwd — after this string. Left in
- * place, the inherited line gives a workspace-isolated child (e.g. one placed
- * in a git worktree by a `WorkspaceProvider`) a second, stale claim in the
- * exact phrasing Pi uses for the authoritative one, and the child follows it
- * back into the parent's directory (#640).
- *
- * A child sharing the parent's directory inherits a footer that agrees with its
- * own, so the prompt is returned untouched — keeping the inherited prefix
- * byte-identical to the parent's for prefix-caching providers. Editing it would
- * cost shared prefix (the parent's trailing extension-appended blocks shift
- * offset) to delete an accurate duplicate.
- *
- * The match is whole-line, so a footer naming a directory that merely shares a
- * prefix with the parent's survives, and it mirrors the separator normalization
- * `buildSystemPrompt` applies. An unmatched prompt is returned unchanged.
- */
-function withoutContradictoryCwdFooter(
-  prompt: string,
-  parentCwd: string,
-  childCwd: string,
-): string {
-  const inheritedClaim = toPromptPath(parentCwd);
-  if (inheritedClaim === toPromptPath(childCwd)) {
-    return prompt;
-  }
+/** First line of the section Pi writes above the `<available_skills>` catalogue. */
+const SKILLS_SECTION_HEADING =
+  "The following skills provide specialized instructions for specific tasks.";
 
-  const footerLine = `Current working directory: ${inheritedClaim}`;
-  return prompt
-    .split("\n")
-    .filter((line) => line !== footerLine)
-    .join("\n");
+/** Closing tag of that catalogue. */
+const SKILLS_CATALOGUE_CLOSE = "</available_skills>";
+
+/**
+ * Reduce an inherited prompt to the identity a child may adopt as its own.
+ *
+ * Pi's `buildSystemPrompt` ends every prompt with layers it resolves per
+ * session — the `<available_skills>` catalogue, then a
+ * `Current working directory:` footer — and extensions append further blocks
+ * after those from `before_agent_start`, rebuilt from the base prompt on every
+ * turn. The child's own session rebuilds all of it against the child's
+ * directory, tool set, and extensions, so an inherited copy is a second, stale
+ * claim of each: a catalogue naming skills the child may not have (#801), and
+ * a footer that walks a workspace-isolated child back into the parent's
+ * directory (#640).
+ *
+ * Everything from the first such layer onward is therefore dropped. What
+ * precedes it is returned byte for byte, so it stays a shared prefix with the
+ * parent's prompt for prefix-caching providers (#180, #400).
+ *
+ * A prompt carrying neither layer is not one `buildSystemPrompt` assembled, and
+ * is returned unchanged.
+ */
+function inheritedIdentity(prompt: string, parentCwd: string): string {
+  const lines = prompt.split("\n");
+  const tailStart = sessionResolvedTailStart(lines, parentCwd);
+  return tailStart === -1
+    ? prompt
+    : lines.slice(0, tailStart).join("\n").trimEnd();
+}
+
+/**
+ * Line index at which Pi's per-session layers begin, or -1 when none is present.
+ *
+ * The catalogue precedes the footer, so cutting at the catalogue already
+ * removes it; the footer is the anchor only for a parent session that resolved
+ * no skills. Matching whole lines makes the footer match exact, so a footer
+ * naming a directory that merely shares a prefix with the parent's is not
+ * mistaken for it, and it mirrors the separator normalization
+ * `buildSystemPrompt` applies.
+ */
+function sessionResolvedTailStart(
+  lines: readonly string[],
+  parentCwd: string,
+): number {
+  const catalogueAt = skillsSectionStart(lines);
+  if (catalogueAt !== -1) {
+    return catalogueAt;
+  }
+  return lines.lastIndexOf(
+    `Current working directory: ${toPromptPath(parentCwd)}`,
+  );
+}
+
+/**
+ * Line index of the skills section's heading, or -1 when the section is absent.
+ *
+ * The heading is located by searching back from the catalogue's closing tag, so
+ * prose quoting Pi's heading — in a project-context file, or in a block an
+ * extension appended after the catalogue — is not mistaken for the section.
+ */
+function skillsSectionStart(lines: readonly string[]): number {
+  const catalogueEnd = lines.lastIndexOf(SKILLS_CATALOGUE_CLOSE);
+  return catalogueEnd === -1
+    ? -1
+    : lines.lastIndexOf(SKILLS_SECTION_HEADING, catalogueEnd);
 }
 
 /** Render a path the way `buildSystemPrompt` writes it into a prompt. */

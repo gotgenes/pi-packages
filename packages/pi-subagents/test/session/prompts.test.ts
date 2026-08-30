@@ -386,6 +386,15 @@ describe("buildAgentPrompt", () => {
     }
 
     /**
+     * Pi's own heading above the catalogue, read back from its formatter rather
+     * than copied, so these tests quote whatever the pinned SDK really writes.
+     */
+    const SKILLS_SECTION_HEADING =
+      formatSkillsForPrompt([skill("probe")])
+        .split("\n")
+        .find((line) => line.length > 0) ?? "";
+
+    /**
      * Assemble a parent prompt from the layers `buildSystemPrompt` writes, in
      * its order and with its separators.
      *
@@ -438,6 +447,118 @@ describe("buildAgentPrompt", () => {
       };
     }
 
+    describe("skills-catalogue anchor", () => {
+      it("cuts the inherited catalogue in append mode", () => {
+        const prompt = buildAgentPrompt(appendConfig(), "/workspace", env, {
+          systemPrompt: parentPrompt({
+            skills: [skill("colgrep")],
+            footerCwd: PARENT_CWD,
+          }),
+          cwd: PARENT_CWD,
+        });
+
+        expect(prompt).not.toContain("<available_skills>");
+      });
+
+      it("cuts the inherited catalogue in replace mode", () => {
+        const prompt = buildAgentPrompt(replaceConfig(), "/workspace", env, {
+          systemPrompt: parentPrompt({
+            skills: [skill("colgrep")],
+            footerCwd: PARENT_CWD,
+          }),
+          cwd: PARENT_CWD,
+        });
+
+        expect(prompt).not.toContain("<available_skills>");
+      });
+
+      it("cuts the catalogue when the parent resolved no footer", () => {
+        const prompt = buildAgentPrompt(replaceConfig(), "/workspace", env, {
+          systemPrompt: parentPrompt({ skills: [skill("colgrep")] }),
+          cwd: PARENT_CWD,
+        });
+
+        expect(prompt).not.toContain("<available_skills>");
+      });
+
+      it("drops the footer that follows the catalogue", () => {
+        const prompt = buildAgentPrompt(replaceConfig(), "/workspace", env, {
+          systemPrompt: parentPrompt({
+            skills: [skill("colgrep")],
+            footerCwd: PARENT_CWD,
+          }),
+          cwd: PARENT_CWD,
+        });
+
+        expect(prompt).not.toContain(`Current working directory: ${PARENT_CWD}`);
+      });
+
+      it("drops the extension blocks that follow the footer", () => {
+        // Pi rebuilds these per turn from the base prompt, so the parent's copy
+        // is one turn's transient state — and it names the parent's directory.
+        const extensionTail =
+          "# Working Directory\n\nShell commands already execute in `/parent`.";
+        const prompt = buildAgentPrompt(replaceConfig(), "/workspace", env, {
+          systemPrompt: parentPrompt({
+            skills: [skill("colgrep")],
+            footerCwd: PARENT_CWD,
+            extensionTail,
+          }),
+          cwd: PARENT_CWD,
+        });
+
+        expect(prompt).not.toContain("# Working Directory");
+      });
+
+      it("keeps the identity ahead of the catalogue byte for byte", () => {
+        const prompt = buildAgentPrompt(replaceConfig(), "/workspace", env, {
+          systemPrompt: parentPrompt({
+            skills: [skill("colgrep"), skill("testing")],
+            footerCwd: PARENT_CWD,
+          }),
+          cwd: PARENT_CWD,
+        });
+
+        // The agent tag follows the inherited identity directly, so nothing of
+        // the catalogue survives between them.
+        expect(
+          prompt.startsWith(`${IDENTITY}\n\n<active_agent name="specialist"/>`),
+        ).toBe(true);
+      });
+
+      it("cuts at Pi's catalogue, not at project context quoting its heading", () => {
+        // An AGENTS.md may quote Pi's own prompt text; the quote precedes the
+        // catalogue Pi appends, so the cut must be the later of the two.
+        const quoted = `${IDENTITY}\n${SKILLS_SECTION_HEADING}`;
+        const prompt = buildAgentPrompt(replaceConfig(), "/workspace", env, {
+          systemPrompt: parentPrompt({
+            identity: quoted,
+            skills: [skill("colgrep")],
+            footerCwd: PARENT_CWD,
+          }),
+          cwd: PARENT_CWD,
+        });
+
+        expect(prompt).not.toContain("<available_skills>");
+        expect(prompt.startsWith(`${quoted}\n\n`)).toBe(true);
+      });
+
+      it("cuts at Pi's catalogue, not at an extension block quoting its heading", () => {
+        // A quote after the catalogue would win a bare last-occurrence search,
+        // leaving the real catalogue inherited.
+        const prompt = buildAgentPrompt(replaceConfig(), "/workspace", env, {
+          systemPrompt: parentPrompt({
+            skills: [skill("colgrep")],
+            footerCwd: PARENT_CWD,
+            extensionTail: SKILLS_SECTION_HEADING,
+          }),
+          cwd: PARENT_CWD,
+        });
+
+        expect(prompt).not.toContain("<available_skills>");
+      });
+    });
+
     describe("cwd-footer anchor", () => {
       it("strips the inherited footer in append mode", () => {
         const prompt = buildAgentPrompt(appendConfig(), "/workspace", env, {
@@ -489,28 +610,25 @@ describe("buildAgentPrompt", () => {
         expect(prompt).not.toContain("Current working directory: C:/repo");
       });
 
-      it("leaves the footer in place when the child shares the parent's cwd", () => {
-        const parent = parentPrompt({ footerCwd: "/workspace" });
-
+      it("strips the inherited footer even when the child shares the parent's cwd", () => {
+        // Issue #640 kept an agreeing footer to preserve the byte-identical
+        // prefix. The catalogue cut sits ahead of the footer, so the footer is
+        // already past the divergence point and the exception buys nothing.
         const prompt = buildAgentPrompt(replaceConfig(), "/workspace", env, {
-          systemPrompt: parent,
+          systemPrompt: parentPrompt({ footerCwd: "/workspace" }),
           cwd: "/workspace",
         });
 
-        // The inherited claim agrees with the child's own, so the prefix stays
-        // byte-identical to the parent's prompt for prefix-caching providers.
-        expect(prompt.startsWith(`${parent}\n\n`)).toBe(true);
+        expect(prompt).not.toContain("Current working directory: /workspace");
       });
 
-      it("treats separator variants of the same directory as agreeing", () => {
-        const parent = parentPrompt({ footerCwd: "C:/repo" });
-
+      it("strips an agreeing footer whose separators differ from the child's", () => {
         const prompt = buildAgentPrompt(replaceConfig(), "C:/repo", env, {
-          systemPrompt: parent,
+          systemPrompt: parentPrompt({ footerCwd: "C:/repo" }),
           cwd: "C:\\repo",
         });
 
-        expect(prompt.startsWith(`${parent}\n\n`)).toBe(true);
+        expect(prompt).not.toContain("Current working directory: C:/repo");
       });
     });
 
@@ -539,6 +657,37 @@ describe("buildAgentPrompt", () => {
           .split("\n")
           .filter((line) => line.startsWith("Current working directory:"));
         expect(claims).toEqual([]);
+      });
+
+      it("makes no Current working directory claim when the directories agree", () => {
+        const prompt = buildAgentPrompt(appendConfig(), "/workspace", env, {
+          systemPrompt: parentPrompt({
+            skills: [skill("colgrep")],
+            footerCwd: "/workspace",
+          }),
+          cwd: "/workspace",
+        });
+
+        const claims = prompt
+          .split("\n")
+          .filter((line) => line.startsWith("Current working directory:"));
+        expect(claims).toEqual([]);
+      });
+
+      it("contributes no skills catalogue for Pi's child-resolved one to duplicate", () => {
+        const prompt = buildAgentPrompt(appendConfig(), "/workspace", env, {
+          systemPrompt: parentPrompt({
+            skills: [skill("colgrep"), skill("testing")],
+            footerCwd: PARENT_CWD,
+            extensionTail: "# Working Directory",
+          }),
+          cwd: PARENT_CWD,
+        });
+
+        const catalogues = prompt
+          .split("\n")
+          .filter((line) => line === "<available_skills>");
+        expect(catalogues).toEqual([]);
       });
     });
   });
