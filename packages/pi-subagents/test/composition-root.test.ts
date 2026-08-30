@@ -61,13 +61,17 @@ import { createMockSession, createSubagentSessionStub, toSubagentSession } from 
 
 function makePi() {
   const tools = new Map<string, any>();
-  const handlers = new Map<string, any>();
+  const handlers = new Map<string, any[]>();
   return {
     pi: {
       registerMessageRenderer: vi.fn(),
       registerTool: vi.fn((tool: any) => tools.set(tool.name, tool)),
       registerCommand: vi.fn(),
-      on: vi.fn((event: string, handler: any) => handlers.set(event, handler)),
+      on: vi.fn((event: string, handler: any) => {
+        const registered = handlers.get(event);
+        if (registered) registered.push(handler);
+        else handlers.set(event, [handler]);
+      }),
       events: { emit: vi.fn(), on: vi.fn(() => vi.fn()) },
       appendEntry: vi.fn(),
       sendMessage: vi.fn(),
@@ -75,6 +79,19 @@ function makePi() {
     } as any,
     tools,
     handlers,
+    /**
+     * Invoke every handler registered for `event`, in registration order.
+     *
+     * Pi fans an event out to all of one extension's handlers for it — "A single
+     * extension may register multiple handlers for the same event" (the SDK's
+     * `ExtensionRunner`). A fixture keyed one-handler-per-event would keep only the
+     * last registration, hiding a second one instead of exercising it.
+     */
+    fire: async (event: string, ...args: any[]) => {
+      for (const handler of handlers.get(event) ?? []) {
+        await handler(...args);
+      }
+    },
   };
 }
 
@@ -100,9 +117,10 @@ async function captureSessionFactoryIO(parentRegistry: unknown) {
   vi.mocked(createSubagentSession).mockResolvedValue(
     toSubagentSession(createSubagentSessionStub(createMockSession(), "/sessions/child.jsonl")),
   );
-  const { pi, tools, handlers } = makePi();
+  const { pi, tools, fire } = makePi();
   subagentsExtension(pi);
-  await handlers.get("session_start")?.(
+  await fire(
+    "session_start",
     {},
     {
       hasUI: false,

@@ -16,7 +16,7 @@ import { createMockSession, createSubagentSessionStub, toSubagentSession } from 
 
 function makePi() {
   const tools = new Map<string, any>();
-  const handlers = new Map<string, any>();
+  const handlers = new Map<string, any[]>();
   const eventHandlers = new Map<string, any>();
 
   return {
@@ -27,7 +27,9 @@ function makePi() {
       }),
       registerCommand: vi.fn(),
       on: vi.fn((event: string, handler: any) => {
-        handlers.set(event, handler);
+        const registered = handlers.get(event);
+        if (registered) registered.push(handler);
+        else handlers.set(event, [handler]);
       }),
       events: {
         emit: vi.fn(),
@@ -43,6 +45,16 @@ function makePi() {
     } as any,
     tools,
     handlers,
+    /**
+     * Invoke every handler registered for `event`, in registration order — Pi fans
+     * an event out to all of one extension's handlers for it, so a fixture keyed
+     * one-handler-per-event would silently keep only the last registration.
+     */
+    fire: async (event: string, ...args: any[]) => {
+      for (const handler of handlers.get(event) ?? []) {
+        await handler(...args);
+      }
+    },
   };
 }
 
@@ -79,13 +91,13 @@ describe("print mode background notifications", () => {
       toSubagentSession(createSubagentSessionStub(createMockSession(), "/sessions/child.jsonl")),
     );
 
-    const { pi, tools, handlers } = makePi();
+    const { pi, tools, fire } = makePi();
     subagentsExtension(pi);
     vi.useFakeTimers();
 
     // Fire session_start so runtime.currentCtx is populated for buildSnapshot
     const ctx = makeHeadlessCtx();
-    await handlers.get("session_start")?.({}, ctx);
+    await fire("session_start", {}, ctx);
 
     const agentTool = tools.get("subagent");
     await agentTool.execute(
@@ -106,6 +118,6 @@ describe("print mode background notifications", () => {
 
     expect(pi.sendMessage).toHaveBeenCalled();
 
-    await handlers.get("session_shutdown")?.({}, makeHeadlessCtx());
+    await fire("session_shutdown", {}, makeHeadlessCtx());
   });
 });
