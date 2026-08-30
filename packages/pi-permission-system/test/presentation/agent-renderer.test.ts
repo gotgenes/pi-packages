@@ -4,6 +4,7 @@ import {
   EXTENSION_TAG,
   renderAuthorizerDenial,
   renderEscalatedPolicyDenial,
+  renderGateErrorDenial,
   renderPolicyDenial,
   renderRefusal,
   renderUnavailableDenial,
@@ -534,6 +535,61 @@ describe("renderEscalatedPolicyDenial", () => {
   });
 });
 
+describe("renderGateErrorDenial", () => {
+  it("states that the authority failed and the call was blocked fail-closed", () => {
+    expect(
+      renderGateErrorDenial(bashPayload(), {
+        reason: "Cannot read properties of undefined",
+        decidedElsewhere: true,
+      }),
+    ).toBe(
+      "[pi-permission-system] The permission authority in the session serving this request failed to answer this 'bash' call (rule 'rm *'), so it was blocked (fail-closed). Reason: Cannot read properties of undefined.",
+    );
+  });
+
+  it("claims no other session when the failure happened here", () => {
+    expect(
+      renderGateErrorDenial(bashPayload(), {
+        reason: "boom",
+        decidedElsewhere: false,
+      }),
+    ).toBe(
+      "[pi-permission-system] The permission authority failed to answer this 'bash' call (rule 'rm *'), so it was blocked (fail-closed). Reason: boom.",
+    );
+  });
+
+  it("omits the escaped boundary, which no retry shape would change", () => {
+    expect(
+      renderGateErrorDenial(
+        payload(
+          "external_directory",
+          {
+            surface: "external_directory",
+            toolName: "read",
+            value: "/elsewhere/service.ts",
+            matchedPattern: "*",
+          },
+          [{ label: "working directory", text: "/repo", detail: null }],
+        ),
+        { reason: "boom", decidedElsewhere: true },
+      ),
+    ).toBe(
+      "[pi-permission-system] The permission authority in the session serving this request failed to answer this 'external_directory' call for tool 'read' for path '/elsewhere/service.ts' (rule '*'), so it was blocked (fail-closed). Reason: boom.",
+    );
+  });
+
+  it("never echoes the command", () => {
+    expect(
+      renderGateErrorDenial(
+        bashPayload({ value: "x".repeat(70_000), matchedPattern: "*" }),
+        { reason: "boom", decidedElsewhere: true },
+      ),
+    ).toBe(
+      "[pi-permission-system] The permission authority in the session serving this request failed to answer this 'bash' call (rule '*'), so it was blocked (fail-closed). Reason: boom.",
+    );
+  });
+});
+
 describe("renderRefusal", () => {
   const link: DecisionSource = {
     kind: "authorizer",
@@ -596,6 +652,24 @@ describe("renderRefusal", () => {
       ),
     ).toBe(
       "[pi-permission-system] A policy rule in the session serving this request denied this 'bash' call (rule 'git push').",
+    );
+  });
+
+  it("reports an escalation that threw in the serving session as a failure", () => {
+    expect(
+      renderRefusal(
+        bashPayload(),
+        {
+          kind: "forwarded",
+          responderSessionId: "parent-1",
+          decision: { kind: "gate_error", reason: "boom" },
+        },
+        // The detail rides `decidedBy.reason`; this path carries no
+        // `denialReason` at all, so a render reading it would say nothing.
+        null,
+      ),
+    ).toBe(
+      "[pi-permission-system] The permission authority in the session serving this request failed to answer this 'bash' call (rule 'rm *'), so it was blocked (fail-closed). Reason: boom.",
     );
   });
 

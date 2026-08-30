@@ -89,11 +89,19 @@ export function renderRefusal(
         denialReason,
         budget,
       );
-    // The remaining kinds never refuse: they only ever allow. A `forwarded`
-    // reaching here named no inner decider (an older responder), so the hop
-    // is all that is known and today's text is the fail-soft answer.
-    case "user":
     case "gate_error":
+      return renderGateErrorDenial(payload, {
+        reason: decider.reason,
+        decidedElsewhere,
+      });
+    // Three different reasons share this arm. `user` is the render's true
+    // subject: a human refused, and the sentence says so. The three below it
+    // never refuse at all — a session grant, an infrastructure read, and yolo
+    // only ever allow — so they are unreachable here and listed only to keep
+    // the switch exhaustive. A `forwarded` reaching this far named no inner
+    // decider (an older responder), so the hop is all that is known, and the
+    // user render is the fail-soft answer rather than the accurate one.
+    case "user":
     case "session_approval":
     case "infrastructure_read":
     case "yolo":
@@ -174,6 +182,40 @@ export function renderEscalatedPolicyDenial(
   return tagged(
     `A policy rule${servingClause(rule.decidedElsewhere)} denied this ${identification(payload, budget, "call", decidedRule)}${boundaryClause(payload)}${provenanceClause(payload)}.`,
     denialReason,
+  );
+}
+
+/** The escalation failure that blocked an ask fail-closed, and where it happened. */
+export interface GateFailure {
+  /** The error text stamped on the decision, which carries the detail here. */
+  readonly reason: string;
+  /** Whether the failing authority was reached through a forwarding hop. */
+  readonly decidedElsewhere: boolean;
+}
+
+/**
+ * The agent-facing render of an escalation that threw rather than ruling.
+ *
+ * Nobody denied this call — the authority that would have answered broke, and
+ * the boundary blocked rather than allowed. Saying so is what distinguishes it
+ * from a verdict the agent should respect: a failure is worth surfacing to the
+ * operator, where a denial is worth working around (#844).
+ *
+ * The reason comes from the decision's own stamp rather than a denial reason,
+ * because that is the field the failing site writes and the field the review
+ * log records — a second source would be a second story about one failure.
+ *
+ * Like {@link renderUnavailableDenial}, it omits the escaped boundary: the
+ * ask never reached a rule, so no retry shape would change the outcome.
+ */
+export function renderGateErrorDenial(
+  payload: PromptPayload,
+  failure: GateFailure,
+  budget: AgentRenderBudget = DEFAULT_RENDER_BUDGET,
+): string {
+  return tagged(
+    `The permission authority${servingClause(failure.decidedElsewhere)} failed to answer this ${identification(payload, budget, "call", askRuleClause(payload))}, so it was blocked (fail-closed).`,
+    failure.reason,
   );
 }
 
