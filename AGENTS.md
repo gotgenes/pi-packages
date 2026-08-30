@@ -187,7 +187,7 @@ An issue spun off mid-lifecycle — by a step's implementation, a plan's follow-
 It exits immediately when the package has no open improvement phase; otherwise it records the operator's disposition (fold into a step / new step / defer / out of scope) in the roadmap's `#### Open-issue sweep dispositions` list, and filing-without-scope-creeping remains the correct local move.
 `/finish-phase` reconciles the phase window's issues against that list before archiving, so a miss surfaces at phase close instead of vanishing from the history (Refs #767).
 
-Release batching is plan-driven: `/plan-improvements` annotates each roadmap step with a grep-able `Release:` tag (and a `Release batches` subsection), `/plan-issue` derives a `Release Recommendation` from those annotations, and `/ship-issue` and `/land-worktree` read the plan's `**Release:**` marker early — asking only when it is `mid-batch — defer`, otherwise releasing now.
+Release batching is plan-driven: `/plan-improvements` annotates each roadmap step with a grep-able `Release:` tag (and a `Release batches` subsection), `/plan-issue` derives a `Release Recommendation` from those annotations, and `/ship-issue` and `/ship-worktree` read the plan's `**Release:**` marker early — asking only when it is `mid-batch — defer`, otherwise releasing now.
 A `refactor:`/`style:`/`test:`/`build:`/`ci:` commit is a `hidden: true` changelog type and does not cut a release on its own; such work lands on `main` and auto-batches into the next `feat:`/`fix:`/unhidden-`docs:` release.
 So a refactor-only plan's `Release Recommendation` rationale must not claim it will cut a release (Refs #479).
 Release is driven by the release-please PR merge over `main` commits, independent of any issue's open/closed state: holding an issue open does not defer its already-merged `fix:`/`feat:` commits from releasing at the next merge, and the only lever to defer a release is leaving the release-please PR unmerged (Refs #625).
@@ -261,14 +261,14 @@ Convergence (the two-session ship flow):
 
 The trunk `/ship-issue` assumes linear `main` and breaks for a worktree branch, so the convergence is split across the peer and root sessions:
 
-1. Peer session — `/ship-worktree <N>`: run pre-push checks, write a **ship** stage note (committed on the branch so it rides the land), then `git fetch origin` + `git rebase origin/main`.
+1. Peer session — `/sync-worktree <N>`: run pre-push checks, write a **sync** stage note (committed on the branch so it rides the land), then `git fetch origin` + `git rebase origin/main`.
    The peer never touches `main`, never pushes the branch, never force-pushes — worktrees share the same `.git`, so the root sees the branch ref directly.
-   The peer writes only stage breadcrumbs (planning/TDD/ship); the deliberate, interactive final `/retro` does not run here.
-2. Root session — `/land-worktree <N>`: `git merge --ff-only <branch>` into `main`, push, verify CI, `issue_close`, then release.
-   If the ff-merge is not a fast-forward (another peer landed first), the peer re-runs `/ship-worktree <N>` to rebase onto the new `origin/main`.
+   The peer writes only stage breadcrumbs (planning/TDD/sync); the deliberate, interactive final `/retro` does not run here.
+2. Root session — `/ship-worktree <N>`: `git merge --ff-only <branch>` into `main`, push, verify CI, `issue_close`, then release.
+   If the ff-merge is not a fast-forward (another peer landed first), the peer re-runs `/sync-worktree <N>` to rebase onto the new `origin/main`.
 3. Release is the root's serialized responsibility — only the root merges release-please PRs (by rebase), so peers never race on them.
    It honors the plan's `**Release:**` marker: `mid-batch — defer` leaves the PR open.
-4. `/land-worktree` ends by running `scripts/worktree-rm.sh <N> --delete-branch`, then names `/retro <N>` as the final step.
+4. `/ship-worktree` ends by running `scripts/worktree-rm.sh <N> --delete-branch`, then names `/retro <N>` as the final step.
 5. Root session — `/retro <N>`: the deliberate, interactive final retrospective, run at the root on `main` after the land (commits straight to `main`, no branch needed) — mirroring the trunk flow's terminal `/retro`.
    Run it on your preferred model; the stage breadcrumbs from the peer session are already on `main` for it to synthesize.
 
@@ -276,10 +276,10 @@ Guardrails:
 
 - Partition work by package — one package per peer.
   Two peers touching `pnpm-lock.yaml`, `release-please-config.json`, or the same package's source is the main parallel-work hazard.
-- `/ship-issue` is trunk-only; ship a worktree branch with `/ship-worktree` (peer) + `/land-worktree` (root), never `/ship-issue`.
-- Whoever lands second rebases first: if `/land-worktree`'s ff-merge fails, the peer re-runs `/ship-worktree` to rebase onto the new `origin/main` (a non-linear merge into `main` is rejected by design).
+- `/ship-issue` is trunk-only; ship a worktree branch with `/sync-worktree` (peer) + `/ship-worktree` (root), never `/ship-issue`.
+- Whoever lands second rebases first: if `/ship-worktree`'s ff-merge fails, the peer re-runs `/sync-worktree` to rebase onto the new `origin/main` (a non-linear merge into `main` is rejected by design).
 - Land a pending worktree branch before committing unrelated work to `main`.
-  An intervening root commit to `main` stales the peer's completed `/ship-worktree` rebase, so the ff-merge is rejected and the peer must re-rebase (Refs #549).
+  An intervening root commit to `main` stales the peer's completed `/sync-worktree` rebase, so the ff-merge is rejected and the peer must re-rebase (Refs #549).
 - A first launch in each worktree reinstalls `.pi/npm/` (gitignored, so it does not carry over) — a one-time cost Pi handles automatically.
 
 ###### Session naming convention
@@ -293,8 +293,8 @@ Each prompt template calls `set_session_name` (from `pi-session-tools`) to label
 | TDD implementation   | `#N TDD — <title>`             |
 | Build implementation | `#N Build — <title>`           |
 | Shipping             | `#N Ship — <title>`            |
-| Worktree ship (peer) | `#N Ship (worktree) — <title>` |
-| Worktree land (root) | `#N Land — <title>`            |
+| Worktree sync (peer) | `#N Sync (worktree) — <title>` |
+| Worktree ship (root) | `#N Ship (worktree) — <title>` |
 | Retrospective        | `#N Retrospective — <title>`   |
 
 Each prompt template sets the appropriate name automatically via `set_session_name`.

@@ -161,16 +161,16 @@ flowchart TB
 
     subgraph PeerA["Peer A — worktree issue-42"]
         direction TB
-        A1["/plan-issue 42"] --> A2["/tdd-plan or /build-plan"] --> A3["/ship-worktree 42"]
+        A1["/plan-issue 42"] --> A2["/tdd-plan or /build-plan"] --> A3["/sync-worktree 42"]
     end
 
     subgraph PeerB["Peer B — worktree issue-43"]
         direction TB
-        B1["/plan-issue 43"] --> B2["/tdd-plan or /build-plan"] --> B3["/ship-worktree 43"]
+        B1["/plan-issue 43"] --> B2["/tdd-plan or /build-plan"] --> B3["/sync-worktree 43"]
     end
 
-    A3 -->|"rebased branch, hand off"| Land["Root — /land-worktree N<br/>ff-merge, push, CI, close, release, teardown"]
-    B3 -->|"rebased branch, hand off"| Land
+    A3 -->|"rebased branch, hand off"| Ship["Root — /ship-worktree N<br/>ff-merge, push, CI, close, release, teardown"]
+    B3 -->|"rebased branch, hand off"| Ship
 ```
 
 The convergence is a peer-to-root handoff.
@@ -183,11 +183,11 @@ sequenceDiagram
     participant Root as Root (main)
     participant Origin as origin/main
 
-    Note over Peer: /ship-worktree N
-    Peer->>Peer: lint, fallow dead-code, /retro (committed on branch)
+    Note over Peer: /sync-worktree N
+    Peer->>Peer: lint, fallow dead-code, sync stage note (committed on branch)
     Peer->>Origin: git fetch
     Peer->>Peer: git rebase origin/main
-    Peer-->>Root: hand off — run /land-worktree N
+    Peer-->>Root: hand off — run /ship-worktree N
     Root->>Origin: git pull --ff-only
     Note over Root: git merge --ff-only the peer branch
     Root->>Origin: git push (main advances)
@@ -196,19 +196,19 @@ sequenceDiagram
     Note over Root: scripts/worktree-rm.sh N --delete-branch
 ```
 
-| Stage            | Command                                      | Session | What happens                                                                                 |
-| ---------------- | -------------------------------------------- | ------- | -------------------------------------------------------------------------------------------- |
-| Launch           | `/worktree #N`                               | root    | Creates the branch + worktree, installs deps, opens a peer session running `/plan-issue #N`. |
-| Plan + implement | `/plan-issue` → `/tdd-plan` or `/build-plan` | peer    | The standard loop, inside the worktree.                                                      |
-| Ship prep        | `/ship-worktree #N`                          | peer    | Lint + `fallow dead-code`, `/retro` committed on the branch, then rebase onto `origin/main`. |
-| Land             | `/land-worktree #N`                          | root    | ff-merge into `main`, push, verify CI, close the issue, release, and tear down the worktree. |
+| Stage            | Command                                      | Session | What happens                                                                                          |
+| ---------------- | -------------------------------------------- | ------- | ----------------------------------------------------------------------------------------------------- |
+| Launch           | `/worktree #N`                               | root    | Creates the branch + worktree, installs deps, opens a peer session running `/plan-issue #N`.          |
+| Plan + implement | `/plan-issue` → `/tdd-plan` or `/build-plan` | peer    | The standard loop, inside the worktree.                                                               |
+| Sync             | `/sync-worktree #N`                          | peer    | Lint + `fallow dead-code`, a sync stage note committed on the branch, then rebase onto `origin/main`. |
+| Ship             | `/ship-worktree #N`                          | root    | ff-merge into `main`, push, verify CI, close the issue, release, and tear down the worktree.          |
 
 Guardrails:
 
 - One package per peer — two peers touching `pnpm-lock.yaml`, `release-please-config.json`, or the same package's source is the main hazard.
 - Release is the root's serialized responsibility — only the root merges release-please PRs, so peers never race on them.
   Each package has its own, so a deferral holds one package rather than all nine.
-- Whoever lands second rebases first — if `/land-worktree`'s ff-merge is rejected because `main` advanced, the peer re-runs `/ship-worktree #N` to rebase onto the new `origin/main`, then the root retries.
+- Whoever lands second rebases first — if `/ship-worktree`'s ff-merge is rejected because `main` advanced, the peer re-runs `/sync-worktree #N` to rebase onto the new `origin/main`, then the root retries.
 - Tear down a worktree manually with `scripts/worktree-rm.sh <issue> [--delete-branch]`.
 
 Package-specific context (architecture, priorities, testing strategy) lives in skills.
