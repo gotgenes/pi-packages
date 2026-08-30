@@ -9,6 +9,7 @@ date: 2026-08-20
 
 Accepted.
 Amended 2026-08-21 with decision 7's reclassification ([#794]): the ready latch and the locator's reclaimed spelling both ship as **major**, not the single minor this record originally classified.
+Amended 2026-08-30 ([#796]): decision 7's deferred removal is taken — the process-root slot, its reader, and the [#302] child guard are deleted in a further major.
 This decision settles the contract between three parties — pi-permission-system, subagent implementations, and sibling permission extensions — for a Pi process that hosts more than one session node.
 It fixes the one architectural lie the parties currently work around (a session-boundary-crossing service accessor), names the one supported adapter convention for subagent implementations, and classifies every adopted mechanism against the events stability guarantee.
 It composes with `docs/decisions/0007-model-judge-authorizer-chain-adr.md` (whose §7, one chain per node, it reaffirms unamended) and with pi-subagents [ADR-0002] (whose inverted dependency it leaves untouched).
@@ -118,7 +119,8 @@ The legacy root slot keeps its current guard behavior for compatibility.
 In-process extensions share one trust domain (anything can poke `globalThis`), so a sibling passing another node's session id is not a new exposure and is not defended by mechanism.
 
 The process-root reader — spelled `getPermissionsService()` when this record was written, and `getRootPermissionsService()` since [#794] reclaimed the base name for the locator — is **deprecated for registration and queries alike**: it answers "the process root's service", which is the wrong question in every node but the root — in an in-process child it hands back the parent's service, making even a policy query dishonest against the child's own (possibly worktree-local) config.
-Its staging is decision 7.
+Its staging is decision 7, whose [#796] amendment removes it outright.
+The sentence above about the legacy root slot keeping its guard behavior is superseded there: the slot is gone, so there is no guard left to keep.
 
 ### 3. The ready latch
 
@@ -185,6 +187,7 @@ Classification against the stability guarantee in `src/permission-events.ts` ("f
 | Vacant-cell registration-time review record                   | new review-log event type                                       | additive — minor                                                  |
 | Zero-arg accessor deprecation                                 | runtime warning, no behavior change                             | minor; removal is a future major                                  |
 | Reclaiming the locator's spelling ([#794])                    | a published zero-arg signature now requires an argument         | **major** (amended)                                               |
+| Removing the process-root slot ([#796])                       | three published exports deleted; the slot stops being written   | **major** (amended)                                               |
 
 The latch callout is the one honest caveat: an unguarded external consumer that registers on every ready emission hits the duplicate-registration throw on the re-emit, surfacing as bus-caught stderr noise rather than breakage.
 The documented contract ("a consumer reacting to ready can immediately resolve the service") is preserved and strengthened, so this is classified minor with a "ready handlers must be idempotent" release note, not major.
@@ -225,6 +228,30 @@ A workaround measured against a capability it did not have was the wrong compari
 
 The honest restatement: the dual path dies, and the contract removes more machinery than it adds — but not more *lines*, because the channel it replaces the machinery with carries data that has to be read.
 A future consumer should expect the same trade.
+
+#### Amendment (2026-08-30, [#796]): the process-root slot is removed
+
+The deferral's condition has been met, so the window closes and the whole mechanism goes — reader, both writers, the `Symbol.for("@gotgenes/pi-permission-system:service")` slot, and the `PI_PERMISSION_SYSTEM_DEP0001` warning with them.
+This supersedes the "major release now" alternative below, which rejected removal in the [#699] cut on the grounds that the window cost nothing.
+It cost nothing then and it buys nothing now.
+
+The condition fired at [#788]'s ship: `pi-permission-model-judge` 2.0.0 registers through `getPermissionsService(sessionId)` and floors its peer range at `>=27.0.0`, and no package outside `pi-permission-system` references the root-slot API.
+
+The argument that closes the window is a fact about its population rather than about its length.
+`getRootPermissionsService` did not exist before `v27.0.0`.
+Before that release the root reader was spelled `getPermissionsService()` with no argument, and `v27.0.0` already broke that spelling — a consumer compiled against `v26` gets `undefined` plus `PI_PERMISSION_SYSTEM_WARN0001` today, not the root service.
+So the window cannot shelter a legacy population: every possible caller of `getRootPermissionsService()` migrated *after* the deprecation was announced and chose a symbol marked `@deprecated` at first sight over the keyed locator the same migration guide recommends.
+A window whose only occupants opted into it after being warned is not protecting anyone.
+
+The removal is a hard delete rather than a tombstone that answers `undefined` and warns.
+[#794] set the tombstone precedent with `WARN0001`, for a caller the type checker cannot reach, and that guard survives this cut with its message rewritten to name only the keyed locator.
+Applying the same shape to a *removed* export would mean it is not removed: it would answer `undefined` forever, which is a silent behavior change for precisely the consumer the window existed to protect, and it would need its own removal later.
+A `TypeError` at the call site, with `WARN0001` and the migration note both naming the replacement, is the honest signal.
+
+The reader and the writer retire together, and the [#302] child guard retires with them.
+Removing the reader leaves nothing that reads the slot; removing the write leaves the guard — `if (!this.detection.isRegisteredChild(ctx))` in `PermissionServiceLifecycle.activate` — with nothing to guard.
+Decision 2 already dissolved [#302]'s hazard structurally: each node publishes under its own key, so there is nothing to clobber.
+So `RegisteredChildDetector` and `SubagentDetection.isRegisteredChild` go, and `PermissionServiceLifecycle` loses its detection dependency; the pure `isRegisteredSubagentChild` stays, because `isSubagentExecutionContext` still calls it.
 
 ## Consequences
 
@@ -271,6 +298,7 @@ Recorded in decision 3: both reconstruct or canonize the dual-path workaround.
 ### Major release now (rejected at parameter 7)
 
 Removing the zero-arg accessor in the same cut breaks unknown external consumers of a documented surface with no urgency; the deprecation window costs nothing.
+Superseded by decision 7's [#796] amendment: the window turned out to have no legacy population to shelter, so it bought nothing.
 
 [#302]: https://github.com/gotgenes/pi-packages/issues/302
 [#531]: https://github.com/gotgenes/pi-packages/issues/531
@@ -282,4 +310,5 @@ Removing the zero-arg accessor in the same cut breaks unknown external consumers
 [#788]: https://github.com/gotgenes/pi-packages/issues/788
 [#789]: https://github.com/gotgenes/pi-packages/issues/789
 [#794]: https://github.com/gotgenes/pi-packages/issues/794
+[#796]: https://github.com/gotgenes/pi-packages/issues/796
 [ADR-0002]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-subagents/docs/decisions/0002-extensions-on-a-minimal-core.md
