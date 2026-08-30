@@ -6,7 +6,13 @@ description: Push, close a GitHub issue with a summary, and merge the release-pl
 
 Argument: `$1` is the issue number that was just implemented.
 
-Fetch the issue title via `gh issue view $1 --json title -q .title`, then call `set_session_name` with name `#$1 Ship — <issue title>` to identify this session in the session selector.
+## 0. Confirm you are on trunk
+
+Run `git branch --show-current`.
+If it is not `main`, stop and report — use `/sync-worktree $1` (peer session) then `/ship-worktree $1` (root session) instead.
+Do this before anything else, so a mis-invocation costs nothing.
+
+Then fetch the issue title via `gh issue view $1 --json title -q .title`, and call `set_session_name` with name `#$1 Ship — <issue title>` to identify this session in the session selector.
 
 ## Release coordination (decide before step 1)
 

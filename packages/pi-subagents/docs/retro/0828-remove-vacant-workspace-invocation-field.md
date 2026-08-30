@@ -91,3 +91,69 @@ No work is deferred to the root: the plan's `**Release:**` marker is `ship now �
 ### Observations
 
 None beyond the above — a clean, quiet sync with no conflicts expected.
+
+## Stage: Final Retrospective (2026-08-30T06:02:43Z)
+
+### Session summary
+
+Shipped #828 across four stages in two sessions: planning and TDD in the peer worktree, then sync (peer) and ship (root).
+The branch fast-forwarded onto `main` with no conflicts, CI passed on `0df19d58`, issue #828 closed, and release PR #842 merged to cut `pi-subagents-v21.0.0` — the `front-door-majors` batch tail.
+One operator correction across the whole issue, and it exposed a real prompt defect rather than a modeling slip.
+
+### Observations
+
+#### What went well
+
+- **The #843 model pin worked on its first real exercise.**
+  #843 landed the `model: anthropic/claude-sonnet-5` frontmatter on `sync-worktree.md` and `ship-worktree.md` in commit `36952029`, immediately before this issue's plan commit `f85aba1e`.
+  This issue is the first to run under it, and the split held exactly as designed: planning and TDD on `anthropic/claude-opus-5` (judgment-heavy), sync and ship on `anthropic/claude-sonnet-5` (procedural).
+  Nothing in either sonnet stage needed escalation.
+- **Two of the issue body's own claims were refuted by measurement, and the second one became the design.**
+  The planning session spiked a partial removal to refute the claim that `pnpm fallow dead-code` gates it, then probed `toHaveBeenCalledWith` semantics after `tidy-first-assessor` asserted it "asserts deep equality of the full call-argument object".
+  It does not — `toEqual` semantics ignore an explicitly-`undefined` key — so Step 1 rewrote the pin as `toStrictEqual` on `mock.calls[0][0]`.
+  Without that probe the step would have deleted a key from a green assertion and shipped a guard blind to the field's return.
+  This is `AGENTS.md`'s "a subagent's universal claim is the one to verify" paying off on a concrete, load-bearing claim.
+- **A predicted negative result stayed a finding instead of a surprise.**
+  The plan named mutation B (re-add the field to `WorkspacePrepareContext` alone) as an expected no-op across `tsc`, the suite, and `fallow`, and it was.
+  Predicting the non-covered class in advance is what let the architecture doc's `Landed:` note record it as a refutation rather than a gap discovered late.
+- **The `pre-completion-reviewer` re-derived rather than accepted.**
+  It re-ran the partial-removal probe and the matcher asymmetry by hand instead of trusting the plan's measurements, and verified the `BREAKING CHANGE:` footer's factual claims including `refactor`'s `hidden: true` status in `release-please-config.json`.
+  PASS with no WARN findings.
+
+#### What caused friction (agent side)
+
+- `instruction-violation` (user-caught) — at the end of the TDD stage the peer session named `/ship-worktree 828` as the next step, skipping `/sync-worktree 828` entirely.
+  The operator caught it with "Wait what about /sync-worktree".
+  The root cause is in the prompt, not the reasoning: `.pi/prompts/tdd-plan.md:207` ends with an unconditional "The next step is `/ship-issue`.", even though line 15 of the same file already branches on a worktree branch and names `/sync-worktree`.
+  The agent correctly rejected the literal `/ship-issue` because it knew it was in a worktree, then guessed the wrong half of the two-command worktree flow.
+  `.pi/prompts/build-plan.md` carries the identical defect at line 170.
+  Impact: one corrective operator turn, no rework — the agent self-diagnosed accurately once prompted and the sync ran clean.
+- `other` (near-miss, zero impact) — the planning session opened one bash call with a bare `rg -rn 2>/dev/null`, the exact `--replace` trap `AGENTS.md` warns about.
+  It carried no pattern, no path, and its output was discarded, so no file was rewritten.
+  Impact: none; the rule already exists and needs no change.
+
+#### What caused friction (user side)
+
+- None.
+  The one intervention was a redirecting question ("Wait what about /sync-worktree") rather than a correction, which is the cheaper of the two forms — it let the agent locate its own error and the prompt defect behind it.
+  The planning gate's follow-up on the `pi-subagents-worktrees` release question was answered promptly and settled the single-vs-cross-package filing decision in one exchange.
+
+### Diagnostic details
+
+- **Model-performance correlation** — planning and TDD ran on `anthropic/claude-opus-5`; sync and ship ran on `anthropic/claude-sonnet-5` (pinned by #843); this retrospective on `anthropic/claude-opus-5`.
+  Both subagents (`tidy-first-assessor`, `pre-completion-reviewer`) ran on `anthropic/claude-sonnet-5` per their frontmatter.
+  One mismatch worth noting: `tidy-first-assessor` on sonnet-5 produced a wrong universal claim about Vitest matcher semantics while all its line-number corrections were right.
+  The failure mode is behavioral generalization about a framework, not file reading — consistent with the existing guardrail, and it was caught, so no model change is indicated.
+- **Escalation-delay tracking** — no `rabbit-hole` friction points; no sequence exceeded two tool calls on the same question.
+- **Feedback-loop gap analysis** — no gap.
+  The TDD session established a full green baseline (`check`, root `lint`, `test`, `fallow dead-code`) before writing any code, ran `check` plus the affected file after each step, and re-ran the full gate set at end-of-cycle.
+  `verify:public-types` was run before the breaking commit, and `dist/public.d.ts` was inspected directly to confirm the shipped three-field interface.
+
+The **unused-tool detection** lens is skipped — it applies to `rabbit-hole` and `missing-context` friction points, and this issue had neither.
+
+### Changes made
+
+1. `.pi/prompts/tdd-plan.md:207` — replaced the unconditional terminal `The next step is /ship-issue.` with a worktree-aware line naming `/sync-worktree <N>` for an `issue-<N>-*` branch.
+2. `.pi/prompts/build-plan.md:170` — the same replacement; the file carried the identical defect.
+3. `.pi/prompts/ship-issue.md` — added a `## 0. Confirm you are on trunk` branch guard mirroring `/ship-worktree`'s step 0, and folded the existing `set_session_name` instruction in after it so a mis-invocation stops before any work.
+   `AGENTS.md` already declared `/ship-issue` trunk-only, but the prompt had no guard while both worktree prompts did.
