@@ -560,6 +560,40 @@ describe("buildAgentPrompt", () => {
 
         expect(prompt).not.toContain("<available_skills>");
       });
+
+      it("cuts at Pi's catalogue, not at a whole one an extension appended", () => {
+        // Pi writes the footer directly after its own catalogue, so the second
+        // well-formed section here is not the one to anchor on.
+        const prompt = buildAgentPrompt(replaceConfig(), "/workspace", env, {
+          systemPrompt: parentPrompt({
+            skills: [skill("colgrep")],
+            footerCwd: PARENT_CWD,
+            extensionTail: formatSkillsForPrompt([skill("appended")]).trim(),
+          }),
+          cwd: PARENT_CWD,
+        });
+
+        expect(prompt).not.toContain("<available_skills>");
+      });
+
+      it("leaves a quoted catalogue alone when the parent resolved no skills", () => {
+        // A project-context file quoting a whole catalogue, with the context's
+        // own closing tag between it and the footer: Pi wrote no catalogue
+        // here, so the quote is identity and only the footer is cut.
+        const quoted = [
+          IDENTITY,
+          "<project_context>",
+          formatSkillsForPrompt([skill("quoted")]).trim(),
+          "</project_context>",
+        ].join("\n");
+        const prompt = buildAgentPrompt(replaceConfig(), "/workspace", env, {
+          systemPrompt: parentPrompt({ identity: quoted, footerCwd: PARENT_CWD }),
+          cwd: PARENT_CWD,
+        });
+
+        expect(prompt.startsWith(`${quoted}\n\n`)).toBe(true);
+        expect(prompt).not.toContain(`Current working directory: ${PARENT_CWD}`);
+      });
     });
 
     describe("cwd-footer anchor", () => {

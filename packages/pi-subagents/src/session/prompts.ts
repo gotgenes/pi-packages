@@ -146,27 +146,50 @@ function sessionResolvedTailStart(
   lines: readonly string[],
   parentCwd: string,
 ): number {
-  const catalogueAt = skillsSectionStart(lines);
-  if (catalogueAt !== -1) {
-    return catalogueAt;
-  }
-  return lines.lastIndexOf(
+  const footerAt = lines.lastIndexOf(
     `Current working directory: ${toPromptPath(parentCwd)}`,
   );
+  const catalogueAt = skillsSectionStart(lines, footerAt);
+  return catalogueAt === -1 ? footerAt : catalogueAt;
 }
 
 /**
  * Line index of the skills section's heading, or -1 when the section is absent.
  *
  * The heading is located by searching back from the catalogue's closing tag, so
- * prose quoting Pi's heading — in a project-context file, or in a block an
- * extension appended after the catalogue — is not mistaken for the section.
+ * prose quoting Pi's heading ahead of the section is not mistaken for it.
  */
-function skillsSectionStart(lines: readonly string[]): number {
-  const catalogueEnd = lines.lastIndexOf(SKILLS_CATALOGUE_CLOSE);
+function skillsSectionStart(
+  lines: readonly string[],
+  footerAt: number,
+): number {
+  const catalogueEnd = catalogueCloseBefore(lines, footerAt);
   return catalogueEnd === -1
     ? -1
     : lines.lastIndexOf(SKILLS_SECTION_HEADING, catalogueEnd);
+}
+
+/**
+ * Line index of Pi's own catalogue closing tag, or -1 when it wrote none.
+ *
+ * `buildSystemPrompt` writes the cwd footer immediately after the catalogue, in
+ * both of its branches and unconditionally, so the tag on the line before the
+ * footer is Pi's own. Identifying it by that position rather than by document
+ * order keeps a catalogue quoted elsewhere — in a project-context file, or in a
+ * block an extension appended after the footer — from being taken for the
+ * section, in either direction.
+ *
+ * Without a footer to anchor on, something downstream has rewritten Pi's
+ * output; the last closing tag is the best remaining guess.
+ */
+function catalogueCloseBefore(
+  lines: readonly string[],
+  footerAt: number,
+): number {
+  if (footerAt === -1) {
+    return lines.lastIndexOf(SKILLS_CATALOGUE_CLOSE);
+  }
+  return lines[footerAt - 1] === SKILLS_CATALOGUE_CLOSE ? footerAt - 1 : -1;
 }
 
 /** Render a path the way `buildSystemPrompt` writes it into a prompt. */
