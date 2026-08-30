@@ -48,3 +48,39 @@ Measured the real blast radius against the local review log rather than arguing 
   Assessor marked it Optional; left for a craftsmanship pass.
 - `src/handlers/gates/runner.ts` — `runDescriptor`'s six numbered phases in one ~130-line method (the craftsmanship scout's Phase 14 finding, and the tidy-first prep Step 2 dropped).
   The assessor rejected splitting it here too: this change's edits are narrow and none is blocked by the single-method shape, so extraction would be churn with no friction driving it.
+
+## Stage: Implementation — TDD (2026-08-30T05:58:20Z)
+
+### Session summary
+
+Six commits over the plan's five steps: the fixture sweep, the `feat!:` mapping, the `autoApproved` removal, the `fix:` denial render, the doc updates, and a sixth `test:` commit closing the pre-completion reviewer's two WARN findings.
+The package suite went from 151 files / 3752 passing to 152 / 3787 — one new file (`test/authority/decision-resolution.test.ts`) and +35 tests.
+Pre-completion reviewer: WARN on the first round, PASS on the scoped re-review of the follow-up commit.
+
+### Observations
+
+- **The plan's closure capture does not compile, and the fix was better than the plan.**
+  `runDescriptor` was to capture the escalated decision in a `let` and read `decidedBy` off it; TypeScript narrows such a variable to its `null` initializer, because the assignment inside the `promptForApproval` callback is invisible to control-flow analysis (the `code-design` skill's "closure narrowing loop", in a new form).
+  Every dodge available — a cast, a holder object, `?? fallback` on a value TS believes is always `null` — is the lie that skill warns against.
+  The structural answer was to widen `PermissionGateResult` with the `decidedBy` of whatever answered: the gate is the one place that knows whether recorded authority or an escalation decided, so it reports that and the runner keeps no capture at all.
+  The reviewer independently judged this sound rather than scope overreach.
+  Worth generalizing: a plan that says "capture X in the callback and read it after" should be checked against `tsc` at planning time, not at Green.
+- **Step 1's sweep list was derived from a grep and was incomplete.**
+  Two more fixtures of the same class — `test/handlers/tool-call.test.ts` and `test/helpers/external-directory-fixtures.ts` — surfaced only as red once `resolutionFor` began reading `decidedBy` in step 2, so they were fixed inside the behavior commit, which is exactly what step 1 existed to prevent.
+  The plan built its list by grepping `confirmationUnavailable`/`autoApproved` in the files it already expected to touch; the reliable query is "every `escalate`/`promptForApproval` mock whose decision has no `decidedBy`, or whose `decidedBy` contradicts its own markers", across the whole `test/` tree.
+  A short Python scan over `mockResolvedValue({...})` blocks found both in seconds and should have run at planning time.
+- **The reviewer found two more of the same class that no red would ever have caught.**
+  `permission-prompter.test.ts` and `authorizer-chain.test.ts` still paired `confirmationUnavailable: true` with a `user` decider; neither routes through the new dispatch, so both stayed green and dormant.
+  Closed them in the sixth commit — a contradictory fixture is a latent broken probe, and the whole change is about that contradiction.
+- **Mutation testing paid for itself twice.**
+  Five mutations were applied across steps 2 and 4, and each killed exactly its predicted equivalence class and no more — including the `unavailable` arm's, which took a cross-boundary forwarding-liveness test red and confirmed the #719 invariant is genuinely pinned.
+  The sixth commit's new `effectiveDecider` case was likewise proven non-vacuous by a branch-isolated mutation; a cruder mutation of the same line kills three tests and would have proven nothing about the new one.
+- **The measurement in the plan held up exactly.**
+  13 authorizer-decided entries and 57 forwarded rule-decided allows in the local review log, and nothing in implementation contradicted either number.
+  Counting the log before scoping is what turned a one-branch fix into the total mapping.
+- **An exact-string assertion caught my own error.**
+  The hand-written expected render for `renderAuthorizerDenial` omitted the `(rule '*')` clause — I transcribed it from the issue's log excerpt and dropped a fragment.
+  A `toContain` would have passed.
+- **`autoApproved` was dead on arrival and nobody had noticed.**
+  Declared, documented, threaded through `deriveResolution`'s signature, asserted by three tests — and never once set by `src/`.
+  The tests kept a mechanism alive that production could not reach, which is the failure mode a test-double-only producer always risks.
