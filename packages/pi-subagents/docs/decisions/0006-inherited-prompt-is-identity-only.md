@@ -59,10 +59,16 @@ The catalogue precedes the footer, so once the catalogue is cut the footer is al
 It survives only for a parent session that resolved no skills, where it would save one line.
 The footer is now stripped unconditionally.
 
-### The catalogue is located by a pair, not a string
+### The catalogue is located by position, not by document order
 
-A project-context file may quote Pi's own prompt text, and so may a block an extension appended.
-The heading is therefore accepted only when a `</available_skills>` line follows it, and the search runs backwards from that closing tag.
+A project-context file may quote Pi's own prompt text, and so may a block an extension appended after the footer.
+Any rule that picks the first or the last `<available_skills>` in the prompt is a guess about document order, and it is wrong in one direction or the other: the first loses to a quote in project context, the last loses to a quote in an appended block.
+
+`buildSystemPrompt` writes the cwd footer immediately after the catalogue, in both of its branches and unconditionally.
+Pi's own catalogue is therefore exactly the one whose closing tag is the line before the footer, which is a structural fact rather than a heuristic.
+The heading is then found by searching back from that tag, so prose quoting the heading ahead of the section is not mistaken for it either.
+A prompt with no footer has been rewritten by something downstream; there the last closing tag is the best remaining guess.
+
 Both anchors match whole lines, which keeps a footer naming a directory that merely shares a prefix with the parent's from being mistaken for it.
 
 ## Consequences

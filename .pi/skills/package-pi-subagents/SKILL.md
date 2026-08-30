@@ -30,7 +30,8 @@ Upstream PRs for these patches ([#71](https://github.com/tintinweb/pi-subagents/
 `buildAgentPrompt` embeds only the **identity** region of the inherited parent prompt, per `docs/decisions/0006-inherited-prompt-is-identity-only.md`.
 Pi's `buildSystemPrompt` ends every prompt with layers it resolves per session — the `<available_skills>` catalogue, then a `Current working directory:` footer — and extensions append further blocks after those from `before_agent_start`, rebuilt from the base prompt every turn.
 The child's own session rebuilds all of them, so `inheritedIdentity` cuts the inherited prompt at the first such layer and keeps what precedes it (Refs #640, #801).
-The catalogue is found by searching back from a `</available_skills>` line for Pi's heading, so prose quoting that heading is not mistaken for the section; the footer is the anchor only when the parent resolved no skills, and both anchors match whole lines.
+The catalogue is identified by position rather than document order: `buildSystemPrompt` writes the cwd footer immediately after it, unconditionally, so Pi's own catalogue is the one whose `</available_skills>` sits on the line before the footer — which keeps a catalogue quoted in a project-context file or in an appended block from being taken for the section, in either direction.
+The heading is then found by searching back from that tag; the footer is the cut when the parent resolved no skills, and both anchors match whole lines.
 Do not re-add the equal-cwd exception #640 originally carried: the catalogue precedes the footer, so once the catalogue is cut the footer is already past the divergence point and the exception preserves no shared prefix.
 
 ## Architecture
