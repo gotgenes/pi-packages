@@ -91,3 +91,16 @@ Pre-completion reviewer: WARN on the first round, PASS on the scoped re-review o
 - **No deviations from the plan's Module-Level Changes.**
   Every listed file was touched and nothing outside the list was, verified with `git diff --name-only <plan-commit>^..HEAD`.
   The Step 15 `Outcome:` metric replacement predicted at planning time (`renderEscalatedPolicyDenial` count 0 → 2) landed exactly.
+
+## Stage: Sync (worktree) (2026-08-30T19:28:37Z)
+
+### Session summary
+
+Pre-push checks both passed clean on the first run — root `pnpm run lint` (1067 files, no findings) and `pnpm fallow dead-code` (325 entry points, no issues) — so this stage made no code changes.
+The plan's `**Release:** ship independently` marker holds; no deferred work or new follow-ups to carry to the root.
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-844--/2026-08-30T14-40-33-948Z_01a0531d-729c-75f2-ae36-1791eefb79b0.jsonl` — read with `read_session_file({ path: "..." })` for message-level verification at land/retro time.
+
+### Observations
+
+Nothing further to flag; the branch was already green from the TDD stage's own checks moments earlier.
