@@ -41,3 +41,39 @@ Plan committed at `packages/pi-subagents/docs/plans/0828-remove-vacant-workspace
 #### Deferred tidyings
 
 None — the `tidy-first-assessor` recommended no preparatory commits and rejected nothing as scope creep, finding no unrelated cleanup in any of the eleven target files.
+
+## Stage: Implementation — TDD (2026-08-30T05:24:43Z)
+
+### Session summary
+
+Executed all three plan steps in order: the atomic `refactor(pi-subagents)!:` chain removal with its strengthened seam-context pin, the `pi-subagents-worktrees` fixture cleanup, and the doc updates (ADR 0005 bullet, Phase 22 Step 4 `✅` on both heading and Mermaid node, metric row `0 ✅`).
+Test count is unchanged at 1337 (pi-subagents) and 62 (worktrees) — the deleted assertions lived inside tests that survive, and the one rewritten test replaced a matcher rather than adding a case.
+The `invocation` storage-chain metric row went 7 → 0 (roadmap baseline 8; Step 1 had already taken one), and `dist/public.d.ts` now shows `WorkspacePrepareContext` with exactly three fields.
+
+### Observations
+
+- **The plan's central prediction held, including its negative half.**
+  Killing mutation A (re-add `invocation: this.invocation` to the `prepare({...})` literal) turned exactly one test red — the rewritten `toStrictEqual` pin.
+  Killing mutation B (re-add the field to `WorkspacePrepareContext` alone) was a no-op across `tsc`, the full 1337-test suite, and `pnpm fallow dead-code`, exactly as the plan predicted and recorded as a known non-covered class.
+  Predicting the no-op in advance is what made it a finding rather than a surprise.
+- **The Red step paid for itself immediately.**
+  Writing the `toStrictEqual` assertion against the *unchanged* code produced a red that named the extra `invocation` key directly.
+  Had the step merely deleted `invocation: undefined` from the existing `toHaveBeenCalledWith` literal, it would have gone green without ever demonstrating that the assertion discriminates.
+- **The issue body's gating claim stayed refuted under a second, independent derivation.**
+  The `pre-completion-reviewer` re-ran the partial-removal probe by hand rather than accepting the plan's measurement, and confirmed `tsc`, `fallow dead-code`, and the suite all pass with the vacant field restored to the type alone.
+  It also verified the matcher asymmetry both ways — the new form red under mutation A, the old form green under the same mutation.
+  The architecture doc's `Landed:` note records the refutation so the next reader does not inherit the wrong premise.
+- **No deviations from the plan.**
+  Every file in the plan's Module-Level Changes tables was touched and nothing else; the changelog preview over `feat|fix` subjects is empty, as intended for a `refactor!:`-carried breaking change.
+- **One typing detail resolved during implementation.**
+  The rewritten pin declares its own `vi.fn((_ctx: WorkspacePrepareContext) => ...)` instead of reusing the file's `makeWorkspaceProvider` helper, so `prepare.mock.calls[0][0]` is reachable and typed without the `ReturnType<typeof vi.fn>` cast the neighbouring factory assertion still uses.
+  This required importing `WorkspacePrepareContext` into the test file.
+- **Pre-completion reviewer: PASS.**
+  No WARN findings.
+  It independently re-derived the removal's completeness, `AgentInvocation`'s survival through `spawn-config.ts` → `display.ts`, both deleted assertions, the mutation result, the fallow claim, and the `BREAKING CHANGE:` footer's factual claims (including `modelName`'s derivation and `refactor`'s `hidden: true` status in `release-please-config.json`).
+  It also ran `mmdc` over `architecture.md`'s six charts.
+
+### Release note
+
+This issue is the `front-door-majors` batch tail.
+Release PR #842 (`chore(main): release pi-subagents 21.0.0`) is open against a published 20.1.0 and has been held for this commit; `/ship-worktree` should merge it after the land.
