@@ -149,7 +149,7 @@ try {
 
 Query the service belonging to the session whose policy you mean.
 Each session that loads the permission system publishes its own — a subagent child's config (and cwd) may differ from its parent's, so the parent's service is not a stand-in for the child's.
-The deprecated `getRootPermissionsService()` always answers with the process root's service, which is why it is the wrong call inside a child.
+That is why the session id is required: an accessor answering "the process root's service" would hand a child the parent's, and the one that did was removed.
 
 If `pi-permission-system` is not installed, `import()` throws; if that session has published no service yet (or has been unloaded), `getPermissionsService(sessionId)` returns `undefined`.
 Guard both cases as shown above.

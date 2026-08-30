@@ -536,10 +536,9 @@ So each node publishes its `PermissionsService` at `session_start` into a proces
 The session id travels as data on the `permissions:ready` payload, alongside `adjudicatesLocally` — a registrant needs no branch on the latter, since a link registered where no chain runs is accepted and recorded rather than refused (decision 4, `authorizer_link_vacant` in the review log).
 That payload is broadcast twice per session generation: at `session_start` after the node publishes, and again at the node's first `before_agent_start`, which runs after every extension's `session_start` and before any ask (decision 3, the ready latch).
 So the channel fires at least once per session and may repeat, and the ready handler alone is a sufficient registration site — a consumer needs no second attempt from its own `session_start`, only an idempotence guard.
-A node additionally publishes to a legacy single slot unless it is an in-process subagent child, which must not clobber its parent's (#302).
-That slot backs `getRootPermissionsService()`, which is deprecated: it answers "the process root's service", which is the wrong node in every node but the root.
-Calling it emits a once-guarded `DeprecationWarning` (`PI_PERMISSION_SYSTEM_DEP0001`); removal is deferred to a future major.
-The locator's `sessionId` is required rather than optional, so a `PermissionsReadyEvent.sessionId` of `null` cannot fall through to the root slot; a caller the types cannot reach (JavaScript, or a consumer compiled against the pre-rename major) gets `undefined` plus a once-guarded `PI_PERMISSION_SYSTEM_WARN0001` warning rather than another node's service.
+The keyed map is the only slot.
+A legacy single slot, written by every node that was not an in-process subagent child (the #302 guard) and read by a deprecated `getRootPermissionsService()`, was removed once its last downstream migrated — it answered "the process root's service", which is the wrong node in every node but the root, and keyed publication dissolves the clobbering hazard the guard existed for.
+The locator's `sessionId` is required rather than optional, so a `PermissionsReadyEvent.sessionId` of `null` cannot fall through to some other node; a caller the types cannot reach (JavaScript, or a consumer compiled against an earlier major) gets `undefined` plus a once-guarded `PI_PERMISSION_SYSTEM_WARN0001` warning rather than another node's service.
 The `package.json` `exports` field's `default` condition points to `src/service.ts`, which contains the interface, the accessor functions, and the `Symbol.for()` key - no extension machinery.
 The `types` condition instead resolves to a bundled `dist/public.d.ts` (built by `rollup-plugin-dts` from `rollup.dts.config.mjs`, published via `prepack`) so a downstream consumer's `tsc` never follows the raw `#src/*` module graph - only the `default` condition (the jiti runtime) reads `src/` directly (#592).
 
@@ -875,8 +874,8 @@ src/
 ├── index.ts                  Extension factory - event wiring, collaborator construction (established injection-bag wiring kept inline per the anti-procedure-splitting rule)
 ├── bash-advisory-check.ts    `resolveBashAdvisoryCheck(command, agentName, resolver)` — routes an advisory `bash` query through the gate's shared `resolveBashCommandCheck` over `parseBashCommandsSync` units, falling back to a whole-string `tool` intent in the pre-warm window; kept out of `access-intent/` to avoid a domain→handler import
 ├── permissions-service.ts    `LocalPermissionsService` class - in-process implementation of `PermissionsService`; injected with narrow collaborator interfaces (a `resolve` + `getToolPermission` resolver view, a `getPathNormalizer` session view, the formatter/access-extractor/authorizer registrars); routes path-surface queries through the resolver as an `access-path` intent so external policy queries match lexical ∪ canonical like the gates, and bash queries through `resolveBashAdvisoryCheck` for decomposed fidelity
-├── service-lifecycle.ts      `ServiceLifecycle` + `ReadyAnnouncer` interfaces + `PermissionServiceLifecycle` class — owns this node's service publication (session-keyed always; the legacy root slot unless this is a registered child), both ready emits carrying the node's `sessionId`/`adjudicatesLocally` (one private `emitReady` recomputes the facts from the passed ctx, so `session_start` and the latch cannot drift), the once-per-activation latch guard, and session teardown ordering
-├── service.ts                PermissionsService interface + the two Symbol.for() accessors (cross-extension API): the session-keyed map every node publishes into, and the deprecated process-root slot; public surface published as a self-contained dist/public.d.ts bundle
+├── service-lifecycle.ts      `ServiceLifecycle` + `ReadyAnnouncer` interfaces + `PermissionServiceLifecycle` class — owns this node's session-keyed service publication, both ready emits carrying the node's `sessionId`/`adjudicatesLocally` (one private `emitReady` recomputes the facts from the passed ctx, so `session_start` and the latch cannot drift), the once-per-activation latch guard, and session teardown ordering
+├── service.ts                PermissionsService interface + the Symbol.for() accessors (cross-extension API) over the session-keyed map every node publishes into; public surface published as a self-contained dist/public.d.ts bundle
 ├── session-identity.ts       `readSessionId(ctx)` — this node's own session id, or `null` when the host exposes none; the one defensive read shared by subagent-child detection and service publication
 ├── permission-events.ts      Event channel constants, payload types, emit helpers. `PermissionsReadyEvent` carries the emitting node's `sessionId` (the key for `getPermissionsService`) and `adjudicatesLocally` — plain data, never a live capability: the bus announces, the locator provides. `permissions:ready` fires at least once per session and may repeat, so a handler must be idempotent. `PermissionUiPromptEvent` carries the payload's `request` core alongside the flat `surface`/`value` display projection — the gate surface and the display surface are two facts, not one (#292)
 ├── permission-request-id.ts  `createPermissionRequestId()` — the one mint for a permission request's `perm-<uuid>` id; distinct from the host's `toolCallId`, which stays alongside it as the join back to the Pi transcript
@@ -937,7 +936,7 @@ src/
 │   ├── denying-authorizer.ts  `DenyingAuthorizer` class - least-privilege `TerminalAuthorizer` for a session with no reachable authority; denies with the `confirmationUnavailable` marker so the ask path derives the `confirmation_unavailable` resolution, attributed `decidedBy: {kind: "unavailable"}`
 │   ├── authorizer-selection.ts `AuthorizerSelection` class - context-owning `AskEscalator` implementation (`escalate(details)`) and the `AdjudicationRole` seam (`adjudicatesLocally()`, read by the service lifecycle and the registration observer so neither re-derives the role from subagent detection); selects the authority once per activation, and per ask resolves the `authorizerChain` config to registered links (config order; unregistered names skipped fail-safe with an `authorizer_chain_unregistered_link` review event; consulted names recorded as `authorizer_chain_resolved`; each wrapped in the delegation envelope), composes them via `composeAuthorizerChain`, and delegates via `PermissionPrompter`; a relaying node resolves none and records `authorizer_chain_delegated` instead (one chain per node, ADR 0007 §7)
 │   ├── permission-prompter.ts `PermissionPrompter` class (`PermissionPrompterApi`) - review-log bracketing (waiting → approved/denied) around `authorizer.authorize(details)`, recording the decision's `decidedBy` on the outcome entries only (the waiting entry has no decider yet); `PromptPermissionDetails` type (carries the child-fixed `accessIntent` facts a forwarded ask relays)
-│   ├── subagent-detection.ts  SubagentDetection class - single owner of subagent detection (SubagentDetector.isSubagent + RegisteredChildDetector.isRegisteredChild); delegates to subagent-context
+│   ├── subagent-detection.ts  SubagentDetection class - single owner of subagent detection (SubagentDetector.isSubagent); delegates to subagent-context
 │   ├── subagent-context.ts    Pure subagent execution context detection (registry + env vars + filesystem)
 │   ├── subagent-registry.ts   SubagentSessionRegistry class + getSubagentSessionRegistry() process-global accessor - in-process subagent session tracking
 │   ├── serving-registry.ts    ServingSessionRegistry class + getServingSessionRegistry() process-global accessor, split into the `ServingAnnouncer` (poller) and `ServingLookup` (forwarding child) seams - which in-process sessions are draining a forwarded-permission inbox; `composeServingAnnouncers` fans one announcement across every channel a serving session publishes on
@@ -1065,7 +1064,7 @@ No decline, so the regular improvement rotation continues.
 | Wrapper-transparency predicate (`wrapper-analysis.ts`)                      | 0                     | ≥ 1             |
 | Nested-execution descent sites in the command enumerator                    | 3                     | ≥ 4             |
 | Authorizer resolution values in `permission-events.ts`                      | 0                     | 2               |
-| ADR 0012 amendments recording the root-slot decision                        | 2                     | ≥ 3             |
+| ADR 0012 amendments recording the root-slot decision ✅                     | 2                     | ≥ 3 (3)         |
 | Absent-child alarm event in `src/`                                          | 0                     | ≥ 1             |
 | Named permission-surface properties (`surfaceProperty`, `config-schema.ts`) | 0                     | ≥ 9             |
 | Per-pattern surfaces on `SessionApproval` (`session-approval.ts`)           | 0                     | ≥ 1             |
@@ -1229,7 +1228,7 @@ And `PermissionPromptDecision.autoApproved` turned out to have no producer in `s
 
 Release: independent
 
-#### Step 6: Schedule the process-root service slot's removal ([#796])
+#### ✅ Step 6: Schedule the process-root service slot's removal ([#796])
 
 **Cause:** ADR 0012 decision 7 deferred the root slot's removal on a condition — downstream migration — that has since been met, and nothing tracks it.
 The deferral's trigger fired during [#788]'s ship and its only record was an Open Question in a shipped plan plus a table row, neither of which the backlog sweeps: a decision with a fired trigger and no owner.
@@ -1239,6 +1238,18 @@ The deferral's trigger fired during [#788]'s ship and its only record was an Ope
 - **Outcome:** the decision is recorded where the sweep will find it rather than in a shipped plan's Open Questions; `grep -c '#### Amendment'` on ADR 0012 goes 2 → ≥ 3.
   Whether code changes in this step is the step's own decision; nothing is blocked either way.
 - **Impact 2 / Risk 2 / Priority 8.**
+
+Landed: all three questions resolved the same way — remove, stop writing, dissolve — so the step shipped code as well as the amendment.
+They are not three decisions: removing the reader leaves nothing that reads the slot, and removing the write leaves the [#302] guard with nothing to guard.
+
+The argument that closed the deprecation window is a fact about its population rather than its length.
+`getRootPermissionsService` did not exist before `v27.0.0` — it is the name that release gave the old behavior when [#794] reclaimed `getPermissionsService` for the keyed locator — and that same release already broke the zero-arg spelling it replaced.
+So no consumer predating the deprecation can be calling it; every possible caller adopted a symbol marked `@deprecated` at first sight, after being warned, in preference to the keyed locator the migration guide recommends.
+A warning tombstone (an export answering `undefined` forever) was declined on the same reading: it would be a silent behavior change for exactly that population, and would need its own removal later.
+
+The removal took `RegisteredChildDetector`, `SubagentDetection.isRegisteredChild`, and `PermissionServiceLifecycle`'s detection dependency with it; the pure `isRegisteredSubagentChild` stays, because `isSubagentExecutionContext` still calls it.
+`PI_PERMISSION_SYSTEM_WARN0001` survives with its message rewritten — it guards a caller the type checker cannot reach, which is a live case, where `DEP0001` guarded a path that no longer exists.
+`grep -c '#### Amendment'` on ADR 0012 is 3.
 
 Release: independent
 
@@ -1395,7 +1406,7 @@ flowchart TD
     S2 --> S3["✅ Step 3 (#803): wrapper transparency"]
     S4["✅ Step 4 (#742): enumerate catch-all node types"]
     S5["✅ Step 5 (#772): authorizer verdict attribution"] --> S15["✅ Step 15 (#844): forwarded denial attribution"]
-    S6["Step 6 (#796): schedule the root-slot removal"]
+    S6["✅ Step 6 (#796): schedule the root-slot removal"]
     S7["Step 7 (#792): alarm on a child with no node"]
     S8["Step 8 (#793): split-provider extractor gap"]
     S9["Step 9 (#808): name the well-known surfaces"]

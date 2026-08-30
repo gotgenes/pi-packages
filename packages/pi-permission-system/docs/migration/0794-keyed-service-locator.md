@@ -22,7 +22,7 @@ Each node now publishes its own service under its own session id, and you resolv
 | Before                                 | After                                                              |
 | -------------------------------------- | ------------------------------------------------------------------ |
 | `getPermissionsService()`              | `getPermissionsService(sessionId)`                                 |
-| — (no equivalent)                      | `getRootPermissionsService()` — the old behavior, still deprecated |
+| — (no equivalent)                      | `getRootPermissionsService()` — the old behavior, deprecated       |
 | `publishPermissionsService(service)`   | `publishRootPermissionsService(service)`                           |
 | `unpublishPermissionsService(service)` | `unpublishRootPermissionsService(service)`                         |
 
@@ -89,3 +89,8 @@ Guard it with a stored dispose handle, as shown above, and release the handle on
 - The `permissions:ready`, `permissions:ui_prompt`, and `permissions:decision` payload shapes.
 - The process-root slot itself: a node that is not an in-process subagent child still publishes to it, so `getRootPermissionsService()` answers exactly as the old zero-arg accessor did.
   It remains deprecated (`PI_PERMISSION_SYSTEM_DEP0001`), and its removal is deferred to a later major.
+
+> [!NOTE]
+> That last bullet held only for this release.
+> The process-root slot, its accessor, and its publish/unpublish pair were removed in a later major — see [0796-remove-process-root-slot.md](0796-remove-process-root-slot.md).
+> If you are migrating from a pre-27.0.0 release, work through this guide first and that one second.

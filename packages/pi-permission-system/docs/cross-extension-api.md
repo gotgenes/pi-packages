@@ -49,11 +49,9 @@ Each node therefore publishes its own service at `session_start`, into a `global
 Consumers call `getPermissionsService(sessionId)` to retrieve it — even though their `import()` loads a fresh module copy, the accessor reads from the shared `globalThis` slot.
 The session id arrives as a field on the `permissions:ready` broadcast, which each node emits at its own `session_start`, right after publishing — and again at that node's first `before_agent_start`, so a consumer whose own `session_start` ran later still hears it.
 
-`getRootPermissionsService()` remains, reading a separate legacy slot that holds the **process root's** service, but it is deprecated: in any node but the root it answers the wrong question, handing an in-process child the parent's service.
-Calling it emits a once-guarded Node `DeprecationWarning` (code `PI_PERMISSION_SYSTEM_DEP0001`); run with `--trace-deprecation` to locate your call site, or `--no-deprecation` to silence it.
-Removal is deferred to a future major release.
-
-Both accessors were renamed in the major that reclaimed `getPermissionsService` for the keyed locator; if you are upgrading from a release whose `getPermissionsService()` took no argument, see [migration/0794-keyed-service-locator.md](migration/0794-keyed-service-locator.md).
+That keyed map is the only service slot.
+A separate legacy slot once held the process root's service, read by a deprecated `getRootPermissionsService()`; both were removed, because in any node but the root that accessor answered the wrong question — handing an in-process child the parent's service.
+If you are upgrading from a release that had it, see [migration/0796-remove-process-root-slot.md](migration/0796-remove-process-root-slot.md); if you are upgrading from one whose `getPermissionsService()` took no argument, start with [migration/0794-keyed-service-locator.md](migration/0794-keyed-service-locator.md).
 
 All types below are directly importable and type-check with `tsc` out of the box.
 `@gotgenes/pi-permission-system`'s published `exports` resolve `import type { … }` to a self-contained, bundled declaration file with no internal module references, so a downstream `tsconfig.json` needs no special path configuration.
@@ -301,7 +299,7 @@ Best practice: resolve the service per use rather than caching the reference.
 The `import()` throws if the package is not installed.
 Wrap both in `try/catch` + `if` guard as shown in the Quick Start example.
 
-It also returns `undefined` when called with no session id at all — a shape TypeScript rejects but JavaScript reaches — rather than falling back to the process root's service, since answering with another node's service is the defect the keyed locator exists to prevent.
+It also returns `undefined` when called with no session id at all — a shape TypeScript rejects but JavaScript reaches — rather than guessing a node, since answering with another node's service is the defect the keyed locator exists to prevent.
 That call emits a once-guarded Node warning (code `PI_PERMISSION_SYSTEM_WARN0001`), because the guard above turns the missing service into a registration that silently never happens.
 It is deliberately not a `DeprecationWarning`: `--no-deprecation` does not silence it.
 

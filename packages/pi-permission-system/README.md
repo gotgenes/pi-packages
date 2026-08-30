@@ -209,6 +209,7 @@ Approve-and-steer, edit diffs, and risk explanations → a downstream package ov
 | [docs/migration/0745-prompt-payload-contracts.md](docs/migration/0745-prompt-payload-contracts.md)                             | Prompt payload contracts (breaking) — the forwarded wire, the `ui_prompt` broadcast, and the deprecated preview caps |
 | [docs/migration/0746-review-log-fields.md](docs/migration/0746-review-log-fields.md)                                           | Review-log fields (breaking) — `message` replaced by request facts, and the `reviewLogFieldMaxWidth` bound           |
 | [docs/migration/0794-keyed-service-locator.md](docs/migration/0794-keyed-service-locator.md)                                   | Keyed service locator (breaking) — `getPermissionsService(sessionId)`, and the repeating ready event                 |
+| [docs/migration/0796-remove-process-root-slot.md](docs/migration/0796-remove-process-root-slot.md)                             | Process-root slot removed (breaking) — `getRootPermissionsService()` and its publish/unpublish pair are gone         |
 
 ## Development
 
