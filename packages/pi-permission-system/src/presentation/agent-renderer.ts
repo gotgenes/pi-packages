@@ -14,6 +14,7 @@ import {
   findEvidence,
   type PromptPayload,
 } from "#src/presentation/prompt-payload";
+import type { BashCommandContext } from "#src/types";
 
 /**
  * The agent-facing render of a refused permission ask (ADR 0011 §7).
@@ -101,7 +102,7 @@ export function renderPolicyDenial(
   budget: AgentRenderBudget = DEFAULT_RENDER_BUDGET,
 ): string {
   return tagged(
-    `Denied by policy: ${identification(payload, budget, "")}${boundaryClause(payload)}${provenanceClause(payload)}.`,
+    `Denied by policy: ${identification(payload, budget, "", askRuleClause(payload))}${boundaryClause(payload)}${provenanceClause(payload)}.`,
     ruleReason,
   );
 }
@@ -113,7 +114,7 @@ export function renderUserDenial(
   budget: AgentRenderBudget = DEFAULT_RENDER_BUDGET,
 ): string {
   return tagged(
-    `The user denied this ${identification(payload, budget, "call")}${boundaryClause(payload)}${provenanceClause(payload)}.`,
+    `The user denied this ${identification(payload, budget, "call", askRuleClause(payload))}${boundaryClause(payload)}${provenanceClause(payload)}.`,
     denialReason,
   );
 }
@@ -133,7 +134,7 @@ export function renderAuthorizerDenial(
   budget: AgentRenderBudget = DEFAULT_RENDER_BUDGET,
 ): string {
   return tagged(
-    `The '${linkName}' authorizer denied this ${identification(payload, budget, "call")}${boundaryClause(payload)}${provenanceClause(payload)}.`,
+    `The '${linkName}' authorizer denied this ${identification(payload, budget, "call", askRuleClause(payload))}${boundaryClause(payload)}${provenanceClause(payload)}.`,
     denialReason,
   );
 }
@@ -145,7 +146,7 @@ export function renderUnavailableDenial(
   budget: AgentRenderBudget = DEFAULT_RENDER_BUDGET,
 ): string {
   return tagged(
-    `This ${identification(payload, budget, "call")} requires approval, but no interactive UI is available.`,
+    `This ${identification(payload, budget, "call", askRuleClause(payload))} requires approval, but no interactive UI is available.`,
     denialReason,
   );
 }
@@ -164,11 +165,16 @@ function tagged(sentence: string, reason: string | null): string {
  * `callWord` is the noun the verdict needs after the surface — a user or
  * unavailable verdict refuses a *call*, while a policy deny refuses the
  * surface itself.
+ *
+ * `ruleText` is supplied rather than read off the payload, because an escalated
+ * refusal names the rule that *decided* it, which is not always this session's
+ * own (#844).
  */
 function identification(
   payload: PromptPayload,
   budget: AgentRenderBudget,
   callWord: string,
+  ruleText: string,
 ): string {
   return [
     `'${payload.request.surface}'`,
@@ -177,7 +183,7 @@ function identification(
     toolClause(payload),
     agentClause(payload),
     flaggedClause(payload, budget),
-    ruleClause(payload),
+    ruleText,
   ]
     .filter((clause) => clause !== "")
     .join(" ");
@@ -244,12 +250,29 @@ function resolvedAlias(payload: PromptPayload, element: string): string {
   return resolved ? ` (resolves to '${resolved}')` : "";
 }
 
-/** The rule that fired, with the nested context that makes it intelligible. */
-function ruleClause(payload: PromptPayload): string {
-  const { matchedPattern, commandContext } = payload.request;
+/** The rule that raised this session's own ask. */
+function askRuleClause(payload: PromptPayload): string {
+  return ruleClause(
+    payload.request.matchedPattern,
+    payload.request.commandContext,
+  );
+}
+
+/**
+ * The rule that fired, with the nested context that makes it intelligible.
+ *
+ * The pattern is a parameter rather than a payload read: an escalated refusal
+ * renders the rule that decided it, which for a forwarded ask lives on the
+ * response's decider and never on this session's payload. The command context
+ * is a fact about the call either way, so it always comes from the payload.
+ */
+function ruleClause(
+  pattern: string | null,
+  commandContext: BashCommandContext | null,
+): string {
   const parts: string[] = [];
-  if (matchedPattern !== null) {
-    parts.push(`rule '${matchedPattern}'`);
+  if (pattern !== null) {
+    parts.push(`rule '${pattern}'`);
   }
   const context = describeBashCommandContext(commandContext);
   if (context !== undefined) {
