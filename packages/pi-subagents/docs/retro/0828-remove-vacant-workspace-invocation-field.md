@@ -77,3 +77,17 @@ The `invocation` storage-chain metric row went 7 → 0 (roadmap baseline 8; Step
 
 This issue is the `front-door-majors` batch tail.
 Release PR #842 (`chore(main): release pi-subagents 21.0.0`) is open against a published 20.1.0 and has been held for this commit; `/ship-worktree` should merge it after the land.
+
+## Stage: Sync (worktree) (2026-08-30T05:38:50Z)
+
+### Session summary
+
+Root-level `pnpm run lint` and `pnpm fallow dead-code` both pass clean from the worktree.
+`origin/main` had not moved since the branch was cut (`git rev-list --left-right --count origin/main...HEAD` showed 0 behind, 6 ahead), so the rebase in step 4 is expected to be a no-op fast-forward, not an actual replay.
+No work is deferred to the root: the plan's `**Release:**` marker is `ship now — batch "front-door-majors" tail`, and PR #842 (`chore(main): release pi-subagents 21.0.0`) is the release vehicle to merge after landing.
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-828--/2026-08-30T04-37-23-136Z_01a050f5-3840-7e8d-9ac1-a87703338600.jsonl` — read with `read_session_file({ path: "..." })` for message-level verification at land/retro time.
+
+### Observations
+
+None beyond the above — a clean, quiet sync with no conflicts expected.
