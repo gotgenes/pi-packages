@@ -5,7 +5,10 @@ import {
   type ForwarderContext,
   getSessionId,
 } from "#src/authority/forwarder-context";
-import type { PermissionPromptDecision } from "#src/authority/permission-dialog";
+import {
+  createDeniedPermissionDecision,
+  type PermissionPromptDecision,
+} from "#src/authority/permission-dialog";
 import {
   type ForwardedAccessFacts,
   type ForwardedAccessIntent,
@@ -456,9 +459,12 @@ export class ForwardedRequestServer implements InboxProcessor {
           : "forwarded_permission.auto_denied",
         { ...logDetails, decidedBy },
       );
+      // A deny-with-reason rule's text is the operator's own explanation, and
+      // the requesting session relays it to its agent — so it travels with the
+      // verdict rather than stopping at the node that holds the config (#844).
       return approved
         ? { approved: true, state: "approved", decidedBy }
-        : { approved: false, state: "denied", decidedBy };
+        : { ...createDeniedPermissionDecision(check.reason), decidedBy };
     }
 
     this.logger.review("forwarded_permission.prompted", logDetails);

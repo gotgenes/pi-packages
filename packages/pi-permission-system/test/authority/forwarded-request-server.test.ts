@@ -225,7 +225,8 @@ describe("processInbox — recorded-authority resolution", () => {
 
     expect(resolve).toHaveBeenCalledWith(accessIntent);
     expect(escalate).not.toHaveBeenCalled();
-    expect(readResponse(temp, "req-deny")).toMatchObject({
+    const response = readResponse(temp, "req-deny");
+    expect(response).toMatchObject({
       approved: false,
       state: "denied",
       decidedBy: {
@@ -235,6 +236,9 @@ describe("processInbox — recorded-authority resolution", () => {
         origin: "project",
       },
     });
+    // A rule with no reason carries none; `toMatchObject` cannot assert a
+    // key's absence, so the state above is not enough on its own.
+    expect(response).not.toHaveProperty("denialReason");
     expect(logger.review).toHaveBeenCalledWith(
       "forwarded_permission.auto_denied",
       expect.objectContaining({
@@ -242,6 +246,48 @@ describe("processInbox — recorded-authority resolution", () => {
         decidedBy: expect.objectContaining({ kind: "rule" }),
       }),
     );
+  });
+
+  test("carries the denying rule's own reason onto the response", async () => {
+    temp = createForwardingTempDir("parent-session");
+    temp.writeRequest({
+      id: "req-deny-reason",
+      source: "tool_call",
+      surface: "bash",
+      value: "git push --force",
+      accessIntent: makeForwardedAccessIntent({
+        matchValues: ["git push --force"],
+      }),
+    });
+
+    const server = new ForwardedRequestServer(
+      makeServerDeps({
+        forwardingDir: temp.forwardingDir,
+        policy: {
+          resolve: vi.fn(() =>
+            makeCheckResult({
+              state: "deny",
+              matchedPattern: "git push --force*",
+              origin: "project",
+              reason: "force pushes are blocked",
+            }),
+          ),
+        },
+      }),
+    );
+
+    await server.processInbox(
+      makeForwarderContext({ hasUI: true, sessionId: "parent-session" }),
+    );
+
+    // The requesting session relays this to its own agent, so the operator's
+    // explanation reaches the caller instead of stopping at the serving node.
+    expect(readResponse(temp, "req-deny-reason")).toMatchObject({
+      approved: false,
+      state: "denied_with_reason",
+      denialReason: "force pushes are blocked",
+      decidedBy: { kind: "rule", pattern: "git push --force*" },
+    });
   });
 
   test("relays the escalated decision's own decider onto the response", async () => {
