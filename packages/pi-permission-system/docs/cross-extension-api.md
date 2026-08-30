@@ -420,6 +420,8 @@ A session serving another session's forwarded request emits one too, on its own 
 That is what makes a forwarded prompt clearable: the ask is gated in the requesting session — a different process for an out-of-process subagent — so without it the serving session broadcasts a `permissions:ui_prompt` whose outcome never appears.
 A forwarded request the serving session's own policy allows or denies is answered without a prompt and broadcasts nothing, matching the UI-prompt channel.
 A served decision carries a non-null `forwarding` context; the requesting session still emits its own decision when the answer comes back.
+That requesting-side decision is attributed to whatever decided **inside** the responding session: a rule there reports `policy_allow` / `policy_deny`, a chain link reports `authorizer_allowed` / `authorizer_denied`, and a human there reports `user_approved` / `user_denied`.
+The `resolution` names what decided, never where.
 
 The `requestId` is the same id the request's review-log entries carry, and the same one `permissions:ui_prompt` carried if the request reached a prompt — so a prompt and its outcome are joinable, as are two concurrent prompts for the same command.
 A request that reaches a prompt is answered by exactly one terminal event on that prompt's own bus, including when the dialog itself fails.
@@ -460,6 +462,8 @@ pi.events.on("permissions:decision", (raw) => {
 | `user_approved`               | User approved once via dialog                                        |
 | `user_approved_for_session`   | User approved for the rest of the session                            |
 | `user_denied`                 | User denied via dialog                                               |
+| `authorizer_allowed`          | A registered `authorizerChain` link granted the ask — no human asked |
+| `authorizer_denied`           | A registered `authorizerChain` link refused the ask — no human asked |
 | `auto_approved`               | Yolo mode — approved automatically without dialog                    |
 | `confirmation_unavailable`    | State was `ask` but no UI was available — blocked                    |
 | `gate_error`                  | The gate threw, or an escalation failed — blocked, fail-closed       |

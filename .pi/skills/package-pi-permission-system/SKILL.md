@@ -99,7 +99,8 @@ The heartbeat records live **beside** `sessions/`, never inside it: a record und
 For the same reason the `serving/` directory is created on demand and never removed.
 `ForwardingManager` re-announces on every poll tick, and that refresh runs **ahead of the `processing` guard** — a parent holding `processInbox` open for a deliberating human is serving throughout, and refreshing behind the guard would let its record decay exactly when it is most demonstrably alive, fast-failing every other child.
 A regression test pins it ("re-announces while a drain is still in flight").
-Every `ParentAuthorizer` abandonment path sets `confirmationUnavailable: true` with a path-naming `denialReason`; `renderUnavailableDenial` renders that reason, so `PermissionGateParams.unavailableReason` is a function of the decision (as `userDeniedReason` already was), not a precomputed string.
+Every `ParentAuthorizer` abandonment path sets `confirmationUnavailable: true` with a path-naming `denialReason` and a matching `decidedBy: { kind: "unavailable" }`; `PermissionGateParams.messages.refusedReason` is therefore a function of the decision, not a precomputed string.
+Which refusal sentence the agent gets is dispatched once, at `renderRefusal` (`src/presentation/agent-renderer.ts`), on `effectiveDecider(decision.decidedBy)` — not on the `confirmationUnavailable` marker, which attributed a chain link's denial to the human (Refs #772).
 The `forwarded_permission.no_serving_session` entry records `servingChannel` and `servingState` beside the ids observed, since "exited", "killed", and "polling a different session id" are different diagnoses the shared denial string does not distinguish.
 
 **The `SubagentSessionRegistry` is process-global.**
