@@ -4,7 +4,10 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { AskEscalator } from "#src/authority/authorizer-selection";
-import { DECIDED_BY_HUMAN } from "#test/helpers/decision-fixtures";
+import {
+  DECIDED_BY_ABSENT_AUTHORITY,
+  DECIDED_BY_HUMAN,
+} from "#test/helpers/decision-fixtures";
 import {
   getDecisionEvents,
   makeCheckResult,
@@ -128,7 +131,7 @@ describe("handleInput decision events — skill gate", () => {
           approved: false,
           state: "denied",
           confirmationUnavailable: true,
-          decidedBy: DECIDED_BY_HUMAN,
+          decidedBy: DECIDED_BY_ABSENT_AUTHORITY,
         }),
       },
     });

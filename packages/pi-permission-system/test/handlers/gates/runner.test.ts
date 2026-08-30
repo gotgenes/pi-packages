@@ -4,7 +4,10 @@ import type { GateBypass } from "#src/handlers/gates/descriptor";
 import type { PermissionDecisionEvent } from "#src/permission-events";
 import { EXTENSION_TAG } from "#src/presentation/agent-renderer";
 import { SessionApproval } from "#src/session-approval";
-import { DECIDED_BY_HUMAN } from "#test/helpers/decision-fixtures";
+import {
+  DECIDED_BY_ABSENT_AUTHORITY,
+  DECIDED_BY_HUMAN,
+} from "#test/helpers/decision-fixtures";
 import { makeDescriptor, makeGateRunner } from "#test/helpers/gate-fixtures";
 import { makeCheckResult } from "#test/helpers/handler-fixtures";
 import { makePromptPayload } from "#test/helpers/prompt-details-fixtures";
@@ -313,6 +316,7 @@ describe("GateRunner — descriptor path", () => {
         approved: false,
         state: "denied",
         confirmationUnavailable: true,
+        decidedBy: DECIDED_BY_ABSENT_AUTHORITY,
       }),
     });
     const result = await runner.run(makeDescriptor(), null);
@@ -542,6 +546,7 @@ describe("GateRunner — descriptor path", () => {
           approved: false,
           state: "denied",
           confirmationUnavailable: true,
+          decidedBy: DECIDED_BY_ABSENT_AUTHORITY,
         }),
       });
       const result = await runner.run(makeDescriptor(), null);
@@ -560,6 +565,10 @@ describe("GateRunner — descriptor path", () => {
           state: "denied",
           confirmationUnavailable: true,
           denialReason: "Session 'parent-1' is not serving forwarded requests",
+          decidedBy: {
+            kind: "unavailable",
+            reason: "Session 'parent-1' is not serving forwarded requests",
+          },
         }),
       });
       const result = await runner.run(makeDescriptor(), null);
@@ -578,6 +587,7 @@ describe("GateRunner — descriptor path", () => {
           approved: false,
           state: "denied",
           denialReason: "too risky",
+          decidedBy: DECIDED_BY_HUMAN,
         }),
       });
       const result = await runner.run(makeDescriptor(), null);

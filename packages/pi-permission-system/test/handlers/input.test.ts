@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import type { AskEscalator } from "#src/authority/authorizer-selection";
 import { extractSkillNameFromInput } from "#src/handlers/permission-gate-handler";
-import { DECIDED_BY_HUMAN } from "#test/helpers/decision-fixtures";
+import {
+  DECIDED_BY_ABSENT_AUTHORITY,
+  DECIDED_BY_HUMAN,
+} from "#test/helpers/decision-fixtures";
 import { makeCtx, makeHandler } from "#test/helpers/handler-fixtures";
 
 // ── helpers ────────────────────────────────────────────────────────────────
@@ -127,7 +130,7 @@ describe("handleInput", () => {
           approved: false,
           state: "denied",
           confirmationUnavailable: true,
-          decidedBy: DECIDED_BY_HUMAN,
+          decidedBy: DECIDED_BY_ABSENT_AUTHORITY,
         }),
       },
     });

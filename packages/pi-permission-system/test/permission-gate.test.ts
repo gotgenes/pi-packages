@@ -4,7 +4,10 @@ import {
   applyPermissionGate,
   type PermissionGateParams,
 } from "#src/permission-gate";
-import { DECIDED_BY_HUMAN } from "#test/helpers/decision-fixtures";
+import {
+  DECIDED_BY_ABSENT_AUTHORITY,
+  DECIDED_BY_HUMAN,
+} from "#test/helpers/decision-fixtures";
 
 function makeParams(
   overrides: Partial<PermissionGateParams> = {},
@@ -80,7 +83,7 @@ describe("applyPermissionGate", () => {
     const unavailableDecision: PermissionPromptDecision = {
       approved: false,
       state: "denied",
-      decidedBy: DECIDED_BY_HUMAN,
+      decidedBy: DECIDED_BY_ABSENT_AUTHORITY,
       confirmationUnavailable: true,
     };
 
