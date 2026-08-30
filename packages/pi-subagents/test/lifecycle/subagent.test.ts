@@ -3,8 +3,8 @@ import type { CreateSubagentSessionParams } from "#src/lifecycle/create-subagent
 import { Subagent, type SubagentExecution, type SubagentLifecycleObserver } from "#src/lifecycle/subagent";
 import type { SubagentSession, TurnLoopResult } from "#src/lifecycle/subagent-session";
 import { SubagentState, type SubagentStateInit } from "#src/lifecycle/subagent-state";
-import type { Workspace, WorkspaceProvider } from "#src/lifecycle/workspace";
-import type { AgentInvocation, CompactionInfo, SubagentType } from "#src/types";
+import type { Workspace, WorkspacePrepareContext, WorkspaceProvider } from "#src/lifecycle/workspace";
+import type { CompactionInfo, SubagentType } from "#src/types";
 import { makeStubExecution } from "#test/helpers/make-subagent";
 import { createMockSession, createSubagentSessionStub, emitResumeUsageAndCompaction, toSubagentSession } from "#test/helpers/mock-session";
 import { STUB_SNAPSHOT } from "#test/helpers/stub-ctx";
@@ -27,7 +27,6 @@ interface MakeSubagentOptions extends SubagentStateInit {
 	id?: string;
 	type?: SubagentType;
 	description?: string;
-	invocation?: AgentInvocation;
 	execution?: SubagentExecution;
 	isBackground?: boolean;
 	/**
@@ -39,13 +38,12 @@ interface MakeSubagentOptions extends SubagentStateInit {
 
 /** Construct a Subagent with default identity and a stub execution, overridable per test. */
 function makeSubagent(overrides: MakeSubagentOptions = {}): Subagent {
-	const { id, type, description, isBackground, invocation, execution, state, ...stateOverrides } = overrides;
+	const { id, type, description, isBackground, execution, state, ...stateOverrides } = overrides;
 	return new Subagent({
 		id: id ?? "1",
 		type: type ?? "general-purpose",
 		description: description ?? "test",
 		isBackground: isBackground ?? true,
-		invocation,
 		execution: execution ?? makeStubExecution(),
 		state: state ?? (Object.keys(stateOverrides).length > 0 ? new SubagentState(stateOverrides) : undefined),
 	});
@@ -69,10 +67,9 @@ describe("Subagent — constructor", () => {
 		expect(record.description).toBe("Find stale TODOs");
 	});
 
-	it("passes through optional identity fields", () => {
-		const record = makeSubagent({ invocation: { modelName: "haiku" } });
+	it("starts with a fresh abort controller and zeroed stats", () => {
+		const record = makeSubagent();
 		expect(record.abortController).toBeInstanceOf(AbortController);
-		expect(record.invocation).toEqual({ modelName: "haiku" });
 		// Stats always start at zero — set via mutation methods after construction
 		expect(record.toolUses).toBe(0);
 		expect(record.compactionCount).toBe(0);
@@ -682,15 +679,17 @@ describe("Subagent.run() — workspace provider", () => {
 		expect(params.cwd).toBe("/ws/dir");
 	});
 
-	it("calls prepare with the run-start context", async () => {
-		const provider = makeWorkspaceProvider(makeWorkspace("/ws/dir"));
-		const agent = createRunnableAgent({ workspaceProvider: provider, baseCwd: "/parent" });
+	it("calls prepare with exactly the run-start context", async () => {
+		const prepare = vi.fn((_ctx: WorkspacePrepareContext) => Promise.resolve(makeWorkspace("/ws/dir")));
+		const agent = createRunnableAgent({ workspaceProvider: { prepare }, baseCwd: "/parent" });
 		await agent.run();
-		expect(provider.prepare).toHaveBeenCalledWith({
+		// toStrictEqual, not toHaveBeenCalledWith: the latter compares with toEqual
+		// semantics, which ignore an explicitly-undefined key — so it cannot see a
+		// vacant field reappearing on the seam context.
+		expect(prepare.mock.calls[0][0]).toStrictEqual({
 			agentId: "run-1",
 			agentType: "general-purpose",
 			baseCwd: "/parent",
-			invocation: undefined,
 		});
 	});
 

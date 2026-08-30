@@ -40,7 +40,6 @@ export function spawnBackground(
       // resolveSpawnConfig already merged the agent's frontmatter and AgentTool
       // routed here on the result, so this door has committed.
       background: { kind: "explicit", isBackground: true },
-      invocation: execution.agentInvocation,
     });
   } catch (err) {
     return textResult(err instanceof Error ? err.message : String(err));

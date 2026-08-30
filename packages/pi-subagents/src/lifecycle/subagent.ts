@@ -19,7 +19,7 @@ import type { WorkspaceProvider } from "#src/lifecycle/workspace";
 import { WorkspaceBracket } from "#src/lifecycle/workspace-bracket";
 import { subscribeSubagentObserver } from "#src/observation/record-observer";
 import type { RunConfig } from "#src/runtime";
-import type { AgentInvocation, CompactionInfo, ParentSessionInfo, SessionMessage, SubagentType, ThinkingLevel } from "#src/types";
+import type { CompactionInfo, ParentSessionInfo, SessionMessage, SubagentType, ThinkingLevel } from "#src/types";
 
 /** Per-subagent lifecycle observer — created by SubagentManager for each spawn. */
 export interface SubagentLifecycleObserver {
@@ -80,7 +80,6 @@ export interface SubagentInit {
 	description: string;
 	/** The mode SubagentManager resolved for this spawn; drives scheduling and announcement. */
 	isBackground: boolean;
-	invocation?: AgentInvocation;
 
 	/** Execution machinery — always supplied; construct-complete, no test fallbacks. */
 	execution: SubagentExecution;
@@ -97,10 +96,9 @@ export class Subagent {
 	/**
 	 * Whether this agent runs in the background. Resolved once at the manager
 	 * choke point, so a consumer asks the record rather than re-deriving it from
-	 * the `invocation` display snapshot, which only the tool door builds.
+	 * a per-call display snapshot only the tool door ever built (#724).
 	 */
 	readonly isBackground: boolean;
-	readonly invocation?: AgentInvocation;
 
 	// Lifecycle status and metrics — owned by a private value object; getters and
 	// mutation methods below delegate to it one line.
@@ -224,7 +222,6 @@ export class Subagent {
 		this.type = init.type;
 		this.description = init.description;
 		this.isBackground = init.isBackground;
-		this.invocation = init.invocation;
 
 		// Lifecycle status and metrics — fresh queued state unless one is supplied
 		this.state = init.state ?? new SubagentState();
@@ -265,7 +262,6 @@ export class Subagent {
 					agentId: this.id,
 					agentType: this.type,
 					baseCwd: this.execution.baseCwd,
-					invocation: this.invocation,
 				});
 			} catch (err) {
 				this.markError(err);

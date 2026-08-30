@@ -19,7 +19,6 @@ const ctx = {
 	agentId: "agent-1",
 	agentType: "general-purpose" as const,
 	baseCwd: "/parent",
-	invocation: undefined,
 };
 
 /** Construct a bracket over a prepared "/ws/dir" workspace; the act (dispose) stays in each test. */

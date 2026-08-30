@@ -2,7 +2,7 @@ import type { CreateSubagentSessionParams } from "#src/lifecycle/create-subagent
 import { Subagent, type SubagentExecution } from "#src/lifecycle/subagent";
 import type { SubagentSession } from "#src/lifecycle/subagent-session";
 import { SubagentState, type SubagentStatus } from "#src/lifecycle/subagent-state";
-import type { AgentInvocation, SubagentType } from "#src/types";
+import type { SubagentType } from "#src/types";
 import { createSubagentSessionStub, toSubagentSession } from "#test/helpers/mock-session";
 import { STUB_SNAPSHOT } from "#test/helpers/stub-ctx";
 
@@ -27,7 +27,6 @@ export interface TestSubagentOptions {
 	description?: string;
 	/** Defaults to true so a fixture survives the widget's background-only filter. */
 	isBackground?: boolean;
-	invocation?: AgentInvocation;
 	execution?: SubagentExecution;
 	/** Shorthand to set execution.parentSession.toolCallId. Ignored when execution is supplied. */
 	toolCallId?: string;
@@ -61,7 +60,7 @@ export interface TestSubagentOptions {
 }
 
 export function createTestSubagent(overrides: TestSubagentOptions = {}): Subagent {
-	const { id, type, description, isBackground, invocation, execution, toolCallId, toolUses, lifetimeUsage, compactionCount, turnCount, activeTools, responseText, maxTurns, ...stateOverrides } =
+	const { id, type, description, isBackground, execution, toolCallId, toolUses, lifetimeUsage, compactionCount, turnCount, activeTools, responseText, maxTurns, ...stateOverrides } =
 		overrides;
 	const state = new SubagentState({
 		status: "completed",
@@ -81,7 +80,6 @@ export function createTestSubagent(overrides: TestSubagentOptions = {}): Subagen
 		type: type ?? "general-purpose",
 		description: description ?? "Test task",
 		isBackground: isBackground ?? true,
-		invocation,
 		execution: execution ?? makeStubExecution({
 			...(toolCallId ? { parentSession: { toolCallId } } : {}),
 			...(maxTurns !== undefined ? { maxTurns } : {}),

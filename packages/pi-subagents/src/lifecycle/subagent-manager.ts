@@ -19,7 +19,7 @@ import { SubagentState } from "#src/lifecycle/subagent-state";
 import type { WorkspaceProvider } from "#src/lifecycle/workspace";
 
 import type { RunConfig } from "#src/runtime";
-import type { AgentConfig, AgentInvocation, CompactionInfo, ParentSessionInfo, SubagentType, ThinkingLevel } from "#src/types";
+import type { AgentConfig, CompactionInfo, ParentSessionInfo, SubagentType, ThinkingLevel } from "#src/types";
 
 /**
  * The agent-registry slice the manager needs to resolve a spawn. Deliberately
@@ -96,8 +96,6 @@ export interface AgentSpawnConfig {
    * callers (e.g. cross-extension RPC) that must not be deferred by the queue.
    */
   bypassQueue?: boolean;
-  /** Resolved invocation snapshot captured for UI display. */
-  invocation?: AgentInvocation;
   /** Parent abort signal - when aborted, the subagent is also stopped. */
   signal?: AbortSignal;
   /** Per-subagent lifecycle observer — replaces onSessionCreated callback. */
@@ -248,7 +246,6 @@ export class SubagentManager {
       type,
       description: options.description,
       isBackground,
-      invocation: options.invocation,
       state: new SubagentState({
         status: isBackground ? "queued" : "running",
         startedAt: Date.now(),

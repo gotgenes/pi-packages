@@ -63,8 +63,8 @@ describe("toSubagentRecord", () => {
     expect(result.outputFile).toBe("/sessions/child.jsonl");
   });
 
-  it("strips live objects, collaborators, and the invocation display snapshot", () => {
-    const record = createTestSubagent({ invocation: { modelName: "haiku" }, toolCallId: "tc-1" });
+  it("strips live objects and collaborators", () => {
+    const record = createTestSubagent({ toolCallId: "tc-1" });
     record.subagentSession = toSubagentSession(createSubagentSessionStub(createMockSession()));
     const result = toSubagentRecord(record);
     expect(result).not.toHaveProperty("subagentSession");
@@ -72,7 +72,6 @@ describe("toSubagentRecord", () => {
     expect(result).not.toHaveProperty("promise");
     expect(result).not.toHaveProperty("execution");
     expect(result).not.toHaveProperty("notification");
-    expect(result).not.toHaveProperty("invocation");
   });
 
   it("withholds momentary activity and package-internal bookkeeping", () => {

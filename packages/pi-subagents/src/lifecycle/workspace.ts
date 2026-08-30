@@ -12,14 +12,13 @@
  */
 
 import type { SubagentStatus } from "#src/lifecycle/subagent";
-import type { AgentInvocation, SubagentType } from "#src/types";
+import type { SubagentType } from "#src/types";
 
 /** Context the core hands a provider when a child run starts. */
 export interface WorkspacePrepareContext {
   agentId: string;
   agentType: SubagentType;
   baseCwd: string;
-  invocation?: AgentInvocation;
 }
 
 /** Outcome the core reports to a workspace when the run ends. */
