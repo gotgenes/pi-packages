@@ -1,3 +1,8 @@
+import {
+  createSyntheticSourceInfo,
+  formatSkillsForPrompt,
+  type Skill,
+} from "@earendil-works/pi-coding-agent";
 import { describe, expect, it } from "vitest";
 import { AgentTypeRegistry } from "#src/config/agent-types";
 import type { EnvInfo } from "#src/session/env";
@@ -363,14 +368,50 @@ describe("buildAgentPrompt", () => {
   // `Current working directory:` footer, so embedding the parent's prompt
   // verbatim gave a workspace-isolated child a stale claim that outranked its
   // own env block. The child's correct footer is appended by Pi afterwards.
-  describe("inherited working-directory footer", () => {
-    /** A parent prompt shaped like Pi's: body, date line, cwd footer last. */
-    function parentPromptNaming(cwd: string): string {
-      return [
-        "You are a parent coding agent.",
-        "Current date: 2026-07-25",
-        `Current working directory: ${cwd}`,
-      ].join("\n");
+  describe("inherited session-resolved tail", () => {
+    /** The identity layers Pi writes ahead of anything it resolves per session. */
+    const IDENTITY = "You are a parent coding agent.\nCurrent date: 2026-07-25";
+
+    /** A skill fixture, rendered through Pi's own prompt formatter below. */
+    function skill(name: string): Skill {
+      const filePath = `/parent/.pi/skills/${name}/SKILL.md`;
+      return {
+        name,
+        description: `The ${name} skill.`,
+        filePath,
+        baseDir: `/parent/.pi/skills/${name}`,
+        sourceInfo: createSyntheticSourceInfo(filePath, { source: "test" }),
+        disableModelInvocation: false,
+      };
+    }
+
+    /**
+     * Assemble a parent prompt from the layers `buildSystemPrompt` writes, in
+     * its order and with its separators.
+     *
+     * The skills layer goes through Pi's own `formatSkillsForPrompt`, so an
+     * upstream rewording of its heading fails these tests rather than silently
+     * changing which layer the inherited prompt is cut at.
+     */
+    function parentPrompt(
+      layers: {
+        identity?: string;
+        skills?: Skill[];
+        footerCwd?: string;
+        extensionTail?: string;
+      } = {},
+    ): string {
+      let prompt = layers.identity ?? IDENTITY;
+      if (layers.skills) {
+        prompt += formatSkillsForPrompt(layers.skills);
+      }
+      if (layers.footerCwd !== undefined) {
+        prompt += `\nCurrent working directory: ${layers.footerCwd}`;
+      }
+      if (layers.extensionTail !== undefined) {
+        prompt += `\n\n${layers.extensionTail}`;
+      }
+      return prompt;
     }
 
     function appendConfig(): AgentConfig {
@@ -397,106 +438,108 @@ describe("buildAgentPrompt", () => {
       };
     }
 
-    it("strips the inherited footer in append mode", () => {
-      const prompt = buildAgentPrompt(appendConfig(), "/workspace", env, {
-        systemPrompt: parentPromptNaming(PARENT_CWD),
-        cwd: PARENT_CWD,
+    describe("cwd-footer anchor", () => {
+      it("strips the inherited footer in append mode", () => {
+        const prompt = buildAgentPrompt(appendConfig(), "/workspace", env, {
+          systemPrompt: parentPrompt({ footerCwd: PARENT_CWD }),
+          cwd: PARENT_CWD,
+        });
+
+        expect(prompt).not.toContain(`Current working directory: ${PARENT_CWD}`);
       });
 
-      expect(prompt).not.toContain(`Current working directory: ${PARENT_CWD}`);
+      it("strips the inherited footer in replace mode", () => {
+        const prompt = buildAgentPrompt(replaceConfig(), "/workspace", env, {
+          systemPrompt: parentPrompt({ footerCwd: PARENT_CWD }),
+          cwd: PARENT_CWD,
+        });
+
+        expect(prompt).not.toContain(`Current working directory: ${PARENT_CWD}`);
+      });
+
+      it("leaves the identity ahead of the footer intact", () => {
+        const prompt = buildAgentPrompt(replaceConfig(), "/workspace", env, {
+          systemPrompt: parentPrompt({ footerCwd: PARENT_CWD }),
+          cwd: PARENT_CWD,
+        });
+
+        // The cacheable prefix ahead of the cut survives byte for byte.
+        expect(prompt.startsWith(`${IDENTITY}\n\n`)).toBe(true);
+      });
+
+      it("leaves a footer naming a different directory alone", () => {
+        const peerFooter = "Current working directory: /repo-worktrees/issue-42";
+        const prompt = buildAgentPrompt(replaceConfig(), "/workspace", env, {
+          systemPrompt: `${IDENTITY}\n${peerFooter}`,
+          cwd: "/repo",
+        });
+
+        // A whole-line match, not a substring one: /repo must not truncate /repo-worktrees/....
+        expect(prompt).toContain(peerFooter);
+      });
+
+      it("normalizes backslashes the way Pi's prompt builder does", () => {
+        // buildSystemPrompt writes `cwd.replace(/\\/g, "/")`, so a Windows parent
+        // cwd reaches the prompt with forward slashes.
+        const prompt = buildAgentPrompt(replaceConfig(), "/workspace", env, {
+          systemPrompt: parentPrompt({ footerCwd: "C:/repo" }),
+          cwd: "C:\\repo",
+        });
+
+        expect(prompt).not.toContain("Current working directory: C:/repo");
+      });
+
+      it("leaves the footer in place when the child shares the parent's cwd", () => {
+        const parent = parentPrompt({ footerCwd: "/workspace" });
+
+        const prompt = buildAgentPrompt(replaceConfig(), "/workspace", env, {
+          systemPrompt: parent,
+          cwd: "/workspace",
+        });
+
+        // The inherited claim agrees with the child's own, so the prefix stays
+        // byte-identical to the parent's prompt for prefix-caching providers.
+        expect(prompt.startsWith(`${parent}\n\n`)).toBe(true);
+      });
+
+      it("treats separator variants of the same directory as agreeing", () => {
+        const parent = parentPrompt({ footerCwd: "C:/repo" });
+
+        const prompt = buildAgentPrompt(replaceConfig(), "C:/repo", env, {
+          systemPrompt: parent,
+          cwd: "C:\\repo",
+        });
+
+        expect(prompt.startsWith(`${parent}\n\n`)).toBe(true);
+      });
     });
 
-    it("strips the inherited footer in replace mode", () => {
-      const prompt = buildAgentPrompt(replaceConfig(), "/workspace", env, {
-        systemPrompt: parentPromptNaming(PARENT_CWD),
-        cwd: PARENT_CWD,
-      });
+    describe("no anchor present", () => {
+      it("leaves a parent prompt with no session-resolved layer unchanged", () => {
+        const parent = parentPrompt();
+        const prompt = buildAgentPrompt(replaceConfig(), "/workspace", env, {
+          systemPrompt: parent,
+          cwd: PARENT_CWD,
+        });
 
-      expect(prompt).not.toContain(`Current working directory: ${PARENT_CWD}`);
+        expect(prompt.startsWith(`${parent}\n\n`)).toBe(true);
+      });
     });
 
-    it("leaves the rest of the inherited prompt intact", () => {
-      const prompt = buildAgentPrompt(replaceConfig(), "/workspace", env, {
-        systemPrompt: parentPromptNaming(PARENT_CWD),
-        cwd: PARENT_CWD,
+    describe("the assembled child prompt", () => {
+      it("makes no Current working directory claim when the directories differ", () => {
+        const prompt = buildAgentPrompt(appendConfig(), "/workspace", env, {
+          systemPrompt: parentPrompt({ footerCwd: PARENT_CWD }),
+          cwd: PARENT_CWD,
+        });
+
+        // Pi appends the child's own footer after this string, naming the child's
+        // cwd — so the assembled prompt must contribute no claim in that form.
+        const claims = prompt
+          .split("\n")
+          .filter((line) => line.startsWith("Current working directory:"));
+        expect(claims).toEqual([]);
       });
-
-      // Only the footer line is removed — the cacheable prefix ahead of it survives byte for byte.
-      expect(
-        prompt.startsWith(
-          "You are a parent coding agent.\nCurrent date: 2026-07-25\n\n",
-        ),
-      ).toBe(true);
-    });
-
-    it("leaves a footer naming a different directory alone", () => {
-      const peerFooter = "Current working directory: /repo-worktrees/issue-42";
-      const prompt = buildAgentPrompt(replaceConfig(), "/workspace", env, {
-        systemPrompt: `You are a parent coding agent.\n${peerFooter}`,
-        cwd: "/repo",
-      });
-
-      // A whole-line match, not a substring one: /repo must not truncate /repo-worktrees/....
-      expect(prompt).toContain(peerFooter);
-    });
-
-    it("normalizes backslashes the way Pi's prompt builder does", () => {
-      // buildSystemPrompt writes `cwd.replace(/\\/g, "/")`, so a Windows parent
-      // cwd reaches the prompt with forward slashes.
-      const prompt = buildAgentPrompt(replaceConfig(), "/workspace", env, {
-        systemPrompt: parentPromptNaming("C:/repo"),
-        cwd: "C:\\repo",
-      });
-
-      expect(prompt).not.toContain("Current working directory: C:/repo");
-    });
-
-    it("leaves the footer in place when the child shares the parent's cwd", () => {
-      const parent = parentPromptNaming("/workspace");
-
-      const prompt = buildAgentPrompt(replaceConfig(), "/workspace", env, {
-        systemPrompt: parent,
-        cwd: "/workspace",
-      });
-
-      // The inherited claim agrees with the child's own, so the prefix stays
-      // byte-identical to the parent's prompt for prefix-caching providers.
-      expect(prompt.startsWith(`${parent}\n\n`)).toBe(true);
-    });
-
-    it("treats separator variants of the same directory as agreeing", () => {
-      const parent = parentPromptNaming("C:/repo");
-
-      const prompt = buildAgentPrompt(replaceConfig(), "C:/repo", env, {
-        systemPrompt: parent,
-        cwd: "C:\\repo",
-      });
-
-      expect(prompt.startsWith(`${parent}\n\n`)).toBe(true);
-    });
-
-    it("leaves a parent prompt without a footer unchanged", () => {
-      const parentPrompt = "You are a parent coding agent.";
-      const prompt = buildAgentPrompt(replaceConfig(), "/workspace", env, {
-        systemPrompt: parentPrompt,
-        cwd: PARENT_CWD,
-      });
-
-      expect(prompt.startsWith(`${parentPrompt}\n\n`)).toBe(true);
-    });
-
-    it("makes no Current working directory claim when the directories differ", () => {
-      const prompt = buildAgentPrompt(appendConfig(), "/workspace", env, {
-        systemPrompt: parentPromptNaming(PARENT_CWD),
-        cwd: PARENT_CWD,
-      });
-
-      // Pi appends the child's own footer after this string, naming the child's
-      // cwd — so the assembled prompt must contribute no claim in that form.
-      const claims = prompt
-        .split("\n")
-        .filter((line) => line.startsWith("Current working directory:"));
-      expect(claims).toEqual([]);
     });
   });
 });
