@@ -99,3 +99,68 @@ The plan's `**Release:** mid-batch — defer (batch "front-door-majors")` marker
 ### Observations
 
 No new friction at this stage — the TDD stage's three pre-completion review rounds already caught and closed everything substantive before this branch reached ship.
+
+## Stage: Final Retrospective (2026-08-29T23:33:37Z)
+
+### Session summary
+
+Landed the worktree branch onto linear `main` (ff-merge, CI green, `61895afa`), closed [#829] and [#834] with commit-anchored summaries, deferred the release per the plan's `mid-batch — defer` marker, and tore down the worktree.
+The issue ran four stages across two sessions — planning, TDD, and worktree ship in the peer; land and this retrospective at the root — shipping eleven commits and taking pi-subagents from 1266 to 1337 tests.
+
+### Observations
+
+#### What went well
+
+- The `/tdd-plan` "Verify the pins" step caught a defect in the **plan** rather than in the implementation, which is a first across these retros.
+  Step 3's plan-named killing mutation (drop `"max"` from `THINKING_LEVELS`) left the SDK-parity test green because the test built its `thinkingLevelMap` from `THINKING_LEVELS` itself — the fixture derived from the thing under mutation, so the check was circular and vacuous for exactly the two gated levels (`xhigh`, `max`) that could plausibly drift.
+  The implementing session replaced it with two directional checks and verified all three replacements with mutations that do kill.
+  A plan-authored mutation is written before the test exists, so it cannot see a fixture that will later derive from the mutated symbol; the Verify step is the only place that gap closes.
+- Planning answered [#834]'s open question by **measuring** the SDK rather than reading its types: `clampThinkingLevel(model, "bananas")` returns `"off"` because an unknown level misses the ordered table and falls to `availableLevels[0]`.
+  That an unrecognized level silently *disables* thinking — rather than being ignored — is what drove rejection at all three producers, and no amount of reading `ThinkingLevel` would have produced it.
+- Round 2 of the pre-completion review caught a **commit-typing** defect rather than a code defect: filing the README correction under `test:` would ship an incorrect public claim visibly under `docs:` while its fix stayed hidden.
+  The session reset and re-split into `docs:` + `test:` before pushing.
+  This is the `AGENTS.md` "type a commit by what a user can observe" rule applied to a *correction*, where the observable is the claim being withdrawn.
+
+#### What caused friction (agent side)
+
+- `instruction-violation` (self-identified, at retro) — the land session skipped the release without asking, though the marker it read said `confirm at ship time`.
+  `/land-worktree` step 6.1 says `mid-batch — defer` → " **skip releasing**", while `/ship-issue` step 2 says the same marker → "ask the operator **now**".
+  The canonical marker string `/plan-issue` writes (line 148) ends with `confirm at ship time`, so the worktree path contradicts the text it is reading.
+  Impact: no rework — deferring was the right call — but the operator never got the confirmation the plan requested, on a `fix!:` breaking change.
+- `other` — the same divergence has a **timing** half.
+  `/ship-issue` gathers the release decision in a step 0 explicitly placed "before any irreversible work," reasoning that "a decision presented early from the plan is far less likely to be reversed than one inferred from prose at the cancel point." `/land-worktree` reads the marker at step 6 — after push, CI, and issue close — so even if it asked, it would ask at exactly the cancel point the trunk path was designed to avoid.
+  Impact: latent; it did not bite here because the answer was "defer", which needs no rollback.
+- `missing-context` — the plan's step 3 killing mutation was self-referential (see above).
+  Impact: roughly six tool calls of rework at TDD step 3, all pre-commit.
+- `missing-context` — the README correction was initially bundled into a `test:` commit.
+  Impact: one `git reset HEAD~1` and a re-split into two commits.
+- `other` — the land session ran `git rev-parse HEAD | wc -c` to count the characters of a SHA it already held.
+  Impact: one wasted call, no consequence.
+
+#### What caused friction (user side)
+
+- The operator ran all four stages hands-off with no interventions, which suited a well-specified roadmap step.
+  The one place operator judgment was genuinely wanted — whether to hold the release for [#828] on a breaking change — is precisely the decision the `/land-worktree` gap swallowed.
+  This is a prompt defect rather than an operator one: the flow should have surfaced it without being asked.
+
+### Diagnostic details
+
+- **Model-performance correlation** — planning and TDD ran on `anthropic/claude-opus-5` (thinking high), appropriate for a breaking-change design plus an eleven-commit implementation.
+  Worktree ship and land ran on `anthropic/claude-sonnet-5`, appropriate for mechanical checks, rebase, and merge.
+  Worth noting that the release-deferral judgment landed on the sonnet-5 land session, and it is the step where the prompt/marker conflict needed catching — the gap is in the prompt, but a cheaper model reading a contradictory instruction is where it surfaces.
+  Subagent dispatches: one `tidy-first-assessor` at planning, three `pre-completion-reviewer` rounds at TDD; all produced substantive findings, so no capability mismatch is evident.
+- **Feedback-loop gap analysis** — no gap.
+  All four baseline gates ran before the first TDD step, `pnpm run check` ran after nearly every green step, and the full suite plus lint plus `fallow dead-code` ran at each commit boundary.
+- **Escalation-delay tracking** — the longest same-error sequence was roughly four check/lint rounds on the `describeRejected` helper, where `@typescript-eslint/no-base-to-string` and `no-unnecessary-condition` pulled in opposite directions.
+  Already recorded in the TDD stage note; below the five-call threshold for a subagent dispatch.
+
+### Changes made
+
+1. `.pi/prompts/land-worktree.md` — added a `## Release coordination (decide before step 1)` section mirroring `/ship-issue`'s step 0, so the plan's `**Release:**` marker is read and (on `mid-batch — defer`) confirmed with the operator **before** the ff-merge, push, CI, and issue close.
+2. `.pi/prompts/land-worktree.md` — rewrote step 6.1 to apply the decision recorded up front instead of reading the marker at the cancel point.
+3. `AGENTS.md` (line 190) — the release-batching sentence now names `/ship-issue` **and** `/land-worktree` as reading the marker early, so the doc no longer describes the two paths' divergence as intended behavior.
+4. Filed [#843] — rename the worktree ship-flow commands; `/ship-worktree` prepares and does not ship, while `/land-worktree` is the half that actually ships and is the true sibling of `/ship-issue`.
+   Raised by the operator at this retro's clarification gate.
+   Left to its own issue rather than landed inline: the rename touches two prompt files plus references in `AGENTS.md`, `README.md`, and four other prompts, and the choice of names is itself the substance.
+
+[#843]: https://github.com/gotgenes/pi-packages/issues/843

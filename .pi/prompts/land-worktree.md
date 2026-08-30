@@ -12,6 +12,20 @@ It lands the branch on linear `main`, verifies CI, closes the issue, optionally 
 
 Fetch the issue title via `gh issue view $1 --json title -q .title`, then call `set_session_name` with name `#$1 Land — <issue title>`.
 
+## Release coordination (decide before step 1)
+
+Gather the release decision up front, from the plan, **before** any irreversible work (ff-merge/push/CI).
+A decision presented early is far less likely to be reversed than one inferred at the cancel point.
+
+1. Locate the plan: `grep -rl "^issue: $1$" docs/plans packages/*/docs/plans`.
+2. If a plan is found, read its marker with `grep -F '**Release:**' <plan-file>` (fixed-string — a leading `*` is an invalid regex/BRE operator):
+   - A marker containing `mid-batch — defer` → ask the operator **now**: defer the release (leave that package's release-please PR open), or release anyway?
+     Record the decision.
+   - Any other `**Release:**` value, no marker, or no plan → record "release now"; do **not** ask.
+
+This section only reads the plan and (conditionally) asks — it performs no git, push, or CI action.
+Step 6 applies the recorded decision.
+
 ## 1. Confirm root + sync main
 
 1. Run `git rev-parse --show-toplevel` and `git branch --show-current` — confirm you are in the **root** checkout on `main`.
@@ -67,8 +81,8 @@ Also close any **other** issues this push shipped (stacked refactors, other `(#M
 
 Releasing is the root's serialized responsibility — only the root merges release-please PRs, so peers never race on them.
 
-1. Read the issue's plan for a `**Release:**` marker.
-   If it says `mid-batch — defer`, **skip releasing**: leave that package's release-please PR open, note the deferral, and continue to teardown.
+1. Apply the decision recorded in Release coordination.
+   On "defer": **skip releasing** — leave that package's release-please PR open, note the deferral, and continue to teardown.
    Deferring holds only this package; sibling packages keep releasing on their own lands.
    Otherwise release now.
 2. To release: `release_pr_find` with `component: <pkg>` → confirm the **full** PR body bumps `<pkg>` and nothing else → `release_pr_merge` (rebase).
