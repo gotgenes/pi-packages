@@ -1,4 +1,5 @@
 ---
+model: anthropic/claude-sonnet-5
 description: Root-session ship — ff-merge a rebased worktree branch into main, verify CI, close the issue, release, and tear down
 ---
 

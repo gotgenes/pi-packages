@@ -1,4 +1,5 @@
 ---
+model: anthropic/claude-sonnet-5
 description: Peer-session sync — run pre-push checks and rebase a worktree branch onto main, then hand off to the root session
 ---
 
