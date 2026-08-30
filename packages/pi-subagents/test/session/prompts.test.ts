@@ -482,15 +482,18 @@ describe("buildAgentPrompt", () => {
       });
 
       it("drops the footer that follows the catalogue", () => {
+        // The parent's directory matches the child's, so the footer anchor
+        // would have left this line alone under #640's exception — only the
+        // catalogue cut ahead of it removes the line.
         const prompt = buildAgentPrompt(replaceConfig(), "/workspace", env, {
           systemPrompt: parentPrompt({
             skills: [skill("colgrep")],
-            footerCwd: PARENT_CWD,
+            footerCwd: "/workspace",
           }),
-          cwd: PARENT_CWD,
+          cwd: "/workspace",
         });
 
-        expect(prompt).not.toContain(`Current working directory: ${PARENT_CWD}`);
+        expect(prompt).not.toContain("Current working directory: /workspace");
       });
 
       it("drops the extension blocks that follow the footer", () => {
