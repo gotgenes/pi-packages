@@ -56,3 +56,38 @@ Here's a new pattern for the permission model judge to watch for, coming from a 
 Context from this session: the read was denied on `external_directory_read` with the model judge's reason "wrong path".
 The intended target was `packages/pi-permission-system/src/handlers/tool-call-boundary.ts` **inside the worktree** (`~/development/pi/pi-packages-worktrees/issue-844`), and the path reached for was the standalone upstream fork checkout at `~/development/pi/pi-permission-system/` — a real directory that is not this monorepo's copy of the package.
 The distinguishing signal is that a worktree CWD (`pi-packages-worktrees/issue-<N>`) makes `~/development/pi/<pkg>/…` a *sibling-checkout* read of the same package name, which is a different class from an ordinary outside-CWD read: the file exists, the content looks right, and a stale copy would be silently wrong rather than absent.
+
+## Stage: Implementation — TDD (2026-08-30T19:22:06Z)
+
+### Session summary
+
+Seven commits over the plan's six steps: the rule-clause parameterization, the ADR 0011 §10 amendment, the deny-reason carry, the two render arms, the doc updates, and a seventh `test:` commit closing the pre-completion reviewer's single WARN finding.
+The package suite went from 3787 to 3803 passing (+16 tests, no new files; 152 files throughout).
+Pre-completion reviewer: WARN on the first round, PASS on the scoped re-review of the follow-up commit.
+
+### Observations
+
+- **A mutation that under-delivered its predicted reds was the finding, and I read past it.**
+  Step 5's plan predicted its first killing mutation would turn the new dispatch case **and** a `runner.test.ts` assertion red.
+  It turned exactly one red, because I had never written the runner assertion — and I recorded the single red as success.
+  The reviewer caught it.
+  Generalizable: a killing mutation's predicted red *count* is part of the prediction, so a mutation that kills fewer tests than the plan named is a finding even when the tree is green — it means either the test is missing or the plan's claim was wrong, and both need resolving before the commit.
+- **A scripted multi-line mutation silently no-opped and read as a passing mutation.**
+  The first attempt at step 4's M1 used `perl -0pi -e` with a `\Q…\E` block spanning newlines; it matched nothing, the suite stayed green, and that green looked exactly like "the mutation failed to kill anything".
+  Caught it only by `diff`-ing against the saved green copy.
+  The AGENTS rule against scripted multi-line substitution applies to *mutations*, not just edits — and a mutation run needs a positive check that the file actually changed before its result means anything.
+- **The operator caught a comment I made wrong while widening its scope.**
+  Removing `gate_error` from the fall-through group left a comment claiming "the remaining kinds never refuse: they only ever allow" above a group still headed by `user` — which is precisely the kind that *does* refuse, and whose render this arm is.
+  Three unrelated reasons had collapsed into one sentence (`user`: the render's true subject; `session_approval`/`infrastructure_read`/`yolo`: unreachable, listed for exhaustiveness; `forwarded`: decider-less, fail-soft).
+  Editing a shared comment's *membership* changes what the comment asserts even when its words are untouched.
+- **The plan's expected-string transcription was wrong once, in the same way #772's retro recorded.**
+  The bash-context case expected `inside a command substitution`; the renderer produces `inside command substitution` (no article).
+  Hand-writing a render's expected output from memory rather than copying an existing assertion is the recurring defect here — second occurrence across two issues on this same test file.
+- **The tidy-first refactor paid for itself immediately and was verified the cheap way.**
+  Parameterizing `identification`'s rule clause landed with a byte-identical suite and no test diff, which is the whole verification; both new arms then differed from the existing four by one argument.
+  The plan's correction to the assessor's rejection also held up: keeping `commandContext` on the payload side preserved `inside command substitution` in the new render, which the assessor's one-line literal would have dropped.
+- **The deny-reason carry, folded in at the planning gate, turned out to be load-bearing.**
+  Without it the new `rule` arm's reason clause had no producer at all, so the render would have shipped a permanently empty branch and its test would have pinned nothing.
+- **No deviations from the plan's Module-Level Changes.**
+  Every listed file was touched and nothing outside the list was, verified with `git diff --name-only <plan-commit>^..HEAD`.
+  The Step 15 `Outcome:` metric replacement predicted at planning time (`renderEscalatedPolicyDenial` count 0 → 2) landed exactly.
