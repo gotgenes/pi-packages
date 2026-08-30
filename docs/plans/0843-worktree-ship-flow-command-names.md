@@ -34,6 +34,7 @@ So `ship` sits on the half that does not ship, and the half that does ship is ca
 - Teach `/retro` the pre-rename spelling of the peer stage header, so it still finds the transcript path in the seven retro files that already carry `## Stage: Ship (worktree)`.
 - Add a fail-fast guard to the new root `/ship-worktree` so a peer-session mis-invocation stops before it renames the session or asks a release question.
 - Leave every live reference across the eight affected files consistent in a single landed change.
+- Pin both worktree prompts to `model: anthropic/claude-sonnet-5`, so neither half inherits whatever model the session happens to be running.
 
 This change is **not** breaking in the semver sense — no package source, export, or config default changes, and nothing publishes.
 It is disruptive to muscle memory, which the guard in the new root prompt addresses.
@@ -47,6 +48,8 @@ It is disruptive to muscle memory, which the guard in the new root prompt addres
 - Reordering the root prompt's existing steps.
   The only structural addition is the guard pre-step in Goals; Release coordination, the ff-merge, CI verification, close, release, and teardown keep their current order and content.
 - Changing `/ship-issue` or `/ship-no-issue` beyond the single cross-reference each carries.
+  In particular, the trunk `/ship-issue` keeps its unpinned `model:` and continues to inherit the session model; only the worktree pair is pinned here.
+  Whether the trunk shipping command should match is a separate question, deliberately not settled by this issue.
 - Adding a machine-readable alias or deprecation shim for the old command names.
   Pi resolves a slash command from the `.pi/prompts/<name>.md` filename; a stub file for a retired name would show up in autocomplete and defeat the point.
 
@@ -119,6 +122,18 @@ The peer prompt writes `## Stage: Sync (worktree)` and commits it as `docs(retro
 `/retro` line 62 must then accept both spellings, because the seven pre-rename retros cannot be rewritten.
 The sentence becomes one that names the current spelling first and the historical one parenthetically, so a retro agent reading either finds the transcript path.
 
+### The model pin
+
+Both prompts declare no `model:` today, so each half runs on whatever model the session was started with.
+Both gain `model: anthropic/claude-sonnet-5`.
+
+That alias is already resolved by four files in this repo — `.pi/prompts/finish-phase.md` and the three agents under `.pi/agents/` — so it is a verified registry entry rather than a guessed spelling.
+This matters because a `model:` value absent from the registry does not error: it falls back silently to the session model, which is exactly the behavior the pin is meant to remove.
+
+The pin fits what these two prompts are: mechanical, checklist-shaped procedures over deterministic tools (`git`, `ci_watch`, `issue_close`, `release_pr_merge`) with named stop conditions.
+That is the same profile as `/finish-phase`, which is already pinned to this model.
+The deliberative prompts — `/plan-issue`, `/retro`, `/triage-backlog` — stay on `claude-opus-5`, and the trunk `/ship-issue` stays unpinned (see Non-Goals).
+
 ### Table widths
 
 Both affected tables are aligned-style and must not be left mis-padded.
@@ -141,6 +156,7 @@ The `What happens` column's text does change and may shift that column's width; 
 ### `.pi/prompts/sync-worktree.md` (was `ship-worktree.md`)
 
 - Frontmatter `description:` — "Peer-session ship prep" → peer-session sync wording.
+- Frontmatter gains `model: anthropic/claude-sonnet-5` (see Design Overview).
 - H1 `# Ship a worktree branch (peer session)` → `# Sync a worktree branch (peer session)`.
 - Intro: the five `/land-worktree $1` references become `/ship-worktree $1`, each qualified as the **root** half where the sentence does not already say so.
 - `set_session_name` line: `#$1 Ship (worktree)` → `#$1 Sync (worktree)`.
@@ -150,6 +166,7 @@ The `What happens` column's text does change and may shift that column's width; 
 ### `.pi/prompts/ship-worktree.md` (was `land-worktree.md`)
 
 - Frontmatter `description:` — keep the action list, lead with "Root-session ship".
+- Frontmatter gains `model: anthropic/claude-sonnet-5` (see Design Overview).
 - H1 `# Land a worktree branch (root session)` → `# Ship a worktree branch (root session)`.
 - New `## 0. Confirm you are at the root, not in a worktree` pre-step (see Design Overview), placed above the `set_session_name` line and the Release coordination section.
 - `set_session_name` line: `#$1 Land` → `#$1 Ship (worktree)`.
@@ -206,6 +223,9 @@ Each was dry-run at planning time; the "before" column is the measured current s
 
 `rumdl check` is the instrument that catches an MD060 table mis-padding introduced by the `README.md` column edits — do not eyeball the alignment.
 
+The model pin has its own check: `grep -c '^model:' .pi/prompts/*-worktree.md` returns `0` for both files today and must return `1` for each of `sync-worktree.md` and `ship-worktree.md` afterward.
+There is no run-time assertion available — a wrong alias falls back silently to the session model — so the value is verified by matching the string against a file that already resolves it (`.pi/prompts/finish-phase.md`).
+
 ## Invariants at risk
 
 - **The peer transcript path stays reachable from `/retro`.**
@@ -221,7 +241,7 @@ Each was dry-run at planning time; the "before" column is the measured current s
 
 ## Build Order
 
-Three commits, each leaving the repo internally consistent.
+Four commits, each leaving the repo internally consistent.
 
 1. **Rename the prompt pair and rewrite both files.**
    `git mv .pi/prompts/ship-worktree.md .pi/prompts/sync-worktree.md`, then `git mv .pi/prompts/land-worktree.md .pi/prompts/ship-worktree.md` — in that order.
@@ -237,6 +257,11 @@ Three commits, each leaving the repo internally consistent.
    All prose references, both Mermaid diagrams, and both aligned tables.
    Verify: the full Test Impact Analysis table above, plus `pnpm run lint` unpiped.
    Commit: `docs: update AGENTS.md and README for the worktree command rename (#843)`.
+4. **Pin both worktree prompts to `claude-sonnet-5`.**
+   Add `model: anthropic/claude-sonnet-5` to the frontmatter of `.pi/prompts/sync-worktree.md` and `.pi/prompts/ship-worktree.md`.
+   Kept as its own commit so the rename diff stays a pure rename and this behavior change is reviewable on its own.
+   Verify: `grep -c '^model:' .pi/prompts/*-worktree.md` returns `1` for each file, the value matches `.pi/prompts/finish-phase.md`'s exactly (`grep '^model:' .pi/prompts/finish-phase.md`), and `pnpm exec rumdl check .pi/prompts/` is clean.
+   Commit: `docs: run the worktree ship-flow prompts on claude-sonnet-5 (#843)`.
 
 ## Risks and Mitigations
 
