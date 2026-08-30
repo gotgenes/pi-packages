@@ -344,7 +344,7 @@ src/
 │
 ├── session/                        session assembly and preparation
 │   ├── session-config.ts           pure assembler (main entry)
-│   ├── prompts.ts                  system prompt building; strips the inherited parent cwd footer when the child runs elsewhere (#640)
+│   ├── prompts.ts                  system prompt building; inherits only the parent prompt's identity, cutting the session-resolved tail (ADR 0006)
 │   ├── content-items.ts            shared message content parsing (tool-call names, assistant content)
 │   ├── context.ts                  parent conversation extraction
 │   ├── conversation.ts             render a session's messages as formatted text
@@ -782,7 +782,7 @@ The operator's cadence decision: keep the regular improvement rotation after thi
 | `invocation` storage-chain and widget-filter sites (`src/lifecycle/` + `src/ui/agent-widget.ts`) | 8          | 0 ✅            | `grep -rEn 'invocation\??:\|\.invocation\b' packages/pi-subagents/src/lifecycle packages/pi-subagents/src/ui/agent-widget.ts --include='*.ts' \| wc -l` |
 | Blanket `agentConfig?.<field> ?? params` precedence merges in `invocation-config.ts`             | 5          | 0 ✅            | `grep -cE 'agentConfig\?\..*\?\?' packages/pi-subagents/src/config/invocation-config.ts`                                                                |
 | Foreground result text carries the resume handle (`Agent ID` in `foreground-runner.ts`)          | 0          | ≥ 1             | `grep -c 'Agent ID' packages/pi-subagents/src/tools/foreground-runner.ts`                                                                               |
-| Inherited-prompt skills-block strip present in `prompts.ts`                                      | 0          | ≥ 1             | `grep -c 'available_skills' packages/pi-subagents/src/session/prompts.ts`                                                                               |
+| Inherited-prompt skills-block strip present in `prompts.ts`                                      | 0          | 3 ✅            | `grep -c 'available_skills' packages/pi-subagents/src/session/prompts.ts`                                                                               |
 | Dead code / production duplication                                                               | 0 / 0      | 0 / 0           | `pnpm fallow dead-code --workspace @gotgenes/pi-subagents` / `pnpm fallow dupes --workspace @gotgenes/pi-subagents`                                     |
 
 The `Agent ID` and `available_skills` rows grep for names the fix has not created yet; Steps 5 and 7 must either use those spellings or update the row in the same commit.
@@ -875,7 +875,7 @@ The seam-context test was strengthened rather than trimmed: `toHaveBeenCalledWit
 
 Release: batch "front-door-majors"
 
-#### Step 5 — Strip the inherited `available_skills` block from child prompts ([#801])
+#### ✅ Step 5 — Strip the inherited `available_skills` block from child prompts ([#801])
 
 Cause: `buildAgentPrompt` embeds the parent's effective system prompt verbatim for KV-cache reuse, but Pi regenerates per-session appendages for the child — so the child gets two skills blocks, exactly the class [#640] fixed for the cwd footer, where the strip is per-appendage rather than principled.
 Smell: Category C (boundary flaw in prompt inheritance) plus `bug`.
@@ -884,6 +884,13 @@ Design note: match [#640]'s discipline — strip only when the duplication is re
 Outcome: an assembled child prompt contains one `available_skills` block, pinned by a regression test; the `prompts.ts` grep row goes 0 → ≥ 1.
 Commit type: `fix:`.
 Impact 3 / Risk 2 / Priority 12.
+
+Landed: the strip is principled rather than per-appendage — `inheritedIdentity` cuts the inherited prompt at the first layer Pi resolves per session and keeps what precedes it, so the catalogue, the cwd footer, and the blocks extensions append from `before_agent_start` all stop at the boundary.
+The design note's "strip only when the duplication is real" could not be honored as written: the child's skills are resolved after `buildAgentPrompt` runs, so the two catalogues cannot be compared at assembly time, and every reachable case — identical, cwd-divergent, or a `read`-less agent that gets no catalogue of its own — wants the inherited copy gone.
+The answer to "whether other Pi-appended blocks belong to the same strip" is yes, including the extension tail, which costs less shared prefix than excising around it would: nothing remaining in the child's prompt moves out of the cached region, so its prefilled token count is unchanged.
+[#640]'s equal-cwd exception was withdrawn as a consequence rather than a choice — the catalogue precedes the footer, so the exception preserved no prefix once the catalogue was cut.
+The `prompts.ts` grep row went 0 → 3 (measured).
+Recorded as `docs/decisions/0006-inherited-prompt-is-identity-only.md`; [#846] tracks the `@gotgenes/pi-nocd` docs this invalidates.
 
 Release: independent
 
@@ -931,7 +938,7 @@ flowchart TD
     S1 --> S4["✅ Step 4 (#828)<br/>Remove vacant seam field"]
     S1 -.soft.-> S2["✅ Step 2 (#830)<br/>SubagentRecord policy"]
     S7["Step 7 (#798)<br/>Foreground resume handle"] -.soft.-> S8["Step 8 (#465)<br/>Ask-back"]
-    S5["Step 5 (#801)<br/>Skills-block strip"]
+    S5["✅ Step 5 (#801)<br/>Skills-block strip"]
     S6["Step 6 (#827)<br/>UICtx capture"]
 ```
 
@@ -1061,5 +1068,6 @@ The upstream test suite is run periodically as a regression canary for the sessi
 [#829]: https://github.com/gotgenes/pi-packages/issues/829
 [#830]: https://github.com/gotgenes/pi-packages/issues/830
 [#834]: https://github.com/gotgenes/pi-packages/issues/834
+[#846]: https://github.com/gotgenes/pi-packages/issues/846
 [ADR-0002]: ../decisions/0002-extensions-on-a-minimal-core.md
 [ADR-0004]: ../decisions/0004-reconsider-ui-direction.md
