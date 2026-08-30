@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [21.0.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v20.1.0...pi-subagents-v21.0.0) (2026-08-30)
+
+
+### ⚠ BREAKING CHANGES
+
+* **pi-subagents:** `WorkspacePrepareContext` no longer carries `invocation`. A `WorkspaceProvider` that read `ctx.invocation` must drop the read; there is no replacement field. The value was a UI display snapshot - `modelName` was a lowercased display string, and `undefined` whenever it matched the parent's model - so it never carried usable per-call facts. If a provider needs one, open an issue naming the fact: the seam will grow a purpose-built field (`isBackground`, `model`, `maxTurns`), not the display snapshot.
+* **pi-subagents:** an agent .md that sets model, thinking, max_turns, inherit_context, or run_in_background no longer overrides a subagent tool call that names the same field. Add `locked: true` to the agent's frontmatter to restore the previous behavior for every field the file sets, or `locked: [model, thinking]` to hold only some. A field named in the list form is withheld from callers even when the file supplies no value of its own.
+
+### Bug Fixes
+
+* **pi-subagents:** honor subagent tool parameters over agent frontmatter unless the agent locks the field ([832d261](https://github.com/gotgenes/pi-packages/commit/832d261501000b847f193a91c359ddc7c1437ccf)), closes [#829](https://github.com/gotgenes/pi-packages/issues/829)
+* **pi-subagents:** reject an unrecognized thinking level instead of silently disabling thinking ([d1bc031](https://github.com/gotgenes/pi-packages/commit/d1bc03162050d1bc7ca8b9eebe9ab54dca768cfa))
+* **pi-subagents:** report a locked field that discarded a subagent parameter ([c0f9ccf](https://github.com/gotgenes/pi-packages/commit/c0f9ccfddbe63aa9bb543cb226e44769a37732fd)), closes [#829](https://github.com/gotgenes/pi-packages/issues/829)
+* **pi-subagents:** report an unknown agent type on background spawns ([7c2a518](https://github.com/gotgenes/pi-packages/commit/7c2a518afde41e803f03a3406ecf43531acec74e)), closes [#829](https://github.com/gotgenes/pi-packages/issues/829)
+
+
+### Documentation
+
+* **pi-subagents:** clarify what modelFromParams reports under locked fields ([45da58b](https://github.com/gotgenes/pi-packages/commit/45da58b755948ee06255be90ab4d0eaffb4fb3d8)), closes [#829](https://github.com/gotgenes/pi-packages/issues/829)
+* **pi-subagents:** correct which spawn options agent frontmatter fills ([f25d283](https://github.com/gotgenes/pi-packages/commit/f25d28392d3a98b684753b3cd005f10f062b6cc6)), closes [#829](https://github.com/gotgenes/pi-packages/issues/829)
+* **pi-subagents:** document locked-field precedence and the corrected thinking levels ([86e59a6](https://github.com/gotgenes/pi-packages/commit/86e59a6f2b0c358e8f48697efd6aece757367e17))
+
+
+### Code Refactoring
+
+* **pi-subagents:** drop the unread invocation field from the workspace seam ([4942e09](https://github.com/gotgenes/pi-packages/commit/4942e094adfba104e711b8f4bada2d27ffa8e3e3))
+
 ## [20.1.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v20.0.1...pi-subagents-v20.1.0) (2026-08-29)
 
 
