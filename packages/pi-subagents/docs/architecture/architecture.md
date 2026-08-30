@@ -897,7 +897,7 @@ Recorded as `docs/decisions/0006-inherited-prompt-is-identity-only.md`; [#846] t
 
 Release: independent
 
-#### Step 6 — Capture `UICtx` outside the tool-call path so the widget can render ([#827])
+#### ✅ Step 6 — Capture `UICtx` outside the tool-call path so the widget can render ([#827])
 
 Cause: temporal coupling — the widget's ability to render is keyed to an unrelated event (`tool_execution_start` is the sole `setUICtx` site), so a session whose model never calls a tool has a permanently dark widget even for agents passing its roster filter; reachable today from any command-driven `SubagentsService.spawn`.
 Smell: Category C (coupling/boundary flaw) plus `bug`.
@@ -907,6 +907,15 @@ SDK facts pre-verified in the issue against `@earendil-works/pi-coding-agent@0.7
 Outcome: the widget renders in a session with no model tool call, pinned by a regression test.
 Commit type: `fix:`.
 Impact 3 / Risk 2 / Priority 12.
+
+Landed: the capture is a push at `session_start`, wired from the composition root as its own registration — Pi fans an event out to every handler an extension registers for it, so the widget's concern did not have to share a lambda with the session-lifecycle one.
+The lazy-supplier alternative was refuted before the design gate rather than weighed at it: `ExtensionAPI` exposes no ambient `ui`, only the per-event `ctx.ui`, so a supplier still needs an event-driven capture and only adds an indirection.
+The `finishedTurnAge` loose end was settled by retargeting the aging signal to `turn_start` rather than by a wall clock, which also corrected a miscount the move exposed: `onTurnStart` fires once per **tool call** on `tool_execution_start`, so a row seeded mid-turn could age out on the turn's second tool call.
+`ToolStartHandler` became `WidgetEventsHandler` with one method per event, and the extension no longer subscribes to `tool_execution_start`.
+The history file settled the step's open question: [#423]'s invariant is about inbound calls from **spawn tools**, so the tool-call gate protected nothing and `ToolStartHandler` was merely where a `ctx` was in hand.
+Two gaps surfaced that the plan's file list did not name: `test/print-mode.test.ts` carries its own one-handler-per-event fixture and needed the same fan-out fix, and the widget's `turn_start` registration was unpinned — deleting it left all 1352 tests green until a fourth composition-root test was added.
+Incidentally closes a timer leak: `clearWidget()` was unreachable while `uiCtx` was undefined, so a background spawn in headless mode left the 80 ms interval running until process exit.
+[#849] tracks the teardown half (`AgentWidget.dispose()` has no call site) as Step 9.
 
 Release: independent
 
@@ -956,7 +965,7 @@ flowchart TD
     S1 -.soft.-> S2["✅ Step 2 (#830)<br/>SubagentRecord policy"]
     S7["Step 7 (#798)<br/>Foreground resume handle"] -.soft.-> S8["Step 8 (#465)<br/>Ask-back"]
     S5["✅ Step 5 (#801)<br/>Skills-block strip"]
-    S6["Step 6 (#827)<br/>UICtx capture"] --> S9["Step 9 (#849)<br/>Widget teardown"]
+    S6["✅ Step 6 (#827)<br/>UICtx capture"] --> S9["Step 9 (#849)<br/>Widget teardown"]
 ```
 
 ### Parallel tracks
