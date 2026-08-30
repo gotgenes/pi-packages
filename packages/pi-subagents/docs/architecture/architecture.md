@@ -406,7 +406,7 @@ src/
     ├── index.ts                    barrel re-export
     ├── interrupt.ts                turn_start handler — abort all subagents on parent interrupt (ESC), when policy allows
     ├── lifecycle.ts                session_start, session_before_switch, session_shutdown
-    └── tool-start.ts               tool_execution_start handler
+    └── widget-events.ts            widget's host events — session_start (UI context) and turn_start (linger aging)
 ```
 
 ### Observation model

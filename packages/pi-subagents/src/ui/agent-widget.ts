@@ -88,7 +88,7 @@ export class AgentWidget implements SubagentManagerObserver {
     private registry: AgentTypeRegistry,
   ) {}
 
-  /** Set the UI context (grabbed from first tool execution). */
+  /** Set the UI context (captured at session_start). */
   setUICtx(ctx: UICtx) {
     if (ctx !== this.uiCtx) {
       // UICtx changed — the widget registered on the old context is gone.
@@ -101,7 +101,7 @@ export class AgentWidget implements SubagentManagerObserver {
   }
 
   /**
-   * Called on each new turn (tool_execution_start).
+   * Called on each new turn (turn_start).
    * Ages finished agents and clears those that have lingered long enough.
    */
   onTurnStart() {

@@ -6,7 +6,7 @@
  * `test/session/provider-inheritance.test.ts`, but those tests pass whether or
  * not the root calls it — only this file fails if the wiring is removed.
  */
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const sdk = vi.hoisted(() => {
   interface Recorded {
@@ -57,6 +57,7 @@ vi.mock("#src/lifecycle/create-subagent-session", async () => {
 
 import subagentsExtension from "#src/index";
 import { createSubagentSession } from "#src/lifecycle/create-subagent-session";
+import { getSubagentsService } from "#src/service/service";
 import { createMockSession, createSubagentSessionStub, toSubagentSession } from "./helpers/mock-session";
 
 function makePi() {
@@ -112,6 +113,32 @@ function makeParentRegistry() {
   };
 }
 
+/** A UI context that records what the widget registers on it. */
+function makeRecordingUI() {
+  return { setStatus: vi.fn(), setWidget: vi.fn() };
+}
+
+/** The session context Pi hands a `session_start` handler. */
+function makeSessionStartCtx(
+  parentRegistry: unknown,
+  ui: ReturnType<typeof makeRecordingUI>,
+  hasUI = false,
+) {
+  return {
+    hasUI,
+    ui,
+    cwd: "/tmp",
+    model: undefined,
+    modelRegistry: parentRegistry,
+    sessionManager: {
+      getSessionId: vi.fn(() => "session-1"),
+      getSessionFile: vi.fn(() => "/sessions/parent.jsonl"),
+      getBranch: vi.fn(() => []),
+    },
+    getSystemPrompt: vi.fn(() => "parent prompt"),
+  } as any;
+}
+
 /** Run the extension far enough to capture the deps bag the root assembled. */
 async function captureSessionFactoryIO(parentRegistry: unknown) {
   vi.mocked(createSubagentSession).mockResolvedValue(
@@ -119,23 +146,7 @@ async function captureSessionFactoryIO(parentRegistry: unknown) {
   );
   const { pi, tools, fire } = makePi();
   subagentsExtension(pi);
-  await fire(
-    "session_start",
-    {},
-    {
-      hasUI: false,
-      ui: { setStatus: vi.fn(), setWidget: vi.fn() },
-      cwd: "/tmp",
-      model: undefined,
-      modelRegistry: parentRegistry,
-      sessionManager: {
-        getSessionId: vi.fn(() => "session-1"),
-        getSessionFile: vi.fn(() => "/sessions/parent.jsonl"),
-        getBranch: vi.fn(() => []),
-      },
-      getSystemPrompt: vi.fn(() => "parent prompt"),
-    } as any,
-  );
+  await fire("session_start", {}, makeSessionStartCtx(parentRegistry, makeRecordingUI()));
 
   await tools.get("subagent").execute(
     "tool-call-1",
@@ -202,5 +213,65 @@ describe("composition root: io.createSession", () => {
       authPath: "/mock/agent-dir/auth.json",
       modelsPath: "/mock/agent-dir/models.json",
     });
+  });
+});
+
+describe("composition root: widget activation", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("renders the widget for an agent spawned with no model tool call", async () => {
+    vi.mocked(createSubagentSession).mockResolvedValue(
+      toSubagentSession(createSubagentSessionStub(createMockSession(), "/sessions/child.jsonl")),
+    );
+    const { pi, fire } = makePi();
+    subagentsExtension(pi);
+
+    const ui = makeRecordingUI();
+    await fire("session_start", {}, makeSessionStartCtx(makeParentRegistry().registry, ui, true));
+
+    // The reported path: a command handler spawning through the published
+    // service, so nothing in the parent loop ever emits a tool call.
+    getSubagentsService()!.spawn("general-purpose", "hi", { description: "child" });
+
+    expect(ui.setWidget).toHaveBeenCalled();
+
+    await fire("session_shutdown", {}, {});
+  });
+
+  it("ages a finished agent out of the widget on the parent's next turn", async () => {
+    vi.mocked(createSubagentSession).mockResolvedValue(
+      toSubagentSession(createSubagentSessionStub(createMockSession(), "/sessions/child.jsonl")),
+    );
+    const { pi, fire } = makePi();
+    subagentsExtension(pi);
+
+    const ui = makeRecordingUI();
+    await fire("session_start", {}, makeSessionStartCtx(makeParentRegistry().registry, ui, true));
+
+    getSubagentsService()!.spawn("general-purpose", "hi", { description: "child" });
+    await vi.advanceTimersByTimeAsync(300);
+
+    // The run finished within this turn, so the row is seeded at age 0 and still shown.
+    expect(ui.setWidget).toHaveBeenLastCalledWith("agents", expect.any(Function), expect.anything());
+
+    await fire("turn_start", {}, { signal: undefined });
+
+    expect(ui.setWidget).toHaveBeenLastCalledWith("agents", undefined);
+
+    await fire("session_shutdown", {}, {});
+  });
+
+  it("no longer subscribes to tool_execution_start", () => {
+    const { pi, handlers } = makePi();
+
+    subagentsExtension(pi);
+
+    expect(handlers.has("tool_execution_start")).toBe(false);
   });
 });

@@ -24,7 +24,7 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import { AgentTypeRegistry } from "#src/config/agent-types";
 import { loadCustomAgents } from "#src/config/custom-agents";
-import { InterruptHandler, SessionLifecycleHandler, ToolStartHandler } from "#src/handlers/index";
+import { InterruptHandler, SessionLifecycleHandler, WidgetEventsHandler } from "#src/handlers/index";
 import { createChildLifecyclePublisher } from "#src/lifecycle/child-lifecycle";
 import { ConcurrencyLimiter } from "#src/lifecycle/concurrency-limiter";
 import { createSubagentSession, type SubagentSessionDeps } from "#src/lifecycle/create-subagent-session";
@@ -182,23 +182,26 @@ export default function (pi: ExtensionAPI) {
     unpublishSubagentsService,
   );
 
-  pi.on("session_start", (event, ctx) => lifecycle.handleSessionStart(event, ctx));
-  pi.on("session_before_switch", () => lifecycle.handleSessionBeforeSwitch());
-  pi.on("session_shutdown", () => lifecycle.handleSessionShutdown());
-
   // Live widget: constructed after the manager (it polls listAgents()) and
   // registered as a lifecycle observer so it self-drives its update timer.
   const widget = new AgentWidget(manager, registry);
   observer.add(widget);
 
-  // Grab UI context from first tool execution + clear lingering widget on new turn
-  const toolStart = new ToolStartHandler(widget);
-  pi.on("tool_execution_start", (event, ctx) => toolStart.handleToolExecutionStart(event, ctx));
+  // Give the widget its UI context and its turn ticks. Pi fans an event out to
+  // every handler an extension registers for it, so these take their own
+  // registrations rather than sharing a lambda with an unrelated concern.
+  const widgetEvents = new WidgetEventsHandler(widget);
+
+  pi.on("session_start", (event, ctx) => lifecycle.handleSessionStart(event, ctx));
+  pi.on("session_start", (event, ctx) => widgetEvents.handleSessionStart(event, ctx));
+  pi.on("session_before_switch", () => lifecycle.handleSessionBeforeSwitch());
+  pi.on("session_shutdown", () => lifecycle.handleSessionShutdown());
 
   // Abort all subagents when the parent agent loop is interrupted (ESC), unless
   // the user has turned that policy off. The predicate is read at abort time.
   const interrupt = new InterruptHandler(manager, () => settings.abortAllOnInterrupt);
   pi.on("turn_start", (_event, ctx) => interrupt.handleTurnStart(ctx));
+  pi.on("turn_start", () => widgetEvents.handleTurnStart());
 
   // ---- Agent tool ----
 
