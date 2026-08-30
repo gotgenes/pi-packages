@@ -727,6 +727,32 @@ describe("GateRunner — descriptor path", () => {
       }
     });
 
+    it("reports a serving session's failed escalation as an authority failure", async () => {
+      const { runner } = makeGateRunner({
+        resolveResult: makeCheckResult({ state: "ask", matchedPattern: "*" }),
+        escalate: vi.fn().mockResolvedValue({
+          approved: false,
+          state: "denied",
+          decidedBy: {
+            kind: "forwarded",
+            responderSessionId: "parent-1",
+            decision: { kind: "gate_error", reason: "boom" },
+          },
+        }),
+      });
+      const result = await runner.run(makeDescriptor(), null);
+      expect(result.action).toBe("block");
+      if (result.action === "block") {
+        expect(result.reason).toContain(
+          "The permission authority in the session serving this request failed to answer",
+        );
+        expect(result.reason).not.toContain("The user denied");
+        // The detail rides `decidedBy.reason`; this decision carries no
+        // `denialReason`, so a render reading that would drop it silently.
+        expect(result.reason).toContain("Reason: boom.");
+      }
+    });
+
     it("renders the user's denial reason with the extension tag", async () => {
       const { runner } = makeGateRunner({
         resolveResult: makeCheckResult({ state: "ask", matchedPattern: "*" }),
