@@ -42,3 +42,13 @@ The plan landed as `docs/plans/0843-worktree-ship-flow-command-names.md` with th
 - **Two self-inflicted slips caught by the gates.**
   The plan's first draft cited a commit SHA (`edf1a1b`) from memory rather than `git rev-parse` — exactly the invention `AGENTS.md` warns about — and wrote `issue #829` as plain text while defining a `[#829]:` reference, which `rumdl` rejected as MD053.
   Both were fixed before the commit.
+
+## Stage: User Note (2026-08-30T03:50:28Z)
+
+The `pre-completion-reviewer` agent has a habit of running `find /`.
+The operator wants that command denied.
+
+This is a recurrence of the guardrail `AGENTS.md` already records under Refs #696: a read-only agent still needs a scope bound, because `find /` walks every mounted volume, trips the `pi-permission-system` `external_directory` gate, and can read a stale copy of a dependency.
+The prose guardrail is evidently not enough on its own — the operator's ask is a **deny rule**, not another sentence of guidance.
+Candidate homes for the denial: a `pi-permission-system` policy rule matching `find` invocations whose root is outside the repo, or a bound written into `.pi/agents/pre-completion-reviewer.md` itself.
+Out of scope for #843 — recorded here so it is not lost.
