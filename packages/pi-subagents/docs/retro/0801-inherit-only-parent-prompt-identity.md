@@ -87,6 +87,21 @@ The pi-subagents suite went 1337 → 1349 tests (+12), with the whole delta in `
 - Pre-completion reviewer: **WARN** on the first round (two findings, both addressed), **PASS** on the delta re-review.
   The re-review independently confirmed that no `buildSystemPrompt` path writes the catalogue without the footer, checked the `lines[footerAt - 1]` boundary at `footerAt === 0`, and confirmed ADR 0006 does not overclaim the no-footer fallback residual.
 
+## Stage: Sync (worktree) (2026-08-30T20:18:31Z)
+
+### Session summary
+
+Pre-push checks pass clean (`pnpm run lint`, `pnpm fallow dead-code`, both from the worktree root).
+The plan's marker is `**Release:** ship independently` — no defer decision needed at land time.
+The follow-up filed during planning, [#846] (`pi-nocd`'s stale inherited-prompt docs), is untouched by this branch and stays open for its own session.
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-801--/2026-08-30T14-42-05-248Z_01a0531e-d740-7312-87c9-1f07818f45d1.jsonl` — read with `read_session_file({ path: "..." })` for message-level verification at land/retro time.
+
+### Observations
+
+Nothing deferred beyond [#846].
+The TDD stage note above already records the pre-completion reviewer's two rounds (WARN → PASS) and the post-review anchor hardening; the root's `/retro 801` can read both directly.
+
 [#180]: https://github.com/gotgenes/pi-packages/issues/180
 [#400]: https://github.com/gotgenes/pi-packages/issues/400
 [#640]: https://github.com/gotgenes/pi-packages/issues/640
