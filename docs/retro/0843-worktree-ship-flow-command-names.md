@@ -34,6 +34,11 @@ The plan landed as `docs/plans/0843-worktree-ship-flow-command-names.md` with th
   `.rumdl.toml` sets `[MD060] style = "aligned"` and `rumdl fmt` does not re-pad tables.
   The `AGENTS.md` session-naming table happens to keep every column width under the rename (`Worktree sync (peer)` and `Worktree ship (root)` are both 20 chars; `#N Sync (worktree) — <title>` and `#N Ship (worktree) — <title>` are both 30); `README.md`'s workflow table may shift its last column.
 - **Tidy-First skipped** — the change touches no `src/` or `test/` files, which is the skill's applicability gate.
+- **Model pin added after the first plan commit.**
+  The operator asked for both worktree prompts to run on `anthropic/claude-sonnet-5`; they declare no `model:` today and inherit the session model.
+  The alias was confirmed in use by `.pi/prompts/finish-phase.md` and the three `.pi/agents/*.md` files rather than assumed — an unregistered `model:` value falls back silently to the session model, so a typo would produce exactly the behavior the pin removes.
+  Landed as a fourth build step with its own commit, keeping the rename diff a pure rename.
+  The trunk `/ship-issue` was deliberately left unpinned and the asymmetry recorded in Non-Goals rather than resolved here.
 - **Two self-inflicted slips caught by the gates.**
   The plan's first draft cited a commit SHA (`edf1a1b`) from memory rather than `git rev-parse` — exactly the invention `AGENTS.md` warns about — and wrote `issue #829` as plain text while defining a `[#829]:` reference, which `rumdl` rejected as MD053.
   Both were fixed before the commit.
