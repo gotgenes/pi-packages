@@ -48,3 +48,11 @@ The plan adds two arms to `renderRefusal` (`rule`, `gate_error`), carries the se
   Assessor rejected as scope creep: the flat-by-function shape is exactly what two new sibling `describe`s fit into, and there is no repeated-prefix smell to fix.
 - `test/handlers/gates/runner.test.ts` — migrating the file's inline `kind: "forwarded"` `DecisionSource` literals to named fixtures in `decision-fixtures.ts`.
   Assessor rejected: the file already mixes named fixtures with one-off inline literals for forwarded cases, and the new assertions follow the established convention rather than justifying a shared constant.
+
+## Stage: User Note (2026-08-30T18:09:50Z)
+
+Here's a new pattern for the permission model judge to watch for, coming from a worktree — which is new context it does not yet consider: `~/development/pi/pi-permission-system/src/handlers/tool-call-boundary.ts`.
+
+Context from this session: the read was denied on `external_directory_read` with the model judge's reason "wrong path".
+The intended target was `packages/pi-permission-system/src/handlers/tool-call-boundary.ts` **inside the worktree** (`~/development/pi/pi-packages-worktrees/issue-844`), and the path reached for was the standalone upstream fork checkout at `~/development/pi/pi-permission-system/` — a real directory that is not this monorepo's copy of the package.
+The distinguishing signal is that a worktree CWD (`pi-packages-worktrees/issue-<N>`) makes `~/development/pi/<pkg>/…` a *sibling-checkout* read of the same package name, which is a different class from an ordinary outside-CWD read: the file exists, the content looks right, and a stale copy would be silently wrong rather than absent.
