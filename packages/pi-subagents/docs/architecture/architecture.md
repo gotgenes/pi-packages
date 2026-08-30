@@ -779,7 +779,7 @@ The operator's cadence decision: keep the regular improvement rotation after thi
 | Metric                                                                                           | Baseline   | Phase 22 target | Recompute                                                                                                                                               |
 | ------------------------------------------------------------------------------------------------ | ---------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Health score                                                                                     | 78/100 (B) | ≥ 78 (B)        | `pnpm fallow health --score --hotspots --targets --workspace @gotgenes/pi-subagents`                                                                    |
-| `invocation` storage-chain and widget-filter sites (`src/lifecycle/` + `src/ui/agent-widget.ts`) | 8          | 0               | `grep -rEn 'invocation\??:\|\.invocation\b' packages/pi-subagents/src/lifecycle packages/pi-subagents/src/ui/agent-widget.ts --include='*.ts' \| wc -l` |
+| `invocation` storage-chain and widget-filter sites (`src/lifecycle/` + `src/ui/agent-widget.ts`) | 8          | 0 ✅            | `grep -rEn 'invocation\??:\|\.invocation\b' packages/pi-subagents/src/lifecycle packages/pi-subagents/src/ui/agent-widget.ts --include='*.ts' \| wc -l` |
 | Blanket `agentConfig?.<field> ?? params` precedence merges in `invocation-config.ts`             | 5          | 0 ✅            | `grep -cE 'agentConfig\?\..*\?\?' packages/pi-subagents/src/config/invocation-config.ts`                                                                |
 | Foreground result text carries the resume handle (`Agent ID` in `foreground-runner.ts`)          | 0          | ≥ 1             | `grep -c 'Agent ID' packages/pi-subagents/src/tools/foreground-runner.ts`                                                                               |
 | Inherited-prompt skills-block strip present in `prompts.ts`                                      | 0          | ≥ 1             | `grep -c 'available_skills' packages/pi-subagents/src/session/prompts.ts`                                                                               |
@@ -857,7 +857,7 @@ The lock binds the tool door only; [#641] was excluded with rationale (a setting
 
 Release: batch "front-door-majors"
 
-#### Step 4 — Remove the vacant `WorkspacePrepareContext.invocation` field and its dead storage chain ([#828])
+#### ✅ Step 4 — Remove the vacant `WorkspacePrepareContext.invocation` field and its dead storage chain ([#828])
 
 Cause: a provider-seam field no consumer has ever read — the exact case the no-vacant-hooks rule names — kept alive by a storage chain (`AgentSpawnConfig.invocation` → `SubagentInit.invocation` → `Subagent.invocation` → seam) whose only other terminal reader Step 1 removes.
 Smell: Category A (vacant hook; a dead subsystem once Step 1 lands).
@@ -866,6 +866,12 @@ Hard dependency: after Step 1 (otherwise the widget read keeps the chain alive a
 Outcome: `invocation` storage-chain and widget-filter sites drop 8 → 0; `dist/public.d.ts` loses the field (semver-major with migration note).
 Commit type: `refactor(pi-subagents)!:`.
 Impact 3 / Risk 2 / Priority 12.
+
+Landed: `WorkspacePrepareContext` now carries exactly the three fields a provider reads (`agentId`, `agentType`, `baseCwd`), and the storage chain behind it — `AgentSpawnConfig.invocation`, `SubagentInit.invocation`, `Subagent.invocation`, and both tool-door producers — is gone.
+The storage-chain row went 8 → 0.
+The step's premise about the gate was refuted by measurement: a partial removal (the seam field and its call site, chain retained) passes `tsc`, the full suite, and `pnpm fallow dead-code`, so nothing mechanical forced the one-commit shape — only the fact that a half-removed chain leaves the stored-and-unread field the step exists to delete.
+The seam-context test was strengthened rather than trimmed: `toHaveBeenCalledWith` compares with `toEqual` semantics, which ignore an explicitly-`undefined` key, so it could not have seen the field return; it now asserts `toStrictEqual` on the recorded call argument.
+`AgentInvocation` survives as `spawn-config.ts`'s local display snapshot for the tool result's tags.
 
 Release: batch "front-door-majors"
 
@@ -922,7 +928,7 @@ Release: independent
 ```mermaid
 flowchart TD
     S1["✅ Step 1 (#724)<br/>Choke-point parity"] --> S3["✅ Step 3 (#829)<br/>Locked-fields precedence"]
-    S1 --> S4["Step 4 (#828)<br/>Remove vacant seam field"]
+    S1 --> S4["✅ Step 4 (#828)<br/>Remove vacant seam field"]
     S1 -.soft.-> S2["✅ Step 2 (#830)<br/>SubagentRecord policy"]
     S7["Step 7 (#798)<br/>Foreground resume handle"] -.soft.-> S8["Step 8 (#465)<br/>Ask-back"]
     S5["Step 5 (#801)<br/>Skills-block strip"]
@@ -940,6 +946,7 @@ flowchart TD
 
 - **Batch "front-door-majors":** Steps 4, 3 (ship together as one semver-major bump; tail = Step 3).
   Step 3 is `fix!:` and Step 4 is `refactor!:` with a `BREAKING CHANGE:` footer.
+  The two landed in the other order, so Step 4 completed the batch: Step 3's release PR stayed open across it, and both breaking changes ship under the one major bump Step 3's `fix!:` opened.
   Step 2 was provisionally batched here in case its required/optional decision came out breaking; it did not — `SubagentRecord` is produced, never implemented, so its widening is semver-minor and it left the batch as the batch's own line anticipated.
 - Independently releasable: Steps 1, 2, 5, 6, 7, 8.
   Steps 1, 5, 6, 7 are `fix:`, Step 2 is `feat:`, and Step 8 is `feat:` — each an unhidden release vehicle on its own.

@@ -49,7 +49,8 @@ Four exclusion classes follow, and a proposal is answered by naming one of them 
 - **live objects** (rule 1) — `subagentSession`, `abortController`, `promise`, `execution`;
 - **momentary activity** (rule 2) — `activeTools`, `responseText`;
 - **internal bookkeeping** (rule 3) — `consumedAt`, `stoppedWhileQueued`;
-- **display snapshots** (rule 4) — `invocation`, which only the tool door builds.
+- **display snapshots** (rule 4) — `invocation`, which only the tool door built.
+  It was removed from `Subagent` outright by [#828], so this class currently has no live instance; the rule stands on its own and answers the next display snapshot proposed.
 
 ### `SubagentRecord` is produced, not implemented
 
@@ -102,3 +103,4 @@ This was true of every field except `lifetimeUsage`, which was assigned by refer
 
 [#724]: https://github.com/gotgenes/pi-packages/issues/724
 [#748]: https://github.com/gotgenes/pi-packages/pull/748
+[#828]: https://github.com/gotgenes/pi-packages/issues/828
