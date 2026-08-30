@@ -175,20 +175,22 @@ export default function (pi: ExtensionAPI) {
   const service = new SubagentsServiceAdapter(manager, resolveModel, runtime);
   publishSubagentsService(service);
 
+  // Live widget: constructed after the manager (it polls listAgents()) and
+  // registered as a lifecycle observer so it self-drives its update timer.
+  const widget = new AgentWidget(manager, registry);
+
   const lifecycle = new SessionLifecycleHandler(
     runtime,
     manager,
     () => notifications.dispose(),
     unpublishSubagentsService,
+    () => widget.dispose(),
   );
 
   pi.on("session_start", (event, ctx) => lifecycle.handleSessionStart(event, ctx));
   pi.on("session_before_switch", () => lifecycle.handleSessionBeforeSwitch());
   pi.on("session_shutdown", () => lifecycle.handleSessionShutdown());
 
-  // Live widget: constructed after the manager (it polls listAgents()) and
-  // registered as a lifecycle observer so it self-drives its update timer.
-  const widget = new AgentWidget(manager, registry);
   observer.add(widget);
 
   // Grab UI context from first tool execution + clear lingering widget on new turn

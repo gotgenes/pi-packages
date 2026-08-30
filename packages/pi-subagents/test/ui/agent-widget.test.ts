@@ -311,6 +311,30 @@ describe("AgentWidget — self-drives from lifecycle notifications", () => {
 		expect(typeof lastContent()).toBe("function");
 	});
 
+	it("disposes the timer and UI registrations", () => {
+		const setWidget = vi.fn<UICtx["setWidget"]>();
+		const setStatus = vi.fn<UICtx["setStatus"]>();
+		const manager = {
+			listAgents: () => [{
+				isBackground: true,
+				id: "a1",
+				status: "running",
+				completedAt: undefined,
+			}],
+		} as unknown as SubagentManager;
+		const widget = new AgentWidget(manager, new AgentTypeRegistry(() => new Map()));
+		widget.setUICtx({ setWidget, setStatus });
+
+		widget.onSubagentStarted(createTestSubagent({ id: "a1", status: "running" }));
+		expect(vi.getTimerCount()).toBe(1);
+
+		widget.dispose();
+
+		expect(vi.getTimerCount()).toBe(0);
+		expect(setWidget).toHaveBeenLastCalledWith("agents", undefined);
+		expect(setStatus).toHaveBeenLastCalledWith("subagents", undefined);
+	});
+
 	it("renders the finished agent on onSubagentCompleted", () => {
 		const { widget, lastContent } = makeWidget([{ id: "a1", status: "completed", completedAt: 5000 }]);
 

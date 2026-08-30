@@ -12,6 +12,7 @@ describe("SessionLifecycleHandler", () => {
   let mockDispose: ReturnType<typeof vi.fn<LifecycleManager["dispose"]>>;
   let mockDisposeNotifications: ReturnType<typeof vi.fn<() => void>>;
   let mockUnpublishService: ReturnType<typeof vi.fn<() => void>>;
+  let mockDisposeWidget: ReturnType<typeof vi.fn<() => void>>;
   let handler: SessionLifecycleHandler;
 
   beforeEach(() => {
@@ -22,6 +23,7 @@ describe("SessionLifecycleHandler", () => {
     mockDispose = vi.fn(() => Promise.resolve());
     mockDisposeNotifications = vi.fn();
     mockUnpublishService = vi.fn();
+    mockDisposeWidget = vi.fn();
 
     runtime = {
       setSessionContext: mockSetSessionContext,
@@ -38,6 +40,7 @@ describe("SessionLifecycleHandler", () => {
       manager,
       mockDisposeNotifications,
       mockUnpublishService,
+      mockDisposeWidget,
     );
   });
 
@@ -112,6 +115,7 @@ describe("SessionLifecycleHandler", () => {
       await handler.handleSessionShutdown();
 
       expect(mockUnpublishService).toHaveBeenCalled();
+      expect(mockDisposeWidget).toHaveBeenCalled();
       expect(mockClearSessionContext).toHaveBeenCalled();
       expect(mockAbortAll).toHaveBeenCalled();
       expect(mockDisposeNotifications).toHaveBeenCalled();
@@ -121,6 +125,7 @@ describe("SessionLifecycleHandler", () => {
     it("calls cleanup in correct order", async () => {
       const callOrder: string[] = [];
       mockUnpublishService.mockImplementation(() => { callOrder.push("unpublishService"); });
+      mockDisposeWidget.mockImplementation(() => { callOrder.push("disposeWidget"); });
       mockClearSessionContext.mockImplementation(() => {
         callOrder.push("clearSessionContext");
       });
@@ -140,6 +145,7 @@ describe("SessionLifecycleHandler", () => {
       // cannot recall a message already handed to it.
       expect(callOrder).toEqual([
         "unpublishService",
+        "disposeWidget",
         "clearSessionContext",
         "disposeNotifications",
         "abortAll",
