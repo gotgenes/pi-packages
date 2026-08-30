@@ -177,7 +177,7 @@ Bundle the first `ask_user`: the declared candidate, the track composition, the 
 **Feasibility probe.**
 Before committing any step whose outcome claim depends on the SDK/type surface (e.g. "remove the file-level `eslint-disable` once the SDK exports usable types"), confirm the named type or export actually exists in the real surface (SDK `.d.ts`, `--help`, schema).
 Do not commit an outcome the surface cannot deliver — this mirrors the AGENTS.md rule that a named remediation in a migration note must be verified against the real surface.
-For an SDK **UI or behavioral** capability (not just "does this method exist"), confirm the behavior in the Pi core source (`~/development/pi/pi`) and a sibling extension that already uses it, not only the exported type — a `.d.ts` says a method exists but not that it behaves the way the step needs (e.g. `ctx.ui.custom` renders inline by default only per the core's `overlay ?? false`, invisible in the type signature).
+For an SDK **UI or behavioral** capability (not just "does this method exist"), confirm the behavior in the Pi core source (`../pi`, or `../../pi` from a worktree) and a sibling extension that already uses it, not only the exported type — a `.d.ts` says a method exists but not that it behaves the way the step needs (e.g. `ctx.ui.custom` renders inline by default only per the core's `overlay ?? false`, invisible in the type signature).
 
 ## Output
 

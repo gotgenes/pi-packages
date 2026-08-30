@@ -164,6 +164,10 @@ A subagent's prompt now carries exactly one skills catalogue and one working-dir
 - **Unused-tool detection** — the SDK trace above is the one case where a dispatch was available and not used.
   The countervailing argument is genuine: what the trace had to establish was a *universal* claim (`buildSystemPrompt` writes the footer after the catalogue in **both** branches, unconditionally), and `AGENTS.md` separately warns that a subagent's universal claim is the one that must be re-verified.
   A delegated summary here would have had to be re-derived inline before the design could rest on it.
+- **A `mise.toml` environment variable was considered for the SDK checkout path and rejected on evidence.**
+  `pi-permission-system` resolves shell variables in two closed sets — `expand-home.ts` handles `~`/`$HOME`/`${HOME}` for config patterns, and `shell-variable-expansion.ts` handles `HOME`/`PWD` for the bash path projection — and the latter's docstring states the set is deliberately closed so "ADR 0003's exclusion of ambient host state stands".
+  A custom variable would therefore never match a permission rule, would be misclassified as a cwd-relative token in a bash command rather than merely ignored, and would not expand at all in a `Read` tool path.
+  Widening `RESOLVABLE_VARIABLES` would breach that ADR and ADR 0009's completeness contract, and it would not remove the machine-specific path regardless — the allow-rule still needs a concrete or `~`-prefixed pattern in machine-local config.
 - **Feedback-loop gap analysis** — no gap.
   Baseline (`check`, root `lint`, `test`, `fallow dead-code`) was established before step 1; `pnpm run check` ran inside steps 1, 2, and the two review-round commits; the package suite ran after every Green; the killing mutation for each step ran before its commit.
   The changelog preview at end-of-cycle caught a `fix:` subject naming the seam rather than the symptom, and it was reworded before anything was pushed.
@@ -172,12 +176,15 @@ A subagent's prompt now carries exactly one skills catalogue and one working-dir
 
 1. `.pi/prompts/tdd-plan.md` — added a fourth case to "Verify the pins", making mutation verification mandatory when a new test stayed green during Red.
    The existing three cases cover signature-change reds, tests authored after Green, and multi-class steps; a test that never went red at all was the gap this issue fell through.
-2. `AGENTS.md` § Workflow — corrected the Pi SDK checkout path from `../pi` to `~/development/pi/pi`.
-   The relative form resolves only from the root checkout; from a worktree (`~/development/pi/pi-packages-worktrees/issue-<N>`) it points at a nonexistent `pi-packages-worktrees/pi` and would need `../../pi`.
-   The planning session had already worked around this by probing `~/development/pi/pi` directly, so the doc was describing a path no recent session actually used.
+2. `AGENTS.md` § Workflow — corrected the Pi SDK checkout reference, which named only `../pi`.
+   That resolves from the root checkout but not from a worktree, which sits one level deeper (`pi-packages-worktrees/issue-<N>`), where the bare form points at a nonexistent `pi-packages-worktrees/pi` and the correct spelling is `../../pi`.
+   The planning session had already worked around this by probing an absolute path directly, so the doc was describing a path no worktree session could use.
+   The fix states both depths rather than an absolute path, which would have been machine-specific in a committed, public file.
 3. `AGENTS.md` § Workflow — added the inline carve-out to the `Explore`-dispatch rule: keep an SDK trace inline when its output is a universal claim the design will rest on.
    This reconciles the dispatch rule with the existing warning that a subagent's universal claim is the one that must be re-verified.
-4. `packages/pi-subagents/docs/retro/0801-inherit-only-parent-prompt-identity.md` — this Final Retrospective entry.
+4. `.pi/prompts/plan-improvements.md` — applied the same path correction to the one other place that named the Pi core checkout, which hardcoded an absolute home path.
+   `AGENTS.md`'s remaining `~/development/pi/pi-packages-worktrees/issue-<N>` reference is **not** the same defect and was left alone: `scripts/worktree-new.sh` genuinely defaults `WORKTREE_PARENT` to that path, so the doc describes this repo's own tooling rather than asserting a universal fact.
+5. `packages/pi-subagents/docs/retro/0801-inherit-only-parent-prompt-identity.md` — this Final Retrospective entry.
 
 [#180]: https://github.com/gotgenes/pi-packages/issues/180
 [#400]: https://github.com/gotgenes/pi-packages/issues/400
