@@ -101,6 +101,9 @@ For the same reason the `serving/` directory is created on demand and never remo
 A regression test pins it ("re-announces while a drain is still in flight").
 Every `ParentAuthorizer` abandonment path sets `confirmationUnavailable: true` with a path-naming `denialReason` and a matching `decidedBy: { kind: "unavailable" }`; `PermissionGateParams.messages.refusedReason` is therefore a function of the decision, not a precomputed string.
 Which refusal sentence the agent gets is dispatched once, at `renderRefusal` (`src/presentation/agent-renderer.ts`), on `effectiveDecider(decision.decidedBy)` — not on the `confirmationUnavailable` marker, which attributed a chain link's denial to the human (Refs #772).
+The dispatch reads the **outer** frame too (`decidedBy.kind === "forwarded"`), because a refusal decided one hop away has to say so; the responder's session id stays undisclosed, so the render says another session decided and never which (Refs #844).
+A forwarded refusal names the *deciding* node's rule pattern rather than the payload's `matchedPattern`, which is the rule that raised this session's own ask — hence `identification` takes its rule clause as a parameter, and `askRuleClause` names the local one.
+ADR 0011 §10 is the disclosure boundary: the deciding rule's pattern, its deny reason, and an escalation's error text may reach the requesting agent; the responder session id and the rule's `origin` may not.
 The `forwarded_permission.no_serving_session` entry records `servingChannel` and `servingState` beside the ids observed, since "exited", "killed", and "polling a different session id" are different diagnoses the shared denial string does not distinguish.
 
 **The `SubagentSessionRegistry` is process-global.**
