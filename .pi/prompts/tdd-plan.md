@@ -81,6 +81,7 @@ For **each** step in the plan's "TDD Order", in order:
    Run only the affected test file: `pnpm --filter @gotgenes/<pkg> exec vitest run <test-path>` and confirm failures (plain `pnpm vitest run` fails at the repo root in this workspace).
    When the step pins a literal pattern (regex, glob, format string), derive your own input set — the plan's examples are a floor, not the case list.
    Run the pattern over the values the repo already produces in bulk (`git tag --list`, `gh pr list`) before committing (Refs #817).
+   When the step quotes a string the code under test **produces** (a rendered sentence, an error message), copy it from the producer or an existing assertion — a plan transcribes it from memory and drops an article (Refs #772, #844).
 2. **Green.**
    Implement the minimum code to make those tests pass.
    Re-run the same file and confirm green.
@@ -95,6 +96,8 @@ For **each** step in the plan's "TDD Order", in order:
 
    Save the green file first (`cp <file> /tmp/green.ts`) and restore from that copy; `git checkout -- <file>` reverts to HEAD, discarding the step's own uncommitted green edit (Refs #830).
    Re-run before committing; never commit with a mutation in the tree.
+   Apply the mutation with `Edit`, and confirm the file changed before reading the suite — a scripted multi-line substitution that matches nothing reads exactly like a mutation that killed nothing.
+   Count the reds against the step's prediction: a mutation that kills fewer tests than the plan named is a finding, not a pass — either the test was never written or the plan's claim was wrong (Refs #844).
 4. **Commit.**
    Use the commit message the plan suggests, or a Conventional Commits message that matches:
    - `test:` for test-only commits (rare; usually folded into the feat).

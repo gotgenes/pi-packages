@@ -104,3 +104,73 @@ The plan's `**Release:** ship independently` marker holds; no deferred work or n
 ### Observations
 
 Nothing further to flag; the branch was already green from the TDD stage's own checks moments earlier.
+
+## Stage: Final Retrospective (2026-08-30T19:56:07Z)
+
+### Session summary
+
+Landed #844 through the two-session worktree convergence: the peer's `/sync-worktree` left the branch green and already linear on `origin/main`, and the root's `/ship-worktree` fast-forwarded eight commits onto `main`, watched CI green, closed the issue, merged the component-scoped release PR, and tagged `pi-permission-system-v28.0.1`.
+The ship half ran without a retry, a correction, or a fallback path — every prompt step executed exactly once.
+The retrospective's material therefore comes almost entirely from the planning and TDD stages, where three of the four friction points cluster around one mechanism: the killing-mutation run.
+
+### Observations
+
+#### What went well
+
+- **Both operator interventions during TDD were questions, not corrections, and the cheap one was wrong while the cheap one was right.**
+  `return decidedElsewhere ? "" : "";` can be simplified, no?
+  was a live mutant misread as production code and cost a single tool call to resolve.
+  Is this comment still accurate?
+  found a genuine defect the agent had just introduced.
+  An interrogative intervention prices its own false positives at roughly one tool call, which is what makes asking on a hunch worth it; a corrective one would have had the agent "fixing" a mutant.
+- **The close-comment anchor added for #817 worked on its first component-scoped release.**
+  `git log --grep="docs: plan .*(#844)"` resolved the plan commit on the first try, and `1b21f914^..HEAD` bounded the range to this issue's eight commits.
+  Anchoring on the package's last tag instead would have swept in every sibling issue landed since `pi-permission-system-v28.0.0`.
+- **`separate-pull-requests` behaved exactly as its `AGENTS.md` entry describes.**
+  `release_pr_find` with `component: pi-permission-system` returned PR #847 on the component branch, and the full body bumped that package and nothing else — the by-component selection rule was load-bearing rather than ceremonial.
+- **The tidy-first refactor was verified by the cheapest possible evidence.**
+  Parameterizing `identification`'s rule clause landed with a byte-identical suite and no test diff, and both new render arms then differed from the existing four by one argument.
+
+#### What caused friction (agent side)
+
+- `premature-convergence` — step 5's killing mutation produced **one** red where the plan predicted two (the unit dispatch test and a `runner.test.ts` block-path assertion), and the single red was read as success.
+  The shortfall was the signal that the runner assertion had never been written.
+  Impact: a missing integration assertion shipped inside `8f703800`, was caught by the `pre-completion-reviewer`, and cost a seventh follow-up commit (`702955da`) plus a second scoped reviewer round.
+- `other` — a scripted multi-line mutation (`perl -0pi` with a `\Q…\E` block spanning newlines) matched nothing and silently no-opped, and the resulting green suite read exactly like a mutation that killed nothing.
+  Caught only by an unprompted `diff` against the saved green copy.
+  Impact: no rework, but the mutation's result was meaningless until re-run — the failure mode is invisible because a no-op mutation and an undiscriminating test produce the same output.
+  This is the under-match twin of the existing `AGENTS.md` rule about scripted multi-line substitution, which warns only about over-matching a neighbor.
+- `other` (user-caught) — removing `gate_error` from the fall-through group left the group's comment asserting that "the remaining kinds never refuse" above a list still headed by `user`, the one kind that does.
+  Editing a shared comment's **membership** changes what it claims even when its words are untouched.
+  Impact: a wrong comment would have shipped; corrected in place and folded into `8f703800`'s message, no extra commit.
+- `missing-context` — the plan's expected-string transcription was wrong: it wrote `inside a command substitution` where the renderer produces `inside command substitution`.
+  Second occurrence on this same test file across two issues, after #772.
+  Impact: one red-step correction, no rework — but the recurrence is the finding, not the cost.
+
+#### What caused friction (user side)
+
+- The operator read the working tree during a killing-mutation window and flagged a deliberate mutant as simplifiable production code.
+  Framed as opportunity rather than criticism: the in-place mutation loop makes the working tree transiently untrustworthy to any observer, and the announcement that preceded it ("Now step 5's two killing mutations") lived in the message stream, not in the file being read.
+  There is no cheap fix — leaving mutants out of the tree defeats the technique — so the durable mitigation is the agent's, not the operator's: verify and revert the mutation in the same turn that applies it.
+
+### Diagnostic details
+
+- **Model-performance correlation** — Planning and TDD ran on `anthropic/claude-opus-5`, matching genuinely judgment-heavy work (the ADR 0011 §10 disclosure boundary, the render dispatch design, the mutation set).
+  The peer's Sync stage deliberately downshifted to `anthropic/claude-sonnet-5` for two gate runs, a breadcrumb, and a rebase — an appropriate match worth repeating.
+  The root's Ship stage ran on `anthropic/claude-opus-5` for a sequence that is almost entirely prompt-scripted (ff-merge, push, `ci_watch`, `issue_close`, `release_pr_merge`, teardown); its only judgment calls are composing the close comment and reading the release PR body.
+  Recorded as data rather than a recommendation: the close comment synthesized three commit messages into user-visible behavior, which is not obviously sonnet-grade work.
+  Subagents: `tidy-first-assessor` once at planning, `pre-completion-reviewer` twice during TDD (the second a scoped re-review); both lock their model in frontmatter and neither showed a capability mismatch.
+- **Escalation-delay tracking** — no sequence exceeded five consecutive tool calls on a single error.
+  The longest same-target run was step 5's mutation cycle at roughly six calls, but each call advanced the cycle rather than retrying a stuck approach.
+- **Feedback-loop gap analysis** — no gap.
+  `pnpm run check` ran inside each TDD cycle rather than at the end, full `pnpm run test` and `pnpm run lint` ran before the docs commit and again before the follow-up commit, and the peer ran root-level `lint` plus `pnpm fallow dead-code` before handoff.
+  CI on `main` passed on the first attempt, which is the confirmation those local gates were sufficient.
+- **Unused-tool detection** — nothing notable; no friction point had an undispatched subagent or unused search tool that would have helped.
+
+### Changes made
+
+1. `.pi/prompts/tdd-plan.md` step 1 (Red) — added a sentence requiring a string the code under test **produces** to be copied from the producer or an existing assertion rather than transcribed from the plan (Refs #772, #844).
+2. `.pi/prompts/tdd-plan.md` step 3 (Verify the pins) — added two sentences: confirm the mutation actually changed the file before reading the suite, and count the observed reds against the step's predicted count, treating a shortfall as a finding rather than a pass.
+3. `packages/pi-permission-system/docs/retro/0844-forwarded-refusal-attribution.md` — this Final Retrospective stage entry.
+
+The operator declined a third proposal (a `claude-sonnet-5` downshift note for `/ship-worktree`); the supporting data stays in the diagnostic details above, with no prompt edit.
