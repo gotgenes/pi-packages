@@ -84,5 +84,18 @@ Test count went 3805 → 3785 (−20: ten deleted in `service.test.ts`, one desc
   It re-derived [#302]'s failure modes from the issue body rather than accepting the claim that keyed publication carries the invariant, diffed the deleted `multi-instance global service interplay` block against the surviving `session-keyed service publication` block, and confirmed the retargeted teardown cases needed the added `activate()` call (the new `teardown()` unpublishes only when `publishedSessionId !== null`, where the old root unpublish was unconditional).
   No warnings.
 
+## Stage: Sync (worktree) (2026-08-30T21:50:11Z)
+
+### Session summary
+
+Pre-push checks (`pnpm run lint`, `pnpm fallow dead-code`) both passed clean with no fixes needed.
+The plan's `**Release:** ship independently` marker applies — nothing to defer, no follow-ups filed during implementation.
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-796--/2026-08-30T21-05-09-070Z_01a0547d-8bce-7272-9b07-41726bb1acbb.jsonl` — read with `read_session_file({ path: "<path>" })` for message-level verification at land/retro time.
+
+### Observations
+
+Clean sync; rebasing onto `origin/main` next.
+
 [#302]: https://github.com/gotgenes/pi-packages/issues/302
 [#794]: https://github.com/gotgenes/pi-packages/issues/794
