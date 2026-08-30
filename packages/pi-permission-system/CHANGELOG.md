@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [28.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v27.1.3...pi-permission-system-v28.0.0) (2026-08-30)
+
+
+### ⚠ BREAKING CHANGES
+
+* **pi-permission-system:** `PermissionDecisionResolution` gains `authorizer_allowed` and `authorizer_denied`, and existing decisions change which resolution they report. An ask decided by a registered `authorizerChain` link now reports `authorizer_allowed` / `authorizer_denied` instead of `user_approved` / `user_denied`, and a subagent's ask answered by its parent reports what decided inside that parent — `policy_allow` / `policy_deny` for a rule, `authorizer_*` for a link — instead of attributing it to the user. Consumers switching exhaustively over `resolution` must handle the two new values; a consumer counting `user_denied` as human interactions now gets the accurate count rather than one inflated by machine decisions.
+
+### Features
+
+* **pi-permission-system:** broadcast the decider that actually resolved a permission ask ([1b92386](https://github.com/gotgenes/pi-packages/commit/1b923863a00284c7bd6ca9bef5307ad83db0677d)), closes [#772](https://github.com/gotgenes/pi-packages/issues/772)
+
+
+### Bug Fixes
+
+* **pi-permission-system:** tell the agent which authorizer refused its call ([412189b](https://github.com/gotgenes/pi-packages/commit/412189b4e32db3ca419d030c1b2195532e8ebbd4)), closes [#772](https://github.com/gotgenes/pi-packages/issues/772)
+
+
+### Documentation
+
+* **pi-permission-system:** record decision attribution and mark Phase 14 Step 5 complete ([b31f5d5](https://github.com/gotgenes/pi-packages/commit/b31f5d56d61727ab8bd146c2dfe83ce85aa7eef5)), closes [#772](https://github.com/gotgenes/pi-packages/issues/772)
+
 ## [27.1.3](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v27.1.2...pi-permission-system-v27.1.3) (2026-08-29)
 
 
