@@ -674,6 +674,25 @@ describe("GateRunner — descriptor path", () => {
       }
     });
 
+    it("names the authorizer link that refused, not the user", async () => {
+      const { runner } = makeGateRunner({
+        resolveResult: makeCheckResult({ state: "ask", matchedPattern: "*" }),
+        escalate: vi.fn().mockResolvedValue({
+          approved: false,
+          state: "denied_with_reason",
+          denialReason: "reads outside the project",
+          decidedBy: DECIDED_BY_AUTHORIZER,
+        }),
+      });
+      const result = await runner.run(makeDescriptor(), null);
+      expect(result.action).toBe("block");
+      if (result.action === "block") {
+        expect(result.reason).toContain("The 'model-judge' authorizer denied");
+        expect(result.reason).not.toContain("The user denied");
+        expect(result.reason).toContain("Reason: reads outside the project.");
+      }
+    });
+
     it("renders the user's denial reason with the extension tag", async () => {
       const { runner } = makeGateRunner({
         resolveResult: makeCheckResult({ state: "ask", matchedPattern: "*" }),

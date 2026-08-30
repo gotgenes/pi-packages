@@ -1,3 +1,7 @@
+import {
+  type DecisionSource,
+  effectiveDecider,
+} from "#src/authority/decision-source";
 import { EXTENSION_ID } from "#src/extension-config";
 import { DEFAULT_RENDER_BUDGET } from "#src/presentation/dialog-renderer";
 import {
@@ -41,6 +45,55 @@ export interface AgentRenderBudget {
   readonly fieldMaxWidth: number;
 }
 
+/**
+ * The agent-facing render a refused ask earns, chosen by what refused it.
+ *
+ * The single dispatch point for the refusal renderers below, so which sentence
+ * the agent gets is decided once from the decider stamped on the decision
+ * (#726) rather than re-derived from a marker at each caller. Being told a
+ * policy extension refused the call, rather than the operator, is what lets an
+ * agent read a link's corrective reason as policy instead of as the user's
+ * instruction (ADR 0011 §7).
+ *
+ * A `forwarded` decision is dispatched on the decider inside the responding
+ * session: the hop says *where*, and the agent is told *what*.
+ *
+ * Exhaustive with no `default`, so a new {@link DecisionSource} variant is a
+ * compile error here rather than a silent user attribution.
+ */
+export function renderRefusal(
+  payload: PromptPayload,
+  decidedBy: DecisionSource,
+  denialReason: string | null,
+  budget: AgentRenderBudget = DEFAULT_RENDER_BUDGET,
+): string {
+  const decider = effectiveDecider(decidedBy);
+  switch (decider.kind) {
+    case "authorizer":
+      return renderAuthorizerDenial(
+        payload,
+        decider.name,
+        denialReason,
+        budget,
+      );
+    case "unavailable":
+      return renderUnavailableDenial(payload, denialReason, budget);
+    // A `rule` here is a rule in the *serving* session, whose pattern and
+    // origin are not on this payload — `matchedPattern` is the pattern that
+    // raised this session's own ask, so naming a rule would name the wrong
+    // one. That render, and the `gate_error` one beside it, are #844. The
+    // remaining kinds never refuse: they only ever allow.
+    case "user":
+    case "rule":
+    case "gate_error":
+    case "session_approval":
+    case "infrastructure_read":
+    case "yolo":
+    case "forwarded":
+      return renderUserDenial(payload, denialReason, budget);
+  }
+}
+
 /** The agent-facing render of a policy deny. */
 export function renderPolicyDenial(
   payload: PromptPayload,
@@ -61,6 +114,26 @@ export function renderUserDenial(
 ): string {
   return tagged(
     `The user denied this ${identification(payload, budget, "call")}${boundaryClause(payload)}${provenanceClause(payload)}.`,
+    denialReason,
+  );
+}
+
+/**
+ * The agent-facing render of a registered `authorizerChain` link's refusal.
+ *
+ * Names the link, because "a policy extension the operator configured refused
+ * this" and "the operator refused this" are different facts and only one of
+ * them was true (#772). The name is operator configuration rather than agent
+ * input, so it is not capped — the same treatment the matched rule gets.
+ */
+export function renderAuthorizerDenial(
+  payload: PromptPayload,
+  linkName: string,
+  denialReason: string | null,
+  budget: AgentRenderBudget = DEFAULT_RENDER_BUDGET,
+): string {
+  return tagged(
+    `The '${linkName}' authorizer denied this ${identification(payload, budget, "call")}${boundaryClause(payload)}${provenanceClause(payload)}.`,
     denialReason,
   );
 }

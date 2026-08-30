@@ -29,14 +29,13 @@ function makeParams(
     decidedByRule: POLICY_RULE,
     messages: {
       denyReason: "Denied by policy.",
-      unavailableReason: (d) =>
+      // Names the decider it was handed: the gate's remaining job on this arm
+      // is to route the whole decision to the renderer, not to pick a
+      // sentence, so that is what these tests assert.
+      refusedReason: (d) =>
         d.denialReason
-          ? `No interactive UI available. Reason: ${d.denialReason}`
-          : "No interactive UI available.",
-      userDeniedReason: (d) =>
-        d.denialReason
-          ? `User denied. Reason: ${d.denialReason}.`
-          : "User denied.",
+          ? `Refused by ${d.decidedBy.kind}. Reason: ${d.denialReason}`
+          : `Refused by ${d.decidedBy.kind}.`,
     },
     ...overrides,
   };
@@ -92,7 +91,7 @@ describe("applyPermissionGate", () => {
       confirmationUnavailable: true,
     };
 
-    it("returns block with unavailable reason when the decision is confirmation-unavailable", async () => {
+    it("blocks with the refusal render of the absent-authority decision", async () => {
       const params = makeParams({
         state: "ask",
         promptForApproval: vi.fn().mockResolvedValue(unavailableDecision),
@@ -101,7 +100,7 @@ describe("applyPermissionGate", () => {
       expect(result).toEqual({
         action: "block",
         decidedBy: DECIDED_BY_ABSENT_AUTHORITY,
-        reason: "No interactive UI available.",
+        reason: "Refused by unavailable.",
       });
     });
 
@@ -115,7 +114,7 @@ describe("applyPermissionGate", () => {
       expect(params.writeLog).not.toHaveBeenCalled();
     });
 
-    it("passes the decision's denial reason to the unavailable message", async () => {
+    it("passes the decision's denial reason to the refusal render", async () => {
       const params = makeParams({
         state: "ask",
         promptForApproval: vi.fn().mockResolvedValue({
@@ -128,13 +127,13 @@ describe("applyPermissionGate", () => {
         action: "block",
         decidedBy: DECIDED_BY_ABSENT_AUTHORITY,
         reason:
-          "No interactive UI available. Reason: Session 'parent-1' did not answer within 600s.",
+          "Refused by unavailable. Reason: Session 'parent-1' did not answer within 600s.",
       });
     });
   });
 
   describe("ask branch — user rejects", () => {
-    it("returns block with user-denied reason when user rejects", async () => {
+    it("blocks with the refusal render of the human's decision", async () => {
       const decision: PermissionPromptDecision = {
         approved: false,
         state: "denied",
@@ -149,11 +148,11 @@ describe("applyPermissionGate", () => {
       expect(result).toEqual({
         action: "block",
         decidedBy: DECIDED_BY_HUMAN,
-        reason: "User denied.",
+        reason: "Refused by user.",
       });
     });
 
-    it("passes denial reason through userDeniedReason formatter", async () => {
+    it("passes the human's denial reason to the refusal render", async () => {
       const decision: PermissionPromptDecision = {
         approved: false,
         state: "denied_with_reason",
@@ -169,7 +168,7 @@ describe("applyPermissionGate", () => {
       expect(result).toEqual({
         action: "block",
         decidedBy: DECIDED_BY_HUMAN,
-        reason: "User denied. Reason: not now.",
+        reason: "Refused by user. Reason: not now",
       });
     });
 
@@ -289,7 +288,7 @@ describe("applyPermissionGate", () => {
       expect(result).toEqual({
         action: "block",
         decidedBy: DECIDED_BY_HUMAN,
-        reason: "User denied.",
+        reason: "Refused by user.",
       });
     });
   });

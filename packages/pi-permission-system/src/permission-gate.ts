@@ -54,9 +54,16 @@ export interface PermissionGateParams {
 
   /** Message strings/factories for each outcome. */
   messages: {
+    /** What the agent is told when recorded authority denied the request. */
     denyReason: string;
-    unavailableReason: (decision: PermissionPromptDecision) => string;
-    userDeniedReason: (decision: PermissionPromptDecision) => string;
+    /**
+     * What the agent is told when an escalation refused it.
+     *
+     * One factory rather than one per outcome: which sentence a refusal earns
+     * follows from the decision's own decider, and that dispatch belongs with
+     * the renderers rather than here (#772).
+     */
+    refusedReason: (decision: PermissionPromptDecision) => string;
   };
 }
 
@@ -88,14 +95,11 @@ export async function applyPermissionGate(
     const decidedBy = decision.decidedBy;
     if (!decision.approved) {
       // The gate writes no review entry for an ask denial — the prompter
-      // brackets it (waiting/denied). The block reason distinguishes an
-      // absent-authority denial (confirmationUnavailable) from a user denial.
+      // brackets it (waiting/denied).
       return {
         action: "block",
         decidedBy,
-        reason: decision.confirmationUnavailable
-          ? messages.unavailableReason(decision)
-          : messages.userDeniedReason(decision),
+        reason: messages.refusedReason(decision),
       };
     }
     if (decision.state === "approved_for_session" && params.sessionApproval) {

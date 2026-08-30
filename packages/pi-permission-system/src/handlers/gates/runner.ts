@@ -8,8 +8,7 @@ import { createPermissionRequestId } from "#src/permission-request-id";
 import type { ScopedPermissionResolver } from "#src/permission-resolver";
 import {
   renderPolicyDenial,
-  renderUnavailableDenial,
-  renderUserDenial,
+  renderRefusal,
 } from "#src/presentation/agent-renderer";
 import { renderReviewLogFacts } from "#src/presentation/review-log-renderer";
 import type { SessionApprovalRecorder } from "#src/session-approval-recorder";
@@ -192,10 +191,12 @@ export class GateRunner {
     const { payload } = descriptor;
     const messages = {
       denyReason: renderPolicyDenial(payload, check.reason ?? null),
-      unavailableReason: (decision: PermissionPromptDecision) =>
-        renderUnavailableDenial(payload, decision.denialReason ?? null),
-      userDeniedReason: (decision: PermissionPromptDecision) =>
-        renderUserDenial(payload, decision.denialReason ?? null),
+      refusedReason: (decision: PermissionPromptDecision) =>
+        renderRefusal(
+          payload,
+          decision.decidedBy,
+          decision.denialReason ?? null,
+        ),
     };
 
     // The rule that resolved this gate, and the decider for every arm that

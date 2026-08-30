@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
+import type { DecisionSource } from "#src/authority/decision-source";
 import {
   EXTENSION_TAG,
+  renderAuthorizerDenial,
   renderPolicyDenial,
+  renderRefusal,
   renderUnavailableDenial,
   renderUserDenial,
 } from "#src/presentation/agent-renderer";
@@ -387,6 +390,112 @@ describe("renderUnavailableDenial", () => {
       ),
     ).toBe(
       "[pi-permission-system] This 'external_directory' call for tool 'write' for path '/etc/hosts' (rule '*') requires approval, but no interactive UI is available.",
+    );
+  });
+});
+
+describe("renderAuthorizerDenial", () => {
+  it("attributes the refusal to the named link, not the user", () => {
+    expect(renderAuthorizerDenial(bashPayload(), "model-judge", null)).toBe(
+      "[pi-permission-system] The 'model-judge' authorizer denied this 'bash' call (rule 'rm *').",
+    );
+  });
+
+  it("carries the link's corrective reason", () => {
+    expect(
+      renderAuthorizerDenial(
+        payload(
+          "external_directory",
+          {
+            surface: "external_directory",
+            toolName: "read",
+            value: "/elsewhere/service.test.ts",
+            matchedPattern: "*",
+          },
+          [{ label: "working directory", text: "/repo", detail: null }],
+        ),
+        "model-judge",
+        "Doubled package segment detected",
+      ),
+    ).toBe(
+      "[pi-permission-system] The 'model-judge' authorizer denied this 'external_directory' call for tool 'read' for path '/elsewhere/service.test.ts' (rule '*'): outside working directory '/repo'. Reason: Doubled package segment detected.",
+    );
+  });
+
+  it("never echoes the command", () => {
+    expect(
+      renderAuthorizerDenial(
+        bashPayload({ value: "x".repeat(70_000), matchedPattern: "*" }),
+        "model-judge",
+        "too big",
+      ),
+    ).toBe(
+      "[pi-permission-system] The 'model-judge' authorizer denied this 'bash' call (rule '*'). Reason: too big.",
+    );
+  });
+});
+
+describe("renderRefusal", () => {
+  const link: DecisionSource = {
+    kind: "authorizer",
+    name: "model-judge",
+    verdict: "deny",
+    reason: "reads outside the project",
+  };
+  const human: DecisionSource = { kind: "user", via: "dialog" };
+  const absent: DecisionSource = {
+    kind: "unavailable",
+    reason: "no serving session",
+  };
+
+  it("names the link when a chain link refused", () => {
+    expect(renderRefusal(bashPayload(), link, "reads outside")).toBe(
+      "[pi-permission-system] The 'model-judge' authorizer denied this 'bash' call (rule 'rm *'). Reason: reads outside.",
+    );
+  });
+
+  it("names the user when a human refused", () => {
+    expect(renderRefusal(bashPayload(), human, "not with sudo")).toBe(
+      "[pi-permission-system] The user denied this 'bash' call (rule 'rm *'). Reason: not with sudo.",
+    );
+  });
+
+  it("states that approval was unreachable when nobody could rule", () => {
+    expect(renderRefusal(bashPayload(), absent, "no serving session")).toBe(
+      "[pi-permission-system] This 'bash' call (rule 'rm *') requires approval, but no interactive UI is available. Reason: no serving session.",
+    );
+  });
+
+  it("names the link that refused inside a serving session", () => {
+    // The hop says where; the agent is told what refused.
+    expect(
+      renderRefusal(
+        bashPayload(),
+        { kind: "forwarded", responderSessionId: "parent-1", decision: link },
+        "reads outside",
+      ),
+    ).toBe(
+      "[pi-permission-system] The 'model-judge' authorizer denied this 'bash' call (rule 'rm *'). Reason: reads outside.",
+    );
+  });
+
+  it("falls back to the user attribution for a decider it cannot render honestly", () => {
+    // A rule in the serving session denied it, but the parent's pattern and
+    // origin are not on this payload, so naming a rule here would name the
+    // child's own ask rule. Left as today's text pending #844.
+    expect(
+      renderRefusal(
+        bashPayload(),
+        {
+          kind: "rule",
+          surface: "bash",
+          pattern: "git push",
+          origin: "global",
+        },
+        null,
+      ),
+    ).toBe(
+      "[pi-permission-system] The user denied this 'bash' call (rule 'rm *').",
     );
   });
 });
