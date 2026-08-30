@@ -6,14 +6,11 @@
  * completeness, shared-instance contracts across factory invocations, teardown,
  * service↔gate registry sharing, and `ready`-after-publish ordering.
  *
- * Every test runs the factory, which mutates four process-global `Symbol.for()`
- * slots and reads `PI_CODING_AGENT_DIR`. The shared `beforeEach`/`afterEach`
- * isolate the agent dir to a tmpdir and clear every global slot so factory runs
- * do not leak across tests.
+ * Every test runs the factory, which mutates three process-global
+ * `Symbol.for()` slots and reads `PI_CODING_AGENT_DIR`. The shared
+ * `beforeEach`/`afterEach` isolate the agent dir to a tmpdir and clear every
+ * global slot so factory runs do not leak across tests.
  */
-/* eslint-disable @typescript-eslint/no-deprecated -- a root session still
-   publishes to the legacy slot, and these cases pin that behavior for the
-   deprecation window; the session-keyed cases use the supported accessor. */
 import {
   existsSync,
   mkdirSync,
@@ -50,11 +47,10 @@ import {
   PERMISSIONS_READY_CHANNEL,
   type PermissionsReadyEvent,
 } from "#src/permission-events";
-import { getPermissionsService, getRootPermissionsService } from "#src/service";
+import { getPermissionsService } from "#src/service";
 import { publishServingHeartbeat } from "#test/helpers/forwarding-fixtures";
 import { makeFakePi } from "#test/helpers/make-fake-pi";
 
-const SERVICE_KEY = Symbol.for("@gotgenes/pi-permission-system:service");
 const SUBAGENT_REGISTRY_KEY = Symbol.for(
   "@gotgenes/pi-permission-system:subagent-registry",
 );
@@ -85,8 +81,6 @@ beforeEach(() => {
 afterEach(() => {
   // Drop every process-global slot so factory runs do not leak across tests.
   const store = globalThis as Record<symbol, unknown>;
-  // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- Symbol-keyed global property
-  delete store[SERVICE_KEY];
   // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- Symbol-keyed global property
   delete store[SUBAGENT_REGISTRY_KEY];
   // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- Symbol-keyed global property
@@ -1125,49 +1119,6 @@ describe("bash bare-token path gating (#509, #645)", () => {
 
     rmSync(cwd, { recursive: true, force: true });
     rmSync(outside, { recursive: true, force: true });
-  });
-});
-
-describe("multi-instance global service interplay", () => {
-  // The fix (#302) scopes the process-global service slot to the publishing
-  // instance. The parent publishes at its session_start; an in-process child
-  // (registered by session id) skips publishing, and its identity-scoped
-  // teardown is a no-op — so the parent's service is the one that resolves
-  // throughout the child's lifecycle and survives the child's shutdown.
-  it("keeps the parent's service published across the child's lifecycle", async () => {
-    const parentCwd = mkdtempSync(join(tmpdir(), "pi-perm-parent-cwd-"));
-    const childCwd = mkdtempSync(join(tmpdir(), "pi-perm-child-cwd-"));
-    const childSessionId = "child-session-mi";
-
-    const parentPi = makeFakePi({ events: createEventBus() });
-    piPermissionSystemExtension(parentPi as unknown as ExtensionAPI);
-    const childPi = makeFakePi({ events: createEventBus() });
-    piPermissionSystemExtension(childPi as unknown as ExtensionAPI);
-
-    // The parent is not a registered child, so it publishes its service.
-    await fireSessionStart(
-      parentPi,
-      makeChildCtx(parentCwd, "parent-session-mi"),
-    );
-    const parentService = getRootPermissionsService();
-    expect(parentService).toBeDefined();
-
-    // The child is registered in the shared global registry before its own
-    // session_start, so it detects itself and skips publishing.
-    getSubagentSessionRegistry().register(childSessionId, {
-      parentSessionId: "parent-session-mi",
-    });
-    await fireSessionStart(childPi, makeChildCtx(childCwd, childSessionId));
-
-    // Mid-run: the slot resolves the parent's service, never the child's.
-    expect(getRootPermissionsService()).toBe(parentService);
-
-    // The child's shutdown is a no-op for the slot it never owned.
-    await childPi.fire("session_shutdown");
-    expect(getRootPermissionsService()).toBe(parentService);
-
-    rmSync(parentCwd, { recursive: true, force: true });
-    rmSync(childCwd, { recursive: true, force: true });
   });
 });
 

@@ -67,34 +67,4 @@ describe("SubagentDetection", () => {
       expect(detection.isSubagent(makeCtx("/projects/my-app"))).toBe(false);
     });
   });
-
-  describe("isRegisteredChild", () => {
-    test("returns true when the session id is registered", () => {
-      const registry = new SubagentSessionRegistry();
-      registry.register("child-1", {});
-      const detection = new SubagentDetection({
-        subagentSessionsDir,
-        flavor: posixPathFlavor,
-        registry,
-      });
-      expect(detection.isRegisteredChild(makeCtx(null, "child-1"))).toBe(true);
-    });
-
-    test("returns false when the session id is not registered", () => {
-      const detection = new SubagentDetection({
-        subagentSessionsDir,
-        flavor: posixPathFlavor,
-        registry: new SubagentSessionRegistry(),
-      });
-      expect(detection.isRegisteredChild(makeCtx(null, "child-1"))).toBe(false);
-    });
-
-    test("returns false when constructed without a registry", () => {
-      const detection = new SubagentDetection({
-        subagentSessionsDir,
-        flavor: posixPathFlavor,
-      });
-      expect(detection.isRegisteredChild(makeCtx(null, "child-1"))).toBe(false);
-    });
-  });
 });

@@ -1,5 +1,4 @@
 import {
-  isRegisteredSubagentChild,
   isSubagentExecutionContext,
   type SubagentDetectionContext,
 } from "#src/authority/subagent-context";
@@ -15,17 +14,6 @@ import type { PathFlavor } from "#src/path/path-flavor";
  */
 export interface SubagentDetector {
   isSubagent(ctx: SubagentDetectionContext): boolean;
-}
-
-/**
- * Narrow seam for the service-publication guard (#302): "is the current
- * session a registered in-process child?"
- *
- * `PermissionServiceLifecycle` depends on this single-method view so a
- * registered child never publishes over its parent's process-global slot.
- */
-export interface RegisteredChildDetector {
-  isRegisteredChild(ctx: SubagentDetectionContext): boolean;
 }
 
 /** Composition-root inputs for {@link SubagentDetection}. */
@@ -44,9 +32,7 @@ export interface SubagentDetectionDeps {
  * individually. Delegates to the pure detection functions in
  * {@link ./subagent-context}, holding only the deps.
  */
-export class SubagentDetection
-  implements SubagentDetector, RegisteredChildDetector
-{
+export class SubagentDetection implements SubagentDetector {
   constructor(private readonly deps: SubagentDetectionDeps) {}
 
   isSubagent(ctx: SubagentDetectionContext): boolean {
@@ -56,11 +42,5 @@ export class SubagentDetection
       this.deps.flavor,
       this.deps.registry,
     );
-  }
-
-  isRegisteredChild(ctx: SubagentDetectionContext): boolean {
-    return this.deps.registry
-      ? isRegisteredSubagentChild(ctx, this.deps.registry)
-      : false;
   }
 }

@@ -24,8 +24,7 @@ if grep -q '#src' "$DTS"; then
   grep -n '#src' "$DTS" >&2
   exit 1
 fi
-for sym in getRootPermissionsService publishRootPermissionsService unpublishRootPermissionsService \
-  getPermissionsService publishPermissionsService \
+for sym in getPermissionsService publishPermissionsService \
   unpublishPermissionsService \
   PermissionsService PermissionCheckResult PermissionState ToolInputFormatter \
   PERMISSIONS_UI_PROMPT_CHANNEL PERMISSIONS_READY_CHANNEL PERMISSIONS_DECISION_CHANNEL \
@@ -33,6 +32,13 @@ for sym in getRootPermissionsService publishRootPermissionsService unpublishRoot
   AuthorizerVerdict PromptPermissionDetails PromptPayload PromptRequestFacts; do
   grep -q "$sym" "$DTS" || { echo "FAIL: '$sym' missing from dist/public.d.ts" >&2; exit 1; }
 done
+# The process-root accessors were removed in the #796 major; a reappearance in
+# the bundle means the deleted slot has been resurrected.
+if grep -q 'RootPermissionsService' "$DTS"; then
+  echo "FAIL: a removed process-root accessor is still exported from dist/public.d.ts" >&2
+  grep -n 'RootPermissionsService' "$DTS" >&2
+  exit 1
+fi
 echo "OK: dist/public.d.ts is self-contained and exports the public surface"
 
 # --- 3. Build a throwaway consumer and type-check it against the tarball ----
@@ -59,13 +65,12 @@ cat > "$CONSUMER/tsconfig.json" <<'JSON'
 JSON
 
 # Probe reproduces the exact reported import from #592 (PERMISSIONS_UI_PROMPT_CHANNEL)
-# plus both accessors and a representative type from each re-exported source module.
-# The keyed accessor is *called* rather than merely referenced, so the packaged
+# plus the keyed accessor and a representative type from each re-exported source
+# module. The accessor is *called* rather than merely referenced, so the packaged
 # declaration is checked against the required-sessionId signature (#794).
 cat > "$CONSUMER/probe.ts" <<'TS'
 import {
   getPermissionsService,
-  getRootPermissionsService,
   PERMISSIONS_UI_PROMPT_CHANNEL,
   type PermissionCheckResult,
   type PermissionsService,
@@ -74,7 +79,6 @@ import {
 
 const _s: PermissionsService | undefined = getPermissionsService("session-id");
 void _s;
-void getRootPermissionsService;
 void PERMISSIONS_UI_PROMPT_CHANNEL;
 const _e: PermissionUiPromptEvent | undefined = undefined;
 const _r: PermissionCheckResult | undefined = undefined;
