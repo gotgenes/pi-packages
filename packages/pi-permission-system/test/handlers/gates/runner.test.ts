@@ -693,6 +693,40 @@ describe("GateRunner — descriptor path", () => {
       }
     });
 
+    it("names the serving session's rule that refused, not the user", async () => {
+      const { runner } = makeGateRunner({
+        resolveResult: makeCheckResult({ state: "ask", matchedPattern: "*" }),
+        escalate: vi.fn().mockResolvedValue({
+          approved: false,
+          state: "denied_with_reason",
+          denialReason: "force pushes are blocked",
+          decidedBy: {
+            kind: "forwarded",
+            responderSessionId: "parent-1",
+            decision: {
+              kind: "rule",
+              surface: "bash",
+              pattern: "git push --force*",
+              origin: "project",
+            },
+          },
+        }),
+      });
+      const result = await runner.run(makeDescriptor(), null);
+      expect(result.action).toBe("block");
+      if (result.action === "block") {
+        expect(result.reason).toContain(
+          "A policy rule in the session serving this request denied",
+        );
+        expect(result.reason).not.toContain("The user denied");
+        // The deciding rule replaces the ask's own, so the child's pattern
+        // must be absent — present-only would pass under both renders.
+        expect(result.reason).toContain("rule 'git push --force*'");
+        expect(result.reason).not.toContain("rule '*'");
+        expect(result.reason).toContain("Reason: force pushes are blocked.");
+      }
+    });
+
     it("renders the user's denial reason with the extension tag", async () => {
       const { runner } = makeGateRunner({
         resolveResult: makeCheckResult({ state: "ask", matchedPattern: "*" }),

@@ -3,6 +3,7 @@ import type { DecisionSource } from "#src/authority/decision-source";
 import {
   EXTENSION_TAG,
   renderAuthorizerDenial,
+  renderEscalatedPolicyDenial,
   renderPolicyDenial,
   renderRefusal,
   renderUnavailableDenial,
@@ -435,6 +436,104 @@ describe("renderAuthorizerDenial", () => {
   });
 });
 
+describe("renderEscalatedPolicyDenial", () => {
+  it("names the rule that decided, not the rule that raised the ask", () => {
+    // The payload's own pattern is 'rm *'; the deciding node's is not.
+    expect(
+      renderEscalatedPolicyDenial(
+        bashPayload(),
+        { pattern: "git push --force*", decidedElsewhere: true },
+        null,
+      ),
+    ).toBe(
+      "[pi-permission-system] A policy rule in the session serving this request denied this 'bash' call (rule 'git push --force*').",
+    );
+  });
+
+  it("carries the deciding rule's deny-with-reason text", () => {
+    expect(
+      renderEscalatedPolicyDenial(
+        bashPayload(),
+        { pattern: "git push --force*", decidedElsewhere: true },
+        "force pushes are blocked",
+      ),
+    ).toBe(
+      "[pi-permission-system] A policy rule in the session serving this request denied this 'bash' call (rule 'git push --force*'). Reason: force pushes are blocked.",
+    );
+  });
+
+  it("omits the rule clause when the deciding node recorded no pattern", () => {
+    expect(
+      renderEscalatedPolicyDenial(
+        bashPayload(),
+        { pattern: null, decidedElsewhere: true },
+        null,
+      ),
+    ).toBe(
+      "[pi-permission-system] A policy rule in the session serving this request denied this 'bash' call.",
+    );
+  });
+
+  it("claims no other session when the rule decided here", () => {
+    expect(
+      renderEscalatedPolicyDenial(
+        bashPayload(),
+        { pattern: "git push --force*", decidedElsewhere: false },
+        null,
+      ),
+    ).toBe(
+      "[pi-permission-system] A policy rule denied this 'bash' call (rule 'git push --force*').",
+    );
+  });
+
+  it("keeps the nested context the substituted pattern fired in", () => {
+    // The pattern comes from the decider; where the unit runs is a fact about
+    // this call, so it still comes from the payload.
+    expect(
+      renderEscalatedPolicyDenial(
+        bashPayload({ commandContext: "command_substitution" }),
+        { pattern: "git push --force*", decidedElsewhere: true },
+        null,
+      ),
+    ).toBe(
+      "[pi-permission-system] A policy rule in the session serving this request denied this 'bash' call (rule 'git push --force*', inside command substitution).",
+    );
+  });
+
+  it("names the escaped boundary for a path ask", () => {
+    expect(
+      renderEscalatedPolicyDenial(
+        payload(
+          "external_directory",
+          {
+            surface: "external_directory",
+            toolName: "read",
+            value: "/elsewhere/service.ts",
+            matchedPattern: "*",
+          },
+          [{ label: "working directory", text: "/repo", detail: null }],
+        ),
+        { pattern: "/elsewhere/*", decidedElsewhere: true },
+        null,
+      ),
+    ).toBe(
+      "[pi-permission-system] A policy rule in the session serving this request denied this 'external_directory' call for tool 'read' for path '/elsewhere/service.ts' (rule '/elsewhere/*'): outside working directory '/repo'.",
+    );
+  });
+
+  it("never echoes the command", () => {
+    expect(
+      renderEscalatedPolicyDenial(
+        bashPayload({ value: "x".repeat(70_000) }),
+        { pattern: "*", decidedElsewhere: true },
+        "too big",
+      ),
+    ).toBe(
+      "[pi-permission-system] A policy rule in the session serving this request denied this 'bash' call (rule '*'). Reason: too big.",
+    );
+  });
+});
+
 describe("renderRefusal", () => {
   const link: DecisionSource = {
     kind: "authorizer",
@@ -479,10 +578,28 @@ describe("renderRefusal", () => {
     );
   });
 
-  it("falls back to the user attribution for a decider it cannot render honestly", () => {
-    // A rule in the serving session denied it, but the parent's pattern and
-    // origin are not on this payload, so naming a rule here would name the
-    // child's own ask rule. Left as today's text pending #844.
+  it("names the serving session's rule when its policy refused", () => {
+    expect(
+      renderRefusal(
+        bashPayload(),
+        {
+          kind: "forwarded",
+          responderSessionId: "parent-1",
+          decision: {
+            kind: "rule",
+            surface: "bash",
+            pattern: "git push",
+            origin: "global",
+          },
+        },
+        null,
+      ),
+    ).toBe(
+      "[pi-permission-system] A policy rule in the session serving this request denied this 'bash' call (rule 'git push').",
+    );
+  });
+
+  it("claims no other session for a rule that decided here", () => {
     expect(
       renderRefusal(
         bashPayload(),
@@ -495,7 +612,7 @@ describe("renderRefusal", () => {
         null,
       ),
     ).toBe(
-      "[pi-permission-system] The user denied this 'bash' call (rule 'rm *').",
+      "[pi-permission-system] A policy rule denied this 'bash' call (rule 'git push').",
     );
   });
 });

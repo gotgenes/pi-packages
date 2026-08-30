@@ -69,6 +69,9 @@ export function renderRefusal(
   budget: AgentRenderBudget = DEFAULT_RENDER_BUDGET,
 ): string {
   const decider = effectiveDecider(decidedBy);
+  // The hop the unwrap discarded: *where* the decision was made. Kept as a
+  // bare fact rather than the responder's identity, which stays undisclosed.
+  const decidedElsewhere = decidedBy.kind === "forwarded";
   switch (decider.kind) {
     case "authorizer":
       return renderAuthorizerDenial(
@@ -79,13 +82,17 @@ export function renderRefusal(
       );
     case "unavailable":
       return renderUnavailableDenial(payload, denialReason, budget);
-    // A `rule` here is a rule in the *serving* session, whose pattern and
-    // origin are not on this payload — `matchedPattern` is the pattern that
-    // raised this session's own ask, so naming a rule would name the wrong
-    // one. That render, and the `gate_error` one beside it, are #844. The
-    // remaining kinds never refuse: they only ever allow.
-    case "user":
     case "rule":
+      return renderEscalatedPolicyDenial(
+        payload,
+        { pattern: decider.pattern, decidedElsewhere },
+        denialReason,
+        budget,
+      );
+    // The remaining kinds never refuse: they only ever allow. A `forwarded`
+    // reaching here named no inner decider (an older responder), so the hop
+    // is all that is known and today's text is the fail-soft answer.
+    case "user":
     case "gate_error":
     case "session_approval":
     case "infrastructure_read":
@@ -139,6 +146,37 @@ export function renderAuthorizerDenial(
   );
 }
 
+/** The rule that refused an escalated ask, and where it sat. */
+export interface EscalatedRule {
+  /** The pattern the deciding node's rule matched; `null` when none was recorded. */
+  readonly pattern: string | null;
+  /** Whether that node was reached through a forwarding hop. */
+  readonly decidedElsewhere: boolean;
+}
+
+/**
+ * The agent-facing render of a policy denial an escalation came back with.
+ *
+ * Distinct from {@link renderPolicyDenial} in which rule it names. That one
+ * renders the rule on this session's payload, which is the rule that decided
+ * when recorded authority answered locally. Here the ask was escalated, so the
+ * payload's rule is the one that raised the *ask* and the rule that *denied*
+ * lives on the decision — naming the payload's would name the wrong rule while
+ * looking correct (ADR 0011 §10, #844).
+ */
+export function renderEscalatedPolicyDenial(
+  payload: PromptPayload,
+  rule: EscalatedRule,
+  denialReason: string | null,
+  budget: AgentRenderBudget = DEFAULT_RENDER_BUDGET,
+): string {
+  const decidedRule = ruleClause(rule.pattern, payload.request.commandContext);
+  return tagged(
+    `A policy rule${servingClause(rule.decidedElsewhere)} denied this ${identification(payload, budget, "call", decidedRule)}${boundaryClause(payload)}${provenanceClause(payload)}.`,
+    denialReason,
+  );
+}
+
 /** The agent-facing render when no live authority could answer the ask. */
 export function renderUnavailableDenial(
   payload: PromptPayload,
@@ -152,6 +190,17 @@ export function renderUnavailableDenial(
 }
 
 // ── Sentence assembly ──────────────────────────────────────────────────────
+
+/**
+ * Where the deciding authority sat, when it was not this session.
+ *
+ * Says that another session decided and never which one: the responder's
+ * identity answers a question the requesting agent cannot act on, and §6 keeps
+ * it off the render (ADR 0011 §10).
+ */
+function servingClause(decidedElsewhere: boolean): string {
+  return decidedElsewhere ? " in the session serving this request" : "";
+}
 
 function tagged(sentence: string, reason: string | null): string {
   return `${EXTENSION_TAG} ${sentence}${reasonClause(reason)}`;
