@@ -1,10 +1,21 @@
 import type { DecisionSource } from "#src/authority/decision-source";
 import type { PermissionPromptDecision } from "#src/authority/permission-dialog";
 
-/** Result of applying the permission gate. */
+/**
+ * Result of applying the permission gate.
+ *
+ * Both arms name what decided. The gate is the one place that knows whether
+ * recorded authority answered or an escalation did, so it reports the decider
+ * rather than leaving the caller to reconstruct it from a captured decision
+ * (#772).
+ */
 export type PermissionGateResult =
-  | { action: "allow"; sessionApproval?: { surface: string; pattern: string } }
-  | { action: "block"; reason: string };
+  | {
+      action: "allow";
+      decidedBy: DecisionSource;
+      sessionApproval?: { surface: string; pattern: string };
+    }
+  | { action: "block"; decidedBy: DecisionSource; reason: string };
 
 /** Everything the gate needs — no direct dependency on ExtensionContext. */
 export interface PermissionGateParams {
@@ -32,7 +43,8 @@ export interface PermissionGateParams {
   logContext: Record<string, unknown>;
 
   /**
-   * The rule that resolved this gate, for the deny arm's review entry.
+   * The rule that resolved this gate — the decider for both arms that never
+   * escalate, and the deny arm's review entry.
    *
    * A sibling of `logContext` rather than a member of it: the context holds
    * what every resolution of this gate shares, and the decider is by
@@ -64,26 +76,37 @@ export async function applyPermissionGate(
       resolution: "policy_denied",
       decidedBy: params.decidedByRule,
     });
-    return { action: "block", reason: messages.denyReason };
+    return {
+      action: "block",
+      decidedBy: params.decidedByRule,
+      reason: messages.denyReason,
+    };
   }
 
   if (state === "ask") {
     const decision = await promptForApproval();
+    const decidedBy = decision.decidedBy;
     if (!decision.approved) {
       // The gate writes no review entry for an ask denial — the prompter
       // brackets it (waiting/denied). The block reason distinguishes an
       // absent-authority denial (confirmationUnavailable) from a user denial.
       return {
         action: "block",
+        decidedBy,
         reason: decision.confirmationUnavailable
           ? messages.unavailableReason(decision)
           : messages.userDeniedReason(decision),
       };
     }
     if (decision.state === "approved_for_session" && params.sessionApproval) {
-      return { action: "allow", sessionApproval: params.sessionApproval };
+      return {
+        action: "allow",
+        decidedBy,
+        sessionApproval: params.sessionApproval,
+      };
     }
+    return { action: "allow", decidedBy };
   }
 
-  return { action: "allow" };
+  return { action: "allow", decidedBy: params.decidedByRule };
 }

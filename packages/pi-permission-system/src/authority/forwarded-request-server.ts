@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { resolutionFor } from "#src/authority/decision-resolution";
 import type { DecisionSource } from "#src/authority/decision-source";
 import {
   type ForwarderContext,
@@ -15,10 +16,7 @@ import {
 } from "#src/authority/permission-forwarding";
 import type { SubagentSessionRegistry } from "#src/authority/subagent-registry";
 import type { DecisionBroadcaster } from "#src/decision-reporter";
-import type {
-  PermissionDecisionEvent,
-  PermissionDecisionResolution,
-} from "#src/permission-events";
+import type { PermissionDecisionEvent } from "#src/permission-events";
 import { buildForwardedAskPayload } from "#src/presentation/forwarded-ask-payload";
 import { SessionApproval } from "#src/session-approval";
 import type { SessionApprovalRecorder } from "#src/session-approval-recorder";
@@ -183,39 +181,20 @@ function buildServedDecisionEvent(
     value: details.value ?? facts.value,
     agentName: details.agentName,
     result: decision.approved ? "allow" : "deny",
-    resolution: servedResolution(decision),
+    resolution: resolutionFor(decision.decidedBy, {
+      approved: decision.approved,
+      // The grant scope is reported as the human chose it. `applyGrantScope`
+      // rewrites a whole-serving-session grant to a plain approval on the
+      // wire, but that translation is about what the *child* records, not
+      // about what was allowed here.
+      forSession:
+        decision.state === "approved_for_session" ||
+        decision.state === "approved_for_serving_session",
+    }),
     origin: null,
     matchedPattern: null,
     forwarding: details.forwarding ?? null,
   };
-}
-
-/**
- * Name how a served ask resolved, reading the decision's own stamp rather than
- * re-deriving it from the outcome: the site that decided already recorded what
- * it was (#726).
- *
- * The grant scope is reported as the human chose it. {@link applyGrantScope}
- * rewrites a whole-serving-session grant to a plain approval on the wire, but
- * that translation is about what the *child* records, not about what was
- * allowed here.
- */
-function servedResolution(
-  decision: PermissionPromptDecision,
-): PermissionDecisionResolution {
-  if (decision.decidedBy.kind === "gate_error") {
-    return "gate_error";
-  }
-  if (decision.confirmationUnavailable) {
-    return "confirmation_unavailable";
-  }
-  if (!decision.approved) {
-    return "user_denied";
-  }
-  return decision.state === "approved_for_session" ||
-    decision.state === "approved_for_serving_session"
-    ? "user_approved_for_session"
-    : "user_approved";
 }
 
 // ── ForwardedRequestServer ────────────────────────────────────────────────

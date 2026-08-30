@@ -6,7 +6,6 @@ import {
   accessFactsFromValue,
   buildDecisionEvent,
   deriveDecisionValue,
-  deriveResolution,
   resolveYoloGrant,
 } from "#src/handlers/gates/helpers";
 import { posixPathFlavor } from "#src/path/path-flavor";
@@ -50,50 +49,6 @@ describe("deriveDecisionValue", () => {
   it("falls back to toolName for path-bearing tools when path is missing", () => {
     expect(deriveDecisionValue("read", {})).toBe("read");
     expect(deriveDecisionValue("write", {}, undefined)).toBe("write");
-  });
-});
-
-describe("deriveResolution", () => {
-  it("returns policy_allow for allow state", () => {
-    expect(deriveResolution("allow", "allow", false, true)).toBe(
-      "policy_allow",
-    );
-  });
-
-  it("returns policy_deny for deny state", () => {
-    expect(deriveResolution("deny", "block", false, true)).toBe("policy_deny");
-  });
-
-  it("returns user_approved for ask + allow without session", () => {
-    expect(deriveResolution("ask", "allow", false, true)).toBe("user_approved");
-  });
-
-  it("returns user_approved_for_session for ask + allow with session", () => {
-    expect(deriveResolution("ask", "allow", true, true)).toBe(
-      "user_approved_for_session",
-    );
-  });
-
-  it("returns auto_approved when autoApproved flag is set", () => {
-    expect(deriveResolution("ask", "allow", false, true, true)).toBe(
-      "auto_approved",
-    );
-  });
-
-  it("returns auto_approved for allow + autoApproved (yolo-origin allow)", () => {
-    expect(deriveResolution("allow", "allow", false, false, true)).toBe(
-      "auto_approved",
-    );
-  });
-
-  it("returns user_denied for ask + block when confirmation was available", () => {
-    expect(deriveResolution("ask", "block", false, false)).toBe("user_denied");
-  });
-
-  it("returns confirmation_unavailable for ask + block when confirmation was unavailable", () => {
-    expect(deriveResolution("ask", "block", false, true)).toBe(
-      "confirmation_unavailable",
-    );
   });
 });
 

@@ -150,7 +150,7 @@ describe("handleInput decision events — skill gate", () => {
     });
   });
 
-  it("emits allow with auto_approved when prompt returns autoApproved:true", async () => {
+  it("emits allow with auto_approved when yolo decided the escalated ask", async () => {
     const { handler, events } = makeHandler({
       session: {
         checkPermission: makeSkillCheckPermission("ask"),
@@ -159,8 +159,7 @@ describe("handleInput decision events — skill gate", () => {
         escalate: vi.fn<AskEscalator["escalate"]>().mockResolvedValue({
           approved: true,
           state: "approved",
-          autoApproved: true,
-          decidedBy: DECIDED_BY_HUMAN,
+          decidedBy: { kind: "yolo", pattern: "*" },
         }),
       },
     });

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import type { DecisionSource } from "#src/authority/decision-source";
 import type { PermissionPromptDecision } from "#src/authority/permission-dialog";
 import {
   applyPermissionGate,
@@ -9,6 +10,14 @@ import {
   DECIDED_BY_HUMAN,
 } from "#test/helpers/decision-fixtures";
 
+/** The recorded authority every arm that never escalates is decided by. */
+const POLICY_RULE: DecisionSource = {
+  kind: "rule",
+  surface: "bash",
+  pattern: "*",
+  origin: "global",
+};
+
 function makeParams(
   overrides: Partial<PermissionGateParams> = {},
 ): PermissionGateParams {
@@ -17,12 +26,7 @@ function makeParams(
     promptForApproval: vi.fn<() => Promise<PermissionPromptDecision>>(),
     writeLog: vi.fn(),
     logContext: { source: "test" },
-    decidedByRule: {
-      kind: "rule",
-      surface: "bash",
-      pattern: "*",
-      origin: "global",
-    },
+    decidedByRule: POLICY_RULE,
     messages: {
       denyReason: "Denied by policy.",
       unavailableReason: (d) =>
@@ -45,6 +49,7 @@ describe("applyPermissionGate", () => {
       const result = await applyPermissionGate(params);
       expect(result).toEqual({
         action: "block",
+        decidedBy: POLICY_RULE,
         reason: "Denied by policy.",
       });
     });
@@ -95,6 +100,7 @@ describe("applyPermissionGate", () => {
       const result = await applyPermissionGate(params);
       expect(result).toEqual({
         action: "block",
+        decidedBy: DECIDED_BY_ABSENT_AUTHORITY,
         reason: "No interactive UI available.",
       });
     });
@@ -120,6 +126,7 @@ describe("applyPermissionGate", () => {
       const result = await applyPermissionGate(params);
       expect(result).toEqual({
         action: "block",
+        decidedBy: DECIDED_BY_ABSENT_AUTHORITY,
         reason:
           "No interactive UI available. Reason: Session 'parent-1' did not answer within 600s.",
       });
@@ -139,7 +146,11 @@ describe("applyPermissionGate", () => {
         promptForApproval,
       });
       const result = await applyPermissionGate(params);
-      expect(result).toEqual({ action: "block", reason: "User denied." });
+      expect(result).toEqual({
+        action: "block",
+        decidedBy: DECIDED_BY_HUMAN,
+        reason: "User denied.",
+      });
     });
 
     it("passes denial reason through userDeniedReason formatter", async () => {
@@ -157,6 +168,7 @@ describe("applyPermissionGate", () => {
       const result = await applyPermissionGate(params);
       expect(result).toEqual({
         action: "block",
+        decidedBy: DECIDED_BY_HUMAN,
         reason: "User denied. Reason: not now.",
       });
     });
@@ -190,7 +202,7 @@ describe("applyPermissionGate", () => {
         promptForApproval,
       });
       const result = await applyPermissionGate(params);
-      expect(result).toEqual({ action: "allow" });
+      expect(result).toEqual({ action: "allow", decidedBy: DECIDED_BY_HUMAN });
     });
 
     it("does not call writeLog when user approves", async () => {
@@ -225,6 +237,7 @@ describe("applyPermissionGate", () => {
       const result = await applyPermissionGate(params);
       expect(result).toEqual({
         action: "allow",
+        decidedBy: DECIDED_BY_HUMAN,
         sessionApproval: { surface: "bash", pattern: "git *" },
       });
     });
@@ -242,7 +255,7 @@ describe("applyPermissionGate", () => {
         sessionApproval: { surface: "bash", pattern: "git *" },
       });
       const result = await applyPermissionGate(params);
-      expect(result).toEqual({ action: "allow" });
+      expect(result).toEqual({ action: "allow", decidedBy: DECIDED_BY_HUMAN });
     });
 
     it("does not attach sessionApproval when no sessionApproval param", async () => {
@@ -257,7 +270,7 @@ describe("applyPermissionGate", () => {
         promptForApproval,
       });
       const result = await applyPermissionGate(params);
-      expect(result).toEqual({ action: "allow" });
+      expect(result).toEqual({ action: "allow", decidedBy: DECIDED_BY_HUMAN });
     });
 
     it("does not attach sessionApproval when user denies", async () => {
@@ -273,7 +286,11 @@ describe("applyPermissionGate", () => {
         sessionApproval: { surface: "bash", pattern: "git *" },
       });
       const result = await applyPermissionGate(params);
-      expect(result).toEqual({ action: "block", reason: "User denied." });
+      expect(result).toEqual({
+        action: "block",
+        decidedBy: DECIDED_BY_HUMAN,
+        reason: "User denied.",
+      });
     });
   });
 
@@ -281,7 +298,7 @@ describe("applyPermissionGate", () => {
     it("returns allow immediately when state is allow", async () => {
       const params = makeParams({ state: "allow" });
       const result = await applyPermissionGate(params);
-      expect(result).toEqual({ action: "allow" });
+      expect(result).toEqual({ action: "allow", decidedBy: POLICY_RULE });
     });
 
     it("does not call writeLog when state is allow", async () => {

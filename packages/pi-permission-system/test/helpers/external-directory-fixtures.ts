@@ -17,7 +17,10 @@ import type { ScopedPermissionManager } from "#src/permission-manager";
 import type { SessionLogger } from "#src/session-logger";
 import type { PermissionCheckResult, PermissionState } from "#src/types";
 import { wildcardMatch } from "#src/wildcard-matcher";
-import { DECIDED_BY_HUMAN } from "#test/helpers/decision-fixtures";
+import {
+  DECIDED_BY_ABSENT_AUTHORITY,
+  DECIDED_BY_HUMAN,
+} from "#test/helpers/decision-fixtures";
 
 import {
   getDecisionEvents,
@@ -117,7 +120,7 @@ export function makeUnavailablePrompter(): AskEscalator {
       approved: false,
       state: "denied",
       confirmationUnavailable: true,
-      decidedBy: DECIDED_BY_HUMAN,
+      decidedBy: DECIDED_BY_ABSENT_AUTHORITY,
     }),
   };
 }

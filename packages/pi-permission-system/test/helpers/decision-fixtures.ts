@@ -25,3 +25,15 @@ export const DECIDED_BY_ABSENT_AUTHORITY: DecisionSource = {
   kind: "unavailable",
   reason: "No live authority was reachable for this session",
 };
+
+/**
+ * The decider a test stands in for when a registered `authorizerChain` link
+ * ruled — the dogfooded `model-judge` refusing, which is the shape
+ * `composeAuthorizerChain` stamps at the point the loop breaks.
+ */
+export const DECIDED_BY_AUTHORIZER: DecisionSource = {
+  kind: "authorizer",
+  name: "model-judge",
+  verdict: "deny",
+  reason: "reads outside the project",
+};

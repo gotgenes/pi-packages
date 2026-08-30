@@ -88,6 +88,35 @@ export function asDecisionSource(value: unknown): DecisionSource | undefined {
   return narrowSource(value, MAX_DECISION_SOURCE_DEPTH);
 }
 
+/**
+ * The decider a `forwarded` hop is standing in for: the innermost
+ * non-`forwarded` source, or the hop itself when the responder named none.
+ *
+ * `forwarded` answers *where* a decision was made; every other variant answers
+ * *what* made it. A reader asking the second question — how to name the
+ * resolution, which refusal to render — wants the inner record, or it reports
+ * the parent's policy as the operator's own answer.
+ *
+ * `responderSessionId` is deliberately dropped: the session that answered is a
+ * separate fact, carried on the record itself and (for a served decision) on
+ * the bus event's `forwarding` context.
+ *
+ * Bounded by {@link MAX_DECISION_SOURCE_DEPTH} like its sibling guard. A value
+ * read off disk is already bounded there, and a locally-built one nests once
+ * per hop, so the bound is insurance rather than a working limit; reaching it
+ * yields the deepest frame seen, which reads as "decided elsewhere".
+ */
+export function effectiveDecider(source: DecisionSource): DecisionSource {
+  let decider = source;
+  for (let hop = 0; hop < MAX_DECISION_SOURCE_DEPTH; hop++) {
+    if (decider.kind !== "forwarded" || decider.decision === null) {
+      return decider;
+    }
+    decider = decider.decision;
+  }
+  return decider;
+}
+
 function narrowSource(
   value: unknown,
   depthBudget: number,

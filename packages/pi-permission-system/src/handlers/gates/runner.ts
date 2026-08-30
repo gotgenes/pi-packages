@@ -1,4 +1,6 @@
 import type { AskEscalator } from "#src/authority/authorizer-selection";
+import { resolutionFor } from "#src/authority/decision-resolution";
+import type { DecisionSource } from "#src/authority/decision-source";
 import type { PermissionPromptDecision } from "#src/authority/permission-dialog";
 import type { DecisionReporter } from "#src/decision-reporter";
 import { applyPermissionGate } from "#src/permission-gate";
@@ -18,11 +20,7 @@ import type {
   GateResult,
 } from "./descriptor";
 import { isGateBypass } from "./descriptor";
-import {
-  buildDecisionEvent,
-  deriveResolution,
-  resolveYoloGrant,
-} from "./helpers";
+import { buildDecisionEvent, resolveYoloGrant } from "./helpers";
 import type { GateOutcome } from "./types";
 
 // ── GateRunner class ───────────────────────────────────────────────────────
@@ -160,12 +158,17 @@ export class GateRunner {
     // single auto_approved review entry + decision event so log parity holds.
     const yoloGrant = resolveYoloGrant(check, this.isYoloEnabled());
     if (yoloGrant) {
+      // The pattern that raised the ask, sentinel included: "yolo allowed it"
+      // alone does not say why it was asked in the first place. One record for
+      // both the review entry and the broadcast, so they cannot disagree.
+      const decidedByYolo: DecisionSource = {
+        kind: "yolo",
+        pattern: check.matchedPattern ?? null,
+      };
       this.reporter.writeReviewLog("permission_request.auto_approved", {
         ...logContext,
         resolution: "auto_approved",
-        // The pattern that raised the ask, sentinel included: "yolo allowed
-        // it" alone does not say why it was asked in the first place.
-        decidedBy: { kind: "yolo", pattern: check.matchedPattern ?? null },
+        decidedBy: decidedByYolo,
       });
       this.emitDecision(
         requestId,
@@ -174,7 +177,7 @@ export class GateRunner {
           yoloGrant,
           agentName,
           "allow",
-          deriveResolution(yoloGrant.state, "allow", false, false, true),
+          resolutionFor(decidedByYolo, { approved: true, forSession: false }),
         ),
       );
       return { action: "allow" };
@@ -195,8 +198,14 @@ export class GateRunner {
         renderUserDenial(payload, decision.denialReason ?? null),
     };
 
-    let autoApproved = false;
-    let confirmationUnavailable = false;
+    // The rule that resolved this gate, and the decider for every arm that
+    // never escalates: `allow` and `deny` are recorded authority answering.
+    const decidedByRule: DecisionSource = {
+      kind: "rule",
+      surface: descriptor.surface,
+      pattern: check.matchedPattern ?? null,
+      origin: check.origin,
+    };
     const gateResult = await applyPermissionGate({
       state: check.state,
       sessionApproval: descriptor.sessionApproval?.toGateApproval(),
@@ -209,19 +218,12 @@ export class GateRunner {
             ? { sessionApproval: descriptor.sessionApproval.toForwardedData() }
             : {}),
         });
-        autoApproved = decision.autoApproved === true;
-        confirmationUnavailable = decision.confirmationUnavailable === true;
         return decision;
       },
       writeLog: (event, details) =>
         this.reporter.writeReviewLog(event, details),
       logContext,
-      decidedByRule: {
-        kind: "rule",
-        surface: descriptor.surface,
-        pattern: check.matchedPattern ?? null,
-        origin: check.origin,
-      },
+      decidedByRule,
       messages,
     });
 
@@ -237,13 +239,10 @@ export class GateRunner {
         check,
         agentName,
         gateResult.action === "allow" ? "allow" : "deny",
-        deriveResolution(
-          check.state,
-          gateResult.action,
-          hasSessionApproval,
-          confirmationUnavailable,
-          autoApproved,
-        ),
+        resolutionFor(gateResult.decidedBy, {
+          approved: gateResult.action === "allow",
+          forSession: hasSessionApproval,
+        }),
       ),
     );
 

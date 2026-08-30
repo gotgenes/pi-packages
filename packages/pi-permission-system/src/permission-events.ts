@@ -139,6 +139,10 @@ export type PermissionDecisionResolution =
   | "user_denied"
   | "auto_approved"
   | "confirmation_unavailable"
+  /** A registered `authorizerChain` link granted the ask; no human was asked. */
+  | "authorizer_allowed"
+  /** A registered `authorizerChain` link refused the ask; no human was asked. */
+  | "authorizer_denied"
   /** The gate threw, or an escalation failed, and the request was blocked. */
   | "gate_error";
 

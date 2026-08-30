@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   asDecisionSource,
   type DecisionSource,
+  effectiveDecider,
   MAX_DECISION_SOURCE_DEPTH,
 } from "#src/authority/decision-source";
 
@@ -158,6 +159,74 @@ describe("asDecisionSource", () => {
       expect(
         asDecisionSource(JSON.parse(JSON.stringify(source))),
       ).toBeUndefined();
+    });
+  });
+});
+
+describe("effectiveDecider", () => {
+  describe("a source that decided here", () => {
+    it.each([
+      ["user", { kind: "user", via: "dialog" }],
+      [
+        "authorizer",
+        {
+          kind: "authorizer",
+          name: "model-judge",
+          verdict: "deny",
+          reason: "outside the project",
+        },
+      ],
+      ["rule", { kind: "rule", surface: "bash", pattern: "*", origin: null }],
+      ["yolo", { kind: "yolo", pattern: null }],
+      ["unavailable", { kind: "unavailable", reason: "nobody answered" }],
+      ["gate_error", { kind: "gate_error", reason: "boom" }],
+    ] as const)("returns a %s source unchanged", (_label, source) => {
+      expect(effectiveDecider(source)).toEqual(source);
+    });
+  });
+
+  describe("a source that decided elsewhere", () => {
+    it("unwraps one hop to the decider inside the responding session", () => {
+      const inner: DecisionSource = {
+        kind: "rule",
+        surface: "external_directory",
+        pattern: "/tmp/*",
+        origin: "global",
+      };
+
+      expect(effectiveDecider(nest(1, inner))).toEqual(inner);
+    });
+
+    it("unwraps a relay hop to the innermost decider", () => {
+      const inner: DecisionSource = {
+        kind: "authorizer",
+        name: "model-judge",
+        verdict: "allow",
+        reason: null,
+      };
+
+      expect(effectiveDecider(nest(2, inner))).toEqual(inner);
+    });
+
+    it("returns the hop itself when the responder named no decider", () => {
+      // An older responder sends no `decidedBy`. The hop is still a fact, and
+      // "decided somewhere else, by something unnamed" is all that is known.
+      const hop: DecisionSource = {
+        kind: "forwarded",
+        responderSessionId: "session-1",
+        decision: null,
+      };
+
+      expect(effectiveDecider(hop)).toEqual(hop);
+    });
+
+    it("stops at the nesting bound rather than descending without limit", () => {
+      const source = nest(MAX_DECISION_SOURCE_DEPTH + 2, {
+        kind: "user",
+        via: "dialog",
+      });
+
+      expect(effectiveDecider(source).kind).toBe("forwarded");
     });
   });
 });

@@ -6,6 +6,7 @@ import { EXTENSION_TAG } from "#src/presentation/agent-renderer";
 import { SessionApproval } from "#src/session-approval";
 import {
   DECIDED_BY_ABSENT_AUTHORITY,
+  DECIDED_BY_AUTHORIZER,
   DECIDED_BY_HUMAN,
 } from "#test/helpers/decision-fixtures";
 import { makeDescriptor, makeGateRunner } from "#test/helpers/gate-fixtures";
@@ -329,13 +330,13 @@ describe("GateRunner — descriptor path", () => {
     );
   });
 
-  it("emits auto_approved resolution when decision has autoApproved flag", async () => {
+  it("emits auto_approved resolution when yolo decided the escalated ask", async () => {
     const { runner, deps } = makeGateRunner({
       resolveResult: makeCheckResult({ state: "ask", matchedPattern: "*" }),
       escalate: vi.fn().mockResolvedValue({
         approved: true,
         state: "approved",
-        autoApproved: true,
+        decidedBy: { kind: "yolo", pattern: "*" },
       }),
     });
     const result = await runner.run(makeDescriptor(), null);
@@ -345,6 +346,99 @@ describe("GateRunner — descriptor path", () => {
         resolution: "auto_approved",
       }),
     );
+  });
+
+  describe("attributes the ask to what decided it", () => {
+    it("emits authorizer_denied when a chain link refused the ask", async () => {
+      const { runner, deps } = makeGateRunner({
+        resolveResult: makeCheckResult({ state: "ask", matchedPattern: "*" }),
+        escalate: vi.fn().mockResolvedValue({
+          approved: false,
+          state: "denied_with_reason",
+          denialReason: "reads outside the project",
+          decidedBy: DECIDED_BY_AUTHORIZER,
+        }),
+      });
+      const result = await runner.run(makeDescriptor(), null);
+      expect(result).toMatchObject({ action: "block" });
+      expect(deps.reporter.emitDecision).toHaveBeenCalledWith(
+        expect.objectContaining({
+          result: "deny",
+          resolution: "authorizer_denied",
+        }),
+      );
+    });
+
+    it("emits authorizer_allowed when a chain link granted the ask", async () => {
+      const { runner, deps } = makeGateRunner({
+        resolveResult: makeCheckResult({ state: "ask", matchedPattern: "*" }),
+        escalate: vi.fn().mockResolvedValue({
+          approved: true,
+          state: "approved",
+          decidedBy: {
+            kind: "authorizer",
+            name: "model-judge",
+            verdict: "allow",
+            reason: null,
+          },
+        }),
+      });
+      const result = await runner.run(makeDescriptor(), null);
+      expect(result).toEqual({ action: "allow" });
+      expect(deps.reporter.emitDecision).toHaveBeenCalledWith(
+        expect.objectContaining({
+          result: "allow",
+          resolution: "authorizer_allowed",
+        }),
+      );
+    });
+
+    it("emits policy_allow when a rule in the serving session answered the forwarded ask", async () => {
+      const { runner, deps } = makeGateRunner({
+        resolveResult: makeCheckResult({ state: "ask", matchedPattern: "*" }),
+        escalate: vi.fn().mockResolvedValue({
+          approved: true,
+          state: "approved",
+          decidedBy: {
+            kind: "forwarded",
+            responderSessionId: "parent-1",
+            decision: {
+              kind: "rule",
+              surface: "external_directory",
+              pattern: "/tmp/*",
+              origin: "global",
+            },
+          },
+        }),
+      });
+      const result = await runner.run(makeDescriptor(), null);
+      expect(result).toEqual({ action: "allow" });
+      expect(deps.reporter.emitDecision).toHaveBeenCalledWith(
+        expect.objectContaining({
+          result: "allow",
+          resolution: "policy_allow",
+        }),
+      );
+    });
+
+    it("still emits user_approved when a human in the serving session answered", async () => {
+      const { runner, deps } = makeGateRunner({
+        resolveResult: makeCheckResult({ state: "ask", matchedPattern: "*" }),
+        escalate: vi.fn().mockResolvedValue({
+          approved: true,
+          state: "approved",
+          decidedBy: {
+            kind: "forwarded",
+            responderSessionId: "parent-1",
+            decision: DECIDED_BY_HUMAN,
+          },
+        }),
+      });
+      await runner.run(makeDescriptor(), null);
+      expect(deps.reporter.emitDecision).toHaveBeenCalledWith(
+        expect.objectContaining({ resolution: "user_approved" }),
+      );
+    });
   });
 
   it("uses preResolved.state instead of calling resolve", async () => {

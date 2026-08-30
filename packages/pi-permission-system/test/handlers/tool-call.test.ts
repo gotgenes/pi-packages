@@ -2,6 +2,10 @@ import { describe, expect, it, vi } from "vitest";
 
 import { getEventInput } from "#src/handlers/permission-gate-handler";
 import { findEvidence } from "#src/presentation/prompt-payload";
+import {
+  DECIDED_BY_ABSENT_AUTHORITY,
+  DECIDED_BY_HUMAN,
+} from "#test/helpers/decision-fixtures";
 
 import {
   makeBashCommandCheck,
@@ -319,6 +323,7 @@ describe("handleToolCall — bash external-directory policy states", () => {
           approved: false,
           state: "denied",
           confirmationUnavailable: true,
+          decidedBy: DECIDED_BY_ABSENT_AUTHORITY,
         }),
       },
     });
@@ -382,9 +387,11 @@ describe("handleToolCall — generic ask prompt content", () => {
       },
       tools: ["weather_lookup"],
       prompter: {
-        escalate: vi
-          .fn()
-          .mockResolvedValue({ approved: false, state: "denied" }),
+        escalate: vi.fn().mockResolvedValue({
+          approved: false,
+          state: "denied",
+          decidedBy: DECIDED_BY_HUMAN,
+        }),
       },
     });
     const event = makeToolCallEvent("weather_lookup", {

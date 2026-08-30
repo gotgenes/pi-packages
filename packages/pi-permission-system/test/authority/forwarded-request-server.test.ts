@@ -40,7 +40,10 @@ import {
   registerLink,
 } from "#test/helpers/authorizer-fixtures";
 import { makeAuthorizerLog } from "#test/helpers/authorizer-log-fixtures";
-import { DECIDED_BY_HUMAN } from "#test/helpers/decision-fixtures";
+import {
+  DECIDED_BY_AUTHORIZER,
+  DECIDED_BY_HUMAN,
+} from "#test/helpers/decision-fixtures";
 import {
   createForwardingTempDir,
   type ForwardingTempDir,
@@ -1180,6 +1183,28 @@ describe("processInbox — terminal decision broadcast", () => {
 
     expect(broadcastDecisions()).toMatchObject([
       { result: "allow", resolution: "user_approved_for_session" },
+    ]);
+  });
+
+  test("broadcasts a chain link's denial as authorizer_denied", async () => {
+    dir.writeRequest({
+      id: "req-link-denied",
+      surface: "bash",
+      value: "git push",
+    });
+    const server = makeServer({
+      escalator: escalatorAnswering({
+        approved: false,
+        state: "denied_with_reason",
+        denialReason: "reads outside the project",
+        decidedBy: DECIDED_BY_AUTHORIZER,
+      }),
+    });
+
+    await server.processInbox(servingContext());
+
+    expect(broadcastDecisions()).toMatchObject([
+      { result: "deny", resolution: "authorizer_denied" },
     ]);
   });
 
