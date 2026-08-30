@@ -23,7 +23,7 @@ function ctx(overrides: {
   baseCwd: string;
   agentId?: string;
 }) {
-  return { agentId: "agent-1", invocation: undefined, ...overrides };
+  return { agentId: "agent-1", ...overrides };
 }
 
 /** Build a provider that isolates the given agent types. */
