@@ -113,8 +113,10 @@ Check an ADR's frontmatter `status:` before citing it.
   When such a command fails with a transient error (HTTP 5xx), verify whether it applied before retrying — `gh pr merge` can 503 after the merge lands.
   Probe with REST (`gh api repos/OWNER/REPO/pulls/N --jq .merged`), which stays up when the GraphQL endpoint behind `gh pr view --json` and `gh pr merge` is degraded (Refs #732).
   This applies to a hand-run `gh pr merge`; `release_pr_merge` performs that verification itself and reports `merged: false` / `merged: unknown` explicitly (Refs #764).
-- For Pi SDK internals (prompt assembly, caching, session lifecycle), read Pi's own source at the sibling checkout `../pi` when present, rather than the installed `dist/` bundles or their sourcemaps.
+- For Pi SDK internals (prompt assembly, caching, session lifecycle), read Pi's own source at the checkout `~/development/pi/pi` when present, rather than the installed `dist/` bundles or their sourcemaps.
+  Spell that path `~/development/pi/pi`, never `../pi` — the relative form resolves only from the root checkout, and a worktree session needs `../../pi` (Refs #801).
   Dispatch an `Explore` subagent with `model: "sonnet-5"` for a multi-hop trace there (e.g. "how does `ui.custom` pass keybindings to the factory?") — a targeted read of a known file is fine inline, but a hunt costs 5–10 greps of this session's context, and `Explore`'s haiku default is too weak for the reasoning.
+  Keep the trace inline when its output is a universal claim the design will rest on — a subagent returns it as a summary you would have to re-verify anyway (Refs #801).
   The checkout tracks Pi's `main` and runs ahead of the pinned dependency.
   Read it for mechanism, but confirm any API you design around exists in the installed version first — `grep` the types under `node_modules/.pnpm/@earendil-works+pi-coding-agent@*/` (Refs #661).
   Existence is not enough for a seam you design *around*: a callback's position in the call order, and the data populated by the time it fires, are visible only in the compiled `.js`, never in the `.d.ts` (Refs #696).

@@ -102,8 +102,87 @@ The follow-up filed during planning, [#846] (`pi-nocd`'s stale inherited-prompt 
 Nothing deferred beyond [#846].
 The TDD stage note above already records the pre-completion reviewer's two rounds (WARN → PASS) and the post-review anchor hardening; the root's `/retro 801` can read both directly.
 
+## Stage: Final Retrospective (2026-08-30T20:38:05Z)
+
+### Session summary
+
+Shipped #801 across four sessions — planning and TDD in the peer worktree, sync at the peer, land and release at the root.
+Eleven commits fast-forwarded onto `main`, CI green, `@gotgenes/pi-subagents@21.0.1` released, worktree and branch torn down.
+A subagent's prompt now carries exactly one skills catalogue and one working-directory claim, both describing the child's own session.
+
+### Observations
+
+#### What went well
+
+- **A mis-pasted slash command cost nothing, because the guard fired before anything irreversible.**
+  `/ship-worktree 844` was pasted into the peer session alongside `/sync-worktree 801`.
+  The template's step 0 (`git branch --show-current`, before any git or GitHub action) caught it on the first tool call; the session reported the mismatch, declined that half, and ran the command that actually matched the branch.
+  This is the first observed instance of that ordering paying off, and it paid off against a wrong *issue number*, not just a wrong directory — the failure mode it would otherwise have produced is a wrong `issue_close` or a wrong ff-merge.
+- **The reviewer round found a real defect, and re-deriving the fix found its mirror.**
+  The `pre-completion-reviewer` reported that anchoring on the last `</available_skills>` under-cuts when a second well-formed catalogue follows the footer.
+  Working the fix surfaced the over-cut the reviewer did not report — a catalogue quoted in a project-context file wins the same search when the parent resolved no skills.
+  Re-deriving a reported finding rather than patching it exactly as described is what turned one bug into two.
+- **The fix replaced a heuristic with a structural fact.**
+  First-or-last catalogue is a guess about document order, wrong in one direction either way; `buildSystemPrompt` writes the cwd footer immediately after the catalogue unconditionally, which makes the anchor positional instead.
+- **Verification ran incrementally throughout.**
+  `pnpm run check` after every step that touched a shared surface, the package suite after each Green, killing mutations before each commit, and the full four-gate sweep at the end.
+  No gate was deferred to the end and no commit was made with a mutation in the tree.
+
+#### What caused friction (agent side)
+
+- `other` — **two of the plan's own new tests stayed green during Red and shipped as weak probes.**
+  `"drops the footer that follows the catalogue"` and `"keeps the identity ahead of the catalogue byte for byte"` used a parent/child cwd mismatch that the *pre-fix* footer strip already handled, so neither isolated the catalogue cut it claimed to pin.
+  They were classified as invariant pins and passed over; the reviewer caught one, and re-deriving it caught the other.
+  Impact: two follow-up commits (`d184f41b`, and the fixture half of `49f3e46b`) after the review round, plus a second reviewer dispatch.
+  The signal was available at Red — 10 of 12 went red — and the two that did not were exactly the two that pinned nothing.
+  `/tdd-plan`'s "Verify the pins" step lists three cases where mutation verification is mandatory because Red's own evidence does not cover the test, and has been refined twice already ([#830]'s green-file restore, [#844]'s count-the-reds check) — but a test that stays green during Red is not one of the three.
+- `missing-context` — **two unverified claims about this repo's own code entered a clarification gate's substance.**
+  `excludedExtensionPackages` was cited as a case where a child's skill set differs from its parent's (it is not — `package-exclusions.ts` sets only `extensions: []`), and extensions were asserted to re-append in children before the chain was traced.
+  Impact: two extra gate rounds (four `ask_user` calls for one decision boundary, against the `ask-user` skill's budget of one).
+  Both corrections improved the decision rather than merely restating it, so the rounds were productive — but they were spent establishing facts that a grep before the gate would have settled.
+- `instruction-violation` (self-unidentified) — **the Pi SDK trace ran inline at roughly eighteen greps.**
+  Planning made ~13 calls into `node_modules/.pnpm/@earendil-works+pi-coding-agent@0.84.4/` and ~5 into the `../pi` checkout to establish how `buildSystemPrompt` layers a prompt.
+  `AGENTS.md` § Workflow prescribes an `Explore` subagent with `model: "sonnet-5"` for exactly this multi-hop trace, and prices a hunt at 5–10 greps.
+  Impact: planning-session context consumed; no rework, and the design that came out of it was correct.
+  There is a real tension here worth naming rather than filing as a simple lapse — see Diagnostic details.
+
+#### What caused friction (user side)
+
+- The `/ship-worktree 844` paste was acknowledged as a copy-paste slip, and it cost one turn.
+  Framed as opportunity rather than criticism: the interesting fact is that a wrong issue number reached a session at all, and the only thing standing between it and a wrong `issue_close` was one guard.
+  Nothing here suggests a process change — the guard is the process change, and it worked.
+
+### Diagnostic details
+
+- **Model-performance correlation** — planning and TDD ran on `anthropic/claude-opus-5` (judgment-heavy design and test-discrimination work; appropriate).
+  The sync stage ran on `anthropic/claude-sonnet-5` and is the stage that caught the mis-pasted `/ship-worktree 844` — the guard held on the cheaper model, which is evidence the branch check is not reasoning-sensitive.
+  Land and retrospective ran on `anthropic/claude-opus-5`.
+  Two subagents were dispatched, both fresh-context and both on judgment-heavy work: `tidy-first-assessor` at planning (returned one Recommended tidy plus a design correction) and `pre-completion-reviewer` twice at TDD (WARN → PASS).
+  No mismatch found in either direction.
+- **Escalation-delay tracking** — no sequence exceeded five consecutive tool calls on the same error.
+  The longest was three (turns 179–182 of the peer session), debugging a fixture that placed a quoted catalogue exactly where Pi writes its own; the agent correctly diagnosed the fixture rather than the code and moved on.
+- **Unused-tool detection** — the SDK trace above is the one case where a dispatch was available and not used.
+  The countervailing argument is genuine: what the trace had to establish was a *universal* claim (`buildSystemPrompt` writes the footer after the catalogue in **both** branches, unconditionally), and `AGENTS.md` separately warns that a subagent's universal claim is the one that must be re-verified.
+  A delegated summary here would have had to be re-derived inline before the design could rest on it.
+- **Feedback-loop gap analysis** — no gap.
+  Baseline (`check`, root `lint`, `test`, `fallow dead-code`) was established before step 1; `pnpm run check` ran inside steps 1, 2, and the two review-round commits; the package suite ran after every Green; the killing mutation for each step ran before its commit.
+  The changelog preview at end-of-cycle caught a `fix:` subject naming the seam rather than the symptom, and it was reworded before anything was pushed.
+
+### Changes made
+
+1. `.pi/prompts/tdd-plan.md` — added a fourth case to "Verify the pins", making mutation verification mandatory when a new test stayed green during Red.
+   The existing three cases cover signature-change reds, tests authored after Green, and multi-class steps; a test that never went red at all was the gap this issue fell through.
+2. `AGENTS.md` § Workflow — corrected the Pi SDK checkout path from `../pi` to `~/development/pi/pi`.
+   The relative form resolves only from the root checkout; from a worktree (`~/development/pi/pi-packages-worktrees/issue-<N>`) it points at a nonexistent `pi-packages-worktrees/pi` and would need `../../pi`.
+   The planning session had already worked around this by probing `~/development/pi/pi` directly, so the doc was describing a path no recent session actually used.
+3. `AGENTS.md` § Workflow — added the inline carve-out to the `Explore`-dispatch rule: keep an SDK trace inline when its output is a universal claim the design will rest on.
+   This reconciles the dispatch rule with the existing warning that a subagent's universal claim is the one that must be re-verified.
+4. `packages/pi-subagents/docs/retro/0801-inherit-only-parent-prompt-identity.md` — this Final Retrospective entry.
+
 [#180]: https://github.com/gotgenes/pi-packages/issues/180
 [#400]: https://github.com/gotgenes/pi-packages/issues/400
 [#640]: https://github.com/gotgenes/pi-packages/issues/640
 [#696]: https://github.com/gotgenes/pi-packages/issues/696
+[#830]: https://github.com/gotgenes/pi-packages/issues/830
+[#844]: https://github.com/gotgenes/pi-packages/issues/844
 [#846]: https://github.com/gotgenes/pi-packages/issues/846
