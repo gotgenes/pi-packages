@@ -54,5 +54,45 @@ Filed [#849] for the widget's missing `session_shutdown` teardown and recorded i
 - `packages/pi-subagents/test/ui/agent-widget.test.ts` — the assessor considered and explicitly declined refreshing the `describe("AgentWidget.update self-seeds finished agents")` block's comments; they already say "turn" generically and name no tool event, so there is nothing stale.
   Recorded only so a later sweep does not re-discover it as a candidate.
 
+## Stage: Implementation — TDD (2026-08-30T21:48:51Z)
+
+### Session summary
+
+Executed all three TDD steps from the plan.
+The widget's `UICtx` capture moved from `tool_execution_start` to `session_start`, the finished-agent linger clock moved to `turn_start`, `ToolStartHandler` became `WidgetEventsHandler` with one method per event, and the extension no longer subscribes to `tool_execution_start` at all.
+Tests went 1349 → 1353 (72 files, unchanged): −3 from the deleted `tool-start.test.ts`, +4 in `widget-events.test.ts`, +3 in `composition-root.test.ts`.
+Pre-completion reviewer: PASS.
+
+### Observations
+
+- **Deviation 1 — a second fixture with the same defect.**
+  The plan's preparatory step named only `test/composition-root.test.ts`, whose `makePi()` keyed handlers one-per-event and would have silently evicted the lifecycle `session_start` handler once the widget registered a second one.
+  `test/print-mode.test.ts` has its own `makePi()` with the identical shape and also fires `session_start`, so it needed the same fan-out fix.
+  Found by grepping for tests that import `#src/index` — the same grep the planning stage used to find the first one, run one step later than it should have been.
+  The reviewer independently confirmed these are the only two.
+
+- **Deviation 2 — the plan's mutation set had a hole, in the half the change relocated.**
+  All three killing mutations the plan named killed exactly the tests it predicted (2 / 1 / 1).
+  But a fourth mutation — deleting `pi.on("turn_start", () => widgetEvents.handleTurnStart())` from `src/index.ts` — left the entire 1352-test suite green.
+  The plan reasoned about mutations for the code it *wrote* (the two handler methods) and for the wiring line that fixed the *bug*, and skipped the wiring line that merely *moved*.
+  A relocated call is exactly as unpinned at its new site as it was at its old one, and "behavior-preserving" is what makes it easy to skip.
+  Fixed by adding a fourth composition-root test that drives an agent to completion and asserts the next `turn_start` clears the widget.
+
+- **The composition-root file was the right seam and it already existed.**
+  Its own docstring says it asserts "the wiring contract that unit tests cannot see — only this file fails if the wiring is removed", which is precisely the claim this issue needed.
+  The two handler unit tests survive the real defect's mutation; only the composition-root test dies.
+
+- **The SDK's multi-handler fan-out is load-bearing and was worth verifying twice.**
+  `runner.js:63` documents it and `runner.js:627` iterates the per-event array; both fixtures now model it.
+  Two `session_start` and two `turn_start` registrations from one extension all fire, in registration order.
+
+- **No behavior change inside `AgentWidget`.**
+  Its diff is two doc comments.
+  The wall-clock linger alternative rejected at the planning gate would have touched `finishedTurnAge`, `seedFinishedAgents()`, and `clearWidget()`; keeping the turn counter meant `test/ui/agent-widget.test.ts` is byte-identical, which the reviewer used to confirm Step 1's (#724) `isBackground` filter invariant holds by construction.
+
+- **The incidental timer-leak fix is real but partial.**
+  `clearWidget()` is now reachable in headless and before the first tool call, so the 80 ms interval terminates.
+  `AgentWidget.dispose()` still has no call site, which is [#849] / Phase 22 Step 9.
+
 [#423]: https://github.com/gotgenes/pi-packages/issues/423
 [#849]: https://github.com/gotgenes/pi-packages/issues/849
