@@ -12,20 +12,15 @@ export type PermissionPromptDecision = {
   state: PermissionDecisionState;
   denialReason?: string;
   /**
-   * True when the decision was made automatically by yolo mode rather than
-   * by an interactive user prompt. Used by handlers to emit "auto_approved"
-   * rather than "user_approved" in the permissions:decision broadcast.
-   */
-  autoApproved?: true;
-  /**
    * True when no human ever ruled on this ask: either no live authority was
    * reachable at all (`DenyingAuthorizer`, a no-UI non-subagent session) or the
    * forwarding path gave up before reaching one (`ParentAuthorizer` — target
    * unresolvable, request undeliverable, target not serving, or no answer
-   * within the timeout). Consumed by deriveResolution (the decision-event
-   * resolution), the gate (block reason), and PermissionPrompter (review-entry
-   * resolution) to emit "confirmation_unavailable" rather than a plain user
-   * denial — a user who was never asked denied nothing (#719).
+   * within the timeout). Consumed by the gate (block reason) and
+   * `PermissionPrompter` (review-entry resolution) to report
+   * "confirmation_unavailable" rather than a plain user denial — a user who
+   * was never asked denied nothing (#719). The decision-event resolution
+   * reads the `unavailable` decider below instead (#772).
    */
   confirmationUnavailable?: true;
   /**
