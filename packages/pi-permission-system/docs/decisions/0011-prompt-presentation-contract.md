@@ -225,6 +225,35 @@ The exposed surfaces are an unknown third-party extension reading `message` off 
 A forwarded request that carries no payload is rendered from whatever fields it does carry, and a prompt is **never** presented empty.
 Fail-closed applies to presentation as it does to policy: if the facts cannot be established, the ask still reaches the human with what is known, rather than resolving without one.
 
+### 10. What a forwarded refusal may tell the requesting agent
+
+§7 governs a refusal decided in the session being told.
+A forwarded ask is decided in another one, so its refusal render has facts §7 never contemplated: the deciding node's own matched rule, its own error text, and its identity.
+This section decides which of those may cross back to the requesting agent ([#844]).
+
+The question is narrower than it first appears.
+The deciding node's `decidedBy` already crosses the hop — it is written onto the response file and relayed by `ParentAuthorizer`, and the requesting session persists it in its own review log.
+So nothing here decides whether these facts may leave the serving node; they already have.
+What it decides is whether they may reach the requesting **agent's context**, which is the narrower disclosure §7 already answers affirmatively for a local policy deny.
+
+Permitted, because each is operator configuration or this package's own text, and each is what makes the refusal actionable rather than merely accurate:
+
+- The pattern of the rule that denied, named in place of the requesting session's own ask rule.
+  Naming the ask rule instead is not a smaller disclosure, it is a wrong one — the agent is told a rule denied it and given the identifier of a different rule.
+- The deny-with-reason text the deciding rule carried, which §7 already affirms for a local denial and which the serving node therefore carries onto the response.
+- The error text of an escalation that threw, on the same footing as the local fail-closed boundary's own message.
+- That the decision was made in the session serving the request — derived from the forwarding frame, not asserted, so a refusal decided locally does not claim otherwise.
+
+Withheld:
+
+- The responder session id.
+  It answers *where*, and the render answers *what* ([#772]); an id also identifies a session the requester cannot act on.
+- The deciding rule's `origin` scope.
+  No renderer discloses a rule's origin today, and this arm is not the place to start — it would newly reveal which of the operator's config scopes the serving node runs under.
+
+Unchanged: the `permissions:decision` broadcast stays the narrowest renderer under §6.
+None of the above reaches it; it carries request facts and the verdict, and no decider at all.
+
 ## Consequences
 
 - The prompt's content stops being decided at five assembly sites and starts being decided in one renderer per consumer.
@@ -282,3 +311,5 @@ The table below names what each existing item becomes under the contract, not th
 [#710]: https://github.com/gotgenes/pi-packages/issues/710
 [#713]: https://github.com/gotgenes/pi-packages/issues/713
 [#716]: https://github.com/gotgenes/pi-packages/pull/716
+[#772]: https://github.com/gotgenes/pi-packages/issues/772
+[#844]: https://github.com/gotgenes/pi-packages/issues/844
