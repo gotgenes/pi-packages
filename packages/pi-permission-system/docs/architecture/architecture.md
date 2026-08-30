@@ -1011,6 +1011,9 @@ No decline, so the regular improvement rotation continues.
 - [#742] — adopted as Step 4, having been swept out of Phase 13 as "a strong candidate for the next phase's spine".
   ADR 0013 §10 recasts it as a combinator clause of the verdict fold rather than a patch, so fixing it now is the fold's first clause.
 - [#772] — adopted as Step 5; filed by Phase 13 Step 10's implementation and non-gating since.
+- [#844] — filed by Step 5's planning; adopted as Step 15 by operator decision.
+  Step 5's scope gate fixed the bus event for every decider and the agent-facing text for the `authorizer` arm only, leaving a forwarded denial the parent's rule or a gate error decided still rendered to the child's agent as the user's.
+  It stands beside Step 5 rather than inside it because its hard half is an ADR 0011 §6 disclosure question — whether the parent's pattern and origin may reach the requesting agent at all — rather than the mapping Step 5 settles.
 - [#796] — adopted as Step 6; its deferral trigger (the last known downstream migrating) fired during [#788]'s ship.
 - [#792] and [#793] — adopted as Steps 7 and 8, the two ADR 0012 decision-6 residuals filed with [#789].
 - [#799] — deferred with recorded rationale (user composition decision): the channel ADR is deliberative design budget that would compete with the capability axis for the same planning attention, and ADR 0013 §9 has already written its input constraints so nothing decays by waiting.
@@ -1341,6 +1344,21 @@ Step 4 makes that emission an explicit branch and deliberately stops there, beca
 
 Release: independent
 
+#### Step 15: A forwarded denial names what actually refused it ([#844])
+
+**Cause:** Step 5 reconciles the `permissions:decision` broadcast with the stamped decider on every path, and reconciles the agent-facing denial text on one — the `authorizer` arm the issue reported.
+A forwarded ask the parent's own rule denied, or one whose parent-side escalation threw, still renders through `renderUserDenial`, so after Step 5 the broadcast says `policy_deny` and the text says the user denied it, about the same request.
+
+- **Smell:** Category C (a fact established at the decision point reaching one of its two consumers), the residual half of Step 5.
+- **Target:** two more arms on `renderRefusal` (`src/presentation/agent-renderer.ts`).
+  The `gate_error` arm is a render saying the permission authority failed to answer, with `decidedBy.reason` carrying the detail.
+  The `rule` arm is the step's real work: the child's `PromptPayload.request.matchedPattern` is the pattern that raised the child's *ask*, not the parent's deny rule, so `renderPolicyDenial` would name the wrong rule and the parent's pattern and origin live only on the response's `decidedBy`.
+- **Design question the step must settle:** whether a forwarded verdict may disclose the serving node's rule facts to the requesting agent (ADR 0011 §6), or whether the arm renders without naming a rule.
+- **Outcome:** the two records agree on every forwarded path; `grep -c 'case "rule"' packages/pi-permission-system/src/presentation/agent-renderer.ts` goes 0 → ≥ 1.
+- **Impact 2 / Risk 1 / Priority 8.**
+
+Release: independent
+
 ### Step dependency diagram
 
 ```mermaid
@@ -1348,7 +1366,7 @@ flowchart TD
     S1["✅ Step 1 (#806): the direction axis"] --> S2["✅ Step 2 (#807): syntax proofs + pure-reader core"]
     S2 --> S3["✅ Step 3 (#803): wrapper transparency"]
     S4["✅ Step 4 (#742): enumerate catch-all node types"]
-    S5["Step 5 (#772): authorizer verdict attribution"]
+    S5["Step 5 (#772): authorizer verdict attribution"] --> S15["Step 15 (#844): forwarded denial attribution"]
     S6["Step 6 (#796): schedule the root-slot removal"]
     S7["Step 7 (#792): alarm on a child with no node"]
     S8["Step 8 (#793): split-provider extractor gap"]
@@ -1377,7 +1395,8 @@ Steps 10 and 11 both write a session grant from a bash gate: Step 10 decides whe
 - **Track B — bash enumeration completeness:** Steps 4 → 14, in that order.
   Step 14 reads the `ERROR` branch Step 4 introduces, so it cannot precede it.
   The track touches `command-enumeration.ts`, `nested-execution.ts`, `token-collection.ts`, and `handlers/gates/bash-command.ts`, which Track A's Steps 2 and 3 also read — land it before Step 2 or after Step 3, not concurrently.
-- **Track C — decision attribution:** Step 5, any time; it touches `permission-events.ts`, `runner.ts`, and `gates/helpers.ts`, and Track A's tidy-first prep splits `runDescriptor` in the same file — sequence it against Step 2 rather than running both at once.
+- **Track C — decision attribution:** Steps 5 → 15, in that order; Step 15 adds arms to the `renderRefusal` dispatch Step 5 introduces, so it cannot precede it.
+  The track touches `permission-events.ts`, `runner.ts`, `gates/helpers.ts`, `permission-gate.ts`, and `presentation/agent-renderer.ts`, and Track A's tidy-first prep splits `runDescriptor` in the same file — sequence it against Step 2 rather than running both at once.
 - **Track D — cross-node contract residuals:** Steps 6, 7, 8, disjoint from every other track (`service.ts`, `service-lifecycle.ts`, `authority/subagent-registry.ts`, `tool-access-extractor-registry.ts`).
 - **Track E — config-schema ergonomics:** Step 9, after Step 1 has converted `permissionSchema` to a named-property object; it touches `config-schema.ts` and the generated JSON Schema, which no other step edits once Step 1 has landed.
 - **Track F — session-approval width:** Steps 10 and 11, after Step 2 has proven a direction to record.
@@ -1387,7 +1406,7 @@ Steps 10 and 11 both write a session grant from a bash gate: Step 10 decides whe
 
 - **Batch "capability-axis":** Steps 1, 2, 3 (ship together; tail = Step 3; release vehicle = Step 3's `fix:` for [#803], with Step 1's `feat:` for the new config keys riding the same release — Step 2 is a hidden `refactor:` on its own).
   The batch ships together because Steps 1 and 2 relieve nothing a user can observe until a directional grant exists to write, while Step 3's relief is immediate and unconditional.
-- Independently releasable: Step 4 (`fix:`), Step 14 (`fix:`), Step 5 (`feat:`, possibly `feat!:` — see the step's bump note), Step 7 (`feat:`), Step 8 (`fix:` or `feat:` depending on the mechanism chosen), Step 9 (`feat:` — the generated schema ships in the tarball, so new completions and hover text are user-observable), Step 10 (`feat:`, or `feat!:` if the wire shape is not made tolerant), Step 11 (`feat:` — a new prompt affordance the user acts on).
+- Independently releasable: Step 4 (`fix:`), Step 14 (`fix:`), Step 5 (`feat!:` — the operator settled the bump note as breaking), Step 15 (`fix:`), Step 7 (`feat:`), Step 8 (`fix:` or `feat:` depending on the mechanism chosen), Step 9 (`feat:` — the generated schema ships in the tarball, so new completions and hover text are user-observable), Step 10 (`feat:`, or `feat!:` if the wire shape is not made tolerant), Step 11 (`feat:` — a new prompt affordance the user acts on).
 - Step 6 cuts no release on its own: its deliverable is an ADR amendment (`docs:`, hidden), and any code it schedules lands in a later step or a later phase.
 
 ## Refactoring history
@@ -1490,4 +1509,5 @@ Each phase's findings, numbered plan, dependency diagram, and health metrics are
 [#837]: https://github.com/gotgenes/pi-packages/issues/837
 [#839]: https://github.com/gotgenes/pi-packages/issues/839
 [#840]: https://github.com/gotgenes/pi-packages/issues/840
+[#844]: https://github.com/gotgenes/pi-packages/issues/844
 [ADR-0002]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-subagents/docs/decisions/0002-extensions-on-a-minimal-core.md
