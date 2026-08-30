@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [21.0.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v21.0.0...pi-subagents-v21.0.1) (2026-08-30)
+
+
+### Bug Fixes
+
+* **pi-subagents:** give a subagent one skills catalogue and one working-directory claim ([610a4e9](https://github.com/gotgenes/pi-packages/commit/610a4e9ace48cc0bb9a91367e468867172403ea0))
+* **pi-subagents:** keep a quoted skills catalogue from misplacing the inherited cut ([49f3e46](https://github.com/gotgenes/pi-packages/commit/49f3e46b3b673f60105679ab5e4a30c65c75ef78)), closes [#801](https://github.com/gotgenes/pi-packages/issues/801)
+
+
+### Documentation
+
+* **pi-subagents:** document how a child's system prompt is assembled ([b3b96bf](https://github.com/gotgenes/pi-packages/commit/b3b96bfc8c22a501ba14f7a8672ccb59ee951c9e))
+
 ## [21.0.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v20.1.0...pi-subagents-v21.0.0) (2026-08-30)
 
 
