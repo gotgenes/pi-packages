@@ -71,7 +71,8 @@ The relevant live files, with measured occurrence counts (`grep -c`, at `6924faa
 Fifteen live occurrences of each name.
 No skill under `.pi/skills/`, no agent under `.pi/agents/`, no script under `scripts/`, and no package README references either command — verified with `rg -n 'worktree' .pi/settings.json .pi/agents/*.md .pi/skills/*/SKILL.md`, whose only hits are the unrelated `pi-subagents-worktrees` package.
 
-Seven committed retro files carry a `## Stage: Ship (worktree)` header: `packages/pi-subagents/docs/retro/{0448,0535,0536,0537,0829,0830}-*.md` and `packages/pi-session-tools/docs/retro/{0546,0549}-*.md`, plus `packages/pi-permission-system/docs/retro/0742-*.md`.
+Seven committed retro files carry a `## Stage: Ship (worktree)` header: `packages/pi-subagents/docs/retro/{0535,0536,0537,0829,0830}-*.md`, `packages/pi-session-tools/docs/retro/0549-*.md`, and `packages/pi-permission-system/docs/retro/0742-*.md`.
+The count is of heading-bearing files, from the anchored `rg -c '^## Stage: Ship \(worktree\)'`; `packages/pi-session-tools/docs/retro/0546-*.md` mentions the string in prose and does not count.
 `.pi/prompts/retro.md` line 62 names that exact header as where the peer transcript path is recorded.
 Two further retros carry ad-hoc `## Stage: Land — …` headers that no prompt prescribes; they are left alone.
 

@@ -79,3 +79,80 @@ The pre-completion reviewer returned PASS.
   The pinned alias was verified byte-identical to `.pi/prompts/finish-phase.md`'s via `sort -u` collapsing all three `model:` lines to one — an unregistered value would fall back silently to the session model, so string equality against a known-good file is the only available check.
 - **Nothing pushed.**
   `/ship-issue` owns the push; the branch sits nine commits ahead of `origin/main`.
+
+## Stage: Final Retrospective (2026-08-30T04:03:34Z)
+
+### Session summary
+
+One Pi process carried issue #843 end to end — planning, build, ship, and this retrospective — renaming the parallel-worktree flow's two halves to `/sync-worktree` (peer) and `/ship-worktree` (root), migrating the stage and session labels, adding a fail-fast root guard, and pinning both prompts to `anthropic/claude-sonnet-5`.
+Four `docs:` implementation commits landed, CI passed on `69435ce9`, and the issue closed with no release (every changed file sits outside `packages/`).
+The retrospective found no functional defect but two published inaccuracies, both in the issue's close comment.
+
+### Observations
+
+#### What went well
+
+- **The clarification gate overturned its own recommendation.**
+  The labels question recommended migrating session names only and keeping the retro stage header; the operator chose to migrate both and teach `/retro` the old spelling.
+  The plan absorbed that as an accepted residual in Risks rather than re-litigating it, and the build carried it through without drift.
+  A gate that only ever confirms the recommended option is not doing work; this one did.
+- **Grounding the option set before building it.**
+  Dispatching `Explore` (on `sonnet-5`) over the sibling `../pi` checkout established that slash-command autocomplete is fuzzy subsequence matching (`fuzzyFilter` in `packages/tui/src/fuzzy.ts`), not prefix.
+  That removed a whole candidate naming axis — a `/worktree-*` prefix family for tab-completion clustering — before it could shape the gate on a false premise.
+  Checking the mechanism first is what kept the gate honest.
+- **Verification ran incrementally, not at the end.**
+  `pnpm exec rumdl check` plus `pnpm run lint` ran after each of the four build steps, with the full grep sweep before the reviewer dispatch.
+  No feedback-loop gap; `pnpm run check` and `pnpm run test` were correctly identified as not meaningful (no TypeScript changed) rather than skipped silently.
+
+#### What caused friction (agent side)
+
+- `missing-context` (self-identified, at retro time — too late) — **a looser grep at ship time overturned a correct count from planning time.**
+  Planning ran `rg -c '^## Stage: Ship \(worktree\)'` (anchored) and got **7** files.
+  Ship (turn 18) ran `rg -l '## Stage: Ship \(worktree\)'` (unanchored), got 9 matches, subtracted the plan file, and "corrected" the number to **8**.
+  The extra file is `packages/pi-session-tools/docs/retro/0546-effective-model-change-reporting.md`, which contains the string only as prose inside a `### Changes made` entry — not as a stage heading, and therefore not something `/retro` would ever find.
+  The correct count of heading-bearing files is **7**.
+  Impact: the #843 close comment published "eight historical retro files"; the plan's Background section separately lists **nine** filenames for those 7 files, wrongly including `0546` and `0448` (the latter carries `## Stage: Land — worktree`, a different header).
+  No functional consequence — the dual-spelling sentence in `retro.md` works regardless of the count — but two committed artifacts carry a wrong number.
+- `other` (overclaim) — **an untested mechanism claim shipped to a permanent GitHub artifact.**
+  The build summary and the #843 close comment both assert that a running Pi process keeps the templates it loaded at startup, so the renamed commands are unavailable until a restart.
+  This session is direct evidence against at least half of that: the `/retro` body injected at turn 25 contains the `/sync-worktree` text committed at `5df6be89` earlier in this same process, so template **bodies** are re-read from disk per invocation.
+  Whether a **newly named file** registers as a new command mid-process remains untested — that is a different question, and no read-only probe for it was available.
+  `AGENTS.md`'s own note is hedged (" **can** run the pre-edit copy"); the hedge was hardened into a definite instruction on the way to the issue comment.
+  Impact: a possibly-unnecessary instruction published to a closed issue.
+- `other` — **a verification-table row that could not have held.**
+  The plan's Test Impact Analysis predicted `rg -c 'sync-worktree'` would be non-zero inside `.pi/prompts/sync-worktree.md`.
+  A prompt names its counterpart, never itself, so the row was unsatisfiable as written.
+  Impact: none — caught during the build by running the sweep rather than assuming it — but it shows the table was authored without mentally executing each row against the post-change tree.
+
+#### What caused friction (user side)
+
+- **The model-pin request arrived after the plan was committed.**
+  It landed as a second plan commit (`b2007eaa`), a retro amendment, and a fourth build step.
+  Raised during the naming gate it would have folded into the original plan at no extra cost — the gate was already open on exactly these two files.
+  Framed as opportunity: model selection is a natural companion question whenever a gate is settling what a prompt *is*.
+- **The `/retro-note` on `find /` was well-timed.**
+  It captured a cross-cutting concern mid-build without derailing the step, and it is now the only durable record of that ask.
+  No change suggested — noting the pattern because it worked.
+
+### Diagnostic details
+
+- **Model-performance correlation.**
+  Planning ran on `anthropic/claude-opus-5` (declared in `plan-issue.md`); build inherited `opus-5` (`build-plan.md` declares no `model:`); ship ran on `anthropic/claude-sonnet-5` after a manual operator switch (`ship-issue.md` declares no `model:` either); this retrospective runs on `opus-5` (declared in `retro.md`).
+  Subagents: `Explore` on `sonnet-5` for the `../pi` autocomplete trace, and `pre-completion-reviewer` on its declared `anthropic/claude-sonnet-5`.
+  No reasoning-weak model landed on judgment-heavy work.
+  The notable asymmetry is that the two mechanical stages, `/build-plan` and `/ship-issue`, are the two that declare no model — the build ran on the deliberative model purely by inheritance from planning, and the ship ran on the right one only because the operator switched by hand.
+  This issue pinned two prompts for exactly that reason and left the trunk pair unpinned by an explicit Non-Goal.
+- **Escalation-delay tracking.**
+  No `rabbit-hole` friction points; no sequence exceeded five consecutive tool calls on one error.
+- **Unused-tool detection.**
+  The count regression needed no subagent and no new tool — only re-running the command planning had already used.
+  Nothing was available-but-unused.
+
+### Changes made
+
+1. Posted a correction comment on issue #843 ([comment 5466628855](https://github.com/gotgenes/pi-packages/issues/843#issuecomment-5466628855)) fixing the published count (eight → seven, with the seven filenames listed) and downgrading the untested restart instruction to a precaution.
+2. `AGENTS.md` § Shell and search — added the rule that a count re-verified later in a session must be re-derived with the **original** command, not a new pattern (Refs #843).
+3. `docs/plans/0843-worktree-ship-flow-command-names.md` — corrected the Background file list, which named nine files for a count of seven; dropped `0448-*.md` (it carries `## Stage: Land — worktree`) and `0546-*.md` (prose mention only), and named the anchored command the count comes from.
+
+Declined: pinning `/build-plan` to `anthropic/claude-sonnet-5`.
+The operator left the trunk prompts unpinned, consistent with this issue's explicit Non-Goal.
