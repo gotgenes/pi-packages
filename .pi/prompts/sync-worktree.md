@@ -6,6 +6,7 @@ description: Peer-session sync — run pre-push checks and rebase a worktree bra
 # Sync a worktree branch (peer session)
 
 Argument: `$1` is the issue number implemented in this worktree.
+When it is empty, derive the number from the current branch name (`git branch --show-current` → `issue-<N>-<slug>`) and use that `N` everywhere below, starting with the title fetch.
 
 This is the **peer-session** half of the parallel-worktree ship flow.
 It prepares the branch for landing but does **not** touch `main`, close the issue, or release — the **root session** does that via `/ship-worktree $1`.

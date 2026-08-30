@@ -389,6 +389,8 @@ Unquoted, it expands against the cwd first: bash silently substitutes a matched 
 In zsh an unquoted parameter is not word-split, so `perl -pi -e '…' $FILES` passes the whole list as a single filename — spell a multi-file list inline.
 Do not start a bash word with `=` — zsh's `equals` expansion reads `=word` as a command-path lookup, so a decorative `echo ===` separator aborts with `zsh:1: == not found` and discards the rest of an `A; B; C` chain.
 Use `echo ---`.
+Each `bash` call runs in a fresh shell — a variable set in one call is unset in the next.
+Chain producer and consumer in one call, or re-derive the value (Refs #772).
 A `gh issue comment` / `gh pr comment` body containing backticks or fences belongs in a file passed with `--body-file` — inside single quotes a `` \` `` ships literally (Refs #794).
 A shell snippet quoted inside a `/* */` block comment must not contain `*/` — a `sed 's/,.*//'` closes the comment and breaks the file's parse.
 Use `cut -d, -f1`.

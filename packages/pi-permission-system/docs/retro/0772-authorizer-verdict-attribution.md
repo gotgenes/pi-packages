@@ -99,3 +99,62 @@ This single session file covers planning, TDD implementation, and this sync stag
 ### Observations
 
 Nothing new beyond the implementation stage's notes above — this stage is pre-push verification and handoff only.
+
+## Stage: Final Retrospective (2026-08-30T06:34:16Z)
+
+### Session summary
+
+Landed the peer branch on `main` via `/ship-worktree 772` — ff-merge, push, green CI, issue close, a component-scoped release of `pi-permission-system` 28.0.0, and worktree teardown.
+The ship carried no rework: the merge was a clean fast-forward, the release PR was unambiguous, and every gate passed first time.
+It did expose a fail-open in `/ship-worktree`'s own Release coordination step, which cannot see the plan it is instructed to read.
+
+### Observations
+
+#### What went well
+
+- **The component-scoped release path worked exactly as `AGENTS.md` describes it.**
+  `release_pr_find` selected PR #845 by `component`, not position; the full body confirmed a single-package bump to 28.0.0 matching the `feat!:`; `release_pr_merge` rebased and returned the new HEAD with no manual wait loop.
+  This is the first worktree ship to exercise `separate-pull-requests` end to end, and the parallel-worktree flow did not interact with it at all.
+- **Anchoring the close comment on the plan commit rather than the package's last tag paid off immediately.**
+  `git log --grep="docs: plan .*(#772)" -1` bounded the range to this issue's ten commits.
+  The package's last tag was `v27.1.3`, several sibling issues back, so a tag range would have swept them into the summary — the hazard #817 recorded, observed live.
+
+#### What caused friction (agent side)
+
+- `other` — **`/ship-worktree`'s Release coordination step cannot find the plan it is told to read, and fails open.**
+  The step runs deliberately *before* the ff-merge, and greps the working tree: `grep -rl "^issue: 772$" docs/plans packages/*/docs/plans`.
+  On a worktree ship the plan lives on the unmerged peer branch, so the working tree never has it — the grep returned nothing, and the prompt's own rule for that outcome is "no plan → record 'release now'; do **not** ask".
+  This issue's marker was `ship independently`, so the fail-open produced the right answer by luck; a `mid-batch — defer` plan would have been released anyway, silently, with no operator prompt.
+  Recovered by reading the branch ref instead (`git show <branch>:<plan-path>`).
+  Impact: five tool calls to locate a marker the step budgets one for, and a latent wrong release on any deferred worktree issue.
+- `instruction-violation` (self-identified) — wrote `echo ===` as a separator inside an `A; B; C` chain, which `AGENTS.md` explicitly forbids (zsh's `equals` expansion reads `=word` as a command-path lookup).
+  The chain aborted with `zsh:1: == not found` and discarded the two `git show` outputs after it.
+  Impact: one wasted call, re-run with `echo ---`; no rework.
+  The rule already exists and is correctly worded — this is a salience miss, not a documentation gap.
+- `other` — set `PLAN=$(git log …)` in one `bash` call and read `"$PLAN"` in a later one, where the shell is fresh and the variable empty.
+  `git log --oneline "$PLAN"^..HEAD` failed with `fatal: bad revision '^..HEAD'`.
+  Impact: one wasted call; the answer came from grepping the retro file instead.
+  Loud here, but the same mistake in a `grep` pattern or a path argument fails silently.
+
+#### What caused friction (user side)
+
+- The peer's `/sync-worktree` ran with an empty argument — its expanded body reads "Argument: `` is the issue number" and "run `/ship-worktree `" throughout.
+  The peer recovered correctly in two calls by deriving the number from the branch name, so nothing was lost.
+  Opportunity: the template already runs `git branch --show-current` as its first step, so a one-clause fallback there would make the argument optional rather than merely survivable.
+
+### Diagnostic details
+
+- **Model-performance correlation** — the entire `/ship-worktree` stage ran on `anthropic/claude-sonnet-5` and dispatched no subagent; this retrospective runs on `anthropic/claude-opus-5`.
+  Verified from the peer transcript's tail: the TDD implementation turns ran on `claude-opus-5` and the sync stage on `claude-sonnet-5`.
+  The planning stage's attribution was not sampled — `read_session_file` renders newest-first and the peer transcript is 1.5 MB, so the head was not read.
+  No mismatch in what was verified: judgment-heavy implementation on the stronger model, mechanical ship and sync on the cheaper one.
+- **Escalation-delay tracking** — no `rabbit-hole` friction.
+  The longest same-goal run was five calls locating the plan, and it ended by changing approach (working tree → branch ref) rather than by repeating the failing query.
+- **Feedback-loop gap analysis** — no code changed in this session.
+  `pnpm run lint` and `pnpm fallow dead-code` ran in the peer session's `/sync-worktree` step 2, and CI re-verified the same tree on `main`; no gap.
+
+### Changes made
+
+1. `.pi/prompts/ship-worktree.md` — Release coordination now locates the plan on the **peer branch** (`git grep -l "^issue: $1$" "$BRANCH" -- 'docs/plans/*' 'packages/*/docs/plans/*'`, whose `<branch>:<path>` output feeds `git show` directly) instead of grepping a working tree that does not have it yet, and a plan that cannot be found is now reported rather than silently defaulted to "release now".
+2. `AGENTS.md` — added a two-line rule to § Shell and search: each `bash` call runs in a fresh shell, so chain producer and consumer in one call or re-derive the value.
+3. `.pi/prompts/sync-worktree.md` — an empty `$1` is now derived from the branch name (`issue-<N>-<slug>`) before the title fetch, so the template no longer depends on the operator passing the argument.

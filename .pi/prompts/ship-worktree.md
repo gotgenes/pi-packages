@@ -24,11 +24,19 @@ Then fetch the issue title via `gh issue view $1 --json title -q .title`, and ca
 Gather the release decision up front, from the plan, **before** any irreversible work (ff-merge/push/CI).
 A decision presented early is far less likely to be reversed than one inferred at the cancel point.
 
-1. Locate the plan: `grep -rl "^issue: $1$" docs/plans packages/*/docs/plans`.
-2. If a plan is found, read its marker with `grep -F '**Release:**' <plan-file>` (fixed-string — a leading `*` is an invalid regex/BRE operator):
+1. Locate the plan **on the peer branch** — it does not reach `main` until step 2, so the working tree does not have it yet:
+
+   ```bash
+   BRANCH=$(git branch --list "issue-$1-*" | tr -d ' +*')
+   git grep -l "^issue: $1$" "$BRANCH" -- 'docs/plans/*' 'packages/*/docs/plans/*'
+   ```
+
+   The output is `<branch>:<plan-path>` — feed that line straight to `git show`.
+2. If a plan is found, read its marker with `git show "<branch>:<plan-path>" | grep -F '**Release:**'` (fixed-string — a leading `*` is an invalid regex/BRE operator):
    - A marker containing `mid-batch — defer` → ask the operator **now**: defer the release (leave that package's release-please PR open), or release anyway?
      Record the decision.
-   - Any other `**Release:**` value, no marker, or no plan → record "release now"; do **not** ask.
+   - Any other `**Release:**` value, or no marker → record "release now"; do **not** ask.
+   - No plan found on the branch → record "release now" and say so in the final report; do **not** let the absence pass silently.
 
 This section only reads the plan and (conditionally) asks — it performs no git, push, or CI action.
 Step 6 applies the recorded decision.
