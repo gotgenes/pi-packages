@@ -84,3 +84,18 @@ Pre-completion reviewer: WARN on the first round, PASS on the scoped re-review o
 - **`autoApproved` was dead on arrival and nobody had noticed.**
   Declared, documented, threaded through `deriveResolution`'s signature, asserted by three tests — and never once set by `src/`.
   The tests kept a mechanism alive that production could not reach, which is the failure mode a test-double-only producer always risks.
+
+## Stage: Sync (worktree) (2026-08-30T06:15:11Z)
+
+### Session summary
+
+Pre-push checks pass clean from the worktree root: `pnpm run lint` (1063 files, no issues) and `pnpm fallow dead-code` (325 entry points, no issues) — no fixes needed.
+The plan's `**Release:**` marker is `ship independently`; nothing defers, and the change is `feat!:` (breaking) per the plan's Goals.
+The follow-up filed during planning, [#844], is open and adopted as Phase 14 Step 15 — no action needed here.
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-772--/2026-08-30T04-13-13-175Z_01a050df-1857-7ffe-bf47-a627230d04db.jsonl` — read with `read_session_file({ path: "<path>" })` for message-level verification at land/retro time.
+This single session file covers planning, TDD implementation, and this sync stage.
+
+### Observations
+
+Nothing new beyond the implementation stage's notes above — this stage is pre-push verification and handoff only.
