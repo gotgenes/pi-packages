@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [28.0.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v28.0.0...pi-permission-system-v28.0.1) (2026-08-30)
+
+
+### Bug Fixes
+
+* **pi-permission-system:** carry a serving session's deny reason to the requesting agent ([b2010d7](https://github.com/gotgenes/pi-packages/commit/b2010d7bfbf766592b4ae0b98f16a612f96ff706)), closes [#844](https://github.com/gotgenes/pi-packages/issues/844)
+* **pi-permission-system:** name the rule that refused a forwarded call instead of blaming the user ([3d83641](https://github.com/gotgenes/pi-packages/commit/3d83641ad9bf6b045a86a4fb2879a7761c0aefc3)), closes [#844](https://github.com/gotgenes/pi-packages/issues/844)
+* **pi-permission-system:** tell the agent when the permission authority failed to answer ([8f70380](https://github.com/gotgenes/pi-packages/commit/8f70380005733546fa2df1d8694c50985332de19)), closes [#844](https://github.com/gotgenes/pi-packages/issues/844)
+
 ## [28.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v27.1.3...pi-permission-system-v28.0.0) (2026-08-30)
 
 
