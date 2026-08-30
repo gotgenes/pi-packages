@@ -52,3 +52,30 @@ This is a recurrence of the guardrail `AGENTS.md` already records under Refs #69
 The prose guardrail is evidently not enough on its own — the operator's ask is a **deny rule**, not another sentence of guidance.
 Candidate homes for the denial: a `pi-permission-system` policy rule matching `find` invocations whose root is outside the repo, or a bound written into `.pi/agents/pre-completion-reviewer.md` itself.
 Out of scope for #843 — recorded here so it is not lost.
+
+## Stage: Implementation — Build (2026-08-30T03:52:00Z)
+
+### Session summary
+
+Executed all four build steps of the plan: renamed the prompt pair (`ship-worktree.md` → `sync-worktree.md`, then `land-worktree.md` → `ship-worktree.md`), rewrote both files' vocabulary and added the root-half guard, updated the four sibling prompts, updated `AGENTS.md` and `README.md`, and pinned both worktree prompts to `model: anthropic/claude-sonnet-5`.
+Four `docs:` commits (`8440587b`, `5df6be89`, `be59b1be`, `36952029`), no deviation from the plan's design.
+The pre-completion reviewer returned PASS.
+
+### Observations
+
+- **Pre-completion reviewer: PASS.**
+  It confirmed the repo-wide absence of live `/land-worktree` references (searched beyond the plan's eight files), the correct half named at every `/sync-worktree` / `/ship-worktree` mention, the dual-spelling sentence in `retro.md`, the untouched historical retros, byte-identical session-name strings between `AGENTS.md`'s table and the two prompts' `set_session_name` literals, and issue #829's release-marker ordering invariant.
+  It also parsed all three `README.md` Mermaid charts with `mmdc`, confirming the `Land` → `Ship` node-id rename left no dangling edge.
+  No warnings.
+- **Both table-width predictions held.**
+  `AGENTS.md`'s session-naming table needed no re-padding, exactly as the plan computed (`Worktree sync (peer)` / `Worktree ship (root)` both 20 chars; both session-name cells 30).
+  `README.md`'s workflow table did shift its last column, and `pi-autoformat` re-padded it on write — `rumdl check` stayed clean throughout, so the hand-padding the plan budgeted for was never needed.
+- **One plan prediction was wrong, harmlessly.**
+  The Test Impact Analysis predicted `rg -c 'sync-worktree'` would be non-zero in `.pi/prompts/sync-worktree.md`.
+  It is zero: a prompt refers to its counterpart, never to itself.
+  The row should have named only `ship-worktree.md`.
+  Caught by running the sweep rather than assuming it.
+- **Step 4 stayed a separate commit** as planned, keeping the rename diff a pure rename.
+  The pinned alias was verified byte-identical to `.pi/prompts/finish-phase.md`'s via `sort -u` collapsing all three `model:` lines to one — an unregistered value would fall back silently to the session model, so string equality against a known-good file is the only available check.
+- **Nothing pushed.**
+  `/ship-issue` owns the push; the branch sits nine commits ahead of `origin/main`.
