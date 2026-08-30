@@ -12,7 +12,7 @@ Before locating or reading the plan, make sure the working tree is up to date wi
 
 1. Determine the branch: `git branch --show-current`.
 2. **Worktree branch** (an `issue-*` branch): run `git fetch origin` and proceed.
-   A diverged `origin/main` (a sibling peer landed first) is expected here — do **not** `git pull --ff-only` and stop; the worktree ship flow (`/ship-worktree`) owns rebasing onto `origin/main`.
+   A diverged `origin/main` (a sibling peer landed first) is expected here — do **not** `git pull --ff-only` and stop; the worktree ship flow (`/sync-worktree`) owns rebasing onto `origin/main`.
 3. **Trunk** (`main`): run `git pull --ff-only`.
    If it fails for **any** reason — uncommitted changes, divergent history, merge conflict, network error, detached HEAD — stop immediately and report the failure to the user.
    Do not attempt to stash, rebase, force, or otherwise resolve.

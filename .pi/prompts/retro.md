@@ -14,7 +14,7 @@ Before reading anything, make sure the working tree is up to date with the remot
 
 1. Determine the branch: `git branch --show-current`.
 2. **Worktree branch** (an `issue-*` branch with no upstream — `git rev-parse --abbrev-ref --symbolic-full-name @{u}` fails): run `git fetch origin` and proceed.
-   Do **not** pull or rebase here; the worktree ship flow (`/ship-worktree`) owns rebasing onto `origin/main`.
+   Do **not** pull or rebase here; the worktree ship flow (`/sync-worktree`) owns rebasing onto `origin/main`.
 3. **Trunk** (`main`): run `git pull --ff-only`.
    If it fails for **any** reason — uncommitted changes, divergent history, merge conflict, network error, detached HEAD — stop immediately and report the failure to the user.
    Do not attempt to stash, rebase, force, or otherwise resolve.
@@ -59,7 +59,7 @@ Look for patterns that recur across stages, friction that compounds, and whether
 When the issue spanned multiple sessions, read the prior stages' transcripts, not only their breadcrumbs: `list_session_files({ cwd })` lists this repo's sessions newest-first (the filename embeds the session id), and `read_session_file({ path })` renders one — repeated friction shows only in the transcript (Refs #786).
 
 For a worktree issue, the implementation happened in a **separate peer session** whose transcript `read_session` cannot reach (it reads only the current session; the peer is a sibling, not a parent).
-The `## Stage: Ship (worktree)` breadcrumb records a **Peer session transcript** path (a `.jsonl` under `~/.pi/agent/sessions/`, which survives the worktree teardown) — read it with `read_session_file({ path: "<path>" })` when a diagnostic lens (e.g. model-performance correlation) needs message-level detail the breadcrumbs do not carry; it renders the peer transcript through the same pipeline as `read_session`.
+The `## Stage: Sync (worktree)` breadcrumb — spelled `## Stage: Ship (worktree)` in retros written before the commands were renamed — records a **Peer session transcript** path (a `.jsonl` under `~/.pi/agent/sessions/`, which survives the worktree teardown) — read it with `read_session_file({ path: "<path>" })` when a diagnostic lens (e.g. model-performance correlation) needs message-level detail the breadcrumbs do not carry; it renders the peer transcript through the same pipeline as `read_session`.
 If only the peer worktree's cwd is known (no recorded path), use `list_session_files({ cwd: "<worktree path>" })` to find its newest session file first.
 
 Be specific: cite file paths, commit subjects, and concrete tool sequences.

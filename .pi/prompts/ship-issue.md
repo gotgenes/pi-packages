@@ -71,7 +71,7 @@ Files outside the package tree (`.pi/skills/`, root `AGENTS.md`/`README.md`) are
 Say so in the final report and skip the batch-vs-release question.
 
 Then apply the decision recorded in the early "Release coordination" section.
-The issue **always** closes in step 5, regardless of this decision — closing records that the work is on `main`; releasing is a separate, batched concern (matches `/land-worktree`'s decoupled close/release contract).
+The issue **always** closes in step 5, regardless of this decision — closing records that the work is on `main`; releasing is a separate, batched concern (matches the decoupled close/release contract of the worktree flow's root half, `/ship-worktree`).
 If the decision was to defer/batch: continue to step 5, then skip step 6 (the release lands later with the batch tail).
 Each package has its own release-please PR, so leaving this one unmerged holds only this package — sibling packages keep releasing on their own ships.
 Note the deferral in the final report.
