@@ -208,6 +208,18 @@ describe("effectiveDecider", () => {
       expect(effectiveDecider(nest(2, inner))).toEqual(inner);
     });
 
+    it("returns the innermost hop when a relayed responder named no decider", () => {
+      // Two hops bottoming out in the no-decider case: the relay must not stop
+      // at the frame it can see through and report the outer session.
+      const inner: DecisionSource = {
+        kind: "forwarded",
+        responderSessionId: "grandparent-1",
+        decision: null,
+      };
+
+      expect(effectiveDecider(nest(1, inner))).toEqual(inner);
+    });
+
     it("returns the hop itself when the responder named no decider", () => {
       // An older responder sends no `decidedBy`. The hop is still a fact, and
       // "decided somewhere else, by something unnamed" is all that is known.

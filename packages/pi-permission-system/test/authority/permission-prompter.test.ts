@@ -6,7 +6,10 @@ import {
   type PermissionPrompterDeps,
   type PromptPermissionDetails,
 } from "#src/authority/permission-prompter";
-import { DECIDED_BY_HUMAN } from "#test/helpers/decision-fixtures";
+import {
+  DECIDED_BY_ABSENT_AUTHORITY,
+  DECIDED_BY_HUMAN,
+} from "#test/helpers/decision-fixtures";
 import {
   makePromptDetails,
   makePromptPayload,
@@ -136,7 +139,7 @@ describe("PermissionPrompter", () => {
         approved: false,
         state: "denied",
         confirmationUnavailable: true,
-        decidedBy: DECIDED_BY_HUMAN,
+        decidedBy: DECIDED_BY_ABSENT_AUTHORITY,
       });
 
       await prompter.prompt(authorizer, makeDetails());

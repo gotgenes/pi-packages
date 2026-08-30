@@ -5,7 +5,10 @@ import type { PermissionPromptDecision } from "#src/authority/permission-dialog"
 import type { PromptPermissionDetails } from "#src/authority/permission-prompter";
 import type { AuthorizerLog, PermissionQuery } from "#src/service";
 import { makeAuthorizerLog } from "#test/helpers/authorizer-log-fixtures";
-import { DECIDED_BY_HUMAN } from "#test/helpers/decision-fixtures";
+import {
+  DECIDED_BY_ABSENT_AUTHORITY,
+  DECIDED_BY_HUMAN,
+} from "#test/helpers/decision-fixtures";
 import { makePromptDetails as makeDetails } from "#test/helpers/prompt-details-fixtures";
 
 /** A shared review-log seam; identity-comparable for injection assertions. */
@@ -148,7 +151,7 @@ describe("composeAuthorizerChain", () => {
     const terminalDecision: PermissionPromptDecision = {
       approved: false,
       state: "denied",
-      decidedBy: DECIDED_BY_HUMAN,
+      decidedBy: DECIDED_BY_ABSENT_AUTHORITY,
       confirmationUnavailable: true,
     };
     const terminal = makeTerminal(terminalDecision);
