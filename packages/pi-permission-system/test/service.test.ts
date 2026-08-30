@@ -35,6 +35,16 @@ function makeService(
   };
 }
 
+/** The session id the service-adapter suites below publish under. */
+const ADAPTER_SESSION = "adapter-session";
+
+function unpublishAdapterService(): void {
+  const current = getPermissionsService(ADAPTER_SESSION);
+  if (current) {
+    unpublishPermissionsService(ADAPTER_SESSION, current);
+  }
+}
+
 // ── globalThis accessor ────────────────────────────────────────────────────
 
 describe("globalThis accessor", () => {
@@ -248,11 +258,11 @@ describe("keyed accessor called without a session id", () => {
     vi.spyOn(process, "emitWarning").mockImplementation(() => undefined);
     const service = await freshServiceModule();
     const published = makeService();
-    service.publishRootPermissionsService(published);
+    service.publishPermissionsService("other-node", published);
 
     expect(callWithoutSessionId(service.getPermissionsService)).toBeUndefined();
 
-    service.unpublishRootPermissionsService(published);
+    service.unpublishPermissionsService("other-node", published);
   });
 
   it("warns once, naming the ready payload and the root reader", async () => {
@@ -284,13 +294,8 @@ describe("keyed accessor called without a session id", () => {
 
 // ── service adapter delegation ─────────────────────────────────────────────
 
-describe("service round-trip through the global slot", () => {
-  afterEach(() => {
-    const current = getRootPermissionsService();
-    if (current) {
-      unpublishRootPermissionsService(current);
-    }
-  });
+describe("service round-trip through the keyed locator", () => {
+  afterEach(unpublishAdapterService);
 
   const fakeResult: PermissionCheckResult = {
     toolName: "bash",
@@ -312,7 +317,8 @@ describe("service round-trip through the global slot", () => {
   }
 
   function publishLocalService(resolver: ReturnType<typeof makeResolver>) {
-    publishRootPermissionsService(
+    publishPermissionsService(
+      ADAPTER_SESSION,
       new LocalPermissionsService(
         resolver,
         {
@@ -329,7 +335,7 @@ describe("service round-trip through the global slot", () => {
   it("resolves a non-path query via a tool intent", () => {
     const resolver = makeResolver();
     publishLocalService(resolver);
-    const result = getRootPermissionsService()!.checkPermission(
+    const result = getPermissionsService(ADAPTER_SESSION)!.checkPermission(
       "bash",
       "git push",
       "Explore",
@@ -346,7 +352,10 @@ describe("service round-trip through the global slot", () => {
   it("resolves a path-surface query via an access-path intent", () => {
     const resolver = makeResolver();
     publishLocalService(resolver);
-    getRootPermissionsService()!.checkPermission("read", "/test/project/.env");
+    getPermissionsService(ADAPTER_SESSION)!.checkPermission(
+      "read",
+      "/test/project/.env",
+    );
     const intent = resolver.resolve.mock.calls[0][0];
     expect(intent.kind).toBe("access-path");
     if (intent.kind === "access-path") {
@@ -358,7 +367,7 @@ describe("service round-trip through the global slot", () => {
     const resolver = makeResolver();
     resolver.getToolPermission.mockReturnValue("deny");
     publishLocalService(resolver);
-    const result = getRootPermissionsService()!.getToolPermission(
+    const result = getPermissionsService(ADAPTER_SESSION)!.getToolPermission(
       "write",
       "Explore",
     );
@@ -370,12 +379,7 @@ describe("service round-trip through the global slot", () => {
 // ── registerToolInputFormatter delegation ─────────────────────────────────
 
 describe("registerToolInputFormatter delegation", () => {
-  afterEach(() => {
-    const current = getRootPermissionsService();
-    if (current) {
-      unpublishRootPermissionsService(current);
-    }
-  });
+  afterEach(unpublishAdapterService);
 
   it("delegates to the registry and returns its disposer", () => {
     const registry = new ToolInputFormatterRegistry();
@@ -387,11 +391,10 @@ describe("registerToolInputFormatter delegation", () => {
       },
     });
 
-    publishRootPermissionsService(service);
-    const dispose = getRootPermissionsService()!.registerToolInputFormatter(
-      "my-tool",
-      formatter,
-    );
+    publishPermissionsService(ADAPTER_SESSION, service);
+    const dispose = getPermissionsService(
+      ADAPTER_SESSION,
+    )!.registerToolInputFormatter("my-tool", formatter);
 
     // Registry received the registration
     expect(registry.get("my-tool")).toBe(formatter);
@@ -411,9 +414,9 @@ describe("registerToolInputFormatter delegation", () => {
       },
     });
 
-    publishRootPermissionsService(service);
+    publishPermissionsService(ADAPTER_SESSION, service);
     expect(() =>
-      getRootPermissionsService()!.registerToolInputFormatter(
+      getPermissionsService(ADAPTER_SESSION)!.registerToolInputFormatter(
         "my-tool",
         () => "",
       ),
@@ -424,12 +427,7 @@ describe("registerToolInputFormatter delegation", () => {
 // ── registerToolAccessExtractor delegation (#352) ────────────────────────
 
 describe("registerToolAccessExtractor delegation", () => {
-  afterEach(() => {
-    const current = getRootPermissionsService();
-    if (current) {
-      unpublishRootPermissionsService(current);
-    }
-  });
+  afterEach(unpublishAdapterService);
 
   it("delegates to the registry and returns its disposer", () => {
     const registry = new ToolAccessExtractorRegistry();
@@ -441,11 +439,10 @@ describe("registerToolAccessExtractor delegation", () => {
       },
     });
 
-    publishRootPermissionsService(service);
-    const dispose = getRootPermissionsService()!.registerToolAccessExtractor(
-      "ffgrep",
-      extractor,
-    );
+    publishPermissionsService(ADAPTER_SESSION, service);
+    const dispose = getPermissionsService(
+      ADAPTER_SESSION,
+    )!.registerToolAccessExtractor("ffgrep", extractor);
 
     expect(registry.get("ffgrep")).toBe(extractor);
 
@@ -463,9 +460,9 @@ describe("registerToolAccessExtractor delegation", () => {
       },
     });
 
-    publishRootPermissionsService(service);
+    publishPermissionsService(ADAPTER_SESSION, service);
     expect(() =>
-      getRootPermissionsService()!.registerToolAccessExtractor(
+      getPermissionsService(ADAPTER_SESSION)!.registerToolAccessExtractor(
         "ffgrep",
         () => "",
       ),
