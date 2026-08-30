@@ -802,6 +802,9 @@ Steps 2, 6, and 8 have design-dependent shapes and are verified by their plans' 
 - [#733] — deferred: TUI overlay defect requiring SDK-level rendering investigation, unrelated to this phase's cause.
 - [#755], [#711], [#636], [#695], [#676], [#660] — deferred: feature/UX requests that do not gate a structural phase ([#660] overlaps [#695]/[#676]).
 - [#683] — deferred: glyph-audit polish at boy-scout scale.
+- [#849] — filed by Step 6's planning; adopted as Step 9 (Track C, after Step 6).
+  The widget's teardown half: `AgentWidget.dispose()` has no call site, so `session_shutdown` leaves the 80 ms interval and the widget/status registrations live.
+  A different mechanism from Step 6's acquisition path, so it is a peer step rather than a fold-in.
 - [#834] — filed by Step 1's implementation; folded into Step 3.
   Narrowing `SubagentManagerLike.spawn`'s `unknown` options exposed a second hole the typing had hidden — neither door validates `thinking`, and Step 3 already rewrites the precedence for that exact field family on the exact line that holds the unchecked cast.
 - [#793], [#792], [#722], [#735] — pi-permission-system-primary; [#564] — pi-github-tools-primary; the `pkg:pi-subagents` labels are contextual and pull no work into this phase.
@@ -930,6 +933,20 @@ Impact 3 / Risk 3 / Priority 9.
 
 Release: independent
 
+#### Step 9 — Tear the widget down on session shutdown ([#849])
+
+Cause: the widget acquires two resources — the 80 ms interval from `ensureTimer()` and the `setWidget`/`setStatus` registrations on the session's `UICtx` — and `AgentWidget.dispose()` releases both, but nothing calls it; the method carries a `fallow-ignore-next-line unused-class-member` comment so the gap stays invisible to dead-code analysis.
+Step 6 is the acquisition half of the same lifecycle; this is the release half.
+Smell: Category A (a disposal path with no caller) plus `bug`.
+Target files: `src/handlers/lifecycle.ts` or the widget's own event handler (per the step's plan), `src/index.ts`, `src/ui/agent-widget.ts` (drop the fallow ignore once the method has a call site).
+Hard dependency: after Step 6, which decides where the widget's host-event wiring lives.
+Design decision at plan time: whether the widget joins `SessionLifecycleHandler`'s dependency set or takes its own `session_shutdown` registration beside Step 6's wiring.
+Outcome: `session_shutdown` clears the interval and unregisters the widget, pinned by a composition-root test; the `fallow-ignore` comment on `dispose()` is removed.
+Commit type: `fix:`.
+Impact 2 / Risk 1 / Priority 10.
+
+Release: independent
+
 ### Step dependencies
 
 ```mermaid
@@ -939,14 +956,14 @@ flowchart TD
     S1 -.soft.-> S2["✅ Step 2 (#830)<br/>SubagentRecord policy"]
     S7["Step 7 (#798)<br/>Foreground resume handle"] -.soft.-> S8["Step 8 (#465)<br/>Ask-back"]
     S5["✅ Step 5 (#801)<br/>Skills-block strip"]
-    S6["Step 6 (#827)<br/>UICtx capture"]
+    S6["Step 6 (#827)<br/>UICtx capture"] --> S9["Step 9 (#849)<br/>Widget teardown"]
 ```
 
 ### Parallel tracks
 
 - **Track A — Front-door contract:** Steps 1 → 2, 3, 4 (the spine; Step 1 unblocks the rest).
 - **Track B — Prompt assembly:** Step 5 (fully independent).
-- **Track C — Widget activation:** Step 6 (fully independent; complements Step 1 — parity makes SDK agents _eligible_, this makes the widget _present_).
+- **Track C — Widget lifecycle:** Steps 6 → 9 (independent of the other tracks; Step 6 complements Step 1 — parity makes SDK agents _eligible_, this makes the widget _present_ — and Step 9 releases what Step 6 acquires).
 - **Track D — Result delivery and ask-back:** Steps 7 → 8 (soft ordering).
 
 ### Release batches
@@ -955,8 +972,8 @@ flowchart TD
   Step 3 is `fix!:` and Step 4 is `refactor!:` with a `BREAKING CHANGE:` footer.
   The two landed in the other order, so Step 4 completed the batch: Step 3's release PR stayed open across it, and both breaking changes ship under the one major bump Step 3's `fix!:` opened.
   Step 2 was provisionally batched here in case its required/optional decision came out breaking; it did not — `SubagentRecord` is produced, never implemented, so its widening is semver-minor and it left the batch as the batch's own line anticipated.
-- Independently releasable: Steps 1, 2, 5, 6, 7, 8.
-  Steps 1, 5, 6, 7 are `fix:`, Step 2 is `feat:`, and Step 8 is `feat:` — each an unhidden release vehicle on its own.
+- Independently releasable: Steps 1, 2, 5, 6, 7, 8, 9.
+  Steps 1, 5, 6, 7, 9 are `fix:`, Step 2 is `feat:`, and Step 8 is `feat:` — each an unhidden release vehicle on its own.
 
 ## Refactoring history
 
@@ -1064,6 +1081,7 @@ The upstream test suite is run periodically as a regression canary for the sessi
 [#798]: https://github.com/gotgenes/pi-packages/issues/798
 [#801]: https://github.com/gotgenes/pi-packages/issues/801
 [#827]: https://github.com/gotgenes/pi-packages/issues/827
+[#849]: https://github.com/gotgenes/pi-packages/issues/849
 [#828]: https://github.com/gotgenes/pi-packages/issues/828
 [#829]: https://github.com/gotgenes/pi-packages/issues/829
 [#830]: https://github.com/gotgenes/pi-packages/issues/830
