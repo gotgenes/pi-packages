@@ -575,7 +575,7 @@ That architecture is not on the near-term roadmap; the note captures the opportu
 Extensions attach through exactly two surfaces, distinguished by the direction of information flow.
 
 1. **Lifecycle events (observational) — unlimited.**
-   The core emits awaited, ordered events for the child-execution lifecycle (`spawning`, `session-created` pre-`bindExtensions`, `completed`, `disposed`).
+   The core emits awaited, ordered events for the child-execution lifecycle (`spawning`, `session-created` pre-`bindExtensions`, `bound` post-`bindExtensions`, `completed`, `disposed`).
    Any number of extensions subscribe; handlers return nothing.
    Reactive concerns live here: permission detection, telemetry, UI, notifications.
    Adding a reactive concern never modifies the core.
