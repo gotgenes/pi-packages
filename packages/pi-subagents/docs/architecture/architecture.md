@@ -798,6 +798,10 @@ Steps 2, 6, and 8 have design-dependent shapes and are verified by their plans' 
 - [#451] — relabeled `scope:repo` and the `pkg:pi-subagents` label dropped (3rd consecutive sweep; it is repo-level CI tooling, not package structure — the relabel ends the per-phase re-sweep without losing the idea).
 - [#608], [#519] — deferred with rationale (2nd sweep, explicit): [#608] is an unverified third-party integration ask whose `AsyncLocalStorage` store shape the no-vacant-hooks rule declines without a concrete verified consumer; [#519] is blocked on upstream SDK clarity and is pi-permission-system-primary.
 - [#779] — deferred by operator decision (offered as a phase track and declined): boundary-ADR documentation does not gate the bug-cluster spine; note PRs #613 and #740 wait on its foreground-default record.
+- [#857] — filed by Step 8's planning; becomes Step 10 by operator decision.
+  `completeRun()` disposes the child's workspace and `resume()` never re-prepares it, so a workspace-backed child resumes into a torn-down directory — the same delivery-boundary family as Steps 5–7, and the bound on Step 8's round trip for exactly the agents most likely to hold a worktree.
+- [#858] — filed by Step 8's planning; becomes Step 11 by operator decision.
+  A child-initiated mid-run channel is the half Step 8's completed-child scope leaves open; the parent-side reply channel (`steer_subagent`) already exists, so the residual is the child's ability to pause and signal.
 - [#791] — deferred by operator decision (offered and declined): small self-contained warning, suitable for pickup outside a phase.
 - [#733] — deferred: TUI overlay defect requiring SDK-level rendering investigation, unrelated to this phase's cause.
 - [#755], [#711], [#636], [#695], [#676], [#660] — deferred: feature/UX requests that do not gate a structural phase ([#660] overlaps [#695]/[#676]).
@@ -962,6 +966,34 @@ Impact 2 / Risk 1 / Priority 10.
 
 Release: independent
 
+#### Step 10 — Re-prepare or refuse a workspace-backed resume ([#857])
+
+Cause: `Subagent.completeRun()` disposes the child's workspace on every terminal transition (`workspaceBracket.dispose(...)`, whose addendum it folds into the result), while `resume()` reuses the existing session and never re-prepares one — a boundary plan `0466` drew deliberately for its own scope and never revisited.
+A child spawned under a registered `WorkspaceProvider` therefore resumes into a directory the provider has torn down, with no signal.
+Smell: Category C (asymmetric lifecycle bracket) plus `bug`.
+Target files: `src/lifecycle/subagent.ts`, `src/lifecycle/workspace-bracket.ts`, `src/tools/agent-tool.ts` (the resume-refusal message, which already has a released-session precedent).
+Design decision at plan time: re-prepare on resume versus refuse with a message, per the `sessionReleased` precedent.
+Outcome: a workspace-backed resume either re-prepares its workspace or is refused with a message naming why; pinned by a test with a stub provider.
+Commit type: `fix:`.
+Impact 2 / Risk 2 / Priority 9.
+
+Release: independent
+
+#### Step 11 — Child-initiated mid-run channel ([#858])
+
+Cause: the parent can reach a running child (`steer_subagent`), but a child that needs information mid-run has no way back — it can only terminate and rely on Step 8's end-and-resume loop, which loses a workspace (Step 10) and expires with the retention window.
+A non-terminal one-way message (a material finding mid-run) has no expression at all.
+Smell: feature completing Step 8's capability at the half its scope excludes.
+Target files: to be settled by the step's plan; design-first.
+Hard dependency: after Step 8 (the completed-child loop must exist and be exercised before its blocking counterpart is designed) and informed by Step 10.
+Design decision at plan time: the child tool allowlist ([#725]) filters any new child-facing tool out of every agent declaring `tools:`, including built-in `Explore` and `Plan` — force-inclusion breaks the documented contract, and per-agent edits do not scale.
+A blocked child also holds its concurrency slot.
+Outcome: a running child can signal its parent and receive a reply without terminating (mechanism per plan), pinned by an end-to-end test.
+Commit type: `feat:`.
+Impact 3 / Risk 4 / Priority 7.
+
+Release: independent
+
 ### Step dependencies
 
 ```mermaid
@@ -972,6 +1004,8 @@ flowchart TD
     S7["✅ Step 7 (#798)<br/>Foreground resume handle"] -.soft.-> S8["Step 8 (#465)<br/>Ask-back"]
     S5["✅ Step 5 (#801)<br/>Skills-block strip"]
     S6["✅ Step 6 (#827)<br/>UICtx capture"] --> S9["Step 9 (#849)<br/>Widget teardown"]
+    S8 --> S11["Step 11 (#858)<br/>Mid-run channel"]
+    S10["Step 10 (#857)<br/>Workspace-backed resume"] -.informs.-> S11
 ```
 
 ### Parallel tracks
@@ -979,7 +1013,7 @@ flowchart TD
 - **Track A — Front-door contract:** Steps 1 → 2, 3, 4 (the spine; Step 1 unblocks the rest).
 - **Track B — Prompt assembly:** Step 5 (fully independent).
 - **Track C — Widget lifecycle:** Steps 6 → 9 (independent of the other tracks; Step 6 complements Step 1 — parity makes SDK agents _eligible_, this makes the widget _present_ — and Step 9 releases what Step 6 acquires).
-- **Track D — Result delivery and ask-back:** Steps 7 → 8 (soft ordering).
+- **Track D — Result delivery and ask-back:** Steps 7 → 8 → 11, with Step 10 joining as an independent resume-path fix that informs Step 11 (Steps 7 → 8 is soft ordering; 8 → 11 is hard).
 
 ### Release batches
 
@@ -987,8 +1021,8 @@ flowchart TD
   Step 3 is `fix!:` and Step 4 is `refactor!:` with a `BREAKING CHANGE:` footer.
   The two landed in the other order, so Step 4 completed the batch: Step 3's release PR stayed open across it, and both breaking changes ship under the one major bump Step 3's `fix!:` opened.
   Step 2 was provisionally batched here in case its required/optional decision came out breaking; it did not — `SubagentRecord` is produced, never implemented, so its widening is semver-minor and it left the batch as the batch's own line anticipated.
-- Independently releasable: Steps 1, 2, 5, 6, 7, 8, 9.
-  Steps 1, 5, 6, 7, 9 are `fix:`, Step 2 is `feat:`, and Step 8 is `feat:` — each an unhidden release vehicle on its own.
+- Independently releasable: Steps 1, 2, 5, 6, 7, 8, 9, 10, 11.
+  Steps 1, 5, 6, 7, 9, 10 are `fix:`, Step 2 is `feat:`, and Steps 8 and 11 are `feat:` — each an unhidden release vehicle on its own.
 
 ## Refactoring history
 
@@ -1086,6 +1120,7 @@ The upstream test suite is run periodically as a regression canary for the sessi
 [#711]: https://github.com/gotgenes/pi-packages/issues/711
 [#722]: https://github.com/gotgenes/pi-packages/issues/722
 [#724]: https://github.com/gotgenes/pi-packages/issues/724
+[#725]: https://github.com/gotgenes/pi-packages/issues/725
 [#733]: https://github.com/gotgenes/pi-packages/issues/733
 [#735]: https://github.com/gotgenes/pi-packages/issues/735
 [#755]: https://github.com/gotgenes/pi-packages/issues/755
@@ -1102,5 +1137,7 @@ The upstream test suite is run periodically as a regression canary for the sessi
 [#830]: https://github.com/gotgenes/pi-packages/issues/830
 [#834]: https://github.com/gotgenes/pi-packages/issues/834
 [#846]: https://github.com/gotgenes/pi-packages/issues/846
+[#857]: https://github.com/gotgenes/pi-packages/issues/857
+[#858]: https://github.com/gotgenes/pi-packages/issues/858
 [ADR-0002]: ../decisions/0002-extensions-on-a-minimal-core.md
 [ADR-0004]: ../decisions/0004-reconsider-ui-direction.md
