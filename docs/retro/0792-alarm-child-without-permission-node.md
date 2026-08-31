@@ -78,3 +78,18 @@ All four gates green (`check`, root `lint`, `test`, `fallow dead-code`).
   Round 1 raised the false ADR claim above plus two module-tree gaps (`child-node-audit.ts` absent from the tree; `pi-subagents` ADR 0002 still enumerating four channels); all fixed in `c8bda0b3`.
   Round 2 confirmed the replacement rationale against the source and found one more stale copy I had missed — `pi-subagents/docs/architecture/architecture.md` duplicates ADR 0002's channel enumeration, so fixing the ADR left the file disagreeing with its own module tree — fixed in `d41ed14e`.
   No blocking findings in either round.
+
+## Stage: Sync (worktree) (2026-08-31T15:40:00Z)
+
+### Session summary
+
+Pre-push checks pass clean: `pnpm run lint` and `pnpm fallow dead-code` both green from the worktree root, no fixes needed.
+The plan's `**Release:**` marker is `ship independently` (Phase 14 Step 7 carries no batch tag), so the root should proceed to release without waiting on a sibling.
+No deferred work or follow-ups from this issue's implementation — the plan's two Open Questions were recorded as non-directions, nothing filed.
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-792--/2026-08-31T03-42-59-315Z_01a055e9-c6f2-789e-9867-87e1fff107c7.jsonl` — read with `read_session_file({ path: "<path>" })` for message-level verification at land/retro time.
+
+### Observations
+
+One judgment call from the TDD stage is still open for the operator: the committed plan retains the original (incorrect) claim that a foreground child is disposed inside the parent's own tool call, with the correction recorded only in this retro's TDD-stage entry rather than edited into the plan itself.
+The pre-completion reviewer agreed this matches the repo's "plan as point-in-time snapshot" convention, but flagged it as the operator's call to override at ship or retro time if preferred.
