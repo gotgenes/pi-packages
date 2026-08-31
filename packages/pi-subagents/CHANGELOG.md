@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [21.1.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v21.0.3...pi-subagents-v21.1.0) (2026-08-31)
+
+
+### Features
+
+* **pi-subagents:** emit the bound announcement once a child binds its extensions ([6beb934](https://github.com/gotgenes/pi-packages/commit/6beb9345ee411eebdaed38a55f368bdcc6779034)), closes [#792](https://github.com/gotgenes/pi-packages/issues/792)
+
+
+### Documentation
+
+* **pi-subagents:** note the unguarded-child warning under excludedExtensionPackages ([013a306](https://github.com/gotgenes/pi-packages/commit/013a30629c0d69be3cd78d1db5d2f5510b221c27)), closes [#792](https://github.com/gotgenes/pi-packages/issues/792)
+
 ## [21.0.3](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v21.0.2...pi-subagents-v21.0.3) (2026-08-31)
 
 
