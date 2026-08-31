@@ -781,7 +781,7 @@ The operator's cadence decision: keep the regular improvement rotation after thi
 | Health score                                                                                     | 78/100 (B) | ≥ 78 (B)        | `pnpm fallow health --score --hotspots --targets --workspace @gotgenes/pi-subagents`                                                                    |
 | `invocation` storage-chain and widget-filter sites (`src/lifecycle/` + `src/ui/agent-widget.ts`) | 8          | 0 ✅            | `grep -rEn 'invocation\??:\|\.invocation\b' packages/pi-subagents/src/lifecycle packages/pi-subagents/src/ui/agent-widget.ts --include='*.ts' \| wc -l` |
 | Blanket `agentConfig?.<field> ?? params` precedence merges in `invocation-config.ts`             | 5          | 0 ✅            | `grep -cE 'agentConfig\?\..*\?\?' packages/pi-subagents/src/config/invocation-config.ts`                                                                |
-| Foreground result text carries the resume handle (`Agent ID` in `foreground-runner.ts`)          | 0          | ≥ 1             | `grep -c 'Agent ID' packages/pi-subagents/src/tools/foreground-runner.ts`                                                                               |
+| Foreground result text carries the resume handle (`Agent ID` in `foreground-runner.ts`)          | 0          | ≥ 1 ✅          | `grep -c 'Agent ID' packages/pi-subagents/src/tools/foreground-runner.ts`                                                                               |
 | Inherited-prompt skills-block strip present in `prompts.ts`                                      | 0          | 3 ✅            | `grep -c 'available_skills' packages/pi-subagents/src/session/prompts.ts`                                                                               |
 | Dead code / production duplication                                                               | 0 / 0      | 0 / 0           | `pnpm fallow dead-code --workspace @gotgenes/pi-subagents` / `pnpm fallow dupes --workspace @gotgenes/pi-subagents`                                     |
 
@@ -919,7 +919,7 @@ Incidentally closes a timer leak: `clearWidget()` was unreachable while `uiCtx` 
 
 Release: independent
 
-#### Step 7 — Deliver the resume handle in foreground results ([#798])
+#### ✅ Step 7 — Deliver the resume handle in foreground results ([#798])
 
 Cause: door asymmetry in result delivery — the background path puts the agent ID in the model-visible text and the foreground path leaves it only in renderer `details`, so a foreground child that ends by asking a question cannot be answered; the resume-return edge shares the shape.
 Smell: Category C (asymmetric boundary) plus `bug`.
@@ -927,6 +927,12 @@ Target files: `src/tools/foreground-runner.ts`, `src/tools/agent-tool.ts` (resum
 Outcome: foreground and resume result text carry the agent ID; the `foreground-runner.ts` grep row goes 0 → ≥ 1; pinned by tests.
 Commit type: `fix:`.
 Impact 2 / Risk 1 / Priority 10.
+
+Landed: all three model-visible delivery edges — the foreground success return, the foreground error return, and the resume-return edge in `AgentTool.execute` — now carry an `Agent ID: <id>` line, spelled as `background-spawner.ts` spells it.
+The `foreground-runner.ts` grep row went 0 → 2 (measured; the success and error branches each carry the literal).
+The literal is written inline at each site rather than extracted into `helpers.ts`, which the step's target-file list anticipated: the metric row greps the spelling in `foreground-runner.ts` specifically, and the line renders into three different surrounding contexts.
+A bare handle was chosen over a restated resume hint, for byte symmetry with the background door and because the tool's own `Guidelines:` block already binds the ID to `resume`.
+The step also exposed an unpinned invariant from Step 3: the spawn-notes prefix must lead the result, but the `fellBack` test asserted only containment and was order-blind — it is now an ordering assertion, and a mutation that hoists the ID line above the notes kills it while every containment assertion stays green.
 
 Release: independent
 
@@ -963,7 +969,7 @@ flowchart TD
     S1["✅ Step 1 (#724)<br/>Choke-point parity"] --> S3["✅ Step 3 (#829)<br/>Locked-fields precedence"]
     S1 --> S4["✅ Step 4 (#828)<br/>Remove vacant seam field"]
     S1 -.soft.-> S2["✅ Step 2 (#830)<br/>SubagentRecord policy"]
-    S7["Step 7 (#798)<br/>Foreground resume handle"] -.soft.-> S8["Step 8 (#465)<br/>Ask-back"]
+    S7["✅ Step 7 (#798)<br/>Foreground resume handle"] -.soft.-> S8["Step 8 (#465)<br/>Ask-back"]
     S5["✅ Step 5 (#801)<br/>Skills-block strip"]
     S6["✅ Step 6 (#827)<br/>UICtx capture"] --> S9["Step 9 (#849)<br/>Widget teardown"]
 ```
