@@ -29,12 +29,16 @@ import {
   type ExtensionAPI,
 } from "@earendil-works/pi-coding-agent";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { childNodeAbsentMessage } from "#src/authority/child-node-audit";
 import {
   createPermissionForwardingLocation,
   type ForwardedPermissionRequest,
 } from "#src/authority/permission-forwarding";
 import { getServingSessionRegistry } from "#src/authority/serving-registry";
-import { SUBAGENT_CHILD_SESSION_CREATED } from "#src/authority/subagent-lifecycle-events";
+import {
+  SUBAGENT_CHILD_BOUND,
+  SUBAGENT_CHILD_SESSION_CREATED,
+} from "#src/authority/subagent-lifecycle-events";
 import { getSubagentSessionRegistry } from "#src/authority/subagent-registry";
 import {
   getGlobalConfigPath,
@@ -386,6 +390,113 @@ describe("subagent registry sharing across factory instances", () => {
 
     rmSync(childCwd, { recursive: true, force: true });
     rmSync(externalDir, { recursive: true, force: true });
+  });
+});
+
+describe("unguarded in-process child detection", () => {
+  // A child that loads no instance of this extension gates nothing, and the
+  // parent's own gating is unaffected — so without this alarm the operator
+  // watches the permission system work and never learns the child is
+  // unguarded (#792). The parent reads the same process-global service map the
+  // child's node would have published into, which is why this needs the real
+  // factory on two buses rather than a stubbed lookup.
+  let parentCwd: string;
+
+  beforeEach(() => {
+    parentCwd = mkdtempSync(join(tmpdir(), "pi-perm-parent-cwd-"));
+  });
+
+  afterEach(() => {
+    rmSync(parentCwd, { recursive: true, force: true });
+  });
+
+  it("records and warns when a bound child published no service", async () => {
+    const notified: string[] = [];
+    const parentBus = createEventBus();
+    const parentPi = makeFakePi({ events: parentBus });
+    piPermissionSystemExtension(parentPi as unknown as ExtensionAPI);
+    await fireSessionStart(
+      parentPi,
+      makeBaseCtx(parentCwd, "parent-session-unguarded", {
+        notify: (message: string) => notified.push(message),
+      }),
+    );
+
+    // No child factory runs, so nothing publishes under the child's key.
+    parentBus.emit(SUBAGENT_CHILD_SESSION_CREATED, {
+      sessionId: "child-unguarded-1",
+      parentSessionId: "parent-session-unguarded",
+    });
+    parentBus.emit(SUBAGENT_CHILD_BOUND, {
+      sessionId: "child-unguarded-1",
+      parentSessionId: "parent-session-unguarded",
+    });
+
+    expect(getPermissionsService("child-unguarded-1")).toBeUndefined();
+    expect(
+      readReviewLog().filter((entry) => entry.event === "child_node_absent"),
+    ).toHaveLength(1);
+    expect(notified).toEqual([childNodeAbsentMessage("child-unguarded-1")]);
+  });
+
+  it("records every affected child but warns only once", async () => {
+    const notified: string[] = [];
+    const parentBus = createEventBus();
+    const parentPi = makeFakePi({ events: parentBus });
+    piPermissionSystemExtension(parentPi as unknown as ExtensionAPI);
+    await fireSessionStart(
+      parentPi,
+      makeBaseCtx(parentCwd, "parent-session-unguarded", {
+        notify: (message: string) => notified.push(message),
+      }),
+    );
+
+    for (const sessionId of ["child-a", "child-b", "child-c"]) {
+      parentBus.emit(SUBAGENT_CHILD_BOUND, {
+        sessionId,
+        parentSessionId: "parent-session-unguarded",
+      });
+    }
+
+    expect(
+      readReviewLog()
+        .filter((entry) => entry.event === "child_node_absent")
+        .map((entry) => (entry as { childSessionId?: string }).childSessionId),
+    ).toEqual(["child-a", "child-b", "child-c"]);
+    expect(notified).toEqual([childNodeAbsentMessage("child-a")]);
+  });
+
+  it("stays silent for a child whose own node published a service", async () => {
+    const notified: string[] = [];
+    const parentBus = createEventBus();
+    const parentPi = makeFakePi({ events: parentBus });
+    piPermissionSystemExtension(parentPi as unknown as ExtensionAPI);
+    await fireSessionStart(
+      parentPi,
+      makeBaseCtx(parentCwd, "parent-session-guarded", {
+        notify: (message: string) => notified.push(message),
+      }),
+    );
+
+    // A real child node on its own bus, publishing under its own session id —
+    // the healthy case the alarm must not fire for.
+    const childCwd = mkdtempSync(join(tmpdir(), "pi-perm-child-cwd-"));
+    const childPi = makeFakePi({ events: createEventBus() });
+    piPermissionSystemExtension(childPi as unknown as ExtensionAPI);
+    await fireSessionStart(childPi, makeChildCtx(childCwd, "child-guarded-1"));
+
+    parentBus.emit(SUBAGENT_CHILD_BOUND, {
+      sessionId: "child-guarded-1",
+      parentSessionId: "parent-session-guarded",
+    });
+
+    expect(getPermissionsService("child-guarded-1")).toBeDefined();
+    expect(
+      readReviewLog().filter((entry) => entry.event === "child_node_absent"),
+    ).toHaveLength(0);
+    expect(notified).toEqual([]);
+
+    rmSync(childCwd, { recursive: true, force: true });
   });
 });
 
