@@ -8,6 +8,11 @@
  *
  * The publisher takes an injected `emit` callback so this module stays free of
  * Pi SDK imports — `index.ts` wires it to `pi.events.emit`.
+ *
+ * `spawning`, `session-created`, `completed`, and `disposed` are the announcement
+ * a consumer may rely on. `bound` is additional: it reports that a child finished
+ * binding its extensions, which is the only moment a parent can observe what those
+ * extensions did or did not install.
  */
 
 /** Emitted at the start of a child run, before the session is created. */
@@ -21,6 +26,15 @@ export const SUBAGENT_CHILD_SPAWNING = "subagents:child:spawning";
  * the event-bus synchronous-dispatch guarantee).
  */
 export const SUBAGENT_CHILD_SESSION_CREATED = "subagents:child:session-created";
+
+/**
+ * Emitted once the child's extensions have bound, after every child
+ * `session_start` handler has run and before the child takes its first turn.
+ *
+ * Skipped when binding throws: that child never runs, so there is nothing to
+ * report about it.
+ */
+export const SUBAGENT_CHILD_BOUND = "subagents:child:bound";
 
 /** Emitted after the child's prompt resolves (normal, steered, or aborted). */
 export const SUBAGENT_CHILD_COMPLETED = "subagents:child:completed";
@@ -38,6 +52,13 @@ export interface ChildSpawningEvent {
 export interface ChildSessionCreatedEvent {
   /** Child session id — the registry key. Unique per child; concurrent
    * siblings of the same parent occupy distinct keys. */
+  sessionId: string;
+  parentSessionId?: string;
+}
+
+/** Payload for `subagents:child:bound`. */
+export interface ChildBoundEvent {
+  /** Child session id — the same key `session-created` carried. */
   sessionId: string;
   parentSessionId?: string;
 }
@@ -65,6 +86,7 @@ export type LifecycleEmit = (channel: string, data: unknown) => void;
 export interface ChildLifecyclePublisher {
   spawning(event: ChildSpawningEvent): void;
   sessionCreated(event: ChildSessionCreatedEvent): void;
+  bound(event: ChildBoundEvent): void;
   completed(event: ChildCompletedEvent): void;
   disposed(event: ChildDisposedEvent): void;
 }
@@ -79,6 +101,9 @@ export function createChildLifecyclePublisher(
     },
     sessionCreated(event) {
       emit(SUBAGENT_CHILD_SESSION_CREATED, event);
+    },
+    bound(event) {
+      emit(SUBAGENT_CHILD_BOUND, event);
     },
     completed(event) {
       emit(SUBAGENT_CHILD_COMPLETED, event);

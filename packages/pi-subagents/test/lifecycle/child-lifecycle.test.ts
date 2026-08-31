@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   type ChildLifecyclePublisher,
   createChildLifecyclePublisher,
+  SUBAGENT_CHILD_BOUND,
   SUBAGENT_CHILD_COMPLETED,
   SUBAGENT_CHILD_DISPOSED,
   SUBAGENT_CHILD_SESSION_CREATED,
@@ -64,6 +65,21 @@ describe("createChildLifecyclePublisher", () => {
     });
   });
 
+  it("emits subagents:child:bound with the child session id", () => {
+    const { emit, publisher } = setup();
+
+    publisher.bound({
+      sessionId: "child-session-abc",
+      parentSessionId: "parent-42",
+    });
+
+    expect(emit).toHaveBeenCalledOnce();
+    expect(emit).toHaveBeenCalledWith(SUBAGENT_CHILD_BOUND, {
+      sessionId: "child-session-abc",
+      parentSessionId: "parent-42",
+    });
+  });
+
   it("emits subagents:child:disposed with the child session id", () => {
     const { emit, publisher } = setup();
 
@@ -89,6 +105,7 @@ describe("createChildLifecyclePublisher", () => {
   it("exposes the canonical channel-name strings", () => {
     expect(SUBAGENT_CHILD_SPAWNING).toBe("subagents:child:spawning");
     expect(SUBAGENT_CHILD_SESSION_CREATED).toBe("subagents:child:session-created");
+    expect(SUBAGENT_CHILD_BOUND).toBe("subagents:child:bound");
     expect(SUBAGENT_CHILD_COMPLETED).toBe("subagents:child:completed");
     expect(SUBAGENT_CHILD_DISPOSED).toBe("subagents:child:disposed");
   });

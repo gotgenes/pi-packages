@@ -104,6 +104,7 @@ export function createChildLifecycleMock() {
 	return {
 		spawning: vi.fn<ChildLifecyclePublisher["spawning"]>(),
 		sessionCreated: vi.fn<ChildLifecyclePublisher["sessionCreated"]>(),
+		bound: vi.fn<ChildLifecyclePublisher["bound"]>(),
 		completed: vi.fn<ChildLifecyclePublisher["completed"]>(),
 		disposed: vi.fn<ChildLifecyclePublisher["disposed"]>(),
 	};
