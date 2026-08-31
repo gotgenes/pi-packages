@@ -94,5 +94,19 @@ Pre-completion reviewer: PASS.
   `clearWidget()` is now reachable in headless and before the first tool call, so the 80 ms interval terminates.
   `AgentWidget.dispose()` still has no call site, which is [#849] / Phase 22 Step 9.
 
+## Stage: Sync (worktree) (2026-08-31T01:51:26Z)
+
+### Session summary
+
+Pre-push checks passed clean: `pnpm run lint` and `pnpm fallow dead-code` both zero-finding.
+No deferred work for the root to pick up; the plan's `**Release:** ship independently` marker stands — this is not part of the `front-door-majors` batch (already shipped) and no other open batch names Step 6.
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-827--/2026-08-30T21-06-06-493Z_01a0547e-6c1d-7afc-9ae4-5c0362ca7b20.jsonl` — read with `read_session_file({ path: "<path>" })` for message-level verification at land/retro time.
+
+### Observations
+
+Nothing further to add beyond the Planning and TDD stage entries above.
+The pre-completion reviewer's PASS already covers the deterministic gates this stage re-checks; both re-ran clean here with no drift.
+
 [#423]: https://github.com/gotgenes/pi-packages/issues/423
 [#849]: https://github.com/gotgenes/pi-packages/issues/849
