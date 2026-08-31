@@ -44,12 +44,7 @@ export function buildAgentPrompt(
   env: EnvInfo,
   inherited?: InheritedPrompt,
 ): string {
-  const activeAgentTag = `<active_agent name="${config.name}"/>\n\n`;
-
-  const envBlock = `# Environment
-Working directory: ${cwd}
-${env.isGitRepo ? `Git repository: yes\nBranch: ${env.branch}` : "Not a git repository"}
-Platform: ${env.platform}`;
+  const header = buildPromptHeader(config.name, cwd, env);
 
   const identity = inherited
     ? inheritedIdentity(inherited.systemPrompt, inherited.cwd)
@@ -84,8 +79,7 @@ You are operating as a sub-agent invoked to handle a specific task.
       "\n\n" +
       bridge +
       "\n\n" +
-      activeAgentTag +
-      envBlock +
+      header +
       customSection
     );
   }
@@ -94,7 +88,24 @@ You are operating as a sub-agent invoked to handle a specific task.
   // the active_agent tag, env block, and the config's full system prompt.
   // Unlike append mode, no <sub_agent_context> bridge or <agent_instructions>
   // wrapper is injected — the custom prompt retains full control.
-  return identity + "\n\n" + activeAgentTag + envBlock + "\n\n" + config.systemPrompt;
+  return identity + "\n\n" + header + "\n\n" + config.systemPrompt;
+}
+
+/**
+ * The per-call header both prompt modes share: the `<active_agent>` tag and the
+ * environment block. Both vary per invocation, so both sit after the cacheable
+ * identity prefix — and both modes need any content added here, which is why it
+ * has one home rather than being composed at each `return`.
+ */
+function buildPromptHeader(agentName: string, cwd: string, env: EnvInfo): string {
+  const activeAgentTag = `<active_agent name="${agentName}"/>\n\n`;
+
+  const envBlock = `# Environment
+Working directory: ${cwd}
+${env.isGitRepo ? `Git repository: yes\nBranch: ${env.branch}` : "Not a git repository"}
+Platform: ${env.platform}`;
+
+  return activeAgentTag + envBlock;
 }
 
 /** First line of the section Pi writes above the `<available_skills>` catalogue. */
