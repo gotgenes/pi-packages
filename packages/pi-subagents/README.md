@@ -268,6 +268,7 @@ When [`@gotgenes/pi-permission-system`](https://github.com/gotgenes/pi-permissio
 - **`ask`-state forwarding** — when a child session triggers an `ask` permission, the prompt forwards to the parent session's UI.
   The parent approves or denies, and the child resumes.
 - **Deterministic child detection** — this extension publishes `subagents:child:session-created` before `bindExtensions()` fires; the permission system subscribes and registers the child session synchronously, so detection does not rely on env vars or filesystem heuristics.
+- **Unguarded children are announced** — this extension also publishes `subagents:child:bound` once a child's extensions have bound; the permission system uses it to notice a child that loaded no permission node of its own — the case [`excludedExtensionPackages`](docs/configuration.md#excluding-package-extensions-from-children) can create — and warns rather than letting it run ungated in silence.
 
 No configuration is required.
 When `@gotgenes/pi-permission-system` is not installed, the lifecycle events have no subscriber — a harmless no-op.

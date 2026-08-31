@@ -52,7 +52,7 @@ It keeps several subsystems built in that this fork deliberately removed or dele
 This fork is a minimal core that other extensions build on, plus a small companion ecosystem:
 
 - **Typed service API** — `SubagentsService` exposed via `Symbol.for()` accessors, so another extension can spawn and manage subagents without importing this package or relying on ad-hoc event RPC.
-- **Child-session lifecycle events** — `subagents:child:spawning` / `session-created` / `completed` / `disposed`, with `session-created` firing synchronously before `bindExtensions()` so consumers can register the child session deterministically.
+- **Child-session lifecycle events** — `subagents:child:spawning` / `session-created` / `bound` / `completed` / `disposed`, with `session-created` firing synchronously before `bindExtensions()` so consumers can register the child session deterministically, and `bound` firing after it resolves so they can observe what the child's extensions installed.
 - **`<active_agent>` system-prompt tag** — lets [`@gotgenes/pi-permission-system`](https://github.com/gotgenes/pi-packages/tree/main/packages/pi-permission-system) resolve per-agent `permission:` frontmatter (allow / ask / deny — richer than a binary denylist) inside the child session.
 - **Companion packages** — permission policy and worktree isolation live in dedicated packages rather than the core.
 - **Re-architected codebase** — decomposed into seven domains behind a typed public API boundary, backed by ~994 tests.

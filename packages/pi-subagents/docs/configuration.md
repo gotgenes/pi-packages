@@ -261,6 +261,11 @@ Closing or announcing this gap is tracked in [#793](https://github.com/gotgenes/
 Excluding `@gotgenes/pi-permission-system` itself is a different matter: a child then loads no permission node at all, so nothing gates its tool calls, no `permission:` frontmatter applies, and no `ask` is forwarded.
 See [Subagent Integration](https://github.com/gotgenes/pi-packages/blob/main/packages/pi-permission-system/docs/subagent-integration.md#loading-asymmetry) for the full rule.
 
+This one does not pass silently.
+This extension announces each child once its extensions have bound, and a recent `@gotgenes/pi-permission-system` uses that announcement to notice a child with no node of its own: it records the child in its permission review log and warns once per session that the child's tool calls are ungated.
+The warning names this setting as the likeliest cause, because a failure to load that extension in the child leaves the same absence and the parent cannot tell the two apart.
+Remove the entry to restore gating in child sessions; keep it, knowing the children it spawns are unguarded.
+
 ### Abort on interrupt
 
 By default, pressing ESC to interrupt the parent agent also aborts every subagent.
