@@ -77,6 +77,9 @@ permission:
 ### Event-based subagent integration
 
 `@gotgenes/pi-subagents` emits a child-execution lifecycle on `pi.events` (`subagents:child:*`); this package subscribes via `subscribeSubagentLifecycle` (`src/authority/subagent-lifecycle-events.ts`) and registers/unregisters child sessions in the `SubagentSessionRegistry` on `session-created` / `disposed` (pi-subagents [#261], [ADR-0002]).
+That subscription also drives `ChildNodeAudit` (`src/authority/child-node-audit.ts`) on the **optional** third channel `subagents:child:bound`, emitted after `bindExtensions()` resolves: a child that published no keyed service by then has no permission node, so it gates nothing, and the audit records `child_node_absent` per affected child plus one visible warning per parent session (Refs #792).
+The channel is optional by design — ADR 0012 decision 5's obligation stays at two events — and no other moment can answer the question: `session-created` precedes the child's extension load, and the child's `session_shutdown` unpublishes the service before `disposed` fires, so auditing there false-alarms on every healthy child.
+The warn-once latch is per audit instance with no re-arm, because the factory is re-invoked per session generation; do not add one.
 The dependency direction is inverted — pi-subagents has zero knowledge of pi-permission-system.
 The `session-created` handler MUST stay synchronous: the core emits it on the same call stack right before `bindExtensions()`, and the event bus dispatches listeners synchronously, so a synchronous handler lands the registry entry before binding proceeds.
 The contract is named the **subagent adapter convention**, and `docs/subagent-integration.md` is its canonical spec (ADR 0012 decisions 5–6): cite that section rather than restating channel names, payload shapes, or the pre-bind ordering in another doc.

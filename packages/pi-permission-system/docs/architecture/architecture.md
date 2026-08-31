@@ -1253,7 +1253,7 @@ The removal took `RegisteredChildDetector`, `SubagentDetection.isRegisteredChild
 
 Release: independent
 
-#### Step 7: Alarm when a registered in-process child session has no permission node ([#792])
+#### ✅ Step 7: Alarm when a registered in-process child session has no permission node ([#792])
 
 **Cause:** gating is node-local (ADR 0012 decision 1), so a child that loads no instance of this extension has no `tool_call` gate, no tool filtering, no `permission:` frontmatter resolution, and no ask-forwarding — and the parent's own gating is unaffected, so the operator watches the permission system work and never learns the child is unguarded.
 One line of `excludedExtensionPackages` in `subagents.json` reaches that state, and so does a load failure inside the child.
@@ -1264,6 +1264,19 @@ One line of `excludedExtensionPackages` in `subagents.json` reaches that state, 
 - **Design questions the step must settle:** where the check fires, since there is no parent-side "the child's first turn" event and the timing needs a real seam rather than a sleep; whether the parent can (or needs to) distinguish deliberate exclusion from a load failure; and whether to warn or refuse — refusing means one package overriding another's settings, which cuts against ADR 0002's separation.
 - **Outcome:** an ungated child is announced rather than silent; `grep -rn 'child_node_absent' src` goes 0 → ≥ 1.
 - **Impact 3 / Risk 2 / Priority 12.**
+
+Landed: the design question the step named — where the check fires — was answered by eliminating candidates against the code rather than by choosing among them.
+Auditing at `disposed` is unusable because `SubagentSession.dispose()` awaits the child's `session_shutdown`, which unpublishes the keyed service, *before* emitting `disposed`; a healthy child would false-alarm.
+A sweep on the parent's next `before_agent_start` misses every foreground child, which is disposed and unregistered inside the parent's own tool call before that turn begins.
+So the step's target was wrong in one respect: `subagent-registry.ts` holds no half of the alarm, because the registry cannot answer *when*.
+
+The seam is a new **optional** `subagents:child:bound` channel in pi-subagents, emitted after `bindExtensions()` resolves — which awaits every child `session_start`, making it the first instant at which "this child published a service" is settled.
+Optional rather than required so ADR 0012 decision 5's obligation stays at two events and no existing implementation becomes non-conformant; the amendment records it.
+The other two questions resolved as the issue leaned: warn rather than refuse ([ADR-0002] separation), and no attempt to distinguish exclusion from a load failure, since both leave the identical absence — the message names the likelier cause and admits the other.
+
+The two halves fire at different rates: a `child_node_absent` review entry per affected child, one visible warning per parent session.
+The warn-once latch needs no re-arm hook, because the extension factory is re-invoked per session generation.
+`grep -rn 'child_node_absent' src` is 1.
 
 Release: independent
 
@@ -1407,7 +1420,7 @@ flowchart TD
     S4["✅ Step 4 (#742): enumerate catch-all node types"]
     S5["✅ Step 5 (#772): authorizer verdict attribution"] --> S15["✅ Step 15 (#844): forwarded denial attribution"]
     S6["✅ Step 6 (#796): schedule the root-slot removal"]
-    S7["Step 7 (#792): alarm on a child with no node"]
+    S7["✅ Step 7 (#792): alarm on a child with no node"]
     S8["Step 8 (#793): split-provider extractor gap"]
     S9["Step 9 (#808): name the well-known surfaces"]
     S10["Step 10 (#810): per-pattern approval surfaces"]
