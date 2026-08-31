@@ -52,4 +52,17 @@ All four of the plan's killing mutations were applied and reverted before the co
 - Pre-completion reviewer: PASS — ready for `/ship-issue`.
   No warnings.
 
+## Stage: Sync (worktree) (2026-08-31T04:19:16Z)
+
+### Session summary
+
+Pre-push checks passed clean (`pnpm run lint`, `pnpm fallow dead-code`), no fixes needed.
+The plan's `**Release:** ship independently` marker applies — no batch to coordinate, release now.
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-798--/2026-08-31T03-41-03-084Z_01a055e8-00ec-76f4-bd72-34a7144715d8.jsonl` — read with `read_session_file({ path: "<path>" })` for message-level verification at land/retro time.
+
+### Observations
+
+Nothing new since the TDD stage — branch is ready to rebase onto `origin/main` and hand off.
+
 [#465]: https://github.com/gotgenes/pi-packages/issues/465
