@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [29.1.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v29.0.0...pi-permission-system-v29.1.0) (2026-08-31)
+
+
+### Features
+
+* **pi-permission-system:** warn when a subagent child runs with no permission node ([223710f](https://github.com/gotgenes/pi-packages/commit/223710ff2ed81977161ba2a367deb81fe6c7f207)), closes [#792](https://github.com/gotgenes/pi-packages/issues/792)
+
+
+### Documentation
+
+* **pi-permission-system:** document the optional bound channel and the unguarded-child alarm ([9a16e1b](https://github.com/gotgenes/pi-packages/commit/9a16e1b09934ecdb529875b59f7649c50ccfd5b9)), closes [#792](https://github.com/gotgenes/pi-packages/issues/792)
+
 ## [29.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v28.0.1...pi-permission-system-v29.0.0) (2026-08-30)
 
 
