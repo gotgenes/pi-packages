@@ -55,6 +55,11 @@ export function childNodeAbsentMessage(childSessionId: string): string {
   );
 }
 
+/** The audit seam the child-lifecycle subscription drives (ISP). */
+export interface BoundChildAuditor {
+  auditBoundChild(child: BoundChild): void;
+}
+
 /**
  * Audits each child that finishes binding, and alarms on one with no node.
  *
@@ -64,7 +69,7 @@ export function childNodeAbsentMessage(childSessionId: string): string {
  * `reason: "reload"` reuses this instance and deliberately does not re-warn:
  * the operator has already been told.
  */
-export class ChildNodeAudit {
+export class ChildNodeAudit implements BoundChildAuditor {
   private warned = false;
 
   constructor(

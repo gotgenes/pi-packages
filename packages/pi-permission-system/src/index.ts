@@ -7,6 +7,7 @@ import {
   ObservedAuthorizerRegistrar,
 } from "./authority/authorizer-registry";
 import { AuthorizerSelection } from "./authority/authorizer-selection";
+import { ChildNodeAudit } from "./authority/child-node-audit";
 import {
   ForwardedRequestServer,
   type ServingPolicy,
@@ -50,7 +51,7 @@ import { PermissionResolver } from "./permission-resolver";
 import { PermissionSession } from "./permission-session";
 import { LocalPermissionsService } from "./permissions-service";
 import { resolveRenderBudget } from "./presentation/dialog-renderer";
-import type { PermissionsService } from "./service";
+import { getPermissionsService, type PermissionsService } from "./service";
 import { PermissionServiceLifecycle } from "./service-lifecycle";
 import { PermissionSessionLogger } from "./session-logger";
 import { SessionRules } from "./session-rules";
@@ -259,10 +260,18 @@ export default function piPermissionSystemExtension(pi: ExtensionAPI): void {
   );
 
   // Subscribe to @gotgenes/pi-subagents' child lifecycle events so child
-  // sessions register/unregister without the core calling us (ADR 0002).
+  // sessions register/unregister without the core calling us (ADR 0002), and
+  // so a child that bound its extensions without loading one of ours is
+  // reported rather than silently ungated (#792). The lookup is a thunk over
+  // the locator, never a cached reference, per the guidance in service.ts.
+  const childNodeAudit = new ChildNodeAudit(
+    (sessionId) => getPermissionsService(sessionId) !== undefined,
+    logger,
+  );
   const unsubSubagentLifecycle = subscribeSubagentLifecycle(
     pi.events,
     subagentRegistry,
+    childNodeAudit,
   );
 
   // PermissionServiceLifecycle owns the process-global service publication:
