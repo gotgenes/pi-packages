@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [21.0.2](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v21.0.1...pi-subagents-v21.0.2) (2026-08-31)
+
+
+### Bug Fixes
+
+* **pi-subagents:** render the agent widget in sessions with no model tool call ([82bd707](https://github.com/gotgenes/pi-packages/commit/82bd707cbe93d59f1207968349058711dc368e7f)), closes [#827](https://github.com/gotgenes/pi-packages/issues/827)
+
 ## [21.0.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v21.0.0...pi-subagents-v21.0.1) (2026-08-30)
 
 
