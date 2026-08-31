@@ -1,0 +1,33 @@
+---
+issue: 798
+issue_title: "pi-subagents: foreground subagent results omit the agent ID that resume requires"
+---
+
+# Retro: #798 — pi-subagents: foreground subagent results omit the agent ID that resume requires
+
+## Stage: Planning (2026-08-31T03:56:15Z)
+
+### Session summary
+
+Planned Phase 22 Step 7: the foreground and resume-return result edges gain an `Agent ID: <id>` line so the model can act on the handle the background door already delivers.
+Design settled at one operator gate (shape, edges, inline-vs-helper); the tidy-first assessor found no preparatory tidying warranted and confirmed the fixtures already express the new assertions.
+Plan committed as `packages/pi-subagents/docs/plans/0798-deliver-resume-handle-in-foreground-results.md` — two TDD cycles (the three delivery edges, then the roadmap step-mark).
+
+### Observations
+
+- The defect is a delivery-channel asymmetry, not a missing capability: `buildDetails` already sets `details.agentId`, but `details` is renderer metadata and never reaches the model.
+  The issue's own comment sharpened it further — the background door has *two* model-visible channels (spawn result and completion nudge), the foreground door has none.
+- Operator decisions at the gate: bare `Agent ID: <id>` header line (byte symmetry with `background-spawner.ts`, no restated resume hint); all three edges including the foreground error branch and the resume-return edge; the literal written **inline** at each site rather than extracted into a `tools/helpers.ts` helper.
+- The inline decision keeps the roadmap's health-metric row valid as written — its recompute command greps `'Agent ID'` in `foreground-runner.ts` specifically, so a helper extraction would have forced a same-commit row rewrite.
+  Measured baseline `0`; predicted `2` after the change (success and error branches).
+- Named an invariant the existing suite does not actually pin: Phase 22 Step 3's spawn-notes prefix (`renderSpawnNotes`) must keep leading the result, but the `fellBack` test asserts only containment and is order-blind.
+  The plan strengthens it into an index comparison and gives it its own killing mutation.
+- Two things the handle unlocks, not one — `resume` and `get_subagent_result(id, verbose: true)` for a truncated foreground summary.
+  Worth remembering if a later step reconsiders the line's placement.
+- Scope held to delivery: recognizing that a result *is* a question belongs to Step 8 ([#465]), whose soft dependency on this step is exactly the handle.
+
+#### Deferred tidyings
+
+- `packages/pi-subagents/test/` — the raw `result.content[0].text` index access repeats 7× in `test/tools/foreground-runner.test.ts`, 13× in `test/tools/agent-tool.test.ts`, and across 5 test files package-wide with no helper anywhere; the assessor declined it as a package-wide craftsmanship item rather than local friction for this change.
+
+[#465]: https://github.com/gotgenes/pi-packages/issues/465
