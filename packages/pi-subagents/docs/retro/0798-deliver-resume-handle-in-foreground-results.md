@@ -30,4 +30,26 @@ Plan committed as `packages/pi-subagents/docs/plans/0798-deliver-resume-handle-i
 
 - `packages/pi-subagents/test/` — the raw `result.content[0].text` index access repeats 7× in `test/tools/foreground-runner.test.ts`, 13× in `test/tools/agent-tool.test.ts`, and across 5 test files package-wide with no helper anywhere; the assessor declined it as a package-wide craftsmanship item rather than local friction for this change.
 
+## Stage: Implementation — TDD (2026-08-31T04:10:09Z)
+
+### Session summary
+
+Executed both plan cycles from a green baseline: one `fix:` commit adding the `Agent ID: <id>` line to the three model-visible delivery edges (`runForeground`'s success and error returns, the resume-return edge in `AgentTool.execute`) with five new tests, and one `docs:` commit marking Phase 22 Step 7 landed.
+`pi-subagents` test count went 1353 → 1358.
+All four of the plan's killing mutations were applied and reverted before the commit; the pre-completion reviewer returned PASS.
+
+### Observations
+
+- One deviation, in the plan's prediction rather than the code: mutation (a) — deleting the ID term from the success branch — killed **three** tests, not the two the plan named.
+  The ordering test ("keeps the spawn notes ahead of the agent ID line") rides the success path too, so its `indexOf` assertion goes `-1` when the line disappears.
+  A superset of the prediction, not a shortfall, but it is the kind of miss that would read as a vacuous test if the count had gone the other way.
+- The ordering test earns its place twice over: mutation (a) kills it by absence and mutation (d) — hoisting the ID line above `${noteText}` — kills it by reordering, while every `toContain` assertion in the suite stays green under (d).
+  That mutation is the whole reason the plan upgraded Step 3's order-blind `fellBack` containment assertion.
+- Mutation (c) restored `agent-tool.ts` to a byte-identical copy of its `HEAD` content — `git diff --stat` printed nothing — which is a useful confirmation that the mutation is the exact inverse of the green edit, and a reminder that an empty diff there is not evidence the mutation failed to apply.
+- The note string in the ordering assertion was copied from its producer (`buildFallbackNote` in `spawn-config.ts`), not from the plan's prose: `Note: Unknown agent type "<type>" — using general-purpose.`, em-dash included.
+- The reviewer's independent enumeration of all 18 `textResult(...)` call sites in `src/tools/` found no missed edge.
+  The `steer-tool.ts` and resume-error returns already interpolate the caller-supplied ID into their sentences, and every remaining ID-less site has no record to name.
+- Pre-completion reviewer: PASS — ready for `/ship-issue`.
+  No warnings.
+
 [#465]: https://github.com/gotgenes/pi-packages/issues/465
