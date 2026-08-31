@@ -40,3 +40,41 @@ The operator settled all four gates on the recommended option: optional third ch
 - `packages/pi-permission-system/src/handlers/lifecycle.ts` — the `serviceLifecycle` constructor-dep doc comment and the inline comment above `this.serviceLifecycle.activate(ctx)` both still say publication is "skipped for registered subagent children" and that the child is "identified and excluded".
   That stopped being true in #796, which removed the `RegisteredChildDetector` guard.
   Rejected as scope creep for this change; independent one-line doc fix.
+
+## Stage: Implementation — TDD (2026-08-31T05:20:24Z)
+
+### Session summary
+
+Executed all nine plan steps plus two review-driven doc fixes, in twelve commits. pi-subagents gained the optional `subagents:child:bound` channel, emitted after `bindExtensions()` resolves and not on the throw path; pi-permission-system gained `ChildNodeAudit`, subscribed through the existing `subscribeSubagentLifecycle` dispatcher and wired in `index.ts`.
+Test count: pi-permission-system 3783 → 3795 (+12), pi-subagents 1353 → 1357 (+4).
+All four gates green (`check`, root `lint`, `test`, `fallow dead-code`).
+
+### Observations
+
+- **A planning claim shipped into an ADR before anyone checked it.**
+  The plan asserted that a foreground child is "disposed and unregistered inside the parent's own tool call", and I wrote that into both the ADR 0012 amendment and the architecture doc's `Landed:` note as the reason for rejecting the deferred-sweep seam.
+  It is false: `completeRun()` only marks status, and disposal is `SubagentManager`'s 60-second interval sweep against a configurable retention window.
+  The `pre-completion-reviewer` caught it and cited the lines.
+  I had verified the *other* dead-seam claim (`dispose()` awaiting `session_shutdown` before emitting `disposed`) against the source during planning, and inherited the second one from an inference about `spawnAndWait` awaiting `record.promise` — awaiting completion is not awaiting disposal.
+  The corrected objections (post-hoc by construction; reachability depends on a retention window this package does not control) were re-verified by the reviewer against the source before landing.
+  The lesson is narrow and repeatable: when a design rejects an alternative, the *rejection* rationale ends up in the durable record too, and it needs the same verification as the chosen path — it is the half nobody exercises.
+  The Planning-stage entry above is left as written; this is the correction.
+- **The plan's step 2 was mistyped `feat:` and was retyped to `refactor:` during the cycle.**
+  The commit adds a publisher method nothing calls, so nothing is observable until step 3 wires it.
+  Caught by applying the AGENTS.md rule at commit time rather than at the step-9 changelog preview, which is where it would otherwise have surfaced with the commit three deep.
+- **A predicted mutation under-predicted its own blast radius.**
+  Step 3's mutation A (move the `bound` emission before `bindExtensions()`) was planned to kill only the ordering case; it killed the rejection case as well, because emitting before the bind also emits on the failure path.
+  More discriminating than predicted, so not a finding against the tests — but mutation B (move it into a `finally`) was still needed to show the rejection pin discriminates independently.
+- **The composition-root case earned its place explicitly.**
+  Inverting the `index.ts` presence thunk left all nine `subagent-lifecycle-events` cases and all eight `child-node-audit` cases green, and killed only the three composition-root cases — confirming the unit files stub the seam and that the integration test is the sole proof of the wiring.
+  The plan predicted this and said so in step 5, which is what made the check worth running rather than a formality.
+- **Two flaky full-suite failures were host load, not regressions.**
+  `out-of-process forwarding liveness > waits for an out-of-process parent whose heartbeat is fresh` and `ParentAuthorizer abandonment > keeps waiting while the in-process target is serving` failed once in a 914-second run, then passed alone — the pattern the package skill documents.
+  An A/B swap measured the new composition-root cases at +0.86 s over the pre-change file (12.80 s → 13.66 s), so they are not a flake contributor.
+- **The latch needed no re-arm hook**, because the extension factory is re-invoked per session generation — so the auditor is rebuilt on every `/new`, `/resume`, `/fork`, or `/import`.
+  This is where it diverges from `PermissionServiceLifecycle.announced`, which re-arms in `activate` because a `reason: "reload"` `session_start` reuses the instance.
+  Deliberately not extracted into a shared latch helper: two uses, different semantics.
+- **Pre-completion reviewer: WARN** (two rounds).
+  Round 1 raised the false ADR claim above plus two module-tree gaps (`child-node-audit.ts` absent from the tree; `pi-subagents` ADR 0002 still enumerating four channels); all fixed in `c8bda0b3`.
+  Round 2 confirmed the replacement rationale against the source and found one more stale copy I had missed — `pi-subagents/docs/architecture/architecture.md` duplicates ADR 0002's channel enumeration, so fixing the ADR left the file disagreeing with its own module tree — fixed in `d41ed14e`.
+  No blocking findings in either round.
