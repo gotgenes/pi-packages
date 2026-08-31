@@ -124,11 +124,15 @@ type CtxSelect = (
   options: string[],
 ) => Promise<string | undefined>;
 
+/** A `ui.notify` implementation for a test ctx. */
+type CtxNotify = (message: string, kind?: string) => void;
+
 /**
  * Build a test `ctx` with the scaffolding every composition-root ctx shares —
  * `cwd`, a trusted project, a minimal `sessionManager`, and a `ui` whose
- * `notify`/`setStatus`/`input` are inert. Callers vary only `hasUI` and the
- * `select` behavior that drives (or declines) a prompt.
+ * `setStatus`/`input` are inert. Callers vary `hasUI`, the `select` behavior
+ * that drives (or declines) a prompt, and the `notify` sink that receives the
+ * extension's warnings.
  */
 function makeBaseCtx(
   cwd: string,
@@ -136,6 +140,7 @@ function makeBaseCtx(
   options: {
     hasUI?: boolean;
     select?: CtxSelect;
+    notify?: CtxNotify;
     isProjectTrusted?: boolean;
   } = {},
 ): unknown {
@@ -150,7 +155,7 @@ function makeBaseCtx(
       getSessionDir: (): string => cwd,
     },
     ui: {
-      notify: (): void => {},
+      notify: options.notify ?? ((): void => {}),
       setStatus: (): void => {},
       select:
         options.select ?? (async (): Promise<string | undefined> => undefined),
