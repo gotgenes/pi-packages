@@ -122,4 +122,40 @@ describe("runForeground", () => {
 		// Interval must have been cleared — no further onUpdate calls
 		expect(onUpdate).not.toHaveBeenCalled();
 	});
+
+	describe("agent ID in the result text", () => {
+		it("names the agent ID under the completion header", async () => {
+			const { manager } = createToolDeps();
+			const result = await runForeground(manager, makeParams(), undefined, undefined);
+			expect(result.content[0].text).toContain("Agent ID: agent-1");
+		});
+
+		it("names the agent ID when the agent failed", async () => {
+			const deps = createToolDeps({
+				manager: {
+					...createToolDeps().manager,
+					spawnAndWait: vi.fn().mockResolvedValue(
+						createTestSubagent({ status: "error", error: "Context window exceeded" }),
+					),
+				},
+			});
+			const result = await runForeground(deps.manager, makeParams(), undefined, undefined);
+			expect(result.content[0].text).toContain("Agent ID: agent-1");
+		});
+
+		it("keeps the spawn notes ahead of the agent ID line", async () => {
+			const { manager } = createToolDeps();
+			const result = await runForeground(
+				manager,
+				makeParams({
+					config: createResolvedSpawnConfig({ rawType: "unknown-type", fellBack: true, description: "fg task" }),
+				}),
+				undefined,
+				undefined,
+			);
+			const text = result.content[0].text;
+			expect(text.startsWith('Note: Unknown agent type "unknown-type" — using general-purpose.')).toBe(true);
+			expect(text.indexOf("Agent ID: agent-1")).toBeGreaterThan(0);
+		});
+	});
 });

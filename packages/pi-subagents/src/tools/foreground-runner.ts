@@ -115,14 +115,18 @@ export async function runForeground(
   const noteText = renderSpawnNotes(params.config.notes);
 
   if (record.status === "error") {
-    return textResult(`${noteText}Agent failed: ${record.error}`, details);
+    return textResult(
+      `${noteText}Agent failed: ${record.error}\nAgent ID: ${record.id}`,
+      details,
+    );
   }
 
   const durationMs = (record.completedAt ?? Date.now()) - record.startedAt;
   const statsParts = [`${record.toolUses} tool uses`];
   if (tokenText) statsParts.push(tokenText);
   return textResult(
-    `${noteText}Agent completed in ${formatMs(durationMs)} (${statsParts.join(", ")})${getStatusNote(record.status)}.\n\n` +
+    `${noteText}Agent completed in ${formatMs(durationMs)} (${statsParts.join(", ")})${getStatusNote(record.status)}.\n` +
+      `Agent ID: ${record.id}\n\n` +
       (record.result?.trim() ?? "No output."),
     details,
   );

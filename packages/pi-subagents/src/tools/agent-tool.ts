@@ -109,7 +109,8 @@ export class AgentTool {
 			// Resume-return delivery edge: the resumed outcome is returned directly.
 			record.markConsumed();
 			return textResult(
-				record.result?.trim() ?? record.error?.trim() ?? "No output.",
+				`Agent ID: ${record.id}\n\n` +
+					(record.result?.trim() ?? record.error?.trim() ?? "No output."),
 				buildDetails(config.presentation.detailBase, record),
 			);
 		}

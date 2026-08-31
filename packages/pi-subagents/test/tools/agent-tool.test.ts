@@ -171,6 +171,21 @@ describe("AgentTool — resume path", () => {
 		});
 		expect(resumed.consumed).toBe(true);
 	});
+
+	it("names the agent ID in the resumed result text", async () => {
+		const deps = createToolDeps();
+		const resumeRecord = createTestSubagent();
+		resumeRecord.subagentSession = toSubagentSession(createSubagentSessionStub(createMockSession()));
+		deps.manager.getRecord = vi.fn().mockReturnValue(resumeRecord);
+		deps.manager.resume = vi.fn().mockResolvedValue(createTestSubagent({ result: "Resumed output." }));
+		const result = await execute(deps, {
+			prompt: "continue",
+			description: "resume",
+			subagent_type: "general-purpose",
+			resume: "agent-1",
+		});
+		expect(result.content[0].text).toContain("Agent ID: agent-1");
+	});
 });
 
 describe("AgentTool — model resolution error", () => {
@@ -276,5 +291,18 @@ describe("AgentTool — foreground execution", () => {
 			subagent_type: "general-purpose",
 		});
 		expect(result.content[0].text).toContain("spawn failure");
+	});
+
+	it("names the agent ID in the foreground result text", async () => {
+		const deps = createToolDeps();
+		deps.manager.spawnAndWait = vi.fn().mockResolvedValue(
+			createTestSubagent({ result: "Task complete." }),
+		);
+		const result = await execute(deps, {
+			prompt: "do task",
+			description: "fg task",
+			subagent_type: "general-purpose",
+		});
+		expect(result.content[0].text).toContain("Agent ID: agent-1");
 	});
 });
