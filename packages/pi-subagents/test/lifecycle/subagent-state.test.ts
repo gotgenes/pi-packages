@@ -381,6 +381,58 @@ describe("SubagentState — consumption", () => {
 	});
 });
 
+describe("SubagentState — carrier claim", () => {
+	it("defaults to unclaimed", () => {
+		const state = new SubagentState();
+		expect(state.claimed).toBe(false);
+	});
+
+	it("claim marks the outcome as owned by a carrier", () => {
+		const state = new SubagentState({ status: "running" });
+		state.claim();
+		expect(state.claimed).toBe(true);
+	});
+
+	it("release hands responsibility back", () => {
+		const state = new SubagentState({ status: "running" });
+		state.claim();
+		state.release();
+		expect(state.claimed).toBe(false);
+	});
+
+	it("release without a prior claim is a no-op", () => {
+		const state = new SubagentState({ status: "running" });
+		state.release();
+		expect(state.claimed).toBe(false);
+	});
+
+	it("claim is idempotent", () => {
+		const state = new SubagentState({ status: "running" });
+		state.claim();
+		state.claim();
+		expect(state.claimed).toBe(true);
+	});
+
+	it("is independent of consumption", () => {
+		const state = new SubagentState({ status: "completed" });
+		state.claim();
+		expect(state.consumed).toBe(false);
+		state.markConsumed(5000);
+		state.release();
+		expect(state.claimed).toBe(false);
+		expect(state.consumedAt).toBe(5000);
+	});
+
+	it("survives resetForResume, which clears consumption but not the claim", () => {
+		const state = new SubagentState({ status: "completed" });
+		state.claim();
+		state.markConsumed(5000);
+		state.resetForResume(7000);
+		expect(state.claimed).toBe(true);
+		expect(state.consumedAt).toBeUndefined();
+	});
+});
+
 describe("SubagentState — turnCount", () => {
 	it("defaults to 1", () => {
 		const state = new SubagentState();

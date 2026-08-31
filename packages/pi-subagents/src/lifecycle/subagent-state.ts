@@ -97,6 +97,18 @@ export class SubagentState {
 	get consumedAt(): number | undefined { return this._consumedAt; }
 	get consumed(): boolean { return this._consumedAt != null; }
 
+	// Result delivery — whether a carrier has committed to delivering the outcome.
+	// Distinct from consumption in two ways. It is revocable, where consumption is
+	// a one-way latch that also times session retention. And it is scoped to the
+	// caller rather than the run: consumedAt records a delivery that has already
+	// happened, so a resume must clear it, while a claim records one that has not
+	// happened yet and stays live across the reset (see resetForResume).
+	// Transient runtime ownership, so deliberately not seedable via
+	// SubagentStateInit — a rehydrated record must not claim a carrier that no
+	// longer exists.
+	private _claimed = false;
+	get claimed(): boolean { return this._claimed; }
+
 	// Stats — accumulated via mutation methods, readable via getters
 	private _toolUses: number;
 	get toolUses(): number { return this._toolUses; }
@@ -267,6 +279,19 @@ export class SubagentState {
 		this._consumedAt ??= at ?? Date.now();
 	}
 
+	/**
+	 * A carrier has committed to delivering this outcome, so nothing else should
+	 * announce it. Unlike every other transition here, this one is revocable.
+	 */
+	claim(): void {
+		this._claimed = true;
+	}
+
+	/** The carrier abandoned its commitment; announcing is owed again. */
+	release(): void {
+		this._claimed = false;
+	}
+
 	/** Transition to stopped state. Always valid — no guard. */
 	markStopped(completedAt?: number): void {
 		this._status = "stopped";
@@ -283,7 +308,15 @@ export class SubagentState {
 		this.markStopped(completedAt);
 	}
 
-	/** Reset for resume: running status, new startedAt, clear completedAt/result/error/consumedAt. */
+	/**
+	 * Reset for resume: running status, new startedAt, clear
+	 * completedAt/result/error/consumedAt.
+	 *
+	 * The carrier claim deliberately survives: it belongs to the caller that asked
+	 * for the resume and will deliver its outcome, not to the run being reset.
+	 * Clearing it here would drop the claim before the caller could observe it,
+	 * since this runs synchronously before resume() returns.
+	 */
 	resetForResume(startedAt: number): void {
 		this._status = "running";
 		this._startedAt = startedAt;

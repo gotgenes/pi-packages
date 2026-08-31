@@ -111,6 +111,7 @@ export class Subagent {
 	get completedAt(): number | undefined { return this.state.completedAt; }
 	get consumedAt(): number | undefined { return this.state.consumedAt; }
 	get consumed(): boolean { return this.state.consumed; }
+	get claimed(): boolean { return this.state.claimed; }
 	get toolUses(): number { return this.state.toolUses; }
 	get lifetimeUsage(): Readonly<LifetimeUsage> { return this.state.lifetimeUsage; }
 	get compactionCount(): number { return this.state.compactionCount; }
@@ -448,6 +449,16 @@ export class Subagent {
 	/** Record the parent collected this agent's outcome. Idempotent. */
 	markConsumed(at?: number): void {
 		this.state.markConsumed(at);
+	}
+
+	/** A carrier has committed to delivering this outcome; nothing else announces it. */
+	claim(): void {
+		this.state.claim();
+	}
+
+	/** The carrier abandoned its commitment; announcing is owed again. */
+	release(): void {
+		this.state.release();
 	}
 
 	/**
