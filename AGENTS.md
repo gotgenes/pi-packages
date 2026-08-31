@@ -197,7 +197,8 @@ Release is driven by the release-please PR merge over `main` commits, independen
 
 That lever is per-package.
 `separate-pull-requests: true` gives each component its own release PR — branch `release-please--branches--main--components--<component>`, title `chore(main): release <component> <version>` — so deferring one package's batch no longer holds every other package's fixes (Refs #817).
-Several open release PRs is therefore the normal state, not a misconfiguration; two for the **same** component still is one.
+Several open release PRs is therefore an expected state, not a misconfiguration; two for the **same** component still is one.
+A cross-package change opens one per package it bumps — all of them are yours (Refs #792).
 Select yours by component (`release_pr_find` and `release_watch` both take one), never by position — without a component `release_pr_find` refuses to guess and lists the candidates.
 
 Release-please PRs merge by **rebase** (linear `chore(main): release <component> <version>`), per `defaultMergeMethod: rebase` (`.pi/extensions/pi-github-tools/config.json`) — set in `cacc724f`.

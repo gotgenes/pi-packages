@@ -100,16 +100,24 @@ Releasing is the root's serialized responsibility — only the root merges relea
    On "defer": **skip releasing** — leave that package's release-please PR open, note the deferral, and continue to teardown.
    Deferring holds only this package; sibling packages keep releasing on their own lands.
    Otherwise release now.
-2. To release: `release_pr_find` with `component: <pkg>` → confirm the **full** PR body bumps `<pkg>` and nothing else → `release_pr_merge` (rebase).
+2. Derive the package list from the shipped range, not the plan's directory (re-derive `PLAN` — a fresh shell does not carry step 5's):
+
+   ```bash
+   PLAN=$(git log --format='%H' --grep="docs: plan .*(#$1)" -1)
+   git log --format='%s' "$PLAN"^..HEAD | grep -oE '^(feat|fix)\([^)]+\)' | sort -u
+   ```
+
+   A cross-package plan bumps more than one, and each gets its own release PR — release every one (Refs #792).
+3. For each `<pkg>`: `release_pr_find` with `component: <pkg>` → confirm the **full** PR body bumps `<pkg>` and nothing else → `release_pr_merge` (rebase).
    - Print the body explicitly with `gh pr view <N> --json body -q .body` — a `--jq` that drops `body` skips the check silently and an unexpected bump slips through.
    - `release_pr_find`'s `component:` line says which check applies: a named component means one package, while `component: (none)` means a **combined** PR covering every package, which the tool falls back to legitimately (the rollback state in `AGENTS.md`).
    - For a component-scoped PR an unexpected bump means you have the wrong PR; for a combined one sibling bumps are expected.
-     Either way, a sibling package's own PR sitting open is normal and is not yours to merge.
+     Either way, a package the shipped range did **not** bump is a sibling: its open PR is expected and is not yours to merge.
    - `release_pr_merge` waits out an in-progress check or an undecided (`UNKNOWN`) mergeability state on its own, and retries a transient 5xx — do not add a manual wait loop or a blind retry.
    - On a `failed to merge PR #N` result the merge call itself failed and the tool has already checked whether it landed: `merged: false` is safe to retry, `merged: unknown` is not — run the probe it prints first.
    - On a `reason: no checks reported (statusCheckRollup is empty)` refusal (the `GITHUB_TOKEN` case), fall back to `gh pr merge <N> --rebase`, then `git pull --ff-only`.
    - Never `--merge`; never merge a genuinely blocked PR (any other `reason:`, or a `timeout:` result).
-3. `release_watch` with the same `component: <pkg>` for the tag.
+4. `release_watch` with the same `component: <pkg>` for the tag, once per released package.
 
 ## 7. Tear down the worktree
 
@@ -121,7 +129,8 @@ The branch deletes cleanly because its commits are now in `main`; the worktree i
 Print:
 
 - New HEAD on `main` (`git log --oneline -1`).
-- Released version, if a release just landed (`git tag --points-at HEAD`), or that release was deferred and why.
+- Released version **per package** released, one line each (`git tag --points-at HEAD`), or that release was deferred and why.
+  Name every package step 6's derivation listed — a listed package with no released version is a miss, not an omission from the report.
 - Issue close confirmation(s).
 - Worktree/branch teardown confirmation.
 - Anything skipped and why.

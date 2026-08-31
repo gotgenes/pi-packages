@@ -129,11 +129,18 @@ Close each with its own short summary — release-please omits `refactor:` commi
 
 Skip this step entirely if step 4b recorded a defer/batch decision — the release lands later with the batch tail.
 
-1. Use `release_pr_find` with `component: <pkg>` — the shipped package from the issue's plan path.
-   Every package gets its own release PR, so the component is what says which one you mean.
-   For a repo-root tooling change (plan under `docs/plans/`) there is no `<pkg>`: call it without a component, and on an `ambiguous:` result stop and ask which PR to merge — none of the listed ones is yours to pick blind.
+1. Derive the package list from the shipped range, not the plan's directory:
+
+   ```bash
+   PLAN=$(git log --format='%H' --grep="docs: plan .*(#$1)" -1)
+   git log --format='%s' "$PLAN"^..HEAD | grep -oE '^(feat|fix)\([^)]+\)' | sort -u
+   ```
+
+   A plan under `docs/plans/` is cross-package as often as it is repo tooling — release every package the range bumps (Refs #792).
+   Then use `release_pr_find` with `component: <pkg>` for each; every package gets its own release PR, so the component is what says which one you mean.
+   On an empty list (repo tooling only) call it without a component, and on an `ambiguous:` result stop and ask which PR to merge — none of the listed ones is yours to pick blind.
 2. If none is found (timeout), skip to step 7.
-   A sibling package's release PR sitting open is normal and is not yours to merge.
+   A package the shipped range did **not** bump is a sibling: its open release PR is expected and is not yours to merge.
 3. If one exists, read the **full** PR body (`gh pr view <N> --json body -q .body`) and confirm it bumps `<pkg>` and nothing else.
    A component-scoped release PR carries exactly one package, so an unexpected bump means you have the wrong PR — stop rather than merge it.
    Read `release_pr_find`'s `component:` line before applying that rule: `component: (none)` means a **combined** PR covering every package, which the tool falls back to legitimately (the rollback state in `AGENTS.md`), so sibling bumps there are expected rather than wrong.
@@ -145,7 +152,7 @@ Skip this step entirely if step 4b recorded a defer/batch decision — the relea
    - If `release_pr_merge` returns an error (not mergeable), read its `reason:` line.
      `reason: no checks reported (statusCheckRollup is empty)` is the expected case for a release-please PR created by the default `GITHUB_TOKEN` (no CI runs); merge with `gh pr merge <N> --rebase` (matches the `defaultMergeMethod: rebase` config so the release lands as a linear commit, not a merge bubble), then `git pull --ff-only`.
      Any other reason (`check failed: ...`, `mergeable is ...`, `merge state is ...`) or a `timeout:` result means the PR is genuinely blocked or still unsettled — stop and report; let the user decide.
-5. Use `release_watch` with the same `component: <pkg>` to wait for the release tag to land on HEAD.
+5. Use `release_watch` with the same `component: <pkg>` to wait for the release tag to land on HEAD, once per released package.
 
 ## 6b. Verify the release-triggered CI run
 
