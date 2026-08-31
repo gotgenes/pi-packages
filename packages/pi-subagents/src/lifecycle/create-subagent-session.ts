@@ -251,5 +251,10 @@ export async function createSubagentSession(
     throw err;
   }
 
+  // Every child session_start handler has now run, so this is the first — and
+  // only — moment a parent can observe what the child's extensions installed.
+  // Deliberately outside the try above: a child whose binding threw never ran.
+  deps.lifecycle.bound({ sessionId, parentSessionId });
+
   return subagentSession;
 }

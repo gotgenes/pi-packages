@@ -182,6 +182,37 @@ describe("createSubagentSession — lifecycle ordering", () => {
     expect(createdOrder).toBeLessThan(bindOrder);
   });
 
+  it("emits bound after bindExtensions()", async () => {
+    await createSubagentSession(
+      { snapshot: STUB_SNAPSHOT, type: "Explore" },
+      createSubagentSessionDeps({ io, exec, registry: mockAgentLookup, lifecycle }),
+    );
+
+    expect(lifecycle.bound).toHaveBeenCalledOnce();
+    const bindOrder = session.bindExtensions.mock.invocationCallOrder[0];
+    const boundOrder = lifecycle.bound.mock.invocationCallOrder[0];
+    expect(bindOrder).toBeLessThan(boundOrder);
+  });
+
+  it("carries the session id and parent session id in bound", async () => {
+    await createSubagentSession(
+      {
+        snapshot: STUB_SNAPSHOT,
+        type: "Explore",
+        parentSession: {
+          parentSessionFile: "/sessions/parent.jsonl",
+          parentSessionId: "parent-session-42",
+        },
+      },
+      createSubagentSessionDeps({ io, exec, registry: mockAgentLookup, lifecycle }),
+    );
+
+    expect(lifecycle.bound).toHaveBeenCalledWith({
+      sessionId: "child-session-id",
+      parentSessionId: "parent-session-42",
+    });
+  });
+
   it("carries the session id and parent session id in session-created", async () => {
     io.deriveSessionDir.mockReturnValue("/custom/session/dir");
 
@@ -234,6 +265,24 @@ describe("createSubagentSession — dispose on creation failure", () => {
     expect(lifecycle.disposed).toHaveBeenCalledOnce();
     expect(lifecycle.disposed).toHaveBeenCalledWith({ sessionId: "child-session-id" });
     expect(session.dispose).toHaveBeenCalledOnce();
+  });
+
+  it("does not emit bound when bindExtensions throws", async () => {
+    const session = createFactorySession();
+    session.bindExtensions = vi.fn().mockRejectedValue(new Error("bind failed"));
+    io.createSession.mockResolvedValue({ session });
+    const lifecycle = createChildLifecycleMock();
+
+    await expect(
+      createSubagentSession(
+        { snapshot: STUB_SNAPSHOT, type: "Explore" },
+        createSubagentSessionDeps({ io, exec, registry: mockAgentLookup, lifecycle }),
+      ),
+    ).rejects.toThrow("bind failed");
+
+    // The child never ran, so there is nothing to report about what its
+    // extensions installed.
+    expect(lifecycle.bound).not.toHaveBeenCalled();
   });
 
   it("shuts down the extensions that did initialize before the bind failed", async () => {
