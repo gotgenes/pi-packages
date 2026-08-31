@@ -26,6 +26,7 @@ Note the skip and proceed to writing the plan.
 
 From the settled design, list the `src/`/`test/` files the change will modify or create — the same list you are about to write into the plan's "Module-Level Changes".
 The plan does not exist on disk yet, so this list is the assessor's primary input, not a file path.
+Add every test that drives the seam the change rewires, even when the design edits none of them — a composition-root or entry-point test breaks on a wiring change that never touches its file (Refs #827).
 
 ## Step 2: Dispatch the assessor
 

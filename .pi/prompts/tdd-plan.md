@@ -89,11 +89,12 @@ For **each** step in the plan's "TDD Order", in order:
 3. **Verify the pins.**
    Apply the killing mutation the plan named for this step, confirm the step's new tests go red, then revert it.
    Fixing a vacuous test costs nothing here and costs an amended commit later, which is why this sits before the commit rather than in the end-of-cycle review.
-   Three cases make this mandatory rather than optional, because the Red step's own evidence does not cover them:
+   These cases make this mandatory rather than optional, because the Red step's own evidence does not cover them:
    - The step's red came from a **signature change** (a required field that did not exist yet), so every test failed for the same reason and none of them demonstrated that its own assertion discriminates.
    - A test was **authored or rewritten after Green**, so it never had a Red step at all.
    - The step's tests span more than one equivalence class — one mutation kills one class, so a surviving test is only evidence when you can say which mutation should have killed it.
    - A new test **stayed green during Red**, so Red produced no evidence it discriminates — a deliberate regression pin and a vacuous probe look identical (Refs #801).
+   - The step **relocated** an existing call or registration, so the plan's mutations cover the code it authored and not the line that merely changed sites (Refs #827).
 
    Save the green file first (`cp <file> /tmp/green.ts`) and restore from that copy; `git checkout -- <file>` reverts to HEAD, discarding the step's own uncommitted green edit (Refs #830).
    Re-run before committing; never commit with a mutation in the tree.

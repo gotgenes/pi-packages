@@ -108,5 +108,84 @@ No deferred work for the root to pick up; the plan's `**Release:** ship independ
 Nothing further to add beyond the Planning and TDD stage entries above.
 The pre-completion reviewer's PASS already covers the deterministic gates this stage re-checks; both re-ran clean here with no drift.
 
+## Stage: Final Retrospective (2026-08-31T03:19:17Z)
+
+### Session summary
+
+Landed #827 through the two-session worktree convergence: the peer branch fast-forwarded onto `main`, CI passed, the issue closed, and `pi-subagents-v21.0.2` released.
+Four stages across two sessions and two models ran with zero operator corrections and no rework.
+The retrospective's substantive finding is a gap in mutation-planning discipline that the TDD stage caught on its own initiative, not from the plan.
+
+### Observations
+
+#### What went well
+
+- **The fourth mutation was unprompted, and it is the reason this change shipped pinned.**
+  The plan named three killing mutations and all three killed exactly the tests predicted (2 / 1 / 1) — a clean pass by the letter of the protocol.
+  The TDD agent then ran a fourth on its own: deleting `pi.on("turn_start", () => widgetEvents.handleTurnStart())` from `src/index.ts` left all 1352 tests green.
+  The plan had reasoned about mutations for the code it *wrote* (the two handler methods) and for the wiring line that *fixed the bug*, and skipped the wiring line that merely *moved*.
+  A relocated registration is exactly as unpinned at its new site as it was at its old one, and "behavior-preserving" is precisely what makes it easy to skip.
+  Fixed with a fourth composition-root test that drives an agent to completion and asserts the next `turn_start` clears the widget.
+
+- **The peer-transcript breadcrumb worked end to end on its first real exercise.**
+  `/sync-worktree` recorded the peer session's `.jsonl` path in the Sync stage note; this retro read all 146 peer turns in a single `read_session_file` call after the worktree had already been torn down.
+  Complete model attribution across all four stages came from that one call, with no guessing and no `jq`.
+
+- **Verification ran incrementally at every step, not just at the end.**
+  All four gates (`check`, `lint`, `test`, `fallow dead-code`) established a green baseline before TDD step 1; `check` plus the package suite ran after each step; the mutation loop ran before each commit; all four gates re-ran at the end and again at `/sync-worktree`.
+  No feedback-loop gap to report.
+
+- **The ship stage was 22 turns with zero retries.**
+  Release coordination read the plan's `**Release:** ship independently` marker off the peer branch before any irreversible work, so no gate interrupted the land.
+
+#### What caused friction (agent side)
+
+- `missing-context` — the plan's preparatory fixture step named only `test/composition-root.test.ts`, but `test/print-mode.test.ts` carries its own `makePi()` with the identical one-handler-per-event `Map` and also fires `session_start`.
+  The planning session had both files in hand: its turn-41 command was `wc -l packages/pi-subagents/test/composition-root.test.ts packages/pi-subagents/test/print-mode.test.ts`.
+  It measured both and carried one into the plan.
+  Impact: folded into the same TDD commit and recorded as a deviation — no rework, but the implementer had to re-derive a file list the plan should have carried.
+
+- `missing-context` — the plan named no killing mutation for the relocated `turn_start` wiring, the half the change moved rather than authored.
+  Neither `/plan-issue`'s mutation guidance nor `/tdd-plan`'s four mandatory verify-the-pins cases covers a line that merely changes call sites.
+  Impact: caught only because the TDD agent went beyond the plan; cost one extra composition-root test.
+  Had it not, a behavior-preserving relocation would have shipped unpinned with a green suite and a PASS review.
+
+- `missing-context` (subagent scope) — the `tidy-first-assessor`'s target-file list, drawn per the skill from "the `src`/`test` files the change will modify or create", excluded every test that merely *drives* the composition root.
+  `test/composition-root.test.ts` was not a file the design edited; it was a file the design would break.
+  The assessor also read SDK `0.79.1` rather than the pinned `0.84.4` for its `session_start` ctx check.
+  Impact: none in either case — the planning agent's own post-assessment `grep -rn '#src/index'` caught the first, and it had independently verified the SDK facts against `0.84.4`.
+  Both were caught by luck of an ad-hoc follow-up rather than by the dispatch protocol.
+
+#### What caused friction (user side)
+
+None.
+Three planning design gates (linger aging, capture wiring, headless handling) and one roadmap-fit gate for [#849] were answered with every recommendation accepted, and no stage required a correction.
+No earlier-context or earlier-intervention opportunity identified.
+
+### Diagnostic details
+
+- **Model-performance correlation** — Planning and TDD ran on `anthropic/claude-opus-5` (SDK-fact verification, three design gates, mutation reasoning); Sync and Ship ran on `anthropic/claude-sonnet-5` (lint, `fallow`, rebase, ff-merge, CI, release); this retrospective on `anthropic/claude-opus-5`.
+  The judgment-heavy stages got the stronger model and the mechanical ones did not, with no mismatch in either direction.
+  The one model-adjacent note is the `tidy-first-assessor` reading a stale SDK copy, which is a scope-bound defect rather than a capability one.
+
+- **Escalation-delay tracking** — no `rabbit-hole` friction points.
+  The longest same-target sequence was the mutation loop at peer turns 100–115 (~15 calls), but each call applied or reverted a distinct mutation; that is the protocol executing, not a stall.
+
+- **Unused-tool detection** — skipped.
+  Both `missing-context` points had the needed information already in the session (a `wc -l` output, a relocated line in the diff); no subagent or search tool would have supplied anything the agent lacked.
+
+### Changes made
+
+1. `.pi/prompts/plan-issue.md` — added a sentence to the TDD Order mutation guidance requiring a killing mutation for a **moved** registration or call site, not only for code the step authors.
+2. `.pi/prompts/tdd-plan.md` — added a fifth mandatory verify-the-pins case covering a relocated call or registration, and corrected the list's stale `Three cases` lead-in to `These cases` (it had four bullets since #801's addition).
+3. `.pi/skills/tidy-first/SKILL.md` — widened Step 1's target-file list to include every test that drives the seam the change rewires, even when the design edits none of them.
+
+#### Considered and not made
+
+- A further `when X, grep Y` entry in `/plan-issue`'s Module-Level Changes list for copy-pasted test fixtures.
+  The `print-mode.test.ts` miss was not a grep failure — the grep had run and `wc -l` had named both files — so a grep rule would not have prevented it, and change 3 addresses the class at its source.
+- A rule requiring the `tidy-first-assessor` to verify the pinned SDK version.
+  One instance, zero impact, and `AGENTS.md` already requires confirming an API against the installed version.
+
 [#423]: https://github.com/gotgenes/pi-packages/issues/423
 [#849]: https://github.com/gotgenes/pi-packages/issues/849

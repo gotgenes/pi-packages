@@ -204,6 +204,7 @@ Then an H1 title (e.g., `# <short descriptive title>`) — required by markdownl
   Write it as an edit a reader could apply ("make `resolveBackgroundMode` return `request.isBackground` unconditionally"), not as a description of intent.
   This is where a test's discriminating power is cheapest to specify — stating it forces you to name the signal that distinguishes the step's two outcomes, which is the check that catches an assertion passing under both (Refs #724).
   When a step's tests span several equivalence classes, name one mutation per class and say which tests each should kill; a mutation that leaves a test green is a finding only when the plan predicted otherwise.
+  When a step **moves** an existing registration or call site rather than adding one, name a mutation that deletes it at the new site — a relocated line is as unpinned there as at its old one (Refs #827).
   The Tidy-First assessment's accepted preparatory refactorings are steps here like any other, each with its `refactor:`/`test:` commit message and a sentence naming the friction it prepares.
   Place each one before the step it prepares — leading the whole order when every later step depends on it, immediately before the relevant part when a larger plan needs its tidying split across several points.
   The implementing session executes them in order; it runs no second assessment.
