@@ -16,12 +16,31 @@ An implementation that creates child sessions inside its own process (via `creat
 | `subagents:child:session-created` | `{ sessionId, parentSessionId? }` | After the child session is created, immediately before `bindExtensions()` |
 | `subagents:child:disposed`        | `{ sessionId }`                   | In the run's `finally`, on success and on error alike                     |
 
+A third channel is **optional**, and buys one diagnostic:
+
+| Channel                  | Payload                           | When                                                                |
+| ------------------------ | --------------------------------- | ------------------------------------------------------------------- |
+| `subagents:child:bound`  | `{ sessionId, parentSessionId? }` | After `bindExtensions()` resolves, and not at all when it throws    |
+
 The pre-bind ordering of `session-created` is **contract, not an implementation detail**.
 Emit it synchronously, on the same call stack, before `bindExtensions()`: this package's subscriber registers the child synchronously, and the registration must land before binding proceeds so the child's own instance can detect itself the moment it loads.
 An implementation that awaits between creating the session and emitting, or that emits after binding, breaks detection for every child it spawns.
 
-Both are fire-and-forget broadcasts.
+All are fire-and-forget broadcasts.
 Nothing is returned, nothing is awaited, and no reply travels back over the bus.
+
+#### The optional `bound` channel
+
+Emitting `subagents:child:bound` is not part of the obligation, and an implementation that never emits it is fully conformant.
+What it buys is the unguarded-child alarm described under [What this package does on both ends](#what-this-package-does-on-both-ends): without it, a child that loads no instance of this package runs every tool in its `tools:` allowlist ungated and nothing says so.
+
+The timing is the whole point, and it is the one moment that answers the question.
+`bindExtensions()` awaits the child's `session_start` emit, so when it resolves every child extension has initialized and this package's child instance — if it loaded at all — has published its service.
+Emit it there: after the `await`, on the success path only.
+A child whose binding threw never ran, so reporting it would be a false alarm about a session that does not exist.
+
+No other moment works.
+`session-created` fires before the child's extensions have loaded, and by `disposed` the child's `session_shutdown` has already withdrawn its service — so a healthy child looks identical to an unguarded one at both.
 
 ### Out-of-process implementations
 
@@ -72,7 +91,7 @@ The full condition, with a worked example, is documented where the setting lives
 
 The announcement is all an implementation provides; this section is what it buys.
 
-On the announcing side, this package subscribes to the child lifecycle (`src/authority/subagent-lifecycle-events.ts`) and registers every in-process child session in the `SubagentSessionRegistry` on `subagents:child:session-created`, unregistering it on `subagents:child:disposed`.
+On the announcing side, this package subscribes to the child lifecycle (`src/authority/subagent-lifecycle-events.ts`) and registers every in-process child session in the `SubagentSessionRegistry` on `subagents:child:session-created`, unregistering it on `subagents:child:disposed`, and auditing it on `subagents:child:bound`.
 Because the event bus dispatches synchronously, that registration completes before `bindExtensions()` proceeds.
 
 The `SubagentSessionRegistry` is backed by a process-global singleton (`globalThis` + `Symbol.for()`), accessed via `getSubagentSessionRegistry()` in `src/authority/subagent-registry.ts`.
@@ -83,7 +102,10 @@ What the announcement enables:
 
 1. **Deterministic child detection** — `isSubagentExecutionContext()` hits the process-global registry on the first check for an in-process child, and reads the environment for one spawned as its own process, with a session-directory heuristic behind both.
 2. **Per-agent policy enforcement** - the permission system's `before_agent_start` handler resolves the agent name from the `<active_agent>` system-prompt tag and applies per-agent `permission:` frontmatter overrides.
-3. **`ask`-state forwarding** - when a child triggers an `ask` permission, the request forwards to the parent session's UI through the existing polling mechanism.
+3. **An unguarded child is announced** — when a child finishes binding without publishing a service of its own, it has no permission node: no `tool_call` gate, no tool filtering, no `permission:` frontmatter resolution, and no ask-forwarding.
+   The parent records a `child_node_absent` review entry for every such child and warns once per session.
+   The likeliest cause is the child's own configuration — `@gotgenes/pi-subagents` excluding this package under `excludedExtensionPackages` — and a failure to load this extension in the child leaves the identical absence, which the parent cannot tell apart, so the warning names both.
+4. **`ask`-state forwarding** - when a child triggers an `ask` permission, the request forwards to the parent session's UI through the existing polling mechanism.
    The parent approves or denies, and the child resumes.
    When the parent approves "for this session," it chooses a scope: **this subagent only** (the least-privilege default) records the grant on the requesting child, while **the whole session** records it on the serving parent so the parent and all its subagents resolve it without re-prompting.
 
@@ -162,7 +184,7 @@ Nothing needs to be edited, and in-process children are unaffected: parent and c
 
 ## Conformance of known implementations
 
-Conformance is a property of the announcement alone — whether an implementation emits the in-process events, or sets the out-of-process variable — not of the frontmatter vocabulary it offers for tool visibility.
+Conformance is a property of the announcement alone — whether an implementation emits the two in-process events, or sets the out-of-process variable — not of the frontmatter vocabulary it offers for tool visibility, and not of the optional `bound` channel.
 
 | Extension                                                                           | Shape      | Adopts the convention             | Visibility key                     |
 | ----------------------------------------------------------------------------------- | ---------- | --------------------------------- | ---------------------------------- |
@@ -176,6 +198,9 @@ Without it there is nowhere to forward to, and an `ask` in one of those children
 Adopting the convention is a one-line change at their spawn site.
 
 The upstream `tintinweb/pi-subagents` (which `@gotgenes/pi-subagents` forks) publishes no `subagents:child:session-created` event, so its in-process children have neither deterministic detection nor `ask`-state forwarding.
+
+`@gotgenes/pi-subagents` is also the only implementation that emits the optional `subagents:child:bound` channel, so it is the only one whose unguarded children are announced.
+The others forfeit that alarm without forfeiting conformance.
 
 See [guides/permission-frontmatter-for-subagent-extensions.md](guides/permission-frontmatter-for-subagent-extensions.md) for the companion convention on `permission:` frontmatter, which implementations document rather than implement.
 

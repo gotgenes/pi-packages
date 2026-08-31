@@ -253,6 +253,27 @@ Removing the reader leaves nothing that reads the slot; removing the write leave
 Decision 2 already dissolved [#302]'s hazard structurally: each node publishes under its own key, so there is nothing to clobber.
 So `RegisteredChildDetector` and `SubagentDetection.isRegisteredChild` go, and `PermissionServiceLifecycle` loses its detection dependency; the pure `isRegisteredSubagentChild` stays, because `isSubagentExecutionContext` still calls it.
 
+#### Amendment (2026-08-31, [#792]): an optional third in-process channel
+
+Decision 1 makes gating node-local, which means a child that loads no instance of this package gates nothing — and decision 6 makes that reachable, since `excludedExtensionPackages` may name this package.
+The parent's own gating is unaffected, so the hole is invisible from the only session a human is watching.
+
+The obligation in decision 5 is **unchanged**: two in-process events, or one environment variable.
+What this amendment adds is an *optional* third in-process channel, `subagents:child:bound` with the same `{ sessionId, parentSessionId? }` payload, emitted after `bindExtensions()` resolves and not at all when it throws.
+An implementation that never emits it stays conformant and simply forfeits the alarm; the conformance table scores the two mandatory events as before.
+
+The channel exists because no already-announced moment can answer the question, which was established by reading the code rather than argued:
+
+- `session-created` fires before the child's extensions load, so nothing has published yet either way.
+- `disposed` fires *after* the child's `session_shutdown`, which unpublishes the keyed service — so a healthy child is indistinguishable from an unguarded one, and auditing there would false-alarm on every child.
+- A deferred sweep on the parent's next `before_agent_start` misses every foreground child, which is disposed and unregistered inside the parent's own tool call before that turn begins.
+
+`bindExtensions()` awaits the child's `session_start` emit, so its resolution is the first instant at which "this child published a service" is a settled fact.
+That is a seam, not a delay: nothing is slept on and nothing is polled.
+
+The response is a warning, never a refusal, per decision 6's framing and [ADR-0002]'s separation — refusing would be this package overriding a setting that belongs to the implementation, on a configuration the operator chose deliberately.
+The parent cannot distinguish deliberate exclusion from a load failure, because both leave the identical absence; the warning names the likelier cause and admits the other rather than asserting one.
+
 ## Consequences
 
 - The [#699] defect family ends structurally: no duplicate throw (the child's sibling registers into the child's own keyed service), no silently weakened child gates (extractors land where the child's gates read), no per-start stderr noise, and the vacancy that remains is recorded where the operator already looks.
@@ -308,6 +329,7 @@ Superseded by decision 7's [#796] amendment: the window turned out to have no le
 [#727]: https://github.com/gotgenes/pi-packages/issues/727
 [#787]: https://github.com/gotgenes/pi-packages/issues/787
 [#788]: https://github.com/gotgenes/pi-packages/issues/788
+[#792]: https://github.com/gotgenes/pi-packages/issues/792
 [#789]: https://github.com/gotgenes/pi-packages/issues/789
 [#794]: https://github.com/gotgenes/pi-packages/issues/794
 [#796]: https://github.com/gotgenes/pi-packages/issues/796
