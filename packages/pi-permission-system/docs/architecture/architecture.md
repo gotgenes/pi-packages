@@ -1079,7 +1079,7 @@ No decline, so the regular improvement rotation continues.
 | Absent-child alarm event in `src/`                                          | 0                     | ≥ 1             |
 | Named permission-surface properties (`surfaceProperty`, `config-schema.ts`) | 0                     | ≥ 9             |
 | Per-pattern surfaces on `SessionApproval` (`session-approval.ts`)           | 0                     | ≥ 1             |
-| Split-provider extractor test files                                         | 1                     | ≥ 1             |
+| Split-provider extractor test files                                         | 0                     | ≥ 1             |
 | fallow health score                                                         | 78 (B)                | ≥ 78            |
 | Production duplication                                                      | 0.1%                  | ≤ 0.2%          |
 | Dead exports                                                                | 0                     | 0               |

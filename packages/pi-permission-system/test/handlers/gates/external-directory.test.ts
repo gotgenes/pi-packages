@@ -92,6 +92,41 @@ describe("describeExternalDirectoryGate", () => {
     expect(bypass.decidedBy).toEqual({ kind: "infrastructure_read" });
   });
 
+  it("records no extractor source, which only a built-in read tool can reach", () => {
+    // The bypass is gated on READ_ONLY_PATH_BEARING_TOOLS, and every tool in
+    // that set classifies as `path` — whose branch resolves by convention and
+    // never consults an extractor. So a bypass can never carry an inherited
+    // path today. The gate still threads the source through, so the record
+    // stays correct if that set ever widens; this pins the fact meanwhile.
+    const result = gateUnderTest(
+      makeTcc({
+        toolName: "read",
+        input: { path: "/test/agent/git/some-package/SKILL.md" },
+      }),
+      ["/test/agent", "/test/agent/git"],
+      {
+        resolve: () => ({
+          extractor: () => "/somewhere/else.md",
+          origin: "inherited" as const,
+        }),
+      },
+    );
+
+    expect(isGateBypass(result)).toBe(true);
+    // Full-shape, so the absence of extractorSource is asserted rather than
+    // merely unchecked.
+    expect((result as GateBypass).log).toEqual({
+      event: "permission_request.infrastructure_auto_allowed",
+      details: {
+        source: "tool_call",
+        toolCallId: "tc-1",
+        toolName: "read",
+        agentName: null,
+        path: "/test/agent/git/some-package/SKILL.md",
+      },
+    });
+  });
+
   it("returns GateBypass respecting custom infraDirs", () => {
     const result = gateUnderTest(
       makeTcc({
