@@ -22,6 +22,7 @@ Run them in foreground or background, steer them mid-run, resume completed sessi
 - **Custom agent types** — define agents in `.pi/agents/<name>.md` with YAML frontmatter: custom system prompts, model selection, thinking levels, tool restrictions
 - **Mid-run steering** — inject messages into running agents to redirect their work without restarting
 - **Session resume** — pick up where an agent left off, preserving full conversation context
+- **Ask-back** — an agent that needs information only you have ends its turn with a question, and every result surfaces it with the exact `resume` call that answers it
 - **Graceful turn limits** — agents get a "wrap up" warning before hard abort, producing clean partial results instead of cut-off output
 - **Case-insensitive agent types** — `"explore"`, `"Explore"`, `"EXPLORE"` all work.
   Unknown types fall back to general-purpose with a note

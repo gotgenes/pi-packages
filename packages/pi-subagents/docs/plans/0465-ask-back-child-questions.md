@@ -267,11 +267,14 @@ Claim and release points:
 
 | Site                              | Claims                         | Releases                                                                          |
 | --------------------------------- | ------------------------------ | --------------------------------------------------------------------------------- |
-| `spawnAndWait` (foreground)       | at call, before the run starts | in `runForeground`'s `finally`, if the turn was abandoned before `markConsumed()` |
+| `spawnAndWait` (foreground)       | at call, before the run starts | never — see below                                                                 |
 | `AgentTool` resume branch         | before `manager.resume(...)`   | on the failure return paths                                                       |
 | `get_subagent_result` with `wait` | before `waitUntilSettled`      | when the wait is abandoned (`record.isActive()` still true)                       |
 
 The third row preserves `get-result-tool.ts`'s documented abandoned-wait behavior exactly, now as an explicit release rather than an emergent one.
+
+The foreground row carries no release, corrected during implementation: `run()` swallows its error and resolves, so `spawnAndWait` always returns and `markConsumed()` is always reached — there is no abandonment window to detect, unlike `waitUntilSettled`, which genuinely races a signal.
+Leaving a foreground record claimed is also what the nudge requires, since an interrupted foreground run must not be announced.
 
 ## Module-Level Changes
 

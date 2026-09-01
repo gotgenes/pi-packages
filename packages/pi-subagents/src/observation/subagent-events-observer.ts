@@ -66,8 +66,10 @@ export class SubagentEventsObserver implements SubagentManagerObserver {
 	/**
 	 * Persist the terminal record for cross-extension history reconstruction and
 	 * announce completion. Shared by every terminal-state handler (fresh and
-	 * resumed). The nudge suppresses itself if the record is already consumed —
-	 * consumption is domain state on the record, not owned here.
+	 * resumed). Whether a nudge is actually owed is the notification manager's
+	 * decision — it suppresses itself when a carrier has claimed the outcome or
+	 * the parent has already consumed it. Both are domain state on the record,
+	 * not owned here.
 	 */
 	private persistAndNotify(record: Subagent): void {
 		this.appendEntry("subagents:record", {

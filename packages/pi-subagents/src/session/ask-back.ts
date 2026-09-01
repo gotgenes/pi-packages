@@ -51,12 +51,11 @@ export interface ParsedOutcome {
  *
  * The **last** well-formed block wins, so a child that drafts or reasons about
  * its question before settling on one is not defeated by its own earlier text.
+ * Markers inside code — a fenced region or an inline span — are quotation, not
+ * a question, so a child describing the protocol does not trip it.
  */
 export function parseQuestionForParent(result: string): ParsedOutcome {
-	const fences = findFencedRanges(result);
-	const blocks = findBlocks(result).filter(
-		(block) => !fences.some((fence) => block.start >= fence.start && block.start < fence.end),
-	);
+	const blocks = findBlocks(result, findQuotedRanges(result));
 	const declared = blocks.findLast((block) => block.content.trim().length > 0);
 	if (!declared) return { question: undefined, body: result };
 
@@ -75,15 +74,22 @@ interface Block extends Range {
 	content: string;
 }
 
-/** Every non-overlapping open/close pair, in document order. */
-function findBlocks(text: string): Block[] {
+/**
+ * Every non-overlapping open/close pair, in document order, ignoring tags that
+ * sit inside code.
+ *
+ * Quoting is applied while scanning rather than to the finished list: a quoted
+ * opening tag discarded afterwards would already have consumed the closing tag
+ * of the real question that followed it.
+ */
+function findBlocks(text: string, quoted: Range[]): Block[] {
 	const blocks: Block[] = [];
 	let cursor = 0;
 	while (cursor < text.length) {
-		const open = text.indexOf(OPEN_TAG, cursor);
+		const open = nextUnquoted(text, OPEN_TAG, cursor, quoted);
 		if (open === -1) break;
 		const contentStart = open + OPEN_TAG.length;
-		const close = text.indexOf(CLOSE_TAG, contentStart);
+		const close = nextUnquoted(text, CLOSE_TAG, contentStart, quoted);
 		if (close === -1) break;
 		blocks.push({
 			start: open,
@@ -93,6 +99,55 @@ function findBlocks(text: string): Block[] {
 		cursor = close + CLOSE_TAG.length;
 	}
 	return blocks;
+}
+
+/** The next occurrence of `tag` at or after `from` that is not inside code. */
+function nextUnquoted(text: string, tag: string, from: number, quoted: Range[]): number {
+	let at = text.indexOf(tag, from);
+	while (at !== -1 && quoted.some((range) => at >= range.start && at < range.end)) {
+		at = text.indexOf(tag, at + tag.length);
+	}
+	return at;
+}
+
+/**
+ * Character ranges a marker may not be read from: code, in either spelling.
+ *
+ * Both are quotation. A child that writes the marker while explaining itself
+ * reaches for whichever is at hand, and an inline span is the likelier of the
+ * two mid-sentence.
+ */
+function findQuotedRanges(text: string): Range[] {
+	const fences = findFencedRanges(text);
+	return [...fences, ...findInlineCodeRanges(text, fences)];
+}
+
+/**
+ * Backtick-delimited spans, found per line outside fenced regions.
+ *
+ * Scoped to a single line so an unmatched backtick cannot swallow the rest of
+ * the text, and requiring at least one non-backtick character so a fence line
+ * is never mistaken for a span.
+ */
+function findInlineCodeRanges(text: string, fences: Range[]): Range[] {
+	const ranges: Range[] = [];
+	const span = /(`+)[^`]+?\1/g;
+	let offset = 0;
+
+	for (const line of text.split("\n")) {
+		const lineStart = offset;
+		offset += line.length + 1;
+		if (fences.some((fence) => lineStart >= fence.start && lineStart < fence.end)) continue;
+
+		span.lastIndex = 0;
+		for (let match = span.exec(line); match !== null; match = span.exec(line)) {
+			ranges.push({
+				start: lineStart + match.index,
+				end: lineStart + match.index + match[0].length,
+			});
+		}
+	}
+	return ranges;
 }
 
 /**

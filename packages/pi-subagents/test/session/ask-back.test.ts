@@ -89,6 +89,34 @@ describe("parseQuestionForParent", () => {
 		});
 	});
 
+	describe("inline code spans are not markers", () => {
+		it("ignores a marker quoted inline mid-sentence", () => {
+			const text = "I could have used a `<question-for-parent>` block, but I worked it out.";
+			expect(parseQuestionForParent(text)).toEqual({ question: undefined, body: text });
+		});
+
+		it("does not pair an inline open tag with a later fenced close tag", () => {
+			const text =
+				"The `<question-for-parent>` tag is closed like this:\n\n```text\n</question-for-parent>\n```";
+			expect(parseQuestionForParent(text)).toEqual({ question: undefined, body: text });
+		});
+
+		it("takes a real question that follows an inline mention", () => {
+			const { question } = parseQuestionForParent(
+				"I know about `<question-for-parent>` blocks.\n\n" +
+					"<question-for-parent>\nSo which config?\n</question-for-parent>",
+			);
+			expect(question).toBe("So which config?");
+		});
+
+		it("leaves an unmatched backtick from swallowing a real question", () => {
+			const { question } = parseQuestionForParent(
+				"An unclosed ` backtick here.\n<question-for-parent>\nWhich one?\n</question-for-parent>",
+			);
+			expect(question).toBe("Which one?");
+		});
+	});
+
 	describe("fenced regions are not markers", () => {
 		it("ignores a block inside a three-backtick fence", () => {
 			const text =
