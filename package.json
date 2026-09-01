@@ -3,7 +3,7 @@
   "name": "@gotgenes/pi-packages",
   "type": "module",
   "description": "Monorepo for @gotgenes pi packages",
-  "packageManager": "pnpm@11.5.2",
+  "packageManager": "pnpm@11.25.0",
   "engines": {
     "node": ">=22"
   },
