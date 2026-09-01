@@ -1,0 +1,102 @@
+name: Release
+
+# Releases are explicit. Several packages can be releasable at once — parallel
+# worktrees make that normal — and naming them is what keeps releasing one from
+# dragging a sibling along (Refs #865).
+#
+# `/ship-issue` and `/ship-worktree` dispatch this workflow after the work is on
+# main, then watch it with `ci_find`/`ci_watch` (workflow `release`).
+on:
+  workflow_dispatch:
+    inputs:
+      packages:
+        description: "Package directory names, space- or comma-separated (e.g. 'pi-subagents pi-colgrep')"
+        required: true
+        type: string
+      sha:
+        description: "Expected HEAD SHA — aborts if main moved since the release was requested"
+        required: false
+        type: string
+
+# One release at a time. This replaces the convention that only the root session
+# releases, so peers cannot race even by accident.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      tags: ${{ steps.prepare.outputs.tags }}
+      sha: ${{ steps.prepare.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          # The release commit is pushed to main, which the default GITHUB_TOKEN
+          # is not used for here — this is the same token the retired
+          # release-please job pushed its baseline commit with. The name is now
+          # historical; the secret is unchanged.
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          # Full history and tags: git-cliff derives every version and changelog
+          # from them, and a shallow clone would silently produce wrong versions.
+          fetch-depth: 0
+
+      - uses: taiki-e/install-action@git-cliff
+
+      - name: Prepare release
+        id: prepare
+        env:
+          PACKAGES: ${{ inputs.packages }}
+          EXPECTED_SHA: ${{ inputs.sha }}
+        run: ./scripts/release/prepare-release.sh
+
+  publish:
+    needs: prepare
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # npm Trusted Publishing. The publisher must be configured on npmjs.org
+      # against this workflow file; it previously named ci.yml.
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The exact release commit, not `main` — another push could land
+          # between jobs, and `git tag --points-at HEAD` would then find nothing.
+          ref: ${{ needs.prepare.outputs.sha }}
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          registry-url: "https://registry.npmjs.org"
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Publish released packages
+        run: ./scripts/release/publish-released.sh
+
+  github-release:
+    needs: [prepare, publish]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          fetch-depth: 0
+
+      - uses: taiki-e/install-action@git-cliff
+
+      - name: Create GitHub Releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./scripts/release/create-github-releases.sh

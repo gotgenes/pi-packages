@@ -25,6 +25,8 @@
 #
 # Outputs (via $GITHUB_OUTPUT when available):
 #   tags  Space-separated tags created, e.g. "pi-subagents-v21.3.0"
+#   sha   The release commit. Downstream jobs check this out rather than `main`,
+#         which another push could move past between jobs.
 #
 # Usage:
 #   PACKAGES="pi-subagents pi-colgrep" ./scripts/release/prepare-release.sh
@@ -136,5 +138,8 @@ git push origin HEAD:main "${tags[@]}"
 echo "Released: ${tags[*]}"
 
 if [ -n "${GITHUB_OUTPUT:-}" ]; then
-  echo "tags=${tags[*]}" >> "$GITHUB_OUTPUT"
+  {
+    echo "tags=${tags[*]}"
+    echo "sha=$(git rev-parse HEAD)"
+  } >> "$GITHUB_OUTPUT"
 fi

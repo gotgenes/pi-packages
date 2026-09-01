@@ -6,9 +6,8 @@
 #   e.g. hunk-pkg-diff.sh pi-subagents
 #        hunk-pkg-diff.sh pi-permission-system --mode split
 #
-# Tags are <component>-v<version> (release-please: include-component-in-tag +
-# include-v-in-tag). The glob is "<pkg>-v*" so a package like pi-subagents does
-# not also match the sibling pi-subagents-worktrees tags.
+# Tags are <component>-v<version>. The glob is "<pkg>-v*" so a package like
+# pi-subagents does not also match the sibling pi-subagents-worktrees tags.
 set -euo pipefail
 
 usage() {

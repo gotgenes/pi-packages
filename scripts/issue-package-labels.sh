@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # Print the `pkg:*` / `scope:repo` labels that belong on a GitHub issue.
 #
-# The package list is derived from .release-please-manifest.json rather than
-# hardcoded here, so it tracks the workspace instead of drifting from it. A
-# hardcoded copy in the workflow is what let five of nine packages go unlabeled
-# (Refs #818).
+# The package list is derived from the workspace on disk rather than hardcoded
+# here, so it tracks the packages instead of drifting from them. A hardcoded copy
+# in the workflow is what let five of nine packages go unlabeled (Refs #818).
+# It read .release-please-manifest.json until that file was retired with
+# release-please itself (Refs #865).
 #
 # Two signals, in order, never combined:
 #
@@ -31,7 +32,6 @@
 
 set -euo pipefail
 
-MANIFEST=.release-please-manifest.json
 
 # Must match the dropdown option string in both .github/ISSUE_TEMPLATE forms.
 # An unrecognized selection warns to stderr below, so a drift between them
@@ -41,7 +41,9 @@ REPO_WIDE_LABEL="scope:repo"
 
 issue_number=${1:?usage: issue-package-labels.sh <issue-number>}
 
-packages=$(jq -r 'keys[] | sub("^packages/"; "")' "$MANIFEST")
+packages=$(for dir in packages/*/; do
+  [ -f "${dir}package.json" ] && basename "$dir"
+done)
 
 payload=$(gh issue view "$issue_number" --json title,body)
 title=$(jq -r '.title // ""' <<<"$payload")

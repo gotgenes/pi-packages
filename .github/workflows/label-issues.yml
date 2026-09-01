@@ -6,7 +6,7 @@ on:
 
 permissions:
   # `contents: read` for the checkout: the labeler reads the package list from
-  # .release-please-manifest.json rather than a hardcoded copy (Refs #818), and
+  # the workspace on disk rather than a hardcoded copy (Refs #818, #865), and
   # naming any permission defaults every unnamed one to `none`.
   contents: read
   issues: write
