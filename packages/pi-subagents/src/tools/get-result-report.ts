@@ -8,6 +8,7 @@
  */
 
 import type { SubagentStatus } from "#src/lifecycle/subagent";
+import { renderOutcomeBody } from "#src/observation/outcome-delivery";
 
 /** The data a get_subagent_result report renders from — only what the formatter reads. */
 export interface AgentReport {
@@ -42,14 +43,12 @@ export function renderStatsParts(report: AgentReport): string[] {
 	return parts;
 }
 
-/** Select the per-status body: running note, error line, or trimmed result. */
+/**
+ * Select the per-status body. `AgentReport` structurally satisfies
+ * `OutcomeBody`, so this is the shared renderer under this carrier's name.
+ */
 export function renderReportBody(report: AgentReport): string {
-	if (report.status === "running")
-		return "Agent is still running. Use wait: true or check back later.";
-	if (report.status === "error") return `Error: ${report.error}`;
-	if (report.stoppedWhileQueued)
-		return "Agent was stopped while queued and never started. No work was performed.";
-	return report.result?.trim() ?? "No output.";
+	return renderOutcomeBody(report);
 }
 
 /** Assemble the full get_subagent_result report text. */
