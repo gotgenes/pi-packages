@@ -19,7 +19,13 @@
 #
 # A package's own CHANGELOG.md is excluded too, so a changelog-writing commit
 # never re-enters the next changelog.
-CLIFF_EXCLUDED_DOC_DIRS="plans retro architecture decisions assets"
+#
+# An array, not a space-separated string: bash word-splits an unquoted parameter
+# and zsh does not, so a string collapses into the single bogus glob
+# `docs/plans retro architecture decisions assets/**` when this file is sourced
+# from an interactive zsh. That excludes nothing, and the only symptom is a
+# changelog quietly containing commits it should not.
+CLIFF_EXCLUDED_DOC_DIRS=(plans retro architecture decisions assets)
 
 # Print each package directory name, one per line.
 #
@@ -53,7 +59,7 @@ cliff_args() {
     --include-path "packages/${pkg}/**"
     --exclude-path "packages/${pkg}/CHANGELOG.md"
   )
-  for sub in $CLIFF_EXCLUDED_DOC_DIRS; do
+  for sub in "${CLIFF_EXCLUDED_DOC_DIRS[@]}"; do
     CLIFF_ARGS+=(--exclude-path "packages/${pkg}/docs/${sub}/**")
   done
 }
