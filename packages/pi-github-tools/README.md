@@ -64,71 +64,9 @@ Useful for diagnostics without constructing `gh` invocations.
 | `workflow` | string | yes      | Workflow filename without extension   |
 | `limit`    | number | no       | Number of runs to return (default: 5) |
 
-### Release tools
-
-#### `release_pr_find`
-
-Find the release-please PR after a push to `main`.
-Polls until an open release-please PR appears or the timeout expires.
-
-| Parameter   | Type   | Required | Description                               |
-| ----------- | ------ | -------- | ----------------------------------------- |
-| `component` | string | no       | release-please component whose PR to find |
-| `timeout`   | number | no       | Seconds to wait (default: 120)            |
-
-Returns PR number, title, component, head branch, mergeable status, and URL.
-
-Under [`separate-pull-requests`](https://github.com/googleapis/release-please/blob/main/docs/manifest-releaser.md), each component has its own release PR on a `release-please--branches--<target>--components--<component>` branch.
-`component` selects by that branch suffix, so it is the package directory name as written in `release-please-config.json` — `"pi-subagents"`, not `"@gotgenes/pi-subagents"`.
-When only a combined release PR is open, a requested component still resolves to it, since that PR covers every component.
-
-Without `component` the tool answers when exactly one release PR is open.
-When several are open it refuses to pick, listing the candidates instead:
-
-```text
-ambiguous: 3 open release-please PRs; pass component to select one
-  #142  pi-github-tools  chore(main): release pi-github-tools 4.4.0
-  #143  pi-subagents  chore(main): release pi-subagents 19.3.6
-  #144  (none)  chore: release main
-```
-
-#### `release_pr_merge`
-
-Merge a release-please PR after confirming it is clean.
-Checks `MERGEABLE` + `CLEAN` status, merges, and runs `git pull --ff-only`.
-Waits out an in-progress check or an undecided (`UNKNOWN`) mergeability state, polling every 10 s up to `timeout`, and streams a progress line per poll.
-
-| Parameter   | Type   | Required | Description                                                       |
-| ----------- | ------ | -------- | ----------------------------------------------------------------- |
-| `pr_number` | number | yes      | The PR number to merge                                            |
-| `method`    | string | no       | Merge strategy: `"rebase"`, `"squash"`, or `"merge"`              |
-| `timeout`   | number | no       | Seconds to wait for checks/mergeability to resolve (default: 300) |
-
-Merge method precedence (highest to lowest):
-
-1. Explicit `method` parameter
-2. `defaultMergeMethod` from [configuration](#configuration)
-3. `"merge"` (hardcoded fallback)
-
-Returns merge confirmation with new HEAD SHA on success.
-
-When the merge call itself fails (a transport error, not a refusal), the tool re-reads the PR over REST before reporting, so a caller never has to guess whether a retry is safe:
-
-- Merged anyway — the pull completes and the normal success block is returned, followed by a `note:` naming the transport error and a `verified: merged via REST` line.
-- Not merged — an error headed `failed to merge PR #N` with `merged: false` and `safe to retry: yes`.
-- Verification also failed — the same header with `merged: unknown`, a `verification_error:` line, and the manual probe to run.
-
-When the PR is refused _before_ any merge is attempted, the error is headed `PR #N is not mergeable` and carries a `reason:` line naming the specific cause:
-
-- `no checks reported (statusCheckRollup is empty)` — the PR has no CI runs at all (the legacy `GITHUB_TOKEN`-does-not-trigger-workflows case); merge manually if appropriate.
-- `check failed: <names>` — one or more checks concluded with a failure.
-- `mergeable is <value>` / `merge state is <value>` — the PR is genuinely blocked (conflicting, dirty, behind, etc.).
-
-A `timeout:` result (also an error) means checks or mergeability did not resolve within `timeout`; retry or investigate.
-
 ### Transient-failure retry
 
-Every read-only `gh` call these tools make — `ci_find`, `ci_watch`, `ci_list`, `release_pr_find`, and `release_pr_merge`'s precheck and verification — retries a transient failure up to three times, waiting 1 s, 4 s, then 9 s.
+Every read-only `gh` call these tools make — `ci_find`, `ci_watch`, and `ci_list` — retries a transient failure up to three times, waiting 1 s, 4 s, then 9 s.
 The retry count and backoff curve match [`@octokit/plugin-retry`](https://github.com/octokit/plugin-retry.js)'s defaults.
 
 Retried: HTTP 5xx, GitHub's `no server is currently available` GraphQL error, and transport errors (connection reset, unexpected EOF, i/o timeout, TLS handshake timeout).
@@ -138,22 +76,6 @@ Mutations (`gh pr merge`, `gh issue close`) are never retried automatically.
 For a merge, the verification described above is what makes a retry decision safe.
 
 In a polling tool the backoff counts against the call's `timeout`, so retries cannot silently extend the wait the caller asked for.
-
-#### `release_watch`
-
-Wait for a release tag to appear on HEAD after merging a release-please PR.
-Polls every 10 s until a tag appears or the timeout expires.
-
-| Parameter   | Type   | Required | Description                                    |
-| ----------- | ------ | -------- | ---------------------------------------------- |
-| `component` | string | no       | release-please component whose tag to wait for |
-| `timeout`   | number | no       | Seconds to wait (default: 180)                 |
-
-Returns the tag name, version, and SHA.
-The version is read out of the tag wherever the `v` sits, so `pi-subagents-v19.3.5` reports `19.3.5`.
-
-`component` waits for that package's `<component>-v*` tag specifically, rather than answering with a sibling's.
-Without it, the last tag on HEAD is reported — a guess when a combined release commit carries one tag per released component.
 
 ### Issue tools
 
@@ -176,34 +98,9 @@ A typical CI + release flow using these tools:
 2. Use ci_find with the pushed SHA to locate the CI run.
 3. Use ci_watch to wait for the CI run to complete.
 4. Merge the PR.
-5. Use release_pr_find with the shipped package's component to locate its release PR.
-6. Use release_pr_merge to merge it.
-7. Use release_watch with the same component to wait for the release tag to land.
-8. Use issue_close to close the shipped issue.
-```
-
-## Configuration
-
-Optional JSON config files control default behavior.
-Two locations are supported — project config takes precedence over global:
-
-| Scope   | Path                                                 |
-| ------- | ---------------------------------------------------- |
-| Global  | `~/.pi/agent/extensions/pi-github-tools/config.json` |
-| Project | `.pi/extensions/pi-github-tools/config.json`         |
-
-### Options
-
-| Key                  | Type                                  | Default   | Description                                   |
-| -------------------- | ------------------------------------- | --------- | --------------------------------------------- |
-| `defaultMergeMethod` | `"rebase"` \| `"squash"` \| `"merge"` | `"merge"` | Default merge strategy for `release_pr_merge` |
-
-### Example
-
-```json
-{
-  "defaultMergeMethod": "squash"
-}
+5. Dispatch the repository's release workflow for the shipped package.
+6. Use ci_find and ci_watch with that workflow to follow the release run.
+7. Use issue_close to close the shipped issue.
 ```
 
 ## Scope and non-goals
@@ -218,19 +115,18 @@ Making a tool wait where a human would otherwise wait, making a failure legible 
 **Non-goals.**
 
 - _A general-purpose GitHub toolkit._
-  The surface is scoped to the CI, release, and issue-close flow an agent runs end to end.
+  The surface is scoped to the CI and issue-close flow an agent runs end to end.
   An operation with no polling problem — opening a PR, editing labels, dispatching a workflow — is a plain `gh` call and stays one.
-- _Release automations other than release-please._
-  The three release tools encode its conventions; the CI tools stay generic to any GitHub Actions repository.
+- _Release-tool wrappers._
+  Earlier versions shipped `release_pr_find`, `release_pr_merge`, and `release_watch`, which encoded release-please's pull-request conventions.
+  A release triggered as a workflow is an ordinary Actions run, so `ci_find` and `ci_watch` already follow it and no release-specific tool is needed.
 - _A GitHub API client._
   The `gh` CLI is the sole external binary dependency, and there are no runtime dependencies at all.
 - _Auto-retrying mutations._
-  Reads retry on transient failures; `release_pr_merge` and `issue_close` do not, since a retried close would post a duplicate comment.
-- _Merging a PR the tool refuses today._
-  When a release PR reports no checks at all, `release_pr_merge` refuses with a named reason rather than merging through.
+  Reads retry on transient failures; `issue_close` does not, since a retried close would post a duplicate comment.
 
 **Where adjacent requests belong.**
-Whether to release now, and which packages a release PR bumps → the calling prompt, not the tool.
+Whether to release now, and which packages a release bumps → the calling prompt, not the tool.
 
 ## Architecture
 
@@ -246,8 +142,6 @@ src/
 └── lib/                  # portable business logic
     ├── ci.ts             # findRun, watchRun, listRuns
     ├── ci-helpers.ts     # CIJob, findRetryDelay, formatProgress
-    ├── config.ts         # config loading and normalization
-    ├── release.ts        # findReleasePR, mergeReleasePR, watchRelease
     ├── issue.ts          # closeIssue
     ├── github.ts         # gh(), ghJson(), git(), detectRepo()
     └── process.ts        # runCommand(), sleep()
