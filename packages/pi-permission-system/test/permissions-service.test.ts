@@ -4,10 +4,16 @@ import type { AuthorizerRegistrar } from "#src/authority/authorizer-registry";
 import { posixPathFlavor } from "#src/path/path-flavor";
 import { PathNormalizer } from "#src/path-normalizer";
 import { LocalPermissionsService } from "#src/permissions-service";
-import type { ToolAccessExtractorRegistrar } from "#src/tool-access-extractor-registry";
-import type {
-  ToolInputFormatter,
-  ToolInputFormatterRegistrar,
+import {
+  type ToolAccessExtractorLookup,
+  type ToolAccessExtractorRegistrar,
+  ToolAccessExtractorRegistry,
+} from "#src/tool-access-extractor-registry";
+import {
+  type ToolInputFormatter,
+  type ToolInputFormatterLookup,
+  type ToolInputFormatterRegistrar,
+  ToolInputFormatterRegistry,
 } from "#src/tool-input-formatter-registry";
 import type { PermissionCheckResult, PermissionState } from "#src/types";
 
@@ -55,19 +61,23 @@ function makeResolver(): FakeResolver {
   };
 }
 
-function makeFormatterRegistry(): ToolInputFormatterRegistrar {
+function makeFormatterRegistry(): ToolInputFormatterRegistrar &
+  ToolInputFormatterLookup {
   return {
     register: vi
       .fn<ToolInputFormatterRegistrar["register"]>()
       .mockReturnValue(vi.fn()),
+    get: vi.fn<ToolInputFormatterLookup["get"]>(),
   };
 }
 
-function makeAccessExtractorRegistry(): ToolAccessExtractorRegistrar {
+function makeAccessExtractorRegistry(): ToolAccessExtractorRegistrar &
+  ToolAccessExtractorLookup {
   return {
     register: vi
       .fn<ToolAccessExtractorRegistrar["register"]>()
       .mockReturnValue(vi.fn()),
+    resolve: vi.fn<ToolAccessExtractorLookup["resolve"]>(),
   };
 }
 
@@ -79,8 +89,9 @@ function makeAuthorizerRegistry(): AuthorizerRegistrar {
 
 function makeService(overrides?: {
   resolver?: FakeResolver;
-  formatterRegistry?: ToolInputFormatterRegistrar;
-  accessExtractorRegistry?: ToolAccessExtractorRegistrar;
+  formatterRegistry?: ToolInputFormatterRegistrar & ToolInputFormatterLookup;
+  accessExtractorRegistry?: ToolAccessExtractorRegistrar &
+    ToolAccessExtractorLookup;
   authorizerRegistry?: AuthorizerRegistrar;
 }) {
   const resolver = overrides?.resolver ?? makeResolver();
@@ -250,6 +261,64 @@ describe("registerToolAccessExtractor", () => {
       extractor,
     );
     expect(result).toBe(unsub);
+  });
+});
+
+describe("reading a registration back", () => {
+  it("answers the extractor this node's registry holds", () => {
+    const accessExtractorRegistry = new ToolAccessExtractorRegistry();
+    const { service } = makeService({ accessExtractorRegistry });
+    const extractor = () => "/etc/hosts";
+
+    service.registerToolAccessExtractor("ffgrep", extractor);
+
+    expect(service.getToolAccessExtractor("ffgrep")).toBe(extractor);
+  });
+
+  it("answers the formatter this node's registry holds", () => {
+    const formatterRegistry = new ToolInputFormatterRegistry();
+    const { service } = makeService({ formatterRegistry });
+    const formatter = () => "preview";
+
+    service.registerToolInputFormatter("my-tool", formatter);
+
+    expect(service.getToolInputFormatter("my-tool")).toBe(formatter);
+  });
+
+  it("answers undefined for a tool with no registration", () => {
+    const { service } = makeService({
+      accessExtractorRegistry: new ToolAccessExtractorRegistry(),
+      formatterRegistry: new ToolInputFormatterRegistry(),
+    });
+
+    expect(service.getToolAccessExtractor("unregistered")).toBeUndefined();
+    expect(service.getToolInputFormatter("unregistered")).toBeUndefined();
+  });
+
+  it("stops answering once the registration is disposed", () => {
+    const accessExtractorRegistry = new ToolAccessExtractorRegistry();
+    const { service } = makeService({ accessExtractorRegistry });
+
+    const dispose = service.registerToolAccessExtractor(
+      "ffgrep",
+      () => "/etc/hosts",
+    );
+    dispose();
+
+    expect(service.getToolAccessExtractor("ffgrep")).toBeUndefined();
+  });
+
+  it("unwraps the resolution rather than exposing its origin", () => {
+    const { service, accessExtractorRegistry } = makeService();
+    const extractor = vi.fn();
+    vi.mocked(accessExtractorRegistry.resolve).mockReturnValue({
+      extractor,
+      origin: "inherited",
+    });
+
+    // The cross-extension surface answers the capability, not which node
+    // supplied it — provenance is the gates' concern, not a caller's.
+    expect(service.getToolAccessExtractor("ffgrep")).toBe(extractor);
   });
 });
 
