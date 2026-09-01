@@ -156,6 +156,26 @@ describe("AgentTool — resume path", () => {
 		expect(result.content[0].text).toContain("Resumed output.");
 	});
 
+	it("names an abort on the resume return, which previously reported nothing", async () => {
+		const deps = createToolDeps();
+		const resumeRecord = createTestSubagent();
+		resumeRecord.subagentSession = toSubagentSession(createSubagentSessionStub(createMockSession()));
+		deps.manager.getRecord = vi.fn().mockReturnValue(resumeRecord);
+		deps.manager.resume = vi
+			.fn()
+			.mockResolvedValue(createTestSubagent({ status: "aborted", result: "Half of it" }));
+
+		const result = await execute(deps, {
+			prompt: "continue",
+			description: "resume",
+			subagent_type: "general-purpose",
+			resume: "agent-1",
+		});
+
+		expect(result.content[0].text).toContain("aborted \u2014 max turns exceeded, output may be incomplete");
+		expect(result.content[0].text).toContain("Half of it");
+	});
+
 	it("claims the outcome before resuming, so the resume is never announced", async () => {
 		const deps = createToolDeps();
 		const resumeRecord = createTestSubagent();

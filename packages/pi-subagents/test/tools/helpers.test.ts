@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { TypeListRegistry } from "#src/tools/helpers";
-import { buildAgentGuidelines, buildDetails, buildTypeListText, formatLifetimeTokens, getModelLabelFromConfig, getStatusNote, textResult } from "#src/tools/helpers";
+import { buildAgentGuidelines, buildDetails, buildTypeListText, formatLifetimeTokens, getModelLabelFromConfig, textResult } from "#src/tools/helpers";
 import type { AgentDetails } from "#src/ui/display";
 import { createTestSubagent } from "#test/helpers/make-subagent";
 
@@ -225,28 +225,6 @@ describe("buildAgentGuidelines", () => {
       }),
     });
     expect(buildAgentGuidelines(registry)).toEqual([]);
-  });
-});
-
-describe("getStatusNote", () => {
-  it("returns aborted note for aborted status", () => {
-    expect(getStatusNote("aborted")).toBe(" (aborted \u2014 max turns exceeded, output may be incomplete)");
-  });
-
-  it("returns steered note for steered status", () => {
-    expect(getStatusNote("steered")).toBe(" (wrapped up \u2014 reached turn limit)");
-  });
-
-  it("returns stopped note for stopped status", () => {
-    expect(getStatusNote("stopped")).toBe(" (stopped by user)");
-  });
-
-  it("returns empty string for completed status", () => {
-    expect(getStatusNote("completed")).toBe("");
-  });
-
-  it("returns empty string for unknown status", () => {
-    expect(getStatusNote("error")).toBe("");
   });
 });
 

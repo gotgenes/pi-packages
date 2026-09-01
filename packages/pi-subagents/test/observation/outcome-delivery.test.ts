@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { type OutcomeBody, renderOutcomeBody } from "#src/observation/outcome-delivery";
+import type { SubagentStatus } from "#src/lifecycle/subagent-state";
+import {
+	type OutcomeBody,
+	renderOutcomeBody,
+	renderStatusLabel,
+	renderStatusNote,
+} from "#src/observation/outcome-delivery";
 
 function makeOutcome(overrides: Partial<OutcomeBody> = {}): OutcomeBody {
 	return {
@@ -10,6 +16,53 @@ function makeOutcome(overrides: Partial<OutcomeBody> = {}): OutcomeBody {
 		...overrides,
 	};
 }
+
+describe("status vocabulary", () => {
+	// One row, spelled out, before the table below generalizes it.
+	it("renders a steered agent in both presentations from the same meaning", () => {
+		expect(renderStatusLabel("steered")).toBe("Wrapped up (reached turn limit)");
+		expect(renderStatusNote("steered")).toBe(" (wrapped up \u2014 reached turn limit)");
+	});
+
+	const rows: { status: SubagentStatus; label: string; note: string }[] = [
+		{
+			status: "aborted",
+			label: "Aborted (max turns exceeded, output may be incomplete)",
+			note: " (aborted \u2014 max turns exceeded, output may be incomplete)",
+		},
+		{
+			status: "steered",
+			label: "Wrapped up (reached turn limit)",
+			note: " (wrapped up \u2014 reached turn limit)",
+		},
+		{ status: "stopped", label: "Stopped (user request)", note: " (stopped \u2014 user request)" },
+		{ status: "completed", label: "Done", note: "" },
+		{ status: "running", label: "Done", note: "" },
+		{ status: "queued", label: "Done", note: "" },
+	];
+
+	for (const row of rows) {
+		it(`renders "${row.status}" as label ${JSON.stringify(row.label)}`, () => {
+			expect(renderStatusLabel(row.status)).toBe(row.label);
+		});
+
+		it(`renders "${row.status}" as note ${JSON.stringify(row.note)}`, () => {
+			expect(renderStatusNote(row.status)).toBe(row.note);
+		});
+	}
+
+	it("names the error in the label form", () => {
+		expect(renderStatusLabel("error", "timeout")).toBe("Error: timeout");
+	});
+
+	it("reports an unknown error when none was captured", () => {
+		expect(renderStatusLabel("error")).toBe("Error: unknown");
+	});
+
+	it("adds no note for an error, whose body already carries the message", () => {
+		expect(renderStatusNote("error")).toBe("");
+	});
+});
 
 describe("renderOutcomeBody", () => {
 	it("points a running agent at the wait option instead of reporting an outcome", () => {

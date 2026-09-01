@@ -8,7 +8,7 @@
  */
 
 import type { SubagentStatus } from "#src/lifecycle/subagent";
-import { renderOutcomeBody } from "#src/observation/outcome-delivery";
+import { renderOutcomeBody, renderStatusNote } from "#src/observation/outcome-delivery";
 
 /** The data a get_subagent_result report renders from — only what the formatter reads. */
 export interface AgentReport {
@@ -55,7 +55,7 @@ export function renderReportBody(report: AgentReport): string {
 export function formatAgentReport(report: AgentReport): string {
 	let output =
 		`Agent: ${report.id}\n` +
-		`Type: ${report.displayName} | Status: ${report.status} | ${renderStatsParts(report).join(" | ")}\n` +
+		`Type: ${report.displayName} | Status: ${report.status}${renderStatusNote(report.status)} | ${renderStatsParts(report).join(" | ")}\n` +
 		`Description: ${report.description}\n\n`;
 	output += renderReportBody(report);
 	if (report.conversation) {

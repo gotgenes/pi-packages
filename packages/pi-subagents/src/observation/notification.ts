@@ -1,6 +1,7 @@
 import { debugLog } from "#src/debug";
 import type { SubagentStatus } from "#src/lifecycle/subagent-state";
 import { getLifetimeTotal } from "#src/lifecycle/usage";
+import { renderStatusLabel } from "#src/observation/outcome-delivery";
 import type { Subagent } from "#src/types";
 
 /** Details attached to custom notification messages for visual rendering. */
@@ -34,27 +35,11 @@ export function escapeXml(s: string): string {
     .replace(/'/g, "&apos;");
 }
 
-/** Human-readable status label for agent completion. */
-export function getStatusLabel(status: string, error?: string): string {
-  switch (status) {
-    case "error":
-      return `Error: ${error ?? "unknown"}`;
-    case "aborted":
-      return "Aborted (max turns exceeded)";
-    case "steered":
-      return "Wrapped up (turn limit)";
-    case "stopped":
-      return "Stopped";
-    default:
-      return "Done";
-  }
-}
-
 /** Format a structured <task-notification> XML block for the parent agent to parse. */
 export function formatTaskNotification(record: Subagent, resultMaxLen: number): string {
   if (record.stoppedWhileQueued) return formatNeverStartedNotification(record);
 
-  const status = getStatusLabel(record.status, record.error);
+  const status = renderStatusLabel(record.status, record.error);
   const durationMs = record.completedAt ? record.completedAt - record.startedAt : 0;
   const totalTokens = getLifetimeTotal(record.lifetimeUsage);
   const contextPercent = record.getContextPercent();

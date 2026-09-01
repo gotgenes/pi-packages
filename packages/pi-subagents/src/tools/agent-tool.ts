@@ -5,6 +5,7 @@ import { Type } from "@sinclair/typebox";
 import { AgentTypeRegistry } from "#src/config/agent-types";
 import type { ParentSnapshot } from "#src/lifecycle/parent-snapshot";
 import type { AgentSpawnConfig } from "#src/lifecycle/subagent-manager";
+import { renderOutcomeBody, renderStatusNote } from "#src/observation/outcome-delivery";
 import { spawnBackground } from "#src/tools/background-spawner";
 import { runForeground } from "#src/tools/foreground-runner";
 import { buildAgentGuidelines, buildDetails, buildTypeListText, textResult } from "#src/tools/helpers";
@@ -114,8 +115,7 @@ export class AgentTool {
 			// Resume-return delivery edge: the resumed outcome is returned directly.
 			record.markConsumed();
 			return textResult(
-				`Agent ID: ${record.id}\n\n` +
-					(record.result?.trim() ?? record.error?.trim() ?? "No output."),
+				`Agent ID: ${record.id}${renderStatusNote(record.status)}\n\n` + renderOutcomeBody(record),
 				buildDetails(config.presentation.detailBase, record),
 			);
 		}

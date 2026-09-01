@@ -2,20 +2,6 @@ import type { AgentConfigLookup } from "#src/config/agent-types";
 import { getLifetimeTotal, type LifetimeUsage } from "#src/lifecycle/usage";
 import { type AgentDetails, formatTokens } from "#src/ui/display";
 
-/** Parenthetical status note for completed agent result text. */
-export function getStatusNote(status: string): string {
-  switch (status) {
-    case "aborted":
-      return " (aborted \u2014 max turns exceeded, output may be incomplete)";
-    case "steered":
-      return " (wrapped up \u2014 reached turn limit)";
-    case "stopped":
-      return " (stopped by user)";
-    default:
-      return "";
-  }
-}
-
 /** Build AgentDetails from a base + record-specific fields. */
 export function buildDetails(
   base: Pick<AgentDetails, "displayName" | "description" | "subagentType" | "modelName" | "tags">,

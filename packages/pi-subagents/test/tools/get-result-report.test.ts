@@ -95,6 +95,25 @@ describe("renderReportBody", () => {
 });
 
 describe("formatAgentReport", () => {
+	it("names the abort, so truncated output is not read as a finished answer", () => {
+		const text = formatAgentReport(
+			makeReport({ status: "aborted", result: "Half of the inv" }),
+		);
+
+		expect(text).toContain("aborted \u2014 max turns exceeded, output may be incomplete");
+		expect(text).toContain("Half of the inv");
+	});
+
+	it("names a turn-limit wrap-up", () => {
+		expect(formatAgentReport(makeReport({ status: "steered" }))).toContain(
+			"wrapped up \u2014 reached turn limit",
+		);
+	});
+
+	it("adds no status note for a plain completion", () => {
+		expect(formatAgentReport(makeReport({ status: "completed" }))).toContain("Status: completed |");
+	});
+
 	it("assembles the full header, stats line, description, and body", () => {
 		const text = formatAgentReport(
 			makeReport({

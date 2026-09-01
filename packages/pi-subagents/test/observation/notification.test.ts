@@ -4,7 +4,6 @@ import {
   buildNotificationDetails,
   escapeXml,
   formatTaskNotification,
-  getStatusLabel,
   NotificationManager,
 } from "#src/observation/notification";
 import { createTestSubagent } from "#test/helpers/make-subagent";
@@ -22,28 +21,6 @@ describe("escapeXml", () => {
 
   it("escapes double and single quotes (attribute-safe)", () => {
     expect(escapeXml('say "hi" it\'s fine')).toBe("say &quot;hi&quot; it&apos;s fine");
-  });
-});
-
-describe("getStatusLabel", () => {
-  it('returns error message for "error"', () => {
-    expect(getStatusLabel("error", "timeout")).toBe("Error: timeout");
-  });
-
-  it('returns "unknown" when error is undefined', () => {
-    expect(getStatusLabel("error")).toBe("Error: unknown");
-  });
-
-  it('returns label for "aborted"', () => {
-    expect(getStatusLabel("aborted")).toBe("Aborted (max turns exceeded)");
-  });
-
-  it('returns label for "steered"', () => {
-    expect(getStatusLabel("steered")).toBe("Wrapped up (turn limit)");
-  });
-
-  it('returns "Done" for completed', () => {
-    expect(getStatusLabel("completed")).toBe("Done");
   });
 });
 
