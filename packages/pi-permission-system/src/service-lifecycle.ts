@@ -1,5 +1,6 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import type { AdjudicationRole } from "./authority/authorizer-selection";
+import type { NodeIdentity } from "./authority/inherited-registrations";
 import { emitReadyEvent, type PermissionEventBus } from "./permission-events";
 import {
   type PermissionsService,
@@ -45,7 +46,7 @@ export interface ReadyAnnouncer {
  *   superseded `/reload` generation cannot evict the fresh one.
  */
 export class PermissionServiceLifecycle
-  implements ServiceLifecycle, ReadyAnnouncer
+  implements ServiceLifecycle, ReadyAnnouncer, NodeIdentity
 {
   /** The key this instance last published under; `null` until it publishes. */
   private publishedSessionId: string | null = null;
