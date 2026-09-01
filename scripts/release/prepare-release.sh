@@ -57,6 +57,41 @@ if [ -n "${EXPECTED_SHA:-}" ]; then
   echo "SHA guard passed: HEAD is $EXPECTED_SHA"
 fi
 
+# Splice a rendered release section into a CHANGELOG below its header.
+#
+# The insertion point is the first line that opens a release section or the
+# era marker, so the newest release always lands directly under the header and
+# the marker stays put at the release-please boundary. Header shape varies
+# across these files (two lines in most, seven in pi-subagents and
+# pi-permission-system), so it is found rather than assumed.
+insert_release_section() {
+  local file=$1 section=$2 pkg=$3 tmp line
+  tmp=$(mktemp)
+
+  if [ ! -f "$file" ]; then
+    # A package releasing for the first time has no changelog to splice into,
+    # so render one complete with the configured header.
+    cliff_args "$pkg"
+    git-cliff "${CLIFF_ARGS[@]}" --tag "$tag" --unreleased -o "$file"
+    rm -f "$tmp"
+    return
+  fi
+
+  line=$(grep -n -m1 -E '^(## |<!-- )' "$file" | cut -d: -f1)
+  if [ -z "$line" ]; then
+    line=$(($(wc -l < "$file") + 1))
+  fi
+
+  head -n "$((line - 1))" "$file" > "$tmp"
+  # Drop the section's leading blank lines and guarantee exactly one trailing
+  # blank, so the spacing matches the entries already in the file.
+  sed '/./,$!d' "$section" >> "$tmp"
+  printf '\n' >> "$tmp"
+  tail -n +"$line" "$file" >> "$tmp"
+
+  mv "$tmp" "$file"
+}
+
 # ── Phase 1: derive every version before writing anything ────────────────────
 
 # Bash 3.2 ships on macOS and has no associative arrays, so the package/tag
@@ -110,8 +145,18 @@ while [ "$i" -lt ${#pkgs[@]} ]; do
 
   # `--tag` pins the version phase 1 decided rather than letting git-cliff bump
   # again, so the changelog and the tag cannot disagree.
+  #
+  # Only the new section is rendered, and it is spliced in below the header.
+  # Regenerating the whole file is not an option: these changelogs contain 153
+  # entries carried over from the packages' pre-consolidation repositories,
+  # which have no tag or commit here, plus tagged releases cut entirely from
+  # paths that were added to the exclusion list later. A full regeneration
+  # silently deletes both (Refs #865).
   cliff_args "$pkg"
-  git-cliff "${CLIFF_ARGS[@]}" --tag "$tag" -o "packages/$pkg/CHANGELOG.md"
+  section=$(mktemp)
+  git-cliff "${CLIFF_ARGS[@]}" --tag "$tag" --unreleased --strip header > "$section"
+  insert_release_section "packages/$pkg/CHANGELOG.md" "$section" "$pkg"
+  rm -f "$section"
 
   git add "packages/$pkg/package.json" "packages/$pkg/CHANGELOG.md"
   subjects+=("$pkg $version")
