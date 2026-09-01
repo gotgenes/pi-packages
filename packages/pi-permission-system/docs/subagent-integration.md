@@ -81,11 +81,22 @@ Three statements hold:
    Nothing throws and nothing warns per child start.
 2. **Excluding an extension from children is an optimization, never a correctness requirement.**
    Excluding a link-only extension saves load time; the adjudicating node's own instance still judges every descendant ask.
-3. **Excluding a provider of access extractors can weaken a child's own gates.**
-   This is the one real hazard, and it is narrower than it sounds: excluding a package also keeps that package's tools out of children, so a package that supplies both a tool and that tool's extractor takes both away and leaves no gap.
-   A gap needs the tool and its extractor to come from *different* packages, with only the extractor's package excluded.
+3. **Excluding a provider of access extractors no longer weakens an in-process child's gates.**
+   The hazard was narrower than it sounded: excluding a package also keeps that package's tools out of children, so a package supplying both a tool and that tool's extractor takes both away and leaves no gap.
+   A gap needed the tool and its extractor to come from *different* packages, with only the extractor's package excluded.
+   That case is now closed — a child whose own registry has no extractor for a tool resolves one from its ancestors in the same process, and the same holds for preview formatters.
 
-The full condition, with a worked example, is documented where the setting lives: [Excluding package extensions from children](https://github.com/gotgenes/pi-packages/blob/main/packages/pi-subagents/docs/configuration.md#excluding-package-extensions-from-children).
+Registration is unchanged by that: an extractor still lands only in the registry of the node whose extension registered it.
+What crosses a node boundary is the **lookup**, and only for fact-shaping registrations — an extractor produces a path and a formatter produces display text, so neither carries authority.
+Chain links are excluded by category: a link returns a verdict, and live authority converges at the adjudicating node ([ADR 0007] §7).
+
+A decision that used an inherited extractor records `extractorSource: "inherited"` in the review log, so a child's dependence on another node's registration is visible where the decision is.
+
+One residual: this repair is in-process only.
+A child in its own process shares no `globalThis`, so it reaches no ancestor's service, and an extractor is a closure that cannot be serialized to one.
+No current implementation spawns out-of-process children with an asymmetric extension set, but for one that did, the by-hand check below would still be the only cover.
+
+The condition, with a worked example, is documented where the setting lives: [Excluding package extensions from children](https://github.com/gotgenes/pi-packages/blob/main/packages/pi-subagents/docs/configuration.md#excluding-package-extensions-from-children).
 
 ## What this package does on both ends
 
@@ -257,5 +268,6 @@ permission:
 
 In this example the subagent extension restricts visibility to `bash` and `read`, and the permission system then gates every `bash` call with an `ask` prompt - both rules apply independently.
 
+[ADR 0007]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-permission-system/docs/decisions/0007-model-judge-authorizer-chain-adr.md
 [ADR 0012]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-permission-system/docs/decisions/0012-cross-node-extension-contract.md
 [ADR-0002]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-subagents/docs/decisions/0002-extensions-on-a-minimal-core.md

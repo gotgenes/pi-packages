@@ -1147,6 +1147,8 @@ Additional behaviors:
 - Extension-provided tools like `task`, `mcp`, and third-party tools are handled by exact registered name
 - Generic extension-tool approval prompts include a bounded input preview; built-in file tools use concise human-readable summaries
 - Permission review logs include `toolInputPreview` values for non-bash/non-MCP tool calls, with sensitive-keyed values masked and every value bounded by `reviewLogFieldMaxWidth` (see [Log file sensitivity](#log-file-sensitivity))
+- A tool whose path came from an extractor registered in an **ancestor** session rather than this one records `extractorSource: "inherited"` beside the decision; the field is absent for every path this session resolved itself.
+  This happens in a subagent child when the extractor's provider was kept out of the child but the tool's own package was not — the child borrows the declaration so its `path` and `external_directory` gates still see the path (see [Subagent Integration](https://github.com/gotgenes/pi-packages/blob/main/packages/pi-permission-system/docs/subagent-integration.md#loading-asymmetry))
 
 ---
 

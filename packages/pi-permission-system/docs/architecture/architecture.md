@@ -336,8 +336,13 @@ Path alias derivation (home-expansion, cwd-relative aliases) lives in `getPathPo
 `getToolPermission()` is unaffected — it always evaluates with `"*"` to determine whether to inject the tool at agent start.
 
 The cross-cutting `path` and `external_directory` gates extract paths for **extension and MCP tools too** (#352): `describePathGate` and `describeExternalDirectoryGate` call `getToolInputPath`, which reads `input.path` for built-ins, `input.arguments.path` for MCP, and a registered `ToolAccessExtractor` (or the default `input.path` convention) for any other tool.
-The extractor registry (`src/tool-access-extractor-registry.ts`) is created once in `index.ts` and shared: its lookup side is threaded into `ToolCallGatePipeline`, and its registrar side is exposed cross-extension via `PermissionsService.registerToolAccessExtractor`.
+The extractor registry (`src/tool-access-extractor-registry.ts`) is created once in `index.ts` and shared: its lookup side is threaded into `ToolCallGatePipeline` (wrapped in the inheriting lookup below), and its registrar side is exposed cross-extension via `PermissionsService.registerToolAccessExtractor`.
 Per-tool path maps for extension tools (a custom extractor key per tool) are a deferred follow-up.
+
+A lookup that misses falls back to this node's **ancestors** in the same process (`src/authority/inherited-registrations.ts`), so a subagent child whose own registry has no extractor for a tool still sees the path that tool touches.
+This is ADR 0012 decision 1's fact-shaping clause: an extractor produces a fact and decides nothing, so its *lookup* may cross an in-process node boundary while its *registration* stays node-local.
+`getToolInputPath` reports which of the three sources answered, and a decision resolved from an ancestor carries `extractorSource: "inherited"` in its review-log context.
+The authorizer registry has no such fallback, and `PermissionsService` deliberately exposes no reader for it — a link returns a verdict, so live authority stays converged at the adjudicating node (ADR 0007 §7).
 
 On the bash side, which argument tokens count as filesystem operands is settled by [ADR 0009](../decisions/0009-bash-path-projection-completeness-contract.md): candidacy comes from the filesystem (a bare token is a path candidate iff it names an existing entry), the decision comes from explicit rules or the external boundary, and the ADR names both what the projection guarantees and which gaps are accepted residuals rather than bugs.
 A plain `$HOME` / `${HOME}` / `$PWD` / `${PWD}` reference is resolved at token collection, upstream of classification, so an expanded token is gated exactly as its literal spelling; the resolvable set is closed at those two names by the same ADR.
@@ -917,7 +922,7 @@ src/
 ├── tool-input-prompt-formatters.ts    Pure per-tool prompt formatters (edit/write/read) + getPromptPath helper
 ├── tool-preview-formatter.ts          ToolPreviewFormatter class - config-dependent prompt + log formatting; seam-first dispatch consults ToolInputFormatterLookup before built-in switch
 ├── tool-input-formatter-registry.ts   ToolInputFormatter type, ToolInputFormatterLookup + ToolInputFormatterRegistrar interfaces, ToolInputFormatterRegistry class - persistent registry for custom previews
-├── tool-access-extractor-registry.ts  ToolAccessExtractor type, ToolAccessExtractorLookup + ToolAccessExtractorRegistrar interfaces, ToolAccessExtractorRegistry class - persistent registry letting extensions declare a tool's filesystem path for the path/external_directory gates
+├── tool-access-extractor-registry.ts  ToolAccessExtractor type, ToolAccessExtractorLookup (answers a resolution naming the registration's origin) + ToolAccessExtractorRegistrar interfaces, ToolAccessExtractorRegistry class - persistent registry letting extensions declare a tool's filesystem path for the path/external_directory gates
 ├── builtin-tool-input-formatters.ts   Built-in formatters registered at startup: formatMcpInputForPrompt keyed to "mcp"
 ├── tool-registry.ts           ToolRegistry interface + tool name validation
 ├── active-agent.ts            Agent name detection from session/system prompt
@@ -943,6 +948,7 @@ src/
 │   ├── forwarding-liveness.ts The filesystem half of the same question, for a child that shares no memory with its parent: `ServingHeartbeatStore` (a `ServingAnnouncer` publishing `<forwardingDir>/serving/<id>.json` with the served session, its pid, and its refresh time; throttled, never throws, and sweeps records of dead processes once per session) + `HeartbeatReader` classifying a target as alive/absent/stale/dead_pid + `ForwardingLivenessJudge` (`TargetServingLookup`), which routes a liveness question to the channel that can answer it by the target's `self`/`registry`/`env` provenance. Constraint: the records live beside `sessions/`, never inside it, so liveness stays disjoint from the request/response cleanup ordering (#398)
 │   ├── subagent-lifecycle-events.ts subscribeSubagentLifecycle() - subscribes to @gotgenes/pi-subagents child lifecycle events and dispatches each fact to its owner: registers/unregisters child sessions in SubagentSessionRegistry on `session-created`/`disposed`, and hands a `bound` child to `ChildNodeAudit` (ADR 0002). Constraint: the `session-created` handler must stay synchronous, so the registry entry lands before `bindExtensions()` proceeds
 │   ├── child-node-audit.ts        `ChildNodeAudit` (`BoundChildAuditor`) - reports an in-process child that bound its extensions without publishing a permission node of its own, so it gates nothing: a `child_node_absent` review entry per affected child, one visible warning per parent session. Constraint: the `bound` channel it reads is optional for a subagent implementation, so a child announced on neither channel is not audited (ADR 0012 decision 5 amendment)
+│   ├── inherited-registrations.ts `AncestorNodes` + `InheritingToolAccessExtractorLookup`/`InheritingToolInputFormatterLookup` - completes a node's fact-shaping lookups from its in-process ancestors, nearest first, so an excluded extractor provider cannot leave a child's tool path ungated; the local registry always wins and an inherited answer is tagged `inherited`. Constraint: fact-shaping registries only — no equivalent exists for the authorizer registry, because a link returns a verdict (ADR 0007 §7, ADR 0012 decision 1's fact-shaping clause)
 │   ├── forwarder-context.ts   `ForwarderContext` read-interface + `getSessionId`/`getCwd` - shared by the escalation and serving roles
 │   ├── permission-forwarding.ts Cross-session forwarding wire types (`ForwardedPermissionRequest`, which carries the child's `PromptPayload` rather than a sentence assembled under the child's config; `ForwardedPermissionResponse`, whose optional `decidedBy` names what decided inside the responding session, distinct from the `responderSessionId` that names where; the `ForwardedAccessFacts`/`ForwardedAccessIntent` intent schema per ADR 0008) + `resolvePermissionForwardingTarget`, which returns the resolved session id together with its `self`/`registry`/`env` provenance (the routing key for which liveness channel may judge the target) + `encodeSessionIdForPath`, shared by both session-keyed layouts under the forwarding root
 │   ├── approval-escalator.ts  `ParentAuthorizer` class - `TerminalAuthorizer` for a subagent session: escalates the ask up the tree via the request-write/poll machinery, completing the child-fixed facts into a `ForwardedAccessIntent` (stamps `requesterCwd`/`principal`), `ctx` bound at construction; adopts the requester's `requestId` as the forwarded request's `id` (falling back to a fresh mint when it could not safely name a file — at a relay hop that id came off disk); every abandonment path (unresolvable target, unusable directories, unwritable request, unserved target, unreadable response, timeout) denies with `confirmationUnavailable` plus a path-naming `denialReason` — reused verbatim as the `unavailable` decider's reason so the two cannot drift — and discards the request so a late answer cannot arrive; an answered request's decision is nested under a `forwarded` decider carrying the responder's own
@@ -1073,7 +1079,7 @@ No decline, so the regular improvement rotation continues.
 | Absent-child alarm event in `src/`                                          | 0                     | ≥ 1             |
 | Named permission-surface properties (`surfaceProperty`, `config-schema.ts`) | 0                     | ≥ 9             |
 | Per-pattern surfaces on `SessionApproval` (`session-approval.ts`)           | 0                     | ≥ 1             |
-| Split-provider extractor test files                                         | 0                     | ≥ 1             |
+| Split-provider extractor test files                                         | 1                     | ≥ 1             |
 | fallow health score                                                         | 78 (B)                | ≥ 78            |
 | Production duplication                                                      | 0.1%                  | ≤ 0.2%          |
 | Dead exports                                                                | 0                     | 0               |
@@ -1285,7 +1291,7 @@ The warn-once latch needs no re-arm hook, because the extension factory is re-in
 
 Release: independent
 
-#### Step 8: Close or announce the split-provider access-extractor gap ([#793])
+#### ✅ Step 8: Close or announce the split-provider access-extractor gap ([#793])
 
 **Cause:** ADR 0012 decision 6 names a hazard and states the contract cannot prevent it, but checked against pi-subagents' actual exclusion semantics the hazard is **narrower and sharper** than the ADR reads.
 Excluding a package normally removes its tools and their extractors together, so nothing is weakened; a gap needs a **split** between providers — package A registers tool `deploy` whose path lives under `input.target`, package B registers the extractor for it, and the operator excludes B from children.
@@ -1300,6 +1306,20 @@ The child then gates `deploy` with no extractor, its path never reaches the chil
   Out-of-process children are out of scope for B — no shared `globalThis`, and the exclusion is in-process only.
 - **Outcome:** the split-provider condition is either impossible or announced, replacing the interim by-hand check [#789] shipped in pi-subagents' `docs/configuration.md`; `grep -rl 'split-provider' test` goes 0 → ≥ 1.
 - **Impact 3 / Risk 2 / Priority 12.**
+
+Landed: mechanism B, and the deliberation the step was adopted to settle resolved by finding the distinction already in ADR 0012 rather than inventing one.
+A candidate framing — "capability is inherited, policy is node-local", spanning all three registries — was drafted and withdrawn: it lumped extractors, formatters, and chain links under one word, and the first two produce a **fact** while the third produces a **verdict**, which is decision 1's own axis.
+The amendment therefore adds one clause to that axis (a fact-shaping registration's *lookup* may cross an in-process node boundary; where it *lands* is unchanged) instead of naming a new concept.
+
+That correction changed the answer, not just the wording.
+The all-three-registries option was not merely broader but wrong: `selectAuthorizer` tests `hasUI` first, so a subagent with its own UI adjudicates locally, and inheriting links would have run authority an operator's own `excludedExtensionPackages` removed.
+The two cases also differ in declared intent — an extractor appears in no config, while a link's name is written in `authorizerChain` — so the live-authority case is a conflict to resolve rather than a capability to restore, and it is filed as [#861] and deferred.
+A composition-root guard test fails if the authorizer registry is ever added to the inheriting wiring.
+
+Two costs are recorded rather than hidden: a child is no longer explainable from the child alone (mitigated by the `extractorSource: "inherited"` stamp on every affected decision), and the repair is in-process only, since an out-of-process child shares no `globalThis` and an extractor is a closure.
+The deeper root — fact-shaping intent is declared nowhere, so a node cannot statically know it is missing an extractor — is named in the amendment and deliberately left standing.
+
+`grep -rl 'split-provider' packages/pi-permission-system/test | wc -l` is 1.
 
 Release: independent
 
@@ -1426,7 +1446,7 @@ flowchart TD
     S5["✅ Step 5 (#772): authorizer verdict attribution"] --> S15["✅ Step 15 (#844): forwarded denial attribution"]
     S6["✅ Step 6 (#796): schedule the root-slot removal"]
     S7["✅ Step 7 (#792): alarm on a child with no node"]
-    S8["Step 8 (#793): split-provider extractor gap"]
+    S8["✅ Step 8 (#793): split-provider extractor gap"]
     S9["Step 9 (#808): name the well-known surfaces"]
     S10["Step 10 (#810): per-pattern approval surfaces"]
     S11["Step 11 (#813): user-chosen grant width"]

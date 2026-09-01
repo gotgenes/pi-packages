@@ -10,6 +10,7 @@ date: 2026-08-20
 Accepted.
 Amended 2026-08-21 with decision 7's reclassification ([#794]): the ready latch and the locator's reclaimed spelling both ship as **major**, not the single minor this record originally classified.
 Amended 2026-08-30 ([#796]): decision 7's deferred removal is taken — the process-root slot, its reader, and the [#302] child guard are deleted in a further major.
+Amended 2026-09-01 ([#793]): decision 1 gains a third category — a **fact-shaping** registration's lookup may cross an in-process node boundary, which closes decision 6's converse hazard for in-process children without moving where any registration lands.
 This decision settles the contract between three parties — pi-permission-system, subagent implementations, and sibling permission extensions — for a Pi process that hosts more than one session node.
 It fixes the one architectural lie the parties currently work around (a session-boundary-crossing service accessor), names the one supported adapter convention for subagent implementations, and classifies every adopted mechanism against the events stability guarantee.
 It composes with `docs/decisions/0007-model-judge-authorizer-chain-adr.md` (whose §7, one chain per node, it reaffirms unamended) and with pi-subagents [ADR-0002] (whose inverted dependency it leaves untouched).
@@ -173,6 +174,9 @@ Excluding a link-only extension from children saves load time; the adjudicating 
 The converse hazard is named: excluding an extractor or formatter **provider** from children weakens the child's own gates — the tool's custom path key goes unextracted, so `path`/`external_directory` gating for that tool silently degrades in the child.
 The contract cannot prevent this; it makes the hazard a documented consequence.
 
+Superseded for in-process children by the [#793] amendment below: the hazard needs a *split* between the tool's provider and the extractor's, and a fact-shaping lookup now falls back to the node's ancestors, so the gap cannot open there.
+It stands as written for a child in its own process.
+
 No loading symmetry is assumed: implementations may load arbitrary extension sets in children, which is exactly why the three statements above must hold.
 
 ### 7. Migration
@@ -275,6 +279,45 @@ That is a seam, not a delay: nothing is slept on and nothing is polled.
 The response is a warning, never a refusal, per decision 6's framing and [ADR-0002]'s separation — refusing would be this package overriding a setting that belongs to the implementation, on a configuration the operator chose deliberately.
 The parent cannot distinguish deliberate exclusion from a load failure, because both leave the identical absence; the warning names the likelier cause and admits the other rather than asserting one.
 
+#### Amendment (2026-09-01, [#793]): fact-shaping lookups may cross an in-process node boundary
+
+Decision 6 names the converse hazard and states the contract cannot prevent it.
+Checked against pi-subagents' actual exclusion semantics, the hazard is narrower than that reads and it *is* preventable for an in-process child.
+
+Excluding a package keeps the tools it registers out of children too, so exclusion normally removes a tool and its extractor together and weakens nothing.
+A gap needs a **split** between providers: package A registers tool `deploy` whose path lives under `input.target`, package B registers the extractor for it, and the operator excludes only B. The child then holds `deploy` with its path undeclared, its `path` / `external_directory` gates never run for that call, and the parent gates its own calls correctly — so the weakening is visible nowhere.
+
+Decision 1 splits registrations into recorded authority and live authority.
+It is silent on a third category, because that category was assumed complete in every node: **fact-shaping** registrations — extractors and formatters — which turn a call's raw input into a fact about it.
+This amendment adds the missing clause.
+
+> A fact-shaping registration, being non-authority, may be **read** across an in-process node boundary to complete a child's own fact-gathering.
+> Where a registration lands is unchanged: node-local, in the registry of the node whose extension registered it.
+
+So a child's extractor lookup consults its own registry first and falls back to its ancestors in the same process, and decision 6's "riding along is harmless by construction" now holds unconditionally for in-process children rather than with a caveat no mechanism enforces.
+
+Three properties keep the clause from generalizing into the authority registries, and they are why it is stated by category rather than as an exception:
+
+1. Neither an extractor nor a formatter decides anything, so no authority crosses a boundary.
+2. The extractor path is **monotone**: with no extractor the gate does not run at all, and the four path layers compose most-restrictive-wins, so an inherited extractor can only add a check.
+   A link has no such property — it can return `allow`.
+3. The two cases differ in **declared intent**.
+   An extractor appears in no config, so excluding its provider carries no operator statement about a tool's path visibility.
+   A link's name is written in `authorizerChain`, so excluding its provider contradicts a statement the operator made — a conflict to resolve, not a capability to restore.
+
+ADR 0007 §7 therefore stands unamended, and there is deliberately no reader for the authorizer registry on `PermissionsService`.
+The live-authority case — a locally-adjudicating child skipping a configured link whose provider did not load there, recorded today as `authorizer_chain_unregistered_link` — is a separate question about whether that fail-safe skip should be louder, tracked as [#861].
+
+Two costs are accepted rather than hidden.
+A child is no longer explainable from the child alone: the same call can resolve differently if an ancestor's provider is disposed.
+That is recorded rather than silent — a decision that used an inherited extractor carries `extractorSource: "inherited"` in the review log.
+And the repair is in-process only: an out-of-process child shares no `globalThis` and an extractor is a closure, so the by-hand check in pi-subagents' configuration guide remains the only cover for an implementation that spawns one with an asymmetric extension set.
+No current implementation does.
+
+The deeper root is left standing and named here rather than fixed: fact-shaping intent is **declared nowhere**.
+An extractor is registered imperatively by whatever package loads, so a node cannot statically know it is missing one — which is why the repair is a runtime resolution rather than a load-time check, and why [#792]'s absent-node alarm is a runtime comparison too.
+A capability manifest would change that, at the cost of a large additive surface that existing functional extractors cannot express.
+
 ## Consequences
 
 - The [#699] defect family ends structurally: no duplicate throw (the child's sibling registers into the child's own keyed service), no silently weakened child gates (extractors land where the child's gates read), no per-start stderr noise, and the vacancy that remains is recorded where the operator already looks.
@@ -331,7 +374,9 @@ Superseded by decision 7's [#796] amendment: the window turned out to have no le
 [#787]: https://github.com/gotgenes/pi-packages/issues/787
 [#788]: https://github.com/gotgenes/pi-packages/issues/788
 [#792]: https://github.com/gotgenes/pi-packages/issues/792
+[#793]: https://github.com/gotgenes/pi-packages/issues/793
 [#789]: https://github.com/gotgenes/pi-packages/issues/789
+[#861]: https://github.com/gotgenes/pi-packages/issues/861
 [#794]: https://github.com/gotgenes/pi-packages/issues/794
 [#796]: https://github.com/gotgenes/pi-packages/issues/796
 [ADR-0002]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-subagents/docs/decisions/0002-extensions-on-a-minimal-core.md

@@ -92,6 +92,22 @@ interface PermissionsService {
     toolName: string,
     extractor: (input: Record<string, unknown>) => string | undefined,
   ): () => void;
+
+  /**
+   * The access extractor registered on this node for `toolName`, or
+   * `undefined` when it has none.
+   */
+  getToolAccessExtractor(
+    toolName: string,
+  ): ((input: Record<string, unknown>) => string | undefined) | undefined;
+
+  /**
+   * The preview formatter registered on this node for `toolName`, or
+   * `undefined` when it has none.
+   */
+  getToolInputFormatter(
+    toolName: string,
+  ): ((input: Record<string, unknown>) => string | undefined) | undefined;
 }
 ```
 
@@ -279,6 +295,22 @@ const dispose = permissions.registerToolAccessExtractor("ffgrep", (input) =>
 
 Registration rules mirror `registerToolInputFormatter`: one extractor per tool name (a second `register` for the same name throws), and the returned disposer is identity-guarded.
 The extractor must not throw — guard your parsing and return `undefined` on anything unexpected.
+
+#### `getToolAccessExtractor` and `getToolInputFormatter`
+
+Read back what a node has registered for a tool.
+
+```typescript
+getToolAccessExtractor(toolName: string): ToolAccessExtractor | undefined;
+getToolInputFormatter(toolName: string): ToolInputFormatter | undefined;
+```
+
+These are the read face of the two **fact-shaping** registries, and unlike every other surface here they are meant to be read across a node boundary.
+An extractor produces a fact about a call (the path it touches) and a formatter produces display text; neither decides anything, so a node whose own registry has no entry may resolve an ancestor's service and use its answer.
+The permission system does exactly that internally: a subagent child that is missing an extractor for a tool falls back to its ancestors in the same process, so excluding an extractor's provider from child sessions cannot leave that tool's path invisible to the child's gates ([ADR 0012] decision 1, the fact-shaping clause).
+
+There is deliberately **no** equivalent reader for `registerAuthorizer`.
+A chain link returns a verdict, and live authority converges at the adjudicating node ([ADR 0007] §7) — inheriting one would run authority an operator's own extension exclusion removed.
 
 #### Subagent session registration
 
@@ -514,3 +546,7 @@ pi.on("session_shutdown", () => {
 
 A registration needs no branch on `adjudicatesLocally`.
 Formatters and access extractors are read by every node's own gates, and a chain link registered on a relaying node is accepted (its disposer works) and recorded in the review log as `authorizer_link_vacant` rather than refused — so registering everywhere is the correct default.
+Registering on _every_ node also stays the best practice for a formatter or extractor provider: the ancestor fallback is a repair for a node that could not register, not a reason to register in one place on purpose.
+
+[ADR 0007]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-permission-system/docs/decisions/0007-model-judge-authorizer-chain-adr.md
+[ADR 0012]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-permission-system/docs/decisions/0012-cross-node-extension-contract.md
