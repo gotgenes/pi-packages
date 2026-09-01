@@ -377,10 +377,13 @@ describe("ToolCallGatePipeline", () => {
     }
 
     const extractors = {
-      get: (name: string) =>
+      resolve: (name: string) =>
         name === "ffgrep"
-          ? (input: Record<string, unknown>) =>
-              typeof input.target === "string" ? input.target : undefined
+          ? {
+              extractor: (input: Record<string, unknown>) =>
+                typeof input.target === "string" ? input.target : undefined,
+              origin: "local" as const,
+            }
           : undefined,
     };
 

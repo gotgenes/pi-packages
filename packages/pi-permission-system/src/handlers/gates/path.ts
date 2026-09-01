@@ -27,7 +27,11 @@ export function describePathGate(
   normalizer: PathNormalizer,
   extractors?: ToolAccessExtractorLookup,
 ): GateResult {
-  const filePath = getToolInputPath(tcc.toolName, tcc.input, extractors);
+  const { path: filePath } = getToolInputPath(
+    tcc.toolName,
+    tcc.input,
+    extractors,
+  );
   if (!filePath) return null;
 
   // The narrowest `path`-family surface this tool's identity proves. A tool

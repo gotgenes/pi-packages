@@ -9,17 +9,20 @@ const noopExtractor: ToolAccessExtractor = () => "/tmp/x";
 
 describe("ToolAccessExtractorRegistry", () => {
   describe("register", () => {
-    test("stores an extractor so get() returns it", () => {
+    test("stores an extractor so resolve() returns it as this node's own", () => {
       const registry = new ToolAccessExtractorRegistry();
       registry.register("my-tool", noopExtractor);
-      expect(registry.get("my-tool")).toBe(noopExtractor);
+      expect(registry.resolve("my-tool")).toEqual({
+        extractor: noopExtractor,
+        origin: "local",
+      });
     });
 
     test("returns a disposer that removes the extractor", () => {
       const registry = new ToolAccessExtractorRegistry();
       const dispose = registry.register("my-tool", noopExtractor);
       dispose();
-      expect(registry.get("my-tool")).toBeUndefined();
+      expect(registry.resolve("my-tool")).toBeUndefined();
     });
 
     test("throws when an extractor is already registered for the same tool name", () => {
@@ -36,8 +39,8 @@ describe("ToolAccessExtractorRegistry", () => {
       const extractorB: ToolAccessExtractor = () => "/b";
       registry.register("tool-a", extractorA);
       registry.register("tool-b", extractorB);
-      expect(registry.get("tool-a")).toBe(extractorA);
-      expect(registry.get("tool-b")).toBe(extractorB);
+      expect(registry.resolve("tool-a")?.extractor).toBe(extractorA);
+      expect(registry.resolve("tool-b")?.extractor).toBe(extractorB);
     });
   });
 
@@ -53,14 +56,14 @@ describe("ToolAccessExtractorRegistry", () => {
       registry.register("my-tool", second); // second registration is now valid
       disposeFirst(); // calling stale disposer again — must not remove second
 
-      expect(registry.get("my-tool")).toBe(second);
+      expect(registry.resolve("my-tool")?.extractor).toBe(second);
     });
   });
 
-  describe("get", () => {
+  describe("resolve", () => {
     test("returns undefined for an unregistered tool name", () => {
       const registry = new ToolAccessExtractorRegistry();
-      expect(registry.get("unknown")).toBeUndefined();
+      expect(registry.resolve("unknown")).toBeUndefined();
     });
 
     test("the registered extractor is callable and returns its path", () => {
@@ -68,10 +71,12 @@ describe("ToolAccessExtractorRegistry", () => {
       const extractor: ToolAccessExtractor = (input) =>
         typeof input.target === "string" ? input.target : undefined;
       registry.register("ffgrep", extractor);
-      expect(registry.get("ffgrep")?.({ target: "/etc/hosts" })).toBe(
-        "/etc/hosts",
-      );
-      expect(registry.get("ffgrep")?.({ other: true })).toBeUndefined();
+      expect(
+        registry.resolve("ffgrep")?.extractor({ target: "/etc/hosts" }),
+      ).toBe("/etc/hosts");
+      expect(
+        registry.resolve("ffgrep")?.extractor({ other: true }),
+      ).toBeUndefined();
     });
   });
 });

@@ -352,10 +352,10 @@ describe("registerToolAccessExtractor delegation", () => {
       ADAPTER_SESSION,
     )!.registerToolAccessExtractor("ffgrep", extractor);
 
-    expect(registry.get("ffgrep")).toBe(extractor);
+    expect(registry.resolve("ffgrep")?.extractor).toBe(extractor);
 
     dispose();
-    expect(registry.get("ffgrep")).toBeUndefined();
+    expect(registry.resolve("ffgrep")).toBeUndefined();
   });
 
   it("throws when an extractor is already registered for the tool name", () => {

@@ -276,10 +276,13 @@ describe("describeExternalDirectoryGate — extension and MCP tools (#352)", () 
 
   it("uses a registered extractor's external path for a custom-shaped tool", () => {
     const extractors = {
-      get: (name: string) =>
+      resolve: (name: string) =>
         name === "ffgrep"
-          ? (input: Record<string, unknown>) =>
-              typeof input.target === "string" ? input.target : undefined
+          ? {
+              extractor: (input: Record<string, unknown>) =>
+                typeof input.target === "string" ? input.target : undefined,
+              origin: "local" as const,
+            }
           : undefined,
     };
     const result = gateUnderTest(

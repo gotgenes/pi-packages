@@ -29,7 +29,7 @@ export function describeExternalDirectoryGate(
   normalizer: PathNormalizer,
   extractors?: ToolAccessExtractorLookup,
 ): GateResult {
-  const externalDirectoryPath = getToolInputPath(
+  const { path: externalDirectoryPath } = getToolInputPath(
     tcc.toolName,
     tcc.input,
     extractors,

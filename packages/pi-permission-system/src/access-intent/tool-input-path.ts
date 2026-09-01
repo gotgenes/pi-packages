@@ -14,6 +14,24 @@ export function getPathBearingToolPath(
 }
 
 /**
+ * What supplied a tool call's path.
+ *
+ * `"convention"` covers both the built-in `input.path` / `input.arguments.path`
+ * shapes and the default an unregistered extension tool falls back to — in
+ * every case, nobody declared it.
+ */
+export type ToolPathSource =
+  | "convention"
+  | "local_extractor"
+  | "inherited_extractor";
+
+/** A tool call's path together with what supplied it. */
+export interface ToolInputPathResult {
+  path: string | null;
+  source: ToolPathSource;
+}
+
+/**
  * Extract the filesystem path a tool will access, for the cross-cutting `path`
  * and `external_directory` gates.
  *
@@ -25,28 +43,41 @@ export function getPathBearingToolPath(
  * - `mcp` → `input.arguments.path`.
  * - Any other tool → a registered {@link ToolAccessExtractor}'s path, else the
  *   default `input.path` convention.
+ *
+ * The result names what supplied the path, because an extractor resolved from
+ * an ancestor node is a fact the gates record (ADR 0012 decision 1).
  */
 export function getToolInputPath(
   toolName: string,
   input: unknown,
   extractors?: ToolAccessExtractorLookup,
-): string | null {
+): ToolInputPathResult {
   const record = toRecord(input);
 
   switch (classifyToolKind(toolName)) {
     case "bash":
-      return null;
+      return byConvention(null);
     case "path":
-      return getNonEmptyString(record.path);
+      return byConvention(getNonEmptyString(record.path));
     case "mcp":
-      return getNonEmptyString(toRecord(record.arguments).path);
+      return byConvention(getNonEmptyString(toRecord(record.arguments).path));
     case "skill":
     case "extension": {
-      const custom = extractors?.get(toolName);
+      const custom = extractors?.resolve(toolName);
       if (custom) {
-        return getNonEmptyString(custom(record));
+        return {
+          path: getNonEmptyString(custom.extractor(record)),
+          source:
+            custom.origin === "inherited"
+              ? "inherited_extractor"
+              : "local_extractor",
+        };
       }
-      return getNonEmptyString(record.path);
+      return byConvention(getNonEmptyString(record.path));
     }
   }
+}
+
+function byConvention(path: string | null): ToolInputPathResult {
+  return { path, source: "convention" };
 }

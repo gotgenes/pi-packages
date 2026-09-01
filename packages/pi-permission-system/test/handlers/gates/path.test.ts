@@ -343,10 +343,13 @@ describe("describePathGate — home-relative paths", () => {
 describe("describePathGate — extension and MCP tools (#352)", () => {
   function extractorLookup(toolName: string, key: string) {
     return {
-      get: (name: string) =>
+      resolve: (name: string) =>
         name === toolName
-          ? (input: Record<string, unknown>) =>
-              typeof input[key] === "string" ? input[key] : undefined
+          ? {
+              extractor: (input: Record<string, unknown>) =>
+                typeof input[key] === "string" ? input[key] : undefined,
+              origin: "local" as const,
+            }
           : undefined,
     };
   }
