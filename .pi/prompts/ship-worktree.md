@@ -67,7 +67,7 @@ The peer worktree shares this repo's `.git`, so the branch ref is visible locall
 ## 4. Verify CI on the pushed commit
 
 1. `git rev-parse HEAD` to capture the full 40-char SHA; pass that exact value to `ci_find` (workflow `ci`).
-2. `ci_watch` with the returned `run_id` (workflow `ci`).
+2. `ci_watch` with the returned `run_id` (workflow `ci`) and `timeout: 600` — a `main` push runs `check` then `release-please`, which exceeds the 300 s default about half the time.
 3. If the conclusion is `failure`, stop and report — do not close the issue, release, or tear down.
 4. On `success`, continue.
 

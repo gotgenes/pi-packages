@@ -60,7 +60,7 @@ If either fails, fix the issues and commit before pushing.
    Pass that exact value to `ci_find` — never hand-expand the short SHA from the `git push` output, and never type a SHA from memory.
 2. Use `ci_find` with that SHA and workflow `ci` to locate the CI run.
    If it times out, re-check the SHA you passed against `git rev-parse HEAD` before assuming a timing miss — a truncated or retyped SHA produces the same timeout (Refs #640).
-3. Use `ci_watch` with the returned `run_id` and workflow `ci` to wait for it to complete.
+3. Use `ci_watch` with the returned `run_id`, workflow `ci`, and `timeout: 600` to wait for it to complete — a `main` push runs `check` then `release-please`, which exceeds the 300 s default about half the time.
 4. If the run conclusion is `failure`, stop and report.
    Do not close the issue or merge anything.
 5. If it lands `success`, continue.
@@ -159,7 +159,7 @@ Skip this step entirely if step 4b recorded a defer/batch decision — the relea
 Skip this step if step 6 was skipped (deferred/batch release, or no release-please PR found) — there is nothing to verify.
 
 1. Capture the merge commit SHA: `release_pr_merge`'s `head_sha`, or `git rev-parse HEAD` after `release_watch`.
-2. Use `ci_find` with that SHA and workflow `ci`, then `ci_watch` the returned `run_id`.
+2. Use `ci_find` with that SHA and workflow `ci`, then `ci_watch` the returned `run_id` with `timeout: 600`.
 3. If the `release-please` or `publish` job failed, or `publish` was skipped when a release was expected, stop — do not proceed to step 7.
    Resolve per the recovery runbook in `AGENTS.md` (a `release-please` job can fail after already tagging/releasing, silently skipping `publish`), then re-verify before continuing.
 

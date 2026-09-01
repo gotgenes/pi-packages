@@ -211,6 +211,8 @@ Then an H1 title (e.g., `# <short descriptive title>`) — required by markdownl
   When a change has a mechanism half and a data half — a walker plus its lookup table, a parser plus its keyword list — sequence them as separate steps.
   They have different failure rates and different verification instruments, and fusing them makes every data defect re-review the mechanism.
   When the data is a table of external facts, write the check that verifies one row before writing the rows (Refs #823).
+  When the plan introduces a new mutable field, specify its whole lifecycle — set, cleared, read — in one step's description rather than one transition per step.
+  Two steps that each name a different transition read correctly alone and can still contradict each other, which only execution reveals (Refs #465).
   When a refactor replaces a type, interface, or function that a large test file depends on, use lift-and-shift: introduce the new thing alongside the old, migrate callers and fixtures incrementally across steps, then remove the old in a final step.
   Never plan a single step that requires rewriting an entire large test file at once.
   When a step removes a factory or export that has a single call site (e.g., `index.ts`), include the call-site update in the same step — the type checker will not allow them in separate commits.

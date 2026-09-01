@@ -31,7 +31,7 @@ If either fails, fix the issues and commit before pushing.
 ## 4. Verify CI on the pushed commit
 
 1. Use `ci_find` with the pushed SHA (`git rev-parse HEAD`) and workflow `ci` to locate the CI run.
-2. Use `ci_watch` with the returned `run_id` and workflow `ci` to wait for it to complete.
+2. Use `ci_watch` with the returned `run_id`, workflow `ci`, and `timeout: 600` to wait for it to complete — a `main` push runs `check` then `release-please`, which exceeds the 300 s default about half the time.
 3. If the run conclusion is `failure`, stop and report.
    Do not merge anything.
 4. If it lands `success`, continue.
