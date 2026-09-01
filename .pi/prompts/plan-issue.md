@@ -110,6 +110,7 @@ When the issue is in an unfamiliar domain (a platform, protocol, or tool you hav
 When an option's differentiator is a behavior change, name the scenarios where behavior differs and where it does not (see `AGENTS.md` § Clarification gates).
 Label every number in an `ask_user` option or the plan's predicted-effect table as measured or estimated.
 Measure when the command runs in under a minute; an inferred number with false precision ("18.0 s → ~18.5 s") sells an option on a benefit the real measurement may refute (Refs #678).
+A qualitative cost claim ("only reformats", "nothing is lost") is measurable too — produce the output and diff it before offering the option (Refs #865).
 When the proposal also has design ambiguities, fold those into the same `ask-user` call.
 Let the operator's answers — not the issue body — drive the plan's Goals and Design Overview.
 
