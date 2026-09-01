@@ -98,12 +98,17 @@ export class AgentTool {
 					`Agent "${params.resume as string}" has no active session to resume.`,
 				);
 			}
+			// Resuming commits this call to delivering the resumed outcome. Claim it
+			// before the resume starts: resetForResume runs synchronously inside
+			// resume(), so a claim made afterwards would miss the terminal edge.
+			existing.claim();
 			const record = await this.manager.resume(
 				params.resume as string,
 				params.prompt as string,
 				signal ?? new AbortController().signal,
 			);
 			if (!record) {
+				existing.release();
 				return textResult(`Failed to resume agent "${params.resume as string}".`);
 			}
 			// Resume-return delivery edge: the resumed outcome is returned directly.

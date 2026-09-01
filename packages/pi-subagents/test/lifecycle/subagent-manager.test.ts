@@ -322,6 +322,26 @@ describe("SubagentManager", () => {
         expect(onCreated).not.toHaveBeenCalled();
       });
 
+      it("claims the outcome before the run can terminate", async () => {
+        // Hold session creation open so the claim is observable while the run is
+        // still in flight — the window in which the nudge would otherwise fire.
+        const { promise: gate, resolve: openGate } = Promise.withResolvers<void>(); // eslint-disable-line @typescript-eslint/no-invalid-void-type -- Promise.withResolvers<void> is valid; rule does not allow void in generic fn call type args
+        ({ manager } = createManager({
+          createSubagentSession: vi.fn(async (_params: CreateSubagentSessionParams) => {
+            await gate;
+            return toSubagentSession(createSubagentSessionStub());
+          }),
+        }));
+
+        const pending = manager.spawnAndWait(STUB_SNAPSHOT, "Explore", "test", { description: "d" });
+
+        expect(manager.listAgents()[0]?.claimed).toBe(true);
+
+        openGate();
+        const record = await pending;
+        expect(record.claimed).toBe(true);
+      });
+
       it("runs immediately rather than queueing behind a full concurrency limit", async () => {
         // Only the first session creation blocks, so the background agent holds
         // the single limiter slot open while the foreground agent runs.

@@ -156,6 +156,48 @@ describe("AgentTool — resume path", () => {
 		expect(result.content[0].text).toContain("Resumed output.");
 	});
 
+	it("claims the outcome before resuming, so the resume is never announced", async () => {
+		const deps = createToolDeps();
+		const resumeRecord = createTestSubagent();
+		resumeRecord.subagentSession = toSubagentSession(createSubagentSessionStub(createMockSession()));
+		deps.manager.getRecord = vi.fn().mockReturnValue(resumeRecord);
+		// resetForResume runs synchronously inside resume(), so a claim that only
+		// survives if it is caller-scoped is the thing being pinned here.
+		deps.manager.resume = vi.fn(() => {
+			expect(resumeRecord.claimed).toBe(true);
+			resumeRecord.resetForResume(Date.now());
+			return Promise.resolve(createTestSubagent({ result: "Resumed output." }));
+		});
+
+		await execute(deps, {
+			prompt: "continue",
+			description: "resume",
+			subagent_type: "general-purpose",
+			resume: "agent-1",
+		});
+
+		expect(deps.manager.resume).toHaveBeenCalled();
+		expect(resumeRecord.claimed).toBe(true);
+	});
+
+	it("releases the claim when the resume fails", async () => {
+		const deps = createToolDeps();
+		const resumeRecord = createTestSubagent();
+		resumeRecord.subagentSession = toSubagentSession(createSubagentSessionStub(createMockSession()));
+		deps.manager.getRecord = vi.fn().mockReturnValue(resumeRecord);
+		deps.manager.resume = vi.fn().mockResolvedValue(undefined);
+
+		const result = await execute(deps, {
+			prompt: "continue",
+			description: "resume",
+			subagent_type: "general-purpose",
+			resume: "agent-1",
+		});
+
+		expect(result.content[0].text).toContain("Failed to resume");
+		expect(resumeRecord.claimed).toBe(false);
+	});
+
 	it("marks the resumed record consumed (resume-return delivery edge)", async () => {
 		const deps = createToolDeps();
 		const resumeRecord = createTestSubagent();

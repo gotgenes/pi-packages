@@ -214,6 +214,9 @@ export class SubagentManager {
       background: foreground,
     });
     const record = this.agents.get(id)!;
+    // The caller holds the result, so this call is the carrier: claim the outcome
+    // before awaiting it, so nothing announces what is already being delivered.
+    record.claim();
     await record.promise;
     return record;
   }

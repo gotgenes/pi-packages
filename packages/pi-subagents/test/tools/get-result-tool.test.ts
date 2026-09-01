@@ -24,6 +24,72 @@ async function execute(
 	return tool.execute("tc-1", params, signal, undefined, STUB_CTX);
 }
 
+describe("GetResultTool — carrier claim", () => {
+	it("claims the outcome for the duration of a wait", async () => {
+		const sessionStub = createSubagentSessionStub();
+		sessionStub.runTurnLoop.mockResolvedValue({ responseText: "Done.", aborted: false, steered: false });
+		const record = createTestSubagent({
+			status: "queued",
+			completedAt: undefined,
+			execution: makeStubExecution({
+				createSubagentSession: async () => toSubagentSession(sessionStub),
+			}),
+		});
+		const { promise: slot, resolve: openSlot } = Promise.withResolvers<void>(); // eslint-disable-line @typescript-eslint/no-invalid-void-type -- Promise.withResolvers<void> is valid; rule does not allow void in generic fn call type args
+		record.scheduleVia(async (thunk) => {
+			await slot;
+			await thunk();
+		});
+		const resultPromise = execute(makeManager(new Map([["agent-1", record]])), {
+			agent_id: "agent-1",
+			wait: true,
+		});
+
+		// Claimed before the agent is even admitted, so the nudge cannot win the race.
+		expect(record.claimed).toBe(true);
+
+		openSlot();
+		await resultPromise;
+		expect(record.claimed).toBe(true);
+		expect(record.consumed).toBe(true);
+	});
+
+	it("releases the claim when the parent turn is interrupted mid-wait", async () => {
+		const sessionStub = createSubagentSessionStub();
+		sessionStub.runTurnLoop.mockReturnValue(new Promise<never>(() => {}));
+		const record = createTestSubagent({
+			status: "running",
+			completedAt: undefined,
+			execution: makeStubExecution({
+				createSubagentSession: async () => toSubagentSession(sessionStub),
+			}),
+		});
+		record.start();
+		const controller = new AbortController();
+
+		const resultPromise = execute(
+			makeManager(new Map([["agent-1", record]])),
+			{ agent_id: "agent-1", wait: true },
+			controller.signal,
+		);
+		controller.abort();
+		await resultPromise;
+
+		// The wait was abandoned, so announcing the outcome is owed again.
+		expect(record.claimed).toBe(false);
+		expect(record.consumed).toBe(false);
+	});
+
+	it("leaves another carrier's claim untouched when wait is not requested", async () => {
+		const record = createTestSubagent({ status: "running", completedAt: undefined });
+		record.claim();
+
+		await execute(makeManager(new Map([["agent-1", record]])), { agent_id: "agent-1" });
+
+		expect(record.claimed).toBe(true);
+	});
+});
+
 describe("GetResultTool", () => {
 	it("returns tool definition with correct name", () => {
 		const tool = new GetResultTool(makeManager(), testRegistry);

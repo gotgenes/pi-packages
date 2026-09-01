@@ -36,15 +36,23 @@ export class GetResultTool {
 		// it is still awaitable — a queued agent counts, because scheduleVia()
 		// captures its limiter promise at spawn. A parent interrupt ends the wait
 		// without cancelling the agent, leaving the outcome uncollected below.
-		if (params.wait) {
+		const waited = params.wait === true;
+		if (waited) {
+			// Waiting commits this call to delivering the outcome, so claim it before
+			// the agent can settle and be announced by the nudge instead.
+			record.claim();
 			await record.waitUntilSettled(signal);
 		}
 
 		// Pull-delivery edge: the parent is collecting the settled outcome here, so
-		// mark it consumed. The completion nudge scheduled by onSubagentCompleted
-		// re-reads record.consumed at fire time and suppresses itself.
+		// mark it consumed. An agent still active after a wait means the wait was
+		// abandoned, so release the claim this call made and let the nudge announce.
+		// Only a wait that claimed may release, so a concurrent carrier's claim is
+		// never cleared by this call.
 		if (!record.isActive()) {
 			record.markConsumed();
+		} else if (waited) {
+			record.release();
 		}
 
 		return textResult(formatAgentReport(this.buildReport(record, params.verbose)));
