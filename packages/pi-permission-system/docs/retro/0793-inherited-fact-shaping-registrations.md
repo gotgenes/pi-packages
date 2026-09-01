@@ -61,5 +61,58 @@ Had it shipped as written, the ADR would have licensed exactly the move the plan
 - **Feedback-loop gap analysis** — the Tidy-First assessor reported no contradiction with the design summary, and independently confirmed the one seam question I was unsure of (whether provenance could reach the gates more cheaply than widening `getToolInputPath`'s return).
   It also found the missing `logContext` coverage in `path.test.ts` that the extraction would otherwise have landed on unguarded — 0 assertions there against 3 in its external-directory sibling.
 
+## Stage: Implementation — TDD (2026-09-01T06:57:10Z)
+
+### Session summary
+
+All seven planned TDD cycles landed in order, plus two follow-up commits closing the pre-completion reviewer's findings.
+A subagent child that has no extractor of its own for a tool now resolves one from its in-process ancestors, formatters resolve the same way, and a decision that used an inherited extractor carries `extractorSource: "inherited"`.
+The pi-permission-system suite went 3795 → 3822 passing (+27; 153 → 154 files), with `check`, root `lint`, and `fallow dead-code` green throughout.
+
+### Observations
+
+The plan survived contact almost intact; three deviations, all recorded in commit bodies.
+
+**The extractor-lookup reshape reached five files, not two.**
+The plan's Risks table predicted "two test fakes, both in `tool-input-path.test.ts`".
+The real count included inline `{ get: ... }` literals in `tool-call-gate-pipeline.test.ts` and `external-directory.test.ts`, plus direct `registry.get(...)` calls in `service.test.ts` and `tool-access-extractor-registry.test.ts`.
+A grep for the *interface name* could see none of those shapes — the type checker found them.
+This is the AGENTS.md call-site-grep hazard in a new spelling: the plan grepped the type, and the misses were an inline object literal and a method call on the concrete class.
+
+**The shared walk shipped as a class.**
+The plan named a free `resolveFromParentChain(...)` taking three collaborators per call; both lookups would then have carried four constructor arguments.
+`AncestorNodes` binds the three once, so each lookup takes two and the composition root names them a single time.
+
+**`tool-call-gate-pipeline.ts` needed no edit.**
+The plan listed it as taking the reshaped lookup; because it holds the type by alias, reshaping the interface reached it for free.
+
+#### Verifying the pins
+
+Every step's killing mutation behaved as the plan predicted, and two were worth the effort beyond the ritual:
+
+- The cycle guard was verified by *timeout*, not by a failing assertion — removing the `visited` insert hangs the run (exit 124 under `timeout 25`), while the immediate-parent test still passes.
+  A guard whose failure mode is a hang cannot be pinned by a green/red assertion alone.
+- The authority-boundary guard needed a mutation that does not exist as a code path: link inheritance.
+  Simulating it by making `AuthorizerRegistry` process-global (the exact move the package skill forbids) turned the guard red with the parent's `authorize` called once in the child — so the test is a real pin on ADR 0007 §7, not a vacuous assertion.
+
+The step-1 characterization test used a full-shape `toEqual` rather than the sibling gate's `toMatchObject`, which paid off unplanned: step 6's "stamp unconditionally" mutation killed it *and* the intended target, because a full-shape assertion also rejects spurious field additions.
+
+#### Reviewer findings
+
+Pre-completion reviewer: **WARN** (deterministic checks all PASS; security re-derivation confirmed monotonicity, the authority boundary, walk termination, and provenance honesty).
+Both findings were addressed rather than deferred.
+
+1. I had edited the Phase 14 health-metrics `Baseline (2026-08-24)` column from `0` to `1`.
+   The package skill says plainly that a dated baseline is a fixed phase-open snapshot recomputed at phase close (Refs #573), and the Target column was already satisfied without touching it.
+   Restored.
+   Worth remembering: the metric row's *Target* is what a landing step satisfies; the Baseline is not the step's to move.
+2. The reviewer flagged missing coverage for `extractorSource` on the external-directory infrastructure-read bypass.
+   Investigating it showed the combination is **structurally impossible**, which the reviewer had not established: the bypass is gated on `READ_ONLY_PATH_BEARING_TOOLS`, every member of that set classifies as a `path` tool, and that branch of `getToolInputPath` resolves by convention and never consults an extractor.
+   My first attempt to write the flagged test failed for exactly that reason.
+   The committed test pins the reachable invariant instead — a bypass record carries no `extractorSource` — and a mutation making built-in tools consult the lookup turns it red.
+   The gate still threads the source through, so the record stays correct if that tool set ever widens.
+
+The reviewer was not re-dispatched after those two commits: one restores a single table cell to its pre-change value and the other adds a test over a code path the review had already traced in depth, and both were re-verified against the full gates.
+
 [#792]: https://github.com/gotgenes/pi-packages/issues/792
 [#861]: https://github.com/gotgenes/pi-packages/issues/861
