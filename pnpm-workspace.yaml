@@ -27,7 +27,7 @@ catalog:
   "typescript": "^6.0.3"
   "vitest": "^4.1.11"
   "@types/node": "^22.15.3"
-  fallow: "^3.2.0"
+  fallow: "^3.22.0"
   rollup: "^4.63.1"
   "rollup-plugin-dts": "^6.5.1"
 
@@ -39,15 +39,15 @@ allowBuilds:
   tree-sitter-bash: true
 
 minimumReleaseAgeExclude:
-  - '@fallow-cli/darwin-arm64@3.2.0'
-  - '@fallow-cli/darwin-x64@3.2.0'
-  - '@fallow-cli/linux-arm64-gnu@3.2.0'
-  - '@fallow-cli/linux-arm64-musl@3.2.0'
-  - '@fallow-cli/linux-x64-gnu@3.2.0'
-  - '@fallow-cli/linux-x64-musl@3.2.0'
-  - '@fallow-cli/win32-arm64-msvc@3.2.0'
-  - '@fallow-cli/win32-x64-msvc@3.2.0'
-  - fallow@3.2.0
+  - '@fallow-cli/darwin-arm64@3.22.0'
+  - '@fallow-cli/darwin-x64@3.22.0'
+  - '@fallow-cli/linux-arm64-gnu@3.22.0'
+  - '@fallow-cli/linux-arm64-musl@3.22.0'
+  - '@fallow-cli/linux-x64-gnu@3.22.0'
+  - '@fallow-cli/linux-x64-musl@3.22.0'
+  - '@fallow-cli/win32-arm64-msvc@3.22.0'
+  - '@fallow-cli/win32-x64-msvc@3.22.0'
+  - fallow@3.22.0
   - '@gotgenes/pi-permission-system@27.0.0'
   - '@earendil-works/pi-agent-core@0.84.4'
   - '@earendil-works/pi-ai@0.84.4'
@@ -57,6 +57,7 @@ minimumReleaseAgeExclude:
   - '@earendil-works/pi-telemetry@0.84.4'
   - '@earendil-works/pi-tui@0.84.4'
   - globals@17.12.0
+  - fallow-type-aware@3.22.0
 
 # A freshly-published first-party sibling (e.g. a same-day @gotgenes/* release a
 # dependent package bumps to) cannot be unblocked via minimumReleaseAgeExclude:

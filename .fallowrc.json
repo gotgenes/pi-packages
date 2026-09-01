@@ -7,7 +7,7 @@
   ],
   "ignoreExportsUsedInFile": true,
   "ignoreDependencies": ["tree-sitter-bash", "@gotgenes/pi-subagents"],
-  "ignorePatterns": ["**/test/fixtures/**", "**/tests/fixtures/**"],
+  "ignorePatterns": ["**/test/fixtures/**", "**/tests/fixtures/**", ".pi/**"],
   "health": {
     "thresholdOverrides": [
       {

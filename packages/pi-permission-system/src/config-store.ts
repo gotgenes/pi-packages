@@ -140,8 +140,6 @@ export class ConfigStore implements SessionConfigStore, CommandConfigStore {
    *
    * Equivalent to `saveExtensionConfig(runtime, next, ctx)`.
    */
-  // Called via the CommandConfigStore interface from config-modal.ts — fallow cannot trace through interfaces.
-  // fallow-ignore-next-line unused-class-member
   save(
     next: PermissionSystemExtensionConfig,
     ctx: ExtensionCommandContext,

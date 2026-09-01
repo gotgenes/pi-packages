@@ -462,6 +462,10 @@ export class Subagent {
 	}
 
 	/** The carrier abandoned its commitment; announcing is owed again. */
+	// Called on the `Subagent` returned by `getRecord()` from get-result-tool.ts
+	// and agent-tool.ts, both of which declare it through their own structural
+	// interface — fallow cannot trace through interfaces.
+	// fallow-ignore-next-line unused-class-member
 	release(): void {
 		this.state.release();
 	}
