@@ -1122,10 +1122,13 @@ describe("BashProgram", () => {
       it.each([
         ["single-quoted", "cat <<'EOF'\n$(rm e)\nEOF"],
         ["double-quoted", 'cat <<"EOF"\n$(rm e)\nEOF'],
-      ])("leaves a %s heredoc body literal, since it does not interpolate", async (_label, command) => {
-        const program = await BashProgram.parse(command, normalizer);
-        expect(program.commands()).toEqual([{ text: "cat" }]);
-      });
+      ])(
+        "leaves a %s heredoc body literal, since it does not interpolate",
+        async (_label, command) => {
+          const program = await BashProgram.parse(command, normalizer);
+          expect(program.commands()).toEqual([{ text: "cat" }]);
+        },
+      );
 
       it("descends into a herestring substitution", async () => {
         const program = await BashProgram.parse("cat <<< $(rm x)", normalizer);
@@ -1187,15 +1190,18 @@ describe("BashProgram", () => {
           "<<'EOF'\nsee `rm -rf x` here",
         ],
         ["an unbalanced quote", 'echo "$(rm x)', "echo", '"$(rm x)'],
-      ])("emits %s whole, taking nothing from inside it", async (_label, command, enclosing, blob) => {
-        // Tree-sitter's error recovery *invents* structure, so a node type
-        // inside an ERROR subtree is not evidence that a command runs.
-        const program = await BashProgram.parse(command, normalizer);
-        expect(program.commands()).toEqual([
-          { text: enclosing },
-          { text: blob },
-        ]);
-      });
+      ])(
+        "emits %s whole, taking nothing from inside it",
+        async (_label, command, enclosing, blob) => {
+          // Tree-sitter's error recovery *invents* structure, so a node type
+          // inside an ERROR subtree is not evidence that a command runs.
+          const program = await BashProgram.parse(command, normalizer);
+          expect(program.commands()).toEqual([
+            { text: enclosing },
+            { text: blob },
+          ]);
+        },
+      );
 
       it("emits an unterminated control-flow statement whole", async () => {
         const program = await BashProgram.parse(
@@ -1477,15 +1483,13 @@ describe("BashProgram", () => {
         ]);
       });
 
-      it.each([
-        "bash script.sh",
-        "bash",
-        "ls -la",
-        "grep -c foo file",
-      ])("does not flag %s as opaque", async (command) => {
-        const program = await BashProgram.parse(command, normalizer);
-        expect(program.commands()).toEqual([{ text: command }]);
-      });
+      it.each(["bash script.sh", "bash", "ls -la", "grep -c foo file"])(
+        "does not flag %s as opaque",
+        async (command) => {
+          const program = await BashProgram.parse(command, normalizer);
+          expect(program.commands()).toEqual([{ text: command }]);
+        },
+      );
     });
 
     describe("indirection wrappers", () => {
@@ -1504,12 +1508,15 @@ describe("BashProgram", () => {
         ["setsid aws s3 ls", "setsid aws s3 ls", "aws s3 ls"],
         ["stdbuf -oL aws s3 ls", "stdbuf -oL aws s3 ls", "aws s3 ls"],
         ["flock /tmp/lock aws s3 ls", "flock /tmp/lock aws s3 ls", "aws s3 ls"],
-      ])("flags %s as an indirection wrapper", async (command, text, executedUnit) => {
-        const program = await BashProgram.parse(command, normalizer);
-        expect(program.commands()).toEqual([
-          { text, wrapperKind: "indirection", executedUnit },
-        ]);
-      });
+      ])(
+        "flags %s as an indirection wrapper",
+        async (command, text, executedUnit) => {
+          const program = await BashProgram.parse(command, normalizer);
+          expect(program.commands()).toEqual([
+            { text, wrapperKind: "indirection", executedUnit },
+          ]);
+        },
+      );
 
       // The remaining #575 wrappers, whose realistic inner commands are core
       // readers, so the unit also carries the floor exemption (#803).
@@ -1517,17 +1524,20 @@ describe("BashProgram", () => {
         ["rust-parallel echo", "echo"],
         ["rush echo", "echo"],
         ["watch ls", "ls"],
-      ])("flags %s as an indirection wrapper running a pure reader", async (command, executedUnit) => {
-        const program = await BashProgram.parse(command, normalizer);
-        expect(program.commands()).toEqual([
-          {
-            text: command,
-            wrapperKind: "indirection",
-            executedUnit,
-            floorExemption: "core-reader",
-          },
-        ]);
-      });
+      ])(
+        "flags %s as an indirection wrapper running a pure reader",
+        async (command, executedUnit) => {
+          const program = await BashProgram.parse(command, normalizer);
+          expect(program.commands()).toEqual([
+            {
+              text: command,
+              wrapperKind: "indirection",
+              executedUnit,
+              floorExemption: "core-reader",
+            },
+          ]);
+        },
+      );
 
       it("flags an env-prefixed indirection wrapper after stripping the prefix", async () => {
         const program = await BashProgram.parse(
@@ -1543,14 +1553,13 @@ describe("BashProgram", () => {
         ]);
       });
 
-      it.each([
-        "aws s3 ls",
-        "ls -la",
-        "grep -n foo file",
-      ])("does not flag %s as an indirection wrapper", async (command) => {
-        const program = await BashProgram.parse(command, normalizer);
-        expect(program.commands()).toEqual([{ text: command }]);
-      });
+      it.each(["aws s3 ls", "ls -la", "grep -n foo file"])(
+        "does not flag %s as an indirection wrapper",
+        async (command) => {
+          const program = await BashProgram.parse(command, normalizer);
+          expect(program.commands()).toEqual([{ text: command }]);
+        },
+      );
     });
 
     describe("exec-conditional wrappers (find/fd)", () => {
@@ -1563,21 +1572,23 @@ describe("BashProgram", () => {
         ["fd --exec rm", "rm"],
         ["fd -X rm", "rm"],
         ["fd --exec-batch rm", "rm"],
-      ])("flags %s as an indirection wrapper", async (command, executedUnit) => {
-        const program = await BashProgram.parse(command, normalizer);
-        expect(program.commands()).toEqual([
-          { text: command, wrapperKind: "indirection", executedUnit },
-        ]);
-      });
+      ])(
+        "flags %s as an indirection wrapper",
+        async (command, executedUnit) => {
+          const program = await BashProgram.parse(command, normalizer);
+          expect(program.commands()).toEqual([
+            { text: command, wrapperKind: "indirection", executedUnit },
+          ]);
+        },
+      );
 
-      it.each([
-        "find . -name foo",
-        "fd pattern",
-        "fd -H -t f pattern",
-      ])("does not flag a bare %s search", async (command) => {
-        const program = await BashProgram.parse(command, normalizer);
-        expect(program.commands()).toEqual([{ text: command }]);
-      });
+      it.each(["find . -name foo", "fd pattern", "fd -H -t f pattern"])(
+        "does not flag a bare %s search",
+        async (command) => {
+          const program = await BashProgram.parse(command, normalizer);
+          expect(program.commands()).toEqual([{ text: command }]);
+        },
+      );
     });
 
     describe("executed unit", () => {
@@ -1644,15 +1655,14 @@ describe("BashProgram", () => {
           );
         });
 
-        it.each([
-          ">>",
-          ">|",
-          "&>",
-        ])("withholds it for a %s redirect too", async (operator) => {
-          await expect(
-            exemptions(`xargs grep foo ${operator} out.txt`),
-          ).resolves.toEqual([undefined]);
-        });
+        it.each([">>", ">|", "&>"])(
+          "withholds it for a %s redirect too",
+          async (operator) => {
+            await expect(
+              exemptions(`xargs grep foo ${operator} out.txt`),
+            ).resolves.toEqual([undefined]);
+          },
+        );
 
         it("withholds it from every unit of a redirected pipeline", async () => {
           // The redirect applies to the last element, but it hangs off the whole
@@ -1682,12 +1692,15 @@ describe("BashProgram", () => {
           ["xargs grep foo > $OUT", "an unquoted variable"],
           ["xargs grep foo >${OUT}", "a brace expansion"],
           ["xargs grep foo > ${DIR}/log", "an expansion plus a literal"],
-        ])("withholds it for a destination named by %s (%s)", async (command) => {
-          // The destination is chosen at run time, so the parse cannot say
-          // which file it is — and it is invisible to the path projection too
-          // (#609), which makes the floor the only guard that ever covered it.
-          await expect(exemptions(command)).resolves.toEqual([undefined]);
-        });
+        ])(
+          "withholds it for a destination named by %s (%s)",
+          async (command) => {
+            // The destination is chosen at run time, so the parse cannot say
+            // which file it is — and it is invisible to the path projection too
+            // (#609), which makes the floor the only guard that ever covered it.
+            await expect(exemptions(command)).resolves.toEqual([undefined]);
+          },
+        );
 
         it("withholds it for a command-substitution destination", async () => {
           // Two units: the wrapper, and the `mktemp` hosted in the destination.

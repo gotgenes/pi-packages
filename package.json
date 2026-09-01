@@ -21,11 +21,11 @@
     "fallow:dupes": "fallow dupes"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.16",
+    "@biomejs/biome": "catalog:",
     "eslint": "catalog:",
     "fallow": "catalog:",
     "globals": "catalog:",
-    "rumdl": "^0.2.10",
+    "rumdl": "catalog:",
     "typescript-eslint": "catalog:"
   }
 }

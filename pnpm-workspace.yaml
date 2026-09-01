@@ -12,11 +12,18 @@ linkWorkspacePackages: false
 # In each package.json, use "catalog:" as the version specifier
 # to pull from here (e.g. "vitest": "catalog:").
 catalog:
-  "@biomejs/biome": "^2.4.16"
-  "eslint": "^10.4.1"
-  "globals": "^17.5.0"
-  "typescript-eslint": "^8.61.0"
-  "rumdl": "^0.2.10"
+  "@biomejs/biome": "^2.5.11"
+  "eslint": "^10.9.1"
+  "globals": "^17.12.0"
+  "typescript-eslint": "^8.69.0"
+  # Pinned exactly, not caret-ranged: 0.2.45 regressed MD013's sentence-per-line
+  # reflow so that a bold lead-in ending `.**` followed by a line opening with a
+  # code span is counted as one sentence, and `rumdl fmt` joins the two lines --
+  # inverting the mode we configure in .rumdl.toml. On this repo's corpus 0.2.62
+  # reports 767 such findings across 333 files. 0.2.24 is the newest release that
+  # is clean on all 1086 files. Upstream: https://github.com/rvben/rumdl/issues/811
+  # Keep prek.toml's rumdl-pre-commit rev in lockstep with this pin.
+  "rumdl": "0.2.24"
   "typescript": "^6.0.3"
   "vitest": "^4.1.8"
   "@types/node": "^22.15.3"
@@ -49,6 +56,7 @@ minimumReleaseAgeExclude:
   - '@earendil-works/pi-protocol@0.84.4'
   - '@earendil-works/pi-telemetry@0.84.4'
   - '@earendil-works/pi-tui@0.84.4'
+  - globals@17.12.0
 
 # A freshly-published first-party sibling (e.g. a same-day @gotgenes/* release a
 # dependent package bumps to) cannot be unblocked via minimumReleaseAgeExclude:

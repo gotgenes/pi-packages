@@ -110,32 +110,34 @@ describe("external_directory path scope", () => {
     expect(result).toBeDefined();
   });
 
-  it.each(
-    ALL_PATH_BEARING_TOOLS,
-  )("blocks %s with an out-of-cwd path when external_directory is deny", async (toolName) => {
-    const { handler } = makeHandler({
-      session: { checkPermission: makeExtDirCheck("deny") },
-      tools: ALL_TOOLS,
-    });
-    const event = makeToolCallEvent(toolName, {
-      input: { path: EXTERNAL_PATH },
-    });
-    const result = await handler.handleToolCall(event, makeCtx());
-    expect(result).toMatchObject({ action: "block" });
-  });
+  it.each(ALL_PATH_BEARING_TOOLS)(
+    "blocks %s with an out-of-cwd path when external_directory is deny",
+    async (toolName) => {
+      const { handler } = makeHandler({
+        session: { checkPermission: makeExtDirCheck("deny") },
+        tools: ALL_TOOLS,
+      });
+      const event = makeToolCallEvent(toolName, {
+        input: { path: EXTERNAL_PATH },
+      });
+      const result = await handler.handleToolCall(event, makeCtx());
+      expect(result).toMatchObject({ action: "block" });
+    },
+  );
 
-  it.each(
-    OPTIONAL_PATH_TOOLS,
-  )("skips external_directory check for %s when path is omitted", async (toolName) => {
-    const { handler } = makeHandler({
-      session: { checkPermission: makeExtDirCheck("deny") },
-      tools: ALL_TOOLS,
-    });
-    // No path in input — external_directory gate should not fire
-    const event = makeToolCallEvent(toolName);
-    const result = await handler.handleToolCall(event, makeCtx());
-    expect(result).toEqual({ action: "allow" });
-  });
+  it.each(OPTIONAL_PATH_TOOLS)(
+    "skips external_directory check for %s when path is omitted",
+    async (toolName) => {
+      const { handler } = makeHandler({
+        session: { checkPermission: makeExtDirCheck("deny") },
+        tools: ALL_TOOLS,
+      });
+      // No path in input — external_directory gate should not fire
+      const event = makeToolCallEvent(toolName);
+      const result = await handler.handleToolCall(event, makeCtx());
+      expect(result).toEqual({ action: "allow" });
+    },
+  );
 });
 
 // ── Policy state matrix: allow and deny ────────────────────────────────────

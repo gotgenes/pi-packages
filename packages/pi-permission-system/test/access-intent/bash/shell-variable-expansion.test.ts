@@ -58,16 +58,13 @@ describe("resolvePlainVariableExpansion", () => {
   });
 
   describe("variables outside the resolvable set", () => {
-    it.each([
-      "HOMEDIR",
-      "CURRENT",
-      "PATH",
-      "PWDX",
-      "TMPDIR",
-    ])("leaves $%s unresolved", (name) => {
-      expect(resolvePlainVariableExpansion(simpleExpansion(name))).toBeNull();
-      expect(resolvePlainVariableExpansion(bracedExpansion(name))).toBeNull();
-    });
+    it.each(["HOMEDIR", "CURRENT", "PATH", "PWDX", "TMPDIR"])(
+      "leaves $%s unresolved",
+      (name) => {
+        expect(resolvePlainVariableExpansion(simpleExpansion(name))).toBeNull();
+        expect(resolvePlainVariableExpansion(bracedExpansion(name))).toBeNull();
+      },
+    );
   });
 
   describe("expansions carrying an operator", () => {

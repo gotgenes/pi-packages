@@ -173,13 +173,12 @@ describe("redirectMayWriteFile", () => {
   });
 
   describe("a redirect that provably only reads", () => {
-    it.each([
-      "cat < in.txt",
-      "pnpm x 2>&1",
-      "pnpm x <& in.txt",
-    ])("answers false for %s", async (command) => {
-      await expect(mayWrite(command)).resolves.toBe(false);
-    });
+    it.each(["cat < in.txt", "pnpm x 2>&1", "pnpm x <& in.txt"])(
+      "answers false for %s",
+      async (command) => {
+        await expect(mayWrite(command)).resolves.toBe(false);
+      },
+    );
   });
 
   describe("a destination the parse cannot resolve", () => {

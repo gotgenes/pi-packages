@@ -79,12 +79,15 @@ describe("valueLabel", () => {
     ["bash", "command"],
     ["skill", "skill"],
     ["read", "value"],
-  ])("infers a payload-less forwarded ask's label from its %s surface", (surface, label) => {
-    const base = payloadOf("forwarded", "value");
-    expect(valueLabel({ ...base, request: { ...base.request, surface } })).toBe(
-      label,
-    );
-  });
+  ])(
+    "infers a payload-less forwarded ask's label from its %s surface",
+    (surface, label) => {
+      const base = payloadOf("forwarded", "value");
+      expect(
+        valueLabel({ ...base, request: { ...base.request, surface } }),
+      ).toBe(label);
+    },
+  );
 });
 
 describe("flaggedElementLabel", () => {
@@ -94,15 +97,13 @@ describe("flaggedElementLabel", () => {
     ).toBe("path");
   });
 
-  it.each([
-    "bash",
-    "mcp",
-    "path",
-    "skill",
-  ] as const)("agrees with the value label for a %s ask, whose value is what it flags", (kind) => {
-    const single = payloadOf(kind, "value");
-    expect(flaggedElementLabel(single)).toBe(valueLabel(single));
-  });
+  it.each(["bash", "mcp", "path", "skill"] as const)(
+    "agrees with the value label for a %s ask, whose value is what it flags",
+    (kind) => {
+      const single = payloadOf(kind, "value");
+      expect(flaggedElementLabel(single)).toBe(valueLabel(single));
+    },
+  );
 });
 
 describe("describeBashCommandContext", () => {

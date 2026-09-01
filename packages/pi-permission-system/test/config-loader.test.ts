@@ -373,16 +373,19 @@ describe("loadUnifiedConfig", () => {
     ["float", 1.5],
     ["string", "200"],
     ["boolean", true],
-  ] as const)("rejects invalid toolInputPreviewMaxLength: %s", (_label, value) => {
-    const configPath = join(tempDir, "config.json");
-    writeFileSync(
-      configPath,
-      JSON.stringify({ toolInputPreviewMaxLength: value }),
-    );
-    const result = loadUnifiedConfig(configPath);
-    expect(result.config).toEqual({});
-    expect(result.issues.length).toBeGreaterThan(0);
-  });
+  ] as const)(
+    "rejects invalid toolInputPreviewMaxLength: %s",
+    (_label, value) => {
+      const configPath = join(tempDir, "config.json");
+      writeFileSync(
+        configPath,
+        JSON.stringify({ toolInputPreviewMaxLength: value }),
+      );
+      const result = loadUnifiedConfig(configPath);
+      expect(result.config).toEqual({});
+      expect(result.issues.length).toBeGreaterThan(0);
+    },
+  );
 
   it.each([
     ["zero", 0],
@@ -390,16 +393,19 @@ describe("loadUnifiedConfig", () => {
     ["float", 1.5],
     ["string", "80"],
     ["boolean", false],
-  ] as const)("rejects invalid toolTextSummaryMaxLength: %s", (_label, value) => {
-    const configPath = join(tempDir, "config.json");
-    writeFileSync(
-      configPath,
-      JSON.stringify({ toolTextSummaryMaxLength: value }),
-    );
-    const result = loadUnifiedConfig(configPath);
-    expect(result.config).toEqual({});
-    expect(result.issues.length).toBeGreaterThan(0);
-  });
+  ] as const)(
+    "rejects invalid toolTextSummaryMaxLength: %s",
+    (_label, value) => {
+      const configPath = join(tempDir, "config.json");
+      writeFileSync(
+        configPath,
+        JSON.stringify({ toolTextSummaryMaxLength: value }),
+      );
+      const result = loadUnifiedConfig(configPath);
+      expect(result.config).toEqual({});
+      expect(result.issues.length).toBeGreaterThan(0);
+    },
+  );
 
   it("parses piInfrastructureReadPaths when a valid string array is present", () => {
     const configPath = join(tempDir, "config.json");
@@ -433,16 +439,19 @@ describe("loadUnifiedConfig", () => {
     ["number", 42],
     ["mixed-type array", ["a", 1]],
     ["object", { a: "b" }],
-  ] as const)("rejects invalid piInfrastructureReadPaths: %s", (_label, value) => {
-    const configPath = join(tempDir, "config.json");
-    writeFileSync(
-      configPath,
-      JSON.stringify({ piInfrastructureReadPaths: value }),
-    );
-    const result = loadUnifiedConfig(configPath);
-    expect(result.config).toEqual({});
-    expect(result.issues.length).toBeGreaterThan(0);
-  });
+  ] as const)(
+    "rejects invalid piInfrastructureReadPaths: %s",
+    (_label, value) => {
+      const configPath = join(tempDir, "config.json");
+      writeFileSync(
+        configPath,
+        JSON.stringify({ piInfrastructureReadPaths: value }),
+      );
+      const result = loadUnifiedConfig(configPath);
+      expect(result.config).toEqual({});
+      expect(result.issues.length).toBeGreaterThan(0);
+    },
+  );
 });
 
 describe("mergeUnifiedConfigs", () => {

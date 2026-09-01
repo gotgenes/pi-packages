@@ -153,16 +153,14 @@ describe("proveCommandEffect", () => {
   });
 
   describe("the fd retraction guard", () => {
-    it.each([
-      "-x",
-      "-X",
-      "--exec",
-      "--exec-batch",
-    ])("retracts the read claim on %s", (option) => {
-      expect(proveCommandEffect("fd", ["foo", option, "rm"])).toEqual(
-        RETRACTED,
-      );
-    });
+    it.each(["-x", "-X", "--exec", "--exec-batch"])(
+      "retracts the read claim on %s",
+      (option) => {
+        expect(proveCommandEffect("fd", ["foo", option, "rm"])).toEqual(
+          RETRACTED,
+        );
+      },
+    );
 
     it("retracts on a long stem carrying an attached value", () => {
       expect(proveCommandEffect("fd", ["foo", "--exec=rm"])).toEqual(RETRACTED);
@@ -192,17 +190,16 @@ describe("proveCommandEffect", () => {
       );
     });
 
-    it.each([
-      "--out",
-      "--outp",
-      "--o",
-    ])("retracts on the GNU long-option abbreviation %s", (option) => {
-      // GNU getopt_long resolves any unambiguous abbreviation to --output,
-      // so an abbreviation reaches the same write the full spelling does.
-      expect(proveCommandEffect("sort", [option, "/tmp/out", "in"])).toEqual(
-        RETRACTED,
-      );
-    });
+    it.each(["--out", "--outp", "--o"])(
+      "retracts on the GNU long-option abbreviation %s",
+      (option) => {
+        // GNU getopt_long resolves any unambiguous abbreviation to --output,
+        // so an abbreviation reaches the same write the full spelling does.
+        expect(proveCommandEffect("sort", [option, "/tmp/out", "in"])).toEqual(
+          RETRACTED,
+        );
+      },
+    );
 
     it("retracts on an abbreviation carrying an attached value", () => {
       expect(proveCommandEffect("sort", ["--out=/tmp/out", "in"])).toEqual(
@@ -252,15 +249,14 @@ describe("proveCommandEffect", () => {
 
 describe("redirectDestinationEffect", () => {
   describe("an output redirect", () => {
-    it.each([
-      ">",
-      ">>",
-      ">|",
-      "&>",
-      "&>>",
-    ])("proves a write for %s", (operator) => {
-      expect(redirectDestinationEffect(operator, false)).toEqual(SYNTAX_WRITE);
-    });
+    it.each([">", ">>", ">|", "&>", "&>>"])(
+      "proves a write for %s",
+      (operator) => {
+        expect(redirectDestinationEffect(operator, false)).toEqual(
+          SYNTAX_WRITE,
+        );
+      },
+    );
   });
 
   describe("an input redirect", () => {
@@ -284,15 +280,14 @@ describe("redirectDestinationEffect", () => {
   });
 
   describe("an operator outside the table", () => {
-    it.each([
-      "<>",
-      "&",
-      "",
-    ])("proves nothing rather than dropping the token for %s", (operator) => {
-      expect(redirectDestinationEffect(operator, false)).toEqual(
-        UNPROVEN_EFFECT,
-      );
-    });
+    it.each(["<>", "&", ""])(
+      "proves nothing rather than dropping the token for %s",
+      (operator) => {
+        expect(redirectDestinationEffect(operator, false)).toEqual(
+          UNPROVEN_EFFECT,
+        );
+      },
+    );
 
     it("still collects the token when the destination is a descriptor", () => {
       expect(redirectDestinationEffect("<>", true)).toEqual(UNPROVEN_EFFECT);

@@ -432,17 +432,16 @@ describe("ForwardingLivenessJudge.isServing", () => {
     expect(judge.isServing(ENV_TARGET)).toBe(true);
   });
 
-  it.each([
-    "absent",
-    "stale",
-    "dead_pid",
-  ] as const)("reports an out-of-process target as not serving when its heartbeat is %s", (state) => {
-    const judge = new ForwardingLivenessJudge({
-      registry: makeRegistry(["parent"]),
-      heartbeats: makeHeartbeats(state),
-    });
-    expect(judge.isServing(ENV_TARGET)).toBe(false);
-  });
+  it.each(["absent", "stale", "dead_pid"] as const)(
+    "reports an out-of-process target as not serving when its heartbeat is %s",
+    (state) => {
+      const judge = new ForwardingLivenessJudge({
+        registry: makeRegistry(["parent"]),
+        heartbeats: makeHeartbeats(state),
+      });
+      expect(judge.isServing(ENV_TARGET)).toBe(false);
+    },
+  );
 
   it("declines to judge a session that owns the inbox it is forwarding to", () => {
     const judge = new ForwardingLivenessJudge({

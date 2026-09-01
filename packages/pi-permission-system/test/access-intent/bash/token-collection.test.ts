@@ -311,9 +311,12 @@ describe("collectCommandTokens — pattern-first commands", () => {
       ["sed --expression=s/a/b/ /etc/hosts", ["/etc/hosts"]],
       ["sed -e s/a/b/ /etc/hosts", ["/etc/hosts"]],
       ["gawk --source '{print}' /etc/passwd", ["/etc/passwd"]],
-    ])("%s marks the script supplied and yields no pattern token", async (command, expected) => {
-      expect(await tokensOf(command)).toEqual(expected);
-    });
+    ])(
+      "%s marks the script supplied and yields no pattern token",
+      async (command, expected) => {
+        expect(await tokensOf(command)).toEqual(expected);
+      },
+    );
 
     it.each([
       ["grep --file /tmp/patterns /etc/passwd"],
@@ -332,9 +335,12 @@ describe("collectCommandTokens — pattern-first commands", () => {
       ["rg -g!docs pattern /etc/passwd"],
       ["rg --replace X pattern /etc/passwd"],
       ["rg -tpy pattern /etc/passwd"],
-    ])("%s consumes its value without supplying the script", async (command) => {
-      expect(await tokensOf(command)).toEqual(["/etc/passwd"]);
-    });
+    ])(
+      "%s consumes its value without supplying the script",
+      async (command) => {
+        expect(await tokensOf(command)).toEqual(["/etc/passwd"]);
+      },
+    );
 
     it("reads sd's -f as regex flags, not as a script file", async () => {
       // `sd -f` is `--flags`; treating it as a script file disabled sd's own
@@ -792,19 +798,18 @@ describe("extractCommandWord", () => {
     }
   });
 
-  it.each([
-    "/usr/bin/grep",
-    "./grep",
-    "../bin/grep",
-  ])("keeps the directory prefix of %s, which extractCommandName strips", async (headWord) => {
-    const { node, tree } = await parseCommandNode(`${headWord} p file.txt`);
-    try {
-      expect(extractCommandWord(node)).toBe(headWord);
-      expect(extractCommandName(node)).toBe("grep");
-    } finally {
-      tree.delete();
-    }
-  });
+  it.each(["/usr/bin/grep", "./grep", "../bin/grep"])(
+    "keeps the directory prefix of %s, which extractCommandName strips",
+    async (headWord) => {
+      const { node, tree } = await parseCommandNode(`${headWord} p file.txt`);
+      try {
+        expect(extractCommandWord(node)).toBe(headWord);
+        expect(extractCommandName(node)).toBe("grep");
+      } finally {
+        tree.delete();
+      }
+    },
+  );
 });
 
 // ── Per-token effect attribution (#807) ───────────────────────────────────

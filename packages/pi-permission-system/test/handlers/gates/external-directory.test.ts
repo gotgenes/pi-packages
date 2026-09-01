@@ -359,22 +359,20 @@ describe("describeExternalDirectoryGate — extension and MCP tools (#352)", () 
       };
     }
 
-    it.each([
-      "read",
-      "grep",
-      "find",
-      "ls",
-    ])("names external_directory_read for %s", (toolName) => {
-      const surface = "external_directory_read";
-      expect(surfacesFor(toolName)).toEqual({
-        intent: surface,
-        descriptor: surface,
-        approval: surface,
-        facts: surface,
-        decision: surface,
-        payload: surface,
-      });
-    });
+    it.each(["read", "grep", "find", "ls"])(
+      "names external_directory_read for %s",
+      (toolName) => {
+        const surface = "external_directory_read";
+        expect(surfacesFor(toolName)).toEqual({
+          intent: surface,
+          descriptor: surface,
+          approval: surface,
+          facts: surface,
+          decision: surface,
+          payload: surface,
+        });
+      },
+    );
 
     it("names external_directory_write for write", () => {
       const surface = "external_directory_write";

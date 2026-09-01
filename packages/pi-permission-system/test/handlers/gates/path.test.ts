@@ -449,21 +449,19 @@ describe("describePathGate — extension and MCP tools (#352)", () => {
       };
     }
 
-    it.each([
-      "read",
-      "grep",
-      "find",
-      "ls",
-    ])("names path_read for %s, whose read is proven by its identity", (toolName) => {
-      expect(surfacesFor(toolName)).toEqual({
-        intent: "path_read",
-        descriptor: "path_read",
-        approval: "path_read",
-        facts: "path_read",
-        decision: "path_read",
-        payload: "path_read",
-      });
-    });
+    it.each(["read", "grep", "find", "ls"])(
+      "names path_read for %s, whose read is proven by its identity",
+      (toolName) => {
+        expect(surfacesFor(toolName)).toEqual({
+          intent: "path_read",
+          descriptor: "path_read",
+          approval: "path_read",
+          facts: "path_read",
+          decision: "path_read",
+          payload: "path_read",
+        });
+      },
+    );
 
     it("names path_write for write", () => {
       expect(surfacesFor("write")).toEqual({

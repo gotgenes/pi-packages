@@ -59,9 +59,12 @@ describe("deriveApprovalPattern", () => {
       ["/tmp/logs", "/tmp/*"],
       ["/foo", "/*"],
       ["/", "/*"],
-    ])("keeps a Git Bash token's own separator: %s -> %s", (value, expected) => {
-      expect(deriveApprovalPattern(value, win32PathFlavor)).toBe(expected);
-    });
+    ])(
+      "keeps a Git Bash token's own separator: %s -> %s",
+      (value, expected) => {
+        expect(deriveApprovalPattern(value, win32PathFlavor)).toBe(expected);
+      },
+    );
 
     it("falls back to the windows current directory for a separator-free value", () => {
       expect(deriveApprovalPattern("index.html", win32PathFlavor)).toBe(".\\*");

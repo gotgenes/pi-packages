@@ -79,16 +79,12 @@ describe("surfaceFamilyOf", () => {
     expect(surfaceFamilyOf(surface)).toBe(family);
   });
 
-  test.each([
-    "path",
-    "external_directory",
-    "read",
-    "write",
-    "bash",
-    "mcp",
-  ])("answers %s with itself", (surface) => {
-    expect(surfaceFamilyOf(surface)).toBe(surface);
-  });
+  test.each(["path", "external_directory", "read", "write", "bash", "mcp"])(
+    "answers %s with itself",
+    (surface) => {
+      expect(surfaceFamilyOf(surface)).toBe(surface);
+    },
+  );
 
   test("leaves a suffixed surface outside the directional families alone", () => {
     expect(surfaceFamilyOf("my_tool_read")).toBe("my_tool_read");
@@ -119,17 +115,15 @@ describe("surfaceFamilyMembers", () => {
 });
 
 describe("capabilitySurfaceForTool", () => {
-  test.each([
-    "read",
-    "grep",
-    "find",
-    "ls",
-  ])("names the read surface for %s, whose direction is proven", (toolName) => {
-    expect(capabilitySurfaceForTool("path", toolName)).toBe("path_read");
-    expect(capabilitySurfaceForTool("external_directory", toolName)).toBe(
-      "external_directory_read",
-    );
-  });
+  test.each(["read", "grep", "find", "ls"])(
+    "names the read surface for %s, whose direction is proven",
+    (toolName) => {
+      expect(capabilitySurfaceForTool("path", toolName)).toBe("path_read");
+      expect(capabilitySurfaceForTool("external_directory", toolName)).toBe(
+        "external_directory_read",
+      );
+    },
+  );
 
   test("names the write surface for write", () => {
     expect(capabilitySurfaceForTool("path", "write")).toBe("path_write");

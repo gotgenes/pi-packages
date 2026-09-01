@@ -78,13 +78,12 @@ describe("classifyWrapperWords", () => {
   });
 
   describe("ordinary commands", () => {
-    it.each([
-      "ls -la",
-      "grep -c foo file",
-      "git status",
-    ])("does not flag %s", (unit) => {
-      expect(classifyWrapperWords(words(unit))).toBeUndefined();
-    });
+    it.each(["ls -la", "grep -c foo file", "git status"])(
+      "does not flag %s",
+      (unit) => {
+        expect(classifyWrapperWords(words(unit))).toBeUndefined();
+      },
+    );
 
     it("does not flag an empty word list", () => {
       expect(classifyWrapperWords([])).toBeUndefined();
@@ -136,14 +135,12 @@ describe("executedUnitOf", () => {
       expect(executedUnit("sudo   grep  'a  b'  x")).toBe("grep  'a  b'  x");
     });
 
-    it.each([
-      "xargs",
-      "sudo",
-      "sudo -u root",
-      "timeout 10",
-    ])("returns null when %s names no inner command", (unit) => {
-      expect(executedUnit(unit)).toBeNull();
-    });
+    it.each(["xargs", "sudo", "sudo -u root", "timeout 10"])(
+      "returns null when %s names no inner command",
+      (unit) => {
+        expect(executedUnit(unit)).toBeNull();
+      },
+    );
 
     it("returns null rather than guessing past an unknown trailing option", () => {
       expect(executedUnit("xargs --unknown-opt")).toBeNull();

@@ -435,25 +435,25 @@ describe("resolveBashCommandCheck", () => {
       expect(result.command).toBe("xargs grep -l foo");
     });
 
-    it.each([
-      "deny",
-      "ask",
-    ] as const)("leaves an explicit %s on the wrapper untouched, consulting no inner rule", (state) => {
-      const resolver = makeResolver(
-        bashResult(state, "xargs grep -l foo", "xargs *"),
-      );
+    it.each(["deny", "ask"] as const)(
+      "leaves an explicit %s on the wrapper untouched, consulting no inner rule",
+      (state) => {
+        const resolver = makeResolver(
+          bashResult(state, "xargs grep -l foo", "xargs *"),
+        );
 
-      const result = resolveBashCommandCheck(
-        "xargs grep -l foo",
-        [exemptUnit],
-        undefined,
-        resolver,
-      );
+        const result = resolveBashCommandCheck(
+          "xargs grep -l foo",
+          [exemptUnit],
+          undefined,
+          resolver,
+        );
 
-      expect(result.state).toBe(state);
-      expect(result.matchedPattern).toBe("xargs *");
-      expect(resolver.resolve).toHaveBeenCalledTimes(1);
-    });
+        expect(result.state).toBe(state);
+        expect(result.matchedPattern).toBe("xargs *");
+        expect(resolver.resolve).toHaveBeenCalledTimes(1);
+      },
+    );
 
     it("still floors a wrapper the enumerator did not exempt", () => {
       const resolver = makeResolver(bashResult("allow", "xargs rm -rf", "*"));

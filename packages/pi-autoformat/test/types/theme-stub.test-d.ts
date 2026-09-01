@@ -24,10 +24,6 @@ describe("Theme stub-shape expectations", () => {
     const _badStub: Theme = {
       fg: (_name: string, text: string) => text,
     };
-
-    // Reference the binding to keep TS from flagging it as unused-only;
-    // the real assertion is the @ts-expect-error above.
-    void _badStub;
   });
 
   it("accepts a real Theme instance shape via class-based stubs", () => {
@@ -38,6 +34,5 @@ describe("Theme stub-shape expectations", () => {
     // requirement.
     type RequiredKeys = "fg";
     const _proof: RequiredKeys = "fg" satisfies keyof Theme;
-    void _proof;
   });
 });

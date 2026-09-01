@@ -4,14 +4,12 @@ import { classifyWin32BashToken } from "#src/access-intent/bash/msys-bash-tokens
 
 describe("classifyWin32BashToken", () => {
   describe("device paths", () => {
-    test.each([
-      "/dev/null",
-      "/dev/stdin",
-      "/dev/stdout",
-      "/dev/stderr",
-    ])("%s is a device", (token) => {
-      expect(classifyWin32BashToken(token)).toEqual({ kind: "device" });
-    });
+    test.each(["/dev/null", "/dev/stdin", "/dev/stdout", "/dev/stderr"])(
+      "%s is a device",
+      (token) => {
+        expect(classifyWin32BashToken(token)).toEqual({ kind: "device" });
+      },
+    );
   });
 
   describe("MSYS drive mounts", () => {
@@ -52,16 +50,14 @@ describe("classifyWin32BashToken", () => {
   });
 
   describe("other POSIX absolutes", () => {
-    test.each([
-      "/tmp/foo",
-      "/usr/bin",
-      "/etc/hosts",
-      "/mingw64/bin",
-    ])("%s is a posix-absolute", (token) => {
-      expect(classifyWin32BashToken(token)).toEqual({
-        kind: "posix-absolute",
-      });
-    });
+    test.each(["/tmp/foo", "/usr/bin", "/etc/hosts", "/mingw64/bin"])(
+      "%s is a posix-absolute",
+      (token) => {
+        expect(classifyWin32BashToken(token)).toEqual({
+          kind: "posix-absolute",
+        });
+      },
+    );
 
     test("a two-letter first segment is not a drive mount", () => {
       expect(classifyWin32BashToken("/cc/x")).toEqual({
@@ -71,14 +67,11 @@ describe("classifyWin32BashToken", () => {
   });
 
   describe("plain tokens", () => {
-    test.each([
-      "src/foo.ts",
-      "foo.ts",
-      "C:\\Users\\x",
-      "C:/Users/x",
-      "../up",
-    ])("%s is plain", (token) => {
-      expect(classifyWin32BashToken(token)).toEqual({ kind: "plain" });
-    });
+    test.each(["src/foo.ts", "foo.ts", "C:\\Users\\x", "C:/Users/x", "../up"])(
+      "%s is plain",
+      (token) => {
+        expect(classifyWin32BashToken(token)).toEqual({ kind: "plain" });
+      },
+    );
   });
 });

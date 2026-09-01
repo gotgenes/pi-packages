@@ -136,15 +136,18 @@ describe("unifiedConfigSchema", () => {
       "path_delete",
       "external_directory_reed",
       "external_directory_",
-    ])("rejects the misspelled directional key %s, which would sit inert", (surface) => {
-      const result = unifiedConfigSchema.safeParse({
-        permission: { [surface]: { "*": "deny" } },
-      });
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error.issues[0]?.message).toContain(surface);
-      }
-    });
+    ])(
+      "rejects the misspelled directional key %s, which would sit inert",
+      (surface) => {
+        const result = unifiedConfigSchema.safeParse({
+          permission: { [surface]: { "*": "deny" } },
+        });
+        expect(result.success).toBe(false);
+        if (!result.success) {
+          expect(result.error.issues[0]?.message).toContain(surface);
+        }
+      },
+    );
 
     it("still accepts an arbitrary tool-name surface", () => {
       expect(
