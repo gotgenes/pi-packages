@@ -1,9 +1,64 @@
 import type { AccessPath } from "#src/access-intent/access-path";
 import { classifyToolKind } from "#src/access-intent/tool-kind";
 import type { ForwardedAccessFacts } from "#src/authority/permission-forwarding";
+import type { PromptPermissionDetails } from "#src/authority/permission-prompter";
 import type { PermissionDecisionResolution } from "#src/permission-events";
 import type { PermissionCheckResult } from "#src/types";
 import type { DecisionEventFacts } from "./descriptor";
+import type { ToolCallContext } from "./types";
+
+/**
+ * The identity fields every path-shaped tool gate reports about its call.
+ *
+ * Narrower than {@link ToolCallContext} (ISP): the fact builders below read
+ * who asked and which call it was, never the raw input or the cwd.
+ */
+type PathGateRequestFacts = Pick<
+  ToolCallContext,
+  "toolCallId" | "toolName" | "agentName"
+>;
+
+/**
+ * Build the review-log context for a path-shaped tool gate.
+ *
+ * The `path` and `external_directory` gates report the same five facts about a
+ * call, so they share one builder — a field added here reaches both, and the
+ * two cannot drift.
+ * The request facts and the request id are stamped by the runner, not here.
+ */
+export function buildPathGateLogContext(
+  tcc: PathGateRequestFacts,
+  path: string,
+): Record<string, unknown> {
+  return {
+    source: "tool_call",
+    toolCallId: tcc.toolCallId,
+    toolName: tcc.toolName,
+    agentName: tcc.agentName,
+    path,
+  };
+}
+
+/**
+ * Build the prompt details for a path-shaped tool gate.
+ *
+ * The same five facts as {@link buildPathGateLogContext}, plus the child-fixed
+ * access facts the ask carries onto the wire.
+ */
+export function buildPathGatePromptDetails(
+  tcc: PathGateRequestFacts,
+  path: string,
+  accessIntent: ForwardedAccessFacts,
+): Omit<PromptPermissionDetails, "requestId" | "payload"> {
+  return {
+    source: "tool_call",
+    agentName: tcc.agentName,
+    toolCallId: tcc.toolCallId,
+    toolName: tcc.toolName,
+    path,
+    accessIntent,
+  };
+}
 
 /**
  * Build the child-fixed access facts for a path-shaped gate from its

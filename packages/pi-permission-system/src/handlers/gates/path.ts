@@ -6,7 +6,11 @@ import { buildPathAskPayload } from "#src/presentation/path-ask-payload";
 import { SessionApproval } from "#src/session-approval";
 import type { ToolAccessExtractorLookup } from "#src/tool-access-extractor-registry";
 import type { GateDescriptor, GateResult } from "./descriptor";
-import { accessFactsFromPath } from "./helpers";
+import {
+  accessFactsFromPath,
+  buildPathGateLogContext,
+  buildPathGatePromptDetails,
+} from "./helpers";
 import type { ToolCallContext } from "./types";
 
 /**
@@ -66,21 +70,12 @@ export function describePathGate(
     input: { path: filePath },
     payload,
     sessionApproval: SessionApproval.single(surface, pattern),
-    promptDetails: {
-      source: "tool_call",
-      agentName: tcc.agentName,
-      toolCallId: tcc.toolCallId,
-      toolName: tcc.toolName,
-      path: filePath,
-      accessIntent: accessFactsFromPath(surface, accessPath),
-    },
-    logContext: {
-      source: "tool_call",
-      toolCallId: tcc.toolCallId,
-      toolName: tcc.toolName,
-      agentName: tcc.agentName,
-      path: filePath,
-    },
+    promptDetails: buildPathGatePromptDetails(
+      tcc,
+      filePath,
+      accessFactsFromPath(surface, accessPath),
+    ),
+    logContext: buildPathGateLogContext(tcc, filePath),
     decision: {
       surface,
       value: filePath,

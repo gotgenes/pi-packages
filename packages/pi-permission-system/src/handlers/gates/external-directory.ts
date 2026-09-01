@@ -7,7 +7,11 @@ import { SessionApproval } from "#src/session-approval";
 import type { ToolAccessExtractorLookup } from "#src/tool-access-extractor-registry";
 import type { GateResult } from "./descriptor";
 import { resolveExternalDirectoryPolicy } from "./external-directory-policy";
-import { accessFactsFromPath } from "./helpers";
+import {
+  accessFactsFromPath,
+  buildPathGateLogContext,
+  buildPathGatePromptDetails,
+} from "./helpers";
 import type { ToolCallContext } from "./types";
 
 /**
@@ -49,13 +53,7 @@ export function describeExternalDirectoryGate(
       decidedBy: { kind: "infrastructure_read" },
       log: {
         event: "permission_request.infrastructure_auto_allowed",
-        details: {
-          source: "tool_call",
-          toolCallId: tcc.toolCallId,
-          toolName: tcc.toolName,
-          agentName: tcc.agentName,
-          path: externalDirectoryPath,
-        },
+        details: buildPathGateLogContext(tcc, externalDirectoryPath),
       },
       decision: {
         surface: tcc.toolName,
@@ -101,21 +99,12 @@ export function describeExternalDirectoryGate(
     preCheck,
     payload,
     sessionApproval: SessionApproval.single(surface, pattern),
-    promptDetails: {
-      source: "tool_call",
-      agentName: tcc.agentName,
-      toolCallId: tcc.toolCallId,
-      toolName: tcc.toolName,
-      path: externalDirectoryPath,
-      accessIntent: accessFactsFromPath(surface, accessPath),
-    },
-    logContext: {
-      source: "tool_call",
-      toolCallId: tcc.toolCallId,
-      toolName: tcc.toolName,
-      agentName: tcc.agentName,
-      path: externalDirectoryPath,
-    },
+    promptDetails: buildPathGatePromptDetails(
+      tcc,
+      externalDirectoryPath,
+      accessFactsFromPath(surface, accessPath),
+    ),
+    logContext: buildPathGateLogContext(tcc, externalDirectoryPath),
     decision: {
       surface,
       value: externalDirectoryPath,
