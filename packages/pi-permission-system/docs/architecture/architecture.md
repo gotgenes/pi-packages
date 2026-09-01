@@ -1021,6 +1021,10 @@ No decline, so the regular improvement rotation continues.
   It stays the strongest non-code candidate for Phase 15, and PRs [#675], [#692], and [#638] remain blocked on it.
 - [#609] — deferred to Phase 15 as staging slice 4; it is a consequence of this phase's axis rather than its motivation (ADR 0013 §1), and it carries the phase's only breaking change, which does not belong in the same release as the axis that must be non-breaking by construction.
 - [#840] — filed by Step 4's planning; adopted as Step 14 by operator decision.
+- [#861] — filed by Step 8's planning; deferred to a later phase with recorded rationale.
+  A locally-adjudicating child skips a configured chain link whose provider did not load there, which shares Steps 7 and 8's cause (a node's machinery is whatever happened to load in it) but not their remedy: Step 8's amendment is scoped so it cannot reach the authority registries, and inheriting a link would run authority the operator's own exclusion removed.
+  Deferred rather than adopted because its hard half is a design question — whether the fail-safe skip is the correct resolution of two contradictory operator instructions — and that is the same deliberation budget [#799] was deferred for.
+  Nothing decays by waiting: the skip is fail-to-human, so a human still decides every affected ask, where Steps 7 and 8 leave a call gated by nobody.
   Step 4 settled that an `ERROR` node is emitted whole and never descended, which makes the unparsed blob a first-class unit and leaves ADR 0013 §10's fail-closed clause the one part of that section still unwritten.
   It stands beside Step 4 rather than inside it because the floor lives in the verdict fold (`bash-command.ts`) rather than the enumerator, and because Step 4 is otherwise a zero-prompt hardening change while this one newly prompts.
 - [#839] — filed by Step 4's planning; deferred to Phase 15 beside [#609].
@@ -1563,4 +1567,5 @@ Each phase's findings, numbered plan, dependency diagram, and health metrics are
 [#839]: https://github.com/gotgenes/pi-packages/issues/839
 [#840]: https://github.com/gotgenes/pi-packages/issues/840
 [#844]: https://github.com/gotgenes/pi-packages/issues/844
+[#861]: https://github.com/gotgenes/pi-packages/issues/861
 [ADR-0002]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-subagents/docs/decisions/0002-extensions-on-a-minimal-core.md
