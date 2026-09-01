@@ -52,6 +52,73 @@ Committed `docs/plans/0465-ask-back-child-questions.md` (8 TDD steps), filed [#8
   Rejected as boy-scout cleanup: the duplication predates this change and is not friction the change introduces.
 - `test/lifecycle/subagent-state.test.ts` and `test/lifecycle/subagent.test.ts` — the assessor considered nesting the flat `describe("SubagentState — X")` siblings into a unit→scenario tree before adding claim tests, and declined: the flat feature-prefix pattern is this file's established convention across 18 top-level describes, and a new claim sibling fits it exactly.
 
+## Stage: Implementation — TDD (2026-09-01T04:57:37Z)
+
+### Session summary
+
+Executed all 8 TDD steps from the plan, plus two review-remediation commits — 11 commits total.
+The suite went from 72 files / 1362 tests to 74 files / 1438 tests (+76).
+Three pre-completion review rounds: WARN (5 findings), WARN (2 findings), then PASS.
+
+### Observations
+
+#### Deviations from the plan
+
+- **The plan contradicted itself on `resetForResume` and the carrier claim, and step 3 exposed it.**
+  Step 2 said `resetForResume` clears the claim; step 3 said `AgentTool` claims before `manager.resume(...)`.
+  Both cannot hold, because `runResume` calls `resetForResume` synchronously before `resume()` returns, so the claim is wiped the instant it is set.
+  Resolved with the operator by making the claim caller-scoped: `consumedAt` is run-scoped and records a delivery that already happened, so a resume must clear it, while a claim records one that has not happened yet.
+  The step-2 commit was amended rather than corrected in a later commit.
+  The gate was decided on two concrete scenarios rather than principle — an interrupted mid-resume turn (which the alternative loses) and a future non-delivering resume caller (fails safe versus fails silent).
+- **No release in `runForeground`**, against the plan's claim/release table.
+  `run()` swallows its error and resolves, so `spawnAndWait` always returns and `markConsumed()` is always reached — there is no abandonment window to detect, unlike `waitUntilSettled`, which genuinely races a signal.
+  The plan's Design Overview row was corrected in the remediation commit.
+- **`pendingQuestion` was added to `SubagentStateInit` after all**, though the claim deliberately was not.
+  The distinction that emerged: outcome facts (like `result`) are seedable; transient runtime ownership is not.
+- `test/composition-root.test.ts` was listed as a touch point but needed no change; `test/helpers/make-subagent.ts` was changed but not listed.
+  The reviewer confirmed neither is a real gap.
+
+#### Mutation testing found three plan predictions wrong
+
+Each is a case where the plan's predicted red count did not match reality, and the mismatch was informative rather than a defect:
+
+- Step 2's `release()` no-op mutation was predicted to kill the `resetForResume` test too.
+  It did not — `resetForResume` clears the field directly rather than routing through `release()`, so they are two equivalence classes needing two mutations.
+- Step 4's claim-gate mutation was predicted to leave the non-interrupted foreground test green on the surviving race.
+  It killed both nudge tests, because `spawnFg` calls `spawnAndWait` directly and bypasses `runForeground`'s `markConsumed()`, so neither test has consumption to fall back on.
+- Step 8's prompt mutation was predicted to kill the `replace`-mode test while `append` stayed green.
+  It killed both — which is the evidence that step 1's Tidy-First extraction worked: there is no longer a per-branch site that can drift.
+
+One scripted mutation silently matched nothing and the suite read green; the `assert` in the mutation script caught it.
+Without that guard it would have read exactly like a mutation that killed nothing.
+
+#### The parser was the riskiest surface
+
+Writing the round-trip test ("the protocol block must not parse as a question") caught a real self-inflicted defect before it shipped: the protocol's prose interpolated the bare opening tag outside the fence, where it paired with the fenced closing tag.
+The fix — name the marker without angle brackets in prose — is now documented at the declaration.
+
+The reviewer then found the same failure mode in a class the plan's input domain missed: an inline code span.
+Fixing it exposed a second defect the reviewer had not named — quoting was applied *after* building the block list, so a quoted opening tag had already consumed the closing tag of a genuine question that followed.
+
+#### Review rounds
+
+- **Round 1 — WARN, 5 findings.**
+  One stale source comment, one missing README feature bullet, one unreworded tool guideline the plan's own Background cited as evidence of the problem, one stale plan row, and the inline-code-span parser gap.
+- **Round 2 — WARN, 2 findings.**
+  A documented per-line limitation, and a measured O(n²) in `nextUnquoted`: 50k inline-quoted mentions parsed in 1.25 s because each skipped candidate searched every quoted range.
+  The operator chose to fix it in this issue.
+  Sorting once and advancing a cursor made the same input parse in 26 ms.
+- **Round 3 — PASS.**
+  The reviewer differential-tested the cursor implementation against a naive reimplementation over 3009 generated inputs with zero mismatches, and verified the monotonic-query and disjoint-range assumptions the cursor rests on.
+
+The adversarial re-derivation mandate earned its keep in every round.
+Asking the reviewer to enumerate its own inputs rather than check mine is what surfaced both parser findings and the quadratic behavior.
+
+### Pre-completion reviewer
+
+PASS (round 3, `c902c9aa`).
+No outstanding warnings; the two round-2 findings were fixed rather than deferred, and the one remaining documented limitation — a single-backtick span crossing a line break is not treated as quoting — is deliberate and stated in the code.
+
 [#798]: https://github.com/gotgenes/pi-packages/issues/798
 [#857]: https://github.com/gotgenes/pi-packages/issues/857
 [#858]: https://github.com/gotgenes/pi-packages/issues/858
