@@ -198,6 +198,27 @@ describe("describePathGate", () => {
     });
   });
 
+  it("logContext carries the request facts and no prompt wording", () => {
+    const resolver = makeResolver(
+      makeCheckResult({ state: "ask", matchedPattern: "*.env" }),
+    );
+    const result = describePathGate(
+      makeTcc({ agentName: "agent-1", toolCallId: "tc-5" }),
+      resolver,
+      normalizer,
+    ) as GateDescriptor;
+    // Full-shape rather than a subset: the request facts and the request id are
+    // stamped by the runner, so these five fields are the whole of the gate's
+    // own contribution.
+    expect(result.logContext).toEqual({
+      source: "tool_call",
+      toolCallId: "tc-5",
+      toolName: "read",
+      agentName: "agent-1",
+      path: ".env",
+    });
+  });
+
   it("emits a path payload naming the matched rule", () => {
     const resolver = makeResolver(
       makeCheckResult({ state: "ask", matchedPattern: "*.env" }),
