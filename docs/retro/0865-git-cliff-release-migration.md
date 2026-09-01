@@ -74,4 +74,73 @@ Produced `docs/plans/0865-git-cliff-release-migration.md`: eight build steps cov
 
 `/build-plan` — there is no vitest surface anywhere in this change, and every step carries explicit verification commands rather than a red→green cycle.
 
+## Stage: Implementation — Build (2026-09-01T18:26:16Z)
+
+### Session summary
+
+Executed all eight planned steps, plus three unplanned fix commits, for twelve commits total.
+Release automation now runs on git-cliff from a `workflow_dispatch` workflow: `cliff.toml` plus six scripts under `scripts/release/`, with `release-please-config.json`, `.release-please-manifest.json`, both baseline scripts, the `release-please` and `publish` jobs in `ci.yml`, and `pi-github-tools`' three release tools all removed.
+Pre-completion reviewer: **FAIL** on round 1 (one blocking defect), **WARN** on round 2; both findings were real and both are fixed.
+
+### Observations
+
+- **The plan's step 4 was wrong, and its own verification criterion caught it.**
+  The plan said to regenerate all nine `CHANGELOG.md` files, and I had sold that to the operator as a reformat.
+  The step's heading-vs-tag check showed it deletes 101 of 220 entries for `pi-permission-system`.
+  Two causes, neither fixable by configuration: 153 entries predate this repository (the packages were consolidated from separate repos and only the changelog *text* came across, as `MIGRATION.md` records), and ~45 tagged releases were cut entirely from `docs:` commits under paths added to `exclude-paths` later.
+  Stopping to re-ask was correct; the operator chose the seam.
+  The general lesson is that the cost I quoted at the gate was an inference, and the gate's decision rested on it.
+
+- **The reviewer's blocking finding was a fact I had already read and then contradicted.**
+  I printed `release-please-config.json`'s `changelog-sections` during planning, where `chore` is plainly `hidden=false`, then wrote "the visible five … the hidden six" into `cliff.toml` and repeated it in three more places.
+  A package whose only unreleased commits were `chore:` would have been unreleasable forever.
+  `verify-cliff-parity.sh` could not catch it, because it compares current tip versions and no package has a chore-only interval pending.
+  This is the same failure mode `AGENTS.md` records for #816 — citing a source for a property without re-checking that it has it.
+
+- **Round 2's WARN corrected my explanation, not my code.**
+  I justified the `chore(release)` skip as defence against a coincidence, claiming path scoping already handled it.
+  The reviewer showed the skip is load-bearing for a case I had not considered: `create-github-releases.sh` runs `git-cliff --latest` *after* the commit and tag exist, so without the rule a release's own GitHub notes list `* **release:** <pkg> <version>`.
+  Verified by rendering both ways before rewriting the comment.
+  Worth remembering that a correct change with a wrong rationale still ships a wrong rationale.
+
+- **The zsh word-splitting trap in `AGENTS.md` cost a real defect.**
+  `CLIFF_EXCLUDED_DOC_DIRS` was a space-separated string expanded unquoted; bash splits it, zsh does not.
+  The executed scripts were fine under their bash shebang, so `verify-cliff-parity.sh` stayed green; it surfaced only when I regenerated changelogs by sourcing `lib.sh` inline from the Bash tool, which is zsh here, and `docs/retro` commits leaked in.
+  An array fixes it under both shells.
+
+- **Two facts were only discoverable by running the tool.**
+  `link_parsers` belongs to `[git]`, not `[changelog]`; git-cliff silently ignores the misplaced key, so `closes [#N]` links just never appeared.
+  And `--prepend` inserts at byte 0, above the file's own `# Changelog` header, which is what made the splice a hand-written function rather than a flag.
+
+- **Backticks in a `git commit -m` double-quoted string ran as command substitution**, silently eating three spans from the step 3 message.
+  `AGENTS.md` records this for `gh issue comment` bodies; it applies to commit messages just as much.
+  Every later commit used `--file=-` with a quoted heredoc.
+
+- **A planned killing mutation turned out to be invalid.**
+  The plan said deleting `detectRepo`'s call to `git()` should make `fallow dead-code` report `git()`.
+  It does not: `github.test.ts` imports `git()`, so it is not dead.
+  Probed the gate with a genuinely unreferenced export instead, which it reported immediately.
+  A mutation is only a check if you run it.
+
+- **The migration's own first release exercises the new pipeline.**
+  `next-version.sh` reports `pi-github-tools-v5.0.0` — the breaking removal correctly majoring from 4.4.0 on real history.
+
+#### Operator action required before shipping
+
+npm Trusted Publishing is configured against `ci.yml`, and the publish step now lives in `release.yml`.
+The publisher must be repointed on npmjs.org for all nine packages, or the first dispatched release 403s.
+This cannot be done from the repository.
+
+#### Deviations from the plan
+
+1. **Step 4 replaced**: splice each release below the header instead of regenerating, with an HTML era marker (operator-approved after the measurement above).
+2. **`prepare-release.sh` gained a `sha` output**, and `publish`/`github-release` check out that commit rather than `main` — a push landing between jobs would otherwise move `main` past the release commit and `git tag --points-at HEAD` would find nothing.
+3. **Three unplanned fix commits**: the zsh array fix, the `chore` mapping fix, and the `chore(release)` rationale correction.
+4. **Extra files touched**, all found by grep rather than named in the plan: `.github/workflows/label-issues.yml`, `.pi/prompts/triage-backlog.md` (its fork-approval audit named the retired `release-please` job as the secret-bearing one), and `scripts/label-issues.sh`.
+
+### Next stage
+
+`/ship-issue 865` — but restart Pi first.
+This session removed the very tools `/ship-issue` calls and rewrote the prompt itself, so a same-process invocation would run the pre-edit template against tools that no longer exist.
+
 [#468]: https://github.com/gotgenes/pi-packages/issues/468
