@@ -128,5 +128,80 @@ This single session covers planning, TDD implementation, and this sync stage.
 
 Nothing further to add beyond the TDD stage's own findings (the reviewer's two WARN findings, both fixed) and the pending follow-up issue [#861], already filed and dispositioned against Phase 14.
 
+## Stage: Final Retrospective (2026-09-01T20:00:51Z)
+
+### Session summary
+
+Landed the peer branch on `main` by fast-forward, verified CI, closed the issue, released `pi-permission-system-v29.2.0`, and tore down the worktree.
+The ship stage ran end to end with no retries, no corrections, and no operator intervention — the plan's `**Release:** ship independently` marker meant the release-coordination gate resolved without asking.
+This entry synthesizes all four stages: planning and TDD (peer session, opus-5), sync (peer session, sonnet-5), and ship (root, sonnet-5).
+
+### Observations
+
+#### What went well
+
+The two mechanisms this issue's own history stress-tested — a self-retracted architectural over-generalization in planning, and a reviewer finding disproved in TDD — both resolved *before* anything shipped, and both left a durable artifact.
+The planning retraction produced a guard test (`fact-shaping inheritance stops at live authority`) against exactly the move the discarded principle would have licensed.
+The TDD rebuttal produced a test pinning the reachable invariant in place of the unreachable one the reviewer asked for.
+Neither is a friction point; both are the review loop working as designed.
+
+Mutation verification followed the backup-then-restore discipline `AGENTS.md` prescribes (Refs #742): `cp` the working state aside, mutate, run, `cp` back — never `git checkout` against an uncommitted step.
+It was then run a **second** time after the assertion was strengthened from an optional-access shape to a full-shape `toEqual`, confirming the rewritten test was still non-vacuous rather than assuming the earlier mutation result carried over.
+Re-running the mutation after changing the assertion is the step that is easy to skip and would have hidden a vacuous pin.
+
+One guard was verified by **timeout** rather than by a red assertion: removing the cycle-detection `visited` insert hangs the run (exit 124 under `timeout 25`) while the immediate-parent test still passes.
+A guard whose failure mode is non-termination cannot be pinned by a green/red assertion alone, and noticing that is worth carrying forward.
+
+The release-coordination-first ordering in `/ship-worktree` paid off exactly as its rationale claims: the marker was read from the peer branch via `git show` before the ff-merge, so no irreversible work preceded the decision.
+
+#### What caused friction (agent side)
+
+- `other` — the ship session's scan for co-shipped issues grepped `%s%n%b` for any `#[0-9]+`, which surfaced `#573` from a retro note's `Refs #573` body line.
+  The prompt's own criterion is narrower (a subject-trailing `(#M)`, or a sibling retro file added in range), so the broad grep manufactured a candidate the prompt never meant to include.
+  Impact: two extra tool calls to establish it was a citation, not a shipped issue; no rework.
+- `other` — a malformed `git log … | xargs -I{} echo {}` in the same investigation aborted with `xargs: unterminated quote`.
+  The pipeline was redundant to begin with — it re-printed output `git log` had already produced — and the useful half of the chained command still ran.
+  Impact: none beyond noise in the transcript.
+- `missing-context` (planning-stage, surfaced in TDD) — the plan's Risks table sized the extractor-lookup reshape at "two test fakes, both in `tool-input-path.test.ts`" from a grep for the *interface name*.
+  The real blast radius was five files: inline `{ get: … }` object literals in `tool-call-gate-pipeline.test.ts` and `external-directory.test.ts`, plus direct `registry.get(…)` calls on the concrete class in `service.test.ts` and `tool-access-extractor-registry.test.ts`.
+  A structural implementer of an interface names the interface nowhere; only the type checker sees it.
+  Impact: three unplanned files touched during TDD; no rework, since `tsc` enumerated them immediately.
+
+#### What caused friction (user side)
+
+Nothing to record.
+The operator's two planning-stage pushbacks ("why in-process only" and "no sacred cows") were the highest-leverage interventions across the whole issue, and both arrived as redirecting questions rather than corrections — the pattern this section exists to encourage.
+The ship and sync stages needed no involvement at all, which is the correct amount for mechanical stages.
+
+#### Resolved without change
+
+- The peer session flagged that the `pre-completion-reviewer` was **not** re-dispatched after its final two commits, noting a strict reading of the protocol might require it.
+  The `AGENTS.md` rule is scoped to "a rewrite of an artifact a prior review rejected" (Refs #639); a one-cell revert *restoring* what the review asked for and a test over a path the review had already traced meet neither clause.
+  The judgment was correct as recorded, and the rule needs no adjustment.
+- The Phase 14 `Baseline` column edit was a plain violation of a rule stated plainly in the package skill (Refs #573), caught by the reviewer and reverted.
+  The rule exists, is unambiguous, and the gate that was supposed to catch it did.
+  Making it more prominent would be treating a caught error as an uncaught one.
+
+### Diagnostic details
+
+- **Model-performance correlation** — judgment-heavy stages ran on `anthropic/claude-opus-5` (planning, TDD implementation) and mechanical stages on `anthropic/claude-sonnet-5` (sync, ship); the split matches the work.
+  All three dispatched subagents ran on `anthropic/claude-sonnet-5`: an `Explore` agent answering the `ui.notify` question during planning (decisive — it removed an entire mechanism from the option set), the `tidy-first-assessor`, and the `pre-completion-reviewer`.
+  The one mismatch worth flagging is the reviewer: its WARN #2 asserted a coverage gap without establishing the combination was reachable, and disproving it took an opus-5 rebuttal of roughly eight tool calls plus a discarded test.
+  That is a reasoning-heavy verification task on the package's most safety-critical surface, running on the weaker model.
+- **Feedback-loop gap analysis** — no gap.
+  `check`, `lint`, `test`, and `fallow dead-code` ran after every TDD cycle and again after each of the two follow-up commits; the sync stage re-ran `check` after the rebase because `main` had advanced.
+  The `fallow dead-code` gate caught `currentSessionId` reading as an unused class member and was resolved by *declaring* the `NodeIdentity` contract rather than suppressing the finding — the gate produced a design improvement rather than a silencer.
+- **Escalation-delay tracking** — no rabbit holes.
+  The longest single-thread sequence (about eight calls) was the reviewer-finding rebuttal, which was warranted investigative work with a committed artifact at the end, not repeated attempts at one failing approach.
+
+### Changes made
+
+1. `.pi/agents/pre-completion-reviewer.md` — added a reachability requirement to the Step 2 preamble: a missing-coverage finding must establish that the combination is reachable and cite the code path.
+   Driven by WARN #2, which flagged a structurally unreachable branch and cost a rebuttal plus a discarded test.
+2. `.pi/prompts/ship-worktree.md` — narrowed the co-shipped-issue criterion to a subject-trailing `(#M)` or a sibling `docs/retro/` file added in range, stating that a body-line `Refs #M` is a citation rather than a ship.
+3. `.pi/prompts/ship-issue.md` — same narrowing applied to the parallel line, keeping the two ship prompts worded consistently.
+
+Proposal C — an `AGENTS.md` rule against sizing an interface reshape by grepping the interface name — was presented and declined; the hazard is recorded in the friction list above.
+
 [#792]: https://github.com/gotgenes/pi-packages/issues/792
 [#861]: https://github.com/gotgenes/pi-packages/issues/861

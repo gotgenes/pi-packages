@@ -129,7 +129,8 @@ The multi-SHA credit list here is where hand-extended short hashes slip in (Refs
 A shipped issue can also supersede open third-party PRs without either being the close target — this repo reimplements rather than merges.
 Close each PR the plan names with `gh pr comment` then `gh pr close`, never merge, crediting the author by `@login` (Refs #670, #690).
 
-Then check whether this push shipped work for **other** issues (a stacked refactor/enabler, other `(#M)` commit refs, or sibling `docs/plans/`/`docs/retro/` files in the `"$PLAN"^..HEAD` range).
+Then check whether this push shipped work for **other** issues in the `"$PLAN"^..HEAD` range.
+A co-shipped issue shows as a stacked refactor/enabler, a subject-trailing `(#M)` commit ref, or a sibling `docs/plans/`/`docs/retro/` file added in range — a body-line `Refs #M` is a citation, not a ship (Refs #793).
 A mid-batch sibling that shipped on its own `/ship-issue` is already closed by that ship — this scan is for stacked work that never had a ship of its own.
 Close each with its own short summary — `refactor:` commits are omitted from the changelog, so a stacked refactor issue leaves no reminder.
 

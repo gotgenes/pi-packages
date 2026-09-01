@@ -90,7 +90,8 @@ From that range:
 - A note flagging any breaking change (`feat!:`).
 
 Then call `issue_close` with issue number `$1` and that summary.
-Also close any **other** issues this push shipped (stacked refactors, other `(#M)` refs, sibling `docs/retro/` files in range) with their own short summaries.
+Also close any **other** issues this push shipped, with their own short summaries.
+A co-shipped issue shows as a subject-trailing `(#M)` or a sibling `docs/retro/` file added in range — a body-line `Refs #M` is a citation, not a ship (Refs #793).
 
 ## 6. Release (decoupled and serialized)
 

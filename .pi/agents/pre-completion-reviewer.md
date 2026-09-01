@@ -63,6 +63,9 @@ Do not run Step 2 until all four pass.
 Work through these sections in order.
 Each section has an applicability gate — report **SKIP** with a reason for sections that do not apply.
 
+Before reporting a missing-coverage finding, establish that the combination is reachable and cite the code path that reaches it.
+An unreachable gap costs the implementing agent a rebuttal and a discarded test (Refs #793).
+
 ### 2a. Acceptance criteria
 
 **Applicability:** the issue body (fetched via `gh issue view <N>`) contains an "Acceptance Criteria" section.
