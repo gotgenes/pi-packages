@@ -33,6 +33,8 @@ export interface TestSubagentOptions {
 	/** Passive lifecycle state shorthands. */
 	status?: SubagentStatus;
 	result?: string;
+	/** Seed the question the agent ended its turn with. */
+	pendingQuestion?: string;
 	error?: string;
 	/** Seed the never-started marker (the agent was stopped before it was admitted). */
 	stoppedWhileQueued?: boolean;

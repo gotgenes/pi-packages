@@ -156,6 +156,27 @@ describe("AgentTool — resume path", () => {
 		expect(result.content[0].text).toContain("Resumed output.");
 	});
 
+	it("surfaces a follow-up question from a resumed child as answerable", async () => {
+		const deps = createToolDeps();
+		const resumeRecord = createTestSubagent();
+		resumeRecord.subagentSession = toSubagentSession(createSubagentSessionStub(createMockSession()));
+		deps.manager.getRecord = vi.fn().mockReturnValue(resumeRecord);
+		deps.manager.resume = vi.fn().mockResolvedValue(
+			createTestSubagent({ id: "agent-9", result: "Thanks.", pendingQuestion: "And the fallback?" }),
+		);
+
+		const result = await execute(deps, {
+			prompt: "continue",
+			description: "resume",
+			subagent_type: "general-purpose",
+			resume: "agent-1",
+		});
+
+		expect(result.content[0].text).toContain("This agent is waiting on an answer:");
+		expect(result.content[0].text).toContain("And the fallback?");
+		expect(result.content[0].text).toContain('resume: "agent-9"');
+	});
+
 	it("names an abort on the resume return, which previously reported nothing", async () => {
 		const deps = createToolDeps();
 		const resumeRecord = createTestSubagent();

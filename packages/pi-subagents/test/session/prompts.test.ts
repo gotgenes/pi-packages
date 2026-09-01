@@ -260,6 +260,66 @@ describe("buildAgentPrompt", () => {
   // Patch 3 (RepOne #443): inject <active_agent name="..."/> tag so downstream
   // extensions (e.g. @gotgenes/pi-permission-system) can resolve per-agent
   // policy by parsing the child's system prompt.
+  describe("ask-back protocol injection", () => {
+    it("teaches the marker in replace mode, which never sees the sub_agent_context bridge", () => {
+      const config: AgentConfig = {
+        name: "Explore",
+        description: "Explore",
+        toolNames: [],
+        systemPrompt: "You are an explorer.",
+        promptMode: "replace",
+        inheritContext: false,
+        runInBackground: false,
+      };
+
+      const prompt = buildAgentPrompt(config, "/workspace", env);
+
+      expect(prompt).toContain("<ask_back>");
+      expect(prompt).toContain("<question-for-parent>");
+    });
+
+    it("teaches the marker in append mode", () => {
+      const config: AgentConfig = {
+        name: "general-purpose",
+        description: "General",
+        toolNames: [],
+        systemPrompt: "",
+        promptMode: "append",
+        inheritContext: false,
+        runInBackground: false,
+      };
+
+      const prompt = buildAgentPrompt(config, "/workspace", env);
+
+      expect(prompt).toContain("<ask_back>");
+      expect(prompt).toContain("<question-for-parent>");
+    });
+
+    it("places the protocol after the cacheable identity prefix", () => {
+      const config: AgentConfig = {
+        name: "Explore",
+        description: "Explore",
+        toolNames: [],
+        systemPrompt: "You are an explorer.",
+        promptMode: "replace",
+        inheritContext: false,
+        runInBackground: false,
+      };
+
+      const prompt = buildAgentPrompt(config, "/workspace", env, {
+        systemPrompt: "Parent identity prefix.",
+        cwd: PARENT_CWD,
+      });
+
+      // The inherited identity must stay a byte-identical prefix of the parent
+      // prompt for KV cache reuse, so nothing may precede it.
+      expect(prompt.startsWith("Parent identity prefix.")).toBe(true);
+      expect(prompt.indexOf("<ask_back>")).toBeGreaterThan(
+        prompt.indexOf("Parent identity prefix."),
+      );
+    });
+  });
+
   describe("active_agent tag injection", () => {
     it("includes <active_agent name=...> tag in replace mode after identity prefix", () => {
       const config: AgentConfig = {

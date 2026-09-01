@@ -31,6 +31,27 @@ describe("runForeground", () => {
 		expect(result.content[0].text).toContain("All done.");
 	});
 
+	it("surfaces a declared question as answerable, naming the resume call", async () => {
+		const { manager } = createToolDeps();
+		manager.spawnAndWait = vi
+			.fn()
+			.mockResolvedValue(
+				createTestSubagent({ id: "agent-5", result: "Mapped them.", pendingQuestion: "Which config?" }),
+			);
+
+		const result = await runForeground(manager, makeParams(), undefined, undefined);
+
+		expect(result.content[0].text).toContain("This agent is waiting on an answer:");
+		expect(result.content[0].text).toContain("Which config?");
+		expect(result.content[0].text).toContain('resume: "agent-5"');
+	});
+
+	it("adds no affordance when the agent asked nothing", async () => {
+		const { manager } = createToolDeps();
+		const result = await runForeground(manager, makeParams(), undefined, undefined);
+		expect(result.content[0].text).not.toContain("waiting on an answer");
+	});
+
 	it("marks the returned record consumed (foreground-return delivery edge)", async () => {
 		const record = createTestSubagent();
 		const deps = createToolDeps({

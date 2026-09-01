@@ -919,6 +919,105 @@ function createResumableAgent(overrides?: {
 	return { agent, session, stub };
 }
 
+describe("Subagent — ask-back", () => {
+	it("records a declared question and strips it from the stored result", async () => {
+		const stub = createSubagentSessionStub();
+		stub.runTurnLoop.mockResolvedValue({
+			responseText:
+				"I mapped the configs.\n\n<question-for-parent>\nWhich one is authoritative?\n</question-for-parent>",
+			aborted: false,
+			steered: false,
+		});
+		const agent = makeSubagent({
+			execution: makeStubExecution({
+				createSubagentSession: async () => toSubagentSession(stub),
+			}),
+		});
+
+		await agent.run();
+
+		expect(agent.pendingQuestion).toBe("Which one is authoritative?");
+		// Rendered once, as the affordance — not twice.
+		expect(agent.result).toBe("I mapped the configs.");
+	});
+
+	it("leaves pendingQuestion undefined when the child asked nothing", async () => {
+		const stub = createSubagentSessionStub();
+		stub.runTurnLoop.mockResolvedValue({
+			responseText: "All done.",
+			aborted: false,
+			steered: false,
+		});
+		const agent = makeSubagent({
+			execution: makeStubExecution({
+				createSubagentSession: async () => toSubagentSession(stub),
+			}),
+		});
+
+		await agent.run();
+
+		expect(agent.pendingQuestion).toBeUndefined();
+		expect(agent.result).toBe("All done.");
+	});
+
+	it("records a question an aborted run declared before it ran out of turns", async () => {
+		const stub = createSubagentSessionStub();
+		stub.runTurnLoop.mockResolvedValue({
+			responseText: "<question-for-parent>\nStill stuck on which?\n</question-for-parent>",
+			aborted: true,
+			steered: false,
+		});
+		const agent = makeSubagent({
+			execution: makeStubExecution({
+				createSubagentSession: async () => toSubagentSession(stub),
+			}),
+		});
+
+		await agent.run();
+
+		expect(agent.status).toBe("aborted");
+		expect(agent.pendingQuestion).toBe("Still stuck on which?");
+	});
+
+	it("completes the round trip: ask, answer by resuming, continue", async () => {
+		const stub = createSubagentSessionStub();
+		stub.runTurnLoop.mockResolvedValue({
+			responseText: "<question-for-parent>\nWhich config?\n</question-for-parent>",
+			aborted: false,
+			steered: false,
+		});
+		stub.resumeTurnLoop.mockResolvedValue("Used the project config. Done.");
+		const agent = makeSubagent({
+			execution: makeStubExecution({
+				createSubagentSession: async () => toSubagentSession(stub),
+			}),
+		});
+
+		await agent.run();
+		expect(agent.pendingQuestion).toBe("Which config?");
+
+		await agent.resume("The project one.");
+
+		expect(stub.resumeTurnLoop).toHaveBeenCalledWith("The project one.", undefined);
+		expect(agent.status).toBe("completed");
+		expect(agent.result).toBe("Used the project config. Done.");
+		// The question was answered, so it no longer stands.
+		expect(agent.pendingQuestion).toBeUndefined();
+	});
+
+	it("records a follow-up question a resumed run declares", async () => {
+		const { agent, stub } = createResumableAgent();
+		stub.resumeTurnLoop.mockResolvedValue(
+			"Thanks.\n<question-for-parent>\nAnd the fallback?\n</question-for-parent>",
+		);
+
+		await agent.resume("The project one.");
+
+		expect(agent.pendingQuestion).toBe("And the fallback?");
+		expect(agent.result).toBe("Thanks.");
+	});
+});
+
 describe("Subagent.resume() — happy path", () => {
 	it("transitions to completed and sets result from the resume response", async () => {
 		const { agent } = createResumableAgent();

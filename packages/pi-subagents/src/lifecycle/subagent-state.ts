@@ -53,6 +53,8 @@ export function isRunningStatus(status: SubagentStatus): boolean {
 export interface SubagentStateInit {
 	status?: SubagentStatus;
 	result?: string;
+	/** The question the agent ended its turn with — an outcome fact, like result. */
+	pendingQuestion?: string;
 	error?: string;
 	/** Whether the agent was stopped before the limiter ever admitted it. */
 	stoppedWhileQueued?: boolean;
@@ -109,6 +111,11 @@ export class SubagentState {
 	private _claimed = false;
 	get claimed(): boolean { return this._claimed; }
 
+	// The question this agent ended its turn with, if it declared one. Part of the
+	// outcome like _result, and set alongside it at the terminal transition.
+	private _pendingQuestion?: string;
+	get pendingQuestion(): string | undefined { return this._pendingQuestion; }
+
 	// Stats — accumulated via mutation methods, readable via getters
 	private _toolUses: number;
 	get toolUses(): number { return this._toolUses; }
@@ -134,6 +141,7 @@ export class SubagentState {
 	constructor(init: SubagentStateInit = {}) {
 		this._status = init.status ?? "queued";
 		this._result = init.result;
+		this._pendingQuestion = init.pendingQuestion;
 		this._error = init.error;
 		this._stoppedWhileQueued = init.stoppedWhileQueued ?? false;
 		this._startedAt = init.startedAt ?? Date.now();
@@ -279,6 +287,11 @@ export class SubagentState {
 		this._consumedAt ??= at ?? Date.now();
 	}
 
+	/** Record the question the agent ended its turn with. */
+	setPendingQuestion(question: string | undefined): void {
+		this._pendingQuestion = question;
+	}
+
 	/**
 	 * A carrier has committed to delivering this outcome, so nothing else should
 	 * announce it. Unlike every other transition here, this one is revocable.
@@ -324,5 +337,8 @@ export class SubagentState {
 		this._result = undefined;
 		this._error = undefined;
 		this._consumedAt = undefined;
+		// A resumed run answers the old question; whether it asks a new one is
+		// decided when it terminates.
+		this._pendingQuestion = undefined;
 	}
 }

@@ -52,6 +52,8 @@ export interface SubagentRecord {
   /** Scheduling and announcement mode, resolved once at the manager choke point. */
   isBackground: boolean;
   result?: string;
+  /** The question the agent ended its turn with, when it declared one. */
+  pendingQuestion?: string;
   error?: string;
   toolUses: number;
   /** Turns consumed so far; starts at 1. */

@@ -3,6 +3,7 @@ import type { SubagentStatus } from "#src/lifecycle/subagent-state";
 import {
 	type OutcomeBody,
 	renderOutcomeBody,
+	renderQuestionAffordance,
 	renderStatusLabel,
 	renderStatusNote,
 } from "#src/observation/outcome-delivery";
@@ -61,6 +62,27 @@ describe("status vocabulary", () => {
 
 	it("adds no note for an error, whose body already carries the message", () => {
 		expect(renderStatusNote("error")).toBe("");
+	});
+});
+
+describe("renderQuestionAffordance", () => {
+	it("names the exact resume call that answers the question", () => {
+		expect(renderQuestionAffordance("b15f500f-314b-49b", "Which config?")).toBe(
+			"\n\nThis agent is waiting on an answer:\n\n  Which config?\n\n" +
+				'Answer by calling subagent with resume: "b15f500f-314b-49b" and your answer as the prompt.',
+		);
+	});
+
+	it("renders nothing when the child asked nothing", () => {
+		expect(renderQuestionAffordance("agent-1", undefined)).toBe("");
+	});
+
+	it("renders nothing for an empty question", () => {
+		expect(renderQuestionAffordance("agent-1", "")).toBe("");
+	});
+
+	it("indents every line of a multi-line question", () => {
+		expect(renderQuestionAffordance("agent-1", "A or B?\nOr C?")).toContain("  A or B?\n  Or C?");
 	});
 });
 

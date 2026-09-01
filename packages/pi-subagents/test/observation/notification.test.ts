@@ -210,6 +210,18 @@ describe("NotificationManager", () => {
     expect(content).toContain("get_subagent_result");
   });
 
+  it("surfaces a declared question as answerable in the nudge", () => {
+    const args = makeArgs();
+    const system = makeManager(args);
+    system.sendCompletion(
+      createTestSubagent({ id: "agent-3", pendingQuestion: "Which config?" }),
+    );
+    const content = (args.sendMessage.mock.calls[0][0] as { content: string }).content;
+    expect(content).toContain("This agent is waiting on an answer:");
+    expect(content).toContain("Which config?");
+    expect(content).toContain('resume: "agent-3"');
+  });
+
   it("omits the retrieval instruction for an agent that never started", () => {
     const args = makeArgs();
     const system = makeManager(args);

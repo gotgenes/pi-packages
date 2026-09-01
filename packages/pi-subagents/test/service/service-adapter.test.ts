@@ -43,6 +43,15 @@ describe("toSubagentRecord", () => {
     });
   });
 
+  it("carries a declared question so a consumer can surface it as answerable", () => {
+    const result = toSubagentRecord(createTestSubagent({ pendingQuestion: "Which config?" }));
+    expect(result.pendingQuestion).toBe("Which config?");
+  });
+
+  it("omits pendingQuestion when the agent asked nothing", () => {
+    expect(toSubagentRecord(createTestSubagent())).not.toHaveProperty("pendingQuestion");
+  });
+
   it("reports the background mode resolved for the agent", () => {
     const result = toSubagentRecord(createTestSubagent({ isBackground: false }));
     expect(result.isBackground).toBe(false);

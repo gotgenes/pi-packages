@@ -19,6 +19,7 @@ import type { WorkspaceProvider } from "#src/lifecycle/workspace";
 import { WorkspaceBracket } from "#src/lifecycle/workspace-bracket";
 import { subscribeSubagentObserver } from "#src/observation/record-observer";
 import type { RunConfig } from "#src/runtime";
+import { parseQuestionForParent } from "#src/session/ask-back";
 import type { CompactionInfo, ParentSessionInfo, SessionMessage, SubagentType, ThinkingLevel } from "#src/types";
 
 /** Per-subagent lifecycle observer — created by SubagentManager for each spawn. */
@@ -112,6 +113,7 @@ export class Subagent {
 	get consumedAt(): number | undefined { return this.state.consumedAt; }
 	get consumed(): boolean { return this.state.consumed; }
 	get claimed(): boolean { return this.state.claimed; }
+	get pendingQuestion(): string | undefined { return this.state.pendingQuestion; }
 	get toolUses(): number { return this.state.toolUses; }
 	get lifetimeUsage(): Readonly<LifetimeUsage> { return this.state.lifetimeUsage; }
 	get compactionCount(): number { return this.state.compactionCount; }
@@ -392,7 +394,10 @@ export class Subagent {
 
 	/** Terminate a resume as completed: mark, release listeners, notify observer. */
 	completeResume(result: string): void {
-		this.markCompleted(result);
+		// A child answering one question may need to ask another.
+		const { question, body } = parseQuestionForParent(result);
+		this.state.setPendingQuestion(question);
+		this.markCompleted(body);
 		this.listeners.release();
 		this.execution.observer?.onResumeFinished?.(this);
 	}
@@ -523,9 +528,14 @@ export class Subagent {
 			result.responseText +
 			this.workspaceBracket.dispose({ status: finalStatus, description: this.description });
 
-		if (result.aborted) this.markAborted(finalResult);
-		else if (result.steered) this.markSteered(finalResult);
-		else this.markCompleted(finalResult);
+		// Split the declared question out before the result is stored, so the
+		// question renders once as an affordance rather than twice.
+		const { question, body } = parseQuestionForParent(finalResult);
+		this.state.setPendingQuestion(question);
+
+		if (result.aborted) this.markAborted(body);
+		else if (result.steered) this.markSteered(body);
+		else this.markCompleted(body);
 
 		this.execution.observer?.onRunFinished?.(this);
 	}

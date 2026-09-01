@@ -164,6 +164,7 @@ export function toSubagentRecord(record: Subagent): SubagentRecord {
   };
 
   if (record.result !== undefined) out.result = record.result;
+  if (record.pendingQuestion !== undefined) out.pendingQuestion = record.pendingQuestion;
   if (record.error !== undefined) out.error = record.error;
   if (record.completedAt !== undefined) out.completedAt = record.completedAt;
   if (record.maxTurns !== undefined) out.maxTurns = record.maxTurns;

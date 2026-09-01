@@ -1,7 +1,11 @@
 import type { AgentToolResult } from "@earendil-works/pi-coding-agent";
 import type { ParentSnapshot } from "#src/lifecycle/parent-snapshot";
 import type { AgentSpawnConfig } from "#src/lifecycle/subagent-manager";
-import { renderOutcomeBody, renderStatusNote } from "#src/observation/outcome-delivery";
+import {
+  renderOutcomeBody,
+  renderQuestionAffordance,
+  renderStatusNote,
+} from "#src/observation/outcome-delivery";
 import {
   buildDetails,
   formatLifetimeTokens,
@@ -127,7 +131,8 @@ export async function runForeground(
   return textResult(
     `${noteText}Agent completed in ${formatMs(durationMs)} (${statsParts.join(", ")})${renderStatusNote(record.status)}.\n` +
       `Agent ID: ${record.id}\n\n` +
-      renderOutcomeBody(record),
+      renderOutcomeBody(record) +
+      renderQuestionAffordance(record.id, record.pendingQuestion),
     details,
   );
 }

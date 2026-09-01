@@ -2,6 +2,7 @@
  * prompts.ts — System prompt builder for agents.
  */
 
+import { ASK_BACK_PROTOCOL } from "#src/session/ask-back";
 import type { EnvInfo } from "#src/session/env";
 import type { AgentPromptConfig } from "#src/types";
 
@@ -105,7 +106,10 @@ Working directory: ${cwd}
 ${env.isGitRepo ? `Git repository: yes\nBranch: ${env.branch}` : "Not a git repository"}
 Platform: ${env.platform}`;
 
-  return activeAgentTag + envBlock;
+  // Both modes carry the ask-back protocol: a "replace" agent never sees the
+  // <sub_agent_context> bridge, and Explore and Plan are exactly the agents
+  // most likely to run out of information mid-task.
+  return `${activeAgentTag}${ASK_BACK_PROTOCOL}\n\n${envBlock}`;
 }
 
 /** First line of the section Pi writes above the `<available_skills>` catalogue. */

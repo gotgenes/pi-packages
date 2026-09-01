@@ -8,7 +8,11 @@
  */
 
 import type { SubagentStatus } from "#src/lifecycle/subagent";
-import { renderOutcomeBody, renderStatusNote } from "#src/observation/outcome-delivery";
+import {
+	renderOutcomeBody,
+	renderQuestionAffordance,
+	renderStatusNote,
+} from "#src/observation/outcome-delivery";
 
 /** The data a get_subagent_result report renders from — only what the formatter reads. */
 export interface AgentReport {
@@ -31,6 +35,8 @@ export interface AgentReport {
 	conversation?: string;
 	/** Persisted transcript path; rendered as a pointer so the parent can read it directly. */
 	transcriptPath?: string;
+	/** The question the agent ended its turn with, when it declared one. */
+	pendingQuestion?: string;
 }
 
 /** Assemble the stats parts: Tool uses / tokens? / Context? / Compactions? / Duration. */
@@ -58,6 +64,7 @@ export function formatAgentReport(report: AgentReport): string {
 		`Type: ${report.displayName} | Status: ${report.status}${renderStatusNote(report.status)} | ${renderStatsParts(report).join(" | ")}\n` +
 		`Description: ${report.description}\n\n`;
 	output += renderReportBody(report);
+	output += renderQuestionAffordance(report.id, report.pendingQuestion);
 	if (report.conversation) {
 		output += `\n\n--- Agent Conversation ---\n${report.conversation}`;
 	}

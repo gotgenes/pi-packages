@@ -95,6 +95,20 @@ describe("renderReportBody", () => {
 });
 
 describe("formatAgentReport", () => {
+	it("surfaces a declared question as answerable, naming the resume call", () => {
+		const text = formatAgentReport(
+			makeReport({ id: "agent-7", pendingQuestion: "Which config?" }),
+		);
+
+		expect(text).toContain("This agent is waiting on an answer:");
+		expect(text).toContain("Which config?");
+		expect(text).toContain('resume: "agent-7"');
+	});
+
+	it("adds no affordance when the agent asked nothing", () => {
+		expect(formatAgentReport(makeReport())).not.toContain("waiting on an answer");
+	});
+
 	it("names the abort, so truncated output is not read as a finished answer", () => {
 		const text = formatAgentReport(
 			makeReport({ status: "aborted", result: "Half of the inv" }),

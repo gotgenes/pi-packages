@@ -74,6 +74,25 @@ export interface OutcomeBody {
 }
 
 /**
+ * The trailing affordance for a child that ended its turn with a question,
+ * naming the exact call that answers it. Empty when the child asked nothing.
+ *
+ * Takes the id and question rather than a record: the two facts it needs, so a
+ * carrier holding any shape can call it.
+ */
+export function renderQuestionAffordance(agentId: string, question: string | undefined): string {
+	if (!question) return "";
+	const quoted = question
+		.split("\n")
+		.map((line) => `  ${line}`)
+		.join("\n");
+	return (
+		`\n\nThis agent is waiting on an answer:\n\n${quoted}\n\n` +
+		`Answer by calling subagent with resume: "${agentId}" and your answer as the prompt.`
+	);
+}
+
+/**
  * The outcome body every carrier reports: a running note, an error line, a
  * never-started note, or the trimmed result.
  */

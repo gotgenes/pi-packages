@@ -1,7 +1,7 @@
 import { debugLog } from "#src/debug";
 import type { SubagentStatus } from "#src/lifecycle/subagent-state";
 import { getLifetimeTotal } from "#src/lifecycle/usage";
-import { renderStatusLabel } from "#src/observation/outcome-delivery";
+import { renderQuestionAffordance, renderStatusLabel } from "#src/observation/outcome-delivery";
 import type { Subagent } from "#src/types";
 
 /** Details attached to custom notification messages for visual rendering. */
@@ -246,6 +246,9 @@ export class NotificationManager implements NotificationSystem {
   private buildPointerLines(record: Subagent): string {
     const outputFile = record.outputFile;
     const transcriptLine = outputFile ? `\nFull transcript available at: ${outputFile}` : "";
-    return `${transcriptLine}\nCall get_subagent_result("${record.id}") to collect the full result.`;
+    return (
+      `${transcriptLine}\nCall get_subagent_result("${record.id}") to collect the full result.` +
+      renderQuestionAffordance(record.id, record.pendingQuestion)
+    );
   }
 }
