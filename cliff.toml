@@ -1,0 +1,94 @@
+# git-cliff configuration for this monorepo.
+#
+# Each package is versioned and changelogged independently. Path scoping and the
+# tag pattern are supplied per package on the command line by the scripts under
+# `scripts/release/`, because git-cliff takes `--include-path`/`--exclude-path`
+# as CLI arguments only. This file holds everything that is shared: the
+# changelog format, the bump rules, and the commit-type mapping.
+#
+# The commit-type mapping reproduces the `changelog-sections` this repo ran
+# under release-please, one entry for one entry, so the migration does not
+# quietly change which commits users see (Refs #865).
+
+[changelog]
+header = """
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+"""
+body = """
+{% if version %}
+{% if previous.version %}\
+## [{{ version | split(pat="-v") | last }}](<REPO>/compare/{{ previous.version }}...{{ version }}) ({{ timestamp | date(format="%Y-%m-%d") }})
+{% else %}\
+## {{ version | split(pat="-v") | last }} ({{ timestamp | date(format="%Y-%m-%d") }})
+{% endif %}\
+{% else %}\
+## Unreleased
+{% endif %}
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group | striptags | trim | upper_first }}
+
+{% for commit in commits %}\
+* {% if commit.scope %}**{{ commit.scope }}:** {% endif %}\
+{% if commit.breaking %}**breaking:** {% endif %}\
+{{ commit.message }} ([{{ commit.id | truncate(length=7, end="") }}](<REPO>/commit/{{ commit.id }}))\
+{% for link in commit.links %}, closes [{{ link.text }}]({{ link.href }}){% endfor %}
+{% endfor %}\
+{% endfor %}
+"""
+trim = true
+postprocessors = [
+  # Rendered late so the template can stay readable, and so a repository rename
+  # is a one-line edit rather than a sweep through the body.
+  { pattern = '<REPO>', replace = "https://github.com/gotgenes/pi-packages" },
+]
+
+[bump]
+features_always_bump_minor = true
+breaking_always_bump_major = true
+
+[git]
+conventional_commits = true
+filter_unconventional = true
+# `Refs #N` in a commit body is this repo's issue reference (AGENTS.md forbids
+# the `Closes #N` keyword, which would auto-close the issue on push). Lifting it
+# into `commit.links` reproduces the `closes [#N]` suffix release-please emitted.
+# This key belongs to `[git]`; git-cliff silently ignores it under `[changelog]`.
+link_parsers = [
+  { pattern = "Refs #(\\d+)", href = "<REPO>/issues/$1", text = "#$1" },
+]
+# A breaking change must outrank its own type. This repo has breaking commits on
+# types that are otherwise skipped — `refactor(pi-subagents)!:` is real history —
+# and under release-please those still forced a major bump. Without this, such a
+# commit is dropped by the `skip = true` parser below and ships as a patch.
+protect_breaking_commits = true
+filter_commits = true
+sort_commits = "oldest"
+commit_preprocessors = [
+  # `(#N)` in a subject is this repo's issue reference (AGENTS.md), not a PR
+  # number — GitHub resolves /issues/N to the pull request when N is one.
+  { pattern = '\(#([0-9]+)\)', replace = "([#${1}](<REPO>/issues/${1}))" },
+]
+# Mirrors `changelog-sections` from the retired `release-please-config.json`.
+# The visible five keep their section names; the hidden six are skipped.
+# The `<!-- N -->` prefixes force the section order release-please used (its
+# `changelog-sections` array order); `group_by` would otherwise sort them
+# alphabetically and put Bug Fixes above Features. `striptags` removes them at
+# render time.
+commit_parsers = [
+  { message = "^feat", group = "<!-- 0 -->Features" },
+  { message = "^fix", group = "<!-- 1 -->Bug Fixes" },
+  { message = "^perf", group = "<!-- 2 -->Performance Improvements" },
+  { message = "^revert", group = "<!-- 3 -->Reverts" },
+  { message = "^docs", group = "<!-- 4 -->Documentation" },
+  { message = "^style", skip = true },
+  { message = "^chore", skip = true },
+  { message = "^refactor", skip = true },
+  { message = "^test", skip = true },
+  { message = "^build", skip = true },
+  { message = "^ci", skip = true },
+]
