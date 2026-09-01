@@ -55,7 +55,7 @@ export interface ParsedOutcome {
  * a question, so a child describing the protocol does not trip it.
  */
 export function parseQuestionForParent(result: string): ParsedOutcome {
-	const blocks = findBlocks(result, findQuotedRanges(result));
+	const blocks = findBlocks(result, new QuotedRegions(findQuotedRanges(result)));
 	const declared = blocks.findLast((block) => block.content.trim().length > 0);
 	if (!declared) return { question: undefined, body: result };
 
@@ -75,6 +75,35 @@ interface Block extends Range {
 }
 
 /**
+ * The quoted regions of one document, answering "is this offset inside code?".
+ *
+ * Ranges are disjoint — inline spans are only collected outside fences — so a
+ * single pass in document order answers every query. The scan that uses this
+ * only ever moves forward, so the cursor never rewinds and the whole traversal
+ * is linear; a per-query search over every range made it quadratic on a
+ * document carrying thousands of quoted mentions.
+ *
+ * Single-use, and stateful because of that cursor: build one per parse.
+ */
+class QuotedRegions {
+	private readonly ranges: Range[];
+	private cursor = 0;
+
+	constructor(ranges: Range[]) {
+		this.ranges = [...ranges].sort((a, b) => a.start - b.start);
+	}
+
+	/** Whether `at` sits inside code. Callers must not query backwards. */
+	covers(at: number): boolean {
+		while (this.cursor < this.ranges.length && this.ranges[this.cursor].end <= at) {
+			this.cursor += 1;
+		}
+		if (this.cursor >= this.ranges.length) return false;
+		return at >= this.ranges[this.cursor].start;
+	}
+}
+
+/**
  * Every non-overlapping open/close pair, in document order, ignoring tags that
  * sit inside code.
  *
@@ -82,7 +111,7 @@ interface Block extends Range {
  * opening tag discarded afterwards would already have consumed the closing tag
  * of the real question that followed it.
  */
-function findBlocks(text: string, quoted: Range[]): Block[] {
+function findBlocks(text: string, quoted: QuotedRegions): Block[] {
 	const blocks: Block[] = [];
 	let cursor = 0;
 	while (cursor < text.length) {
@@ -102,9 +131,9 @@ function findBlocks(text: string, quoted: Range[]): Block[] {
 }
 
 /** The next occurrence of `tag` at or after `from` that is not inside code. */
-function nextUnquoted(text: string, tag: string, from: number, quoted: Range[]): number {
+function nextUnquoted(text: string, tag: string, from: number, quoted: QuotedRegions): number {
 	let at = text.indexOf(tag, from);
-	while (at !== -1 && quoted.some((range) => at >= range.start && at < range.end)) {
+	while (at !== -1 && quoted.covers(at)) {
 		at = text.indexOf(tag, at + tag.length);
 	}
 	return at;

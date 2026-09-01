@@ -147,6 +147,27 @@ describe("parseQuestionForParent", () => {
 		});
 	});
 
+	describe("scales linearly with quoted mentions", () => {
+		it("parses a document carrying tens of thousands of inline-quoted mentions", () => {
+			// Every mention is a candidate the scan must skip. Searching the quoted
+			// ranges per candidate was quadratic here: ~2.4s at this size, against
+			// tens of milliseconds once the scan advances a cursor instead.
+			const noise = Array.from(
+				{ length: 50_000 },
+				(_, i) => `Line ${i} mentions a \`<question-for-parent>\` tag.`,
+			).join("\n");
+			const text = `${noise}\n<question-for-parent>\nThe real one?\n</question-for-parent>`;
+
+			const startedAt = performance.now();
+			const { question } = parseQuestionForParent(text);
+			const elapsedMs = performance.now() - startedAt;
+
+			expect(question).toBe("The real one?");
+			// Generous against CI jitter while still failing the quadratic scan.
+			expect(elapsedMs).toBeLessThan(1000);
+		});
+	});
+
 	describe("the protocol block taught to the child", () => {
 		it("names the marker the parser looks for", () => {
 			expect(ASK_BACK_PROTOCOL).toContain("<question-for-parent>");
