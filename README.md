@@ -136,7 +136,7 @@ flowchart LR
 | 1. Discover      | `/plan-improvements`         | Updates a package's architecture document and creates GitHub Issues outlining the implementation work.    |
 | 2. Plan          | `/plan-issue #N`             | Reads the issue, explores the codebase, produces a numbered plan, and commits it.                         |
 | 3. Implement     | `/tdd-plan` or `/build-plan` | Executes the plan — TDD for code changes, build for docs/config. A pre-completion review runs at the end. |
-| 4. Ship          | `/ship-issue #N`             | Pushes, verifies CI, closes the issue, and merges the release-please PR.                                  |
+| 4. Ship          | `/ship-issue #N`             | Pushes, verifies CI, closes the issue, and dispatches the release.                                        |
 | 5. Retrospective | `/retro`                     | Reviews the session(s) for workflow improvements and persists retro notes.                                |
 
 Each issue repeats stages 2–5.
@@ -192,7 +192,7 @@ sequenceDiagram
     Note over Root: git merge --ff-only the peer branch
     Root->>Origin: git push (main advances)
     Root->>Root: verify CI, then issue_close
-    Root->>Origin: merge the package's release-please PR (serialized)
+    Root->>Origin: dispatch release.yml for the package (serialized)
     Note over Root: scripts/worktree-rm.sh N --delete-branch
 ```
 
@@ -205,9 +205,9 @@ sequenceDiagram
 
 Guardrails:
 
-- One package per peer — two peers touching `pnpm-lock.yaml`, `release-please-config.json`, or the same package's source is the main hazard.
-- Release is the root's serialized responsibility — only the root merges release-please PRs, so peers never race on them.
-  Each package has its own, so a deferral holds one package rather than all nine.
+- One package per peer — two peers touching `pnpm-lock.yaml` or the same package's source is the main hazard.
+- Release is the root's responsibility — peers never dispatch one, and a `release` concurrency group serializes runs anyway.
+  A dispatch names its packages explicitly, so a deferral holds one package rather than all nine.
 - Whoever lands second rebases first — if `/ship-worktree`'s ff-merge is rejected because `main` advanced, the peer re-runs `/sync-worktree #N` to rebase onto the new `origin/main`, then the root retries.
 - Tear down a worktree manually with `scripts/worktree-rm.sh <issue> [--delete-branch]`.
 

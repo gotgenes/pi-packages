@@ -10,48 +10,66 @@ Before working on a specific package, load its `package-<name>` skill for archit
 Load skills inline — never dispatch a subagent to load skills.
 When adding a new package, wire it into all of:
 
-1. `release-please-config.json` — add to `packages` (component) and add `docs/plans` + `docs/retro` to `exclude-paths`.
-2. `.release-please-manifest.json` — add the package at `0.0.0`.
-3. `.pi/settings.json` — add the `../packages/<pkg>` load path.
+1. `.pi/settings.json` — add the `../packages/<pkg>` load path.
    Add the `{ "source": "npm:@gotgenes/<pkg>", "extensions": [], "skills": [] }` disable entry (prevents double-load) **only after the package's first npm publish** — before that, the `npm:` reference makes Pi and the subagent launcher `npm install` a nonexistent package and fail (Refs #600).
-4. `README.md` — add the package to the Packages table, and to the no-dedicated-skill note unless it ships a `package-<pkg>` skill.
-5. `.github/ISSUE_TEMPLATE/bug_report.yml` and `.github/ISSUE_TEMPLATE/feature_request.yml` — add the package to the `Package` dropdown in **both** forms.
+2. `README.md` — add the package to the Packages table, and to the no-dedicated-skill note unless it ships a `package-<pkg>` skill.
+3. `.github/ISSUE_TEMPLATE/bug_report.yml` and `.github/ISSUE_TEMPLATE/feature_request.yml` — add the package to the `Package` dropdown in **both** forms.
    The dropdown is `required: true` and `blank_issues_enabled: false`, so a package missing here cannot be reported at all.
    These are static YAML that GitHub reads from the default branch, so they cannot derive the list at run time the way the labeler does (Refs #818).
-6. `gh label create pkg:<pkg> --description "Issues related to <pkg>" --color 0075ca` — the label must exist before an issue selects the package, or `scripts/label-issues.sh` fails on `gh issue edit`.
+4. `gh label create pkg:<pkg> --description "Issues related to <pkg>" --color 0075ca` — the label must exist before an issue selects the package, or `scripts/label-issues.sh` fails on `gh issue edit`.
 
-The issue auto-labeler is **not** on that list: `scripts/issue-package-labels.sh` derives its package list from `.release-please-manifest.json`, so step 2 is the only edit it needs (Refs #818).
+Release configuration is **not** on that list, and neither is the issue auto-labeler.
+Both derive the package list from the workspace on disk: `scripts/release/lib.sh` and `scripts/issue-package-labels.sh` enumerate `packages/*/package.json`, so a new package is picked up with no edit at all (Refs #818, #865).
 Repo-level work — build, CI, tooling, cross-package docs — is labeled `scope:repo` rather than with every package's label.
 That scope is always asserted (the forms' repo-wide option, or `gh issue create --label scope:repo`), never inferred from the absence of a package.
 
 A multi-line `run:` block in `.github/workflows/` belongs in `scripts/`, with the workflow keeping a one-line invocation.
-Split a script that pushes from the read-only derivation it calls, and refuse the pushing half outside CI — `scripts/advance-release-baseline.sh` guards on `CI`, `scripts/release-baseline-sha.sh` only prints (Refs #816).
+Split a script that pushes from the read-only derivation it calls, and refuse the pushing half outside CI — `scripts/release/prepare-release.sh` guards on `CI`, `scripts/release/next-version.sh` only prints (Refs #816, #865).
 
-Publishing is automatic — `scripts/publish-released.sh` derives the package list from release-please's `paths_released`, so no publish-script edit is needed.
-A brand-new package's **first** release is the exception: npm Trusted Publishing cannot create a package that does not exist, so the CI `publish` job 404s on `v1.0.0`.
-Publish the first version manually (`pnpm login`, then `pnpm --filter @gotgenes/<pkg> publish --access public --no-git-checks` — no `--provenance`), then configure the Trusted Publisher on npmjs.org (repo `gotgenes/pi-packages`, workflow `ci.yml`).
+### Releasing
+
+Releases are **dispatched, never automatic**.
+`.github/workflows/release.yml` triggers only on `workflow_dispatch` and takes an explicit package list plus an optional expected-SHA guard:
+
+```bash
+gh workflow run release.yml -f packages="pi-subagents pi-colgrep" -f sha="$(git rev-parse HEAD)"
+```
+
+Naming packages explicitly is the point: several can be releasable at once, and only the named ones go.
+Deferring a release is therefore an omission with no state to clean up — just do not name the package.
+A `release` concurrency group serializes runs.
+
+To see what would release, without releasing anything:
+
+```bash
+./scripts/release/next-version.sh <pkg>   # prints <pkg>-v<version>, or nothing
+./scripts/release/verify-cliff-parity.sh  # all packages: tags, package.json, and what is pending
+```
+
+Both are read-only and offline.
+Never name a package that `next-version.sh` prints nothing for — `prepare-release.sh` validates every named package **before** writing anything, so one such package refuses the whole run and nothing is tagged.
+
+The run's three jobs are `prepare` → `publish` → `github-release`.
+If `prepare` fails, nothing was tagged and the release can simply be re-dispatched.
+If a later job fails, the tags are already pushed — fix the cause and re-run that job; re-dispatching would refuse on the existing tag.
+
+Versions and changelogs come from [git-cliff](https://git-cliff.org) reading local git, with no network in the derivation.
+See `docs/decisions/0002-git-cliff-release-automation.md` for why, and for the accepted residual (there is no release-PR review gate).
+
+A brand-new package's **first** release is a manual, operator-chosen step. npm Trusted Publishing cannot create a package that does not exist, so `publish` 404s; and `next-version.sh` refuses an untagged package rather than inventing a first version, because this repo's packages opened at 1.0.0, 0.2.0, and 0.1.0 with no convention to infer.
+Publish the first version manually (`pnpm login`, then `pnpm --filter @gotgenes/<pkg> publish --access public --no-git-checks` — no `--provenance`), tag it `<pkg>-v<version>`, then configure the Trusted Publisher on npmjs.org (repo `gotgenes/pi-packages`, workflow **`release.yml`**).
 The publish needs an interactive terminal when the registry requires an OTP (`ERR_PNPM_OTP_NON_INTERACTIVE`) — the operator runs it, not the agent (Refs #732).
-Every release after that publishes automatically (Refs #600).
-
-If `release-please`'s CI job fails after it has already tagged/released, GitHub skips the downstream `publish` job — and a rerun does not recover it, since release-please finds nothing new to release and reports `releases_created: false`.
-Recover with the manual-publish command above for the missing version, then re-derive the baseline (the write-back step is skipped too): run `git fetch --tags && ./scripts/release-baseline-sha.sh`, write its output to `last-release-sha` in `release-please-config.json`, and commit `chore: advance release-please last-release-sha baseline [skip ci]` (Refs #646).
-
-One known upstream failure reaches that same cascade from a different direction.
-[googleapis/release-please#2773](https://github.com/googleapis/release-please/issues/2773) reports a `422 A pull request already exists` when release-please **updates** an already-open PR under `separate-pull-requests` — it pushes the branch, then tries to create a PR for it.
-The action pins the version it was filed against (`release-please-action@v5.0.0` locks `release-please` at 17.6.0), so treat a 422 on a second push touching an already-PR'd package as this bug, not as a local mistake.
-It throws after `createReleases()`, so check for tags before concluding nothing released.
-Recovery: strip the `autorelease: pending` label and re-run, or close the PR and delete its branch to force a clean create.
-Rollback, if it recurs: set `separate-pull-requests` back to `false` in `release-please-config.json`, then close any component release PRs by hand and delete their branches — release-please does not fold abandoned component branches into the combined one.
-Do not write the release commit there by hand — the correct value is the *oldest* component's release, which is rarely the one that just released (Refs #816).
+Every release after that runs through the workflow (Refs #600, #865).
 
 A cross-package change bumping a dependent package to a **same-day-published** sibling hits pnpm's 24h `minimumReleaseAge` supply-chain gate — CI's `--frozen-lockfile` install and local `pnpm exec` hooks fail `ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION`.
 `minimumReleaseAgeExclude` does not fix it (honored at resolution, ignored by pnpm's lockfile verification pass); the repo sets `trustLockfile: true` in `pnpm-workspace.yaml` to trust the reviewed lockfile and skip that re-verification.
 Do not remove it, and do not reach for `minimumReleaseAge: 0` (which also disables the delay for a fresh `pnpm add`).
 Refs #626.
 
-When adding a new internal docs subdirectory (retro, plans, architecture, decisions, assets), add its path to `exclude-paths` in `release-please-config.json`.
-`exclude-paths` is a single top-level array covering every package, not a per-package key.
-Commits that only touch excluded paths do not trigger releases.
+A package's internal docs directories — `docs/plans`, `docs/retro`, `docs/architecture`, `docs/decisions`, `docs/assets` — are excluded from its release scope by convention, in `scripts/release/lib.sh`.
+Adding one of those subdirectories needs no configuration edit; adding a differently named one does.
+Commits that only touch excluded paths do not trigger releases, and neither do files outside the package tree.
+A package's own `CHANGELOG.md` is excluded too, so a release commit never re-enters the next changelog.
 
 ### Docs-in-distribution convention
 
@@ -112,7 +130,7 @@ Check an ADR's frontmatter `status:` before citing it.
   Probe with a read-only query (`gh api .../issues/N --jq .state`) or `--help` (Refs #661).
   When such a command fails with a transient error (HTTP 5xx), verify whether it applied before retrying — `gh pr merge` can 503 after the merge lands.
   Probe with REST (`gh api repos/OWNER/REPO/pulls/N --jq .merged`), which stays up when the GraphQL endpoint behind `gh pr view --json` and `gh pr merge` is degraded (Refs #732).
-  This applies to a hand-run `gh pr merge`; `release_pr_merge` performs that verification itself and reports `merged: false` / `merged: unknown` explicitly (Refs #764).
+  This applies to any hand-run `gh pr merge` (Refs #764).
 - For Pi SDK internals (prompt assembly, caching, session lifecycle), read Pi's own source at the `pi` checkout beside this repo's main checkout, rather than the installed `dist/` bundles or their sourcemaps.
   That is `../pi` from the root checkout and `../../pi` from a worktree — the worktree sits one level deeper, so the bare `../pi` misses it (Refs #801).
   Dispatch an `Explore` subagent with `model: "sonnet-5"` for a multi-hop trace there (e.g. "how does `ui.custom` pass keybindings to the factory?") — a targeted read of a known file is fine inline, but a hunt costs 5–10 greps of this session's context, and `Explore`'s haiku default is too weak for the reasoning.
@@ -128,7 +146,7 @@ It is informational — not a turn boundary.
 Continue the current step (e.g. Red→Green→Verify→Commit) until it is complete.
 It also reflows what you just wrote (line wrapping, quote style), so an `oldText` — or a shell/regex pattern — built from the layout you emitted can fail to match; re-read a region you just edited before matching against it again.
 It also joins a line ending in `:` with the sentence after it — to add a sentence there, start a new paragraph, not a new line.
-It likewise joins a sentence onto the previous line when the sentence opens with a lowercase token (a package or command name such as `release-please`) — lead with a capital instead (Refs #816).
+It likewise joins a sentence onto the previous line when the sentence opens with a lowercase token (a package or command name such as `git-cliff`) — lead with a capital instead (Refs #816).
 It fires on `Edit`/`Write` only, so a file appended with a shell heredoc skips formatting entirely and fails `pnpm run lint` — append source with `Write`/`Edit` too, not just markdown.
 
 #### Stale prompt-template expansion
@@ -139,7 +157,8 @@ When the pasted prompt body contradicts the on-disk file (e.g. you just changed 
 #### Stale in-process extension code
 
 Pi loads each package's extension once at session start, so a session that edits `packages/<pkg>/src/` keeps running the **pre-edit** tool for the rest of its life.
-When the change targets a tool the workflow itself calls (`release_pr_merge`, `ci_watch`, `issue_close`), restart Pi before the step that uses it — otherwise `/ship-issue` exercises the old behavior and the new code looks broken (Refs #673).
+When the change targets a tool the workflow itself calls (`ci_find`, `ci_watch`, `issue_close`), restart Pi before the step that uses it — otherwise `/ship-issue` exercises the old behavior and the new code looks broken (Refs #673).
+The same applies when a change **removes** a tool `/ship-issue` calls: the running session still has it registered (Refs #865).
 
 The same staleness makes the session's own system prompt a reliable witness for the **published** behavior: a defect in prompt assembly (a tool's `Available tools:` line, a guideline bullet, an injected block) is readable in context at zero tool cost.
 Read it before hunting the SDK — but never to verify your own fix, which the running session cannot see (Refs #778).
@@ -177,7 +196,7 @@ The standard flow is:
 2. `/tdd-plan` or `/build-plan` — execute the plan (TDD for code changes, build for docs/config).
    The preparatory steps are ordinary plan steps here; a fresh-context `pre-completion-reviewer` runs the quality gate at the **end**.
 3. Pre-completion review — dispatched automatically at the end of step 2; a fresh-context `pre-completion-reviewer` subagent runs deterministic checks and a judgment checklist before recommending `/ship-issue`.
-4. `/ship-issue #N` — push, verify CI, close the issue, merge the release-please PR.
+4. `/ship-issue #N` — push, verify CI, close the issue, dispatch the release.
 5. `/retro` — review the session(s) for workflow improvements, persist retro notes.
 
 A change that lands outside `/tdd-plan` or `/build-plan` fires no automatic `pre-completion-reviewer` dispatch.
@@ -191,28 +210,17 @@ It exits immediately when the package has no open improvement phase; otherwise i
 `/finish-phase` reconciles the phase window's issues against that list before archiving, so a miss surfaces at phase close instead of vanishing from the history (Refs #767).
 
 Release batching is plan-driven: `/plan-improvements` annotates each roadmap step with a grep-able `Release:` tag (and a `Release batches` subsection), `/plan-issue` derives a `Release Recommendation` from those annotations, and `/ship-issue` and `/ship-worktree` read the plan's `**Release:**` marker early — asking only when it is `mid-batch — defer`, otherwise releasing now.
-A `refactor:`/`style:`/`test:`/`build:`/`ci:` commit is a `hidden: true` changelog type and does not cut a release on its own; such work lands on `main` and auto-batches into the next `feat:`/`fix:`/unhidden-`docs:` release.
+A `refactor:`/`style:`/`test:`/`build:`/`ci:`/`chore:` commit is a skipped changelog type and does not cut a release on its own; such work lands on `main` and auto-batches into the next `feat:`/`fix:`/`docs:` release.
 So a refactor-only plan's `Release Recommendation` rationale must not claim it will cut a release (Refs #479).
-Release is driven by the release-please PR merge over `main` commits, independent of any issue's open/closed state: holding an issue open does not defer its already-merged `fix:`/`feat:` commits from releasing at the next merge, and the only lever to defer a release is leaving the release-please PR unmerged (Refs #625).
+Do not reason about this from commit types when you can ask: `./scripts/release/next-version.sh <pkg>` applies the real rules offline and prints the tag that would be cut, or nothing.
 
-That lever is per-package.
-`separate-pull-requests: true` gives each component its own release PR — branch `release-please--branches--main--components--<component>`, title `chore(main): release <component> <version>` — so deferring one package's batch no longer holds every other package's fixes (Refs #817).
-Several open release PRs is therefore an expected state, not a misconfiguration; two for the **same** component still is one.
-A cross-package change opens one per package it bumps — all of them are yours (Refs #792).
-Select yours by component (`release_pr_find` and `release_watch` both take one), never by position — without a component `release_pr_find` refuses to guess and lists the candidates.
+Release is independent of any issue's open/closed state: holding an issue open does not defer its merged `fix:`/`feat:` commits, and closing one does not release them (Refs #625).
+The only lever is which packages a release dispatch names, which makes deferral per-package by construction and leaves no state behind — there is no open pull request to remember.
+A cross-package change names every package it bumps in one dispatch (Refs #792).
 
-Release-please PRs merge by **rebase** (linear `chore(main): release <component> <version>`), per `defaultMergeMethod: rebase` (`.pi/extensions/pi-github-tools/config.json`) — set in `cacc724f`.
-Prefer `release_pr_merge` — it waits out an in-progress check or an undecided mergeability state on its own, retries a transient 5xx, and verifies over REST whether a failed merge call actually landed; on its `reason: no checks reported` refusal (the `GITHUB_TOKEN` case), fall back to `gh pr merge <N> --rebase`, never `--merge`.
-A `failed to merge` result carries the answer: `merged: false` is safe to retry, `merged: unknown` is not — verify by hand first.
-Do not infer the method from older history — releases before `cacc724f` are merge commits.
-This holds for releases cut outside `/ship-issue` (e.g. an extended review session), where the ship-prompt guidance is not loaded.
-
-The `release-please` CI job pins a `last-release-sha` baseline in `release-please-config.json`, auto-advanced after each release by `scripts/advance-release-baseline.sh`, to cap its history walk (Refs #468).
-Do not remove either — without the baseline, release-please walks the default 500 commits every run and the deep walk fails with `Bad credentials` (secondary rate limit) on this monorepo.
-The baseline is a single repo-global floor, so it must sit at or before *every* component's last release, not just the one that released most recently.
-The walk stops at the floor, so a component whose last release is older has the intervening commits collected by nobody — they reach neither its changelog nor its version bump (Refs #816).
-The write-back therefore derives the floor from `.release-please-manifest.json` via `scripts/release-baseline-sha.sh`, which resolves each component's release tag and takes the oldest; the release action's `<path>--sha` outputs cannot serve, because they report only the components that just released.
-This costs nothing against the bound above: release-please already ends its own walk once it has seen every component's release commit, which is the same commit the script prints.
+Before #865 this was release-please's job, and much of the machinery above existed to work around its API commit walk: a `last-release-sha` baseline, two scripts maintaining it, and a per-component release PR to merge.
+All of it is gone.
+When reading history — a retro, an older plan, a commit message — treat `last-release-sha`, `separate-pull-requests`, `release_pr_merge`, and `defaultMergeMethod` as artifacts of that era, not as current mechanism.
 
 #### Clarification gates
 
@@ -270,8 +278,8 @@ The trunk `/ship-issue` assumes linear `main` and breaks for a worktree branch, 
    The peer writes only stage breadcrumbs (planning/TDD/sync); the deliberate, interactive final `/retro` does not run here.
 2. Root session — `/ship-worktree <N>`: `git merge --ff-only <branch>` into `main`, push, verify CI, `issue_close`, then release.
    If the ff-merge is not a fast-forward (another peer landed first), the peer re-runs `/sync-worktree <N>` to rebase onto the new `origin/main`.
-3. Release is the root's serialized responsibility — only the root merges release-please PRs (by rebase), so peers never race on them.
-   It honors the plan's `**Release:**` marker: `mid-batch — defer` leaves the PR open.
+3. Release is the root's responsibility — peers never dispatch one, and the workflow's `release` concurrency group serializes runs regardless.
+   It honors the plan's `**Release:**` marker: `mid-batch — defer` simply does not name that package.
 4. `/ship-worktree` ends by running `scripts/worktree-rm.sh <N> --delete-branch`, then names `/retro <N>` as the final step.
 5. Root session — `/retro <N>`: the deliberate, interactive final retrospective, run at the root on `main` after the land (commits straight to `main`, no branch needed) — mirroring the trunk flow's terminal `/retro`.
    Run it on your preferred model; the stage breadcrumbs from the peer session are already on `main` for it to synthesize.
@@ -279,7 +287,7 @@ The trunk `/ship-issue` assumes linear `main` and breaks for a worktree branch, 
 Guardrails:
 
 - Partition work by package — one package per peer.
-  Two peers touching `pnpm-lock.yaml`, `release-please-config.json`, or the same package's source is the main parallel-work hazard.
+  Two peers touching `pnpm-lock.yaml` or the same package's source is the main parallel-work hazard.
 - `/ship-issue` is trunk-only; ship a worktree branch with `/sync-worktree` (peer) + `/ship-worktree` (root), never `/ship-issue`.
 - Whoever lands second rebases first: if `/ship-worktree`'s ff-merge fails, the peer re-runs `/sync-worktree` to rebase onto the new `origin/main` (a non-linear merge into `main` is rejected by design).
 - Land a pending worktree branch before committing unrelated work to `main`.
@@ -421,7 +429,8 @@ Before writing or debugging tests, load the `testing` skill for Vitest mock patt
 Use Conventional Commits.
 Type a commit by what a user can observe once it lands, not by what it adds to the tree.
 A module no code imports yet is `refactor:` however new it is; the commit that wires it up carries the `feat:`/`fix:` (Refs #710, #744).
-For a breaking change, place the `!` **after** the scope: `fix(pkg)!:` / `feat(pkg)!:` — never `fix!(pkg):`, which the grammar rejects so release-please drops the commit and skips the major bump (Refs #452).
+For a breaking change, place the `!` **after** the scope: `fix(pkg)!:` / `feat(pkg)!:` — never `fix!(pkg):`, which the grammar rejects, so the commit is dropped and the major bump skipped (Refs #452).
+The `!` carries the major bump even on a type that is otherwise skipped from the changelog, such as `refactor(pkg)!:` — `protect_breaking_commits` in `cliff.toml` is what preserves that; do not remove it (Refs #865).
 A `commit-msg` hook runs [`committed`](https://github.com/crate-ci/committed) (wired via `prek`, installed by `pnpm install`) and enforces this deterministically: a malformed header fails locally before it can mis-version a release (Refs #457, #468).
 When a `prek` hook fails to **install** (a network error building the hook env — e.g. `uv` fetching `setuptools`, not a lint/grammar failure), it blocks the commit without having run any check.
 Run the equivalent gate manually (`pnpm exec rumdl check`, `pnpm run lint`) and, once clean, commit with `--no-verify`.
@@ -435,9 +444,8 @@ That redirect hides Biome findings at **warning** level, which exit 0 — `pnpm 
 After adding or heavily editing files, count them: `pnpm run lint >/tmp/l.log 2>&1; grep -c 'lint/' /tmp/l.log || true` — `grep -c` exits 1 on a zero count (Refs #694).
 `biome check --write` reports `No fixes applied` for a warning, whose fix is unsafe-classified — hand-edit it, or `--write --unsafe` the one file.
 When a shell loop or script needs a status variable, do not name it `status` — zsh reserves `$status` (an alias for `$?`) as read-only, so the assignment aborts with `read-only variable: status`; use `state`/`rc` instead.
-Do not edit `CHANGELOG.md` — release-please owns it.
-Do not name an unreleased version in docs — release-please assigns it at merge, so a number written during implementation is a guess.
-Describe the condition instead: "a version that predates the heartbeat", not "older than 25.2.0" (Refs #721).
+Do not edit `CHANGELOG.md` — `scripts/release/prepare-release.sh` owns it, splicing each release in below the header.
+Do not name an unreleased version in docs — git-cliff assigns it at release time, so a number written during implementation is a guess. (`./scripts/release/next-version.sh <pkg>` will tell you what it would be, but that answer moves with every commit until the release runs.) Describe the condition instead: "a version that predates the heartbeat", not "older than 25.2.0" (Refs #721).
 The same applies to an unfiled issue number: file the follow-up first, then write back the number the API returned — a guessed `#N` is off by however many issues landed since (Refs #610).
 The same applies to a commit SHA: resolve every one you publish with `git rev-parse` — including the second and third hash cited mid-draft, which is where the invention happens (Refs #777).
 Before pricing a rename of this repo's own export as breaking, check whether it has shipped.
@@ -445,7 +453,7 @@ Read the file at the published tag: `pnpm view @gotgenes/<pkg> version`, then `g
 Never `.pi/npm/node_modules/` — it is only as fresh as the last `pi update --extensions`, so a stale copy hides an export that already shipped.
 An export that exists only on unreleased `main` renames for free (Refs #789, #794).
 Before naming a remediation in a breaking-change migration note (CLI flag, config key, API call), verify it exists in the real surface (SDK types, `--help`, schema) — do not infer a config key by analogy.
-The note ships to the `BREAKING CHANGE:` footer, the release-please CHANGELOG (uneditable), and the issue close comment.
+The note ships to the `BREAKING CHANGE:` footer, the generated CHANGELOG, and the issue close comment.
 Do not put `Closes #N` / `Fixes #N` / `Resolves #N` in commit messages.
 `/ship-issue` posts a curated close comment (implemented-in SHA, behavior summary) via `issue_close`; a commit keyword auto-closes the issue on push and pre-empts that comment, leaving the issue with no summary.
 Reference issues as `(#N)` in the subject or `Refs #N` in the body instead.
