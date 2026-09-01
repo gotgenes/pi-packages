@@ -119,6 +119,21 @@ Asking the reviewer to enumerate its own inputs rather than check mine is what s
 PASS (round 3, `c902c9aa`).
 No outstanding warnings; the two round-2 findings were fixed rather than deferred, and the one remaining documented limitation — a single-backtick span crossing a line break is not treated as quoting — is deliberate and stated in the code.
 
+## Stage: Sync (worktree) (2026-09-01T05:05:47Z)
+
+### Session summary
+
+`pnpm run lint` and `pnpm fallow dead-code` both pass clean from the worktree root.
+Release per the plan's marker: **ship independently** — no batch, no deferral.
+Two follow-up issues are already filed and dispositioned against Phase 22 ([#857] as Step 10, [#858] as Step 11); nothing further to hand off at land time.
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-465--/2026-08-31T16-17-09-642Z_01a0589c-3e0a-7b13-910e-d951776fb62e.jsonl` — read with `read_session_file({ path: "<path>" })` for message-level verification at land/retro time.
+
+### Observations
+
+Clean gates, nothing deferred.
+The TDD stage note already captures the substantive decisions (the `resetForResume`/claim contradiction, the parser's inline-quoting fix, the O(n²) fix) for the root's final `/retro 465` to draw on.
+
 [#798]: https://github.com/gotgenes/pi-packages/issues/798
 [#857]: https://github.com/gotgenes/pi-packages/issues/857
 [#858]: https://github.com/gotgenes/pi-packages/issues/858
