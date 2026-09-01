@@ -84,9 +84,14 @@ commit_preprocessors = [
 #
 # Parsers are evaluated in order and the first match wins, so the release
 # commit's own `chore(release):` is skipped ahead of the general `chore` rule.
-# Path scoping already keeps it out of the next changelog -- the tag sits on
-# that commit, so the next range begins after it -- but the explicit skip means
-# the changelog does not rest on that coincidence.
+#
+# That skip is load-bearing, and the reason is narrower than it looks. The
+# CHANGELOG entry is rendered before the release commit exists, and the *next*
+# release's range starts after the tag, so neither of those needs the skip.
+# The GitHub Release notes do: scripts/release/create-github-releases.sh runs
+# `git-cliff --latest` once the commit and tag are both in place, and that range
+# includes the release commit. Without this rule, a release's own notes carry
+# `* **release:** <pkg> <version>` under Miscellaneous Chores.
 #
 # The `<!-- N -->` prefixes force the section order release-please used (its
 # `changelog-sections` array order); `group_by` would otherwise sort them
