@@ -103,8 +103,9 @@ Approving a run executes contributor code in CI, so confirm the privileged jobs 
 
 1. Does the PR touch `.github/`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `mise.toml`, `.npmrc`, `patches/`, or `scripts/`?
    Any hit means read the diff before going further — those are the CI and install-script surfaces.
-2. Are the secret-bearing and OIDC jobs gated off pull requests?
-   `release-please` (holds `RELEASE_PLEASE_TOKEN`, `contents: write`) and `publish` (holds `id-token: write` for npm Trusted Publishing) must be unreachable — verify their `if:` conditions rather than assuming.
+2. Are the secret-bearing and OIDC jobs unreachable from a pull request?
+   They all live in `release.yml`, whose only trigger is `workflow_dispatch` — `prepare` holds `RELEASE_PLEASE_TOKEN` and `contents: write`, and `publish` holds `id-token: write` for npm Trusted Publishing.
+   Verify that trigger rather than assuming it, since a `pull_request` trigger added there would expose all three.
 3. Are there `pull_request_target`, `workflow_run`, or `issue_comment` triggers?
    Those run in a privileged context; their absence is what makes fork approval routine.
 4. Is untrusted text (`github.event.*.body`, `github.head_ref`) interpolated into any `run:` block?

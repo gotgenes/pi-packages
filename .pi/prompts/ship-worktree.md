@@ -33,7 +33,7 @@ A decision presented early is far less likely to be reversed than one inferred a
 
    The output is `<branch>:<plan-path>` — feed that line straight to `git show`.
 2. If a plan is found, read its marker with `git show "<branch>:<plan-path>" | grep -F '**Release:**'` (fixed-string — a leading `*` is an invalid regex/BRE operator):
-   - A marker containing `mid-batch — defer` → ask the operator **now**: defer the release (leave that package's release-please PR open), or release anyway?
+   - A marker containing `mid-batch — defer` → ask the operator **now**: defer the release (simply do not dispatch it for that package), or release anyway?
      Record the decision.
    - Any other `**Release:**` value, or no marker → record "release now"; do **not** ask.
    - No plan found on the branch → record "release now" and say so in the final report; do **not** let the absence pass silently.
@@ -67,7 +67,7 @@ The peer worktree shares this repo's `.git`, so the branch ref is visible locall
 ## 4. Verify CI on the pushed commit
 
 1. `git rev-parse HEAD` to capture the full 40-char SHA; pass that exact value to `ci_find` (workflow `ci`).
-2. `ci_watch` with the returned `run_id` (workflow `ci`) and `timeout: 600` — a `main` push runs `check` then `release-please`, which exceeds the 300 s default about half the time.
+2. `ci_watch` with the returned `run_id` (workflow `ci`) and `timeout: 600`.
 3. If the conclusion is `failure`, stop and report — do not close the issue, release, or tear down.
 4. On `success`, continue.
 
@@ -94,11 +94,12 @@ Also close any **other** issues this push shipped (stacked refactors, other `(#M
 
 ## 6. Release (decoupled and serialized)
 
-Releasing is the root's serialized responsibility — only the root merges release-please PRs, so peers never race on them.
+Releasing is the root's responsibility — peers never dispatch one.
+The release workflow also carries a `release` concurrency group, so two runs cannot overlap even if one is dispatched by hand.
 
 1. Apply the decision recorded in Release coordination.
-   On "defer": **skip releasing** — leave that package's release-please PR open, note the deferral, and continue to teardown.
-   Deferring holds only this package; sibling packages keep releasing on their own lands.
+   On "defer": **skip releasing** — simply do not name that package, note the deferral, and continue to teardown.
+   Deferring holds only this package; siblings keep releasing on their own lands.
    Otherwise release now.
 2. Derive the package list from the shipped range, not the plan's directory (re-derive `PLAN` — a fresh shell does not carry step 5's):
 
@@ -107,17 +108,20 @@ Releasing is the root's serialized responsibility — only the root merges relea
    git log --format='%s' "$PLAN"^..HEAD | grep -oE '^(feat|fix)\([^)]+\)' | sort -u
    ```
 
-   A cross-package plan bumps more than one, and each gets its own release PR — release every one (Refs #792).
-3. For each `<pkg>`: `release_pr_find` with `component: <pkg>` → confirm the **full** PR body bumps `<pkg>` and nothing else → `release_pr_merge` (rebase).
-   - Print the body explicitly with `gh pr view <N> --json body -q .body` — a `--jq` that drops `body` skips the check silently and an unexpected bump slips through.
-   - `release_pr_find`'s `component:` line says which check applies: a named component means one package, while `component: (none)` means a **combined** PR covering every package, which the tool falls back to legitimately (the rollback state in `AGENTS.md`).
-   - For a component-scoped PR an unexpected bump means you have the wrong PR; for a combined one sibling bumps are expected.
-     Either way, a package the shipped range did **not** bump is a sibling: its open PR is expected and is not yours to merge.
-   - `release_pr_merge` waits out an in-progress check or an undecided (`UNKNOWN`) mergeability state on its own, and retries a transient 5xx — do not add a manual wait loop or a blind retry.
-   - On a `failed to merge PR #N` result the merge call itself failed and the tool has already checked whether it landed: `merged: false` is safe to retry, `merged: unknown` is not — run the probe it prints first.
-   - On a `reason: no checks reported (statusCheckRollup is empty)` refusal (the `GITHUB_TOKEN` case), fall back to `gh pr merge <N> --rebase`, then `git pull --ff-only`.
-   - Never `--merge`; never merge a genuinely blocked PR (any other `reason:`, or a `timeout:` result).
-4. `release_watch` with the same `component: <pkg>` for the tag, once per released package.
+   A cross-package plan bumps more than one — release every one (Refs #792).
+3. Confirm each candidate with `./scripts/release/next-version.sh <pkg>`.
+   It prints the tag that would be cut, or nothing when the package has no releasable commits.
+   Never name a package that prints nothing: the run refuses it and nothing releases.
+   A package the shipped range did **not** bump is a sibling and is not yours to release.
+4. Dispatch once, naming every package to release:
+
+   ```bash
+   gh workflow run release.yml -f packages="<pkg> <pkg2>" -f sha="$(git rev-parse HEAD)"
+   ```
+
+5. Follow it with `ci_find` (workflow `release`, that same SHA) and `ci_watch` with `timeout: 600`, then `git pull --ff-only`.
+   If `prepare` fails, nothing was tagged and the release can be re-dispatched.
+   If `publish` or `github-release` fails, the tags are already pushed — fix the cause and re-run those jobs rather than re-dispatching.
 
 ## 7. Tear down the worktree
 
@@ -144,6 +148,6 @@ Do **not** recommend the next issue to plan here — `/retro` surfaces the next 
 - Never force-push.
 - If the ff-merge is not a fast-forward, stop — the peer re-rebases; the root never merges non-linearly.
 - If CI fails, the issue stays open and nothing is released or torn down.
-- Never merge a genuinely blocked release-please PR; a `reason: no checks reported` refusal is the expected `GITHUB_TOKEN` case.
-- Select the release PR by component, never by position — several are open at once, one per package with a pending release.
-- Never retry `release_pr_merge` on a `merged: unknown` result — verify the PR's state by hand first.
+- Never name a package in the release dispatch that `next-version.sh` reports nothing for — the run refuses it and no package releases.
+- Never re-dispatch a release after `prepare` succeeded; the tags exist and the run would refuse on them.
+- Peers never dispatch a release; only the root does.

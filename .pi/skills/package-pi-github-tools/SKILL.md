@@ -7,7 +7,7 @@ description: |
 
 # pi-github-tools
 
-Pi extension that registers deterministic GitHub CI, release, and issue tools via `pi.registerTool()`.
+Pi extension that registers deterministic GitHub CI and issue tools via `pi.registerTool()`.
 Replaces ad-hoc `gh` CLI polling with structured tools that have exponential backoff, progress streaming, and structured success/timeout returns.
 
 ## Architecture
@@ -24,9 +24,6 @@ src/
 ├── lib/                  # portable business logic
 │   ├── ci.ts             # findRun, watchRun, listRuns
 │   ├── ci-helpers.ts     # CIJob, findRetryDelay, formatProgress
-│   ├── config.ts         # config loading and normalization
-│   ├── merge-state.ts    # classifyMergeState: PR merge readiness from gh pr view
-│   ├── release.ts        # findReleasePR, mergeReleasePR, watchRelease; selects PR and tag by component
 │   ├── issue.ts          # closeIssue
 │   ├── github.ts         # gh(), ghJson(), ghJsonRetrying(), git(), detectRepo()
 │   ├── retry.ts          # isTransientError, withRetry: 3 retries at 1/4/9 s
@@ -39,20 +36,10 @@ src/
 - `src/lib/` must not import from `@earendil-works/pi-coding-agent` — only `src/tools/` and `src/progress.ts` touch Pi types.
 - The `gh` CLI is the sole external binary dependency.
 - Retry is opt-in at the call site: read-only calls go through `ghJsonRetrying`, and `gh()` stays single-shot so a mutation cannot acquire retry by accident.
-  A failed `gh pr merge` is resolved by re-reading the PR over REST (`gh api repos/{owner}/{repo}/pulls/N`), never by guessing or blind-retrying.
-- The repo runs release-please with `separate-pull-requests`, so several release PRs are open at once — one per component.
-  `findReleasePR` and `watchRelease` take an optional `component` and match the `--components--<component>` branch suffix and the `<component>-v` tag prefix respectively; neither picks by position.
-  Without a component `findReleasePR` returns an `ambiguous:` listing rather than guessing, while `watchRelease` keeps its last-tag fallback for repositories still on a combined release PR.
+- `ci_find` matches a run purely on `headSha` and never inspects the triggering event, so it follows a `workflow_dispatch` run — the repo's release workflow — as readily as a `push` one.
 
-## Configuration
-
-Extension-owned JSON config, project overriding global (same pattern as `pi-colgrep`):
-
-- Global: `<agentDir>/extensions/pi-github-tools/config.json`
-- Project: `<cwd>/.pi/extensions/pi-github-tools/config.json`
-
-`defaultMergeMethod` (`"rebase" | "squash" | "merge"`): fallback merge method for `release_pr_merge` when the tool call omits `method`.
-Missing or malformed config files are tolerated silently; invalid values are dropped by `normalizeConfig`.
+The package ships no configuration.
+It had a `defaultMergeMethod` key while it wrapped release-please's pull requests; that went with the release tools (Refs #865).
 
 ## Testing
 

@@ -72,4 +72,4 @@ git commit -m "docs(<PKG>): disposition #N against Phase N"
 ```
 
 Keep it out of the session's own commits — it is roadmap bookkeeping, not part of the change under way.
-The packages carrying phased roadmaps have `docs/architecture` in `release-please-config.json`'s `exclude-paths`, so this commit cuts no release.
+A package's `docs/architecture` is excluded from its release scope, so this commit cuts no release.

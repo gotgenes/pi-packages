@@ -111,7 +111,7 @@ The skill exits at its first step when no phase is open, and recording a disposi
 3. Run the linter one final time: `pnpm run lint`.
    Commit any fixup as `style:` if you haven't pushed yet.
 4. If `packages/<PKG>/docs/architecture/` exists and the issue completes a numbered roadmap step, prefix `✅` on both the step heading and its Mermaid diagram node — a `Landed:` detail line is not a substitute for the `✅`; flip the phase status row only when every step in the phase is done; commit as `docs:`.
-5. **Do not edit `CHANGELOG.md`** — release-please owns it and will generate entries from your Conventional Commit messages on the next release.
+5. **Do not edit `CHANGELOG.md`** — the release workflow owns it and will generate entries from your Conventional Commit messages on the next release.
 
 ## Pre-completion review
 

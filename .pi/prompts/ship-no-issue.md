@@ -1,5 +1,5 @@
 ---
-description: Push, verify CI, and merge the release-please PR (no issue to close)
+description: Push, verify CI, and dispatch the release (no issue to close)
 ---
 
 # Ship (no issue)
@@ -31,24 +31,29 @@ If either fails, fix the issues and commit before pushing.
 ## 4. Verify CI on the pushed commit
 
 1. Use `ci_find` with the pushed SHA (`git rev-parse HEAD`) and workflow `ci` to locate the CI run.
-2. Use `ci_watch` with the returned `run_id`, workflow `ci`, and `timeout: 600` to wait for it to complete — a `main` push runs `check` then `release-please`, which exceeds the 300 s default about half the time.
+2. Use `ci_watch` with the returned `run_id`, workflow `ci`, and `timeout: 600` to wait for it to complete.
 3. If the run conclusion is `failure`, stop and report.
-   Do not merge anything.
+   Do not release anything.
 4. If it lands `success`, continue.
 
-## 5. Merge release-please PR (if present)
+## 5. Dispatch the release (if anything is releasable)
 
-1. Use `release_pr_find` to locate an open release-please PR.
-   There is no issue plan here to name a package, so call it without a component.
-   Every package gets its own release PR, so an `ambiguous:` result is the normal multi-package case — show the operator the listed candidates and ask which to merge, then re-run `release_pr_find` with that `component`.
-2. If none is found (timeout), skip to step 6.
-3. If one exists, use `release_pr_merge` with the PR number.
-   The tool waits out an in-progress check or an undecided (`UNKNOWN`) mergeability state on its own, streaming progress, and retries a transient 5xx — do not add a manual wait loop or a blind retry.
-   - If `release_pr_merge` returns `failed to merge PR #N`, the merge call itself failed and the tool has already checked whether it landed: `merged: false` is safe to retry, `merged: unknown` is not — run the probe it prints first.
-   - If `release_pr_merge` returns an error (not mergeable), read its `reason:` line.
-     `reason: no checks reported (statusCheckRollup is empty)` is the expected case for a release-please PR created by the default `GITHUB_TOKEN` (no CI runs); merge with `gh pr merge <N> --rebase` (matches the `defaultMergeMethod: rebase` config so the release lands as a linear commit, not a merge bubble), then `git pull --ff-only`.
-     Any other reason, or a `timeout:` result, means the PR is genuinely blocked or still unsettled — stop and report; let the user decide.
-4. Use `release_watch` to wait for the release tag to land on HEAD, passing the same `component` if one was chosen.
+1. Ask which packages have releasable commits:
+
+   ```bash
+   for pkg in $(ls packages); do ./scripts/release/next-version.sh "$pkg"; done
+   ```
+
+   Each package prints the tag it would cut, or nothing.
+2. If none prints a tag, skip to step 6.
+3. There is no issue plan here to say which packages this push was for, so **show the operator the list and ask which to release** — do not release everything that happens to be releasable.
+4. Dispatch the confirmed set:
+
+   ```bash
+   gh workflow run release.yml -f packages="<pkg> <pkg2>" -f sha="$(git rev-parse HEAD)"
+   ```
+
+5. Follow it with `ci_find` (workflow `release`, that same SHA) and `ci_watch` with `timeout: 600`, then `git pull --ff-only`.
 
 ## 6. Final report
 
@@ -61,9 +66,7 @@ Print:
 ## Constraints
 
 - Never force-push.
-- Never merge a release-please PR that is genuinely blocked (`CONFLICTING`/`DIRTY`/`BEHIND` or a failing check); a `reason: no checks reported` refusal is the expected `GITHUB_TOKEN` case (step 5.3).
-- Never retry `release_pr_merge` on a `merged: unknown` result — verify the PR's state by hand first.
-- If CI fails, do not merge anything.
-- Several release-please PRs open at once is normal — one per package with a pending release.
-  Select one by component with the operator's confirmation, never by position.
-  Two PRs for the **same** component is a configuration issue: stop and ask.
+- Never release a package without the operator's confirmation here — with no issue plan, nothing in this flow says which packages the push was for.
+- Never name a package in the release dispatch that `next-version.sh` reports nothing for — the run refuses it and no package releases.
+- Never re-dispatch a release after `prepare` succeeded; the tags exist and the run would refuse on them.
+- If CI fails, do not release anything.

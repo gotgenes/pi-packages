@@ -1,5 +1,5 @@
 ---
-description: Push, close a GitHub issue with a summary, and merge the release-please PR
+description: Push, close a GitHub issue with a summary, and dispatch the release
 ---
 
 # Ship the implementation
@@ -60,28 +60,35 @@ If either fails, fix the issues and commit before pushing.
    Pass that exact value to `ci_find` — never hand-expand the short SHA from the `git push` output, and never type a SHA from memory.
 2. Use `ci_find` with that SHA and workflow `ci` to locate the CI run.
    If it times out, re-check the SHA you passed against `git rev-parse HEAD` before assuming a timing miss — a truncated or retyped SHA produces the same timeout (Refs #640).
-3. Use `ci_watch` with the returned `run_id`, workflow `ci`, and `timeout: 600` to wait for it to complete — a `main` push runs `check` then `release-please`, which exceeds the 300 s default about half the time.
+3. Use `ci_watch` with the returned `run_id`, workflow `ci`, and `timeout: 600` to wait for it to complete.
 4. If the run conclusion is `failure`, stop and report.
    Do not close the issue or merge anything.
 5. If it lands `success`, continue.
 
 ## 4b. Check for a stacked release
 
-First check the unreleased range for a releasing commit: `git log --oneline "$(git tag --list '<pkg>-v*' --sort=-creatordate | head -1)"..HEAD -- packages/<pkg>/`, where `<pkg>` is the shipped package from the issue's plan path.
-The path scope is required — a package tag many releases old otherwise dumps every package's commits and truncates the output.
-Derive the tag package-scoped as shown, not `git tag --sort=-version:refname | head -1`, which sorts lexically across all package tags and returns an unrelated package.
-For a repo-root tooling change (plan under `docs/plans/`, no `<pkg>`), skip that command — every commit is outside the package tree, so nothing releases now.
-If every commit is a non-releasing type — the `hidden: true` changelog sections in `release-please-config.json` (`refactor:`/`style:`/`test:`/`build:`/`ci:`) — release-please will cut nothing now; the work auto-batches until a releasing commit lands.
-A `docs:` commit cuts a patch only when it touches a file under `packages/<pkg>/` that is **not** in `exclude-paths`.
-Files outside the package tree (`.pi/skills/`, root `AGENTS.md`/`README.md`) are attributed to no package; together with `exclude-paths` files (`docs/plans`, `docs/retro`, a package's `docs/architecture`) they cut nothing now and auto-batch (Refs #505).
+Ask what would actually release, rather than reasoning about commit types:
+
+```bash
+./scripts/release/next-version.sh <pkg>
+```
+
+Where `<pkg>` is the shipped package from the issue's plan path.
+The script is read-only and offline, and it applies the same path scoping and commit-type rules the release itself will.
+It prints the tag that would be cut, or nothing at all when the package has no releasable commits.
+
+Trust its answer over any reasoning about which commit types are hidden.
+Empty output means the work auto-batches until a releasing commit lands: `refactor:`/`style:`/`test:`/`build:`/`ci:`/`chore:` are skipped types, and a `docs:` commit counts only when it touches a file under `packages/<pkg>/` that is not an internal docs directory (`docs/plans`, `docs/retro`, `docs/architecture`, `docs/decisions`, `docs/assets`).
+Files outside the package tree (`.pi/skills/`, root `AGENTS.md`/`README.md`) belong to no package and release nothing.
+
+For a repo-root tooling change (plan under `docs/plans/`, no `<pkg>`), skip the command — every commit is outside the package tree, so nothing releases now.
 Say so in the final report and skip the batch-vs-release question.
 
 Then apply the decision recorded in the early "Release coordination" section.
 The issue **always** closes in step 5, regardless of this decision — closing records that the work is on `main`; releasing is a separate, batched concern (matches the decoupled close/release contract of the worktree flow's root half, `/ship-worktree`).
 If the decision was to defer/batch: continue to step 5, then skip step 6 (the release lands later with the batch tail).
-Each package has its own release-please PR, so leaving this one unmerged holds only this package — sibling packages keep releasing on their own ships.
+A release names its packages explicitly, so deferring one holds only that package — siblings keep releasing on their own ships.
 Note the deferral in the final report.
-Otherwise continue to step 5 and step 6.
 
 ## 5. Close the issue
 
@@ -123,9 +130,9 @@ Close each PR the plan names with `gh pr comment` then `gh pr close`, never merg
 
 Then check whether this push shipped work for **other** issues (a stacked refactor/enabler, other `(#M)` commit refs, or sibling `docs/plans/`/`docs/retro/` files in the `"$PLAN"^..HEAD` range).
 A mid-batch sibling that shipped on its own `/ship-issue` is already closed by that ship — this scan is for stacked work that never had a ship of its own.
-Close each with its own short summary — release-please omits `refactor:` commits from the changelog, so a stacked refactor issue leaves no reminder.
+Close each with its own short summary — `refactor:` commits are omitted from the changelog, so a stacked refactor issue leaves no reminder.
 
-## 6. Merge release-please PR (if present)
+## 6. Dispatch the release
 
 Skip this step entirely if step 4b recorded a defer/batch decision — the release lands later with the batch tail.
 
@@ -137,31 +144,30 @@ Skip this step entirely if step 4b recorded a defer/batch decision — the relea
    ```
 
    A plan under `docs/plans/` is cross-package as often as it is repo tooling — release every package the range bumps (Refs #792).
-   Then use `release_pr_find` with `component: <pkg>` for each; every package gets its own release PR, so the component is what says which one you mean.
-   On an empty list (repo tooling only) call it without a component, and on an `ambiguous:` result stop and ask which PR to merge — none of the listed ones is yours to pick blind.
-2. If none is found (timeout), skip to step 7.
-   A package the shipped range did **not** bump is a sibling: its open release PR is expected and is not yours to merge.
-3. If one exists, read the **full** PR body (`gh pr view <N> --json body -q .body`) and confirm it bumps `<pkg>` and nothing else.
-   A component-scoped release PR carries exactly one package, so an unexpected bump means you have the wrong PR — stop rather than merge it.
-   Read `release_pr_find`'s `component:` line before applying that rule: `component: (none)` means a **combined** PR covering every package, which the tool falls back to legitimately (the rollback state in `AGENTS.md`), so sibling bumps there are expected rather than wrong.
-   A package that releases off a `docs:`-only commit is missing a `docs/<subdir>` entry in `exclude-paths` (Refs #655).
-4. Use `release_pr_merge` with the PR number.
-   The tool waits out an in-progress check or an undecided (`UNKNOWN`) mergeability state on its own, streaming progress — do not add a manual wait loop.
-   It also retries a transient 5xx, so a single failure is already several attempts — do not retry it blindly.
-   - If `release_pr_merge` returns `failed to merge PR #N`, the merge call itself failed and the tool has already checked whether it landed: `merged: false` is safe to retry, `merged: unknown` is not — run the probe it prints before doing anything else.
-   - If `release_pr_merge` returns an error (not mergeable), read its `reason:` line.
-     `reason: no checks reported (statusCheckRollup is empty)` is the expected case for a release-please PR created by the default `GITHUB_TOKEN` (no CI runs); merge with `gh pr merge <N> --rebase` (matches the `defaultMergeMethod: rebase` config so the release lands as a linear commit, not a merge bubble), then `git pull --ff-only`.
-     Any other reason (`check failed: ...`, `mergeable is ...`, `merge state is ...`) or a `timeout:` result means the PR is genuinely blocked or still unsettled — stop and report; let the user decide.
-5. Use `release_watch` with the same `component: <pkg>` to wait for the release tag to land on HEAD, once per released package.
+   On an empty list (repo tooling only), nothing releases: skip to step 7.
+2. Confirm each candidate against `./scripts/release/next-version.sh <pkg>`.
+   A package that prints nothing has no releasable commits and must not be named — the release refuses a package with nothing to release, and would fail the whole run.
+   A package the shipped range did **not** bump is a sibling and is not yours to release.
+3. Dispatch the release, naming every package to release and pinning the commit:
 
-## 6b. Verify the release-triggered CI run
+   ```bash
+   gh workflow run release.yml -f packages="<pkg> <pkg2>" -f sha="$(git rev-parse HEAD)"
+   ```
 
-Skip this step if step 6 was skipped (deferred/batch release, or no release-please PR found) — there is nothing to verify.
+   The package list is explicit by design: several packages can be releasable at once, and only the named ones go.
+   The `sha` is a guard — the run aborts if `main` moved after you derived it.
 
-1. Capture the merge commit SHA: `release_pr_merge`'s `head_sha`, or `git rev-parse HEAD` after `release_watch`.
-2. Use `ci_find` with that SHA and workflow `ci`, then `ci_watch` the returned `run_id` with `timeout: 600`.
-3. If the `release-please` or `publish` job failed, or `publish` was skipped when a release was expected, stop — do not proceed to step 7.
-   Resolve per the recovery runbook in `AGENTS.md` (a `release-please` job can fail after already tagging/releasing, silently skipping `publish`), then re-verify before continuing.
+## 6b. Verify the release run
+
+Skip this step if step 6 was skipped (deferred/batch release, or nothing to release) — there is nothing to verify.
+
+1. Use `ci_find` with workflow `release` and the SHA you passed as `-f sha`, then `ci_watch` the returned `run_id` with `timeout: 600`.
+   A dispatched run's `head_sha` is `main`'s tip at dispatch time, so it matches the SHA you pinned.
+   If `ci_find` times out, the dispatch's SHA guard most likely failed because `main` moved — check the run list before re-dispatching.
+2. If the `prepare`, `publish`, or `github-release` job failed, stop — do not proceed to step 7.
+   `prepare` failing means nothing was tagged and the release can simply be re-dispatched.
+   `publish` or `github-release` failing means the tags are already pushed: fix the cause and re-run those jobs rather than re-dispatching, which would refuse on the existing tag.
+3. After the run succeeds, `git pull --ff-only` to bring the release commit and tags down.
 
 ## 7. Final report
 
@@ -180,10 +186,7 @@ Do **not** recommend the next issue to plan here — `/retro` surfaces the next 
 ## Constraints
 
 - Never force-push.
-- Never merge a release-please PR that is genuinely blocked (`CONFLICTING`/`DIRTY`/`BEHIND` or a failing check); a `reason: no checks reported` refusal is the expected `GITHUB_TOKEN` case (step 6.4).
-- Never retry `release_pr_merge` on a `merged: unknown` result — verify the PR's state by hand first (step 6.4).
+- Never name a package in the release dispatch that `next-version.sh` reports nothing for — the run refuses it and no package releases (step 6.2).
+- Never re-dispatch a release after `prepare` succeeded; the tags exist, and the run would refuse on them (step 6b.2).
 - If CI fails, the issue stays open.
-- If the release-triggered CI run (step 6b) fails, do not proceed to step 7 until resolved — see the `AGENTS.md` recovery runbook.
-- Several release-please PRs open at once is normal — one per package with a pending release.
-  Select yours by component, never by position.
-  Two PRs for the **same** component is a configuration issue: stop and ask.
+- If the release run (step 6b) fails, do not proceed to step 7 until resolved.

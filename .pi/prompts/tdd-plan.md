@@ -152,7 +152,7 @@ The skill exits at its first step when no phase is open, and recording a disposi
    Every surviving line must name a user-observable outcome, not an internal seam.
    A seam-named line is either a mistyped commit (retype to `refactor:`) or a correct `fix:`/`feat:` with a mechanism-named subject (reword to the symptom).
    Fix either now, while nothing is pushed (Refs #724).
-10. **Do not edit `CHANGELOG.md`** — release-please owns it and will generate entries from your Conventional Commit messages on the next release.
+10. **Do not edit `CHANGELOG.md`** — the release workflow owns it and will generate entries from your Conventional Commit messages on the next release.
 
 ## Pre-completion review
 
