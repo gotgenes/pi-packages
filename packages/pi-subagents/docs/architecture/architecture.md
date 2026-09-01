@@ -345,6 +345,7 @@ src/
 ├── session/                        session assembly and preparation
 │   ├── session-config.ts           pure assembler (main entry)
 │   ├── prompts.ts                  system prompt building; inherits only the parent prompt's identity, cutting the session-resolved tail (ADR 0006)
+│   ├── ask-back.ts                 the marker a child declares a question with, and its parser (fence-aware, last block wins)
 │   ├── content-items.ts            shared message content parsing (tool-call names, assistant content)
 │   ├── context.ts                  parent conversation extraction
 │   ├── conversation.ts             render a session's messages as formatted text
@@ -360,7 +361,7 @@ src/
 │   ├── subagent-session.ts         born-complete child session: turn loop, steer, shutdown-then-dispose teardown
 │   ├── turn-limits.ts              normalizeMaxTurns (turn-count policy)
 │   ├── subagent.ts                 owns full execution lifecycle (run, abort, steer, wait-until-settled)
-│   ├── subagent-state.ts           lifecycle status + metrics + result-consumption value object (transitions, accumulators, classification predicates)
+│   ├── subagent-state.ts           lifecycle status + metrics + result-delivery value object (transitions, accumulators, classification predicates); delivery carries a revocable carrier claim and a one-way consumption latch
 │   ├── run-listeners.ts            per-run observer-unsub and signal-detach handles
 │   ├── workspace-bracket.ts        child workspace prepare/dispose lifecycle
 │   ├── concurrency-limiter.ts       background admission gate: schedules run thunks FIFO against the limit
@@ -372,7 +373,8 @@ src/
 │
 ├── observation/                    progress tracking and notification
 │   ├── record-observer.ts          session-event stats observer
-│   ├── notification.ts             completion nudges (announce-only; withheld during the parent's agent run, flushed on agent_settled)
+│   ├── notification.ts             completion nudges (announce-only; gated on the carrier claim, withheld during the parent's agent run, flushed on agent_settled)
+│   ├── outcome-delivery.ts         shared outcome rendering every result carrier composes: one status vocabulary in two presentations, body, ask-back affordance
 │   ├── renderer.ts                 notification TUI component
 │   ├── composite-subagent-observer.ts fans manager notifications out to multiple observers
 │   └── subagent-events-observer.ts manager lifecycle observer (event emission + persistence + notification)
@@ -940,7 +942,7 @@ The step also exposed an unpinned invariant from Step 3: the spawn-notes prefix 
 
 Release: independent
 
-#### Step 8 — Ask-back: let a child's question reach the parent ([#465])
+#### ✅ Step 8 — Ask-back: let a child's question reach the parent ([#465])
 
 Cause: a child that ends its run by asking a question terminates into a dead end — the result channel is fire-and-forget, so the ask-back loop (child question → parent notified → parent resumes with the answer) has no supported path, even though resume itself works and Phase 21's [#466] gave resumed completions first-class events.
 Smell: feature with a structural seam (the delivery-domain follow-on the first-principles section anticipates).
@@ -949,6 +951,16 @@ Soft dependency: after Step 7 (the resume handle must be deliverable before an a
 Outcome: a completed child whose result is a question is surfaced to the parent as answerable (mechanism per plan), pinned by an end-to-end test.
 Commit type: `feat:`.
 Impact 3 / Risk 3 / Priority 9.
+
+Landed: the mechanism is a child-declared marker, parsed deterministically at the terminal transition and rendered by every result carrier with the exact `resume` call.
+The protocol sits beside `<active_agent>` in a header both prompt modes share, because `Explore` and `Plan` are `promptMode: "replace"` and never receive the `<sub_agent_context>` bridge — the extraction that gave the two branches one home was the step's Tidy-First preparation, and it is why deleting the block now fails both modes' tests instead of one.
+The parser ignores fenced regions and takes the last well-formed block, so a child quoting the protocol back does not trip it; the protocol's own example is fenced and its prose names the marker without angle brackets, since a bare opening tag there pairs with the fenced closing one.
+
+Three defects surfaced under the feature and were fixed with it.
+The `isBackground` guard on `onRunFinished`/`onResumeFinished` was residue from a branch it once shared with limiter accounting, so foreground children emitted no terminal event and persisted no `subagents:record`; the nudge's suppression moved to a revocable carrier claim, which is structural where the consumption re-check could lose its race on an interrupted turn.
+And `get_subagent_result` and the resume return reported nothing for an `aborted`, `steered`, or `stopped` child, so one status vocabulary now backs the two presentations the carriers' differing grammar needs.
+
+The claim is deliberately caller-scoped: `resetForResume` clears `consumedAt` but not the claim, because `runResume` calls it synchronously before `resume()` returns, so a claim cleared there would be dropped before the caller that set it could observe it.
 
 Release: independent
 
@@ -1001,7 +1013,7 @@ flowchart TD
     S1["✅ Step 1 (#724)<br/>Choke-point parity"] --> S3["✅ Step 3 (#829)<br/>Locked-fields precedence"]
     S1 --> S4["✅ Step 4 (#828)<br/>Remove vacant seam field"]
     S1 -.soft.-> S2["✅ Step 2 (#830)<br/>SubagentRecord policy"]
-    S7["✅ Step 7 (#798)<br/>Foreground resume handle"] -.soft.-> S8["Step 8 (#465)<br/>Ask-back"]
+    S7["✅ Step 7 (#798)<br/>Foreground resume handle"] -.soft.-> S8["✅ Step 8 (#465)<br/>Ask-back"]
     S5["✅ Step 5 (#801)<br/>Skills-block strip"]
     S6["✅ Step 6 (#827)<br/>UICtx capture"] --> S9["Step 9 (#849)<br/>Widget teardown"]
     S8 --> S11["Step 11 (#858)<br/>Mid-run channel"]
