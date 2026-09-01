@@ -818,25 +818,28 @@ Steps 2, 6, and 8 have design-dependent shapes and are verified by their plans' 
 
 ### Steps
 
-#### ✅ Step 1 — Land first-class SDK spawns at the manager choke point ([#724])
+#### ✅ Step 1: Land first-class SDK spawns at the manager choke point ([#724])
 
-Cause: the two front doors were never held to the same contract — `SubagentManager.spawn` is the one point both doors already traverse, but it stamps no invariants, so the tool door's resolution pipeline (canonical type, disabled-agent check, background mode, parent linkage) is skipped by the SDK door.
+**Cause:** the two front doors were never held to the same contract — `SubagentManager.spawn` is the one point both doors already traverse, but it stamps no invariants, so the tool door's resolution pipeline (canonical type, disabled-agent check, background mode, parent linkage) is skipped by the SDK door.
 The widget's `record.invocation?.runInBackground` read is the symptom fallow cannot see: the manager computes background-ness five times and stores it nowhere, so a consumer reconstructs it from a display snapshot one door forgets to build.
-Smell: Category C (coupling/boundary flaw; scattered decision).
-Target files: `src/lifecycle/subagent-manager.ts`, `src/lifecycle/subagent.ts`, `src/service/service-adapter.ts`, `src/tools/spawn-config.ts`, `src/tools/background-spawner.ts`, `src/ui/agent-widget.ts` — per the committed plan `docs/plans/0724-first-class-sdk-spawns.md`.
-Outcome: `Subagent.isBackground` is first-class record state; the widget filter reads it; SDK-spawned children carry `parentSession`; the disabled-agent block holds at the choke point; the widget-filter read drops 1 of the 8 `invocation` sites.
-Commit type: `fix:` — the phase's first release vehicle.
-Impact 4 / Risk 2 / Priority 16.
+
+- **Smell:** Category C (coupling/boundary flaw; scattered decision).
+- **Target:** `src/lifecycle/subagent-manager.ts`, `src/lifecycle/subagent.ts`, `src/service/service-adapter.ts`, `src/tools/spawn-config.ts`, `src/tools/background-spawner.ts`, `src/ui/agent-widget.ts` — per the committed plan `docs/plans/0724-first-class-sdk-spawns.md`.
+- **Outcome:** `Subagent.isBackground` is first-class record state; the widget filter reads it; SDK-spawned children carry `parentSession`; the disabled-agent block holds at the choke point; the widget-filter read drops 1 of the 8 `invocation` sites.
+- **Commit type:** `fix:` — the phase's first release vehicle.
+- **Impact 4 / Risk 2 / Priority 16.**
 
 Release: independent
 
-#### ✅ Step 2 — Decide and document the `SubagentRecord` allowlist policy ([#830])
+#### ✅ Step 2: Decide and document the `SubagentRecord` allowlist policy ([#830])
 
-Cause: the public snapshot — the discrete-query half of the reactive/discrete split — is produced by an allowlist with no stated admission policy, so every widening (PR #748's `turnCount`/`activeTools`, [#724]'s deferred `isBackground`) re-litigates the same trade-off case by case, including the undecided question of whether third parties implement the interface at all.
-Smell: Category C (boundary contract left implicit).
-Target files: `src/service/service.ts`, `src/service/service-adapter.ts` (`toSubagentRecord`), plus a policy record in this document or a new ADR; PR #748's second commit is the close target for the chosen shape.
-Outcome: a written admission policy (what earns a field a place; required versus optional for additions; whether the interface is a contract third parties satisfy), and the specific candidates (`turnCount`, `activeTools`, `outputFile`, `maxTurns`, `responseText`, `consumedAt`, `isBackground`) each dispositioned under it, pinned by updated service tests.
-Impact 3 / Risk 2 / Priority 12.
+**Cause:** the public snapshot — the discrete-query half of the reactive/discrete split — is produced by an allowlist with no stated admission policy, so every widening (PR #748's `turnCount`/`activeTools`, [#724]'s deferred `isBackground`) re-litigates the same trade-off case by case, including the undecided question of whether third parties implement the interface at all.
+
+- **Smell:** Category C (boundary contract left implicit).
+- **Target:** `src/service/service.ts`, `src/service/service-adapter.ts` (`toSubagentRecord`), plus a policy record in this document or a new ADR; PR #748's second commit is the close target for the chosen shape.
+- **Outcome:** a written admission policy (what earns a field a place; required versus optional for additions; whether the interface is a contract third parties satisfy), and the specific candidates (`turnCount`, `activeTools`, `outputFile`, `maxTurns`, `responseText`, `consumedAt`, `isBackground`) each dispositioned under it, pinned by updated service tests.
+- **Commit type:** `feat:`.
+- **Impact 3 / Risk 2 / Priority 12.**
 
 Landed: `docs/decisions/0005-subagent-record-admission-policy.md` states the four admission rules, the four exclusion classes, and the produced-not-implemented contract direction.
 `isBackground`, `turnCount`, `maxTurns`, and `outputFile` are admitted; `activeTools`, `responseText`, `consumedAt`, and `stoppedWhileQueued` are declined, and both halves are pinned in `test/service/service-adapter.test.ts`.
@@ -845,18 +848,19 @@ The contract direction made the widening semver-minor, so this step left the bat
 
 Release: independent
 
-#### ✅ Step 3 — Narrow the frontmatter guard to explicitly locked fields ([#829], with [#834])
+#### ✅ Step 3: Narrow the frontmatter guard to explicitly locked fields ([#829], with [#834])
 
-Cause: upstream's config-wins precedence guards against a non-deterministic _model_ guessing harness knobs, but it was applied as a blanket over every field and every caller — so a deliberate operator override (`model: "sonnet-5"` on `Explore`) is silently discarded alongside a model's guess, contradicting the tool schema and `AGENTS.md`.
-Smell: Category C (a decision made at the wrong boundary — per-field policy fused into a single global precedence) plus `bug`.
-Target files: `src/config/invocation-config.ts`, `src/config/custom-agents.ts` (frontmatter `locked:` shape), `src/tools/agent-tool.ts` (schema text), `src/service/service-adapter.ts` ([#834]'s cast), `docs/configuration.md`.
-Design input: [#641]'s operator-configured floors belong to the same precedence family — settle or explicitly exclude it in the step's plan.
-[#834] adds value validation to the same field family: neither door checks the level it receives, so `invocation-config.ts:26` and the mirrored cast at `service-adapter.ts` both widen an arbitrary `string` to `ThinkingLevel`.
-Trace what the SDK does with an unrecognized level before choosing between rejection, warned fallback, and narrowing the public `SpawnOptions.thinkingLevel` union.
-Builds on Step 1's `BackgroundRequest` two-variant mechanism (each door states commitment versus fallback).
-Outcome: blanket `agentConfig?.<field> ?? params` merges drop 5 → 0; caller-explicit wins unless the agent file locks the field; a discarded override is reported, not silent; an unsupported `thinking` value no longer reaches the child session unchecked through either door; migration note shipped.
-Commit type: `fix(pi-subagents)!:` — semver-major (changes effective model/thinking/turns for agent files relying on the blanket).
-Impact 4 / Risk 3 / Priority 12.
+**Cause:** upstream's config-wins precedence guards against a non-deterministic _model_ guessing harness knobs, but it was applied as a blanket over every field and every caller — so a deliberate operator override (`model: "sonnet-5"` on `Explore`) is silently discarded alongside a model's guess, contradicting the tool schema and `AGENTS.md`.
+
+- **Smell:** Category C (a decision made at the wrong boundary — per-field policy fused into a single global precedence) plus `bug`.
+- **Target:** `src/config/invocation-config.ts`, `src/config/custom-agents.ts` (frontmatter `locked:` shape), `src/tools/agent-tool.ts` (schema text), `src/service/service-adapter.ts` ([#834]'s cast), `docs/configuration.md`.
+- **Design input:** [#641]'s operator-configured floors belong to the same precedence family — settle or explicitly exclude it in the step's plan.
+  [#834] adds value validation to the same field family: neither door checks the level it receives, so `invocation-config.ts:26` and the mirrored cast at `service-adapter.ts` both widen an arbitrary `string` to `ThinkingLevel`.
+  Trace what the SDK does with an unrecognized level before choosing between rejection, warned fallback, and narrowing the public `SpawnOptions.thinkingLevel` union.
+  Builds on Step 1's `BackgroundRequest` two-variant mechanism (each door states commitment versus fallback).
+- **Outcome:** blanket `agentConfig?.<field> ?? params` merges drop 5 → 0; caller-explicit wins unless the agent file locks the field; a discarded override is reported, not silent; an unsupported `thinking` value no longer reaches the child session unchecked through either door; migration note shipped.
+- **Commit type:** `fix(pi-subagents)!:` — semver-major (changes effective model/thinking/turns for agent files relying on the blanket).
+- **Impact 4 / Risk 3 / Priority 12.**
 
 Landed: a caller's `subagent` parameter now wins and the agent file fills what the call leaves unset, unless the file declares `locked: true` (every field it sets — the pre-change behavior in one line) or `locked: [<fields>]` (exactly those, including fields it leaves unset).
 A discarded override is reported in the tool result, on the background path as well as the foreground one — which also gave the background path the unknown-agent-type note it had never rendered.
@@ -866,15 +870,16 @@ The lock binds the tool door only; [#641] was excluded with rationale (a setting
 
 Release: batch "front-door-majors"
 
-#### ✅ Step 4 — Remove the vacant `WorkspacePrepareContext.invocation` field and its dead storage chain ([#828])
+#### ✅ Step 4: Remove the vacant `WorkspacePrepareContext.invocation` field and its dead storage chain ([#828])
 
-Cause: a provider-seam field no consumer has ever read — the exact case the no-vacant-hooks rule names — kept alive by a storage chain (`AgentSpawnConfig.invocation` → `SubagentInit.invocation` → `Subagent.invocation` → seam) whose only other terminal reader Step 1 removes.
-Smell: Category A (vacant hook; a dead subsystem once Step 1 lands).
-Target files: `src/lifecycle/workspace.ts`, `src/lifecycle/subagent-manager.ts`, `src/lifecycle/subagent.ts`, `src/tools/background-spawner.ts`, `src/tools/foreground-runner.ts`, `packages/pi-subagents-worktrees/test/workspace-provider.test.ts`; the `AgentInvocation` type survives as `spawn-config.ts`'s local display snapshot.
-Hard dependency: after Step 1 (otherwise the widget read keeps the chain alive and `pnpm fallow dead-code` gates the partial removal).
-Outcome: `invocation` storage-chain and widget-filter sites drop 8 → 0; `dist/public.d.ts` loses the field (semver-major with migration note).
-Commit type: `refactor(pi-subagents)!:`.
-Impact 3 / Risk 2 / Priority 12.
+**Cause:** a provider-seam field no consumer has ever read — the exact case the no-vacant-hooks rule names — kept alive by a storage chain (`AgentSpawnConfig.invocation` → `SubagentInit.invocation` → `Subagent.invocation` → seam) whose only other terminal reader Step 1 removes.
+
+- **Smell:** Category A (vacant hook; a dead subsystem once Step 1 lands).
+- **Target:** `src/lifecycle/workspace.ts`, `src/lifecycle/subagent-manager.ts`, `src/lifecycle/subagent.ts`, `src/tools/background-spawner.ts`, `src/tools/foreground-runner.ts`, `packages/pi-subagents-worktrees/test/workspace-provider.test.ts`; the `AgentInvocation` type survives as `spawn-config.ts`'s local display snapshot.
+- **Hard dependency:** after Step 1 (otherwise the widget read keeps the chain alive and `pnpm fallow dead-code` gates the partial removal).
+- **Outcome:** `invocation` storage-chain and widget-filter sites drop 8 → 0; `dist/public.d.ts` loses the field (semver-major with migration note).
+- **Commit type:** `refactor(pi-subagents)!:`.
+- **Impact 3 / Risk 2 / Priority 12.**
 
 Landed: `WorkspacePrepareContext` now carries exactly the three fields a provider reads (`agentId`, `agentType`, `baseCwd`), and the storage chain behind it — `AgentSpawnConfig.invocation`, `SubagentInit.invocation`, `Subagent.invocation`, and both tool-door producers — is gone.
 The storage-chain row went 8 → 0.
@@ -884,15 +889,16 @@ The seam-context test was strengthened rather than trimmed: `toHaveBeenCalledWit
 
 Release: batch "front-door-majors"
 
-#### ✅ Step 5 — Strip the inherited `available_skills` block from child prompts ([#801])
+#### ✅ Step 5: Strip the inherited `available_skills` block from child prompts ([#801])
 
-Cause: `buildAgentPrompt` embeds the parent's effective system prompt verbatim for KV-cache reuse, but Pi regenerates per-session appendages for the child — so the child gets two skills blocks, exactly the class [#640] fixed for the cwd footer, where the strip is per-appendage rather than principled.
-Smell: Category C (boundary flaw in prompt inheritance) plus `bug`.
-Target files: `src/session/prompts.ts` (extend the inherited-appendage handling beside `withoutContradictoryCwdFooter`), `test/session/prompts.test.ts`.
-Design note: match [#640]'s discipline — strip only when the duplication is real, and preserve the byte-identical cacheable prefix where possible; the step's plan decides whether other Pi-appended blocks belong to the same strip.
-Outcome: an assembled child prompt contains one `available_skills` block, pinned by a regression test; the `prompts.ts` grep row goes 0 → ≥ 1.
-Commit type: `fix:`.
-Impact 3 / Risk 2 / Priority 12.
+**Cause:** `buildAgentPrompt` embeds the parent's effective system prompt verbatim for KV-cache reuse, but Pi regenerates per-session appendages for the child — so the child gets two skills blocks, exactly the class [#640] fixed for the cwd footer, where the strip is per-appendage rather than principled.
+
+- **Smell:** Category C (boundary flaw in prompt inheritance) plus `bug`.
+- **Target:** `src/session/prompts.ts` (extend the inherited-appendage handling beside `withoutContradictoryCwdFooter`), `test/session/prompts.test.ts`.
+- **Design note:** match [#640]'s discipline — strip only when the duplication is real, and preserve the byte-identical cacheable prefix where possible; the step's plan decides whether other Pi-appended blocks belong to the same strip.
+- **Outcome:** an assembled child prompt contains one `available_skills` block, pinned by a regression test; the `prompts.ts` grep row goes 0 → ≥ 1.
+- **Commit type:** `fix:`.
+- **Impact 3 / Risk 2 / Priority 12.**
 
 Landed: the strip is principled rather than per-appendage — `inheritedIdentity` cuts the inherited prompt at the first layer Pi resolves per session and keeps what precedes it, so the catalogue, the cwd footer, and the blocks extensions append from `before_agent_start` all stop at the boundary.
 The design note's "strip only when the duplication is real" could not be honored as written: the child's skills are resolved after `buildAgentPrompt` runs, so the two catalogues cannot be compared at assembly time, and every reachable case — identical, cwd-divergent, or a `read`-less agent that gets no catalogue of its own — wants the inherited copy gone.
@@ -903,16 +909,17 @@ Recorded as `docs/decisions/0006-inherited-prompt-is-identity-only.md`; [#846] t
 
 Release: independent
 
-#### ✅ Step 6 — Capture `UICtx` outside the tool-call path so the widget can render ([#827])
+#### ✅ Step 6: Capture `UICtx` outside the tool-call path so the widget can render ([#827])
 
-Cause: temporal coupling — the widget's ability to render is keyed to an unrelated event (`tool_execution_start` is the sole `setUICtx` site), so a session whose model never calls a tool has a permanently dark widget even for agents passing its roster filter; reachable today from any command-driven `SubagentsService.spawn`.
-Smell: Category C (coupling/boundary flaw) plus `bug`.
-Target files: `src/ui/agent-widget.ts`, `src/handlers/tool-start.ts`, `src/index.ts` (composition-root wiring); PR #748's first commit carries candidate approach 1.
-Design decision at plan time: push at `session_start` versus a lazy `getUICtx` supplier; either way, settle the `finishedTurnAge` aging loose end (rows currently age only via `onTurnStart`).
-SDK facts pre-verified in the issue against `@earendil-works/pi-coding-agent@0.79.1` (TUI starts before extension init; `ctx.ui` is per-session stable; headless binds `noOpUIContext`) — re-verify against the pinned version at plan time.
-Outcome: the widget renders in a session with no model tool call, pinned by a regression test.
-Commit type: `fix:`.
-Impact 3 / Risk 2 / Priority 12.
+**Cause:** temporal coupling — the widget's ability to render is keyed to an unrelated event (`tool_execution_start` is the sole `setUICtx` site), so a session whose model never calls a tool has a permanently dark widget even for agents passing its roster filter; reachable today from any command-driven `SubagentsService.spawn`.
+
+- **Smell:** Category C (coupling/boundary flaw) plus `bug`.
+- **Target:** `src/ui/agent-widget.ts`, `src/handlers/tool-start.ts`, `src/index.ts` (composition-root wiring); PR #748's first commit carries candidate approach 1.
+- **Design decision at plan time:** push at `session_start` versus a lazy `getUICtx` supplier; either way, settle the `finishedTurnAge` aging loose end (rows currently age only via `onTurnStart`).
+  SDK facts pre-verified in the issue against `@earendil-works/pi-coding-agent@0.79.1` (TUI starts before extension init; `ctx.ui` is per-session stable; headless binds `noOpUIContext`) — re-verify against the pinned version at plan time.
+- **Outcome:** the widget renders in a session with no model tool call, pinned by a regression test.
+- **Commit type:** `fix:`.
+- **Impact 3 / Risk 2 / Priority 12.**
 
 Landed: the capture is a push at `session_start`, wired from the composition root as its own registration — Pi fans an event out to every handler an extension registers for it, so the widget's concern did not have to share a lambda with the session-lifecycle one.
 The lazy-supplier alternative was refuted before the design gate rather than weighed at it: `ExtensionAPI` exposes no ambient `ui`, only the per-event `ctx.ui`, so a supplier still needs an event-driven capture and only adds an indirection.
@@ -925,14 +932,15 @@ Incidentally closes a timer leak: `clearWidget()` was unreachable while `uiCtx` 
 
 Release: independent
 
-#### ✅ Step 7 — Deliver the resume handle in foreground results ([#798])
+#### ✅ Step 7: Deliver the resume handle in foreground results ([#798])
 
-Cause: door asymmetry in result delivery — the background path puts the agent ID in the model-visible text and the foreground path leaves it only in renderer `details`, so a foreground child that ends by asking a question cannot be answered; the resume-return edge shares the shape.
-Smell: Category C (asymmetric boundary) plus `bug`.
-Target files: `src/tools/foreground-runner.ts`, `src/tools/agent-tool.ts` (resume-return edge), `src/tools/helpers.ts`.
-Outcome: foreground and resume result text carry the agent ID; the `foreground-runner.ts` grep row goes 0 → ≥ 1; pinned by tests.
-Commit type: `fix:`.
-Impact 2 / Risk 1 / Priority 10.
+**Cause:** door asymmetry in result delivery — the background path puts the agent ID in the model-visible text and the foreground path leaves it only in renderer `details`, so a foreground child that ends by asking a question cannot be answered; the resume-return edge shares the shape.
+
+- **Smell:** Category C (asymmetric boundary) plus `bug`.
+- **Target:** `src/tools/foreground-runner.ts`, `src/tools/agent-tool.ts` (resume-return edge), `src/tools/helpers.ts`.
+- **Outcome:** foreground and resume result text carry the agent ID; the `foreground-runner.ts` grep row goes 0 → ≥ 1; pinned by tests.
+- **Commit type:** `fix:`.
+- **Impact 2 / Risk 1 / Priority 10.**
 
 Landed: all three model-visible delivery edges — the foreground success return, the foreground error return, and the resume-return edge in `AgentTool.execute` — now carry an `Agent ID: <id>` line, spelled as `background-spawner.ts` spells it.
 The `foreground-runner.ts` grep row went 0 → 2 (measured; the success and error branches each carry the literal).
@@ -942,15 +950,16 @@ The step also exposed an unpinned invariant from Step 3: the spawn-notes prefix 
 
 Release: independent
 
-#### ✅ Step 8 — Ask-back: let a child's question reach the parent ([#465])
+#### ✅ Step 8: Ask-back: let a child's question reach the parent ([#465])
 
-Cause: a child that ends its run by asking a question terminates into a dead end — the result channel is fire-and-forget, so the ask-back loop (child question → parent notified → parent resumes with the answer) has no supported path, even though resume itself works and Phase 21's [#466] gave resumed completions first-class events.
-Smell: feature with a structural seam (the delivery-domain follow-on the first-principles section anticipates).
-Target files: to be settled by the step's plan — candidates are the notification layer (`src/observation/`), the result renderers, and the completion event payloads; scheduled by operator decision, design-first.
-Soft dependency: after Step 7 (the resume handle must be deliverable before an ask-back nudge is actionable in the foreground path).
-Outcome: a completed child whose result is a question is surfaced to the parent as answerable (mechanism per plan), pinned by an end-to-end test.
-Commit type: `feat:`.
-Impact 3 / Risk 3 / Priority 9.
+**Cause:** a child that ends its run by asking a question terminates into a dead end — the result channel is fire-and-forget, so the ask-back loop (child question → parent notified → parent resumes with the answer) has no supported path, even though resume itself works and Phase 21's [#466] gave resumed completions first-class events.
+
+- **Smell:** feature with a structural seam (the delivery-domain follow-on the first-principles section anticipates).
+- **Target:** to be settled by the step's plan — candidates are the notification layer (`src/observation/`), the result renderers, and the completion event payloads; scheduled by operator decision, design-first.
+- **Soft dependency:** after Step 7 (the resume handle must be deliverable before an ask-back nudge is actionable in the foreground path).
+- **Outcome:** a completed child whose result is a question is surfaced to the parent as answerable (mechanism per plan), pinned by an end-to-end test.
+- **Commit type:** `feat:`.
+- **Impact 3 / Risk 3 / Priority 9.**
 
 Landed: the mechanism is a child-declared marker, parsed deterministically at the terminal transition and rendered by every result carrier with the exact `resume` call.
 The protocol sits beside `<active_agent>` in a header both prompt modes share, because `Explore` and `Plan` are `promptMode: "replace"` and never receive the `<sub_agent_context>` bridge — the extraction that gave the two branches one home was the step's Tidy-First preparation, and it is why deleting the block now fails both modes' tests instead of one.
@@ -964,45 +973,48 @@ The claim is deliberately caller-scoped: `resetForResume` clears `consumedAt` bu
 
 Release: independent
 
-#### Step 9 — Tear the widget down on session shutdown ([#849])
+#### Step 9: Tear the widget down on session shutdown ([#849])
 
-Cause: the widget acquires two resources — the 80 ms interval from `ensureTimer()` and the `setWidget`/`setStatus` registrations on the session's `UICtx` — and `AgentWidget.dispose()` releases both, but nothing calls it; the method carries a `fallow-ignore-next-line unused-class-member` comment so the gap stays invisible to dead-code analysis.
+**Cause:** the widget acquires two resources — the 80 ms interval from `ensureTimer()` and the `setWidget`/`setStatus` registrations on the session's `UICtx` — and `AgentWidget.dispose()` releases both, but nothing calls it; the method carries a `fallow-ignore-next-line unused-class-member` comment so the gap stays invisible to dead-code analysis.
 Step 6 is the acquisition half of the same lifecycle; this is the release half.
-Smell: Category A (a disposal path with no caller) plus `bug`.
-Target files: `src/handlers/lifecycle.ts` or the widget's own event handler (per the step's plan), `src/index.ts`, `src/ui/agent-widget.ts` (drop the fallow ignore once the method has a call site).
-Hard dependency: after Step 6, which decides where the widget's host-event wiring lives.
-Design decision at plan time: whether the widget joins `SessionLifecycleHandler`'s dependency set or takes its own `session_shutdown` registration beside Step 6's wiring.
-Outcome: `session_shutdown` clears the interval and unregisters the widget, pinned by a composition-root test; the `fallow-ignore` comment on `dispose()` is removed.
-Commit type: `fix:`.
-Impact 2 / Risk 1 / Priority 10.
+
+- **Smell:** Category A (a disposal path with no caller) plus `bug`.
+- **Target:** `src/handlers/lifecycle.ts` or the widget's own event handler (per the step's plan), `src/index.ts`, `src/ui/agent-widget.ts` (drop the fallow ignore once the method has a call site).
+- **Hard dependency:** after Step 6, which decides where the widget's host-event wiring lives.
+- **Design decision at plan time:** whether the widget joins `SessionLifecycleHandler`'s dependency set or takes its own `session_shutdown` registration beside Step 6's wiring.
+- **Outcome:** `session_shutdown` clears the interval and unregisters the widget, pinned by a composition-root test; the `fallow-ignore` comment on `dispose()` is removed.
+- **Commit type:** `fix:`.
+- **Impact 2 / Risk 1 / Priority 10.**
 
 Release: independent
 
-#### Step 10 — Re-prepare or refuse a workspace-backed resume ([#857])
+#### Step 10: Re-prepare or refuse a workspace-backed resume ([#857])
 
-Cause: `Subagent.completeRun()` disposes the child's workspace on every terminal transition (`workspaceBracket.dispose(...)`, whose addendum it folds into the result), while `resume()` reuses the existing session and never re-prepares one — a boundary plan `0466` drew deliberately for its own scope and never revisited.
+**Cause:** `Subagent.completeRun()` disposes the child's workspace on every terminal transition (`workspaceBracket.dispose(...)`, whose addendum it folds into the result), while `resume()` reuses the existing session and never re-prepares one — a boundary plan `0466` drew deliberately for its own scope and never revisited.
 A child spawned under a registered `WorkspaceProvider` therefore resumes into a directory the provider has torn down, with no signal.
-Smell: Category C (asymmetric lifecycle bracket) plus `bug`.
-Target files: `src/lifecycle/subagent.ts`, `src/lifecycle/workspace-bracket.ts`, `src/tools/agent-tool.ts` (the resume-refusal message, which already has a released-session precedent).
-Design decision at plan time: re-prepare on resume versus refuse with a message, per the `sessionReleased` precedent.
-Outcome: a workspace-backed resume either re-prepares its workspace or is refused with a message naming why; pinned by a test with a stub provider.
-Commit type: `fix:`.
-Impact 2 / Risk 2 / Priority 9.
+
+- **Smell:** Category C (asymmetric lifecycle bracket) plus `bug`.
+- **Target:** `src/lifecycle/subagent.ts`, `src/lifecycle/workspace-bracket.ts`, `src/tools/agent-tool.ts` (the resume-refusal message, which already has a released-session precedent).
+- **Design decision at plan time:** re-prepare on resume versus refuse with a message, per the `sessionReleased` precedent.
+- **Outcome:** a workspace-backed resume either re-prepares its workspace or is refused with a message naming why; pinned by a test with a stub provider.
+- **Commit type:** `fix:`.
+- **Impact 2 / Risk 2 / Priority 9.**
 
 Release: independent
 
-#### Step 11 — Child-initiated mid-run channel ([#858])
+#### Step 11: Child-initiated mid-run channel ([#858])
 
-Cause: the parent can reach a running child (`steer_subagent`), but a child that needs information mid-run has no way back — it can only terminate and rely on Step 8's end-and-resume loop, which loses a workspace (Step 10) and expires with the retention window.
+**Cause:** the parent can reach a running child (`steer_subagent`), but a child that needs information mid-run has no way back — it can only terminate and rely on Step 8's end-and-resume loop, which loses a workspace (Step 10) and expires with the retention window.
 A non-terminal one-way message (a material finding mid-run) has no expression at all.
-Smell: feature completing Step 8's capability at the half its scope excludes.
-Target files: to be settled by the step's plan; design-first.
-Hard dependency: after Step 8 (the completed-child loop must exist and be exercised before its blocking counterpart is designed) and informed by Step 10.
-Design decision at plan time: the child tool allowlist ([#725]) filters any new child-facing tool out of every agent declaring `tools:`, including built-in `Explore` and `Plan` — force-inclusion breaks the documented contract, and per-agent edits do not scale.
-A blocked child also holds its concurrency slot.
-Outcome: a running child can signal its parent and receive a reply without terminating (mechanism per plan), pinned by an end-to-end test.
-Commit type: `feat:`.
-Impact 3 / Risk 4 / Priority 7.
+
+- **Smell:** feature completing Step 8's capability at the half its scope excludes.
+- **Target:** to be settled by the step's plan; design-first.
+- **Hard dependency:** after Step 8 (the completed-child loop must exist and be exercised before its blocking counterpart is designed) and informed by Step 10.
+- **Design decision at plan time:** the child tool allowlist ([#725]) filters any new child-facing tool out of every agent declaring `tools:`, including built-in `Explore` and `Plan` — force-inclusion breaks the documented contract, and per-agent edits do not scale.
+  A blocked child also holds its concurrency slot.
+- **Outcome:** a running child can signal its parent and receive a reply without terminating (mechanism per plan), pinned by an end-to-end test.
+- **Commit type:** `feat:`.
+- **Impact 3 / Risk 4 / Priority 7.**
 
 Release: independent
 

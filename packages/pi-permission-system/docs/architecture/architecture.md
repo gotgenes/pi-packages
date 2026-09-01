@@ -1127,6 +1127,7 @@ The fallow health score is carried as a floor rather than a target: it is blind 
   A gate-side fold leaves that last reader resolving an emptied surface, so a parent's recorded `path` deny would stop hard-denying a child's request and escalate it to an approvable prompt ([#712]'s defect class).
   Both bash path gates therefore needed no *routing* diff — they still resolve on the bare family surface, and `bash-external-directory.ts` is untouched; `bash-path.ts` changed only to name that surface on the ask payload, which became a required fact.
   The tool-identity attribution table and the two consequences of the independent-bits reading are recorded in ADR 0013's 2026-08-25 amendment.
+- **Commit type:** `feat:`.
 - **Impact 5 / Risk 3 / Priority 15.**
 
 Release: batch "capability-axis"
@@ -1142,6 +1143,7 @@ Release: batch "capability-axis"
 - **Constraint:** the core is frozen, always active, and not user-removable; a user who distrusts `cat` is served by the ask-everything fallback, not by removal machinery.
   Admission is argument-independence across GNU and BSD alike, which is what keeps this from being the package-maintained fail-open command table ADR 0009 rejected.
 - **Outcome:** band B (~19% of current asks) becomes relievable by a directional read grant; the review log records which source classified a unit (syntax or core), so a surprising allow is auditable to the line that produced it.
+- **Commit type:** `refactor:` (hidden — ships in the same release as Steps 1 and 3).
 - **Impact 5 / Risk 3 / Priority 15.**
 
 Landed: the vocabulary split across `access-intent/effect.ts` (core-layer, so `path-surfaces.ts` can consume it) and `access-intent/bash/command-effects.ts` (the bash-specific proofs), rather than the single module the step sketched.
@@ -1165,6 +1167,7 @@ The floor's reason does not hold for the one class the core is defined by.
 - **Constraint:** everything else keeps the floor untouched — interpreters, `bash -c`/`eval` opaque payloads, mutators, and any wrapper whose inner command is unresolvable (`executedUnitOf` fails to `null`, and that discipline is retained). v1 exempts on the **built-in core only**: a user `commandEffects` declaration participates in classification but does not lift the floor, because a user's argument-independence claim fails open behind a wrapper.
   An explicit `deny`/`ask` on the wrapper unit is never weakened.
 - **Outcome:** `xargs grep -l foo` under a matching `bash` allow stops prompting while `xargs rm`, `xargs sed`, `time pnpm test`, and `find -exec sh -c '…' \;` still do; ~13% of current prompt volume relieved, the single largest deterministic relief in ADR 0013.
+- **Commit type:** `fix:` — the release vehicle for batch "capability-axis".
 - **Impact 5 / Risk 2 / Priority 20.**
 
 Landed: measured by `scripts/measure-wrapper-transparency.mjs` (2026-08-27), wrapper-floored asks are 91 of 328 prompts across 2026-07 and 2026-08 (27.7%) and 43 of them are relieved — 13.1% of all prompts, 47.3% of floored ones.
@@ -1187,11 +1190,12 @@ and "can this node host one?"
 correctly for redirects and heredocs since [#741], but its catch-all branch still emits any other named statement whole without descending — so a command inside an `if` body, a `declaration_command`, a `test_command`, or an `unset_command` is matched against the bash rules only as part of the enclosing string, and an `rm *` deny never fires.
 This is the last member of the [#306] / [#741] nested-command bypass family, and ADR 0013 §10 recasts it as a combinator clause ("any unhandled node type: fail closed") rather than a patch.
 
-- **Smell:** Category C (a boundary flaw with a user-visible bypass), commit type `fix:`.
+- **Smell:** Category C (a boundary flaw with a user-visible bypass).
 - **Target:** `src/access-intent/bash/command-enumeration.ts`'s catch-all branch descends for nested executions through the existing `forEachNestedExecution` / `EXECUTION_HOST_TYPES` seam in `nested-execution.ts` rather than adding a third traversal; control-flow conditions and bodies, function definitions, `declaration_command`, `test_command`, `unset_command`, and `variable_assignment` all reach the command surface.
   The path surface already handles most of these, so this closes an asymmetry rather than opening a surface.
 - **Design question the step must settle:** a control-flow body runs in the current shell, so it has no distinct execution context to tag — whether it emits with no `context` (like a top-level chain member) or earns a `BashCommandContext` variant is a prompt-quality decision, since `context` is what explains *why* a nested command was gated.
 - **Outcome:** `if true; then rm y; fi` resolves `deny` under an `rm *` rule; the enclosing statement is still emitted whole, so the change can only ever be more restrictive, never weaker; `grep -c 'collectHostedCommands'` in the enumerator goes 3 → ≥ 4.
+- **Commit type:** `fix:`.
 - **Impact 4 / Risk 2 / Priority 16.**
 
 Landed: the enumerator gained the third question the step's Target sketched as a catch-all descent, because a blanket descent was measurably wrong.
@@ -1220,6 +1224,7 @@ The review log is correct; the bus event is the single record that mis-attribute
 - **Target:** `src/permission-events.ts` gains `authorizer_allowed` / `authorizer_denied` on `PermissionDecisionResolution`; `src/handlers/gates/runner.ts` reads `decision.decidedBy.kind` at the same point in `runDescriptor` that already reads the other two flags; `src/handlers/gates/helpers.ts`'s `deriveResolution` branches on it.
 - **Note:** this changes the `resolution` an existing local decision reports rather than only adding a value, so whether it warrants a major bump is part of the step's decision — it is not additive the way [#752] was.
 - **Outcome:** a consumer can distinguish "the operator approved this" from "a policy extension approved this" on the bus, matching what the review log has recorded since [#726]; `grep -cE 'authorizer_allowed|authorizer_denied'` goes 0 → 2.
+- **Commit type:** `feat!:` — the operator settled the bump note as breaking.
 - **Impact 3 / Risk 1 / Priority 15.**
 
 Landed: the branch the Target line sketched became a total mapping, because counting the log found the larger half of the defect.
@@ -1248,6 +1253,7 @@ The deferral's trigger fired during [#788]'s ship and its only record was an Ope
 - **Target:** an ADR 0012 amendment deciding three things — whether `getRootPermissionsService()` is removed in the next major or the `DEP0001` deprecation window stays open for consumers we cannot see; whether the slot should stop being **written** (`publishRootPermissionsService` in `src/service-lifecycle.ts`, a separate question from retiring its public reader); and what becomes of the [#302] child guard whose only remaining purpose is protecting that slot from an in-process child.
 - **Outcome:** the decision is recorded where the sweep will find it rather than in a shipped plan's Open Questions; `grep -c '#### Amendment'` on ADR 0012 goes 2 → ≥ 3.
   Whether code changes in this step is the step's own decision; nothing is blocked either way.
+- **Commit type:** `docs:` (hidden) — the deliverable is an ADR amendment; any code it schedules lands in a later step or a later phase.
 - **Impact 2 / Risk 2 / Priority 8.**
 
 Landed: all three questions resolved the same way — remove, stop writing, dissolve — so the step shipped code as well as the amendment.
@@ -1274,6 +1280,7 @@ One line of `excludedExtensionPackages` in `subagents.json` reaches that state, 
   The alarm writes a `child_node_absent` review-log event and a visible warning; `src/authority/subagent-registry.ts` and `src/service-lifecycle.ts` hold the two halves.
 - **Design questions the step must settle:** where the check fires, since there is no parent-side "the child's first turn" event and the timing needs a real seam rather than a sleep; whether the parent can (or needs to) distinguish deliberate exclusion from a load failure; and whether to warn or refuse — refusing means one package overriding another's settings, which cuts against ADR 0002's separation.
 - **Outcome:** an ungated child is announced rather than silent; `grep -rn 'child_node_absent' src` goes 0 → ≥ 1.
+- **Commit type:** `feat:`.
 - **Impact 3 / Risk 2 / Priority 12.**
 
 Landed: the design question the step named — where the check fires — was answered by eliminating candidates against the code rather than by choosing among them.
@@ -1305,6 +1312,7 @@ The child then gates `deploy` with no extractor, its path never reaches the chil
   Preview formatters split the same way but are cosmetic; only extractors are a security surface.
   Out-of-process children are out of scope for B — no shared `globalThis`, and the exclusion is in-process only.
 - **Outcome:** the split-provider condition is either impossible or announced, replacing the interim by-hand check [#789] shipped in pi-subagents' `docs/configuration.md`; `grep -rl 'split-provider' test` goes 0 → ≥ 1.
+- **Commit type:** `feat:` — mechanism B landed.
 - **Impact 3 / Risk 2 / Priority 12.**
 
 Landed: mechanism B, and the deliberation the step was adopted to settle resolved by finding the distinction already in ADR 0012 rather than inventing one.
@@ -1332,6 +1340,7 @@ The five surfaces people actually write — `path`, `external_directory`, `bash`
 - **Target:** `src/config-schema.ts` gains a `surfaceProperty` helper building one named property per well-known surface, applied to the five above beside Step 1's four directional keys, with `.catchall(...)` retained so tool-name surfaces keep validating; each surface's prose moves out of the object-level `markdownDescription` onto its own property, leaving the object-level text to cover the flat shape, the string-vs-map shorthand, last-match-wins, and the global → project → agent merge order.
   Regenerated with `pnpm run gen:schema`; the parity test in `test/config-schema.test.ts` guards the drift.
 - **Outcome:** every well-known surface completes and self-documents in a schema-aware editor; `grep -c 'surfaceProperty'` on `config-schema.ts` goes 0 → ≥ 9.
+- **Commit type:** `feat:` — the generated schema ships in the tarball, so new completions and hover text are user-observable.
 - **Impact 2 / Risk 1 / Priority 10.**
 
 Release: independent
@@ -1346,6 +1355,7 @@ The grant is then wider than the prompt the user answered.
 - **Target:** `src/session-approval.ts` carries `(surface, pattern)` pairs rather than one surface and a pattern list; `src/session-rules.ts`'s per-pattern loop reads the pair's own surface; `src/handlers/gates/bash-external-directory.ts` stops falling back to the family for a mixed-direction command.
 - **Design question the step must settle:** `ForwardedSessionApproval` is written to a file another process reads, so the pair form either ships as a tolerated alternative shape the reader normalizes, or waits for a major.
 - **Outcome:** approving `grep -r foo ~/dev > ~/other/out.txt` for the session grants a read under `~/dev` and a write to `~/other/out.txt`, not both directions on both; `grep -c 'ApprovalPattern'` on `session-approval.ts` goes 0 → ≥ 1.
+- **Commit type:** `feat:`, or `feat!:` if the wire shape is not made tolerant — undecided at plan time.
 - **Impact 3 / Risk 2 / Priority 12.**
 
 Release: independent
@@ -1360,6 +1370,7 @@ The read-after-write flow is common, the second ask carries no new information, 
 - **Target:** the ask prompt offers a both-directions session grant beside the proven-direction one, and `src/handlers/gates/` records the chosen width; the narrow grant stays the default, so a user who never notices the second option is never granted more than the prompt named.
 - **Design question the step must settle:** whether the choice is a second approve-for-session affordance or a modifier on the existing one — ADR 0011 caps what an ask may render, and a third session option competes for the same prompt real estate the evidence list uses.
 - **Outcome:** approving `echo hi > ~/other/out.txt` at the wider width silences the following `cat ~/other/out.txt`; approving it at the default width still asks, and the review log's `decidedBy` names which width was chosen.
+- **Commit type:** `feat:` — a new prompt affordance the user acts on.
 - **Impact 2 / Risk 1 / Priority 10.**
 
 Release: independent
@@ -1374,6 +1385,7 @@ The first is a fail-open in the one direction ADR 0013 §10 is careful about eve
 - **Target:** `src/access-intent/bash/redirect-analysis.ts` — refuse a redirect carrying an unresolved parse and return `UNPROVEN_EFFECT`, so the destination consults both directional surfaces per §10's base case, rather than guessing from a partial operator.
 - **Constraint:** every currently-proven operator (`>`, `>>`, `>|`, `&>`, `&>>`, `<`, `<<<`, `2>&1`, `>& out`, `<& in`) keeps its answer; the change may only move an unresolvable form to unproven.
 - **Outcome:** `cat <> rw.txt` and `cat <> ~/rw.txt` attribute the same effect, and it is not a bare `read`; the `it.fails` characterization test Step 3 left in `test/access-intent/bash/redirect-analysis.test.ts` flips to a plain assertion.
+- **Commit type:** to be decided at plan time.
 - **Impact 3 / Risk 1 / Priority 12.**
 
 Release: independent
@@ -1389,6 +1401,7 @@ Past phases reorganized periodically but inconsistently and then lapsed, because
   Intra-package imports use the eslint-enforced `#src/` alias, so every move is a mechanical specifier rewrite `tsc` verifies exhaustively.
   Needs a quiet trunk — file moves conflict badly with peer worktree sessions.
 - **Outcome:** root-level `src/*.ts` drops from 62 to the entry points that belong there, the partition is documented in the module tree, and `pnpm run check` plus the full suite pass unchanged.
+- **Commit type:** `refactor:`.
 - **Impact 3 / Risk 2 / Priority 12.**
 
 Release: independent
@@ -1399,12 +1412,13 @@ Release: independent
 `resolveBashCommandCheck` fails closed only on a **zero-unit** parse (the `<unparseable-bash-command>` sentinel from [#452]); a *partial* failure emits the unparsed subtree's text as one ordinary unit, which the `bash:` patterns match like any string and a permissive fallback allows.
 Step 4 makes that emission an explicit branch and deliberately stops there, because the floor is the fold's behavior rather than the enumerator's.
 
-- **Smell:** Category C (a fail-open the model's own decision record already forbids), commit type `fix:`.
+- **Smell:** Category C (a fail-open the model's own decision record already forbids).
 - **Target:** a marker on `BashCommand` (`src/access-intent/bash/command-enumeration.ts`) set on the `ERROR` branch Step 4 introduces, read by `src/handlers/gates/bash-command.ts` to floor an `allow` to a synthetic `ask` beside the existing `WRAPPER_SENTINEL` entries.
   The floor is synthesized after the resolver returns, like the other three sentinels, so `resolveYoloGrant` still reconciles it ([#712]).
 - **Constraint:** an explicit `deny`/`ask` on the blob's text is left untouched, as with the wrapper floors.
 - **Outcome:** a subtree the fold did not understand can no longer ride the universal fallback; measured cost is 1 command in 4276 intact review-log commands (0.02%).
   `grep -c '<unparsed' packages/pi-permission-system/src/handlers/gates/bash-command.ts` goes 0 → ≥ 1.
+- **Commit type:** `fix:`.
 - **Impact 3 / Risk 1 / Priority 15.**
 
 Release: independent
@@ -1420,6 +1434,7 @@ A forwarded ask the parent's own rule denied, or one whose parent-side escalatio
   The `rule` arm is the step's real work: the child's `PromptPayload.request.matchedPattern` is the pattern that raised the child's *ask*, not the parent's deny rule, so `renderPolicyDenial` would name the wrong rule and the parent's pattern and origin live only on the response's `decidedBy`.
 - **Design question the step must settle:** whether a forwarded verdict may disclose the serving node's rule facts to the requesting agent (ADR 0011 §6), or whether the arm renders without naming a rule.
 - **Outcome:** the two records agree on every forwarded path; `grep -c 'renderEscalatedPolicyDenial' packages/pi-permission-system/src/presentation/agent-renderer.ts` goes 0 → 2.
+- **Commit type:** `fix:`.
 - **Impact 2 / Risk 1 / Priority 8.**
 
 Landed: the disclosure question the step was adopted to settle is answered in ADR 0011 §10 rather than in the plan — a forwarded refusal may name the deciding node's rule pattern, its deny-with-reason text, and an escalation's error text, and may say another session decided; the responder session id and the rule's `origin` scope stay withheld.
@@ -1483,7 +1498,7 @@ Steps 10 and 11 both write a session grant from a bash gate: Step 10 decides whe
 
 - **Batch "capability-axis":** Steps 1, 2, 3 (ship together; tail = Step 3; release vehicle = Step 3's `fix:` for [#803], with Step 1's `feat:` for the new config keys riding the same release — Step 2 is a hidden `refactor:` on its own).
   The batch ships together because Steps 1 and 2 relieve nothing a user can observe until a directional grant exists to write, while Step 3's relief is immediate and unconditional.
-- Independently releasable: Step 4 (`fix:`), Step 14 (`fix:`), Step 5 (`feat!:` — the operator settled the bump note as breaking), Step 15 (`fix:`), Step 7 (`feat:`), Step 8 (`fix:` or `feat:` depending on the mechanism chosen), Step 9 (`feat:` — the generated schema ships in the tarball, so new completions and hover text are user-observable), Step 10 (`feat:`, or `feat!:` if the wire shape is not made tolerant), Step 11 (`feat:` — a new prompt affordance the user acts on).
+- Independently releasable: Step 4 (`fix:`), Step 14 (`fix:`), Step 5 (`feat!:` — the operator settled the bump note as breaking), Step 15 (`fix:`), Step 7 (`feat:`), Step 8 (`feat:` — mechanism B landed), Step 9 (`feat:` — the generated schema ships in the tarball, so new completions and hover text are user-observable), Step 10 (`feat:`, or `feat!:` if the wire shape is not made tolerant), Step 11 (`feat:` — a new prompt affordance the user acts on).
 - Step 6 cuts no release on its own: its deliverable is an ADR amendment (`docs:`, hidden), and any code it schedules lands in a later step or a later phase.
 
 ## Refactoring history

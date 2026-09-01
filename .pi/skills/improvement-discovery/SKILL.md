@@ -225,15 +225,43 @@ The plan should produce:
    - What smell it addresses (Category A–F)
    - Specific files/functions targeted
    - Expected measurable outcome (LOC reduction, complexity drop, bag field reduction)
+   - **Commit type** — the conventional-commit type the step's release vehicle carries (`fix:`, `feat:`, `refactor:`, …), including a `!` where the operator has settled the bump note as breaking; write `to be decided at plan time` rather than guessing when the step is design-first.
    - **Impact / Risk / Priority** — the per-step scores from the prioritization framework (`Priority = Impact × (6 − Risk)`), published on the step so the ranking is auditable in the committed roadmap (and at `/plan-issue` time), not left in the session transcript.
+
+   Render each step in this exact shape — a bold `**Cause:**` lead paragraph, then a bulleted list with bold field labels, `Commit type` and `Impact/Risk/Priority` last, and any step-specific field (`Constraint`, `Design question(s) the step must settle`, `Hard dependency`, `Soft dependency`, `Design note`, …) inserted between `Target` and `Outcome` in whatever order the step needs.
+   Use a colon after `Step N`, never an em dash — several step titles already contain their own em dash, and a second one after `Step N` reads as doubled and ambiguous:
+
+   ```markdown
+   #### [✅ ]Step N: Title ([#NNN])
+
+   **Cause:** the first-principles structural cause, as prose (one sentence per line; a second sentence continues on the next line with no blank line between).
+
+   - **Smell:** Category X (...).
+   - **Target:** the files/functions the step touches.
+   - **Outcome:** the measurable, falsifiable result.
+   - **Commit type:** `fix:` (or whatever the release vehicle is).
+   - **Impact N / Risk N / Priority N.**
+
+   Release: independent | batch "<batch-name>"
+   ```
+
+   A multi-sentence field continues on indented lines under its own bullet (2-space GFM list-item continuation), never as a second unlabeled paragraph, and once a step lands its planned `**Cause:**`/bulleted-field block is left as originally written (it is the record of what was proposed) with a `Landed:` prose paragraph (or `Dogfooded:`, `Note:`, etc. as the situation warrants) appended after it, narrating what actually shipped and where it diverged — plain prose, not bulleted, in keeping with the surrounding narrative style:
+
+   ```markdown
+   - **Design note:** the first sentence of the field.
+     A second sentence continuing the same field, indented under the bullet.
+   ```
+
 3. **Step dependency diagram** — Mermaid flowchart showing which steps unblock others.
 4. **Tracks** — group steps into named parallel tracks.
 5. **Release batches** — make release coordination grep-able, in two artifacts:
-   - A per-step `Release:` tag on its own line in each step (alongside `Smell:`/`Outcome:`), exactly one of:
-     - `Release: independent` — the step ships on its own; no coordination.
-     - `Release: batch "<batch-name>"` — the step is a member of the named batch and is meant to ship together with the rest of that batch.
-   - A `Release batches` subsection (after the parallel tracks) naming each batch and listing its member steps in dependency order; the **last listed member is the batch tail** — the step whose landing completes the batch.
-     List independently releasable steps separately.
+
+- A per-step `Release:` tag on its own line in each step (alongside `Smell:`/`Outcome:`), exactly one of:
+  - `Release: independent` — the step ships on its own; no coordination.
+  - `Release: batch "<batch-name>"` — the step is a member of the named batch and is meant to ship together with the rest of that batch.
+- A `Release batches` subsection (after the parallel tracks) naming each batch and listing its member steps in dependency order; the **last listed member is the batch tail** — the step whose landing completes the batch.
+
+  List independently releasable steps separately.
 
      ```markdown
      ### Release batches
@@ -242,9 +270,10 @@ The plan should produce:
      - Independently releasable: Steps 4, 5.
      ```
 
-   Agents locate the data by grepping for the `Release:` line (per step) and the `Release batches` heading (per phase) — never by parsing prose.
-   A step with no `Release:` tag defaults to independently releasable.
-   A phase may mix commit types: a `fix:` (or unhidden `docs:`) step is the phase's release vehicle, while `refactor:`/`test:` steps are hidden changelog types that cut no release on their own — name the release vehicle in the `Release batches` subsection instead of assuming a refactor-only phase.
+  Agents locate the data by grepping for the `Release:` line (per step) and the `Release batches` heading (per phase) — never by parsing prose.
+  A step with no `Release:` tag defaults to independently releasable.
+  A phase may mix commit types: a `fix:` (or unhidden `docs:`) step is the phase's release vehicle, while `refactor:`/`test:` steps are hidden changelog types that cut no release on their own — name the release vehicle in the `Release batches` subsection instead of assuming a refactor-only phase.
+
 6. **Open-issue sweep dispositions** — the Step 2 verdicts, under a `#### Open-issue sweep dispositions` heading inside the roadmap's `### Findings (planned YYYY-MM-DD)` section.
    Use that exact spelling: the `roadmap-fit` skill appends a bullet to it whenever an issue is spun off mid-phase, and `/finish-phase` greps it to reconcile phase-born issues before archiving.
    A bold prose lead-in or a per-phase variant (`Deferred work (explicit dispositions, …)`) breaks both.
