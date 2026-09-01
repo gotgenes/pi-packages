@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [21.2.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v21.1.0...pi-subagents-v21.2.0) (2026-09-01)
+
+
+### Features
+
+* **pi-subagents:** let a subagent ask its parent a question it can answer ([81863e4](https://github.com/gotgenes/pi-packages/commit/81863e414e2cc1f3f6cea1f15083e5dc4c33da53)), closes [#465](https://github.com/gotgenes/pi-packages/issues/465)
+
+
+### Bug Fixes
+
+* **pi-subagents:** ignore a marker a subagent quotes inline when asking nothing ([2888c0f](https://github.com/gotgenes/pi-packages/commit/2888c0fda6db3054df7802290de25ab55372a9b2)), closes [#465](https://github.com/gotgenes/pi-packages/issues/465)
+* **pi-subagents:** keep question parsing linear on heavily quoted results ([c902c9a](https://github.com/gotgenes/pi-packages/commit/c902c9aaa419ac565e6abfc1e30e2ff22c591a42)), closes [#465](https://github.com/gotgenes/pi-packages/issues/465)
+* **pi-subagents:** report foreground subagent completions to lifecycle observers ([b85253c](https://github.com/gotgenes/pi-packages/commit/b85253c0e5dfe6483ae4dfb0f1e075557a35f39e)), closes [#465](https://github.com/gotgenes/pi-packages/issues/465)
+* **pi-subagents:** report terminal status consistently across every result carrier ([27cf361](https://github.com/gotgenes/pi-packages/commit/27cf361b26483ec389c8a73cc0666c148ff500db)), closes [#465](https://github.com/gotgenes/pi-packages/issues/465)
+
 ## [21.1.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v21.0.3...pi-subagents-v21.1.0) (2026-08-31)
 
 
