@@ -1036,6 +1036,10 @@ No decline, so the regular improvement rotation continues.
 - [#839] — filed by Step 4's planning; deferred to Phase 15 beside [#609].
   Step 4's planning measured the whole nested-command bypass family and found one member that is not a command at all: a path named directly as a `for`/`select` operand or a `case` subject is a child of the statement node, so the path collector — which reads text only from `command` and `file_redirect` nodes — never sees it.
   Step 4 and its `command_name`-position half change zero path candidates across 4276 real commands, while this one newly asks on `external_directory` for 17 of them, so it does not belong in the same release as an axis that is non-breaking by construction; it also reopens `token-collection.ts`, which Phase 15's redirect slice already returns to.
+- [#868] — filed by Step 9's planning; deferred to a later phase with recorded rationale.
+  It shares Step 9's file, defect class (Category F), and clearing mechanism — the `authorizerChain` array element carries no `description`/`markdownDescription`, so the one cursor position where a link name is typed completes and hovers nothing — but not Step 9's parentage.
+  Step 9 exists because Step 1 created its asymmetry; this gap has been there since `authorizerChain` was added, no Phase 14 step touches the field, and the capability axis has no bearing on it.
+  Nothing decays by waiting, and Phase 15 reopens the same file.
 - [#802] and [#804] — deferred to Phase 15 as staging slices 6 and 7.
 - [#620] — deferred with recorded rationale (explicit user decision; third consecutive phase).
   Not a silent re-defer: ADR 0013 §7 **narrows its charter** rather than parking it — the classifier now answers the provable slice at zero tokens, so the chain is no longer the only path to read relief and keeps only what genuinely needs judgment.
@@ -1603,4 +1607,5 @@ Each phase's findings, numbered plan, dependency diagram, and health metrics are
 [#840]: https://github.com/gotgenes/pi-packages/issues/840
 [#844]: https://github.com/gotgenes/pi-packages/issues/844
 [#861]: https://github.com/gotgenes/pi-packages/issues/861
+[#868]: https://github.com/gotgenes/pi-packages/issues/868
 [ADR-0002]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-subagents/docs/decisions/0002-extensions-on-a-minimal-core.md
