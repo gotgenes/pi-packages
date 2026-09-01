@@ -187,6 +187,11 @@ export class NotificationManager implements NotificationSystem {
     // here, and with no parent run active a nudge would go straight out as an
     // unrecallable followUp.
     if (this.disposed) return;
+    // A carrier has committed to delivering this outcome, so announcing it would
+    // duplicate a delivery the parent is already getting. Structural and decided
+    // at the parent's request, so unlike the consumption check below it cannot
+    // race the turn.
+    if (record.claimed) return;
     // Consumption is domain state on the record; the nudge is a pure
     // announcement. Skip if the parent already pulled the result (enqueue-time
     // guard); emitIndividualNudge re-reads record.consumed when the nudge is
@@ -230,6 +235,7 @@ export class NotificationManager implements NotificationSystem {
   }
 
   private emitIndividualNudge(record: Subagent): void {
+    if (record.claimed) return;
     if (record.consumed) return;
 
     const notification = formatTaskNotification(record, 500);

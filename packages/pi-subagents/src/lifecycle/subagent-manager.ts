@@ -162,15 +162,16 @@ export class SubagentManager {
       onSessionCreated: options.observer?.onSessionCreated
         ? (agent) => options.observer!.onSessionCreated!(agent)
         : undefined,
+      // Terminal transitions are reported for every agent. Whether the parent
+      // needs telling is the notification layer's decision, made from the
+      // carrier claim; suppressing the observer here would also suppress the
+      // lifecycle event and the session-history record, which are facts about
+      // the run rather than announcements.
       onRunFinished: (agent) => {
-        if (agent.isBackground) {
-          try { this.observer?.onSubagentCompleted(agent); } catch (err) { debugLog("onSubagentCompleted observer", err); }
-        }
+        try { this.observer?.onSubagentCompleted(agent); } catch (err) { debugLog("onSubagentCompleted observer", err); }
       },
       onResumeFinished: (agent) => {
-        if (agent.isBackground) {
-          try { this.observer?.onSubagentResumed(agent); } catch (err) { debugLog("onSubagentResumed observer", err); }
-        }
+        try { this.observer?.onSubagentResumed(agent); } catch (err) { debugLog("onSubagentResumed observer", err); }
       },
       onCompacted: (agent, info) => {
         this.observer?.onSubagentCompacted(agent, info);

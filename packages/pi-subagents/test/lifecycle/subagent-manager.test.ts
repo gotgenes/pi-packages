@@ -133,6 +133,23 @@ function seedNotificationScenario() {
   return { manager, record, notifications, sendMessage };
 }
 
+/** A foreground spawn whose session creation is held open until openGate(). */
+function seedForegroundNotificationScenario() {
+  const sendMessage = vi.fn();
+  const notifications = new NotificationManager(sendMessage);
+  const { promise: gate, resolve: openGate } = Promise.withResolvers<void>(); // eslint-disable-line @typescript-eslint/no-invalid-void-type -- Promise.withResolvers<void> is valid; rule does not allow void in generic fn call type args
+  const { manager } = createManager({
+    observer: { onSubagentCompleted: (r) => notifications.sendCompletion(r) },
+    createSubagentSession: vi.fn(async (_params: CreateSubagentSessionParams) => {
+      await gate;
+      return toSubagentSession(createSubagentSessionStub());
+    }),
+  });
+  notifications.onParentAgentStart();
+  const pending = spawnFg(manager);
+  return { manager, notifications, sendMessage, pending, openGate };
+}
+
 describe("SubagentManager", () => {
   describe("spawn", () => {
     let manager: SubagentManager;
@@ -760,7 +777,7 @@ describe("SubagentManager", () => {
         expect(sendMessage).not.toHaveBeenCalled();
       });
 
-      it("onComplete is not called for foreground agents", async () => {
+      it("onComplete is called for foreground agents", async () => {
         let onCompleteCalled = false;
         ({ manager } = createManager({ observer: { onSubagentCompleted: () => {
           onCompleteCalled = true;
@@ -768,7 +785,35 @@ describe("SubagentManager", () => {
 
         await spawnFg(manager);
 
-        expect(onCompleteCalled).toBe(false);
+        // The lifecycle event and the session-history record are facts about the
+        // run, owed for every agent; only the nudge is conditional.
+        expect(onCompleteCalled).toBe(true);
+      });
+
+      it("sends no nudge for a foreground completion", async () => {
+        const seeded = seedForegroundNotificationScenario();
+        manager = seeded.manager;
+
+        seeded.openGate();
+        await seeded.pending;
+        seeded.notifications.onParentAgentSettled();
+
+        expect(seeded.sendMessage).not.toHaveBeenCalled();
+      });
+
+      it("sends no nudge when the parent turn is interrupted before a foreground agent terminates", async () => {
+        const seeded = seedForegroundNotificationScenario();
+        manager = seeded.manager;
+
+        // The parent's turn ends while the child is still running, so the flush
+        // finds nothing pending and stops withholding. The agent then terminates
+        // with no run active — the window the consumption re-check cannot cover,
+        // because markConsumed has not run yet either.
+        seeded.notifications.onParentAgentSettled();
+        seeded.openGate();
+        await seeded.pending;
+
+        expect(seeded.sendMessage).not.toHaveBeenCalled();
       });
     });
   });
@@ -1261,7 +1306,7 @@ describe("SubagentManager", () => {
       expect(onSubagentResumed).toHaveBeenCalledExactlyOnceWith(manager.getRecord(id));
     });
 
-    it("does not fire onSubagentResumed when a foreground agent is resumed", async () => {
+    it("fires onSubagentResumed when a foreground agent is resumed", async () => {
       const onSubagentResumed = vi.fn();
       const { factory, stub } = createSessionFactory();
       stub.resumeTurnLoop.mockResolvedValue("second");
@@ -1270,7 +1315,9 @@ describe("SubagentManager", () => {
       const record = await spawnFg(manager);
       await manager.resume(record.id, "continue");
 
-      expect(onSubagentResumed).not.toHaveBeenCalled();
+      // A resumed foreground run is a terminal transition like any other; whether
+      // the parent is told is the notification layer's call, not this seam's.
+      expect(onSubagentResumed).toHaveBeenCalledExactlyOnceWith(record);
     });
 
   });
