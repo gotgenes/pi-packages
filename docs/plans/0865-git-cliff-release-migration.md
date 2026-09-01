@@ -133,7 +133,11 @@ Excluding each package's own `CHANGELOG.md` is new and deliberate: it keeps a ch
 
 ### Preserving commit-type semantics
 
-`cliff.toml`'s `commit_parsers` reproduce `release-please-config.json`'s `changelog-sections` one for one — `feat`, `fix`, `perf`, `revert`, and `docs` visible; `style`, `refactor`, `test`, `build`, `ci`, and `chore` skipped.
+`cliff.toml`'s `commit_parsers` reproduce `release-please-config.json`'s `changelog-sections` one for one — `feat`, `fix`, `perf`, `revert`, `docs`, and `chore` visible; `style`, `refactor`, `test`, `build`, and `ci` skipped.
+
+**Correction made during implementation:** this section originally listed `chore` among the skipped types.
+It is visible (`hidden=false` in the recovered config), and chore-only intervals really did cut releases — `pi-permission-system` v10.7.2, v6.0.2, and v3.0.5 contain nothing else.
+The pre-completion reviewer caught it.
 
 The subtle one is breaking changes on a hidden type.
 History contains `refactor(pi-subagents)!: drop the unread invocation field from the workspace seam`.

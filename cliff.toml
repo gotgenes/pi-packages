@@ -73,8 +73,21 @@ commit_preprocessors = [
   # number — GitHub resolves /issues/N to the pull request when N is one.
   { pattern = '\(#([0-9]+)\)', replace = "([#${1}](<REPO>/issues/${1}))" },
 ]
-# Mirrors `changelog-sections` from the retired `release-please-config.json`.
-# The visible five keep their section names; the hidden six are skipped.
+# Mirrors `changelog-sections` from the retired `release-please-config.json`:
+# six visible types keep their section names, five are skipped.
+#
+# `chore` is visible. That is easy to get wrong, since it reads like
+# bookkeeping, but it was `hidden=false` under release-please and chore-only
+# intervals really did cut releases: pi-permission-system v10.7.2, v6.0.2, and
+# v3.0.5 each contain nothing else. Skipping it strands such a package
+# unreleasable and drops the section from every future changelog.
+#
+# Parsers are evaluated in order and the first match wins, so the release
+# commit's own `chore(release):` is skipped ahead of the general `chore` rule.
+# Path scoping already keeps it out of the next changelog -- the tag sits on
+# that commit, so the next range begins after it -- but the explicit skip means
+# the changelog does not rest on that coincidence.
+#
 # The `<!-- N -->` prefixes force the section order release-please used (its
 # `changelog-sections` array order); `group_by` would otherwise sort them
 # alphabetically and put Bug Fixes above Features. `striptags` removes them at
@@ -85,8 +98,9 @@ commit_parsers = [
   { message = "^perf", group = "<!-- 2 -->Performance Improvements" },
   { message = "^revert", group = "<!-- 3 -->Reverts" },
   { message = "^docs", group = "<!-- 4 -->Documentation" },
+  { message = "^chore\\(release\\)", skip = true },
+  { message = "^chore", group = "<!-- 5 -->Miscellaneous Chores" },
   { message = "^style", skip = true },
-  { message = "^chore", skip = true },
   { message = "^refactor", skip = true },
   { message = "^test", skip = true },
   { message = "^build", skip = true },

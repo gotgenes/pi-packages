@@ -4,8 +4,8 @@
 # The mutating half of a pair: scripts/issue-package-labels.sh derives the
 # labels and prints them, this script applies them. It refuses to run outside CI
 # so a local invocation cannot edit a real issue by accident, matching the split
-# scripts/advance-release-baseline.sh and scripts/release-baseline-sha.sh use
-# (Refs #816, #818).
+# scripts/release/prepare-release.sh and scripts/release/next-version.sh use
+# (Refs #816, #818, #865).
 #
 # Requires GH_TOKEN with `issues: write`.
 #

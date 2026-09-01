@@ -78,7 +78,8 @@ The script is read-only and offline, and it applies the same path scoping and co
 It prints the tag that would be cut, or nothing at all when the package has no releasable commits.
 
 Trust its answer over any reasoning about which commit types are hidden.
-Empty output means the work auto-batches until a releasing commit lands: `refactor:`/`style:`/`test:`/`build:`/`ci:`/`chore:` are skipped types, and a `docs:` commit counts only when it touches a file under `packages/<pkg>/` that is not an internal docs directory (`docs/plans`, `docs/retro`, `docs/architecture`, `docs/decisions`, `docs/assets`).
+Empty output means the work auto-batches until a releasing commit lands: `refactor:`/`style:`/`test:`/`build:`/`ci:` are skipped types, while `feat:`/`fix:`/`perf:`/`revert:`/`docs:`/`chore:` all release.
+A `docs:` or `chore:` commit counts only when it touches a file under `packages/<pkg>/` that is not an internal docs directory (`docs/plans`, `docs/retro`, `docs/architecture`, `docs/decisions`, `docs/assets`).
 Files outside the package tree (`.pi/skills/`, root `AGENTS.md`/`README.md`) belong to no package and release nothing.
 
 For a repo-root tooling change (plan under `docs/plans/`, no `<pkg>`), skip the command — every commit is outside the package tree, so nothing releases now.

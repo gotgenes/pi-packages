@@ -210,7 +210,8 @@ It exits immediately when the package has no open improvement phase; otherwise i
 `/finish-phase` reconciles the phase window's issues against that list before archiving, so a miss surfaces at phase close instead of vanishing from the history (Refs #767).
 
 Release batching is plan-driven: `/plan-improvements` annotates each roadmap step with a grep-able `Release:` tag (and a `Release batches` subsection), `/plan-issue` derives a `Release Recommendation` from those annotations, and `/ship-issue` and `/ship-worktree` read the plan's `**Release:**` marker early — asking only when it is `mid-batch — defer`, otherwise releasing now.
-A `refactor:`/`style:`/`test:`/`build:`/`ci:`/`chore:` commit is a skipped changelog type and does not cut a release on its own; such work lands on `main` and auto-batches into the next `feat:`/`fix:`/`docs:` release.
+A `refactor:`/`style:`/`test:`/`build:`/`ci:` commit is a skipped changelog type and does not cut a release on its own; such work lands on `main` and auto-batches into the next releasing commit.
+`chore:` is **not** skipped — it is a visible "Miscellaneous Chores" section and cuts a patch on its own, as it did under release-please.
 So a refactor-only plan's `Release Recommendation` rationale must not claim it will cut a release (Refs #479).
 Do not reason about this from commit types when you can ask: `./scripts/release/next-version.sh <pkg>` applies the real rules offline and prints the tag that would be cut, or nothing.
 

@@ -30,7 +30,9 @@ jobs:
     permissions:
       contents: write
     outputs:
-      tags: ${{ steps.prepare.outputs.tags }}
+      # Only `sha` is consumed — the downstream jobs derive the released set
+      # themselves from `git tag --points-at HEAD`, so a `tags` output here
+      # would be wiring nothing.
       sha: ${{ steps.prepare.outputs.sha }}
     steps:
       - uses: actions/checkout@v7
