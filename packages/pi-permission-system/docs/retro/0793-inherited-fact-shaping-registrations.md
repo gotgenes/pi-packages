@@ -114,5 +114,19 @@ Both findings were addressed rather than deferred.
 
 The reviewer was not re-dispatched after those two commits: one restores a single table cell to its pre-change value and the other adds a test over a code path the review had already traced in depth, and both were re-verified against the full gates.
 
+## Stage: Sync (worktree) (2026-09-01T19:49:22Z)
+
+### Session summary
+
+Pre-push gates (`pnpm run lint`, `pnpm fallow dead-code`) both passed clean with no fixes needed.
+No deferred work; the plan's `**Release:** ship independently` marker stands, so the root should release at land time rather than deferring to a batch.
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-793--/2026-08-31T16-16-49-009Z_01a0589b-ed71-7ef3-b814-bf0f65a4022a.jsonl` — read with `read_session_file({ path: "<path>" })` for message-level verification at land/retro time.
+This single session covers planning, TDD implementation, and this sync stage.
+
+### Observations
+
+Nothing further to add beyond the TDD stage's own findings (the reviewer's two WARN findings, both fixed) and the pending follow-up issue [#861], already filed and dispositioned against Phase 14.
+
 [#792]: https://github.com/gotgenes/pi-packages/issues/792
 [#861]: https://github.com/gotgenes/pi-packages/issues/861
