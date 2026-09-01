@@ -235,6 +235,7 @@ When every option shares a premise — the same object grown, the same represent
 Refs #787: three wiring options all grew `AgentPrepHandler`, and the operator's "too many responsibilities" note produced the extraction that made the new dependency unnecessary.
 Refs #639: three gates on `commandEffects` all assumed pattern-keyed matching, and the operator's "done with pattern-based expressions" produced the structured shape that dissolved the overlap, merge, and guard questions at once.
 When a gate offers mechanisms for fixing a hazard, first name which component or config rule owns the lever and what happens today in each concrete configuration — a mechanism menu without that grounding gets bounced for it (Refs #789, #803).
+In a bundled gate the substance requirement is per question, not per message — the least-supported question bounces the whole batch (Refs #866).
 
 #### Background agent guardrails
 
@@ -467,6 +468,7 @@ Reorder or fix unpushed commits with `git reset` + re-commit, or set `GIT_SEQUEN
 A scripted rebase reports `Successfully rebased` even when the sequence editor matched nothing and every line replayed as `pick` — this git writes its todo as `pick <sha> # <subject>`.
 Verify by diffing the subjects, and confirm the content is untouched with `git diff <backup-tag> HEAD` (Refs #710).
 After `git reset --soft HEAD~N`, all N commits' changes are staged together — to re-split into separate commits, run `git reset` (mixed) first, then `git add` per commit.
+A commit a pre-commit hook rejected never moved `HEAD`, so a following `git reset --soft HEAD~1` undoes the *previous* commit — confirm with `git log -1` first (Refs #866).
 `git checkout <ref> -- <path>` as the swap in an A/B measurement destroys uncommitted work: the restore half (`git checkout HEAD -- <path>`) restores HEAD, which is the *previous* commit while the current step is still uncommitted.
 Back both sides up as files first — `cp` the working state aside, `git show <ref>:<path> >` the baseline — and swap with `cp` in both directions; never lead the restore with `rm -rf <path>`, which the permission gate denies mid-command and leaves a partial tree (Refs #742).
 Staged deletions from `git rm` ride along with the next `git commit` even when you `git add` only unrelated paths — commit with an explicit pathspec (`git commit -- <paths>`) or check `git status` first.
