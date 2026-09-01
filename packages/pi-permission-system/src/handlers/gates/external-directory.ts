@@ -29,7 +29,7 @@ export function describeExternalDirectoryGate(
   normalizer: PathNormalizer,
   extractors?: ToolAccessExtractorLookup,
 ): GateResult {
-  const { path: externalDirectoryPath } = getToolInputPath(
+  const { path: externalDirectoryPath, source: pathSource } = getToolInputPath(
     tcc.toolName,
     tcc.input,
     extractors,
@@ -53,7 +53,11 @@ export function describeExternalDirectoryGate(
       decidedBy: { kind: "infrastructure_read" },
       log: {
         event: "permission_request.infrastructure_auto_allowed",
-        details: buildPathGateLogContext(tcc, externalDirectoryPath),
+        details: buildPathGateLogContext(
+          tcc,
+          externalDirectoryPath,
+          pathSource,
+        ),
       },
       decision: {
         surface: tcc.toolName,
@@ -104,7 +108,7 @@ export function describeExternalDirectoryGate(
       externalDirectoryPath,
       accessFactsFromPath(surface, accessPath),
     ),
-    logContext: buildPathGateLogContext(tcc, externalDirectoryPath),
+    logContext: buildPathGateLogContext(tcc, externalDirectoryPath, pathSource),
     decision: {
       surface,
       value: externalDirectoryPath,

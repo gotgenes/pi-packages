@@ -27,7 +27,7 @@ export function describePathGate(
   normalizer: PathNormalizer,
   extractors?: ToolAccessExtractorLookup,
 ): GateResult {
-  const { path: filePath } = getToolInputPath(
+  const { path: filePath, source: pathSource } = getToolInputPath(
     tcc.toolName,
     tcc.input,
     extractors,
@@ -79,7 +79,7 @@ export function describePathGate(
       filePath,
       accessFactsFromPath(surface, accessPath),
     ),
-    logContext: buildPathGateLogContext(tcc, filePath),
+    logContext: buildPathGateLogContext(tcc, filePath, pathSource),
     decision: {
       surface,
       value: filePath,

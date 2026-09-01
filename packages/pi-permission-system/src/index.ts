@@ -17,6 +17,11 @@ import {
   ServingHeartbeatStore,
 } from "./authority/forwarding-liveness";
 import { ForwardingManager } from "./authority/forwarding-manager";
+import {
+  AncestorNodes,
+  InheritingToolAccessExtractorLookup,
+  InheritingToolInputFormatterLookup,
+} from "./authority/inherited-registrations";
 import { PERMISSION_FORWARDING_TIMEOUT_MS } from "./authority/permission-forwarding";
 import { requestPermissionDecision } from "./authority/permission-prompt-component";
 import { PermissionPrompter } from "./authority/permission-prompter";
@@ -322,11 +327,25 @@ export default function piPermissionSystemExtension(pi: ExtensionAPI): void {
     reporter,
     isYoloEnabled,
   );
+  // This node's ancestors in the current process. The gates read their
+  // fact-shaping registrations through the inheriting lookups below, so a
+  // child whose own registry is missing an extractor still sees the path its
+  // tool touches (ADR 0012 decision 1, the fact-shaping clause; #793).
+  // Registration itself is untouched: the service's registrars still write to
+  // the undecorated registries, so an entry lands in this node alone.
+  const ancestorNodes = new AncestorNodes(
+    serviceLifecycle,
+    subagentRegistry,
+    getPermissionsService,
+  );
   const toolCallGatePipeline = new ToolCallGatePipeline(
     resolver,
     session,
-    formatterRegistry,
-    accessExtractorRegistry,
+    new InheritingToolInputFormatterLookup(formatterRegistry, ancestorNodes),
+    new InheritingToolAccessExtractorLookup(
+      accessExtractorRegistry,
+      ancestorNodes,
+    ),
   );
   const skillInputGatePipeline = new SkillInputGatePipeline(resolver);
   const gates = new PermissionGateHandler(

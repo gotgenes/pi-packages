@@ -1,4 +1,5 @@
 import type { AccessPath } from "#src/access-intent/access-path";
+import type { ToolPathSource } from "#src/access-intent/tool-input-path";
 import { classifyToolKind } from "#src/access-intent/tool-kind";
 import type { ForwardedAccessFacts } from "#src/authority/permission-forwarding";
 import type { PromptPermissionDetails } from "#src/authority/permission-prompter";
@@ -25,10 +26,17 @@ type PathGateRequestFacts = Pick<
  * call, so they share one builder — a field added here reaches both, and the
  * two cannot drift.
  * The request facts and the request id are stamped by the runner, not here.
+ *
+ * `pathSource` adds `extractorSource` only when the path came from an
+ * **inherited** extractor — a decision that depended on another node's
+ * registration says so, and every other decision stays exactly as wide as it
+ * was. Stamping the ordinary case too would put a constant on effectively
+ * every record in the log.
  */
 export function buildPathGateLogContext(
   tcc: PathGateRequestFacts,
   path: string,
+  pathSource?: ToolPathSource,
 ): Record<string, unknown> {
   return {
     source: "tool_call",
@@ -36,6 +44,9 @@ export function buildPathGateLogContext(
     toolName: tcc.toolName,
     agentName: tcc.agentName,
     path,
+    ...(pathSource === "inherited_extractor"
+      ? { extractorSource: "inherited" }
+      : {}),
   };
 }
 

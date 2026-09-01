@@ -757,6 +757,194 @@ describe("service and gate share one access extractor registry", () => {
   });
 });
 
+// The split-provider condition (#793, ADR 0012 decision 6) ─────────────────
+
+describe("split-provider extractor inheritance", () => {
+  // Package A registers tool `ffgrep`, whose path lives under a non-standard
+  // key; package B registers the extractor for it. Excluding B alone from
+  // child sessions leaves the child holding the tool with its path
+  // undeclared, and the parent's own gating stays correct — so the weakening
+  // is visible nowhere. A fact-shaping lookup crosses the node boundary to
+  // close it.
+  const parentSessionId = "parent-session-split";
+  const childSessionId = "child-session-split";
+  let parentCwd: string;
+  let childCwd: string;
+  let childPi: ReturnType<typeof makeFakePi>;
+  let childCtx: unknown;
+
+  beforeEach(async () => {
+    writeGlobalConfig({
+      permission: { "*": "allow", path: { "*.env": "deny" } },
+    });
+
+    parentCwd = mkdtempSync(join(tmpdir(), "pi-perm-split-parent-"));
+    childCwd = mkdtempSync(join(tmpdir(), "pi-perm-split-child-"));
+
+    const parentPi = makeFakePi({
+      toolNames: ["ffgrep"],
+      events: createEventBus(),
+    });
+    piPermissionSystemExtension(parentPi as unknown as ExtensionAPI);
+    childPi = makeFakePi({ toolNames: ["ffgrep"], events: createEventBus() });
+    piPermissionSystemExtension(childPi as unknown as ExtensionAPI);
+
+    await fireSessionStart(parentPi, makeBaseCtx(parentCwd, parentSessionId));
+    getSubagentSessionRegistry().register(childSessionId, { parentSessionId });
+    childCtx = makeChildCtx(childCwd, childSessionId);
+    await fireSessionStart(childPi, childCtx);
+  });
+
+  afterEach(() => {
+    rmSync(parentCwd, { recursive: true, force: true });
+    rmSync(childCwd, { recursive: true, force: true });
+  });
+
+  /** ffgrep's path lives under `target`, so it is invisible without one. */
+  function registerFfgrepExtractorOn(sessionId: string): void {
+    getPermissionsService(sessionId)!.registerToolAccessExtractor(
+      "ffgrep",
+      (input) => (typeof input.target === "string" ? input.target : undefined),
+    );
+  }
+
+  /** The entries the child's own path gate wrote about `.env`. */
+  function pathDenials(): Record<string, unknown>[] {
+    return (readReviewLog() as Record<string, unknown>[]).filter(
+      (entry) => entry.path === ".env",
+    );
+  }
+
+  it("gates a child's tool call through an extractor registered only in the parent", async () => {
+    registerFfgrepExtractorOn(parentSessionId);
+
+    const result = (await childPi.fire(
+      "tool_call",
+      {
+        toolName: "ffgrep",
+        toolCallId: "ff-inherited",
+        input: { target: ".env" },
+      },
+      childCtx,
+    )) as { block?: true };
+
+    // Without inheritance the child falls back to the input.path convention,
+    // misses ffgrep's path entirely, and the deny never fires.
+    expect(result.block).toBe(true);
+  });
+
+  it("records that the child's decision used an inherited extractor", async () => {
+    registerFfgrepExtractorOn(parentSessionId);
+
+    await childPi.fire(
+      "tool_call",
+      {
+        toolName: "ffgrep",
+        toolCallId: "ff-provenance",
+        input: { target: ".env" },
+      },
+      childCtx,
+    );
+
+    expect(pathDenials()).not.toHaveLength(0);
+    for (const entry of pathDenials()) {
+      expect(entry.extractorSource).toBe("inherited");
+    }
+  });
+
+  it("leaves the provenance field absent when the child resolved it locally", async () => {
+    registerFfgrepExtractorOn(childSessionId);
+
+    const result = (await childPi.fire(
+      "tool_call",
+      {
+        toolName: "ffgrep",
+        toolCallId: "ff-local",
+        input: { target: ".env" },
+      },
+      childCtx,
+    )) as { block?: true };
+
+    expect(result.block).toBe(true);
+    expect(pathDenials()).not.toHaveLength(0);
+    for (const entry of pathDenials()) {
+      expect(entry).not.toHaveProperty("extractorSource");
+    }
+  });
+});
+
+// The boundary the fact-shaping clause must not cross ───────────────────────
+
+describe("fact-shaping inheritance stops at live authority", () => {
+  // A link returns a verdict, so live authority converges at the adjudicating
+  // node (ADR 0007 §7) and inheriting one would run authority the operator's
+  // own exclusion removed. That a configured-but-absent link is skipped here
+  // rather than borrowed is deliberate; whether the skip should be louder is
+  // its own question, tracked as #861.
+  it("does not resolve an authorizer registered only in the parent", async () => {
+    writeGlobalConfig({
+      permission: { "*": "ask" },
+      authorizerChain: ["parent-only-judge"],
+    });
+
+    const parentCwd = mkdtempSync(join(tmpdir(), "pi-perm-link-parent-"));
+    const childCwd = mkdtempSync(join(tmpdir(), "pi-perm-link-child-"));
+    const parentSessionId = "parent-session-link";
+    const childSessionId = "child-session-link";
+
+    const parentPi = makeFakePi({
+      toolNames: ["demo"],
+      events: createEventBus(),
+    });
+    piPermissionSystemExtension(parentPi as unknown as ExtensionAPI);
+    const childPi = makeFakePi({
+      toolNames: ["demo"],
+      events: createEventBus(),
+    });
+    piPermissionSystemExtension(childPi as unknown as ExtensionAPI);
+
+    await fireSessionStart(parentPi, makeBaseCtx(parentCwd, parentSessionId));
+    getSubagentSessionRegistry().register(childSessionId, { parentSessionId });
+
+    // hasUI makes the child adjudicate locally, so its own chain runs — the
+    // one shape in which a missing link changes the verdict.
+    const capturedTitles: string[] = [];
+    const childCtx = makeBaseCtx(childCwd, childSessionId, {
+      select: async (title: string): Promise<string | undefined> => {
+        capturedTitles.push(title);
+        return "Yes";
+      },
+    });
+    await fireSessionStart(childPi, childCtx);
+
+    const authorize = vi
+      .fn()
+      .mockResolvedValue({ kind: "deny", reason: "parent judge" });
+    getPermissionsService(parentSessionId)!.registerAuthorizer(
+      "parent-only-judge",
+      authorize,
+    );
+
+    const result = (await childPi.fire(
+      "tool_call",
+      { toolName: "demo", toolCallId: "link-1", input: {} },
+      childCtx,
+    )) as { block?: true };
+
+    // The parent's link never runs in the child: the ask reaches the child's
+    // own approving terminal, and the chain records the vacancy.
+    expect(authorize).not.toHaveBeenCalled();
+    expect(result.block).toBeUndefined();
+    expect(capturedTitles).toHaveLength(1);
+    expect(readReviewLog().map((entry) => entry.event)).toContain(
+      "authorizer_chain_unregistered_link",
+    );
+
+    rmSync(parentCwd, { recursive: true, force: true });
+    rmSync(childCwd, { recursive: true, force: true });
+  });
+});
+
 describe("service and chain share one authorizer registry", () => {
   // A link registered through the published service must be consulted by the
   // live ask gate when the operator names it in authorizerChain — proving both

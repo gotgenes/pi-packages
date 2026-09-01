@@ -60,6 +60,17 @@ export class PermissionServiceLifecycle
     private readonly subscriptions: readonly (() => void)[],
   ) {}
 
+  /**
+   * This node's own session id, or `null` before it has published.
+   *
+   * Satisfies `NodeIdentity`: the fact-shaping lookups need to know which node
+   * they run in to find their ancestors, and this class already reads it from
+   * the context at `activate` and holds it — so identity keeps one home.
+   */
+  currentSessionId(): string | null {
+    return this.publishedSessionId;
+  }
+
   activate(ctx: ExtensionContext): void {
     // Re-arm: a new session generation gets its own post-session_start
     // announcement, so a consumer that loaded after this node still hears one.
