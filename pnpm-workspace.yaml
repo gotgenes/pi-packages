@@ -25,11 +25,11 @@ catalog:
   # Keep prek.toml's rumdl-pre-commit rev in lockstep with this pin.
   "rumdl": "0.2.24"
   "typescript": "^6.0.3"
-  "vitest": "^4.1.8"
+  "vitest": "^4.1.11"
   "@types/node": "^22.15.3"
   fallow: "^3.2.0"
-  rollup: "^4.62.2"
-  "rollup-plugin-dts": "^6.4.1"
+  rollup: "^4.63.1"
+  "rollup-plugin-dts": "^6.5.1"
 
 allowBuilds:
   "@google/genai": true
