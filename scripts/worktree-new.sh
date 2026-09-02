@@ -10,6 +10,9 @@
 # Usage:
 #   scripts/worktree-new.sh <issue-number> [initial-slash-command]
 #
+# This script only *creates*. To reopen a peer session for a worktree that
+# already exists (e.g. its WezTerm tab was closed), use scripts/worktree-open.sh.
+#
 # The peer Pi session launches with an initial prompt already submitted —
 # `/plan-issue <N>` by default — so it starts working immediately. Pass a
 # different command (without the leading slash is fine) as the second arg,
@@ -70,7 +73,11 @@ slug="$(printf '%s' "$title" \
 branch="issue-${issue}-${slug}"
 worktree="${WORKTREE_PARENT}/issue-${issue}"
 
-[[ -e "$worktree" ]] && die "worktree path already exists: $worktree"
+# Creation never touches an existing worktree. Reopening a closed peer tab is a
+# different job with a different script, so name it here rather than leaving the
+# operator to reconstruct the wezterm/pi invocation by hand.
+[[ -e "$worktree" ]] \
+  && die "worktree path already exists: ${worktree} — reopen its session with: scripts/worktree-open.sh ${issue}"
 
 mkdir -p "$WORKTREE_PARENT"
 
