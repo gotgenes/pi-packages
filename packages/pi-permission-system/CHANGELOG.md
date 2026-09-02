@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [30.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v29.3.0...pi-permission-system-v30.0.0) (2026-09-02)
+
+
+### Features
+
+* **pi-permission-system:** **breaking:** record a session approval's surface per pattern ([499444d](https://github.com/gotgenes/pi-packages/commit/499444df5a21e289409cbf3b360033a13d0eba56)), closes [#810](https://github.com/gotgenes/pi-packages/issues/810)
+* **pi-permission-system:** grant each external path only the direction its command proved ([aa38c74](https://github.com/gotgenes/pi-packages/commit/aa38c746bf9b82ed0dc96217cf4789aae9f090cd)), closes [#810](https://github.com/gotgenes/pi-packages/issues/810)
+
+### Documentation
+
+* **pi-permission-system:** document per-pattern approval surfaces and mark Phase 14 Step 10 ([5511450](https://github.com/gotgenes/pi-packages/commit/551145024364cc794b3c48256362d69971aa69de)), closes [#810](https://github.com/gotgenes/pi-packages/issues/810)
+
 ## [29.3.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v29.2.0...pi-permission-system-v29.3.0) (2026-09-02)
 
 
