@@ -576,12 +576,19 @@ export class Subagent {
 	failRun(err: unknown): void {
 		this.markError(err);
 		this.listeners.release();
-
-		try {
-			this.workspaceBracket.dispose({ status: "error", description: this.description });
-		} catch (cleanupErr) { debugLog("workspace dispose on agent error", cleanupErr); }
-
+		this.disposeWorkspaceQuietly("error");
 		this.execution.observer?.onRunFinished?.(this);
+	}
+
+	/**
+	 * Dispose the workspace without letting a provider failure escape.
+	 * The addendum is discarded: these are the paths with no result text left
+	 * to fold it into, so there is nowhere for it to go.
+	 */
+	private disposeWorkspaceQuietly(status: SubagentStatus): void {
+		try {
+			this.workspaceBracket.dispose({ status, description: this.description });
+		} catch (err) { debugLog(`workspace dispose (${status})`, err); }
 	}
 }
 
