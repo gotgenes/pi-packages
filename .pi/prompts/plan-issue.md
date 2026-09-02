@@ -220,6 +220,8 @@ Then an H1 title (e.g., `# <short descriptive title>`) — required by markdownl
   When a step removes an export (not just renames it), every importing module and its tests break at the type level in that commit — fold the extraction, all consumer updates, and all consumer-test updates into one step regardless of call-site count.
   When a step removes fields from an interface and a downstream file constructs an object literal satisfying that interface, include the call-site update in the same step — TypeScript's excess property checking rejects the stale fields immediately.
 - **Risks and Mitigations** — concrete risks and how the plan addresses each.
+  When a risk asserts what happens if a mechanism is **absent**, spike its removal — a spike that exercises the mechanism present verifies the happy path, not the risk.
+  Dropping `.catchall(...)` was predicted to fail closed; zod silently strips instead (Refs #808).
 - **Open Questions** — defer-until-needed items.
 
 If the change is breaking, say so explicitly in Goals and use `feat!:` in the suggested commit messages.

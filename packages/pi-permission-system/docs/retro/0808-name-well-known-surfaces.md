@@ -85,5 +85,78 @@ No deferred work and no open follow-ups beyond [#868], already filed and disposi
 
 Nothing new since the TDD stage note — the tree was already green from the pre-completion review, so this stage was a confirmation pass rather than a fix cycle.
 
+## Stage: Final Retrospective (2026-09-02T02:33:01Z)
+
+### Session summary
+
+Landed the branch on `main` by fast-forward, verified CI, closed #808, released `pi-permission-system-v29.3.0`, and tore down the worktree — every step clean on the first attempt, with no operator prompt needed because the plan's `**Release:** ship independently` marker settled the release decision up front.
+Across all four stages the issue produced ten named `surfaceProperty` entries, a 2034 → 969 character reduction in the object-level `markdownDescription`, and +23 tests.
+The dominant story is not the feature but the verification: the mandatory killing-mutation step overturned three of the plan's own predictions, including one that would have shipped a silent fail-open.
+
+### Observations
+
+#### What went well
+
+- **The killing-mutation step found a fail-open that four green cycles did not.**
+  Every cycle was green before any mutation ran.
+  Mutation (b) — dropping `.catchall(...)` — overturned the plan's Risk 1: zod does not fail closed, it *strips* the unmatched key, so `safeParse` still reports success while every tool-name rule silently vanishes.
+  The existing pin `still accepts an arbitrary tool-name surface` asserted only `.success`, survived the mutation, and had been vacuous in the suite since [#806].
+  Two further predictions were also wrong (cycle 2's misspelling cases cannot discriminate on an allowlist's *contents*; deleting the `bash` property reddens the roster but not `bash`'s parse cases).
+  Three wrong predictions out of a handful is the strongest evidence yet that the step earns its mandatory status — a plan's mutation predictions are hypotheses, and running them is what tests the plan.
+- **Planning measured instead of estimating, and the prediction held to 0.08%.**
+  Predicted generated-schema size ≈24,582 bytes; delivered 24,601.
+  The 19-byte residual was *explained*, not hand-waved — the markdown formatter had stripped a `` ` *` `` "space + wildcard" parenthetical from the plan's copy of the `bash` text.
+  The prediction came from simulating the generator over the real committed schema and correcting for `biome format`'s array collapsing, verified by round-tripping the current file.
+- **An operator note with a wrong premise became a correctly-scoped issue.**
+  The note was "`authorizerChain` isn't in the schema".
+  It is — `config-schema.ts:328`, `permissions.schema.json:92`, a 983-character `markdownDescription`, and set in `config.example.json`.
+  Measuring the real artifact before answering is what converted a wrong premise into the real defect one level down: the array's `items` is a bare `{ "type": "string", "minLength": 1 }`, so the one cursor position where a link name is typed completes and hovers nothing.
+  Filed as [#868], kept out of #808 to preserve its title and roadmap scope, and dispositioned against Phase 14 as deferred — same file, defect class, and clearing mechanism as Step 9, but not its parentage.
+- **Lint surfaced a type-precision consequence in an unlisted file, and the response was to probe rather than delete.**
+  The literal-key rewrite made the inferred `FlatPermissionConfig` more precise, rendering `expandDirectionalSugar`'s explicit-`undefined` guard unreachable *by type* in `src/normalize.ts` — a file absent from the plan's Module-Level Changes.
+  A disposable probe test established the guard is live at runtime (without it, `{ path: undefined }` expands into two empty directional surfaces), so it was kept with a documented `eslint-disable` and a new regression test.
+  Deleting it to satisfy lint would have been the cheap move and would have invented two empty surfaces.
+- **The worktree ship flow ran without a single retry.**
+  Release coordination read the plan's marker off the peer branch before any irreversible work, so no operator prompt was needed; the ff-merge, push, CI, close, release dispatch, and teardown each succeeded first try.
+
+#### What caused friction (agent side)
+
+- `instruction-violation` (self-identified, this session) — the model-performance lens explicitly says to attribute turns from inline labels in an **unfiltered** `read_session` call and warns that a `types: ["model_change"]` filter renders phantom switches (Refs #737).
+  I ran the filtered call first anyway as a shortcut, and it returned four switches where the unfiltered transcript shows three real ones.
+  Impact: one wasted tool call, caught immediately, no rework and no wrong attribution reached the retro.
+  Recording rather than acting on it — the warning is already maximally prominent, sitting inside the very lens being executed, so a recurrence rather than this first instance is what would justify a change.
+- `instruction-violation` (self-identified, TDD stage) — the first mutation `Edit` used a hand-built absolute path with `packages/` dropped, tripping the `external_directory` gate instead of failing fast.
+  `AGENTS.md` already names this hazard (Refs #726) and prescribes repo-relative paths, which worked on the retry.
+  Impact: one failed tool call, no rework.
+
+#### What caused friction (user side)
+
+- Nothing that cost anything.
+  The `authorizerChain` note carried a wrong premise and arrived mid-planning, after the Tidy-First assessor was already dispatched, costing about five verification tool calls — but the instinct was sound and pointed at a real gap, and phrasing it as an assertion rather than a question is what made the agent measure the artifact instead of accepting it.
+  Both clarification-gate answers were strategic rather than mechanical: adding `"*"` to the roster, declining the six built-in file tools to avoid duplicating `PATH_BEARING_TOOLS`' vocabulary, and imposing the ~800-character per-property budget that is now enforced by a test.
+
+### Diagnostic details
+
+- **Model-performance correlation** — attribution from inline `[provider/model]` labels in unfiltered transcript reads of both sessions.
+  Peer session: Planning and TDD on `anthropic/claude-opus-5`, Sync on `anthropic/claude-sonnet-5`.
+  Root session: Ship on `anthropic/claude-sonnet-5`, this retrospective on `anthropic/claude-opus-5`.
+  Subagents both on `anthropic/claude-sonnet-5` per their frontmatter (`tidy-first-assessor`, `pre-completion-reviewer`).
+  No mismatch in either direction: the judgment-heavy stages (design gates, mutation analysis, the `normalize.ts` guard call) ran on the strongest model, and the two mechanical stages — a rebase that was a no-op and a ship flow that is a fixed command sequence — ran on the cheaper one.
+  The `pre-completion-reviewer` on sonnet independently re-derived every metric, wrote its own scratch test to confirm the catchall-stripping finding, and added a fair nuance about zod never materializing an omitted optional key — adequate for the review load here.
+- **Feedback-loop gap analysis** — no gap; this is the lens's positive case.
+  All four gates (`pnpm run check`, `pnpm run lint`, `pnpm run test`, `pnpm fallow dead-code`) ran at baseline before cycle 1, establishing that the 2 expected failures were pre-existing.
+  `pnpm run check` ran mid-cycle inside cycles 2 and 3 — the type-touching ones — exactly where `/tdd-plan` asks for it, which is what surfaced the `normalize.ts` lint failure while the cycle was still uncommitted and cheap to absorb.
+  Full gates ran again after cycle 3 and at the end.
+- **Escalation-delay tracking** — no `rabbit-hole` points, so nothing to flag.
+  The longest same-topic run was the six-call mutation sequence in cycle 3, but each call applied a *different* mutation class and three of them produced findings; it is the step working as designed, not repeated attempts at one error.
+- **Unused-tool detection** — no `missing-context` or `rabbit-hole` points to check.
+  `colgrep` went unused across planning, but every search was for an exact symbol (`DIRECTIONAL_SURFACE_DESCRIPTIONS`, `authorizerChain`, `surfaceProperty`, `catchall`), which is grep's case rather than a semantic-search miss.
+
+### Changes made
+
+1. `.pi/prompts/plan-issue.md` — extended the **Risks and Mitigations** bullet with a rule requiring a planning spike to exercise a mechanism's *removal* when a risk asserts what happens in its absence.
+   The example sentence was reworded to lead with a capital after `pi-autoformat` joined it onto the previous line — an issue number opening a line parses as a heading, the case `markdown-conventions` names.
+2. `packages/pi-permission-system/docs/retro/0808-name-well-known-surfaces.md` — this Final Retrospective stage entry.
+
 [#806]: https://github.com/gotgenes/pi-packages/issues/806
 [#868]: https://github.com/gotgenes/pi-packages/issues/868
