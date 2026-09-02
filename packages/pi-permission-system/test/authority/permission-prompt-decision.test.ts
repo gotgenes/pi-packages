@@ -2,10 +2,28 @@ import { describe, expect, it } from "vitest";
 import {
   initialPromptState,
   type PromptModelConfig,
+  type PromptOutcome,
   reducePrompt,
 } from "#src/authority/permission-prompt-decision";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
+
+/**
+ * Narrow a reducer outcome to its render arm, failing the test if it decided.
+ *
+ * An assertion signature rather than a bare `throw`: reading `.state` off the
+ * union needs narrowing, but a `throw` reports outside the assertion library,
+ * so a wrong arm arrives as a stack trace naming neither what was expected nor
+ * what came back. `expect.unreachable` returns `never`, so it narrows and
+ * reports.
+ */
+function assertRender(
+  outcome: PromptOutcome,
+): asserts outcome is Extract<PromptOutcome, { kind: "render" }> {
+  if (outcome.kind !== "render") {
+    expect.unreachable(`expected a render, got ${JSON.stringify(outcome)}`);
+  }
+}
 
 function makeConfig(
   overrides: Partial<PromptModelConfig> = {},
@@ -60,7 +78,7 @@ describe("reducePrompt", () => {
         type: "hotkey",
         key: "y",
       });
-      if (armed.kind !== "render") throw new Error("expected render");
+      assertRender(armed);
       const outcome = reducePrompt(config, armed.state, {
         type: "hotkey",
         key: "y",
@@ -77,7 +95,7 @@ describe("reducePrompt", () => {
         type: "hotkey",
         key: "y",
       });
-      if (armedY.kind !== "render") throw new Error("expected render");
+      assertRender(armedY);
       const armedN = reducePrompt(config, armedY.state, {
         type: "hotkey",
         key: "n",
@@ -101,7 +119,7 @@ describe("reducePrompt", () => {
         type: "hotkey",
         key: "n",
       });
-      if (armed.kind !== "render") throw new Error("expected render");
+      assertRender(armed);
       const outcome = reducePrompt(config, armed.state, {
         type: "hotkey",
         key: "n",
@@ -134,7 +152,7 @@ describe("reducePrompt", () => {
         type: "hotkey",
         key: "y",
       });
-      if (armed.kind !== "render") throw new Error("expected render");
+      assertRender(armed);
       const outcome = reducePrompt(config, armed.state, {
         type: "nav",
         direction: "down",
@@ -160,7 +178,7 @@ describe("reducePrompt", () => {
           type: "nav",
           direction: "up",
         });
-        if (outcome.kind !== "render") throw new Error("expected render");
+        assertRender(outcome);
         state = outcome.state;
       }
       // up from y wraps to r, then walks r→n→s→y over four presses
@@ -173,13 +191,13 @@ describe("reducePrompt", () => {
         type: "nav",
         direction: "down",
       });
-      if (down.kind !== "render") throw new Error("expected render");
+      assertRender(down);
       // highlight is now s; move once more to n
       const down2 = reducePrompt(config, down.state, {
         type: "nav",
         direction: "down",
       });
-      if (down2.kind !== "render") throw new Error("expected render");
+      assertRender(down2);
       const outcome = reducePrompt(config, down2.state, { type: "confirm" });
       expect(outcome).toEqual({
         kind: "decision",
@@ -208,7 +226,7 @@ describe("reducePrompt", () => {
         type: "hotkey",
         key: "r",
       });
-      if (armed.kind !== "render") throw new Error("expected render");
+      assertRender(armed);
       const outcome = reducePrompt(config, armed.state, {
         type: "hotkey",
         key: "r",
@@ -233,7 +251,7 @@ describe("reducePrompt", () => {
         key: "r",
       });
       expect(outcome.kind).toBe("render");
-      if (outcome.kind !== "render") throw new Error("expected render");
+      assertRender(outcome);
       expect(outcome.state.step).toBe("reason");
     });
 
@@ -243,7 +261,7 @@ describe("reducePrompt", () => {
         type: "hotkey",
         key: "r",
       });
-      if (opened.kind !== "render") throw new Error("expected render");
+      assertRender(opened);
       const outcome = reducePrompt(config, opened.state, {
         type: "submitReason",
         draft: "   ",
@@ -267,7 +285,7 @@ describe("reducePrompt", () => {
         type: "hotkey",
         key: "r",
       });
-      if (opened.kind !== "render") throw new Error("expected render");
+      assertRender(opened);
       const outcome = reducePrompt(config, opened.state, {
         type: "submitReason",
         draft: "  not now  ",
@@ -288,7 +306,7 @@ describe("reducePrompt", () => {
         type: "hotkey",
         key: "r",
       });
-      if (opened.kind !== "render") throw new Error("expected render");
+      assertRender(opened);
       const outcome = reducePrompt(config, opened.state, { type: "cancel" });
       expect(outcome).toEqual({
         kind: "render",
@@ -317,7 +335,7 @@ describe("reducePrompt", () => {
         key: "s",
       });
       expect(outcome.kind).toBe("render");
-      if (outcome.kind !== "render") throw new Error("expected render");
+      assertRender(outcome);
       expect(outcome.state.step).toBe("scope");
       expect(outcome.state.scopeServing).toBe(false);
     });
@@ -328,7 +346,7 @@ describe("reducePrompt", () => {
         type: "hotkey",
         key: "s",
       });
-      if (opened.kind !== "render") throw new Error("expected render");
+      assertRender(opened);
       const outcome = reducePrompt(config, opened.state, { type: "confirm" });
       expect(outcome).toEqual({
         kind: "decision",
@@ -342,12 +360,12 @@ describe("reducePrompt", () => {
         type: "hotkey",
         key: "s",
       });
-      if (opened.kind !== "render") throw new Error("expected render");
+      assertRender(opened);
       const moved = reducePrompt(config, opened.state, {
         type: "nav",
         direction: "down",
       });
-      if (moved.kind !== "render") throw new Error("expected render");
+      assertRender(moved);
       expect(moved.state.scopeServing).toBe(true);
       const outcome = reducePrompt(config, moved.state, { type: "confirm" });
       expect(outcome).toEqual({
@@ -362,10 +380,10 @@ describe("reducePrompt", () => {
         type: "hotkey",
         key: "s",
       });
-      if (opened.kind !== "render") throw new Error("expected render");
+      assertRender(opened);
       const outcome = reducePrompt(config, opened.state, { type: "cancel" });
       expect(outcome.kind).toBe("render");
-      if (outcome.kind !== "render") throw new Error("expected render");
+      assertRender(outcome);
       expect(outcome.state.step).toBe("decision");
     });
 
