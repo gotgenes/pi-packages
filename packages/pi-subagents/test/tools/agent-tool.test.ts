@@ -2,7 +2,8 @@ import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { describe, expect, it, vi } from "vitest";
 import { AgentTool } from "#src/tools/agent-tool";
 import { createToolDeps, createToolDepsWithDisabledBuiltInAgents } from "#test/helpers/make-deps";
-import { createTestSubagent } from "#test/helpers/make-subagent";
+import { createTestSubagent, makeStubExecution } from "#test/helpers/make-subagent";
+import { makeWorkspace, makeWorkspaceProvider } from "#test/helpers/make-workspace";
 import { createMockSession, createSubagentSessionStub, toSubagentSession } from "#test/helpers/mock-session";
 
 function makeCtx(overrides: Record<string, unknown> = {}) {
@@ -139,6 +140,52 @@ describe("AgentTool — resume path", () => {
 		});
 		expect(result.content[0].text).toContain("get_subagent_result");
 		expect(deps.manager.resume).not.toHaveBeenCalled();
+	});
+
+	it("refuses a resume whose workspace was torn down at run end", async () => {
+		const deps = createToolDeps();
+		const workspace = makeWorkspace("/ws/dir");
+		const disposed = createTestSubagent({
+			execution: makeStubExecution({
+				getWorkspaceProvider: () => makeWorkspaceProvider(workspace),
+			}),
+		});
+		// A real run, so the workspace is disposed by the code under test rather
+		// than by seeded state: the stub turn loop ends with no declared question.
+		await disposed.run();
+		deps.manager.getRecord = vi.fn().mockReturnValue(disposed);
+
+		const result = await execute(deps, {
+			prompt: "continue",
+			description: "resume",
+			subagent_type: "general-purpose",
+			resume: "agent-1",
+		});
+
+		expect(result.content[0].text).toBe(
+			'Agent "agent-1" ran in an isolated workspace that no longer exists; resume is ' +
+				"unavailable because the agent would re-enter a directory that has been removed. " +
+				"Spawn a new agent instead — the agent's result records where any work was saved.",
+		);
+		expect(deps.manager.resume).not.toHaveBeenCalled();
+	});
+
+	it("resumes an agent whose run never had a workspace", async () => {
+		const deps = createToolDeps();
+		const noWorkspace = createTestSubagent();
+		await noWorkspace.run();
+		deps.manager.getRecord = vi.fn().mockReturnValue(noWorkspace);
+		deps.manager.resume = vi.fn().mockResolvedValue(createTestSubagent({ result: "Resumed output." }));
+
+		const result = await execute(deps, {
+			prompt: "continue",
+			description: "resume",
+			subagent_type: "general-purpose",
+			resume: "agent-1",
+		});
+
+		expect(deps.manager.resume).toHaveBeenCalledOnce();
+		expect(result.content[0].text).toContain("Resumed output.");
 	});
 
 	it("returns result text on successful resume", async () => {

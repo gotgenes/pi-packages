@@ -103,6 +103,14 @@ export class AgentTool {
 					`Agent "${params.resume as string}" has no active session to resume.`,
 				);
 			}
+			if (existing.workspaceDisposed) {
+				return textResult(
+					`Agent "${params.resume as string}" ran in an isolated workspace that no longer ` +
+						"exists; resume is unavailable because the agent would re-enter a directory that " +
+						"has been removed. Spawn a new agent instead — the agent's result records where " +
+						"any work was saved.",
+				);
+			}
 			// Resuming commits this call to delivering the resumed outcome. Claim it
 			// before the resume starts: resetForResume runs synchronously inside
 			// resume(), so a claim made afterwards would miss the terminal edge.
