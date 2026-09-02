@@ -21,9 +21,11 @@ const alwaysShow = () => true;
 const neverShow = () => false;
 
 // Build a widget over a manager stub whose listAgents() returns a fixed list,
-// plus a recording UICtx. setWidgetCalls captures the `content` arg of each
-// setWidget call: a function means the widget is registered/visible; undefined
-// means it was cleared (the finished agent has aged out).
+// plus a recording UICtx. Both `setWidget` and `setStatus` are spies, so a test
+// can assert the key as well as the value; `lastContent()` reads the `content`
+// arg of the most recent setWidget call, where a function means the widget is
+// registered/visible and undefined means it was cleared (the finished agent has
+// aged out).
 // Fixtures default to background so they survive the widget's background-only
 // filter; per-agent `isBackground` overrides the default.
 function makeWidget(
@@ -34,16 +36,11 @@ function makeWidget(
 	} as unknown as SubagentManager;
 	const registry = new AgentTypeRegistry(() => new Map());
 	const widget = new AgentWidget(manager, registry);
-	const setWidgetCalls: unknown[] = [];
-	const ui: UICtx = {
-		setStatus: () => {},
-		setWidget: (_key, content) => {
-			setWidgetCalls.push(content);
-		},
-	};
-	widget.setUICtx(ui);
-	const lastContent = () => setWidgetCalls.at(-1);
-	return { widget, lastContent };
+	const setWidget = vi.fn<UICtx["setWidget"]>();
+	const setStatus = vi.fn<UICtx["setStatus"]>();
+	widget.setUICtx({ setStatus, setWidget });
+	const lastContent = () => setWidget.mock.lastCall?.[1];
+	return { widget, lastContent, setWidget, setStatus };
 }
 
 describe("assembleWidgetState", () => {
