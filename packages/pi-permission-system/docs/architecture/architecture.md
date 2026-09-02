@@ -887,7 +887,7 @@ src/
 ├── permission-ui-prompt.ts   Centralized construction for `permissions:ui_prompt` event payloads - `buildUiPrompt` is the single builder for direct and forwarded asks, keeping the emitted contract shape in one place. It projects the prompt payload's `request` core onto the event and nothing else: the bus is the narrowest renderer, so no evidence reaches it (ADR 0011 §6)
 ├── config-store.ts           `ConfigStore` class — owns `config` + `lastConfigWarning`; `ConfigReader`, `SessionConfigStore`, `CommandConfigStore` narrow interfaces
 ├── config-loader.ts          File I/O, format detection, strict zod validation (fail-closed) for config files
-├── config-schema.ts          Zod schemas - single source of truth for the config shape; derives the JSON Schema (buildPermissionsJsonSchema) and the config types. `permissionSchema` names the four directional surfaces as documented properties over a `.catchall(...)` that keeps arbitrary tool-name surfaces validating, and rejects two unusable surface-key spellings at load: a misspelled directional key (which would sit inert, failing **open** as a restriction) and an empty key. Constraint: refinements do not serialize into JSON Schema, so both are loader-only checks
+├── config-schema.ts          Zod schemas - single source of truth for the config shape; derives the JSON Schema (buildPermissionsJsonSchema) and the config types. `permissionSchema` names ten well-known surfaces (`*`, the `path` and `external_directory` families, `bash`, `mcp`, `skill`) as `surfaceProperty(...)` properties over a `.catchall(...)` that keeps arbitrary tool-name surfaces validating, each carrying its own description and markdownDescription so an editor binds documentation to the key under the cursor. It rejects two unusable surface-key spellings at load: a misspelled directional key (which would sit inert, failing **open** as a restriction) and an empty key. Constraints: refinements do not serialize into JSON Schema, so both are loader-only checks; `DIRECTIONAL_SURFACE_KEYS` is the loader's allowlist and is held in step with the schema's directional properties by test, not structurally
 ├── config-paths.ts           Path derivation
 ├── extension-paths.ts        `ExtensionPaths` value object - immutable path constants derived from `agentDir` (and optional Pi `getPackageDir()`) at startup (`computeExtensionPaths`)
 ├── config-reporter.ts        Structured log entries for resolved config
@@ -1081,7 +1081,7 @@ No decline, so the regular improvement rotation continues.
 | Authorizer resolution values in `permission-events.ts`                      | 0                     | 2               |
 | ADR 0012 amendments recording the root-slot decision ✅                     | 2                     | ≥ 3 (3)         |
 | Absent-child alarm event in `src/`                                          | 0                     | ≥ 1             |
-| Named permission-surface properties (`surfaceProperty`, `config-schema.ts`) | 0                     | ≥ 9             |
+| Named permission-surface properties (`surfaceProperty`, `config-schema.ts`) | 0                     | ≥ 9 (11) ✅     |
 | Per-pattern surfaces on `SessionApproval` (`session-approval.ts`)           | 0                     | ≥ 1             |
 | Split-provider extractor test files                                         | 0                     | ≥ 1             |
 | fallow health score                                                         | 78 (B)                | ≥ 78            |
@@ -1335,7 +1335,7 @@ The deeper root — fact-shaping intent is declared nowhere, so a node cannot st
 
 Release: independent
 
-#### Step 9: Name the well-known permission surfaces in the config schema ([#808])
+#### ✅ Step 9: Name the well-known permission surfaces in the config schema ([#808])
 
 **Cause:** Step 1 converts `permissionSchema` from a bare record to a named-property object so the four directional keys carry editor autocomplete and hover documentation.
 The five surfaces people actually write — `path`, `external_directory`, `bash`, `mcp`, `skill` — stay anonymous `additionalProperties`, and their documentation stays fused into one ~2000-character `markdownDescription` on the `permission` object that an editor cannot bind to the key under the cursor.
@@ -1346,6 +1346,10 @@ The five surfaces people actually write — `path`, `external_directory`, `bash`
 - **Outcome:** every well-known surface completes and self-documents in a schema-aware editor; `grep -c 'surfaceProperty'` on `config-schema.ts` goes 0 → ≥ 9.
 - **Commit type:** `feat:` — the generated schema ships in the tarball, so new completions and hover text are user-observable.
 - **Impact 2 / Risk 1 / Priority 10.**
+- **Landed:** ten named properties, not five — the operator added `"*"`, the universal fallback and the most-written key of all, and declined the six built-in file tools, whose paragraph therefore stays object-level.
+  `grep -c 'surfaceProperty'` reads 11; the object-level `markdownDescription` went 2034 → 969 characters and the generated schema 20,475 → 24,601 bytes.
+  A test caps any one property at 800 characters and the object's own at 1200, so the blob cannot re-form one property at a time.
+  Two findings came out of running the plan's killing mutations: dropping `.catchall(...)` does not fail closed but makes zod **strip** every tool-name surface while `safeParse` still succeeds (the pin asserting only `.success` was vacuous and now asserts the parsed data), and the more precise inferred `FlatPermissionConfig` made `expandDirectionalSugar`'s explicit-`undefined` guard unreachable by type though it is live at runtime.
 
 Release: independent
 
@@ -1466,7 +1470,7 @@ flowchart TD
     S6["✅ Step 6 (#796): schedule the root-slot removal"]
     S7["✅ Step 7 (#792): alarm on a child with no node"]
     S8["✅ Step 8 (#793): split-provider extractor gap"]
-    S9["Step 9 (#808): name the well-known surfaces"]
+    S9["✅ Step 9 (#808): name the well-known surfaces"]
     S10["Step 10 (#810): per-pattern approval surfaces"]
     S11["Step 11 (#813): user-chosen grant width"]
     S3 --> S12["Step 12 (#814): unresolvable redirect proves nothing"]
