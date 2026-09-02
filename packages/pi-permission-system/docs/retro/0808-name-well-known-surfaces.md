@@ -42,4 +42,34 @@ Filed [#868] for a neighbouring gap found while checking an operator note, and r
 None.
 The assessor explicitly declined the two candidates it considered — extracting `surfaceProperty` and splitting the `markdownDescription` are the change itself, not preparation for it — and found no unrelated cleanup in `config-schema.ts` or `config-schema.test.ts` outside the touched region.
 
+## Stage: Implementation — TDD (2026-09-02T01:50:17Z)
+
+### Session summary
+
+Four TDD cycles, one commit each, exactly as planned: a characterization pin for the directional allowlist, the Tidy-First tuple extraction, the ten named `surfaceProperty` entries with the split prose, and the doc/roadmap mark.
+Test count went 3822 → 3845 (+23) in `pi-permission-system`, with the 2 pre-existing expected failures unchanged.
+Pre-completion reviewer: **PASS**.
+
+### Observations
+
+- Every predicted metric landed: `grep -c 'surfaceProperty'` = 11, object-level `markdownDescription` 2034 → 969 characters, generated schema 20,475 → 24,601 bytes (predicted ≈24,582; the 19-byte gap is the `*` "space + wildcard" parenthetical restored into `bash`'s text, which the markdown formatter had stripped from the plan's copy).
+  `bash` therefore measures 789 rather than the plan's 770 — still inside the 800 budget.
+- **Three of the plan's killing-mutation predictions were wrong, and running them anyway is what found the real defects.**
+  This is the strongest argument yet for the mutation step being mandatory rather than advisory: all four cycles were green before any mutation ran.
+- Cycle 2's mutation (empty allowlist) was predicted to redden the five misspelling cases.
+  It cannot — an empty allowlist rejects a misspelled directional key exactly as the real one does, so those tests do not discriminate on the allowlist's *contents*.
+  Seven other tests did redden, which is what the refactor needed proven.
+- Cycle 3's mutation (b) overturned the plan's Risk 1.
+  Dropping `.catchall(...)` does **not** fail closed; zod *strips* the unmatched key and `safeParse` still reports success, so every tool-name rule would vanish silently.
+  The existing pin `still accepts an arbitrary tool-name surface` asserted only `.success` and survived the mutation — a vacuous probe that has been in the suite since [#806].
+  It now asserts `result.data?.permission` round-trips the input.
+- The literal-key rewrite made the inferred `FlatPermissionConfig` **more precise**, which broke lint in an unrelated file: `expandDirectionalSugar`'s explicit-`undefined` guard became unreachable by type, because `Object.entries` now resolves to the catchall's non-optional value type rather than the old `Object.fromEntries`-derived `Record<string, X | undefined>`.
+  Probed before deciding: without the guard, `{ path: undefined }` expands into two empty directional surfaces, so it is live and was kept with a documented `eslint-disable` plus a regression test.
+  The reviewer added a fair nuance — zod never materializes an omitted optional key as an own `undefined` property, so no shipped call path constructs that input today; the guard defends the function's contract against a caller that types around it, not observed data.
+- The plan's file list held except for that deviation: `src/normalize.ts` and `test/normalize.test.ts` were touched and are not in Module-Level Changes.
+  Everything the plan listed as requiring no change (`README.md`, `config/config.example.json`, the package skill, `docs/decisions/`) genuinely needed none.
+- One process slip worth remembering: the first mutation `Edit` used a hand-built absolute path with `packages/` dropped, which tripped the `external_directory` gate instead of failing fast — the hazard `AGENTS.md` already names.
+  Repo-relative paths worked on the retry.
+
+[#806]: https://github.com/gotgenes/pi-packages/issues/806
 [#868]: https://github.com/gotgenes/pi-packages/issues/868
