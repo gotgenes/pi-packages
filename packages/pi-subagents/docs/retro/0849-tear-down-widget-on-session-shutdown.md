@@ -106,5 +106,20 @@ Pre-completion reviewer: WARN (two doc-accuracy findings, both fixed).
 - **PR #850 is credited and remains a ship-time close target.**
   `Co-authored-by: mikemikimike <13286568797@163.com>` is on the wiring commit and verified with `git interpret-trailers --parse`.
 
+## Stage: Sync (worktree) (2026-09-02T02:49:27Z)
+
+### Session summary
+
+Pre-push checks passed clean: `pnpm run lint` and `pnpm fallow dead-code` both zero-finding.
+The plan's `**Release:** ship independently` marker stands — no open batch names Phase 22 Step 9, and Track C (Steps 6 → 9) is now fully landed.
+PR #850 remains an open close target at ship time (credited via `Co-authored-by` on `57045754`).
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-849--/2026-09-01T22-42-57-511Z_01a05f23-cf67-72ca-86a8-e3bf8df479b9.jsonl` — read with `read_session_file({ path: "<path>" })` for message-level verification at land/retro time.
+
+### Observations
+
+No deferred work for the root to pick up beyond closing PR #850.
+The TDD stage's five deviations (see prior stage entry) are all resolved and re-verified; nothing further surfaced during sync.
+
 [#827]: https://github.com/gotgenes/pi-packages/issues/827
 [PR #850]: https://github.com/gotgenes/pi-packages/pull/850
