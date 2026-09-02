@@ -804,6 +804,8 @@ Steps 2, 6, and 8 have design-dependent shapes and are verified by their plans' 
   `completeRun()` disposes the child's workspace and `resume()` never re-prepares it, so a workspace-backed child resumes into a torn-down directory — the same delivery-boundary family as Steps 5–7, and the bound on Step 8's round trip for exactly the agents most likely to hold a worktree.
 - [#858] — filed by Step 8's planning; becomes Step 11 by operator decision.
   A child-initiated mid-run channel is the half Step 8's completed-child scope leaves open; the parent-side reply channel (`steer_subagent`) already exists, so the residual is the child's ability to pause and signal.
+- [#870] — filed by Step 10's planning; becomes Step 12 by operator decision.
+  Step 10 holds a question-ending child's workspace open, moving its disposal to an edge with no result text to carry `resultAddendum`; the post-result delivery channel that fixes it is a peer-sized piece of the same delivery spine, not a line in Step 10's bug fix.
 - [#791] — deferred by operator decision (offered and declined): small self-contained warning, suitable for pickup outside a phase.
 - [#733] — deferred: TUI overlay defect requiring SDK-level rendering investigation, unrelated to this phase's cause.
 - [#755], [#711], [#636], [#695], [#676], [#660] — deferred: feature/UX requests that do not gate a structural phase ([#660] overlaps [#695]/[#676]).
@@ -1034,6 +1036,22 @@ A non-terminal one-way message (a material finding mid-run) has no expression at
 
 Release: independent
 
+#### Step 12: Deliver a workspace addendum produced after the result edge ([#870])
+
+**Cause:** `Workspace.dispose()` returns a `resultAddendum` the core folds into the child's result text, so the string only has a reader while a result is still being built.
+Step 10 holds a question-ending child's workspace open and moves its disposal to `releaseSession()`/`disposeSession()`, where the child's result was delivered long ago — the addendum is produced and dropped.
+For `@gotgenes/pi-subagents-worktrees` that string is the only thing naming the rescue branch, and the preserved-worktree scan does not cover a cleanup that succeeded.
+
+- **Smell:** Category C (a value produced at an edge with no channel) plus `bug`.
+- **Target:** to be settled by the step's plan — candidates are a completion nudge (`src/observation/notification.ts`), a `child-lifecycle.ts` event, and a record field `get_subagent_result` surfaces.
+- **Hard dependency:** after Step 10, which creates the condition.
+- **Design decision at plan time:** which channel carries a string produced after the result edge, given that [decision 0005](../decisions/0005-subagent-record-admission-policy.md) withholds momentary activity from `SubagentRecord` but admits durable-artifact pointers.
+- **Outcome:** a workspace disposed after its child's result was delivered still reaches the parent or the user, pinned by a test that drives disposal through the retention path.
+- **Commit type:** `fix:`.
+- **Impact 3 / Risk 3 / Priority 9.**
+
+Release: independent
+
 ### Step dependencies
 
 ```mermaid
@@ -1046,6 +1064,7 @@ flowchart TD
     S6["✅ Step 6 (#827)<br/>UICtx capture"] --> S9["✅ Step 9 (#849)<br/>Widget teardown"]
     S8 --> S11["Step 11 (#858)<br/>Mid-run channel"]
     S10["Step 10 (#857)<br/>Workspace-backed resume"] -.informs.-> S11
+    S10 --> S12["Step 12 (#870)<br/>Post-result addendum delivery"]
 ```
 
 ### Parallel tracks
@@ -1053,7 +1072,7 @@ flowchart TD
 - **Track A — Front-door contract:** Steps 1 → 2, 3, 4 (the spine; Step 1 unblocks the rest).
 - **Track B — Prompt assembly:** Step 5 (fully independent).
 - **Track C — Widget lifecycle:** Steps 6 → 9 (independent of the other tracks; Step 6 complements Step 1 — parity makes SDK agents _eligible_, this makes the widget _present_ — and Step 9 releases what Step 6 acquires).
-- **Track D — Result delivery and ask-back:** Steps 7 → 8 → 11, with Step 10 joining as an independent resume-path fix that informs Step 11 (Steps 7 → 8 is soft ordering; 8 → 11 is hard).
+- **Track D — Result delivery and ask-back:** Steps 7 → 8 → 11, with Step 10 → 12 joining as a resume-path fix and the residual it creates, Step 10 also informing Step 11 (Steps 7 → 8 is soft ordering; 8 → 11 and 10 → 12 are hard).
 
 ### Release batches
 
@@ -1179,5 +1198,6 @@ The upstream test suite is run periodically as a regression canary for the sessi
 [#846]: https://github.com/gotgenes/pi-packages/issues/846
 [#857]: https://github.com/gotgenes/pi-packages/issues/857
 [#858]: https://github.com/gotgenes/pi-packages/issues/858
+[#870]: https://github.com/gotgenes/pi-packages/issues/870
 [ADR-0002]: ../decisions/0002-extensions-on-a-minimal-core.md
 [ADR-0004]: ../decisions/0004-reconsider-ui-direction.md
