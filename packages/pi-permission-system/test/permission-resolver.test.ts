@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ResolvedAccessIntent } from "#src/access-intent/access-intent";
 import { AccessPath } from "#src/access-intent/access-path";
 import { posixPathFlavor } from "#src/path/path-flavor";
 import type { ScopedPermissionManager } from "#src/permission-manager";
@@ -7,30 +6,11 @@ import { PermissionResolver } from "#src/permission-resolver";
 import type { Ruleset } from "#src/rule";
 import { SessionApproval } from "#src/session-approval";
 import { SessionRules } from "#src/session-rules";
-import type { PermissionCheckResult, PermissionState } from "#src/types";
+import type { PermissionState } from "#src/types";
+import { makeFakePermissionManager } from "#test/helpers/session-fixtures";
 
-function makePermissionManager() {
-  return {
-    configureForCwd: vi.fn<(cwd: string | undefined | null) => void>(),
-    check: vi
-      .fn<
-        (
-          intent: ResolvedAccessIntent,
-          sessionRules?: Ruleset,
-        ) => PermissionCheckResult
-      >()
-      .mockReturnValue({
-        state: "allow",
-        toolName: "read",
-        source: "tool",
-        origin: "builtin",
-      }),
-    getToolPermission: vi
-      .fn<(toolName: string, agentName?: string) => PermissionState>()
-      .mockReturnValue("allow"),
-    getConfigIssues: vi.fn((): string[] => []),
-  };
-}
+// Alias so the existing tests read naturally.
+const makePermissionManager = makeFakePermissionManager;
 
 function makeResolver(
   pm?: ScopedPermissionManager,
