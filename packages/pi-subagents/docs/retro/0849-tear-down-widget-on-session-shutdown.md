@@ -121,5 +121,70 @@ PR #850 remains an open close target at ship time (credited via `Co-authored-by`
 No deferred work for the root to pick up beyond closing PR #850.
 The TDD stage's five deviations (see prior stage entry) are all resolved and re-verified; nothing further surfaced during sync.
 
+## Stage: Final Retrospective (2026-09-02T03:00:47Z)
+
+### Session summary
+
+Landed the peer branch on `main` (fast-forward `65d9f053..344a1c4e`), verified CI, closed #849, released `pi-subagents-v21.2.1`, and tore the worktree down.
+The ship itself was linear and clean — 26 tool calls, no rework, no failed gate, no operator intervention.
+The retrospective then found two defects the ship flow had no step to catch: a fabricated commit SHA published in the close comment, and [PR #850] left open despite being a recorded close target in both the plan and the sync stage note.
+
+### Observations
+
+#### What went well
+
+- **Release coordination up front worked exactly as designed.**
+  The plan's `**Release:** ship independently` marker was read before any irreversible action, so no operator gate was needed and the decision never had to be revisited at the cancel point.
+  `./scripts/release/next-version.sh pi-subagents` printed `pi-subagents-v21.2.1` and the dispatched run cut precisely that tag.
+
+- **The stale-measurement discipline held across three stages.**
+  The TDD stage caught its own contaminated count (1448 → 1447 after step 5 was dropped), the pre-completion reviewer caught the planning stage's contaminated baseline (1440/75 → 1438/74), and both corrections reached the architecture doc's `Landed:` note before the land.
+  This is the first issue in this package where a measurement defect was corrected at every stage that introduced one.
+
+#### What caused friction (agent side)
+
+- `instruction-violation` (self-identified — but only at retro, after it shipped) — the close comment cites `a1c1e5c7` for the Tidy-First refactor commit.
+  That object does not exist; the real commit is `a14a217c`.
+  The comment's *first* SHA (`a9a7a630`) was correct because it was copied from `git log` output; the second was typed from memory mid-draft.
+  `AGENTS.md` names this failure mode precisely — "including the second and third hash cited mid-draft, which is where the invention happens (Refs #777)" — and `/ship-issue` carries its operational form (resolve every SHA before drafting, then re-resolve every hex token in the finished draft, Refs #704, #788).
+  `/ship-worktree` step 5 carries only the *formatting* half of that rule ("SHA as plain text (no backticks) so GitHub auto-links it") and none of the verification half.
+  Impact: a wrong, non-auto-linking SHA published to a public closed issue; requires a correcting comment.
+
+- `missing-context` — the ship session never opened the plan body or the retro file, so [PR #850] was not closed.
+  The plan anticipated this exactly: its risk table has the row "[PR #850] is forgotten at ship time", whose recorded mitigation is "Recorded here and in the Planning stage note."
+  That mitigation assumes the shipping step reads those artifacts, and `/ship-worktree` reads the plan only through `grep -F '**Release:**'` and never reads the retro at all.
+  The sync stage note's handoff sentence — "No deferred work for the root to pick up beyond closing PR #850" — was written for a reader that the prompt never sends.
+  Impact: an adopted contributor's PR is still open after the work shipped under their `Co-authored-by` credit.
+
+- `other` — the final report asserted "Nothing skipped" while a close target had in fact been skipped.
+  A report that enumerates the prompt's own step list cannot surface an omission the prompt never asked about, so the assertion was structurally unfalsifiable rather than wrong-in-fact.
+
+#### What caused friction (user side)
+
+- None.
+  The ship ran unattended end to end, which is the intended shape; both defects are prompt gaps rather than missed interventions.
+
+### Diagnostic details
+
+- **Model-performance correlation** — the ship stage ran entirely on `anthropic/claude-sonnet-5` (turns 2–27), this retrospective on `anthropic/claude-opus-5`; no subagents were dispatched in either.
+  No quality mismatch: the ship work is procedural, and sonnet-5 executed every literal step of the prompt without deviation.
+  That is the diagnostic point rather than a caveat — neither defect is a reasoning failure, and both survived because the prompt did not ask for the check.
+- **Escalation-delay tracking** — no `rabbit-hole` points; the longest same-target sequence was two calls (`git rev-parse HEAD`, then `wc -c` to confirm 40 characters).
+- **Unused-tool detection** — `read` on `packages/pi-subagents/docs/retro/0849-tear-down-widget-on-session-shutdown.md` was available throughout the ship and never used.
+  It is the single call that would have surfaced both the PR close target and the sync stage's handoff note.
+- **Feedback-loop gap analysis** — not applicable.
+  A ship flow's verification is CI, which ran to `success` on `344a1c4e` before the issue was closed or anything was released.
+
+### Changes made
+
+1. `.pi/prompts/ship-worktree.md` — step 5's "Implemented in <sha>" bullet gains the verification half of `/ship-issue`'s rule: resolve every SHA with `git rev-parse` before drafting, then re-resolve every hex token in the finished draft (Refs #777, #788).
+2. `.pi/prompts/ship-worktree.md` — step 5 gains a close-target sweep: check the plan and the retro's stage notes for an adopted third-party PR, and close each with `gh pr comment` then `gh pr close`, crediting by `@login` (Refs #670, #690).
+3. Issue #849 — posted a correcting comment retracting the fabricated `a1c1e5c7` and naming the real Tidy-First commit `a14a217c`.
+   The correction's own SHAs were verified with the rule added in change 1, which caught nothing but is now the exercised path.
+4. [PR #850] — closed as shipped (not merged) with a comment crediting `@mikemikimike`, naming the two recorded divergences (ordering, and the defaulted no-op dependency) and pointing at `a9a7a630`.
+5. Filed #869 (`scope:repo`) for the structural cause — `/ship-worktree` and `/ship-issue` step 5 have diverged, and both gaps above were rules the trunk path already carried.
+   `roadmap-fit` exited at Step 1: the issue asserts `scope:repo`, so it resolves to no package and takes no Phase 22 disposition, matching the precedent set when [#451] was relabeled out of this roadmap.
+
+[#451]: https://github.com/gotgenes/pi-packages/issues/451
 [#827]: https://github.com/gotgenes/pi-packages/issues/827
 [PR #850]: https://github.com/gotgenes/pi-packages/pull/850

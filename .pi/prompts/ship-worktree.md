@@ -85,6 +85,7 @@ If no plan commit matches, anchor on the parent of the issue's first commit.
 From that range:
 
 - "Implemented in <sha> …" — the commit carrying the behavior, not the range's last commit; SHA as plain text (no backticks) so GitHub auto-links it.
+  Resolve every SHA with `git rev-parse` before drafting, then re-resolve every hex token in the finished draft — a hash typed mid-draft is where invention happens (Refs #777, #788).
 - A short bullet list of feature/breaking commits.
 - One sentence on user-visible behavior change.
 - A note flagging any breaking change (`feat!:`).
@@ -92,6 +93,9 @@ From that range:
 Then call `issue_close` with issue number `$1` and that summary.
 Also close any **other** issues this push shipped, with their own short summaries.
 A co-shipped issue shows as a subject-trailing `(#M)` or a sibling `docs/retro/` file added in range — a body-line `Refs #M` is a citation, not a ship (Refs #793).
+
+Then check the plan and the retro's stage notes for ship-time close targets — an adopted third-party PR is recorded there, never in the commit range.
+Close each with `gh pr comment` then `gh pr close`, never merge, crediting the author by `@login` (Refs #670, #690).
 
 ## 6. Release (decoupled and serialized)
 
