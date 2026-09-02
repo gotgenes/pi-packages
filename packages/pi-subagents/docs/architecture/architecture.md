@@ -360,10 +360,10 @@ src/
 │   ├── create-subagent-session.ts  assembly factory: session creation, spawn-tool denylist, binding
 │   ├── subagent-session.ts         born-complete child session: turn loop, steer, shutdown-then-dispose teardown
 │   ├── turn-limits.ts              normalizeMaxTurns (turn-count policy)
-│   ├── subagent.ts                 owns full execution lifecycle (run, abort, steer, wait-until-settled)
+│   ├── subagent.ts                 owns full execution lifecycle (run, resume, abort, steer, wait-until-settled)
 │   ├── subagent-state.ts           lifecycle status + metrics + result-delivery value object (transitions, accumulators, classification predicates); delivery carries a revocable carrier claim and a one-way consumption latch
 │   ├── run-listeners.ts            per-run observer-unsub and signal-detach handles
-│   ├── workspace-bracket.ts        child workspace prepare/dispose lifecycle
+│   ├── workspace-bracket.ts        child workspace prepare/dispose lifecycle; idempotent dispose, reports a torn-down workspace
 │   ├── concurrency-limiter.ts       background admission gate: schedules run thunks FIFO against the limit
 │   ├── parent-snapshot.ts          immutable spawn-time parent state
 │   ├── child-lifecycle.ts          child-execution lifecycle event publisher
@@ -1006,7 +1006,7 @@ The true baseline was 1438 / 74, and this step ends at 1447 / 74.
 
 Release: independent
 
-#### Step 10: Re-prepare or refuse a workspace-backed resume ([#857])
+#### ✅ Step 10: Re-prepare or refuse a workspace-backed resume ([#857])
 
 **Cause:** `Subagent.completeRun()` disposes the child's workspace on every terminal transition (`workspaceBracket.dispose(...)`, whose addendum it folds into the result), while `resume()` reuses the existing session and never re-prepares one — a boundary plan `0466` drew deliberately for its own scope and never revisited.
 A child spawned under a registered `WorkspaceProvider` therefore resumes into a directory the provider has torn down, with no signal.
@@ -1017,6 +1017,15 @@ A child spawned under a registered `WorkspaceProvider` therefore resumes into a 
 - **Outcome:** a workspace-backed resume either re-prepares its workspace or is refused with a message naming why; pinned by a test with a stub provider.
 - **Commit type:** `fix:`.
 - **Impact 2 / Risk 2 / Priority 9.**
+
+Landed: both halves, because re-prepare turned out not to be available and refusal alone would have left the ask-back loop closed to exactly the agents the step was filed for.
+A completed run that declared a question holds its workspace for the resume that question invites; every other outcome disposes at run end as before, so a stopped child still gets its rescue branch immediately.
+The refusal covers the rest, keyed on a workspace actually prepared and disposed rather than on `hasProvider()` — the git-worktree provider declines every agent type outside `worktreeAgents`, so provider-registered is true for nearly every child.
+
+Re-prepare was ruled out on three independent facts, all in the provider rather than the core: the session's cwd is a value frozen at `createSubagentSession` time with no setter, `createWorktree` randomizes the path with a UUID suffix, and a re-prepared worktree checks out the parent's HEAD without the work the first cleanup committed to `pi-agent-<id>` — whose branch name the second cleanup would then collide with.
+
+Disposal is now reachable from four edges, so `WorkspaceBracket.dispose()` releases the workspace before delegating and became idempotent; the flag is raised before the delegate call, because a provider whose teardown throws leaves a workspace no safer to reuse than a clean one.
+The deferred edge has no result text to fold `resultAddendum` into, which is the residual [#870] (Step 12) records.
 
 Release: independent
 
@@ -1063,7 +1072,7 @@ flowchart TD
     S5["✅ Step 5 (#801)<br/>Skills-block strip"]
     S6["✅ Step 6 (#827)<br/>UICtx capture"] --> S9["✅ Step 9 (#849)<br/>Widget teardown"]
     S8 --> S11["Step 11 (#858)<br/>Mid-run channel"]
-    S10["Step 10 (#857)<br/>Workspace-backed resume"] -.informs.-> S11
+    S10["✅ Step 10 (#857)<br/>Workspace-backed resume"] -.informs.-> S11
     S10 --> S12["Step 12 (#870)<br/>Post-result addendum delivery"]
 ```
 
