@@ -44,3 +44,32 @@ Baseline measured at planning time: 1447 tests across 74 files.
 - `packages/pi-subagents/src/lifecycle/subagent.ts` — a shared `holdForResume` predicate between `completeRun` and `completeResume` was left inlined as a one-line boolean at both sites; worth revisiting only if a third site appears.
 
 [#870]: https://github.com/gotgenes/pi-packages/issues/870
+
+## Stage: Implementation — TDD (2026-09-02T05:01:50Z)
+
+### Session summary
+
+Executed all eight plan steps — three Tidy-First preparatory commits, two `fix:` commits, two `docs:` commits — with no step reordered or dropped.
+Test count went 1447 → 1476 across 74 → 75 files.
+Pre-completion reviewer: PASS.
+
+### Observations
+
+The plan's step-4 mutation prediction was wrong in a way worth recording: it claimed a constant-`false` `wasDisposed()` would kill "the four bracket-state tests and the `Subagent` getter test".
+A constant can only kill the assertions that disagree with it, so `return false` killed the 3 positive assertions and `return true` killed the 6 negative ones.
+Running both directions is what made the 9-test set fully mutation-verified; running only the one the plan named would have left 6 tests unproven.
+A boolean accessor needs both mutation directions, not one.
+
+Six of the eleven new tests in step 5 passed during Red.
+Each was a genuine regression pin rather than a broken probe, but only because they were checked: "disposes when the retention sweep releases the session" was green pre-fix for the *wrong reason* — `completeRun` had already disposed — and became meaningful only once the hold rule stopped it from doing so.
+Deleting the `releaseSession` call turned it red, which is the evidence; the Red run was not.
+
+The `!this.isActive()` guard went into its own private `disposeHeldWorkspace()` rather than being spelled inline at both catch-all call sites as the plan sketched.
+One home for the guard, and the two callers read as one line each.
+
+The reorder's accepted whitespace edge was independently re-derived by the reviewer and confirmed unreachable for a `completed` outcome, which is the only outcome that holds.
+It survives only for an aborted or steered run that declared a question under a workspace returning an addendum, and it is whitespace-only — `pendingQuestion` is byte-identical either way.
+
+`makeFailingWorkspaceProvider` was drafted into the shared test helper and removed before commit: the one failing-provider test builds its provider inline, so the export would have been speculative and `fallow dead-code` would have flagged it.
+
+The reviewer's own enumeration of disposal edges found no leak path, including the two the plan did not name: abort-while-queued (`guardedRun`'s guard means `run()` never prepares a workspace) and `abort()` on a running agent (the turn loop resolves `aborted: true`, which takes the unconditional-dispose branch).
