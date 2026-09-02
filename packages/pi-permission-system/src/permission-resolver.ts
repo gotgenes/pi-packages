@@ -126,6 +126,11 @@ export class PermissionResolver
     );
   }
 
+  // Reached only through `LocalPermissionsService`'s structural resolver view,
+  // which fallow cannot trace; `tsc` enforces it at that constructor. The
+  // handler's exposure check moved to `isToolFullyDenied` in #815, leaving this
+  // the published cross-extension catch-all query and nothing else.
+  // fallow-ignore-next-line unused-class-member
   getToolPermission(toolName: string, agentName?: string): PermissionState {
     return this.permissionManager.getToolPermission(toolName, agentName);
   }

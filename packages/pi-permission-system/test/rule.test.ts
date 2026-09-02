@@ -1017,6 +1017,7 @@ describe("isSurfaceFullyDenied", () => {
   describe("home-directory patterns", () => {
     // compileWildcardPattern home-expands the pattern side only, so a probe
     // value must be expanded the same way or the pattern cannot match itself.
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: intentional literal — a braced shell expansion, not a template string
     test.each(["~/notes/*", "$HOME/notes/*", "${HOME}/notes/*", "~", "$HOME"])(
       "%s reaches through a deny catch-all",
       (pattern) => {
