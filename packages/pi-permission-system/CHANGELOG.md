@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [29.3.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v29.2.0...pi-permission-system-v29.3.0) (2026-09-02)
+
+
+### Features
+
+* **pi-permission-system:** name and document the well-known permission surfaces ([#808](https://github.com/gotgenes/pi-packages/issues/808)) ([95ef9ab](https://github.com/gotgenes/pi-packages/commit/95ef9ab9c00ee09d4dda820d43abc7fe7e5ff1b2)), closes [#808](https://github.com/gotgenes/pi-packages/issues/808)
+
+### Documentation
+
+* **pi-permission-system:** document the named permission surfaces ([#808](https://github.com/gotgenes/pi-packages/issues/808)) ([03c6a52](https://github.com/gotgenes/pi-packages/commit/03c6a5228aa050ac940d851e6c219e62062acbd6))
+
+### Miscellaneous Chores
+
+* upgrade lint tooling and pin rumdl below the MD013 reflow regression ([0ee1ad8](https://github.com/gotgenes/pi-packages/commit/0ee1ad886815e6e50d99f66050fbbcf5a9f0319a)), closes [#866](https://github.com/gotgenes/pi-packages/issues/866)
+* upgrade fallow to 3.22.0 ([1b2a562](https://github.com/gotgenes/pi-packages/commit/1b2a5620bf5d7f1014676b47e58df8b43ff00496)), closes [#866](https://github.com/gotgenes/pi-packages/issues/866)
+
 ## [29.2.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v29.1.0...pi-permission-system-v29.2.0) (2026-09-01)
 
 
