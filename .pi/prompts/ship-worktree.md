@@ -51,8 +51,8 @@ Step 6 applies the recorded decision.
 3. `git pull --ff-only`.
    If it fails for any reason, stop and report — do not stash, rebase, or force.
 4. Check for unpushed root commits: `git rev-list --count origin/main..main`.
-   `git pull --ff-only` reports `Already up to date.` when local `main` is merely *ahead*, so a non-zero count is invisible above and guarantees the peer's `origin/main` rebase is stale (Refs #815).
-   Report the count before step 2; it is the likeliest cause of a rejected ff-merge.
+   `git pull --ff-only` reports `Already up to date.` when local `main` is merely *ahead*, so a non-zero count is invisible above (Refs #815).
+   Report the count before step 2 — it explains a rejected ff-merge but does not predict one; step 2 does that.
 
 ## 2. Fast-forward merge the peer branch
 
@@ -60,8 +60,10 @@ The peer worktree shares this repo's `.git`, so the branch ref is visible locall
 
 1. Find the branch: `git branch --list "issue-$1-*"`.
    If zero or more than one match, stop and report.
-2. `git merge --ff-only <branch>`.
-3. If the merge is **not** a fast-forward, stop and report.
+2. Predict the merge before running it: `git merge-base --is-ancestor main <branch> && echo ff-ok`.
+   If it fails, stop and send the peer back to `/sync-worktree $1` — do not push root commits to `origin` to make a stale rebase target agree (Refs #813).
+3. `git merge --ff-only <branch>`.
+4. If the merge is **not** a fast-forward, stop and report.
    Name the divergent commits with `git log --oneline <branch>..main` — run it without `wc -l`, and report those commits, not a cause inferred from `git log main`'s recent subjects (Refs #815).
    The peer must re-run `/sync-worktree $1`, rebasing onto the ref this merge will actually use, then retry this step.
 
