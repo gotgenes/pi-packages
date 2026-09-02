@@ -408,7 +408,7 @@ src/
     ├── index.ts                    barrel re-export
     ├── interrupt.ts                turn_start handler — abort all subagents on parent interrupt (ESC), when policy allows
     ├── lifecycle.ts                session_start, session_before_switch, session_shutdown
-    └── widget-events.ts            widget's host events — session_start (UI context) and turn_start (linger aging)
+    └── widget-events.ts            widget's host events — session_start (UI context), turn_start (linger aging), session_shutdown (teardown)
 ```
 
 ### Observation model
@@ -973,7 +973,7 @@ The claim is deliberately caller-scoped: `resetForResume` clears `consumedAt` bu
 
 Release: independent
 
-#### Step 9: Tear the widget down on session shutdown ([#849])
+#### ✅ Step 9: Tear the widget down on session shutdown ([#849])
 
 **Cause:** the widget acquires two resources — the 80 ms interval from `ensureTimer()` and the `setWidget`/`setStatus` registrations on the session's `UICtx` — and `AgentWidget.dispose()` releases both, but nothing calls it; the method carries a `fallow-ignore-next-line unused-class-member` comment so the gap stays invisible to dead-code analysis.
 Step 6 is the acquisition half of the same lifecycle; this is the release half.
@@ -985,6 +985,22 @@ Step 6 is the acquisition half of the same lifecycle; this is the release half.
 - **Outcome:** `session_shutdown` clears the interval and unregisters the widget, pinned by a composition-root test; the `fallow-ignore` comment on `dispose()` is removed.
 - **Commit type:** `fix:`.
 - **Impact 2 / Risk 1 / Priority 10.**
+
+Landed: the teardown is `WidgetEventsHandler.handleSessionShutdown()` with its own `session_shutdown` registration, chosen over widening `SessionLifecycleHandler`'s dependency set — the same reasoning Step 6 recorded, and it keeps all three of the widget's host events in one module.
+`AgentWidget.dispose()` now also drops its `UICtx`, so `update()` returns at its first line afterwards and disposal is final by construction rather than by call ordering.
+That second decision made the first one's ordering unobservable, which the step's plan predicted and the implementation measured: swapping the two `session_shutdown` registrations leaves all 1447 tests green, because dispose-first drops the `UICtx` before the aborts can drive an `update()` and dispose-last runs after the registry is already empty.
+The planned ordering test was dropped rather than committed — it survived its own mutation, and `composition-root.test.ts` claims that only it fails when wiring is removed.
+The order is kept as defensive intent in an `index.ts` comment.
+
+Two of the step's plan-time claims were wrong in the same direction, both about `fallow dead-code` pinning the wiring.
+Fallow counts test call sites, so the `fallow-ignore` comment went stale as soon as the widget's own `dispose()` tests existed — one step earlier than the plan scheduled its removal, and failing in the opposite direction.
+For the same reason the gate can never pin production wiring: with the registration deleted and no suppression, fallow reports nothing.
+The composition-root tests are the only pin, and they had to be rewritten to become one — a first draft that left the agent running at shutdown passed without the fix, because the abort's notification settles after `manager.dispose()` empties the registry and `update()` then takes its idle path into `clearWidget()`.
+Driving the agent to completion first removes that incidental teardown.
+The diagnosis and the widget-level assertion set are credited to PR #850.
+
+The plan's own baseline row is wrong and is left as written: it records 1438 tests as 1440 across 75 files rather than 74, having been measured while a disposable spike file was still on disk.
+The true baseline was 1438 / 74, and this step ends at 1447 / 74.
 
 Release: independent
 
@@ -1027,7 +1043,7 @@ flowchart TD
     S1 -.soft.-> S2["✅ Step 2 (#830)<br/>SubagentRecord policy"]
     S7["✅ Step 7 (#798)<br/>Foreground resume handle"] -.soft.-> S8["✅ Step 8 (#465)<br/>Ask-back"]
     S5["✅ Step 5 (#801)<br/>Skills-block strip"]
-    S6["✅ Step 6 (#827)<br/>UICtx capture"] --> S9["Step 9 (#849)<br/>Widget teardown"]
+    S6["✅ Step 6 (#827)<br/>UICtx capture"] --> S9["✅ Step 9 (#849)<br/>Widget teardown"]
     S8 --> S11["Step 11 (#858)<br/>Mid-run channel"]
     S10["Step 10 (#857)<br/>Workspace-backed resume"] -.informs.-> S11
 ```
