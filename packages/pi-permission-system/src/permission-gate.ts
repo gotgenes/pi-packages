@@ -120,7 +120,12 @@ export async function applyPermissionGate(
       decision.state === "approved_for_session" &&
       params.canGrantForSession
     ) {
-      return { action: "allow", decidedBy, sessionGrant: { width: "proven" } };
+      return {
+        action: "allow",
+        decidedBy,
+        // Absent means the width every producer chose before #813.
+        sessionGrant: { width: decision.sessionGrantWidth ?? "proven" },
+      };
     }
     return { action: "allow", decidedBy };
   }

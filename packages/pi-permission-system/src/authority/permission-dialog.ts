@@ -1,3 +1,4 @@
+import type { SessionGrantWidth } from "#src/approval-grant";
 import type { DecisionSource } from "#src/authority/decision-source";
 
 export type PermissionDecisionState =
@@ -23,6 +24,16 @@ export type PermissionPromptDecision = {
    * reads the `unavailable` decider below instead (#772).
    */
   confirmationUnavailable?: true;
+  /**
+   * How wide a whole-session grant the human chose, when they chose one.
+   *
+   * Orthogonal to `state` rather than a value of it: the two directions and
+   * the subagent/serving scope vary independently, and an unrecognized `state`
+   * is rejected outright by the forwarded-response reader, where an
+   * unrecognized field is merely dropped. Absent means `"proven"` — the
+   * direction the gate named, which is what every producer chose before #813.
+   */
+  sessionGrantWidth?: SessionGrantWidth;
   /**
    * What decided this request, stamped by the site that decided it.
    *

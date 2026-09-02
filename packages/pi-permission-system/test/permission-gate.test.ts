@@ -242,6 +242,27 @@ describe("applyPermissionGate", () => {
       });
     });
 
+    it("records the width the decision names", async () => {
+      const decision: PermissionPromptDecision = {
+        approved: true,
+        state: "approved_for_session",
+        sessionGrantWidth: "family",
+        decidedBy: DECIDED_BY_HUMAN,
+      };
+      const promptForApproval = vi.fn().mockResolvedValue(decision);
+      const params = makeParams({
+        state: "ask",
+        promptForApproval,
+        canGrantForSession: true,
+      });
+      const result = await applyPermissionGate(params);
+      expect(result).toEqual({
+        action: "allow",
+        decidedBy: DECIDED_BY_HUMAN,
+        sessionGrant: { width: "family" },
+      });
+    });
+
     it("reports no session grant when the decision is approved (once)", async () => {
       const decision: PermissionPromptDecision = {
         approved: true,

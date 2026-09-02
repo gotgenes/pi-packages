@@ -271,6 +271,49 @@ describe("GateRunner — descriptor path", () => {
     );
   });
 
+  it("records the grants folded to their families when the decision names the family width", async () => {
+    const { runner, deps } = makeGateRunner({
+      resolveResult: makeCheckResult({ state: "ask", matchedPattern: "*" }),
+      escalate: vi.fn().mockResolvedValue({
+        approved: true,
+        state: "approved_for_session",
+        sessionGrantWidth: "family",
+        decidedBy: DECIDED_BY_HUMAN,
+      }),
+    });
+    const descriptor = makeDescriptor({
+      sessionApproval: SessionApproval.single(
+        "external_directory_write",
+        "/outside/a/*",
+      ),
+    });
+    await runner.run(descriptor, null);
+    expect(deps.recordSessionApproval).toHaveBeenCalledWith(
+      SessionApproval.single("external_directory", "/outside/a/*"),
+    );
+  });
+
+  it("records the grants on their proven surfaces when the decision names no width", async () => {
+    const { runner, deps } = makeGateRunner({
+      resolveResult: makeCheckResult({ state: "ask", matchedPattern: "*" }),
+      escalate: vi.fn().mockResolvedValue({
+        approved: true,
+        state: "approved_for_session",
+        decidedBy: DECIDED_BY_HUMAN,
+      }),
+    });
+    const descriptor = makeDescriptor({
+      sessionApproval: SessionApproval.single(
+        "external_directory_write",
+        "/outside/a/*",
+      ),
+    });
+    await runner.run(descriptor, null);
+    expect(deps.recordSessionApproval).toHaveBeenCalledWith(
+      SessionApproval.single("external_directory_write", "/outside/a/*"),
+    );
+  });
+
   it("calls recordSessionApproval once with the full SessionApproval when sessionApproval has multiple patterns", async () => {
     const { runner, deps } = makeGateRunner({
       resolveResult: makeCheckResult({ state: "ask", matchedPattern: "*" }),

@@ -14,6 +14,7 @@ import {
   makeDedupWiring,
   makeExtDirBashEvent,
   makeExtDirToolEvent,
+  makeWideSessionApprovingPrompter,
 } from "#test/helpers/external-directory-fixtures";
 import { makeCtx } from "#test/helpers/handler-fixtures";
 
@@ -180,6 +181,55 @@ describe("external-directory session dedup", () => {
         const ctx = makeCtx();
 
         const event1 = makeExtDirBashEvent("echo hello > /tmp/out.txt", "tc-1");
+        await handler.handleToolCall(event1, ctx);
+        expect(prompter.escalate).toHaveBeenCalledTimes(1);
+
+        const event2 = makeExtDirBashEvent("echo bye >> /tmp/out.txt", "tc-2");
+        await handler.handleToolCall(event2, ctx);
+        expect(prompter.escalate).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    describe("a both-directions session grant covers the other bit (#813)", () => {
+      it("covers a later read with a write approved at the family width", async () => {
+        const { handler, prompter } = makeDeduplicatingHandler(
+          makeWideSessionApprovingPrompter(),
+        );
+        const ctx = makeCtx();
+
+        // The redirect still proves only a write, but the human widened the
+        // grant to the bare family, which sugar-expands onto both members.
+        const event1 = makeExtDirBashEvent("echo hello > /tmp/out.txt", "tc-1");
+        await handler.handleToolCall(event1, ctx);
+        expect(prompter.escalate).toHaveBeenCalledTimes(1);
+
+        const event2 = makeExtDirBashEvent("cat /tmp/out.txt", "tc-2");
+        await handler.handleToolCall(event2, ctx);
+        expect(prompter.escalate).toHaveBeenCalledTimes(1);
+      });
+
+      it("covers the read tool with a bash write approved at the family width", async () => {
+        const { handler, prompter } = makeDeduplicatingHandler(
+          makeWideSessionApprovingPrompter(),
+        );
+        const ctx = makeCtx();
+
+        const event1 = makeExtDirBashEvent("echo hello > /tmp/out.txt", "tc-1");
+        await handler.handleToolCall(event1, ctx);
+        expect(prompter.escalate).toHaveBeenCalledTimes(1);
+
+        const event2 = makeExtDirToolEvent("read", "/tmp/out.txt", "tc-2");
+        await handler.handleToolCall(event2, ctx);
+        expect(prompter.escalate).toHaveBeenCalledTimes(1);
+      });
+
+      it("covers a later write with a read approved at the family width", async () => {
+        const { handler, prompter } = makeDeduplicatingHandler(
+          makeWideSessionApprovingPrompter(),
+        );
+        const ctx = makeCtx();
+
+        const event1 = makeExtDirBashEvent("cat /tmp/out.txt", "tc-1");
         await handler.handleToolCall(event1, ctx);
         expect(prompter.escalate).toHaveBeenCalledTimes(1);
 

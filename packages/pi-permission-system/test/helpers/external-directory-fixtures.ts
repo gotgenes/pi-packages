@@ -91,6 +91,21 @@ export function makeApprovingPrompter(): AskEscalator {
 }
 
 /**
+ * AskEscalator stub that approves for the session at the both-directions
+ * width, as a human choosing the widened session option does (#813).
+ */
+export function makeWideSessionApprovingPrompter(): AskEscalator {
+  return {
+    escalate: vi.fn<AskEscalator["escalate"]>().mockResolvedValue({
+      approved: true,
+      state: "approved_for_session",
+      sessionGrantWidth: "family",
+      decidedBy: DECIDED_BY_HUMAN,
+    }),
+  };
+}
+
+/**
  * AskEscalator stub that denies.
  *
  * Pass `denialReason` to simulate a user who explains the refusal.

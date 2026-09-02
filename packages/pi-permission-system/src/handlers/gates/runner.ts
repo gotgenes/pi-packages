@@ -250,7 +250,9 @@ export class GateRunner {
     // 6. Record session approval — tell the store; it owns the per-pattern loop
     // A present grant already implies gateResult.action === "allow".
     if (sessionGrant && descriptor.sessionApproval) {
-      this.recorder.recordSessionApproval(descriptor.sessionApproval);
+      this.recorder.recordSessionApproval(
+        descriptor.sessionApproval.atWidth(sessionGrant.width),
+      );
     }
 
     if (gateResult.action === "block") {
