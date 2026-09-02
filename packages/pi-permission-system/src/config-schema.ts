@@ -79,12 +79,23 @@ const surfaceValueSchema = z.union([
 ]);
 
 /**
+ * The legal spellings of a directional surface key (ADR 0013 §3).
+ *
+ * This is the loader's allowlist — {@link rejectUnusableSurfaceKeys} rejects a
+ * key shaped like a directional surface that is not one of these — and the
+ * schema documents exactly these four as named properties. Nothing structural
+ * holds the two halves together, so a test in `config-schema.test.ts` does.
+ */
+const DIRECTIONAL_SURFACE_KEYS = [
+  "path_read",
+  "path_write",
+  "external_directory_read",
+  "external_directory_write",
+] as const;
+
+/**
  * The `path` and `external_directory` families' directional members
  * (ADR 0013 §3), named so editors offer autocomplete and hover documentation.
- *
- * Naming them as properties rather than leaving them to the catchall is also
- * what lets the loader tell a legal directional key from a misspelled one —
- * see {@link rejectMisspelledDirectionalKeys}.
  */
 const DIRECTIONAL_SURFACE_DESCRIPTIONS: Record<
   string,
@@ -176,7 +187,7 @@ function rejectUnusableSurfaceKeys(
   permission: Record<string, unknown>,
   ctx: z.core.$RefinementCtx,
 ): void {
-  const legalDirectionalKeys = Object.keys(DIRECTIONAL_SURFACE_DESCRIPTIONS);
+  const legalDirectionalKeys: readonly string[] = DIRECTIONAL_SURFACE_KEYS;
   for (const key of Object.keys(permission)) {
     if (key === "") {
       ctx.addIssue({
