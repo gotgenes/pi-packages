@@ -104,4 +104,49 @@ describe("WorkspaceBracket — dispose", () => {
 		await bracket.prepare(ctx);
 		expect(() => bracket.dispose(outcome)).toThrow("dispose failed");
 	});
+
+	it("disposes the workspace only once across repeated calls", async () => {
+		const { bracket, workspace } = await preparedBracket({ resultAddendum: "\n\n---\nsaved" });
+		expect(bracket.dispose(outcome)).toBe("\n\n---\nsaved");
+		expect(bracket.dispose(outcome)).toBe("");
+		expect(workspace.dispose).toHaveBeenCalledOnce();
+	});
+});
+
+describe("WorkspaceBracket — wasDisposed", () => {
+	const outcome = { status: "completed" as const, description: "test agent" };
+
+	it("is false on a bracket that never prepared anything", () => {
+		expect(new WorkspaceBracket(() => undefined).wasDisposed()).toBe(false);
+	});
+
+	it("is false when the provider declined to supply a workspace", async () => {
+		const bracket = new WorkspaceBracket(() => makeWorkspaceProvider(undefined));
+		await bracket.prepare(ctx);
+		bracket.dispose(outcome);
+		expect(bracket.wasDisposed()).toBe(false);
+	});
+
+	it("is false while a prepared workspace is still held", async () => {
+		const { bracket } = await preparedBracket();
+		expect(bracket.wasDisposed()).toBe(false);
+	});
+
+	it("is true once the prepared workspace has been disposed", async () => {
+		const { bracket } = await preparedBracket();
+		bracket.dispose(outcome);
+		expect(bracket.wasDisposed()).toBe(true);
+	});
+
+	it("is true even when the workspace's dispose threw", async () => {
+		const workspace: Workspace = {
+			cwd: "/ws/dir",
+			dispose: vi.fn(() => { throw new Error("dispose failed"); }),
+		};
+		const bracket = new WorkspaceBracket(() => makeWorkspaceProvider(workspace));
+		await bracket.prepare(ctx);
+		expect(() => bracket.dispose(outcome)).toThrow("dispose failed");
+		// A teardown that failed makes resume no safer than one that succeeded.
+		expect(bracket.wasDisposed()).toBe(true);
+	});
 });

@@ -145,6 +145,14 @@ export class Subagent {
 	/** True once releaseSession() has freed a live session (distinct from never having had one). */
 	get sessionReleased(): boolean { return this._sessionReleased; }
 
+	/**
+	 * True once this agent's provider-supplied workspace has been torn down.
+	 * False for an agent that never had one, so it names the resume the session
+	 * would re-enter a removed directory for — not merely a session with a
+	 * workspace provider registered.
+	 */
+	get workspaceDisposed(): boolean { return this.workspaceBracket.wasDisposed(); }
+
 	// Steer buffer — messages queued before the session is ready
 	private _pendingSteers: string[] = [];
 	/** Number of steer messages waiting to be delivered. */

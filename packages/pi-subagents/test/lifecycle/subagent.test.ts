@@ -724,6 +724,30 @@ describe("Subagent.run() — workspace provider", () => {
 	});
 });
 
+describe("Subagent — workspaceDisposed", () => {
+	it("is false before the agent has run", () => {
+		expect(createRunnableAgent({ workspaceProvider: makeWorkspaceProvider(makeWorkspace("/ws/dir")) }).workspaceDisposed).toBe(false);
+	});
+
+	it("is true after a run that disposed a prepared workspace", async () => {
+		const agent = createRunnableAgent({ workspaceProvider: makeWorkspaceProvider(makeWorkspace("/ws/dir")) });
+		await agent.run();
+		expect(agent.workspaceDisposed).toBe(true);
+	});
+
+	it("stays false for an agent that never had a workspace", async () => {
+		const agent = createRunnableAgent();
+		await agent.run();
+		expect(agent.workspaceDisposed).toBe(false);
+	});
+
+	it("stays false when the provider declined to supply a workspace", async () => {
+		const agent = createRunnableAgent({ workspaceProvider: makeWorkspaceProvider(undefined) });
+		await agent.run();
+		expect(agent.workspaceDisposed).toBe(false);
+	});
+});
+
 describe("Subagent.run() — error handling", () => {
 	it("transitions to error when the turn loop throws", async () => {
 		const { factory, stub } = createFactory();

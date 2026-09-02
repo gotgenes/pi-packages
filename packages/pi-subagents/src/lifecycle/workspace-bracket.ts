@@ -6,8 +6,10 @@
  * privately; dispose() centralises the guard and addendum-unwrap so callers
  * never reach through to workspace.dispose().resultAddendum directly.
  *
- * dispose() deliberately does NOT catch errors — the best-effort try/catch
- * for failRun() belongs at the call site, preserving the per-caller semantics.
+ * dispose() is idempotent — a workspace can outlive the run that prepared it
+ * (a child holding it for a resume), so more than one lifecycle edge may reach
+ * for it — and it deliberately does NOT catch errors: the best-effort
+ * try/catch belongs at the call site, preserving the per-caller semantics.
  */
 
 import type {
@@ -20,8 +22,18 @@ import type {
 /** Owns the child workspace lifecycle: prepare at run-start, dispose at run-end. */
 export class WorkspaceBracket {
 	private prepared?: Workspace;
+	private disposedWorkspace = false;
 
 	constructor(private readonly resolveProvider: () => WorkspaceProvider | undefined) {}
+
+	/**
+	 * True once a prepared workspace has been torn down — the directory the run
+	 * used is gone. False for a bracket that never held one, and false while one
+	 * is still held, so it distinguishes "no workspace" from "workspace removed".
+	 */
+	wasDisposed(): boolean {
+		return this.disposedWorkspace;
+	}
 
 	/**
 	 * Returns true when a workspace provider is currently registered.
@@ -46,14 +58,19 @@ export class WorkspaceBracket {
 
 	/**
 	 * Dispose the prepared workspace (if any) and return the result addendum
-	 * verbatim. Returns an empty string when no workspace was prepared or when
-	 * the workspace returns no addendum.
+	 * verbatim. Returns an empty string when no workspace was prepared, when one
+	 * was already disposed, or when the workspace returns no addendum.
 	 *
-	 * Throws propagate — wrap in try/catch at the call site when best-effort
-	 * disposal is desired (e.g. failRun).
+	 * The workspace is released and recorded as disposed before it is torn down,
+	 * so a provider whose dispose() throws still leaves the bracket reporting a
+	 * gone workspace — a failed teardown makes reuse no safer than a clean one.
+	 * The throw itself still propagates.
 	 */
 	dispose(outcome: WorkspaceDisposeOutcome): string {
-		if (!this.prepared) return "";
-		return this.prepared.dispose(outcome)?.resultAddendum ?? "";
+		const workspace = this.prepared;
+		if (!workspace) return "";
+		this.prepared = undefined;
+		this.disposedWorkspace = true;
+		return workspace.dispose(outcome)?.resultAddendum ?? "";
 	}
 }
