@@ -101,4 +101,18 @@ It also independently confirmed the different-directory relief condition, the `P
 None.
 Pre-completion reviewer: PASS, no WARN findings.
 
+## Stage: Sync (worktree) (2026-09-02T05:34:35Z)
+
+### Session summary
+
+Pre-push checks (`pnpm run lint`, `pnpm fallow dead-code`) both passed with no fixes needed.
+The plan's `**Release:**` marker is `ship independently` — no batch to coordinate, no deferral.
+No follow-up work was deferred to land time; [#813] and [#604] (noted in the plan's Non-Goals) are already-filed, unrelated issues, not spun-off residuals from this change.
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-810--/2026-09-02T03-14-36-256Z_01a0601c-8260-7101-9beb-2ab16ba8f9f4.jsonl` — read with `read_session_file({ path: "<path>" })` for message-level verification at land/retro time.
+
+### Observations
+
+Concise breadcrumb only — the final `/retro 810` at the root captures the retrospective proper.
+
 [#745]: https://github.com/gotgenes/pi-packages/issues/745
