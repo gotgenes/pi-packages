@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [21.2.2](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v21.2.1...pi-subagents-v21.2.2) (2026-09-02)
+
+
+### Bug Fixes
+
+* **pi-subagents:** keep a question-ending child's workspace alive for its resume ([88572ef](https://github.com/gotgenes/pi-packages/commit/88572eff8ad195a685c14b5af49c9e5dd72a5ad5)), closes [#857](https://github.com/gotgenes/pi-packages/issues/857)
+* **pi-subagents:** refuse a resume into a workspace that no longer exists ([369e397](https://github.com/gotgenes/pi-packages/commit/369e3970c9acacd6674313fc6907256060553453)), closes [#857](https://github.com/gotgenes/pi-packages/issues/857)
+
 ## [21.2.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v21.2.0...pi-subagents-v21.2.1) (2026-09-02)
 
 
