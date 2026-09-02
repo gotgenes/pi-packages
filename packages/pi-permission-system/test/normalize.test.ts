@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { expandDirectionalSugar, normalizeFlatConfig } from "#src/normalize";
+import type { FlatPermissionConfig } from "#src/types";
 
 describe("normalizeFlatConfig", () => {
   describe("string shorthand", () => {
@@ -273,6 +274,14 @@ describe("expandDirectionalSugar", () => {
   test("passes a non-family surface through untouched", () => {
     const written = { read: "allow", bash: { "git *": "ask" } } as const;
     expect(expandDirectionalSugar(written)).toEqual(written);
+  });
+
+  test("drops a family key set to an explicit undefined, expanding nothing", () => {
+    const written = { path: undefined, bash: "allow" } as FlatPermissionConfig;
+
+    // Without the guard this expands to empty `path_read`/`path_write`
+    // surfaces, which the resolver's family fold then has to consider.
+    expect(expandDirectionalSugar(written)).toEqual({ bash: "allow" });
   });
 
   test("passes an explicit directional key through when no sugar key is present", () => {

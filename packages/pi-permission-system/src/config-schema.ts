@@ -94,53 +94,88 @@ const DIRECTIONAL_SURFACE_KEYS = [
 ] as const;
 
 /**
- * The `path` and `external_directory` families' directional members
- * (ADR 0013 §3), named so editors offer autocomplete and hover documentation.
+ * One documented, optional property for a well-known permission surface.
+ *
+ * A named property is what an editor completes and hovers; the enclosing
+ * object's `.catchall(...)` is what keeps every other tool name valid. Each
+ * surface's prose lives here rather than on the object, so a reader gets the
+ * key under their cursor and not all nine of its neighbours.
  */
-const DIRECTIONAL_SURFACE_DESCRIPTIONS: Record<
-  string,
-  { description: string; markdownDescription: string }
-> = {
-  path_read: {
-    description:
-      "Cross-cutting gate for reading a file, by path pattern. The useful directional grant.",
-    markdownDescription:
-      'Cross-cutting gate for **reading** a file, matched by path pattern across all path-aware tools.\n\nThis is the directional key worth granting: `"path_read": { "~/dev/*": "allow" }` permits reads without permitting writes.\n\nA bare `"path"` key is sugar that expands into this key **and** `path_write`, with its entries placed first — so an explicit `path_read` entry always has the final say, whatever the key order in the file.',
-  },
-  path_write: {
-    description:
-      "Cross-cutting gate for writing a file, by path pattern. Earns its keep as a restriction.",
-    markdownDescription:
-      'Cross-cutting gate for **writing** a file, matched by path pattern across all path-aware tools.\n\nThis key earns its keep as a *restriction* rather than a grant: `"path_write": { "*": "deny" }` is a coherent read-only-agent posture. A `"path_write": "allow"` on its own does not silence an `edit`, which also reads — grant `path_read` too, or use the bare `"path"` key.',
-  },
-  external_directory_read: {
-    description:
-      "Boundary gate for reading outside the working directory. The relief most asks want.",
-    markdownDescription:
-      'Boundary gate for **reading** a path outside the session working directory.\n\nThe one-line grant for an external root: `"external_directory_read": { "~/dev/*": "allow" }` silences repeated read prompts on a directory outside the tree while a write to the same path still prompts. No parallel `path_read` entry is needed.',
-  },
-  external_directory_write: {
-    description: "Boundary gate for writing outside the working directory.",
-    markdownDescription:
-      'Boundary gate for **writing** to a path outside the session working directory.\n\nA bare `"external_directory"` key is sugar that expands into this key and `external_directory_read`; write this one only to give the two directions different answers.',
-  },
-};
+function surfaceProperty(meta: {
+  description: string;
+  markdownDescription: string;
+}) {
+  return surfaceValueSchema.optional().meta(meta);
+}
 
 const permissionSchema = z
-  .object(
-    Object.fromEntries(
-      Object.entries(DIRECTIONAL_SURFACE_DESCRIPTIONS).map(([key, meta]) => [
-        key,
-        surfaceValueSchema.optional().meta(meta),
-      ]),
-    ),
-  )
+  .object({
+    "*": surfaceProperty({
+      description:
+        "Universal fallback — the action used when no surface-specific rule matches. Omitted, it defaults to ask.",
+      markdownDescription:
+        'Universal fallback — the action used when **no** surface-specific rule matches.\n\n`{ "*": "ask" }` is the least-privilege posture, and is what an omitted `"*"` means anyway. It replaces `defaultPolicy.tools` from the legacy config format.\n\nA surface-specific rule always beats it, whatever the key order in the file.',
+    }),
+    path: surfaceProperty({
+      description:
+        "Cross-cutting gate for file access by path pattern, across every path-aware tool. Sugar for both directions.",
+      markdownDescription:
+        "Cross-cutting gate that applies to **all** file access: Pi tools, bash commands, MCP calls (via `input.arguments.path`), and extension tools (via `input.path` or a registered access extractor).\n\nA `path` deny cannot be overridden by a per-tool allow. Use it to protect sensitive files (`.env`, `~/.ssh/*`) from every path-aware tool at once.\n\nThis bare key is **sugar**: it expands at load into `path_read` and `path_write`, its entries placed first, so an explicit directional entry always has the final say whatever the key order in the file.",
+    }),
+    path_read: surfaceProperty({
+      description:
+        "Cross-cutting gate for reading a file, by path pattern. The useful directional grant.",
+      markdownDescription:
+        'Cross-cutting gate for **reading** a file, matched by path pattern across all path-aware tools.\n\nThis is the directional key worth granting: `"path_read": { "~/dev/*": "allow" }` permits reads without permitting writes.\n\nA bare `"path"` key is sugar that expands into this key **and** `path_write`, with its entries placed first — so an explicit `path_read` entry always has the final say, whatever the key order in the file.',
+    }),
+    path_write: surfaceProperty({
+      description:
+        "Cross-cutting gate for writing a file, by path pattern. Earns its keep as a restriction.",
+      markdownDescription:
+        'Cross-cutting gate for **writing** a file, matched by path pattern across all path-aware tools.\n\nThis key earns its keep as a *restriction* rather than a grant: `"path_write": { "*": "deny" }` is a coherent read-only-agent posture. A `"path_write": "allow"` on its own does not silence an `edit`, which also reads — grant `path_read` too, or use the bare `"path"` key.',
+    }),
+    external_directory: surfaceProperty({
+      description:
+        "Boundary gate for access outside the session working directory. Sugar for both directions.",
+      markdownDescription:
+        'Boundary gate for access **outside** the session working directory.\n\nGive it a pattern map to allow specific outside-CWD directories without opening all external access — e.g. `{ "*": "ask", "~/.cargo/registry/*": "allow" }` to silence repeated prompts on a local cache. The trailing `*` is greedy and crosses subdirectory boundaries; a bare `~/.cargo/registry` matches only the directory entry itself.\n\nBecause layers compose with most-restrictive-wins, a `path` allow cannot loosen an `external_directory: ask` boundary — allow outside-CWD directories here, not on `path`.\n\nThis bare key is **sugar**: it expands at load into `external_directory_read` and `external_directory_write`, its entries placed first.',
+    }),
+    external_directory_read: surfaceProperty({
+      description:
+        "Boundary gate for reading outside the working directory. The relief most asks want.",
+      markdownDescription:
+        'Boundary gate for **reading** a path outside the session working directory.\n\nThe one-line grant for an external root: `"external_directory_read": { "~/dev/*": "allow" }` silences repeated read prompts on a directory outside the tree while a write to the same path still prompts. No parallel `path_read` entry is needed.',
+    }),
+    external_directory_write: surfaceProperty({
+      description: "Boundary gate for writing outside the working directory.",
+      markdownDescription:
+        'Boundary gate for **writing** to a path outside the session working directory.\n\nA bare `"external_directory"` key is sugar that expands into this key and `external_directory_read`; write this one only to give the two directions different answers.',
+    }),
+    bash: surfaceProperty({
+      description:
+        "Shell command execution, matched per top-level command in a chain. Most restrictive wins.",
+      markdownDescription:
+        "Shell command execution, matched by **command pattern**.\n\nA chain (`&&`, `||`, `;`, `|`, newline) is split into its top-level commands and each is matched independently, most-restrictive-wins — so `cd /repo && npm install x` is denied when `npm *` is. A command nested in a substitution, process substitution, or subshell is matched too, since it really runs.\n\nA leading env-var assignment is stripped before matching (`AWS_PROFILE=prod aws …` matches `aws *`), and a pattern ending in ` *` (space + wildcard) also matches the bare command (`git *` matches `git`). A pattern containing a chain operator never matches — write one pattern per command.\n\nA shell wrapper (`bash -c`, `eval`, `sudo`, `xargs`) is floored from `allow` to `ask`, so an opaque payload cannot ride a permissive rule.",
+    }),
+    mcp: surfaceProperty({
+      description:
+        "Registered MCP proxy tools, matched against targets derived from the tool input.",
+      markdownDescription:
+        "Registered MCP proxy tools, matched against targets derived from the tool input: a baseline op (`mcp_status`, `mcp_list`, `mcp_search`, `mcp_describe`, `mcp_connect`), a server name (`myServer`), a server/tool combination (`myServer:search`, `myServer_search`), or the generic `mcp_call`.\n\nBaseline discovery targets auto-allow whenever any explicit `mcp` allow rule exists.",
+    }),
+    skill: surfaceProperty({
+      description:
+        "Skill invocation, matched by skill name. The surface is `skill`, not `skills`.",
+      markdownDescription:
+        'Skill invocation, matched by skill name — the surface is `skill`, not `skills`.\n\nWildcards behave as everywhere else: `{ "*": "ask", "dangerous-*": "deny", "librarian": "allow" }`.',
+    }),
+  })
   .catchall(surfaceValueSchema)
   .meta({
     description:
       "Flat permission policy. Each key is a surface name; values are a PermissionState string (catch-all) or a pattern→action map.",
     markdownDescription:
-      'Flat permission policy.\n\nEach top-level key is a surface name:\n- `"*"` — universal fallback (replaces `defaultPolicy.tools` from the legacy format)\n- Tool names (`read`, `write`, `bash`, `mcp`, `skill`, `external_directory`, `path`, etc.)\n\nA **string** value is shorthand for `{ "*": action }` (surface-level catch-all).\nAn **object** value maps wildcard patterns to actions — last matching pattern wins.\n\nFor built-in file tools (`read`, `write`, `edit`, `find`, `grep`, `ls`), patterns are matched against the file path from `input.path`. For example, `"read": { "*": "allow", "*.env": "deny" }` allows reads but denies `.env` files.\n\nWhen Pi\'s current working directory is known, relative path inputs also match their cwd-normalized absolute form, so `src/App.jsx` can match both `src/*` and `/workspace/project/*`. Bash path tokens use the effective directory after literal `cd` commands for this matching; non-literal `cd "$DIR"` style commands remain conservative.\n\nThe `path` surface is a cross-cutting gate that applies to **all** file access: Pi tools, bash commands, MCP calls (via `input.arguments.path`), and extension tools (via `input.path` or a registered access extractor). A `path` deny cannot be overridden by a per-tool allow. Use it to protect sensitive files (`.env`, `~/.ssh/*`) from all path-aware tools at once.\n\nThe `external_directory` surface gates access **outside** the working directory. Give it a pattern map to allow specific outside-CWD directories without opening all external access — e.g. `"external_directory": { "*": "ask", "~/.cargo/registry/*": "allow" }` to silence repeated prompts on a local cache. The trailing `*` is greedy and crosses subdirectory boundaries; a bare `~/.cargo/registry` matches only the directory entry itself. Because layers compose with most-restrictive-wins, a `path` allow cannot loosen an `external_directory: ask` boundary — allow outside-CWD directories here, not on `path`.\n\n**Merge order (lowest → highest precedence):** global → project → per-agent frontmatter.',
+      'Flat permission policy.\n\nEach top-level key is a surface: the `"*"` fallback, a well-known surface documented below, or any registered tool name.\n\nA **string** value is shorthand for `{ "*": action }` (a surface-level catch-all).\nAn **object** value maps wildcard patterns to actions — last matching pattern wins.\n\nFor built-in file tools (`read`, `write`, `edit`, `find`, `grep`, `ls`), patterns are matched against the file path from `input.path`. For example, `"read": { "*": "allow", "*.env": "deny" }` allows reads but denies `.env` files.\n\nWhen Pi\'s current working directory is known, relative path inputs also match their cwd-normalized absolute form, so `src/App.jsx` can match both `src/*` and `/workspace/project/*`. Bash path tokens use the effective directory after literal `cd` commands for this matching; non-literal `cd "$DIR"` style commands remain conservative.\n\n**Merge order (lowest → highest precedence):** global → project → per-agent frontmatter.',
     examples: [
       {
         "*": "ask",

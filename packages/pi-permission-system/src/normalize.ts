@@ -35,6 +35,11 @@ export function expandDirectionalSugar(
   const expanded: FlatPermissionConfig = {};
   for (const [surface, value] of Object.entries(permission)) {
     // A key present with an explicit `undefined` value carries no rules.
+    // `Object.entries` resolves to the catchall's non-optional value type, so
+    // the type cannot see this case even though a named optional surface
+    // admits it; dropping the guard expands `{ path: undefined }` into two
+    // empty directional surfaces. Pinned in `normalize.test.ts`.
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- runtime-reachable; see above
     if (value === undefined) continue;
     const members = surfaceFamilyMembers(surface);
     if (members === null) {

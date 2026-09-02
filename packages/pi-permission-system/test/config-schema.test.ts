@@ -187,12 +187,15 @@ describe("unifiedConfigSchema", () => {
       }
     });
 
-    it("still accepts an arbitrary tool-name surface", () => {
-      expect(
-        unifiedConfigSchema.safeParse({
-          permission: { my_extension_tool: { "*": "ask" }, ffgrep: "allow" },
-        }).success,
-      ).toBe(true);
+    it("still accepts an arbitrary tool-name surface, and keeps its rules", () => {
+      const permission = { my_extension_tool: { "*": "ask" }, ffgrep: "allow" };
+      const result = unifiedConfigSchema.safeParse({ permission });
+
+      expect(result.success).toBe(true);
+      // Asserting the parsed data, not just `success`: without the catchall
+      // zod silently *strips* an unmatched key rather than rejecting it, so a
+      // success-only assertion passes while every tool-name rule is dropped.
+      expect(result.data?.permission).toEqual(permission);
     });
 
     it("leaves a tool named like a family member of another family alone", () => {
@@ -202,6 +205,40 @@ describe("unifiedConfigSchema", () => {
         }).success,
       ).toBe(true);
     });
+  });
+
+  describe("the fallback and bare-family surface keys", () => {
+    it.each(["*", "path", "external_directory", "bash", "mcp", "skill"])(
+      "accepts %s as a string shorthand",
+      (surface) => {
+        expect(
+          unifiedConfigSchema.safeParse({ permission: { [surface]: "allow" } })
+            .success,
+        ).toBe(true);
+      },
+    );
+
+    it.each(["*", "path", "external_directory", "bash", "mcp", "skill"])(
+      "accepts %s as a pattern map",
+      (surface) => {
+        expect(
+          unifiedConfigSchema.safeParse({
+            permission: { [surface]: { "*": "ask", "~/dev/*": "allow" } },
+          }).success,
+        ).toBe(true);
+      },
+    );
+
+    it.each(["*", "path", "external_directory", "bash", "mcp", "skill"])(
+      "rejects an invalid action on %s",
+      (surface) => {
+        expect(
+          unifiedConfigSchema.safeParse({
+            permission: { [surface]: "maybe" },
+          }).success,
+        ).toBe(false);
+      },
+    );
   });
 
   describe("shellTools field", () => {
@@ -311,7 +348,7 @@ describe("buildPermissionsJsonSchema", () => {
     expect(Array.isArray(properties.permission.examples)).toBe(true);
   });
 
-  it("names the four directional surfaces as documented properties", () => {
+  it("names every well-known surface as a documented property", () => {
     const permission = (
       schema.properties as Record<string, Record<string, unknown>>
     ).permission;
@@ -320,15 +357,49 @@ describe("buildPermissionsJsonSchema", () => {
       Record<string, unknown>
     >;
     expect(Object.keys(properties).sort()).toEqual([
+      "*",
+      "bash",
+      "external_directory",
       "external_directory_read",
       "external_directory_write",
+      "mcp",
+      "path",
       "path_read",
       "path_write",
+      "skill",
     ]);
     for (const key of Object.keys(properties)) {
-      expect(typeof properties[key].description).toBe("string");
-      expect(typeof properties[key].markdownDescription).toBe("string");
+      expect(properties[key].description).toEqual(expect.any(String));
+      expect(properties[key].markdownDescription).toEqual(expect.any(String));
     }
+  });
+
+  it("keeps each surface's documentation inside the per-property budget", () => {
+    const permission = (
+      schema.properties as Record<string, Record<string, unknown>>
+    ).permission;
+    const properties = permission.properties as Record<
+      string,
+      Record<string, unknown>
+    >;
+    const oversized = Object.entries(properties)
+      .map(([key, value]) => [
+        key,
+        (value.markdownDescription as string).length,
+      ])
+      .filter(([, length]) => (length as number) > 800);
+
+    expect(oversized).toEqual([]);
+  });
+
+  it("keeps the permission object's own description a summary", () => {
+    const permission = (
+      schema.properties as Record<string, Record<string, unknown>>
+    ).permission;
+
+    expect((permission.markdownDescription as string).length).toBeLessThan(
+      1200,
+    );
   });
 
   it("keeps arbitrary tool-name surfaces validating alongside them", () => {
