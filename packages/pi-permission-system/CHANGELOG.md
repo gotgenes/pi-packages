@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [30.1.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v30.0.0...pi-permission-system-v30.1.0) (2026-09-02)
+
+
+### Features
+
+* **pi-permission-system:** publish isToolFullyDenied for cross-extension tool pre-filtering ([#815](https://github.com/gotgenes/pi-packages/issues/815)) ([4345b19](https://github.com/gotgenes/pi-packages/commit/4345b199e5a33427e47bb80f9c16cb78fb1e7fbf)), closes [#815](https://github.com/gotgenes/pi-packages/issues/815)
+
+### Bug Fixes
+
+* **pi-permission-system:** stop hiding a tool whose surface has a reachable non-deny rule ([#815](https://github.com/gotgenes/pi-packages/issues/815)) ([ce46b6c](https://github.com/gotgenes/pi-packages/commit/ce46b6c7b9f4c901d6a035f3be6e334f77a76e95)), closes [#815](https://github.com/gotgenes/pi-packages/issues/815)
+
+### Documentation
+
+* **pi-permission-system:** describe tool exposure as surface reachability ([#815](https://github.com/gotgenes/pi-packages/issues/815)) ([71d9696](https://github.com/gotgenes/pi-packages/commit/71d96969e5c33ecc0f38b0a43b0bdaf267622000))
+* **pi-permission-system:** stop recommending getToolPermission for tool pre-filtering ([#815](https://github.com/gotgenes/pi-packages/issues/815)) ([fdf0a38](https://github.com/gotgenes/pi-packages/commit/fdf0a383d5419eaded4b6277ead8264e23aa281d))
+
 ## [30.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v29.3.0...pi-permission-system-v30.0.0) (2026-09-02)
 
 
