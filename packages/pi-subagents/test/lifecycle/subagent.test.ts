@@ -3,9 +3,10 @@ import type { CreateSubagentSessionParams } from "#src/lifecycle/create-subagent
 import { Subagent, type SubagentExecution, type SubagentLifecycleObserver } from "#src/lifecycle/subagent";
 import type { SubagentSession, TurnLoopResult } from "#src/lifecycle/subagent-session";
 import { SubagentState, type SubagentStateInit } from "#src/lifecycle/subagent-state";
-import type { Workspace, WorkspacePrepareContext, WorkspaceProvider } from "#src/lifecycle/workspace";
+import type { WorkspacePrepareContext, WorkspaceProvider } from "#src/lifecycle/workspace";
 import type { CompactionInfo, SubagentType } from "#src/types";
 import { makeStubExecution } from "#test/helpers/make-subagent";
+import { makeWorkspace, makeWorkspaceProvider } from "#test/helpers/make-workspace";
 import { createMockSession, createSubagentSessionStub, emitResumeUsageAndCompaction, toSubagentSession } from "#test/helpers/mock-session";
 import { STUB_SNAPSHOT } from "#test/helpers/stub-ctx";
 
@@ -618,16 +619,6 @@ function createRunnableAgent(overrides?: {
 			getWorkspaceProvider: provider ? () => provider : undefined,
 		},
 	});
-}
-
-/** Build a Workspace with a recorded dispose. */
-function makeWorkspace(cwd: string, disposeResult?: { resultAddendum?: string }): Workspace {
-	return { cwd, dispose: vi.fn(() => disposeResult) };
-}
-
-/** Build a WorkspaceProvider whose prepare resolves to the given workspace. */
-function makeWorkspaceProvider(workspace: Workspace | undefined): WorkspaceProvider {
-	return { prepare: vi.fn(async () => workspace) };
 }
 
 describe("Subagent.run() — happy path", () => {
