@@ -83,4 +83,70 @@ One process note, the [#549] hazard caught live: the first sync pass rebased ont
 Re-rebased onto local `main`; `git diff` against the pre-rebase tip is exactly that one triage commit, so all 12 commits replayed unchanged.
 The check that matters is `git merge-base --is-ancestor main HEAD`, not the `origin/main` comparison the template's step 4 names — the two agree only when the root has nothing unpushed.
 
+## Stage: Final Retrospective (2026-09-02T16:27:17Z)
+
+### Session summary
+
+## 815 landed on `main` and released as `pi-permission-system` v30.1.0: tool exposure now asks `isToolFullyDenied` (backed by the `isSurfaceFullyDenied` probe) instead of `getToolPermission`'s catch-all lookup, so a surface with a `deny` catch-all and a reachable non-deny pattern is no longer hidden outright
+
+The land itself took two attempts — the first `git merge --ff-only` was rejected because local `main` carried an unpushed root commit that `origin/main` did not show, which is the [#549] hazard in its sharpest form.
+Every deterministic gate stayed green, CI passed on the first push, and the release ran clean through `prepare` → `publish` → `github-release`.
+
+### Observations
+
+#### What went well
+
+- The abort path cost nothing, which is a property of the template's ordering rather than luck.
+  `/ship-worktree` gathers the release decision from the plan's `**Release:**` marker *before* any irreversible step, so when the ff-merge was rejected there was no push, no tag, no closed issue, and no torn-down worktree to undo — the session simply stopped.
+- The peer amended its own sync stage note with the divergence, the correct predicate, and a caveat that the eventual push would carry the root's triage commit.
+  That is the right instinct for a worktree session: the note survives teardown, and the transcript path it recorded is what made this retrospective's root-cause analysis possible at all.
+- The operator's intervention was a redirecting *question*, not a correction — "Are you checking origin/main or main (local)?"
+  It named the ambiguity without supplying the answer, and the peer diagnosed and fixed the defect itself, then generalized the lesson unprompted.
+  This is a markedly cheaper intervention shape than stating the fix.
+
+##### What caused friction (agent side)
+
+- `missing-context` — the root session misattributed the failed ff-merge.
+  It ran `git log --oneline issue-815..main | wc -l` and got `1`, then narrated a cause from the nearby subjects in `git log -5 main`, reporting that "#810 landed and `pi-permission-system` released as 30.0.0 after the peer's rebase."
+  Both claims were wrong: `f6d046fb` and the #810 retro sit *below* the merge base and were already in the branch's history, and the one genuinely divergent commit — `0ded864b docs(triage): prioritize backlog for 2026-09-02` — predated the peer's session entirely.
+  The command that would have settled it was the same one minus `wc -l`.
+  Impact: the handoff report named the wrong cause and did not give the peer the divergent commit, so the peer re-ran its sync against the same stale ref and reported "nothing to do"; the operator's question was needed to break the loop.
+  One wasted peer round trip.
+- `missing-context` — the root never compared local `main` to `origin/main`.
+  Step 1's `git pull --ff-only` printed `Already up to date.` and that was read as "main is in sync with the remote".
+  It is not: verified empirically this session in a throwaway repo, `git pull --ff-only` prints `Already up to date.` and exits 0 when local `main` is merely *ahead* of `origin/main`.
+  Impact: the precondition that guaranteed the ff-merge failure was invisible at exactly the step meant to establish it, and the eventual `git push` carried an unrelated root commit into the #815 land without the final report mentioning it.
+- `other` — the root read the sync stage note once, during Release coordination, and never again.
+  The peer amended that note during its second sync with the divergence paragraph and an explicit caveat that the push would carry the triage commit, so the root's picture of the handoff was frozen before the peer's most important finding existed.
+  Impact: the final report omitted that the push included unrelated root work; no rework.
+
+##### What caused friction (user side)
+
+- The `docs(triage)` commit was made on `main` at 06:20Z and left unpushed while a worktree branch was pending, six minutes before the #815 peer session started.
+  [#549]'s rule in `AGENTS.md` covers the general hazard, but the unpushed variant is strictly worse than the one it describes: the peer rebases onto `origin/main`, cannot see the commit at all, and its rebase is a no-op — so the failure is guaranteed and the peer cannot self-correct.
+  Pushing that commit, or landing #815 before making it, would have removed the whole detour.
+  Framed as opportunity: the cheapest fix is mechanical, and both proposals below aim to make the condition self-announcing rather than relying on the discipline.
+
+#### Diagnostic details
+
+- **Model-performance correlation** — the peer session ran `anthropic/claude-opus-5` for planning, TDD, and the sync correction (152 turns) and `anthropic/claude-sonnet-5` for the initial sync stage (23 turns).
+  The `origin/main`-only check slipped on a sonnet turn that followed the template's step 4 literally; the opus turn questioned the template once prompted and found the defect.
+  Stated as observation, not causation — a single sample cannot separate model strength from the fact that the sonnet turn was executing a routine templated step while the opus turn was answering a pointed question.
+  Both subagents (`tidy-first-assessor` at planning, `pre-completion-reviewer` at TDD close) were dispatched with no `model` override, so both used their agent-file frontmatter; no mismatch to flag.
+- **Escalation-delay tracking** — no sequence exceeded five tool calls on one error, and the notable failure was the inverse.
+  The root diagnosed the ff-merge rejection in a single command batch and committed to a narrative from it; under-investigation, not a rabbit hole.
+  The generalizable form: a *stop-and-report* branch deserves the same evidentiary bar as a fix, because the report is what the next session acts on.
+- **Unused-tool detection** — nothing was missing from the toolbox.
+  The gap was one more git command, not an unavailable subagent or search tool, so no dispatch would have helped.
+- **Feedback-loop gap analysis** — nothing to flag.
+  The root ship flow runs no build gates by design (CI is the gate), and the peer ran `pnpm run lint` and `pnpm fallow dead-code` both before the first sync and again after the re-rebase, rather than trusting the pre-rebase run.
+
+### Changes made
+
+1. `.pi/prompts/ship-worktree.md` — added step 1.4, checking `git rev-list --count origin/main..main` for unpushed root commits, since `git pull --ff-only` cannot distinguish "in sync" from "local is ahead".
+2. `.pi/prompts/ship-worktree.md` — rewrote step 2.3 to report the divergent commits from `git log --oneline <branch>..main` rather than a cause inferred from recent `main` subjects.
+3. `.pi/prompts/ship-worktree.md` — corrected the preamble's "rebased onto `origin/main`" to local `main`, which the ff-merge actually targets.
+4. `.pi/prompts/sync-worktree.md` — rewrote step 4 to rebase onto local `main`, stop when local `main` is behind the remote, and verify with `git merge-base --is-ancestor main HEAD`; updated the step 5 handoff line to match.
+5. `AGENTS.md` — extended the [#549] worktree guardrail with the unpushed-root-commit variant and the two commands that make it visible.
+
 [#549]: https://github.com/gotgenes/pi-packages/issues/549

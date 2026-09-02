@@ -65,10 +65,12 @@ The stage note lives in an `exclude-paths` dir, so it triggers no release — bu
 ## 4. Sync and rebase onto main
 
 1. `git fetch origin`.
-2. `git rebase origin/main`.
+2. Rebase onto the ref `/ship-worktree` will merge into — **local** `main`, which the shared `.git` makes visible: `git rebase main`.
+   If `git rev-list --count main..origin/main` is non-zero, local `main` is behind the remote; stop and report, since the root must `git pull` before this rebase has the right target.
 3. On a conflict: run `git rebase --abort`, then stop and report the conflicting files.
    Do not auto-resolve — the operator decides.
-4. After a clean rebase, the branch is a linear descendant of `origin/main`, ready for a fast-forward merge.
+4. Verify the merge will succeed: `git merge-base --is-ancestor main HEAD`.
+   This, not the `origin/main` comparison, is what predicts the ff-merge (Refs #815).
 
 Do **not** push this branch and do **not** force-push anything — the root session shares this repo's `.git` and merges the local branch ref directly.
 
@@ -77,7 +79,7 @@ Do **not** push this branch and do **not** force-push anything — the root sess
 Report:
 
 - The branch name and its new HEAD (`git log --oneline -1`).
-- That checks passed, the sync stage note is committed, and the rebase onto `origin/main` is clean.
+- That checks passed, the sync stage note is committed, and the rebase onto local `main` is clean.
 - That the final `/retro $1` is **not** run here — it runs at the root after `/ship-worktree $1`.
 - The next action: **switch to the root session and run `/ship-worktree $1`**.
 

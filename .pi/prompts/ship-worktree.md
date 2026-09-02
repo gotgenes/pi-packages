@@ -8,7 +8,7 @@ description: Root-session ship — ff-merge a rebased worktree branch into main,
 Argument: `$1` is the issue number whose peer branch is ready to land.
 
 This is the **root-session** half of the parallel-worktree ship flow.
-Run it after the peer session finished `/sync-worktree $1` (checks passed, retro committed, branch rebased onto `origin/main`).
+Run it after the peer session finished `/sync-worktree $1` (checks passed, retro committed, branch rebased onto local `main`).
 It lands the branch on linear `main`, verifies CI, closes the issue, optionally releases, and tears down the worktree.
 
 ## 0. Confirm you are at the root, not in a worktree
@@ -50,6 +50,9 @@ Step 6 applies the recorded decision.
 2. `git fetch origin`.
 3. `git pull --ff-only`.
    If it fails for any reason, stop and report — do not stash, rebase, or force.
+4. Check for unpushed root commits: `git rev-list --count origin/main..main`.
+   `git pull --ff-only` reports `Already up to date.` when local `main` is merely *ahead*, so a non-zero count is invisible above and guarantees the peer's `origin/main` rebase is stale (Refs #815).
+   Report the count before step 2; it is the likeliest cause of a rejected ff-merge.
 
 ## 2. Fast-forward merge the peer branch
 
@@ -58,8 +61,9 @@ The peer worktree shares this repo's `.git`, so the branch ref is visible locall
 1. Find the branch: `git branch --list "issue-$1-*"`.
    If zero or more than one match, stop and report.
 2. `git merge --ff-only <branch>`.
-3. If the merge is **not** a fast-forward, stop and report: `main` advanced since the peer rebased (another peer landed first).
-   The peer must re-run `/sync-worktree $1` to rebase onto the new `origin/main`, then retry this step.
+3. If the merge is **not** a fast-forward, stop and report.
+   Name the divergent commits with `git log --oneline <branch>..main` — run it without `wc -l`, and report those commits, not a cause inferred from `git log main`'s recent subjects (Refs #815).
+   The peer must re-run `/sync-worktree $1`, rebasing onto the ref this merge will actually use, then retry this step.
 
 ## 3. Push
 

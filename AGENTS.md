@@ -298,6 +298,8 @@ Guardrails:
 - Whoever lands second rebases first: if `/ship-worktree`'s ff-merge fails, the peer re-runs `/sync-worktree` to rebase onto the new `origin/main` (a non-linear merge into `main` is rejected by design).
 - Land a pending worktree branch before committing unrelated work to `main`.
   An intervening root commit to `main` stales the peer's completed `/sync-worktree` rebase, so the ff-merge is rejected and the peer must re-rebase (Refs #549).
+  An **unpushed** root commit is the sharper form — the peer rebases onto `origin/main`, cannot see it, and its rebase is a no-op, so it cannot self-correct.
+  `git pull --ff-only` hides this (`Already up to date.`, exit 0, when local is merely *ahead*): check `git rev-list --count origin/main..main`, and predict the ff-merge with `git merge-base --is-ancestor main <branch>` (Refs #815).
 - A first launch in each worktree reinstalls `.pi/npm/` (gitignored, so it does not carry over) — a one-time cost Pi handles automatically.
 
 ###### Session naming convention
