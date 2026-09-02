@@ -11,3 +11,13 @@ export interface ApprovalGrant {
   readonly surface: string;
   readonly pattern: string;
 }
+
+/**
+ * How wide a session grant is recorded, relative to what the gate proved.
+ *
+ * `"proven"` records each grant on the surface the gate named — the
+ * least-privilege default, and the only width anything produces today.
+ * `"family"` folds a directional surface to its bare family, which
+ * `SessionRules.approve` sugar-expands onto both members (ADR 0013 §4).
+ */
+export type SessionGrantWidth = "proven" | "family";

@@ -1,3 +1,4 @@
+import type { SessionGrantWidth } from "#src/approval-grant";
 import type { DecisionSource } from "#src/authority/decision-source";
 import type { PermissionPromptDecision } from "#src/authority/permission-dialog";
 
@@ -13,8 +14,15 @@ export type PermissionGateResult =
   | {
       action: "allow";
       decidedBy: DecisionSource;
-      /** Set when the human granted the ask for the whole session. */
-      forSession?: true;
+      /**
+       * Set when the human granted the ask for the whole session, carrying the
+       * width to record it at.
+       *
+       * One field rather than a `forSession` flag beside a width: the width is
+       * meaningless without the grant, and two optional fields could represent
+       * a width for a grant that never happened.
+       */
+      sessionGrant?: { width: SessionGrantWidth };
     }
   | { action: "block"; decidedBy: DecisionSource; reason: string };
 
@@ -112,7 +120,7 @@ export async function applyPermissionGate(
       decision.state === "approved_for_session" &&
       params.canGrantForSession
     ) {
-      return { action: "allow", decidedBy, forSession: true };
+      return { action: "allow", decidedBy, sessionGrant: { width: "proven" } };
     }
     return { action: "allow", decidedBy };
   }

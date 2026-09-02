@@ -228,9 +228,9 @@ export class GateRunner {
       messages,
     });
 
-    // 4. Determine whether session approval was granted
-    const hasSessionApproval =
-      gateResult.action === "allow" && gateResult.forSession === true;
+    // 4. Determine whether session approval was granted, and at what width
+    const sessionGrant =
+      gateResult.action === "allow" ? gateResult.sessionGrant : undefined;
 
     // 5. Emit decision event
     this.emitDecision(
@@ -242,14 +242,14 @@ export class GateRunner {
         gateResult.action === "allow" ? "allow" : "deny",
         resolutionFor(gateResult.decidedBy, {
           approved: gateResult.action === "allow",
-          forSession: hasSessionApproval,
+          forSession: sessionGrant !== undefined,
         }),
       ),
     );
 
     // 6. Record session approval — tell the store; it owns the per-pattern loop
-    // hasSessionApproval already implies gateResult.action === "allow"
-    if (hasSessionApproval && descriptor.sessionApproval) {
+    // A present grant already implies gateResult.action === "allow".
+    if (sessionGrant && descriptor.sessionApproval) {
       this.recorder.recordSessionApproval(descriptor.sessionApproval);
     }
 

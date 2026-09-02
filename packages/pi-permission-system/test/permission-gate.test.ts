@@ -222,7 +222,7 @@ describe("applyPermissionGate", () => {
   });
 
   describe("ask branch — the session-grant report", () => {
-    it("reports forSession when the decision is approved_for_session and the ask carried a suggestion", async () => {
+    it("reports a session grant when the decision is approved_for_session and the ask carried a suggestion", async () => {
       const decision: PermissionPromptDecision = {
         approved: true,
         state: "approved_for_session",
@@ -238,11 +238,11 @@ describe("applyPermissionGate", () => {
       expect(result).toEqual({
         action: "allow",
         decidedBy: DECIDED_BY_HUMAN,
-        forSession: true,
+        sessionGrant: { width: "proven" },
       });
     });
 
-    it("does not report forSession when the decision is approved (once)", async () => {
+    it("reports no session grant when the decision is approved (once)", async () => {
       const decision: PermissionPromptDecision = {
         approved: true,
         state: "approved",
@@ -258,7 +258,7 @@ describe("applyPermissionGate", () => {
       expect(result).toEqual({ action: "allow", decidedBy: DECIDED_BY_HUMAN });
     });
 
-    it("does not report forSession when the ask carried no suggestion", async () => {
+    it("reports no session grant when the ask carried no suggestion", async () => {
       const decision: PermissionPromptDecision = {
         approved: true,
         state: "approved_for_session",
@@ -274,7 +274,7 @@ describe("applyPermissionGate", () => {
       expect(result).toEqual({ action: "allow", decidedBy: DECIDED_BY_HUMAN });
     });
 
-    it("does not report forSession when the user denies", async () => {
+    it("reports no session grant when the user denies", async () => {
       const decision: PermissionPromptDecision = {
         approved: false,
         state: "denied",
