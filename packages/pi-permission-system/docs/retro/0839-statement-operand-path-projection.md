@@ -80,6 +80,20 @@ All deterministic gates pass, and the pre-completion reviewer returned **PASS**.
   It also confirmed the `in` partition survives `case in in in) echo hi;; esac`, because a literal `in` word is a **named** node while the partitioning keyword is anonymous.
   No warnings beyond the header wording above.
 
+## Stage: Sync (worktree) (2026-09-02T20:02:31Z)
+
+### Session summary
+
+Pre-push checks pass clean (`pnpm run lint`, `pnpm fallow dead-code`, both from the worktree root).
+The plan's `**Release:** ship independently` marker applies unchanged — no batch, no deferral — so `/ship-worktree` should release `pi-permission-system` without asking.
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-839--/2026-09-02T19-03-29-185Z_01a06381-3ca1-7f16-88ef-81d55f9fa14b.jsonl` — read with `read_session_file({ path: "<path>" })` for message-level verification at land/retro time.
+
+### Observations
+
+No new work landed in this stage; it only verified the TDD stage's commits still pass the two gates CI enforces at root level.
+Nothing deferred to the root beyond the ordinary `/ship-worktree` flow.
+
 [#645]: https://github.com/gotgenes/pi-packages/issues/645
 [#609]: https://github.com/gotgenes/pi-packages/issues/609
 [#741]: https://github.com/gotgenes/pi-packages/issues/741
