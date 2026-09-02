@@ -11,7 +11,7 @@ import {
 } from "#src/access-intent/bash/node-text";
 import type { TSNode } from "#src/access-intent/bash/parser";
 import { redirectEffectForDestination } from "#src/access-intent/bash/redirect-analysis";
-import type { TokenEffect } from "#src/access-intent/effect";
+import { type TokenEffect, UNPROVEN_EFFECT } from "#src/access-intent/effect";
 
 /**
  * A collected path-candidate token paired with the effect its position proved.
@@ -29,7 +29,8 @@ export interface PathToken {
 
 /**
  * Recursively visit the AST and collect resolved text of nodes that
- * represent command arguments or redirect destinations.
+ * represent command arguments, redirect destinations, or a statement's own
+ * path operands.
  *
  * Reads no text from `heredoc_body`, `heredoc_end`, or `comment` subtrees, but
  * still descends an execution host for the commands it hosts — an interpolating
@@ -46,6 +47,9 @@ export interface PathToken {
 export function collectPathCandidateTokens(node: TSNode): PathToken[] {
   if (node.type === "command") return collectCommandTokens(node);
   if (node.type === "file_redirect") return collectRedirectTokens(node);
+  if (node.type === "for_statement") {
+    return collectStatementOperandTokens(node, "after-in");
+  }
   if (EXECUTION_HOST_TYPES.has(node.type)) {
     return collectHostedExecutionTokens(node);
   }
@@ -136,6 +140,70 @@ function collectHostedExecutionTokens(node: TSNode): PathToken[] {
   forEachExecutionIn(node, (contextNode) => {
     tokens.push(...collectPathCandidateTokens(contextNode));
   });
+  return tokens;
+}
+
+/**
+ * Which side of a statement's `in` keyword carries its path operands.
+ *
+ * A `for`/`select` word list follows `in`; a `case` subject precedes it.
+ */
+type OperandSide = "before-in" | "after-in";
+
+/**
+ * Collect the tokens of a statement that names its own path operands, rather
+ * than reaching them through a command.
+ *
+ * A path in a `for`/`select` word list or a `case` subject is a child of the
+ * statement node, so the command and redirect collectors never see it and the
+ * loop body cannot recover it — `for f in /etc/shadow; do cat $f; done` carries
+ * the literal only here, and ADR 0009 declines to resolve the body's `$f`
+ * (#839).
+ *
+ * The two statements ask one question with one parameter — which side of the
+ * anonymous `in` keyword is the operand side — so the walk is named here once
+ * rather than spelled twice, as `COMMAND_PREFIX_TYPES` is for the two command
+ * walkers.
+ *
+ * Three properties carry the design:
+ *
+ * 1. A non-operand child falls through to the ordinary recursion, not to
+ *    nothing. That is what keeps the `do_group` reaching the loop body's
+ *    commands; searching it for hosted executions alone would silently drop
+ *    every ordinary body command.
+ * 2. An operand-side child outside {@link ARG_NODE_TYPES} falls through the
+ *    same way, so a bare substitution in the word list is descended for its
+ *    command as before and its operands keep that command's own attribution
+ *    (#807) instead of the statement's.
+ * 3. An operand-side argument node is read *and* searched for hosted
+ *    executions, since a `concatenation` can be both — the pairing
+ *    {@link collectRedirectTokens} already performs on a destination.
+ *
+ * The token carries {@link UNPROVEN_EFFECT}: no command word owns it and no
+ * redirect operator names it, so neither proof source can speak and the gates
+ * consult both directional surfaces.
+ */
+function collectStatementOperandTokens(
+  node: TSNode,
+  operandSide: OperandSide,
+): PathToken[] {
+  const tokens: PathToken[] = [];
+  let seenIn = false;
+  for (let i = 0; i < node.childCount; i++) {
+    const child = node.child(i);
+    if (!child) continue;
+    if (!child.isNamed) {
+      if (child.type === "in") seenIn = true;
+      continue;
+    }
+    const side: OperandSide = seenIn ? "after-in" : "before-in";
+    if (side !== operandSide || !ARG_NODE_TYPES.has(child.type)) {
+      tokens.push(...collectPathCandidateTokens(child));
+      continue;
+    }
+    tokens.push({ token: resolveNodeText(child), effect: UNPROVEN_EFFECT });
+    tokens.push(...collectHostedExecutionTokens(child));
+  }
   return tokens;
 }
 

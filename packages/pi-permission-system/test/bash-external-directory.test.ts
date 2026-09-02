@@ -135,6 +135,34 @@ describe("extractExternalPathsFromBashCommand", () => {
     });
   });
 
+  describe("operands a statement names directly (#839)", () => {
+    test("detects a for loop's word-list operand outside CWD", async () => {
+      // The body carries only `$f`, which ADR 0009 declines to resolve, so the
+      // word list is the sole place the literal appears.
+      const result = await extractExternalPathsFromBashCommand(
+        "for f in ~/other/secret; do cat $f; done",
+        cwd,
+      );
+      expect(result).toEqual(["/mock/home/other/secret"]);
+    });
+
+    test("detects a select statement's word-list operand outside CWD", async () => {
+      const result = await extractExternalPathsFromBashCommand(
+        "select f in /etc/shadow; do echo $f; done",
+        cwd,
+      );
+      expect(result).toEqual(["/etc/shadow"]);
+    });
+
+    test("does not flag a word-list operand that stays within CWD", async () => {
+      const result = await extractExternalPathsFromBashCommand(
+        "for f in src/a.ts src/b.ts; do echo $f; done",
+        cwd,
+      );
+      expect(result).toHaveLength(0);
+    });
+  });
+
   describe("dot-dot relative paths", () => {
     test("detects ../ path that resolves outside CWD", async () => {
       const result = await extractExternalPathsFromBashCommand(

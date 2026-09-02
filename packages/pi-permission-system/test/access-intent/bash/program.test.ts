@@ -57,6 +57,43 @@ describe("BashProgram", () => {
       });
     });
 
+    describe("operands a statement names directly (#839)", () => {
+      it("projects a for loop's word-list operand", async () => {
+        const program = await BashProgram.parse(
+          "for f in /etc/shadow; do cat $f; done",
+          normalizer,
+        );
+        expect(program.pathRuleCandidates().map(({ token }) => token)).toEqual([
+          "/etc/shadow",
+        ]);
+      });
+
+      it("resolves a word-list operand against the effective directory", async () => {
+        const program = await BashProgram.parse(
+          "cd nested && for f in src/file.txt; do echo; done",
+          normalizer,
+        );
+        const candidate = program
+          .pathRuleCandidates()
+          .find(({ token }) => token === "src/file.txt");
+        expect(candidate?.path.matchValues()).toEqual([
+          "/projects/my-app/nested/src/file.txt",
+          "nested/src/file.txt",
+          "src/file.txt",
+        ]);
+      });
+
+      it("attributes a statement operand as unproven", async () => {
+        const program = await BashProgram.parse(
+          "for f in /etc/shadow; do echo; done",
+          normalizer,
+        );
+        expect(
+          program.pathRuleCandidates().map(({ effect }) => effect),
+        ).toEqual([UNPROVEN_EFFECT]);
+      });
+    });
+
     describe("operands of a command hosted in a prefix position (#742)", () => {
       it.each([
         ["a substitution as the whole command", "$(cat /etc/shadow)"],
@@ -378,6 +415,38 @@ describe("BashProgram", () => {
       expect(
         program.externalAccesses().map(({ path }) => path.value()),
       ).toContain("/etc/hosts");
+    });
+
+    describe("operands a statement names directly (#839)", () => {
+      it("flags a for loop's absolute word-list operand", async () => {
+        const program = await BashProgram.parse(
+          "for f in /etc/shadow; do cat $f; done",
+          normalizer,
+        );
+        expect(
+          program.externalAccesses().map(({ path }) => path.value()),
+        ).toEqual(["/etc/shadow"]);
+      });
+
+      it("flags a for loop's home-relative word-list operand", async () => {
+        // The issue's motivating repro: the body carries only `$f`, so the word
+        // list is the sole place the literal appears.
+        const program = await BashProgram.parse(
+          "for f in ~/other/secret; do cat $f; done",
+          normalizer,
+        );
+        expect(
+          program.externalAccesses().map(({ path }) => path.value()),
+        ).toEqual([join(homedir(), "other/secret")]);
+      });
+
+      it("leaves an in-cwd word-list operand off the external slice", async () => {
+        const program = await BashProgram.parse(
+          "for f in src/main.ts; do echo; done",
+          normalizer,
+        );
+        expect(program.externalAccesses()).toEqual([]);
+      });
     });
 
     describe("glob-bearing path tokens (#821)", () => {

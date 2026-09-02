@@ -713,6 +713,100 @@ describe("collectPathCandidateTokens", () => {
   });
 });
 
+// ── Statement operands (#839) ─────────────────────────────────────────────────
+
+describe("statement operands", () => {
+  async function tokensOf(command: string): Promise<PathToken[]> {
+    const parser = await getParser();
+    const tree = parser.parse(command);
+    if (!tree) throw new Error("parse returned null");
+    try {
+      return collectPathCandidateTokens(tree.rootNode);
+    } finally {
+      tree.delete();
+    }
+  }
+
+  async function textsOf(command: string): Promise<string[]> {
+    return tokenTextsOf(await tokensOf(command));
+  }
+
+  describe("a for/select word list", () => {
+    it("collects the operand a for loop names directly", async () => {
+      expect(await textsOf("for f in /etc/shadow; do cat $f; done")).toEqual([
+        "/etc/shadow",
+      ]);
+    });
+
+    it("collects the operand a select statement names directly", async () => {
+      // `select` parses as `for_statement`, so the two spellings are one case.
+      expect(
+        await textsOf("select f in /etc/shadow; do echo $f; done"),
+      ).toEqual(["/etc/shadow"]);
+    });
+
+    it("collects every operand of a multi-entry word list, in source order", async () => {
+      expect(await textsOf("for f in /tmp/a /tmp/b; do echo; done")).toEqual([
+        "/tmp/a",
+        "/tmp/b",
+      ]);
+    });
+
+    it("removes quotes from a quoted operand", async () => {
+      expect(await textsOf('for f in "/etc/shadow"; do echo; done')).toEqual([
+        "/etc/shadow",
+      ]);
+    });
+
+    it("leaves the loop variable uncollected", async () => {
+      // `f` is the name being bound, not a path the loop touches; a walker
+      // reading every child on the operand side would emit it. Asserted as a
+      // whole list rather than an absence, so the claim fails if `f` appears.
+      expect(await textsOf("for f in /etc/shadow; do echo; done")).toEqual([
+        "/etc/shadow",
+      ]);
+    });
+
+    it("still collects the loop body's own operands", async () => {
+      // The non-operand side falls through to the ordinary recursion, so the
+      // `do_group` reaches its commands exactly as before.
+      expect(await textsOf("for f in a; do cat /etc/shadow; done")).toEqual([
+        "a",
+        "/etc/shadow",
+      ]);
+    });
+
+    it("collects nothing new from a word-list-less for loop", async () => {
+      // `for f; do …; done` iterates "$@"; there is no `in` and no word list.
+      expect(await textsOf("for f; do cat /etc/shadow; done")).toEqual([
+        "/etc/shadow",
+      ]);
+    });
+
+    it("descends a substitution in the word list rather than reading its text", async () => {
+      expect(
+        await textsOf("for f in $(cat /etc/shadow); do echo $f; done"),
+      ).toEqual(["/etc/shadow"]);
+    });
+
+    it("attributes an operand no command owns as unproven", async () => {
+      expect(await tokensOf("for f in /etc/shadow; do echo; done")).toEqual([
+        { token: "/etc/shadow", effect: UNPROVEN_EFFECT },
+      ]);
+    });
+
+    it("leaves a nested command's operand with its own attribution", async () => {
+      // The statement proves nothing, but `cat` proves a read for its own
+      // operand — the enclosing statement must not overwrite it (#807).
+      expect(
+        await tokensOf("for f in $(cat /etc/shadow); do echo; done"),
+      ).toEqual([
+        { token: "/etc/shadow", effect: { effect: "read", source: "core" } },
+      ]);
+    });
+  });
+});
+
 describe("embedded --opt=value extraction (#645)", () => {
   async function tokensOf(cmd: string): Promise<string[]> {
     const { node, tree } = await parseCommandNode(cmd);
