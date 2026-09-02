@@ -144,8 +144,8 @@ describe("describePathGate", () => {
       normalizer,
     ) as GateDescriptor;
     expect(result.sessionApproval).toBeDefined();
-    expect(result.sessionApproval?.surface).toBe("path_read");
-    expect(result.sessionApproval?.patterns).toHaveLength(1);
+    expect(result.sessionApproval?.grants[0]?.surface).toBe("path_read");
+    expect(result.sessionApproval?.grants).toHaveLength(1);
   });
 
   it("binds a current-directory file's session approval to the cwd subtree", () => {
@@ -157,8 +157,10 @@ describe("describePathGate", () => {
       resolver,
       normalizer,
     ) as GateDescriptor;
-    expect(result.sessionApproval?.surface).toBe("path_read");
-    expect(result.sessionApproval?.patterns).toEqual(["/test/project/*"]);
+    expect(result.sessionApproval?.grants[0]?.surface).toBe("path_read");
+    expect(
+      result.sessionApproval?.grants.map((grant) => grant.pattern),
+    ).toEqual(["/test/project/*"]);
   });
 
   it("descriptor denialContext references the file path and tool name", () => {
@@ -440,7 +442,7 @@ describe("describePathGate — extension and MCP tools (#352)", () => {
       return {
         intent: vi.mocked(resolver.resolve).mock.calls[0][0].surface,
         descriptor: descriptor.surface,
-        approval: descriptor.sessionApproval?.surface,
+        approval: descriptor.sessionApproval?.grants[0]?.surface,
         facts: descriptor.promptDetails.accessIntent?.surface,
         decision: descriptor.decision.surface,
         payload: descriptor.payload.request.surface,
@@ -508,8 +510,10 @@ describe("describePathGate — extension and MCP tools (#352)", () => {
       new PathNormalizer(win32PathFlavor, "C:\\Projects\\App"),
     );
     expect(isGateDescriptor(result)).toBe(true);
-    expect((result as GateDescriptor).sessionApproval?.patterns).toEqual([
-      "c:\\projects\\app\\src\\*",
-    ]);
+    expect(
+      (result as GateDescriptor).sessionApproval?.grants.map(
+        (grant) => grant.pattern,
+      ),
+    ).toEqual(["c:\\projects\\app\\src\\*"]);
   });
 });

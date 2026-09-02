@@ -236,7 +236,7 @@ describe("describeBashExternalDirectoryGate", () => {
     const desc = result as GateDescriptor;
     expect(desc.sessionApproval).toBeDefined();
     if (!desc.sessionApproval) return;
-    expect(desc.sessionApproval.patterns.length).toBeGreaterThan(0);
+    expect(desc.sessionApproval.grants.length).toBeGreaterThan(0);
   });
 
   it("returns GateBypass when all external paths are config-level allowed", async () => {
@@ -298,7 +298,9 @@ describe("describeBashExternalDirectoryGate", () => {
       expect(result.surface).toBe("external_directory_read");
       expect(result.payload.request.surface).toBe("external_directory_read");
       expect(result.decision.surface).toBe("external_directory_read");
-      expect(result.sessionApproval?.surface).toBe("external_directory_read");
+      expect(result.sessionApproval?.grants[0]?.surface).toBe(
+        "external_directory_read",
+      );
     });
 
     it("routes a proven write to the write surface", async () => {
@@ -308,7 +310,9 @@ describe("describeBashExternalDirectoryGate", () => {
       )) as GateDescriptor;
 
       expect(result.surface).toBe("external_directory_write");
-      expect(result.sessionApproval?.surface).toBe("external_directory_write");
+      expect(result.sessionApproval?.grants[0]?.surface).toBe(
+        "external_directory_write",
+      );
     });
 
     it("routes an unproven path to the bare family, which folds both", async () => {
@@ -318,7 +322,9 @@ describe("describeBashExternalDirectoryGate", () => {
       )) as GateDescriptor;
 
       expect(result.surface).toBe("external_directory");
-      expect(result.sessionApproval?.surface).toBe("external_directory");
+      expect(result.sessionApproval?.grants[0]?.surface).toBe(
+        "external_directory",
+      );
     });
 
     it("falls back to the bare family when one ask spans two directions", async () => {
@@ -329,8 +335,10 @@ describe("describeBashExternalDirectoryGate", () => {
 
       // One session approval holds one surface for all its patterns, so a
       // mixed-direction ask grants exactly today's width, never wider.
-      expect(result.sessionApproval?.surface).toBe("external_directory");
-      expect(result.sessionApproval?.patterns.length).toBe(2);
+      expect(result.sessionApproval?.grants[0]?.surface).toBe(
+        "external_directory",
+      );
+      expect(result.sessionApproval?.grants.length).toBe(2);
     });
 
     it("records the deciding path's effect and blame source in the log", async () => {
@@ -403,7 +411,7 @@ describe("describeBashExternalDirectoryGate", () => {
     const desc = result as GateDescriptor;
     expect(desc.sessionApproval).toBeDefined();
     if (!desc.sessionApproval) return;
-    expect(desc.sessionApproval.patterns.length).toBe(1);
+    expect(desc.sessionApproval.grants.length).toBe(1);
     expect(desc.preCheck?.state).toBe("ask");
   });
 
@@ -425,7 +433,7 @@ describe("describeBashExternalDirectoryGate", () => {
     // Both paths are uncovered (neither is allow), so both patterns are included.
     expect(desc.sessionApproval).toBeDefined();
     if (!desc.sessionApproval) return;
-    expect(desc.sessionApproval.patterns.length).toBe(2);
+    expect(desc.sessionApproval.grants.length).toBe(2);
   });
 
   it("only includes uncovered paths when some are session-covered", async () => {
@@ -444,7 +452,7 @@ describe("describeBashExternalDirectoryGate", () => {
     // Should have patterns only for the uncovered path
     expect(desc.sessionApproval).toBeDefined();
     if (!desc.sessionApproval) return;
-    expect(desc.sessionApproval.patterns.length).toBe(1);
+    expect(desc.sessionApproval.grants.length).toBe(1);
   });
 });
 
@@ -484,9 +492,11 @@ describe("describeBashExternalDirectoryGate — Git Bash semantics (win32)", () 
       makeResolver(makeCheckResult("ask")),
     );
     expect(isGateDescriptor(result)).toBe(true);
-    expect((result as GateDescriptor).sessionApproval?.patterns).toEqual([
-      "c:\\other\\data\\*",
-    ]);
+    expect(
+      (result as GateDescriptor).sessionApproval?.grants.map(
+        (grant) => grant.pattern,
+      ),
+    ).toEqual(["c:\\other\\data\\*"]);
   });
 
   // Invariant pin, not a probe: the pre-#655 ambient derivation also produced
@@ -500,8 +510,10 @@ describe("describeBashExternalDirectoryGate — Git Bash semantics (win32)", () 
       makeResolver(makeCheckResult("ask")),
     );
     expect(isGateDescriptor(result)).toBe(true);
-    expect((result as GateDescriptor).sessionApproval?.patterns).toEqual([
-      "/tmp/logs/*",
-    ]);
+    expect(
+      (result as GateDescriptor).sessionApproval?.grants.map(
+        (grant) => grant.pattern,
+      ),
+    ).toEqual(["/tmp/logs/*"]);
   });
 });

@@ -118,8 +118,10 @@ describe("describeToolGate", () => {
     expect(desc.surface).toBe("bash");
     expect(desc.decision.surface).toBe("bash");
     expect(desc.decision.value).toBe("npm install");
-    expect(desc.sessionApproval?.surface).toBe("bash");
-    expect(desc.sessionApproval?.patterns).toEqual(["npm install*"]);
+    expect(desc.sessionApproval?.grants[0]?.surface).toBe("bash");
+    expect(desc.sessionApproval?.grants.map((grant) => grant.pattern)).toEqual([
+      "npm install*",
+    ]);
     // The invoked tool name is preserved for the review log and prompt.
     expect(desc.logContext.toolName).toBe("exec_command");
     expect(desc.promptDetails.toolName).toBe("exec_command");
@@ -189,8 +191,8 @@ describe("describeToolGate", () => {
       makeFormatter(),
     );
     expect(desc.sessionApproval).toBeDefined();
-    expect(desc.sessionApproval?.surface).toBe("bash");
-    expect(desc.sessionApproval?.patterns).toHaveLength(1);
+    expect(desc.sessionApproval?.grants[0]?.surface).toBe("bash");
+    expect(desc.sessionApproval?.grants).toHaveLength(1);
   });
 
   it("binds a current-directory file's session approval to the cwd subtree", () => {
@@ -205,8 +207,10 @@ describe("describeToolGate", () => {
       makeFormatter(),
       pathAccessFor("index.html"),
     );
-    expect(desc.sessionApproval?.surface).toBe("edit");
-    expect(desc.sessionApproval?.patterns).toEqual(["/test/project/*"]);
+    expect(desc.sessionApproval?.grants[0]?.surface).toBe("edit");
+    expect(desc.sessionApproval?.grants.map((grant) => grant.pattern)).toEqual([
+      "/test/project/*",
+    ]);
   });
 
   it("resolves a sub-directory file's session approval to an absolute pattern", () => {
@@ -225,7 +229,9 @@ describe("describeToolGate", () => {
       makeFormatter(),
       pathAccessFor("src/foo.ts"),
     );
-    expect(desc.sessionApproval?.patterns).toEqual(["/test/project/src/*"]);
+    expect(desc.sessionApproval?.grants.map((grant) => grant.pattern)).toEqual([
+      "/test/project/src/*",
+    ]);
   });
 
   it("falls back to a wildcard session approval when no AccessPath is given", () => {
@@ -236,8 +242,10 @@ describe("describeToolGate", () => {
       makeCheckResult("ask"),
       makeFormatter(),
     );
-    expect(desc.sessionApproval?.surface).toBe("read");
-    expect(desc.sessionApproval?.patterns).toEqual(["*"]);
+    expect(desc.sessionApproval?.grants[0]?.surface).toBe("read");
+    expect(desc.sessionApproval?.grants.map((grant) => grant.pattern)).toEqual([
+      "*",
+    ]);
   });
 
   it("populates promptDetails with correct fields", () => {
@@ -283,7 +291,9 @@ describe("describeToolGate", () => {
       makeFormatter(),
       pathAccessFor("src/foo.ts"),
     );
-    expect(desc.sessionApproval?.patterns).toEqual(["/test/project/src/*"]);
+    expect(desc.sessionApproval?.grants.map((grant) => grant.pattern)).toEqual([
+      "/test/project/src/*",
+    ]);
     expect(desc.promptDetails.sessionLabel).toBe(
       'Yes, allow edit "/test/project/src/*" for this session',
     );
@@ -307,7 +317,7 @@ describe("describeToolGate", () => {
       makeFormatter(),
       pathAccessFor("src\\foo.ts", win32Normalizer),
     );
-    expect(desc.sessionApproval?.patterns).toEqual([
+    expect(desc.sessionApproval?.grants.map((grant) => grant.pattern)).toEqual([
       "c:\\projects\\app\\src\\*",
     ]);
   });

@@ -88,7 +88,10 @@ describe("SessionRules", () => {
     it("expands a multi-pattern approval on a bare family surface", () => {
       const rules = new SessionRules();
       rules.recordSessionApproval(
-        SessionApproval.multiple("path", ["/a/*", "/b/*"]),
+        SessionApproval.forGrants([
+          { surface: "path", pattern: "/a/*" },
+          { surface: "path", pattern: "/b/*" },
+        ]),
       );
       expect(
         rules.getRuleset().map(({ surface, pattern }) => [surface, pattern]),
@@ -158,9 +161,9 @@ describe("SessionRules", () => {
     it("records a multi-pattern approval as one rule per pattern", () => {
       const rules = new SessionRules();
       rules.recordSessionApproval(
-        SessionApproval.multiple("external_directory_read", [
-          "/outside/a/*",
-          "/outside/b/*",
+        SessionApproval.forGrants([
+          { surface: "external_directory_read", pattern: "/outside/a/*" },
+          { surface: "external_directory_read", pattern: "/outside/b/*" },
         ]),
       );
       expect(rules.getRuleset()).toHaveLength(2);
@@ -171,9 +174,9 @@ describe("SessionRules", () => {
     it("records each rule with the correct surface", () => {
       const rules = new SessionRules();
       rules.recordSessionApproval(
-        SessionApproval.multiple("external_directory_read", [
-          "/outside/a/*",
-          "/outside/b/*",
+        SessionApproval.forGrants([
+          { surface: "external_directory_read", pattern: "/outside/a/*" },
+          { surface: "external_directory_read", pattern: "/outside/b/*" },
         ]),
       );
       for (const rule of rules.getRuleset()) {
@@ -181,11 +184,25 @@ describe("SessionRules", () => {
       }
     });
 
-    it("records nothing for an empty patterns list", () => {
+    it("records each grant on its own surface when they disagree", () => {
       const rules = new SessionRules();
       rules.recordSessionApproval(
-        SessionApproval.multiple("external_directory_read", []),
+        SessionApproval.forGrants([
+          { surface: "external_directory_read", pattern: "/outside/*" },
+          { surface: "external_directory_write", pattern: "/elsewhere/*" },
+        ]),
       );
+      expect(
+        rules.getRuleset().map(({ surface, pattern }) => [surface, pattern]),
+      ).toEqual([
+        ["external_directory_read", "/outside/*"],
+        ["external_directory_write", "/elsewhere/*"],
+      ]);
+    });
+
+    it("records nothing for an empty grant list", () => {
+      const rules = new SessionRules();
+      rules.recordSessionApproval(SessionApproval.forGrants([]));
       expect(rules.getRuleset()).toEqual([]);
     });
   });

@@ -243,7 +243,7 @@ describe("LocalUserAuthorizer", () => {
             requesterAgentName: "Explore",
             requesterSessionId: "child-session",
           },
-          sessionApproval: { surface: "bash", patterns: ["git *"] },
+          sessionApproval: { grants: [{ surface: "bash", pattern: "git *" }] },
         }),
       );
 

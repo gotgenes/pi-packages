@@ -350,16 +350,11 @@ export class ForwardedRequestServer implements InboxProcessor {
       return decision;
     }
     if (request.sessionApproval) {
-      this.recorder.recordSessionApproval(
-        SessionApproval.multiple(
-          request.sessionApproval.surface,
-          request.sessionApproval.patterns,
-        ),
-      );
+      const { grants } = request.sessionApproval;
+      this.recorder.recordSessionApproval(SessionApproval.forGrants(grants));
       this.logger.review("forwarded_permission.session_recorded", {
         ...logDetails,
-        surface: request.sessionApproval.surface,
-        patterns: request.sessionApproval.patterns,
+        grants,
       });
     }
     return {

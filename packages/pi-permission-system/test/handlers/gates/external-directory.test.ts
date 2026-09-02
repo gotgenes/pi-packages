@@ -239,8 +239,12 @@ describe("describeExternalDirectoryGate", () => {
       makeTcc({ input: { path: "/outside/project/file.ts" } }),
       ["/test/agent"],
     ) as GateDescriptor;
-    expect(result.sessionApproval?.surface).toBe("external_directory_read");
-    expect(result.sessionApproval?.patterns).toEqual(["/outside/project/*"]);
+    expect(result.sessionApproval?.grants[0]?.surface).toBe(
+      "external_directory_read",
+    );
+    expect(
+      result.sessionApproval?.grants.map((grant) => grant.pattern),
+    ).toEqual(["/outside/project/*"]);
   });
 
   it("payload contains the external path and the boundary it escaped", () => {
@@ -352,7 +356,7 @@ describe("describeExternalDirectoryGate — extension and MCP tools (#352)", () 
       return {
         intent: vi.mocked(resolver.resolve).mock.calls[0][0].surface,
         descriptor: descriptor.surface,
-        approval: descriptor.sessionApproval?.surface,
+        approval: descriptor.sessionApproval?.grants[0]?.surface,
         facts: descriptor.promptDetails.accessIntent?.surface,
         decision: descriptor.decision.surface,
         payload: descriptor.payload.request.surface,
@@ -423,8 +427,10 @@ describe("describeExternalDirectoryGate — extension and MCP tools (#352)", () 
       new PathNormalizer(win32PathFlavor, "C:\\Projects\\App"),
     );
     expect(isGateDescriptor(result)).toBe(true);
-    expect((result as GateDescriptor).sessionApproval?.patterns).toEqual([
-      "c:\\other\\data\\*",
-    ]);
+    expect(
+      (result as GateDescriptor).sessionApproval?.grants.map(
+        (grant) => grant.pattern,
+      ),
+    ).toEqual(["c:\\other\\data\\*"]);
   });
 });

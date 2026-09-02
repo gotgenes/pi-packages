@@ -72,13 +72,13 @@ export class LocalUserAuthorizer implements TerminalAuthorizer {
 function buildRequestOptions(
   details: PromptPermissionDetails,
 ): RequestPermissionOptions | undefined {
-  const pattern = details.sessionApproval?.patterns[0];
-  if (details.forwarding && details.sessionApproval && pattern) {
+  const grant = details.sessionApproval?.grants[0];
+  if (details.forwarding && grant) {
     return {
       sessionScope: buildForwardedScopeLabels(
         details.forwarding.requesterAgentName,
-        details.sessionApproval.surface,
-        pattern,
+        grant.surface,
+        grant.pattern,
       ),
     };
   }

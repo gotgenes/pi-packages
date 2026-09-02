@@ -9,6 +9,7 @@ import {
   writeFileSync,
 } from "node:fs";
 
+import type { ApprovalGrant } from "#src/approval-grant";
 import { asDecisionSource } from "#src/authority/decision-source";
 import { isPermissionDecisionState } from "#src/authority/permission-dialog";
 import {
@@ -49,12 +50,34 @@ function asNullableDisplayString(value: unknown): string | null | undefined {
   return undefined;
 }
 
+/** Narrow an unknown value to an `ApprovalGrant`, or `undefined`. */
+function asApprovalGrant(value: unknown): ApprovalGrant | undefined {
+  if (typeof value !== "object" || value === null) {
+    return undefined;
+  }
+  const candidate = value as Partial<ApprovalGrant>;
+  if (
+    typeof candidate.surface !== "string" ||
+    candidate.surface.length === 0 ||
+    typeof candidate.pattern !== "string"
+  ) {
+    return undefined;
+  }
+  return { surface: candidate.surface, pattern: candidate.pattern };
+}
+
 /**
  * Narrow an unknown value to a `ForwardedSessionApproval`, or `undefined`.
  *
  * Tolerant read: the child's session-approval suggestion is optional (absent
- * on an older child) and only accepted when well-formed — a non-empty surface
- * and an all-string patterns array.
+ * on an older child) and only accepted when well-formed — a non-empty `grants`
+ * array whose every entry names a non-empty surface and a pattern. The
+ * pre-#810 shape (`surface` plus `patterns`) is rejected rather than
+ * normalized, so a version-skewed request drops the suggestion and the serving
+ * dialog offers no whole-session scope.
+ *
+ * An empty `grants` array is rejected too: it would record nothing while still
+ * writing a `forwarded_permission.session_recorded` entry claiming it had.
  */
 function asForwardedSessionApproval(
   value: unknown,
@@ -63,15 +86,16 @@ function asForwardedSessionApproval(
     return undefined;
   }
   const candidate = value as Partial<ForwardedSessionApproval>;
-  if (
-    typeof candidate.surface !== "string" ||
-    candidate.surface.length === 0 ||
-    !Array.isArray(candidate.patterns) ||
-    !candidate.patterns.every((pattern) => typeof pattern === "string")
-  ) {
+  if (!Array.isArray(candidate.grants) || candidate.grants.length === 0) {
     return undefined;
   }
-  return { surface: candidate.surface, patterns: [...candidate.patterns] };
+  const grants: ApprovalGrant[] = [];
+  for (const entry of candidate.grants) {
+    const grant = asApprovalGrant(entry);
+    if (!grant) return undefined;
+    grants.push(grant);
+  }
+  return { grants };
 }
 
 /**

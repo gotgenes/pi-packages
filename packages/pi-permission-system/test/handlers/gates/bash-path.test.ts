@@ -317,8 +317,10 @@ describe("describeBashPathGate", () => {
     )) as GateDescriptor;
 
     expect(result.decision.value).toBe(".env");
-    expect(result.sessionApproval?.surface).toBe("path_read");
-    expect(result.sessionApproval?.patterns).toEqual(["/test/project/*"]);
+    expect(result.sessionApproval?.grants[0]?.surface).toBe("path_read");
+    expect(
+      result.sessionApproval?.grants.map((grant) => grant.pattern),
+    ).toEqual(["/test/project/*"]);
   });
 
   describe("directional routing (#807)", () => {
@@ -336,7 +338,7 @@ describe("describeBashPathGate", () => {
       expect(result.payload.request.surface).toBe("path_read");
       expect(result.decision.surface).toBe("path_read");
       expect(result.promptDetails.accessIntent?.surface).toBe("path_read");
-      expect(result.sessionApproval?.surface).toBe("path_read");
+      expect(result.sessionApproval?.grants[0]?.surface).toBe("path_read");
     });
 
     it("routes a proven write to the write surface", async () => {
@@ -350,7 +352,7 @@ describe("describeBashPathGate", () => {
 
       expect(result.surface).toBe("path_write");
       expect(result.decision.surface).toBe("path_write");
-      expect(result.sessionApproval?.surface).toBe("path_write");
+      expect(result.sessionApproval?.grants[0]?.surface).toBe("path_write");
     });
 
     it("routes an unproven token to the bare family, which folds both", async () => {
@@ -361,7 +363,7 @@ describe("describeBashPathGate", () => {
 
       expect(result.surface).toBe("path");
       expect(result.decision.surface).toBe("path");
-      expect(result.sessionApproval?.surface).toBe("path");
+      expect(result.sessionApproval?.grants[0]?.surface).toBe("path");
     });
 
     it("records the deciding token's effect and blame source in the log", async () => {
@@ -543,9 +545,9 @@ describe("describeBashPathGate — win32 backslash-relative paths", () => {
     )) as GateDescriptor;
 
     expect(isGateDescriptor(result)).toBe(true);
-    expect(result.sessionApproval?.patterns).toEqual([
-      "c:\\projects\\app\\dir\\*",
-    ]);
+    expect(
+      result.sessionApproval?.grants.map((grant) => grant.pattern),
+    ).toEqual(["c:\\projects\\app\\dir\\*"]);
   });
 
   it("does not gate a backslash-relative token on posix (stays bare)", async () => {

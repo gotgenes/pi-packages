@@ -841,7 +841,7 @@ describe("processInbox — grant-scope selection", () => {
       surface: "bash",
       value: "git push",
       accessIntent: makeForwardedAccessIntent({ matchValues: ["git push"] }),
-      sessionApproval: { surface: "bash", patterns: ["git *"] },
+      sessionApproval: { grants: [{ surface: "bash", pattern: "git *" }] },
     });
 
     const resolve = vi.fn(() => makeCheckResult({ state: "ask" }));
@@ -866,7 +866,9 @@ describe("processInbox — grant-scope selection", () => {
     );
 
     expect(recordSessionApproval).toHaveBeenCalledWith(
-      expect.objectContaining({ surface: "bash", patterns: ["git *"] }),
+      expect.objectContaining({
+        grants: [{ surface: "bash", pattern: "git *" }],
+      }),
     );
     // Translated: the child receives a plain approve and records nothing.
     // The translation rewrites the scope, never the decider.
@@ -877,6 +879,51 @@ describe("processInbox — grant-scope selection", () => {
     });
   });
 
+  test("records every grant, each on the surface the child proved for it", async () => {
+    temp = createForwardingTempDir("parent-session");
+    const grants = [
+      { surface: "external_directory_read", pattern: "/outside/*" },
+      { surface: "external_directory_write", pattern: "/elsewhere/*" },
+    ];
+    temp.writeRequest({
+      id: "req-mixed",
+      source: "tool_call",
+      surface: "external_directory",
+      value: "cat /outside/a.ts > /elsewhere/b.ts",
+      accessIntent: makeForwardedAccessIntent({
+        matchValues: ["/outside/a.ts"],
+      }),
+      sessionApproval: { grants },
+    });
+
+    const recorder = new SessionRules();
+    const server = new ForwardedRequestServer(
+      makeServerDeps({
+        forwardingDir: temp.forwardingDir,
+        policy: { resolve: vi.fn(() => makeCheckResult({ state: "ask" })) },
+        escalator: {
+          escalate: vi.fn().mockResolvedValue({
+            approved: true,
+            state: "approved_for_serving_session",
+            decidedBy: { kind: "user", via: "dialog" },
+          }),
+        },
+        recorder,
+      }),
+    );
+
+    await server.processInbox(
+      makeForwarderContext({ hasUI: true, sessionId: "parent-session" }),
+    );
+
+    expect(
+      recorder.getRuleset().map(({ surface, pattern }) => [surface, pattern]),
+    ).toEqual([
+      ["external_directory_read", "/outside/*"],
+      ["external_directory_write", "/elsewhere/*"],
+    ]);
+  });
+
   test("offers the request's sessionApproval to the escalated dialog details", async () => {
     temp = createForwardingTempDir("parent-session");
     temp.writeRequest({
@@ -885,7 +932,7 @@ describe("processInbox — grant-scope selection", () => {
       surface: "bash",
       value: "git push",
       accessIntent: makeForwardedAccessIntent({ matchValues: ["git push"] }),
-      sessionApproval: { surface: "bash", patterns: ["git *"] },
+      sessionApproval: { grants: [{ surface: "bash", pattern: "git *" }] },
     });
 
     const resolve = vi.fn(() => makeCheckResult({ state: "ask" }));
@@ -909,7 +956,7 @@ describe("processInbox — grant-scope selection", () => {
 
     expect(escalate).toHaveBeenCalledWith(
       expect.objectContaining({
-        sessionApproval: { surface: "bash", patterns: ["git *"] },
+        sessionApproval: { grants: [{ surface: "bash", pattern: "git *" }] },
       }),
     );
   });
@@ -922,7 +969,7 @@ describe("processInbox — grant-scope selection", () => {
       surface: "bash",
       value: "git push",
       accessIntent: makeForwardedAccessIntent({ matchValues: ["git push"] }),
-      sessionApproval: { surface: "bash", patterns: ["git *"] },
+      sessionApproval: { grants: [{ surface: "bash", pattern: "git *" }] },
     });
 
     const resolve = vi.fn(() => makeCheckResult({ state: "ask" }));
@@ -1188,7 +1235,7 @@ describe("processInbox — terminal decision broadcast", () => {
       id: "req-serving-grant",
       surface: "bash",
       value: "git push",
-      sessionApproval: { surface: "bash", patterns: ["git *"] },
+      sessionApproval: { grants: [{ surface: "bash", pattern: "git *" }] },
     });
     const server = makeServer({
       escalator: escalatorAnswering({

@@ -104,17 +104,17 @@ export function describeBashExternalDirectoryGate(
     surface,
   });
 
-  const patterns = uncoveredEntries.map(({ path }) =>
-    normalizer.approvalPatternFor(path),
-  );
+  const approvalSurface = approvalSurfaceFor(uncoveredEntries);
 
   return {
     surface,
     input: {},
     payload,
-    sessionApproval: SessionApproval.multiple(
-      approvalSurfaceFor(uncoveredEntries),
-      patterns,
+    sessionApproval: SessionApproval.forGrants(
+      uncoveredEntries.map(({ path }) => ({
+        surface: approvalSurface,
+        pattern: normalizer.approvalPatternFor(path),
+      })),
     ),
     promptDetails: {
       source: "tool_call",

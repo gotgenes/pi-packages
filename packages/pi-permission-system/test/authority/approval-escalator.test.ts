@@ -230,14 +230,13 @@ describe("ParentAuthorizer", () => {
           agentName: "Explore",
           toolName: "bash",
           command: "git push",
-          sessionApproval: { surface: "bash", patterns: ["git *"] },
+          sessionApproval: { grants: [{ surface: "bash", pattern: "git *" }] },
         }),
       );
 
       const request = await waitForRequestFile(temp.location.requestsDir);
       expect(request.sessionApproval).toEqual({
-        surface: "bash",
-        patterns: ["git *"],
+        grants: [{ surface: "bash", pattern: "git *" }],
       });
 
       writeFileSync(

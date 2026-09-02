@@ -41,14 +41,16 @@ export class SessionRules implements SessionApprovalRecorder {
   }
 
   /**
-   * Record all patterns from a `SessionApproval` value object.
+   * Record every grant from a `SessionApproval` value object.
    *
-   * The loop lives here so callers never need to know whether an approval
-   * carries one pattern or many — they just tell the store to record it.
+   * The loop lives here so callers never need to know how many grants an
+   * approval carries — they just tell the store to record it. Each grant is
+   * recorded on the surface it names, so an ask whose paths proved different
+   * directions grants each path only its own (#810).
    */
   recordSessionApproval(approval: SessionApproval): void {
-    for (const pattern of approval.patterns) {
-      this.approve(approval.surface, pattern);
+    for (const { surface, pattern } of approval.grants) {
+      this.approve(surface, pattern);
     }
   }
 

@@ -280,9 +280,9 @@ describe("GateRunner — descriptor path", () => {
         decidedBy: DECIDED_BY_HUMAN,
       }),
     });
-    const approval = SessionApproval.multiple("external_directory", [
-      "/outside/a/*",
-      "/outside/b/*",
+    const approval = SessionApproval.forGrants([
+      { surface: "external_directory", pattern: "/outside/a/*" },
+      { surface: "external_directory", pattern: "/outside/b/*" },
     ]);
     const descriptor = makeDescriptor({ sessionApproval: approval });
     const result = await runner.run(descriptor, null);
@@ -510,7 +510,7 @@ describe("GateRunner — descriptor path", () => {
     await runner.run(makeDescriptor({ sessionApproval: approval }), null);
     expect(deps.escalate).toHaveBeenCalledWith(
       expect.objectContaining({
-        sessionApproval: { surface: "bash", patterns: ["git *"] },
+        sessionApproval: { grants: [{ surface: "bash", pattern: "git *" }] },
       }),
     );
   });
