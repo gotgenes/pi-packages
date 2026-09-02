@@ -178,6 +178,82 @@ describe("requestPermissionDecisionFromUi", () => {
     expect(options[1]).toBe("Yes, for this session");
   });
 
+  describe("both-directions session grant (#813)", () => {
+    const sessionWidth = {
+      label: 'Yes, allow reads and writes to "/tmp/*" for this session',
+    };
+
+    it("offers the width option after the session option", async () => {
+      const selectFn = vi.fn().mockResolvedValue("Yes");
+      const ui: PermissionDecisionUi = { select: selectFn, input: vi.fn() };
+      await requestPermissionDecisionFromUi(ui, "Title", "Message", {
+        sessionLabel: 'Yes, allow writes to "/tmp/*" for this session',
+        sessionWidth,
+      });
+      expect(selectFn.mock.calls[0][1]).toEqual([
+        "Yes",
+        'Yes, allow writes to "/tmp/*" for this session',
+        sessionWidth.label,
+        "No",
+        "No, provide reason",
+      ]);
+    });
+
+    it("returns the family width when the width option is chosen", async () => {
+      const ui: PermissionDecisionUi = {
+        select: vi.fn().mockResolvedValue(sessionWidth.label),
+        input: vi.fn(),
+      };
+      expect(
+        await requestPermissionDecisionFromUi(ui, "Title", "Message", {
+          sessionWidth,
+        }),
+      ).toEqual({
+        approved: true,
+        state: "approved_for_session",
+        sessionGrantWidth: "family",
+      });
+    });
+
+    it("leaves the plain session option at the proven width", async () => {
+      const ui: PermissionDecisionUi = {
+        select: vi.fn().mockResolvedValue("Yes, for this session"),
+        input: vi.fn(),
+      };
+      expect(
+        await requestPermissionDecisionFromUi(ui, "Title", "Message", {
+          sessionWidth,
+        }),
+      ).toEqual({ approved: true, state: "approved_for_session" });
+    });
+
+    it("continues into the scope select from the width option", async () => {
+      const selectFn = vi
+        .fn()
+        .mockResolvedValueOnce(sessionWidth.label)
+        .mockResolvedValueOnce("The whole session");
+      const ui: PermissionDecisionUi = { select: selectFn, input: vi.fn() };
+      const result = await requestPermissionDecisionFromUi(
+        ui,
+        "Title",
+        "Message",
+        {
+          sessionWidth,
+          sessionScope: {
+            subagentLabel: "This subagent only",
+            servingSessionLabel: "The whole session",
+          },
+        },
+      );
+      expect(selectFn).toHaveBeenCalledTimes(2);
+      expect(result).toEqual({
+        approved: true,
+        state: "approved_for_serving_session",
+        sessionGrantWidth: "family",
+      });
+    });
+  });
+
   describe("sessionScope two-step (forwarded asks)", () => {
     const sessionScope = {
       subagentLabel: "This subagent only",

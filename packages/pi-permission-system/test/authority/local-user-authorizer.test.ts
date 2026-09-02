@@ -317,6 +317,80 @@ describe("LocalUserAuthorizer", () => {
     });
   });
 
+  describe("both-directions session grant (#813)", () => {
+    /** Assert the options a bash ask with these grants reaches the dialog with. */
+    async function expectOptionsFor(
+      grants: { surface: string; pattern: string }[],
+      expected: unknown,
+    ) {
+      const { deps, decisionFn } = makeDeps();
+      await new LocalUserAuthorizer(deps).authorize(
+        makeDetails({ toolName: "bash", sessionApproval: { grants } }),
+      );
+      expect(decisionFn).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.any(String),
+        expect.anything(),
+        expected,
+      );
+    }
+
+    it("offers the width option when every grant proves one direction", async () => {
+      await expectOptionsFor(
+        [{ surface: "external_directory_write", pattern: "/tmp/*" }],
+        {
+          sessionLabel: 'Yes, allow writes to "/tmp/*" for this session',
+          sessionWidth: {
+            label: 'Yes, allow reads and writes to "/tmp/*" for this session',
+          },
+        },
+      );
+    });
+
+    it("counts the paths when several grants prove the same direction", async () => {
+      await expectOptionsFor(
+        [
+          { surface: "external_directory_read", pattern: "/outside/a/*" },
+          { surface: "external_directory_read", pattern: "/outside/b/*" },
+        ],
+        {
+          sessionLabel: "Yes, allow reads to 2 paths for this session",
+          sessionWidth: {
+            label: "Yes, allow reads and writes to 2 paths for this session",
+          },
+        },
+      );
+    });
+
+    it("offers no width option when the grants prove different directions", async () => {
+      await expectOptionsFor(
+        [
+          { surface: "external_directory_read", pattern: "/outside/a/*" },
+          { surface: "external_directory_write", pattern: "/outside/b/*" },
+        ],
+        undefined,
+      );
+    });
+
+    it("offers no width option for a non-directional surface", async () => {
+      await expectOptionsFor(
+        [{ surface: "bash", pattern: "git *" }],
+        undefined,
+      );
+    });
+
+    it("offers no width option for an ask with no suggestion at all", async () => {
+      const { deps, decisionFn } = makeDeps();
+      await new LocalUserAuthorizer(deps).authorize(makeDetails());
+      expect(decisionFn).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.any(String),
+        expect.anything(),
+        undefined,
+      );
+    });
+  });
+
   it("returns the decision from requestPermissionDecision", async () => {
     const decision: PermissionPromptDecision = {
       approved: false,

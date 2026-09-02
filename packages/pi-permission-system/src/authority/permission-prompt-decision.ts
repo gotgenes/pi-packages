@@ -1,3 +1,4 @@
+import type { SessionGrantWidth } from "#src/approval-grant";
 import {
   createDeniedPermissionDecision,
   normalizePermissionDenialReason,
@@ -15,13 +16,23 @@ import {
  * forwards keystrokes to {@link reducePrompt} and renders the returned state.
  */
 
-/** The four decision hotkeys, in display order. */
-export type PromptKey = "y" | "s" | "n" | "r";
+/**
+ * The decision hotkeys, in display order.
+ *
+ * `b` is conditional: it appears only for an ask whose session grant can be
+ * widened to both directions (#813), so the roster an ask actually offers
+ * comes from {@link visibleOptionKeys} rather than from this type.
+ */
+export type PromptKey = "y" | "s" | "b" | "n" | "r";
 
 /** Which sub-view the dialog is showing. */
 export type PromptStep = "decision" | "reason" | "scope";
 
-const OPTION_ORDER: readonly PromptKey[] = ["y", "s", "n", "r"];
+const OPTION_ORDER: readonly PromptKey[] = ["y", "s", "b", "n", "r"];
+
+const NARROW_OPTION_ORDER: readonly PromptKey[] = OPTION_ORDER.filter(
+  (key) => key !== "b",
+);
 
 /**
  * The decision step's option keys, in display order.
@@ -30,16 +41,20 @@ const OPTION_ORDER: readonly PromptKey[] = ["y", "s", "n", "r"];
  * an ask offers is decided in the model and the component renders whatever it
  * is handed — two copies of the roster would be two places to teach about a
  * conditional option.
+ *
+ * The width option is offered iff the ask supplied a label for it, so an ask
+ * that proves no single direction is rendered and navigated exactly as before.
  */
 export function visibleOptionKeys(
-  _config: PromptModelConfig,
+  config: PromptModelConfig,
 ): readonly PromptKey[] {
-  return OPTION_ORDER;
+  return config.widthLabel ? OPTION_ORDER : NARROW_OPTION_ORDER;
 }
 
 const OPTION_VERBS: Record<PromptKey, string> = {
   y: "approve",
   s: "approve for this session",
+  b: "approve both directions for this session",
   n: "deny",
   r: "deny with a reason",
 };
@@ -50,6 +65,13 @@ export interface PromptModelConfig {
   doublePressToConfirm: boolean;
   /** Label shown beside the approve-for-session option. */
   sessionLabel: string;
+  /**
+   * Label for the both-directions session option (#813).
+   *
+   * Its presence is what offers the option: an ask whose grants prove no
+   * single direction supplies none, and the roster stays four keys.
+   */
+  widthLabel?: string;
   /**
    * Forwarded asks only: when set, confirming `s` opens a second step choosing
    * whether the grant applies to the requesting subagent only (least-privilege
@@ -70,6 +92,15 @@ export interface PromptViewState {
   reasonError?: string;
   /** Scope step: false = subagent-only (default), true = whole serving session. */
   scopeServing: boolean;
+  /**
+   * The width the session option chosen so far would grant.
+   *
+   * Held on the state rather than passed to the scope step, because a
+   * forwarded ask commits the two choices in different steps. Reset to
+   * `"proven"` on every return to the decision step, so a width the user
+   * backed out of cannot ride along with a later narrow choice.
+   */
+  grantWidth: SessionGrantWidth;
 }
 
 /** An input event the reducer understands. */
@@ -95,6 +126,7 @@ export function initialPromptState(
     hint: "",
     reasonError: undefined,
     scopeServing: false,
+    grantWidth: "proven",
   };
 }
 
@@ -130,12 +162,14 @@ function reduceDecisionStep(
     case "nav":
       return render({
         ...state,
-        highlightedKey: shiftKey(state.highlightedKey, event.direction),
+        highlightedKey: shiftKey(config, state.highlightedKey, event.direction),
         armedKey: undefined,
         hint: "",
       });
     case "hotkey":
-      return pressHotkey(config, state, event.key);
+      return visibleOptionKeys(config).includes(event.key)
+        ? pressHotkey(config, state, event.key)
+        : render(state);
     case "confirm":
       return commit(config, state, state.highlightedKey);
     case "cancel":
@@ -184,21 +218,46 @@ function commit(
         reasonError: undefined,
       });
     case "s":
+    case "b": {
+      // The two session options differ only in the width they grant; which
+      // scope they land on is the forwarded scope step's separate question.
+      const grantWidth: SessionGrantWidth = key === "b" ? "family" : "proven";
       if (config.sessionScope) {
         return render({
           ...state,
           step: "scope",
-          highlightedKey: "s",
+          highlightedKey: key,
           armedKey: undefined,
           hint: "",
           scopeServing: false,
+          grantWidth,
         });
       }
       return {
         kind: "decision",
-        decision: { approved: true, state: "approved_for_session" },
+        decision: sessionDecision("approved_for_session", grantWidth),
       };
+    }
   }
+}
+
+/**
+ * A session-granting decision, naming its width only when it is not the
+ * default.
+ *
+ * Absent means `"proven"` everywhere this value travels — the decision, the
+ * gate result, and the forwarded wire — so the narrow grant serializes
+ * exactly as it did before the option existed.
+ */
+function sessionDecision(
+  state: "approved_for_session" | "approved_for_serving_session",
+  width: SessionGrantWidth,
+): UnattributedDecision {
+  return {
+    approved: true,
+    state,
+    ...(width === "family" ? { sessionGrantWidth: width } : {}),
+  };
 }
 
 function reduceReasonStep(
@@ -212,6 +271,7 @@ function reduceReasonStep(
       armedKey: undefined,
       hint: "",
       reasonError: undefined,
+      grantWidth: "proven",
     });
   }
   if (event.type === "submitReason") {
@@ -240,12 +300,12 @@ function reduceScopeStep(
     case "confirm":
       return {
         kind: "decision",
-        decision: {
-          approved: true,
-          state: state.scopeServing
+        decision: sessionDecision(
+          state.scopeServing
             ? "approved_for_serving_session"
             : "approved_for_session",
-        },
+          state.grantWidth,
+        ),
       };
     case "cancel":
       return render({
@@ -253,17 +313,23 @@ function reduceScopeStep(
         step: "decision",
         armedKey: undefined,
         hint: "",
+        grantWidth: "proven",
       });
     default:
       return render(state);
   }
 }
 
-function shiftKey(current: PromptKey, direction: "up" | "down"): PromptKey {
-  const index = OPTION_ORDER.indexOf(current);
+function shiftKey(
+  config: PromptModelConfig,
+  current: PromptKey,
+  direction: "up" | "down",
+): PromptKey {
+  const keys = visibleOptionKeys(config);
+  const index = keys.indexOf(current);
   const delta = direction === "down" ? 1 : -1;
-  const next = (index + delta + OPTION_ORDER.length) % OPTION_ORDER.length;
-  return OPTION_ORDER[next] ?? current;
+  const next = (index + delta + keys.length) % keys.length;
+  return keys[next] ?? current;
 }
 
 function render(state: PromptViewState): PromptOutcome {

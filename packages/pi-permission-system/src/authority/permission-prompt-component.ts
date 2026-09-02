@@ -128,6 +128,7 @@ const DEFAULT_SESSION_LABEL = "Yes, for this session";
 const OPTION_LABELS: Record<PromptKey, string> = {
   y: "Yes",
   s: DEFAULT_SESSION_LABEL,
+  b: "Yes, for this session in both directions",
   n: "No",
   r: "No, provide reason",
 };
@@ -141,6 +142,7 @@ export function presentInlinePermissionPrompt(
   const config: PromptModelConfig = {
     doublePressToConfirm: view.doublePressToConfirm,
     sessionLabel: options?.sessionLabel ?? DEFAULT_SESSION_LABEL,
+    widthLabel: options?.sessionWidth?.label,
     sessionScope: options?.sessionScope,
   };
   return view.ui.custom<UnattributedDecision>(
@@ -356,7 +358,7 @@ class PermissionPromptComponent implements Component {
     const ask = this.renderAsk(width);
     const lines = [this.theme.fg("accent", this.title), ...ask.lines, ""];
     for (const key of visibleOptionKeys(this.config)) {
-      const label = key === "s" ? this.config.sessionLabel : OPTION_LABELS[key];
+      const label = this.labelFor(key);
       const selected = this.state.highlightedKey === key;
       const marker = selected ? "▶" : " ";
       const row = `${marker} (${key}) ${label}`;
@@ -365,6 +367,16 @@ class PermissionPromptComponent implements Component {
     lines.push("");
     lines.push(this.state.hint || this.hint(ask));
     return lines;
+  }
+
+  /**
+   * The row label for a key: the two session options carry ask-supplied text
+   * naming what they grant, and the rest are fixed.
+   */
+  private labelFor(key: PromptKey): string {
+    if (key === "s") return this.config.sessionLabel;
+    if (key === "b") return this.config.widthLabel ?? OPTION_LABELS.b;
+    return OPTION_LABELS[key];
   }
 
   private renderReason(width: number): string[] {

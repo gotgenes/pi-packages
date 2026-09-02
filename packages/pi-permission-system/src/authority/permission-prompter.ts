@@ -1,3 +1,4 @@
+import type { SessionGrantWidth } from "#src/approval-grant";
 import type { DecisionSource } from "#src/authority/decision-source";
 import type { PermissionPromptDecision } from "#src/authority/permission-dialog";
 import type {
@@ -10,6 +11,25 @@ import type { ReviewLogger } from "#src/session-logger";
 import type { TerminalAuthorizer } from "./authorizer";
 
 export type PermissionReviewSource = "tool_call" | "skill_input" | "skill_read";
+
+/**
+ * The width a decision's session grant was recorded at, or `undefined` when it
+ * granted nothing for the session.
+ *
+ * Absent means "proven" everywhere else this value travels, but the review log
+ * is read rather than consumed, so a session-granting entry states its width
+ * explicitly instead of leaving the reader to know the default (#813).
+ */
+function recordedGrantWidth(
+  decision: PermissionPromptDecision,
+): SessionGrantWidth | undefined {
+  const grantsForSession =
+    decision.state === "approved_for_session" ||
+    decision.state === "approved_for_serving_session";
+  return grantsForSession
+    ? (decision.sessionGrantWidth ?? "proven")
+    : undefined;
+}
 
 /**
  * Provenance of a forwarded ask: who is really asking, one hop below.
@@ -133,6 +153,7 @@ export class PermissionPrompter implements PermissionPrompterApi {
           : decision.state,
         denialReason: decision.denialReason,
         decidedBy: decision.decidedBy,
+        sessionGrantWidth: recordedGrantWidth(decision),
       },
     );
 
@@ -151,10 +172,14 @@ export class PermissionPrompter implements PermissionPrompterApi {
       resolution?: string;
       denialReason?: string;
       decidedBy?: DecisionSource;
+      sessionGrantWidth?: SessionGrantWidth;
     },
   ): void {
     this.deps.logger.review(event, {
       ...(details.decidedBy ? { decidedBy: details.decidedBy } : {}),
+      ...(details.sessionGrantWidth
+        ? { sessionGrantWidth: details.sessionGrantWidth }
+        : {}),
       requestId: details.requestId,
       source: details.source,
       agentName: details.agentName,

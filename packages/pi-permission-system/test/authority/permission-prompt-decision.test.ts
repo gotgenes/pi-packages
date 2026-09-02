@@ -4,6 +4,7 @@ import {
   type PromptModelConfig,
   type PromptOutcome,
   reducePrompt,
+  visibleOptionKeys,
 } from "#src/authority/permission-prompt-decision";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -48,6 +49,7 @@ describe("reducePrompt", () => {
         hint: "",
         reasonError: undefined,
         scopeServing: false,
+        grantWidth: "proven",
       });
     });
   });
@@ -68,6 +70,7 @@ describe("reducePrompt", () => {
           hint: "Press y again to approve.",
           reasonError: undefined,
           scopeServing: false,
+          grantWidth: "proven",
         },
       });
     });
@@ -109,6 +112,7 @@ describe("reducePrompt", () => {
           hint: "Press n again to deny.",
           reasonError: undefined,
           scopeServing: false,
+          grantWidth: "proven",
         },
       });
     });
@@ -166,6 +170,7 @@ describe("reducePrompt", () => {
           hint: "",
           reasonError: undefined,
           scopeServing: false,
+          grantWidth: "proven",
         },
       });
     });
@@ -240,6 +245,7 @@ describe("reducePrompt", () => {
           hint: "",
           reasonError: undefined,
           scopeServing: false,
+          grantWidth: "proven",
         },
       });
     });
@@ -275,6 +281,7 @@ describe("reducePrompt", () => {
           hint: "",
           reasonError: "A reason is required.",
           scopeServing: false,
+          grantWidth: "proven",
         },
       });
     });
@@ -317,6 +324,7 @@ describe("reducePrompt", () => {
           hint: "",
           reasonError: undefined,
           scopeServing: false,
+          grantWidth: "proven",
         },
       });
     });
@@ -396,6 +404,202 @@ describe("reducePrompt", () => {
       expect(outcome).toEqual({
         kind: "decision",
         decision: { approved: true, state: "approved_for_session" },
+      });
+    });
+  });
+
+  describe("both-directions session grant (#813)", () => {
+    const widthLabel =
+      'Yes, allow reads and writes to "/tmp/*" for this session';
+
+    it("offers the width option only when the ask is widenable", () => {
+      expect(visibleOptionKeys(makeConfig({ widthLabel }))).toEqual([
+        "y",
+        "s",
+        "b",
+        "n",
+        "r",
+      ]);
+      expect(visibleOptionKeys(makeConfig())).toEqual(["y", "s", "n", "r"]);
+    });
+
+    it("commits the family width on b", () => {
+      const config = makeConfig({ doublePressToConfirm: false, widthLabel });
+      const outcome = reducePrompt(config, initialPromptState(config), {
+        type: "hotkey",
+        key: "b",
+      });
+      expect(outcome).toEqual({
+        kind: "decision",
+        decision: {
+          approved: true,
+          state: "approved_for_session",
+          sessionGrantWidth: "family",
+        },
+      });
+    });
+
+    it("leaves s at the proven width, naming no width at all", () => {
+      const config = makeConfig({ doublePressToConfirm: false, widthLabel });
+      const outcome = reducePrompt(config, initialPromptState(config), {
+        type: "hotkey",
+        key: "s",
+      });
+      expect(outcome).toEqual({
+        kind: "decision",
+        decision: { approved: true, state: "approved_for_session" },
+      });
+    });
+
+    it("arms b like any other hotkey under double-press", () => {
+      const config = makeConfig({ widthLabel });
+      const outcome = reducePrompt(config, initialPromptState(config), {
+        type: "hotkey",
+        key: "b",
+      });
+      expect(outcome).toEqual({
+        kind: "render",
+        state: {
+          step: "decision",
+          highlightedKey: "b",
+          armedKey: "b",
+          hint: "Press b again to approve both directions for this session.",
+          reasonError: undefined,
+          scopeServing: false,
+          grantWidth: "proven",
+        },
+      });
+    });
+
+    it("ignores b when the ask is not widenable", () => {
+      const config = makeConfig({ doublePressToConfirm: false });
+      const outcome = reducePrompt(config, initialPromptState(config), {
+        type: "hotkey",
+        key: "b",
+      });
+      expect(outcome).toEqual({
+        kind: "render",
+        state: initialPromptState(config),
+      });
+    });
+
+    it("walks five options when the width option is offered", () => {
+      const config = makeConfig({ widthLabel });
+      let state = initialPromptState(config);
+      const seen: string[] = [];
+      for (const _ of [0, 1, 2, 3, 4]) {
+        const outcome = reducePrompt(config, state, {
+          type: "nav",
+          direction: "down",
+        });
+        assertRender(outcome);
+        state = outcome.state;
+        seen.push(state.highlightedKey);
+      }
+      expect(seen).toEqual(["s", "b", "n", "r", "y"]);
+    });
+
+    it("skips b when navigating an ask that is not widenable", () => {
+      const config = makeConfig();
+      let state = initialPromptState(config);
+      const seen: string[] = [];
+      for (const _ of [0, 1, 2, 3]) {
+        const outcome = reducePrompt(config, state, {
+          type: "nav",
+          direction: "down",
+        });
+        assertRender(outcome);
+        state = outcome.state;
+        seen.push(state.highlightedKey);
+      }
+      expect(seen).toEqual(["s", "n", "r", "y"]);
+    });
+
+    describe("with a forwarded ask's scope step", () => {
+      const sessionScope = {
+        subagentLabel: "This subagent only",
+        servingSessionLabel: "The whole session",
+      };
+
+      it("carries the width chosen on b through the scope step", () => {
+        const config = makeConfig({
+          doublePressToConfirm: false,
+          widthLabel,
+          sessionScope,
+        });
+        const opened = reducePrompt(config, initialPromptState(config), {
+          type: "hotkey",
+          key: "b",
+        });
+        assertRender(opened);
+        expect(opened.state.step).toBe("scope");
+        expect(reducePrompt(config, opened.state, { type: "confirm" })).toEqual(
+          {
+            kind: "decision",
+            decision: {
+              approved: true,
+              state: "approved_for_session",
+              sessionGrantWidth: "family",
+            },
+          },
+        );
+      });
+
+      it("carries the width onto a whole-serving-session grant too", () => {
+        const config = makeConfig({
+          doublePressToConfirm: false,
+          widthLabel,
+          sessionScope,
+        });
+        const opened = reducePrompt(config, initialPromptState(config), {
+          type: "hotkey",
+          key: "b",
+        });
+        assertRender(opened);
+        const moved = reducePrompt(config, opened.state, {
+          type: "nav",
+          direction: "down",
+        });
+        assertRender(moved);
+        expect(reducePrompt(config, moved.state, { type: "confirm" })).toEqual({
+          kind: "decision",
+          decision: {
+            approved: true,
+            state: "approved_for_serving_session",
+            sessionGrantWidth: "family",
+          },
+        });
+      });
+
+      it("forgets a backed-out width when the scope step cancels", () => {
+        const config = makeConfig({
+          doublePressToConfirm: false,
+          widthLabel,
+          sessionScope,
+        });
+        const opened = reducePrompt(config, initialPromptState(config), {
+          type: "hotkey",
+          key: "b",
+        });
+        assertRender(opened);
+        const cancelled = reducePrompt(config, opened.state, {
+          type: "cancel",
+        });
+        assertRender(cancelled);
+        expect(cancelled.state.grantWidth).toBe("proven");
+
+        // The narrow option must not inherit the width the user backed out of.
+        const reopened = reducePrompt(config, cancelled.state, {
+          type: "hotkey",
+          key: "s",
+        });
+        assertRender(reopened);
+        expect(
+          reducePrompt(config, reopened.state, { type: "confirm" }),
+        ).toEqual({
+          kind: "decision",
+          decision: { approved: true, state: "approved_for_session" },
+        });
       });
     });
   });

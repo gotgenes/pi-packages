@@ -478,6 +478,45 @@ describe("presentInlinePermissionPrompt", () => {
     });
   });
 
+  describe("both-directions session grant (#813)", () => {
+    const sessionWidth = {
+      label: 'Yes, allow reads and writes to "/tmp/*" for this session',
+    };
+
+    it("renders the width row after the session row when the ask is widenable", () => {
+      const { view, captured } = makeFakeView(true);
+      void presentInlinePermissionPrompt(view, "Permission Required", ASK, {
+        sessionLabel: 'Yes, allow writes to "/tmp/*" for this session',
+        sessionWidth,
+      });
+      expect(decisionOptionKeys(captured)).toEqual(["y", "s", "b", "n", "r"]);
+      expect(captured.component?.render(120).join("\n")).toContain(
+        sessionWidth.label,
+      );
+    });
+
+    it("renders no width row for an ask that is not widenable", () => {
+      const { view, captured } = makeFakeView(true);
+      void presentInlinePermissionPrompt(view, "Permission Required", ASK);
+      expect(decisionOptionKeys(captured)).toEqual(["y", "s", "n", "r"]);
+    });
+
+    it("commits the family width on the b hotkey", async () => {
+      expect(await runPrompt(false, ["b"], { sessionWidth })).toEqual({
+        approved: true,
+        state: "approved_for_session",
+        sessionGrantWidth: "family",
+      });
+    });
+
+    it("leaves the s hotkey at the proven width", async () => {
+      expect(await runPrompt(false, ["s"], { sessionWidth })).toEqual({
+        approved: true,
+        state: "approved_for_session",
+      });
+    });
+  });
+
   describe("approve-for-session scope (forwarded asks)", () => {
     const options: RequestPermissionOptions = {
       sessionScope: {

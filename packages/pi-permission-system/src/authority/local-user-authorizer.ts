@@ -1,4 +1,5 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { provenDirectionOf } from "#src/approval-grant";
 import type {
   PermissionPromptDecision,
   RequestPermissionOptions,
@@ -8,7 +9,11 @@ import type {
   PromptPreferences,
   requestPermissionDecision,
 } from "#src/authority/permission-prompt-component";
-import { buildForwardedScopeLabels } from "#src/pattern-suggest";
+import {
+  buildDirectionalSessionLabels,
+  buildForwardedScopeLabels,
+  describeGrantTarget,
+} from "#src/pattern-suggest";
 import {
   emitUiPromptEvent,
   type PermissionEventBus,
@@ -65,23 +70,39 @@ export class LocalUserAuthorizer implements TerminalAuthorizer {
 }
 
 /**
- * A forwarded ask carrying a session-approval suggestion offers the scope
- * choice (subagent vs whole session); any other ask keeps its single
- * "for this session" option (custom label when the gate supplied one).
+ * The dialog options this ask offers, composed from three independent groups.
+ *
+ * The label names what the session grant covers (a gate-supplied one, or one
+ * derived from the grants themselves for a path ask). An ask whose grants all
+ * prove the same direction additionally offers the both-directions width
+ * (#813). A forwarded ask additionally offers the scope choice (subagent vs
+ * whole session).
+ *
+ * They compose rather than exclude: a forwarded path ask offers all three, and
+ * an ask that qualifies for none passes `undefined` so the dialog keeps its
+ * defaults.
  */
 function buildRequestOptions(
   details: PromptPermissionDetails,
 ): RequestPermissionOptions | undefined {
   const grants = details.sessionApproval?.grants ?? [];
-  if (details.forwarding && grants.length > 0) {
-    return {
-      sessionScope: buildForwardedScopeLabels(
-        details.forwarding.requesterAgentName,
-        grants,
-      ),
-    };
-  }
-  return details.sessionLabel
-    ? { sessionLabel: details.sessionLabel }
-    : undefined;
+  const direction = provenDirectionOf(grants);
+  const widths = direction
+    ? buildDirectionalSessionLabels(direction, describeGrantTarget(grants))
+    : null;
+  const sessionLabel = widths?.sessionLabel ?? details.sessionLabel;
+
+  const options: RequestPermissionOptions = {
+    ...(sessionLabel ? { sessionLabel } : {}),
+    ...(widths ? { sessionWidth: { label: widths.widenedLabel } } : {}),
+    ...(details.forwarding && grants.length > 0
+      ? {
+          sessionScope: buildForwardedScopeLabels(
+            details.forwarding.requesterAgentName,
+            grants,
+          ),
+        }
+      : {}),
+  };
+  return Object.keys(options).length > 0 ? options : undefined;
 }
