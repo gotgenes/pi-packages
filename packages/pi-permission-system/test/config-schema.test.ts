@@ -149,6 +149,44 @@ describe("unifiedConfigSchema", () => {
       },
     );
 
+    it("accepts exactly the directional surfaces the schema documents", () => {
+      const permission = (
+        buildPermissionsJsonSchema().properties as Record<
+          string,
+          Record<string, unknown>
+        >
+      ).permission;
+      const documented = Object.keys(
+        permission.properties as Record<string, unknown>,
+      ).filter((key) => /^(path|external_directory)_/.test(key));
+
+      expect(documented.toSorted()).toEqual([
+        "external_directory_read",
+        "external_directory_write",
+        "path_read",
+        "path_write",
+      ]);
+      for (const key of documented) {
+        expect(
+          unifiedConfigSchema.safeParse({ permission: { [key]: "allow" } })
+            .success,
+        ).toBe(true);
+      }
+    });
+
+    it("enumerates exactly those spellings when rejecting a misspelling", () => {
+      const result = unifiedConfigSchema.safeParse({
+        permission: { path_wrote: { "*": "deny" } },
+      });
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0]?.message).toBe(
+          'Unknown directional surface key "path_wrote". The legal spellings are path_read, path_write, external_directory_read, external_directory_write.',
+        );
+      }
+    });
+
     it("still accepts an arbitrary tool-name surface", () => {
       expect(
         unifiedConfigSchema.safeParse({
