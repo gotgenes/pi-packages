@@ -49,30 +49,36 @@ function findNode(node: TSNode, type: string): TSNode | null {
   return null;
 }
 
-/** Parse a bash snippet and return the first `command` node. */
-async function parseCommandNode(cmd: string): Promise<{
+/** A parsed node of a requested type, with the tree that owns it. */
+interface ParsedNode {
   node: TSNode;
   tree: { rootNode: TSNode; delete(): void };
-}> {
+}
+
+/**
+ * Parse a bash snippet and return its first node of `type`.
+ *
+ * The node type is a parameter rather than baked into a per-type wrapper
+ * because it is an external fact about the tree-sitter-bash grammar, and the
+ * collectors under test dispatch on several of them.
+ */
+async function parseNode(cmd: string, type: string): Promise<ParsedNode> {
   const parser = await getParser();
   const tree = parser.parse(cmd);
   if (!tree) throw new Error("parser.parse returned null");
-  const node = findNode(tree.rootNode, "command");
-  if (!node) throw new Error(`no command node found in: ${cmd}`);
+  const node = findNode(tree.rootNode, type);
+  if (!node) throw new Error(`no ${type} node found in: ${cmd}`);
   return { node, tree };
 }
 
+/** Parse a bash snippet and return the first `command` node. */
+async function parseCommandNode(cmd: string): Promise<ParsedNode> {
+  return parseNode(cmd, "command");
+}
+
 /** Parse a bash snippet and return the first `file_redirect` node. */
-async function parseRedirectNode(cmd: string): Promise<{
-  node: TSNode;
-  tree: { rootNode: TSNode; delete(): void };
-}> {
-  const parser = await getParser();
-  const tree = parser.parse(cmd);
-  if (!tree) throw new Error("parser.parse returned null");
-  const node = findNode(tree.rootNode, "file_redirect");
-  if (!node) throw new Error(`no file_redirect node found in: ${cmd}`);
-  return { node, tree };
+async function parseRedirectNode(cmd: string): Promise<ParsedNode> {
+  return parseNode(cmd, "file_redirect");
 }
 
 // ── extractCommandName ────────────────────────────────────────────────────────
