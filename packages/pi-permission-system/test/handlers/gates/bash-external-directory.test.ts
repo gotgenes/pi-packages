@@ -327,18 +327,31 @@ describe("describeBashExternalDirectoryGate", () => {
       );
     });
 
-    it("falls back to the bare family when one ask spans two directions", async () => {
+    it("grants each path only the direction its own token proved", async () => {
+      const result = (await describeGate(
+        makeTcc({ input: { command: "cat /outside/a.ts > /elsewhere/b.ts" } }),
+        makeResolver(makeCheckResult("ask")),
+      )) as GateDescriptor;
+
+      expect(result.sessionApproval?.grants).toEqual([
+        { surface: "external_directory_read", pattern: "/outside/*" },
+        { surface: "external_directory_write", pattern: "/elsewhere/*" },
+      ]);
+    });
+
+    it("grants both directions when two directions share a directory", async () => {
       const result = (await describeGate(
         makeTcc({ input: { command: "cat /outside/a.ts > /outside/b.ts" } }),
         makeResolver(makeCheckResult("ask")),
       )) as GateDescriptor;
 
-      // One session approval holds one surface for all its patterns, so a
-      // mixed-direction ask grants exactly today's width, never wider.
-      expect(result.sessionApproval?.grants[0]?.surface).toBe(
-        "external_directory",
-      );
-      expect(result.sessionApproval?.grants.length).toBe(2);
+      // Both tokens derive the same directory glob, so the two grants
+      // reconstitute what the bare family sugar-expands to. That is correct:
+      // the user did approve a read and a write in this directory.
+      expect(result.sessionApproval?.grants).toEqual([
+        { surface: "external_directory_read", pattern: "/outside/*" },
+        { surface: "external_directory_write", pattern: "/outside/*" },
+      ]);
     });
 
     it("records the deciding path's effect and blame source in the log", async () => {

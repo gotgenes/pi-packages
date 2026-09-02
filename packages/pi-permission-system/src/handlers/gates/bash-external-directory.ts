@@ -18,11 +18,11 @@ import type { ToolCallContext } from "./types";
  * Returns a `GateDescriptor` with multi-pattern sessionApproval for uncovered paths.
  *
  * Each path is resolved on the narrowest `external_directory`-family surface
- * its own attributed effect names. The session approval holds one surface for
- * all its patterns, so it narrows only when every uncovered path agrees; a
- * mixed-direction ask falls back to the bare family, which is exactly today's
- * width. Closing that last gap needs `(surface, pattern)` pairs on the
- * approval and its forwarded wire form (#810).
+ * its own attributed effect names, and the session approval records one grant
+ * per uncovered path at that same surface (#810) — so an ask mixing a proven
+ * read with a proven write grants each path only its own direction, never both
+ * on both. Two paths sharing a directory derive the same glob and so grant
+ * both directions there, which is what the prompt showed.
  *
  * The shell command (native `bash` or an aliased shell tool) is read from the
  * injected `BashProgram`, which owns the source text it was parsed from, so
@@ -104,16 +104,14 @@ export function describeBashExternalDirectoryGate(
     surface,
   });
 
-  const approvalSurface = approvalSurfaceFor(uncoveredEntries);
-
   return {
     surface,
     input: {},
     payload,
     sessionApproval: SessionApproval.forGrants(
-      uncoveredEntries.map(({ path }) => ({
-        surface: approvalSurface,
-        pattern: normalizer.approvalPatternFor(path),
+      uncoveredEntries.map((entry) => ({
+        surface: entry.surface,
+        pattern: normalizer.approvalPatternFor(entry.path),
       })),
     ),
     promptDetails: {
@@ -142,21 +140,4 @@ export function describeBashExternalDirectoryGate(
     },
     preCheck,
   };
-}
-
-/**
- * The surface one session approval can carry for every uncovered path at once.
- *
- * A {@link SessionApproval} holds one surface for all its patterns, so it can
- * narrow only when the whole ask agrees on a direction. The bare family is the
- * fallback because it sugar-expands onto both members — exactly the width a
- * mixed-direction command is granted today, never wider.
- */
-function approvalSurfaceFor(
-  uncoveredEntries: readonly { readonly surface: string }[],
-): string {
-  const surfaces = new Set(uncoveredEntries.map(({ surface }) => surface));
-  return surfaces.size === 1
-    ? [...surfaces][0]
-    : ("external_directory" as const);
 }
