@@ -400,20 +400,25 @@ export class Subagent {
 		}
 	}
 
-	/** Terminate a resume as completed: mark, release listeners, notify observer. */
+	/** Terminate a resume as completed: mark, dispose or hold the workspace, release listeners, notify observer. */
 	completeResume(result: string): void {
-		// A child answering one question may need to ask another.
+		// A child answering one question may need to ask another, which holds the
+		// workspace for the next resume the same way the original run did.
 		const { question, body } = parseQuestionForParent(result);
+		const finalResult = question !== undefined
+			? body
+			: body + this.workspaceBracket.dispose({ status: "completed", description: this.description });
 		this.state.setPendingQuestion(question);
-		this.markCompleted(body);
+		this.markCompleted(finalResult);
 		this.listeners.release();
 		this.execution.observer?.onResumeFinished?.(this);
 	}
 
-	/** Terminate a resume as errored: mark, release listeners, notify observer. */
+	/** Terminate a resume as errored: mark, release listeners, best-effort workspace dispose, notify observer. */
 	failResume(err: unknown): void {
 		this.markError(err);
 		this.listeners.release();
+		this.disposeWorkspaceQuietly("error");
 		this.execution.observer?.onResumeFinished?.(this);
 	}
 
@@ -541,9 +546,14 @@ export class Subagent {
 		// precedes disposal because the question is what decides whether the
 		// workspace is disposed at all.
 		const { question, body } = parseQuestionForParent(result.responseText);
-		const finalResult =
-			body +
-			this.workspaceBracket.dispose({ status: finalStatus, description: this.description });
+		// A completed child that declared a question is inviting a resume, so its
+		// workspace stays live for the resume to re-enter. Every other outcome ends
+		// the run for good and tears it down here.
+		const holdForResume = finalStatus === "completed" && question !== undefined;
+		const finalResult = holdForResume
+			? body
+			: body +
+				this.workspaceBracket.dispose({ status: finalStatus, description: this.description });
 		this.state.setPendingQuestion(question);
 
 		if (result.aborted) this.markAborted(finalResult);
@@ -559,6 +569,7 @@ export class Subagent {
 	 * swallowed so the caller's remaining cleanup still runs.
 	 */
 	async disposeSession(): Promise<void> {
+		this.disposeHeldWorkspace();
 		await disposeQuietly(this.subagentSession, "child session dispose");
 	}
 
@@ -574,6 +585,7 @@ export class Subagent {
 	async releaseSession(): Promise<void> {
 		const session = this.subagentSession;
 		if (!session) return;
+		this.disposeHeldWorkspace();
 		this._releasedOutputFile = session.outputFile;
 		this.subagentSession = undefined;
 		this._sessionReleased = true;
@@ -586,6 +598,19 @@ export class Subagent {
 		this.listeners.release();
 		this.disposeWorkspaceQuietly("error");
 		this.execution.observer?.onRunFinished?.(this);
+	}
+
+	/**
+	 * Tear down a workspace still held once the agent's run is over — the child
+	 * asked a question nobody answered, and its session is now going away.
+	 *
+	 * A no-op while the agent is active: an in-flight run's own terminal
+	 * transition owns disposal, and pulling the directory out from under a live
+	 * child is not this path's business.
+	 */
+	private disposeHeldWorkspace(): void {
+		if (this.isActive()) return;
+		this.disposeWorkspaceQuietly(this.status);
 	}
 
 	/**

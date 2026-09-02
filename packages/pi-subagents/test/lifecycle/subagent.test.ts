@@ -748,6 +748,130 @@ describe("Subagent — workspaceDisposed", () => {
 	});
 });
 
+const ADDENDUM = "\n\n---\nsaved to branch foo";
+
+/** Run an agent under a workspace provider to a terminal turn-loop result. */
+async function runWithWorkspace(result: Partial<TurnLoopResult> & { responseText: string }) {
+	const { factory, stub } = createFactory();
+	stub.runTurnLoop.mockResolvedValue({ aborted: false, steered: false, ...result });
+	const workspace = makeWorkspace("/ws/dir", { resultAddendum: ADDENDUM });
+	const agent = createRunnableAgent({
+		createSubagentSession: factory,
+		workspaceProvider: makeWorkspaceProvider(workspace),
+	});
+	await agent.run();
+	return { agent, workspace, stub };
+}
+
+/** Run an agent to a question-ending completion, so its workspace is still held. */
+function heldWorkspaceAgent() {
+	return runWithWorkspace({
+		responseText: "Mapped the configs.\n<question-for-parent>\nWhich one?\n</question-for-parent>",
+	});
+}
+
+describe("Subagent — workspace hold for a declared question", () => {
+	it("holds the workspace when a completed child declared a question", async () => {
+		const { agent, workspace } = await heldWorkspaceAgent();
+		expect(workspace.dispose).not.toHaveBeenCalled();
+		expect(agent.workspaceDisposed).toBe(false);
+		expect(agent.pendingQuestion).toBe("Which one?");
+		// Nothing was disposed, so there is no addendum to fold in yet.
+		expect(agent.result).toBe("Mapped the configs.");
+	});
+
+	it("disposes an aborted run that declared a question", async () => {
+		const { agent, workspace } = await runWithWorkspace({
+			responseText: "<question-for-parent>\nStill stuck?\n</question-for-parent>",
+			aborted: true,
+		});
+		expect(workspace.dispose).toHaveBeenCalledWith({ status: "aborted", description: "run test" });
+		expect(agent.pendingQuestion).toBe("Still stuck?");
+		expect(agent.result).toBe(ADDENDUM);
+	});
+
+	it("disposes a steered run that declared a question", async () => {
+		const { agent, workspace } = await runWithWorkspace({
+			responseText: "Partway.\n<question-for-parent>\nWhich one?\n</question-for-parent>",
+			steered: true,
+		});
+		expect(workspace.dispose).toHaveBeenCalledWith({ status: "steered", description: "run test" });
+		expect(agent.result).toBe(`Partway.${ADDENDUM}`);
+	});
+});
+
+describe("Subagent — disposing a held workspace", () => {
+	it("disposes when the resumed child answers without asking again", async () => {
+		const { agent, workspace, stub } = await heldWorkspaceAgent();
+		stub.resumeTurnLoop.mockResolvedValue("Used the project config. Done.");
+
+		await agent.resume("The project one.");
+
+		expect(workspace.dispose).toHaveBeenCalledWith({ status: "completed", description: "run test" });
+		expect(agent.result).toBe(`Used the project config. Done.${ADDENDUM}`);
+	});
+
+	it("keeps holding when the resumed child declares another question", async () => {
+		const { agent, workspace, stub } = await heldWorkspaceAgent();
+		stub.resumeTurnLoop.mockResolvedValue(
+			"Thanks.\n<question-for-parent>\nAnd the fallback?\n</question-for-parent>",
+		);
+
+		await agent.resume("The project one.");
+
+		expect(workspace.dispose).not.toHaveBeenCalled();
+		expect(agent.pendingQuestion).toBe("And the fallback?");
+	});
+
+	it("disposes best-effort when the resume throws", async () => {
+		const { agent, workspace, stub } = await heldWorkspaceAgent();
+		stub.resumeTurnLoop.mockRejectedValue(new Error("resume exploded"));
+
+		await expect(agent.resume("The project one.")).resolves.toBeUndefined();
+
+		expect(agent.status).toBe("error");
+		expect(workspace.dispose).toHaveBeenCalledWith({ status: "error", description: "run test" });
+	});
+
+	it("disposes when the retention sweep releases the session", async () => {
+		const { agent, workspace } = await heldWorkspaceAgent();
+		await agent.releaseSession();
+		expect(workspace.dispose).toHaveBeenCalledWith({ status: "completed", description: "run test" });
+	});
+
+	it("disposes when the record's session is torn down", async () => {
+		const { agent, workspace } = await heldWorkspaceAgent();
+		await agent.disposeSession();
+		expect(workspace.dispose).toHaveBeenCalledWith({ status: "completed", description: "run test" });
+	});
+
+	it("leaves a running agent's workspace alone when its session is torn down", async () => {
+		const { factory, stub } = createFactory();
+		const turnLoop = Promise.withResolvers<TurnLoopResult>();
+		stub.runTurnLoop.mockReturnValue(turnLoop.promise);
+		const workspace = makeWorkspace("/ws/dir", { resultAddendum: ADDENDUM });
+		const agent = createRunnableAgent({
+			createSubagentSession: factory,
+			workspaceProvider: makeWorkspaceProvider(workspace),
+		});
+		agent.start();
+		await vi.waitFor(() => { expect(agent.isSessionReady()).toBe(true); });
+
+		await agent.disposeSession();
+		expect(workspace.dispose).not.toHaveBeenCalled();
+
+		turnLoop.resolve({ responseText: "done", aborted: false, steered: false });
+		await agent.promise;
+	});
+
+	it("disposes a held workspace only once across release and teardown", async () => {
+		const { agent, workspace } = await heldWorkspaceAgent();
+		await agent.releaseSession();
+		await agent.disposeSession();
+		expect(workspace.dispose).toHaveBeenCalledOnce();
+	});
+});
+
 describe("Subagent.run() — error handling", () => {
 	it("transitions to error when the turn loop throws", async () => {
 		const { factory, stub } = createFactory();
