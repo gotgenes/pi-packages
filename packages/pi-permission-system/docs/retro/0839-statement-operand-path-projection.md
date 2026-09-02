@@ -45,6 +45,41 @@ Blast radius was measured with a spike rather than estimated, the operator settl
 - `packages/pi-permission-system/src/access-intent/bash/token-collection.ts` — the hand-rolled `for (let i = 0; i < node.childCount; i++) { const child = node.child(i); if (!child) continue; … }` loop repeats at least five times in this file alone, plus more in `command-enumeration.ts`, `bash-path-resolver.ts`, and `redirect-analysis.ts`; a `namedChildren(node)` / `eachChild(node)` helper is a real, concentrated cleanup but retrofitting the existing sites is unrelated to this change's diff.
   Rejected as scope creep by the Tidy-First assessor; a candidate for a craftsmanship round.
 
+## Stage: Implementation — TDD (2026-09-02T19:49:53Z)
+
+### Session summary
+
+Executed all six planned cycles plus two unplanned follow-on commits: the Tidy-First test-helper extraction, the `for`/`select` mechanism, the `case` instantiation, the committed measurement instrument, the ADR 0009 amendment, and the roadmap/skill doc landing.
+The package's test count went 3977 → 4006 (+29 across `token-collection.test.ts`, `program.test.ts`, and `bash-external-directory.test.ts`); every other package is untouched.
+All deterministic gates pass, and the pre-completion reviewer returned **PASS**.
+
+### Observations
+
+- **A predicted mutation did not kill what the plan said it would, and that was the session's most useful finding.**
+  The plan claimed flipping the `case` operand side from `before-in` to `after-in` would turn both the subject pins and the `case`-pattern pins red.
+  It kills only the subject pins: a `case_item` is not an `ARG_NODE_TYPES` member, so with either side setting the arms fall through to the ordinary recursion, which reads no `word` text.
+  Two independent facts protect the pattern, and the one that actually does is the `ARG_NODE_TYPES` guard — verified by mutating that instead, which turns both pattern pins red.
+  Counting reds against the prediction is what surfaced it; "I mutated and saw reds" would have passed.
+- **One assertion survived every mutation and had to be rewritten before commit.**
+  `expect(…).not.toContain("f")` for the loop variable cannot fail under any mutation of this module, because a `variable_name` node is never argument-typed.
+  Rewritten as a whole-list `toEqual`, which mutation 1 kills.
+  A weak absence assertion is exactly where a vacuous pin hides.
+- **Test fixtures had to be chosen so the assertion sees only its subject.**
+  The `case` cases first used `a) echo b;;` arms, which contribute a `b` token and made "leaves an arm's pattern uncollected" red for the wrong reason.
+  Switching the arms to `true` (no operand) isolated the claim.
+- **The `case` and `for` halves were split into separate commits mid-flight.**
+  The `case` tests had already been written alongside the `for` tests; landing them together would have left the tree red at the step-2 commit, so they were pulled back out and re-added in step 3.
+  Worth doing — it gave each half its own killing mutation and its own `BREAKING CHANGE:` footer.
+- **The new instrument failed a gate the plan did not anticipate.**
+  Repo-root `pnpm fallow dead-code` reports a `scripts/*.mjs` file with no `package.json` entry as an unused file; every sibling `measure-*.mjs` carries a `measure:*` script for exactly that reason.
+  Added as `ce299c1f`; `package.json` was missing from the plan's Module-Level Changes.
+- **The reviewer's re-run caught a false claim in the instrument's own header.**
+  It said the node and operand counts are stable while the command count drifts; they drift too, whenever a newly logged command carries a statement operand — which the reviewer demonstrated (133/344 against the recorded 132/343, from this session's own probe commands entering the log).
+  Corrected in `1f419a18`, a comment-only commit landed after the PASS.
+- **Pre-completion reviewer: PASS**, with an independent re-derivation of the "nothing previously projected is dropped" invariant against real parses over nine shapes the tests do not cover — a redirected loop, nested loops, `;&` fallthrough arms, `c_style_for_statement` (a distinct node type), a process substitution in a word list, and a `concatenation` carrying both a literal and a substitution.
+  It also confirmed the `in` partition survives `case in in in) echo hi;; esac`, because a literal `in` word is a **named** node while the partitioning keyword is anonymous.
+  No warnings beyond the header wording above.
+
 [#645]: https://github.com/gotgenes/pi-packages/issues/645
 [#609]: https://github.com/gotgenes/pi-packages/issues/609
 [#741]: https://github.com/gotgenes/pi-packages/issues/741
