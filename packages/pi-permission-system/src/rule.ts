@@ -1,6 +1,7 @@
 import type { PathFlavor } from "#src/path/path-flavor";
 
 import { PATH_SURFACES } from "./access-intent/path-surfaces";
+import { expandHomePath } from "./expand-home";
 import type { PermissionState } from "./types";
 import { type WildcardMatchOptions, wildcardMatch } from "./wildcard-matcher";
 
@@ -137,6 +138,54 @@ function ruleMatches(
     wildcardMatch(rule.surface, surface) &&
     wildcardMatch(rule.pattern, value, matchOptions)
   );
+}
+
+/**
+ * Whether every value on `surface` resolves to `deny`.
+ *
+ * This is a different question from "what does the surface's catch-all say?",
+ * and it carries a different burden of proof: the catch-all answers *what this
+ * surface is*, while this answers *whether anything at all could get through* —
+ * the question tool exposure has to ask before withholding a tool from the
+ * agent entirely.
+ *
+ * Reachability is decided by probing each pattern configured on the surface as
+ * a representative value through {@link evaluate}, so last-match-wins shadowing
+ * is honored: an exception written *after* a `deny` catch-all is reachable,
+ * while one written *before* it is not.
+ *
+ * The probe is an approximation of "does any string resolve non-deny", not a
+ * decision procedure for it. Being wrong in either direction only changes
+ * whether the agent sees the tool — the invocation gate re-evaluates the real
+ * value against the same ruleset either way.
+ */
+export function isSurfaceFullyDenied(
+  surface: string,
+  rules: Ruleset,
+  flavor: PathFlavor,
+): boolean {
+  for (const value of probeValuesForSurface(surface, rules)) {
+    if (evaluate(surface, value, rules, flavor).action !== "deny") return false;
+  }
+  return true;
+}
+
+/**
+ * The representative values {@link isSurfaceFullyDenied} probes: the catch-all,
+ * plus every pattern configured on a rule whose surface reaches `surface`.
+ *
+ * Each pattern is home-expanded because {@link compileWildcardPattern} expands
+ * the *pattern* side only; an unexpanded `~/notes/*` probe would fail to match
+ * its own rule and report the surface denied.
+ */
+function probeValuesForSurface(surface: string, rules: Ruleset): Set<string> {
+  const values = new Set<string>(["*"]);
+  for (const rule of rules) {
+    if (wildcardMatch(rule.surface, surface)) {
+      values.add(expandHomePath(rule.pattern));
+    }
+  }
+  return values;
 }
 
 /**

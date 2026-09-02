@@ -7,6 +7,7 @@ import {
   evaluateFirst,
   evaluateMostRestrictive,
   floorAllowsToAsk,
+  isSurfaceFullyDenied,
   rewriteAsksToYolo,
 } from "#src/rule";
 
@@ -907,5 +908,158 @@ describe("floorAllowsToAsk", () => {
   test("'fail-closed' is a valid RuleOrigin", () => {
     const origin: RuleOrigin = "fail-closed";
     expect(origin).toBe("fail-closed");
+  });
+});
+
+describe("isSurfaceFullyDenied", () => {
+  function rule(
+    surface: string,
+    pattern: string,
+    action: Rule["action"],
+    layer?: Rule["layer"],
+  ): Rule {
+    return {
+      surface,
+      pattern,
+      action,
+      origin: "global",
+      ...(layer && { layer }),
+    };
+  }
+
+  const denyBashAll = rule("bash", "*", "deny");
+  const askBashGit = rule("bash", "git *", "ask");
+  const universalDeny = rule("*", "*", "deny", "default");
+
+  describe("surfaces with no reachable exception", () => {
+    test("a bare deny catch-all denies the whole surface", () => {
+      expect(isSurfaceFullyDenied("bash", [denyBashAll], posixPathFlavor)).toBe(
+        true,
+      );
+    });
+
+    test("an exception written before the deny catch-all is shadowed", () => {
+      expect(
+        isSurfaceFullyDenied(
+          "bash",
+          [askBashGit, denyBashAll],
+          posixPathFlavor,
+        ),
+      ).toBe(true);
+    });
+
+    test("a universal deny rule denies every surface", () => {
+      expect(
+        isSurfaceFullyDenied("bash", [universalDeny], posixPathFlavor),
+      ).toBe(true);
+      expect(
+        isSurfaceFullyDenied("read", [universalDeny], posixPathFlavor),
+      ).toBe(true);
+    });
+
+    test("a permissive rule on another surface does not reach this one", () => {
+      expect(
+        isSurfaceFullyDenied(
+          "bash",
+          [denyBashAll, rule("read", "*.md", "allow")],
+          posixPathFlavor,
+        ),
+      ).toBe(true);
+    });
+  });
+
+  describe("surfaces with a reachable exception", () => {
+    test("an exception written after the deny catch-all keeps the surface reachable", () => {
+      expect(
+        isSurfaceFullyDenied(
+          "bash",
+          [denyBashAll, askBashGit],
+          posixPathFlavor,
+        ),
+      ).toBe(false);
+    });
+
+    test("a surface with no rules at all falls to the synthesized ask", () => {
+      expect(isSurfaceFullyDenied("bash", [], posixPathFlavor)).toBe(false);
+    });
+
+    test("a surface exception escapes a universal deny", () => {
+      expect(
+        isSurfaceFullyDenied(
+          "bash",
+          [universalDeny, askBashGit],
+          posixPathFlavor,
+        ),
+      ).toBe(false);
+    });
+
+    test("a narrower deny below the exception does not re-deny the whole surface", () => {
+      expect(
+        isSurfaceFullyDenied(
+          "bash",
+          [denyBashAll, askBashGit, rule("bash", "git push *", "deny")],
+          posixPathFlavor,
+        ),
+      ).toBe(false);
+    });
+
+    test("a per-tool path map with a permissive pattern keeps the tool reachable", () => {
+      expect(
+        isSurfaceFullyDenied(
+          "read",
+          [rule("read", "*", "deny"), rule("read", "*.md", "allow")],
+          posixPathFlavor,
+        ),
+      ).toBe(false);
+    });
+  });
+
+  describe("home-directory patterns", () => {
+    // compileWildcardPattern home-expands the pattern side only, so a probe
+    // value must be expanded the same way or the pattern cannot match itself.
+    test.each(["~/notes/*", "$HOME/notes/*", "${HOME}/notes/*", "~", "$HOME"])(
+      "%s reaches through a deny catch-all",
+      (pattern) => {
+        expect(
+          isSurfaceFullyDenied(
+            "read",
+            [rule("read", "*", "deny"), rule("read", pattern, "allow")],
+            posixPathFlavor,
+          ),
+        ).toBe(false);
+      },
+    );
+  });
+
+  describe("pattern shapes", () => {
+    test.each([
+      "*",
+      "**",
+      "git *",
+      "git",
+      "npm i*",
+      "a?c",
+      "*.env",
+      "exa:*",
+      "cargo build --release",
+    ])("%s reaches through a deny catch-all", (pattern) => {
+      expect(
+        isSurfaceFullyDenied(
+          "bash",
+          [denyBashAll, rule("bash", pattern, "ask")],
+          posixPathFlavor,
+        ),
+      ).toBe(false);
+    });
+  });
+
+  test("a win32 path surface folds separators and case when probing", () => {
+    expect(
+      isSurfaceFullyDenied(
+        "read",
+        [rule("read", "*", "deny"), rule("read", "C:/Notes/*", "allow")],
+        win32PathFlavor,
+      ),
+    ).toBe(false);
   });
 });
