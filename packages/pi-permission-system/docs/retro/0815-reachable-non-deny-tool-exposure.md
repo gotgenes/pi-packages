@@ -34,3 +34,32 @@ Plan committed at `packages/pi-permission-system/docs/plans/0815-reachable-non-d
 
 - `packages/pi-permission-system/src/rule.ts:143` — a stale duplicate doc comment on `evaluateMostRestrictive` describing a different function (also flagged by the Phase 14 craftsmanship scout); in a file this change touches, but not at its insertion point, so the assessor declined it as scope creep.
 - `packages/pi-permission-system/test/helpers/authorizer-fixtures.ts` and `test/authority/{authorizer-chain,delegation-envelope,forwarded-request-server}.test.ts` — the narrow `PermissionQuery` mock (`{ checkPermission, getToolPermission }`) is hand-rolled in four places; untouched by this change because `PermissionQuery` deliberately does not gain the new member.
+
+## Stage: Implementation — TDD (2026-09-02T07:16:30Z)
+
+### Session summary
+
+All six planned TDD steps landed in order, plus two unplanned cleanup commits, for eight commits on the branch.
+Tool exposure now asks `isToolFullyDenied` — backed by the pure `isSurfaceFullyDenied` probe in `src/rule.ts` — instead of `getToolPermission`'s catch-all lookup, and the predicate is published on `PermissionsService`.
+Test count went 3862 → 3897 in `pi-permission-system` (+35); every deterministic gate is green.
+
+### Observations
+
+- Every killing mutation the plan named behaved as predicted, with one instructive exception.
+  Mutation 1 for step 4 (`isToolFullyDenied` reverts to `getToolPermission(...) === "deny"`) killed the three manager tests but **not** the handler exposure test, because `before-agent-start.test.ts` drives a fake `permissionManager` and never runs the real implementation.
+  The wiring is pinned instead by two other mutations: deleting the `shouldExposeTool` call site, and reverting the call site to the pre-fix `getToolPermission(...) === "deny"` lookup.
+  Both killed the same three handler tests, so the seam is covered — but the plan attributed the coverage to the wrong mutation.
+- Two findings the plan did not anticipate, both landed as `ed37c239`.
+  `fallow` began reporting `PermissionResolver.getToolPermission` as an unused class member: its last concrete-typed caller was the handler, and after the rewire it is reached only through `LocalPermissionsService`'s structural `ResolverForService` view, which the tracer cannot follow but `tsc` enforces.
+  Suppressed with the reason recorded beside it, since the `fallow` skill's preferred `implements` fix would require exporting a consumer-owned narrow interface backwards into the provider.
+  Biome also flagged `noTemplateCurlyInString` on the `${HOME}` probe pattern, which is a shell expansion the matcher must handle; suppressed with the same wording sibling test files already use.
+- One file was touched that the plan's Module-Level Changes did not list: `test/service.test.ts` carries a **second** local resolver fake (the service-adapter suite's `makeResolver`, distinct from the `makeService` the Tidy-First prep consolidated), which needed the new member too.
+  The plan's grep found the three `PermissionsService` literals and missed this `ResolverForService`-shaped one.
+- The plan's home-expansion finding held up under implementation: dropping `expandHomePath` from the probe candidate turns all five `~`/`$HOME`/`${HOME}` tests red and leaves every bash-surface test green, exactly as predicted.
+- Pre-completion reviewer: WARN (1 non-blocking finding), now fixed.
+
+#### Reviewer warnings
+
+- The reviewer found that `docs/cross-extension-api.md`'s interface listing — and the source JSDoc it was copied from in `src/service.ts` — still recommended `getToolPermission` "for pre-filtering tools before creating a child session", contradicting the corrected prose five lines below it in the same file.
+  Fixed exhaustively in `774827c6` by grepping every `pre-filter` occurrence across `src/` and `docs/` rather than only the two the reviewer named.
+- The reviewer independently re-derived seven adversarial configs against `isSurfaceFullyDenied` (shadowing, universal deny, cross-surface leakage, re-shadowing, floor interaction) and traced the fail-closed/yolo and exposure-is-not-authorization claims through the code rather than accepting them from the plan; all held.
