@@ -117,5 +117,19 @@ This is the `testing` skill's "annotation erases `Mock<...>` methods" rule arriv
 `sessionGrantWidth` is absent-means-`"proven"` in four places (the decision, the gate result, the wire, the review log) — except the review log, which writes `"proven"` explicitly because a log is read rather than consumed and a reader should not have to know the default.
 That asymmetry is deliberate and is stated in `recordedGrantWidth`'s doc comment.
 
+## Stage: Sync (worktree) (2026-09-02T18:29:14Z)
+
+### Session summary
+
+Pre-push checks pass clean: `pnpm run lint` and `pnpm fallow dead-code` both green with no fixes needed.
+The plan's Release Recommendation is **ship independently**; no other package or in-flight worktree branch touches these files, so nothing is deferred at land time.
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-813--/2026-09-02T05-58-16-961Z_01a060b2-5c81-7791-9bb6-dc89e65892af.jsonl` — read with `read_session_file({ path: "..." })` for message-level verification at land/retro time.
+One continuous session spans planning, TDD implementation, and this sync stage — no separate spawn per stage, so this single file carries the whole history.
+
+### Observations
+
+Nothing to add beyond the TDD stage's own observations — this stage is a clean pass-through: checks were already green from the TDD session's end-of-cycle gates, re-run here unchanged.
+
 [#807]: https://github.com/gotgenes/pi-packages/issues/807
 [#810]: https://github.com/gotgenes/pi-packages/issues/810
