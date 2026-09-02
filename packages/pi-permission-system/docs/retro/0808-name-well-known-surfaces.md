@@ -71,5 +71,19 @@ Pre-completion reviewer: **PASS**.
 - One process slip worth remembering: the first mutation `Edit` used a hand-built absolute path with `packages/` dropped, which tripped the `external_directory` gate instead of failing fast — the hazard `AGENTS.md` already names.
   Repo-relative paths worked on the retry.
 
+## Stage: Sync (worktree) (2026-09-02T02:25:26Z)
+
+### Session summary
+
+Both pre-push gates passed clean on the first run (`pnpm run lint`: 0 findings across 1089 files; `pnpm fallow dead-code`: 0 issues across 321 entry points).
+The plan's `**Release:**` marker is `ship independently` — Phase 14 Step 9 is on the roadmap's independently-releasable list, so the root can dispatch a release for `pi-permission-system` without waiting on any other branch.
+No deferred work and no open follow-ups beyond [#868], already filed and dispositioned in the roadmap sweep.
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-808--/2026-09-01T22-42-34-760Z_01a05f23-7688-7be4-ae8a-ef2e4d101342.jsonl` — read with `read_session_file({ path: "<path>" })` for message-level verification at land/retro time.
+
+### Observations
+
+Nothing new since the TDD stage note — the tree was already green from the pre-completion review, so this stage was a confirmation pass rather than a fix cycle.
+
 [#806]: https://github.com/gotgenes/pi-packages/issues/806
 [#868]: https://github.com/gotgenes/pi-packages/issues/868
