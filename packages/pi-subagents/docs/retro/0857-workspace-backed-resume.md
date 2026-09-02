@@ -73,3 +73,17 @@ It survives only for an aborted or steered run that declared a question under a 
 `makeFailingWorkspaceProvider` was drafted into the shared test helper and removed before commit: the one failing-provider test builds its provider inline, so the export would have been speculative and `fallow dead-code` would have flagged it.
 
 The reviewer's own enumeration of disposal edges found no leak path, including the two the plan did not name: abort-while-queued (`guardedRun`'s guard means `run()` never prepares a workspace) and `abort()` on a running agent (the turn loop resolves `aborted: true`, which takes the unconditional-dispose branch).
+
+## Stage: Sync (worktree) (2026-09-02T05:03:28Z)
+
+### Session summary
+
+Pre-push checks both passed clean on first run: `pnpm run lint` (0 findings) and `pnpm fallow dead-code` (0 issues, 322 entry points).
+No fixes needed before rebase.
+The plan's `**Release:** ship independently` marker stands — no batch to coordinate, and the dispatch at ship time should name both `pi-subagents` and `pi-subagents-worktrees` (the latter for its `docs:` README commit).
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-857--/2026-09-02T03-15-11-510Z_01a0601d-0c16-7b7a-b1c3-e7726dc4490f.jsonl` — read with `read_session_file({ path: "..." })` for message-level verification at land/retro time.
+
+### Observations
+
+Nothing further to hand off: [#870] is already filed and dispositioned as Phase 22 Step 12, and no other deferred work surfaced during TDD.
