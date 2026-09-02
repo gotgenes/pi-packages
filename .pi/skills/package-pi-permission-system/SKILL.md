@@ -27,7 +27,10 @@ A dated `Baseline (<date>)` column is a fixed phase-open snapshot recomputed at 
 - Default to least privilege — when in doubt, prompt (`ask`), do not silently allow.
 - Enforce permissions deterministically; the same policy + same input must always produce the same decision.
 - Keep config files the source of truth; do not bake policy into code.
-- Hide denied tools from the agent before it starts (tool filtering + system-prompt sanitization).
+- Hide denied tools from the agent before it starts (tool filtering + system-prompt sanitization), but only when the surface is *fully* denied.
+  `shouldExposeTool` asks `isToolFullyDenied` — backed by `isSurfaceFullyDenied` (`src/rule.ts`), which probes each pattern configured on the surface through `evaluate` — not `getToolPermission`, which reports the catch-all alone and withheld `bash: {"*": "deny", "git *": "ask"}` outright (Refs #815).
+  Probing through `evaluate` is what makes ordering count: an exception after the `deny` catch-all is reachable, one before it is shadowed.
+  Exposure is not authorization — the `tool_call` gate re-evaluates the real value either way.
 - Keep block/ask/allow decisions reviewable: write to the permission review log by default.
 - Preserve the `/permission-system` slash command name — renaming it is a breaking change.
 - In the flat permission format, `permission["*"]` is the universal fallback; pattern ordering is last-match-wins.

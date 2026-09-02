@@ -295,6 +295,10 @@ A string value is a catch-all for that surface.
 Unknown or absent tools are not required in the config.
 If a tool is not registered at runtime, this extension blocks it before permission checks run.
 
+A tool is withheld from the model entirely only when **every** pattern configured under its surface resolves to `deny`.
+So `"bash": "deny"` hides the tool, while `"bash": { "*": "deny", "git *": "ask" }` keeps it visible — the agent can attempt a `git` command and be prompted, and everything else is denied at the gate.
+Ordering follows the same last-match-wins rule as every other lookup: an exception written *after* the `deny` catch-all is reachable, while one written *before* it is shadowed and the tool is hidden.
+
 #### Path Patterns for File Tools
 
 For path-bearing tools (`read`, `write`, `edit`, `find`, `grep`, `ls`), an object value maps file-path patterns to actions.
@@ -993,6 +997,9 @@ Avoid arrays, multi-line scalars, and YAML anchors.
 }
 ```
 
+The Bash tool stays visible to the agent here: the three `git` patterns are written after the `deny` catch-all, so they are reachable.
+Every other command is denied at the gate.
+
 ### Read-Only Bash Command Allowlist
 
 The [Read-Only Mode](#read-only-mode) recipe above gates *tools*; this one gates the *bash* surface.
@@ -1142,6 +1149,7 @@ Additional behaviors:
 
 - Unknown/unregistered tools are blocked before permission checks (prevents bypass attempts)
 - Tool filtering is restrict-only: the active set starts from pi's already-active tools (`pi.getActiveTools()`) and only ever has denied tools removed — the permission system never activates a tool pi left off by default (e.g. `find`, `grep`, `ls`)
+- A tool is removed only when every value under its surface resolves to `deny`; a surface with any reachable `allow` or `ask` pattern stays available (see [Tool Surfaces](#tool-surfaces))
 - The `Available tools:` system prompt section is narrowed to match the filtered active tool set: denied tools' lines are dropped, the rest are kept, and the section is removed entirely only when no tool is allowed
 - The narrowed prompt is recomputed and returned on every turn but is byte-stable for a stable policy/agent, so the provider's prompt cache (tools + system prefix) is preserved rather than rewritten each turn
 - Extension-provided tools like `task`, `mcp`, and third-party tools are handled by exact registered name
