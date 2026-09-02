@@ -30,9 +30,11 @@
  * | operands the broad classifier accepts (`path`) | 71 |
  * | operands the strict classifier accepts (`external_directory`) | 47 |
  *
- * The log grows with use, so the command count drifts between runs while the
- * node and operand counts are stable for a fixed corpus; re-run rather than
- * trusting any figure to be exact.
+ * The log grows with use, so every figure here drifts between runs — the node
+ * and operand counts move too, whenever a newly logged command happens to
+ * carry a statement operand. Re-run rather than trusting any figure to be
+ * exact, and read a small difference from these as log growth rather than as a
+ * change in behavior.
  *
  * Two figures this script does not compute, recorded here with the method that
  * produced them so they can be reproduced:
