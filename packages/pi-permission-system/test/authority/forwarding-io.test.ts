@@ -559,6 +559,61 @@ describe("readForwardedPermissionResponse — decidedBy field", () => {
   });
 });
 
+describe("readForwardedPermissionResponse — sessionGrantWidth field", () => {
+  let root: string;
+
+  afterEach(() => {
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  function writeAndRead(raw: unknown) {
+    root = mkdtempSync(join(tmpdir(), "io-grant-width-"));
+    const filePath = join(root, "res.json");
+    writeJsonFileAtomic(null, filePath, raw);
+    return readForwardedPermissionResponse(null, filePath);
+  }
+
+  function baseResponse() {
+    return {
+      approved: true,
+      state: "approved_for_session",
+      responderSessionId: "parent-session",
+      respondedAt: 1000,
+    };
+  }
+
+  it("round-trips the width the responder's human chose", () => {
+    expect(
+      writeAndRead({ ...baseResponse(), sessionGrantWidth: "family" })
+        ?.sessionGrantWidth,
+    ).toBe("family");
+  });
+
+  it("round-trips the proven width", () => {
+    expect(
+      writeAndRead({ ...baseResponse(), sessionGrantWidth: "proven" })
+        ?.sessionGrantWidth,
+    ).toBe("proven");
+  });
+
+  it("drops an unrecognized width without rejecting the response", () => {
+    const parsed = writeAndRead({
+      ...baseResponse(),
+      sessionGrantWidth: "everything",
+    });
+
+    // Least privilege in the skew direction: the grant still reaches the
+    // child, recorded at the width the gate proved.
+    expect(parsed?.approved).toBe(true);
+    expect(parsed?.state).toBe("approved_for_session");
+    expect(parsed?.sessionGrantWidth).toBeUndefined();
+  });
+
+  it("leaves the width absent for an older responder", () => {
+    expect(writeAndRead(baseResponse())?.sessionGrantWidth).toBeUndefined();
+  });
+});
+
 // ── tryRemoveDirectoryIfEmpty ──────────────────────────────────────────────
 
 describe("tryRemoveDirectoryIfEmpty", () => {

@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import type { ApprovalGrant } from "#src/approval-grant";
+import type { ApprovalGrant, SessionGrantWidth } from "#src/approval-grant";
 import type { DecisionSource } from "#src/authority/decision-source";
 import type { PermissionUiPromptSource } from "#src/permission-events";
 import type { PromptPayload } from "#src/presentation/prompt-payload";
@@ -198,6 +198,16 @@ export type ForwardedPermissionResponse = {
    * rejecting the answer.
    */
   decidedBy?: DecisionSource;
+  /**
+   * How wide a session grant the responder's human chose (#813).
+   *
+   * The child records a subagent-scoped grant itself, so the width has to
+   * survive the hop or the parent's choice is silently narrowed back.
+   * Optional for version-skew tolerance in both directions: an older
+   * responder omits it, and an older requester's allowlist rebuild drops it —
+   * both landing on `"proven"`, the least-privilege width.
+   */
+  sessionGrantWidth?: SessionGrantWidth;
 };
 
 export type PermissionForwardingLocation = {

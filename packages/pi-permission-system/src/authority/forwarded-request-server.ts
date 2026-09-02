@@ -351,10 +351,13 @@ export class ForwardedRequestServer implements InboxProcessor {
     }
     if (request.sessionApproval) {
       const { grants } = request.sessionApproval;
-      this.recorder.recordSessionApproval(SessionApproval.forGrants(grants));
+      const approval = SessionApproval.forGrants(grants).atWidth(
+        decision.sessionGrantWidth ?? "proven",
+      );
+      this.recorder.recordSessionApproval(approval);
       this.logger.review("forwarded_permission.session_recorded", {
         ...logDetails,
-        grants,
+        grants: approval.grants,
       });
     }
     return {
@@ -403,6 +406,9 @@ export class ForwardedRequestServer implements InboxProcessor {
         // Carried onto the wire so the requester can name what decided inside
         // this session, not merely that this session answered (#726).
         decidedBy: decision.decidedBy,
+        // The child records a subagent-scoped grant itself, so the width the
+        // human chose has to reach it (#813).
+        sessionGrantWidth: decision.sessionGrantWidth,
       } satisfies ForwardedPermissionResponse);
     } catch (error) {
       logPermissionForwardingError(

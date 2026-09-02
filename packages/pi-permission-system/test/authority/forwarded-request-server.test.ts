@@ -924,6 +924,99 @@ describe("processInbox — grant-scope selection", () => {
     ]);
   });
 
+  test("records a whole-session grant at the width the human chose", async () => {
+    temp = createForwardingTempDir("parent-session");
+    temp.writeRequest({
+      id: "req-wide",
+      source: "tool_call",
+      surface: "external_directory",
+      value: "echo hi > /outside/out.txt",
+      accessIntent: makeForwardedAccessIntent({
+        matchValues: ["/outside/out.txt"],
+      }),
+      sessionApproval: {
+        grants: [
+          { surface: "external_directory_write", pattern: "/outside/*" },
+        ],
+      },
+    });
+
+    const recorder = new SessionRules();
+    const server = new ForwardedRequestServer(
+      makeServerDeps({
+        forwardingDir: temp.forwardingDir,
+        policy: { resolve: vi.fn(() => makeCheckResult({ state: "ask" })) },
+        escalator: {
+          escalate: vi.fn().mockResolvedValue({
+            approved: true,
+            state: "approved_for_serving_session",
+            sessionGrantWidth: "family",
+            decidedBy: { kind: "user", via: "dialog" },
+          }),
+        },
+        recorder,
+      }),
+    );
+
+    await server.processInbox(
+      makeForwarderContext({ hasUI: true, sessionId: "parent-session" }),
+    );
+
+    // The family surface sugar-expands onto both members, so the serving
+    // node's later read of the same directory resolves without a prompt.
+    expect(
+      recorder.getRuleset().map(({ surface, pattern }) => [surface, pattern]),
+    ).toEqual([
+      ["external_directory_read", "/outside/*"],
+      ["external_directory_write", "/outside/*"],
+    ]);
+  });
+
+  test("carries the chosen width back to the child on the response", async () => {
+    temp = createForwardingTempDir("parent-session");
+    temp.writeRequest({
+      id: "req-width-wire",
+      source: "tool_call",
+      surface: "external_directory",
+      value: "echo hi > /outside/out.txt",
+      accessIntent: makeForwardedAccessIntent({
+        matchValues: ["/outside/out.txt"],
+      }),
+      sessionApproval: {
+        grants: [
+          { surface: "external_directory_write", pattern: "/outside/*" },
+        ],
+      },
+    });
+
+    const server = new ForwardedRequestServer(
+      makeServerDeps({
+        forwardingDir: temp.forwardingDir,
+        policy: { resolve: vi.fn(() => makeCheckResult({ state: "ask" })) },
+        escalator: {
+          escalate: vi.fn().mockResolvedValue({
+            approved: true,
+            state: "approved_for_session",
+            sessionGrantWidth: "family",
+            decidedBy: { kind: "user", via: "dialog" },
+          }),
+        },
+      }),
+    );
+
+    await server.processInbox(
+      makeForwarderContext({ hasUI: true, sessionId: "parent-session" }),
+    );
+
+    // A subagent-scoped grant is recorded by the child, so the width has to
+    // reach it or the child records the narrow grant the parent overrode.
+    expect(readResponse(temp, "req-width-wire")).toMatchObject({
+      approved: true,
+      state: "approved_for_session",
+      sessionGrantWidth: "family",
+    });
+  });
+
   test("offers the request's sessionApproval to the escalated dialog details", async () => {
     temp = createForwardingTempDir("parent-session");
     temp.writeRequest({

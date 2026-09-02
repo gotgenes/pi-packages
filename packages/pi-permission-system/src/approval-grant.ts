@@ -29,6 +29,19 @@ export interface ApprovalGrant {
 export type SessionGrantWidth = "proven" | "family";
 
 /**
+ * Whether an off-disk value names a width this node understands.
+ *
+ * The forwarded response is another process's file, so an unrecognized value
+ * is dropped rather than trusted — which lands the grant at `"proven"`, the
+ * least-privilege width, in the skew direction.
+ */
+export function isSessionGrantWidth(
+  value: unknown,
+): value is SessionGrantWidth {
+  return value === "proven" || value === "family";
+}
+
+/**
  * The same grant on its bare family surface, or the grant itself when it
  * already names one (or names no directional family at all).
  *

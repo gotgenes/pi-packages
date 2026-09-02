@@ -9,7 +9,7 @@ import {
   writeFileSync,
 } from "node:fs";
 
-import type { ApprovalGrant } from "#src/approval-grant";
+import { type ApprovalGrant, isSessionGrantWidth } from "#src/approval-grant";
 import { asDecisionSource } from "#src/authority/decision-source";
 import { isPermissionDecisionState } from "#src/authority/permission-dialog";
 import {
@@ -495,6 +495,11 @@ export function readForwardedPermissionResponse(
       // record is dropped, but the decision itself still has to reach the
       // requester, so it never rejects the response.
       decidedBy: asDecisionSource(parsed.decidedBy),
+      // Tolerant for the same reason, and least-privilege when it fires: a
+      // dropped width records the grant on the surface the gate proved.
+      sessionGrantWidth: isSessionGrantWidth(parsed.sessionGrantWidth)
+        ? parsed.sessionGrantWidth
+        : undefined,
     };
   } catch (error) {
     logPermissionForwardingWarning(
