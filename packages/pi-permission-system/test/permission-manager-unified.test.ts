@@ -1075,6 +1075,73 @@ describe("PermissionManager with in-memory PolicyLoader", () => {
       });
       expect(manager.getToolPermission("bash")).toBe("allow");
     });
+
+    it("reports the surface catch-all even when a nested pattern is permissive", () => {
+      const manager = createInMemoryManager({
+        global: {
+          permission: { "*": "ask", bash: { "*": "deny", "git *": "ask" } },
+        },
+      });
+      expect(manager.getToolPermission("bash")).toBe("deny");
+    });
+  });
+
+  describe("isToolFullyDenied", () => {
+    it("is false when a nested pattern under a deny catch-all is reachable", () => {
+      const manager = createInMemoryManager({
+        global: {
+          permission: { "*": "ask", bash: { "*": "deny", "git *": "ask" } },
+        },
+      });
+      expect(manager.isToolFullyDenied("bash")).toBe(false);
+    });
+
+    it("is true when the surface is denied outright", () => {
+      const manager = createInMemoryManager({
+        global: { permission: { "*": "ask", bash: "deny" } },
+      });
+      expect(manager.isToolFullyDenied("bash")).toBe(true);
+    });
+
+    it("is true when the exception is shadowed by a later deny catch-all", () => {
+      const manager = createInMemoryManager({
+        global: {
+          permission: { "*": "ask", bash: { "git *": "ask", "*": "deny" } },
+        },
+      });
+      expect(manager.isToolFullyDenied("bash")).toBe(true);
+    });
+
+    it("is false for a path-bearing tool with a permissive path pattern", () => {
+      const manager = createInMemoryManager({
+        global: {
+          permission: {
+            "*": "ask",
+            read: { "*": "deny", "~/notes/*": "allow" },
+          },
+        },
+      });
+      expect(manager.isToolFullyDenied("read")).toBe(false);
+    });
+
+    it("is true for every tool under a universal deny", () => {
+      const manager = createInMemoryManager({
+        global: { permission: { "*": "deny" } },
+      });
+      expect(manager.isToolFullyDenied("bash")).toBe(true);
+      expect(manager.isToolFullyDenied("third_party_tool")).toBe(true);
+    });
+
+    it("trims the tool name and honors the agent scope", () => {
+      const manager = createInMemoryManager({
+        global: { permission: { "*": "ask", bash: "deny" } },
+        agent: {
+          reviewer: { permission: { bash: { "*": "deny", "git *": "ask" } } },
+        },
+      });
+      expect(manager.isToolFullyDenied(" bash ")).toBe(true);
+      expect(manager.isToolFullyDenied("bash", "reviewer")).toBe(false);
+    });
   });
 
   describe("getComposedConfigRules", () => {
@@ -1596,6 +1663,7 @@ describe("PermissionManager — configureForCwd and agentDir option", () => {
     expect(typeof scoped.configureForCwd).toBe("function");
     expect(typeof scoped.check).toBe("function");
     expect(typeof scoped.getToolPermission).toBe("function");
+    expect(typeof scoped.isToolFullyDenied).toBe("function");
     expect(typeof scoped.getConfigIssues).toBe("function");
   });
 

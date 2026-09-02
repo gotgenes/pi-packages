@@ -8,7 +8,6 @@ import type { PermissionSession } from "#src/permission-session";
 import { resolveSkillPromptEntries } from "#src/skill-prompt-sanitizer";
 import { sanitizeAvailableToolsSection } from "#src/system-prompt-sanitizer";
 import { getToolNameFromValue, type ToolRegistry } from "#src/tool-registry";
-import type { PermissionState } from "#src/types";
 
 /** Minimal subset of BeforeAgentStartEvent used by this handler. */
 interface BeforeAgentStartPayload {
@@ -17,16 +16,17 @@ interface BeforeAgentStartPayload {
 
 /**
  * Pure helper: returns true when the tool should be exposed to the agent.
- * Checks the tool-level permission (not command-level) so that a blanket
- * `bash: deny` hides the tool entirely before any invocation is attempted.
+ *
+ * A tool is withheld only when *every* value under its surface resolves to
+ * `deny`, so a blanket `bash: deny` hides the tool entirely while a partially
+ * permissive `bash: {"*": "deny", "git *": "ask"}` keeps it reachable (#815).
  */
 export function shouldExposeTool(
   toolName: string,
   agentName: string | null,
-  getToolPermission: (toolName: string, agentName?: string) => PermissionState,
+  isToolFullyDenied: (toolName: string, agentName?: string) => boolean,
 ): boolean {
-  const toolPermission = getToolPermission(toolName, agentName ?? undefined);
-  return toolPermission !== "deny";
+  return !isToolFullyDenied(toolName, agentName ?? undefined);
 }
 
 /**
@@ -41,7 +41,7 @@ export function shouldExposeTool(
  * - `turnPrep` — brings the node up to date for the turn before anything reads
  *   session state
  * - `session` — encapsulates all mutable session state and lifecycle operations
- * - `resolver` — owns permission-query surface: `getToolPermission`, skill check
+ * - `resolver` — owns permission-query surface: `isToolFullyDenied`, skill check
  * - `toolRegistry` — Pi tool API subset (getActive + setActive)
  */
 export class AgentPrepHandler {
@@ -70,7 +70,7 @@ export class AgentPrepHandler {
       }
       if (
         shouldExposeTool(toolName, agentName, (t, a) =>
-          this.resolver.getToolPermission(t, a),
+          this.resolver.isToolFullyDenied(t, a),
         )
       ) {
         allowedTools.push(toolName);

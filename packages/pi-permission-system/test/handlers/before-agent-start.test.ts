@@ -39,15 +39,15 @@ function makeToolRegistry(overrides: Partial<ToolRegistry> = {}): ToolRegistry {
 }
 
 function makeSetup(opts?: {
-  toolPermission?: "allow" | "deny" | "ask";
+  toolFullyDenied?: boolean;
   toolRegistry?: Partial<ToolRegistry>;
 }) {
   const { session, permissionManager, sessionRules, configStore, forwarding } =
     makeRealSession();
   const { resolver } = makeRealResolver(permissionManager, sessionRules);
-  if (opts?.toolPermission !== undefined) {
-    vi.mocked(permissionManager.getToolPermission).mockReturnValue(
-      opts.toolPermission,
+  if (opts?.toolFullyDenied !== undefined) {
+    vi.mocked(permissionManager.isToolFullyDenied).mockReturnValue(
+      opts.toolFullyDenied,
     );
   }
   // Default check returns allow (for skill-prompt sanitizer via resolver.checkPermission)
@@ -82,31 +82,26 @@ function makeSetup(opts?: {
 // ── shouldExposeTool (pure helper) ─────────────────────────────────────────
 
 describe("shouldExposeTool", () => {
-  it("returns true when tool permission is allow", () => {
-    const getter = vi.fn().mockReturnValue("allow");
-    expect(shouldExposeTool("read", null, getter)).toBe(true);
+  it("returns true when some value under the surface is reachable", () => {
+    const isFullyDenied = vi.fn().mockReturnValue(false);
+    expect(shouldExposeTool("read", null, isFullyDenied)).toBe(true);
   });
 
-  it("returns true when tool permission is ask", () => {
-    const getter = vi.fn().mockReturnValue("ask");
-    expect(shouldExposeTool("bash", "agent-x", getter)).toBe(true);
+  it("returns false when every value under the surface is denied", () => {
+    const isFullyDenied = vi.fn().mockReturnValue(true);
+    expect(shouldExposeTool("write", null, isFullyDenied)).toBe(false);
   });
 
-  it("returns false when tool permission is deny", () => {
-    const getter = vi.fn().mockReturnValue("deny");
-    expect(shouldExposeTool("write", null, getter)).toBe(false);
+  it("passes agentName through to isToolFullyDenied", () => {
+    const isFullyDenied = vi.fn().mockReturnValue(false);
+    shouldExposeTool("read", "my-agent", isFullyDenied);
+    expect(isFullyDenied).toHaveBeenCalledWith("read", "my-agent");
   });
 
-  it("passes agentName through to getToolPermission", () => {
-    const getter = vi.fn().mockReturnValue("allow");
-    shouldExposeTool("read", "my-agent", getter);
-    expect(getter).toHaveBeenCalledWith("read", "my-agent");
-  });
-
-  it("converts null agentName to undefined for getToolPermission", () => {
-    const getter = vi.fn().mockReturnValue("allow");
-    shouldExposeTool("read", null, getter);
-    expect(getter).toHaveBeenCalledWith("read", undefined);
+  it("converts null agentName to undefined for isToolFullyDenied", () => {
+    const isFullyDenied = vi.fn().mockReturnValue(false);
+    shouldExposeTool("read", null, isFullyDenied);
+    expect(isFullyDenied).toHaveBeenCalledWith("read", undefined);
   });
 });
 
@@ -139,7 +134,7 @@ describe("AgentPrepHandler.handle", () => {
 
   it("filters out denied tools from allowed list", async () => {
     const { handler, toolRegistry } = makeSetup({
-      toolPermission: "deny",
+      toolFullyDenied: true,
       toolRegistry: {
         getActive: vi.fn().mockReturnValue(["write", "read"]),
       },
@@ -267,8 +262,8 @@ describe("AgentPrepHandler.handle", () => {
         getActive: vi.fn().mockReturnValue(["read", "bash"]),
       },
     });
-    vi.mocked(permissionManager.getToolPermission).mockImplementation((tool) =>
-      tool === "bash" ? "deny" : "allow",
+    vi.mocked(permissionManager.isToolFullyDenied).mockImplementation(
+      (tool) => tool === "bash",
     );
 
     const result = await handler.handle(makeEvent(systemPrompt), makeCtx());
@@ -312,8 +307,8 @@ describe("AgentPrepHandler.handle", () => {
         getActive: vi.fn().mockReturnValue(["bash", "read", "edit", "write"]),
       },
     });
-    vi.mocked(permissionManager.getToolPermission).mockImplementation((tool) =>
-      tool === "bash" ? "deny" : "allow",
+    vi.mocked(permissionManager.isToolFullyDenied).mockImplementation(
+      (tool) => tool === "bash",
     );
 
     // Turn 1: Pi feeds the full default listing.

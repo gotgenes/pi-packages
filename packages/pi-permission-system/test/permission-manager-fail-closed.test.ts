@@ -87,6 +87,14 @@ describe("PermissionManager fail-closed clamp on invalid non-global scope", () =
     expect(manager.getToolPermission("bash")).toBe("ask");
   });
 
+  it("keeps a floored tool exposed — the clamp makes allows ask, never deny", () => {
+    const manager = makeManager({
+      global: { permission: { bash: "allow" } },
+      project: { invalid: true },
+    });
+    expect(manager.isToolFullyDenied("bash")).toBe(false);
+  });
+
   it("appends a fail-closed notice to config issues naming the invalid scope", () => {
     const manager = makeManager({
       global: { permission: { bash: "allow" } },

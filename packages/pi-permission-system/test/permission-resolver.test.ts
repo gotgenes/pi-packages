@@ -328,6 +328,19 @@ describe("PermissionResolver", () => {
     });
   });
 
+  describe("isToolFullyDenied", () => {
+    it("delegates to permissionManager.isToolFullyDenied", () => {
+      const pm = makePermissionManager();
+      vi.mocked(pm.isToolFullyDenied).mockReturnValue(true);
+      const { resolver } = makeResolver(pm);
+
+      const result = resolver.isToolFullyDenied("write", "my-agent");
+
+      expect(pm.isToolFullyDenied).toHaveBeenCalledWith("write", "my-agent");
+      expect(result).toBe(true);
+    });
+  });
+
   describe("resolve — surface-family fold", () => {
     /** A manager whose verdict is keyed by the surface it is asked about. */
     function makeSurfaceKeyedManager(

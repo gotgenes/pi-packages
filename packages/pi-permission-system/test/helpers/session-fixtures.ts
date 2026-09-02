@@ -109,6 +109,9 @@ export function makeFakePermissionManager() {
     getToolPermission: vi
       .fn<(toolName: string, agentName?: string) => PermissionState>()
       .mockReturnValue("allow"),
+    isToolFullyDenied: vi
+      .fn<(toolName: string, agentName?: string) => boolean>()
+      .mockReturnValue(false),
     getConfigIssues: vi.fn((): string[] => []),
   };
 }

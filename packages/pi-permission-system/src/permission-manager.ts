@@ -22,6 +22,7 @@ import {
   evaluateAnyValue,
   evaluateFirst,
   floorAllowsToAsk,
+  isSurfaceFullyDenied,
   rewriteAsksToYolo,
 } from "./rule";
 import { mergeScopesWithOrigins } from "./scope-merge";
@@ -83,6 +84,7 @@ export interface ScopedPermissionManager {
     sessionRules?: Ruleset,
   ): PermissionCheckResult;
   getToolPermission(toolName: string, agentName?: string): PermissionState;
+  isToolFullyDenied(toolName: string, agentName?: string): boolean;
   getConfigIssues(agentName?: string): string[];
 }
 
@@ -266,6 +268,24 @@ export class PermissionManager implements ScopedPermissionManager {
     // tools) resolves its tool-level state identically: evaluate the surface
     // name against the "*" catch-all value. There is no per-kind branch.
     return evaluate(toolName.trim(), "*", composedRules, this.flavor).action;
+  }
+
+  /**
+   * Whether every value under a tool's surface resolves to `deny`.
+   *
+   * This is the question tool exposure asks, and it is not
+   * {@link PermissionManager.getToolPermission} — that reports the surface's
+   * catch-all, so `bash: {"*": "deny", "git *": "ask"}` reads as `deny` even
+   * though `git status` would be asked about (#815).
+   *
+   * Reads the same composed rules the catch-all query does, so it inherits the
+   * fail-closed floor and not the yolo rewrite. Neither matters: one touches
+   * only `allow` and the other only `ask`, so neither can create or remove the
+   * `deny` this answer turns on.
+   */
+  isToolFullyDenied(toolName: string, agentName?: string): boolean {
+    const { composedRules } = this.resolvePermissions(agentName);
+    return isSurfaceFullyDenied(toolName.trim(), composedRules, this.flavor);
   }
 
   /**

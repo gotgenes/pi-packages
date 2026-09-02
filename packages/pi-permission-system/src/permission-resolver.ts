@@ -130,6 +130,10 @@ export class PermissionResolver
     return this.permissionManager.getToolPermission(toolName, agentName);
   }
 
+  isToolFullyDenied(toolName: string, agentName?: string): boolean {
+    return this.permissionManager.isToolFullyDenied(toolName, agentName);
+  }
+
   getConfigIssues(agentName?: string): string[] {
     return this.permissionManager.getConfigIssues(agentName);
   }

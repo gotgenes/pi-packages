@@ -94,6 +94,11 @@ describe("PermissionManager yolo rewrite", () => {
     // getToolPermission reports the configured surface state.
     expect(manager.getToolPermission("bash")).toBe("ask");
   });
+
+  it("does not re-expose a denied tool — the rewrite touches asks, never denies", () => {
+    const manager = makeManager({ bash: "deny" }, () => true);
+    expect(manager.isToolFullyDenied("bash")).toBe(true);
+  });
 });
 
 describe("PermissionManager fail-closed clamp under yolo (#646)", () => {
