@@ -28,19 +28,9 @@ export class SessionApproval {
     return new SessionApproval(surface, [...patterns]);
   }
 
-  /** Representative pattern for the interactive prompt — the first, if any. */
-  get representativePattern(): string | undefined {
-    return this.patterns[0];
-  }
-
-  /**
-   * Single-pattern shape `applyPermissionGate` echoes back to the caller.
-   * Returns `undefined` when patterns is empty (degenerate case).
-   */
-  toGateApproval(): { surface: string; pattern: string } | undefined {
-    const pattern = this.representativePattern;
-    if (pattern === undefined) return undefined;
-    return { surface: this.surface, pattern };
+  /** Whether this approval carries anything for the session store to record. */
+  get isRecordable(): boolean {
+    return this.patterns.length > 0;
   }
 
   /**

@@ -23,6 +23,7 @@ function makeParams(
 ): PermissionGateParams {
   return {
     state: "allow",
+    canGrantForSession: false,
     promptForApproval: vi.fn<() => Promise<PermissionPromptDecision>>(),
     writeLog: vi.fn(),
     logContext: { source: "test" },
@@ -220,8 +221,8 @@ describe("applyPermissionGate", () => {
     });
   });
 
-  describe("ask branch — approved_for_session with sessionApproval", () => {
-    it("attaches sessionApproval to result when decision is approved_for_session and param provided", async () => {
+  describe("ask branch — the session-grant report", () => {
+    it("reports forSession when the decision is approved_for_session and the ask carried a suggestion", async () => {
       const decision: PermissionPromptDecision = {
         approved: true,
         state: "approved_for_session",
@@ -231,17 +232,17 @@ describe("applyPermissionGate", () => {
       const params = makeParams({
         state: "ask",
         promptForApproval,
-        sessionApproval: { surface: "bash", pattern: "git *" },
+        canGrantForSession: true,
       });
       const result = await applyPermissionGate(params);
       expect(result).toEqual({
         action: "allow",
         decidedBy: DECIDED_BY_HUMAN,
-        sessionApproval: { surface: "bash", pattern: "git *" },
+        forSession: true,
       });
     });
 
-    it("does not attach sessionApproval when decision is approved (once)", async () => {
+    it("does not report forSession when the decision is approved (once)", async () => {
       const decision: PermissionPromptDecision = {
         approved: true,
         state: "approved",
@@ -251,13 +252,13 @@ describe("applyPermissionGate", () => {
       const params = makeParams({
         state: "ask",
         promptForApproval,
-        sessionApproval: { surface: "bash", pattern: "git *" },
+        canGrantForSession: true,
       });
       const result = await applyPermissionGate(params);
       expect(result).toEqual({ action: "allow", decidedBy: DECIDED_BY_HUMAN });
     });
 
-    it("does not attach sessionApproval when no sessionApproval param", async () => {
+    it("does not report forSession when the ask carried no suggestion", async () => {
       const decision: PermissionPromptDecision = {
         approved: true,
         state: "approved_for_session",
@@ -267,12 +268,13 @@ describe("applyPermissionGate", () => {
       const params = makeParams({
         state: "ask",
         promptForApproval,
+        canGrantForSession: false,
       });
       const result = await applyPermissionGate(params);
       expect(result).toEqual({ action: "allow", decidedBy: DECIDED_BY_HUMAN });
     });
 
-    it("does not attach sessionApproval when user denies", async () => {
+    it("does not report forSession when the user denies", async () => {
       const decision: PermissionPromptDecision = {
         approved: false,
         state: "denied",
@@ -282,7 +284,7 @@ describe("applyPermissionGate", () => {
       const params = makeParams({
         state: "ask",
         promptForApproval,
-        sessionApproval: { surface: "bash", pattern: "git *" },
+        canGrantForSession: true,
       });
       const result = await applyPermissionGate(params);
       expect(result).toEqual({

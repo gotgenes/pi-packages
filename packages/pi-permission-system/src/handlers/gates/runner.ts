@@ -209,7 +209,7 @@ export class GateRunner {
     };
     const gateResult = await applyPermissionGate({
       state: check.state,
-      sessionApproval: descriptor.sessionApproval?.toGateApproval(),
+      canGrantForSession: descriptor.sessionApproval?.isRecordable ?? false,
       promptForApproval: async () => {
         const decision = await this.prompter.escalate({
           requestId,
@@ -230,7 +230,7 @@ export class GateRunner {
 
     // 4. Determine whether session approval was granted
     const hasSessionApproval =
-      gateResult.action === "allow" && gateResult.sessionApproval !== undefined;
+      gateResult.action === "allow" && gateResult.forSession === true;
 
     // 5. Emit decision event
     this.emitDecision(

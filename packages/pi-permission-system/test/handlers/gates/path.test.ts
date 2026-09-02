@@ -145,7 +145,7 @@ describe("describePathGate", () => {
     ) as GateDescriptor;
     expect(result.sessionApproval).toBeDefined();
     expect(result.sessionApproval?.surface).toBe("path_read");
-    expect(result.sessionApproval?.representativePattern).toBeDefined();
+    expect(result.sessionApproval?.patterns).toHaveLength(1);
   });
 
   it("binds a current-directory file's session approval to the cwd subtree", () => {
@@ -158,9 +158,7 @@ describe("describePathGate", () => {
       normalizer,
     ) as GateDescriptor;
     expect(result.sessionApproval?.surface).toBe("path_read");
-    expect(result.sessionApproval?.representativePattern).toBe(
-      "/test/project/*",
-    );
+    expect(result.sessionApproval?.patterns).toEqual(["/test/project/*"]);
   });
 
   it("descriptor denialContext references the file path and tool name", () => {

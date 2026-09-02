@@ -318,9 +318,7 @@ describe("describeBashPathGate", () => {
 
     expect(result.decision.value).toBe(".env");
     expect(result.sessionApproval?.surface).toBe("path_read");
-    expect(result.sessionApproval?.representativePattern).toBe(
-      "/test/project/*",
-    );
+    expect(result.sessionApproval?.patterns).toEqual(["/test/project/*"]);
   });
 
   describe("directional routing (#807)", () => {

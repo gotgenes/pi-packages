@@ -10,17 +10,9 @@ describe("SessionApproval", () => {
       expect(approval.patterns).toEqual(["git *"]);
     });
 
-    it("representativePattern returns the pattern", () => {
+    it("is recordable", () => {
       const approval = SessionApproval.single("bash", "git *");
-      expect(approval.representativePattern).toBe("git *");
-    });
-
-    it("toGateApproval returns { surface, pattern }", () => {
-      const approval = SessionApproval.single("bash", "git *");
-      expect(approval.toGateApproval()).toEqual({
-        surface: "bash",
-        pattern: "git *",
-      });
+      expect(approval.isRecordable).toBe(true);
     });
   });
 
@@ -34,23 +26,12 @@ describe("SessionApproval", () => {
       expect(approval.patterns).toEqual(["/outside/a/*", "/outside/b/*"]);
     });
 
-    it("representativePattern returns the first pattern", () => {
+    it("is recordable", () => {
       const approval = SessionApproval.multiple("external_directory", [
         "/outside/a/*",
         "/outside/b/*",
       ]);
-      expect(approval.representativePattern).toBe("/outside/a/*");
-    });
-
-    it("toGateApproval returns { surface, pattern } using the first pattern", () => {
-      const approval = SessionApproval.multiple("external_directory", [
-        "/outside/a/*",
-        "/outside/b/*",
-      ]);
-      expect(approval.toGateApproval()).toEqual({
-        surface: "external_directory",
-        pattern: "/outside/a/*",
-      });
+      expect(approval.isRecordable).toBe(true);
     });
 
     it("defensive copy — mutating the source array does not affect patterns", () => {
@@ -62,14 +43,9 @@ describe("SessionApproval", () => {
   });
 
   describe("empty patterns (degenerate case)", () => {
-    it("representativePattern returns undefined", () => {
+    it("is not recordable", () => {
       const approval = SessionApproval.multiple("external_directory", []);
-      expect(approval.representativePattern).toBeUndefined();
-    });
-
-    it("toGateApproval returns undefined", () => {
-      const approval = SessionApproval.multiple("external_directory", []);
-      expect(approval.toGateApproval()).toBeUndefined();
+      expect(approval.isRecordable).toBe(false);
     });
   });
 
