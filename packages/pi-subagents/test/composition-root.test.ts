@@ -275,3 +275,60 @@ describe("composition root: widget activation", () => {
     expect(handlers.has("tool_execution_start")).toBe(false);
   });
 });
+
+describe("composition root: widget teardown", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  /**
+   * Run the extension and drive one background agent to completion, leaving the
+   * widget registered and its interval live.
+   *
+   * The agent must be **terminal** before the shutdown. An agent still running
+   * at shutdown is aborted by the lifecycle handler, and the notification that
+   * abort settles lands after `manager.dispose()` has emptied the registry — so
+   * `update()` takes its idle path into `clearWidget()` and tears the widget
+   * down incidentally, whether or not anything called `dispose()`. A completed
+   * agent produces no such notification (`disposeSession()` notifies no
+   * observer), so the teardown is observable only if it was actually wired.
+   */
+  async function completeAgentIntoWidget() {
+    vi.mocked(createSubagentSession).mockResolvedValue(
+      toSubagentSession(createSubagentSessionStub(createMockSession(), "/sessions/child.jsonl")),
+    );
+    const { pi, fire } = makePi();
+    subagentsExtension(pi);
+
+    const ui = makeRecordingUI();
+    await fire("session_start", {}, makeSessionStartCtx(makeParentRegistry().registry, ui, true));
+    getSubagentsService()!.spawn("general-purpose", "hi", { description: "child" });
+    await vi.advanceTimersByTimeAsync(300);
+
+    // The run finished within this turn, so the row lingers and the widget stays up.
+    expect(ui.setWidget).toHaveBeenLastCalledWith("agents", expect.any(Function), expect.anything());
+    return { ui, fire };
+  }
+
+  it("stops the widget's update interval on session_shutdown", async () => {
+    const { fire } = await completeAgentIntoWidget();
+    expect(vi.getTimerCount()).toBeGreaterThan(0);
+
+    await fire("session_shutdown", {}, {});
+
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("unregisters the widget and status entry on session_shutdown", async () => {
+    const { ui, fire } = await completeAgentIntoWidget();
+
+    await fire("session_shutdown", {}, {});
+
+    expect(ui.setWidget).toHaveBeenLastCalledWith("agents", undefined);
+    expect(ui.setStatus).toHaveBeenLastCalledWith("subagents", undefined);
+  });
+});

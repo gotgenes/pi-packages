@@ -196,6 +196,11 @@ export default function (pi: ExtensionAPI) {
   pi.on("session_start", (event, ctx) => widgetEvents.handleSessionStart(event, ctx));
   pi.on("session_before_switch", () => lifecycle.handleSessionBeforeSwitch());
   pi.on("session_shutdown", () => lifecycle.handleSessionShutdown());
+  // Registered after the lifecycle handler on purpose. Pi awaits an extension's
+  // handlers for an event in registration order, so the widget is torn down once
+  // `abortAll()` and the awaited `manager.dispose()` have finished — no terminal
+  // transition is left to drive an `update()` at a half-disposed widget.
+  pi.on("session_shutdown", () => widgetEvents.handleSessionShutdown());
 
   // Abort all subagents when the parent agent loop is interrupted (ESC), unless
   // the user has turned that policy off. The predicate is read at abort time.
