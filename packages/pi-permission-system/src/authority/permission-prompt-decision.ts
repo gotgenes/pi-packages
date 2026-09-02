@@ -23,6 +23,20 @@ export type PromptStep = "decision" | "reason" | "scope";
 
 const OPTION_ORDER: readonly PromptKey[] = ["y", "s", "n", "r"];
 
+/**
+ * The decision step's option keys, in display order.
+ *
+ * A function of the config rather than an exported constant, so which options
+ * an ask offers is decided in the model and the component renders whatever it
+ * is handed — two copies of the roster would be two places to teach about a
+ * conditional option.
+ */
+export function visibleOptionKeys(
+  _config: PromptModelConfig,
+): readonly PromptKey[] {
+  return OPTION_ORDER;
+}
+
 const OPTION_VERBS: Record<PromptKey, string> = {
   y: "approve",
   s: "approve for this session",

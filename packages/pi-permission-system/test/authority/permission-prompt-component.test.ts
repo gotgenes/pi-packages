@@ -155,6 +155,13 @@ async function runPrompt(
   return promise;
 }
 
+/** The hotkeys of the decision step's option rows, in rendered order. */
+function decisionOptionKeys(captured: { component?: CapturedComponent }) {
+  return (captured.component?.render(80) ?? [])
+    .map((line) => /^[ ▶] \((\w)\) /.exec(line)?.[1])
+    .filter((key) => key !== undefined);
+}
+
 // ── Tests ─────────────────────────────────────────────────────────────────
 
 describe("presentInlinePermissionPrompt", () => {
@@ -169,6 +176,12 @@ describe("presentInlinePermissionPrompt", () => {
     expect(text).toContain("No, provide reason");
     expect(text).toContain("y");
     expect(text).toContain("r");
+  });
+
+  it("renders the decision options in the model's display order", () => {
+    const { view, captured } = makeFakeView(true);
+    void presentInlinePermissionPrompt(view, "Permission Required", ASK);
+    expect(decisionOptionKeys(captured)).toEqual(["y", "s", "n", "r"]);
   });
 
   it("clips every rendered line to the terminal width", () => {

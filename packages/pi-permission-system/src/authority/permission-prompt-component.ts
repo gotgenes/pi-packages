@@ -22,6 +22,7 @@ import {
   type PromptModelConfig,
   type PromptViewState,
   reducePrompt,
+  visibleOptionKeys,
 } from "#src/authority/permission-prompt-decision";
 import {
   completeViewBudget,
@@ -130,8 +131,6 @@ const OPTION_LABELS: Record<PromptKey, string> = {
   n: "No",
   r: "No, provide reason",
 };
-
-const OPTION_ORDER: readonly PromptKey[] = ["y", "s", "n", "r"];
 
 export function presentInlinePermissionPrompt(
   view: PermissionPromptView,
@@ -330,7 +329,9 @@ class PermissionPromptComponent implements Component {
       return { type: "cancel" };
     }
     if (this.state.step === "decision") {
-      const key = OPTION_ORDER.find((option) => matchesKey(data, option));
+      const key = visibleOptionKeys(this.config).find((option) =>
+        matchesKey(data, option),
+      );
       if (key) {
         return { type: "hotkey", key };
       }
@@ -354,7 +355,7 @@ class PermissionPromptComponent implements Component {
   private renderDecision(width: number): string[] {
     const ask = this.renderAsk(width);
     const lines = [this.theme.fg("accent", this.title), ...ask.lines, ""];
-    for (const key of OPTION_ORDER) {
+    for (const key of visibleOptionKeys(this.config)) {
       const label = key === "s" ? this.config.sessionLabel : OPTION_LABELS[key];
       const selected = this.state.highlightedKey === key;
       const marker = selected ? "▶" : " ";
