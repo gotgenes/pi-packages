@@ -138,13 +138,15 @@ Close each with its own short summary — `refactor:` commits are omitted from t
 
 Skip this step entirely if step 4b recorded a defer/batch decision — the release lands later with the batch tail.
 
-1. Derive the package list from the shipped range, not the plan's directory:
+1. Derive candidate packages from the paths the range touched, not from commit types:
 
    ```bash
    PLAN=$(git log --format='%H' --grep="docs: plan .*(#$1)" -1)
-   git log --format='%s' "$PLAN"^..HEAD | grep -oE '^(feat|fix)\([^)]+\)' | sort -u
+   git diff --name-only "$PLAN"^..HEAD | sed -n 's#^packages/\([^/]*\)/.*#\1#p' | sort -u
    ```
 
+   Do not filter by commit type: `docs:` and `chore:` are visible changelog groups that cut a patch on their own, so a `feat|fix` scope grep silently drops a sibling bumped by a docs-only commit (Refs #857).
+   Step 2's `next-version.sh` is the authority on which candidates actually release.
    A plan under `docs/plans/` is cross-package as often as it is repo tooling — release every package the range bumps (Refs #792).
    On an empty list (repo tooling only), nothing releases: skip to step 7.
 2. Confirm each candidate against `./scripts/release/next-version.sh <pkg>`.

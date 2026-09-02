@@ -37,8 +37,10 @@ A decision presented early is far less likely to be reversed than one inferred a
      Record the decision.
    - Any other `**Release:**` value, or no marker → record "release now"; do **not** ask.
    - No plan found on the branch → record "release now" and say so in the final report; do **not** let the absence pass silently.
+3. Read the retro's `## Stage: Sync (worktree)` entry in full — the peer records release-relevant handoff there (a sibling package bumped by a docs-only commit, deferred work).
+   It is a candidate source for step 6, not only for step 5's close targets.
 
-This section only reads the plan and (conditionally) asks — it performs no git, push, or CI action.
+This section only reads the plan and the retro, and (conditionally) asks — it performs no git, push, or CI action.
 Step 6 applies the recorded decision.
 
 ## 1. Confirm root + sync main
@@ -106,13 +108,15 @@ The release workflow also carries a `release` concurrency group, so two runs can
    On "defer": **skip releasing** — simply do not name that package, note the deferral, and continue to teardown.
    Deferring holds only this package; siblings keep releasing on their own lands.
    Otherwise release now.
-2. Derive the package list from the shipped range, not the plan's directory (re-derive `PLAN` — a fresh shell does not carry step 5's):
+2. Derive candidate packages from the paths the range touched, not from commit types (re-derive `PLAN` — a fresh shell does not carry step 5's):
 
    ```bash
    PLAN=$(git log --format='%H' --grep="docs: plan .*(#$1)" -1)
-   git log --format='%s' "$PLAN"^..HEAD | grep -oE '^(feat|fix)\([^)]+\)' | sort -u
+   git diff --name-only "$PLAN"^..HEAD | sed -n 's#^packages/\([^/]*\)/.*#\1#p' | sort -u
    ```
 
+   Do not filter by commit type: `docs:` and `chore:` are visible changelog groups that cut a patch on their own, so a `feat|fix` scope grep silently drops a sibling bumped by a docs-only commit (Refs #857).
+   Step 3's `next-version.sh` is the authority on which candidates actually release.
    A cross-package plan bumps more than one — release every one (Refs #792).
 3. Confirm each candidate with `./scripts/release/next-version.sh <pkg>`.
    It prints the tag that would be cut, or nothing when the package has no releasable commits.
