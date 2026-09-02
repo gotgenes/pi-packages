@@ -99,12 +99,16 @@ export interface PermissionQuery {
   ): PermissionCheckResult;
 
   /**
-   * Query the tool-level permission state for pre-filtering tools before
-   * creating a child session.
+   * Query a surface's catch-all permission state — its blanket policy.
    *
    * Returns `"deny"` | `"allow"` | `"ask"` based on the composed policy.
    * Does not consider command-level rules (e.g. per-bash-command patterns) —
    * use `checkPermission` for runtime invocation gates.
+   *
+   * This is **not** the question to ask when pre-filtering a tool list: a
+   * partially permissive surface such as `bash: {"*": "deny", "git *": "ask"}`
+   * answers `"deny"` here while `git status` would still be asked about. Use
+   * {@link PermissionsService.isToolFullyDenied} for that.
    *
    * @param toolName  - Tool name (e.g. `"bash"`, `"read"`, `"my-extension:tool"`).
    * @param agentName - Optional agent name for per-agent policy resolution.

@@ -69,10 +69,10 @@ interface PermissionsService {
     agentName?: string,
   ): PermissionCheckResult;
 
-  /** Query tool-level permission state for pre-filtering before session creation. */
+  /** Query a surface's catch-all permission state — its blanket policy. */
   getToolPermission(toolName: string, agentName?: string): PermissionState;
 
-  /** Whether every value under a tool's surface resolves to deny. */
+  /** Whether every value under a tool's surface resolves to deny; use this to pre-filter a tool list. */
   isToolFullyDenied(toolName: string, agentName?: string): boolean;
 
   /**
