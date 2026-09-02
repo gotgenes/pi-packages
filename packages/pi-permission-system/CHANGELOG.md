@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [31.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v30.2.0...pi-permission-system-v31.0.0) (2026-09-02)
+
+
+### Bug Fixes
+
+* **pi-permission-system:** **breaking:** gate a path named as a for or select loop operand ([6189d81](https://github.com/gotgenes/pi-packages/commit/6189d81dc48a26d572bacb91a1b2e7c062634ad9)), closes [#839](https://github.com/gotgenes/pi-packages/issues/839)
+* **pi-permission-system:** **breaking:** gate a path named as a case subject ([dfd2f8d](https://github.com/gotgenes/pi-packages/commit/dfd2f8d682c39dcfe6a903cdeadde18b08a7cc60)), closes [#839](https://github.com/gotgenes/pi-packages/issues/839)
+
+### Documentation
+
+* **pi-permission-system:** commit the instrument behind the statement-operand measurement ([6a708b7](https://github.com/gotgenes/pi-packages/commit/6a708b716f038bf192875a0166ae6a6ab012c3d8)), closes [#839](https://github.com/gotgenes/pi-packages/issues/839)
+* **pi-permission-system:** register the statement-operand measurement script ([e3e8799](https://github.com/gotgenes/pi-packages/commit/e3e879935c6f395d4b2387a6e30e0791bb8fb765)), closes [#839](https://github.com/gotgenes/pi-packages/issues/839)
+* **pi-permission-system:** correct the drift note in the operand measurement ([e300934](https://github.com/gotgenes/pi-packages/commit/e300934c0aad34b3bfd127695219250ca6f4613f)), closes [#839](https://github.com/gotgenes/pi-packages/issues/839)
+
 ## [30.2.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v30.1.0...pi-permission-system-v30.2.0) (2026-09-02)
 
 
