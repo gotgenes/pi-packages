@@ -528,18 +528,19 @@ export class Subagent {
 			: result.steered
 				? "steered"
 				: "completed";
-		const finalResult =
-			result.responseText +
-			this.workspaceBracket.dispose({ status: finalStatus, description: this.description });
-
 		// Split the declared question out before the result is stored, so the
-		// question renders once as an affordance rather than twice.
-		const { question, body } = parseQuestionForParent(finalResult);
+		// question renders once as an affordance rather than twice. The split
+		// precedes disposal because the question is what decides whether the
+		// workspace is disposed at all.
+		const { question, body } = parseQuestionForParent(result.responseText);
+		const finalResult =
+			body +
+			this.workspaceBracket.dispose({ status: finalStatus, description: this.description });
 		this.state.setPendingQuestion(question);
 
-		if (result.aborted) this.markAborted(body);
-		else if (result.steered) this.markSteered(body);
-		else this.markCompleted(body);
+		if (result.aborted) this.markAborted(finalResult);
+		else if (result.steered) this.markSteered(finalResult);
+		else this.markCompleted(finalResult);
 
 		this.execution.observer?.onRunFinished?.(this);
 	}
