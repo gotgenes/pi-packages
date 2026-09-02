@@ -119,6 +119,10 @@ An **open** PR is not a decline either: #692 sits unmerged because the policy-so
 Check an ADR's frontmatter `status:` before citing it.
 `pi-subagents` `docs/decisions/0001-deferred-patches.md` is `superseded`, and it is still the only record of the `pi -e` ephemeral-extension limitation.
 
+A roadmap step's `Outcome:` line is written from the symptom at phase-planning time, before anyone traced the mechanism, so it can promise relief the change does not produce for the example it names.
+Trace that example through the code before turning an `Outcome:` into a test.
+Phase 14 Step 10 promised `cat /outside/a.ts > /outside/b.ts` would narrow, but both tokens derive the same `/outside/*` glob, so a test written from the line would have passed under the old code (Refs #810).
+
 ### Workflow
 
 - Keep scope tight.
@@ -454,6 +458,8 @@ Before pricing a rename of this repo's own export as breaking, check whether it 
 Read the file at the published tag: `pnpm view @gotgenes/<pkg> version`, then `git show <pkg>-v<version>:<path>`.
 Never `.pi/npm/node_modules/` — it is only as fresh as the last `pi update --extensions`, so a stale copy hides an export that already shipped.
 An export that exists only on unreleased `main` renames for free (Refs #789, #794).
+The same read answers what the published code *does*, not only whether a symbol exists — #810 priced its wire change on the shipped reader's own tolerance of a missing field.
+A type reachable from the published declaration bundle is as breaking as a named export: `ForwardedSessionApproval` is exported by no name, but a third-party `Authorizer` link receives it through `PromptPermissionDetails` (Refs #810).
 Before naming a remediation in a breaking-change migration note (CLI flag, config key, API call), verify it exists in the real surface (SDK types, `--help`, schema) — do not infer a config key by analogy.
 The note ships to the `BREAKING CHANGE:` footer, the generated CHANGELOG, and the issue close comment.
 Do not put `Closes #N` / `Fixes #N` / `Resolves #N` in commit messages.

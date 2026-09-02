@@ -116,3 +116,78 @@ No follow-up work was deferred to land time; [#813] and [#604] (noted in the pla
 Concise breadcrumb only — the final `/retro 810` at the root captures the retrospective proper.
 
 [#745]: https://github.com/gotgenes/pi-packages/issues/745
+
+## Stage: Final Retrospective (2026-09-02T05:42:57Z)
+
+### Session summary
+
+Shipped #810 across four sessions-stages: planning and TDD in the peer worktree on `claude-opus-5`, sync on `claude-sonnet-5`, then ff-merge, CI, issue close, release, and teardown at the root.
+`pi-permission-system` released as v30.0.0 — a major bump earned by the `ForwardedSessionApproval` reshape, not by the gate change.
+The ship half ran without a single correction; every friction point in this issue's history sits in planning or TDD.
+
+### Observations
+
+#### What went well
+
+- **Distrusting the roadmap's own prose caught a test that would have shipped vacuous.**
+  Phase 14 Step 10's `Outcome:` line describes a narrowing that the issue's headline repro does not exhibit: `deriveApprovalPattern` scopes a glob at the value's last separator, so `cat /outside/a.ts > /outside/b.ts` derives `/outside/*` for both tokens and the two directional grants reconstitute exactly what the bare family sugar-expands to.
+  The pre-existing pin in `bash-external-directory.test.ts` used precisely that same-directory command.
+  A plan that took the roadmap at face value would have written a "narrowing" test that passes under the old code — a false pin, green forever.
+  This is the package skill's own instruction (trace the token through the classifier before asserting a bash repro) paying off against the package's own architecture doc.
+- **Two load-bearing facts were read off the published tag instead of argued.**
+  `pnpm view` gave 29.3.0; `git show pi-permission-system-v29.3.0:…/authority/forwarding-io.ts` showed that `sessionApproval` is absent from `readForwardedPermissionRequest`'s required set and that `asForwardedSessionApproval` ignores unknown keys.
+  That turned "skew fails narrow, no upgrade ordering" from an expectation into a measurement, and gave the concrete contrast with #745.
+  `AGENTS.md` frames the published-tag read as a check on whether an export has *shipped*; here the same move answered a *behavioral* question, which is the more valuable generalization.
+- **Mutation counts were checked against the plan's predictions in both directions.**
+  Step 1's mutation killed 3 tests where the plan named 2, and the extra was correctly reported as a stronger result rather than glossed as "close enough".
+  Step 3's two mutations both killed both mixed-direction tests, contradicting a garbled plan sentence — recorded as a measurement superseding the prediction.
+  The `/tdd-plan` rule that a shortfall is a finding was honored, and so was its less obvious mirror.
+- **The pre-completion reviewer was handed a re-derivation mandate and actually re-derived.**
+  It traced prototype-pollution keys, nested arrays, `grants` as a numeric-keyed object, and a whitespace-only surface rather than reusing the step's own test table, and independently confirmed the `PromptPermissionDetails` → `Authorizer` reachability that makes the change breaking.
+- **All four deviations from the plan ran toward fewer members, not more.**
+  `representativePattern` was deleted rather than renamed once tracing showed its only production reader was the method the preparatory step deletes; `SessionApproval.multiple` was dropped; the one addition (`isRecordable`) exists solely to preserve `toGateApproval()`'s empty-approval semantics.
+  A plan deviating toward a smaller surface is the direction that needs no defending.
+
+#### What caused friction (agent side)
+
+- `missing-context` — the first clarification gate framed the wire-compatibility question on the forwarded **file** boundary alone.
+  The operator's push-back ("in all foreseeable cases parent and child run the same version") was correct about the file, and forced the second-order fact into the open: `ForwardedSessionApproval` is structurally reachable from the published declaration bundle through `PromptPermissionDetails`, so the break exists whether or not two processes ever skew.
+  That fact was discoverable before the gate, and it is what changed the answer — once tolerance no longer bought non-breaking status, the strictest wire option won.
+  Impact: one extra gate round trip (a re-read of `authorizer.ts`, a re-ask); no plan rework, and the bounce improved the outcome.
+- `instruction-violation` (self-identified) — a two-entry `Edit` on `forwarding-io.ts` was rejected atomically, and only the second entry was re-applied, leaving the whole reader rewrite unlanded while the session moved on.
+  `AGENTS.md` already states the rule verbatim ("After a rejection, re-apply every intended edit, not just the ones you retried").
+  `pnpm run check` caught it.
+  Impact: three extra tool calls, no bad commit — the rule exists and was simply not applied at the moment of the rejection.
+- `missing-context` — planning enumerated `sessionApproval` call sites by grepping `\.sessionApproval` shapes, which cannot match six bare `representativePattern` reads in `tool.test.ts` and `bash-path.test.ts`.
+  Impact: effectively none, because `pnpm run check` ran immediately after the step-1 interface change exactly as `/tdd-plan` prescribes and surfaced all six at once.
+  The second miss of the same family — a `sessionApproval: { surface, patterns }` literal inside an `expect.objectContaining` — was invisible to `tsc` and failed only at the full package suite, which is the documented mock-producer-vs-assertion hazard behaving exactly as `AGENTS.md` predicts.
+- `instruction-violation` (self-identified) — this retro session loaded the `github-voice` skill, which the `/retro` prompt does not name, before loading the four it does.
+  Impact: one wasted read; no rework.
+
+#### What caused friction (user side)
+
+- The operator interrupted mid-TDD to ask what `this.approve(approval.grants[0].surface, pattern)` was doing — a killing mutation that had already been reverted two turns earlier.
+  The instinct was exactly right and the answer was cheap (one explanation plus a three-way `diff` against the saved green copies, proving byte-for-byte restoration).
+  The opportunity is on the agent side: mutation-verify is legible to the agent as a bounded ritual and illegible to a human reading over its shoulder, and the narration for step 2's four mutations was noticeably thinner than step 3's ("Now the two killing mutations for step 3:").
+  A mutation announced and its revert confirmed in the same message would have made the question unnecessary — but the cost of asking was three tool calls, so this is a polish item, not a defect.
+
+### Diagnostic details
+
+- **Model-performance correlation** — a clean allocation with no mismatch to flag, which is worth recording because prior retros have flagged the opposite.
+  Planning and TDD ran on `anthropic/claude-opus-5` (two clarification gates, a breaking-change classification, four TDD cycles including a wire reshape); sync ran on `anthropic/claude-sonnet-5` (lint, `fallow`, stage note, rebase); ship ran on `anthropic/claude-sonnet-5` (merge, push, CI watch, close, release dispatch, teardown); this retro runs on `anthropic/claude-opus-5`.
+  Both subagents (`tidy-first-assessor`, `pre-completion-reviewer`) ran on their pinned `anthropic/claude-sonnet-5`.
+  The ship stage is the interesting case: its one judgment call — whether to release — was pre-decided by the plan's `**Release:** ship independently` marker, which is precisely the design that makes a procedural model correct there.
+- **Escalation-delay tracking** — no `rabbit-hole` friction points, and nothing near the five-call threshold.
+  The longest run on a single error was the `forwarding-io.ts` edit-rejection recovery at three tool calls.
+- **Feedback-loop gap analysis** — no gap; verification ran incrementally and paid for itself twice.
+  All four gates (`check`, `lint`, `test`, `fallow dead-code`) established the baseline before step 1; `pnpm run check` ran immediately after the step-1 interface change and after each production edit batch; the full package suite ran after every step.
+  The two call-site misses above were both caught by that cadence rather than at end-of-cycle, which is the entire argument for it.
+
+### Changes made
+
+1. `AGENTS.md` § Reading this repo's own artifacts — added a roadmap `Outcome:` line as a fourth decaying-artifact class, with the instruction to trace its example through the code before turning it into a test.
+   The existing entries covered plan Non-Goals, a plan's external facts, PR status, and ADR status; the artifact that misled this issue was the package's own architecture doc.
+2. `AGENTS.md` § Commits — generalized the published-tag read from "has this export shipped" to two further questions it answered here: what the published code *does* with a missing field, and whether a type reachable from the declaration bundle (but exported by no name) is breaking to change.
+
+Declined during the retro: a `/tdd-plan` clause requiring a killing mutation and its revert to be reported in one message.
+The evidence was real — the operator asked what an already-reverted mutation was doing, costing three tool calls — but the step is already dense and the question was cheap to answer.
