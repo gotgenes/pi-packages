@@ -48,6 +48,7 @@ interface FakeResolver {
   getToolPermission: Mock<
     (toolName: string, agentName?: string) => PermissionState
   >;
+  isToolFullyDenied: Mock<(toolName: string, agentName?: string) => boolean>;
 }
 
 function makeResolver(): FakeResolver {
@@ -58,6 +59,9 @@ function makeResolver(): FakeResolver {
     getToolPermission: vi
       .fn<(toolName: string, agentName?: string) => PermissionState>()
       .mockReturnValue("ask"),
+    isToolFullyDenied: vi
+      .fn<(toolName: string, agentName?: string) => boolean>()
+      .mockReturnValue(false),
   };
 }
 
@@ -231,6 +235,26 @@ describe("getToolPermission", () => {
     const { service, resolver } = makeService();
     service.getToolPermission("read");
     expect(resolver.getToolPermission).toHaveBeenCalledWith("read", undefined);
+  });
+});
+
+describe("isToolFullyDenied", () => {
+  it("delegates to resolver.isToolFullyDenied", () => {
+    const resolver = makeResolver();
+    resolver.isToolFullyDenied.mockReturnValue(true);
+    const { service } = makeService({ resolver });
+    const result = service.isToolFullyDenied("write", "my-agent");
+    expect(resolver.isToolFullyDenied).toHaveBeenCalledWith(
+      "write",
+      "my-agent",
+    );
+    expect(result).toBe(true);
+  });
+
+  it("omits agentName when not provided", () => {
+    const { service, resolver } = makeService();
+    service.isToolFullyDenied("read");
+    expect(resolver.isToolFullyDenied).toHaveBeenCalledWith("read", undefined);
   });
 });
 

@@ -72,6 +72,9 @@ interface PermissionsService {
   /** Query tool-level permission state for pre-filtering before session creation. */
   getToolPermission(toolName: string, agentName?: string): PermissionState;
 
+  /** Whether every value under a tool's surface resolves to deny. */
+  isToolFullyDenied(toolName: string, agentName?: string): boolean;
+
   /**
    * Register a custom preview formatter for a specific tool name.
    * Returns a disposer that unregisters the formatter.
@@ -130,13 +133,26 @@ Decomposition needs the tree-sitter parser, which is warmed at `before_agent_sta
 #### `getToolPermission`
 
 Returns `"allow"` | `"deny"` | `"ask"` for a tool name without considering command-level rules.
-Use this to pre-filter a tool list before creating a child session — it avoids calling `checkPermission` per tool and interpreting the full result.
+It reports the surface's own catch-all, so it answers what a surface's blanket policy is.
 
 ```typescript
-const denied = tools.filter(
-  (t) => permissions.getToolPermission(t, agentName) === "deny",
-);
+const blanketPolicy = permissions.getToolPermission("bash", agentName);
 ```
+
+This is not the question to ask when pre-filtering a tool list — use `isToolFullyDenied` for that.
+A surface written as `bash: {"*": "deny", "git *": "ask"}` reports `"deny"` here while `git status` would still be asked about.
+
+#### `isToolFullyDenied`
+
+Returns `true` when every value under the tool's surface resolves to `deny`, and `false` when anything at all could get through.
+Use this to pre-filter a tool list before creating a child session — it avoids calling `checkPermission` per tool and interpreting the full result, and unlike `getToolPermission` it does not withhold a tool that is only partially restricted.
+
+```typescript
+const usable = tools.filter((t) => !permissions.isToolFullyDenied(t, agentName));
+```
+
+Rule ordering is honored (last-match-wins), so an exception written after a `deny` catch-all keeps the tool reachable while one written before it does not.
+It considers config-layer rules only; a runtime session approval does not change the answer.
 
 #### `registerToolInputFormatter`
 

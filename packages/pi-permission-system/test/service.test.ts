@@ -211,6 +211,9 @@ describe("service round-trip through the keyed locator", () => {
       getToolPermission: vi
         .fn<(toolName: string, agentName?: string) => PermissionState>()
         .mockReturnValue("ask"),
+      isToolFullyDenied: vi
+        .fn<(toolName: string, agentName?: string) => boolean>()
+        .mockReturnValue(false),
     };
   }
 

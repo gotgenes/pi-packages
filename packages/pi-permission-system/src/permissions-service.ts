@@ -25,6 +25,7 @@ import type { PermissionCheckResult, PermissionState } from "./types";
 interface ResolverForService {
   resolve(intent: AccessIntent): PermissionCheckResult;
   getToolPermission(toolName: string, agentName?: string): PermissionState;
+  isToolFullyDenied(toolName: string, agentName?: string): boolean;
 }
 
 /** Narrow session view: hands out the cwd-bound path normalizer. */
@@ -79,6 +80,13 @@ export class LocalPermissionsService implements PermissionsService {
     agentName?: string,
   ): ReturnType<PermissionsService["getToolPermission"]> {
     return this.resolver.getToolPermission(toolName, agentName);
+  }
+
+  isToolFullyDenied(
+    toolName: string,
+    agentName?: string,
+  ): ReturnType<PermissionsService["isToolFullyDenied"]> {
+    return this.resolver.isToolFullyDenied(toolName, agentName);
   }
 
   registerToolInputFormatter(

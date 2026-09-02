@@ -127,6 +127,24 @@ export interface PermissionQuery {
  */
 export interface PermissionsService extends PermissionQuery {
   /**
+   * Whether every value under a tool's surface resolves to `deny`.
+   *
+   * This is the question to ask before withholding a tool from a child
+   * session's tool list, and it is not `getToolPermission`: that reports the
+   * surface's own catch-all, so a partially permissive surface such as
+   * `bash: {"*": "deny", "git *": "ask"}` reads as `"deny"` while `git status`
+   * would still be asked about.
+   *
+   * Rule ordering is honored (last-match-wins), so an exception written *after*
+   * a `deny` catch-all keeps the tool reachable and one written *before* it
+   * does not.
+   *
+   * @param toolName  - Tool name (e.g. `"bash"`, `"read"`, `"my-extension:tool"`).
+   * @param agentName - Optional agent name for per-agent policy resolution.
+   */
+  isToolFullyDenied(toolName: string, agentName?: string): boolean;
+
+  /**
    * Register a custom preview formatter for a specific tool name.
    *
    * The formatter is consulted first inside `ToolPreviewFormatter.formatToolInputForPrompt`;

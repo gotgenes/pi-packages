@@ -17,6 +17,7 @@ export function makeFakePermissionsService(
   return {
     checkPermission: vi.fn(),
     getToolPermission: vi.fn(),
+    isToolFullyDenied: vi.fn(),
     registerToolInputFormatter: vi.fn(),
     registerToolAccessExtractor: vi.fn(),
     getToolAccessExtractor: vi.fn(),
