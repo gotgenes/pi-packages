@@ -92,4 +92,53 @@ describe("SessionApproval", () => {
       expect(approval.grants).toEqual([{ surface: "bash", pattern: "git *" }]);
     });
   });
+
+  describe("atWidth", () => {
+    it("returns itself at the proven width", () => {
+      const approval = SessionApproval.single(
+        "external_directory_write",
+        "/tmp/*",
+      );
+      expect(approval.atWidth("proven")).toBe(approval);
+    });
+
+    it("folds a directional grant to its family at the family width", () => {
+      const approval = SessionApproval.single(
+        "external_directory_write",
+        "/tmp/*",
+      );
+      expect(approval.atWidth("family").grants).toEqual([
+        { surface: "external_directory", pattern: "/tmp/*" },
+      ]);
+    });
+
+    it("folds every grant individually, keeping each pattern", () => {
+      const approval = SessionApproval.forGrants([
+        { surface: "external_directory_read", pattern: "/outside/a/*" },
+        { surface: "path_write", pattern: "/outside/b/*" },
+      ]);
+      expect(approval.atWidth("family").grants).toEqual([
+        { surface: "external_directory", pattern: "/outside/a/*" },
+        { surface: "path", pattern: "/outside/b/*" },
+      ]);
+    });
+
+    it("leaves a non-directional grant alone at the family width", () => {
+      const approval = SessionApproval.single("bash", "git *");
+      expect(approval.atWidth("family").grants).toEqual([
+        { surface: "bash", pattern: "git *" },
+      ]);
+    });
+
+    it("does not mutate the approval it widens", () => {
+      const approval = SessionApproval.single(
+        "external_directory_write",
+        "/tmp/*",
+      );
+      approval.atWidth("family");
+      expect(approval.grants).toEqual([
+        { surface: "external_directory_write", pattern: "/tmp/*" },
+      ]);
+    });
+  });
 });

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import {
+  capabilityDirectionOf,
   capabilitySurfaceForEffect,
   capabilitySurfaceForTool,
   PATH_BEARING_TOOLS,
@@ -89,6 +90,29 @@ describe("surfaceFamilyOf", () => {
   test("leaves a suffixed surface outside the directional families alone", () => {
     expect(surfaceFamilyOf("my_tool_read")).toBe("my_tool_read");
     expect(surfaceFamilyOf("_read")).toBe("_read");
+  });
+});
+
+describe("capabilityDirectionOf", () => {
+  test.each([
+    ["path_read", "read"],
+    ["path_write", "write"],
+    ["external_directory_read", "read"],
+    ["external_directory_write", "write"],
+  ])("names the direction %s proves", (surface, direction) => {
+    expect(capabilityDirectionOf(surface)).toBe(direction);
+  });
+
+  test.each(["path", "external_directory", "read", "write", "bash", "mcp"])(
+    "answers null for %s, which carries no capability suffix",
+    (surface) => {
+      expect(capabilityDirectionOf(surface)).toBeNull();
+    },
+  );
+
+  test("answers null for a suffixed surface outside the directional families", () => {
+    expect(capabilityDirectionOf("my_tool_read")).toBeNull();
+    expect(capabilityDirectionOf("_read")).toBeNull();
   });
 });
 

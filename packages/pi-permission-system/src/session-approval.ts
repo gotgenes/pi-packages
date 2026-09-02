@@ -1,4 +1,8 @@
-import type { ApprovalGrant } from "#src/approval-grant";
+import {
+  type ApprovalGrant,
+  type SessionGrantWidth,
+  widenGrant,
+} from "#src/approval-grant";
 import type { ForwardedSessionApproval } from "#src/authority/permission-forwarding";
 
 /**
@@ -31,6 +35,20 @@ export class SessionApproval {
   /** Whether this approval carries anything for the session store to record. */
   get isRecordable(): boolean {
     return this.grants.length > 0;
+  }
+
+  /**
+   * This approval as recorded at `width`.
+   *
+   * The runner holds a width and an approval and tells the approval to produce
+   * itself — it never inspects a grant's surface. Each grant is folded
+   * individually, so an approval whose patterns proved different directions
+   * keeps one grant per pattern (#810) at either width.
+   */
+  atWidth(width: SessionGrantWidth): SessionApproval {
+    return width === "proven"
+      ? this
+      : new SessionApproval(this.grants.map(widenGrant));
   }
 
   /**

@@ -33,10 +33,25 @@ const DIRECTIONAL_FAMILIES: ReadonlySet<string> = new Set([
 ]);
 
 /**
+ * The capability directions, in ADR 0013 §4's normative order.
+ *
+ * The suffixes below derive from these, so a direction word and its surface
+ * suffix cannot drift — the same discipline that keeps the four surface names
+ * spelled exactly once.
+ */
+const CAPABILITY_DIRECTIONS = ["read", "write"] as const;
+
+/** One end of the read/write axis (ADR 0013 §3). */
+export type CapabilityDirection = (typeof CAPABILITY_DIRECTIONS)[number];
+
+/**
  * The capability suffixes, in ADR 0013 §4's normative order: a family's
  * sugar-expanded and folded members are always read-then-write.
  */
-const CAPABILITY_SUFFIXES = ["_read", "_write"] as const;
+const CAPABILITY_SUFFIXES = [
+  `_${CAPABILITY_DIRECTIONS[0]}`,
+  `_${CAPABILITY_DIRECTIONS[1]}`,
+] as const;
 
 /**
  * Surfaces whose patterns are matched against filesystem paths and therefore
@@ -65,6 +80,25 @@ export function surfaceFamilyOf(surface: string): string {
     if (DIRECTIONAL_FAMILIES.has(family)) return family;
   }
   return surface;
+}
+
+/**
+ * The direction a surface proves, or `null` when it proves neither — a family
+ * name, a non-path surface, or a suffixed name outside the directional
+ * families (`my_tool_read`).
+ *
+ * The inverse of {@link capabilitySurfaceForEffect} over a proven effect, and
+ * the question that decides whether an ask's session grant can be widened.
+ */
+export function capabilityDirectionOf(
+  surface: string,
+): CapabilityDirection | null {
+  if (surfaceFamilyOf(surface) === surface) return null;
+  return (
+    CAPABILITY_DIRECTIONS.find((direction) =>
+      surface.endsWith(`_${direction}`),
+    ) ?? null
+  );
 }
 
 /**
