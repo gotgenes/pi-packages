@@ -62,5 +62,60 @@ The scope label names the shared **family** rather than a directional member, be
 `rg -rn 'suggestPathSessionPattern' …` rewrote every match to `n` in the output, exactly as AGENTS.md warns.
 Re-ran with `grep -rn`.
 
+## Stage: Implementation — TDD (2026-09-02T07:14:54Z)
+
+### Session summary
+
+Executed all eight planned TDD steps plus one operator-requested test-hygiene commit and one reviewer-prompted doc fix — ten commits.
+The ask prompt now offers a conditional fifth option (`b`) recording a session grant on the bare family surface, with the width threaded through `applyPermissionGate`, `GateRunner`, and the forwarded-response wire.
+Package test count went 3862 → 3940 passed (+78), 2 expected fail unchanged; `check`, root `lint`, `test`, `fallow dead-code`, and `verify:public-types` all green.
+
+### Observations
+
+Pre-completion reviewer: **WARN** — one non-blocking finding, since fixed in `65343336`.
+
+#### Reviewer warnings
+
+- The `permission-prompt-component.ts` module-tree entry in `architecture.md` still described the pre-#813 component, though the plan's Documentation table named the file.
+  Fixed before handoff.
+  Worth noting the shape of the miss: the docs commit updated the entries whose *described contract* changed and skipped the one whose change was "deletes a local constant, imports it instead" — which is exactly the structural fact a module tree should carry.
+
+The reviewer's five-part re-derivation mandate (this change widens a grant) came back clean on all five, including the one worth stating: no auto-approve path can produce `"family"`, because both the yolo and session-hit fast paths `return` before `applyPermissionGate` is reached, so `sessionGrant` is unreachable without an escalation a human answered.
+
+#### Two plan predictions were wrong, both recorded rather than papered over
+
+- Step 1's killing mutation was "reverse the exported order — the component's row-order assertions must fail."
+  There were no row-order assertions: the component test never pinned the rendered option order, so the plan's predicted red could not have fired.
+  Added the pin first, then did the refactor — the mutation then killed it as intended.
+  A `refactor:` step's mutation is where a missing pin surfaces, because the step has no red of its own to hide behind.
+- Step 4 predicted its `width: "family"` mutation would redden three #807 narrowing tests; it reddened two.
+  The third ("covers a later write with an approved write") asserts a *positive* coverage that widening preserves, so it cannot discriminate that mutation by construction.
+  Counting reds against the prediction is what turned this into a one-line finding instead of an unexamined pass.
+
+#### Sequencing kept the affordance in a single commit
+
+The plan deliberately landed the mechanism (gate result, vocabulary, recording, wire) as four unobservable `refactor:` steps before the `feat:` that renders the option.
+This paid off: no commit on the branch has a key the user can press that does nothing, and the `feat:` diff is the affordance alone.
+One forced deviation — `PermissionPromptDecision.sessionGrantWidth` had to land in step 4 rather than step 7, because `applyPermissionGate` cannot read a field that does not exist.
+
+#### An operator-requested tidy landed mid-implementation
+
+The operator questioned `if (x.kind !== "render") throw new Error("expected render")` in the tests I was writing.
+It was the file's own convention (18 occurrences on `main`) and it was doing real work — type narrowing, which `expect()` cannot do — but it reported outside the assertion library.
+`expect.unreachable` returns `never`, so an `assertRender` assertion signature narrows *and* reports; each site became a one-line swap.
+Done as its own `test:` commit ahead of the feature, at the operator's direction, which meant setting the in-flight step-7 work aside (`cp` to `/tmp`, `git checkout HEAD --`, tidy, commit, restore) rather than mixing it into the feature diff.
+The swap was scripted because it was strictly single-line per site; the *helper insertion* was a hand `Edit`, and I still miscounted the decorative `// ── Helpers ───` rule's dash run and corrupted the line — recovered by restoring that one line byte-exactly from `git show HEAD:<path>` rather than retyping it.
+
+#### Type checking caught what the suite could not
+
+`decisionFn.mock.calls[0][3]` compiled in my head but not in `tsc`: the fixture's `??` override widens `decisionFn` to the plain function type, erasing `Mock`.
+Rewrote those five assertions onto the file's existing `toHaveBeenCalledWith` convention.
+This is the `testing` skill's "annotation erases `Mock<...>` methods" rule arriving from the other direction — worth running `pnpm run check` before believing a new fixture accessor.
+
+#### Doc-comment defaults are a contract worth stating once
+
+`sessionGrantWidth` is absent-means-`"proven"` in four places (the decision, the gate result, the wire, the review log) — except the review log, which writes `"proven"` explicitly because a log is read rather than consumed and a reader should not have to know the default.
+That asymmetry is deliberate and is stated in `recordedGrantWidth`'s doc comment.
+
 [#807]: https://github.com/gotgenes/pi-packages/issues/807
 [#810]: https://github.com/gotgenes/pi-packages/issues/810
