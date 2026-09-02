@@ -423,6 +423,10 @@ The probe requires a **known** effective base, so a bare token after a non-liter
 An `--opt=value` token additionally has its value emitted as its own token at collection, so `tar --directory=/etc` gates the embedded path while `--format=json` yields a bare `json` that names nothing ([#645]).
 That split is blind for a generic command (`collectEmbeddedOptionValues`) and **role-aware** for a pattern-first one, whose own walker runs it: each flag in `PATTERN_FIRST_COMMANDS` carries a role keyed by short and long spelling, matched exactly, `=`-embedded, or glued, so `grep --file=/tmp/patterns` emits the pattern file while `grep --regexp=/etc/passwd` emits nothing, and every spelling of a script-supplying flag stops the walker from eating the command's real operand as the inline pattern ([#823]).
 A flag is listed as consuming only when it consumes in **every implementation the command name reaches** — over-listing drops an operand, under-listing only over-surfaces — which is why `sed -i` consumes the next argument only when it is empty, why `--context` sits in `rg`'s table and not `grep`'s, and why awk's GNU long forms are `unknown-arity` (claiming neither the argument nor the pattern slot) since the bare name may reach GNU awk or one-true-awk.
+Since [#839] the collector also reads the operands a **statement** names directly — a `for`/`select` word-list entry and a `case` subject — through one `collectStatementOperandTokens` walker parameterized by which side of the anonymous `in` keyword is the operand side, since no command owns those tokens and the loop body carries only the unexpanded `$f`.
+They carry `UNPROVEN_EFFECT` and are otherwise gated exactly like a command operand.
+A `case` *pattern*, a loop variable, and a function's own name are deliberately not operands — the same boundary the command enumerator's `STATEMENT_TYPES` filter draws from the other side — and both a non-operand child and an operand-side child outside `ARG_NODE_TYPES` fall through to the ordinary recursion, which is what keeps a `do_group` reaching the loop body's commands and a word-list substitution descended rather than read as text.
+
 When a plan or test asserts a specific bash repro string, trace the token through the classifier first — an issue's headline repro can describe a symptom whose literal input never reaches the gate being changed.
 
 [#261]: https://github.com/gotgenes/pi-packages/issues/261
@@ -432,5 +436,6 @@ When a plan or test asserts a specific bash repro string, trace the token throug
 [#645]: https://github.com/gotgenes/pi-packages/issues/645
 [#520]: https://github.com/gotgenes/pi-packages/issues/520
 [#694]: https://github.com/gotgenes/pi-packages/issues/694
+[#839]: https://github.com/gotgenes/pi-packages/issues/839
 [earendil-works/pi#4731]: https://github.com/earendil-works/pi/issues/4731
 [ADR-0002]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-subagents/docs/decisions/0002-extensions-on-a-minimal-core.md
