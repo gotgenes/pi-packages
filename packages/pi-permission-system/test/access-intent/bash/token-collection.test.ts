@@ -805,6 +805,49 @@ describe("statement operands", () => {
       ]);
     });
   });
+
+  describe("a case subject", () => {
+    // Most arms below run `true`, which takes no operand, so each assertion
+    // sees the subject and nothing the arms contribute.
+    it("collects the subject a case statement names directly", async () => {
+      expect(await textsOf("case /etc/shadow in a) true;; esac")).toEqual([
+        "/etc/shadow",
+      ]);
+    });
+
+    it("removes quotes from a quoted subject", async () => {
+      expect(await textsOf('case "/etc/shadow" in a) true;; esac')).toEqual([
+        "/etc/shadow",
+      ]);
+    });
+
+    it("leaves an arm's pattern uncollected", async () => {
+      // A `case` pattern is a glob matched against the subject string, not a
+      // path anything touches — so the subject side of `in` is the operand
+      // side, and the arms are recursed for their commands alone.
+      expect(await textsOf("case $x in /etc/passwd) true;; esac")).toEqual([]);
+    });
+
+    it("still collects an arm's own command operands", async () => {
+      expect(await textsOf("case $x in a) cat /etc/shadow;; esac")).toEqual([
+        "/etc/shadow",
+      ]);
+    });
+
+    it("attributes a subject no command owns as unproven", async () => {
+      expect(await tokensOf("case /etc/shadow in a) true;; esac")).toEqual([
+        { token: "/etc/shadow", effect: UNPROVEN_EFFECT },
+      ]);
+    });
+
+    it("descends a substitution in the subject rather than reading its text", async () => {
+      expect(
+        await tokensOf("case $(cat /etc/shadow) in a) true;; esac"),
+      ).toEqual([
+        { token: "/etc/shadow", effect: { effect: "read", source: "core" } },
+      ]);
+    });
+  });
 });
 
 describe("embedded --opt=value extraction (#645)", () => {

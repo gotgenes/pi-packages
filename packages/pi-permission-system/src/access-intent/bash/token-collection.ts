@@ -50,6 +50,9 @@ export function collectPathCandidateTokens(node: TSNode): PathToken[] {
   if (node.type === "for_statement") {
     return collectStatementOperandTokens(node, "after-in");
   }
+  if (node.type === "case_statement") {
+    return collectStatementOperandTokens(node, "before-in");
+  }
   if (EXECUTION_HOST_TYPES.has(node.type)) {
     return collectHostedExecutionTokens(node);
   }

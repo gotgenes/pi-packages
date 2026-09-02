@@ -154,6 +154,14 @@ describe("extractExternalPathsFromBashCommand", () => {
       expect(result).toEqual(["/etc/shadow"]);
     });
 
+    test("detects a case subject outside CWD", async () => {
+      const result = await extractExternalPathsFromBashCommand(
+        "case /etc/shadow in a) echo b;; esac",
+        cwd,
+      );
+      expect(result).toEqual(["/etc/shadow"]);
+    });
+
     test("does not flag a word-list operand that stays within CWD", async () => {
       const result = await extractExternalPathsFromBashCommand(
         "for f in src/a.ts src/b.ts; do echo $f; done",

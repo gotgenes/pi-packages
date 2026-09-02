@@ -68,6 +68,26 @@ describe("BashProgram", () => {
         ]);
       });
 
+      it("projects a case subject", async () => {
+        const program = await BashProgram.parse(
+          "case /etc/shadow in a) echo b;; esac",
+          normalizer,
+        );
+        expect(program.pathRuleCandidates().map(({ token }) => token)).toEqual([
+          "/etc/shadow",
+        ]);
+      });
+
+      it("leaves a case arm's pattern unprojected", async () => {
+        // A `case` pattern is a glob matched against the subject string, not a
+        // path anything touches.
+        const program = await BashProgram.parse(
+          "case $x in /etc/passwd) echo b;; esac",
+          normalizer,
+        );
+        expect(program.pathRuleCandidates()).toEqual([]);
+      });
+
       it("resolves a word-list operand against the effective directory", async () => {
         const program = await BashProgram.parse(
           "cd nested && for f in src/file.txt; do echo; done",
@@ -438,6 +458,16 @@ describe("BashProgram", () => {
         expect(
           program.externalAccesses().map(({ path }) => path.value()),
         ).toEqual([join(homedir(), "other/secret")]);
+      });
+
+      it("flags an absolute case subject", async () => {
+        const program = await BashProgram.parse(
+          "case /etc/shadow in a) echo b;; esac",
+          normalizer,
+        );
+        expect(
+          program.externalAccesses().map(({ path }) => path.value()),
+        ).toEqual(["/etc/shadow"]);
       });
 
       it("leaves an in-cwd word-list operand off the external slice", async () => {
