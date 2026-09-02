@@ -55,5 +55,56 @@ The plan is six steps: one preparatory `test:` fixture widening, two `fix:` beha
   The behaviors genuinely differ (`clearWidget()` also prunes `finishedTurnAge` against the live agent list) and `clearWidget()`'s own doc comment states the separation is deliberate; a shared helper would need a discriminator parameter.
   Recorded only so a later sweep does not re-discover it as a candidate.
 
+## Stage: Implementation — TDD (2026-09-02T02:46:49Z)
+
+### Session summary
+
+Executed five of the plan's six TDD steps; step 5 was dropped by operator decision after measurement (see below).
+`AgentWidget.dispose()` now clears its `UICtx` as well as the interval and both registrations, and `WidgetEventsHandler.handleSessionShutdown()` is registered on `session_shutdown` after the lifecycle handler.
+Tests went 1438 → 1447 across an unchanged 74 files: +3 in `test/ui/agent-widget.test.ts`, +4 in `test/handlers/widget-events.test.ts`, +2 in `test/composition-root.test.ts`.
+Pre-completion reviewer: WARN (two doc-accuracy findings, both fixed).
+
+### Observations
+
+- **Deviation 1 — `fallow` counts test call sites, which broke two plan claims in the same direction.**
+  The plan deferred removing the `fallow-ignore-next-line unused-class-member` comment to step 4, reasoning that `dispose()` would have no call site until the wiring landed.
+  It has one as soon as step 2's tests call it, so the suppression went stale immediately and `pnpm fallow dead-code` failed in the *opposite* direction from the plan's prediction.
+  Removed it in step 2 instead.
+  The same fact invalidates step 4's second killing mutation: with the registration deleted and no suppression, fallow reports zero findings.
+  The gate can never pin production wiring — the composition-root tests are the only pin.
+  Both corrections are recorded in the commit bodies and the architecture doc's `Landed:` note; the plan file is left as written.
+
+- **Deviation 2 — the first draft of step 4's tests was vacuous, and the reviewer reproduced why.**
+  Spawning a background agent and firing `session_shutdown` while it was still *running* passed with the wiring deleted: `abortAll()`'s notification settles after `manager.dispose()` has emptied the registry, so `update()` takes its idle path into `clearWidget()` and tears the widget down incidentally.
+  That is the accidental self-heal the plan's Background described, and it is deterministic in this harness rather than the ≤ 80 ms race the plan expected.
+  Driving the agent to **completion** first fixes it — `disposeSession()` notifies no observer, so no incidental `update()` lands.
+  The `completeAgentIntoWidget()` doc comment records why the choice is load-bearing.
+
+- **Deviation 3 — step 5 was dropped, not deferred.**
+  The plan anticipated that the ordering mutation might stay green and pre-authorized recording it as a finding.
+  Measured: swapping the two `session_shutdown` registrations leaves all 1447 tests green, because Decision 2's `uiCtx` clear makes both orders converge.
+  Worse, the test written for the step survived the *wiring-deletion* mutation too, so by the `testing` skill's definition it was a broken probe — and `composition-root.test.ts`'s docstring claims only that file fails when wiring is removed, so committing it would have weakened a true claim.
+  Operator chose to drop it and keep the ordering as defensive intent in an `index.ts` comment.
+
+- **Deviation 4 — step 2 was retyped `fix:` → `refactor:`.**
+  The plan suggested `fix:`, but at that commit `dispose()` had no production call site, so nothing a user could observe had changed — `AGENTS.md`'s rule types it `refactor:`.
+  Caught by the changelog-preview step, corrected before anything was pushed via `git reset --hard` + `--amend` + `cherry-pick` (rebase avoided per `AGENTS.md`), and verified with an empty `git diff backup-tag HEAD`.
+  The plan had applied exactly this reasoning to step 3 and not to step 2.
+
+- **Deviation 5 — the plan's quantitative baseline row was contaminated.**
+  It records 1440 tests / 75 files; the true baseline is 1438 / 74.
+  The planning session measured it with its own disposable spike file still on disk.
+  Recorded in the architecture doc's `Landed:` note.
+
+- **The reviewer's two WARNs were both stale-measurement defects, and one was mine from this stage.**
+  I wrote "1448 tests" into the `Landed:` note — a number measured while the step-5 test still existed, carried forward after it was dropped.
+  Re-measured at HEAD: 1447.
+  The other WARN was that deviation 5 appeared nowhere in the shipped record.
+  Both fixed by amending the docs commit.
+  The lesson is `AGENTS.md`'s own: a measurement is scoped to the commit it was taken at, and dropping a test is a behavior change that invalidates it.
+
+- **PR #850 is credited and remains a ship-time close target.**
+  `Co-authored-by: mikemikimike <13286568797@163.com>` is on the wiring commit and verified with `git interpret-trailers --parse`.
+
 [#827]: https://github.com/gotgenes/pi-packages/issues/827
 [PR #850]: https://github.com/gotgenes/pi-packages/pull/850
