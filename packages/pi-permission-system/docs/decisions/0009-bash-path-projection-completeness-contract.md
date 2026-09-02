@@ -1,16 +1,39 @@
 ---
 status: accepted
 date: 2026-07-24
-amended: 2026-08-29
+amended: 2026-09-02
 ---
 
 # 0009 — The bash path projection is a completeness contract, not a best-effort heuristic
 
 ## Status
 
-Accepted, as amended 2026-08-29.
+Accepted, as amended 2026-09-02.
 This decision states the contract the bash path projection upholds, and settles how a "the gate missed my path" report is triaged.
 It is the framing for [#645], which closes two gaps the contract names as in-scope; it composes with `docs/decisions/0003-git-bash-posix-path-semantics.md` (win32 token shapes) and `docs/decisions/0007-model-judge-authorizer-chain-adr.md` (the judge that absorbs false positives).
+
+### Amendment, 2026-09-02 — a statement's own operands are projected
+
+The guarantees below were written as facts about a **command's** operands, and the collector implemented that literally: it read text from `command` and `file_redirect` nodes and nothing else.
+A path a statement names directly — a `for`/`select` word-list entry, a `case` subject — is a child of the statement node, so it reached no surface at all ([#839]).
+
+The loop body cannot recover it, and that is what made the gap unrecoverable rather than merely narrow.
+`for f in /etc/shadow; do cat $f; done` carries the literal in the word list and the unexpanded `$f` in the body, and the computed-paths residual below correctly declines to resolve `$f` — so the word list is the sole place the path appears, and `for f in ~/other/secret; do cat $f; done` read outside the working directory with nothing gating it.
+The asymmetry against `for f in $(cat /etc/shadow)`, which always projected, is what identified this as a gap rather than a residual: the same operand reached the surfaces through a nested command and not when the statement named it outright.
+
+The amendment adds statement operands to the guarantees.
+The boundary it draws is that an operand is a value the statement *names*, which is narrower than "a word the statement contains":
+
+- A `case` **pattern** is not an operand.
+  It is a glob matched against the subject string, not a path anything touches, so `case $x in /etc/passwd) …` projects nothing.
+- A **loop variable** and a **function's own name** are not operands.
+  They are names being bound, and the command surface refuses to emit them as command units for the same reason ([#742]).
+
+The projection is otherwise unchanged: a statement operand runs through the ordinary shape classifiers, the existence probe, `cd`-base folding, and the containment boundary, exactly as a command operand does.
+It carries no proven effect — no command word owns it and no redirect operator names it — so it consults both directional surfaces most-restrictive, which is the fail-closed base case.
+
+Unlike the two amendments below, this one **newly prompts**: measured over 5191 intact commands of a real review log, 22 change the projected `path` candidates and 3 newly ask on `external_directory` under a real policy.
+That cost is accepted on the same layering principle the rest of this record rests on — over-surfacing is recoverable, over-suppression is not — and it shipped as a breaking change.
 
 ### Amendment, 2026-08-28 — glob metacharacters are shell syntax, not regex evidence
 
@@ -126,6 +149,8 @@ A path reaches the `path` and `external_directory` surfaces when it appears as:
 - A **value embedded in a long option** (`--file=/tmp/patterns`), split at collection time and classified by the ordinary shape rules ([#645]).
 - A **bare token naming an existing filesystem entry** — the existence probe ([#645]).
   Its canonical (symlink-resolved) form is what policy matches, so a symlink is gated by rules naming its target ([#493]).
+- A **statement's own operand** — a `for`/`select` word-list entry or a `case` subject ([#839]).
+  A `case` *pattern* is not one: it is matched against the subject string rather than naming a path.
 - A **plain `$HOME` / `${HOME}` / `$PWD` / `${PWD}` reference**, resolved at token collection before classification ([#694]).
   `$HOME/x` is therefore gated exactly as `~/x` and as the literal absolute spelling, independent of whether the target exists; `$PWD/x` is gated exactly as `./x`.
 - Any of the above resolved against the **effective working directory** after literal current-shell `cd` folding; a non-literal `cd` renders the base unknown and keeps tokens literal-only ([#393]).
@@ -134,9 +159,8 @@ These guarantees are **positional-invariant**: they hold for a command's own ope
 A command nested in a substitution is itself gated ([#306]), so its operands are projected whether the substitution sits in argument position (`diff <(cat /etc/shadow)`), in a redirect destination (`echo hi > $(cat /etc/shadow)`), in an interpolating heredoc body ([#741]), in command-name position (`$(cat /etc/shadow)`, `while $(cat /etc/shadow); do …`), or in an env-var prefix assignment (`FOO=$(cat /etc/shadow) echo hi`) ([#742]).
 This is a guarantee, not a residual — see the note under "Computed paths" below for the boundary it is easily confused with.
 
-The invariance is about a **command's operands**, and a path that is nobody's operand is outside it.
-The collector reads text only from `command` and `file_redirect` nodes, so a path named directly as a statement's own word — `for f in /etc/shadow`, `select f in /etc/shadow`, `case /etc/shadow in` — reaches neither surface ([#839]).
-That is a known gap, not a covered case: unlike the positions above, closing it produces new prompts (17 of 4401 measured log commands carry a path-shaped `for`/`case` operand), so it is tracked separately rather than read into this list.
+Positional invariance is about a command's operands; a statement's own operands are guaranteed by the bullet above them rather than by the invariance, because no command owns them.
+A word that is neither — a `case` pattern, a loop variable, a function's name — is outside both, and deliberately so.
 
 Opacity is handled separately and conservatively: a wrapper command that hides its payload (`bash -c`, `eval`, `sudo`, `xargs`, …) is floored from `allow` to `ask` rather than projected.
 
