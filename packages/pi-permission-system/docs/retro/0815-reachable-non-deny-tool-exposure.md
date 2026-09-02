@@ -63,3 +63,24 @@ Test count went 3862 → 3897 in `pi-permission-system` (+35); every determinist
 - The reviewer found that `docs/cross-extension-api.md`'s interface listing — and the source JSDoc it was copied from in `src/service.ts` — still recommended `getToolPermission` "for pre-filtering tools before creating a child session", contradicting the corrected prose five lines below it in the same file.
   Fixed exhaustively in `774827c6` by grepping every `pre-filter` occurrence across `src/` and `docs/` rather than only the two the reviewer named.
 - The reviewer independently re-derived seven adversarial configs against `isSurfaceFullyDenied` (shadowing, universal deny, cross-surface leakage, re-shadowing, floor interaction) and traced the fail-closed/yolo and exposure-is-not-authorization claims through the code rather than accepting them from the plan; all held.
+
+## Stage: Sync (worktree) (2026-09-02T15:15:31Z)
+
+### Session summary
+
+Pre-push checks pass clean on this branch: root `pnpm run lint` (0 findings) and `pnpm fallow dead-code` (0 issues, 6 suppressed, all justified in the TDD stage).
+The plan's `**Release:** ship independently` marker stands — #815 is in no roadmap batch, so the root should name `pi-permission-system` in the release dispatch without asking.
+No deferred work or follow-ups beyond the `rule.ts:143` stale-comment tidying already recorded under Deferred tidyings above.
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-815--/2026-09-02T06-26-19-120Z_01a060cc-0770-77b1-966f-cadb217ed418.jsonl` — read with `read_session_file({ path: "<path>" })` for message-level verification at land/retro time.
+
+### Observations
+
+Nothing beyond the TDD-stage findings above; this sync only confirmed the pre-push gates and captured the transcript path for the root's final `/retro`.
+
+One process note, the [#549] hazard caught live: the first sync pass rebased onto `origin/main` and declared the branch fast-forward-ready, but local `main` carried an unpushed root commit (`docs(triage): prioritize backlog for 2026-09-02`) that `origin/main` did not.
+`/ship-worktree` merges into **local** `main`, so the ff-merge would have been rejected.
+Re-rebased onto local `main`; `git diff` against the pre-rebase tip is exactly that one triage commit, so all 12 commits replayed unchanged.
+The check that matters is `git merge-base --is-ancestor main HEAD`, not the `origin/main` comparison the template's step 4 names — the two agree only when the root has nothing unpushed.
+
+[#549]: https://github.com/gotgenes/pi-packages/issues/549
