@@ -60,6 +60,22 @@ It is a member of `PermissionDecisionState` (and `isPermissionDecisionState`, fo
 - The default (subagent-only, pre-selected) preserves today's behavior exactly; this ships as `feat:`, not a breaking change.
 - The forwarded request and response formats gain one optional field each, read tolerantly — an upgrade needs no config edit and tolerates version skew.
 
+### Amendment (2026-09-02, [#810]): the suggestion carries a surface per pattern, and skew now drops it
+
+Decision 1 above describes the child's suggestion as "surface + one-or-more patterns", relayed via `SessionApproval.toForwardedData()` and rebuilt with `SessionApproval.multiple`.
+That shape could not survive [#807], which proves a read/write direction per bash path token: an ask whose uncovered paths disagreed had to record them all on the bare family, granting both directions on every pattern.
+
+`ForwardedSessionApproval` now carries `grants`, an array of `{ surface, pattern }`, and the serving node rebuilds with `SessionApproval.forGrants`.
+
+The tolerant read is **not** preserved for the old shape, which reverses the third Consequence bullet above for this field.
+The reason is that the wire file was the smaller of the two breaks: the type is structurally reachable from the published declaration bundle through `PromptPermissionDetails`, which is what a third-party `Authorizer` chain link receives, so replacing its fields is a compile-time break for a consumer whether or not two processes ever skew.
+With tolerance no longer buying non-breaking status, the strictest shape was taken and this ships as `feat!:`.
+
+Skew therefore drops the suggestion in **both** directions.
+The degradation is bounded and was verified against the published tag rather than assumed: `sessionApproval` is not in `readForwardedPermissionRequest`'s required set at v29.3.0, so a skewed request is still accepted and still prompts.
+What is lost is the second dialog step — the human sees the base four-option prompt, and "for this session" records on the requesting subagent, which is the least-privilege default this ADR already chose.
+A whole-session grant is never made wider by skew, only unavailable, so no upgrade ordering is required.
+
 ### Accepted limitations
 
 - **Cross-cwd / cross-surface re-resolution is best-effort.**
@@ -70,5 +86,7 @@ It is a member of `PermissionDecisionState` (and `isPermissionDecisionState`, fo
   The three-way split waits on multi-hop escalation — admitted-not-shipped, the same shape as the escalation chain.
 
 [#292]: https://github.com/gotgenes/pi-packages/issues/292
+[#807]: https://github.com/gotgenes/pi-packages/issues/807
+[#810]: https://github.com/gotgenes/pi-packages/issues/810
 [#557]: https://github.com/gotgenes/pi-packages/issues/557
 [#565]: https://github.com/gotgenes/pi-packages/issues/565

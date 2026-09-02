@@ -210,6 +210,7 @@ Approve-and-steer, edit diffs, and risk explanations → a downstream package ov
 | [docs/migration/0746-review-log-fields.md](docs/migration/0746-review-log-fields.md)                                           | Review-log fields (breaking) — `message` replaced by request facts, and the `reviewLogFieldMaxWidth` bound           |
 | [docs/migration/0794-keyed-service-locator.md](docs/migration/0794-keyed-service-locator.md)                                   | Keyed service locator (breaking) — `getPermissionsService(sessionId)`, and the repeating ready event                 |
 | [docs/migration/0796-remove-process-root-slot.md](docs/migration/0796-remove-process-root-slot.md)                             | Process-root slot removed (breaking) — `getRootPermissionsService()` and its publish/unpublish pair are gone         |
+| [docs/migration/0810-per-pattern-approval-surfaces.md](docs/migration/0810-per-pattern-approval-surfaces.md)                   | Per-pattern approval surfaces (breaking) — `ForwardedSessionApproval.grants` replaces `surface` + `patterns`         |
 
 ## Development
 

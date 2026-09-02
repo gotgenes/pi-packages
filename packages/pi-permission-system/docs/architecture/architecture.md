@@ -811,12 +811,13 @@ src/
 ├── pattern-suggest.ts        Per-surface approval pattern suggestions: `suggestSessionPattern` for a surface's own value vocabulary (bash command, MCP target, skill name), `suggestPathSessionPattern` for a pattern the caller's `PathNormalizer` already derived. Constraint: holds no path-language semantics — a path pattern arrives derived and is labelled verbatim
 ├── bash-arity.ts             Command arity table for bash pattern suggestions
 ├── expand-home.ts            `expandHomePath`: `~` / `$HOME` / `${HOME}` expansion for patterns and path values, over one prefix table so the three spellings cannot drift; a prefix is recognized only standalone or before a separator, so `~username` / `$HOMEDIR` / `${HOME:-/tmp}` are left alone
-├── session-approval.ts        SessionApproval value object - owns the single/multi-pattern union; exposes representativePattern and toGateApproval()
-├── session-rules.ts          Session approval store (Ruleset wrapper); `implements SessionApprovalRecorder`; injected into `GateRunner` as the recorder role
+├── approval-grant.ts         `ApprovalGrant` interface - one pattern paired with the surface it was approved on. Its own module because both `session-approval.ts` and the forwarded wire type name it, and those two already import in one direction
+├── session-approval.ts        SessionApproval value object - owns a list of `ApprovalGrant`s, built by `single` or `forGrants`; exposes `isRecordable` and `toForwardedData()`
+├── session-rules.ts          Session approval store (Ruleset wrapper); records each grant on the surface that grant names, so an ask whose paths proved different directions grants each only its own; `implements SessionApprovalRecorder`; injected into `GateRunner` as the recorder role
 ├── policy-loader.ts          PolicyLoader interface + FilePolicyLoader (file I/O, mtime caching); marks a present-but-unloadable non-global scope `invalid` (an absent file stays a plain empty scope) so composition can fail closed
 ├── scope-merge.ts            Cross-scope permission merge + origin-map bookkeeping
 ├── permission-manager.ts     Scope loading + rule composition + `check(intent)` (single resolution entry point); delegates I/O to PolicyLoader; floors the composed ruleset `allow`→`ask` (origin `fail-closed`) when a non-global scope is `invalid`, and appends a fail-closed notice to `getConfigIssues`. Constraint: stays string-based — must not import `AccessPath` (the ADR 0002 string boundary, lint-guarded by `no-restricted-imports`)
-├── permission-gate.ts        Pure deny/ask/allow gate (injected IO). Both result arms carry the `DecisionSource` that answered — the gate is the one place that knows whether recorded authority or an escalation decided, so the caller reads it rather than reconstructing it from a captured decision. Its `messages` bag holds one refusal factory, not one per outcome: which sentence a refusal earns follows from the decision's own decider, dispatched at the renderer
+├── permission-gate.ts        Pure deny/ask/allow gate (injected IO). Reports a whole-session grant as a boolean (`canGrantForSession` in, `forSession` out) rather than echoing the suggestion, which the caller already holds and which has no single representative once an approval carries a surface per pattern. Both result arms carry the `DecisionSource` that answered — the gate is the one place that knows whether recorded authority or an escalation decided, so the caller reads it rather than reconstructing it from a captured decision. Its `messages` bag holds one refusal factory, not one per outcome: which sentence a refusal earns follows from the decision's own decider, dispatched at the renderer
 ├── restrictiveness.ts        The deny > ask > allow ordering, first-wins on ties: `mostRestrictiveOf` over a statically non-empty tuple (total, so the resolver's family fold has no `undefined` branch) and the empty-tolerant `pickMostRestrictive` the bash gates use. Core-layer, so `permission-resolver.ts` can depend on it
 ├── permission-resolver.ts    `ScopedPermissionResolver` interface - the single `{ resolve(intent) }` role the gate factories / runner / pipeline depend on; `PermissionResolver` concrete class holds `ScopedPermissionManager` + `SessionRules`, owns `resolve(intent)` (unwraps an `access-path` `AccessIntent` via `matchValues()` before calling `manager.check`; the concrete class also accepts a pre-fixed `path-values` intent as a passthrough — the forwarded-serving wire's producer, #597 — while the gate-facing interface stays narrow to `AccessIntent`), the surface-family fold (an intent naming a bare `path` / `external_directory` surface is resolved against each directional member and combined most-restrictive, returning the losing member's own result). Constraint: the fold lives here, not in the gates — this is the one entry point the gates, `LocalPermissionsService`, and `ServingPolicy` share, and a serving node resolving a forwarded child request against an emptied bare surface would stop hard-denying what the parent's config denies (#712, #806). Also owns raw `checkPermission` (`implements SkillPermissionChecker`, no session rules), `getToolPermission`, and `getConfigIssues`
 ├── decision-reporter.ts      `DecisionBroadcaster` (emit only) + `DecisionReporter` (extends it with the review-log write) + `GateDecisionReporter` class - owns `SessionLogger` and event bus; a collaborator that only announces an outcome depends on the narrow half
@@ -868,7 +869,7 @@ src/
 │       ├── skill-input.ts    describeSkillInputGate - pure descriptor factory; takes a pre-computed check result so the runner reuses the caller's check
 │       ├── external-directory.ts describeExternalDirectoryGate - pure descriptor/bypass factory; builds an `AccessPath`, delegates policy resolution to `resolveExternalDirectoryPolicy` on the narrowest `external_directory`-family surface the tool's identity proves (`capabilitySurfaceForTool`), uses `accessPath.boundaryValue()` for the outside-CWD boundary and infra-read checks, and discloses `accessPath.resolvedAlias()` when it names a location distinct from the typed path
 │       ├── external-directory-policy.ts Shared external-directory policy check for both gates: `resolveExternalDirectoryPolicy(path, resolver, surface, agentName)` emits an `access-path` `AccessIntent` on the caller's `external_directory`-family surface; `selectUncoveredExternalPaths(accesses, resolver, agentName)` routes each access through `capabilitySurfaceForEffect`, keeps the not-allowed entries with the surface and effect each resolved under, and selects the worst via `pickMostRestrictive`
-│       ├── bash-external-directory.ts describeBashExternalDirectoryGate - pure descriptor/bypass factory over the injected `BashProgram` (`externalAccesses()`); delegates the per-path routing, alias matching, and worst-uncovered selection to `selectUncoveredExternalPaths`, and stamps the deciding path's `effect`/`effectSource` on the log context. Constraint: one `SessionApproval` carries one surface for all its patterns, so `approvalSurfaceFor` narrows the grant only when every uncovered path agrees on a direction and otherwise falls back to the bare family — exactly today's width, never wider
+│       ├── bash-external-directory.ts describeBashExternalDirectoryGate - pure descriptor/bypass factory over the injected `BashProgram` (`externalAccesses()`); delegates the per-path routing, alias matching, and worst-uncovered selection to `selectUncoveredExternalPaths`, and stamps the deciding path's `effect`/`effectSource` on the log context. Records one session-approval grant per uncovered path at that path's own proven surface, so an ask mixing a proven read with a proven write grants each path only its own direction; two paths sharing a directory derive the same glob and so grant both directions there, which is what the prompt showed
 │       ├── bash-path.ts      describeBashPathGate - pure descriptor/bypass factory for bash path rules over the injected `BashProgram` (`pathRuleCandidates()`); routes each candidate through `capabilitySurfaceForEffect` on the `path` family, evaluates its `AccessPath` via an `access-path` `AccessIntent`, and selects the worst uncovered token via `pickMostRestrictive`, keeping the raw token for prompts/logs/approvals and `path.value()` for the approval pattern. The deciding token's surface is the one the descriptor, payload, access facts, decision, and session approval all carry, and its `effect`/`effectSource` ride the log context
 │       ├── bash-path-extractor.ts Thin facade (`extractExternalPathsFromBashCommand`) over `BashProgram`
 │       ├── bash-command.ts   `resolveBashCommandCheck` - pure combiner over caller-supplied `BashCommand[]` units, checks each unit on the `bash` surface, tags the winning result with the offending command's execution `context`, selects via `pickMostRestrictive`; when empty, resolves the whole command only for a trivially-empty command and otherwise returns an explicit `deny` covering it, else fails closed to a synthetic `ask` with the `<unparseable-bash-command>` sentinel. `resolveWrapperUnit` decides a wrapper unit: the `WRAPPER_SENTINEL` floor, or — when the enumerator marked it exempt — the inner command's own `bash` rule, keeping `command` as the wrapper text so the prompt, decision value, and session-approval suggestion name what runs. Constraint: only a unit whose own text resolved to `allow` reaches it, which is what makes the exemption structurally unable to weaken an explicit `deny`/`ask` (#803)
@@ -1082,7 +1083,7 @@ No decline, so the regular improvement rotation continues.
 | ADR 0012 amendments recording the root-slot decision ✅                     | 2                     | ≥ 3 (3)         |
 | Absent-child alarm event in `src/`                                          | 0                     | ≥ 1             |
 | Named permission-surface properties (`surfaceProperty`, `config-schema.ts`) | 0                     | ≥ 9 (11) ✅     |
-| Per-pattern surfaces on `SessionApproval` (`session-approval.ts`)           | 0                     | ≥ 1             |
+| Per-pattern surfaces on `SessionApproval` (`session-approval.ts`) ✅        | 0                     | ≥ 1 (4)         |
 | Split-provider extractor test files                                         | 0                     | ≥ 1             |
 | fallow health score                                                         | 78 (B)                | ≥ 78            |
 | Production duplication                                                      | 0.1%                  | ≤ 0.2%          |
@@ -1103,12 +1104,14 @@ Recompute commands (run from the repo root):
 - Absent-child alarm: `grep -rn 'child_node_absent' packages/pi-permission-system/src --include="*.ts" | wc -l`
 - Named surface properties: `grep -c 'surfaceProperty' packages/pi-permission-system/src/config-schema.ts`
 - Split-provider tests: `grep -rl 'split-provider' packages/pi-permission-system/test | wc -l`
-- Per-pattern approval surfaces: `grep -c 'ApprovalPattern' packages/pi-permission-system/src/session-approval.ts`
+- Per-pattern approval surfaces: `grep -c 'ApprovalGrant' packages/pi-permission-system/src/session-approval.ts`
+  (Step 10 named the pair type `ApprovalGrant` rather than the roadmap's predicted `ApprovalPattern`, which names a `{surface, pattern}` object after one of its two fields; the row moves with the name, per the clause below.)
 - Health/duplication/dead exports: `pnpm fallow health --score --workspace @gotgenes/pi-permission-system` / `pnpm fallow dupes --workspace @gotgenes/pi-permission-system` / `pnpm fallow dead-code --workspace @gotgenes/pi-permission-system`
 
 Eight rows greped for a name the phase had not created when it opened — `expandDirectionalSugar`, `surfaceFamily`, `command-effects.ts`, `isTransparentWrapper`, `authorizer_allowed`/`authorizer_denied`, `child_node_absent`, the `split-provider` test phrase, and `surfaceProperty`.
 The step that creates each (Steps 1, 1, 2, 3, 5, 7, 8, 9 respectively) must either use the roadmap's name or update the metric row in the same commit, or the rename silently breaks the delivered-vs-predicted verification at phase close.
 Step 1 exercised that clause: it created `expandDirectionalSugar` and `surfaceFamily` under their predicted names, and rewrote the directional-surface row, whose literal-name grep the delivered derivation reads as zero.
+Step 10 exercised it again, renaming `ApprovalPattern` to `ApprovalGrant`.
 The fallow health score is carried as a floor rather than a target: it is blind to the type-level wins a cause-driven phase produces, and its current value is depressed by a churn artifact this phase does not set out to fix.
 
 ### Steps
@@ -1353,7 +1356,7 @@ The five surfaces people actually write — `path`, `external_directory`, `bash`
 
 Release: independent
 
-#### Step 10: A session approval records the direction the gate proved ([#810])
+#### ✅ Step 10: A session approval records the direction the gate proved ([#810])
 
 **Cause:** Step 2 proves a direction per bash path token and narrows the session grant to it — but only where one direction covers the whole gate.
 `SessionApproval` holds one surface for many patterns, so the external-directory gate, which aggregates every uncovered path into one prompt, falls back to the bare family whenever a command mixes a proven read with a proven write.
@@ -1365,6 +1368,23 @@ The grant is then wider than the prompt the user answered.
 - **Outcome:** approving `grep -r foo ~/dev > ~/other/out.txt` for the session grants a read under `~/dev` and a write to `~/other/out.txt`, not both directions on both; `grep -c 'ApprovalPattern'` on `session-approval.ts` goes 0 → ≥ 1.
 - **Commit type:** `feat:`, or `feat!:` if the wire shape is not made tolerant — undecided at plan time.
 - **Impact 3 / Risk 2 / Priority 12.**
+
+Landed: the design question was settled the other way from how the step framed it.
+The wire file turned out to be the *smaller* of the two breaks: `ForwardedSessionApproval` is structurally reachable from the published declaration bundle through `PromptPermissionDetails`, which is the type a third-party `Authorizer` chain link receives — so replacing its fields breaks a consumer at compile time whether or not two processes ever skew.
+With tolerance no longer buying non-breaking status, the operator took the strictest shape: `grants: ApprovalGrant[]` alone, with the reader rejecting the pre-#810 shape rather than normalizing it.
+Skew then drops the suggestion in both directions, which was verified against the published tag rather than assumed — `sessionApproval` is not in `readForwardedPermissionRequest`'s required set at v29.3.0, so the request is still accepted and still prompts, and the child still records its own narrow grant.
+The cost is a lost whole-session scope option, never a wider grant.
+
+The `Outcome:` line needs one correction a reader should not have to derive.
+The relief is visible only when the uncovered paths sit in **different directories**: `deriveApprovalPattern` scopes a glob at the value's last separator, so `cat /outside/a.ts > /outside/b.ts` derives `/outside/*` for both tokens and its two directional grants reconstitute exactly what the bare family sugar-expands to.
+That is correct — the user did approve a read and a write in that directory — and it has its own test so the no-op is documented rather than rediscovered.
+The issue's own headline example holds because `~/dev` and `~/other/out.txt` do not share a directory.
+
+One preparatory `refactor:` came out of the Tidy-First assessment: `PermissionGateResult`'s session-approval echo had no reader at all (`GateRunner` tested only `!== undefined`, and the runner's public `GateOutcome` carries no such field), so it collapsed to `canGrantForSession` in / `forSession` out first.
+That deleted `toGateApproval()` and `representativePattern` — neither can name a single representative `(surface, pattern)` once an approval carries a surface per pattern — and kept the reshape commit out of `permission-gate.ts` entirely.
+`SessionApproval.multiple` was dropped rather than kept beside the new `forGrants`, since both its production callers moved and a test-only constructor is a dead-code liability.
+
+`grep -c 'ApprovalGrant' packages/pi-permission-system/src/session-approval.ts` is 4.
 
 Release: independent
 
@@ -1471,7 +1491,7 @@ flowchart TD
     S7["✅ Step 7 (#792): alarm on a child with no node"]
     S8["✅ Step 8 (#793): split-provider extractor gap"]
     S9["✅ Step 9 (#808): name the well-known surfaces"]
-    S10["Step 10 (#810): per-pattern approval surfaces"]
+    S10["✅ Step 10 (#810): per-pattern approval surfaces"]
     S11["Step 11 (#813): user-chosen grant width"]
     S3 --> S12["Step 12 (#814): unresolvable redirect proves nothing"]
     S13["Step 13 (#837): apply the directory vocabulary"]
@@ -1506,7 +1526,7 @@ Steps 10 and 11 both write a session grant from a bash gate: Step 10 decides whe
 
 - **Batch "capability-axis":** Steps 1, 2, 3 (ship together; tail = Step 3; release vehicle = Step 3's `fix:` for [#803], with Step 1's `feat:` for the new config keys riding the same release — Step 2 is a hidden `refactor:` on its own).
   The batch ships together because Steps 1 and 2 relieve nothing a user can observe until a directional grant exists to write, while Step 3's relief is immediate and unconditional.
-- Independently releasable: Step 4 (`fix:`), Step 14 (`fix:`), Step 5 (`feat!:` — the operator settled the bump note as breaking), Step 15 (`fix:`), Step 7 (`feat:`), Step 8 (`feat:` — mechanism B landed), Step 9 (`feat:` — the generated schema ships in the tarball, so new completions and hover text are user-observable), Step 10 (`feat:`, or `feat!:` if the wire shape is not made tolerant), Step 11 (`feat:` — a new prompt affordance the user acts on).
+- Independently releasable: Step 4 (`fix:`), Step 14 (`fix:`), Step 5 (`feat!:` — the operator settled the bump note as breaking), Step 15 (`fix:`), Step 7 (`feat:`), Step 8 (`feat:` — mechanism B landed), Step 9 (`feat:` — the generated schema ships in the tarball, so new completions and hover text are user-observable), Step 10 (`feat!:` — the wire shape was not made tolerant, and the type is reachable from the published declaration bundle), Step 11 (`feat:` — a new prompt affordance the user acts on).
 - Step 6 cuts no release on its own: its deliverable is an ADR amendment (`docs:`, hidden), and any code it schedules lands in a later step or a later phase.
 
 ## Refactoring history
