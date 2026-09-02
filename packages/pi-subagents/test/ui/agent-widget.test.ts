@@ -385,3 +385,52 @@ describe("AgentWidget — background-only filtering", () => {
 		expect(text).not.toContain("foreground task");
 	});
 });
+
+describe("AgentWidget.dispose", () => {
+	beforeEach(() => {
+		vi.useFakeTimers();
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it("clears the update interval", () => {
+		const { widget } = makeWidget([{ id: "a1", status: "running" }]);
+		widget.onSubagentStarted(createTestSubagent({ id: "a1", status: "running" }));
+		expect(vi.getTimerCount()).toBe(1);
+
+		widget.dispose();
+
+		expect(vi.getTimerCount()).toBe(0);
+	});
+
+	it("unregisters the widget and clears the status bar", () => {
+		const { widget, setWidget, setStatus } = makeWidget([{ id: "a1", status: "running" }]);
+		widget.onSubagentStarted(createTestSubagent({ id: "a1", status: "running" }));
+		expect(setStatus).toHaveBeenLastCalledWith("subagents", "1 running agent");
+
+		widget.dispose();
+
+		expect(setWidget).toHaveBeenLastCalledWith("agents", undefined);
+		expect(setStatus).toHaveBeenLastCalledWith("subagents", undefined);
+	});
+
+	// The abort that follows a session shutdown drives a terminal transition, and
+	// the resulting observer notification reaches update() synchronously. Disposal
+	// drops the UICtx so that update() can no longer re-register what it released.
+	it("leaves a later update() inert, so a terminal transition cannot re-register it", () => {
+		const agents = [{ id: "a1", status: "running", completedAt: undefined as number | undefined }];
+		const { widget, setWidget } = makeWidget(agents);
+		widget.onSubagentStarted(createTestSubagent({ id: "a1", status: "running" }));
+
+		widget.dispose();
+		const callsAfterDispose = setWidget.mock.calls.length;
+
+		agents[0].status = "stopped";
+		agents[0].completedAt = 5000;
+		widget.update();
+
+		expect(setWidget.mock.calls.length).toBe(callsAfterDispose);
+	});
+});

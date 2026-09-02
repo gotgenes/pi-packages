@@ -297,7 +297,15 @@ export class AgentWidget implements SubagentManagerObserver {
     }
   }
 
-  // fallow-ignore-next-line unused-class-member
+  /**
+   * Release everything the widget acquired: the update interval and both
+   * registrations on the session's `UICtx`.
+   *
+   * Disposal is final. Dropping the `UICtx` makes `update()` return at its
+   * first line, so a notification arriving afterwards — the terminal transition
+   * an abort drives synchronously — cannot re-register what this released.
+   * `setUICtx()` re-arms the widget if a context ever arrives again.
+   */
   dispose() {
     if (this.widgetInterval) {
       clearInterval(this.widgetInterval);
@@ -307,6 +315,7 @@ export class AgentWidget implements SubagentManagerObserver {
       this.uiCtx.setWidget("agents", undefined);
       this.uiCtx.setStatus("subagents", undefined);
     }
+    this.uiCtx = undefined;
     this.widgetRegistered = false;
     this.tui = undefined;
     this.lastStatusText = undefined;
