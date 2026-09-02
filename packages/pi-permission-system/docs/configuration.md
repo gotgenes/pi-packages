@@ -122,9 +122,14 @@ In an interactive **TUI** session, an `ask` decision opens an inline keybind dia
 | Key | Action                                                            |
 | --- | ----------------------------------------------------------------- |
 | `y` | Approve once                                                      |
-| `s` | Approve for this session                                          |
+| `s` | Approve for this session, in the direction the gate proved        |
+| `b` | Approve for this session in **both** directions (see below)       |
 | `n` | Deny                                                              |
 | `r` | Deny with a reason (opens an inline editor; a reason is required) |
+
+`b` appears only for an ask whose paths all prove the same direction — a read or a write, but not both.
+Every other ask shows the four options above without it.
+See [session-approvals.md](session-approvals.md#grant-direction) for what the two widths grant.
 
 Arrow keys / `j`/`k` move the highlight, `enter` confirms the highlighted option, and `esc` denies.
 With `doublePressToConfirm` enabled (the default), a letter hotkey **arms** its action and shows a `Press y again to approve.` hint; press the same key again to commit.

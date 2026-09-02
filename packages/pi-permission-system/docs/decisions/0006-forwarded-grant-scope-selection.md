@@ -25,7 +25,7 @@ Offer the human a scope when approving a forwarded request "for this session," a
    The field is optional and read tolerantly, so an older child (no suggestion) simply offers no scope choice.
 
 2. **A two-step dialog.**
-   The base four-option prompt is unchanged.
+   The base decision prompt is unchanged.
    Choosing "for this session" opens a second `select` — subagent-only (listed first, the least-privilege default) vs the whole session — but only for a forwarded ask that carries a suggestion.
    A cancelled scope select defaults to subagent-only.
    `LocalUserAuthorizer` builds the scope labels (`buildForwardedScopeLabels`) and is still the single `permissions:ui_prompt` emit site; the emit fires once before the first select, so the [#292] non-degraded broadcast is unaffected.
@@ -73,7 +73,7 @@ With tolerance no longer buying non-breaking status, the strictest shape was tak
 
 Skew therefore drops the suggestion in **both** directions.
 The degradation is bounded and was verified against the published tag rather than assumed: `sessionApproval` is not in `readForwardedPermissionRequest`'s required set at v29.3.0, so a skewed request is still accepted and still prompts.
-What is lost is the second dialog step — the human sees the base four-option prompt, and "for this session" records on the requesting subagent, which is the least-privilege default this ADR already chose.
+What is lost is the second dialog step — the human sees the base decision prompt, and "for this session" records on the requesting subagent, which is the least-privilege default this ADR already chose.
 A whole-session grant is never made wider by skew, only unavailable, so no upgrade ordering is required.
 
 ### Accepted limitations
