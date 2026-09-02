@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [30.2.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v30.1.0...pi-permission-system-v30.2.0) (2026-09-02)
+
+
+### Features
+
+* **pi-permission-system:** offer a both-directions session grant at the ask prompt ([c4c6736](https://github.com/gotgenes/pi-packages/commit/c4c67364b88e74ad439adcc6c442de46a4f90c04)), closes [#813](https://github.com/gotgenes/pi-packages/issues/813)
+
+### Bug Fixes
+
+* **pi-permission-system:** name every path in a forwarded whole-session scope label ([b61c19d](https://github.com/gotgenes/pi-packages/commit/b61c19d77c74e2d8ff233ca556af04f6aacd2c09)), closes [#813](https://github.com/gotgenes/pi-packages/issues/813)
+
+### Documentation
+
+* **pi-permission-system:** document the session-grant direction width ([dae4737](https://github.com/gotgenes/pi-packages/commit/dae473727b4b514761545d8fcc0a5e4824fe35b0)), closes [#813](https://github.com/gotgenes/pi-packages/issues/813)
+
 ## [30.1.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v30.0.0...pi-permission-system-v30.1.0) (2026-09-02)
 
 
