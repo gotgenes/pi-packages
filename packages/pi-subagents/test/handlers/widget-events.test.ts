@@ -6,6 +6,7 @@ function makeWidget() {
   return {
     setUICtx: vi.fn<EventDrivenWidget["setUICtx"]>(),
     onTurnStart: vi.fn<EventDrivenWidget["onTurnStart"]>(),
+    dispose: vi.fn<EventDrivenWidget["dispose"]>(),
   };
 }
 
@@ -27,6 +28,14 @@ describe("WidgetEventsHandler", () => {
 
       expect(widget.onTurnStart).not.toHaveBeenCalled();
     });
+
+    it("does not tear the widget down", () => {
+      const widget = makeWidget();
+
+      new WidgetEventsHandler(widget).handleSessionStart({}, { ui: {} });
+
+      expect(widget.dispose).not.toHaveBeenCalled();
+    });
   });
 
   describe("handleTurnStart", () => {
@@ -44,6 +53,33 @@ describe("WidgetEventsHandler", () => {
       new WidgetEventsHandler(widget).handleTurnStart();
 
       expect(widget.setUICtx).not.toHaveBeenCalled();
+    });
+
+    it("does not tear the widget down", () => {
+      const widget = makeWidget();
+
+      new WidgetEventsHandler(widget).handleTurnStart();
+
+      expect(widget.dispose).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("handleSessionShutdown", () => {
+    it("tears the widget down", () => {
+      const widget = makeWidget();
+
+      new WidgetEventsHandler(widget).handleSessionShutdown();
+
+      expect(widget.dispose).toHaveBeenCalledOnce();
+    });
+
+    it("does not re-capture the UI context or age the linger", () => {
+      const widget = makeWidget();
+
+      new WidgetEventsHandler(widget).handleSessionShutdown();
+
+      expect(widget.setUICtx).not.toHaveBeenCalled();
+      expect(widget.onTurnStart).not.toHaveBeenCalled();
     });
   });
 });
