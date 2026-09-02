@@ -261,6 +261,40 @@ describe("LocalUserAuthorizer", () => {
       );
     });
 
+    it("names every path in the scope label when the ask covers several", async () => {
+      const { deps, decisionFn } = makeDeps();
+      const authorizer = new LocalUserAuthorizer(deps);
+
+      await authorizer.authorize(
+        makeDetails({
+          toolName: "bash",
+          command: "cat /outside/a.ts > /elsewhere/b.ts",
+          forwarding: {
+            requesterAgentName: "Explore",
+            requesterSessionId: "child-session",
+          },
+          sessionApproval: {
+            grants: [
+              { surface: "external_directory_read", pattern: "/outside/*" },
+              { surface: "external_directory_write", pattern: "/elsewhere/*" },
+            ],
+          },
+        }),
+      );
+
+      expect(decisionFn).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.any(String),
+        expect.anything(),
+        expect.objectContaining({
+          sessionScope: expect.objectContaining({
+            servingSessionLabel:
+              "The whole session — allow external_directory 2 paths for parent and all subagents",
+          }),
+        }),
+      );
+    });
+
     it("offers no sessionScope for a forwarded ask without a suggestion", async () => {
       const { deps, decisionFn } = makeDeps();
       const authorizer = new LocalUserAuthorizer(deps);

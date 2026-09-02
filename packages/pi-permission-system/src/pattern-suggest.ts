@@ -1,4 +1,9 @@
-import { PATH_BEARING_TOOLS } from "./access-intent/path-surfaces";
+import {
+  type CapabilityDirection,
+  PATH_BEARING_TOOLS,
+  surfaceFamilyOf,
+} from "./access-intent/path-surfaces";
+import type { ApprovalGrant } from "./approval-grant";
 import { prefix, stripBashCommentLines } from "./bash-arity";
 
 /** The suggestion returned for a "Yes, for this session" dialog option. */
@@ -70,24 +75,87 @@ export interface ForwardedScopeLabels {
 }
 
 /**
+ * What an approval's grants cover, as one phrase.
+ *
+ * A single grant names its pattern; several name their count, because only the
+ * external-directory gate aggregates an ask over many paths and there is no
+ * pattern that describes them all. Requires at least one grant — an approval
+ * with none is never offered as a session option.
+ */
+export function describeGrantTarget(grants: readonly ApprovalGrant[]): string {
+  return grants.length === 1
+    ? `"${grants[0].pattern}"`
+    : `${grants.length} paths`;
+}
+
+/** The two session-option labels for an ask whose grants prove one direction. */
+export interface DirectionalSessionLabels {
+  /** The proven-direction grant — the least-privilege default. */
+  sessionLabel: string;
+  /** The both-directions grant, offered beside it (#813). */
+  widenedLabel: string;
+}
+
+const DIRECTION_NOUNS: Record<CapabilityDirection, string> = {
+  read: "reads",
+  write: "writes",
+};
+
+/**
+ * Label the two widths a directional ask's session grant can take.
+ *
+ * Both rows name the direction and the target, so the choice between them
+ * contrasts on a stated axis rather than on "wider" (#813).
+ */
+export function buildDirectionalSessionLabels(
+  direction: CapabilityDirection,
+  target: string,
+): DirectionalSessionLabels {
+  return {
+    sessionLabel: `Yes, allow ${DIRECTION_NOUNS[direction]} to ${target} for this session`,
+    widenedLabel: `Yes, allow ${DIRECTION_NOUNS.read} and ${DIRECTION_NOUNS.write} to ${target} for this session`,
+  };
+}
+
+/**
  * Build the two scope labels shown when a human grants a forwarded request
  * "for this session."
  *
  * The subagent option names the requester (least privilege); the whole-session
- * option restates the surface + pattern being granted session-wide.
+ * option restates what is being granted session-wide — every grant, not the
+ * first of them (the residual #810 deferred here).
+ *
+ * The surface is named as the grants' shared **family**, never a directional
+ * member: these labels are built before the dialog runs, so a direction here
+ * could contradict a width the human chooses inside it. Grants that share no
+ * family name no surface at all.
  */
 export function buildForwardedScopeLabels(
   agentName: string | null,
-  surface: string,
-  pattern: string,
+  grants: readonly ApprovalGrant[],
 ): ForwardedScopeLabels {
   const subagentLabel = agentName
     ? `This subagent ('${agentName}') only`
     : "This subagent only";
+  const family = sharedSurfaceFamilyOf(grants);
+  const granted = family
+    ? `${family} ${describeGrantTarget(grants)}`
+    : describeGrantTarget(grants);
   return {
     subagentLabel,
-    servingSessionLabel: `The whole session — allow ${surface} "${pattern}" for parent and all subagents`,
+    servingSessionLabel: `The whole session — allow ${granted} for parent and all subagents`,
   };
+}
+
+/** The family every grant belongs to, or `null` when they disagree. */
+function sharedSurfaceFamilyOf(
+  grants: readonly ApprovalGrant[],
+): string | null {
+  if (grants.length === 0) return null;
+  const family = surfaceFamilyOf(grants[0].surface);
+  return grants.every((grant) => surfaceFamilyOf(grant.surface) === family)
+    ? family
+    : null;
 }
 
 /** Surface-aware human-readable labels for the session-approval option. */
