@@ -13,23 +13,11 @@ import {
 import { ToolAccessExtractorRegistry } from "#src/tool-access-extractor-registry";
 import { ToolInputFormatterRegistry } from "#src/tool-input-formatter-registry";
 import type { PermissionCheckResult, PermissionState } from "#src/types";
+import { makeFakePermissionsService } from "#test/helpers/service-fixtures";
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
-function makeService(
-  overrides: Partial<PermissionsService> = {},
-): PermissionsService {
-  return {
-    checkPermission: vi.fn(),
-    getToolPermission: vi.fn(),
-    registerToolInputFormatter: vi.fn(),
-    registerToolAccessExtractor: vi.fn(),
-    getToolAccessExtractor: vi.fn(),
-    getToolInputFormatter: vi.fn(),
-    registerAuthorizer: vi.fn(),
-    ...overrides,
-  };
-}
+const makeService = makeFakePermissionsService;
 
 /** The session id the service-adapter suites below publish under. */
 const ADAPTER_SESSION = "adapter-session";

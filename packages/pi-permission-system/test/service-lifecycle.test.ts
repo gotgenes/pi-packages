@@ -1,7 +1,6 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AdjudicationRole } from "#src/authority/authorizer-selection";
-import type { PermissionsService } from "#src/service";
 import {
   PermissionServiceLifecycle,
   type ReadyAnnouncer,
@@ -9,6 +8,7 @@ import {
 } from "#src/service-lifecycle";
 
 import { makeCtx } from "#test/helpers/handler-fixtures";
+import { makeFakePermissionsService } from "#test/helpers/service-fixtures";
 
 // ── module stubs ───────────────────────────────────────────────────────────
 
@@ -27,17 +27,7 @@ vi.mock("#src/permission-events", () => ({
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
-function makeService(): PermissionsService {
-  return {
-    checkPermission: vi.fn(),
-    getToolPermission: vi.fn(),
-    registerToolInputFormatter: vi.fn(),
-    registerToolAccessExtractor: vi.fn(),
-    getToolAccessExtractor: vi.fn(),
-    getToolInputFormatter: vi.fn(),
-    registerAuthorizer: vi.fn(),
-  };
-}
+const makeService = makeFakePermissionsService;
 
 function makeRole(): AdjudicationRole {
   return { adjudicatesLocally: mockAdjudicatesLocally };

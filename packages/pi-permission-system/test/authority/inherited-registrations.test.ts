@@ -17,23 +17,11 @@ import {
   type ToolInputFormatter,
   ToolInputFormatterRegistry,
 } from "#src/tool-input-formatter-registry";
+import { makeFakePermissionsService } from "#test/helpers/service-fixtures";
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
-function makeService(
-  overrides: Partial<PermissionsService> = {},
-): PermissionsService {
-  return {
-    checkPermission: vi.fn(),
-    getToolPermission: vi.fn(),
-    registerToolInputFormatter: vi.fn(),
-    registerToolAccessExtractor: vi.fn(),
-    getToolAccessExtractor: vi.fn(),
-    getToolInputFormatter: vi.fn(),
-    registerAuthorizer: vi.fn(),
-    ...overrides,
-  };
-}
+const makeService = makeFakePermissionsService;
 
 function nodeIdentity(sessionId: string | null): NodeIdentity {
   return { currentSessionId: () => sessionId };
