@@ -832,6 +832,52 @@ describe("SettingsManager", () => {
     });
   });
 
+  describe("toggleMidRunUpdates()", () => {
+    let projectDir: string;
+
+    beforeEach(() => {
+      projectDir = mkdtempSync(join(tmpdir(), "pi-sm-updates-"));
+    });
+
+    afterEach(() => {
+      rmSync(projectDir, { recursive: true, force: true });
+    });
+
+    it("defaults to on, so a background child can report a finding mid-run", () => {
+      const sm = new SettingsManager({ emit: vi.fn(), cwd: projectDir, agentDir: "/nonexistent" });
+      expect(sm.midRunUpdates).toBe(true);
+    });
+
+    it("flips the channel off, persists it, and reports the new state", () => {
+      const sm = new SettingsManager({ emit: vi.fn(), cwd: projectDir, agentDir: "/nonexistent" });
+      const toast = sm.toggleMidRunUpdates();
+      expect(sm.midRunUpdates).toBe(false);
+      expect(toast).toEqual({
+        message: "Mid-run updates from background subagents: off",
+        level: "info",
+      });
+      const written = JSON.parse(readFileSync(join(projectDir, ".pi", "subagents.json"), "utf-8"));
+      expect(written.midRunUpdates).toBe(false);
+    });
+
+    it("flips the channel back on", () => {
+      const sm = new SettingsManager({ emit: vi.fn(), cwd: projectDir, agentDir: "/nonexistent" });
+      sm.toggleMidRunUpdates();
+      const toast = sm.toggleMidRunUpdates();
+      expect(sm.midRunUpdates).toBe(true);
+      expect(toast).toEqual({
+        message: "Mid-run updates from background subagents: on",
+        level: "info",
+      });
+    });
+
+    it("leaves the abort-on-interrupt policy alone", () => {
+      const sm = new SettingsManager({ emit: vi.fn(), cwd: projectDir, agentDir: "/nonexistent" });
+      sm.toggleMidRunUpdates();
+      expect(sm.abortAllOnInterrupt).toBe(true);
+    });
+  });
+
   describe("toggleAbortAllOnInterrupt()", () => {
     let projectDir: string;
 
@@ -858,6 +904,12 @@ describe("SettingsManager", () => {
       const toast = sm.toggleAbortAllOnInterrupt();
       expect(sm.abortAllOnInterrupt).toBe(true);
       expect(toast).toEqual({ message: "Abort all subagents on ESC: on", level: "info" });
+    });
+
+    it("leaves the mid-run update channel alone", () => {
+      const sm = new SettingsManager({ emit: vi.fn(), cwd: projectDir, agentDir: "/nonexistent" });
+      sm.toggleAbortAllOnInterrupt();
+      expect(sm.midRunUpdates).toBe(true);
     });
 
     it("emits subagents:settings_changed carrying the flipped value", () => {

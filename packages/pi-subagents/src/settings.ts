@@ -259,10 +259,6 @@ export class SettingsManager {
     return this._midRunUpdates;
   }
 
-  set midRunUpdates(on: boolean) {
-    this._midRunUpdates = on;
-  }
-
   /**
    * Flip whether a background child may interrupt the parent with a mid-run
    * update, persist, and return the toast.

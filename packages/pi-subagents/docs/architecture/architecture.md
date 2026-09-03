@@ -39,7 +39,7 @@ This is the full inventory, with the decision record or design principle each re
 | Group-join / consolidated completion notifications                            | §"What the core dropped"; `history/phase-3-remove-rpc-groupjoin.md`                                  |
 | Model-scope enforcement (an `enabledModels` allowlist in the core)            | `docs/comparison-with-upstream.md` only — the weakest entry here                                     |
 | Per-agent tool restriction policy (`disallowed_tools`, a built-in denylist)   | [ADR-0002](../decisions/0002-extensions-on-a-minimal-core.md); §"Child tool selection"               |
-| Widening a child's tool allowlist on the agent's behalf                       | §"Child tool selection"; operator position on the additive-key case                                  |
+| Widening a child's tool allowlist with capability tools on the agent's behalf | §"Child tool selection"; operator position on the additive-key case                                  |
 | A global run-mode default                                                     | Operator position; per-agent `run_in_background` already exists                                      |
 | Worktree / environment isolation in the core                                  | [ADR-0002](../decisions/0002-extensions-on-a-minimal-core.md) §"What leaves the core"                |
 | Persistent agent memory (`memory:`) and skill preloading (`skills:`)          | [ADR-0002](../decisions/0002-extensions-on-a-minimal-core.md); comparison doc                        |
@@ -345,7 +345,8 @@ src/
 ├── session/                        session assembly and preparation
 │   ├── session-config.ts           pure assembler (main entry)
 │   ├── prompts.ts                  system prompt building; inherits only the parent prompt's identity, cutting the session-resolved tail (ADR 0006)
-│   ├── ask-back.ts                 the marker a child declares a question with, and its parser (fence-aware, last block wins)
+│   ├── ask-parent-tool.ts          child-facing ask_parent: records the child's question, tells it to end its turn
+│   ├── notify-parent-tool.ts       child-facing notify_parent: one-way mid-run update, capped at 2000 characters
 │   ├── content-items.ts            shared message content parsing (tool-call names, assistant content)
 │   ├── context.ts                  parent conversation extraction
 │   ├── conversation.ts             render a session's messages as formatted text
@@ -356,8 +357,8 @@ src/
 │   └── session-dir.ts              session directory derivation
 │
 ├── lifecycle/                      agent execution and state tracking
-│   ├── subagent-manager.ts         collection manager + observer wiring + consumption-aware session-retention sweep
-│   ├── create-subagent-session.ts  assembly factory: session creation, spawn-tool denylist, binding
+│   ├── subagent-manager.ts         collection manager + observer wiring + session-retention sweep (consumption-aware; an unanswered question holds the safety cap)
+│   ├── create-subagent-session.ts  assembly factory: session creation, spawn-tool denylist, core child-tool install, binding
 │   ├── subagent-session.ts         born-complete child session: turn loop, steer, shutdown-then-dispose teardown
 │   ├── turn-limits.ts              normalizeMaxTurns (turn-count policy)
 │   ├── subagent.ts                 owns full execution lifecycle (run, resume, abort, steer, wait-until-settled)
@@ -373,9 +374,9 @@ src/
 │
 ├── observation/                    progress tracking and notification
 │   ├── record-observer.ts          session-event stats observer
-│   ├── notification.ts             completion nudges (announce-only; gated on the carrier claim, withheld during the parent's agent run, flushed on agent_settled)
+│   ├── notification.ts             completion nudges and mid-run updates, in one arrival-ordered withheld queue (announce-only; completions gated on the carrier claim, updates not; withheld during the parent's agent run, flushed on agent_settled)
 │   ├── outcome-delivery.ts         shared outcome rendering every result carrier composes: one status vocabulary in two presentations, body, ask-back affordance
-│   ├── renderer.ts                 notification TUI component
+│   ├── renderer.ts                 notification and mid-run-update TUI components
 │   ├── composite-subagent-observer.ts fans manager notifications out to multiple observers
 │   └── subagent-events-observer.ts manager lifecycle observer (event emission + persistence + notification)
 │
@@ -464,13 +465,18 @@ They declare this package as an optional peer dependency and use dynamic import 
 
 ### Child tool selection
 
-A child's tool set is exactly its agent type's `tools:` list, which `createSubagentSession` hands to the SDK as the session's tool allowlist.
+A child's **capability** tool set is exactly its agent type's `tools:` list, which `createSubagentSession` hands to the SDK as the session's tool allowlist.
 Pi applies that allowlist _before_ it builds the session's tool registry, so an extension loaded in the child registers its tools successfully and they are then filtered out unless the agent named them.
 Naming an extension tool in `tools:` is therefore the supported way to give a child access to it, and the documented one ([Configuration](../configuration.md#tool-selection)).
 
-The core does not widen this on the agent's behalf.
+The core does not widen that on the agent's behalf, and no settings key may name a tool.
 Inheriting every extension tool a child registers would hand a read-only agent whatever write-capable tools the parent's extensions happen to publish — a capability decision that belongs to whoever writes the agent file, expressed per agent, not a default.
 Tool _restriction_ beyond that stays with `@gotgenes/pi-permission-system`, per [ADR-0002].
+
+The core does install its own **protocol** in every child, on its own authority and independent of the agent file: the `<active_agent>` tag, the parent-context prefix, and the `ask_parent` / `notify_parent` tools.
+The distinction the boundary draws is capability, not provenance.
+None of these reaches the filesystem, the shell, or the network — each can only put text into the session that spawned the child — so a read-only agent that gains them is still read-only, and the two failure modes that closed PR #612 (a read-only `Explore` silently gaining `edit`/`write`; `subagent` re-entering the allowlist and reopening the recursion guard) remain refused.
+A child-facing tool is appended to the allowlist at the assembly factory rather than drawn from it, because Pi filters `customTools` through the same allowlist and would otherwise drop it with no error.
 
 The recursion guard is the one name set the core removes unconditionally.
 It reaches the SDK as the `excludeTools` denylist, which Pi reapplies on every tool-registry rebuild; filtering the active set once after `bindExtensions` was undone by the next rebuild.
@@ -1032,7 +1038,7 @@ The deferred edge has no result text to fold `resultAddendum` into, which is the
 
 Release: independent
 
-#### Step 11: Child-initiated mid-run channel ([#858])
+#### ✅ Step 11: Child-initiated mid-run channel ([#858])
 
 **Cause:** the parent can reach a running child (`steer_subagent`), but a child that needs information mid-run has no way back — it can only terminate and rely on Step 8's end-and-resume loop, which loses a workspace (Step 10) and expires with the retention window.
 A non-terminal one-way message (a material finding mid-run) has no expression at all.
@@ -1045,6 +1051,18 @@ A non-terminal one-way message (a material finding mid-run) has no expression at
 - **Outcome:** a running child can signal its parent and receive a reply without terminating (mechanism per plan), pinned by an end-to-end test.
 - **Commit type:** `feat:`.
 - **Impact 3 / Risk 4 / Priority 7.**
+
+Landed as two tools rather than one blocking channel, because the blocking half turned out to duplicate Step 8.
+A blocking `ask` delivers the same outcome as the end-and-resume loop — child needs an answer, parent supplies it, child continues with full context — differing only in which status the child sits in, which parent tool answers, and which clock bounds the wait; shipping both would have made the child choose between two protocols taught by two prompt blocks.
+The step's `Outcome:` is met asynchronously instead: the child sends a one-way update, the parent replies with the `steer_subagent` that already exists, and the child picks the reply up at its next turn boundary having never terminated.
+
+The design decision the step names was answered by dissolving it.
+The marker Step 8 shipped was itself a tool wearing a protocol's clothes: `ask-back.ts` was 222 lines, of which roughly 120 were quote-detection that exists only because a marker embedded in free text can be quoted by the child that must not trip it.
+So `ask_parent` replaces the marker rather than joining it, and the change is a carrier swap rather than an allowlist widening — the core already installed that protocol in every child through the prompt. § "Child tool selection" and the scope table now draw the boundary at capability rather than provenance, which answers the additive-key gap [#775] recorded.
+The concurrency-slot concern in the step's design note lapsed with the blocking half: nothing waits, so no slot is held.
+`notify_parent` is background-only — a foreground parent is blocked inside its own `subagent` call, and the nudge is withheld until that run settles, so the update could only ever arrive after the result did.
+
+The retention half of [#858]'s motivation was a sweep bug rather than a missing channel, and landed as its own `fix:`: reading a child's question counted as collecting its outcome, dropping the session to the 10-minute consumed window when the answer is delivered by resuming that very session.
 
 Release: independent
 
@@ -1088,7 +1106,7 @@ flowchart TD
     S7["✅ Step 7 (#798)<br/>Foreground resume handle"] -.soft.-> S8["✅ Step 8 (#465)<br/>Ask-back"]
     S5["✅ Step 5 (#801)<br/>Skills-block strip"]
     S6["✅ Step 6 (#827)<br/>UICtx capture"] --> S9["✅ Step 9 (#849)<br/>Widget teardown"]
-    S8 --> S11["Step 11 (#858)<br/>Mid-run channel"]
+    S8 --> S11["✅ Step 11 (#858)<br/>Mid-run channel"]
     S10["✅ Step 10 (#857)<br/>Workspace-backed resume"] -.informs.-> S11
     S10 --> S12["Step 12 (#870)<br/>Post-result addendum delivery"]
     S13["Step 13 (#871)<br/>Empty tool allowlist"]

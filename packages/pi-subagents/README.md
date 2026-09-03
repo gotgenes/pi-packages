@@ -23,7 +23,8 @@ Run them in foreground or background, steer them mid-run, resume completed sessi
 - **Mid-run steering** — inject messages into running agents to redirect their work without restarting
 - **Session resume** — pick up where an agent left off, preserving full conversation context.
   An agent given an isolated workspace by a `WorkspaceProvider` is resumable while that workspace is live — which, for an agent that ended its turn with a question, lasts until you answer it
-- **Ask-back** — an agent that needs information only you have ends its turn with a question, and every result surfaces it with the exact `resume` call that answers it
+- **Ask-back** — an agent that needs information only you have calls `ask_parent` and ends its turn, and every result surfaces the question with the exact `resume` call that answers it
+- **Mid-run updates** — a background agent that finds something material calls `notify_parent` and keeps working, so you hear about a course change when it happens rather than at the end
 - **Graceful turn limits** — agents get a "wrap up" warning before hard abort, producing clean partial results instead of cut-off output
 - **Case-insensitive agent types** — `"explore"`, `"Explore"`, `"EXPLORE"` all work.
   Unknown types fall back to general-purpose with a note
@@ -395,8 +396,9 @@ Anything attaching to the core either subscribes to a lifecycle event, or regist
   Scheduling, cross-extension RPC, model-scope enforcement, and a built-in tool denylist belong to upstream — see [Relationship to upstream](#relationship-to-upstream).
 - _Policy about what a child may do._
   Tool restriction is allow/ask/deny in a permission layer, not a binary hide in a spawner — see [Migrating from `disallowed_tools`](#migrating-from-disallowed_tools).
-- _Widening a child's tool allowlist on the agent's behalf._
-  An agent's `tools:` frontmatter is the complete allowlist and the only mechanism that widens it, because a settings-level list would hand a read-only `Explore` agent write-capable tools from a file its author never saw.
+- _Widening a child's tool allowlist with **capability** tools on the agent's behalf._
+  An agent's `tools:` frontmatter is the only thing that admits a capability tool, and no settings key may name one, because a settings-level list would hand a read-only `Explore` agent write-capable tools from a file its author never saw.
+  The core does install its own protocol in every child — the `<active_agent>` tag, the parent-context prefix, and the `ask_parent` / `notify_parent` tools — none of which reaches the filesystem, the shell, or the network.
 - _A global run-mode default._
   Foreground or background is a per-invocation argument and a per-agent frontmatter key; a global flip changes every existing agent file at once.
 - _Provider seams with no consumer._

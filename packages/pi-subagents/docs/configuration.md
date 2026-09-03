@@ -139,8 +139,8 @@ A lock binds the `subagent` tool only.
 
 ### Tool selection
 
-`tools` is the agent's **complete allowlist**, not a filter over the built-ins.
-A child session gets exactly the tools it names — nothing else is enabled, whoever registered it.
+`tools` is the agent's **complete allowlist** of capability tools, not a filter over the built-ins.
+No tool that touches the filesystem, the shell, or the network reaches a child unless the agent names it — whoever registered it.
 
 Entries may name built-in tools (`read`, `bash`, `edit`, `write`, `grep`, `find`, `ls`) or tools registered by any extension:
 
@@ -158,6 +158,12 @@ List the tool by name and it is admitted the moment its extension registers it.
 
 Three names are always removed from a child, even when an agent lists them: `subagent`, `get_subagent_result`, and `steer_subagent`.
 This is the recursion guard — without it, an agent could spawn agents of its own without bound.
+
+Two names are always **added**, whatever an agent lists: `ask_parent` and `notify_parent`.
+These are the child's channel back to the agent that delegated to it — protocol the core installs in every child, like the `<active_agent>` tag and the parent-context prefix.
+Neither reaches the filesystem, the shell, or the network, so a read-only agent stays read-only.
+`ask_parent` records a question and tells the child to end its turn, so the delegating agent can answer by resuming it; `notify_parent` sends a one-way update and returns at once.
+`notify_parent` is given only to a background agent — a foreground parent is blocked awaiting its child, so the update could not reach it until after the result did — and only while [`midRunUpdates`](#persistent-settings) is on.
 
 Accepted forms, all equivalent:
 
@@ -181,8 +187,12 @@ Two other settings interact with this list:
 
 ## Persistent Settings
 
-Runtime tuning values set via `/subagents:settings` (max concurrency, default max turns, grace turns, the two session-retention windows, and the abort-on-interrupt policy) persist across pi restarts.
+Runtime tuning values set via `/subagents:settings` (max concurrency, default max turns, grace turns, the two session-retention windows, the abort-on-interrupt policy, and the mid-run update channel) persist across pi restarts.
 A completed subagent's record is kept for the whole parent session (so `get_subagent_result` never misses); only its heavy in-memory session is released — after `consumedSessionRetentionMinutes` once the result has been collected, or after the `unconsumedSessionRetentionMinutes` safety cap if it never was.
+An agent that asked a question and has not been answered holds the safety cap rather than the consumed window, because reading a question is not finishing with the agent — the answer is delivered by resuming the very session the short window would release.
+
+Set `midRunUpdates` to `false` to withhold `notify_parent` from background agents, leaving them no way to interrupt you before they finish.
+`ask_parent` is unaffected: a blocked agent can still end its turn with a question.
 Two files, merged on load:
 
 - **Global:** `~/.pi/agent/subagents.json` — your machine-wide defaults.
@@ -191,7 +201,7 @@ Two files, merged on load:
   Written by `/subagents:settings`.
 
 **Precedence:** project overrides global on any field present in both.
-Missing fields fall back to the hardcoded defaults (max concurrency `4`, default max turns unlimited, grace turns `5`, consumed-session retention `10` minutes, unconsumed-session retention `720` minutes, abort-all-on-interrupt `true`).
+Missing fields fall back to the hardcoded defaults (max concurrency `4`, default max turns unlimited, grace turns `5`, consumed-session retention `10` minutes, unconsumed-session retention `720` minutes, abort-all-on-interrupt `true`, mid-run updates `true`).
 
 **Example — global defaults for a beefy machine:**
 
@@ -202,7 +212,8 @@ cat > ~/.pi/agent/subagents.json <<'EOF'
   "maxConcurrent": 16,
   "graceTurns": 10,
   "unconsumedSessionRetentionMinutes": 1440,
-  "abortAllOnInterrupt": false
+  "abortAllOnInterrupt": false,
+  "midRunUpdates": true
 }
 EOF
 ```
