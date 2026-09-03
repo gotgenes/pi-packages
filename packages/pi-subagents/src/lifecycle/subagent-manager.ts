@@ -52,6 +52,45 @@ const DEFAULT_RETENTION_POLICY: RetentionPolicy = {
   unconsumedSessionRetentionMinutes: 720,
 };
 
+/**
+ * Only what the retention rule reads. Narrower than `Subagent` so the rule
+ * stays a plain function over four facts, testable without spawning an agent.
+ */
+export interface RetentionCandidate {
+  consumed: boolean;
+  completedAt: number | undefined;
+  consumedAt: number | undefined;
+}
+
+/** When a terminal record's session-release window opened, and how long it runs. */
+export interface RetentionWindow {
+  referenceAt: number;
+  windowMinutes: number;
+}
+
+/**
+ * Pick the retention window for one terminal record.
+ *
+ * A collected outcome releases on the short window, measured from the later of
+ * completion and collection, so a late read still gets a full resume window; an
+ * uncollected one holds until the long safety cap.
+ */
+export function resolveRetentionWindow(
+  record: RetentionCandidate,
+  policy: RetentionPolicy,
+): RetentionWindow {
+  if (record.consumed) {
+    return {
+      referenceAt: Math.max(record.completedAt ?? 0, record.consumedAt ?? 0),
+      windowMinutes: policy.consumedSessionRetentionMinutes,
+    };
+  }
+  return {
+    referenceAt: record.completedAt ?? 0,
+    windowMinutes: policy.unconsumedSessionRetentionMinutes,
+  };
+}
+
 /** Observer interface for agent lifecycle notifications. */
 export interface SubagentManagerObserver {
   onSubagentStarted(record: Subagent): void;
@@ -340,9 +379,8 @@ export class SubagentManager {
   /**
    * Release the heavy session of any terminal agent past its retention window.
    * The record (with its result) is retained for the session lifetime; only the
-   * live `AgentSession` is freed. A consumed agent releases on the short window,
-   * measured from the later of completion or consumption (so a late read still
-   * gets a full resume window); an unconsumed agent holds until the long cap.
+   * live `AgentSession` is freed. `resolveRetentionWindow` owns which window
+   * applies.
    */
   private sweep() {
     const policy = this.getRetentionPolicy?.() ?? DEFAULT_RETENTION_POLICY;
@@ -350,12 +388,7 @@ export class SubagentManager {
     for (const record of this.agents.values()) {
       if (record.isActive()) continue;
       if (!record.isSessionReady()) continue; // already released, or never had a session
-      const referenceAt = record.consumed
-        ? Math.max(record.completedAt ?? 0, record.consumedAt ?? 0)
-        : record.completedAt ?? 0;
-      const windowMinutes = record.consumed
-        ? policy.consumedSessionRetentionMinutes
-        : policy.unconsumedSessionRetentionMinutes;
+      const { referenceAt, windowMinutes } = resolveRetentionWindow(record, policy);
       // Fire-and-forget: the sweep runs on an interval with no one to await it,
       // and Subagent.releaseSession() already swallows a failing teardown.
       if (now - referenceAt >= windowMinutes * 60_000) void record.releaseSession();

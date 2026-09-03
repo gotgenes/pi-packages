@@ -3,7 +3,7 @@ import { AgentTypeRegistry } from "#src/config/agent-types";
 import { ConcurrencyLimiter } from "#src/lifecycle/concurrency-limiter";
 import type { CreateSubagentSessionParams } from "#src/lifecycle/create-subagent-session";
 import type { AgentSpawnConfig } from "#src/lifecycle/subagent-manager";
-import { SubagentManager, type SubagentManagerObserver } from "#src/lifecycle/subagent-manager";
+import { resolveRetentionWindow, SubagentManager, type SubagentManagerObserver } from "#src/lifecycle/subagent-manager";
 import type { SubagentSession } from "#src/lifecycle/subagent-session";
 import type { WorkspaceProvider } from "#src/lifecycle/workspace";
 import { NotificationManager } from "#src/observation/notification";
@@ -1377,6 +1377,53 @@ describe("SubagentManager", () => {
       disposeFirst();
 
       expect(manager.workspaceProvider).toBe(second);
+    });
+  });
+});
+
+describe("resolveRetentionWindow", () => {
+  const policy = {
+    consumedSessionRetentionMinutes: 10,
+    unconsumedSessionRetentionMinutes: 720,
+  };
+
+  describe("an outcome the parent never collected", () => {
+    it("holds for the long window, measured from completion", () => {
+      expect(
+        resolveRetentionWindow(
+          { consumed: false, completedAt: 5_000, consumedAt: undefined },
+          policy,
+        ),
+      ).toEqual({ referenceAt: 5_000, windowMinutes: 720 });
+    });
+
+    it("measures from zero when the record has no completion time", () => {
+      expect(
+        resolveRetentionWindow(
+          { consumed: false, completedAt: undefined, consumedAt: undefined },
+          policy,
+        ),
+      ).toEqual({ referenceAt: 0, windowMinutes: 720 });
+    });
+  });
+
+  describe("an outcome the parent collected", () => {
+    it("holds for the short window, measured from collection", () => {
+      expect(
+        resolveRetentionWindow(
+          { consumed: true, completedAt: 5_000, consumedAt: 9_000 },
+          policy,
+        ),
+      ).toEqual({ referenceAt: 9_000, windowMinutes: 10 });
+    });
+
+    it("measures from completion when that is the later of the two", () => {
+      expect(
+        resolveRetentionWindow(
+          { consumed: true, completedAt: 9_000, consumedAt: 5_000 },
+          policy,
+        ),
+      ).toEqual({ referenceAt: 9_000, windowMinutes: 10 });
     });
   });
 });
