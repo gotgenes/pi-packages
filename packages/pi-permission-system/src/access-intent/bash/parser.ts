@@ -4,6 +4,11 @@ import { memoizeAsyncWithRetry } from "#src/async-cache";
 /**
  * Minimal subset of web-tree-sitter's SyntaxNode used by the AST walker.
  * Defined locally so callers do not need to import web-tree-sitter types.
+ *
+ * The last two members are the parse's own health, which every other member
+ * describes a *successful* parse's structure. They exist for
+ * {@link parseUnresolvedAt} and are read nowhere else — see its doc comment for
+ * why that boundary matters.
  */
 export interface TSNode {
   readonly type: string;
@@ -13,7 +18,37 @@ export interface TSNode {
   readonly childCount: number;
   /** False for anonymous tokens (operators, delimiters); true for named nodes. */
   readonly isNamed: boolean;
+  /** True when this node is an error or missing token, or contains one. */
+  readonly hasError: boolean;
+  /** The node immediately before this one under the same parent, named or not. */
+  readonly previousSibling: TSNode | null;
   child(index: number): TSNode | null;
+}
+
+/**
+ * Whether tree-sitter failed to resolve the syntax at `node`.
+ *
+ * Error recovery disposes of text it cannot attach in one of two places, and
+ * which one it picks depends on what follows. The read-write open `<>`, which
+ * `tree-sitter-bash` 0.25.1 has no node for, shows both: `cat <> rw.txt` keeps
+ * the discarded `>` as an `ERROR` *child* of the redirect, while
+ * `cat <> ~/rw.txt` strands the `<` as an `ERROR` *sibling* ahead of a redirect
+ * that is otherwise indistinguishable from a genuine `> ~/rw.txt`. A reader
+ * that consults only the node's own subtree sees the first and not the second.
+ *
+ * The immediate predecessor, rather than the enclosing statement, is what makes
+ * the answer per-redirect: in `cat a > out.txt <> ~/rw.txt` the statement has
+ * an error but its first redirect is a fully resolved write, and condemning it
+ * would forfeit a proof the parse really did establish.
+ *
+ * This is the one place {@link TSNode.hasError} and
+ * {@link TSNode.previousSibling} are read. Keeping the lateral navigation here
+ * is deliberate: recovering-parser behavior is a fact about tree-sitter rather
+ * than about any construct, so a caller asks this question instead of
+ * hand-rolling a sibling walk of its own.
+ */
+export function parseUnresolvedAt(node: TSNode): boolean {
+  return node.hasError || (node.previousSibling?.hasError ?? false);
 }
 
 /**
