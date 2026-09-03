@@ -9,34 +9,50 @@ import type { TokenEffect } from "#src/access-intent/effect";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-/** Depth-first search for the first node of the given type. */
-function findNode(node: TSNode, type: string): TSNode | null {
-  if (node.type === type) return node;
+/** Depth-first collection of every node of the given type, in source order. */
+function findNodes(node: TSNode, type: string, out: TSNode[] = []): TSNode[] {
+  if (node.type === type) out.push(node);
   for (let i = 0; i < node.childCount; i++) {
     const child = node.child(i);
-    if (!child) continue;
-    const found = findNode(child, type);
-    if (found) return found;
+    if (child) findNodes(child, type, out);
   }
-  return null;
+  return out;
 }
 
-/** Parse a bash snippet and hand its first redirect node to `read`. */
-async function withRedirect<T>(
+/**
+ * Parse a bash snippet and hand `read` every redirect node of `type` it holds.
+ *
+ * A command can carry several, and an unresolvable one does not contaminate a
+ * resolvable neighbour — so a test asserting that needs the whole list from one
+ * parse, not the first match.
+ */
+async function withRedirects<T>(
   command: string,
   type: string,
-  read: (redirect: TSNode) => T,
+  read: (redirects: TSNode[]) => T,
 ): Promise<T> {
   const parser = await getParser();
   const tree = parser.parse(command);
   if (!tree) throw new Error("parser.parse returned null");
   try {
-    const redirect = findNode(tree.rootNode, type);
-    if (!redirect) throw new Error(`no ${type} node found in: ${command}`);
-    return read(redirect);
+    return read(findNodes(tree.rootNode, type));
   } finally {
     tree.delete();
   }
+}
+
+/** Parse a bash snippet and hand its first redirect node to `read`. */
+function withRedirect<T>(
+  command: string,
+  type: string,
+  read: (redirect: TSNode) => T,
+): Promise<T> {
+  return withRedirects(command, type, (redirects) => {
+    if (redirects.length === 0) {
+      throw new Error(`no ${type} node found in: ${command}`);
+    }
+    return read(redirects[0]);
+  });
 }
 
 /** The effect proved for a redirect's first argument-shaped destination. */
