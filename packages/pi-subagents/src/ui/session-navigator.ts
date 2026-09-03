@@ -4,15 +4,20 @@
  *
  * SDK/TUI consumer half of native session navigation. The unit-testable core
  * (selection, sourcing) lives in `session-navigation.ts`; this module wires that
- * core to the command picker and a read-only scrollable overlay, and owns the
+ * core to the command picker and a read-only scrollable pane, and owns the
  * renderer — it mounts Pi's interactive components (`AssistantMessageComponent`,
  * `ToolExecutionComponent`, …) into a `Container`, mirroring Pi's own
  * `renderSessionContext` mapping. Rendering lives here, not in the pure module,
  * because the components require a `TUI`, `cwd`, and markdown theme.
  *
- * The overlay is strictly read-only — steering stays in the `steer_subagent` tool
+ * The pane is strictly read-only — steering stays in the `steer_subagent` tool
  * and the widget. It consumes a `TranscriptSource`, so a released agent's disk
- * snapshot (`fileSnapshotSource`) swaps in without touching the renderer or the overlay.
+ * snapshot (`fileSnapshotSource`) swaps in without touching the renderer or the pane.
+ *
+ * It mounts through `ui.custom`'s non-overlay path deliberately: Pi's regular-mode
+ * renderer composites overlays into the buffer that backs scrollback, so an overlay
+ * mount bakes this pane's chrome into terminal history. See
+ * `docs/decisions/0007-transcript-viewer-is-not-an-overlay.md`.
  */
 
 import { getMarkdownTheme } from "@earendil-works/pi-coding-agent";
@@ -38,8 +43,8 @@ const VIEWPORT_HEIGHT_PCT = 70;
 /** Columns the chrome takes from the viewport: the two side borders and their padding. */
 const CHROME_COLUMNS = 4;
 
-/** Component factory shape Pi's `ui.custom` invokes to mount an overlay. */
-export type OverlayComponentFactory<R> = (
+/** Component factory shape Pi's `ui.custom` invokes to mount a component. */
+export type CustomComponentFactory<R> = (
   tui: TUI,
   theme: Theme,
   keybindings: unknown,
@@ -50,7 +55,7 @@ export type OverlayComponentFactory<R> = (
 export interface SessionNavigatorUI {
   select(title: string, options: string[]): Promise<string | undefined>;
   notify(message: string, level: "info" | "warning" | "error"): void;
-  custom<R>(component: OverlayComponentFactory<R>, options?: unknown): Promise<R>;
+  custom<R>(component: CustomComponentFactory<R>, options?: unknown): Promise<R>;
 }
 
 /** Parameters for one `/subagents:sessions` invocation. */
@@ -64,8 +69,8 @@ export interface SessionNavigatorParams {
   readFile: (path: string) => string;
 }
 
-/** Options for the read-only transcript overlay. */
-export interface TranscriptOverlayOptions {
+/** Options for the read-only transcript pane. */
+export interface TranscriptPaneOptions {
   tui: TUI;
   theme: Theme;
   source: TranscriptSource;
@@ -106,20 +111,20 @@ export class SessionNavigatorHandler {
     const markdownTheme = getMarkdownTheme();
     await ui.custom<undefined>(
       (tui, theme, _keybindings, done) =>
-        new TranscriptOverlay({ tui, theme, source, done, cwd, markdownTheme }),
+        new TranscriptPane({ tui, theme, source, done, cwd, markdownTheme }),
       { overlay: false },
     );
   }
 }
 
 /**
- * Read-only scrollable transcript overlay.
+ * Read-only scrollable transcript pane.
  *
  * Owns scroll state, chrome, and key handling; the rows it paints come from a
  * `TranscriptContent` collaborator, which holds the transcript's components and
  * refreshes them when the source changes (live agents).
  */
-export class TranscriptOverlay implements Component {
+export class TranscriptPane implements Component {
   private scrollOffset = 0;
   private autoScroll = true;
   private unsubscribe: (() => void) | undefined;
@@ -129,10 +134,10 @@ export class TranscriptOverlay implements Component {
   private readonly theme: Theme;
   private readonly done: (result: undefined) => void;
   private readonly content: TranscriptContent;
-  /** Inner width the compositor last rendered at; input must use the same layout. */
+  /** Inner width the host last rendered at; input must use the same layout. */
   private renderedInnerWidth: number | undefined;
 
-  constructor({ tui, theme, source, done, cwd, markdownTheme }: TranscriptOverlayOptions) {
+  constructor({ tui, theme, source, done, cwd, markdownTheme }: TranscriptPaneOptions) {
     this.tui = tui;
     this.theme = theme;
     this.done = done;
@@ -240,9 +245,9 @@ export class TranscriptOverlay implements Component {
   }
 
   /**
-   * The width `handleInput` must lay out at: the one the compositor actually
-   * supplied, so scroll bounds match the layout on screen. Before the first
-   * paint there is none, so fall back to the overlay's share of the terminal.
+   * The width `handleInput` must lay out at: the one the host actually supplied,
+   * so scroll bounds match the layout on screen. Before the first paint there is
+   * none, so fall back to the full terminal less the chrome's columns.
    */
   private inputWidth(): number {
     return this.renderedInnerWidth ?? Math.max(0, this.tui.terminal.columns - CHROME_COLUMNS);
