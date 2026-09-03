@@ -54,6 +54,43 @@ One candidate was rejected as not worth doing as preparation:
 
 `transcript-content.ts` and `test/helpers/transcript-fixtures.ts` were assessed and found to need nothing.
 
+## Stage: Implementation — TDD (2026-09-03T19:29:09Z)
+
+### Session summary
+
+Executed all seven TDD steps, including the two Tidy-First preparatory commits, each as its own commit leaving the tree green.
+The viewer now mounts through `ui.custom`'s non-overlay path with a two-line chrome and a content-sized height, and ADR 0007 records the upstream mechanism with a runnable reproduction.
+Test count 1508 → 1514 (+6) in `pi-subagents`; `check`, `lint` (0 findings), `test`, and `fallow dead-code` all green at baseline and at the end.
+
+### Observations
+
+- **Pre-completion reviewer: WARN**, resolved.
+  It found the three `previousLines = newLines` citations in ADR 0007 each off by one.
+  Root cause is the exact hazard `AGENTS.md` warns about: I read line numbers from the `../../pi` checkout, which tracks Pi's `main`, instead of the pinned dependency the ADR claims to cite.
+  The sharper form is that the checkout **drifted during this session** — the `compositeOverlays` line read 267 at planning time and 268 by the end — so even a number captured correctly earlier can rot in place.
+  The durable fix is to cite from the installed package's sourcemap (`dist/*.js.map` `sourcesContent`), which is what shipped.
+- The reviewer also caught that the threshold prose asserted 8 *is* the distance to the top of the screen and then computed that distance as 7.
+  It is one more than the distance.
+  The planning retro had it right and the shipped text dropped the `+ 1`.
+- **A chrome change is invisible in the pane's total height.**
+  Total lines are `floor(rows * 70%)` before and after, because the viewport absorbs whatever the chrome gives up.
+  The first draft of the capacity test asserted total height and would have passed under both, which is the testing skill's "name both outcomes and confirm your assertion differs between them" rule catching a vacuous probe before it was written.
+  The discriminating measure is transcript rows shown: 21 before, 25 after.
+- **The measured capacity was 21 → 25, not the 22 → 26 the arithmetic suggested.**
+  One viewport row is the user-message component's own trailing row.
+  I predicted 25 from the observed 21 before running it, and confirmed the delta is exactly 4, so the expectation was reasoned rather than fitted to output.
+- Three deviations from the plan, each recorded in its commit body:
+  1. The planned assertion on `inputWidth()`'s pre-first-render fallback was not written — `render()` clamps `visibleStart` to its own `maxScroll`, so a wrong fallback produces identical output at any render width.
+  2. Step 1's killing mutation turns one scroll-bounds test red, not both; the second is an up-then-down round trip insensitive to a width mutation by construction.
+  3. `viewportHeight` takes the already-computed `totalLines` rather than the plan's `width`, avoiding a second `lineCount` traversal per frame.
+- **A pin that stays green through Red needs its own mutation.**
+  Step 6's cap test passed during Red because the old fixed height already produced the capped value.
+  The plan's mutation was designed to leave it green, so it proved nothing about that test; a second mutation removing only the upper clamp turned it red at 84 rows versus 28.
+- Verified both copies of the reproduction script by extracting them from the committed plan and the committed ADR and running each, rather than assuming the paste was faithful.
+- For whoever runs `/finish-phase` on pi-subagents Phase 22: that roadmap's sweep list defers this issue as "requiring SDK-level rendering investigation".
+  The investigation happened here and its conclusion is the opposite — no SDK change is required.
+  The disposition is left as the historical record it is, but the rationale should not be carried forward as fact.
+
 [#864]: https://github.com/gotgenes/pi-packages/issues/864
 [#874]: https://github.com/gotgenes/pi-packages/issues/874
 [earendil-works/pi#2759]: https://github.com/earendil-works/pi/issues/2759
