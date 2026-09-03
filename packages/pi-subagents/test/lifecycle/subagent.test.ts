@@ -4,6 +4,7 @@ import { Subagent, type SubagentExecution, type SubagentLifecycleObserver } from
 import type { SubagentSession, TurnLoopResult } from "#src/lifecycle/subagent-session";
 import { SubagentState, type SubagentStateInit } from "#src/lifecycle/subagent-state";
 import type { WorkspacePrepareContext, WorkspaceProvider } from "#src/lifecycle/workspace";
+import type { RunConfig } from "#src/runtime";
 import type { CompactionInfo, SubagentType } from "#src/types";
 import { makeStubExecution } from "#test/helpers/make-subagent";
 import { makeWorkspace, makeWorkspaceProvider } from "#test/helpers/make-workspace";
@@ -595,11 +596,12 @@ describe("Subagent — releaseSession", () => {
 function createRunnableAgent(overrides?: {
 	createSubagentSession?: SessionFactory;
 	observer?: SubagentLifecycleObserver;
-	getRunConfig?: () => { defaultMaxTurns: number | undefined; graceTurns: number };
+	getRunConfig?: () => RunConfig;
 	parentSession?: { toolCallId?: string; parentSessionFile?: string; parentSessionId?: string };
 	signal?: AbortSignal;
 	baseCwd?: string;
 	workspaceProvider?: WorkspaceProvider;
+	isBackground?: boolean;
 }) {
 	const createSubagentSession = overrides?.createSubagentSession ?? defaultFactory();
 	const observer = overrides?.observer ?? {};
@@ -607,6 +609,7 @@ function createRunnableAgent(overrides?: {
 	return makeSubagent({
 		id: "run-1",
 		description: "run test",
+		isBackground: overrides?.isBackground,
 		execution: {
 			createSubagentSession,
 			observer,
@@ -924,7 +927,7 @@ describe("Subagent.run() — abort signal forwarding", () => {
 describe("Subagent.run() — RunConfig threading", () => {
 	it("passes defaultMaxTurns and graceTurns to runTurnLoop", async () => {
 		const { factory, stub } = createFactory();
-		const agent = createRunnableAgent({ createSubagentSession: factory, getRunConfig: () => ({ defaultMaxTurns: 10, graceTurns: 3 }) });
+		const agent = createRunnableAgent({ createSubagentSession: factory, getRunConfig: () => ({ defaultMaxTurns: 10, graceTurns: 3, midRunUpdates: true }) });
 		await agent.run();
 		const turnOpts = stub.runTurnLoop.mock.calls[0][1];
 		expect(turnOpts.defaultMaxTurns).toBe(10);
@@ -987,6 +990,74 @@ describe("Subagent — the ask-back recorder", () => {
 		agent.failResume(new Error("boom"));
 
 		expect(agent.pendingQuestion).toBeUndefined();
+	});
+});
+
+describe("Subagent — the mid-run update channel", () => {
+	const updatesOn = { defaultMaxTurns: undefined, graceTurns: 5, midRunUpdates: true };
+
+	it("gives a background child a way to send its parent an update", async () => {
+		const { factory } = createSpyFactory();
+		const agent = createRunnableAgent({
+			createSubagentSession: factory,
+			isBackground: true,
+			getRunConfig: () => updatesOn,
+		});
+
+		await agent.run();
+
+		expect(factory.mock.calls[0][0].notifyParent).toBeTypeOf("function");
+	});
+
+	it("reports a background child's update to the lifecycle observer", async () => {
+		const { factory } = createSpyFactory();
+		const onUpdateSent = vi.fn<(agent: Subagent, message: string) => void>();
+		const agent = createRunnableAgent({
+			createSubagentSession: factory,
+			isBackground: true,
+			observer: { onUpdateSent },
+			getRunConfig: () => updatesOn,
+		});
+		await agent.run();
+
+		factory.mock.calls[0][0].notifyParent?.("The bug is in the retry wrapper.");
+
+		expect(onUpdateSent).toHaveBeenCalledWith(agent, "The bug is in the retry wrapper.");
+	});
+
+	it("withholds the channel from a foreground child, whose update could not arrive in time", async () => {
+		const { factory } = createSpyFactory();
+		const agent = createRunnableAgent({
+			createSubagentSession: factory,
+			isBackground: false,
+			getRunConfig: () => updatesOn,
+		});
+
+		await agent.run();
+
+		expect(factory.mock.calls[0][0].notifyParent).toBeUndefined();
+	});
+
+	it("withholds the channel when the operator turned mid-run updates off", async () => {
+		const { factory } = createSpyFactory();
+		const agent = createRunnableAgent({
+			createSubagentSession: factory,
+			isBackground: true,
+			getRunConfig: () => ({ ...updatesOn, midRunUpdates: false }),
+		});
+
+		await agent.run();
+
+		expect(factory.mock.calls[0][0].notifyParent).toBeUndefined();
+	});
+
+	it("still gives a foreground child the ask-back recorder", async () => {
+		const { factory } = createSpyFactory();
+		const agent = createRunnableAgent({ createSubagentSession: factory, isBackground: false });
+
+		await agent.run();
+
+		expect(factory.mock.calls[0][0].askParent).toBeTypeOf("function");
 	});
 });
 

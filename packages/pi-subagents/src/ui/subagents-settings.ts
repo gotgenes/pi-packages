@@ -14,12 +14,14 @@ export interface SubagentsSettingsManager {
   readonly consumedSessionRetentionMinutes: number;
   readonly unconsumedSessionRetentionMinutes: number;
   readonly abortAllOnInterrupt: boolean;
+  readonly midRunUpdates: boolean;
   applyMaxConcurrent(n: number): SettingsToast;
   applyDefaultMaxTurns(n: number): SettingsToast;
   applyGraceTurns(n: number): SettingsToast;
   applyConsumedSessionRetentionMinutes(n: number): SettingsToast;
   applyUnconsumedSessionRetentionMinutes(n: number): SettingsToast;
   toggleAbortAllOnInterrupt(): SettingsToast;
+  toggleMidRunUpdates(): SettingsToast;
 }
 
 /** Narrow UI interface — only the ctx.ui methods the settings handler calls. */
@@ -119,6 +121,12 @@ const SETTINGS: readonly SettingDescriptor[] = [
     label: "Abort all subagents on ESC",
     currentDisplay: (settings) => (settings.abortAllOnInterrupt ? "on" : "off"),
     toggle: (settings) => settings.toggleAbortAllOnInterrupt(),
+  },
+  {
+    kind: "toggle",
+    label: "Mid-run updates from background subagents",
+    currentDisplay: (settings) => (settings.midRunUpdates ? "on" : "off"),
+    toggle: (settings) => settings.toggleMidRunUpdates(),
   },
 ];
 

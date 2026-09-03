@@ -293,6 +293,9 @@ export class Subagent {
 				model: this.execution.model,
 				thinkingLevel: this.execution.thinkingLevel,
 				askParent: (question) => { this.state.setPendingQuestion(question); },
+				notifyParent: this.canSendUpdates(runConfig)
+					? (message) => this.execution.observer?.onUpdateSent?.(this, message)
+					: undefined,
 			});
 		} catch (err) {
 			// The factory disposed its own session on a post-creation failure.
@@ -317,6 +320,18 @@ export class Subagent {
 		} catch (err) {
 			this.failRun(err);
 		}
+	}
+
+	/**
+	 * Whether this run gets the mid-run update channel.
+	 *
+	 * Background only: a foreground parent is blocked inside its own `subagent`
+	 * tool call, so the nudge carrying an update is withheld until that run
+	 * settles — by which time the child's own result has already returned.
+	 * Defaults to on when no run config is supplied, matching the setting.
+	 */
+	private canSendUpdates(runConfig: RunConfig | undefined): boolean {
+		return this.isBackground && (runConfig?.midRunUpdates ?? true);
 	}
 
 	/**

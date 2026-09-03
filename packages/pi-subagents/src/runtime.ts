@@ -17,6 +17,8 @@ import type { SessionContext } from "#src/types";
 export interface RunConfig {
   readonly defaultMaxTurns: number | undefined;
   readonly graceTurns: number;
+  /** Whether a background child gets the `notify_parent` channel. */
+  readonly midRunUpdates: boolean;
 }
 
 /**

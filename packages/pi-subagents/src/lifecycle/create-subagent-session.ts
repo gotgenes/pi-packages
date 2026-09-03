@@ -25,6 +25,7 @@ import { SubagentSession } from "#src/lifecycle/subagent-session";
 import { AskParentTool, type QuestionRecorder } from "#src/session/ask-parent-tool";
 import type { EnvInfo } from "#src/session/env";
 import type { ModelRegistry } from "#src/session/model-resolver";
+import { NotifyParentTool, type UpdateAnnouncer } from "#src/session/notify-parent-tool";
 import { type AssemblerIO, assembleSessionConfig } from "#src/session/session-config";
 import type { ParentSessionInfo, ShellExec, SubagentType, ThinkingLevel } from "#src/types";
 
@@ -154,6 +155,12 @@ export interface CreateSubagentSessionParams {
    * child; its absence installs no ask-back tool.
    */
   askParent?: QuestionRecorder;
+  /**
+   * Announces a mid-run update the child sends with `notify_parent`. Supplied
+   * only for a background child whose operator left the channel on; its absence
+   * installs no update tool.
+   */
+  notifyParent?: UpdateAnnouncer;
 }
 
 /**
@@ -166,6 +173,8 @@ export interface CreateSubagentSessionParams {
 function buildChildTools(params: CreateSubagentSessionParams): ToolDefinition[] {
   const tools: ToolDefinition[] = [];
   if (params.askParent) tools.push(new AskParentTool(params.askParent).toToolDefinition());
+  if (params.notifyParent)
+    tools.push(new NotifyParentTool(params.notifyParent).toToolDefinition());
   return tools;
 }
 

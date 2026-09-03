@@ -1210,7 +1210,7 @@ describe("SubagentManager", () => {
       });
 
       it("passes defaultMaxTurns and graceTurns from getRunConfig to runTurnLoop", async () => {
-        const getRunConfig = vi.fn(() => ({ defaultMaxTurns: 10, graceTurns: 3 }));
+        const getRunConfig = vi.fn(() => ({ defaultMaxTurns: 10, graceTurns: 3, midRunUpdates: true }));
         const { factory, stub } = createSessionFactory();
         ({ manager } = createManager({ getRunConfig, createSubagentSession: factory }));
 

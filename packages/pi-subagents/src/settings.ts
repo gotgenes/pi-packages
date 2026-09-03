@@ -25,6 +25,11 @@ export interface SubagentsSettings {
    */
   abortAllOnInterrupt?: boolean;
   /**
+   * When false, a background child is not given the `notify_parent` tool, so it
+   * cannot interrupt the parent with a mid-run finding. Ask-back is unaffected.
+   */
+  midRunUpdates?: boolean;
+  /**
    * Pi package sources whose extensions child sessions must not load, matched
    * against Pi's configured source string exactly (e.g. `npm:@scope/pkg`).
    * The package's skills, prompts, and themes stay available to children.
@@ -44,6 +49,7 @@ export interface SettingsSnapshot {
   consumedSessionRetentionMinutes: number;
   unconsumedSessionRetentionMinutes: number;
   abortAllOnInterrupt: boolean;
+  midRunUpdates: boolean;
   /**
    * Present only when non-empty, so files that never set it gain no noise.
    * It must round-trip: the key has no `/subagents:settings` affordance, so a
@@ -61,6 +67,7 @@ const DEFAULT_GRACE_TURNS = 5;
 const DEFAULT_CONSUMED_RETENTION_MINUTES = 10;
 const DEFAULT_UNCONSUMED_RETENTION_MINUTES = 720;
 const DEFAULT_ABORT_ALL_ON_INTERRUPT = true;
+const DEFAULT_MID_RUN_UPDATES = true;
 
 /**
  * Owns all three in-memory settings values and their load/save/persist cycle.
@@ -73,6 +80,7 @@ export class SettingsManager {
   private _consumedSessionRetentionMinutes: number = DEFAULT_CONSUMED_RETENTION_MINUTES;
   private _unconsumedSessionRetentionMinutes: number = DEFAULT_UNCONSUMED_RETENTION_MINUTES;
   private _abortAllOnInterrupt: boolean = DEFAULT_ABORT_ALL_ON_INTERRUPT;
+  private _midRunUpdates: boolean = DEFAULT_MID_RUN_UPDATES;
   private _excludedExtensionPackages: string[] = [];
 
   private readonly emit: SettingsEmit;
@@ -169,6 +177,7 @@ export class SettingsManager {
       this.unconsumedSessionRetentionMinutes = settings.unconsumedSessionRetentionMinutes;
     if (typeof settings.abortAllOnInterrupt === "boolean")
       this._abortAllOnInterrupt = settings.abortAllOnInterrupt;
+    if (typeof settings.midRunUpdates === "boolean") this._midRunUpdates = settings.midRunUpdates;
     // Assigned unconditionally: removing the key from disk must clear the value.
     this._excludedExtensionPackages = [...(settings.excludedExtensionPackages ?? [])];
     this.emit("subagents:settings_loaded", { settings });
@@ -187,6 +196,7 @@ export class SettingsManager {
       consumedSessionRetentionMinutes: this._consumedSessionRetentionMinutes,
       unconsumedSessionRetentionMinutes: this._unconsumedSessionRetentionMinutes,
       abortAllOnInterrupt: this._abortAllOnInterrupt,
+      midRunUpdates: this._midRunUpdates,
     };
     if (this._excludedExtensionPackages.length > 0) {
       snapshot.excludedExtensionPackages = [...this._excludedExtensionPackages];
@@ -242,6 +252,25 @@ export class SettingsManager {
     this._abortAllOnInterrupt = !this._abortAllOnInterrupt;
     return this.saveAndNotify(
       `Abort all subagents on ESC: ${this._abortAllOnInterrupt ? "on" : "off"}`,
+    );
+  }
+
+  get midRunUpdates(): boolean {
+    return this._midRunUpdates;
+  }
+
+  set midRunUpdates(on: boolean) {
+    this._midRunUpdates = on;
+  }
+
+  /**
+   * Flip whether a background child may interrupt the parent with a mid-run
+   * update, persist, and return the toast.
+   */
+  toggleMidRunUpdates(): { message: string; level: "info" | "warning" } {
+    this._midRunUpdates = !this._midRunUpdates;
+    return this.saveAndNotify(
+      `Mid-run updates from background subagents: ${this._midRunUpdates ? "on" : "off"}`,
     );
   }
 
@@ -310,6 +339,9 @@ function sanitize(raw: unknown): SubagentsSettings {
   }
   if (typeof r.abortAllOnInterrupt === "boolean") {
     out.abortAllOnInterrupt = r.abortAllOnInterrupt;
+  }
+  if (typeof r.midRunUpdates === "boolean") {
+    out.midRunUpdates = r.midRunUpdates;
   }
   if (Array.isArray(r.excludedExtensionPackages)) {
     const sources = r.excludedExtensionPackages

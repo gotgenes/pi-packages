@@ -34,6 +34,11 @@ function makeSettings() {
       message: "Abort all subagents on ESC: off",
       level: "info",
     })),
+    midRunUpdates: true,
+    toggleMidRunUpdates: vi.fn((): { message: string; level: "info" | "warning" } => ({
+      message: "Mid-run updates from background subagents: off",
+      level: "info",
+    })),
   };
 }
 
@@ -52,7 +57,7 @@ describe("SubagentsSettingsHandler", () => {
     expect(handler).toBeInstanceOf(SubagentsSettingsHandler);
   });
 
-  it("shows the six settings options with current values", async () => {
+  it("shows the seven settings options with current values", async () => {
     const { handler } = makeHandler();
     const ui = makeMenuUI([undefined]); // cancel immediately
     await handler.handle({ ui });
@@ -64,7 +69,22 @@ describe("SubagentsSettingsHandler", () => {
       "Consumed-session retention (current: 10 min)",
       "Unconsumed-session retention (current: 720 min)",
       "Abort all subagents on ESC (current: on)",
+      "Mid-run updates from background subagents (current: on)",
     ]);
+  });
+
+  it("toggles mid-run updates from the settings list", async () => {
+    const settings = makeSettings();
+    const { handler } = makeHandler(settings);
+    const ui = makeMenuUI(["Mid-run updates from background subagents (current: on)"]);
+
+    await handler.handle({ ui });
+
+    expect(settings.toggleMidRunUpdates).toHaveBeenCalledOnce();
+    expect(ui.notify).toHaveBeenCalledWith(
+      "Mid-run updates from background subagents: off",
+      "info",
+    );
   });
 
   it("renders the abort-on-ESC option as off when the policy is disabled", async () => {
