@@ -94,8 +94,95 @@ The plan's `**Release:** ship independently` marker applies unchanged — no bat
 No new work landed in this stage; it only verified the TDD stage's commits still pass the two gates CI enforces at root level.
 Nothing deferred to the root beyond the ordinary `/ship-worktree` flow.
 
+## Stage: Final Retrospective (2026-09-02T20:41:35Z)
+
+### Session summary
+
+Landed the peer worktree branch for this issue onto linear `main` and released `pi-permission-system` v31.0.0 — a major bump falling out of the two `fix!:` commits — then ran this retrospective at the root.
+The ship stage was non-interactive end to end, because the plan's `**Release:** ship independently` marker resolved the release decision with no clarification gate.
+The only defect was a recurring over-verification tic that the operator interrupted to flag.
+
+### Observations
+
+#### What went well
+
+- **Plan-driven release batching ran the whole way with zero operator input.**
+  `/ship-worktree` read `**Release:** ship independently` off the plan on the peer branch before any irreversible action, recorded "release now", and never asked.
+  Candidate packages were derived from the paths the range touched rather than from commit types, and `./scripts/release/next-version.sh pi-permission-system` confirmed `pi-permission-system-v31.0.0` before the dispatch.
+  Nothing about the version was hand-chosen.
+- **The [#815] unpushed-root-commit guard behaved exactly as specified.**
+  `git pull --ff-only` reported `Already up to date.` while local `main` was two commits ahead, and `git rev-list --count origin/main..main` surfaced them.
+  The ff-merge was still predicted with `git merge-base --is-ancestor` rather than inferred from that count, so the prompt's distinction — the count "explains a rejected ff-merge but does not predict one" — held literally.
+  The two unrelated `docs(triage):` commits rode along in the same push with no surprise.
+
+#### What caused friction (agent side)
+
+- `other` (over-verification, user-caught) — **measured the length of `git rev-parse` output three times.**
+  Ran `git rev-parse HEAD | wc -c` after capturing the HEAD SHA, then `git rev-parse <sha> | wc -c` for both `fix!:` commit SHAs before drafting the close comment.
+  Impact: two wasted tool calls plus an operator interruption; no rework, and no wrong value was published.
+  The significant part is the recurrence — a corpus sweep found this same behavior recorded in 14 prior retro files across five packages, including [#640], [#776], and [#777], plus the `0521`, `0568`, `0575`, `0591`, `0594`, `0607`, `0653`, `0674`, `0709`, `0721`, `0778`, `0792`, `0798`, and `0849` entries.
+  It has caused real damage once: [#640] records that after the `wc -c` check the session passed a **39-character truncated** SHA to `ci_find`, so the doubt corrupted the very value it was meant to protect.
+- `instruction-violation` (self-identified) — **used a `types: ["model_change"]`-filtered `read_session_file` call for the model-attribution lens**, the exact call `.pi/prompts/retro.md` warns against two lines below the instruction (Refs [#737]).
+  Caught within one call and redone as a bounded unfiltered read.
+  Impact: one wasted call, no wrong conclusion published.
+  This is the second recorded instance — [#777] logs the identical violation, on the identical lens, with the identical one-call recovery.
+- `instruction-violation` (self-identified) — **hand-built an absolute path for an `Edit` call and tripped the `external_directory` gate.**
+  Passed `/Users/chris/development/pi/pi-permission-system/docs/retro/...` — a doubled package segment — when `AGENTS.md` requires repo-relative tool paths for exactly this reason (Refs [#726]).
+  Impact: one rejected edit, retried immediately with the relative path; no rework.
+  Worth noting that the package's own `model-judge` authorizer produced the corrective message, naming the right location outright — the gate under retrospect here caught the retrospect writing itself.
+- `instruction-violation` (self-identified) — **loaded a skill the prompt did not ask for.**
+  Opened `~/.pi/agent/skills/github-voice/SKILL.md` as the first skill of the retro, though `.pi/prompts/retro.md` names exactly four: `ask-user`, `package-<PKG>`, `markdown-conventions`, and `code-design`.
+  Impact: one wasted read of a long skill file and its context cost; no rework.
+
+#### What caused friction (user side)
+
+- Nothing obstructive; the single interruption was well-timed and carried the decisive context.
+  The operator's note — "we rejected a prior retro change to tell the agent this, but it seems we need to add it after all" — is what turned a routine tic into an actionable change.
+  The follow-up question asking for something broader than `git rev-parse` is what located [#776]'s more general formulation instead of settling for the narrow SHA-only rule already drafted.
+- One process gap worth naming, framed as opportunity: **the two prior declines preserved their verdicts but not their proposed text.**
+  [#776] and [#777] each record a one-line summary inside an "also considered / declined" list, so this session had to re-derive the wording from scratch and could not tell how close the earlier drafts had come.
+  Recording the declined text, not merely the decision, would let a later retro amend a draft rather than restart it.
+
+### Diagnostic details
+
+- **Model-performance correlation** — attributed from inline `[provider/model]` labels in an unfiltered read, after the filtered first attempt noted above.
+  The ship stage ran on `anthropic/claude-sonnet-5`; this retrospective runs on `anthropic/claude-opus-5`.
+  The peer worktree session ran predominantly `anthropic/claude-opus-5` across planning and TDD, with its terminal `/sync-worktree` stage on `anthropic/claude-sonnet-5`.
+  That split is an aggregate over the 1.3 MB peer transcript (176 opus entries against 18 sonnet), with the sync-stage attribution confirmed from rendered labels in a bounded unfiltered read rather than from the aggregate alone.
+  No mismatch in either direction — opus on the judgment-heavy planning and TDD, sonnet on the two mechanical stages.
+  Consistent with [#777]'s observation that the ship stage both writes permanent public text and is the stage most often delegated to the cheaper model: this session's only risk to a published artifact again arose there.
+- **Escalation-delay tracking** — no `rabbit-hole` friction points.
+  The longest run on a single concern was two non-consecutive `wc -c` calls, and all three `instruction-violation`s were corrected within one call.
+- **Unused-tool detection** — no finding.
+  The ship flow is fully scripted and every target was known by name; the one corpus question that did arise — has this been proposed before?
+  — was answered with two `grep` sweeps, which was the right instrument.
+- **Feedback-loop gap analysis** — no gap, and none expected.
+  `/ship-worktree` runs no `pnpm` gates by design: the peer ran `pnpm run lint` and `pnpm fallow dead-code` at `/sync-worktree`, and CI re-ran the full suite on the pushed SHA before the issue was closed or anything released.
+
+### Changes made
+
+1. `AGENTS.md` § Shell and search — added the rule that a deterministic command's own output is not worth a tool call to measure, naming `git rev-parse`'s fixed 40-hex-character output and the `| wc -c` anti-pattern, and redirecting the check to the identifiers the agent *typed*.
+   Placed at the end of the section, after the [#843] re-verification rule it sits closest to in theme.
+2. `packages/pi-permission-system/docs/retro/0839-statement-operand-path-projection.md` — this Final Retrospective entry.
+
+Two candidates were declined during the retro.
+The first was removing the "full 40-char SHA" phrasing from `.pi/prompts/ship-worktree.md` and `ship-issue.md`: plausibly the priming source, but it carries a real anti-short-SHA warning, and the new `AGENTS.md` rule contradicts the impulse for all three ship prompts at once.
+The second was a `.pi/prompts/retro.md` change for the `model_change` lens trap, which [#777] already declined as a reading failure rather than a doc gap; it is recorded here as a second instance instead of overturning that call.
+Preserving the declined draft per the user-side observation above, the narrower SHA-only phrasing that lost to the general one was:
+
+```markdown
+`git rev-parse` emits exactly 40 hex characters — never measure its output (`| wc -c`); re-resolve the hashes you *typed*, which is the only place a wrong SHA can enter (Refs #839).
+```
+
 [#645]: https://github.com/gotgenes/pi-packages/issues/645
 [#609]: https://github.com/gotgenes/pi-packages/issues/609
+[#640]: https://github.com/gotgenes/pi-packages/issues/640
+[#726]: https://github.com/gotgenes/pi-packages/issues/726
+[#737]: https://github.com/gotgenes/pi-packages/issues/737
+[#776]: https://github.com/gotgenes/pi-packages/issues/776
+[#777]: https://github.com/gotgenes/pi-packages/issues/777
+[#815]: https://github.com/gotgenes/pi-packages/issues/815
+[#843]: https://github.com/gotgenes/pi-packages/issues/843
 [#741]: https://github.com/gotgenes/pi-packages/issues/741
 [#742]: https://github.com/gotgenes/pi-packages/issues/742
 [#807]: https://github.com/gotgenes/pi-packages/issues/807
