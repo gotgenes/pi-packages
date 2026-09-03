@@ -158,9 +158,7 @@ export class TranscriptOverlay implements Component {
       return;
     }
 
-    const totalLines = this.content.lineCount(this.inputWidth());
-    const viewportHeight = this.viewportHeight();
-    const maxScroll = Math.max(0, totalLines - viewportHeight);
+    const { viewportHeight, maxScroll } = this.scrollBounds(this.inputWidth());
 
     if (matchesKey(data, "up") || matchesKey(data, "k")) {
       this.scrollOffset = Math.max(0, this.scrollOffset - 1);
@@ -201,9 +199,7 @@ export class TranscriptOverlay implements Component {
     lines.push(row(th.bold("Subagent session")));
     lines.push(hrMid);
 
-    const totalLines = this.content.lineCount(innerW);
-    const viewportHeight = this.viewportHeight();
-    const maxScroll = Math.max(0, totalLines - viewportHeight);
+    const { totalLines, viewportHeight, maxScroll } = this.scrollBounds(innerW);
     if (this.autoScroll) this.scrollOffset = maxScroll;
     const visibleStart = Math.min(this.scrollOffset, maxScroll);
     const visible = this.content.slice(innerW, visibleStart, viewportHeight);
@@ -237,6 +233,18 @@ export class TranscriptOverlay implements Component {
   }
 
   // ---- Private ----
+
+  /**
+   * Scroll geometry at a given layout width.
+   *
+   * The single place a width becomes a viewport height, so `render` and
+   * `handleInput` cannot disagree about how far the transcript scrolls.
+   */
+  private scrollBounds(width: number): { totalLines: number; viewportHeight: number; maxScroll: number } {
+    const totalLines = this.content.lineCount(width);
+    const viewportHeight = this.viewportHeight();
+    return { totalLines, viewportHeight, maxScroll: Math.max(0, totalLines - viewportHeight) };
+  }
 
   /**
    * The width `handleInput` must lay out at: the one the compositor actually
