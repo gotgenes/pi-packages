@@ -205,6 +205,22 @@ describe("SessionNavigatorHandler", () => {
     expect(renderCapturedOverlay(ui).some((l) => l.includes("picked agent reply"))).toBe(true);
   });
 
+  it("mounts the transcript outside Pi's overlay compositor", async () => {
+    // Regular-mode overlays are composited into the buffer that backs scrollback,
+    // so an overlay mount bakes the pane's chrome into terminal history (#733).
+    const ui = makeUI("Agent (Test task) · 2 tools · completed · 3.0s");
+
+    await new SessionNavigatorHandler().handle({
+      ui,
+      agents: [makeNavigable()],
+      registry,
+      cwd: "/test/cwd",
+      readFile: noReadFile,
+    });
+
+    expect(ui.custom).toHaveBeenCalledWith(expect.any(Function), { overlay: false });
+  });
+
   it("opens an overlay sourced from the persisted file when a released agent is picked", async () => {
     const jsonl = [
       { type: "session", version: 3, id: "s1", timestamp: "2026-06-23T00:00:00Z", cwd: "/proj" },

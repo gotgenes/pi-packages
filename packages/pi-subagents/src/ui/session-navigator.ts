@@ -35,8 +35,8 @@ import { TranscriptContent } from "#src/ui/transcript-content";
 const CHROME_LINES = 6;
 const MIN_VIEWPORT = 3;
 const VIEWPORT_HEIGHT_PCT = 70;
-/** Overlay width as a share of the terminal, as handed to Pi's overlay compositor. */
-const OVERLAY_WIDTH_PCT = 90;
+/** Columns the chrome takes from the viewport: the two side borders and their padding. */
+const CHROME_COLUMNS = 4;
 
 /** Component factory shape Pi's `ui.custom` invokes to mount an overlay. */
 export type OverlayComponentFactory<R> = (
@@ -107,14 +107,7 @@ export class SessionNavigatorHandler {
     await ui.custom<undefined>(
       (tui, theme, _keybindings, done) =>
         new TranscriptOverlay({ tui, theme, source, done, cwd, markdownTheme }),
-      {
-        overlay: true,
-        overlayOptions: {
-          anchor: "center",
-          width: `${OVERLAY_WIDTH_PCT}%`,
-          maxHeight: `${VIEWPORT_HEIGHT_PCT}%`,
-        },
-      },
+      { overlay: false },
     );
   }
 }
@@ -184,7 +177,7 @@ export class TranscriptOverlay implements Component {
   render(width: number): string[] {
     if (width < 6) return [];
     const th = this.theme;
-    const innerW = width - 4;
+    const innerW = width - CHROME_COLUMNS;
     this.renderedInnerWidth = innerW;
     const lines: string[] = [];
 
@@ -252,10 +245,7 @@ export class TranscriptOverlay implements Component {
    * paint there is none, so fall back to the overlay's share of the terminal.
    */
   private inputWidth(): number {
-    return (
-      this.renderedInnerWidth ??
-      Math.max(0, Math.floor((this.tui.terminal.columns * OVERLAY_WIDTH_PCT) / 100) - 4)
-    );
+    return this.renderedInnerWidth ?? Math.max(0, this.tui.terminal.columns - CHROME_COLUMNS);
   }
 
   private viewportHeight(): number {
