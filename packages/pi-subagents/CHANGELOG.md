@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [21.3.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v21.2.2...pi-subagents-v21.3.0) (2026-09-03)
+
+
+### Features
+
+* **pi-subagents:** let a child ask its parent a question with a tool ([fc0200c](https://github.com/gotgenes/pi-packages/commit/fc0200c1464a6e124a9a3eebb48dde15032c79f9)), closes [#858](https://github.com/gotgenes/pi-packages/issues/858)
+* **pi-subagents:** let a running background child send its parent an update ([805d73d](https://github.com/gotgenes/pi-packages/commit/805d73deb33510a9e976fa4c8608e3d8582afac9)), closes [#858](https://github.com/gotgenes/pi-packages/issues/858)
+
+### Bug Fixes
+
+* **pi-subagents:** keep a child's session alive while its question is unanswered ([21a66b9](https://github.com/gotgenes/pi-packages/commit/21a66b9ab7cfe0389c8af853b469cafd02d0dca3)), closes [#858](https://github.com/gotgenes/pi-packages/issues/858)
+
+### Documentation
+
+* **pi-subagents:** document the child-to-parent tools and narrow the tool-widening boundary ([617f30d](https://github.com/gotgenes/pi-packages/commit/617f30dd39bc11534c27c20ccaea775dd6493bde)), closes [#858](https://github.com/gotgenes/pi-packages/issues/858)
+
 ## [21.2.2](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v21.2.1...pi-subagents-v21.2.2) (2026-09-02)
 
 
