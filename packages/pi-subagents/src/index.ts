@@ -30,8 +30,8 @@ import { ConcurrencyLimiter } from "#src/lifecycle/concurrency-limiter";
 import { createSubagentSession, type SubagentSessionDeps } from "#src/lifecycle/create-subagent-session";
 import { SubagentManager } from "#src/lifecycle/subagent-manager";
 import { CompositeSubagentObserver } from "#src/observation/composite-subagent-observer";
-import { type NotificationDetails, NotificationManager } from "#src/observation/notification";
-import { createNotificationRenderer } from "#src/observation/renderer";
+import { type NotificationDetails, NotificationManager, type UpdateDetails } from "#src/observation/notification";
+import { createNotificationRenderer, createUpdateRenderer } from "#src/observation/renderer";
 import { SubagentEventsObserver } from "#src/observation/subagent-events-observer";
 import { createSubagentRuntime } from "#src/runtime";
 import { publishSubagentsService, unpublishSubagentsService } from "#src/service/service";
@@ -54,6 +54,7 @@ import { SubagentsSettingsHandler } from "#src/ui/subagents-settings";
 export default function (pi: ExtensionAPI) {
   // ---- Register custom notification renderer ----
   pi.registerMessageRenderer<NotificationDetails>("subagent-notification", createNotificationRenderer());
+  pi.registerMessageRenderer<UpdateDetails>("subagent-update", createUpdateRenderer());
 
   const registry = new AgentTypeRegistry(() => loadCustomAgents(process.cwd()));
 

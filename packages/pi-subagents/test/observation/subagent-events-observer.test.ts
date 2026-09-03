@@ -7,6 +7,7 @@ import { createTestSubagent } from "#test/helpers/make-subagent";
 function makeNotifications(): NotificationSystem {
 	return {
 		sendCompletion: vi.fn(),
+		sendUpdate: vi.fn(),
 		dispose: vi.fn(),
 	};
 }
@@ -265,6 +266,39 @@ describe("SubagentEventsObserver", () => {
 			expect(appendEntry).toHaveBeenCalledTimes(1);
 			// Notifications were called as a side-effect of onSubagentCompleted.
 			expect(notifications.sendCompletion).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe("onSubagentUpdate", () => {
+		it("emits subagents:update carrying the child's message", () => {
+			const { observer, emit } = makeObserver();
+			const record = createTestSubagent({ id: "agent-1", type: "general-purpose", description: "do work" });
+
+			observer.onSubagentUpdate(record, "The bug is in the retry wrapper.");
+
+			expect(emit).toHaveBeenCalledExactlyOnceWith("subagents:update", {
+				id: "agent-1",
+				type: "general-purpose",
+				description: "do work",
+				message: "The bug is in the retry wrapper.",
+			});
+		});
+
+		it("announces the update to the parent", () => {
+			const { observer, notifications } = makeObserver();
+			const record = createTestSubagent({ id: "agent-1" });
+
+			observer.onSubagentUpdate(record, "Course change.");
+
+			expect(notifications.sendUpdate).toHaveBeenCalledExactlyOnceWith(record, "Course change.");
+		});
+
+		it("persists nothing — an update is not an outcome to reconstruct history from", () => {
+			const { observer, appendEntry } = makeObserver();
+
+			observer.onSubagentUpdate(createTestSubagent(), "Course change.");
+
+			expect(appendEntry).not.toHaveBeenCalled();
 		});
 	});
 });

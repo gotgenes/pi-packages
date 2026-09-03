@@ -68,6 +68,24 @@ export function formatTaskNotification(record: Subagent, resultMaxLen: number): 
 }
 
 /**
+ * Format a `<subagent-update>` block for a message a still-running child sent.
+ *
+ * A distinct element from `<task-notification>`: the child has not finished, so
+ * the parent's next action is to steer it or leave it alone, never to collect a
+ * result that does not exist yet.
+ */
+export function formatUpdateNotification(record: Subagent, message: string): string {
+  return joinNotificationLines([
+    "<subagent-update>",
+    `<task-id>${record.id}</task-id>`,
+    `<summary>Subagent "${escapeXml(record.description)}" sent an update</summary>`,
+    `<message>${escapeXml(message)}</message>`,
+    "</subagent-update>",
+    `The agent is still running. Steer it with steer_subagent("${record.id}", "...") to redirect it, or let it continue.`,
+  ]);
+}
+
+/**
  * Format the block for an agent stopped before the limiter admitted it. Such an
  * agent never ran, so it has no result and no usage — reporting either (even as
  * zeroes) would point the parent at work that does not exist.
@@ -146,8 +164,26 @@ export function buildEventData(record: Subagent) {
 
 export interface NotificationSystem {
   sendCompletion: (record: Subagent) => void;
+  sendUpdate: (record: Subagent, message: string) => void;
   dispose: () => void;
 }
+
+/** Details the update renderer reads. */
+export interface UpdateDetails {
+  id: string;
+  description: string;
+  message: string;
+}
+
+/**
+ * One announcement withheld for the parent's current run.
+ *
+ * A completion for an agent supersedes an earlier one for that agent; two
+ * updates are two distinct facts and both survive.
+ */
+type PendingAnnouncement =
+  | { kind: "completion"; record: Subagent }
+  | { kind: "update"; record: Subagent; message: string };
 
 export class NotificationManager implements NotificationSystem {
   // pi.sendMessage is fire-and-forget: while the parent's agent run is active,
@@ -160,7 +196,7 @@ export class NotificationManager implements NotificationSystem {
   // earlier one for that agent, but announcements from different agents are
   // distinct facts, and arrival order is the only order the parent can make
   // sense of.
-  private pending: Subagent[] = [];
+  private pending: PendingAnnouncement[] = [];
   private parentRunActive = false;
   private disposed = false;
 
@@ -199,9 +235,29 @@ export class NotificationManager implements NotificationSystem {
    * fact told again, not a later one.
    */
   private withholdCompletion(record: Subagent): void {
-    const existing = this.pending.findIndex((queued) => queued.id === record.id);
-    if (existing === -1) this.pending.push(record);
-    else this.pending[existing] = record;
+    const entry: PendingAnnouncement = { kind: "completion", record };
+    const existing = this.pending.findIndex(
+      (queued) => queued.kind === "completion" && queued.record.id === record.id,
+    );
+    if (existing === -1) this.pending.push(entry);
+    else this.pending[existing] = entry;
+  }
+
+  /**
+   * Announce a message a still-running child sent its parent.
+   *
+   * Unlike a completion, this consults neither the carrier claim nor
+   * consumption: both record that the child's *outcome* has an owner, and an
+   * update is a new fact rather than that outcome told again. The disposal
+   * latch and the parent-run withhold apply as they do to any announcement.
+   */
+  sendUpdate(record: Subagent, message: string): void {
+    if (this.disposed) return;
+    if (this.parentRunActive) {
+      this.pending.push({ kind: "update", record, message });
+      return;
+    }
+    this.emitUpdate(record, message);
   }
 
   /** The parent's agent run became active; nudges are withheld until it settles. */
@@ -217,9 +273,10 @@ export class NotificationManager implements NotificationSystem {
   onParentAgentSettled(): void {
     this.parentRunActive = false;
     const withheld = this.pending.splice(0);
-    for (const record of withheld) {
+    for (const entry of withheld) {
       try {
-        this.emitIndividualNudge(record);
+        if (entry.kind === "update") this.emitUpdate(entry.record, entry.message);
+        else this.emitIndividualNudge(entry.record);
       } catch (err) {
         debugLog("notification render", err);
       }
@@ -230,6 +287,23 @@ export class NotificationManager implements NotificationSystem {
   dispose(): void {
     this.disposed = true;
     this.pending.length = 0;
+  }
+
+  private emitUpdate(record: Subagent, message: string): void {
+    const details: UpdateDetails = {
+      id: record.id,
+      description: record.description,
+      message,
+    };
+    this.sendMessage(
+      {
+        customType: "subagent-update",
+        content: formatUpdateNotification(record, message),
+        display: true,
+        details,
+      },
+      { deliverAs: "followUp", triggerTurn: true },
+    );
   }
 
   private emitIndividualNudge(record: Subagent): void {

@@ -31,6 +31,8 @@ export interface SubagentLifecycleObserver {
 	onRunFinished?(agent: Subagent): void;
 	/** Fires once when a resumed run reaches a terminal state. */
 	onResumeFinished?(agent: Subagent): void;
+	/** Fires when the running agent sends its parent a mid-run message. */
+	onUpdateSent?(agent: Subagent, message: string): void;
 	/** Fires on compaction events during the run. */
 	onCompacted?(agent: Subagent, info: CompactionInfo): void;
 }

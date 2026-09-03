@@ -103,6 +103,12 @@ export interface SubagentManagerObserver {
   onSubagentCompleted(record: Subagent): void;
   /** Fires when a resumed run reaches a terminal state (distinct from a fresh completion). */
   onSubagentResumed(record: Subagent): void;
+  /**
+   * Fires when a running child sends its parent a mid-run message.
+   * Optional: the widget has no use for it, and a hook nobody supplies is a
+   * vacant one.
+   */
+  onSubagentUpdate?(record: Subagent, message: string): void;
   onSubagentCompacted(record: Subagent, info: CompactionInfo): void;
   /** Fires synchronously after a background agent record is created (before run). */
   onSubagentCreated(record: Subagent): void;
@@ -217,6 +223,9 @@ export class SubagentManager {
       },
       onResumeFinished: (agent) => {
         try { this.observer?.onSubagentResumed(agent); } catch (err) { debugLog("onSubagentResumed observer", err); }
+      },
+      onUpdateSent: (agent, message) => {
+        this.observer?.onSubagentUpdate?.(agent, message);
       },
       onCompacted: (agent, info) => {
         this.observer?.onSubagentCompacted(agent, info);

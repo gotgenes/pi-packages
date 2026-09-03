@@ -377,5 +377,74 @@ describe("NotificationManager", () => {
       parent.settleRun();
       expect(parent.deliveredToLlm).toHaveLength(0);
     });
+
+    describe("a running child's mid-run update", () => {
+      it("is delivered immediately when the parent is idle", () => {
+        const parent = makePiParent();
+        parent.manager.sendUpdate(createTestSubagent({ id: "live-1" }), "Course change.");
+        expect(parent.deliveredToLlm).toHaveLength(1);
+      });
+
+      it("is withheld while the parent's run is active, then flushed", () => {
+        const parent = makePiParent();
+        parent.startRun();
+        parent.manager.sendUpdate(createTestSubagent({ id: "live-1" }), "Course change.");
+        expect(parent.deliveredToLlm).toHaveLength(0);
+        parent.settleRun();
+        expect(parent.deliveredToLlm).toHaveLength(1);
+      });
+
+      it("is dropped after dispose, like every other announcement", () => {
+        const parent = makePiParent();
+        parent.manager.dispose();
+        parent.manager.sendUpdate(createTestSubagent({ id: "live-1" }), "Course change.");
+        expect(parent.deliveredToLlm).toHaveLength(0);
+      });
+
+      it("keeps every update, because two updates are two facts", () => {
+        const parent = makePiParent();
+        const record = createTestSubagent({ id: "live-1" });
+        parent.startRun();
+        parent.manager.sendUpdate(record, "First finding.");
+        parent.manager.sendUpdate(record, "Second finding.");
+        parent.settleRun();
+        expect(parent.deliveredToLlm).toHaveLength(2);
+      });
+
+      it("keeps its place ahead of the same child's later completion", () => {
+        const parent = makePiParent();
+        const record = createTestSubagent({ id: "live-1" });
+        parent.startRun();
+        parent.manager.sendUpdate(record, "Course change.");
+        parent.manager.sendCompletion(record);
+        parent.settleRun();
+        expect(parent.deliveredToLlm.map((c) => c.slice(0, 18))).toEqual([
+          "<subagent-update>\n",
+          "<task-notification",
+        ]);
+      });
+
+      it("is announced even after the parent collected an earlier outcome", () => {
+        const parent = makePiParent();
+        const record = createTestSubagent({ id: "live-1" });
+        record.markConsumed();
+
+        parent.manager.sendUpdate(record, "Course change.");
+
+        // Consumption records that the *outcome* was collected. An update is a
+        // new fact, so the gate that silences a duplicate outcome does not apply.
+        expect(parent.deliveredToLlm).toHaveLength(1);
+      });
+
+      it("is announced even while a carrier holds the outcome", () => {
+        const parent = makePiParent();
+        const record = createTestSubagent({ id: "live-1" });
+        record.claim();
+
+        parent.manager.sendUpdate(record, "Course change.");
+
+        expect(parent.deliveredToLlm).toHaveLength(1);
+      });
+    });
   });
 });
