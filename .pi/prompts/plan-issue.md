@@ -57,6 +57,10 @@ Before investigating the issue, load skills relevant to the change:
    Note whether each is implemented yet — your plan must say what it depends on vs. defers.
    Then search for open issues the body does **not** reference but that touch the same module or symbol (`gh issue list --state open --search "<symbol>"`) — a sibling issue on the same file changes the framing, and the operator should not have to supply it (Refs #635).
    Sweep open PRs the same way (`gh pr list --state open`) — a third-party PR on the same module often carries a diagnosis the issue omits, and it becomes a close target at ship time (Refs #670, #690).
+   Read the newest backlog triage (`ls -1 docs/triage/*.md | tail -1`) for an entry on this issue — it bands the issue with siblings and records shared-cause hypotheses the body omits.
+   A triage hypothesis is a lead to verify, not a finding (Refs #733: the "plausible shared cause" with #864 was disproved by two greps).
+   When the diagnosis attributes the defect to an upstream dependency, search that tracker before treating the mechanism as settled (`gh issue list --repo <owner/repo> --state all --search "<mechanism>"`).
+   Verifying the source and verifying the maintainer's posture are different claims (Refs #733).
 5. Open the source files most relevant to the change and skim them before writing.
 6. When a bug report does not reproduce locally, dispatch `Explore` (`model: "sonnet-5"`) for the root-cause hunt instead of running it inline — a hunt that ends in "not determinable from the code" still costs this session's context, and the plan is written right after (Refs #719).
    Verifying a diagnosis the report already supplies (named files, a numbered source trace) is not that hunt — keep it inline, since what it establishes is the design's input (Refs #709).

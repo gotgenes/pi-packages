@@ -143,6 +143,8 @@ Phase 14 Step 10 promised `cat /outside/a.ts > /outside/b.ts` would narrow, but 
   Read it for mechanism, but confirm any API you design around exists in the installed version first — resolve the version from the package's own `devDependencies` pin, then `grep` the types under that exact `node_modules/.pnpm/@earendil-works+pi-coding-agent@<version>_*/` directory (Refs #661).
   The bare `@*/` glob matches every version in the store, and `head -1` can select one below the package's declared peer floor (Refs #858).
   Existence is not enough for a seam you design *around*: a callback's position in the call order, and the data populated by the time it fires, are visible only in the compiled `.js`, never in the `.d.ts` (Refs #696).
+  A line number read there is not citable at all: the checkout drifts mid-session (Refs #733).
+  Cite the pinned version from the installed package's sourcemap — `dist/*.js.map`, `sourcesContent`.
 
 #### Tool-injected messages
 

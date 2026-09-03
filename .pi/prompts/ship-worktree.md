@@ -92,7 +92,8 @@ git log --oneline "$PLAN"^..HEAD
 If no plan commit matches, anchor on the parent of the issue's first commit.
 From that range:
 
-- "Implemented in <sha> …" — the commit carrying the behavior, not the range's last commit; SHA as plain text (no backticks) so GitHub auto-links it.
+- "Implemented in <sha> …" — the commit carrying the behavior, not the range's last commit.
+  Write **every** SHA the comment contains as plain text — no backticks — so GitHub auto-links each to its commit (Refs #733).
   Resolve every SHA with `git rev-parse` before drafting, then re-resolve every hex token in the finished draft — a hash typed mid-draft is where invention happens (Refs #777, #788).
 - A short bullet list of feature/breaking commits.
 - One sentence on user-visible behavior change.

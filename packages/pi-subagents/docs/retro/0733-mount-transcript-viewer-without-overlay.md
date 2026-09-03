@@ -112,6 +112,81 @@ Context for the root session at land time:
   ADR 0007 carries a ready-to-file brief text and a runnable reproduction script; filing is the operator's action, in their own voice, and nothing here depends on it happening.
 - **A citation defect was found and fixed within this branch's own history**, not carried forward: the pre-completion reviewer caught three `pi-tui` line citations in ADR 0007 off by one (read from the drifting `../../pi` checkout instead of the pinned dependency), corrected in `0f545a77`.
 
+## Stage: Final Retrospective (2026-09-03T20:09:22Z)
+
+### Session summary
+
+Landed #733 through the parallel-worktree flow: planning, TDD, and sync ran in a peer session, and this root session ran `/ship-worktree` — ff-merge, push, CI, issue close, release, teardown — with no rework at any step.
+The shipped change moves `/subagents:sessions` off Pi's overlay compositor onto the non-overlay `ui.custom` path, and released as `pi-subagents-v21.4.0` (a minor, as the peer's handoff predicted).
+This retrospective spans all four stages, read from the peer transcript rather than the breadcrumbs alone.
+
+### Observations
+
+#### What went well
+
+- **A measurement overturned the issue's own premise before it could reach upstream.**
+  The planning session's first two reproduction attempts found zero contamination, and the issue body's mechanism claim ("every row in the overlay's band eventually scrolls off carrying box chrome") turned out to be false.
+  The real precondition is a burst append large enough to carry a row past the top of the screen in one frame — threshold 8, matching `floor((24-10)/2) + 1` exactly.
+  Filing the pre-measurement text would have been falsifiable in one run, which is precisely how [earendil-works/pi#4785] failed.
+  This is the rare case where the agent's own artifact was the thing being falsified, and it kept going rather than concluding the bug was not real.
+- **The `pre-completion-reviewer` caught a defect the implementing session structurally could not see.**
+  Three `previousLines = newLines` line citations in ADR 0007 were each off by one.
+  A fresh-context reviewer with a mandate to re-derive rather than accept is what found it; the implementing session had every number in front of it and had already checked them once.
+- **The peer→root handoff carried exactly the facts the ship stage needed.**
+  The `## Stage: Sync (worktree)` note stated the `**Release:**` marker, predicted the minor bump with the two `feat:` SHAs, and listed the two follow-ups as *not* this branch's work.
+  The ship session re-derived each independently (`next-version.sh`, the `(#N)` subject scan) and every one matched, so the breadcrumb functioned as a cross-check rather than a claim to trust.
+- **Verification ran incrementally, not at the end.**
+  The TDD session established a four-gate green baseline before step 1 and ran `pnpm run check` after steps 1, 3, 4, 5, and 6 — so the end-of-cycle run confirmed a state already known green instead of discovering one.
+
+#### What caused friction (agent side)
+
+- `missing-context` (user-caught) — the planning session never searched Pi's upstream issue tracker, while describing the mechanism as "confirmed".
+  It had verified the mechanism against Pi's source and let that stand as though it also settled whether upstream would call it a bug.
+  The operator's recollection of a maintainer's "You are wrong." was correct, and it took a direct question to surface it.
+  Impact: roughly 8 tool calls of recovery across turns 42–49 (searching `earendil-works/pi`, reading #8200, #4785, and PR #4784), and a materially changed framing arriving after the design had settled — [earendil-works/pi#4785] targets the [#864] family, not this mechanism, so nothing upstream had ruled on this claim at all.
+- `instruction-violation` (reviewer-caught) — the ADR's `pi-tui` line citations were read from the `../../pi` checkout instead of the pinned dependency.
+  `AGENTS.md` names this trap explicitly, and the failure has a sharper edge than the rule currently describes: the checkout **drifted mid-session**, moving `compositeOverlays` from 267 at planning time to 268 by implementation.
+  A number captured correctly earlier can therefore rot in place.
+  Impact: one extra commit (`0f545a77`) plus a correction to the already-committed plan and retro; the corrected text ships in the npm tarball, so the defect was one review away from being published.
+- `missing-context` (user-caught) — `docs/triage/2026-09-02-backlog.md` bands this issue with [#864] at rank 3 and records a shared-cause hypothesis, and the planning session did not read it.
+  The operator supplied it at turn 10.
+  Impact: no rework — two greps settled the hypothesis as false — but the framing input arrived from the operator rather than from the sweep that exists to find it.
+- `other` (self-identified at retro) — four of the five SHAs in the ship close comment are wrapped in backticks, so they do not auto-link on GitHub.
+  `/ship-worktree`'s rule is scoped to the "Implemented in" SHA alone ("so GitHub auto-links **it**"), while `/ship-issue`'s equivalent covers "every SHA the comment will contain".
+  Impact: cosmetic, no rework — but the artifact is already posted on a closed issue.
+- `instruction-violation` (self-identified) — a mistyped absolute path (`/Users/chris/development/pi/pi-permission-system/…`, missing the worktree prefix) tripped the `external_directory` gate instead of failing fast.
+  Impact: one wasted tool call.
+  `AGENTS.md` already carries this rule and the gate behaved exactly as documented; no change proposed.
+
+#### What caused friction (user side)
+
+- The two highest-value interventions were both **context the operator held and the agent should have derived** — the triage note (turn 10) and the upstream "You are wrong." recollection (turn 41).
+  Both arrived as corrections after the agent had committed to a framing, rather than as inputs to it.
+  The opportunity is not for the operator to volunteer more: it is for `/plan-issue` to sweep the two sources those facts live in, which is where both proposals below land.
+- The turn-28 scoping instruction ("document thoroughly, but do not file — that has to be filed by a human, and it has to be brief") was a clean strategic intervention that produced two correctly-shaped artifacts instead of one confused one.
+  Nothing to change.
+
+### Diagnostic details
+
+- **Model-performance correlation** — planning, TDD, and this ship session ran on `anthropic/claude-opus-5`; the sync stage ran on `anthropic/claude-sonnet-5`.
+  Planning and TDD are the judgment-heavy stages (source tracing, reproduction design, mutation reasoning) and were well matched.
+  Sync on sonnet-5 was also well matched — two lint gates, a rebase, and a breadcrumb — and it executed cleanly, which is evidence the mechanical stages do not need opus.
+  The ship stage is comparable in shape: deterministic prompt-following with a single judgment step (drafting the close comment), and the one defect it produced was in exactly that step.
+  Not proposing a model change, since a wrong close comment is a published artifact, but the asymmetry is worth noting.
+- **Escalation-delay tracking** — no sequence exceeded the 5-call threshold on a single error.
+  The nearest candidate is the reproduction hunt (peer turns 55–61, three attempts before contamination appeared), but each attempt falsified a different hypothesis and the third produced the threshold measurement; that is the method working, not a rabbit hole.
+- **Unused-tool detection** — for the upstream-posture gap, `gh issue list --repo earendil-works/pi` was available throughout and was never dispatched until the operator asked; `AGENTS.md` already directs agents to `gh` rather than web search for upstream trackers, so the tool was known and simply not reached for.
+  No subagent gap: `tidy-first-assessor` and `pre-completion-reviewer` were both dispatched at their designated points, and the latter returned the session's most valuable finding.
+- **Feedback-loop gap analysis** — no gap.
+  Baseline on all four gates before step 1, `pnpm run check` after five of seven steps, and per-step `vitest` runs scoped to the affected file throughout.
+
+### Changes made
+
+1. `.pi/prompts/plan-issue.md` — Gather context step 4 now reads the newest `docs/triage/*.md` for an entry on the issue, framing a triage hypothesis as a lead to verify rather than a finding.
+2. `.pi/prompts/plan-issue.md` — same step now searches the upstream tracker when the diagnosis attributes the defect to a dependency, separating "the source says so" from "the maintainer agrees".
+3. `AGENTS.md` — the `pi`-checkout paragraph now states that a line number read there is not citable, and directs citations to the installed package's sourcemap (`dist/*.js.map`, `sourcesContent`).
+4. `.pi/prompts/ship-worktree.md` — the close-comment SHA rule now covers every SHA in the comment, matching `/ship-issue`'s existing wording.
+
 [#864]: https://github.com/gotgenes/pi-packages/issues/864
 [#874]: https://github.com/gotgenes/pi-packages/issues/874
 [earendil-works/pi#2759]: https://github.com/earendil-works/pi/issues/2759
