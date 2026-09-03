@@ -91,6 +91,27 @@ Test count 1508 → 1514 (+6) in `pi-subagents`; `check`, `lint` (0 findings), `
   The investigation happened here and its conclusion is the opposite — no SDK change is required.
   The disposition is left as the historical record it is, but the rationale should not be carried forward as fact.
 
+## Stage: Sync (worktree) (2026-09-03T19:46:22Z)
+
+### Session summary
+
+Pre-push checks pass clean: `pnpm run lint` (0 findings) and `pnpm fallow dead-code` (0 issues), both unchanged from the TDD stage's end-of-cycle run.
+The plan's `**Release:**` marker is `ship independently` — no batch to coordinate.
+Rebase onto local `main` is clean; nothing else is pending on this branch.
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-733--/2026-09-03T17-49-55-724Z_01a06864-408c-7b87-99b0-9541a94ff196.jsonl` — read with `read_session_file({ path: "<path>" })` for message-level verification at land/retro time.
+
+### Observations
+
+Context for the root session at land time:
+
+- **This is `feat:`-bearing.**
+  Two of the commits (`243bdb21`, `d0dfe786`) are `feat:`, so this cuts a **minor**, not a patch — confirm with `./scripts/release/next-version.sh pi-subagents` rather than assuming.
+- **Two follow-up issues were filed during planning and remain open**, not this branch's work: [#874] (the `pi-permission-system` config modal has the same `overlay: true` defect at lower exposure) and the not-shared-origin finding posted as a comment on [#864] (the widget render loop is a distinct mechanism from this issue's fix).
+- **The upstream report has not been filed.**
+  ADR 0007 carries a ready-to-file brief text and a runnable reproduction script; filing is the operator's action, in their own voice, and nothing here depends on it happening.
+- **A citation defect was found and fixed within this branch's own history**, not carried forward: the pre-completion reviewer caught three `pi-tui` line citations in ADR 0007 off by one (read from the drifting `../../pi` checkout instead of the pinned dependency), corrected in `0f545a77`.
+
 [#864]: https://github.com/gotgenes/pi-packages/issues/864
 [#874]: https://github.com/gotgenes/pi-packages/issues/874
 [earendil-works/pi#2759]: https://github.com/earendil-works/pi/issues/2759
