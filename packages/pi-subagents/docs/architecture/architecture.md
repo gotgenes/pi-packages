@@ -815,6 +815,8 @@ Steps 2, 6, and 8 have design-dependent shapes and are verified by their plans' 
 - [#871] — filed by Step 11's planning; becomes Step 13 by operator decision.
   A fail-open one layer below the allowlist Step 11 appends to: `tools: none` parses to an empty list and then resolves to the full built-in set, so an author who asked for no tools receives `edit`, `write`, and `bash`.
   Independent of Step 11's own work, which appends over whatever base list resolution produces.
+- [#872] — filed by Step 11's pre-completion review; becomes Step 14 by operator decision.
+  Step 11's own residual: the background-only gate it introduced is decided at spawn and never reconsidered at resume, so it does not hold on a path with the same blocking shape it was written to refuse.
 - [#791] — deferred by operator decision (offered and declined): small self-contained warning, suitable for pickup outside a phase.
 - [#733] — deferred: TUI overlay defect requiring SDK-level rendering investigation, unrelated to this phase's cause.
 - [#755], [#711], [#636], [#695], [#676], [#660] — deferred: feature/UX requests that do not gate a structural phase ([#660] overlaps [#695]/[#676]).
@@ -1096,6 +1098,23 @@ It fails open — the tools silently granted include `edit`, `write`, and `bash`
 
 Release: independent
 
+#### Step 14: Hold the mid-run update gate on the resume path ([#872])
+
+**Cause:** `Subagent.canSendUpdates()` reads `isBackground`, fixed at construction, and is consulted only inside `run()`.
+A resume reuses the session and the tools installed with it, so nothing recomputes the gate — while `AgentTool` awaits `manager.resume(...)` inside the parent's own tool call, which is the same blockage the gate refuses for a foreground child.
+A background child's update during a resumed run therefore lands after that resume's own result, the outcome Step 11's design calls "a tool whose every call is late."
+
+- **Smell:** Category C (a decision cached at one lifecycle edge and read at another) plus `bug`.
+- **Target:** `src/lifecycle/subagent.ts` (`canSendUpdates` and its call site), `src/session/notify-parent-tool.ts` (the rationale in its module comment), and whichever of `docs/configuration.md` / the plan's "Who gets which tool" table the settled answer contradicts.
+- **Hard dependency:** after Step 11, which introduced the gate.
+- **Design decision at plan time:** whether to hold the gate per run, accept the lateness and narrow the stated rationale, or revisit the foreground exclusion itself.
+  The third is the one to weigh first: if late-but-delivered is acceptable on the resume path it is worth asking what the foreground exclusion buys, since it is what makes the child's tool set vary by spawn mode against Step 1's parity direction.
+- **Outcome:** the gate and its stated rationale agree on every path a child can run, pinned by a test that drives `notify_parent` through a resumed run — the path `subagent.test.ts` does not currently reach.
+- **Commit type:** `fix:`.
+- **Impact 2 / Risk 2 / Priority 8.**
+
+Release: independent
+
 ### Step dependencies
 
 ```mermaid
@@ -1109,6 +1128,7 @@ flowchart TD
     S8 --> S11["✅ Step 11 (#858)<br/>Mid-run channel"]
     S10["✅ Step 10 (#857)<br/>Workspace-backed resume"] -.informs.-> S11
     S10 --> S12["Step 12 (#870)<br/>Post-result addendum delivery"]
+    S11 --> S14["Step 14 (#872)<br/>Update gate on resume"]
     S13["Step 13 (#871)<br/>Empty tool allowlist"]
 ```
 
@@ -1117,7 +1137,7 @@ flowchart TD
 - **Track A — Front-door contract:** Steps 1 → 2, 3, 4 (the spine; Step 1 unblocks the rest).
 - **Track B — Prompt assembly:** Step 5 (fully independent).
 - **Track C — Widget lifecycle:** Steps 6 → 9 (independent of the other tracks; Step 6 complements Step 1 — parity makes SDK agents _eligible_, this makes the widget _present_ — and Step 9 releases what Step 6 acquires).
-- **Track D — Result delivery and ask-back:** Steps 7 → 8 → 11, with Step 10 → 12 joining as a resume-path fix and the residual it creates, Step 10 also informing Step 11 (Steps 7 → 8 is soft ordering; 8 → 11 and 10 → 12 are hard).
+- **Track D — Result delivery and ask-back:** Steps 7 → 8 → 11 → 14, with Step 10 → 12 joining as a resume-path fix and the residual it creates, Step 10 also informing Step 11 (Steps 7 → 8 is soft ordering; 8 → 11, 11 → 14, and 10 → 12 are hard).
 - **Track E — Agent config resolution:** Step 13 (fully independent; it corrects the base list Step 11 appends to, but neither step needs the other).
 
 ### Release batches
@@ -1126,8 +1146,8 @@ flowchart TD
   Step 3 is `fix!:` and Step 4 is `refactor!:` with a `BREAKING CHANGE:` footer.
   The two landed in the other order, so Step 4 completed the batch: Step 3's release PR stayed open across it, and both breaking changes ship under the one major bump Step 3's `fix!:` opened.
   Step 2 was provisionally batched here in case its required/optional decision came out breaking; it did not — `SubagentRecord` is produced, never implemented, so its widening is semver-minor and it left the batch as the batch's own line anticipated.
-- Independently releasable: Steps 1, 2, 5, 6, 7, 8, 9, 10, 11, 12, 13.
-  Steps 1, 5, 6, 7, 9, 10, 12, 13 are `fix:`, Step 2 is `feat:`, and Steps 8 and 11 are `feat:` — each an unhidden release vehicle on its own.
+- Independently releasable: Steps 1, 2, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14.
+  Steps 1, 5, 6, 7, 9, 10, 12, 13, 14 are `fix:`, Step 2 is `feat:`, and Steps 8 and 11 are `feat:` — each an unhidden release vehicle on its own.
 
 ## Refactoring history
 
@@ -1246,5 +1266,6 @@ The upstream test suite is run periodically as a regression canary for the sessi
 [#858]: https://github.com/gotgenes/pi-packages/issues/858
 [#870]: https://github.com/gotgenes/pi-packages/issues/870
 [#871]: https://github.com/gotgenes/pi-packages/issues/871
+[#872]: https://github.com/gotgenes/pi-packages/issues/872
 [ADR-0002]: ../decisions/0002-extensions-on-a-minimal-core.md
 [ADR-0004]: ../decisions/0004-reconsider-ui-direction.md
