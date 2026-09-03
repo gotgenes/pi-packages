@@ -85,3 +85,17 @@ Test count went 4004 passed + 2 expected fail → 4029 passed (+25, and the two 
 - **Watch for stray non-ASCII in generated prose.**
   Two CJK characters appeared in a test comment mid-draft and were caught only because the region was re-read.
   `rg -n '[^\x00-\x7f]'` filtered against the repo's legitimate em-dashes and box-drawing rules is a cheap standing check after any comment-heavy edit.
+
+## Stage: Sync (worktree) (2026-09-03T20:38:48Z)
+
+### Session summary
+
+Pre-push checks both green from a clean worktree: `pnpm run lint` (0 findings) and `pnpm fallow dead-code` (0 issues, 326 entry points).
+Plan's `**Release:** ship independently` — no batch, no deferral, ready to release at the root's discretion once landed.
+One open item for the root: the TDD stage's final commit (`ed0182bc`, a `docs/configuration.md` correction) was self-verified rather than reviewer-dispatched, noted in that session's own summary as worth a third pre-completion round if desired before shipping.
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-814--/2026-09-03T17-53-52-242Z_01a06867-dc72-7ee6-beb5-e9c8f002d272.jsonl` — read with `read_session_file({ path: "<path>" })` for message-level verification at land/retro time.
+
+### Observations
+
+Nothing else to add beyond the TDD stage's own notes — no rebase performed yet (next step), no new findings from the pre-push run itself.
