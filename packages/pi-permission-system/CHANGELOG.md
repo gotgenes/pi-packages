@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [31.0.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v31.0.0...pi-permission-system-v31.0.1) (2026-09-03)
+
+
+### Bug Fixes
+
+* **pi-permission-system:** consult both path directions for a redirect the parser could not resolve ([0327feb](https://github.com/gotgenes/pi-packages/commit/0327feb9d2cefc47fcebe724ee94cf9949a8749a)), closes [#814](https://github.com/gotgenes/pi-packages/issues/814)
+
+### Documentation
+
+* **pi-permission-system:** commit the instrument behind the unresolved-redirect measurement ([757affe](https://github.com/gotgenes/pi-packages/commit/757affeac19400bf7764c9f06fa58bf18ccafc1e)), closes [#814](https://github.com/gotgenes/pi-packages/issues/814)
+* **pi-permission-system:** mark Phase 14 Step 12 complete ([07d23ef](https://github.com/gotgenes/pi-packages/commit/07d23ef6cffb954058ff2f8fe43917a937de437f)), closes [#814](https://github.com/gotgenes/pi-packages/issues/814)
+* **pi-permission-system:** register the unresolved-redirect measurement script ([8203898](https://github.com/gotgenes/pi-packages/commit/8203898bd2dadb62ae72e5bedb579bbaf062cf03)), closes [#814](https://github.com/gotgenes/pi-packages/issues/814)
+* **pi-permission-system:** state the unresolved-redirect residual as a parse fact ([e74c2fc](https://github.com/gotgenes/pi-packages/commit/e74c2fc3c63bf4a18b63334e1fb9b24565fb36b2)), closes [#814](https://github.com/gotgenes/pi-packages/issues/814)
+* **pi-permission-system:** describe the unresolvable-redirect rule as users meet it ([9e57a90](https://github.com/gotgenes/pi-packages/commit/9e57a909e7719fbfa670ad3ec153e5aa2faf1510)), closes [#814](https://github.com/gotgenes/pi-packages/issues/814)
+
 ## [31.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v30.2.0...pi-permission-system-v31.0.0) (2026-09-02)
 
 
