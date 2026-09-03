@@ -113,4 +113,18 @@ PASS (round 2, `359e01a3`).
 Round 1's two WARN findings are both resolved — one fixed in code, one filed and dispositioned.
 The residual is [#872]: `notify_parent` remains present but late during a resumed run.
 
+## Stage: Sync (worktree) (2026-09-03T16:53:14Z)
+
+### Session summary
+
+Pre-push checks pass clean (`pnpm run lint`, `pnpm fallow dead-code`, both 0 findings), so nothing needed fixing before this note.
+Plan's `**Release:** ship independently` — no batch, no defer gate to weigh at land time.
+The one residual worth carrying forward is [#872] (Phase 22 Step 14), filed but not fixed: `notify_parent` is present but late during a resumed run.
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-858--/2026-09-02T19-47-50-352Z_01a063a9-d7d0-7265-9703-b1c1c0b576d5.jsonl` — read with `read_session_file({ path: "..." })` for message-level verification at land/retro time.
+
+### Observations
+
+Nothing beyond the summary — pre-push gates were already green from the TDD stage, and this session made no code changes.
+
 [#872]: https://github.com/gotgenes/pi-packages/issues/872
