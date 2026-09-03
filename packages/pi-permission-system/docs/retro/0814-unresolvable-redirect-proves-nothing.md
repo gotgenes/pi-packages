@@ -79,7 +79,7 @@ Test count went 4004 passed + 2 expected fail → 4029 passed (+25, and the two 
   Fixed by pinning that population as tests and restating the mechanism in the docstring, the `Landed:` note, and the package skill.
   Round 2, scoped to that delta, found the internal docs corrected while `docs/configuration.md` — the one surface a user reads — still claimed the rule was about the redirect's own syntax, which is false of exactly the case it needs to predict.
   Fixed, with the bound verified against the real parser first: the demotion reaches the immediate neighbour and no further.
-- **The final commit (`ed0182bc`) is self-verified rather than reviewer-verified.**
+- **The final commit (`9e57a909`) is self-verified rather than reviewer-verified.**
   It is the one-sentence user-doc fix round 2 asked for; a third dispatch would have reviewed the reviewer's own instruction.
   Verified by re-running all four deterministic gates, reading the whole section for heading reparenting, scanning the diff for non-ASCII, and independently checking the "a later statement keeps its proof" claim against the parser before writing it into a user doc.
 - **Watch for stray non-ASCII in generated prose.**
@@ -92,10 +92,93 @@ Test count went 4004 passed + 2 expected fail → 4029 passed (+25, and the two 
 
 Pre-push checks both green from a clean worktree: `pnpm run lint` (0 findings) and `pnpm fallow dead-code` (0 issues, 326 entry points).
 Plan's `**Release:** ship independently` — no batch, no deferral, ready to release at the root's discretion once landed.
-One open item for the root: the TDD stage's final commit (`ed0182bc`, a `docs/configuration.md` correction) was self-verified rather than reviewer-dispatched, noted in that session's own summary as worth a third pre-completion round if desired before shipping.
+One open item for the root: the TDD stage's final commit (`9e57a909`, a `docs/configuration.md` correction) was self-verified rather than reviewer-dispatched, noted in that session's own summary as worth a third pre-completion round if desired before shipping.
 
 **Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-814--/2026-09-03T17-53-52-242Z_01a06867-dc72-7ee6-beb5-e9c8f002d272.jsonl` — read with `read_session_file({ path: "<path>" })` for message-level verification at land/retro time.
 
 ### Observations
 
 Nothing else to add beyond the TDD stage's own notes — no rebase performed yet (next step), no new findings from the pre-push run itself.
+
+## Stage: Final Retrospective (2026-09-03T21:16:31Z)
+
+### Session summary
+
+Landed the peer branch on `main` by fast-forward, verified CI, closed #814, released `pi-permission-system-v31.0.1`, and tore down the worktree.
+The ship half itself was uneventful — every prediction gate (`git merge-base --is-ancestor`, `next-version.sh`) agreed with what followed, and no step had to be retried.
+The retrospective's substantive finding is not in the ship mechanics but in a SHA-provenance defect the worktree flow creates by construction.
+
+### Observations
+
+#### What went well
+
+- **The prediction-before-action gates all held.**
+  `git merge-base --is-ancestor main <branch> && echo ff-ok` predicted the fast-forward, `./scripts/release/next-version.sh pi-permission-system` predicted `pi-permission-system-v31.0.1`, and both matched exactly.
+  Nothing in the ship half was discovered by attempting it.
+- **Two `pre-completion-reviewer` rounds each returned an actionable WARN, and the second found what the first's own fix missed.**
+  Round 1 flagged the residual documented as a `<>` fact when the predicate is a parse fact; the fix corrected the docstring, the `Landed:` note, and the package skill.
+  Round 2, scoped to that delta, found `docs/configuration.md` — the one surface a user reads — still carrying the false claim.
+  The "re-dispatch scoped to the delta after a substantive post-review commit" pattern is what caught it; a single round would have shipped a user-facing doc that is wrong about exactly the case it needs to predict.
+- **Model assignment tracked task type across all four stages without intervention.**
+  Planning and TDD ran on `anthropic/claude-opus-5` (design judgment, mutation analysis, reviewer triage); the sync stage and the ship stage ran on `anthropic/claude-sonnet-5` (mechanical gates, git plumbing); this retrospective on `anthropic/claude-opus-5`.
+  No stage was under- or over-modeled.
+- **The peer's in-chat handoff was more accurate than its own committed artifact**, and noticing the divergence is what surfaced the finding below.
+  Its sync report named `9e57a909` (computed after the rebase); its committed stage note named `ed0182bc` (written before it).
+
+#### What caused friction (agent side)
+
+- `instruction-violation` (retro-identified — not caught mid-session, not user-caught) — ran `git rev-parse <ref> | wc -c` twice (once on `HEAD`, once on `0327feb9`) to confirm a 40-character SHA.
+  `AGENTS.md` names this exact anti-pattern: "Do not spend a tool call measuring the shape of a deterministic command's own output — `git rev-parse` emits exactly 40 hex characters, so `| wc -c` on it tests git, not your work" (Refs #839).
+  Worse than the wasted calls, the shape check **displaced** the check that was actually required: `/ship-worktree` step 5 asks to re-resolve every hex token *in the finished draft*, which is where a mistyped hash enters.
+  Impact: 2 wasted tool calls; no rework, because the SHA happened to be correct.
+  This is a compliance miss against an existing crisp rule, not a gap in it.
+- `missing-context` — quoted `ed0182bc` from the retro breadcrumb straight into the published ship report without checking it against `main`.
+  That SHA is a **pre-rebase** object: `git merge-base --is-ancestor ed0182bc main` fails, `git branch --contains ed0182bc` is empty, and `git patch-id --stable` confirms it is the same patch as `9e57a909`, which is the SHA that actually landed.
+  It resolves today only because the unreachable object has not been garbage-collected.
+  Impact: the ship report names a commit not in `main`; the TDD and Sync stage notes above carried the same dead SHA until this retrospective corrected both to `9e57a909`.
+  No rework, but the published ship report stays wrong.
+
+#### The structural cause, and why the existing rule does not catch it
+
+The worktree flow invalidates its own citations by construction.
+`/sync-worktree` writes the sync stage note (step 3) and *then* rebases (step 4), so every branch SHA any stage note carries — the sync note's own, and the earlier TDD note's, both authored inside the worktree — is rewritten by the very next step.
+The rebase here was clean and reordered nothing, and it still renamed all twelve commits.
+
+`AGENTS.md` already requires resolving every published SHA with `git rev-parse` (Refs #777), and `/ship-worktree` step 5 and `/ship-issue` step 5 both restate it.
+That rule is **insufficient here**: `git rev-parse ed0182bc^{commit}` succeeds on a dangling object.
+Resolution proves existence; only reachability (`git merge-base --is-ancestor <sha> main`) proves the commit landed.
+On trunk the two coincide, which is why the gap has not shown up before.
+
+#### What caused friction (user side)
+
+Nothing.
+The operator's only involvement was invoking the two commands, which is the correct level for a ship stage where every gate is deterministic.
+The one judgment call the flow surfaced — the peer's self-verified final commit, offered for a third reviewer round — was raised by the peer, re-raised in the ship report, and reasonably left alone; CI was green and the commit was a one-sentence user-doc correction.
+
+### Diagnostic details
+
+- **Model-performance correlation** — no mismatch.
+  Peer session (`01a06867`): planning + TDD on `anthropic/claude-opus-5`, sync stage on `anthropic/claude-sonnet-5`.
+  Root session: ship on `anthropic/claude-sonnet-5`, retrospective on `anthropic/claude-opus-5`.
+  Both `pre-completion-reviewer` dispatches ran from the opus TDD stage on the agent's own configured model.
+  The documented phantom-switch hazard reproduced exactly: a `types: ["model_change"]`-filtered read of the peer session renders three transitions (`opus → sonnet → opus`) where the unfiltered read shows two model regions and no opus turn after the sonnet ones (Refs #737).
+  The prompt's existing warning was sufficient — attribution was taken from the unfiltered read.
+- **Escalation-delay tracking** — no `rabbit-hole` friction points in the ship session; longest same-target run was 2 calls.
+  The peer session's one extended sequence (6 calls investigating how `fallow dead-code` treats an unregistered `scripts/*.mjs`) resolved correctly by finding the repo's precedent commit `e3e87993` rather than reaching for a suppression, so the length bought the right answer.
+- **Unused-tool detection** — nothing was needed that was not used.
+  The `ed0182bc` finding required no subagent or search tool, only one reachability check the flow does not currently ask for.
+- **Feedback-loop gap analysis** — not applicable to the ship stage, which runs no local gates by design (the peer ran `pnpm run lint` and `pnpm fallow dead-code` before handoff; CI re-ran the full set on the merge commit and passed).
+  In the peer session the four gates ran after each substantive commit rather than only at the end.
+
+### Changes made
+
+1. `.pi/prompts/sync-worktree.md` — step 3 now forbids citing a branch commit SHA in the sync stage note, since step 4's rebase rewrites every one.
+2. `.pi/prompts/ship-worktree.md` — step 5 now requires `git merge-base --is-ancestor <sha> main` for a SHA quoted from the plan or a stage note, because `git rev-parse` succeeds on an unreachable pre-rebase object.
+3. `.pi/prompts/ship-worktree.md` and `.pi/prompts/ship-issue.md` — dropped `40-char` from the SHA-capture step; the phrase primed the `git rev-parse | wc -c` shape check `AGENTS.md` forbids (Refs #839).
+4. `packages/pi-permission-system/docs/retro/0814-unresolvable-redirect-proves-nothing.md` — corrected the dangling `ed0182bc` citation to the landed `9e57a909` in the TDD and Sync stage notes, and appended this Final Retrospective entry.
+
+#### Recorded as a follow-up, not implemented
+
+Reordering `/sync-worktree` to rebase **before** writing the stage note would remove the hazard at its source rather than routing around it.
+It changes the command's step order and the "note must ride the branch" invariant, so it is issue-sized rather than retro-sized.
+The two prompt guards above make the current order safe in the meantime.

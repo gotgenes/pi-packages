@@ -56,7 +56,7 @@ If either fails, fix the issues and commit before pushing.
 
 ## 4. Verify CI on the pushed commit
 
-1. Run `git rev-parse HEAD` to capture the full 40-char SHA.
+1. Run `git rev-parse HEAD` to capture the full SHA.
    Pass that exact value to `ci_find` — never hand-expand the short SHA from the `git push` output, and never type a SHA from memory.
 2. Use `ci_find` with that SHA and workflow `ci` to locate the CI run.
    If it times out, re-check the SHA you passed against `git rev-parse HEAD` before assuming a timing miss — a truncated or retyped SHA produces the same timeout (Refs #640).
