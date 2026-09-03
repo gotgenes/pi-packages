@@ -60,6 +60,7 @@ export interface RetentionCandidate {
   consumed: boolean;
   completedAt: number | undefined;
   consumedAt: number | undefined;
+  pendingQuestion: string | undefined;
 }
 
 /** When a terminal record's session-release window opened, and how long it runs. */
@@ -74,12 +75,17 @@ export interface RetentionWindow {
  * A collected outcome releases on the short window, measured from the later of
  * completion and collection, so a late read still gets a full resume window; an
  * uncollected one holds until the long safety cap.
+ *
+ * A record carrying an unanswered question is not collected, whatever
+ * `consumed` says: the parent has read the question but has not answered it,
+ * and the answer is delivered by resuming the very session the short window
+ * would release.
  */
 export function resolveRetentionWindow(
   record: RetentionCandidate,
   policy: RetentionPolicy,
 ): RetentionWindow {
-  if (record.consumed) {
+  if (record.consumed && record.pendingQuestion === undefined) {
     return {
       referenceAt: Math.max(record.completedAt ?? 0, record.consumedAt ?? 0),
       windowMinutes: policy.consumedSessionRetentionMinutes,
