@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [21.4.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v21.3.0...pi-subagents-v21.4.0) (2026-09-03)
+
+
+### Features
+
+* **pi-subagents:** give the session transcript four more rows of its own ([243bdb2](https://github.com/gotgenes/pi-packages/commit/243bdb21b680b80e1763417cfd78885b0f4c6c39)), closes [#733](https://github.com/gotgenes/pi-packages/issues/733)
+* **pi-subagents:** size the session transcript pane to its content ([d0dfe78](https://github.com/gotgenes/pi-packages/commit/d0dfe7860644ed3c032aa2b6efafe122026bf778)), closes [#733](https://github.com/gotgenes/pi-packages/issues/733)
+
+### Bug Fixes
+
+* **pi-subagents:** stop the session transcript viewer painting into scrollback ([fdb8eb2](https://github.com/gotgenes/pi-packages/commit/fdb8eb2baeee06b35d0451603407f15f68641306)), closes [#733](https://github.com/gotgenes/pi-packages/issues/733)
+
 ## [21.3.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v21.2.2...pi-subagents-v21.3.0) (2026-09-03)
 
 

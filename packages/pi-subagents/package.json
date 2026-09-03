@@ -1,6 +1,6 @@
 {
   "name": "@gotgenes/pi-subagents",
-  "version": "21.3.0",
+  "version": "21.4.0",
   "type": "module",
   "exports": {
     ".": {
