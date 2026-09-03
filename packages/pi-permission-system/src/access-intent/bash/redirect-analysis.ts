@@ -1,6 +1,6 @@
 import { redirectDestinationEffect } from "#src/access-intent/bash/command-effects";
-import type { TSNode } from "#src/access-intent/bash/parser";
-import type { TokenEffect } from "#src/access-intent/effect";
+import { parseUnresolvedAt, type TSNode } from "#src/access-intent/bash/parser";
+import { type TokenEffect, UNPROVEN_EFFECT } from "#src/access-intent/effect";
 
 /**
  * What a redirect node in the parse tree proves.
@@ -17,6 +17,11 @@ import type { TokenEffect } from "#src/access-intent/effect";
  * whether it is safe to *remove* the wrapper floor, so it answers with a
  * refusal: anything it cannot resolve counts against the exemption (#803).
  * One reader of the node keeps the two from drifting on what a redirect is.
+ *
+ * The two burdens meet at one fact: whether the parse resolved at all. Both
+ * answers ask `parseUnresolvedAt`, so a syntax form the grammar could not
+ * handle cannot be a proof to one caller and a resolvable read to the other
+ * (#814).
  */
 
 /**
@@ -26,15 +31,28 @@ import type { TokenEffect } from "#src/access-intent/effect";
  * `>&` and `<&` are the two operators that may name either a file descriptor
  * (`2>&1`) or a real file (`cmd >& out`); the destination node's type is the
  * parse-tree fact that tells them apart.
+ *
+ * A redirect the parse could not resolve proves nothing — ADR 0013 §10's base
+ * case, which consults both directional surfaces. Reading a proof off whichever
+ * operator survived error recovery made `cat <> rw.txt` a read and
+ * `cat <> ~/rw.txt` a write, so one command's answer was a function of its
+ * filename, and the read half was a fail-open on a destination the shell may
+ * truncate (#814).
+ *
+ * The demotion applies to a *proof*, never to the `null`: a descriptor
+ * duplication names no file whatever the operator around it did, so demoting
+ * first would emit a descriptor number as a path candidate.
  */
 export function redirectEffectForDestination(
   redirect: TSNode,
   destination: TSNode,
 ): TokenEffect | null {
-  return redirectDestinationEffect(
+  const proven = redirectDestinationEffect(
     redirectOperatorOf(redirect),
     DESCRIPTOR_NODE_TYPES.has(destination.type),
   );
+  if (proven === null) return null;
+  return parseUnresolvedAt(redirect) ? UNPROVEN_EFFECT : proven;
 }
 
 /**
@@ -49,20 +67,24 @@ export function redirectEffectForDestination(
  * shapes least visible to every other surface — the path projection does not
  * collect them either (#609).
  *
- * Only two things clear it: a descriptor duplication (`2>&1`), which names no
- * file, and an operator that proves a read — reading a file alongside a pure
- * reader leaves it a pure reader.
+ * An unresolved parse is refused up front rather than left to the loop. The
+ * loop would usually reach the same answer — a demoted destination is unproven,
+ * which is not a read — but `cat <>&1` parses to a redirect whose only children
+ * are the operator and a descriptor, so the loop finds nothing to refuse on and
+ * clears the exemption for a form nobody understood (#814).
+ *
+ * Past that, only two things clear it: a descriptor duplication (`2>&1`), which
+ * names no file, and an operator that proves a read — reading a file alongside
+ * a pure reader leaves it a pure reader.
  */
 export function redirectMayWriteFile(redirect: TSNode): boolean {
+  if (parseUnresolvedAt(redirect)) return true;
   for (let i = 0; i < redirect.childCount; i++) {
     const child = redirect.child(i);
     // The operator itself is the redirect's only unnamed child.
     if (!child?.isNamed) continue;
     // A source or duplicated descriptor (`2`, `&1`) names no file.
     if (DESCRIPTOR_NODE_TYPES.has(child.type)) continue;
-    // A shape the grammar could not resolve (`<>` degrades to one) says nothing
-    // about direction, so it cannot clear the check.
-    if (child.type === "ERROR") return true;
     if (redirectEffectForDestination(redirect, child)?.effect !== "read") {
       return true;
     }

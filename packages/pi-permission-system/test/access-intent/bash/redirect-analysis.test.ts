@@ -74,6 +74,43 @@ function destinationEffect(
   return withRedirect(command, type, effectForFirstDestination);
 }
 
+/** The effect each of a command's redirects proves, in source order. */
+function allDestinationEffects(
+  command: string,
+): Promise<(TokenEffect | null)[]> {
+  return withRedirects(command, "file_redirect", (redirects) =>
+    redirects.map(effectForFirstDestination),
+  );
+}
+
+/**
+ * Destination node types naming a file descriptor rather than a file.
+ *
+ * Transcribed from `redirect-analysis.ts`'s private set, because neither
+ * production caller ever hands one of these to `redirectEffectForDestination`
+ * — both filter to {@link ARG_NODE_TYPES} first — so only a direct call reaches
+ * the branch that answers for them.
+ */
+const DESCRIPTOR_NODE_TYPES: ReadonlySet<string> = new Set([
+  "file_descriptor",
+  "number",
+]);
+
+/** The effect a redirect proves for the descriptor it names, not a file. */
+function descriptorDestinationEffect(
+  command: string,
+): Promise<TokenEffect | null> {
+  return withRedirect(command, "file_redirect", (redirect) => {
+    for (let i = 0; i < redirect.childCount; i++) {
+      const child = redirect.child(i);
+      if (child && DESCRIPTOR_NODE_TYPES.has(child.type)) {
+        return redirectEffectForDestination(redirect, child);
+      }
+    }
+    throw new Error(`no descriptor destination in: ${command}`);
+  });
+}
+
 /** Whether a redirect fails to prove it only reads. */
 function mayWrite(command: string, type = "file_redirect"): Promise<boolean> {
   return withRedirect(command, type, redirectMayWriteFile);
@@ -135,24 +172,22 @@ describe("redirectEffectForDestination", () => {
   describe("a redirect the parser could not resolve", () => {
     // tree-sitter-bash has no node for the read-write open `<>`; it degrades to
     // an `ERROR` whose placement depends on the destination's shape, so the
-    // operator that survives — and therefore the proof — is a function of the
-    // filename. Both cases below assert today's behavior; #814 (Phase 14
-    // Step 12) makes them agree on something that is not a bare read.
-    it("reads `<> rw.txt` as an input redirect", async () => {
-      await expect(destinationEffect("cat <> rw.txt")).resolves.toEqual({
-        effect: "read",
-        source: "syntax",
+    // operator that survives is a function of the filename. Reading a proof off
+    // that operator produced two different answers for one command, one of them
+    // a bare read for a destination the shell may truncate.
+    it.each([
+      "cat <> rw.txt",
+      "cat <> ~/rw.txt",
+      "cat 3<> rw.txt",
+      "cat 0<> ~/y",
+    ])("proves nothing for %s", async (command) => {
+      await expect(destinationEffect(command)).resolves.toEqual({
+        effect: "unproven",
+        source: "unproven",
       });
     });
 
-    it("reads `<> ~/rw.txt` as an output redirect", async () => {
-      await expect(destinationEffect("cat <> ~/rw.txt")).resolves.toEqual({
-        effect: "write",
-        source: "syntax",
-      });
-    });
-
-    it.fails("proves the same effect however the destination is spelled", async () => {
+    it("proves the same effect however the destination is spelled", async () => {
       const [bare, tilde] = await Promise.all([
         destinationEffect("cat <> rw.txt"),
         destinationEffect("cat <> ~/rw.txt"),
@@ -160,11 +195,39 @@ describe("redirectEffectForDestination", () => {
       expect(bare).toEqual(tilde);
     });
 
-    it.fails("does not prove a bare read for a read-write open", async () => {
-      await expect(destinationEffect("cat <> rw.txt")).resolves.not.toEqual({
-        effect: "read",
-        source: "syntax",
-      });
+    it("still names no file at all when the destination is a descriptor", async () => {
+      // Failing to resolve the operator is a reason to withhold a *proof*, not
+      // a reason to invent a path: a descriptor names no file whatever the
+      // syntax around it did. Answering `unproven` here would emit the bare
+      // `1` of `<>&1` as a path candidate.
+      await expect(descriptorDestinationEffect("cat <>&1")).resolves.toBeNull();
+    });
+  });
+
+  describe("a command mixing resolved and unresolved redirects", () => {
+    // An unresolvable redirect must not contaminate a resolvable neighbour in
+    // either direction: the `> out.txt` and `> b.txt` below really are writes,
+    // and forfeiting their proofs would cost gates the parse did establish.
+    it("keeps the proof of a resolvable redirect before it", async () => {
+      // Three sibling `file_redirect` nodes: the genuine `> out.txt`, the
+      // stranded `<` (recovered with a zero-width destination of its own), and
+      // the `> ~/rw.txt` it was meant to pair with.
+      await expect(
+        allDestinationEffects("cat a > out.txt <> ~/rw.txt"),
+      ).resolves.toEqual([
+        { effect: "write", source: "syntax" },
+        { effect: "unproven", source: "unproven" },
+        { effect: "unproven", source: "unproven" },
+      ]);
+    });
+
+    it("keeps the proof of a resolvable redirect after it", async () => {
+      await expect(
+        allDestinationEffects("cat <> ~/a.txt > b.txt"),
+      ).resolves.toEqual([
+        { effect: "unproven", source: "unproven" },
+        { effect: "write", source: "syntax" },
+      ]);
     });
   });
 });
@@ -207,6 +270,8 @@ describe("redirectMayWriteFile", () => {
       ["cat a > $(mktemp)", "a command substitution"],
       ["cat a > ${DIR}/log", "an expansion concatenated with a literal"],
       ["cat <> rw.txt", "a read-write open the grammar could not parse"],
+      ["cat <> ~/rw.txt", "a read-write open whose halves the parse split"],
+      ["cat <>&1", "a read-write open naming no argument-shaped destination"],
     ])("answers true for %s (%s)", async (command) => {
       await expect(mayWrite(command)).resolves.toBe(true);
     });

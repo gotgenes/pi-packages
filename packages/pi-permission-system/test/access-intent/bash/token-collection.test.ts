@@ -1052,4 +1052,21 @@ describe("effect attribution", () => {
       { token: "/tmp/copy", effect: UNPROVEN_EFFECT },
     ]);
   });
+
+  describe("a redirect the parser could not resolve (#814)", () => {
+    // The gates consume the collector, not the analyzer, so the destination of
+    // a read-write open has to arrive here unproven — whichever way the parse
+    // happened to split the operator.
+    it("proves nothing for a bare destination", async () => {
+      expect(await attributedTokens("cat <> rw.txt")).toEqual([
+        { token: "rw.txt", effect: UNPROVEN_EFFECT },
+      ]);
+    });
+
+    it("proves nothing for a home-relative destination", async () => {
+      expect(await attributedTokens("cat <> ~/rw.txt")).toEqual([
+        { token: "~/rw.txt", effect: UNPROVEN_EFFECT },
+      ]);
+    });
+  });
 });
