@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { CreateSessionOptions } from "#src/lifecycle/create-subagent-session";
 import { createSubagentSession } from "#src/lifecycle/create-subagent-session";
 import { SubagentSession } from "#src/lifecycle/subagent-session";
-import { STUB_SNAPSHOT } from "#test/helpers/stub-ctx";
+import { STUB_CTX, STUB_SNAPSHOT } from "#test/helpers/stub-ctx";
 import {
   createAgentLookup,
   createChildLifecycleMock,
@@ -328,5 +329,93 @@ describe("createSubagentSession — recursion guard", () => {
     await createSubagentSession({ snapshot: STUB_SNAPSHOT, type: "Explore" }, defaultDeps());
 
     expect(session.setActiveToolsByName).not.toHaveBeenCalled();
+  });
+});
+
+describe("createSubagentSession — the core's own child tools", () => {
+  // The SDK applies `tools` as an allowlist *before* building the registry and
+  // runs every `customTools` entry through it, so a custom tool whose name is
+  // missing from the allowlist is dropped with no error (#725). Both halves are
+  // asserted separately so dropping either one fails a test.
+
+  describe("when the run supplies an ask-back recorder", () => {
+    it("appends ask_parent to the allowlist the agent declared", async () => {
+      arrangeFactory();
+
+      await createSubagentSession(
+        { snapshot: STUB_SNAPSHOT, type: "Explore", askParent: vi.fn() },
+        defaultDeps(),
+      );
+
+      expect(io.createSession).toHaveBeenCalledWith(
+        expect.objectContaining({ tools: ["read", "ask_parent"] }),
+      );
+    });
+
+    it("passes the ask_parent definition as a custom tool", async () => {
+      arrangeFactory();
+
+      await createSubagentSession(
+        { snapshot: STUB_SNAPSHOT, type: "Explore", askParent: vi.fn() },
+        defaultDeps(),
+      );
+
+      const opts = io.createSession.mock.calls[0][0] as CreateSessionOptions;
+      expect(opts.customTools?.map((tool) => tool.name)).toEqual(["ask_parent"]);
+    });
+
+    it("appends over an agent that declared no tools at all", async () => {
+      arrangeFactory();
+
+      await createSubagentSession(
+        { snapshot: STUB_SNAPSHOT, type: "Explore", askParent: vi.fn() },
+        createSubagentSessionDeps({ io, exec, registry: createAgentLookup({ toolNames: [] }) }),
+      );
+
+      expect(io.createSession).toHaveBeenCalledWith(
+        expect.objectContaining({ tools: ["ask_parent"] }),
+      );
+    });
+
+    it("routes a call on the installed tool to the supplied recorder", async () => {
+      arrangeFactory();
+      const askParent = vi.fn<(question: string) => void>();
+
+      await createSubagentSession(
+        { snapshot: STUB_SNAPSHOT, type: "Explore", askParent },
+        defaultDeps(),
+      );
+
+      const opts = io.createSession.mock.calls[0][0] as CreateSessionOptions;
+      await opts.customTools?.[0]?.execute(
+        "tc-1",
+        { question: "Which config wins?" },
+        new AbortController().signal,
+        () => {},
+        STUB_CTX,
+      );
+      expect(askParent).toHaveBeenCalledWith("Which config wins?");
+    });
+  });
+
+  describe("when the run supplies no callbacks", () => {
+    it("leaves the agent's declared allowlist alone", async () => {
+      arrangeFactory();
+
+      await createSubagentSession({ snapshot: STUB_SNAPSHOT, type: "Explore" }, defaultDeps());
+
+      expect(io.createSession).toHaveBeenCalledWith(
+        expect.objectContaining({ tools: ["read"] }),
+      );
+    });
+
+    it("installs no custom tools", async () => {
+      arrangeFactory();
+
+      await createSubagentSession({ snapshot: STUB_SNAPSHOT, type: "Explore" }, defaultDeps());
+
+      const opts = io.createSession.mock.calls[0][0] as CreateSessionOptions;
+      expect(opts.customTools).toEqual([]);
+    });
   });
 });

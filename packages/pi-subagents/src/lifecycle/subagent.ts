@@ -282,6 +282,7 @@ export class Subagent {
 			}
 		}
 
+		const runConfig = this.execution.getRunConfig?.();
 		try {
 			this.subagentSession = await this.execution.createSubagentSession({
 				snapshot: this.execution.snapshot,
@@ -290,6 +291,7 @@ export class Subagent {
 				parentSession: this.execution.parentSession,
 				model: this.execution.model,
 				thinkingLevel: this.execution.thinkingLevel,
+				askParent: (question) => { this.state.setPendingQuestion(question); },
 			});
 		} catch (err) {
 			// The factory disposed its own session on a post-creation failure.
@@ -303,7 +305,6 @@ export class Subagent {
 		}));
 		this.execution.observer?.onSessionCreated?.(this);
 
-		const runConfig = this.execution.getRunConfig?.();
 		try {
 			const result = await this.subagentSession.runTurnLoop(this.execution.prompt, {
 				maxTurns: this.execution.maxTurns,
@@ -417,6 +418,7 @@ export class Subagent {
 	/** Terminate a resume as errored: mark, release listeners, best-effort workspace dispose, notify observer. */
 	failResume(err: unknown): void {
 		this.markError(err);
+		this.clearPendingQuestion();
 		this.listeners.release();
 		this.disposeWorkspaceQuietly("error");
 		this.execution.observer?.onResumeFinished?.(this);
@@ -595,9 +597,22 @@ export class Subagent {
 	/** Fail a run: mark error, release listeners, best-effort workspace dispose, notify observer. */
 	failRun(err: unknown): void {
 		this.markError(err);
+		this.clearPendingQuestion();
 		this.listeners.release();
 		this.disposeWorkspaceQuietly("error");
 		this.execution.observer?.onRunFinished?.(this);
+	}
+
+	/**
+	 * Drop a question the child recorded before the run failed.
+	 *
+	 * Every carrier renders a pending question as "answer by resuming me", which
+	 * is not the right next action after a failure — and the failure text already
+	 * tells the parent to look. An aborted or steered run keeps its question:
+	 * those reached a terminal transition with an outcome to report.
+	 */
+	private clearPendingQuestion(): void {
+		this.state.setPendingQuestion(undefined);
 	}
 
 	/**

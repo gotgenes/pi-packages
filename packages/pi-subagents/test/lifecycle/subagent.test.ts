@@ -916,6 +916,64 @@ describe("Subagent.run() — RunConfig threading", () => {
 	});
 });
 
+// ── The child-to-parent channel ────────────────────────────────────────────────
+
+/** A session factory that keeps its Mock type, so tests can read the params it received. */
+function createSpyFactory() {
+	const stub = createSubagentSessionStub();
+	const factory = vi.fn(async (_params: CreateSubagentSessionParams) => toSubagentSession(stub));
+	return { factory, stub };
+}
+
+describe("Subagent — the ask-back recorder", () => {
+	it("hands the session factory a recorder for the child's question", async () => {
+		const { factory } = createSpyFactory();
+		const agent = createRunnableAgent({ createSubagentSession: factory });
+
+		await agent.run();
+
+		expect(factory.mock.calls[0][0].askParent).toBeTypeOf("function");
+	});
+
+	it("records a question the child declares mid-run", async () => {
+		const { factory } = createSpyFactory();
+		const agent = createRunnableAgent({ createSubagentSession: factory });
+		await agent.run();
+
+		factory.mock.calls[0][0].askParent?.("Which config wins?");
+
+		expect(agent.pendingQuestion).toBe("Which config wins?");
+	});
+
+	it("keeps only the last question when the child asks twice", async () => {
+		const { factory } = createSpyFactory();
+		const agent = createRunnableAgent({ createSubagentSession: factory });
+		await agent.run();
+		const ask = factory.mock.calls[0][0].askParent;
+
+		ask?.("first");
+		ask?.("second");
+
+		expect(agent.pendingQuestion).toBe("second");
+	});
+
+	it("drops a recorded question when the run fails, so no carrier invites a resume", () => {
+		const agent = makeSubagent({ pendingQuestion: "Which config wins?" });
+
+		agent.failRun(new Error("boom"));
+
+		expect(agent.pendingQuestion).toBeUndefined();
+	});
+
+	it("drops a recorded question when a resumed run fails", () => {
+		const agent = makeSubagent({ pendingQuestion: "Which config wins?" });
+
+		agent.failResume(new Error("boom"));
+
+		expect(agent.pendingQuestion).toBeUndefined();
+	});
+});
+
 // ── Subagent.start() ───────────────────────────────────────────────────────────
 
 describe("Subagent.start() — promise encapsulation", () => {

@@ -16,11 +16,13 @@ import type { Model } from "@earendil-works/pi-ai";
 import {
   type AgentSession,
   type SettingsManager,
+  type ToolDefinition,
 } from "@earendil-works/pi-coding-agent";
 import type { AgentConfigLookup } from "#src/config/agent-types";
 import type { ChildLifecyclePublisher } from "#src/lifecycle/child-lifecycle";
 import type { ParentSnapshot } from "#src/lifecycle/parent-snapshot";
 import { SubagentSession } from "#src/lifecycle/subagent-session";
+import { AskParentTool, type QuestionRecorder } from "#src/session/ask-parent-tool";
 import type { EnvInfo } from "#src/session/env";
 import type { ModelRegistry } from "#src/session/model-resolver";
 import { type AssemblerIO, assembleSessionConfig } from "#src/session/session-config";
@@ -73,6 +75,12 @@ export interface CreateSessionOptions {
   model?: Model<any>;
   /** Allowlist: only these tool names are enabled in the session. */
   tools: string[];
+  /**
+   * Tool definitions supplied directly rather than by an extension. The SDK
+   * filters these through `tools` too, so every name here must also be listed
+   * there or the definition is silently dropped.
+   */
+  customTools?: ToolDefinition[];
   /** Denylist applied after `tools`, on every tool-registry rebuild. */
   excludeTools?: string[];
   resourceLoader: ResourceLoaderLike;
@@ -141,6 +149,24 @@ export interface CreateSubagentSessionParams {
   parentSession?: ParentSessionInfo;
   model?: Model<any>;
   thinkingLevel?: ThinkingLevel;
+  /**
+   * Records a question the child declares with `ask_parent`. Supplied for every
+   * child; its absence installs no ask-back tool.
+   */
+  askParent?: QuestionRecorder;
+}
+
+/**
+ * The core's own child-facing tools, built for whichever callbacks this run
+ * supplied. An agent's `tools:` list is its complete capability allowlist, so
+ * these are appended to it rather than drawn from it: they are protocol the
+ * core installs in every child, and neither reaches the filesystem, the shell,
+ * or the network.
+ */
+function buildChildTools(params: CreateSubagentSessionParams): ToolDefinition[] {
+  const tools: ToolDefinition[] = [];
+  if (params.askParent) tools.push(new AskParentTool(params.askParent).toToolDefinition());
+  return tools;
 }
 
 /**
@@ -210,6 +236,7 @@ export async function createSubagentSession(
   sessionManager.newSession({ parentSession: params.parentSession?.parentSessionId });
   const sessionId = sessionManager.getSessionId();
 
+  const childTools = buildChildTools(params);
   const { session } = await deps.io.createSession({
     cwd: cfg.effectiveCwd,
     agentDir,
@@ -217,7 +244,8 @@ export async function createSubagentSession(
     settingsManager: sessionSettings,
     modelRegistry: snapshot.modelRegistry,
     model: cfg.model,
-    tools: cfg.toolNames,
+    tools: [...cfg.toolNames, ...childTools.map((tool) => tool.name)],
+    customTools: childTools,
     excludeTools: EXCLUDED_TOOL_NAMES,
     resourceLoader: loader,
     thinkingLevel: cfg.thinkingLevel,
