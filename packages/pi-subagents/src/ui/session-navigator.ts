@@ -36,12 +36,10 @@ import { TranscriptContent } from "#src/ui/transcript-content";
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Chrome lines: top border + header + header sep + footer sep + footer + bottom border. */
-const CHROME_LINES = 6;
+/** Chrome lines: the header and the footer. The pane is docked, so it needs no frame. */
+const CHROME_LINES = 2;
 const MIN_VIEWPORT = 3;
 const VIEWPORT_HEIGHT_PCT = 70;
-/** Columns the chrome takes from the viewport: the two side borders and their padding. */
-const CHROME_COLUMNS = 4;
 
 /** Component factory shape Pi's `ui.custom` invokes to mount a component. */
 export type CustomComponentFactory<R> = (
@@ -134,8 +132,8 @@ export class TranscriptPane implements Component {
   private readonly theme: Theme;
   private readonly done: (result: undefined) => void;
   private readonly content: TranscriptContent;
-  /** Inner width the host last rendered at; input must use the same layout. */
-  private renderedInnerWidth: number | undefined;
+  /** Width the host last rendered at; input must use the same layout. */
+  private renderedWidth: number | undefined;
 
   constructor({ tui, theme, source, done, cwd, markdownTheme }: TranscriptPaneOptions) {
     this.tui = tui;
@@ -182,37 +180,29 @@ export class TranscriptPane implements Component {
   render(width: number): string[] {
     if (width < 6) return [];
     const th = this.theme;
-    const innerW = width - CHROME_COLUMNS;
-    this.renderedInnerWidth = innerW;
+    this.renderedWidth = width;
     const lines: string[] = [];
 
-    const pad = (s: string, len: number): string => s + " ".repeat(Math.max(0, len - visibleWidth(s)));
-    const row = (content: string): string =>
-      th.fg("border", "│") + " " + truncateToWidth(pad(content, innerW), innerW) + " " + th.fg("border", "│");
-    const hrTop = th.fg("border", `╭${"─".repeat(width - 2)}╮`);
-    const hrBot = th.fg("border", `╰${"─".repeat(width - 2)}╯`);
-    const hrMid = row(th.fg("dim", "─".repeat(innerW)));
+    // No frame, so no padding either: a row padded to the full terminal width
+    // wraps onto the next terminal row.
+    const fit = (content: string): string => truncateToWidth(content, width);
 
-    lines.push(hrTop);
-    lines.push(row(th.bold("Subagent session")));
-    lines.push(hrMid);
+    lines.push(fit(th.bold("Subagent session")));
 
-    const { totalLines, viewportHeight, maxScroll } = this.scrollBounds(innerW);
+    const { totalLines, viewportHeight, maxScroll } = this.scrollBounds(width);
     if (this.autoScroll) this.scrollOffset = maxScroll;
     const visibleStart = Math.min(this.scrollOffset, maxScroll);
-    const visible = this.content.slice(innerW, visibleStart, viewportHeight);
-    for (let i = 0; i < viewportHeight; i++) lines.push(row(visible[i] ?? ""));
+    const visible = this.content.slice(width, visibleStart, viewportHeight);
+    for (let i = 0; i < viewportHeight; i++) lines.push(fit(visible[i] ?? ""));
 
-    lines.push(hrMid);
     const scrollPct =
       totalLines <= viewportHeight
         ? "100%"
         : `${Math.round(((visibleStart + viewportHeight) / totalLines) * 100)}%`;
     const footerLeft = th.fg("dim", `${totalLines} lines · ${scrollPct}`);
     const footerRight = th.fg("dim", "↑↓ scroll · PgUp/PgDn · Esc close");
-    const footerGap = Math.max(1, innerW - visibleWidth(footerLeft) - visibleWidth(footerRight));
-    lines.push(row(footerLeft + " ".repeat(footerGap) + footerRight));
-    lines.push(hrBot);
+    const footerGap = Math.max(1, width - visibleWidth(footerLeft) - visibleWidth(footerRight));
+    lines.push(fit(footerLeft + " ".repeat(footerGap) + footerRight));
 
     return lines;
   }
@@ -247,10 +237,10 @@ export class TranscriptPane implements Component {
   /**
    * The width `handleInput` must lay out at: the one the host actually supplied,
    * so scroll bounds match the layout on screen. Before the first paint there is
-   * none, so fall back to the full terminal less the chrome's columns.
+   * none, so fall back to the full terminal width.
    */
   private inputWidth(): number {
-    return this.renderedInnerWidth ?? Math.max(0, this.tui.terminal.columns - CHROME_COLUMNS);
+    return this.renderedWidth ?? this.tui.terminal.columns;
   }
 
   private viewportHeight(): number {

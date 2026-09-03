@@ -89,6 +89,30 @@ describe("TranscriptPane", () => {
     expect(out).toContain("◍");
   });
 
+  describe("chrome", () => {
+    // One message of numbered rows, so every visible row is identifiable content.
+    const numbered = [
+      { role: "user", content: Array.from({ length: 80 }, (_, i) => `r${String(i).padStart(3, "0")}`).join("\n") },
+    ] as unknown as SessionMessage[];
+
+    it("paints no box-drawing glyphs", () => {
+      const out = makePane().render(80).join("\n");
+      expect(out).not.toMatch(/[╭╮╰╯│─]/);
+    });
+
+    it("spends only two rows on chrome, leaving the rest to the transcript", () => {
+      // 40 rows * 70% = 28 for the pane. A header and a footer leave a 26-row
+      // viewport, of which 25 carry numbered text and one is the user-message
+      // component's own trailing row. The box cost four more and showed 21.
+      const pane = makePane({
+        tui: mockTui(40, 80),
+        source: fakeSource({ getMessages: () => numbered }),
+      });
+      const shown = pane.render(80).filter((line) => /r\d{3}/.test(line)).length;
+      expect(shown).toBe(25);
+    });
+  });
+
   describe("scroll bounds", () => {
     // The host may lay a component out at a width narrower than the terminal.
     // The terminal here is 200 columns while the component is rendered at 180,
