@@ -127,4 +127,91 @@ The one residual worth carrying forward is [#872] (Phase 22 Step 14), filed but 
 
 Nothing beyond the summary — pre-push gates were already green from the TDD stage, and this session made no code changes.
 
+## Stage: Final Retrospective (2026-09-03T17:44:18Z)
+
+### Session summary
+
+The root session landed `issue-858-pi-subagents-child-initiated-mid-run-cha` onto `main` as a clean fast-forward, verified CI on `56f21d6f`, closed [#858], released `pi-subagents-v21.3.0`, and tore down the worktree.
+This retrospective spans all four stages — planning and TDD in the peer session on `claude-opus-5`, sync and ship on `claude-sonnet-5`.
+The change shipped a net deletion: two child-facing tools (`ask_parent`, `notify_parent`) replacing a 222-line text-marker parser and its 184 lines of tests.
+
+### Observations
+
+#### What went well
+
+- **The design conversation inverted the issue's own proposal, and the reversals came from the operator.**
+  Five `ask_user` gates across planning.
+  The agent recommended the blocking ask twice and withdrew it twice: first when the operator asked whether the update belonged in a consumer package, then decisively when the operator asked whether `<question-for-parent>` was "a tool masquerading in a protocol trenchcoat".
+  That second question dissolved the charter collision instead of escalating it — a carrier swap grants no capability, so the published Non-Goal narrowed rather than broke.
+  Three of the issue's own premises did not survive checking, and the shipped design is smaller than the one the issue asked for.
+- **The Tidy-First assessor was re-dispatched after the design changed materially.**
+  The `tidy-first` skill's stated hazard is a stale assessment that can only contradict a frozen plan; this is the first session in this package's history to actively re-run it rather than absorb the drift.
+  The second pass returned three corrections that reached the plan, including that the 15-test migration in `subagent.test.ts` could not be front-loaded as prep because it is not landable green against parse-based code.
+- **The end-of-cycle Module-Level Changes cross-check caught a hole the reviewer missed.**
+  `test/observation/composite-subagent-observer.test.ts` was listed in the plan and skipped during implementation; step 6 of `/tdd-plan`'s after-the-last-step protocol found it.
+  `onSubagentUpdate` is the observer interface's first optional member, so "a delegate that does not implement it" is a case the other five methods never exercise.
+  The pre-completion reviewer did not flag it in round 1.
+- **A `fallow` finding was cleared by deletion plus real tests, not by three suppressions.**
+  The getter, toggle, and setter for `midRunUpdates` were all flagged.
+  The setter had no consumer anywhere, so it was deleted; the other two got genuine `SettingsManager` tests.
+- **The ship session ran 30 turns with zero rework.**
+  Every gate — the `**Release:**` marker read off the peer branch, the `merge-base --is-ancestor` ff prediction, `next-version.sh`, the co-shipped-issue check that correctly classified [#872] as a citation rather than a ship — passed first time and needed no correction.
+
+#### What caused friction (agent side)
+
+- `missing-context` — **the SDK version glob selected a version the package cannot use.**
+  Planning turns 24–30 read `node_modules/.pnpm/@earendil-works+pi-coding-agent@*` with `head -1`, landing on `0.79.1`.
+  The store holds three versions (`0.79.1`, `0.80.5`, `0.84.4`); `0.79.1` is *below* this package's own declared peer floor of `>=0.81.0`, so it is another package's transitive dependency.
+  Every `customTools` and `isAllowedTool` fact in the design was first established against it.
+  Impact: roughly seven tool calls against the wrong tree, plus a second verification pass later.
+  It was corrected only because the `tidy-first-assessor` independently reported `0.84.4` — nothing in the agent's own procedure would have caught it.
+- `missing-context` — **the charter collision surfaced three gates after the design had settled.**
+  `README.md:398` and the architecture scope table both carry a Non-Goal forbidding "widening a child's tool allowlist on the agent's behalf", [#612] was closed on it, [#768] withdrawn on it, and [#775]'s evidence file names it the single most likely place a charter sentence would be tested next.
+  The agent found it while enumerating doc touch points for Module-Level Changes, not while deciding the design.
+  Impact: no rework — the design survived under a narrowed reading — but the first four gates were argued without the constraint that most bore on them, and the planning stage note already recorded the fix: "A scope-and-non-goals grep belongs earlier — before the first design gate."
+- `other` — **`npm pack` failed three consecutive times** (planning turns 81–84) before switching to `pnpm view <pkg> dist.tarball` plus `curl` to fetch the `0.81.0` tarball and confirm the peer floor.
+  Impact: four wasted tool calls.
+  Off-convention besides — this repo is pnpm-exclusive.
+- `other` — **a single-variant discriminated union was rejected by the pre-commit hook** after the step-5 commit was already attempted.
+  `entry.kind === "completion"` is vacuously true with one variant, so `@typescript-eslint/no-unnecessary-condition` fired.
+  Impact: one rework loop of roughly six tool calls — revert the union, re-run both killing mutations against the simplified form, re-commit.
+  The plan's sequencing instinct was right and only the type's arrival point was wrong; step 6 introduced the union with its second kind.
+  Caught by the gate, not by the agent.
+- `other` — **an `architecture.md` edit truncated a section mid-sentence and dropped the Step 12 heading.**
+  Self-caught on the next turn and repaired before commit; round 2 of the review was explicitly asked to re-check the roadmap insertion's structure because of it.
+  Impact: two extra tool calls, no rework.
+
+#### What caused friction (user side)
+
+- Very little — the operator's interventions were the highest-leverage input in the session, and both arrived as redirecting questions rather than corrections, which is the ideal shape.
+  The "does this belong in a consumer package?"
+  and "tool masquerading in a protocol trenchcoat" questions each removed a whole subsystem from the design.
+- The one opportunity is structural rather than behavioral: the operator adopted follow-ups [#871] and [#872] as Phase 22 steps against the agent's recommendation to defer both.
+  Two reversals of the same recommendation in one issue suggests the `roadmap-fit` skill's deferral heuristic reads as more conservative than the operator's actual appetite for absorbing small adjacent defects into an open phase.
+  Not worth a prompt change on two data points; worth watching.
+
+### Diagnostic details
+
+- **Model-performance correlation** — planning and TDD ran on `anthropic/claude-opus-5` (five design gates, a charter amendment, a 222-line deletion with mutation verification per step); sync and ship ran on `anthropic/claude-sonnet-5` (deterministic git and CI sequences).
+  Four subagent dispatches: `tidy-first-assessor` twice during planning, `pre-completion-reviewer` twice during TDD.
+  No mismatch in either direction — no reasoning-weak model on judgment work, no high-cost model on mechanical work.
+- **Escalation-delay tracking** — the longest same-error sequence was the `npm pack` failure at four consecutive calls, below the five-call threshold, and it was resolved by changing tool rather than by retrying harder.
+  No sequence warranted an `Explore` dispatch or an operator question.
+- **Unused-tool detection** — neither `missing-context` finding had an unused tool available.
+  The SDK-version miss is not a search problem: the authoritative answer is in `packages/pi-subagents/package.json`'s own `devDependencies` pin, which was never read.
+  The charter miss is a sequencing problem, not a discovery one — the agent found the constraint unaided, just late.
+- **Feedback-loop gap analysis** — no gap.
+  `pnpm run check` ran after nearly every Green step rather than only at the end, the full suite ran at every step boundary, and each step's killing mutations were applied and reverted before its commit.
+  The tests added after review had no Red step and were explicitly mutated to compensate.
+
+### Changes made
+
+1. `AGENTS.md` — corrected the Pi SDK version-resolution instruction under § Workflow.
+   It previously recommended `node_modules/.pnpm/@earendil-works+pi-coding-agent@*/`, the exact glob that misled this session's planning stage; it now directs the reader to resolve the version from the package's own `devDependencies` pin first, and names the failure mode (`head -1` selecting a version below the declared peer floor).
+2. `.pi/prompts/plan-issue.md` — added a published-scope classification to § Decide, immediately after the breaking-change classification and before the `ask_user` gate.
+   It directs the planner to grep the package README and architecture doc for Non-Goals and scope-table rows naming the mechanism under change, and to read the close comments of any issue or PR they cite.
+3. `packages/pi-subagents/docs/retro/0858-child-to-parent-tool-channel.md` — appended this Final Retrospective stage entry.
+
+Both proposals were confirmed by the operator; no candidate was landed unilaterally, and three other candidates were rejected as recorded above.
+
 [#872]: https://github.com/gotgenes/pi-packages/issues/872

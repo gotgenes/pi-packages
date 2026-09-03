@@ -99,6 +99,10 @@ If breaking, state it in Goals and use `feat!:`/`fix!:` with a `BREAKING CHANGE:
 When the change alters a documented contract (an event's timing guarantee, a default, an output shape), state the classification in the gate's substance message even when an ADR already settled it.
 A settled call and an unasked one look identical to the operator (Refs #787).
 
+Classify whether the change contradicts the package's published scope.
+Grep `packages/<PKG>/README.md` and `docs/architecture/architecture.md` for Non-Goals and scope-table rows that name the mechanism you are about to change, and read the close comments of any issue or PR they cite.
+A collision found after the design settles can only be argued around; found before the first gate it is one of the gate's options (Refs #858).
+
 Before writing the plan, identify any genuinely ambiguous design choices.
 If there are 1–2 such choices (breaking-vs-non-breaking, result-shape change, fallback semantics, etc.), use the `ask-user` skill once to surface them with a short context summary and concrete options.
 Skip this step if the issue's "Proposed change" section is unambiguous.

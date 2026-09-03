@@ -140,7 +140,8 @@ Phase 14 Step 10 promised `cat /outside/a.ts > /outside/b.ts` would narrow, but 
   Dispatch an `Explore` subagent with `model: "sonnet-5"` for a multi-hop trace there (e.g. "how does `ui.custom` pass keybindings to the factory?") — a targeted read of a known file is fine inline, but a hunt costs 5–10 greps of this session's context, and `Explore`'s haiku default is too weak for the reasoning.
   Keep the trace inline when its output is a universal claim the design will rest on — a subagent returns it as a summary you would have to re-verify anyway (Refs #801).
   The checkout tracks Pi's `main` and runs ahead of the pinned dependency.
-  Read it for mechanism, but confirm any API you design around exists in the installed version first — `grep` the types under `node_modules/.pnpm/@earendil-works+pi-coding-agent@*/` (Refs #661).
+  Read it for mechanism, but confirm any API you design around exists in the installed version first — resolve the version from the package's own `devDependencies` pin, then `grep` the types under that exact `node_modules/.pnpm/@earendil-works+pi-coding-agent@<version>_*/` directory (Refs #661).
+  The bare `@*/` glob matches every version in the store, and `head -1` can select one below the package's declared peer floor (Refs #858).
   Existence is not enough for a seam you design *around*: a callback's position in the call order, and the data populated by the time it fires, are visible only in the compiled `.js`, never in the `.d.ts` (Refs #696).
 
 #### Tool-injected messages
