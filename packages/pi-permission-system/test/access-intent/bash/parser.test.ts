@@ -114,6 +114,18 @@ describe("parseUnresolvedAt", () => {
         await expect(unresolvedRedirects(command)).resolves.toContain(true);
       },
     );
+
+    it.each(["cat $(( > out.txt", "echo ) > out.txt"])(
+      "answers true for %s, whose redirect is itself well-formed",
+      async (command) => {
+        // The question is about the parse, not about `<>`. A redirect preceded
+        // by an unrelated recovery failure loses its proof too — the accepted
+        // cost, pinned here so the wider population is deliberate rather than
+        // incidental. Over-refusing costs a prompt; under-refusing hands a
+        // write to a read grant.
+        await expect(unresolvedRedirects(command)).resolves.toEqual([true]);
+      },
+    );
   });
 
   describe("a node tree-sitter resolved", () => {

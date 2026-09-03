@@ -41,6 +41,16 @@ export interface TSNode {
  * an error but its first redirect is a fully resolved write, and condemning it
  * would forfeit a proof the parse really did establish.
  *
+ * The question is about the parse, not about `<>`, so the population is wider
+ * than the form that exposed it: `cat $(( > out.txt` and `echo ) > out.txt`
+ * both carry a perfectly good `> out.txt` whose predecessor failed for an
+ * unrelated reason, and both go unproven. That is the accepted cost, and it is
+ * the same shape as the only real occurrence measured across 5000+ logged
+ * commands — `git commit -F - <<'MSG' 2>&1 | tail -4`, valid bash the grammar
+ * cannot parse (ADR 0013's 2026-08-29 amendment), where the demoted token
+ * belongs to no `<>` either. Over-refusing costs a prompt; under-refusing hands
+ * a write to a read grant.
+ *
  * This is the one place {@link TSNode.hasError} and
  * {@link TSNode.previousSibling} are read. Keeping the lateral navigation here
  * is deliberate: recovering-parser behavior is a fact about tree-sitter rather

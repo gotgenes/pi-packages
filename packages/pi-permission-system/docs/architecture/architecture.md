@@ -1460,8 +1460,13 @@ The up-front refusal is strictly stronger than the in-loop `ERROR` check it repl
 The demotion is applied to a *proof* and never to the `null` a descriptor duplication answers, or `<>&1`'s bare `1` would be emitted as a path candidate.
 Nothing pinned that ordering until a test called `redirectEffectForDestination` with a descriptor node directly — both production callers filter to `ARG_NODE_TYPES` first, so neither can reach the branch.
 
+The accepted residual is about the **parse**, not about `<>`, so it is wider than the form that exposed it: any redirect whose own subtree or immediate predecessor carries an `ERROR` goes unproven, including one that is itself well-formed.
+`cat $(( > out.txt` and `echo ) > out.txt` each carry a perfectly good `> out.txt` demoted because an unrelated recovery failure precedes it.
+Both are pinned as tests so the width is deliberate rather than incidental, and the direction is the affordable one — over-refusing costs a prompt, under-refusing hands a write to a read grant.
+
 The cost is measured, not argued, by `scripts/measure-unresolved-redirects.mjs`: of 5352 distinct intact bash commands in the author's review log, 2619 name a file through a redirect and **1** (0.019%) changes an attribution — `"tail"`: write → unproven in `git commit -F - <<'MSG' 2>&1 | tail -4`, the valid bash ADR 0013's 2026-08-29 amendment records the grammar cannot parse.
-That token is not path-shaped, so no command newly prompts, which is what made this `fix:` rather than `fix!:`.
+That one real occurrence is itself an instance of the wider residual rather than of `<>`, which is the clearest evidence that the residual is the honest way to state the change.
+Its token is not path-shaped, so no command newly prompts, which is what made this `fix:` rather than `fix!:`.
 The corpus contains no executed read-write open at all; the literal `<>` appears 13 times, every one as quoted text.
 
 Release: independent
