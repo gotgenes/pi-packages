@@ -1077,6 +1077,10 @@ No decline, so the regular improvement rotation continues.
 - [#780] — deferred: two ADRs recording the conservative-defaults and outbound-bridge boundaries; documentation work with no dependency on this phase, and the phase's ADR budget is already spent on ADR 0013's implementation.
 - Feature issues [#736], [#720], [#691], [#688], [#687], [#686], [#680], [#658], [#654], [#648], [#604], [#603], [#472] — out of scope for a structural phase.
   Eight of them are named by ADR 0013 §1 as aimed at this phase's cause, so the axis narrows what each of them still has to ask for; none is closed by it outright.
+- [#874] — filed by [#733]'s planning (a `pi-subagents` issue); out of scope for the roadmap (explicit user decision).
+  `config-modal.ts` is one of the repo's only two `ui.custom(..., { overlay: true })` call sites, and Pi's regular-mode compositor writes overlay chrome into the buffer that backs scrollback.
+  No Phase 14 step names `config-modal.ts`, and the capability axis has no bearing on how a settings modal is mounted.
+  Its exposure is far lower than [#733]'s — smearing needs the buffer to grow while the overlay is open — and its fix is a different design question, because the modal asks for a fixed 82-column width that the non-overlay path does not offer.
 
 ### Health metrics
 
@@ -1689,6 +1693,7 @@ Each phase's findings, numbered plan, dependency diagram, and health metrics are
 [#821]: https://github.com/gotgenes/pi-packages/issues/821
 [#822]: https://github.com/gotgenes/pi-packages/issues/822
 [#724]: https://github.com/gotgenes/pi-packages/issues/724
+[#733]: https://github.com/gotgenes/pi-packages/issues/733
 [#823]: https://github.com/gotgenes/pi-packages/issues/823
 [#837]: https://github.com/gotgenes/pi-packages/issues/837
 [#839]: https://github.com/gotgenes/pi-packages/issues/839
@@ -1696,4 +1701,5 @@ Each phase's findings, numbered plan, dependency diagram, and health metrics are
 [#844]: https://github.com/gotgenes/pi-packages/issues/844
 [#861]: https://github.com/gotgenes/pi-packages/issues/861
 [#868]: https://github.com/gotgenes/pi-packages/issues/868
+[#874]: https://github.com/gotgenes/pi-packages/issues/874
 [ADR-0002]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-subagents/docs/decisions/0002-extensions-on-a-minimal-core.md
