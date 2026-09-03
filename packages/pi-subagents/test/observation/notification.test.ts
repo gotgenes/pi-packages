@@ -272,6 +272,11 @@ describe("NotificationManager", () => {
   });
 
   describe("parent-turn boundary", () => {
+    /** The agent id a delivered notification block names. */
+    function taskIdOf(content: string): string {
+      return /<task-id>([^<]*)<\/task-id>/.exec(content)?.[1] ?? "";
+    }
+
     /**
      * Models Pi's delivery semantics. While the parent's agent run is active a
      * `followUp` is queued unrecallably and drained at turn end; once the run has
@@ -336,6 +341,26 @@ describe("NotificationManager", () => {
       parent.manager.sendCompletion(record); // e.g. a resumed run reaching terminal state again
       parent.settleRun();
       expect(parent.deliveredToLlm).toHaveLength(1);
+    });
+
+    it("flushes nudges from different agents in the order they arrived", () => {
+      const parent = makePiParent();
+      parent.startRun();
+      parent.manager.sendCompletion(createTestSubagent({ id: "first-1" }));
+      parent.manager.sendCompletion(createTestSubagent({ id: "second-1" }));
+      parent.settleRun();
+      expect(parent.deliveredToLlm.map(taskIdOf)).toEqual(["first-1", "second-1"]);
+    });
+
+    it("keeps a re-completed agent in the queue position it first took", () => {
+      const parent = makePiParent();
+      const early = createTestSubagent({ id: "early-1" });
+      parent.startRun();
+      parent.manager.sendCompletion(early);
+      parent.manager.sendCompletion(createTestSubagent({ id: "late-1" }));
+      parent.manager.sendCompletion(early); // the resumed run terminates again
+      parent.settleRun();
+      expect(parent.deliveredToLlm.map(taskIdOf)).toEqual(["early-1", "late-1"]);
     });
 
     it("delivers immediately when the parent is idle at completion", () => {

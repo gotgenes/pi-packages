@@ -156,7 +156,11 @@ export class NotificationManager implements NotificationSystem {
   // the result in between would receive it twice. So nudges that arrive mid-run
   // are withheld here — where record.consumed is still consultable — and
   // flushed once the run settles.
-  private pendingNudges = new Map<string, Subagent>();
+  // Ordered rather than record-keyed: a completion for an agent supersedes an
+  // earlier one for that agent, but announcements from different agents are
+  // distinct facts, and arrival order is the only order the parent can make
+  // sense of.
+  private pending: Subagent[] = [];
   private parentRunActive = false;
   private disposed = false;
 
@@ -183,11 +187,21 @@ export class NotificationManager implements NotificationSystem {
     // actually emitted, which is what makes the flush a fresh re-check.
     if (record.consumed) return;
     if (this.parentRunActive) {
-      // Keyed by id, so a re-completion in the same run collapses to one nudge.
-      this.pendingNudges.set(record.id, record);
+      this.withholdCompletion(record);
       return;
     }
     this.emitIndividualNudge(record);
+  }
+
+  /**
+   * Queue a completion for the flush, superseding an earlier one for the same
+   * agent in the position that one already holds — a re-completion is the same
+   * fact told again, not a later one.
+   */
+  private withholdCompletion(record: Subagent): void {
+    const existing = this.pending.findIndex((queued) => queued.id === record.id);
+    if (existing === -1) this.pending.push(record);
+    else this.pending[existing] = record;
   }
 
   /** The parent's agent run became active; nudges are withheld until it settles. */
@@ -202,8 +216,7 @@ export class NotificationManager implements NotificationSystem {
    */
   onParentAgentSettled(): void {
     this.parentRunActive = false;
-    const withheld = [...this.pendingNudges.values()];
-    this.pendingNudges.clear();
+    const withheld = this.pending.splice(0);
     for (const record of withheld) {
       try {
         this.emitIndividualNudge(record);
@@ -216,7 +229,7 @@ export class NotificationManager implements NotificationSystem {
   /** Terminal: the manager stops announcing anything, now and afterwards. */
   dispose(): void {
     this.disposed = true;
-    this.pendingNudges.clear();
+    this.pending.length = 0;
   }
 
   private emitIndividualNudge(record: Subagent): void {
