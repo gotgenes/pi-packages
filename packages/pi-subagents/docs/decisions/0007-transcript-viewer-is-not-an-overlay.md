@@ -17,7 +17,7 @@ Operators reported fragments of the viewer's box — the `╭─` top rule, the 
 
 ### The mechanism
 
-In pi-tui 0.84.4's `TuiMainScreen.doRender`, overlays are composited into the rendered lines **before** the differential compare (`packages/tui/src/tui-main-screen.ts:267`), and that composited array is then stored as `previousLines` — at every assignment site, not only the clearing one (`:315` full render, `:441` deleted-lines path, `:612` the ordinary differential path).
+In pi-tui 0.84.4's `TuiMainScreen.doRender`, overlays are composited into the rendered lines **before** the differential compare (`packages/tui/src/tui-main-screen.ts:267`), and that composited array is then stored as `previousLines` — at every assignment site, not only the clearing one (`:314` full render, `:440` deleted-lines path, `:611` the ordinary differential path).
 The renderer's model of the transcript at those rows *is* the overlay.
 
 Differential rendering can only repair rows still on screen.
@@ -43,7 +43,7 @@ Measured on a 24-row terminal with a 10-line centered overlay, by the script bel
 | 10                       | 171 of 576                     |
 | 25                       | 590                            |
 
-The threshold of 8 is the distance from the overlay's top edge to the top of the screen — a 10-line box centered in 24 rows sits at row `floor((24 - 10) / 2) = 7` — so it is geometry, not chance.
+The threshold is geometry, not chance: a 10-line box centered in 24 rows sits at screen row `floor((24 - 10) / 2) = 7`, so a row beneath its top edge must travel 8 rows to leave the screen entirely — one more than the distance to the top.
 An identical control run without the overlay commits none.
 
 This is why the symptom is intermittent, and why [#733] reports it as worst during tool calls: tool output arrives in chunks.
@@ -204,7 +204,7 @@ Title: Regular-mode overlays composite into the scrollback buffer, baking chrome
 
 In `TuiMainScreen.doRender`, overlays are composited into `newLines` before the
 differential compare, and that composited array becomes `previousLines`
-(`tui-main-screen.ts:267`, assigned at `:315`, `:441`, and `:612`). The renderer's
+(`tui-main-screen.ts:267`, assigned at `:314`, `:440`, and `:611`). The renderer's
 model of the transcript at those rows is the overlay.
 
 While output is appended a line at a time the band is repaired as it moves, so
@@ -214,7 +214,8 @@ with the chrome in it, and differential rendering can no longer reach it.
 
 Measured on 0.84.4, 24-row terminal, 10-line centered overlay: zero contamination
 for appends of 7 lines or fewer; 57 rows at 8; 171 of 576 at 10. The threshold of 8
-is the distance from the overlay's top edge to the top of the screen. An identical
+is one more than the distance from the overlay's top edge to the top of the screen,
+which is the row count needed to carry a row off screen. An identical
 control run without the overlay commits none.
 
 Repro script, public API only, no monorepo checkout needed: <attached>

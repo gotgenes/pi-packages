@@ -35,8 +35,9 @@ Filed [#874] for the repo's other `overlay: true` call site, posted a verified n
 - **The correct assertion was at commit time, not on final state.**
   `previousLines` is rebuilt each frame, so the renderer's model self-corrects; what the terminal keeps is whatever a row held at the last frame it was still on screen.
   Two failed attempts came from asserting on the final buffer.
-- **`previousLines = newLines` occurs at three sites**, not one — `tui-main-screen.ts:315`, `:441`, `:612`.
+- **`previousLines = newLines` occurs at three sites**, not one — `tui-main-screen.ts:314`, `:440`, `:611` in the installed 0.84.4.
   I had originally read only the `fullRender` assignment, which understated the claim.
+  These line numbers were first recorded as 315/441/612, read from the `../../pi` checkout rather than the pinned dependency; see the TDD stage entry.
 - **Verified the plan's own appendix rather than trusting it**: extracted the fenced script back out of the committed plan and ran it, confirming an identical result (171 contaminated rows, control 0).
 - Scope held at one package.
   The `pi-permission-system` config modal is the same mechanism but needs a different answer, because it asks for a fixed 82-column width the non-overlay path does not offer — so it is [#874], not a step here.

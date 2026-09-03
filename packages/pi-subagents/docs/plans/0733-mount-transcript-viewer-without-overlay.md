@@ -68,7 +68,7 @@ Three constants govern layout today:
 
 ### The upstream mechanism, as measured
 
-In `TuiMainScreen.doRender` (pi-tui 0.84.4), overlays are composited into `newLines` before the differential compare, and that composited array becomes `previousLines` — at all three assignment sites (`:315` full render, `:441` deleted-lines path, `:612` the ordinary differential path).
+In `TuiMainScreen.doRender` (pi-tui 0.84.4), overlays are composited into `newLines` before the differential compare, and that composited array becomes `previousLines` — at all three assignment sites (`:314` full render, `:440` deleted-lines path, `:611` the ordinary differential path).
 `TuiAltScreen` composites into a bounded `screen` buffer with no scrollback behind it, so this is a regular-mode defect only.
 
 Planning measured the precondition rather than asserting it, and the first two attempts at a reproduction **failed**, which corrected the issue body's account:
@@ -87,7 +87,7 @@ Measured on a 24-row terminal with a 10-line centered overlay (script in ADR 000
 | 10                       | 171 of 576                 |
 | 25                       | 590                        |
 
-The threshold of 8 is the distance from the overlay's top edge to the top of the screen (`floor((24 - 10) / 2) = 7`), so it is geometry rather than chance.
+The threshold is geometry rather than chance: the box sits at screen row `floor((24 - 10) / 2) = 7`, so a row beneath its top edge must travel 8 rows to leave the screen — one more than the distance to the top.
 An identical control run without the overlay commits none.
 On the real viewer, whose box is 70% of the terminal height, the threshold is about 7 lines — which nearly any tool call clears, and which is why the issue reports the symptom as worst during tool calls.
 
