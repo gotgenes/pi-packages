@@ -806,6 +806,9 @@ Steps 2, 6, and 8 have design-dependent shapes and are verified by their plans' 
   A child-initiated mid-run channel is the half Step 8's completed-child scope leaves open; the parent-side reply channel (`steer_subagent`) already exists, so the residual is the child's ability to pause and signal.
 - [#870] — filed by Step 10's planning; becomes Step 12 by operator decision.
   Step 10 holds a question-ending child's workspace open, moving its disposal to an edge with no result text to carry `resultAddendum`; the post-result delivery channel that fixes it is a peer-sized piece of the same delivery spine, not a line in Step 10's bug fix.
+- [#871] — filed by Step 11's planning; becomes Step 13 by operator decision.
+  A fail-open one layer below the allowlist Step 11 appends to: `tools: none` parses to an empty list and then resolves to the full built-in set, so an author who asked for no tools receives `edit`, `write`, and `bash`.
+  Independent of Step 11's own work, which appends over whatever base list resolution produces.
 - [#791] — deferred by operator decision (offered and declined): small self-contained warning, suitable for pickup outside a phase.
 - [#733] — deferred: TUI overlay defect requiring SDK-level rendering investigation, unrelated to this phase's cause.
 - [#755], [#711], [#636], [#695], [#676], [#660] — deferred: feature/UX requests that do not gate a structural phase ([#660] overlaps [#695]/[#676]).
@@ -1061,6 +1064,20 @@ For `@gotgenes/pi-subagents-worktrees` that string is the only thing naming the 
 
 Release: independent
 
+#### Step 13: Resolve `tools: none` to no tools ([#871])
+
+**Cause:** `AgentTypeRegistry.getToolNamesForType` picks with `config?.toolNames?.length ? config.toolNames : [...BUILTIN_TOOL_NAMES]`, so a deliberate empty list takes the same branch as an omitted key.
+The frontmatter parser is correct and `test/config/custom-agents.test.ts` pins `tools: none` to `[]`; the distinction is lost one layer down, and the child session's SDK allowlist becomes the full built-in set.
+It fails open — the tools silently granted include `edit`, `write`, and `bash`.
+
+- **Smell:** Category C (a truthiness check standing in for a three-valued distinction) plus `bug`.
+- **Target:** `src/config/agent-types.ts` (`getToolNamesForType`), `test/config/agent-types.test.ts`, which covers the omitted-key fallback, an explicit list, and an unknown type but has no empty-list case.
+- **Outcome:** an agent declaring `tools: none` runs with no tools and the omitted-key fallback is unchanged, pinned by a test for each of the three inputs (absent, empty, listed).
+- **Commit type:** `fix:`.
+- **Impact 3 / Risk 1 / Priority 15.**
+
+Release: independent
+
 ### Step dependencies
 
 ```mermaid
@@ -1074,6 +1091,7 @@ flowchart TD
     S8 --> S11["Step 11 (#858)<br/>Mid-run channel"]
     S10["✅ Step 10 (#857)<br/>Workspace-backed resume"] -.informs.-> S11
     S10 --> S12["Step 12 (#870)<br/>Post-result addendum delivery"]
+    S13["Step 13 (#871)<br/>Empty tool allowlist"]
 ```
 
 ### Parallel tracks
@@ -1082,6 +1100,7 @@ flowchart TD
 - **Track B — Prompt assembly:** Step 5 (fully independent).
 - **Track C — Widget lifecycle:** Steps 6 → 9 (independent of the other tracks; Step 6 complements Step 1 — parity makes SDK agents _eligible_, this makes the widget _present_ — and Step 9 releases what Step 6 acquires).
 - **Track D — Result delivery and ask-back:** Steps 7 → 8 → 11, with Step 10 → 12 joining as a resume-path fix and the residual it creates, Step 10 also informing Step 11 (Steps 7 → 8 is soft ordering; 8 → 11 and 10 → 12 are hard).
+- **Track E — Agent config resolution:** Step 13 (fully independent; it corrects the base list Step 11 appends to, but neither step needs the other).
 
 ### Release batches
 
@@ -1089,8 +1108,8 @@ flowchart TD
   Step 3 is `fix!:` and Step 4 is `refactor!:` with a `BREAKING CHANGE:` footer.
   The two landed in the other order, so Step 4 completed the batch: Step 3's release PR stayed open across it, and both breaking changes ship under the one major bump Step 3's `fix!:` opened.
   Step 2 was provisionally batched here in case its required/optional decision came out breaking; it did not — `SubagentRecord` is produced, never implemented, so its widening is semver-minor and it left the batch as the batch's own line anticipated.
-- Independently releasable: Steps 1, 2, 5, 6, 7, 8, 9, 10, 11.
-  Steps 1, 5, 6, 7, 9, 10 are `fix:`, Step 2 is `feat:`, and Steps 8 and 11 are `feat:` — each an unhidden release vehicle on its own.
+- Independently releasable: Steps 1, 2, 5, 6, 7, 8, 9, 10, 11, 12, 13.
+  Steps 1, 5, 6, 7, 9, 10, 12, 13 are `fix:`, Step 2 is `feat:`, and Steps 8 and 11 are `feat:` — each an unhidden release vehicle on its own.
 
 ## Refactoring history
 
@@ -1208,5 +1227,6 @@ The upstream test suite is run periodically as a regression canary for the sessi
 [#857]: https://github.com/gotgenes/pi-packages/issues/857
 [#858]: https://github.com/gotgenes/pi-packages/issues/858
 [#870]: https://github.com/gotgenes/pi-packages/issues/870
+[#871]: https://github.com/gotgenes/pi-packages/issues/871
 [ADR-0002]: ../decisions/0002-extensions-on-a-minimal-core.md
 [ADR-0004]: ../decisions/0004-reconsider-ui-direction.md
