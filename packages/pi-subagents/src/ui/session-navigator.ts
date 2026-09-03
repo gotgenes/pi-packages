@@ -230,7 +230,7 @@ export class TranscriptPane implements Component {
    */
   private scrollBounds(width: number): { totalLines: number; viewportHeight: number; maxScroll: number } {
     const totalLines = this.content.lineCount(width);
-    const viewportHeight = this.viewportHeight();
+    const viewportHeight = this.viewportHeight(totalLines);
     return { totalLines, viewportHeight, maxScroll: Math.max(0, totalLines - viewportHeight) };
   }
 
@@ -243,8 +243,13 @@ export class TranscriptPane implements Component {
     return this.renderedWidth ?? this.tui.terminal.columns;
   }
 
-  private viewportHeight(): number {
-    const maxRows = Math.floor((this.tui.terminal.rows * VIEWPORT_HEIGHT_PCT) / 100);
-    return Math.max(MIN_VIEWPORT, maxRows - CHROME_LINES);
+  /**
+   * Rows the transcript gets: what it needs, capped at the pane's share of the
+   * terminal so a long or live transcript cannot crowd out the conversation, and
+   * floored so a short one still reads as a pane.
+   */
+  private viewportHeight(totalLines: number): number {
+    const cap = Math.floor((this.tui.terminal.rows * VIEWPORT_HEIGHT_PCT) / 100) - CHROME_LINES;
+    return Math.max(MIN_VIEWPORT, Math.min(totalLines, cap));
   }
 }

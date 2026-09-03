@@ -113,6 +113,31 @@ describe("TranscriptPane", () => {
     });
   });
 
+  describe("height", () => {
+    // A user message of n rows renders as n + 2 transcript lines.
+    const rowsOf = (n: number) =>
+      [
+        { role: "user", content: Array.from({ length: n }, (_, i) => `r${String(i).padStart(3, "0")}`).join("\n") },
+      ] as unknown as SessionMessage[];
+
+    const paneFor = (messages: SessionMessage[]) =>
+      makePane({ tui: mockTui(40, 80), source: fakeSource({ getMessages: () => messages }) });
+
+    it("takes only the rows its transcript needs", () => {
+      // 12 transcript rows, well under the cap, plus a header and a footer.
+      expect(paneFor(rowsOf(10)).render(80)).toHaveLength(14);
+    });
+
+    it("stops growing at its share of the terminal", () => {
+      // 82 transcript rows clamp to a 26-row viewport: 40 rows * 70%, less chrome.
+      expect(paneFor(rowsOf(80)).render(80)).toHaveLength(28);
+    });
+
+    it("keeps a minimum viewport when there is nothing to show", () => {
+      expect(paneFor([]).render(80)).toHaveLength(5);
+    });
+  });
+
   describe("scroll bounds", () => {
     // The host may lay a component out at a width narrower than the terminal.
     // The terminal here is 200 columns while the component is rendered at 180,
