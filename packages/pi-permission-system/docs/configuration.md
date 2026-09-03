@@ -766,6 +766,9 @@ A tool's identity establishes its direction, and on the bash surface a redirect 
 An access whose direction cannot be established consults **both** surfaces and takes the more restrictive answer.
 That is deliberate: an unproven access is never treated as the narrower one.
 
+A redirect whose *syntax* cannot be established is unproven for the same reason.
+The read-write open `<>` is the case: `tree-sitter-bash` has no node for it, so neither half of the operator can be trusted to describe the whole, and its destination consults both surfaces rather than the one the surviving half would name.
+
 Attribution is per **token**, not per command, so one invocation can do both: in `cat notes.md > /backup/notes.md`, `notes.md` is a read and `/backup/notes.md` is a write.
 A redirect operator's proof is absolute — it overrides whatever the command in front of it proved, because `> out.txt` writes `out.txt` however read-only that command is.
 When the same path is reached twice with disagreeing directions (`cat a.txt > a.txt`), the two fold to unproven, which consults both surfaces.

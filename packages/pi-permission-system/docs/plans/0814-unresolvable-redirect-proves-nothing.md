@@ -55,8 +55,8 @@ There is a second, narrower instance of the same defect.
 - `redirectMayWriteFile` refuses an unresolvable redirect explicitly rather than by accident of which children it happens to carry.
 - The lateral parse-tree navigation this needs stays inside the `tree-sitter` boundary module (`parser.ts`), named once, so no walker hand-rolls it.
 - **Not breaking** (`fix:`, no `!`).
-  Measured on the author's review log (5296 distinct intact bash commands, 3353 carrying a redirect): **1** command (0.019%) changes a redirect attribution, and it lands on a non-path token, so **0** commands newly prompt.
-  This mirrors Phase 14 Step 14's classification (a fail-closed floor typed `fix:` at 0.02% measured cost) rather than Step 16's (`fix!:`, which newly prompted on 3 of 5191 measured commands).
+  Measured on the author's review log (5352 distinct intact bash commands, 2619 whose redirect names a file): **1** command (0.019%) changes a redirect attribution, and it lands on a non-path token, so **0** commands newly prompt. (The population figures here and under Invariants at risk were corrected during implementation, when the shipped instrument replaced the ad-hoc extraction this plan was written from — see `scripts/measure-unresolved-redirects.mjs`.
+  The load-bearing numbers, 1 and 0, did not move.) This mirrors Phase 14 Step 14's classification (a fail-closed floor typed `fix:` at 0.02% measured cost) rather than Step 16's (`fix!:`, which newly prompted on 3 of 5191 measured commands).
 
 ## Non-Goals
 
@@ -252,7 +252,7 @@ Unchanged.
 
 ### `packages/pi-permission-system/scripts/measure-unresolved-redirects.mjs` (new)
 
-- The instrument behind this plan's `1 of 5296` figure, following the header conventions of `measure-statement-operands.mjs`: the transcribed vocabulary, the measurement date, the drift note, and the `node scripts/… [path-to-review-log.jsonl]` usage line.
+- The instrument behind this plan's `1 of 5352` figure, following the header conventions of `measure-statement-operands.mjs`: the transcribed vocabulary, the measurement date, the drift note, and the `node scripts/… [path-to-review-log.jsonl]` usage line.
 - Reports: intact commands, commands carrying a redirect, commands whose redirect attribution changes, and the changed attributions themselves.
 - Not in the package's `files` allowlist, so it does not ship in the tarball.
 
@@ -301,7 +301,7 @@ Every operator test in `describe("output operators")`, `describe("input operator
 
 **The parser's input domain, not the inputs I can picture.**
 The predicate is a matcher over parse shapes, so it was run at planning time over every redirect form in the existing suite (20 resolvable shapes, all `false`) plus every `<>` spelling reachable by varying the descriptor prefix (`<>`, `3<>`, `0<>`, `2<>`), the destination shape (bare word, `~/`-prefixed, absolute, `$VAR`), and the trailing operand (`&1`, `&2`), plus multi-redirect commands in both orders.
-It was then run over the 5296-command review-log corpus, where it flags exactly 1 command — and that one is ADR 0013's known-unparseable valid bash (`git commit -F - <<'MSG' 2>&1 | tail -4`), not a `<>` at all.
+It was then run over the review-log corpus, where it flags exactly 1 command — and that one is ADR 0013's known-unparseable valid bash (`git commit -F - <<'MSG' 2>&1 | tail -4`), not a `<>` at all.
 
 ## Invariants at risk
 
@@ -312,7 +312,7 @@ It was then run over the 5296-command review-log corpus, where it flags exactly 
 | The wrapper floor is exempted only when the enclosing statement provably writes no file                                                            | Step 3 ([#803])        | `command-enumeration.test.ts`, `wrapper-analysis.test.ts`, `composition-root.test.ts` yolo-reconciliation tests | `redirectedScope` reads `redirectMayWriteFile`, which only ever gets *more* refusing. Run all three files, not just the redirect tests |
 | A path token whose effect cannot be proven consults both directional surfaces, most-restrictive                                                    | ADR 0013 §10 base case | `effect.ts`'s `mergeTokenEffects`; the bash gate tests                                                          | This change produces more unproven tokens; it changes no consumer of them                                                              |
 
-**Quantitative baseline, measured at `78f7a287`:** 5296 distinct intact bash commands in the local review log, 3353 carrying a redirect, 1 (0.019%) changing a redirect attribution (`"tail": write → unproven`), 0 newly prompting.
+**Quantitative baseline, measured at `78f7a287`:** 5352 distinct intact bash commands in the local review log, 2619 whose redirect names a file, 1 (0.019%) changing a redirect attribution (`"tail": write → unproven`), 0 newly prompting.
 Re-run the instrument at implementation time rather than quoting these — the log grows with use, and the figure is scoped to one corpus and one config.
 
 ## TDD Order
