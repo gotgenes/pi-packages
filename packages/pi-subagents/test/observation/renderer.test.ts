@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
-import type { NotificationDetails } from "#src/observation/notification";
+import type { NotificationDetails, UpdateDetails } from "#src/observation/notification";
 import {
   buildPreviewLines,
   buildStatsParts,
   createNotificationRenderer,
+  createUpdateRenderer,
   resolveStatusPresentation,
 } from "#src/observation/renderer";
 
@@ -234,5 +235,53 @@ describe("createNotificationRenderer", () => {
     const text = renderText(result);
     expect(text).toContain("7 tool uses");
     expect(text).toContain("5.0k token");
+  });
+});
+
+describe("createUpdateRenderer", () => {
+  function makeUpdate(overrides: Partial<UpdateDetails> = {}): UpdateDetails {
+    return {
+      id: "agent-1",
+      description: "Test agent",
+      message: "The bug is in the retry wrapper.",
+      ...overrides,
+    };
+  }
+
+  it("returns undefined when message has no details", () => {
+    const renderer = createUpdateRenderer();
+    expect(renderer({ details: undefined }, { expanded: false }, stubTheme())).toBeUndefined();
+  });
+
+  it("draws a running agent as active rather than finished", () => {
+    const renderer = createUpdateRenderer();
+    const text = renderText(renderer({ details: makeUpdate() }, { expanded: false }, stubTheme()));
+
+    // The completion renderer's vocabulary would say "completed" here, which is
+    // the reason this renderer exists.
+    expect(text).toContain("[info:●]");
+    expect(text).toContain("**Test agent**");
+    expect(text).toContain("update");
+    expect(text).not.toContain("completed");
+  });
+
+  it("shows the first line only when collapsed", () => {
+    const renderer = createUpdateRenderer();
+    const text = renderText(
+      renderer({ details: makeUpdate({ message: "headline\nbody" }) }, { expanded: false }, stubTheme()),
+    );
+
+    expect(text).toContain("headline");
+    expect(text).not.toContain("body");
+  });
+
+  it("shows every line when expanded", () => {
+    const renderer = createUpdateRenderer();
+    const text = renderText(
+      renderer({ details: makeUpdate({ message: "headline\nbody" }) }, { expanded: true }, stubTheme()),
+    );
+
+    expect(text).toContain("headline");
+    expect(text).toContain("body");
   });
 });
