@@ -750,24 +750,37 @@ describe("Subagent — workspaceDisposed", () => {
 
 const ADDENDUM = "\n\n---\nsaved to branch foo";
 
-/** Run an agent under a workspace provider to a terminal turn-loop result. */
-async function runWithWorkspace(result: Partial<TurnLoopResult> & { responseText: string }) {
-	const { factory, stub } = createFactory();
-	stub.runTurnLoop.mockResolvedValue({ aborted: false, steered: false, ...result });
+/**
+ * Run an agent under a workspace provider to a terminal turn-loop result.
+ *
+ * A `question` is asked the way a real child asks one: by calling the recorder
+ * the assembly factory installed as `ask_parent`, from inside the turn loop.
+ */
+async function runWithWorkspace(
+	result: Partial<TurnLoopResult> & { responseText: string; question?: string },
+) {
+	const stub = createSubagentSessionStub();
+	let askParent: ((question: string) => void) | undefined;
+	const factory = async (params: CreateSubagentSessionParams) => {
+		askParent = params.askParent;
+		return toSubagentSession(stub);
+	};
+	stub.runTurnLoop.mockImplementation(() => {
+		if (result.question !== undefined) askParent?.(result.question);
+		return Promise.resolve({ aborted: false, steered: false, ...result });
+	});
 	const workspace = makeWorkspace("/ws/dir", { resultAddendum: ADDENDUM });
 	const agent = createRunnableAgent({
 		createSubagentSession: factory,
 		workspaceProvider: makeWorkspaceProvider(workspace),
 	});
 	await agent.run();
-	return { agent, workspace, stub };
+	return { agent, workspace, stub, ask: (question: string) => askParent?.(question) };
 }
 
 /** Run an agent to a question-ending completion, so its workspace is still held. */
 function heldWorkspaceAgent() {
-	return runWithWorkspace({
-		responseText: "Mapped the configs.\n<question-for-parent>\nWhich one?\n</question-for-parent>",
-	});
+	return runWithWorkspace({ responseText: "Mapped the configs.", question: "Which one?" });
 }
 
 describe("Subagent — workspace hold for a declared question", () => {
@@ -782,7 +795,8 @@ describe("Subagent — workspace hold for a declared question", () => {
 
 	it("disposes an aborted run that declared a question", async () => {
 		const { agent, workspace } = await runWithWorkspace({
-			responseText: "<question-for-parent>\nStill stuck?\n</question-for-parent>",
+			responseText: "",
+			question: "Still stuck?",
 			aborted: true,
 		});
 		expect(workspace.dispose).toHaveBeenCalledWith({ status: "aborted", description: "run test" });
@@ -792,7 +806,8 @@ describe("Subagent — workspace hold for a declared question", () => {
 
 	it("disposes a steered run that declared a question", async () => {
 		const { agent, workspace } = await runWithWorkspace({
-			responseText: "Partway.\n<question-for-parent>\nWhich one?\n</question-for-parent>",
+			responseText: "Partway.",
+			question: "Which one?",
 			steered: true,
 		});
 		expect(workspace.dispose).toHaveBeenCalledWith({ status: "steered", description: "run test" });
@@ -812,10 +827,11 @@ describe("Subagent — disposing a held workspace", () => {
 	});
 
 	it("keeps holding when the resumed child declares another question", async () => {
-		const { agent, workspace, stub } = await heldWorkspaceAgent();
-		stub.resumeTurnLoop.mockResolvedValue(
-			"Thanks.\n<question-for-parent>\nAnd the fallback?\n</question-for-parent>",
-		);
+		const { agent, workspace, stub, ask } = await heldWorkspaceAgent();
+		stub.resumeTurnLoop.mockImplementation(() => {
+			ask("And the fallback?");
+			return Promise.resolve("Thanks.");
+		});
 
 		await agent.resume("The project one.");
 
@@ -1116,81 +1132,74 @@ function createResumableAgent(overrides?: {
 	return { agent, session, stub };
 }
 
-describe("Subagent — ask-back", () => {
-	it("records a declared question and strips it from the stored result", async () => {
-		const stub = createSubagentSessionStub();
-		stub.runTurnLoop.mockResolvedValue({
-			responseText:
-				"I mapped the configs.\n\n<question-for-parent>\nWhich one is authoritative?\n</question-for-parent>",
-			aborted: false,
-			steered: false,
+/**
+ * Run an agent whose turn loop calls `ask_parent`, the way a real child does:
+ * through the recorder the assembly factory installed on its session.
+ *
+ * Returns the recorder too, so a resumed run can ask again on the same session.
+ */
+async function runAsking(opts: {
+	responseText: string;
+	question?: string;
+	aborted?: boolean;
+	steered?: boolean;
+}) {
+	const stub = createSubagentSessionStub();
+	let askParent: ((question: string) => void) | undefined;
+	const agent = makeSubagent({
+		execution: makeStubExecution({
+			createSubagentSession: async (params: CreateSubagentSessionParams) => {
+				askParent = params.askParent;
+				return toSubagentSession(stub);
+			},
+		}),
+	});
+	stub.runTurnLoop.mockImplementation(() => {
+		if (opts.question !== undefined) askParent?.(opts.question);
+		return Promise.resolve({
+			responseText: opts.responseText,
+			aborted: opts.aborted ?? false,
+			steered: opts.steered ?? false,
 		});
-		const agent = makeSubagent({
-			execution: makeStubExecution({
-				createSubagentSession: async () => toSubagentSession(stub),
-			}),
-		});
+	});
+	await agent.run();
+	return { agent, stub, ask: (question: string) => askParent?.(question) };
+}
 
-		await agent.run();
+describe("Subagent — ask-back", () => {
+	it("records a declared question and leaves the result body untouched", async () => {
+		const { agent } = await runAsking({
+			responseText: "I mapped the configs.",
+			question: "Which one is authoritative?",
+		});
 
 		expect(agent.pendingQuestion).toBe("Which one is authoritative?");
-		// Rendered once, as the affordance — not twice.
+		// The question never entered the body, so every carrier renders it once,
+		// as the affordance.
 		expect(agent.result).toBe("I mapped the configs.");
 	});
 
 	it("leaves pendingQuestion undefined when the child asked nothing", async () => {
-		const stub = createSubagentSessionStub();
-		stub.runTurnLoop.mockResolvedValue({
-			responseText: "All done.",
-			aborted: false,
-			steered: false,
-		});
-		const agent = makeSubagent({
-			execution: makeStubExecution({
-				createSubagentSession: async () => toSubagentSession(stub),
-			}),
-		});
-
-		await agent.run();
+		const { agent } = await runAsking({ responseText: "All done." });
 
 		expect(agent.pendingQuestion).toBeUndefined();
 		expect(agent.result).toBe("All done.");
 	});
 
 	it("records a question an aborted run declared before it ran out of turns", async () => {
-		const stub = createSubagentSessionStub();
-		stub.runTurnLoop.mockResolvedValue({
-			responseText: "<question-for-parent>\nStill stuck on which?\n</question-for-parent>",
+		const { agent } = await runAsking({
+			responseText: "",
+			question: "Still stuck on which?",
 			aborted: true,
-			steered: false,
 		});
-		const agent = makeSubagent({
-			execution: makeStubExecution({
-				createSubagentSession: async () => toSubagentSession(stub),
-			}),
-		});
-
-		await agent.run();
 
 		expect(agent.status).toBe("aborted");
 		expect(agent.pendingQuestion).toBe("Still stuck on which?");
 	});
 
 	it("completes the round trip: ask, answer by resuming, continue", async () => {
-		const stub = createSubagentSessionStub();
-		stub.runTurnLoop.mockResolvedValue({
-			responseText: "<question-for-parent>\nWhich config?\n</question-for-parent>",
-			aborted: false,
-			steered: false,
-		});
+		const { agent, stub } = await runAsking({ responseText: "", question: "Which config?" });
 		stub.resumeTurnLoop.mockResolvedValue("Used the project config. Done.");
-		const agent = makeSubagent({
-			execution: makeStubExecution({
-				createSubagentSession: async () => toSubagentSession(stub),
-			}),
-		});
-
-		await agent.run();
 		expect(agent.pendingQuestion).toBe("Which config?");
 
 		await agent.resume("The project one.");
@@ -1203,10 +1212,11 @@ describe("Subagent — ask-back", () => {
 	});
 
 	it("records a follow-up question a resumed run declares", async () => {
-		const { agent, stub } = createResumableAgent();
-		stub.resumeTurnLoop.mockResolvedValue(
-			"Thanks.\n<question-for-parent>\nAnd the fallback?\n</question-for-parent>",
-		);
+		const { agent, stub, ask } = await runAsking({ responseText: "", question: "Which config?" });
+		stub.resumeTurnLoop.mockImplementation(() => {
+			ask("And the fallback?");
+			return Promise.resolve("Thanks.");
+		});
 
 		await agent.resume("The project one.");
 

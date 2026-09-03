@@ -19,7 +19,6 @@ import type { WorkspaceProvider } from "#src/lifecycle/workspace";
 import { WorkspaceBracket } from "#src/lifecycle/workspace-bracket";
 import { subscribeSubagentObserver } from "#src/observation/record-observer";
 import type { RunConfig } from "#src/runtime";
-import { parseQuestionForParent } from "#src/session/ask-back";
 import type { CompactionInfo, ParentSessionInfo, SessionMessage, SubagentType, ThinkingLevel } from "#src/types";
 
 /** Per-subagent lifecycle observer — created by SubagentManager for each spawn. */
@@ -405,11 +404,9 @@ export class Subagent {
 	completeResume(result: string): void {
 		// A child answering one question may need to ask another, which holds the
 		// workspace for the next resume the same way the original run did.
-		const { question, body } = parseQuestionForParent(result);
-		const finalResult = question !== undefined
-			? body
-			: body + this.workspaceBracket.dispose({ status: "completed", description: this.description });
-		this.state.setPendingQuestion(question);
+		const finalResult = this.pendingQuestion !== undefined
+			? result
+			: result + this.workspaceBracket.dispose({ status: "completed", description: this.description });
 		this.markCompleted(finalResult);
 		this.listeners.release();
 		this.execution.observer?.onResumeFinished?.(this);
@@ -543,20 +540,15 @@ export class Subagent {
 			: result.steered
 				? "steered"
 				: "completed";
-		// Split the declared question out before the result is stored, so the
-		// question renders once as an affordance rather than twice. The split
-		// precedes disposal because the question is what decides whether the
-		// workspace is disposed at all.
-		const { question, body } = parseQuestionForParent(result.responseText);
 		// A completed child that declared a question is inviting a resume, so its
 		// workspace stays live for the resume to re-enter. Every other outcome ends
-		// the run for good and tears it down here.
-		const holdForResume = finalStatus === "completed" && question !== undefined;
+		// the run for good and tears it down here. The question was recorded by
+		// ask_parent during the run, so it is already on the record here.
+		const holdForResume = finalStatus === "completed" && this.pendingQuestion !== undefined;
 		const finalResult = holdForResume
-			? body
-			: body +
+			? result.responseText
+			: result.responseText +
 				this.workspaceBracket.dispose({ status: finalStatus, description: this.description });
-		this.state.setPendingQuestion(question);
 
 		if (result.aborted) this.markAborted(finalResult);
 		else if (result.steered) this.markSteered(finalResult);
