@@ -90,11 +90,12 @@ describe("TranscriptOverlay", () => {
   });
 
   describe("scroll bounds", () => {
-    // A 200-column terminal renders the overlay at 90% (180 columns, inner 176)
-    // while the full terminal would be inner 196. Text sized between the two
-    // wraps to two rows at the overlay width and one row at the terminal width,
-    // so a layout computed at the wrong width yields the wrong maxScroll.
-    const OVERLAY_WIDTH = 180;
+    // The host may lay a component out at a width narrower than the terminal.
+    // The terminal here is 200 columns while the component is rendered at 180,
+    // and the fixture text is sized to wrap to two rows at the render width but
+    // one row at the full terminal width — so scroll math computed at the wrong
+    // width yields the wrong maxScroll.
+    const LAYOUT_WIDTH = 180;
     const wrappingMessages = Array.from({ length: 30 }, (_, i) => ({
       role: "user",
       content: `${String(i).padStart(3, "0")} ${"wrap".repeat(46)}`,
@@ -105,21 +106,21 @@ describe("TranscriptOverlay", () => {
         tui: mockTui(40, 200),
         source: fakeSource({ getMessages: () => wrappingMessages }),
       });
-      const atBottom = overlay.render(OVERLAY_WIDTH);
+      const atBottom = overlay.render(LAYOUT_WIDTH);
       return { overlay, atBottom };
     }
 
-    it("scrolls up from the bottom on a terminal wider than the overlay", () => {
+    it("scrolls up from the bottom on a terminal wider than the render width", () => {
       const { overlay, atBottom } = overlayAtBottom();
       overlay.handleInput("\x1b[A");
-      expect(overlay.render(OVERLAY_WIDTH)).not.toEqual(atBottom);
+      expect(overlay.render(LAYOUT_WIDTH)).not.toEqual(atBottom);
     });
 
     it("returns to the bottom when scrolling back down", () => {
       const { overlay, atBottom } = overlayAtBottom();
       overlay.handleInput("\x1b[A");
       overlay.handleInput("\x1b[B");
-      expect(overlay.render(OVERLAY_WIDTH)).toEqual(atBottom);
+      expect(overlay.render(LAYOUT_WIDTH)).toEqual(atBottom);
     });
   });
 
