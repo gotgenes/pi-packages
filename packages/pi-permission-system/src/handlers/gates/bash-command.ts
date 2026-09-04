@@ -76,23 +76,36 @@ export function resolveBashCommandCheck(
     };
   }
 
-  const results = commands.map((cmd) => {
-    const base = resolveOnBashSurface(cmd.text, agentName, resolver);
-    const floored =
-      cmd.wrapperKind && base.state === "allow"
-        ? resolveWrapperUnit(cmd, cmd.wrapperKind, base, agentName, resolver)
-        : base;
-    const result = cmd.context
-      ? { ...floored, commandContext: cmd.context }
-      : floored;
-    return cmd.executedUnit === undefined
-      ? result
-      : { ...result, executedUnit: cmd.executedUnit };
-  });
+  const results = commands.map((cmd) =>
+    resolveCommandUnit(cmd, agentName, resolver),
+  );
   return (
     pickMostRestrictive(results) ??
     resolveOnBashSurface(command, agentName, resolver)
   );
+}
+
+/**
+ * Resolve one command unit of the chain: its own `bash`-surface rule, floored
+ * where the enumerator established a reason to floor it, then tagged with the
+ * facts the prompt and the session-approval suggestion read off the winner.
+ */
+function resolveCommandUnit(
+  cmd: BashCommand,
+  agentName: string | undefined,
+  resolver: ScopedPermissionResolver,
+): PermissionCheckResult {
+  const base = resolveOnBashSurface(cmd.text, agentName, resolver);
+  const floored =
+    cmd.wrapperKind && base.state === "allow"
+      ? resolveWrapperUnit(cmd, cmd.wrapperKind, base, agentName, resolver)
+      : base;
+  const contextual = cmd.context
+    ? { ...floored, commandContext: cmd.context }
+    : floored;
+  return cmd.executedUnit === undefined
+    ? contextual
+    : { ...contextual, executedUnit: cmd.executedUnit };
 }
 
 /**
