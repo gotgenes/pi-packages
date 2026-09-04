@@ -54,6 +54,49 @@ Committed the plan at `packages/pi-permission-system/docs/plans/0840-unparsed-ba
 - **Model-performance correlation** — the `tidy-first-assessor` subagent returned two corrections worth more than its tidying: `collectHostedCommands`' fresh scope literal, and `program.test.ts` as an uncounted call site (its `#742` block asserts exact `BashCommand[]` literals via `.toEqual`).
   Both are in the plan; the second was not in the target file list I handed it.
 
+## Stage: Implementation — TDD (2026-09-04T15:35:49Z)
+
+### Session summary
+
+Executed all five planned TDD cycles with no reordering: the Tidy-First extraction, the enumerator marker, the fail-closed floor, the end-to-end pins, and the docs.
+Test count went 4029 → 4086 (+57) in `pi-permission-system`; `check`, root `lint`, full `test`, and `fallow dead-code` are green, and the roadmap's `grep -c '<unparsed'` metric moved 0 → 2 as predicted.
+Pre-completion reviewer: PASS.
+
+### Observations
+
+- **The planned mechanism survived contact with the code.**
+  Every prediction the plan made about which nodes carry the marker held, because planning spiked the real parse trees first rather than reasoning from the enumerator's source.
+- **The step-4 killing mutation did what the plan said it would**, and it is the finding worth keeping: restricting the enumerator to the `ERROR`-node branch — the trigger the roadmap's Target line named — turns the two real corpus commands and the `<>` read-write open red while every malformed row stays green.
+  Without that mutation the change would look indistinguishable from the roadmap's original design.
+- **Two mutation predictions in the plan were wrong, in opposite directions.**
+  The container-exclusion mutation was predicted to kill the clean-chain tests; it cannot, because a clean parse has nothing to mark either way, so a separate "mark unconditionally" mutation was run for those four.
+  And one pin — "leaves an explicit ask on a marked unit unchanged" — survived all five planned mutations, so a sixth (floor every state, not just `allow`) was added to prove it discriminates.
+  Counting reds against the plan's prediction is what surfaced both.
+- **The session-grant exemption needed no code at all**, confirming the correction recorded in the planning stage.
+  `GateRunner` tests `check.source === "session"` before it tests state, so spreading the resolved check is the whole mechanism.
+  It was behavior nothing pinned; the `runner.test.ts` row and the `bash-command.test.ts` row now do, and the M4 mutation (build the floored result fresh instead of spreading) kills exactly one test.
+- **Deviation from the plan's TDD step 1.**
+  `resolveCommandUnit` was extracted with three parameters, not the plan's four — the `command` parameter arrives in step 3 with the caller that reads it, because an unused parameter fails lint.
+  Recorded in the commit body.
+- **Deviation in file scope.**
+  Two source files outside the plan's Module-Level Changes were touched, both comment-only: `src/bash-advisory-check.ts` and `src/handlers/gates/helpers.ts` each enumerate the fail-closed sentinels and would otherwise have gone stale.
+  Isolated to the `docs:` commit.
+- **Hit the heredoc-skips-autoformat trap** documented in `AGENTS.md`: appending the metamorphic block with a shell heredoc bypassed `pi-autoformat`, and root `lint` failed on formatting until `biome check --write` ran on that one file.
+  Appending TypeScript with `Write`/`Edit` would have avoided it.
+
+### Reviewer warnings
+
+PASS with three non-blocking notes, none fixed in code:
+
+- The planning-time corpus measurement (5269 intact commands, 2 with a parse error) could not be independently re-derived — it depends on a local review log outside the repository.
+  The reviewer reported it as unverifiable rather than accepting it, which is the right handling.
+- The `test:` commit body (`4d2f27a4`) undercounts the step-4 mutation's kill set: it names the two `git commit -F` rows, but the mutation also kills the `cat <> rw.txt` row (3 inputs, 8 test failures).
+  Left as written rather than rewriting a mid-stack commit.
+- The plan's `grep -c '<unparsed'` prediction of 2 is correct, but its gloss "the constant and its use" is imprecise — the second match is a doc-comment mention, since the use site is a symbol reference rather than a literal.
+  Corrected here rather than in the plan, per the convention that `Landed:` notes carry corrections.
+
+The reviewer independently reproduced eight of the plan's named mutations and ran a 30-input adversarial spike against the `collectHostedCommands` scope-reset boundary, attacking the marker-completeness invariant; all 30 held.
+
 [#810]: https://github.com/gotgenes/pi-packages/issues/810
 [#821]: https://github.com/gotgenes/pi-packages/issues/821
 [#839]: https://github.com/gotgenes/pi-packages/issues/839
