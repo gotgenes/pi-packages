@@ -18,12 +18,18 @@ export interface ReviewLogger {
 }
 
 /**
+ * Narrowest logging seam — consumers that only write debug-log entries.
+ * Injected into `AgentPrepHandler`.
+ */
+export interface DebugLogger {
+  debug(event: string, details?: Record<string, unknown>): void;
+}
+
+/**
  * Logging seam for consumers that write both debug and review entries.
  * Injected into `ConfigStore`, `ParentAuthorizer`, and `ForwardedRequestServer`.
  */
-export interface DebugReviewLogger extends ReviewLogger {
-  debug(event: string, details?: Record<string, unknown>): void;
-}
+export interface DebugReviewLogger extends ReviewLogger, DebugLogger {}
 
 /**
  * Unified logging + notification surface for handler deps.

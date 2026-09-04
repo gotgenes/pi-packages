@@ -39,8 +39,14 @@ function makeSetup(opts?: {
   toolRegistry?: Partial<ToolRegistry>;
   registry?: ToolRegistry;
 }) {
-  const { session, permissionManager, sessionRules, configStore, forwarding } =
-    makeRealSession();
+  const {
+    session,
+    permissionManager,
+    sessionRules,
+    configStore,
+    forwarding,
+    logger,
+  } = makeRealSession();
   const { resolver } = makeRealResolver(permissionManager, sessionRules);
   if (opts?.toolFullyDenied !== undefined) {
     vi.mocked(permissionManager.isToolFullyDenied).mockReturnValue(
@@ -62,6 +68,7 @@ function makeSetup(opts?: {
     session,
     resolver,
     toolRegistry,
+    logger,
   );
   return {
     handler,
@@ -72,6 +79,7 @@ function makeSetup(opts?: {
     configStore,
     forwarding,
     toolRegistry,
+    logger,
     warmParser,
   };
 }
@@ -382,6 +390,56 @@ describe("AgentPrepHandler.handle", () => {
       await handler.handle(makeEvent(), makeCtx());
 
       expect(registry.getActive()).not.toContain("ls");
+    });
+
+    it("records the withheld tools on the debug stream when the surface changes", async () => {
+      const registry = makeStatefulToolRegistry({ active: LAUNCHED_WITH });
+      const { handler, permissionManager, logger } = makeSetup({ registry });
+      vi.mocked(permissionManager.isToolFullyDenied).mockImplementation(
+        denyOnly("ls"),
+      );
+
+      await handler.handle(makeEvent(), makeCtx());
+
+      expect(logger.debug).toHaveBeenCalledWith("tool_surface.changed", {
+        exposed: ["read", "bash", "edit", "write", "find", "grep"],
+        withheld: ["ls"],
+        restored: [],
+      });
+    });
+
+    it("records the restored tools when a rule is relaxed", async () => {
+      const registry = makeStatefulToolRegistry({ active: LAUNCHED_WITH });
+      const { handler, permissionManager, logger } = makeSetup({ registry });
+      vi.mocked(permissionManager.isToolFullyDenied).mockImplementation(
+        denyOnly("ls"),
+      );
+      await handler.handle(makeEvent(), makeCtx());
+      vi.mocked(logger.debug).mockClear();
+
+      vi.mocked(permissionManager.isToolFullyDenied).mockReturnValue(false);
+      await handler.handle(makeEvent(), makeCtx());
+
+      expect(logger.debug).toHaveBeenCalledWith("tool_surface.changed", {
+        exposed: LAUNCHED_WITH,
+        withheld: [],
+        restored: ["ls"],
+      });
+    });
+
+    it("stays quiet while the surface is unchanged", async () => {
+      const registry = makeStatefulToolRegistry({ active: LAUNCHED_WITH });
+      const { handler, permissionManager, logger } = makeSetup({ registry });
+      vi.mocked(permissionManager.isToolFullyDenied).mockImplementation(
+        denyOnly("ls"),
+      );
+      await handler.handle(makeEvent(), makeCtx());
+      vi.mocked(logger.debug).mockClear();
+
+      await handler.handle(makeEvent(), makeCtx());
+      await handler.handle(makeEvent(), makeCtx());
+
+      expect(logger.debug).not.toHaveBeenCalled();
     });
 
     it("does not activate a registered tool pi left inactive when the policy relaxes", async () => {

@@ -5,6 +5,7 @@ import type {
 import type { TurnPreparation } from "#src/handlers/session-turn-prep";
 import type { PermissionResolver } from "#src/permission-resolver";
 import type { PermissionSession } from "#src/permission-session";
+import type { DebugLogger } from "#src/session-logger";
 import { resolveSkillPromptEntries } from "#src/skill-prompt-sanitizer";
 import { sanitizeAvailableToolsSection } from "#src/system-prompt-sanitizer";
 import { getToolNameFromValue, type ToolRegistry } from "#src/tool-registry";
@@ -43,7 +44,8 @@ export function shouldExposeTool(
  *   session state
  * - `session` — encapsulates all mutable session state and lifecycle operations
  * - `resolver` — owns permission-query surface: `isToolFullyDenied`, skill check
- * - `toolRegistry` — Pi tool API subset (getActive + setActive)
+ * - `toolRegistry` — Pi tool API subset (getAll + getActive + setActive)
+ * - `logger` — records each change to the effective tool surface
  *
  * The active set is recomputed from the session's pre-filter tool surface
  * every turn, so relaxing a rule restores the tool it had withheld (#873).
@@ -54,6 +56,7 @@ export class AgentPrepHandler {
     private readonly session: PermissionSession,
     private readonly resolver: PermissionResolver,
     private readonly toolRegistry: ToolRegistry,
+    private readonly logger: DebugLogger,
   ) {}
 
   // eslint-disable-next-line @typescript-eslint/require-await
@@ -74,6 +77,13 @@ export class AgentPrepHandler {
     const allowedTools = [...surface.exposed];
 
     this.toolRegistry.setActive(allowedTools);
+    if (surface.changed) {
+      this.logger.debug("tool_surface.changed", {
+        exposed: surface.exposed,
+        withheld: surface.withheld,
+        restored: surface.restored,
+      });
+    }
 
     const toolPromptResult = sanitizeAvailableToolsSection(
       event.systemPrompt,
