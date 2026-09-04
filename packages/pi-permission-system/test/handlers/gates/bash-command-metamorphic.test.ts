@@ -225,3 +225,113 @@ describe("bash command gate — a transparent wrapper does not weaken", () => {
     expect(await decide("xargs grep -l foo 2>&1", resolver)).toBe("allow");
   });
 });
+
+/**
+ * The fail-closed property for a parse tree-sitter could not resolve (#840).
+ *
+ * ADR 0013 §10's last combinator clause — any unhandled node type fails closed
+ * — is delivered here by a per-statement marker rather than a program-level
+ * one, so its coverage is an argument about the enumerator's walk instead of a
+ * property of a single boolean. These cases are what verify that argument: the
+ * inputs are drawn from a measurement over 5269 real logged bash commands, not
+ * from the shapes one can picture.
+ */
+describe("bash command gate — a parse it could not resolve fails closed", () => {
+  /** Commands `tree-sitter-bash` 0.25.1 cannot fully parse. */
+  const unresolved: { label: string; command: string }[] = [
+    // Valid bash (`bash -n` accepts it): a heredoc redirect combined with
+    // `2>&1` AND a pipe, though each pairing alone parses. The only shape in
+    // the measured corpus, and the one that really runs — the recovery drops
+    // the piped command from enumeration entirely.
+    {
+      label: "a heredoc redirect with 2>&1 and a pipe",
+      command: "git commit -F - <<'MSG' 2>&1 | tail -4\nmsg\nMSG",
+    },
+    {
+      label: "the same shape piping into a mutator",
+      command:
+        "git add -A . && git commit -F - <<'MSG' 2>&1 | rm -rf /tmp/x\nmsg\nMSG",
+    },
+    // Malformed input, which the shell itself refuses to run. Covered because
+    // the clause is about the parse, not about what bash would accept.
+    { label: "an unbalanced quote", command: "echo 'unbalanced" },
+    { label: "an unterminated if", command: "if true; then echo hi" },
+    { label: "an unterminated for", command: "for f in a b; do echo $f" },
+    { label: "an unterminated brace group", command: "{ echo hi" },
+    {
+      label: "an unterminated heredoc",
+      command: "cat <<'EOF'\nsee `rm -rf x` here",
+    },
+    // The #814 shapes: a read-write open the grammar has no node for, and a
+    // well-formed redirect preceded by an unrelated recovery failure.
+    { label: "a read-write open", command: "cat <> rw.txt" },
+    { label: "an unclosed arithmetic expansion", command: "cat $(( > out.txt" },
+  ];
+
+  /** Commands that parse cleanly, as the control set. */
+  const resolved: string[] = [
+    "cd /repo && git push",
+    "echo hi | tail -2",
+    "cat a > out.txt",
+    "for f in a b; do rm $f; done",
+    "cat <<'EOF'\nplain body\nEOF",
+    "git commit -F - <<'MSG' 2>&1\nmsg\nMSG",
+    "git commit -F - <<'MSG' | tail -4\nmsg\nMSG",
+  ];
+
+  const normalizer = new PathNormalizer(
+    pathFlavorForPlatform(process.platform),
+    "/cwd",
+  );
+
+  describe("the enumerator marks something wherever the parse failed", () => {
+    it.each(unresolved)(
+      "leaves no unmarked-only unit list for $label",
+      async ({ command }) => {
+        // The completeness argument, stated as a property: an errored parse
+        // either yields no units at all (the #452 zero-unit branch fails that
+        // closed) or yields at least one unit the fold can floor. A shape that
+        // errors and leaves every unit clean would be a silent fail-open.
+        const units = (await BashProgram.parse(command, normalizer)).commands();
+        const marked = units.filter((unit) => unit.parseUnresolved === true);
+
+        expect(units.length === 0 || marked.length > 0).toBe(true);
+      },
+    );
+
+    it.each(resolved)("marks nothing in %s", async (command) => {
+      const units = (await BashProgram.parse(command, normalizer)).commands();
+
+      expect(units.filter((unit) => unit.parseUnresolved === true)).toEqual([]);
+    });
+  });
+
+  describe("the gate floors what the enumerator marked", () => {
+    it.each(unresolved)(
+      "asks for $label under a permissive catch-all",
+      async ({ command }) => {
+        // No rule matches anything, so `makeKeyedResolver` answers allow for
+        // every unit — the permissive top-level `*` this clause exists to stop
+        // an unparsed subtree from riding.
+        expect(await decide(command, makeKeyedResolver([]))).toBe("ask");
+      },
+    );
+
+    it.each(resolved)("allows %s under the same catch-all", async (command) => {
+      expect(await decide(command, makeKeyedResolver([]))).toBe("allow");
+    });
+
+    it("still lets an explicit deny decide a command that did not parse", async () => {
+      // The floor clamps `allow` only, so a rule covering a recovered unit is
+      // not masked into an approvable prompt.
+      const resolver = makeKeyedResolver([{ match: "git add", state: "deny" }]);
+
+      expect(
+        await decide(
+          "git add -A . && git commit -F - <<'MSG' 2>&1 | tail -4\nmsg\nMSG",
+          resolver,
+        ),
+      ).toBe("deny");
+    });
+  });
+});

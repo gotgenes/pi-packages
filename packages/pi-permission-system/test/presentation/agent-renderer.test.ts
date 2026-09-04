@@ -127,6 +127,7 @@ describe("renderPolicyDenial", () => {
     "<indirection-bash-wrapper>",
     "<opaque-bash-wrapper>",
     "<unparseable-bash-command>",
+    "<unparsed-bash-subtree>",
   ])("surfaces the %s sentinel as the matched rule", (sentinel) => {
     expect(
       renderPolicyDenial(bashPayload({ matchedPattern: sentinel }), null),

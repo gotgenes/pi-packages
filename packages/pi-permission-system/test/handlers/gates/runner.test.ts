@@ -198,6 +198,54 @@ describe("GateRunner — descriptor path", () => {
     );
   });
 
+  it("auto-approves an unparsed-subtree ask under yolo without prompting", async () => {
+    const { runner, deps } = makeGateRunner({
+      yolo: true,
+      resolveResult: makeCheckResult({
+        state: "ask",
+        source: "bash",
+        toolName: "bash",
+        matchedPattern: "<unparsed-bash-subtree>",
+      }),
+    });
+
+    const result = await runner.run(makeDescriptor(), null);
+
+    expect(result).toEqual({ action: "allow" });
+    expect(deps.escalate).not.toHaveBeenCalled();
+    expect(deps.reporter.emitDecision).toHaveBeenCalledWith(
+      expect.objectContaining({
+        result: "allow",
+        resolution: "auto_approved",
+        origin: "yolo",
+        matchedPattern: "<unparsed-bash-subtree>",
+      }),
+    );
+  });
+
+  it("honours a session grant that survived the unparsed-subtree floor", async () => {
+    // The floor clamps state and leaves `source` alone, and this fast path
+    // tests the source before the state — which is what keeps a grant the
+    // user already gave for this exact command from re-prompting (#840).
+    const { runner, deps } = makeGateRunner({
+      resolveResult: makeCheckResult({
+        state: "ask",
+        source: "session",
+        toolName: "bash",
+        matchedPattern: "<unparsed-bash-subtree>",
+      }),
+    });
+
+    const result = await runner.run(makeDescriptor(), null);
+
+    expect(result).toEqual({ action: "allow" });
+    expect(deps.escalate).not.toHaveBeenCalled();
+    expect(deps.reporter.writeReviewLog).toHaveBeenCalledWith(
+      "permission_request.session_approved",
+      expect.objectContaining({ resolution: "session_approved" }),
+    );
+  });
+
   it("blocks an explicit deny under yolo without prompting", async () => {
     const { runner, deps } = makeGateRunner({
       yolo: true,

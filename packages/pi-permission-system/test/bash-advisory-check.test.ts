@@ -149,6 +149,22 @@ describe("resolveBashAdvisoryCheck", () => {
       expect(result.matchedPattern).toBe("<indirection-bash-wrapper>");
     });
 
+    it("floors a command whose parse could not be resolved", () => {
+      // Valid bash the grammar cannot parse (a heredoc redirect with `2>&1`
+      // and a pipe). The advisory path shares `resolveBashCommandCheck`, so
+      // it must not answer weaker than the gate (#309, #840).
+      const resolver = makeBashResolver();
+
+      const result = resolveBashAdvisoryCheck(
+        "git commit -F - <<'MSG' 2>&1 | rm -rf /tmp/x\nmsg\nMSG",
+        undefined,
+        resolver,
+      );
+
+      expect(result.state).toBe("ask");
+      expect(result.matchedPattern).toBe("<unparsed-bash-subtree>");
+    });
+
     it("fails closed for a non-empty command that parses to zero units", () => {
       const resolver = makeBashResolver();
       const result = resolveBashAdvisoryCheck("> out.txt", undefined, resolver);
