@@ -70,6 +70,28 @@ When the parse fails on *valid* bash, the recovered structure is certainly not t
 The *any unhandled node type: fail closed* clause is therefore the one part of §10 still unwritten, and step 4 made it reachable rather than satisfying it: the unparsed blob is now a first-class unit that a permissive fallback allows.
 Flooring it needs a marker on `BashCommand` plus a sentinel in `bash-command.ts` — the verdict fold's behavior, not the enumerator's — and is tracked as [#840].
 
+### Amendment, 2026-09-04 — the fail-closed clause, and what the paragraph above got wrong
+
+Step 14 ([#840]) implements the clause, and measuring the population first overturned the sentence directly above.
+
+That sentence says the unparsed blob is a first-class unit a permissive fallback allows.
+Measured against the local review log — 5636 deduplicated `bash` commands, 367 excluded as truncated by the 1000-character field cap, **5269 intact** — exactly **2** have a parse error, and **0** emit an `ERROR` node's text as a command unit.
+Both are the shape this record already names as the grammar gap, and in it the `ERROR` sits under `heredoc_redirect → file_redirect`, an `EXECUTION_HOST_TYPES` member the enumerator descends for substitutions and never reads for text.
+So the real failure is not a blob matched permissively but a command **dropped from enumeration entirely**: `git add -A . && git commit -F - <<'MSG' 2>&1 | rm -rf /tmp/x` enumerates `git add -A .` and `git commit -F`, and nothing else.
+
+Two consequences.
+
+The blob population and the running population are disjoint.
+Emitted-`ERROR` units come from input `bash -n` rejects — an unbalanced quote, an unterminated `if` — which the shell refuses to run, so flooring only those would have been a change with no measured effect.
+The clause is therefore triggered by the **parse's health**, not by a node type: `parseUnresolvedWithin` (subtree only, distinct from `parseUnresolvedAt`'s redirect-shaped predecessor clause) marks every unit at or beneath any non-container node whose subtree failed, and `floorUnparsedUnit` clamps a marked `allow` to `ask` with `<unparsed-bash-subtree>`.
+Excluding `program`/`list`/`pipeline` is what keeps the answer per-statement, since those report an error whenever anything anywhere beneath them failed.
+
+The floor is a verdict, and enumeration is a separate question it does not reach.
+A dropped command is consulted against no rule at all, so an explicit `deny` on it does not fire and the floor converts silence into a prompt rather than restoring the denial — narrower than a hard block, because the prompt names the whole command line including the text the parse dropped.
+That residual is [#875], and the three candidate fixes are all outside this record's fold: an upstream grammar fix (no lever; `tree-sitter-bash` 0.25.1 is npm's latest), a heredoc pre-pass introducing a second notion of what a bash program is, or amending §10's `ask` to `deny`.
+
+The rest of §10 — blame propagation, per-node verdict objects, and the effect judgment as a second ordered value — remains unwritten.
+
 §10's *control-flow body* case earns no `BashCommandContext` variant.
 A body runs in the current shell, so it has no distinct execution context to name, and the enum is validated by `BASH_COMMAND_CONTEXTS` in the tolerant reader a serving node uses on a forwarded request read off disk (ADR 0012) — an unknown value there makes an older node reject the whole payload.
 The "why is the gate showing me this fragment" question the variant would have served is §10's blame propagation, still unwritten.
@@ -679,4 +701,5 @@ Issue [#620] carries the judgment slice the chain retains under §7.
 [#806]: https://github.com/gotgenes/pi-packages/issues/806
 [#807]: https://github.com/gotgenes/pi-packages/issues/807
 [#840]: https://github.com/gotgenes/pi-packages/issues/840
+[#875]: https://github.com/gotgenes/pi-packages/issues/875
 [openai/codex#28732]: https://github.com/openai/codex/issues/28732

@@ -10,8 +10,9 @@ import type { PermissionCheckResult } from "#src/types";
  * command-pattern units and routed through the same shared orchestrator the
  * enforcement gate uses (`resolveBashCommandCheck`) — so a chained/nested
  * command returns the most-restrictive decision (`deny > ask > allow`) and
- * inherits the opaque-wrapper floor (#481) and the fail-closed
- * `<unparseable-bash-command>` sentinel (#452), at parity with the gate.
+ * inherits the opaque-wrapper floor (#481) and both fail-closed parse
+ * sentinels — `<unparseable-bash-command>` (#452) and `<unparsed-bash-subtree>`
+ * (#840) — at parity with the gate.
  *
  * In the pre-warm window (`parseBashCommandsSync` returns `null`) it falls back
  * to the pre-#309 whole-string match, so the advisory answer is never *weaker*
