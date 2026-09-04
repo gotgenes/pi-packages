@@ -101,3 +101,18 @@ The reviewer independently reproduced eight of the plan's named mutations and ra
 [#821]: https://github.com/gotgenes/pi-packages/issues/821
 [#839]: https://github.com/gotgenes/pi-packages/issues/839
 [#875]: https://github.com/gotgenes/pi-packages/issues/875
+
+## Stage: Sync (worktree) (2026-09-04T16:06:48Z)
+
+### Session summary
+
+Pre-push checks (`pnpm run lint`, `pnpm fallow dead-code`) both pass with no fixes needed, and the branch is a clean fast-forward candidate onto local `main` (`git merge-base --is-ancestor main HEAD` holds).
+No new commits were added in this stage — the branch lands exactly as the TDD session left it, six commits deep from the plan.
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-840--/2026-09-04T03-28-41-223Z_01a06a76-1f07-7ebe-a062-9d8497599af0.jsonl` — read with `read_session_file({ path: "..." })` for message-level verification at land/retro time.
+
+### Observations
+
+Plan's `**Release:** ship independently` — nothing to batch or defer; `/ship-worktree` should release `pi-permission-system` on landing.
+Between the pre-completion review and this sync, the session explored an unrelated detour (adding a `find /` deny-with-reason rule to the operator's global config, outside this repo) and returned here without committing anything from it — the working tree was already clean at sync start.
+No deferred work or follow-ups beyond what the TDD stage note already recorded ([#875], filed and dispositioned against Phase 14 during planning).
