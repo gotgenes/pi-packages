@@ -7,7 +7,11 @@ import {
 import { SessionTurnPrep } from "#src/handlers/session-turn-prep";
 import type { ToolRegistry } from "#src/tool-registry";
 
-import { makeCheckResult, makeCtx } from "#test/helpers/handler-fixtures";
+import {
+  makeCheckResult,
+  makeCtx,
+  makeToolRegistry,
+} from "#test/helpers/handler-fixtures";
 import {
   makeRealResolver,
   makeRealSession,
@@ -27,15 +31,6 @@ vi.mock("@earendil-works/pi-coding-agent", async (importOriginal) => {
 
 function makeEvent(systemPrompt = "You are an assistant.") {
   return { systemPrompt };
-}
-
-function makeToolRegistry(overrides: Partial<ToolRegistry> = {}): ToolRegistry {
-  return {
-    getAll: vi.fn().mockReturnValue([]),
-    getActive: vi.fn().mockReturnValue([]),
-    setActive: vi.fn(),
-    ...overrides,
-  };
 }
 
 function makeSetup(opts?: {
