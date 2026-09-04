@@ -46,6 +46,7 @@ Load this skill when writing, debugging, or planning tests.
   Use `"key" in overrides` presence checks or `Object.hasOwn(overrides, "key")` for fields where `undefined` is a meaningful test value.
 - When dropping an `as unknown as X` cast from a mock, the type checker starts verifying `mockReturnValue` payloads too, not just method presence.
   Incomplete return-value literals the cast used to mask (e.g. `{ state: "allow" }` for a full `PermissionCheckResult`) fail `pnpm run check`; build them with the shared `make*` fixture builder instead.
+- A disposable spike that constructs a domain object uses the same `test/helpers/` builder the real tests use — locate it with `grep -rn "make<Thing>" test/helpers/` rather than hand-building the literal or guessing the module name (Refs #840).
 
 ### Timers and environment
 

@@ -116,3 +116,75 @@ No new commits were added in this stage — the branch lands exactly as the TDD 
 Plan's `**Release:** ship independently` — nothing to batch or defer; `/ship-worktree` should release `pi-permission-system` on landing.
 Between the pre-completion review and this sync, the session explored an unrelated detour (adding a `find /` deny-with-reason rule to the operator's global config, outside this repo) and returned here without committing anything from it — the working tree was already clean at sync start.
 No deferred work or follow-ups beyond what the TDD stage note already recorded ([#875], filed and dispositioned against Phase 14 during planning).
+
+## Stage: Final Retrospective (2026-09-04T16:23:02Z)
+
+### Session summary
+
+Landed the peer worktree branch on `main` as a clean fast-forward, verified CI, closed #840 with a commit-anchored summary, released `pi-permission-system` v31.0.2, and tore down the worktree.
+The ship half ran 28 tool calls with no rework, no corrections, and nothing skipped.
+This retrospective synthesizes all four stages — planning, TDD, sync, and ship — from the peer transcript recorded in the Sync stage note plus this session's own.
+
+### Observations
+
+#### What went well
+
+- **Measuring the corpus before designing overturned two written artifacts at once.**
+  The planning stage measured 5269 intact real `bash` commands and found the issue's own headline example does not do what the issue says, *and* that the roadmap Step 14 `Target` line named a trigger that fires zero times on real input.
+  Both were prose written before anyone traced the mechanism.
+  This is the `Outcome:`-line hazard `AGENTS.md` records for [#810], caught here at planning time rather than at test-writing time — which is the whole point of the rule.
+- **Counting mutation reds against the plan's prediction caught two wrong predictions in opposite directions.**
+  The container-exclusion mutation could not kill the clean-chain tests (a clean parse has nothing to mark either way), and one pin survived all five planned mutations.
+  A sixth mutation was added to prove that pin discriminates.
+  Neither would have surfaced from a green suite; both surfaced from comparing the red *count* to the plan's named kill set.
+- **Rendering the real output caught a defect that inspection would not have.**
+  During the mid-session `find /` detour, building the actual denial sentence exposed a double period — `reasonClause` appends its own `.`, so a config reason ending in one renders `resources..`.
+  The rule that follows is general: a config value that feeds a rendered sentence has to be rendered, not read.
+- **Correcting a false statement already delivered to the operator.**
+  The planning stage's second `ask_user` gate claimed a floored unit re-prompts every invocation even after a session grant.
+  That was true of the clamp and false of the system — `GateRunner` tests `check.source === "session"` before it tests state.
+  The session found this while writing the plan's Risks section, corrected it in the retro, and added the test that pins the behavior nothing had pinned.
+
+#### What caused friction (agent side)
+
+- `rabbit-hole` — during the `find /` detour, six consecutive tool calls went into hand-building a `PromptPermissionDetails` payload for a throwaway spike, patching one missing required field at a time (`requester`, then the payload shape, then the helper's module name guessed as `prompt-payload-fixtures` instead of `prompt-details-fixtures`).
+  The pivot to the existing `test/helpers/` builder was correct and self-identified, but arrived after five failed attempts, and even then the module path was guessed rather than grepped, costing two more calls.
+  Impact: roughly six wasted tool calls in the detour; no rework to committed artifacts, since every spike file was removed and the working tree stayed clean.
+- `instruction-violation` (self-identified) — appended the metamorphic test block with a shell heredoc, bypassing `pi-autoformat`, and root `lint` failed on formatting until `biome check --write` ran on that one file.
+  `AGENTS.md` documents this exact trap ("append source with `Write`/`Edit` too, not just markdown").
+  Impact: one extra fix call; no rework.
+  Notable as a **recurrence** — the rule exists, is specific, and was still missed, which is a salience signal rather than a coverage gap.
+- `instruction-violation` (self-identified) — an `Edit` call carried a stray `oldText2`/`newText2` key pair, which the tool silently ignores while still reporting success.
+  The session caught it immediately and verified both intended edits had landed.
+  Impact: one verification call; the `AGENTS.md` rule ("count reported blocks against intended edits") worked exactly as written.
+
+#### What caused friction (user side)
+
+- None on the ship path.
+  The `find /` request arrived mid-stage — after the pre-completion review, before `/sync-worktree` — and was handled cleanly with the working tree left clean, but interleaving an unrelated config investigation into an implementation session is the kind of context switch that costs more than it appears to.
+  Raising it as a separate session after the land would have cost nothing and kept the stage boundary crisp.
+- The detour turned out to be a **premise correction**, not a task: the operator believed `find /` was ungated, and it was already denied by an existing `"find / *"` rule.
+  Checking the live config first would have reframed the request from "add this" to "add a reason to this" before any work started.
+
+### Diagnostic details
+
+- **Model-performance correlation** — planning and TDD ran on `claude-opus-5` (judgment-heavy: a measurement that overturned the issue's diagnosis, three `ask_user` design gates, six mutation rounds) — appropriate.
+  Sync and ship ran on `claude-sonnet-5` (deterministic gate sequences with no design decisions) — also appropriate, and the ship stage's zero-rework run supports it.
+  Two subagents dispatched, both in the peer session: `tidy-first-assessor` at planning (returned two corrections worth more than its tidying — a scope-literal bug and an uncounted call site not in the file list it was handed) and `pre-completion-reviewer` at TDD close (PASS; independently reproduced eight named mutations and ran a 30-input adversarial spike).
+  No mismatches.
+- **Escalation-delay tracking** — one sequence over the threshold: the six-call fixture-construction loop described above.
+  The signal to stop was available at attempt two, when the second missing required field appeared; the correct move was `grep -rn "makePromptPayload" test/helpers/` before writing the first spike, which is what eventually resolved it.
+- **Unused-tool detection** — that same loop had `colgrep` and a plain `grep` over `test/helpers/` available from the start and used neither until call five.
+  No subagent was warranted; this was a one-grep answer, not a hunt.
+- **Feedback-loop gap analysis** — verification ran incrementally and correctly throughout: `pnpm run check` after each type-touching step, targeted `vitest run` per file at Red and Green, root `lint` before each commit, and the full four-gate baseline before the first TDD step.
+  No gap found.
+
+### Changes made
+
+1. `packages/pi-permission-system/docs/retro/0840-unparsed-bash-subtree-fails-closed.md` — appended this Final Retrospective stage entry.
+2. `.pi/skills/testing/SKILL.md` — added a Test factories bullet requiring a spike that constructs a domain object to locate the shared `test/helpers/` builder by grep before hand-building one.
+
+#### Deferred
+
+- `docs/configuration.md` has no note that a `denyWithReason` value must not end in punctuation — `reasonClause` appends its own period, so a reason ending in `.` renders a double period to the agent (measured during the `find /` detour).
+  Proposed and declined here rather than cutting a patch release for one sentence; fold it into the next change that touches this package's docs.
