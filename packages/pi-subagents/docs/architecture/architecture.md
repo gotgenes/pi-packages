@@ -821,6 +821,8 @@ Steps 2, 6, and 8 have design-dependent shapes and are verified by their plans' 
 - [#733] — deferred: TUI overlay defect requiring SDK-level rendering investigation, unrelated to this phase's cause.
 - [#755], [#711], [#636], [#695], [#676], [#660] — deferred: feature/UX requests that do not gate a structural phase ([#660] overlaps [#695]/[#676]).
 - [#683] — deferred: glyph-audit polish at boy-scout scale.
+- [#876] — filed by operator request outside any phase step; out of scope for the roadmap.
+  Transcript-pane chrome is cosmetic UI polish, unrelated to this phase's front-door contract and delivery-boundary spine, and [ADR 0007](../decisions/0007-transcript-viewer-is-not-an-overlay.md) already settles the constraint it must respect.
 - [#849] — filed by Step 6's planning; adopted as Step 9 (Track C, after Step 6).
   The widget's teardown half: `AgentWidget.dispose()` has no call site, so `session_shutdown` leaves the 80 ms interval and the widget/status registrations live.
   A different mechanism from Step 6's acquisition path, so it is a peer step rather than a fold-in.
@@ -1267,5 +1269,6 @@ The upstream test suite is run periodically as a regression canary for the sessi
 [#870]: https://github.com/gotgenes/pi-packages/issues/870
 [#871]: https://github.com/gotgenes/pi-packages/issues/871
 [#872]: https://github.com/gotgenes/pi-packages/issues/872
+[#876]: https://github.com/gotgenes/pi-packages/issues/876
 [ADR-0002]: ../decisions/0002-extensions-on-a-minimal-core.md
 [ADR-0004]: ../decisions/0004-reconsider-ui-direction.md
