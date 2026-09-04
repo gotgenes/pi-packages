@@ -1046,6 +1046,10 @@ No decline, so the regular improvement rotation continues.
   The original deferral reasoned that Step 4 and its `command_name`-position half change zero path candidates across 4276 real commands, while this one newly asks on `external_directory`, so it did not belong in the same release as an axis that must be non-breaking by construction.
   That reason expired rather than being overruled: the capability-axis batch shipped long ago, so there is no longer a release for it to contaminate, and it ships alone as a `fix!:`.
   The remaining half of the rationale — that it reopens `token-collection.ts`, which Phase 15's redirect slice returns to — argues for landing it *before* that slice rather than after, since the slice would otherwise inherit an unclosed fail-open in the file it rewrites.
+- [#875] — filed by Step 14's planning; deferred to a later phase with recorded rationale.
+  It is Step 14's own residual, and the part the verdict floor structurally cannot reach: a heredoc redirect combined with `2>&1` and a pipe drops the piped command from enumeration entirely, so a `bash:` deny on it is never consulted and Step 14 can only convert the resulting silence into a prompt.
+  Deferred rather than adopted because none of its three candidate fixes is a verdict-fold question — an upstream grammar fix with no lever today (`tree-sitter-bash` is at 0.25.1, npm's latest), a heredoc pre-pass that introduces a second notion of what a bash program is, or an ADR 0013 §10 amendment to hard-deny an unresolved parse.
+  Nothing decays by waiting: after Step 14 a human sees the whole command line, including the text the parse dropped, and decides.
 - [#868] — filed by Step 9's planning; deferred to a later phase with recorded rationale.
   It shares Step 9's file, defect class (Category F), and clearing mechanism — the `authorizerChain` array element carries no `description`/`markdownDescription`, so the one cursor position where a link name is typed completes and hovers nothing — but not Step 9's parentage.
   Step 9 exists because Step 1 created its asymmetry; this gap has been there since `authorizerChain` was added, no Phase 14 step touches the field, and the capability axis has no bearing on it.
@@ -1724,4 +1728,5 @@ Each phase's findings, numbered plan, dependency diagram, and health metrics are
 [#861]: https://github.com/gotgenes/pi-packages/issues/861
 [#868]: https://github.com/gotgenes/pi-packages/issues/868
 [#874]: https://github.com/gotgenes/pi-packages/issues/874
+[#875]: https://github.com/gotgenes/pi-packages/issues/875
 [ADR-0002]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-subagents/docs/decisions/0002-extensions-on-a-minimal-core.md
