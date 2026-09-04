@@ -31,6 +31,11 @@ A dated `Baseline (<date>)` column is a fixed phase-open snapshot recomputed at 
   `shouldExposeTool` asks `isToolFullyDenied` — backed by `isSurfaceFullyDenied` (`src/rule.ts`), which probes each pattern configured on the surface through `evaluate` — not `getToolPermission`, which reports the catch-all alone and withheld `bash: {"*": "deny", "git *": "ask"}` outright (Refs #815).
   Probing through `evaluate` is what makes ordering count: an exception after the `deny` catch-all is reachable, one before it is shadowed.
   Exposure is not authorization — the `tool_call` gate re-evaluates the real value either way.
+  The set that question is asked of is `ToolSurfaceBaseline` (`src/tool-surface-baseline.ts`), owned by `PermissionSession` and reached through `resolveExposedTools`, not `toolRegistry.getActive()` directly: filtering writes its answer back through `setActive`, so narrowing the read-back each turn made the surface monotonically shrink and stranded a tool once its rule was relaxed (Refs #873).
+  The baseline is rebuilt per turn from the tools still active plus the ones this extension's own filtering withheld, so a relaxed rule restores its tool while another party's deactivation sticks, and it grows only from tools observed **active** — never the registry — which is what keeps filtering restrict-only (#385).
+  `resetForNewSession` and `shutdown` reset it; **`reload` must not**, because a reload is exactly when a relaxed policy arrives and reseeding there strands the tool it just un-denied.
+  A restored tool is callable on the turn it returns but is advertised in `Available tools:` one turn later — pi evaluates the base prompt before any handler runs, and `ctx.getSystemPrompt()` inside `before_agent_start` is shadowed to that same chained value, so the line cannot be regenerated in-extension.
+  Each change to the effective surface is recorded as a `tool_surface.changed` debug entry.
 - Keep block/ask/allow decisions reviewable: write to the permission review log by default.
 - Preserve the `/permission-system` slash command name — renaming it is a breaking change.
 - In the flat permission format, `permission["*"]` is the universal fallback; pattern ordering is last-match-wins.
