@@ -49,6 +49,9 @@ function makeSkillEntry(
   };
 }
 
+/** Every tool these tests use stays registered for the whole session. */
+const REGISTERED_TOOLS = new Set(["read", "ls"]);
+
 /** Drive one turn that withholds `deniedTool` from the observed active set. */
 function withhold(
   session: PermissionSession,
@@ -56,14 +59,17 @@ function withhold(
   active: readonly string[],
 ) {
   return session.resolveExposedTools(
-    { active },
+    { active, registered: REGISTERED_TOOLS },
     (toolName) => toolName !== deniedTool,
   );
 }
 
 /** Drive one turn whose policy withholds nothing. */
 function exposeAll(session: PermissionSession, active: readonly string[]) {
-  return session.resolveExposedTools({ active }, () => true);
+  return session.resolveExposedTools(
+    { active, registered: REGISTERED_TOOLS },
+    () => true,
+  );
 }
 
 // ── Tests ──────────────────────────────────────────────────────────────────

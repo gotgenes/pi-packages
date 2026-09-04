@@ -2,6 +2,8 @@
 export interface ToolSurfaceObservation {
   /** Names pi reports active right now (`pi.getActiveTools()`). */
   readonly active: readonly string[];
+  /** Names pi currently has registered (`pi.getAllTools()`). */
+  readonly registered: ReadonlySet<string>;
 }
 
 /** The effective tool surface for one turn, and what changed to produce it. */
@@ -64,11 +66,20 @@ export class ToolSurfaceBaseline {
   /**
    * Reconstruct the pre-filter surface: the tools still active, plus the ones
    * only this extension's own filtering removed, plus anything newly active.
+   *
+   * A withheld tool that has left the registry is forgotten rather than kept as
+   * a restoration candidate, so re-registering it inactive cannot activate it.
+   * The registry is consulted for withheld tools only — an active tool is real
+   * by definition — and an active tool is adopted whatever the registry says,
+   * so a registry that reports nothing can cost restoration candidates but
+   * never removes a tool pi has active.
    */
   private rebuild(observation: ToolSurfaceObservation): readonly string[] {
     const active = new Set(observation.active);
     const baseline = this.baseline.filter(
-      (toolName) => active.has(toolName) || this.withheld.has(toolName),
+      (toolName) =>
+        active.has(toolName) ||
+        (this.withheld.has(toolName) && observation.registered.has(toolName)),
     );
 
     const known = new Set(baseline);

@@ -92,13 +92,20 @@ export class AgentPrepHandler {
   }
 
   private observeToolSurface(): ToolSurfaceObservation {
-    const active: string[] = [];
-    for (const tool of this.toolRegistry.getActive()) {
-      const toolName = getToolNameFromValue(tool);
-      if (toolName) {
-        active.push(toolName);
-      }
-    }
-    return { active };
+    return {
+      active: toolNamesOf(this.toolRegistry.getActive()),
+      registered: new Set(toolNamesOf(this.toolRegistry.getAll())),
+    };
   }
+}
+
+function toolNamesOf(tools: readonly unknown[]): string[] {
+  const names: string[] = [];
+  for (const tool of tools) {
+    const toolName = getToolNameFromValue(tool);
+    if (toolName) {
+      names.push(toolName);
+    }
+  }
+  return names;
 }

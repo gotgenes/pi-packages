@@ -367,6 +367,23 @@ describe("AgentPrepHandler.handle", () => {
       expect(registry.getActive()).not.toContain("ls");
     });
 
+    it("does not reactivate a withheld tool that pi unregistered and re-registered", async () => {
+      const registry = makeStatefulToolRegistry({ active: LAUNCHED_WITH });
+      const { handler, permissionManager } = makeSetup({ registry });
+      vi.mocked(permissionManager.isToolFullyDenied).mockImplementation(
+        denyOnly("ls"),
+      );
+
+      await handler.handle(makeEvent(), makeCtx());
+      registry.unregister("ls");
+      await handler.handle(makeEvent(), makeCtx());
+      registry.register("ls");
+      vi.mocked(permissionManager.isToolFullyDenied).mockReturnValue(false);
+      await handler.handle(makeEvent(), makeCtx());
+
+      expect(registry.getActive()).not.toContain("ls");
+    });
+
     it("does not activate a registered tool pi left inactive when the policy relaxes", async () => {
       const registry = makeStatefulToolRegistry({
         active: PI_DEFAULTS,
