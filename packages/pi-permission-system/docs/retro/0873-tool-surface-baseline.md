@@ -38,5 +38,36 @@ Wrote `packages/pi-permission-system/docs/plans/0873-tool-surface-baseline.md` w
 - No follow-up issues filed.
   The upstream "intended vs effective tool set" accessor was offered as a gate option and not chosen, so filing it would be speculative.
 
+## Stage: Implementation — TDD (2026-09-04T18:09:53Z)
+
+### Session summary
+
+Executed all six plan steps as separate commits: two Tidy-First test preparations, the baseline fix, the unregistered-tool hardening, the debug-log entry, and the doc updates.
+`pi-permission-system` went from 4086 to 4117 tests (+31); `check`, root `lint`, full `test`, and `fallow dead-code` are green.
+Every killing mutation the plan named was applied and reverted, and each killed the class the plan predicted — except one, noted below.
+
+### Observations
+
+- **One plan prediction was wrong, and the mutation check is what caught it.**
+  Step 4's plan claimed that applying the `registered` conjunct to *every* baseline entry, rather than to withheld entries only, would empty the surface when `getAll()` reports nothing.
+  Applying that mutation left every test green: the adoption loop re-appends every observed-active name unconditionally, so the conjunct's placement is semantically equivalent for active tools.
+  The real safety property is the adoption loop, not the conjunct's scope.
+  I corrected the source doc comment in `tool-surface-baseline.ts` to say so, and found the mutation that *does* discriminate — extending the registry check into the adoption loop — which the `keeps every active tool even when the registry reports nothing` test kills.
+  The plan's `Risks and Mitigations` bullet still attributes the guarantee to the narrower mechanism; the plan is a point-in-time artifact, so it is recorded here rather than edited.
+- The Tidy-First assessor's `reload()` correction paid off immediately.
+  `PermissionSession.reload()` deliberately does **not** reset the baseline, and the mutation that adds a reset there re-creates [#873] exactly — that mutation is now pinned by a named test.
+- The stateful `ToolRegistry` double was load-bearing, as the assessor predicted.
+  Both existing doubles are static, and none of the pre-existing two-turn tests would have caught this bug.
+  Modeling `setActiveToolsByName`'s silent drop of unregistered names in the double is what let step 4's tests be written at the handler level rather than only as unit tests.
+- The plan's `registered` field started as a step-4 addition to `ToolSurfaceObservation`, which meant updating every observation literal in the unit tests.
+  A `seen(active, registered = REGISTERED_TOOLS)` helper absorbed it; the first attempt defaulted `registered` to `active`, which silently broke five restore tests because pi keeps a tool registered when it deactivates it.
+- Pre-completion reviewer: **WARN** (1 non-blocking finding).
+
+#### Reviewer warnings
+
+- The plan's `Risks and Mitigations` bullet on a degenerate `getAll()` states a true outcome but attributes it to the same incomplete causal story that the step-4 killing-mutation claim did.
+  Recorded above; no code or doc change needed — the source comment and `docs/architecture/architecture.md` already carry the corrected reasoning.
+
 [#385]: https://github.com/gotgenes/pi-packages/issues/385
 [#437]: https://github.com/gotgenes/pi-packages/issues/437
+[#873]: https://github.com/gotgenes/pi-packages/issues/873
