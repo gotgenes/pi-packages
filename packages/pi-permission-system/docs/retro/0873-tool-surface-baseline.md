@@ -82,6 +82,79 @@ No deferred work or open follow-ups from this branch.
 
 Nothing new beyond the Planning and Implementation stage notes above; this is a clean handoff to the root session.
 
+## Stage: Final Retrospective (2026-09-04T18:24:50Z)
+
+### Session summary
+
+Landed the peer worktree branch on `main` by fast-forward, verified CI, closed [#873] with a curated summary, and released `pi-permission-system-v31.1.0`.
+The issue ran the full four-stage worktree lifecycle — planning, TDD, sync, ship — with no rework, no rebase conflict, and no reviewer-blocking finding.
+The most consequential moment of the whole issue arrived *after* implementation, when the operator asked whether the defect even had a reachable trigger.
+
+### Observations
+
+#### What went well
+
+- **The killing-mutation discipline caught a wrong plan prediction, which is what it exists for.**
+  Step 4's plan claimed that applying the `registered` conjunct to every baseline entry would empty the surface under a degenerate `getAll()`.
+  Applying that mutation left every test green — the adoption loop re-appends observed-active names unconditionally, so the conjunct's placement is semantically equivalent for active tools.
+  The implementing session did not record a pass; it hunted for the mutation that *does* discriminate (extending the registry check into the adoption loop), confirmed the existing test kills it, and corrected the source comment in `tool-surface-baseline.ts`.
+  A green mutation is a finding, and treating it as one converted a plan error into a corrected doc comment rather than a false pin.
+- **The Tidy-First assessor prevented the fix from re-creating the bug it fixed.**
+  The planning agent's design summary claimed `skillEntries` is cleared in two places and proposed following that precedent.
+  It is cleared in three, including `reload()` — and `reload()` is precisely where a relaxed policy can arrive, so following the precedent would have reseeded the baseline from the already-filtered set at the worst possible moment.
+  This is the assessor catching a *factual* error in the design summary it was handed, not proposing a tidying: the value came from it reading the real file against a claim.
+- **A gate option was retracted after the operator had already answered it.**
+  The planning agent offered re-sourcing the prompt via `ctx.getSystemPrompt()` to eliminate the one-turn `Available tools:` lag, then verified `emitBeforeAgentStart` in the pinned 0.79.1 bundle and found `getSystemPrompt` is **shadowed** to return the chained `currentSystemPrompt` — the option does not work at all.
+  It reported the correction unprompted rather than letting the rejected option stand as merely "riskier".
+  The operator's answer was unaffected, so this cost nothing, but the retraction is the behavior worth keeping.
+
+#### What caused friction (agent side)
+
+- `missing-context` — **the plan asserted a trigger mechanism it never verified, and named the wrong one.**
+  Plan line 152 states that `reload()` "is the config-reload path … which is exactly the moment a relaxed policy arrives."
+  The post-implementation trace showed that is not the reporter's path and not the main one: `isToolFullyDenied` calls `resolvePermissions` fresh on every invocation, cached against a stamp built from the **mtimes** of the four policy files (`src/policy-loader.ts` `getFileStamp`), so editing `config.json` and starting any turn is sufficient — no reload, no restart.
+  A second trigger (an agent switch, which re-resolves per `agentName` with no file edit at all) was named in the issue body's closing note and never appeared in the plan.
+  Impact: no rework — the design consequence (do not reset on `reload()`) was correct, and in fact *more* correct than the reasoning supporting it.
+  But the plan's Problem Statement documented the defect's mechanism in depth while leaving its precondition unexamined, and the operator had to ask whether the fix was reachable at all.
+- `missing-context` — **a seam was offered as a gate option before its implementation was read.**
+  `AGENTS.md` already carries this rule (Refs #696): existence in the `.d.ts` is not enough for a seam you design *around*, because a callback's position in the call order and the data live by then are visible only in the compiled `.js`.
+  The planning agent verified the `agent-session.js` half (`setActiveToolsByName` rebuilds the base prompt) and offered the option on that basis, then found the `runner.js` half invalidated it.
+  Impact: added friction but no rework — the correction landed before the plan was written, and the operator's answer did not change.
+  Self-identified.
+- `instruction-violation` — **the ship session spent a tool call on `git rev-parse HEAD | wc -c`.**
+  `AGENTS.md` names this exact command as the anti-pattern (Refs #839): a deterministic command's output shape tests git, not your work; re-resolve the identifiers you *typed* instead.
+  Impact: one wasted tool call, no rework.
+  Self-identified (at retro time, not mid-session) — the rule is present and specific, so this is a salience miss rather than a missing rule.
+- `other` — **the TDD session's own helper default broke five passing tests.**
+  The `seen(active, registered = REGISTERED_TOOLS)` fixture helper was first written with `registered` defaulting to `active`, which silently broke five restore tests, since pi keeps a tool *registered* when it deactivates it.
+  Impact: one debug cycle inside a step; caught immediately by the file-scoped test run.
+  The defaulting choice encoded a domain claim ("deactivated implies unregistered") that the package's own contract contradicts.
+
+#### What caused friction (user side)
+
+- **The trigger question arrived after implementation rather than at the planning gate.**
+  The operator's own framing — "I'm embarrassed to ask this question so late" — undersells it: it is the question that determines whether the fix has a reachable trigger at all, and therefore whether the code is live or dead.
+  It was cheap to answer at sync time (8 tool calls) and would have been just as cheap at the planning gate, where it would additionally have corrected the plan's `reload()` claim before it was written down.
+  The opportunity is symmetric rather than a criticism: the planning gate presented the *fix shape* and the *prompt-lag residual* as its substance and never presented the trigger, so there was nothing in the gate message to prompt the question earlier.
+
+### Diagnostic details
+
+- **Model-performance correlation** — the peer session ran planning and TDD on `anthropic/claude-opus-5`, then switched to `anthropic/claude-sonnet-5` for `/sync-worktree` (mechanical: two gates, a stage note, a rebase) and back to `claude-opus-5` for the operator's trigger question.
+  The root session ran `/ship-worktree` on `claude-sonnet-5` and this retro on `claude-opus-5`.
+  Both subagent dispatches (`tidy-first-assessor` at planning, `pre-completion-reviewer` after the last TDD step) ran on their configured models and each returned a substantive finding.
+  No mismatch: the judgment-heavy stages held opus, and the two mechanical stages that ran on sonnet produced the session's only instruction-violation, which is consistent rather than alarming at one occurrence.
+- **Feedback-loop gap analysis** — no gap.
+  The TDD session ran `pnpm run check` plus a file-scoped `vitest run` inside every step before committing, ran the killing mutation for all six steps, and ran the four end-of-cycle gates (`test`, `check`, root `lint`, `fallow dead-code`) before the docs commit.
+  The green baseline was established with all four gates *before* step 1, which is what made the end-of-cycle `fallow` result interpretable.
+- **Escalation-delay tracking** — no `rabbit-hole` friction points; longest same-target run was the six consecutive mutation-verification calls in TDD step 3, which is the protocol executing, not thrash.
+
+### Changes made
+
+1. `.pi/prompts/plan-issue.md` — extended Gather-context step 6 (already the bug-report step) to require tracing and citing what **triggers** a defect, not only what it does.
+   Attached to step 6 rather than inserted as a new numbered step, because the prompt cross-references "Gather context step 8" for the release recommendation and renumbering would break that reference.
+2. `.pi/prompts/ship-worktree.md` — added a clause to step 4.1 forbidding shape-measurement of the piped `git rev-parse HEAD` output, the session's one instruction-violation.
+   Step 5's re-resolution mandate stays as-is: those SHAs are typed into the close comment, which is where invention actually happens.
+
 [#385]: https://github.com/gotgenes/pi-packages/issues/385
 [#437]: https://github.com/gotgenes/pi-packages/issues/437
 [#873]: https://github.com/gotgenes/pi-packages/issues/873
