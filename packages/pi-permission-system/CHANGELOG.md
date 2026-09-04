@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [31.0.2](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v31.0.1...pi-permission-system-v31.0.2) (2026-09-04)
+
+
+### Bug Fixes
+
+* **pi-permission-system:** prompt on a bash command whose parse could not be resolved ([2665c21](https://github.com/gotgenes/pi-packages/commit/2665c21f483bdaf57cb54826f8e19a1a8da493f3)), closes [#840](https://github.com/gotgenes/pi-packages/issues/840)
+
+### Documentation
+
+* **pi-permission-system:** record the fail-closed floor for an unresolved parse ([33fd390](https://github.com/gotgenes/pi-packages/commit/33fd390106bcae9ed6df324f36b3cf7e01f5e5a7)), closes [#840](https://github.com/gotgenes/pi-packages/issues/840)
+
 ## [31.0.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v31.0.0...pi-permission-system-v31.0.1) (2026-09-03)
 
 
