@@ -32,6 +32,7 @@ import {
 } from "#src/presentation/dialog-renderer";
 import { fitLinesToWidth } from "#src/presentation/line-fitting";
 import type { PromptPayload } from "#src/presentation/prompt-payload";
+import { renderBorderedPanel } from "#src/ui/bordered-panel";
 
 /**
  * Inline `ctx.ui.custom` permission dialog for TUI sessions.
@@ -235,7 +236,11 @@ class PermissionPromptComponent implements Component {
   }
 
   render(width: number): string[] {
-    return fitLinesToWidth(this.renderStep(width), width);
+    return renderBorderedPanel(
+      fitLinesToWidth(this.renderStep(width), width),
+      width,
+      (text) => this.theme.fg("accent", text),
+    );
   }
 
   private renderStep(width: number): string[] {

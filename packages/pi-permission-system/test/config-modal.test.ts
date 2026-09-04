@@ -44,9 +44,11 @@ function createCommandContext(hasUI: boolean): {
   ctx: CommandContextStub;
   notifications: Notification[];
   getCustomCalls(): number;
+  getLastCustomOptions(): unknown;
 } {
   const notifications: Notification[] = [];
   let customCalls = 0;
+  let customOptions: unknown;
 
   return {
     ctx: {
@@ -57,15 +59,17 @@ function createCommandContext(hasUI: boolean): {
         },
         async custom<T>(
           _renderer: (...args: unknown[]) => unknown,
-          _options?: unknown,
+          options?: unknown,
         ): Promise<T> {
           customCalls += 1;
+          customOptions = options;
           return undefined as T;
         },
       },
     },
     notifications,
     getCustomCalls: () => customCalls,
+    getLastCustomOptions: () => customOptions,
   };
 }
 
@@ -235,6 +239,7 @@ test("permission-system command handlers manage config summary, persistence, and
     const modalCtx = createCommandContext(true);
     await definition!.handler("", modalCtx.ctx);
     expect(modalCtx.getCustomCalls()).toBe(1);
+    expect(modalCtx.getLastCustomOptions()).toEqual({ overlay: false });
   } finally {
     rmSync(baseDir, { recursive: true, force: true });
   }
