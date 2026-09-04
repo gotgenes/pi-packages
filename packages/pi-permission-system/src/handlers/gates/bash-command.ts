@@ -40,6 +40,12 @@ import type { PermissionCheckResult } from "#src/types";
  * explicit `deny` covering it denies outright rather than being masked into an
  * approvable prompt (#712).
  *
+ * A *partial* parse failure is the other half of that clause: the units the
+ * recovery produced are enumerated normally, and any one the enumerator marked
+ * {@link BashCommand.parseUnresolved} has its `allow` floored to a synthetic
+ * `ask` naming the whole command (`<unparsed-bash-subtree>`, #840), because
+ * recovered structure is not evidence of what runs.
+ *
  * Pure and synchronous: the (async, tree-sitter) parse happens once in the
  * handler, which passes the decomposed `commands` here.
  */
@@ -51,6 +57,12 @@ const WRAPPER_SENTINEL: Record<WrapperKind, string> = {
   "opaque-payload": "<opaque-bash-wrapper>",
   indirection: "<indirection-bash-wrapper>",
 };
+
+/**
+ * The synthetic `matchedPattern` recorded when a unit the parse could not
+ * resolve has its `allow` floored to `ask` (ADR 0013 §10, #840).
+ */
+const UNPARSED_SUBTREE_SENTINEL = "<unparsed-bash-subtree>";
 
 export function resolveBashCommandCheck(
   command: string,
@@ -77,7 +89,7 @@ export function resolveBashCommandCheck(
   }
 
   const results = commands.map((cmd) =>
-    resolveCommandUnit(cmd, agentName, resolver),
+    resolveCommandUnit(cmd, command, agentName, resolver),
   );
   return (
     pickMostRestrictive(results) ??
@@ -92,6 +104,7 @@ export function resolveBashCommandCheck(
  */
 function resolveCommandUnit(
   cmd: BashCommand,
+  command: string,
   agentName: string | undefined,
   resolver: ScopedPermissionResolver,
 ): PermissionCheckResult {
@@ -100,12 +113,48 @@ function resolveCommandUnit(
     cmd.wrapperKind && base.state === "allow"
       ? resolveWrapperUnit(cmd, cmd.wrapperKind, base, agentName, resolver)
       : base;
+  const unparsed = floorUnparsedUnit(cmd, command, floored);
   const contextual = cmd.context
-    ? { ...floored, commandContext: cmd.context }
-    : floored;
+    ? { ...unparsed, commandContext: cmd.context }
+    : unparsed;
   return cmd.executedUnit === undefined
     ? contextual
     : { ...contextual, executedUnit: cmd.executedUnit };
+}
+
+/**
+ * Floor a unit the parse could not resolve, so a subtree the fold did not
+ * understand cannot ride a permissive rule (ADR 0013 §10, #840).
+ *
+ * Three properties carry the safety argument.
+ *
+ * The result names the **whole** command, not the unit: the reason for the ask
+ * is that part of the command was not understood, and a partial parse can drop
+ * a command from enumeration entirely, so naming the fragment that did parse
+ * withholds exactly what the user needs to judge it. `command` is also the
+ * session-approval pattern, and a fragment there would grant more than the
+ * prompt showed.
+ *
+ * Only an `allow` is floored, so an explicit `deny` or `ask` on the unit
+ * decides instead — and a wrapper unit already floored to `ask` keeps its own,
+ * more specific sentinel.
+ *
+ * The result is built by spreading `resolved`, so a `source: "session"` grant
+ * survives to `GateRunner`'s session fast path, which tests the source before
+ * the state. A grant the user gave for this exact command still holds.
+ */
+function floorUnparsedUnit(
+  cmd: BashCommand,
+  command: string,
+  resolved: PermissionCheckResult,
+): PermissionCheckResult {
+  if (!cmd.parseUnresolved || resolved.state !== "allow") return resolved;
+  return {
+    ...resolved,
+    state: "ask",
+    command,
+    matchedPattern: UNPARSED_SUBTREE_SENTINEL,
+  };
 }
 
 /**

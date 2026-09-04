@@ -541,4 +541,143 @@ describe("resolveBashCommandCheck", () => {
       });
     });
   });
+
+  describe("unresolved-parse floor (#840)", () => {
+    // Valid bash the grammar cannot parse: a heredoc redirect combined with
+    // `2>&1` and a pipe. The recovery drops `rm -rf /tmp/x` from enumeration
+    // entirely, so the unit list below is the whole of what the fold sees.
+    const wholeCommand = "git commit -F - <<'MSG' 2>&1 | rm -rf /tmp/x";
+    const markedUnit = {
+      text: "git commit -F",
+      parseUnresolved: true,
+    } as const;
+
+    it("floors a marked unit from allow to ask with a sentinel pattern", () => {
+      const resolver = makeResolver(bashResult("allow", "git commit -F", "*"));
+
+      const result = resolveBashCommandCheck(
+        wholeCommand,
+        [markedUnit],
+        undefined,
+        resolver,
+      );
+
+      expect(result.state).toBe("ask");
+      expect(result.matchedPattern).toBe("<unparsed-bash-subtree>");
+    });
+
+    it("names the whole command rather than the fragment that parsed", () => {
+      // The reason for the ask is that part of the command was not understood,
+      // so naming the part that was withholds exactly what the user needs.
+      // `deriveDecisionValue` and `deriveSuggestionValue` both read `command`,
+      // so this one field is the prompt text, the decision value, the review-log
+      // value, and the session-approval pattern at once — and `git commit -F`
+      // as a grant would silently cover any later command enumerating that
+      // same fragment.
+      const resolver = makeResolver(bashResult("allow", "git commit -F", "*"));
+
+      const result = resolveBashCommandCheck(
+        wholeCommand,
+        [markedUnit],
+        undefined,
+        resolver,
+      );
+
+      expect(result.command).toBe(wholeCommand);
+    });
+
+    it("keeps an explicit deny on a marked unit", () => {
+      const resolver = makeResolver(
+        bashResult("deny", "git commit -F", "git commit *"),
+      );
+
+      const result = resolveBashCommandCheck(
+        wholeCommand,
+        [markedUnit],
+        undefined,
+        resolver,
+      );
+
+      expect(result.state).toBe("deny");
+      expect(result.matchedPattern).toBe("git commit *");
+    });
+
+    it("leaves an explicit ask on a marked unit unchanged", () => {
+      const resolver = makeResolver(
+        bashResult("ask", "git commit -F", "git *"),
+      );
+
+      const result = resolveBashCommandCheck(
+        wholeCommand,
+        [markedUnit],
+        undefined,
+        resolver,
+      );
+
+      expect(result.state).toBe("ask");
+      expect(result.matchedPattern).toBe("git *");
+    });
+
+    it("does not floor an unmarked unit", () => {
+      const resolver = makeResolver(bashResult("allow", "git commit -F", "*"));
+
+      const result = resolveBashCommandCheck(
+        wholeCommand,
+        [{ text: "git commit -F" }],
+        undefined,
+        resolver,
+      );
+
+      expect(result.state).toBe("allow");
+      expect(result.matchedPattern).toBe("*");
+    });
+
+    it("carries a session grant through the floor", () => {
+      // `GateRunner` tests `check.source === "session"` before it tests state,
+      // so preserving the source is what honours a grant the user already gave
+      // for this exact command. Nothing in the type system says so.
+      const resolver = makeResolver(
+        makeCheckResult({
+          state: "allow",
+          source: "session",
+          command: "git commit -F",
+          matchedPattern: "git commit -F",
+        }),
+      );
+
+      const result = resolveBashCommandCheck(
+        wholeCommand,
+        [markedUnit],
+        undefined,
+        resolver,
+      );
+
+      expect(result.state).toBe("ask");
+      expect(result.source).toBe("session");
+    });
+
+    it("keeps the wrapper sentinel on a unit that is both wrapped and unparsed", () => {
+      // The wrapper floor runs first and already produced an `ask`, so the
+      // more specific diagnosis survives.
+      const resolver = makeResolver(
+        bashResult("allow", "sudo git commit", "*"),
+      );
+
+      const result = resolveBashCommandCheck(
+        wholeCommand,
+        [
+          {
+            text: "sudo git commit",
+            wrapperKind: "indirection",
+            parseUnresolved: true,
+          },
+        ],
+        undefined,
+        resolver,
+      );
+
+      expect(result.state).toBe("ask");
+      expect(result.matchedPattern).toBe("<indirection-bash-wrapper>");
+    });
+  });
 });
