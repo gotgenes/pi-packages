@@ -817,6 +817,9 @@ Steps 2, 6, and 8 have design-dependent shapes and are verified by their plans' 
   Independent of Step 11's own work, which appends over whatever base list resolution produces.
 - [#872] — filed by Step 11's pre-completion review; becomes Step 14 by operator decision.
   Step 11's own residual: the background-only gate it introduced is decided at spawn and never reconsidered at resume, so it does not hold on a path with the same blocking shape it was written to refuse.
+- [#878] — filed by Step 12's planning; becomes Step 15 by operator decision.
+  A carrier names a remediation the extension refuses: a released session's record keeps its `pendingQuestion`, so `get_subagent_result` and the completion nudge still advertise a resume that `AgentTool` declines.
+  The same delivery-boundary family as Steps 5–7 and 12, and a peer-sized piece rather than a line in Step 12's fix, whose plan lists it as an explicit Non-Goal.
 - [#791] — deferred by operator decision (offered and declined): small self-contained warning, suitable for pickup outside a phase.
 - [#733] — deferred: TUI overlay defect requiring SDK-level rendering investigation, unrelated to this phase's cause.
 - [#755], [#711], [#636], [#695], [#676], [#660] — deferred: feature/UX requests that do not gate a structural phase ([#660] overlaps [#695]/[#676]).
@@ -1117,6 +1120,21 @@ A background child's update during a resumed run therefore lands after that resu
 
 Release: independent
 
+#### Step 15: Stop advertising a resume that will be refused ([#878])
+
+**Cause:** `renderQuestionAffordance` renders "Answer by calling subagent with resume" from `pendingQuestion` alone, and nothing clears that field when a resume stops being possible.
+`releaseSession()` leaves it set, so a swept record still advertises the call `AgentTool` refuses as a released session; Step 10's `workspaceDisposed` refusal is a second such path.
+
+- **Smell:** Category C (an affordance derived from one fact when its precondition rests on several) plus `bug`.
+- **Target:** `src/observation/outcome-delivery.ts` (`renderQuestionAffordance`, which today takes only an id and a question), `src/tools/get-result-report.ts` and `src/observation/notification.ts` (its two carriers), and `src/lifecycle/subagent.ts` (whichever record fact the affordance comes to read).
+- **Hard dependency:** after Steps 8, 10, and 11, which together create both refusal paths.
+- **Design decision at plan time:** whether the affordance is suppressed when a resume would be refused, or names what is still possible instead; and whether resumability becomes one record predicate the tool and the carriers share, rather than each re-deriving it.
+- **Outcome:** no carrier names a resume the extension would refuse, pinned by a test for each refusal path (released session and disposed workspace).
+- **Commit type:** `fix:`.
+- **Impact 2 / Risk 2 / Priority 8.**
+
+Release: independent
+
 ### Step dependencies
 
 ```mermaid
@@ -1132,6 +1150,8 @@ flowchart TD
     S10 --> S12["Step 12 (#870)<br/>Post-result addendum delivery"]
     S11 --> S14["Step 14 (#872)<br/>Update gate on resume"]
     S13["Step 13 (#871)<br/>Empty tool allowlist"]
+    S10 --> S15["Step 15 (#878)<br/>Resume affordance honesty"]
+    S11 --> S15
 ```
 
 ### Parallel tracks
@@ -1139,7 +1159,7 @@ flowchart TD
 - **Track A — Front-door contract:** Steps 1 → 2, 3, 4 (the spine; Step 1 unblocks the rest).
 - **Track B — Prompt assembly:** Step 5 (fully independent).
 - **Track C — Widget lifecycle:** Steps 6 → 9 (independent of the other tracks; Step 6 complements Step 1 — parity makes SDK agents _eligible_, this makes the widget _present_ — and Step 9 releases what Step 6 acquires).
-- **Track D — Result delivery and ask-back:** Steps 7 → 8 → 11 → 14, with Step 10 → 12 joining as a resume-path fix and the residual it creates, Step 10 also informing Step 11 (Steps 7 → 8 is soft ordering; 8 → 11, 11 → 14, and 10 → 12 are hard).
+- **Track D — Result delivery and ask-back:** Steps 7 → 8 → 11 → 14, with Step 10 → 12 joining as a resume-path fix and the residual it creates, Step 10 also informing Step 11, and Step 15 joining downstream of both 10 and 11 (Steps 7 → 8 is soft ordering; 8 → 11, 11 → 14, 10 → 12, and 10/11 → 15 are hard).
 - **Track E — Agent config resolution:** Step 13 (fully independent; it corrects the base list Step 11 appends to, but neither step needs the other).
 
 ### Release batches
@@ -1270,5 +1290,6 @@ The upstream test suite is run periodically as a regression canary for the sessi
 [#871]: https://github.com/gotgenes/pi-packages/issues/871
 [#872]: https://github.com/gotgenes/pi-packages/issues/872
 [#876]: https://github.com/gotgenes/pi-packages/issues/876
+[#878]: https://github.com/gotgenes/pi-packages/issues/878
 [ADR-0002]: ../decisions/0002-extensions-on-a-minimal-core.md
 [ADR-0004]: ../decisions/0004-reconsider-ui-direction.md
