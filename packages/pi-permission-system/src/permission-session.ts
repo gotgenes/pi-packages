@@ -20,6 +20,11 @@ import {
   resolveToolPreviewLimits,
   type ToolPreviewFormatterOptions,
 } from "./tool-preview-formatter";
+import {
+  ToolSurfaceBaseline,
+  type ToolSurfaceObservation,
+  type ToolSurfaceResolution,
+} from "./tool-surface-baseline";
 
 /**
  * Encapsulates all mutable session state and exposes operations instead of
@@ -40,6 +45,7 @@ export class PermissionSession implements ToolCallGateInputs {
   private skillEntries: SkillPromptEntry[] = [];
   private knownAgentName: string | null = null;
   private pathNormalizer: PathNormalizer;
+  private readonly toolSurfaceBaseline = new ToolSurfaceBaseline();
 
   constructor(
     private readonly paths: ExtensionPaths,
@@ -108,6 +114,7 @@ export class PermissionSession implements ToolCallGateInputs {
       projectTrusted ? ctx.cwd : undefined,
     );
     this.skillEntries = [];
+    this.toolSurfaceBaseline.reset();
     this.activate(ctx);
   }
 
@@ -118,6 +125,7 @@ export class PermissionSession implements ToolCallGateInputs {
   shutdown(): void {
     this.sessionRules.clear();
     this.skillEntries = [];
+    this.toolSurfaceBaseline.reset();
     this.deactivate();
   }
 
@@ -134,6 +142,23 @@ export class PermissionSession implements ToolCallGateInputs {
       projectTrusted ? this.context?.cwd : undefined,
     );
     this.skillEntries = [];
+    // The tool-surface baseline deliberately survives a reload: a reload is
+    // when a relaxed policy arrives, and reseeding from the already-filtered
+    // active set would strand the tool it just un-denied (#873).
+  }
+
+  // ── Tool surface ───────────────────────────────────────────────────────
+
+  /**
+   * Answer which tools the agent may see this turn, applying `isExposed` to
+   * the session's pre-filter tool surface rather than to the previous turn's
+   * filtered result.
+   */
+  resolveExposedTools(
+    observation: ToolSurfaceObservation,
+    isExposed: (toolName: string) => boolean,
+  ): ToolSurfaceResolution {
+    return this.toolSurfaceBaseline.resolveExposed(observation, isExposed);
   }
 
   // ── Skill entries ──────────────────────────────────────────────────────

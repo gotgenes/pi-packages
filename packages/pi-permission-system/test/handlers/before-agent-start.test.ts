@@ -10,6 +10,7 @@ import type { ToolRegistry } from "#src/tool-registry";
 import {
   makeCheckResult,
   makeCtx,
+  makeStatefulToolRegistry,
   makeToolRegistry,
 } from "#test/helpers/handler-fixtures";
 import {
@@ -36,6 +37,7 @@ function makeEvent(systemPrompt = "You are an assistant.") {
 function makeSetup(opts?: {
   toolFullyDenied?: boolean;
   toolRegistry?: Partial<ToolRegistry>;
+  registry?: ToolRegistry;
 }) {
   const { session, permissionManager, sessionRules, configStore, forwarding } =
     makeRealSession();
@@ -47,7 +49,7 @@ function makeSetup(opts?: {
   }
   // Default check returns allow (for skill-prompt sanitizer via resolver.checkPermission)
   vi.mocked(permissionManager.check).mockReturnValue(makeCheckResult());
-  const toolRegistry = makeToolRegistry(opts?.toolRegistry);
+  const toolRegistry = opts?.registry ?? makeToolRegistry(opts?.toolRegistry);
   const warmParser = vi.fn();
   // A real SessionTurnPrep over the same session: the tool-filtering and
   // prompt-sanitization assertions below read state an activated session owns,
@@ -316,5 +318,70 @@ describe("AgentPrepHandler.handle", () => {
     const wire2 = second.systemPrompt ?? narrowedProse;
     expect(wire1).toBe(narrowedProse);
     expect(wire2).toBe(narrowedProse);
+  });
+
+  describe("policy changes across turns", () => {
+    const PI_DEFAULTS = ["read", "bash", "edit", "write"];
+    const LAUNCHED_WITH = [...PI_DEFAULTS, "ls", "find", "grep"];
+
+    function denyOnly(deniedTool: string) {
+      return (toolName: string) => toolName === deniedTool;
+    }
+
+    it("restores a tool after its deny rule is removed, without a restart", async () => {
+      const registry = makeStatefulToolRegistry({ active: LAUNCHED_WITH });
+      const { handler, permissionManager } = makeSetup({ registry });
+
+      await handler.handle(makeEvent(), makeCtx());
+      expect(registry.getActive()).toEqual(LAUNCHED_WITH);
+
+      vi.mocked(permissionManager.isToolFullyDenied).mockImplementation(
+        denyOnly("ls"),
+      );
+      await handler.handle(makeEvent(), makeCtx());
+      expect(registry.getActive()).toEqual([
+        "read",
+        "bash",
+        "edit",
+        "write",
+        "find",
+        "grep",
+      ]);
+
+      vi.mocked(permissionManager.isToolFullyDenied).mockReturnValue(false);
+      await handler.handle(makeEvent(), makeCtx());
+      expect(registry.getActive()).toEqual(LAUNCHED_WITH);
+    });
+
+    it("keeps a tool withheld for as long as its deny rule stands", async () => {
+      const registry = makeStatefulToolRegistry({ active: LAUNCHED_WITH });
+      const { handler, permissionManager } = makeSetup({ registry });
+      vi.mocked(permissionManager.isToolFullyDenied).mockImplementation(
+        denyOnly("ls"),
+      );
+
+      await handler.handle(makeEvent(), makeCtx());
+      await handler.handle(makeEvent(), makeCtx());
+      await handler.handle(makeEvent(), makeCtx());
+
+      expect(registry.getActive()).not.toContain("ls");
+    });
+
+    it("does not activate a registered tool pi left inactive when the policy relaxes", async () => {
+      const registry = makeStatefulToolRegistry({
+        active: PI_DEFAULTS,
+        registered: LAUNCHED_WITH,
+      });
+      const { handler, permissionManager } = makeSetup({ registry });
+      vi.mocked(permissionManager.isToolFullyDenied).mockImplementation(
+        denyOnly("bash"),
+      );
+
+      await handler.handle(makeEvent(), makeCtx());
+      vi.mocked(permissionManager.isToolFullyDenied).mockReturnValue(false);
+      await handler.handle(makeEvent(), makeCtx());
+
+      expect(registry.getActive()).toEqual(PI_DEFAULTS);
+    });
   });
 });

@@ -8,6 +8,7 @@ import type { PermissionSession } from "#src/permission-session";
 import { resolveSkillPromptEntries } from "#src/skill-prompt-sanitizer";
 import { sanitizeAvailableToolsSection } from "#src/system-prompt-sanitizer";
 import { getToolNameFromValue, type ToolRegistry } from "#src/tool-registry";
+import type { ToolSurfaceObservation } from "#src/tool-surface-baseline";
 
 /** Minimal subset of BeforeAgentStartEvent used by this handler. */
 interface BeforeAgentStartPayload {
@@ -43,6 +44,9 @@ export function shouldExposeTool(
  * - `session` — encapsulates all mutable session state and lifecycle operations
  * - `resolver` — owns permission-query surface: `isToolFullyDenied`, skill check
  * - `toolRegistry` — Pi tool API subset (getActive + setActive)
+ *
+ * The active set is recomputed from the session's pre-filter tool surface
+ * every turn, so relaxing a rule restores the tool it had withheld (#873).
  */
 export class AgentPrepHandler {
   constructor(
@@ -60,22 +64,14 @@ export class AgentPrepHandler {
     this.turnPrep.prepare(ctx);
 
     const agentName = this.session.resolveAgentName(ctx, event.systemPrompt);
-    const activeTools = this.toolRegistry.getActive();
-    const allowedTools: string[] = [];
-
-    for (const tool of activeTools) {
-      const toolName = getToolNameFromValue(tool);
-      if (!toolName) {
-        continue;
-      }
-      if (
+    const surface = this.session.resolveExposedTools(
+      this.observeToolSurface(),
+      (toolName) =>
         shouldExposeTool(toolName, agentName, (t, a) =>
           this.resolver.isToolFullyDenied(t, a),
-        )
-      ) {
-        allowedTools.push(toolName);
-      }
-    }
+        ),
+    );
+    const allowedTools = [...surface.exposed];
 
     this.toolRegistry.setActive(allowedTools);
 
@@ -93,5 +89,16 @@ export class AgentPrepHandler {
     return skillPromptResult.prompt !== event.systemPrompt
       ? { systemPrompt: skillPromptResult.prompt }
       : {};
+  }
+
+  private observeToolSurface(): ToolSurfaceObservation {
+    const active: string[] = [];
+    for (const tool of this.toolRegistry.getActive()) {
+      const toolName = getToolNameFromValue(tool);
+      if (toolName) {
+        active.push(toolName);
+      }
+    }
+    return { active };
   }
 }

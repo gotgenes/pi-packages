@@ -19,6 +19,7 @@ vi.mock("../src/active-agent", () => ({
 
 import type { DEFAULT_EXTENSION_CONFIG } from "#src/extension-config";
 import { win32PathFlavor } from "#src/path/path-flavor";
+import type { PermissionSession } from "#src/permission-session";
 import { SessionApproval } from "#src/session-approval";
 import type { SkillPromptEntry } from "#src/skill-prompt-sanitizer";
 import { resolveToolPreviewLimits } from "#src/tool-preview-formatter";
@@ -46,6 +47,23 @@ function makeSkillEntry(
     normalizedBaseDir: `/${name}`,
     ...overrides,
   };
+}
+
+/** Drive one turn that withholds `deniedTool` from the observed active set. */
+function withhold(
+  session: PermissionSession,
+  deniedTool: string,
+  active: readonly string[],
+) {
+  return session.resolveExposedTools(
+    { active },
+    (toolName) => toolName !== deniedTool,
+  );
+}
+
+/** Drive one turn whose policy withholds nothing. */
+function exposeAll(session: PermissionSession, active: readonly string[]) {
+  return session.resolveExposedTools({ active }, () => true);
 }
 
 // ── Tests ──────────────────────────────────────────────────────────────────
@@ -123,6 +141,15 @@ describe("PermissionSession", () => {
       session.resetForNewSession(makeCtx(), true);
 
       expect(session.getActiveSkillEntries()).toEqual([]);
+    });
+
+    it("forgets the tool-surface baseline, so the new session reseeds from pi", () => {
+      const { session } = createSession();
+      withhold(session, "ls", ["read", "ls"]);
+
+      session.resetForNewSession(makeCtx(), true);
+
+      expect(exposeAll(session, ["read"]).exposed).toEqual(["read"]);
     });
 
     it("starts forwarding with the new context", () => {
@@ -206,6 +233,15 @@ describe("PermissionSession", () => {
       session.shutdown();
 
       expect(session.getActiveSkillEntries()).toEqual([]);
+    });
+
+    it("forgets the tool-surface baseline", () => {
+      const { session } = createSession();
+      withhold(session, "ls", ["read", "ls"]);
+
+      session.shutdown();
+
+      expect(exposeAll(session, ["read"]).exposed).toEqual(["read"]);
     });
 
     it("stops forwarding and deactivates context", () => {
@@ -376,6 +412,17 @@ describe("PermissionSession", () => {
       session.reload(true);
 
       expect(session.getActiveSkillEntries()).toEqual([]);
+    });
+
+    it("keeps the tool-surface baseline, so a relaxed rule restores its tool", () => {
+      // A reload is exactly when a relaxed policy arrives; reseeding the
+      // baseline from the already-filtered active set would strand the tool.
+      const { session } = createSession();
+      withhold(session, "ls", ["read", "ls"]);
+
+      session.reload(true);
+
+      expect(exposeAll(session, ["read"]).exposed).toEqual(["read", "ls"]);
     });
   });
 
