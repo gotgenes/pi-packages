@@ -1,9 +1,9 @@
+import type { ForwardedSessionApproval } from "#src/authority/permission-forwarding";
 import {
   type ApprovalGrant,
   type SessionGrantWidth,
   widenGrant,
-} from "#src/approval-grant";
-import type { ForwardedSessionApproval } from "#src/authority/permission-forwarding";
+} from "./approval-grant";
 
 /**
  * Value object for a session-scoped approval: one or more

@@ -1,4 +1,4 @@
-import type { PromptPayload } from "#src/presentation/prompt-payload";
+import type { PromptPayload } from "./prompt-payload";
 
 /**
  * The payload facts the permission review log persists (ADR 0011 §6).

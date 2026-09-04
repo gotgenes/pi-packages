@@ -10,16 +10,6 @@ import {
 } from "node:fs";
 
 import { type ApprovalGrant, isSessionGrantWidth } from "#src/approval-grant";
-import { asDecisionSource } from "#src/authority/decision-source";
-import { isPermissionDecisionState } from "#src/authority/permission-dialog";
-import {
-  createPermissionForwardingLocation,
-  type ForwardedAccessIntent,
-  type ForwardedPermissionRequest,
-  type ForwardedPermissionResponse,
-  type ForwardedSessionApproval,
-  type PermissionForwardingLocation,
-} from "#src/authority/permission-forwarding";
 import {
   OWNER_ONLY_DIRECTORY_MODE,
   OWNER_ONLY_FILE_MODE,
@@ -27,6 +17,16 @@ import {
 import type { PermissionUiPromptSource } from "#src/permission-events";
 import { asPromptPayload } from "#src/presentation/prompt-payload";
 import type { DebugReviewLogger } from "#src/session-logger";
+import { asDecisionSource } from "./decision-source";
+import { isPermissionDecisionState } from "./permission-dialog";
+import {
+  createPermissionForwardingLocation,
+  type ForwardedAccessIntent,
+  type ForwardedPermissionRequest,
+  type ForwardedPermissionResponse,
+  type ForwardedSessionApproval,
+  type PermissionForwardingLocation,
+} from "./permission-forwarding";
 
 /** Valid `permissions:ui_prompt` source values, for tolerant request reads. */
 const UI_PROMPT_SOURCES = [

@@ -1,8 +1,8 @@
 import { join } from "node:path";
 import type { ApprovalGrant, SessionGrantWidth } from "#src/approval-grant";
-import type { DecisionSource } from "#src/authority/decision-source";
 import type { PermissionUiPromptSource } from "#src/permission-events";
 import type { PromptPayload } from "#src/presentation/prompt-payload";
+import type { DecisionSource } from "./decision-source";
 import type { PermissionDecisionState } from "./permission-dialog";
 import type { SubagentSessionRegistry } from "./subagent-registry";
 

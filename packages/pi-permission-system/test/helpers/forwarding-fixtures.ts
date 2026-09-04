@@ -42,8 +42,8 @@ import {
   type SubagentSessionInfo,
   SubagentSessionRegistry,
 } from "#src/authority/subagent-registry";
-import { makeCheckResult } from "#test/helpers/handler-fixtures";
-import { makePromptPayload } from "#test/helpers/prompt-details-fixtures";
+import { makeCheckResult } from "./handler-fixtures";
+import { makePromptPayload } from "./prompt-details-fixtures";
 
 /** Handle over a temp forwarding directory; register `cleanup` in `afterEach`. */
 export interface ForwardingTempDir {

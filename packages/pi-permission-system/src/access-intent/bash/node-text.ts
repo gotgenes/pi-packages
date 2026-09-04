@@ -1,5 +1,5 @@
-import type { TSNode } from "#src/access-intent/bash/parser";
-import { resolvePlainVariableExpansion } from "#src/access-intent/bash/shell-variable-expansion";
+import type { TSNode } from "./parser";
+import { resolvePlainVariableExpansion } from "./shell-variable-expansion";
 
 /**
  * Node types whose text content is never a command argument, so no path

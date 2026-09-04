@@ -1,7 +1,7 @@
-import { SUBAGENT_ENV_HINT_KEYS } from "#src/authority/permission-forwarding";
-import type { SubagentSessionRegistry } from "#src/authority/subagent-registry";
 import type { PathFlavor } from "#src/path/path-flavor";
 import { readSessionId } from "#src/session-identity";
+import { SUBAGENT_ENV_HINT_KEYS } from "./permission-forwarding";
+import type { SubagentSessionRegistry } from "./subagent-registry";
 
 /**
  * Narrow context for subagent detection — the only session-manager readers

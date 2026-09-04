@@ -1,6 +1,6 @@
-import type { PromptPayload } from "#src/presentation/prompt-payload";
-import { localRequester } from "#src/presentation/prompt-payload";
 import type { SkillPromptEntry } from "#src/skill-prompt-sanitizer";
+import type { PromptPayload } from "./prompt-payload";
+import { localRequester } from "./prompt-payload";
 
 /** A request to load a skill. */
 export function buildSkillAskPayload(

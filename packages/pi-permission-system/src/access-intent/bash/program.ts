@@ -1,14 +1,11 @@
+import type { PathNormalizer } from "#src/path-normalizer";
 import {
   type BashExternalPath,
   BashPathResolver,
   type BashPathRuleCandidate,
-} from "#src/access-intent/bash/bash-path-resolver";
-import {
-  type BashCommand,
-  collectCommands,
-} from "#src/access-intent/bash/command-enumeration";
-import { getParser } from "#src/access-intent/bash/parser";
-import type { PathNormalizer } from "#src/path-normalizer";
+} from "./bash-path-resolver";
+import { type BashCommand, collectCommands } from "./command-enumeration";
+import { getParser } from "./parser";
 
 export type { BashCommand, BashExternalPath, BashPathRuleCandidate };
 

@@ -4,26 +4,6 @@ import type {
   KeybindingsManager,
 } from "@earendil-works/pi-coding-agent";
 import { type Component, Input, matchesKey } from "@earendil-works/pi-tui";
-import { collapsePastedNewlines } from "#src/authority/bracketed-paste";
-import type {
-  DecisionSource,
-  UserDecisionSurface,
-} from "#src/authority/decision-source";
-import {
-  type PermissionPromptDecision,
-  type RequestPermissionOptions,
-  requestPermissionDecisionFromUi,
-  type UnattributedDecision,
-} from "#src/authority/permission-dialog";
-import {
-  initialPromptState,
-  type PromptEvent,
-  type PromptKey,
-  type PromptModelConfig,
-  type PromptViewState,
-  reducePrompt,
-  visibleOptionKeys,
-} from "#src/authority/permission-prompt-decision";
 import {
   completeViewBudget,
   type DialogView,
@@ -32,6 +12,23 @@ import {
 } from "#src/presentation/dialog-renderer";
 import { fitLinesToWidth } from "#src/presentation/line-fitting";
 import type { PromptPayload } from "#src/presentation/prompt-payload";
+import { collapsePastedNewlines } from "./bracketed-paste";
+import type { DecisionSource, UserDecisionSurface } from "./decision-source";
+import {
+  type PermissionPromptDecision,
+  type RequestPermissionOptions,
+  requestPermissionDecisionFromUi,
+  type UnattributedDecision,
+} from "./permission-dialog";
+import {
+  initialPromptState,
+  type PromptEvent,
+  type PromptKey,
+  type PromptModelConfig,
+  type PromptViewState,
+  reducePrompt,
+  visibleOptionKeys,
+} from "./permission-prompt-decision";
 
 /**
  * Inline `ctx.ui.custom` permission dialog for TUI sessions.

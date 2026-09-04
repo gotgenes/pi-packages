@@ -1,8 +1,5 @@
 import type { ForwardedPermissionRequest } from "#src/authority/permission-forwarding";
-import type {
-  PromptPayload,
-  PromptRequester,
-} from "#src/presentation/prompt-payload";
+import type { PromptPayload, PromptRequester } from "./prompt-payload";
 
 /**
  * Build the payload for an ask forwarded up from a subagent.

@@ -1,12 +1,9 @@
 import { classifyToolKind, isMcpCheck } from "#src/access-intent/tool-kind";
-import type {
-  PromptEvidence,
-  PromptPayload,
-} from "#src/presentation/prompt-payload";
-import { localRequester } from "#src/presentation/prompt-payload";
 import type { ToolPreviewFormatter } from "#src/tool-preview-formatter";
 import type { PermissionCheckResult } from "#src/types";
 import { getNonEmptyString, toRecord } from "#src/value-guards";
+import type { PromptEvidence, PromptPayload } from "./prompt-payload";
+import { localRequester } from "./prompt-payload";
 
 /** The facts the per-tool gate holds when it raises an ask. */
 export interface ToolAskFacts {

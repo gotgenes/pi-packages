@@ -1,14 +1,14 @@
 import type { SessionGrantWidth } from "#src/approval-grant";
-import type { DecisionSource } from "#src/authority/decision-source";
-import type { PermissionPromptDecision } from "#src/authority/permission-dialog";
-import type {
-  ForwardedAccessFacts,
-  ForwardedSessionApproval,
-} from "#src/authority/permission-forwarding";
 import type { PromptPayload } from "#src/presentation/prompt-payload";
 import { renderReviewLogFacts } from "#src/presentation/review-log-renderer";
 import type { ReviewLogger } from "#src/session-logger";
 import type { TerminalAuthorizer } from "./authorizer";
+import type { DecisionSource } from "./decision-source";
+import type { PermissionPromptDecision } from "./permission-dialog";
+import type {
+  ForwardedAccessFacts,
+  ForwardedSessionApproval,
+} from "./permission-forwarding";
 
 export type PermissionReviewSource = "tool_call" | "skill_input" | "skill_read";
 

@@ -1,5 +1,5 @@
-import type { TSNode } from "#src/access-intent/bash/parser";
 import type { BashCommandContext } from "#src/types";
+import type { TSNode } from "./parser";
 
 /**
  * AST node types whose interior commands really execute when the shell runs the

@@ -1,5 +1,5 @@
 import type { SessionEntryView } from "#src/active-agent";
-import type { PermissionDecisionUi } from "#src/authority/permission-dialog";
+import type { PermissionDecisionUi } from "./permission-dialog";
 
 /**
  * Narrow context the forwarding subsystem reads: the UI gate (`hasUI`), the

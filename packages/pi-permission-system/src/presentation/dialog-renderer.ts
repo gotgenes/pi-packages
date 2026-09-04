@@ -2,9 +2,9 @@ import {
   describeBashCommandContext,
   flaggedElements,
   valueLabel,
-} from "#src/presentation/fact-vocabulary";
-import { fitLinesToWidth } from "#src/presentation/line-fitting";
-import type { PromptPayload } from "#src/presentation/prompt-payload";
+} from "./fact-vocabulary";
+import { fitLinesToWidth } from "./line-fitting";
+import type { PromptPayload } from "./prompt-payload";
 
 /**
  * Render a {@link PromptPayload} for a human deciding an ask (ADR 0011 §5).

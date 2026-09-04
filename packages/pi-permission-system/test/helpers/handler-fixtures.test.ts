@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { makeStatefulToolRegistry } from "#test/helpers/handler-fixtures";
+import { makeStatefulToolRegistry } from "./handler-fixtures";
 
 describe("makeStatefulToolRegistry", () => {
   describe("feedback loop", () => {

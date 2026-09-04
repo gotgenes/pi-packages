@@ -1,4 +1,4 @@
-import type { AccessPath } from "#src/access-intent/access-path";
+import type { AccessPath } from "./access-path";
 
 /**
  * Raw tool input the manager must normalize (path / bash / MCP / extension tools).

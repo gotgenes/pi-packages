@@ -20,18 +20,15 @@ import { wildcardMatch } from "#src/wildcard-matcher";
 import {
   DECIDED_BY_ABSENT_AUTHORITY,
   DECIDED_BY_HUMAN,
-} from "#test/helpers/decision-fixtures";
+} from "./decision-fixtures";
 
 import {
   getDecisionEvents,
   makeEvents,
   makeSurfaceCheck,
   makeToolRegistry,
-} from "#test/helpers/handler-fixtures";
-import {
-  makeRealResolver,
-  makeRealSession,
-} from "#test/helpers/session-fixtures";
+} from "./handler-fixtures";
+import { makeRealResolver, makeRealSession } from "./session-fixtures";
 
 // ── Shared constants ───────────────────────────────────────────────────────
 

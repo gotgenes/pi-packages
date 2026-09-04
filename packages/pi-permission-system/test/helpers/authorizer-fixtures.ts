@@ -19,9 +19,9 @@ import type { PermissionPrompterApi } from "#src/authority/permission-prompter";
 import { ServingSessionRegistry } from "#src/authority/serving-registry";
 import type { SubagentDetector } from "#src/authority/subagent-detection";
 import type { PermissionQuery } from "#src/service";
-import { makeAuthorizerLog } from "#test/helpers/authorizer-log-fixtures";
-import { DECIDED_BY_HUMAN } from "#test/helpers/decision-fixtures";
-import { makePromptPreferences } from "#test/helpers/prompt-view-fixtures";
+import { makeAuthorizerLog } from "./authorizer-log-fixtures";
+import { DECIDED_BY_HUMAN } from "./decision-fixtures";
+import { makePromptPreferences } from "./prompt-view-fixtures";
 
 /** The full constructor bag `AuthorizerSelection` takes (the ctor intersection). */
 export type AuthorizerSelectionTestDeps = SelectionCtorDeps & {

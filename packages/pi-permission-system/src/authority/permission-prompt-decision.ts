@@ -4,7 +4,7 @@ import {
   normalizePermissionDenialReason,
   type RequestPermissionOptions,
   type UnattributedDecision,
-} from "#src/authority/permission-dialog";
+} from "./permission-dialog";
 
 /**
  * Pure decision model for the inline keybind permission dialog.

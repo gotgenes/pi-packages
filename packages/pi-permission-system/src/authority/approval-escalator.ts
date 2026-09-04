@@ -4,11 +4,17 @@ import {
   getActiveAgentName,
   getActiveAgentNameFromSystemPrompt,
 } from "#src/active-agent";
+import { createPermissionRequestId } from "#src/permission-request-id";
+import { buildUiPrompt } from "#src/permission-ui-prompt";
+import type { PromptPayload } from "#src/presentation/prompt-payload";
+import type { DebugReviewLogger } from "#src/session-logger";
+import { toRecord } from "#src/value-guards";
+import type { TerminalAuthorizer } from "./authorizer";
 import {
   type ForwarderContext,
   getCwd,
   getSessionId,
-} from "#src/authority/forwarder-context";
+} from "./forwarder-context";
 import {
   cleanupPermissionForwardingLocationIfEmpty,
   ensurePermissionForwardingLocation,
@@ -18,9 +24,9 @@ import {
   safeDeleteFile,
   sleep,
   writeJsonFileAtomic,
-} from "#src/authority/forwarding-io";
-import type { TargetServingLookup } from "#src/authority/forwarding-liveness";
-import type { PermissionPromptDecision } from "#src/authority/permission-dialog";
+} from "./forwarding-io";
+import type { TargetServingLookup } from "./forwarding-liveness";
+import type { PermissionPromptDecision } from "./permission-dialog";
 import {
   type ForwardedAccessFacts,
   type ForwardedPermissionRequest,
@@ -33,15 +39,9 @@ import {
   type PermissionForwardingTarget,
   resolvePermissionForwardingTarget,
   SUBAGENT_PARENT_SESSION_ENV_CANDIDATES,
-} from "#src/authority/permission-forwarding";
-import type { SubagentSessionRegistry } from "#src/authority/subagent-registry";
-import { createPermissionRequestId } from "#src/permission-request-id";
-import { buildUiPrompt } from "#src/permission-ui-prompt";
-import type { PromptPayload } from "#src/presentation/prompt-payload";
-import type { DebugReviewLogger } from "#src/session-logger";
-import { toRecord } from "#src/value-guards";
-import type { TerminalAuthorizer } from "./authorizer";
+} from "./permission-forwarding";
 import type { PromptPermissionDetails } from "./permission-prompter";
+import type { SubagentSessionRegistry } from "./subagent-registry";
 
 // ── Module-private helpers ────────────────────────────────────────────────
 

@@ -1,22 +1,16 @@
-import {
-  EXECUTION_HOST_TYPES,
-  forEachExecutionIn,
-} from "#src/access-intent/bash/nested-execution";
-import {
-  parseUnresolvedWithin,
-  type TSNode,
-} from "#src/access-intent/bash/parser";
-import { redirectMayWriteFile } from "#src/access-intent/bash/redirect-analysis";
+import type { BashCommandContext, FloorExemption } from "#src/types";
+import { EXECUTION_HOST_TYPES, forEachExecutionIn } from "./nested-execution";
+import { parseUnresolvedWithin, type TSNode } from "./parser";
+import { redirectMayWriteFile } from "./redirect-analysis";
 import {
   type CommandWord,
   classifyWrapperWords,
   executedUnitOf,
   isTransparentWrapper,
   type WrapperKind,
-} from "#src/access-intent/bash/wrapper-analysis";
-import type { BashCommandContext, FloorExemption } from "#src/types";
+} from "./wrapper-analysis";
 
-export type { WrapperKind } from "#src/access-intent/bash/wrapper-analysis";
+export type { WrapperKind } from "./wrapper-analysis";
 
 // ── Command type ─────────────────────────────────────────────────────────────
 

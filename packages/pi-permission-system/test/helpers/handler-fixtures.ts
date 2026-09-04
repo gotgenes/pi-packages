@@ -31,12 +31,12 @@ import type { Rule } from "#src/rule";
 import { SessionRules } from "#src/session-rules";
 import type { ToolRegistry } from "#src/tool-registry";
 import type { PermissionCheckResult, PermissionState } from "#src/types";
-import { DECIDED_BY_HUMAN } from "#test/helpers/decision-fixtures";
+import { DECIDED_BY_HUMAN } from "./decision-fixtures";
 import {
   makeConfigStore,
   makeRealResolver,
   makeRealSession,
-} from "#test/helpers/session-fixtures";
+} from "./session-fixtures";
 
 // ── MockGateHandlerSession ────────────────────────────────────────────────
 

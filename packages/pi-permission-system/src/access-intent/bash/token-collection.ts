@@ -1,17 +1,14 @@
 import { basename } from "node:path";
-import { proveCommandEffect } from "#src/access-intent/bash/command-effects";
-import {
-  EXECUTION_HOST_TYPES,
-  forEachExecutionIn,
-} from "#src/access-intent/bash/nested-execution";
+import { type TokenEffect, UNPROVEN_EFFECT } from "#src/access-intent/effect";
+import { proveCommandEffect } from "./command-effects";
+import { EXECUTION_HOST_TYPES, forEachExecutionIn } from "./nested-execution";
 import {
   ARG_NODE_TYPES,
   resolveNodeText,
   SKIP_SUBTREE_TYPES,
-} from "#src/access-intent/bash/node-text";
-import type { TSNode } from "#src/access-intent/bash/parser";
-import { redirectEffectForDestination } from "#src/access-intent/bash/redirect-analysis";
-import { type TokenEffect, UNPROVEN_EFFECT } from "#src/access-intent/effect";
+} from "./node-text";
+import type { TSNode } from "./parser";
+import { redirectEffectForDestination } from "./redirect-analysis";
 
 /**
  * A collected path-candidate token paired with the effect its position proved.

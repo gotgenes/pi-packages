@@ -1,7 +1,7 @@
-import { expandDirectionalSugar } from "#src/normalize";
-import { mergeFlatPermissions } from "#src/permission-merge";
-import type { RuleOrigin } from "#src/rule";
-import type { FlatPermissionConfig, ScopeConfig } from "#src/types";
+import { expandDirectionalSugar } from "./normalize";
+import { mergeFlatPermissions } from "./permission-merge";
+import type { RuleOrigin } from "./rule";
+import type { FlatPermissionConfig, ScopeConfig } from "./types";
 
 /** Surface → (pattern → originating scope). */
 type OriginMap = Map<string, Map<string, RuleOrigin>>;

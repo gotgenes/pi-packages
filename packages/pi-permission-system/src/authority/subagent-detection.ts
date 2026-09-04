@@ -1,9 +1,9 @@
+import type { PathFlavor } from "#src/path/path-flavor";
 import {
   isSubagentExecutionContext,
   type SubagentDetectionContext,
-} from "#src/authority/subagent-context";
-import type { SubagentSessionRegistry } from "#src/authority/subagent-registry";
-import type { PathFlavor } from "#src/path/path-flavor";
+} from "./subagent-context";
+import type { SubagentSessionRegistry } from "./subagent-registry";
 
 /**
  * Narrow seam for the ask-path consumers: "is the current session a subagent?"

@@ -1,8 +1,5 @@
-import type {
-  PromptEvidence,
-  PromptPayload,
-} from "#src/presentation/prompt-payload";
-import { localRequester } from "#src/presentation/prompt-payload";
+import type { PromptEvidence, PromptPayload } from "./prompt-payload";
+import { localRequester } from "./prompt-payload";
 
 /** A displayed external path paired with its resolved target, when distinct. */
 export interface ExternalPathDisclosure {

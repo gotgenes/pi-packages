@@ -1,5 +1,4 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
-import type { PermissionPromptDecision } from "#src/authority/permission-dialog";
 import type { PermissionQuery } from "#src/service";
 import {
   type AuthorizerSelectionDeps,
@@ -10,6 +9,7 @@ import {
 import { composeAuthorizerChain } from "./authorizer-chain";
 import type { AuthorizerLookup } from "./authorizer-registry";
 import { encloseInDelegationEnvelope } from "./delegation-envelope";
+import type { PermissionPromptDecision } from "./permission-dialog";
 import type {
   PermissionPrompterApi,
   PromptPermissionDetails,

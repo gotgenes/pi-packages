@@ -9,7 +9,7 @@
  * classifiers over the same vocabulary would drift.
  */
 
-import { proveCommandEffect } from "#src/access-intent/bash/command-effects";
+import { proveCommandEffect } from "./command-effects";
 
 /** One word of a command unit: its text, and its offset into the unit's text. */
 export interface CommandWord {

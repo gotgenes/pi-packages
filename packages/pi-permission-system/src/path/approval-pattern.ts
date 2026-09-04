@@ -1,4 +1,4 @@
-import type { PathFlavor } from "#src/path/path-flavor";
+import type { PathFlavor } from "./path-flavor";
 
 /**
  * Derive the wildcard glob to record when a user approves an accessed path for

@@ -17,12 +17,12 @@ import type { SessionApprovalRecorder } from "#src/session-approval-recorder";
 import type { SkillPromptEntry } from "#src/skill-prompt-sanitizer";
 import type { ToolPreviewFormatterOptions } from "#src/tool-preview-formatter";
 import type { PermissionCheckResult } from "#src/types";
-import { DECIDED_BY_HUMAN } from "#test/helpers/decision-fixtures";
-import { makeCheckResult } from "#test/helpers/handler-fixtures";
+import { DECIDED_BY_HUMAN } from "./decision-fixtures";
+import { makeCheckResult } from "./handler-fixtures";
 import {
   makeGatePromptDetails,
   makePromptPayload,
-} from "#test/helpers/prompt-details-fixtures";
+} from "./prompt-details-fixtures";
 
 /**
  * Permission resolver mock with an optional default check result.

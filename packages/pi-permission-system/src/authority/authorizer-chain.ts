@@ -1,10 +1,10 @@
-import type { DecisionSource } from "#src/authority/decision-source";
 import type { AuthorizerLog, PermissionQuery } from "#src/service";
 import type {
   AuthorizerVerdict,
   NamedAuthorizer,
   TerminalAuthorizer,
 } from "./authorizer";
+import type { DecisionSource } from "./decision-source";
 import {
   createDeniedPermissionDecision,
   type PermissionPromptDecision,

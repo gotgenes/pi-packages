@@ -1,14 +1,5 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { provenDirectionOf } from "#src/approval-grant";
-import type {
-  PermissionPromptDecision,
-  RequestPermissionOptions,
-} from "#src/authority/permission-dialog";
-import type {
-  PermissionPromptUi,
-  PromptPreferences,
-  requestPermissionDecision,
-} from "#src/authority/permission-prompt-component";
 import {
   buildDirectionalSessionLabels,
   buildForwardedScopeLabels,
@@ -20,6 +11,15 @@ import {
 } from "#src/permission-events";
 import { buildUiPrompt } from "#src/permission-ui-prompt";
 import type { TerminalAuthorizer } from "./authorizer";
+import type {
+  PermissionPromptDecision,
+  RequestPermissionOptions,
+} from "./permission-dialog";
+import type {
+  PermissionPromptUi,
+  PromptPreferences,
+  requestPermissionDecision,
+} from "./permission-prompt-component";
 import type { PromptPermissionDetails } from "./permission-prompter";
 
 /** Dependencies required by {@link LocalUserAuthorizer}. */

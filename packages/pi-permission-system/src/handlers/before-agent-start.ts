@@ -2,7 +2,6 @@ import type {
   BeforeAgentStartEventResult,
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
-import type { TurnPreparation } from "#src/handlers/session-turn-prep";
 import type { PermissionResolver } from "#src/permission-resolver";
 import type { PermissionSession } from "#src/permission-session";
 import type { DebugLogger } from "#src/session-logger";
@@ -10,6 +9,7 @@ import { resolveSkillPromptEntries } from "#src/skill-prompt-sanitizer";
 import { sanitizeAvailableToolsSection } from "#src/system-prompt-sanitizer";
 import { getToolNameFromValue, type ToolRegistry } from "#src/tool-registry";
 import type { ToolSurfaceObservation } from "#src/tool-surface-baseline";
+import type { TurnPreparation } from "./session-turn-prep";
 
 /** Minimal subset of BeforeAgentStartEvent used by this handler. */
 interface BeforeAgentStartPayload {

@@ -1,5 +1,5 @@
 import type { SessionGrantWidth } from "#src/approval-grant";
-import type { DecisionSource } from "#src/authority/decision-source";
+import type { DecisionSource } from "./decision-source";
 
 export type PermissionDecisionState =
   | "approved"

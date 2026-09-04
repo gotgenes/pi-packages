@@ -18,23 +18,20 @@
 
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import type { DebugReviewLogger } from "#src/session-logger";
 import {
   ensureDirectoryExists,
   isErrnoCode,
   logPermissionForwardingError,
   safeDeleteFile,
   writeJsonFileAtomic,
-} from "#src/authority/forwarding-io";
-import type { PermissionForwardingTarget } from "#src/authority/permission-forwarding";
+} from "./forwarding-io";
+import type { PermissionForwardingTarget } from "./permission-forwarding";
 import {
   encodeSessionIdForPath,
   PERMISSION_FORWARDING_POLL_INTERVAL_MS,
-} from "#src/authority/permission-forwarding";
-import type {
-  ServingAnnouncer,
-  ServingLookup,
-} from "#src/authority/serving-registry";
-import type { DebugReviewLogger } from "#src/session-logger";
+} from "./permission-forwarding";
+import type { ServingAnnouncer, ServingLookup } from "./serving-registry";
 
 /**
  * How often a serving session rewrites its heartbeat — four poll ticks.

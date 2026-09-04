@@ -18,7 +18,7 @@
  */
 import { homedir } from "node:os";
 
-import type { TSNode } from "#src/access-intent/bash/parser";
+import type { TSNode } from "./parser";
 
 /**
  * The value of a plain `$NAME` / `${NAME}` reference, or `null` when the node

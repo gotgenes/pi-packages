@@ -1,6 +1,6 @@
 import { realpathSync } from "node:fs";
 
-import type { PathFlavor } from "#src/path/path-flavor";
+import type { PathFlavor } from "./path-flavor";
 
 /**
  * Resolve symlinks in an absolute path, best-effort.

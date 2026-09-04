@@ -1,5 +1,5 @@
-import type { PermissionPromptDecision } from "#src/authority/permission-dialog";
 import type { TerminalAuthorizer } from "./authorizer";
+import type { PermissionPromptDecision } from "./permission-dialog";
 
 /** Why this authorizer denies; the provenance record's `reason` (#726). */
 const NO_AUTHORITY_REASON = "No live authority was reachable for this session";

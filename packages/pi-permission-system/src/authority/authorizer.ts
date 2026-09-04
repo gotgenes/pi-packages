@@ -1,19 +1,19 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
-import type { TargetServingLookup } from "#src/authority/forwarding-liveness";
-import type { PermissionPromptDecision } from "#src/authority/permission-dialog";
-import type {
-  PromptPreferences,
-  requestPermissionDecision,
-} from "#src/authority/permission-prompt-component";
-import type { SubagentSessionRegistry } from "#src/authority/subagent-registry";
 import type { PermissionEventBus } from "#src/permission-events";
 import type { AuthorizerLog, PermissionQuery } from "#src/service";
 import type { DebugReviewLogger } from "#src/session-logger";
 import { ParentAuthorizer } from "./approval-escalator";
 import { DenyingAuthorizer } from "./denying-authorizer";
+import type { TargetServingLookup } from "./forwarding-liveness";
 import { LocalUserAuthorizer } from "./local-user-authorizer";
+import type { PermissionPromptDecision } from "./permission-dialog";
+import type {
+  PromptPreferences,
+  requestPermissionDecision,
+} from "./permission-prompt-component";
 import type { PromptPermissionDetails } from "./permission-prompter";
 import type { SubagentDetector } from "./subagent-detection";
+import type { SubagentSessionRegistry } from "./subagent-registry";
 
 /**
  * A non-terminal chain link's ruling on an `ask`: decide (`allow`/`deny`) or

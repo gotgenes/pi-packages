@@ -1,7 +1,7 @@
 import { parseBashCommandsSync } from "#src/access-intent/bash/sync-commands";
 import { resolveBashCommandCheck } from "#src/handlers/gates/bash-command";
-import type { ScopedPermissionResolver } from "#src/permission-resolver";
-import type { PermissionCheckResult } from "#src/types";
+import type { ScopedPermissionResolver } from "./permission-resolver";
+import type { PermissionCheckResult } from "./types";
 
 /**
  * Resolve an advisory bash query at the gate's decomposed fidelity.

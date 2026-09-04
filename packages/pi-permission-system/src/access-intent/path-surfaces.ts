@@ -1,4 +1,4 @@
-import type { AttributedEffect } from "#src/access-intent/effect";
+import type { AttributedEffect } from "./effect";
 
 /**
  * File tools that only read — never write — the filesystem.

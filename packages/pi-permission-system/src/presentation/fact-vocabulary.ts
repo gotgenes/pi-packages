@@ -1,8 +1,5 @@
-import {
-  allEvidence,
-  type PromptPayload,
-} from "#src/presentation/prompt-payload";
 import type { BashCommandContext } from "#src/types";
+import { allEvidence, type PromptPayload } from "./prompt-payload";
 
 /**
  * The render vocabulary shared by every renderer over a {@link PromptPayload}.
