@@ -136,6 +136,42 @@ export function makeToolRegistry(
   };
 }
 
+/**
+ * `ToolRegistry` double that models Pi's real feedback loop: `getActive()`
+ * reads back whatever the last `setActive()` accepted, so each turn's filtered
+ * output becomes the next turn's observed active set.
+ *
+ * It also mirrors `setActiveToolsByName`, which resolves every requested name
+ * against the full tool registry and silently ignores the ones it does not
+ * know — so a name reactivated after being withheld only takes effect while
+ * the tool is still registered.
+ *
+ * The static {@link makeToolRegistry} above cannot express either behavior;
+ * tests that span turns need this one.
+ */
+export function makeStatefulToolRegistry(seed: {
+  active: readonly string[];
+  registered?: readonly string[];
+}) {
+  const registered = new Set(seed.registered ?? seed.active);
+  let active = [...seed.active];
+  return {
+    getAll: vi.fn((): unknown[] => [...registered].map((name) => ({ name }))),
+    getActive: vi.fn((): string[] => [...active]),
+    setActive: vi.fn((names: string[]): void => {
+      active = names.filter((name) => registered.has(name));
+    }),
+    /** Drop a tool from the registry, as unloading its extension would. */
+    unregister: (name: string): void => {
+      registered.delete(name);
+    },
+    /** Add a tool to the registry without activating it. */
+    register: (name: string): void => {
+      registered.add(name);
+    },
+  };
+}
+
 // ── Surface-check factories ────────────────────────────────────────────────
 
 /**
