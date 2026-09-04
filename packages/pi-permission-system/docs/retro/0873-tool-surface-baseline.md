@@ -68,6 +68,20 @@ Every killing mutation the plan named was applied and reverted, and each killed 
 - The plan's `Risks and Mitigations` bullet on a degenerate `getAll()` states a true outcome but attributes it to the same incomplete causal story that the step-4 killing-mutation claim did.
   Recorded above; no code or doc change needed — the source comment and `docs/architecture/architecture.md` already carry the corrected reasoning.
 
+## Stage: Sync (worktree) (2026-09-04T18:11:33Z)
+
+### Session summary
+
+Pre-push checks (`pnpm run lint`, `pnpm fallow dead-code`) both passed clean with no fixes needed.
+No `**Release:**` marker action is needed at land time — the plan records `ship independently`, so `/ship-worktree 873` should dispatch a release for `pi-permission-system` after landing.
+No deferred work or open follow-ups from this branch.
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-873--/2026-09-04T17-17-33-366Z_01a06d6c-f935-76eb-b570-32126342aa54.jsonl` — read with `read_session_file({ path: "<path>" })` for message-level verification at land/retro time.
+
+### Observations
+
+Nothing new beyond the Planning and Implementation stage notes above; this is a clean handoff to the root session.
+
 [#385]: https://github.com/gotgenes/pi-packages/issues/385
 [#437]: https://github.com/gotgenes/pi-packages/issues/437
 [#873]: https://github.com/gotgenes/pi-packages/issues/873
