@@ -2,7 +2,10 @@ import {
   EXECUTION_HOST_TYPES,
   forEachExecutionIn,
 } from "#src/access-intent/bash/nested-execution";
-import type { TSNode } from "#src/access-intent/bash/parser";
+import {
+  parseUnresolvedWithin,
+  type TSNode,
+} from "#src/access-intent/bash/parser";
 import { redirectMayWriteFile } from "#src/access-intent/bash/redirect-analysis";
 import {
   type CommandWord,
@@ -53,6 +56,13 @@ export interface BashCommand {
    * and an established {@link executedUnit}.
    */
   readonly floorExemption?: FloorExemption;
+  /**
+   * Set when this unit was emitted from, or beneath, a statement holding a
+   * region tree-sitter could not resolve. Its decision is floored to at least
+   * `ask`, because the recovered structure is not evidence of what runs — ADR
+   * 0013 §10's fail-closed base case (#840).
+   */
+  readonly parseUnresolved?: true;
 }
 
 /**
@@ -74,10 +84,18 @@ interface UnitScope {
    * withholds the floor exemption from any wrapper unit beneath it.
    */
   readonly writesViaRedirect: boolean;
+  /**
+   * True when the enclosing statement holds a region tree-sitter could not
+   * resolve, so every unit beneath it is floored rather than trusted (#840).
+   */
+  readonly parseUnresolved: boolean;
 }
 
-/** A top-level command in the current shell, writing no file. */
-const TOP_LEVEL_SCOPE: UnitScope = { writesViaRedirect: false };
+/** A top-level command in the current shell, writing no file, fully parsed. */
+const TOP_LEVEL_SCOPE: UnitScope = {
+  writesViaRedirect: false,
+  parseUnresolved: false,
+};
 
 // ── Node-type vocabulary ─────────────────────────────────────────────────────
 
@@ -184,6 +202,11 @@ const STATEMENT_TYPES = new Set([
  * The enclosing command/statement is always still emitted whole, so adding the
  * nested units can only ever produce a more-restrictive decision, never weaker.
  *
+ * A unit emitted from, or beneath, a statement holding a region tree-sitter
+ * could not resolve is marked {@link BashCommand.parseUnresolved}, so the
+ * verdict fold can floor it rather than match its recovered text against the
+ * bash rules (#840).
+ *
  * Each emitted command unit has any leading `variable_assignment` prefix
  * stripped (so an env-var prefix cannot defeat a command-pattern rule), and a
  * wrapper unit (`bash -c`/`eval`, or an indirection wrapper such as `sudo`) is
@@ -197,13 +220,15 @@ export function collectCommands(node: TSNode): BashCommand[] {
 
 function collectCommandsInto(
   node: TSNode,
-  scope: UnitScope,
+  inherited: UnitScope,
   out: BashCommand[],
 ): void {
   // Anonymous tokens (operators `&&`/`;`/`|`, delimiters `$(`/`)`/`` ` ``/`(`)
   // carry no command.
   if (!node.isNamed) return;
   if (COMMAND_ENUM_SKIP.has(node.type)) return;
+
+  const scope = unresolvedScope(node, inherited);
 
   if (node.type === "command") {
     out.push(makeCommandUnit(node, scope));
@@ -265,6 +290,29 @@ function collectCommandsInto(
   collectHostedCommands(node, out);
 }
 
+/**
+ * The scope `node`'s own subtree establishes, marking it unresolved when
+ * tree-sitter could not parse a region within it (#840).
+ *
+ * The three pure containers are deliberately excluded. `program`, `list`, and
+ * `pipeline` report an error whenever *anything* anywhere beneath them failed,
+ * so asking there would mark every unit of the command and make the answer
+ * per-program rather than per-statement. Excluded, `rm -rf /tmp/y` in
+ * `echo hi > out.txt <> rw.txt; rm -rf /tmp/y` keeps its own rule, while every
+ * unit under the failed statement is floored.
+ *
+ * Over-marking is the fail-closed direction — the flag can only floor an
+ * `allow` up to `ask`, never weaken a decision — which is what makes marking a
+ * whole statement for a failure buried in one of its redirects acceptable.
+ */
+function unresolvedScope(node: TSNode, scope: UnitScope): UnitScope {
+  if (scope.parseUnresolved) return scope;
+  if (COMMAND_ENUM_DESCEND.has(node.type)) return scope;
+  return parseUnresolvedWithin(node)
+    ? { ...scope, parseUnresolved: true }
+    : scope;
+}
+
 /** The wrapper facts a `command` node's words establish about its unit. */
 interface WrapperFacts {
   readonly wrapperKind?: WrapperKind;
@@ -284,7 +332,11 @@ function makeUnit(
   const flagged = wrapperKind ? { ...scoped, wrapperKind } : scoped;
   const named =
     executedUnit === undefined ? flagged : { ...flagged, executedUnit };
-  return floorExemption === undefined ? named : { ...named, floorExemption };
+  const exempted =
+    floorExemption === undefined ? named : { ...named, floorExemption };
+  return scope.parseUnresolved
+    ? { ...exempted, parseUnresolved: true }
+    : exempted;
 }
 
 /**
@@ -423,10 +475,13 @@ function collectHostedCommands(node: TSNode, out: BashCommand[]): void {
   forEachExecutionIn(node, (contextNode, context) => {
     // A nested execution starts fresh: an enclosing statement's redirect is
     // that statement's, not the substitution's, exactly as #807 attributes a
-    // nested command's path tokens to its own command.
+    // nested command's path tokens to its own command. The parse question
+    // starts fresh for the same reason and costs nothing either way — each
+    // statement inside re-asks it of itself, and the enclosing statement's own
+    // units carry the mark regardless, so the verdict is unchanged (#840).
     descendCommandChildren(
       contextNode,
-      { context, writesViaRedirect: false },
+      { context, writesViaRedirect: false, parseUnresolved: false },
       out,
     );
   });

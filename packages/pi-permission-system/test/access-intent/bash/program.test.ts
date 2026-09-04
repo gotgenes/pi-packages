@@ -1294,10 +1294,13 @@ describe("BashProgram", () => {
         async (_label, command, enclosing, blob) => {
           // Tree-sitter's error recovery *invents* structure, so a node type
           // inside an ERROR subtree is not evidence that a command runs.
+          // The blob carries the #840 marker and the clean enclosing command
+          // does not: the `ERROR` is the program's own child, so the sibling
+          // command it follows is untouched.
           const program = await BashProgram.parse(command, normalizer);
           expect(program.commands()).toEqual([
             { text: enclosing },
-            { text: blob },
+            { text: blob, parseUnresolved: true },
           ]);
         },
       );
@@ -1307,7 +1310,9 @@ describe("BashProgram", () => {
           "for f in a; do rm $f",
           normalizer,
         );
-        expect(program.commands()).toEqual([{ text: "for f in a; do rm $f" }]);
+        expect(program.commands()).toEqual([
+          { text: "for f in a; do rm $f", parseUnresolved: true },
+        ]);
       });
     });
 
@@ -1829,6 +1834,51 @@ describe("BashProgram", () => {
         await expect(
           exemptions("echo hi > $(xargs grep foo)"),
         ).resolves.toEqual([undefined, "core-reader"]);
+      });
+    });
+
+    describe("units from a parse tree-sitter could not resolve (#840)", () => {
+      it("marks a command the failure reaches only through its statement", async () => {
+        // The reported shape: valid bash (`bash -n` accepts it) that the
+        // grammar cannot parse, because a heredoc redirect combines with
+        // `2>&1` and a pipe. The `ERROR` is three levels below the statement,
+        // under `heredoc_redirect → file_redirect`, and both command nodes are
+        // themselves clean — the `list` holding them relays the statement's
+        // scope, so the failure reaches them both.
+        const program = await BashProgram.parse(
+          "git add -A . && git commit -F - <<'MSG' 2>&1 | rm -rf /tmp/x\nmsg\nMSG",
+          normalizer,
+        );
+        expect(program.commands()).toEqual([
+          { text: "git add -A .", parseUnresolved: true },
+          { text: "git commit -F", parseUnresolved: true },
+        ]);
+      });
+
+      it("leaves a statement beside the failed one unmarked", async () => {
+        // The precision the per-statement rule buys over a program-level one:
+        // `rm -rf /tmp/y` is a sibling of the failed `redirected_statement`,
+        // not beneath it, so its own rule still decides it.
+        const program = await BashProgram.parse(
+          "echo hi > out.txt <> rw.txt; rm -rf /tmp/y",
+          normalizer,
+        );
+        expect(program.commands()).toEqual([
+          { text: "echo hi", parseUnresolved: true },
+          { text: "rm -rf /tmp/y" },
+        ]);
+      });
+
+      it.each([
+        ["a chain", "cd /repo && git push"],
+        ["a pipeline", "echo hi | tail -2"],
+        ["a redirect", "cat a > out.txt"],
+        ["a loop", "for f in a b; do rm $f; done"],
+      ])("marks nothing in %s that parses cleanly", async (_label, command) => {
+        const program = await BashProgram.parse(command, normalizer);
+        for (const unit of program.commands()) {
+          expect(unit.parseUnresolved).toBeUndefined();
+        }
       });
     });
   });

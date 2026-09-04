@@ -3,6 +3,7 @@ import {
   getParser,
   getWarmBashParser,
   parseUnresolvedAt,
+  parseUnresolvedWithin,
   resetWarmBashParser,
   type TSNode,
   warmBashParser,
@@ -155,6 +156,91 @@ describe("parseUnresolvedAt", () => {
       await expect(
         unresolvedRedirects("cat <> ~/a.txt > b.txt"),
       ).resolves.toEqual([true, false]);
+    });
+  });
+});
+
+// ── parseUnresolvedWithin ────────────────────────────────────────────
+
+/** `parseUnresolvedWithin` applied to each `type` node a command produces. */
+async function unresolvedWithin(
+  command: string,
+  type: string,
+): Promise<boolean[]> {
+  const parser = await getParser();
+  const tree = parser.parse(command);
+  if (!tree) throw new Error("parser.parse returned null");
+  try {
+    return findNodes(tree.rootNode, type).map(parseUnresolvedWithin);
+  } finally {
+    tree.delete();
+  }
+}
+
+describe("parseUnresolvedWithin", () => {
+  describe("a node whose own subtree carries the failure", () => {
+    it("answers true when the discarded text is inside the node", async () => {
+      // `<>` has no node in the grammar; the `>` half is recovered as an
+      // `ERROR` child of the redirect itself.
+      await expect(
+        unresolvedWithin("cat <> rw.txt", "file_redirect"),
+      ).resolves.toEqual([true]);
+    });
+
+    it("answers true for a statement whose failure is several levels down", async () => {
+      // The `ERROR` sits under `heredoc_redirect → file_redirect`; the
+      // statement is what a walker descending statements can see it through.
+      await expect(
+        unresolvedWithin(
+          "git commit -F - <<'MSG' 2>&1 | tail -4\nmsg\nMSG",
+          "redirected_statement",
+        ),
+      ).resolves.toEqual([true]);
+    });
+  });
+
+  describe("a node whose predecessor carried the failure", () => {
+    it("answers false where parseUnresolvedAt answers true", async () => {
+      // The one case that separates the two predicates. Here the `<` half is
+      // recovered as an `ERROR` *before* an otherwise clean
+      // `file_redirect "> ~/rw.txt"`. A redirect must refuse on that, because
+      // error recovery strands the discarded operator ahead of the node it
+      // belonged to — but a statement whose predecessor failed is not itself
+      // unparsed, so the subtree-only question is the one a walker asks.
+      await expect(
+        unresolvedWithin("cat <> ~/rw.txt", "file_redirect"),
+      ).resolves.toEqual([false]);
+      await expect(unresolvedRedirects("cat <> ~/rw.txt")).resolves.toEqual([
+        true,
+      ]);
+    });
+  });
+
+  describe("a fully resolved parse", () => {
+    it.each(["cat a > out.txt", "cd /repo && git push", "echo hi | tail -2"])(
+      "answers false at every level of %s",
+      async (command) => {
+        await expect(unresolvedWithin(command, "program")).resolves.toEqual([
+          false,
+        ]);
+        await expect(
+          unresolvedWithin(command, "command"),
+        ).resolves.not.toContain(true);
+      },
+    );
+  });
+
+  describe("the root of a partially failed parse", () => {
+    it("answers true for the program node however local the failure", async () => {
+      // Why a walker cannot ask this of `program`, `list`, or `pipeline`: the
+      // answer is true whenever anything anywhere failed, so marking there
+      // would mark every unit of the command.
+      await expect(
+        unresolvedWithin(
+          "echo hi > out.txt <> rw.txt; rm -rf /tmp/y",
+          "program",
+        ),
+      ).resolves.toEqual([true]);
     });
   });
 });

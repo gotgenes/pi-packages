@@ -5,10 +5,10 @@ import { memoizeAsyncWithRetry } from "#src/async-cache";
  * Minimal subset of web-tree-sitter's SyntaxNode used by the AST walker.
  * Defined locally so callers do not need to import web-tree-sitter types.
  *
- * The last two members are the parse's own health, which every other member
- * describes a *successful* parse's structure. They exist for
- * {@link parseUnresolvedAt} and are read nowhere else — see its doc comment for
- * why that boundary matters.
+ * The last two members are the parse's own health, where every other member
+ * describes a *successful* parse's structure. They are read only by this
+ * module's two `parseUnresolved*` predicates — see their doc comments for why
+ * that boundary matters.
  */
 export interface TSNode {
   readonly type: string;
@@ -51,7 +51,7 @@ export interface TSNode {
  * belongs to no `<>` either. Over-refusing costs a prompt; under-refusing hands
  * a write to a read grant.
  *
- * This is the one place {@link TSNode.hasError} and
+ * This module is the one place {@link TSNode.hasError} and
  * {@link TSNode.previousSibling} are read. Keeping the lateral navigation here
  * is deliberate: recovering-parser behavior is a fact about tree-sitter rather
  * than about any construct, so a caller asks this question instead of
@@ -59,6 +59,27 @@ export interface TSNode {
  */
 export function parseUnresolvedAt(node: TSNode): boolean {
   return node.hasError || (node.previousSibling?.hasError ?? false);
+}
+
+/**
+ * Whether tree-sitter failed to resolve the syntax anywhere within `node`.
+ *
+ * The subtree-only question, and the one a walker descending statements asks:
+ * a statement holding an unresolved region is one whose recovered shape is
+ * invented rather than observed, so nothing beneath it is evidence of what
+ * runs. The failure can sit well below the statement that exposes it —
+ * `git commit -F - <<'MSG' 2>&1 | tail -4` strands its `ERROR` under
+ * `heredoc_redirect → file_redirect`, where no command node sees it.
+ *
+ * {@link parseUnresolvedAt} answers the redirect-shaped question instead,
+ * widening to the immediate predecessor because error recovery strands a
+ * discarded operator ahead of the redirect it belonged to. That widening is a
+ * fact about redirects, not about statements: a statement whose *predecessor*
+ * failed is not itself unparsed, and borrowing the wider predicate here would
+ * condemn every statement following a failed one.
+ */
+export function parseUnresolvedWithin(node: TSNode): boolean {
+  return node.hasError;
 }
 
 /**
