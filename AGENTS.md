@@ -162,13 +162,14 @@ It fires on `Edit`/`Write` only, so a file appended with a shell heredoc skips f
 #### Stale prompt-template expansion
 
 A slash command's expanded body is a snapshot from when the Pi process loaded it — so after this session edits a `.pi/prompts/*.md` template, a later same-process invocation of that command can run the **pre-edit** copy.
-When the pasted prompt body contradicts the on-disk file (e.g. you just changed `/ship-issue` and its steps read stale), treat the **on-disk file as authoritative** and follow it, not the injected text (Refs #586).
+When the pasted prompt body contradicts the on-disk file (e.g. you just changed `/ship` and its steps read stale), treat the **on-disk file as authoritative** and follow it, not the injected text (Refs #586).
 
 #### Stale in-process extension code
 
 Pi loads each package's extension once at session start, so a session that edits `packages/<pkg>/src/` keeps running the **pre-edit** tool for the rest of its life.
-When the change targets a tool the workflow itself calls (`ci_find`, `ci_watch`, `issue_close`), restart Pi before the step that uses it — otherwise `/ship-issue` exercises the old behavior and the new code looks broken (Refs #673).
-The same applies when a change **removes** a tool `/ship-issue` calls: the running session still has it registered (Refs #865).
+When the change targets a tool the workflow itself calls (`ci_find`, `ci_watch`, `issue_close`), restart Pi before the step that uses it — otherwise `/ship` exercises the old behavior and the new code looks broken (Refs #673).
+The same applies when a change **removes** a tool `/ship` calls: the running session still has it registered (Refs #865).
+A session that renames or deletes a prompt template is subject to the same staleness: it keeps the commands it registered at startup, so the first run of a renamed command needs a fresh session (Refs #869).
 
 The same staleness makes the session's own system prompt a reliable witness for the **published** behavior: a defect in prompt assembly (a tool's `Available tools:` line, a guideline bullet, an injected block) is readable in context at zero tool cost.
 Read it before hunting the SDK — but never to verify your own fix, which the running session cannot see (Refs #778).
@@ -205,8 +206,8 @@ The standard flow is:
    For a code-touching change, a fresh-context `tidy-first-assessor` runs after the design is settled and before the plan is written; its accepted preparatory refactorings become `refactor:`/`test:` steps in the plan's TDD Order (Kent Beck's Tidy First).
 2. `/tdd-plan` or `/build-plan` — execute the plan (TDD for code changes, build for docs/config).
    The preparatory steps are ordinary plan steps here; a fresh-context `pre-completion-reviewer` runs the quality gate at the **end**.
-3. Pre-completion review — dispatched automatically at the end of step 2; a fresh-context `pre-completion-reviewer` subagent runs deterministic checks and a judgment checklist before recommending `/ship-issue`.
-4. `/ship-issue #N` — push, verify CI, close the issue, dispatch the release.
+3. Pre-completion review — dispatched automatically at the end of step 2; a fresh-context `pre-completion-reviewer` subagent runs deterministic checks and a judgment checklist before recommending `/ship`.
+4. `/ship #N` — land the work, verify CI, close the issue, dispatch the release.
 5. `/retro` — review the session(s) for workflow improvements, persist retro notes.
 
 A change that lands outside `/tdd-plan` or `/build-plan` fires no automatic `pre-completion-reviewer` dispatch.
@@ -219,7 +220,7 @@ An issue spun off mid-lifecycle — by a step's implementation, a plan's follow-
 It exits immediately when the package has no open improvement phase; otherwise it records the operator's disposition (fold into a step / new step / defer / out of scope) in the roadmap's `#### Open-issue sweep dispositions` list, and filing-without-scope-creeping remains the correct local move.
 `/finish-phase` reconciles the phase window's issues against that list before archiving, so a miss surfaces at phase close instead of vanishing from the history (Refs #767).
 
-Release batching is plan-driven: `/plan-improvements` annotates each roadmap step with a grep-able `Release:` tag (and a `Release batches` subsection), `/plan-issue` derives a `Release Recommendation` from those annotations, and `/ship-issue` and `/ship-worktree` read the plan's `**Release:**` marker early — asking only when it is `mid-batch — defer`, otherwise releasing now.
+Release batching is plan-driven: `/plan-improvements` annotates each roadmap step with a grep-able `Release:` tag (and a `Release batches` subsection), `/plan-issue` derives a `Release Recommendation` from those annotations, and `/ship` reads the plan's `**Release:**` marker early — asking only when it is `mid-batch — defer`, otherwise releasing now.
 A `refactor:`/`style:`/`test:`/`build:`/`ci:` commit is a skipped changelog type and does not cut a release on its own; such work lands on `main` and auto-batches into the next releasing commit.
 `chore:` is **not** skipped — it is a visible "Miscellaneous Chores" section and cuts a patch on its own, as it did under release-please.
 So a refactor-only plan's `Release Recommendation` rationale must not claim it will cut a release (Refs #479).
@@ -288,16 +289,19 @@ Key properties:
 
 Convergence (the two-session ship flow):
 
-The trunk `/ship-issue` assumes linear `main` and breaks for a worktree branch, so the convergence is split across the peer and root sessions:
+`main` stays linear and a peer cannot push to it directly, so the convergence is split across the peer and root sessions.
+The root half is the ordinary `/ship <N>`: it detects a **worktree lane** from the presence of an `issue-<N>-*` branch and fast-forward-merges it, where a trunk ship has nothing to merge.
+Every step after the push is identical in both lanes, which is what keeps the two paths from drifting apart (Refs #869):
 
 1. Peer session — `/sync-worktree <N>`: run pre-push checks, write a **sync** stage note (committed on the branch so it rides the land), then `git fetch origin` + `git rebase origin/main`.
    The peer never touches `main`, never pushes the branch, never force-pushes — worktrees share the same `.git`, so the root sees the branch ref directly.
    The peer writes only stage breadcrumbs (planning/TDD/sync); the deliberate, interactive final `/retro` does not run here.
-2. Root session — `/ship-worktree <N>`: `git merge --ff-only <branch>` into `main`, push, verify CI, `issue_close`, then release.
+2. Root session — `/ship <N>`: `git merge --ff-only <branch>` into `main`, run the pre-push checks on the merged tree, push, verify CI, `issue_close`, then release.
    If the ff-merge is not a fast-forward (another peer landed first), the peer re-runs `/sync-worktree <N>` to rebase onto the new `origin/main`.
+   The checks run here as well as in `/sync-worktree` because the peer checks *before* it rebases, so the tip the root merges has not been checked on its own.
 3. Release is the root's responsibility — peers never dispatch one, and the workflow's `release` concurrency group serializes runs regardless.
    It honors the plan's `**Release:**` marker: `mid-batch — defer` simply does not name that package.
-4. `/ship-worktree` ends by running `scripts/worktree-rm.sh <N> --delete-branch`, then names `/retro <N>` as the final step.
+4. `/ship` ends a worktree-lane run by executing `scripts/worktree-rm.sh <N> --delete-branch`, then names `/retro <N>` as the final step.
 5. Root session — `/retro <N>`: the deliberate, interactive final retrospective, run at the root on `main` after the land (commits straight to `main`, no branch needed) — mirroring the trunk flow's terminal `/retro`.
    Run it on your preferred model; the stage breadcrumbs from the peer session are already on `main` for it to synthesize.
 
@@ -305,8 +309,9 @@ Guardrails:
 
 - Partition work by package — one package per peer.
   Two peers touching `pnpm-lock.yaml` or the same package's source is the main parallel-work hazard.
-- `/ship-issue` is trunk-only; ship a worktree branch with `/sync-worktree` (peer) + `/ship-worktree` (root), never `/ship-issue`.
-- Whoever lands second rebases first: if `/ship-worktree`'s ff-merge fails, the peer re-runs `/sync-worktree` to rebase onto the new `origin/main` (a non-linear merge into `main` is rejected by design).
+- A worktree branch still needs both halves: `/sync-worktree` in the peer, then `/ship` at the root.
+  `/ship` refuses to run anywhere but the root checkout on `main`, so it cannot be used as the peer's half.
+- Whoever lands second rebases first: if `/ship`'s ff-merge fails, the peer re-runs `/sync-worktree` to rebase onto the new `origin/main` (a non-linear merge into `main` is rejected by design).
 - Land a pending worktree branch before committing unrelated work to `main`.
   An intervening root commit to `main` stales the peer's completed `/sync-worktree` rebase, so the ff-merge is rejected and the peer must re-rebase (Refs #549).
   An **unpushed** root commit is the sharper form — the peer rebases onto `origin/main`, cannot see it, and its rebase is a no-op, so it cannot self-correct.
@@ -317,18 +322,19 @@ Guardrails:
 
 Each prompt template calls `set_session_name` (from `pi-session-tools`) to label the session automatically:
 
-| Stage                | Session name format            |
-| -------------------- | ------------------------------ |
-| PR review            | `#N PR Review — <title>`       |
-| Planning             | `#N Planning — <title>`        |
-| TDD implementation   | `#N TDD — <title>`             |
-| Build implementation | `#N Build — <title>`           |
-| Shipping             | `#N Ship — <title>`            |
-| Worktree sync (peer) | `#N Sync (worktree) — <title>` |
-| Worktree ship (root) | `#N Ship (worktree) — <title>` |
-| Retrospective        | `#N Retrospective — <title>`   |
+| Stage                    | Session name format            |
+| ------------------------ | ------------------------------ |
+| PR review                | `#N PR Review — <title>`       |
+| Planning                 | `#N Planning — <title>`        |
+| TDD implementation       | `#N TDD — <title>`             |
+| Build implementation     | `#N Build — <title>`           |
+| Shipping (trunk lane)    | `#N Ship — <title>`            |
+| Worktree sync (peer)     | `#N Sync (worktree) — <title>` |
+| Shipping (worktree lane) | `#N Ship (worktree) — <title>` |
+| Retrospective            | `#N Retrospective — <title>`   |
 
 Each prompt template sets the appropriate name automatically via `set_session_name`.
+Both `Shipping` rows come from `/ship`, which picks between them once it has detected its lane.
 
 ###### Retro file format
 
@@ -480,7 +486,7 @@ A type reachable from the published declaration bundle is as breaking as a named
 Before naming a remediation in a breaking-change migration note (CLI flag, config key, API call), verify it exists in the real surface (SDK types, `--help`, schema) — do not infer a config key by analogy.
 The note ships to the `BREAKING CHANGE:` footer, the generated CHANGELOG, and the issue close comment.
 Do not put `Closes #N` / `Fixes #N` / `Resolves #N` in commit messages.
-`/ship-issue` posts a curated close comment (implemented-in SHA, behavior summary) via `issue_close`; a commit keyword auto-closes the issue on push and pre-empts that comment, leaving the issue with no summary.
+`/ship` posts a curated close comment (implemented-in SHA, behavior summary) via `issue_close`; a commit keyword auto-closes the issue on push and pre-empts that comment, leaving the issue with no summary.
 Reference issues as `(#N)` in the subject or `Refs #N` in the body instead.
 Still separate footer tokens (`Refs #N`, `BREAKING CHANGE:`) from the body with a blank line for readability; it is not enforced — `committed` validates only the header grammar and parses a body-line `#N` correctly, so the `conventional-commits-parser` footer false positive that motivated the swap no longer applies (Refs #468).
 Put `Co-authored-by:` in the **final** paragraph, below `Refs #N` — git reads only the last paragraph as trailers, and `Refs #N` (no colon) is not trailer-shaped, so a co-author line above it is invisible to GitHub attribution.

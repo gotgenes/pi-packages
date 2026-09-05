@@ -4,8 +4,8 @@ name: Release
 # worktrees make that normal — and naming them is what keeps releasing one from
 # dragging a sibling along (Refs #865).
 #
-# `/ship-issue` and `/ship-worktree` dispatch this workflow after the work is on
-# main, then watch it with `ci_find`/`ci_watch` (workflow `release`).
+# `/ship` dispatches this workflow after the work is on main, then watches it
+# with `ci_find`/`ci_watch` (workflow `release`).
 on:
   workflow_dispatch:
     inputs:
