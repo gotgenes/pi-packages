@@ -55,6 +55,8 @@ export interface SubagentStateInit {
 	result?: string;
 	/** The question the agent ended its turn with — an outcome fact, like result. */
 	pendingQuestion?: string;
+	/** What a teardown with no result text reported — an outcome fact, like result. */
+	workspaceNotice?: string;
 	error?: string;
 	/** Whether the agent was stopped before the limiter ever admitted it. */
 	stoppedWhileQueued?: boolean;
@@ -116,6 +118,12 @@ export class SubagentState {
 	private _pendingQuestion?: string;
 	get pendingQuestion(): string | undefined { return this._pendingQuestion; }
 
+	// What the workspace reported at a teardown with no result text to fold it
+	// into. Part of the outcome like _result, and set at the disposal that
+	// produced it. Undefined for a run whose addendum rode the result instead.
+	private _workspaceNotice?: string;
+	get workspaceNotice(): string | undefined { return this._workspaceNotice; }
+
 	// Stats — accumulated via mutation methods, readable via getters
 	private _toolUses: number;
 	get toolUses(): number { return this._toolUses; }
@@ -142,6 +150,7 @@ export class SubagentState {
 		this._status = init.status ?? "queued";
 		this._result = init.result;
 		this._pendingQuestion = init.pendingQuestion;
+		this._workspaceNotice = init.workspaceNotice;
 		this._error = init.error;
 		this._stoppedWhileQueued = init.stoppedWhileQueued ?? false;
 		this._startedAt = init.startedAt ?? Date.now();
@@ -290,6 +299,11 @@ export class SubagentState {
 	/** Record the question the agent ended its turn with. */
 	setPendingQuestion(question: string | undefined): void {
 		this._pendingQuestion = question;
+	}
+
+	/** Record what a teardown reported when no result text could carry it. */
+	setWorkspaceNotice(notice: string): void {
+		this._workspaceNotice = notice;
 	}
 
 	/**

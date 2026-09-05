@@ -718,12 +718,14 @@ describe("Subagent.run() — workspace provider", () => {
 	it("disposes with status error when the turn loop throws", async () => {
 		const { factory, stub } = createFactory();
 		stub.runTurnLoop.mockRejectedValue(new Error("turn loop exploded"));
-		const workspace = makeWorkspace("/ws/dir", { resultAddendum: "\nshould be discarded" });
+		const workspace = makeWorkspace("/ws/dir", { resultAddendum: ADDENDUM });
 		const agent = createRunnableAgent({ createSubagentSession: factory, workspaceProvider: makeWorkspaceProvider(workspace) });
 		await agent.run();
 		expect(agent.status).toBe("error");
 		expect(workspace.dispose).toHaveBeenCalledWith({ status: "error", description: "run test" });
+		// A failed run has no result text; the addendum is kept as a notice instead.
 		expect(agent.result).toBeUndefined();
+		expect(agent.workspaceNotice).toBe(ADDENDUM);
 	});
 });
 
@@ -888,6 +890,63 @@ describe("Subagent — disposing a held workspace", () => {
 		await agent.releaseSession();
 		await agent.disposeSession();
 		expect(workspace.dispose).toHaveBeenCalledOnce();
+	});
+});
+
+describe("Subagent — workspaceNotice", () => {
+	/** A run whose turn loop rejects, under a workspace that reports an addendum. */
+	async function runFailingWithWorkspace(disposeResult?: { resultAddendum: string }) {
+		const { factory, stub } = createFactory();
+		stub.runTurnLoop.mockRejectedValue(new Error("turn loop exploded"));
+		const workspace = makeWorkspace("/ws/dir", disposeResult);
+		const agent = createRunnableAgent({
+			createSubagentSession: factory,
+			workspaceProvider: makeWorkspaceProvider(workspace),
+		});
+		await agent.run();
+		return { agent, workspace };
+	}
+
+	it("is undefined before the agent has run", () => {
+		const agent = createRunnableAgent({ workspaceProvider: makeWorkspaceProvider(makeWorkspace("/ws/dir")) });
+		expect(agent.workspaceNotice).toBeUndefined();
+	});
+
+	it("stays undefined after a run that folded its addendum into the result", async () => {
+		const { agent } = await runWithWorkspace({ responseText: "done" });
+		expect(agent.result).toBe(`done${ADDENDUM}`);
+		expect(agent.workspaceNotice).toBeUndefined();
+	});
+
+	it("holds the addendum a failed run's disposal reported", async () => {
+		const { agent } = await runFailingWithWorkspace({ resultAddendum: ADDENDUM });
+		expect(agent.workspaceNotice).toBe(ADDENDUM);
+	});
+
+	it("holds the addendum a failed resume's disposal reported", async () => {
+		const { agent, stub } = await heldWorkspaceAgent();
+		stub.resumeTurnLoop.mockRejectedValue(new Error("resume exploded"));
+		await agent.resume("the answer");
+		expect(agent.status).toBe("error");
+		expect(agent.workspaceNotice).toBe(ADDENDUM);
+	});
+
+	it("holds the addendum the retention sweep's release reported", async () => {
+		const { agent } = await heldWorkspaceAgent();
+		await agent.releaseSession();
+		expect(agent.workspaceNotice).toBe(ADDENDUM);
+	});
+
+	it("holds the addendum a session teardown reported", async () => {
+		const { agent } = await heldWorkspaceAgent();
+		await agent.disposeSession();
+		expect(agent.workspaceNotice).toBe(ADDENDUM);
+	});
+
+	it("stays undefined when the quiet disposal reported nothing", async () => {
+		const { agent } = await runFailingWithWorkspace();
+		expect(agent.workspaceDisposed).toBe(true);
+		expect(agent.workspaceNotice).toBeUndefined();
 	});
 });
 

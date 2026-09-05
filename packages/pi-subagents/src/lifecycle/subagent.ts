@@ -115,6 +115,14 @@ export class Subagent {
 	get consumed(): boolean { return this.state.consumed; }
 	get claimed(): boolean { return this.state.claimed; }
 	get pendingQuestion(): string | undefined { return this.state.pendingQuestion; }
+	/**
+	 * What the workspace reported at a teardown with no result text to fold it
+	 * into — the provider's own wording for where the child's work ended up.
+	 *
+	 * Undefined for a run that completed normally: there the addendum rides the
+	 * result, and duplicating it here would have every carrier report it twice.
+	 */
+	get workspaceNotice(): string | undefined { return this.state.workspaceNotice; }
 	get toolUses(): number { return this.state.toolUses; }
 	get lifetimeUsage(): Readonly<LifetimeUsage> { return this.state.lifetimeUsage; }
 	get compactionCount(): number { return this.state.compactionCount; }
@@ -638,14 +646,20 @@ export class Subagent {
 	}
 
 	/**
-	 * Dispose the workspace without letting a provider failure escape.
-	 * The addendum is discarded: these are the paths with no result text left
-	 * to fold it into, so there is nowhere for it to go.
+	 * Dispose the workspace without letting a provider failure escape, recording
+	 * what it reported and handing that back.
+	 *
+	 * These are the paths with no result text left to fold the addendum into, so
+	 * it is kept on the record for the carriers to report instead. The value is
+	 * returned as well as stored, so a caller can tell an addendum this call
+	 * produced from one an earlier disposal already recorded.
 	 */
-	private disposeWorkspaceQuietly(status: SubagentStatus): void {
+	private disposeWorkspaceQuietly(status: SubagentStatus): string {
 		try {
-			this.workspaceBracket.dispose({ status, description: this.description });
-		} catch (err) { debugLog(`workspace dispose (${status})`, err); }
+			const notice = this.workspaceBracket.dispose({ status, description: this.description });
+			if (notice) this.state.setWorkspaceNotice(notice);
+			return notice;
+		} catch (err) { debugLog(`workspace dispose (${status})`, err); return ""; }
 	}
 }
 
