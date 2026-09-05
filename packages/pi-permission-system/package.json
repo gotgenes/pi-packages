@@ -35,6 +35,7 @@
     "test:watch": "vitest",
     "verify:public-types": "bash scripts/verify-public-types.sh",
     "measure:core-coverage": "node scripts/measure-core-coverage.mjs",
+    "measure:path-false-positives": "node scripts/measure-path-false-positives.mjs",
     "measure:statement-descent": "node scripts/measure-statement-descent.mjs",
     "measure:statement-operands": "node scripts/measure-statement-operands.mjs",
     "measure:unresolved-redirects": "node scripts/measure-unresolved-redirects.mjs",
