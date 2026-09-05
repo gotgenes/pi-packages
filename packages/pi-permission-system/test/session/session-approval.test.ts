@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { SessionApproval } from "#src/session-approval";
+import { SessionApproval } from "#src/session/session-approval";
 
 describe("SessionApproval", () => {
   describe("single", () => {

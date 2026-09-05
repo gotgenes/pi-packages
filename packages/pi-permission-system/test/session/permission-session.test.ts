@@ -10,7 +10,7 @@ const { mockGetActiveAgentName, mockGetActiveAgentNameFromSystemPrompt } =
       vi.fn<(systemPrompt?: string) => string | null>(),
   }));
 
-vi.mock("#src/active-agent", () => ({
+vi.mock("#src/session/active-agent", () => ({
   getActiveAgentName: mockGetActiveAgentName,
   getActiveAgentNameFromSystemPrompt: mockGetActiveAgentNameFromSystemPrompt,
 }));
@@ -20,8 +20,8 @@ vi.mock("#src/active-agent", () => ({
 import type { DEFAULT_EXTENSION_CONFIG } from "#src/config/extension-config";
 import type { SkillPromptEntry } from "#src/exposure/skill-prompt-sanitizer";
 import { win32PathFlavor } from "#src/path/path-flavor";
-import type { PermissionSession } from "#src/permission-session";
-import { SessionApproval } from "#src/session-approval";
+import type { PermissionSession } from "#src/session/permission-session";
+import { SessionApproval } from "#src/session/session-approval";
 import { resolveToolPreviewLimits } from "#src/tool-input/tool-preview-formatter";
 import { makeCtx } from "#test/helpers/handler-fixtures";
 import {

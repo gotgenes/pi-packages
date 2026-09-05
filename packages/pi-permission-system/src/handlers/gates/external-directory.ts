@@ -3,7 +3,7 @@ import { getToolInputPath } from "#src/access-intent/tool-input-path";
 import type { PathNormalizer } from "#src/path/path-normalizer";
 import type { ScopedPermissionResolver } from "#src/policy/permission-resolver";
 import { buildExternalDirectoryAskPayload } from "#src/presentation/path-ask-payload";
-import { SessionApproval } from "#src/session-approval";
+import { SessionApproval } from "#src/session/session-approval";
 import type { ToolAccessExtractorLookup } from "#src/tool-input/tool-access-extractor-registry";
 import type { GateResult } from "./descriptor";
 import { resolveExternalDirectoryPolicy } from "./external-directory-policy";

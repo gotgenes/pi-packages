@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { posixPathFlavor } from "#src/path/path-flavor";
 import { evaluate } from "#src/policy/rule";
-import { SessionApproval } from "#src/session-approval";
-import type { SessionApprovalRecorder } from "#src/session-approval-recorder";
-import { SessionRules } from "#src/session-rules";
+import { SessionApproval } from "#src/session/session-approval";
+import type { SessionApprovalRecorder } from "#src/session/session-approval-recorder";
+import { SessionRules } from "#src/session/session-rules";
 
 // ── SessionRules ───────────────────────────────────────────────────────────
 

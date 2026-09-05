@@ -10,8 +10,8 @@ import {
 } from "#src/exposure/tool-registry";
 import type { ToolSurfaceObservation } from "#src/exposure/tool-surface-baseline";
 import type { DebugLogger } from "#src/logging/session-logger";
-import type { PermissionSession } from "#src/permission-session";
 import type { PermissionResolver } from "#src/policy/permission-resolver";
+import type { PermissionSession } from "#src/session/permission-session";
 import type { TurnPreparation } from "./session-turn-prep";
 
 /** Minimal subset of BeforeAgentStartEvent used by this handler. */

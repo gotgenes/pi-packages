@@ -1,6 +1,6 @@
-import type { SessionGrantWidth } from "#src/approval-grant";
 import type { DecisionSource } from "#src/authority/decision-source";
 import type { PermissionPromptDecision } from "#src/authority/permission-dialog";
+import type { SessionGrantWidth } from "#src/session/approval-grant";
 
 /**
  * Result of applying the permission gate.

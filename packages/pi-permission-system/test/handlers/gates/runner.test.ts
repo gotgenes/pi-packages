@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { GateBypass } from "#src/handlers/gates/descriptor";
 import type { PermissionDecisionEvent } from "#src/permission-events";
 import { EXTENSION_TAG } from "#src/presentation/agent-renderer";
-import { SessionApproval } from "#src/session-approval";
+import { SessionApproval } from "#src/session/session-approval";
 import {
   DECIDED_BY_ABSENT_AUTHORITY,
   DECIDED_BY_AUTHORIZER,

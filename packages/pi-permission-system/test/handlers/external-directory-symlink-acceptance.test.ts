@@ -25,7 +25,7 @@ import type { ToolCallContext } from "#src/handlers/gates/types";
 import { pathFlavorForPlatform } from "#src/path/path-flavor";
 import { PathNormalizer } from "#src/path/path-normalizer";
 import { PermissionResolver } from "#src/policy/permission-resolver";
-import { SessionRules } from "#src/session-rules";
+import { SessionRules } from "#src/session/session-rules";
 import type { ScopeConfig } from "#src/types";
 
 import { createManager } from "#test/helpers/manager-harness";

@@ -11,7 +11,7 @@ import {
   renderRefusal,
 } from "#src/presentation/agent-renderer";
 import { renderReviewLogFacts } from "#src/presentation/review-log-renderer";
-import type { SessionApprovalRecorder } from "#src/session-approval-recorder";
+import type { SessionApprovalRecorder } from "#src/session/session-approval-recorder";
 import type { PermissionCheckResult } from "#src/types";
 import type {
   DecisionEventFacts,

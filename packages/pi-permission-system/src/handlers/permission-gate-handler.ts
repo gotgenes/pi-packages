@@ -18,7 +18,7 @@ import {
   formatMissingToolNameReason,
   formatUnknownToolReason,
 } from "#src/permission-prompts";
-import type { PermissionSession } from "#src/permission-session";
+import type { PermissionSession } from "#src/session/permission-session";
 import { toRecord } from "#src/value-guards";
 
 /** Minimal subset of InputEvent used by handleInput. */

@@ -1,5 +1,5 @@
 import type { PathFlavor } from "#src/path/path-flavor";
-import { readSessionId } from "#src/session-identity";
+import { readSessionId } from "#src/session/session-identity";
 import { SUBAGENT_ENV_HINT_KEYS } from "./permission-forwarding";
 import type { SubagentSessionRegistry } from "./subagent-registry";
 

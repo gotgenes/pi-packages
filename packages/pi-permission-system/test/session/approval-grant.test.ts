@@ -4,7 +4,7 @@ import {
   type ApprovalGrant,
   provenDirectionOf,
   widenGrant,
-} from "#src/approval-grant";
+} from "#src/session/approval-grant";
 
 describe("widenGrant", () => {
   it("folds a directional surface to its bare family, keeping the pattern", () => {

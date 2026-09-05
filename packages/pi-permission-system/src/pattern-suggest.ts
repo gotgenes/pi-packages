@@ -7,7 +7,7 @@ import {
   PATH_BEARING_TOOLS,
   surfaceFamilyOf,
 } from "#src/access-intent/path-surfaces";
-import type { ApprovalGrant } from "./approval-grant";
+import type { ApprovalGrant } from "#src/session/approval-grant";
 
 /** The suggestion returned for a "Yes, for this session" dialog option. */
 export interface SessionApprovalSuggestion {

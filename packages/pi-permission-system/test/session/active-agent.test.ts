@@ -6,7 +6,7 @@ import {
   getActiveAgentNameFromSystemPrompt,
   normalizeAgentName,
   type SessionEntryView,
-} from "#src/active-agent";
+} from "#src/session/active-agent";
 
 afterEach(() => {
   vi.restoreAllMocks();

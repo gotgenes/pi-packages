@@ -2,7 +2,7 @@ import type { DecisionSource } from "#src/authority/decision-source";
 import type { PromptPermissionDetails } from "#src/authority/permission-prompter";
 import type { PermissionDecisionEvent } from "#src/permission-events";
 import type { PromptPayload } from "#src/presentation/prompt-payload";
-import type { SessionApproval } from "#src/session-approval";
+import type { SessionApproval } from "#src/session/session-approval";
 import type { PermissionCheckResult, PermissionState } from "#src/types";
 
 // ── Descriptor types ───────────────────────────────────────────────────────

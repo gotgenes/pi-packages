@@ -4,8 +4,8 @@ import { posixPathFlavor } from "#src/path/path-flavor";
 import type { ScopedPermissionManager } from "#src/policy/permission-manager";
 import { PermissionResolver } from "#src/policy/permission-resolver";
 import type { Ruleset } from "#src/policy/rule";
-import { SessionApproval } from "#src/session-approval";
-import { SessionRules } from "#src/session-rules";
+import { SessionApproval } from "#src/session/session-approval";
+import { SessionRules } from "#src/session/session-rules";
 import type { PermissionState } from "#src/types";
 import { makeFakePermissionManager } from "#test/helpers/session-fixtures";
 

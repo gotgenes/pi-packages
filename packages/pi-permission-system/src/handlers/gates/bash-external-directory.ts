@@ -2,7 +2,7 @@ import type { BashProgram } from "#src/access-intent/bash/program";
 import type { PathNormalizer } from "#src/path/path-normalizer";
 import type { ScopedPermissionResolver } from "#src/policy/permission-resolver";
 import { buildBashExternalDirectoryAskPayload } from "#src/presentation/path-ask-payload";
-import { SessionApproval } from "#src/session-approval";
+import { SessionApproval } from "#src/session/session-approval";
 import type { GateResult } from "./descriptor";
 import { selectUncoveredExternalPaths } from "./external-directory-policy";
 import { accessFactsFromPath } from "./helpers";

@@ -6,7 +6,7 @@ import type { PathNormalizer } from "#src/path/path-normalizer";
 import type { ScopedPermissionResolver } from "#src/policy/permission-resolver";
 import { pickMostRestrictive } from "#src/policy/restrictiveness";
 import { buildPathAskPayload } from "#src/presentation/path-ask-payload";
-import { SessionApproval } from "#src/session-approval";
+import { SessionApproval } from "#src/session/session-approval";
 import type { PermissionCheckResult } from "#src/types";
 import type { GateResult } from "./descriptor";
 import { accessFactsFromPath } from "./helpers";

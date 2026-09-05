@@ -8,8 +8,6 @@ import {
   unlinkSync,
   writeFileSync,
 } from "node:fs";
-
-import { type ApprovalGrant, isSessionGrantWidth } from "#src/approval-grant";
 import {
   OWNER_ONLY_DIRECTORY_MODE,
   OWNER_ONLY_FILE_MODE,
@@ -17,6 +15,10 @@ import {
 import type { DebugReviewLogger } from "#src/logging/session-logger";
 import type { PermissionUiPromptSource } from "#src/permission-events";
 import { asPromptPayload } from "#src/presentation/prompt-payload";
+import {
+  type ApprovalGrant,
+  isSessionGrantWidth,
+} from "#src/session/approval-grant";
 import { asDecisionSource } from "./decision-source";
 import { isPermissionDecisionState } from "./permission-dialog";
 import {

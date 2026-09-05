@@ -1,5 +1,4 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { provenDirectionOf } from "#src/approval-grant";
 import {
   buildDirectionalSessionLabels,
   buildForwardedScopeLabels,
@@ -10,6 +9,7 @@ import {
   type PermissionEventBus,
 } from "#src/permission-events";
 import { buildUiPrompt } from "#src/permission-ui-prompt";
+import { provenDirectionOf } from "#src/session/approval-grant";
 import type { TerminalAuthorizer } from "./authorizer";
 import type {
   PermissionPromptDecision,

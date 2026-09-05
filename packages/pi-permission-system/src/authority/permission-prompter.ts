@@ -1,7 +1,7 @@
-import type { SessionGrantWidth } from "#src/approval-grant";
 import type { ReviewLogger } from "#src/logging/session-logger";
 import type { PromptPayload } from "#src/presentation/prompt-payload";
 import { renderReviewLogFacts } from "#src/presentation/review-log-renderer";
+import type { SessionGrantWidth } from "#src/session/approval-grant";
 import type { TerminalAuthorizer } from "./authorizer";
 import type { DecisionSource } from "./decision-source";
 import type { PermissionPromptDecision } from "./permission-dialog";

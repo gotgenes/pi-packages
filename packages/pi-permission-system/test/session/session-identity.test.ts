@@ -2,7 +2,7 @@ import { describe, expect, test, vi } from "vitest";
 import {
   readSessionId,
   type SessionIdentityContext,
-} from "#src/session-identity";
+} from "#src/session/session-identity";
 
 function makeCtx(getSessionId: () => string): SessionIdentityContext {
   return { sessionManager: { getSessionId } };

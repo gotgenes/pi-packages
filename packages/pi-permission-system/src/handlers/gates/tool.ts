@@ -10,7 +10,7 @@ import {
   suggestSessionPattern,
 } from "#src/pattern-suggest";
 import { buildToolAskPayload } from "#src/presentation/tool-ask-payload";
-import { SessionApproval } from "#src/session-approval";
+import { SessionApproval } from "#src/session/session-approval";
 import type { ToolPreviewFormatter } from "#src/tool-input/tool-preview-formatter";
 import type { PermissionCheckResult } from "#src/types";
 import type { GateDescriptor } from "./descriptor";

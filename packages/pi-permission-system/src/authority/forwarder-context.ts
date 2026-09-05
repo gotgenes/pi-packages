@@ -1,4 +1,4 @@
-import type { SessionEntryView } from "#src/active-agent";
+import type { SessionEntryView } from "#src/session/active-agent";
 import type { PermissionDecisionUi } from "./permission-dialog";
 
 /**
