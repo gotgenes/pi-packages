@@ -34,6 +34,29 @@ The phase shape is full: six steps over three tracks, adopting ADR 0013 staging 
 - **Fallow's duplication figure moved from 0.1% to 1.3% with no production change**: five `scripts/measure-*.mjs` instruments clone one review-log prelude.
   The metric row now counts `src/` clone groups only; the prelude extraction rides whichever step next adds an instrument (this planning added a sixth without extracting, deliberately keeping the planning commit to the roadmap).
 
+## Stage: Improvement Planning — amendment (2026-09-05T16:30:46Z)
+
+### Session summary
+
+After the roadmap was committed, the operator clarified that the friction is the **false positive** (a token that is not a path) and not the ask about a real external file, with [#797]'s spreadsheet cell reference as the example.
+That split the shape-indistinguishable class across two complementary levers and added a seventh step: [#797] became Step 4's named acceptance case (`commandEffects: { officecli: { effects: [] } }` withdraws a declared tool's operands), and the ADR 0007 §5 deliberation — may a chain link dismiss an `external_directory` ask for a token naming nothing on disk — was pulled in from the deferred design budget as Step 7 ([#882]).
+
+### Observations
+
+- **The first composition gate collapsed two populations the operator keeps apart.**
+  "False-positive asks" was read as one bucket, measured as 4.5% and trending to zero, and the phase was composed around the 95% of real external paths.
+  The operator's clarification separated a *nonexistent* path from a *real* one, and the measurement had already shown the second was fine — the residual that mattered was the shape-indistinguishable token, which the scan could not see because it is shaped exactly like a path.
+  When the operator names a specific example ([#797]), trace that example through the levers before the gate, not after it: the answer — no deterministic rule can separate `/Sheet1/B1` from `/etc/passwd` — is what made the two-lever framing obvious.
+- **A deferred design deliberation was the missing lever, not a code step.**
+  Track C was deferred wholesale as "ADR budget", but one of its three items (the §5/§7 contradiction) was load-bearing for the operator's stated goal and the other two were not.
+  Defer design work item by item against the phase's cause, never as a category.
+- **`effects: []` was in ADR 0013 §7's text and in [#880]'s first body, and its enforcement meaning was stated in neither.**
+  "No filesystem effect" implies "no surface to consult" implies "operands withdrawn", but the chain of implication was only written down once the acceptance case forced it.
+  A config value's semantics are the test it must pass; name the test in the issue.
+- **Both levers are the same ADR 0013 §7 layering applied to candidacy rather than effect**: a declared fact at zero tokens on the ask-producing side, judgment on the ask-consuming side for what nobody declared.
+  The framing that dissolved the "complementary or redundant?"
+  question was naming which side of `evaluate()` each lever sits on.
+
 [#609]: https://github.com/gotgenes/pi-packages/issues/609
 [#620]: https://github.com/gotgenes/pi-packages/issues/620
 [#751]: https://github.com/gotgenes/pi-packages/issues/751
@@ -47,3 +70,5 @@ The phase shape is full: six steps over three tracks, adopting ADR 0013 staging 
 [#863]: https://github.com/gotgenes/pi-packages/issues/863
 [#880]: https://github.com/gotgenes/pi-packages/issues/880
 [#881]: https://github.com/gotgenes/pi-packages/issues/881
+[#882]: https://github.com/gotgenes/pi-packages/issues/882
+[#797]: https://github.com/gotgenes/pi-packages/issues/797
