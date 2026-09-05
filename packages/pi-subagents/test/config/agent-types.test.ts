@@ -235,6 +235,29 @@ describe("AgentTypeRegistry", () => {
       const names = registry.getToolNamesForType("nonexistent");
       expect(names).toEqual(BUILTIN_TOOL_NAMES);
     });
+
+    it("returns an empty list for an agent that declared tools: none", () => {
+      const registry = makeRegistry(
+        new Map([["silent", makeAgentConfig({ name: "silent", toolNames: [] })]])
+      );
+      expect(registry.getToolNamesForType("silent")).toEqual([]);
+    });
+
+    it("returns the built-ins for a user agent that declared no tools key", () => {
+      const registry = makeRegistry(
+        new Map([["unrestricted", makeAgentConfig({ name: "unrestricted", toolNames: undefined })]])
+      );
+      expect(registry.getToolNamesForType("unrestricted")).toEqual(BUILTIN_TOOL_NAMES);
+    });
+
+    it("returns a disabled agent's own list rather than the built-ins", () => {
+      const registry = makeRegistry(
+        new Map([
+          ["retired", makeAgentConfig({ name: "retired", toolNames: ["read"], enabled: false })],
+        ])
+      );
+      expect(registry.getToolNamesForType("retired")).toEqual(["read"]);
+    });
   });
 
   describe("DEFAULT_AGENT_NAMES static property", () => {
