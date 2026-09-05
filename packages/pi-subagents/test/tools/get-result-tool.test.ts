@@ -1,13 +1,31 @@
 import { describe, expect, it } from "vitest";
 import { AgentTypeRegistry } from "#src/config/agent-types";
 import {
+	type GetResultDetails,
 	GetResultTool,
 	type GetResultToolManager,
+	renderGetResult,
 } from "#src/tools/get-result-tool";
 import type { Subagent } from "#src/types";
+import type { Theme } from "#src/ui/display";
 import { createTestSubagent, makeStubExecution } from "#test/helpers/make-subagent";
 import { createMockSession, createSubagentSessionStub, toSubagentSession } from "#test/helpers/mock-session";
 import { STUB_CTX } from "#test/helpers/stub-ctx";
+
+// Mock theme for testing render output
+function makeMockTheme() {
+	const outputs: Map<string, string[]> = new Map();
+	const mockTheme: Theme = {
+		fg: (color: string, text: string) => {
+			const key = `fg:${color}`;
+			if (!outputs.has(key)) outputs.set(key, []);
+			outputs.get(key)!.push(text);
+			return `${color}:${text}`;
+		},
+		bold: (text: string) => `bold:${text}`,
+	};
+	return { theme: mockTheme, outputs };
+}
 
 const testRegistry = new AgentTypeRegistry(() => new Map());
 
@@ -237,5 +255,115 @@ describe("GetResultTool", () => {
 		const result = await execute(makeManager(records), { agent_id: "agent-1", verbose: true });
 		expect(result.content[0].text).toContain("Full transcript available at: /tasks/agent.jsonl");
 		expect(result.content[0].text).not.toContain("--- Agent Conversation ---");
+	});
+});
+
+describe("GetResultTool rendering", () => {
+	function makeDetails(overrides: Partial<GetResultDetails> = {}): GetResultDetails {
+		return {
+			id: "test-agent",
+			displayName: "Test Agent",
+			status: "completed" as const,
+			description: "Test description",
+			toolUses: 5,
+			tokens: "1.2K",
+			duration: "10s",
+			contextPercent: 50,
+			compactionCount: 0,
+			result: "Test result",
+			error: undefined,
+			verbose: false,
+			transcriptPath: undefined,
+			stoppedWhileQueued: false,
+			...overrides,
+		};
+	}
+
+	function renderResult(details: GetResultDetails, expanded: boolean) {
+		const { theme, outputs } = makeMockTheme();
+		const text = renderGetResult(details, expanded, theme);
+		return { text, outputs };
+	}
+
+	it("renders collapsed state without result text", () => {
+		const details = makeDetails({ result: "This should not appear in collapsed" });
+		const { text } = renderResult(details, false);
+		expect(text).not.toContain("This should not appear in collapsed");
+		expect(text).toContain("test-agent");
+		expect(text).toContain("completed");
+	});
+
+	it("renders expanded state with result text", () => {
+		const details = makeDetails({ result: "Expanded result text" });
+		const { text } = renderResult(details, true);
+		expect(text).toContain("Expanded result text");
+	});
+
+	it("truncates description to 80 characters", () => {
+		const longDesc = "a".repeat(100);
+		const details = makeDetails({ description: longDesc });
+		const { text } = renderResult(details, false);
+		// Description should be truncated to 80 chars with ellipsis
+		expect(text).toContain("aaaaaaaaaaaaaaa"); // Start of truncated description
+		// The text should contain ellipsis (the … character)
+		expect(text).toContain("…");
+	});
+
+	it("truncates result lines to 200 characters each", () => {
+		const longLine = "x".repeat(250);
+		const details = makeDetails({ result: longLine });
+		const { text } = renderResult(details, true);
+		// Should contain truncated line (200 + ellipsis)
+		expect(text).toContain("xxxxxxxxxxxxxxxxx"); // Start of truncated line
+		// The text should contain ellipsis (the … character)
+		expect(text).toContain("…");
+	});
+
+	it("limits result to 30 lines", () => {
+		const manyLines = Array.from({ length: 40 }, (_, i) => `line${i}`).join("\n");
+		const details = makeDetails({ result: manyLines });
+		const { text } = renderResult(details, true);
+		expect(text).toContain("line0");
+		expect(text).toContain("line29");
+		expect(text).not.toContain("line30");
+		expect(text).toContain("(truncated)");
+	});
+
+	it("shows stopped-while-queued message", () => {
+		const details = makeDetails({ status: "running", stoppedWhileQueued: true });
+		const { text } = renderResult(details, true);
+		expect(text).toContain("stopped while queued");
+	});
+
+	it("shows running message for running status", () => {
+		const details = makeDetails({ status: "running", stoppedWhileQueued: false });
+		const { text } = renderResult(details, true);
+		expect(text).toContain("still running");
+	});
+
+	it("shows verbose note when verbose=true", () => {
+		const details = makeDetails({ verbose: true });
+		const { text } = renderResult(details, true);
+		expect(text).toContain("verbose conversation in result for model");
+	});
+
+	it("shows transcript note when transcriptPath is set", () => {
+		const details = makeDetails({ verbose: false, transcriptPath: "/path/to/transcript.jsonl" });
+		const { text } = renderResult(details, true);
+		expect(text).toContain("full transcript available");
+	});
+
+	it("uses correct icon/style for aborted status (error style)", () => {
+		const details = makeDetails({ status: "aborted" });
+		const { outputs } = renderResult(details, false);
+		// aborted should use error style (matching result-renderer.ts)
+		const errorOutputs = outputs.get("fg:error") ?? [];
+		expect(errorOutputs.some((s) => s.includes("✗"))).toBe(true);
+	});
+
+	it("uses compaction glyph when compactionCount > 0", () => {
+		const details = makeDetails({ compactionCount: 3 });
+		const { text } = renderResult(details, false);
+		expect(text).toContain("⇊3");
 	});
 });

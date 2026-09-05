@@ -1,15 +1,171 @@
+import type { AgentToolResult, ToolRenderResultOptions } from "@earendil-works/pi-coding-agent";
 import { defineTool } from "@earendil-works/pi-coding-agent";
+import { Text } from "@earendil-works/pi-tui";
 import { Type } from "@sinclair/typebox";
 import type { AgentConfigLookup } from "#src/config/agent-types";
+import type { SubagentStatus } from "#src/lifecycle/subagent";
 import { type AgentReport, formatAgentReport } from "#src/tools/get-result-report";
-import { formatLifetimeTokens, textResult } from "#src/tools/helpers";
+import { formatLifetimeTokens, textResultWithDetails } from "#src/tools/helpers";
 import type { Subagent } from "#src/types";
-import { formatDuration, getDisplayName } from "#src/ui/display";
+import { formatDuration, getDisplayName, type Theme } from "#src/ui/display";
+import { GLYPHS } from "#src/ui/glyphs";
+
+// ---- Local helpers ----
 
 // ---- Deps interfaces ----
 
 export interface GetResultToolManager {
 	getRecord(id: string): Subagent | undefined;
+}
+
+/**
+ * Metadata attached to get_subagent_result tool results for custom rendering.
+ * Mirrors AgentDetails in agent-tool.ts but scoped to get_subagent_result.
+ */
+export interface GetResultDetails {
+	id: string;
+	displayName: string;
+	status: SubagentStatus;
+	description: string;
+	toolUses: number;
+	tokens: string;
+	duration: string;
+	contextPercent: number | null;
+	compactionCount: number;
+	/** Result text, present only for completed/steered/stopped statuses. */
+	result?: string;
+	/** Error message, present only for error status. */
+	error?: string;
+	/** Whether verbose conversation was requested and is included. */
+	verbose: boolean;
+	/** Path to the persisted transcript file. */
+	transcriptPath?: string;
+	/** Whether the agent was stopped before being admitted. */
+	stoppedWhileQueued: boolean;
+}
+
+// ---- Renderer ----
+
+/**
+ * Render get_subagent_result output for collapsed/expanded TUI display.
+ * Mirrors the pattern in result-renderer.ts but scoped to GetResultDetails.
+ * Exported for testing.
+ */
+export function renderGetResult(details: GetResultDetails, expanded: boolean, theme: Theme): string {
+	const { id, displayName, status, description, toolUses, tokens, duration, contextPercent, compactionCount, result, error, verbose, transcriptPath, stoppedWhileQueued } = details;
+
+	// Build the status icon and label
+	let icon: string;
+	let statusLabel: string;
+	let iconStyle: "success" | "error" | "warning" | "dim";
+
+	switch (status) {
+		case "completed":
+			icon = GLYPHS.success;
+			iconStyle = "success";
+			statusLabel = "completed";
+			break;
+		case "steered":
+			icon = GLYPHS.success;
+			iconStyle = "warning";
+			statusLabel = "wrapped up";
+			break;
+		case "running":
+			icon = "";
+			iconStyle = "dim";
+			statusLabel = "running";
+			break;
+		case "queued":
+			icon = "";
+			iconStyle = "dim";
+			statusLabel = "queued";
+			break;
+		case "stopped":
+			icon = GLYPHS.stopped;
+			iconStyle = "dim";
+			statusLabel = "stopped";
+			break;
+		case "aborted":
+			icon = GLYPHS.failure;
+			iconStyle = "error";
+			statusLabel = "aborted";
+			break;
+		case "error":
+			icon = GLYPHS.failure;
+			iconStyle = "error";
+			statusLabel = "error";
+			break;
+		default:
+			icon = "";
+			iconStyle = "dim";
+			statusLabel = status;
+	}
+
+	// Build stats string
+	const statsParts: string[] = [];
+	if (displayName) statsParts.push(displayName);
+	if (toolUses > 0) statsParts.push(`${toolUses} tool use${toolUses === 1 ? "" : "s"}`);
+	if (tokens) statsParts.push(tokens);
+	if (contextPercent !== null) statsParts.push(`${Math.round(contextPercent)}%`);
+	if (compactionCount > 0) statsParts.push(`${GLYPHS.compactions}${compactionCount}`);
+	statsParts.push(duration);
+
+	const stats = statsParts.map(p => theme.fg("dim", p)).join(" " + theme.fg("dim", "·") + " ");
+
+	// Build the main line
+	let line = "";
+	if (icon) {
+		line += theme.fg(iconStyle, icon) + " ";
+	}
+	line += theme.fg("toolTitle", theme.bold(id));
+	line += " " + theme.fg("dim", statusLabel);
+	if (stats) {
+		line += " " + theme.fg("dim", "·") + " " + stats;
+	}
+
+	// Add description on next line
+	if (description) {
+		// Truncate description to avoid extremely long lines
+		const maxDescLen = 80;
+		const truncatedDesc = description.length > maxDescLen
+			? description.slice(0, maxDescLen) + "…"
+			: description;
+		line += "\n" + theme.fg("dim", `  ${GLYPHS.subLine}  ${truncatedDesc}`);
+	}
+
+	// Expanded: show result preview or error
+	if (expanded) {
+		if (status === "error" && error) {
+			line += "\n" + theme.fg("error", `  ${GLYPHS.subLine}  Error: ${error}`);
+		} else if (stoppedWhileQueued) {
+			line += "\n" + theme.fg("dim", `  ${GLYPHS.subLine}  Agent was stopped while queued and never started.`);
+		} else if (status === "running") {
+			line += "\n" + theme.fg("dim", `  ${GLYPHS.subLine}  Agent is still running.`);
+		} else if (result) {
+			// Show truncated result preview
+			const maxResultLines = 30;
+			const allLines = result.split("\n");
+			const lines = allLines.slice(0, maxResultLines);
+			for (const l of lines) {
+				// Truncate each line to avoid extremely long terminal rows
+				const maxLineLen = 200;
+				const truncatedLine = l.length > maxLineLen ? l.slice(0, maxLineLen) + "…" : l;
+				line += "\n" + theme.fg("dim", `  ${truncatedLine}`);
+			}
+			if (allLines.length > maxResultLines) {
+				line += "\n" + theme.fg("muted", "  ... (truncated)");
+			}
+		}
+
+		// Add note about verbose/transcript availability
+		if (verbose) {
+			line += "\n" + theme.fg("muted", `  ${GLYPHS.subLine}  (verbose conversation in result for model)`);
+		} else if (transcriptPath) {
+			line += "\n" + theme.fg("muted", `  ${GLYPHS.subLine}  (full transcript available)`);
+		}
+	}
+
+	return line;
 }
 
 // ---- Class ----
@@ -29,7 +185,7 @@ export class GetResultTool {
 	) {
 		const record = this.manager.getRecord(params.agent_id);
 		if (!record) {
-			return textResult(`Agent not found: "${params.agent_id}". Records are cleared at session start/switch, so it may be from a previous session.`);
+			return textResultWithDetails<GetResultDetails>(`Agent not found: "${params.agent_id}". Records are cleared at session start/switch, so it may be from a previous session.`);
 		}
 
 		// Wait for completion if requested. The record owns the decision of whether
@@ -55,7 +211,11 @@ export class GetResultTool {
 			record.release();
 		}
 
-		return textResult(formatAgentReport(this.buildReport(record, params.verbose)));
+		const verbose = params.verbose ?? false;
+		return textResultWithDetails<GetResultDetails>(
+			formatAgentReport(this.buildReport(record, verbose)),
+			this.buildDetails(record, verbose),
+		);
 	}
 
 	private buildReport(record: Subagent, verbose?: boolean): AgentReport {
@@ -79,6 +239,62 @@ export class GetResultTool {
 			pendingQuestion: record.pendingQuestion,
 			workspaceNotice: record.workspaceNotice,
 		};
+	}
+
+	/** Build GetResultDetails from a Subagent record and verbose flag. */
+	private buildDetails(record: Subagent, verbose: boolean): GetResultDetails {
+		return {
+			id: record.id,
+			displayName: getDisplayName(record.type, this.registry),
+			status: record.status,
+			description: record.description,
+			toolUses: record.toolUses,
+			tokens: formatLifetimeTokens(record),
+			duration: formatDuration(record.startedAt, record.completedAt),
+			contextPercent: record.getContextPercent(),
+			compactionCount: record.compactionCount,
+			result: record.result,
+			error: record.error,
+			verbose,
+			transcriptPath: record.outputFile,
+			stoppedWhileQueued: record.stoppedWhileQueued,
+		};
+	}
+
+	/**
+	 * Render the tool call header for get_subagent_result.
+	 * Shows the agent ID and operation type.
+	 */
+	private renderCall(args: Record<string, unknown>, theme: Theme): Text {
+		const agentId = args.agent_id as string;
+		const wait = args.wait as boolean | undefined;
+		const verbose = args.verbose as boolean | undefined;
+		const parts = [theme.fg("toolTitle", theme.bold("Get Agent Result"))];
+		parts.push(theme.fg("muted", ` ${agentId}`));
+		if (wait) parts.push(theme.fg("muted", " (waiting)"));
+		if (verbose) parts.push(theme.fg("muted", " (verbose)"));
+		return new Text(GLYPHS.toolCall + " " + parts.join(""), 0, 0);
+	}
+
+	/**
+	 * Render the tool result with collapsed/expanded states.
+	 * Collapsed: show agent identity, status, stats, description (no result text).
+	 * Expanded: show truncated result preview + mention of verbose/transcript.
+	 */
+	private renderResult(
+		result: AgentToolResult<GetResultDetails | undefined>,
+		{ expanded }: ToolRenderResultOptions,
+		theme: Theme,
+	): Text {
+		const details = result.details;
+		if (!details) {
+			// No details means no record found - just show plain text
+			const text = result.content[0]?.type === "text" ? result.content[0].text : "";
+			return new Text(text, 0, 0);
+		}
+
+		const rendered = renderGetResult(details, expanded, theme);
+		return new Text(rendered, 0, 0);
 	}
 
 	toToolDefinition() {
@@ -106,6 +322,16 @@ export class GetResultTool {
 					}),
 				),
 			}),
+
+			// Custom rendering: collapsed/expanded result display
+			renderCall: (args: Record<string, unknown>, theme: Theme) =>
+				this.renderCall(args, theme),
+			renderResult: (
+				result: AgentToolResult<GetResultDetails | undefined>,
+				options: ToolRenderResultOptions,
+				theme: Theme,
+			) => this.renderResult(result, options, theme),
+
 			execute: (
 				toolCallId: string,
 				params: { agent_id: string; wait?: boolean; verbose?: boolean },
