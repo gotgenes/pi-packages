@@ -1065,8 +1065,8 @@ Deferred by composition, with the reason each carries: [#804] (staging slice 7, 
 - [#863] and [#859] — adopted as Steps 2 and 3 (2nd consecutive sweep, scheduled).
   Both are shape decisions the classifier makes on tokens whose role the collector already knew, and each fix is fail-closed: a script string was never a path, and the [#645] existence probe still admits a real file named `a..b`.
 - [#802] — adopted as Step 6 (staging slice 6, first two of its three parts).
-- `commandEffects` — filed for Step 4; the unfiled remainder of staging slice 2 (ADR 0013 §7).
-- Blame threading (staging slice 5) — filed for Step 5, recast from a UX slice into a `fix:` by the measurement above.
+- [#880] — filed for Step 4 (`commandEffects`); the unfiled remainder of staging slice 2 (ADR 0013 §7).
+- [#881] — filed for Step 5 (blame threading, staging slice 5), recast from a UX slice into a `fix:` by the measurement above.
 - [#800] — **close as completed** with the config recipe: `external_directory_read: {"*": "allow"}` plus the pure-reader core delivers what it asks for `cat`/`ls`/`find`/`grep`, and Step 4 covers the non-core readers it names (`strings`, `file`) by declaration.
 - [#804] — deferred to Phase 16 with recorded rationale (operator composition decision; 2nd consecutive sweep): it mirrors the `commandEffects` shape Step 4 creates, and landing it in the same phase would have both steps deciding one shape.
 - [#822] — deferred behind Step 6 with recorded rationale (operator decision; 2nd consecutive sweep): a sandbox subsumes static glob expansion, so the mechanism waits for the seam that would replace it.
@@ -1174,7 +1174,7 @@ Release: independent
 
 Release: independent
 
-#### Step 4: `commandEffects` — the user declares what their own tools do
+#### Step 4: `commandEffects` — the user declares what their own tools do ([#880])
 
 **Cause:** ADR 0013 §7 gives the deterministic layer three effect sources and the package ships two; without the third, every subcommand- or option-dependent reader (`git log`, `sed -n`, `strings`) is unproven, consults both directional surfaces, and asks on `_write` for a read — the largest measured population left after the core (`git` 92 and `sed` 24 of 388 recent asks).
 The long tail has nowhere to live but the package's own frozen core, which is the pressure ADR 0009 refused.
@@ -1190,7 +1190,7 @@ The long tail has nowhere to live but the package's own frozen core, which is th
 
 Release: batch "declared-effects"
 
-#### Step 5: Blame reaches the ask it explains
+#### Step 5: Blame reaches the ask it explains ([#881])
 
 **Cause:** the gate's blame facts — the deciding path, its `effect`, its `effectSource` — live on the gate's `logContext`, which the runner spreads into the entries *it* writes, but on `ask` the gate writes nothing and `PermissionPrompter` brackets the request from `PromptPermissionDetails`, which carries the payload and not the context.
 So the blame reaches the review log on every path except the one a human decides — zero `effect` keys in the local log, and every bash `external_directory` ask since [#807] recorded with `path: null` — and it reaches the dialog on no path at all, so the user asked about `git log ~/x` on `external_directory_write` cannot see that the effect was unproven or what would prove it.
@@ -1225,7 +1225,7 @@ Release: independent
 flowchart TD
     S2["Step 2 (#863): inline scripts are scripts"] -.-> S1["Step 1 (#609): redirect destinations by role"]
     S3["Step 3 (#859): .. as a whole segment"] -.-> S1
-    S4["Step 4: commandEffects"] --> S5["Step 5: blame reaches the ask"]
+    S4["Step 4 (#880): commandEffects"] --> S5["Step 5 (#881): blame reaches the ask"]
     S1 -.-> S5
     S6["Step 6 (#802): policy-scope export + launcher"]
 ```
@@ -1345,4 +1345,6 @@ Each phase's findings, numbered plan, dependency diagram, and health metrics are
 [#868]: https://github.com/gotgenes/pi-packages/issues/868
 [#874]: https://github.com/gotgenes/pi-packages/issues/874
 [#875]: https://github.com/gotgenes/pi-packages/issues/875
+[#880]: https://github.com/gotgenes/pi-packages/issues/880
+[#881]: https://github.com/gotgenes/pi-packages/issues/881
 [ADR-0002]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-subagents/docs/decisions/0002-extensions-on-a-minimal-core.md
