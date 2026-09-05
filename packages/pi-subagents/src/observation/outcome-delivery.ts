@@ -8,6 +8,12 @@
  * truncation — a nudge is a preview, a pull is the full text — but the body
  * they wrap is the same fact, so it is rendered here rather than four times.
  *
+ * A workspace notice rides the same four carriers without being part of the
+ * outcome: it reports where a teardown put the child's work, which the parent
+ * needs whether the run succeeded or failed. A notice produced after the
+ * result was already delivered reaches none of them and is announced on its
+ * own instead.
+ *
  * Pure functions only: no SDK types, no record types, no side effects.
  */
 
@@ -90,6 +96,18 @@ export function renderQuestionAffordance(agentId: string, question: string | und
 		`\n\nThis agent is waiting on an answer:\n\n${quoted}\n\n` +
 		`Answer by calling subagent with resume: "${agentId}" and your answer as the prompt.`
 	);
+}
+
+/**
+ * The provider's own wording for where a teardown left the child's work, for a
+ * carrier appending it after the outcome body. Empty when no teardown reported
+ * anything — including every run whose addendum rode the result text instead.
+ *
+ * Takes the notice rather than a record, so a carrier holding any shape can
+ * call it, and so the framing has one home if a carrier ever needs its own.
+ */
+export function renderWorkspaceNotice(notice: string | undefined): string {
+	return notice ?? "";
 }
 
 /**

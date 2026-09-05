@@ -5,6 +5,7 @@ import {
   renderOutcomeBody,
   renderQuestionAffordance,
   renderStatusNote,
+  renderWorkspaceNotice,
 } from "#src/observation/outcome-delivery";
 import {
   buildDetails,
@@ -119,8 +120,11 @@ export async function runForeground(
   const noteText = renderSpawnNotes(params.config.notes);
 
   if (record.status === "error") {
+    // A failed run has no result text, so this return is the only carrier that
+    // can say where its workspace saved the work.
     return textResult(
-      `${noteText}Agent failed: ${record.error}\nAgent ID: ${record.id}`,
+      `${noteText}Agent failed: ${record.error}\nAgent ID: ${record.id}` +
+        renderWorkspaceNotice(record.workspaceNotice),
       details,
     );
   }
@@ -132,6 +136,7 @@ export async function runForeground(
     `${noteText}Agent completed in ${formatMs(durationMs)} (${statsParts.join(", ")})${renderStatusNote(record.status)}.\n` +
       `Agent ID: ${record.id}\n\n` +
       renderOutcomeBody(record) +
+      renderWorkspaceNotice(record.workspaceNotice) +
       renderQuestionAffordance(record.id, record.pendingQuestion),
     details,
   );

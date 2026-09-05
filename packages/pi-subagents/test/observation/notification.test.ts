@@ -253,6 +253,16 @@ describe("NotificationManager", () => {
     expect(content).toContain('resume: "agent-3"');
   });
 
+  it("names where a teardown saved the agent's work", () => {
+    const args = makeArgs();
+    const system = makeManager(args);
+    system.sendCompletion(
+      createTestSubagent({ workspaceNotice: "\n\n---\nChanges saved to branch `pi-agent-3`." }),
+    );
+    const content = (args.sendMessage.mock.calls[0][0] as { content: string }).content;
+    expect(content).toContain("Changes saved to branch `pi-agent-3`.");
+  });
+
   it("omits the retrieval instruction for an agent that never started", () => {
     const args = makeArgs();
     const system = makeManager(args);

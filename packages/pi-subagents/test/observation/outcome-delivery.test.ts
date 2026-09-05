@@ -6,6 +6,7 @@ import {
 	renderQuestionAffordance,
 	renderStatusLabel,
 	renderStatusNote,
+	renderWorkspaceNotice,
 } from "#src/observation/outcome-delivery";
 
 function makeOutcome(overrides: Partial<OutcomeBody> = {}): OutcomeBody {
@@ -83,6 +84,17 @@ describe("renderQuestionAffordance", () => {
 
 	it("indents every line of a multi-line question", () => {
 		expect(renderQuestionAffordance("agent-1", "A or B?\nOr C?")).toContain("  A or B?\n  Or C?");
+	});
+});
+
+describe("renderWorkspaceNotice", () => {
+	it("returns the provider's wording verbatim", () => {
+		const notice = "\n\n---\nChanges saved to branch `pi-agent-7`. Merge with: `git merge pi-agent-7`";
+		expect(renderWorkspaceNotice(notice)).toBe(notice);
+	});
+
+	it("returns an empty string when the teardown reported nothing", () => {
+		expect(renderWorkspaceNotice(undefined)).toBe("");
 	});
 });
 

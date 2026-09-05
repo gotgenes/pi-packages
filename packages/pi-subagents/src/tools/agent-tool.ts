@@ -9,6 +9,7 @@ import {
 	renderOutcomeBody,
 	renderQuestionAffordance,
 	renderStatusNote,
+	renderWorkspaceNotice,
 } from "#src/observation/outcome-delivery";
 import { spawnBackground } from "#src/tools/background-spawner";
 import { runForeground } from "#src/tools/foreground-runner";
@@ -129,6 +130,7 @@ export class AgentTool {
 			return textResult(
 				`Agent ID: ${record.id}${renderStatusNote(record.status)}\n\n` +
 					renderOutcomeBody(record) +
+					renderWorkspaceNotice(record.workspaceNotice) +
 					renderQuestionAffordance(record.id, record.pendingQuestion),
 				buildDetails(config.presentation.detailBase, record),
 			);

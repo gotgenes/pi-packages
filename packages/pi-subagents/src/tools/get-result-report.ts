@@ -12,6 +12,7 @@ import {
 	renderOutcomeBody,
 	renderQuestionAffordance,
 	renderStatusNote,
+	renderWorkspaceNotice,
 } from "#src/observation/outcome-delivery";
 
 /** The data a get_subagent_result report renders from — only what the formatter reads. */
@@ -37,6 +38,8 @@ export interface AgentReport {
 	transcriptPath?: string;
 	/** The question the agent ended its turn with, when it declared one. */
 	pendingQuestion?: string;
+	/** Where a teardown with no result text to carry it saved the agent's work. */
+	workspaceNotice?: string;
 }
 
 /** Assemble the stats parts: Tool uses / tokens? / Context? / Compactions? / Duration. */
@@ -64,6 +67,8 @@ export function formatAgentReport(report: AgentReport): string {
 		`Type: ${report.displayName} | Status: ${report.status}${renderStatusNote(report.status)} | ${renderStatsParts(report).join(" | ")}\n` +
 		`Description: ${report.description}\n\n`;
 	output += renderReportBody(report);
+	// Where the work went, before the call to action that follows it.
+	output += renderWorkspaceNotice(report.workspaceNotice);
 	output += renderQuestionAffordance(report.id, report.pendingQuestion);
 	if (report.conversation) {
 		output += `\n\n--- Agent Conversation ---\n${report.conversation}`;

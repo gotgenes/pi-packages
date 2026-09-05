@@ -77,6 +77,7 @@ export class GetResultTool {
 			// and covers verbose after the live session was released (no conversation).
 			transcriptPath: record.outputFile,
 			pendingQuestion: record.pendingQuestion,
+			workspaceNotice: record.workspaceNotice,
 		};
 	}
 

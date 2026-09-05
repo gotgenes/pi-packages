@@ -109,6 +109,33 @@ describe("formatAgentReport", () => {
 		expect(formatAgentReport(makeReport())).not.toContain("waiting on an answer");
 	});
 
+	it("names where a teardown saved the agent's work", () => {
+		const text = formatAgentReport(
+			makeReport({ workspaceNotice: "\n\n---\nChanges saved to branch `pi-agent-7`." }),
+		);
+
+		expect(text).toContain("Changes saved to branch `pi-agent-7`.");
+	});
+
+	it("adds nothing when no teardown reported anything", () => {
+		expect(formatAgentReport(makeReport())).not.toContain("saved to branch");
+	});
+
+	it("reports where the work went before telling the parent how to answer", () => {
+		const text = formatAgentReport(
+			makeReport({
+				pendingQuestion: "Which config?",
+				workspaceNotice: "\n\n---\nChanges saved to branch `pi-agent-7`.",
+			}),
+		);
+
+		// Both must be present, or the index comparison passes on a -1 that means
+		// "absent" rather than "earlier".
+		expect(text).toContain("saved to branch");
+		expect(text).toContain("waiting on an answer");
+		expect(text.indexOf("saved to branch")).toBeLessThan(text.indexOf("waiting on an answer"));
+	});
+
 	it("names the abort, so truncated output is not read as a finished answer", () => {
 		const text = formatAgentReport(
 			makeReport({ status: "aborted", result: "Half of the inv" }),

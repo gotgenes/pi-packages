@@ -35,6 +35,8 @@ export interface TestSubagentOptions {
 	result?: string;
 	/** Seed the question the agent ended its turn with. */
 	pendingQuestion?: string;
+	/** Seed what a teardown with no result text reported. */
+	workspaceNotice?: string;
 	error?: string;
 	/** Seed the never-started marker (the agent was stopped before it was admitted). */
 	stoppedWhileQueued?: boolean;

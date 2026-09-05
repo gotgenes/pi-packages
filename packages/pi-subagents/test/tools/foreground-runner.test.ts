@@ -52,6 +52,33 @@ describe("runForeground", () => {
 		expect(result.content[0].text).not.toContain("waiting on an answer");
 	});
 
+	it("names where a teardown saved the work of an agent that completed", async () => {
+		const { manager } = createToolDeps();
+		manager.spawnAndWait = vi.fn().mockResolvedValue(
+			createTestSubagent({ workspaceNotice: "\n\n---\nChanges saved to branch `pi-agent-5`." }),
+		);
+
+		const result = await runForeground(manager, makeParams(), undefined, undefined);
+
+		expect(result.content[0].text).toContain("Changes saved to branch `pi-agent-5`.");
+	});
+
+	it("names where a teardown saved the work of an agent that failed", async () => {
+		const { manager } = createToolDeps();
+		manager.spawnAndWait = vi.fn().mockResolvedValue(
+			createTestSubagent({
+				status: "error",
+				error: "turn loop exploded",
+				workspaceNotice: "\n\n---\nChanges saved to branch `pi-agent-5`.",
+			}),
+		);
+
+		const result = await runForeground(manager, makeParams(), undefined, undefined);
+
+		expect(result.content[0].text).toContain("Agent failed: turn loop exploded");
+		expect(result.content[0].text).toContain("Changes saved to branch `pi-agent-5`.");
+	});
+
 	it("marks the returned record consumed (foreground-return delivery edge)", async () => {
 		const record = createTestSubagent();
 		const deps = createToolDeps({
