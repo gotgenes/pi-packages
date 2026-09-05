@@ -131,6 +131,28 @@ export function cleanupWorktree(
   }
 }
 
+/**
+ * Names of this package's branches whose work is not yet on `HEAD`.
+ *
+ * The glob is built from the shared prefix, so it also covers the
+ * `<branch>-<timestamp>` fallback `createBranch` falls back to on a collision.
+ * `--no-merged` is what keeps the answer self-validating: a branch drops out
+ * the moment its work is merged, with nothing to clear.
+ */
+export function listUnmergedRescueBranches(cwd: string): string[] {
+  return runGit(cwd, [
+    "branch",
+    "--list",
+    `${AGENT_WORKTREE_PREFIX}*`,
+    "--no-merged",
+    "HEAD",
+    "--format=%(refname:short)",
+  ])
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+}
+
 /** Paths of every worktree registered with the repository, as git resolves them. */
 export function listWorktreePaths(cwd: string): string[] {
   return runGit(cwd, ["worktree", "list", "--porcelain"])

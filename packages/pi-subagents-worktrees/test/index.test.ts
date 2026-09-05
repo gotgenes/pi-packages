@@ -6,12 +6,14 @@ const {
   loadWorktreesConfig,
   pruneWorktrees,
   findPreservedWorktrees,
+  findUnmergedRescueBranches,
 } = vi.hoisted(() => ({
   getAgentDir: vi.fn((): string => "/fake/agent-dir"),
   getSubagentsService: vi.fn(),
   loadWorktreesConfig: vi.fn(() => ({ worktreeAgents: ["Explore"] })),
   pruneWorktrees: vi.fn(),
   findPreservedWorktrees: vi.fn((): string[] => []),
+  findUnmergedRescueBranches: vi.fn((): string[] => []),
 }));
 
 vi.mock("@earendil-works/pi-coding-agent", () => ({ getAgentDir }));
@@ -22,6 +24,11 @@ vi.mock("#src/preserved", () => ({
   findPreservedWorktrees,
   formatPreservedNotice: (paths: readonly string[]) =>
     `notice for ${paths.join(", ")}`,
+}));
+vi.mock("#src/rescue-branches", () => ({
+  findUnmergedRescueBranches,
+  formatRescueBranchNotice: (branches: readonly string[]) =>
+    `branch notice for ${branches.join(", ")}`,
 }));
 
 import { ActiveWorktrees } from "#src/active-worktrees";
@@ -56,6 +63,8 @@ describe("piSubagentsWorktrees extension entry", () => {
     loadWorktreesConfig.mockClear();
     findPreservedWorktrees.mockClear();
     findPreservedWorktrees.mockReturnValue([]);
+    findUnmergedRescueBranches.mockClear();
+    findUnmergedRescueBranches.mockReturnValue([]);
   });
 
   /** Register the extension against an available subagents service. */
@@ -165,6 +174,58 @@ describe("piSubagentsWorktrees extension entry", () => {
       handlers.get("session_start")?.({ type: "session_start" }, ctx);
 
       expect(findPreservedWorktrees).not.toHaveBeenCalled();
+      expect(notify).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("unmerged rescue branches at session start", () => {
+    it("names the branches holding work nobody merged", () => {
+      findUnmergedRescueBranches.mockReturnValue(["pi-agent-abc123"]);
+      const { handlers } = startWithService();
+      const { ctx, notify } = fakeCtx();
+
+      handlers.get("session_start")?.({ type: "session_start" }, ctx);
+
+      expect(findUnmergedRescueBranches).toHaveBeenCalledWith(process.cwd());
+      expect(notify).toHaveBeenCalledWith(
+        "branch notice for pi-agent-abc123",
+        "warning",
+      );
+    });
+
+    it("stays silent when every rescue branch has been merged", () => {
+      const { handlers } = startWithService();
+      const { ctx, notify } = fakeCtx();
+
+      handlers.get("session_start")?.({ type: "session_start" }, ctx);
+
+      expect(notify).not.toHaveBeenCalled();
+    });
+
+    it("reports each artifact in its own notice when both apply", () => {
+      findPreservedWorktrees.mockReturnValue([
+        "/private/tmp/pi-agent-abc123-1f2e9c04",
+      ]);
+      findUnmergedRescueBranches.mockReturnValue(["pi-agent-def456"]);
+      const { handlers } = startWithService();
+      const { ctx, notify } = fakeCtx();
+
+      handlers.get("session_start")?.({ type: "session_start" }, ctx);
+
+      expect(notify.mock.calls.map((call) => call[0])).toEqual([
+        "notice for /private/tmp/pi-agent-abc123-1f2e9c04",
+        "branch notice for pi-agent-def456",
+      ]);
+    });
+
+    it("does not scan in a session with no UI to notify", () => {
+      findUnmergedRescueBranches.mockReturnValue(["pi-agent-abc123"]);
+      const { handlers } = startWithService();
+      const { ctx, notify } = fakeCtx(false);
+
+      handlers.get("session_start")?.({ type: "session_start" }, ctx);
+
+      expect(findUnmergedRescueBranches).not.toHaveBeenCalled();
       expect(notify).not.toHaveBeenCalled();
     });
   });
