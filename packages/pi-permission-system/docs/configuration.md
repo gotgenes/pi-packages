@@ -1234,4 +1234,4 @@ npx --yes ajv-cli@5 validate \
 
 The well-known surface keys — `*`, `path`, `external_directory`, `bash`, `mcp`, `skill`, and the four directional keys — are named properties in the schema, so an editor completes them and shows each key's own documentation on hover; any other registered tool name still validates as a surface.
 
-The schema is generated from the extension's zod source of truth (`src/config-schema.ts`); regenerate it with `pnpm run gen:schema` after changing the config shape.
+The schema is generated from the extension's zod source of truth (`src/config/config-schema.ts`); regenerate it with `pnpm run gen:schema` after changing the config shape.

@@ -22,11 +22,11 @@ It is the seam between the path-aware resolver and the deliberately string-based
 
 The resolve path runs through three collaborators in a strict path-awareness gradient:
 
-| Actor    | File                         | `AccessPath`-aware?                           | Job                                                         |
-| -------- | ---------------------------- | --------------------------------------------- | ----------------------------------------------------------- |
-| Gate     | `src/handlers/gates/*.ts`    | Yes — builds it via `normalizer.forPath(...)` | Turn a tool call into an `AccessIntent`                     |
-| Resolver | `src/permission-resolver.ts` | Yes — calls `matchValues()`                   | Compose session rules; unwrap `access-path` → `path-values` |
-| Manager  | `src/permission-manager.ts`  | **No** — string-based                         | Evaluate `(surface, string[])` against the ruleset          |
+| Actor    | File                                | `AccessPath`-aware?                           | Job                                                         |
+| -------- | ----------------------------------- | --------------------------------------------- | ----------------------------------------------------------- |
+| Gate     | `src/handlers/gates/*.ts`           | Yes — builds it via `normalizer.forPath(...)` | Turn a tool call into an `AccessIntent`                     |
+| Resolver | `src/policy/permission-resolver.ts` | Yes — calls `matchValues()`                   | Compose session rules; unwrap `access-path` → `path-values` |
+| Manager  | `src/policy/permission-manager.ts`  | **No** — string-based                         | Evaluate `(surface, string[])` against the ruleset          |
 
 ### The type split is load-bearing
 

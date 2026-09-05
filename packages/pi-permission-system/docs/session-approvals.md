@@ -62,7 +62,7 @@ The suggested pattern is surface-specific:
 
 ## Bash Arity Table
 
-Bash pattern suggestions use a curated arity dictionary (`src/bash-arity.ts`) to determine how many tokens define the "human-understandable subcommand."
+Bash pattern suggestions use a curated arity dictionary (`src/access-intent/bash/bash-arity.ts`) to determine how many tokens define the "human-understandable subcommand."
 Longest matching prefix wins, so `npm run` (arity 3) takes precedence over `npm` (arity 2).
 Unknown commands default to arity 1 (first word only).
 
@@ -76,7 +76,7 @@ Unknown commands default to arity 1 (first word only).
 | `mytool --verbose`    | (unknown) → 1        | `mytool *`            |
 
 The arity table covers common CLI tools including git, npm/pnpm/yarn/bun, docker, cargo, go, kubectl, gh, and others.
-To add an entry, open `src/bash-arity.ts` and add a key/arity pair to the `ARITY` object.
+To add an entry, open `src/access-intent/bash/bash-arity.ts` and add a key/arity pair to the `ARITY` object.
 Put the most specific multi-word prefix first (e.g. `"npm run": 3`) before the shorter fallback (`"npm": 2`).
 
 ## Review Log Entries

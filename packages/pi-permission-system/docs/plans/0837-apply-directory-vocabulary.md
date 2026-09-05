@@ -10,8 +10,12 @@ issue_title: "pi-permission-system: 42% of src files sit at the package root, in
 **Release:** ship independently
 
 Phase 14 Step 13 carries `Release: independent`, and it is the phase's last unmarked step.
-Every commit here is `refactor:`, `test:`, `ci:`, or `docs:` — all skipped changelog types — so this plan cuts no release on its own.
-`./scripts/release/next-version.sh pi-permission-system` prints nothing today, and it will still print nothing when this lands; the work auto-batches into whatever `fix:`/`feat:` commit releases next.
+
+Corrected during implementation: this plan **does** cut a patch.
+The rationale above originally claimed otherwise on the grounds that every commit is `refactor:`, `test:`, `ci:`, or `docs:`.
+The first three are skipped in `cliff.toml`, but `^docs` is a **visible** group ("Documentation"), and the documentation commit touches three shipped, non-release-excluded user docs — `docs/configuration.md`, `docs/cross-extension-api.md`, `docs/session-approvals.md` — whose stale `src/` paths it corrects.
+Those files ship in the tarball, so republishing them is the right outcome rather than an accident.
+`./scripts/release/next-version.sh pi-permission-system` printed nothing at the pre-implementation baseline and prints `pi-permission-system-v31.1.1` now.
 
 ## Problem Statement
 

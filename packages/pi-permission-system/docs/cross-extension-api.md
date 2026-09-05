@@ -280,7 +280,7 @@ Re-register on every initialization (as above) rather than once globally; the di
 
 A built-in formatter is registered for the `"mcp"` tool at startup (through this same public API).
 It renders a compact `with key: value, …` summary of the call's `arguments` and returns `undefined` when there are no arguments, leaving the MCP target prompt unchanged.
-This is the reference implementation for the seam — see `src/builtin-tool-input-formatters.ts`.
+This is the reference implementation for the seam — see `src/tool-input/builtin-tool-input-formatters.ts`.
 
 #### `registerToolAccessExtractor`
 

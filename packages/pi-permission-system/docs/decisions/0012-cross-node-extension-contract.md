@@ -181,7 +181,7 @@ No loading symmetry is assumed: implementations may load arbitrary extension set
 
 ### 7. Migration
 
-Classification against the stability guarantee in `src/permission-events.ts` ("fields may be added; existing fields will not be removed or renamed without a semver-major version bump") and the service API:
+Classification against the stability guarantee in `src/service/permission-events.ts` ("fields may be added; existing fields will not be removed or renamed without a semver-major version bump") and the service API:
 
 | Change                                                        | Nature                                                          | Classification                                                    |
 | ------------------------------------------------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------- |

@@ -21,7 +21,7 @@ The loader was also **tolerant**: it silently discarded a malformed field (a non
 
 ## Decision
 
-Adopt **zod** (`^4.4.3`) as the single source of truth for the config-file shape (`src/config-schema.ts`):
+Adopt **zod** (`^4.4.3`) as the single source of truth for the config-file shape (`src/config/config-schema.ts`):
 
 - Composable schemas (`permissionState` → `denyWithReason` → `patternValue` → `permissionMap` → `permission` → the unified config) mirror the previous `$defs` structure.
   The config types (`PermissionState`, `DenyWithReason`, `PatternValue`, `FlatPermissionConfig`, `UnifiedPermissionConfig`) are derived with `z.infer` and re-exported from `types.ts` / `config-loader.ts`, so there is one definition, not three.

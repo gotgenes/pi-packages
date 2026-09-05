@@ -48,7 +48,7 @@ The technique is deliberately **structural rather than predictive**: a value is 
 
 This is applied at two points, and the second is not redundant:
 
-1. `writeLine` in `src/logging.ts` — the single point where either stream reaches disk, covering any call site that logs a nested object.
+1. `writeLine` in `src/logging/logging.ts` — the single point where either stream reaches disk, covering any call site that logs a nested object.
 2. `serializeRedactedToolInputPreview`, reached from `formatGenericToolInputForLog` — because `getToolInputPreviewForLog` flattens the tool input to a string *before* the details record reaches the writer, so by point 1 its keys no longer exist to match.
 
 Point 2 is what closes the reporter's literal repro.
