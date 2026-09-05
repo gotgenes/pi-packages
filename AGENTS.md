@@ -123,6 +123,9 @@ A roadmap step's `Outcome:` line is written from the symptom at phase-planning t
 Trace that example through the code before turning an `Outcome:` into a test.
 Phase 14 Step 10 promised `cat /outside/a.ts > /outside/b.ts` would narrow, but both tokens derive the same `/outside/*` glob, so a test written from the line would have passed under the old code (Refs #810).
 
+A step's `**Cause:**` bullet is likewise the mechanism the discovery sweep saw, not a census of the ones present.
+Trace the whole function before accepting it as the scope: Phase 22 Step 13 named one truthiness check, and the same five lines held a second fail-open of the same shape (Refs #871).
+
 ### Workflow
 
 - Keep scope tight.
