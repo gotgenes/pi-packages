@@ -47,7 +47,7 @@ Commits are `refactor:`, not `refactor!:`.
   Every file moves intact.
   A file whose placement is arguable moves once to the home this plan names, rather than being restructured to make the placement obvious.
 - **Rolling the new lint rule out repo-wide.**
-  `pi-subagents` has 76 own-directory alias imports and is held by a peer worktree ([#870]).
+  `pi-subagents` has 80 own-directory alias imports (72 in `src/`, 8 in `test/`, measured by running the rule) and is held by a peer worktree ([#870]).
   Filed as [#877]; this plan scopes the rule to `packages/pi-permission-system/**` via a `files:` block, matching the two package-scoped blocks already in `eslint.config.js`.
 - **Reorganizing `test/helpers/`.**
   Its six files gain `./` conformance fixes (a precondition for the rule) but stay where they are.
@@ -336,7 +336,7 @@ Steps 1-3 are the Tidy-First preparation; steps 4-13 are the move; step 14 is do
 
 ## Open Questions
 
-- **Repo-wide rollout of the own-directory rule** — filed as [#877], covering `pi-subagents`' 76 sites and promoting the rule out of the package-scoped block.
+- **Repo-wide rollout of the own-directory rule** — filed as [#877], covering `pi-subagents`' 80 sites and promoting the rule out of the package-scoped block.
   Deferred to a later `pi-subagents` phase by operator decision; the roadmap bullet is written after [#870] lands, to avoid two branches appending to one sweep list.
 - **A CI gate for `pnpm run gen:schema`** — the parity test in `test/config-schema.test.ts` catches schema drift, but nothing catches a broken import in the generator itself.
   Not filed; noted here in case a second such script appears.

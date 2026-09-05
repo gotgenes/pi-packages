@@ -1552,7 +1552,7 @@ A biome pin's gate is a finding count, never an exit code.
 
 The step's own framing of the import-conformance pass was also wrong, and the Tidy-First assessor caught it before the plan froze: it shrinks no move commit, since only 9 of the package's 115 own-directory alias imports sit in files any move touches.
 It is a precondition for the lint rule that now holds the convention, which is the durable half.
-That rule is scoped to this package; `pi-subagents` carries 76 such sites and the repo-wide rollout is [#877].
+That rule is scoped to this package; `pi-subagents` carries 80 such sites and the repo-wide rollout is [#877].
 
 Collected tests held at 157 files / 4117 tests across all ten move commits, which is the invariant that distinguishes a moved test from a silently uncollected one.
 

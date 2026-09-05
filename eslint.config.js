@@ -221,7 +221,7 @@ export default tseslint.config(
 
   // ---------------------------------------------------------------------------
   // pi-permission-system: enforce the same-directory import convention (#837).
-  // Scoped to this package because pi-subagents still carries 76 own-directory
+  // Scoped to this package because pi-subagents still carries 80 own-directory
   // alias imports; promoting this into the block above is #877.
   // ---------------------------------------------------------------------------
   {

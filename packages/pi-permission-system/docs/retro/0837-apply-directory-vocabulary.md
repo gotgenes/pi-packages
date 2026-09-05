@@ -47,7 +47,7 @@ The plan is `docs/plans/0837-apply-directory-vocabulary.md`; a follow-up ([#877]
   Moving `service.ts` under `service/` (option C at the gate) — rejected in favour of leaving the `exports` map, rollup input, and `verify:public-types` untouched.
   `#src/`-everywhere (pi-subagents' actual practice, zero relative imports across 66 files and 8 subdirectories) — rejected because it contradicts the repo's recorded convention and would be a repo-wide decision, not a per-package one.
 - **A peer-worktree collision shaped the scope.**
-  Extending the lint rule repo-wide would flag 76 sites in `pi-subagents`, which `issue-870` holds right now.
+  Extending the lint rule repo-wide would flag 80 sites in `pi-subagents`, which `issue-870` holds right now.
   The rule is scoped to `packages/pi-permission-system/**` via a `files:` block — matching the two package-scoped blocks already in that file — and the rollout is [#877].
 
 #### Phase handoff
