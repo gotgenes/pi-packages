@@ -13,7 +13,7 @@ import {
   OWNER_ONLY_DIRECTORY_MODE,
   OWNER_ONLY_FILE_MODE,
   restrictExistingPathToOwner,
-} from "#src/log-file-permissions";
+} from "#src/logging/log-file-permissions";
 
 describe("restrictExistingPathToOwner", () => {
   let baseDir: string;

@@ -1,5 +1,5 @@
-import { safeJsonStringify } from "./json-safe-stringify";
-import { redactedJsonStringify } from "./log-redaction";
+import { safeJsonStringify } from "#src/logging/json-safe-stringify";
+import { redactedJsonStringify } from "#src/logging/log-redaction";
 
 export const TOOL_INPUT_PREVIEW_MAX_LENGTH = 200;
 export const TOOL_TEXT_SUMMARY_MAX_LENGTH = 80;

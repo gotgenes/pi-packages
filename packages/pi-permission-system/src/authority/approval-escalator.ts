@@ -4,10 +4,10 @@ import {
   getActiveAgentName,
   getActiveAgentNameFromSystemPrompt,
 } from "#src/active-agent";
+import type { DebugReviewLogger } from "#src/logging/session-logger";
 import { createPermissionRequestId } from "#src/permission-request-id";
 import { buildUiPrompt } from "#src/permission-ui-prompt";
 import type { PromptPayload } from "#src/presentation/prompt-payload";
-import type { DebugReviewLogger } from "#src/session-logger";
 import { toRecord } from "#src/value-guards";
 import type { TerminalAuthorizer } from "./authorizer";
 import {

@@ -13,7 +13,6 @@ import type { ResolvedAccessIntent } from "#src/access-intent/access-intent";
 import { surfaceFamilyOf } from "#src/access-intent/path-surfaces";
 import type { AskEscalator } from "#src/authority/authorizer-selection";
 import type { ShellToolsConfig } from "#src/config-schema";
-import { GateDecisionReporter } from "#src/decision-reporter";
 import { DEFAULT_EXTENSION_CONFIG } from "#src/extension-config";
 import { GateRunner } from "#src/handlers/gates/runner";
 import {
@@ -25,6 +24,7 @@ import {
   ToolCallGatePipeline,
 } from "#src/handlers/gates/tool-call-gate-pipeline";
 import { PermissionGateHandler } from "#src/handlers/permission-gate-handler";
+import { GateDecisionReporter } from "#src/logging/decision-reporter";
 import type { PermissionDecisionEvent } from "#src/permission-events";
 import { PERMISSIONS_DECISION_CHANNEL } from "#src/permission-events";
 import type { Rule } from "#src/rule";

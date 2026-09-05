@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 // Mock the serialization collaborator before importing the module under test.
-vi.mock("#src/json-safe-stringify", () => ({
+vi.mock("#src/logging/json-safe-stringify", () => ({
   safeJsonStringify: vi.fn((value: unknown) => JSON.stringify(value)),
 }));
 
-import { safeJsonStringify } from "#src/json-safe-stringify";
+import { safeJsonStringify } from "#src/logging/json-safe-stringify";
 import {
   countTextLines,
   formatCount,

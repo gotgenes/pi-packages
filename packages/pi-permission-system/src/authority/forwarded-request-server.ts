@@ -1,10 +1,10 @@
 import { join } from "node:path";
-import type { DecisionBroadcaster } from "#src/decision-reporter";
+import type { DecisionBroadcaster } from "#src/logging/decision-reporter";
+import type { DebugReviewLogger } from "#src/logging/session-logger";
 import type { PermissionDecisionEvent } from "#src/permission-events";
 import { buildForwardedAskPayload } from "#src/presentation/forwarded-ask-payload";
 import { SessionApproval } from "#src/session-approval";
 import type { SessionApprovalRecorder } from "#src/session-approval-recorder";
-import type { DebugReviewLogger } from "#src/session-logger";
 import type { PermissionCheckResult } from "#src/types";
 import type { AskEscalator } from "./authorizer-selection";
 import { resolutionFor } from "./decision-resolution";

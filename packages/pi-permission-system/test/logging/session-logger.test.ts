@@ -7,8 +7,8 @@ import {
   DEFAULT_EXTENSION_CONFIG,
   type PermissionSystemExtensionConfig,
 } from "#src/extension-config";
-import type { SessionLoggerDeps } from "#src/session-logger";
-import { PermissionSessionLogger } from "#src/session-logger";
+import type { SessionLoggerDeps } from "#src/logging/session-logger";
+import { PermissionSessionLogger } from "#src/logging/session-logger";
 
 // ── helpers ────────────────────────────────────────────────────────────────
 

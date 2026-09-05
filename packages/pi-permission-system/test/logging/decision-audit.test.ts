@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { DecisionAudit } from "#src/decision-audit";
+import { DecisionAudit } from "#src/logging/decision-audit";
 
 function makeAuditLogger() {
   return {

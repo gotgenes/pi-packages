@@ -18,7 +18,7 @@
 
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import type { DebugReviewLogger } from "#src/session-logger";
+import type { DebugReviewLogger } from "#src/logging/session-logger";
 import {
   ensureDirectoryExists,
   isErrnoCode,

@@ -3,12 +3,12 @@ import { describe, expect, it, vi } from "vitest";
 import {
   type DecisionReporter,
   GateDecisionReporter,
-} from "#src/decision-reporter";
+} from "#src/logging/decision-reporter";
+import type { SessionLogger } from "#src/logging/session-logger";
 import {
   PERMISSIONS_DECISION_CHANNEL,
   type PermissionDecisionEvent,
 } from "#src/permission-events";
-import type { SessionLogger } from "#src/session-logger";
 
 // ── fixtures ───────────────────────────────────────────────────────────────
 

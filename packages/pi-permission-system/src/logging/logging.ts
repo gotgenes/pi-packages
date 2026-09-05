@@ -3,7 +3,7 @@ import { appendFileSync } from "node:fs";
 import {
   EXTENSION_ID,
   type PermissionSystemExtensionConfig,
-} from "./extension-config";
+} from "#src/extension-config";
 import { capLogFieldWidths, resolveReviewLogFieldWidth } from "./log-field-cap";
 import {
   OWNER_ONLY_FILE_MODE,

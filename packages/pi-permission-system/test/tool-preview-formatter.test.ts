@@ -5,12 +5,12 @@ import type { ToolInputFormatterLookup } from "#src/tool-input-formatter-registr
 // Mock the prompt-path serializer before importing the module under test.
 // The rest of the module stays real — log-redaction.ts builds on
 // createJsonSafeReplacer, and a literal factory would blank it out.
-vi.mock("#src/json-safe-stringify", async (importActual) => ({
-  ...(await importActual<typeof import("#src/json-safe-stringify")>()),
+vi.mock("#src/logging/json-safe-stringify", async (importActual) => ({
+  ...(await importActual<typeof import("#src/logging/json-safe-stringify")>()),
   safeJsonStringify: vi.fn((value: unknown) => JSON.stringify(value)),
 }));
 
-import { safeJsonStringify } from "#src/json-safe-stringify";
+import { safeJsonStringify } from "#src/logging/json-safe-stringify";
 import {
   TOOL_INPUT_PREVIEW_MAX_LENGTH,
   TOOL_TEXT_SUMMARY_MAX_LENGTH,

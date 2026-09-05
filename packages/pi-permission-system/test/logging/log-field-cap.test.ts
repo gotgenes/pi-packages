@@ -3,7 +3,7 @@ import {
   capLogFieldWidths,
   DEFAULT_REVIEW_LOG_FIELD_MAX_WIDTH,
   resolveReviewLogFieldWidth,
-} from "#src/log-field-cap";
+} from "#src/logging/log-field-cap";
 
 describe("resolveReviewLogFieldWidth", () => {
   test("falls back to the built-in default", () => {

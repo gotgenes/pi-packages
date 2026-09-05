@@ -1,5 +1,5 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
-import type { DebugReviewLogger } from "#src/session-logger";
+import type { DebugReviewLogger } from "#src/logging/session-logger";
 import type { InboxProcessor } from "./forwarded-request-server";
 import { getSessionId } from "./forwarder-context";
 import { PERMISSION_FORWARDING_POLL_INTERVAL_MS } from "./permission-forwarding";

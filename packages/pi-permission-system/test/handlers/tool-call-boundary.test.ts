@@ -9,9 +9,9 @@
  */
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { describe, expect, it, vi } from "vitest";
-import type { DecisionReporter } from "#src/decision-reporter";
 import type { GateOutcome } from "#src/handlers/gates/types";
 import { createFailClosedToolCall } from "#src/handlers/tool-call-boundary";
+import type { DecisionReporter } from "#src/logging/decision-reporter";
 
 import { makeReporter } from "#test/helpers/gate-fixtures";
 import { makeCtx, makeToolCallEvent } from "#test/helpers/handler-fixtures";

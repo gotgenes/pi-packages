@@ -1,14 +1,14 @@
 import { mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  OWNER_ONLY_DIRECTORY_MODE,
+  restrictExistingPathToOwner,
+} from "#src/logging/log-file-permissions";
 import type {
   ShellToolsConfig,
   UnifiedPermissionConfig,
 } from "./config-loader";
-import {
-  OWNER_ONLY_DIRECTORY_MODE,
-  restrictExistingPathToOwner,
-} from "./log-file-permissions";
 
 export const EXTENSION_ID = "pi-permission-system";
 

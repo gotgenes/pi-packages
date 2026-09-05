@@ -2,7 +2,7 @@ import {
   emitDecisionEvent,
   type PermissionDecisionEvent,
   type PermissionEventBus,
-} from "./permission-events";
+} from "#src/permission-events";
 import type { SessionLogger } from "./session-logger";
 
 /**

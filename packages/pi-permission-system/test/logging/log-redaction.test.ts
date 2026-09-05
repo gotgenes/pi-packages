@@ -3,7 +3,7 @@ import {
   isSensitiveLogKey,
   REDACTED_PLACEHOLDER,
   redactedJsonStringify,
-} from "#src/log-redaction";
+} from "#src/logging/log-redaction";
 
 describe("isSensitiveLogKey", () => {
   test.each([

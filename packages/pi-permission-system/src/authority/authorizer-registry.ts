@@ -17,7 +17,7 @@
  * the registration (ADR 0012 decision 4).
  */
 
-import type { ReviewLogger } from "#src/session-logger";
+import type { ReviewLogger } from "#src/logging/session-logger";
 import type { Authorizer } from "./authorizer";
 import type { AdjudicationRole } from "./authorizer-selection";
 

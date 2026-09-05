@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { safeJsonStringify } from "#src/json-safe-stringify";
+import { safeJsonStringify } from "#src/logging/json-safe-stringify";
 
 describe("safeJsonStringify", () => {
   test("serializes a plain record", () => {

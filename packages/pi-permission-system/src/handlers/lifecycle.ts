@@ -1,10 +1,10 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 
-import type { DecisionSummaryWriter } from "#src/decision-audit";
+import type { DecisionSummaryWriter } from "#src/logging/decision-audit";
+import type { SessionLogger } from "#src/logging/session-logger";
 import type { PermissionResolver } from "#src/permission-resolver";
 import type { PermissionSession } from "#src/permission-session";
 import type { ServiceLifecycle } from "#src/service-lifecycle";
-import type { SessionLogger } from "#src/session-logger";
 import { PERMISSION_SYSTEM_STATUS_KEY } from "#src/status";
 
 /** Minimal subset of SessionStartEvent used by this handler. */

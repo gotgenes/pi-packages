@@ -13,10 +13,10 @@ import { type ApprovalGrant, isSessionGrantWidth } from "#src/approval-grant";
 import {
   OWNER_ONLY_DIRECTORY_MODE,
   OWNER_ONLY_FILE_MODE,
-} from "#src/log-file-permissions";
+} from "#src/logging/log-file-permissions";
+import type { DebugReviewLogger } from "#src/logging/session-logger";
 import type { PermissionUiPromptSource } from "#src/permission-events";
 import { asPromptPayload } from "#src/presentation/prompt-payload";
-import type { DebugReviewLogger } from "#src/session-logger";
 import { asDecisionSource } from "./decision-source";
 import { isPermissionDecisionState } from "./permission-dialog";
 import {

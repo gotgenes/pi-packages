@@ -15,7 +15,7 @@ import {
   DEFAULT_EXTENSION_CONFIG,
   type PermissionSystemExtensionConfig,
 } from "#src/extension-config";
-import { createPermissionSystemLogger } from "#src/logging";
+import { createPermissionSystemLogger } from "#src/logging/logging";
 
 describe("createPermissionSystemLogger", () => {
   let baseDir: string;
