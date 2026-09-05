@@ -1,4 +1,4 @@
-import { stripBashCommentLines } from "#src/bash-arity";
+import { stripBashCommentLines } from "#src/access-intent/bash/bash-arity";
 import type { PathNormalizer } from "#src/path/path-normalizer";
 import { getNonEmptyString, toRecord } from "#src/value-guards";
 import type { AccessIntent, ResolvedAccessIntent } from "./access-intent";

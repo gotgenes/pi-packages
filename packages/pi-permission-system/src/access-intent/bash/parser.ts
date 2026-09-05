@@ -1,5 +1,5 @@
 import { createRequire } from "node:module";
-import { memoizeAsyncWithRetry } from "#src/async-cache";
+import { memoizeAsyncWithRetry } from "./async-cache";
 
 /**
  * Minimal subset of web-tree-sitter's SyntaxNode used by the AST walker.

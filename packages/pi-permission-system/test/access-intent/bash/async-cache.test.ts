@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { memoizeAsyncWithRetry } from "#src/async-cache";
+import { memoizeAsyncWithRetry } from "#src/access-intent/bash/async-cache";
 
 describe("memoizeAsyncWithRetry", () => {
   it("invokes the factory once and shares the resolved value across calls", async () => {

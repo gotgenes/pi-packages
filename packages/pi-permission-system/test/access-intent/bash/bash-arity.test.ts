@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { ARITY, prefix, stripBashCommentLines } from "#src/bash-arity";
+import {
+  ARITY,
+  prefix,
+  stripBashCommentLines,
+} from "#src/access-intent/bash/bash-arity";
 
 describe("ARITY dictionary", () => {
   it("is exported as a plain object", () => {

@@ -1,10 +1,13 @@
 import {
+  prefix,
+  stripBashCommentLines,
+} from "#src/access-intent/bash/bash-arity";
+import {
   type CapabilityDirection,
   PATH_BEARING_TOOLS,
   surfaceFamilyOf,
 } from "#src/access-intent/path-surfaces";
 import type { ApprovalGrant } from "./approval-grant";
-import { prefix, stripBashCommentLines } from "./bash-arity";
 
 /** The suggestion returned for a "Yes, for this session" dialog option. */
 export interface SessionApprovalSuggestion {
