@@ -73,3 +73,61 @@ Recorded here rather than silently dropped: if a future announcement *does* need
 
 [#858]: https://github.com/gotgenes/pi-packages/issues/858
 [#878]: https://github.com/gotgenes/pi-packages/issues/878
+
+## Stage: Implementation — TDD (2026-09-05T03:59:13Z)
+
+### Session summary
+
+Executed all eight plan steps in order, each as its own commit: one `test:` preparatory step, two `refactor:`, three `fix:`, two `docs:`.
+`pi-subagents` went 1514 → 1561 tests across 76 files; `pi-subagents-worktrees` went 62 → 74 across 7 → 8 files.
+Pre-completion reviewer: PASS.
+
+### Observations
+
+#### Deviations from the plan
+
+- **`workspaceNotice` lives on `SubagentState`, not as a private field on `Subagent`.**
+  The plan's Design Overview sketched the private field; that shape is unseedable from `createTestSubagent`, and three of the five carrier test sites need a record with a notice.
+  Moving it beside `pendingQuestion` — which `SubagentStateInit` already seeds and which the class documents as "an outcome fact, like result" — made the seeding fall out of the existing mechanism instead of a test-only setter.
+  Landed by amending step 2 rather than as a separate commit, since it is the same logical change corrected.
+  The reviewer independently judged it the better owner.
+- **`foreground-runner.ts`'s error branch also carries the notice**, which the plan's "one term added to each existing concatenation" did not cover.
+  That branch returns early with no outcome body, and it is the *only* carrier a failed foreground child has: `spawnAndWait` calls `record.claim()` before awaiting, which suppresses the nudge for the run's whole lifetime.
+- **The git-level tests for `listUnmergedRescueBranches` live in `rescue-branches.test.ts`**, driven through `findUnmergedRescueBranches`, rather than in `worktree.test.ts`.
+  The reviewer found this matches the package's own precedent: `listWorktreePaths` is likewise tested only through `findPreservedWorktrees`.
+- **The Tidy-First assessment's first Recommended commit was not executed.**
+  Its premise — that the notice joins the withheld queue as a third `PendingAnnouncement` variant — stopped holding once the delivery mode was corrected at planning time.
+  Recorded in the plan as a rejected preparatory step and re-confirmed against the code here.
+
+#### A vacuous test caught during Red
+
+The ordering test in `get-result-report.test.ts` ("reports where the work went before telling the parent how to answer") **passed** during step 3's Red.
+`indexOf` returns `-1` for an absent needle, and `-1` is less than any real index, so the assertion held while the feature did not exist.
+Fixed before Green by asserting both substrings are present first.
+This is the case the `testing` skill names — a new test that stays green during Red is either an invariant pin or a broken probe — and it was the latter.
+
+#### Mutation findings
+
+The plan's step-4 prediction was wrong in one direction.
+It claimed that changing the send options to `{ deliverAs: "followUp", triggerTurn: true }` would redden both the options test and the parent-run delivery test; only the options test went red.
+The surviving test pins "the manager does not withhold", which that mutation does not change — the plan conflated two claims into one prediction.
+The reviewer re-derived the mutation and judged the survivor a legitimate pin rather than a vacuous one.
+
+Two mutations were also run in one pass by accident: `perl -pi -e 's/^    if \(this\.disposed\) return;\n//'` matched the whole line rather than being the no-op it looked like, deleting every 4-space-indented copy of that guard.
+The unexpected reds were the tell.
+Subsequent mutations were applied with a Python `str.replace` guarded by an `assert count == 1`, which fails loudly when the anchor does not match.
+
+#### The composite-observer gap, confirmed
+
+The Tidy-First assessment's headline finding held exactly as reported.
+Deleting `CompositeSubagentObserver.onSubagentWorkspaceNotice` leaves production code compiling — the interface member is optional — and the two composite fan-out tests are the only thing that fails.
+`tsc` does report errors under that mutation, but only because the *test* file calls the method; without the test there is no compile-time pin at all.
+
+#### Reviewer warnings
+
+- `SubagentState.resetForResume` clears `_pendingQuestion` but not `_workspaceNotice`.
+  The reviewer traced every path and found it unreachable today: a notice implies `workspaceDisposed`, and `AgentTool` refuses any resume in that state.
+  The safety is structural but lives in a different module from the state, and nothing pins "a notice never survives into a resume" directly.
+  Not filed — recorded here for whoever next touches either gate.
+- `.pi/skills/package-pi-subagents/SKILL.md`'s Observation-domain row does not mention the new announcement.
+  Pre-existing and deliberate: the row already omits [#858]'s mid-run updates, so it is incomplete rather than made false, and the plan recorded the no-edit decision.
