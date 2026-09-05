@@ -64,7 +64,7 @@ A decision presented early from the plan is far less likely to be reversed than 
    - Any other `**Release:**` value (`ship independently` or `ship now — batch "<name>" tail`) → record "release now"; note the recommendation in the final report; do **not** ask.
    - No `**Release:**` marker, or no plan found → record "release now" (default); do **not** ask, and say so in the final report rather than letting the absence pass silently.
 3. Read the issue's retro file in full — `docs/retro/NNNN-*.md` or `packages/*/docs/retro/NNNN-*.md`, matching the plan's `NNNN`.
-   In the worktree lane it is on the branch (`git show "<branch>:<retro-path>"`), and its `## Stage: Sync (worktree)` entry is where the peer records release-relevant handoff.
+   In the worktree lane it is on the branch (`git show "<branch>:<retro-path>"`), and its `## Stage: Sync (worktree)` entry is where the peer records release-relevant handoff — a sibling package bumped by a docs-only commit, work deferred to this ship, a PR to close.
    Do this in **both** lanes: a plan's risk table and the planning and TDD stage notes routinely record a ship-time close target — an adopted third-party PR — that no commit in the range mentions.
    A step that only greps the plan for `**Release:**` cannot see it, which is how PR #850 stayed open after its work shipped (Refs #849).
    Carry what you find into step 9 and step 10.
