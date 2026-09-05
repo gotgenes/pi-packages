@@ -1,14 +1,14 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { getAgentDir } from "@earendil-works/pi-coding-agent";
+import type { ScopeConfig } from "#src/types";
+import { toRecord } from "#src/value-guards";
 import {
   loadUnifiedConfig,
   normalizeFlatPermissionValue,
   stripJsonComments,
 } from "./config-loader";
 import { getGlobalConfigPath } from "./config-paths";
-import type { ScopeConfig } from "./types";
-import { toRecord } from "./value-guards";
 import { extractFrontmatter, parseSimpleYamlMap } from "./yaml-frontmatter";
 
 // ---------------------------------------------------------------------------

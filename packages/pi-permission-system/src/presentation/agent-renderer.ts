@@ -2,7 +2,7 @@ import {
   type DecisionSource,
   effectiveDecider,
 } from "#src/authority/decision-source";
-import { EXTENSION_ID } from "#src/extension-config";
+import { EXTENSION_ID } from "#src/config/extension-config";
 import type { BashCommandContext } from "#src/types";
 import { DEFAULT_RENDER_BUDGET } from "./dialog-renderer";
 import {

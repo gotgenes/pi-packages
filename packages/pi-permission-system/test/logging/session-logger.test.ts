@@ -2,11 +2,14 @@ import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { DEBUG_LOG_FILENAME, REVIEW_LOG_FILENAME } from "#src/config-paths";
+import {
+  DEBUG_LOG_FILENAME,
+  REVIEW_LOG_FILENAME,
+} from "#src/config/config-paths";
 import {
   DEFAULT_EXTENSION_CONFIG,
   type PermissionSystemExtensionConfig,
-} from "#src/extension-config";
+} from "#src/config/extension-config";
 import type { SessionLoggerDeps } from "#src/logging/session-logger";
 import { PermissionSessionLogger } from "#src/logging/session-logger";
 

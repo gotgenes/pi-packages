@@ -3,13 +3,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, test } from "vitest";
 
-import type { PermissionSystemExtensionConfig } from "#src/extension-config";
+import type { PermissionSystemExtensionConfig } from "#src/config/extension-config";
 import {
   detectMisplacedPermissionKeys,
   ensurePermissionSystemLogsDirectory,
   isYoloModeEnabled,
   normalizePermissionSystemConfig,
-} from "#src/extension-config";
+} from "#src/config/extension-config";
 
 function makeConfig(
   yoloMode: boolean | undefined,

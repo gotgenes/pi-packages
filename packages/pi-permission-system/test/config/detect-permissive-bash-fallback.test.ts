@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { detectPermissiveBashFallback } from "#src/config-loader";
+import { detectPermissiveBashFallback } from "#src/config/config-loader";
 import type { FlatPermissionConfig } from "#src/types";
 
 describe("detectPermissiveBashFallback", () => {

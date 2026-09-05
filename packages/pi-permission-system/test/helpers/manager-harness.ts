@@ -8,9 +8,12 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { getGlobalConfigPath, getProjectConfigPath } from "#src/config-paths";
+import {
+  getGlobalConfigPath,
+  getProjectConfigPath,
+} from "#src/config/config-paths";
+import type { ResolvedPolicyPaths } from "#src/config/policy-loader";
 import { PermissionManager, type PolicyLoader } from "#src/permission-manager";
-import type { ResolvedPolicyPaths } from "#src/policy-loader";
 import type { Rule } from "#src/rule";
 import type { PermissionState, ScopeConfig } from "#src/types";
 

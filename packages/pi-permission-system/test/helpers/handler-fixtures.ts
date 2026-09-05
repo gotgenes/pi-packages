@@ -12,8 +12,8 @@ import { vi } from "vitest";
 import type { ResolvedAccessIntent } from "#src/access-intent/access-intent";
 import { surfaceFamilyOf } from "#src/access-intent/path-surfaces";
 import type { AskEscalator } from "#src/authority/authorizer-selection";
-import type { ShellToolsConfig } from "#src/config-schema";
-import { DEFAULT_EXTENSION_CONFIG } from "#src/extension-config";
+import type { ShellToolsConfig } from "#src/config/config-schema";
+import { DEFAULT_EXTENSION_CONFIG } from "#src/config/extension-config";
 import { GateRunner } from "#src/handlers/gates/runner";
 import {
   type SkillInputGateInputs,

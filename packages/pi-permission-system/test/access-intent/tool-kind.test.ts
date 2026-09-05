@@ -5,7 +5,7 @@ import {
   isMcpCheck,
   resolveShellInvocation,
 } from "#src/access-intent/tool-kind";
-import type { ShellToolsConfig } from "#src/config-schema";
+import type { ShellToolsConfig } from "#src/config/config-schema";
 
 describe("classifyToolKind", () => {
   test("classifies bash", () => {

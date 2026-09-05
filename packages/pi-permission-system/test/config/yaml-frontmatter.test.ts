@@ -1,6 +1,9 @@
 import { describe, expect, test } from "vitest";
 
-import { extractFrontmatter, parseSimpleYamlMap } from "#src/yaml-frontmatter";
+import {
+  extractFrontmatter,
+  parseSimpleYamlMap,
+} from "#src/config/yaml-frontmatter";
 
 describe("extractFrontmatter", () => {
   test("returns empty string when no frontmatter delimiter", () => {

@@ -1,6 +1,9 @@
 import { existsSync, readFileSync } from "node:fs";
 import { normalize } from "node:path";
 import type { ZodError } from "zod";
+import { mergeFlatPermissions } from "#src/permission-merge";
+import type { FlatPermissionConfig, PatternValue } from "#src/types";
+import { isDenyWithReason, isPermissionState } from "#src/types";
 import {
   getGlobalConfigPath,
   getLegacyExtensionConfigPath,
@@ -13,9 +16,6 @@ import {
   type UnifiedPermissionConfig,
   unifiedConfigSchema,
 } from "./config-schema";
-import { mergeFlatPermissions } from "./permission-merge";
-import type { FlatPermissionConfig, PatternValue } from "./types";
-import { isDenyWithReason, isPermissionState } from "./types";
 
 // The unified config shape is derived from the zod schema (config-schema.ts,
 // the single source of truth) and re-exported so existing importers keep their

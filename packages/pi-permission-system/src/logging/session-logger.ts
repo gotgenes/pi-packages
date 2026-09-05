@@ -1,9 +1,12 @@
 import { join } from "node:path";
-import { DEBUG_LOG_FILENAME, REVIEW_LOG_FILENAME } from "#src/config-paths";
+import {
+  DEBUG_LOG_FILENAME,
+  REVIEW_LOG_FILENAME,
+} from "#src/config/config-paths";
 import {
   ensurePermissionSystemLogsDirectory,
   type PermissionSystemExtensionConfig,
-} from "#src/extension-config";
+} from "#src/config/extension-config";
 import {
   createPermissionSystemLogger,
   type PermissionSystemLogger,

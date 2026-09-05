@@ -24,16 +24,16 @@ const {
   mockUnlinkSync: vi.fn(),
 }));
 
-vi.mock("#src/config-loader", () => ({
+vi.mock("#src/config/config-loader", () => ({
   loadAndMergeConfigs: mockLoadAndMergeConfigs,
   loadUnifiedConfig: mockLoadUnifiedConfig,
 }));
 
-vi.mock("#src/status", () => ({
+vi.mock("#src/config/status", () => ({
   syncPermissionSystemStatus: mockSyncPermissionSystemStatus,
 }));
 
-vi.mock("#src/config-reporter", () => ({
+vi.mock("#src/config/config-reporter", () => ({
   buildResolvedConfigLogEntry: mockBuildResolvedConfigLogEntry,
 }));
 
@@ -62,9 +62,9 @@ import {
   ConfigStore,
   type ConfigStoreDeps,
   type ResolvedPolicyPathProvider,
-} from "#src/config-store";
-import { DEFAULT_EXTENSION_CONFIG } from "#src/extension-config";
-import type { ResolvedPolicyPaths } from "#src/policy-loader";
+} from "#src/config/config-store";
+import { DEFAULT_EXTENSION_CONFIG } from "#src/config/extension-config";
+import type { ResolvedPolicyPaths } from "#src/config/policy-loader";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 

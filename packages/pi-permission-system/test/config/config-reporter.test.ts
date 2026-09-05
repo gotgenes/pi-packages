@@ -8,7 +8,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "vitest";
-import { buildResolvedConfigLogEntry } from "#src/config-reporter";
+import { buildResolvedConfigLogEntry } from "#src/config/config-reporter";
 import { createPermissionSystemLogger } from "#src/logging/logging";
 import type { ResolvedPolicyPaths } from "#src/permission-manager";
 import { PermissionManager } from "#src/permission-manager";

@@ -11,7 +11,10 @@ import { describe, expect, it, test } from "vitest";
 import type { ResolvedAccessIntent } from "#src/access-intent/access-intent";
 import { BashProgram } from "#src/access-intent/bash/program";
 import { getPathPolicyValues } from "#src/access-intent/path-normalization";
-import { getGlobalConfigPath, getProjectAgentsDir } from "#src/config-paths";
+import {
+  getGlobalConfigPath,
+  getProjectAgentsDir,
+} from "#src/config/config-paths";
 import { posixPathFlavor, win32PathFlavor } from "#src/path/path-flavor";
 import { PathNormalizer } from "#src/path/path-normalizer";
 import {

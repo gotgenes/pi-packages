@@ -6,19 +6,19 @@ import {
   surfaceFamilyOf,
 } from "#src/access-intent/path-surfaces";
 import { classifyToolKind } from "#src/access-intent/tool-kind";
-import { type PathFlavor, posixPathFlavor } from "#src/path/path-flavor";
 import {
   getGlobalConfigPath,
   getProjectAgentsDir,
   getProjectConfigPath,
-} from "./config-paths";
-import { normalizeFlatConfig } from "./normalize";
+} from "#src/config/config-paths";
 import {
   FilePolicyLoader,
   type PolicyLoader,
   type PolicyLoaderOptions,
   type ResolvedPolicyPaths,
-} from "./policy-loader";
+} from "#src/config/policy-loader";
+import { type PathFlavor, posixPathFlavor } from "#src/path/path-flavor";
+import { normalizeFlatConfig } from "./normalize";
 import type { Rule, RuleOrigin, Ruleset } from "./rule";
 import {
   evaluate,
@@ -451,4 +451,7 @@ function deriveSource(
 }
 
 // Re-export types that external modules import from this file.
-export type { PolicyLoader, ResolvedPolicyPaths } from "./policy-loader";
+export type {
+  PolicyLoader,
+  ResolvedPolicyPaths,
+} from "#src/config/policy-loader";

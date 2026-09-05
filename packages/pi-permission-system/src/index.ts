@@ -32,6 +32,11 @@ import {
 import { SubagentDetection } from "#src/authority/subagent-detection";
 import { subscribeSubagentLifecycle } from "#src/authority/subagent-lifecycle-events";
 import { getSubagentSessionRegistry } from "#src/authority/subagent-registry";
+import { registerPermissionSystemCommand } from "#src/config/config-modal";
+import { getGlobalConfigPath } from "#src/config/config-paths";
+import { ConfigStore } from "#src/config/config-store";
+import { isYoloModeEnabled } from "#src/config/extension-config";
+import { computeExtensionPaths } from "#src/config/extension-paths";
 import { GateRunner } from "#src/handlers/gates/runner";
 import { SkillInputGatePipeline } from "#src/handlers/gates/skill-input-gate-pipeline";
 import { ToolCallGatePipeline } from "#src/handlers/gates/tool-call-gate-pipeline";
@@ -42,11 +47,6 @@ import { PermissionSessionLogger } from "#src/logging/session-logger";
 import { pathFlavorForPlatform } from "#src/path/path-flavor";
 import { resolveRenderBudget } from "#src/presentation/dialog-renderer";
 import { registerBuiltinToolInputFormatters } from "./builtin-tool-input-formatters";
-import { registerPermissionSystemCommand } from "./config-modal";
-import { getGlobalConfigPath } from "./config-paths";
-import { ConfigStore } from "./config-store";
-import { isYoloModeEnabled } from "./extension-config";
-import { computeExtensionPaths } from "./extension-paths";
 import {
   AgentPrepHandler,
   PermissionGateHandler,

@@ -44,8 +44,8 @@ import {
   getGlobalConfigPath,
   getGlobalLogsDir,
   REVIEW_LOG_FILENAME,
-} from "#src/config-paths";
-import { DEFAULT_EXTENSION_CONFIG } from "#src/extension-config";
+} from "#src/config/config-paths";
+import { DEFAULT_EXTENSION_CONFIG } from "#src/config/extension-config";
 import piPermissionSystemExtension from "#src/index";
 import {
   PERMISSIONS_READY_CHANNEL,

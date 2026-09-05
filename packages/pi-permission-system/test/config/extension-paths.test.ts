@@ -9,8 +9,8 @@ vi.mock("#src/path/node-modules-discovery", () => ({
   discoverGlobalNodeModulesRoot: mockDiscoverGlobalNodeModulesRoot,
 }));
 
-import { getGlobalLogsDir } from "#src/config-paths";
-import { computeExtensionPaths } from "#src/extension-paths";
+import { getGlobalLogsDir } from "#src/config/config-paths";
+import { computeExtensionPaths } from "#src/config/extension-paths";
 
 describe("computeExtensionPaths", () => {
   beforeEach(() => {

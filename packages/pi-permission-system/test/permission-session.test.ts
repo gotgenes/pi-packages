@@ -17,7 +17,7 @@ vi.mock("#src/active-agent", () => ({
 
 // ── Test helpers ───────────────────────────────────────────────────────────
 
-import type { DEFAULT_EXTENSION_CONFIG } from "#src/extension-config";
+import type { DEFAULT_EXTENSION_CONFIG } from "#src/config/extension-config";
 import { win32PathFlavor } from "#src/path/path-flavor";
 import type { PermissionSession } from "#src/permission-session";
 import { SessionApproval } from "#src/session-approval";

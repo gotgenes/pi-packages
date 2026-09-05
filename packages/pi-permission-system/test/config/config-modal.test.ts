@@ -2,14 +2,14 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test, vi } from "vitest";
-import { loadUnifiedConfig } from "#src/config-loader";
-import { registerPermissionSystemCommand } from "#src/config-modal";
-import type { CommandConfigStore } from "#src/config-store";
+import { loadUnifiedConfig } from "#src/config/config-loader";
+import { registerPermissionSystemCommand } from "#src/config/config-modal";
+import type { CommandConfigStore } from "#src/config/config-store";
 import {
   DEFAULT_EXTENSION_CONFIG,
   normalizePermissionSystemConfig,
   type PermissionSystemExtensionConfig,
-} from "#src/extension-config";
+} from "#src/config/extension-config";
 import type { Rule, Ruleset } from "#src/rule";
 
 vi.mock("@earendil-works/pi-coding-agent", () => ({

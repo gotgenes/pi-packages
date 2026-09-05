@@ -4,7 +4,7 @@ import {
   resolveShellInvocation,
   type ShellInvocation,
 } from "#src/access-intent/tool-kind";
-import type { ShellToolsConfig } from "#src/config-schema";
+import type { ShellToolsConfig } from "#src/config/config-schema";
 import type { PathNormalizer } from "#src/path/path-normalizer";
 import type { ScopedPermissionResolver } from "#src/permission-resolver";
 import type { SkillPromptEntry } from "#src/skill-prompt-sanitizer";

@@ -12,7 +12,7 @@ import {
   getProjectAgentsDir,
   getProjectConfigPath,
   REVIEW_LOG_FILENAME,
-} from "#src/config-paths";
+} from "#src/config/config-paths";
 
 describe("config-paths", () => {
   const agentDir = "/home/user/.pi/agent";

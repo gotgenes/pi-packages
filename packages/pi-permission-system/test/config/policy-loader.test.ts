@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { FilePolicyLoader } from "#src/policy-loader";
+import { FilePolicyLoader } from "#src/config/policy-loader";
 
 // ---------------------------------------------------------------------------
 // Helpers

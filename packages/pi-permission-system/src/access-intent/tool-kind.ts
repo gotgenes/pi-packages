@@ -1,4 +1,4 @@
-import type { ShellToolsConfig } from "#src/config-schema";
+import type { ShellToolsConfig } from "#src/config/config-schema";
 import { getNonEmptyString, toRecord } from "#src/value-guards";
 import { PATH_BEARING_TOOLS } from "./path-surfaces";
 

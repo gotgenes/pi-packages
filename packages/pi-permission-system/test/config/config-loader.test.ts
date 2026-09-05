@@ -9,7 +9,7 @@ import {
   loadUnifiedConfig,
   mergeUnifiedConfigs,
   stripJsonComments,
-} from "#src/config-loader";
+} from "#src/config/config-loader";
 
 describe("stripJsonComments", () => {
   it("returns empty string for empty input", () => {

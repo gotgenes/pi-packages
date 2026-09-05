@@ -3,7 +3,7 @@
  */
 import { vi } from "vitest";
 import type { AskEscalator } from "#src/authority/authorizer-selection";
-import type { ShellToolsConfig } from "#src/config-schema";
+import type { ShellToolsConfig } from "#src/config/config-schema";
 import type { GateDescriptor } from "#src/handlers/gates/descriptor";
 import { GateRunner } from "#src/handlers/gates/runner";
 import type { SkillInputGateInputs } from "#src/handlers/gates/skill-input-gate-pipeline";

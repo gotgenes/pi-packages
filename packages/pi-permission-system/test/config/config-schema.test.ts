@@ -7,12 +7,12 @@ import type {
   FlatPermissionConfig as SchemaFlatPermissionConfig,
   PatternValue as SchemaPatternValue,
   PermissionState as SchemaPermissionState,
-} from "#src/config-schema";
+} from "#src/config/config-schema";
 import {
   buildPermissionsJsonSchema,
   PERMISSIONS_SCHEMA_URL,
   unifiedConfigSchema,
-} from "#src/config-schema";
+} from "#src/config/config-schema";
 import type {
   DenyWithReason,
   FlatPermissionConfig,
@@ -419,7 +419,7 @@ describe("config/config.example.json", () => {
   it("validates against unifiedConfigSchema", () => {
     const example = JSON.parse(
       readFileSync(
-        join(import.meta.dirname, "..", "config", "config.example.json"),
+        join(import.meta.dirname, "..", "..", "config", "config.example.json"),
         "utf-8",
       ),
     ) as unknown;
@@ -432,6 +432,7 @@ describe("committed schemas/permissions.schema.json is in sync", () => {
   it("equals the generated schema (run `pnpm run gen:schema` if this fails)", () => {
     const committedPath = join(
       import.meta.dirname,
+      "..",
       "..",
       "schemas",
       "permissions.schema.json",
