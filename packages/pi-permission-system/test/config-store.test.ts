@@ -24,16 +24,16 @@ const {
   mockUnlinkSync: vi.fn(),
 }));
 
-vi.mock("../src/config-loader", () => ({
+vi.mock("#src/config-loader", () => ({
   loadAndMergeConfigs: mockLoadAndMergeConfigs,
   loadUnifiedConfig: mockLoadUnifiedConfig,
 }));
 
-vi.mock("../src/status", () => ({
+vi.mock("#src/status", () => ({
   syncPermissionSystemStatus: mockSyncPermissionSystemStatus,
 }));
 
-vi.mock("../src/config-reporter", () => ({
+vi.mock("#src/config-reporter", () => ({
   buildResolvedConfigLogEntry: mockBuildResolvedConfigLogEntry,
 }));
 
