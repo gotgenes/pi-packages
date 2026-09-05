@@ -49,6 +49,71 @@ const noParentRelativeImports = {
 };
 
 // ---------------------------------------------------------------------------
+// Custom rule: no own-directory alias imports
+//
+// The mirror image of the rule above. The convention is `./` for a
+// same-directory target and the #src/ or #test/ alias for a cross-directory
+// one; this flags an alias specifier that resolves to the importer's own
+// directory and auto-fixes it to `./`. Without it only half the convention is
+// enforced, and the two spellings drift within a single directory.
+//
+// Currently scoped to pi-permission-system; the repo-wide rollout is #877.
+// ---------------------------------------------------------------------------
+
+/** @type {import("eslint").Rule.RuleModule} */
+const noOwnDirectoryAliasImports = {
+  meta: {
+    type: "suggestion",
+    fixable: "code",
+    messages: {
+      ownDirectory:
+        'Use a same-directory "./" import for a module in this file\'s own directory ("{{value}}").',
+    },
+  },
+  create(context) {
+    const rel = path.relative(import.meta.dirname, context.filename);
+    const match = /^packages\/[^/]+\/(src|test)\/(.+)$/.exec(rel);
+    if (!match) return {};
+
+    const ownDir = path.dirname(match[2]);
+    const prefix = ownDir === "." ? `#${match[1]}/` : `#${match[1]}/${ownDir}/`;
+
+    /** @param {{ source?: { value?: unknown } | null }} node */
+    function check(node) {
+      const source = node.source;
+      if (!source) return;
+      const value = source.value;
+      if (typeof value !== "string" || !value.startsWith(prefix)) return;
+
+      const target = value.slice(prefix.length);
+      // A remaining separator means a deeper directory, not this one.
+      if (target === "" || target.includes("/")) return;
+
+      context.report({
+        node: source,
+        messageId: "ownDirectory",
+        data: { value },
+        fix: (fixer) => fixer.replaceText(source, `"./${target}"`),
+      });
+    }
+
+    return {
+      ImportDeclaration: check,
+      ExportNamedDeclaration: check,
+      ExportAllDeclaration: check,
+    };
+  },
+};
+
+/** Shared so both config blocks below reference one plugin object. */
+const localRulesPlugin = {
+  rules: {
+    "no-parent-relative-imports": noParentRelativeImports,
+    "no-own-directory-alias-imports": noOwnDirectoryAliasImports,
+  },
+};
+
+// ---------------------------------------------------------------------------
 // Config
 // ---------------------------------------------------------------------------
 
@@ -80,11 +145,7 @@ export default tseslint.config(
       tseslint.configs.recommendedTypeCheckedOnly,
       tseslint.configs.stylisticTypeCheckedOnly,
     ],
-    plugins: {
-      "local-rules": {
-        rules: { "no-parent-relative-imports": noParentRelativeImports },
-      },
-    },
+    plugins: { "local-rules": localRulesPlugin },
     rules: {
       // --- Import path enforcement ---
       "local-rules/no-parent-relative-imports": "error",
@@ -156,6 +217,20 @@ export default tseslint.config(
       "@typescript-eslint/unbound-method": "off",
       "@typescript-eslint/require-await": "off",
     },
+  },
+
+  // ---------------------------------------------------------------------------
+  // pi-permission-system: enforce the same-directory import convention (#837).
+  // Scoped to this package because pi-subagents still carries 76 own-directory
+  // alias imports; promoting this into the block above is #877.
+  // ---------------------------------------------------------------------------
+  {
+    files: [
+      "packages/pi-permission-system/src/**/*.ts",
+      "packages/pi-permission-system/test/**/*.ts",
+    ],
+    plugins: { "local-rules": localRulesPlugin },
+    rules: { "local-rules/no-own-directory-alias-imports": "error" },
   },
 
   // ---------------------------------------------------------------------------
