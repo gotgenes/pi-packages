@@ -6,7 +6,8 @@
  * Follows the same pattern as pi-permission-system's ExtensionRuntime.
  */
 
-import { buildParentSnapshot, type ParentSnapshot } from "#src/lifecycle/parent-snapshot";
+import { buildParentSnapshot, type ParentPromptOptions, type ParentSnapshot } from "#src/lifecycle/parent-snapshot";
+import type { PromptInheritance } from "#src/settings";
 import type { ModelInfo } from "#src/tools/spawn-config";
 import type { SessionContext } from "#src/types";
 
@@ -19,6 +20,10 @@ export interface RunConfig {
   readonly graceTurns: number;
   /** Whether a background child gets the `notify_parent` channel. */
   readonly midRunUpdates: boolean;
+  /** Default prompt inheritance for agents without an explicit `inherit_prompt`. */
+  readonly promptInheritance?: PromptInheritance;
+  /** Per-provider inheritance overrides, keyed by provider id of the child's model. */
+  readonly promptInheritanceProviders?: Record<string, PromptInheritance>;
 }
 
 /**
@@ -32,6 +37,11 @@ export class SubagentRuntime {
   /** Active Pi session context — set on session_start, cleared on session_shutdown. */
   currentCtx: SessionContext | undefined = undefined;
 
+  /** Latest system-prompt options pi assembled for the parent session, captured
+   *  from `before_agent_start` so a snapshot can carry the parent's portable
+   *  prompt parts without re-parsing the assembled string. */
+  private lastPromptOptions: ParentPromptOptions | undefined = undefined;
+
   // ── Session-context methods ──────────────────────────────────────────────
 
   /** Store the active Pi session context (called from session_start). */
@@ -44,13 +54,18 @@ export class SubagentRuntime {
     this.currentCtx = undefined;
   }
 
+  /** Store the parent's latest assembled system-prompt options (called from before_agent_start). */
+  setSystemPromptOptions(options: ParentPromptOptions): void {
+    this.lastPromptOptions = options;
+  }
+
   /**
    * Build a parent snapshot from the current session context.
    * Only valid during an active session (currentCtx is defined).
    */
   buildSnapshot(inheritContext: boolean): ParentSnapshot {
 
-    return buildParentSnapshot(this.currentCtx!, inheritContext);
+    return buildParentSnapshot(this.currentCtx!, inheritContext, this.lastPromptOptions);
   }
 
   /** Extract model info from the current session context. */

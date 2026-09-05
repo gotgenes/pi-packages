@@ -729,3 +729,43 @@ describe("buildAgentPrompt", () => {
     });
   });
 });
+
+describe("buildAgentPrompt — portable inheritance", () => {
+  const parentPrompt = [
+    "You are an expert coding assistant operating inside pi, a coding agent harness.",
+    "# Environment",
+    "Current working directory: /parent",
+  ].join("\n");
+  const portable = `<project_context>\n<project_instructions path="/parent/AGENTS.md">\n# Rules\n</project_instructions>\n</project_context>`;
+
+  it("uses the parent's portablePrompt as the identity when promptInheritance is portable", () => {
+    const config = { ...getDefaultConfig("general-purpose"), promptInheritance: "portable" as const };
+    const prompt = buildAgentPrompt(config, "/workspace", env, {
+      systemPrompt: parentPrompt,
+      portablePrompt: portable,
+      cwd: PARENT_CWD,
+    });
+    expect(prompt.startsWith(portable)).toBe(true);
+    expect(prompt).not.toContain("operating inside pi");
+  });
+
+  it("falls back to the generic base, not the full prompt, when no portable capture exists", () => {
+    const config = { ...getDefaultConfig("general-purpose"), promptInheritance: "portable" as const };
+    const prompt = buildAgentPrompt(config, "/workspace", env, {
+      systemPrompt: parentPrompt,
+      cwd: PARENT_CWD,
+    });
+    expect(prompt).not.toContain("operating inside pi");
+    expect(prompt).not.toContain(parentPrompt);
+  });
+
+  it("keeps the full inherited identity when promptInheritance is unset", () => {
+    const config = getDefaultConfig("general-purpose");
+    const prompt = buildAgentPrompt(config, "/workspace", env, {
+      systemPrompt: parentPrompt,
+      portablePrompt: portable,
+      cwd: PARENT_CWD,
+    });
+    expect(prompt.startsWith("You are an expert coding assistant")).toBe(true);
+  });
+});

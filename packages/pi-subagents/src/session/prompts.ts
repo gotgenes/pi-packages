@@ -9,6 +9,14 @@ import type { AgentPromptConfig } from "#src/types";
 export interface InheritedPrompt {
   /** The parent agent's effective system prompt. */
   systemPrompt: string;
+  /**
+   * The parent's portable prompt parts (context files, custom/append prompts,
+   * added guidelines) — used as the identity when the agent opts into
+   * `inherit_prompt: portable`. Unlike `systemPrompt` it carries no harness
+   * base prompt, so it survives being re-homed into another harness (e.g. a
+   * Claude Agent SDK bridge that re-sends it as an append onto its own preset).
+   */
+  portablePrompt?: string;
   /** The parent's working directory — the cwd its prompt footer names. */
   cwd: string;
 }
@@ -29,6 +37,15 @@ export interface InheritedPrompt {
  *   `<agent_instructions>` when non-empty).
  * - "append" with empty systemPrompt: pure parent clone.
  *
+ * `config.promptInheritance` selects what "parent" means above: `"full"`
+ * (default) adopts the parent's assembled prompt minus pi's per-session layers
+ * — a byte-stable prefix with the parent session, at the cost of carrying pi's
+ * harness base prompt into the child. `"portable"` adopts only the parent's
+ * portable parts (context files, custom/append prompts, added guidelines):
+ * nothing another harness would duplicate or reject, at the cost of the shared
+ * prefix (a portable child's prefix differs from the parent's from the first
+ * token). Skills are never inherited — the child loads its own catalogue.
+ *
  * Both modes include an `<active_agent name="${config.name}"/>` tag so
  * downstream extensions (e.g. `@gotgenes/pi-permission-system`) can resolve
  * per-agent policy inside the child session by parsing the system prompt.
@@ -47,7 +64,15 @@ export function buildAgentPrompt(
   const header = buildPromptHeader(config.name, cwd, env);
 
   const identity = inherited
-    ? inheritedIdentity(inherited.systemPrompt, inherited.cwd)
+    ? config.promptInheritance === "portable"
+      ? // Portable: adopt the parent's context files and custom prompts only.
+        // An absent capture (pi assembled nothing yet) or an empty one falls
+        // back to the generic base rather than to the full prompt — opting into
+        // portable must never silently re-embed the harness base it exists to
+        // avoid.
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- || intentional: a whitespace-only capture must fall back too, which ?? would not do
+        inherited.portablePrompt?.trim() || genericBase
+      : inheritedIdentity(inherited.systemPrompt, inherited.cwd)
     : genericBase;
 
   if (config.promptMode === "append") {

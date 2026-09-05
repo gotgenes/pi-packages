@@ -4,6 +4,8 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   loadSettings,
+  normalizePromptInheritance,
+  type PromptInheritance,
   persistToastFor,
   SettingsManager,
   saveSettings,
@@ -955,6 +957,61 @@ describe("SettingsManager", () => {
       expect(
         () => new SettingsManager({ emit: vi.fn(), cwd: "/tmp", agentDir: "/nonexistent", onMaxConcurrentChanged: vi.fn() }),
       ).not.toThrow();
+    });
+  });
+});
+
+describe("promptInheritance setting", () => {
+  let dirs: SettingsDirs;
+
+  beforeEach(() => {
+    dirs = createSettingsDirs("subagents.json");
+  });
+
+  afterEach(() => dirs.dispose());
+
+  it("normalizePromptInheritance parses the simple form", () => {
+    expect(normalizePromptInheritance("portable")).toEqual({ def: "portable", providers: {} });
+    expect(normalizePromptInheritance("full")).toEqual({ def: "full", providers: {} });
+  });
+
+  it("normalizePromptInheritance parses scoped rules and drops unknown values", () => {
+    expect(
+      normalizePromptInheritance({ default: "portable", providers: { "claude-bridge": "portable", zai: "banana" as unknown as PromptInheritance } }),
+    ).toEqual({ def: "portable", providers: { "claude-bridge": "portable" } });
+    expect(normalizePromptInheritance({ providers: { zai: "portable" } })).toEqual({
+      def: "full",
+      providers: { zai: "portable" },
+    });
+  });
+
+  it("normalizePromptInheritance defaults on undefined and garbage", () => {
+    expect(normalizePromptInheritance(undefined)).toEqual({ def: "full", providers: {} });
+    expect(normalizePromptInheritance("banana" as never)).toEqual({ def: "full", providers: {} });
+  });
+
+  it("loads a scoped rule from disk and exposes the resolved values", () => {
+    dirs.writeGlobal({ promptInheritance: { providers: { "claude-bridge": "portable" } } });
+    const manager = new SettingsManager({
+      emit: vi.fn(),
+      cwd: dirs.projectDir,
+      agentDir: dirs.globalDir,
+    });
+    manager.load();
+    expect(manager.promptInheritance).toBe("full");
+    expect(manager.promptInheritanceProviders).toEqual({ "claude-bridge": "portable" });
+  });
+
+  it("round-trips a scoped rule through snapshot()", () => {
+    dirs.writeGlobal({ promptInheritance: { providers: { "claude-bridge": "portable" } } });
+    const manager = new SettingsManager({
+      emit: vi.fn(),
+      cwd: dirs.projectDir,
+      agentDir: dirs.globalDir,
+    });
+    manager.load();
+    expect(manager.snapshot().promptInheritance).toEqual({
+      providers: { "claude-bridge": "portable" },
     });
   });
 });

@@ -49,10 +49,16 @@ export interface AssemblerContext {
   cwd: string;
   /** Parent's effective system prompt (for append-mode agents). */
   parentSystemPrompt: string;
+  /** Parent's portable prompt parts, for `inherit_prompt: portable` agents. */
+  parentPortablePrompt?: string;
   /** Parent's current model instance (fallback when agent config has no model). */
   parentModel?: Model<any>;
   /** Model registry for resolving config.model strings. */
   modelRegistry: ModelRegistry;
+  /** Default prompt inheritance when the agent's frontmatter is silent. */
+  promptInheritanceDefault?: "full" | "portable";
+  /** Per-provider inheritance overrides, keyed by provider id of the child's model. */
+  promptInheritanceProviders?: Record<string, "full" | "portable">;
 }
 
 /**
@@ -155,18 +161,31 @@ export function assembleSessionConfig(
 
   const toolNames = registry.getToolNamesForType(type);
 
-  // Build system prompt from the resolved agent config
-  const systemPrompt = io.buildAgentPrompt(agentConfig, effectiveCwd, env, {
-    systemPrompt: ctx.parentSystemPrompt,
-    cwd: ctx.cwd,
-  });
-
-  // Model resolution: explicit option > config model string > parent model
+  // Model resolution first — the child's provider scopes the prompt-inheritance
+  // rules, so the prompt cannot be built until the model is known.
+  // Priority: explicit option > config model string > parent model
   const model =
     options.model ??
     resolveDefaultModel(ctx.parentModel, ctx.modelRegistry, agentConfig.model);
 
-  // Thinking level: explicit option > agent config > undefined (inherit)
+  // Build system prompt from the resolved agent config. `promptInheritance`
+  // settles frontmatter > provider rule > setting default here so every caller
+  // of buildAgentPrompt sees one settled value; with nothing to settle the
+  // config object passes through untouched.
+  const promptInheritance =
+    agentConfig.promptInheritance ??
+    (model?.provider != null ? ctx.promptInheritanceProviders?.[model.provider] : undefined) ??
+    ctx.promptInheritanceDefault;
+  const configForPrompt = promptInheritance
+    ? { ...agentConfig, promptInheritance }
+    : agentConfig;
+  const systemPrompt = io.buildAgentPrompt(configForPrompt, effectiveCwd, env, {
+    systemPrompt: ctx.parentSystemPrompt,
+    cwd: ctx.cwd,
+    portablePrompt: ctx.parentPortablePrompt,
+  });
+
+  // Thinking level: explicit option > config model > undefined (inherit)
   const thinkingLevel = options.thinkingLevel ?? agentConfig.thinking;
 
   // Per-agent max turns (combined with per-call maxTurns and defaultMaxTurns by SubagentSession.runTurnLoop)

@@ -175,7 +175,14 @@ export default function (pi: ExtensionAPI) {
   const limiter = new ConcurrencyLimiter(() => settings.maxConcurrent);
 
   const manager = new SubagentManager({
-    createSubagentSession: (params) => createSubagentSession(params, subagentSessionDeps),
+    createSubagentSession: (params) =>
+      createSubagentSession(
+        // runConfig rides the params here rather than through Subagent.run so the
+        // turn-loop function's complexity footprint is untouched; settings
+        // satisfies RunConfig structurally (getters for every field).
+        { ...params, runConfig: settings },
+        subagentSessionDeps,
+      ),
     baseCwd: process.cwd(),
     observer,
     limiter,
@@ -208,6 +215,12 @@ export default function (pi: ExtensionAPI) {
 
   pi.on("session_start", (event, ctx) => lifecycle.handleSessionStart(event, ctx));
   pi.on("session_start", (event, ctx) => widgetEvents.handleSessionStart(event, ctx));
+  // Capture the parent's assembled system-prompt parts each turn so snapshots
+  // can offer `inherit_prompt: portable` children the parent's context files
+  // and custom/append prompts without pi's harness base prompt.
+  pi.on("before_agent_start", (event) => {
+    runtime.setSystemPromptOptions(event.systemPromptOptions);
+  });
   pi.on("session_before_switch", () => lifecycle.handleSessionBeforeSwitch());
   pi.on("session_shutdown", () => lifecycle.handleSessionShutdown());
   // Registered after the lifecycle handler on purpose. Pi awaits an extension's

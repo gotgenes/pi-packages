@@ -425,3 +425,54 @@ Agent prompt.`);
     }
   });
 });
+
+describe("loadCustomAgents — inherit_prompt frontmatter", () => {
+  let tmpDir: string;
+  let originalHome: string | undefined;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), "pi-test-"));
+    originalHome = process.env.HOME;
+    process.env.HOME = tmpDir;
+  });
+
+  afterEach(() => {
+    if (originalHome == null) delete process.env.HOME;
+    else process.env.HOME = originalHome;
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  function writeAgent(name: string, content: string) {
+    const dir = join(tmpDir, ".pi", "agents");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, `${name}.md`), content);
+  }
+
+  it("parses portable and full, and leaves an absent or unknown value unset", () => {
+    writeAgent("portable-agent", `---
+inherit_prompt: portable
+---
+
+Prompt.`);
+    writeAgent("full-agent", `---
+inherit_prompt: full
+---
+
+Prompt.`);
+    writeAgent("silent-agent", `---
+---
+
+Prompt.`);
+    writeAgent("garbage-agent", `---
+inherit_prompt: banana
+---
+
+Prompt.`);
+
+    const result = loadCustomAgents(tmpDir);
+    expect(result.get("portable-agent")!.promptInheritance).toBe("portable");
+    expect(result.get("full-agent")!.promptInheritance).toBe("full");
+    expect(result.get("silent-agent")!.promptInheritance).toBeUndefined();
+    expect(result.get("garbage-agent")!.promptInheritance).toBeUndefined();
+  });
+});

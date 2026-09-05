@@ -65,6 +65,7 @@ function loadFromDir(dir: string, agents: Map<string, AgentConfig>, source: "pro
       maxTurns: nonNegativeInt(fm.max_turns),
       systemPrompt: body.trim(),
       promptMode: fm.prompt_mode === "replace" ? "replace" : "append",
+      promptInheritance: promptInheritanceField(fm),
       inheritContext: fm.inherit_context != null ? fm.inherit_context === true : undefined,
       runInBackground: fm.run_in_background != null ? fm.run_in_background === true : undefined,
       locked: lockDeclaration(fm.locked, name),
@@ -80,6 +81,17 @@ function loadFromDir(dir: string, agents: Map<string, AgentConfig>, source: "pro
 /** Extract a string or undefined. */
 function str(val: unknown): string | undefined {
   return typeof val === "string" ? val : undefined;
+}
+
+/**
+ * Parse the `inherit_prompt:` key into a strategy, or undefined when it is absent
+ * or unrecognized — an unrecognized value follows the field-parser convention of
+ * becoming the default (settings decide) rather than failing the agent's load.
+ */
+function promptInheritanceField(fm: Record<string, unknown>): "full" | "portable" | undefined {
+  return fm.inherit_prompt === "portable" || fm.inherit_prompt === "full"
+    ? fm.inherit_prompt
+    : undefined;
 }
 
 /**
