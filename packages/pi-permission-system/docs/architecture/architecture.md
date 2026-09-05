@@ -1130,6 +1130,9 @@ No decline, so the regular improvement rotation continues.
   `config-modal.ts` is one of the repo's only two `ui.custom(..., { overlay: true })` call sites, and Pi's regular-mode compositor writes overlay chrome into the buffer that backs scrollback.
   No Phase 14 step names `config-modal.ts`, and the capability axis has no bearing on how a settings modal is mounted.
   Its exposure is far lower than [#733]'s — smearing needs the buffer to grow while the overlay is open — and its fix is a different design question, because the modal asks for a fixed 82-column width that the non-overlay path does not offer.
+- [#879] — filed by Step 13's ship; out of scope for the roadmap (explicit user decision).
+  `rumdl` caches per markdown file keyed on that file's own content while `MD057` depends on the surrounding filesystem, so Step 13's moves left four links in [#815]'s plan doc cached as clean and CI caught them only on a fresh checkout.
+  It is `scope:repo` lint tooling at the repository root affecting every package, and shares no mechanism with the capability axis; Step 13 is where it surfaced, not what caused it.
 
 ### Health metrics
 
@@ -1810,6 +1813,7 @@ Each phase's findings, numbered plan, dependency diagram, and health metrics are
 [#874]: https://github.com/gotgenes/pi-packages/issues/874
 [#875]: https://github.com/gotgenes/pi-packages/issues/875
 [#877]: https://github.com/gotgenes/pi-packages/issues/877
+[#879]: https://github.com/gotgenes/pi-packages/issues/879
 [#385]: https://github.com/gotgenes/pi-packages/issues/385
 [#873]: https://github.com/gotgenes/pi-packages/issues/873
 [ADR-0002]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-subagents/docs/decisions/0002-extensions-on-a-minimal-core.md
