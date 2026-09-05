@@ -33,3 +33,26 @@ No follow-up issues filed.
   Worth its own hardening issue.
 - `packages/pi-subagents/test/config/agent-types.test.ts` — the `describe("getToolNamesForType")` block will hold seven flat siblings after this change, mixing per-agent spot-checks with the `toolNames` field's own present/empty/absent axis.
   Offered by the assessor as Optional and marked not required; declined here to keep the change tight.
+
+## Stage: Implementation — TDD (2026-09-05T06:39:52Z)
+
+### Session summary
+
+Executed both plan steps with no deviations: one `fix:` cycle replacing `AgentTypeRegistry.getToolNamesForType`'s five-line body with `return this.resolveAgentConfig(type).toolNames ?? [...BUILTIN_TOOL_NAMES];` plus three new registry tests, then a `docs:` step marking Phase 22 Step 13 landed.
+Test count for `pi-subagents` went 1561 → 1564 (76 files, all green); `check`, root `lint`, and `fallow dead-code` all clean before and after.
+Pre-completion reviewer: PASS.
+
+### Observations
+
+- The Red step behaved exactly as the plan predicted: two of the three new tests failed (empty list, disabled agent) and the third — the built-ins-for-an-absent-key pin — passed, as the plan called out in advance.
+  Because it never had a genuine red, it was mutated explicitly before commit.
+- All three killing mutations landed on the predicted equivalence classes, verified against the green file saved to `/tmp` and restored with `cp` (never `git checkout --`, which would have reverted to HEAD and discarded the uncommitted green edit):
+  1. Restoring the truthiness check → only "returns an empty list for an agent that declared `tools: none`" went red.
+  2. `?? []` instead of `?? [...BUILTIN_TOOL_NAMES]` → the new absent-key pin went red, along with the two pre-existing tests in the same equivalence class (`general-purpose` and the unknown type), and cases 1 and 3 stayed green as predicted.
+  3. Re-adding the `enabled === false` guard → only "returns a disabled agent's own list rather than the built-ins" went red.
+- The reviewer re-derived the guard-removal safety claim rather than accepting it, and confirmed it independently: `getToolNamesForType` has exactly one production call site (`session-config.ts:156`), reached only through `createSubagentSession` → `Subagent.start()` → `SubagentManager.create()`, and every front door (`spawn`, `spawnAndWait`, `service-adapter.ts`, `background-spawner.ts`, `foreground-runner.ts`) passes `resolveSpawn` first.
+  `resume()` reuses the existing session and never re-assembles.
+  The UI path calls `resolveAgentConfig` only.
+- The reviewer also re-verified the SDK claim from the pinned `@earendil-works/pi-coding-agent@0.84.4` compiled source and traced the `BUILTIN_TOOL_NAMES` by-reference question across every reachable branch, confirming the deferred tidying is latent rather than activated by this change.
+- No plan deviations, no follow-up issues filed, no lockfile changes.
+  The changelog preview is one line — `fix(pi-subagents): resolve tools: none to no tools` — which names the observable outcome rather than the seam.
