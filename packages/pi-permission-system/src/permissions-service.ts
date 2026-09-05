@@ -3,18 +3,18 @@ import { buildAccessIntentForSurface } from "#src/access-intent/input-normalizer
 import type { Authorizer } from "#src/authority/authorizer";
 import type { AuthorizerRegistrar } from "#src/authority/authorizer-registry";
 import type { PathNormalizer } from "#src/path/path-normalizer";
-import { resolveBashAdvisoryCheck } from "./bash-advisory-check";
-import type { PermissionsService } from "./service";
 import type {
   ToolAccessExtractor,
   ToolAccessExtractorLookup,
   ToolAccessExtractorRegistrar,
-} from "./tool-access-extractor-registry";
+} from "#src/tool-input/tool-access-extractor-registry";
 import type {
   ToolInputFormatter,
   ToolInputFormatterLookup,
   ToolInputFormatterRegistrar,
-} from "./tool-input-formatter-registry";
+} from "#src/tool-input/tool-input-formatter-registry";
+import { resolveBashAdvisoryCheck } from "./bash-advisory-check";
+import type { PermissionsService } from "./service";
 import type { PermissionCheckResult, PermissionState } from "./types";
 
 /**

@@ -48,7 +48,9 @@ import { pathFlavorForPlatform } from "#src/path/path-flavor";
 import { PermissionManager } from "#src/policy/permission-manager";
 import { PermissionResolver } from "#src/policy/permission-resolver";
 import { resolveRenderBudget } from "#src/presentation/dialog-renderer";
-import { registerBuiltinToolInputFormatters } from "./builtin-tool-input-formatters";
+import { registerBuiltinToolInputFormatters } from "#src/tool-input/builtin-tool-input-formatters";
+import { ToolAccessExtractorRegistry } from "#src/tool-input/tool-access-extractor-registry";
+import { ToolInputFormatterRegistry } from "#src/tool-input/tool-input-formatter-registry";
 import {
   AgentPrepHandler,
   PermissionGateHandler,
@@ -60,8 +62,6 @@ import { LocalPermissionsService } from "./permissions-service";
 import { getPermissionsService, type PermissionsService } from "./service";
 import { PermissionServiceLifecycle } from "./service-lifecycle";
 import { SessionRules } from "./session-rules";
-import { ToolAccessExtractorRegistry } from "./tool-access-extractor-registry";
-import { ToolInputFormatterRegistry } from "./tool-input-formatter-registry";
 
 export default function piPermissionSystemExtension(pi: ExtensionAPI): void {
   const agentDir = getAgentDir();

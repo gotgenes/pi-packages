@@ -3,7 +3,7 @@ import { describe, expect, test } from "vitest";
 import {
   type ToolAccessExtractor,
   ToolAccessExtractorRegistry,
-} from "#src/tool-access-extractor-registry";
+} from "#src/tool-input/tool-access-extractor-registry";
 
 const noopExtractor: ToolAccessExtractor = () => "/tmp/x";
 

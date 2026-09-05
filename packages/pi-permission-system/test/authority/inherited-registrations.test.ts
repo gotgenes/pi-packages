@@ -12,11 +12,11 @@ import type { PermissionsService } from "#src/service";
 import {
   type ToolAccessExtractor,
   ToolAccessExtractorRegistry,
-} from "#src/tool-access-extractor-registry";
+} from "#src/tool-input/tool-access-extractor-registry";
 import {
   type ToolInputFormatter,
   ToolInputFormatterRegistry,
-} from "#src/tool-input-formatter-registry";
+} from "#src/tool-input/tool-input-formatter-registry";
 import { makeFakePermissionsService } from "#test/helpers/service-fixtures";
 
 // ── helpers ────────────────────────────────────────────────────────────────

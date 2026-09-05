@@ -9,8 +9,8 @@ import { PathNormalizer } from "#src/path/path-normalizer";
 import {
   TOOL_INPUT_PREVIEW_MAX_LENGTH,
   TOOL_TEXT_SUMMARY_MAX_LENGTH,
-} from "#src/tool-input-preview";
-import { ToolPreviewFormatter } from "#src/tool-preview-formatter";
+} from "#src/tool-input/tool-input-preview";
+import { ToolPreviewFormatter } from "#src/tool-input/tool-preview-formatter";
 import type { PermissionCheckResult } from "#src/types";
 
 // ── helpers ────────────────────────────────────────────────────────────────

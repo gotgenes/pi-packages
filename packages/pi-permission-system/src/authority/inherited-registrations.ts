@@ -36,11 +36,11 @@ import type { PermissionsService } from "#src/service";
 import type {
   ResolvedToolAccessExtractor,
   ToolAccessExtractorLookup,
-} from "#src/tool-access-extractor-registry";
+} from "#src/tool-input/tool-access-extractor-registry";
 import type {
   ToolInputFormatter,
   ToolInputFormatterLookup,
-} from "#src/tool-input-formatter-registry";
+} from "#src/tool-input/tool-input-formatter-registry";
 
 /** This node's own session id, or `null` when the host exposes none. */
 export interface NodeIdentity {

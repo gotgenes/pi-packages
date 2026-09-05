@@ -6,7 +6,7 @@ import {
 import type {
   RegistrationOrigin,
   ToolAccessExtractorLookup,
-} from "#src/tool-access-extractor-registry";
+} from "#src/tool-input/tool-access-extractor-registry";
 
 describe("getPathBearingToolPath", () => {
   test("returns path for a path-bearing tool", () => {

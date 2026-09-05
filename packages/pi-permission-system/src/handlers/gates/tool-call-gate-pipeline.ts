@@ -8,12 +8,12 @@ import type { ShellToolsConfig } from "#src/config/config-schema";
 import type { PathNormalizer } from "#src/path/path-normalizer";
 import type { ScopedPermissionResolver } from "#src/policy/permission-resolver";
 import type { SkillPromptEntry } from "#src/skill-prompt-sanitizer";
-import type { ToolAccessExtractorLookup } from "#src/tool-access-extractor-registry";
-import type { ToolInputFormatterLookup } from "#src/tool-input-formatter-registry";
+import type { ToolAccessExtractorLookup } from "#src/tool-input/tool-access-extractor-registry";
+import type { ToolInputFormatterLookup } from "#src/tool-input/tool-input-formatter-registry";
 import {
   ToolPreviewFormatter,
   type ToolPreviewFormatterOptions,
-} from "#src/tool-preview-formatter";
+} from "#src/tool-input/tool-preview-formatter";
 import type { PermissionCheckResult } from "#src/types";
 import { resolveBashCommandCheck } from "./bash-command";
 import { describeBashExternalDirectoryGate } from "./bash-external-directory";

@@ -5,12 +5,12 @@
  * through exactly the same path a third-party extension would use.
  */
 
+import { toRecord } from "#src/value-guards";
 import type {
   ToolInputFormatter,
   ToolInputFormatterRegistry,
 } from "./tool-input-formatter-registry";
 import { truncateInlineText } from "./tool-input-preview";
-import { toRecord } from "./value-guards";
 
 /** Maximum total length of the generated argument summary (before "with " prefix). */
 const MCP_ARGS_SUMMARY_MAX_LENGTH = 160;

@@ -22,7 +22,7 @@ import { win32PathFlavor } from "#src/path/path-flavor";
 import type { PermissionSession } from "#src/permission-session";
 import { SessionApproval } from "#src/session-approval";
 import type { SkillPromptEntry } from "#src/skill-prompt-sanitizer";
-import { resolveToolPreviewLimits } from "#src/tool-preview-formatter";
+import { resolveToolPreviewLimits } from "#src/tool-input/tool-preview-formatter";
 import { makeCtx } from "#test/helpers/handler-fixtures";
 import {
   makeConfigStore,

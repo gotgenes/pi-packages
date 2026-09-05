@@ -13,7 +13,7 @@ import {
   TOOL_INPUT_PREVIEW_MAX_LENGTH,
   TOOL_TEXT_SUMMARY_MAX_LENGTH,
   truncateInlineText,
-} from "#src/tool-input-preview";
+} from "#src/tool-input/tool-input-preview";
 
 const mockedStringify = vi.mocked(safeJsonStringify);
 

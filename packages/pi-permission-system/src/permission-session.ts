@@ -10,16 +10,15 @@ import type { PathFlavor } from "#src/path/path-flavor";
 import { PathNormalizer } from "#src/path/path-normalizer";
 import type { ScopedPermissionManager } from "#src/policy/permission-manager";
 import {
+  resolveToolPreviewLimits,
+  type ToolPreviewFormatterOptions,
+} from "#src/tool-input/tool-preview-formatter";
+import {
   getActiveAgentName,
   getActiveAgentNameFromSystemPrompt,
 } from "./active-agent";
-
 import type { SessionRules } from "./session-rules";
 import type { SkillPromptEntry } from "./skill-prompt-sanitizer";
-import {
-  resolveToolPreviewLimits,
-  type ToolPreviewFormatterOptions,
-} from "./tool-preview-formatter";
 import {
   ToolSurfaceBaseline,
   type ToolSurfaceObservation,

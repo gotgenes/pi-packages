@@ -1,4 +1,4 @@
-import type { ToolAccessExtractorLookup } from "#src/tool-access-extractor-registry";
+import type { ToolAccessExtractorLookup } from "#src/tool-input/tool-access-extractor-registry";
 import { getNonEmptyString, toRecord } from "#src/value-guards";
 import { classifyToolKind } from "./tool-kind";
 

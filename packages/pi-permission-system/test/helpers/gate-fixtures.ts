@@ -15,7 +15,7 @@ import { PathNormalizer } from "#src/path/path-normalizer";
 import type { ScopedPermissionResolver } from "#src/policy/permission-resolver";
 import type { SessionApprovalRecorder } from "#src/session-approval-recorder";
 import type { SkillPromptEntry } from "#src/skill-prompt-sanitizer";
-import type { ToolPreviewFormatterOptions } from "#src/tool-preview-formatter";
+import type { ToolPreviewFormatterOptions } from "#src/tool-input/tool-preview-formatter";
 import type { PermissionCheckResult } from "#src/types";
 import { DECIDED_BY_HUMAN } from "./decision-fixtures";
 import { makeCheckResult } from "./handler-fixtures";

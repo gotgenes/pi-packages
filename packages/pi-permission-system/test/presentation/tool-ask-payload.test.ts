@@ -4,7 +4,7 @@ import {
   buildToolAskPayload,
   type ToolAskFacts,
 } from "#src/presentation/tool-ask-payload";
-import type { ToolInputFormatterLookup } from "#src/tool-input-formatter-registry";
+import type { ToolInputFormatterLookup } from "#src/tool-input/tool-input-formatter-registry";
 import type { PermissionCheckResult } from "#src/types";
 import {
   makePermissionCheckResult,

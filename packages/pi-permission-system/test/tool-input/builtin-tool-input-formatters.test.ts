@@ -3,8 +3,8 @@ import { describe, expect, test } from "vitest";
 import {
   formatMcpInputForPrompt,
   registerBuiltinToolInputFormatters,
-} from "#src/builtin-tool-input-formatters";
-import { ToolInputFormatterRegistry } from "#src/tool-input-formatter-registry";
+} from "#src/tool-input/builtin-tool-input-formatters";
+import { ToolInputFormatterRegistry } from "#src/tool-input/tool-input-formatter-registry";
 
 // ── formatMcpInputForPrompt ───────────────────────────────────────────────
 

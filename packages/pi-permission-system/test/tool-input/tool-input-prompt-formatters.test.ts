@@ -5,7 +5,7 @@ import {
   formatReadInputForPrompt,
   formatWriteInputForPrompt,
   getPromptPath,
-} from "#src/tool-input-prompt-formatters";
+} from "#src/tool-input/tool-input-prompt-formatters";
 
 describe("getPromptPath", () => {
   test("returns path from 'path' key", () => {

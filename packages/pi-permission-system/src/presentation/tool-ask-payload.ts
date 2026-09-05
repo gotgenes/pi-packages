@@ -1,5 +1,5 @@
 import { classifyToolKind, isMcpCheck } from "#src/access-intent/tool-kind";
-import type { ToolPreviewFormatter } from "#src/tool-preview-formatter";
+import type { ToolPreviewFormatter } from "#src/tool-input/tool-preview-formatter";
 import type { PermissionCheckResult } from "#src/types";
 import { getNonEmptyString, toRecord } from "#src/value-guards";
 import type { PromptEvidence, PromptPayload } from "./prompt-payload";

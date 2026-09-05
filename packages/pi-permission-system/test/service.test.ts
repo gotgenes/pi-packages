@@ -10,8 +10,8 @@ import {
   publishPermissionsService,
   unpublishPermissionsService,
 } from "#src/service";
-import { ToolAccessExtractorRegistry } from "#src/tool-access-extractor-registry";
-import { ToolInputFormatterRegistry } from "#src/tool-input-formatter-registry";
+import { ToolAccessExtractorRegistry } from "#src/tool-input/tool-access-extractor-registry";
+import { ToolInputFormatterRegistry } from "#src/tool-input/tool-input-formatter-registry";
 import type { PermissionCheckResult, PermissionState } from "#src/types";
 import { makeFakePermissionsService } from "#test/helpers/service-fixtures";
 
