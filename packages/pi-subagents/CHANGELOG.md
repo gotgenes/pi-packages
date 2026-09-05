@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [21.4.2](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v21.4.1...pi-subagents-v21.4.2) (2026-09-05)
+
+
+### Bug Fixes
+
+* **pi-subagents:** resolve tools: none to no tools ([a4a2eae](https://github.com/gotgenes/pi-packages/commit/a4a2eae9e8ec7e5725b765083b4ceadde84975cd)), closes [#871](https://github.com/gotgenes/pi-packages/issues/871)
+
 ## [21.4.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v21.4.0...pi-subagents-v21.4.1) (2026-09-05)
 
 
