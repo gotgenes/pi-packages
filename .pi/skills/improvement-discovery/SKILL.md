@@ -208,7 +208,7 @@ Priority = Impact × (6 − Risk)
 - **Test duplication gets its own step** — shared fixture extraction is a distinct concern from production code refactoring.
 - **Group steps into release batches** — a release batch is a coherent set of steps meant to ship together (e.g. a lift-and-shift spine where intermediate steps leave the package in a transitional state).
   A step that can land and release on its own is independently releasable.
-  This is the source of truth `/plan-issue` reads to recommend a release decision and `/ship-issue` confirms — so it must be grep-able, not prose (see Output format).
+  This is the source of truth `/plan-issue` reads to recommend a release decision and `/ship` confirms — so it must be grep-able, not prose (see Output format).
 
 ## Output format
 

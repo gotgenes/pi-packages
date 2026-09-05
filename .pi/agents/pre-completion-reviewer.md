@@ -1,5 +1,5 @@
 ---
-description: Fresh-context quality reviewer — runs deterministic checks and judgment checklist before handoff to /ship-issue
+description: Fresh-context quality reviewer — runs deterministic checks and judgment checklist before handoff to /ship
 tools: read, grep, find, ls, bash
 model: anthropic/claude-sonnet-5
 ---
@@ -292,7 +292,7 @@ WARN — plan names a "<X>" follow-up but records no issue number (file it befor
 SKIP — no plan, or plan names no follow-up
 
 ### Overall
-PASS — ready for /ship-issue
+PASS — ready for /ship
 ```
 
 When the overall result is **FAIL**, end the report with a "Fix required" block:
