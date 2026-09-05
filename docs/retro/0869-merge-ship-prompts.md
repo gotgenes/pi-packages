@@ -61,5 +61,48 @@ Wrote `docs/plans/0869-merge-ship-prompts.md` — eight `docs:` build steps, no 
 - **`roadmap-fit` not applicable.**
   No issue was filed during planning, and #869 is `scope:repo` — it resolves to no package and takes no roadmap disposition, matching the precedent [#849]'s retro set.
 
+## Stage: Implementation — Build (2026-09-05T18:45:00Z)
+
+### Session summary
+
+Executed all eight build steps plus a post-review fixup: wrote `.pi/prompts/ship.md` as the union of the two shipping prompts, deleted both sources, re-pointed `/ship-no-issue`, and renamed all 40 live references across the sibling prompts, skills, the reviewer agent, `AGENTS.md`, `README.md`, and the `release.yml` header comment.
+Step 8's audit — reading the recovered originals against the merged file rather than against the plan's own union table — found exactly one substantive loss and restored it.
+The pre-completion reviewer returned WARN with two documentation findings, both valid and both fixed.
+
+### Observations
+
+- **The audit step earned its place, and so did its framing.**
+  The plan deliberately told step 8 to audit against the recovered files rather than against the plan's 15-row union table, on the grounds that the table was hand-derived and was the thing most likely to have missed a row.
+  A mechanical normalized-line sweep produced about 80 "missing" lines, almost all renumbering noise; reading through them found one real loss — the examples naming what a sync handoff note carries.
+  Without those examples the instruction to read the note says nothing about what to look for, which is the same defect class the issue is about.
+
+- **Three stale claims surfaced in files being edited, and were handled by one rule.**
+  The rule applied: correct a falsehood in a passage the change is rewriting anyway; leave one that is merely adjacent, and record it.
+  Corrected — `/review-third-party-pr` in the adopted-PR paragraph (names no prompt; the command is `/pr-review`), `sync-worktree`'s "do not merge a release PR here" (a release-please artifact), and `README`'s sequence diagram showing `git rebase origin/main` where `/sync-worktree` rebases onto local `main`.
+  Left alone and recorded here — `AGENTS.md`'s worktree convergence item 1 carries the same `git rebase origin/main` inaccuracy as the README diagram did, but that item was not among the rewritten passages.
+  It is a one-word fix for whoever next edits that list.
+
+- **The pre-completion reviewer caught a contradiction the implementing session wrote and then read past twice.**
+  The new `AGENTS.md` convergence preamble claimed "every step after the push is identical in both lanes", which the same list contradicts two items later (worktree-only teardown), and which the plan's own Design Overview contradicts explicitly.
+  Writing a summary sentence *above* a list whose contents refute it is the shape to watch for.
+  The adversarial re-derivation mandate in the dispatch prompt — "verify the one-loss claim by re-deriving, not by checking it" — produced an independent confirmation rather than an echo.
+
+- **The autoformatter split two section citations mid-sentence.**
+  `§ *7. Verify CI on the pushed commit*` was reflowed into two lines at the numeral's period, because `7.` reads as a sentence end.
+  Reworded to `` the `## 7. Verify CI on the pushed commit` section of ...
+  ``, which survives the reflow.
+  Worth knowing before citing a numbered section by `§ N.` anywhere in this repo's markdown.
+
+- **One deviation from the plan's step list.**
+  `.github/workflows/release.yml`'s header comment was listed in Module-Level Changes but assigned to no build step; folded into step 6 with `AGENTS.md` and noted in that commit body.
+
+- **Pre-completion reviewer: WARN.**
+  Two documentation findings, both fixed in `528abded`: the `AGENTS.md` lane claim above, and `/ship-no-issue`'s description of the rule it skips (it named a failed ff-merge; the rule is triggered by a post-push CI failure, and that flow has no ff-merge at all).
+  All deterministic checks, acceptance criteria, commit hygiene, the reference-rename completeness sweep (40 → 0), step cross-reference consistency, lane-logic reachability, and all three Mermaid diagrams passed.
+
+- **The first `/ship` needs a fresh session.**
+  This session still has `/ship-issue` and `/ship-worktree` registered and does not have `/ship`; Pi loads prompt templates at startup.
+  A note to that effect was added to `AGENTS.md` § Stale in-process extension code.
+
 [#814]: https://github.com/gotgenes/pi-packages/issues/814
 [#849]: https://github.com/gotgenes/pi-packages/issues/849
