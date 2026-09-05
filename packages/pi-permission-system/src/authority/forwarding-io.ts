@@ -13,8 +13,8 @@ import {
   OWNER_ONLY_FILE_MODE,
 } from "#src/logging/log-file-permissions";
 import type { DebugReviewLogger } from "#src/logging/session-logger";
-import type { PermissionUiPromptSource } from "#src/permission-events";
 import { asPromptPayload } from "#src/presentation/prompt-payload";
+import type { PermissionUiPromptSource } from "#src/service/permission-events";
 import {
   type ApprovalGrant,
   isSessionGrantWidth,

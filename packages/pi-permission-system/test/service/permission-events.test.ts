@@ -9,7 +9,7 @@ import type {
   PermissionDecisionEvent,
   PermissionsReadyEvent,
   PermissionUiPromptEvent,
-} from "#src/permission-events";
+} from "#src/service/permission-events";
 import {
   emitDecisionEvent,
   emitReadyEvent,
@@ -17,7 +17,7 @@ import {
   PERMISSIONS_DECISION_CHANNEL,
   PERMISSIONS_READY_CHANNEL,
   PERMISSIONS_UI_PROMPT_CHANNEL,
-} from "#src/permission-events";
+} from "#src/service/permission-events";
 import { makePromptPayload } from "#test/helpers/prompt-details-fixtures";
 
 // ── Minimal EventBus stub ──────────────────────────────────────────────────

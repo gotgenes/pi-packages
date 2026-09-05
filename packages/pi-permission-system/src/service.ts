@@ -61,12 +61,12 @@ export type {
   PermissionsReadyEvent,
   PermissionUiPromptEvent,
   PermissionUiPromptSource,
-} from "./permission-events";
+} from "#src/service/permission-events";
 export {
   PERMISSIONS_DECISION_CHANNEL,
   PERMISSIONS_READY_CHANNEL,
   PERMISSIONS_UI_PROMPT_CHANNEL,
-} from "./permission-events";
+} from "#src/service/permission-events";
 export type { PermissionCheckResult, PermissionState, ToolInputFormatter };
 
 /** Process-global key for the session-keyed service map (ADR 0012 decision 2). */

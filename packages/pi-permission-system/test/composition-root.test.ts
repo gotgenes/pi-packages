@@ -47,11 +47,11 @@ import {
 } from "#src/config/config-paths";
 import { DEFAULT_EXTENSION_CONFIG } from "#src/config/extension-config";
 import piPermissionSystemExtension from "#src/index";
+import { getPermissionsService } from "#src/service";
 import {
   PERMISSIONS_READY_CHANNEL,
   type PermissionsReadyEvent,
-} from "#src/permission-events";
-import { getPermissionsService } from "#src/service";
+} from "#src/service/permission-events";
 import { publishServingHeartbeat } from "#test/helpers/forwarding-fixtures";
 import { makeFakePi } from "#test/helpers/make-fake-pi";
 

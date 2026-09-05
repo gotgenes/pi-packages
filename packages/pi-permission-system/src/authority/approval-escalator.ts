@@ -2,8 +2,8 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import type { DebugReviewLogger } from "#src/logging/session-logger";
 import { createPermissionRequestId } from "#src/permission-request-id";
-import { buildUiPrompt } from "#src/permission-ui-prompt";
 import type { PromptPayload } from "#src/presentation/prompt-payload";
+import { buildUiPrompt } from "#src/service/permission-ui-prompt";
 import {
   getActiveAgentName,
   getActiveAgentNameFromSystemPrompt,

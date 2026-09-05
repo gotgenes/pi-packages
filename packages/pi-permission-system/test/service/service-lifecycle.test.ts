@@ -5,7 +5,7 @@ import {
   PermissionServiceLifecycle,
   type ReadyAnnouncer,
   type ServiceLifecycle,
-} from "#src/service-lifecycle";
+} from "#src/service/service-lifecycle";
 
 import { makeCtx } from "#test/helpers/handler-fixtures";
 import { makeFakePermissionsService } from "#test/helpers/service-fixtures";
@@ -21,7 +21,7 @@ vi.mock("#src/service", () => ({
   publishPermissionsService: mockPublishKeyedService,
   unpublishPermissionsService: mockUnpublishKeyedService,
 }));
-vi.mock("#src/permission-events", () => ({
+vi.mock("#src/service/permission-events", () => ({
   emitReadyEvent: mockEmitReadyEvent,
 }));
 

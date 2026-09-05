@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
-
-import { buildUiPrompt } from "#src/permission-ui-prompt";
 import type { PromptRequestFacts } from "#src/presentation/prompt-payload";
+import { buildUiPrompt } from "#src/service/permission-ui-prompt";
 import { makePromptPayload } from "#test/helpers/prompt-details-fixtures";
 
 /** A payload whose request facts carry the given overrides. */

@@ -1,5 +1,5 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
-import type { ReadyAnnouncer } from "#src/service-lifecycle";
+import type { ReadyAnnouncer } from "#src/service/service-lifecycle";
 
 /** The session surface the turn-prep routine drives. */
 export interface TurnPrepSession {

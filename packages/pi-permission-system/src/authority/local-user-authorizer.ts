@@ -7,8 +7,8 @@ import {
 import {
   emitUiPromptEvent,
   type PermissionEventBus,
-} from "#src/permission-events";
-import { buildUiPrompt } from "#src/permission-ui-prompt";
+} from "#src/service/permission-events";
+import { buildUiPrompt } from "#src/service/permission-ui-prompt";
 import { provenDirectionOf } from "#src/session/approval-grant";
 import type { TerminalAuthorizer } from "./authorizer";
 import type {

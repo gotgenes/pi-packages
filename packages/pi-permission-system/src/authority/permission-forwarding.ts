@@ -1,6 +1,6 @@
 import { join } from "node:path";
-import type { PermissionUiPromptSource } from "#src/permission-events";
 import type { PromptPayload } from "#src/presentation/prompt-payload";
+import type { PermissionUiPromptSource } from "#src/service/permission-events";
 import type {
   ApprovalGrant,
   SessionGrantWidth,

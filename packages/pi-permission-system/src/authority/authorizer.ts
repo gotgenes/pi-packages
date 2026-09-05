@@ -1,7 +1,7 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import type { DebugReviewLogger } from "#src/logging/session-logger";
-import type { PermissionEventBus } from "#src/permission-events";
 import type { AuthorizerLog, PermissionQuery } from "#src/service";
+import type { PermissionEventBus } from "#src/service/permission-events";
 import { ParentAuthorizer } from "./approval-escalator";
 import { DenyingAuthorizer } from "./denying-authorizer";
 import type { TargetServingLookup } from "./forwarding-liveness";

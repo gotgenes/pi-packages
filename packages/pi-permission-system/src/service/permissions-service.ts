@@ -3,6 +3,7 @@ import { buildAccessIntentForSurface } from "#src/access-intent/input-normalizer
 import type { Authorizer } from "#src/authority/authorizer";
 import type { AuthorizerRegistrar } from "#src/authority/authorizer-registry";
 import type { PathNormalizer } from "#src/path/path-normalizer";
+import type { PermissionsService } from "#src/service";
 import type {
   ToolAccessExtractor,
   ToolAccessExtractorLookup,
@@ -13,9 +14,8 @@ import type {
   ToolInputFormatterLookup,
   ToolInputFormatterRegistrar,
 } from "#src/tool-input/tool-input-formatter-registry";
+import type { PermissionCheckResult, PermissionState } from "#src/types";
 import { resolveBashAdvisoryCheck } from "./bash-advisory-check";
-import type { PermissionsService } from "./service";
-import type { PermissionCheckResult, PermissionState } from "./types";
 
 /**
  * Resolution surface the service needs: answer a gate-style {@link AccessIntent}

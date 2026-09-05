@@ -4,8 +4,8 @@ import {
   resetWarmBashParser,
   warmBashParser,
 } from "#src/access-intent/bash/parser";
-import { resolveBashAdvisoryCheck } from "#src/bash-advisory-check";
 import type { ScopedPermissionResolver } from "#src/policy/permission-resolver";
+import { resolveBashAdvisoryCheck } from "#src/service/bash-advisory-check";
 import type { PermissionCheckResult } from "#src/types";
 
 import { makeCheckResult } from "#test/helpers/handler-fixtures";

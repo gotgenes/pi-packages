@@ -1,4 +1,4 @@
-import type { PermissionDecisionResolution } from "#src/permission-events";
+import type { PermissionDecisionResolution } from "#src/service/permission-events";
 import { type DecisionSource, effectiveDecider } from "./decision-source";
 
 /** What became of the request, as the gate that ran it observed. */

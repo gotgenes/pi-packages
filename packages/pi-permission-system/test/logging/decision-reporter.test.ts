@@ -8,7 +8,7 @@ import type { SessionLogger } from "#src/logging/session-logger";
 import {
   PERMISSIONS_DECISION_CHANNEL,
   type PermissionDecisionEvent,
-} from "#src/permission-events";
+} from "#src/service/permission-events";
 
 // ── fixtures ───────────────────────────────────────────────────────────────
 

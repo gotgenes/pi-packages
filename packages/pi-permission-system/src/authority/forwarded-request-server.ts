@@ -1,8 +1,8 @@
 import { join } from "node:path";
 import type { DecisionBroadcaster } from "#src/logging/decision-reporter";
 import type { DebugReviewLogger } from "#src/logging/session-logger";
-import type { PermissionDecisionEvent } from "#src/permission-events";
 import { buildForwardedAskPayload } from "#src/presentation/forwarded-ask-payload";
+import type { PermissionDecisionEvent } from "#src/service/permission-events";
 import { SessionApproval } from "#src/session/session-approval";
 import type { SessionApprovalRecorder } from "#src/session/session-approval-recorder";
 import type { PermissionCheckResult } from "#src/types";

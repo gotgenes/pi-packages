@@ -1,13 +1,13 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import type { AdjudicationRole } from "#src/authority/authorizer-selection";
 import type { NodeIdentity } from "#src/authority/inherited-registrations";
-import { readSessionId } from "#src/session/session-identity";
-import { emitReadyEvent, type PermissionEventBus } from "./permission-events";
 import {
   type PermissionsService,
   publishPermissionsService,
   unpublishPermissionsService,
-} from "./service";
+} from "#src/service";
+import { readSessionId } from "#src/session/session-identity";
+import { emitReadyEvent, type PermissionEventBus } from "./permission-events";
 
 /** The session-scoped service lifecycle that the lifecycle handler drives. */
 export interface ServiceLifecycle {

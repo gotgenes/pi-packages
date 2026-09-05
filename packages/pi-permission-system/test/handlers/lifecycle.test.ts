@@ -4,7 +4,7 @@ import {
   SessionLifecycleHandler,
   UNTRUSTED_PROJECT_MESSAGE,
 } from "#src/handlers/lifecycle";
-import type { ServiceLifecycle } from "#src/service-lifecycle";
+import type { ServiceLifecycle } from "#src/service/service-lifecycle";
 
 import { makeCtx } from "#test/helpers/handler-fixtures";
 import {

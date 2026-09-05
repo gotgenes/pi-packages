@@ -3,7 +3,7 @@ import type { AccessIntent } from "#src/access-intent/access-intent";
 import type { AuthorizerRegistrar } from "#src/authority/authorizer-registry";
 import { posixPathFlavor } from "#src/path/path-flavor";
 import { PathNormalizer } from "#src/path/path-normalizer";
-import { LocalPermissionsService } from "#src/permissions-service";
+import { LocalPermissionsService } from "#src/service/permissions-service";
 import {
   type ToolAccessExtractorLookup,
   type ToolAccessExtractorRegistrar,
@@ -39,7 +39,9 @@ const resolveBashAdvisoryCheck = vi.hoisted(() =>
     ) => PermissionCheckResult
   >(),
 );
-vi.mock("#src/bash-advisory-check", () => ({ resolveBashAdvisoryCheck }));
+vi.mock("#src/service/bash-advisory-check", () => ({
+  resolveBashAdvisoryCheck,
+}));
 
 // ── helpers ────────────────────────────────────────────────────────────────
 

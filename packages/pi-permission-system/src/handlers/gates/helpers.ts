@@ -3,7 +3,7 @@ import type { ToolPathSource } from "#src/access-intent/tool-input-path";
 import { classifyToolKind } from "#src/access-intent/tool-kind";
 import type { ForwardedAccessFacts } from "#src/authority/permission-forwarding";
 import type { PromptPermissionDetails } from "#src/authority/permission-prompter";
-import type { PermissionDecisionResolution } from "#src/permission-events";
+import type { PermissionDecisionResolution } from "#src/service/permission-events";
 import type { PermissionCheckResult } from "#src/types";
 import type { DecisionEventFacts } from "./descriptor";
 import type { ToolCallContext } from "./types";
