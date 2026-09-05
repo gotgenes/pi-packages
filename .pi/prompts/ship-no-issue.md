@@ -30,7 +30,7 @@ If either fails, fix the issues and commit before pushing.
 
 ## 4. Verify CI on the pushed commit
 
-Read the `## 7. Verify CI on the pushed commit` section of `.pi/prompts/ship.md` and follow it, with one difference: there is no worktree lane here, so the fix-forward rule for a failed ff-merge does not apply.
+Read the `## 7. Verify CI on the pushed commit` section of `.pi/prompts/ship.md` and follow it, with one difference: there is no worktree lane here, so its worktree-only rule for recovering from a CI failure — fix forward on `main`, never revert the ff-merge — does not apply.
 On a `failure` conclusion, stop and report — do not release anything.
 
 That section is the single source for the SHA discipline this step depends on (pass the exact `git rev-parse HEAD` value, never hand-expand a short SHA, do not measure its shape, re-check the SHA on a `ci_find` timeout).

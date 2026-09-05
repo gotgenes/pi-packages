@@ -291,7 +291,7 @@ Convergence (the two-session ship flow):
 
 `main` stays linear and a peer cannot push to it directly, so the convergence is split across the peer and root sessions.
 The root half is the ordinary `/ship <N>`: it detects a **worktree lane** from the presence of an `issue-<N>-*` branch and fast-forward-merges it, where a trunk ship has nothing to merge.
-Every step after the push is identical in both lanes, which is what keeps the two paths from drifting apart (Refs #869):
+The close and release steps are identical in both lanes — no branching at all — which is what keeps the two paths from drifting apart; only the CI-failure recovery rule and the teardown remain lane-specific after the push (Refs #869):
 
 1. Peer session — `/sync-worktree <N>`: run pre-push checks, write a **sync** stage note (committed on the branch so it rides the land), then `git fetch origin` + `git rebase origin/main`.
    The peer never touches `main`, never pushes the branch, never force-pushes — worktrees share the same `.git`, so the root sees the branch ref directly.
