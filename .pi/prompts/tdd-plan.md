@@ -210,4 +210,4 @@ Append with the `Edit` tool (or `Write` for a new file), not a shell heredoc.
 When appending a new stage to an existing retro, anchor the `Edit` on the file's last line or use `Write` with the full content — the repeated `### Observations` / `### Session summary` headers make header-anchored edits ambiguous.
 
 Stop.
-The next step is `/ship-issue` on trunk, or `/sync-worktree <N>` (peer session) on an `issue-<N>-*` branch.
+The next step is `/ship <N>` on trunk, or `/sync-worktree <N>` (peer session) then `/ship <N>` at the root on an `issue-<N>-*` branch.

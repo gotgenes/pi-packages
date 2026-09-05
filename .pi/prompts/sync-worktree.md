@@ -9,15 +9,15 @@ Argument: `$1` is the issue number implemented in this worktree.
 When it is empty, derive the number from the current branch name (`git branch --show-current` → `issue-<N>-<slug>`) and use that `N` everywhere below, starting with the title fetch.
 
 This is the **peer-session** half of the parallel-worktree ship flow.
-It prepares the branch for landing but does **not** touch `main`, close the issue, or release — the **root session** does that via `/ship-worktree $1`.
-For trunk work (committing directly on `main`), use `/ship-issue` instead.
+It prepares the branch for landing but does **not** touch `main`, close the issue, or release — the **root session** does that via `/ship $1`.
+For trunk work (committing directly on `main`), run `/ship $1` from the root instead; it detects the trunk lane and skips the fast-forward merge.
 
 Fetch the issue title via `gh issue view $1 --json title -q .title`, then call `set_session_name` with name `#$1 Sync (worktree) — <issue title>`.
 
 ## 1. Confirm this is a worktree branch
 
 1. Run `git branch --show-current`.
-2. If the branch is `main` (or not an `issue-$1-*` branch), stop and report — this is the trunk flow's job; use `/ship-issue` from the root instead.
+2. If the branch is `main` (or not an `issue-$1-*` branch), stop and report — this is the trunk flow's job; run `/ship $1` from the root instead.
 3. Only proceed on an `issue-$1-<slug>` branch.
 
 ## 2. Pre-push checks
@@ -32,7 +32,7 @@ If either fails, fix and commit before continuing.
 ## 3. Write sync stage notes (must land with the branch)
 
 Write a concise **sync** stage breadcrumb — not the final retrospective.
-The deliberate, interactive final `/retro $1` runs once at the root after `/ship-worktree $1`, on `main`; do **not** run it here.
+The deliberate, interactive final `/retro $1` runs once at the root after `/ship $1`, on `main`; do **not** run it here.
 The stage note lives in an `exclude-paths` dir, so it triggers no release — but it must be committed **on this branch** so it rides the single ff-merge when root lands the work.
 
 1. Determine the retro file path (same `NNNN-<slug>` as the plan file: single-package → `packages/<PKG>/docs/retro/`; cross-package → `docs/retro/`).
@@ -67,7 +67,7 @@ The stage note lives in an `exclude-paths` dir, so it triggers no release — bu
 ## 4. Sync and rebase onto main
 
 1. `git fetch origin`.
-2. Rebase onto the ref `/ship-worktree` will merge into — **local** `main`, which the shared `.git` makes visible: `git rebase main`.
+2. Rebase onto the ref `/ship` will merge into — **local** `main`, which the shared `.git` makes visible: `git rebase main`.
    If `git rev-list --count main..origin/main` is non-zero, local `main` is behind the remote; stop and report, since the root must `git pull` before this rebase has the right target.
 3. On a conflict: run `git rebase --abort`, then stop and report the conflicting files.
    Name what actually collided — `git log --oneline HEAD..main` for the commits, and the conflicting hunks — not a cause inferred from the file's recent history (Refs #870).
@@ -83,12 +83,12 @@ Report:
 
 - The branch name and its new HEAD (`git log --oneline -1`).
 - That checks passed, the sync stage note is committed, and the rebase onto local `main` is clean.
-- That the final `/retro $1` is **not** run here — it runs at the root after `/ship-worktree $1`.
-- The next action: **switch to the root session and run `/ship-worktree $1`**.
+- That the final `/retro $1` is **not** run here — it runs at the root after `/ship $1`.
+- The next action: **switch to the root session and run `/ship $1`**.
 
 ## Constraints
 
 - Never touch `main` from a worktree (no checkout, no merge, no push to `main`).
 - Never force-push.
 - If the rebase conflicts, stop — do not resolve automatically.
-- Do not close the issue or merge a release PR here; that is the root half's job (`/ship-worktree`).
+- Do not close the issue or dispatch a release here; that is the root half's job (`/ship`).

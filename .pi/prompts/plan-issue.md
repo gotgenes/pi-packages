@@ -153,7 +153,7 @@ issue_title: "<exact title from `gh issue view`>"
 Then an H1 title (e.g., `# <short descriptive title>`) — required by markdownlint MD041 — followed by the body sections:
 
 - **Release Recommendation** — the first `##` section after the H1, so it is prominent.
-  Write the canonical grep-able marker line (`/ship-issue` reads it) as exactly one of:
+  Write the canonical grep-able marker line (`/ship` reads it) as exactly one of:
   - `**Release:** ship independently`
   - `**Release:** ship now — batch "<name>" tail (this issue completes the batch)`
   - `**Release:** mid-batch — defer (batch "<name>"); confirm at ship time`
