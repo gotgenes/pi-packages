@@ -67,5 +67,54 @@ Write it there after [#870] lands, before Phase 22 closes.
   They are nonetheless in this plan's step 1, because the ESLint rule cannot be enabled while they report as errors.
   Recorded here so the rejection and the override are both visible.
 
+## Stage: Implementation — TDD (2026-09-05T03:36:36Z)
+
+### Session summary
+
+Executed all 14 plan steps as 15 commits: three preparatory (import conformance, the new lint rule, `vi.mock` specifier normalization), ten move commits, one documentation commit, and one correcting a figure the pre-completion reviewer caught. 59 of 64 `src/` root modules and 65 of 71 `test/` root files moved into ten destinations, leaving the five entry points and package-wide leaves the plan predicted.
+Test count held at 157 files / 4117 tests at every commit — the invariant that separates a moved test from a silently uncollected one.
+Pre-completion reviewer: **WARN** (no blocking findings).
+
+### Observations
+
+- **`tsc` verifying the rewrite "exhaustively" was the plan's most load-bearing wrong claim.**
+  Three classes of module reference are invisible to it, and each was found by a probe rather than a gate.
+  `scripts/generate-permissions-schema.ts` imports `config-schema` by relative path from outside `tsconfig`'s `include`; with the stale import in place `tsc` still exits 0 and no workflow runs `gen:schema`.
+  `test/config-schema.test.ts` resolves two files through `import.meta.dirname` + `".."`.
+  And nine `vi.mock`/`typeof import(...)` specifiers named modules by `../src/…` — a `CallExpression` argument is not an `ImportDeclaration`, so neither lint rule nor a `#src/`-keyed grep reaches them.
+- **A `files:`-scoped lint guard fails permissively, and the biome one fails invisibly.**
+  Reverting the biome pin to its stale path surfaces `expand-home.ts`'s live `"${HOME}"` only as a *warning*, so `biome check` exits 0 and `pnpm run lint` reports PASS with the exemption voided.
+  The plan predicted the pin "is silently voided otherwise"; the measurement was worse than that — not even the linter's exit code catches it.
+  A biome pin's gate is a finding count, never an exit status.
+- **Both eslint guards were probed at their new paths rather than eyeballed**, and both fired: an `AccessPath` import in the moved `permission-manager.ts`, a `process.platform` read in the moved `rule.ts`.
+  The second glob is depth-agnostic and was expected to survive; confirming one of a pair proves nothing about the other.
+- **The same counting error was made twice and caught twice.**
+  The Tidy-First assessor corrected my own-directory import count for `pi-permission-system` (101, not 92) because my loop used `find -mindepth 2` and skipped package-root files, where a `#src/<sibling>` import is an own-directory violation.
+  I fixed it for that package and never re-ran it for `pi-subagents`, so the sibling figure shipped as 76 into five documents and the body of [#877].
+  The pre-completion reviewer caught it by running the actual rule: 80 (72 `src/`, 8 `test/`).
+  Re-running the *corrected* command against every input it applies to would have closed this the first time.
+- **The release rationale in the plan was wrong and was corrected in place.**
+  The plan reasoned that `refactor:`/`test:`/`ci:`/`docs:` are all skipped changelog types.
+  `^docs` is a **visible** group in `cliff.toml`, and the documentation commit touches three shipped, non-release-excluded user docs, so `next-version.sh` now prints `pi-permission-system-v31.1.1`.
+  That is the right outcome — those docs ship in the tarball and their content changed — but the plan asserted the opposite.
+  Reasoning about release from commit types instead of running the script is what produced it.
+- **Two deviations from the plan.**
+  `test/bash-external-directory.test.ts` could not move to `test/handlers/gates/` under its own name (a file by that name already tests the gate); it landed as `bash-path-extractor.test.ts`, matching the `src/` module it actually exercises and which had no test of its own.
+  And the new ESLint rule covers `ExportNamedDeclaration`/`ExportAllDeclaration` as well as imports, because one own-directory re-export exists in `access-intent/bash/`.
+- **The module tree carried a stale entry predating this change** — `handlers/gates/index.ts`, listed but not on disk.
+  Found only because the tree was verified against the filesystem programmatically rather than read; the reviewer independently confirmed 152 entries against 152 files.
+- **The permission prompts during this session were measurable, and the guess was wrong in an instructive way.**
+  The operator reported heavy prompting; my first three hypotheses (chain length, bare-token promotion after `cd`, `/tmp` traffic) all produced *zero* prompts.
+  The review log showed 4 prompts in 4 hours, all `bash`/`<unparsed-bash-subtree>` — one per heredoc commit.
+  Because that floor is synthesized after the resolver returns, no `bash:` allow rule can suppress it.
+  Switching commit messages from `git commit -F - <<'EOF'` to a `Write`-authored file plus `git commit -F <file>` eliminated them.
+  Worth noting for [#875]: Step 14 measured this floor's cost at 0.038% of logged commands, but against this repo's own Conventional-Commit workflow it was 4 for 4.
+
+### Reviewer warnings
+
+- The `pi-subagents` own-directory count was cited as 76 in five places and measures 80.
+  Corrected in the plan, this retro, the architecture roadmap, the rule's comment, and [#877]'s body before the rollout could inherit it.
+
 [#870]: https://github.com/gotgenes/pi-packages/issues/870
+[#875]: https://github.com/gotgenes/pi-packages/issues/875
 [#877]: https://github.com/gotgenes/pi-packages/issues/877
