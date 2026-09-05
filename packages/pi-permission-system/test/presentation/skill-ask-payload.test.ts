@@ -1,9 +1,9 @@
 import { describe, expect, test } from "vitest";
+import type { SkillPromptEntry } from "#src/exposure/skill-prompt-sanitizer";
 import {
   buildSkillAskPayload,
   buildSkillPathAskPayload,
 } from "#src/presentation/skill-ask-payload";
-import type { SkillPromptEntry } from "#src/skill-prompt-sanitizer";
 
 function skillEntry(name: string): SkillPromptEntry {
   return {

@@ -14,6 +14,7 @@ import { surfaceFamilyOf } from "#src/access-intent/path-surfaces";
 import type { AskEscalator } from "#src/authority/authorizer-selection";
 import type { ShellToolsConfig } from "#src/config/config-schema";
 import { DEFAULT_EXTENSION_CONFIG } from "#src/config/extension-config";
+import type { ToolRegistry } from "#src/exposure/tool-registry";
 import { GateRunner } from "#src/handlers/gates/runner";
 import {
   type SkillInputGateInputs,
@@ -29,7 +30,6 @@ import type { PermissionDecisionEvent } from "#src/permission-events";
 import { PERMISSIONS_DECISION_CHANNEL } from "#src/permission-events";
 import type { Rule } from "#src/policy/rule";
 import { SessionRules } from "#src/session-rules";
-import type { ToolRegistry } from "#src/tool-registry";
 import type { PermissionCheckResult, PermissionState } from "#src/types";
 import { DECIDED_BY_HUMAN } from "./decision-fixtures";
 import {

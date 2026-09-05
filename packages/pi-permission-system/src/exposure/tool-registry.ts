@@ -1,4 +1,4 @@
-import { getNonEmptyString, toRecord } from "./value-guards";
+import { getNonEmptyString, toRecord } from "#src/value-guards";
 
 /** Narrow interface for the Pi tool API subset used by handler classes. */
 export interface ToolRegistry {

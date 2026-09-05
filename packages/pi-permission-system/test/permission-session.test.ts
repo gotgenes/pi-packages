@@ -18,10 +18,10 @@ vi.mock("#src/active-agent", () => ({
 // ── Test helpers ───────────────────────────────────────────────────────────
 
 import type { DEFAULT_EXTENSION_CONFIG } from "#src/config/extension-config";
+import type { SkillPromptEntry } from "#src/exposure/skill-prompt-sanitizer";
 import { win32PathFlavor } from "#src/path/path-flavor";
 import type { PermissionSession } from "#src/permission-session";
 import { SessionApproval } from "#src/session-approval";
-import type { SkillPromptEntry } from "#src/skill-prompt-sanitizer";
 import { resolveToolPreviewLimits } from "#src/tool-input/tool-preview-formatter";
 import { makeCtx } from "#test/helpers/handler-fixtures";
 import {

@@ -1,14 +1,14 @@
 import { resolve } from "node:path";
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { posixPathFlavor } from "#src/path/path-flavor";
-import { PathNormalizer } from "#src/path/path-normalizer";
-import type { ScopedPermissionManager } from "#src/policy/permission-manager";
 import {
   findSkillPathMatch,
   parseAllSkillPromptSections,
   resolveSkillPromptEntries,
   type SkillPermissionChecker,
-} from "#src/skill-prompt-sanitizer";
+} from "#src/exposure/skill-prompt-sanitizer";
+import { posixPathFlavor } from "#src/path/path-flavor";
+import { PathNormalizer } from "#src/path/path-normalizer";
+import type { ScopedPermissionManager } from "#src/policy/permission-manager";
 import type { PermissionCheckResult } from "#src/types";
 import { createManager } from "#test/helpers/manager-harness";
 

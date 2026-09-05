@@ -1,7 +1,7 @@
 import { dirname } from "node:path";
 
 import type { PathNormalizer } from "#src/path/path-normalizer";
-import type { PermissionCheckResult, PermissionState } from "./types";
+import type { PermissionCheckResult, PermissionState } from "#src/types";
 
 /**
  * Narrow interface for the raw (no-session-rules) permission checker used by

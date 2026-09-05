@@ -1,11 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-
+import type { ToolRegistry } from "#src/exposure/tool-registry";
 import {
   AgentPrepHandler,
   shouldExposeTool,
 } from "#src/handlers/before-agent-start";
 import { SessionTurnPrep } from "#src/handlers/session-turn-prep";
-import type { ToolRegistry } from "#src/tool-registry";
 
 import {
   makeCheckResult,

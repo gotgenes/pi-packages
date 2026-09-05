@@ -2,6 +2,11 @@ import type {
   ExtensionContext,
   InputEventResult,
 } from "@earendil-works/pi-coding-agent";
+import {
+  checkRequestedToolRegistration,
+  getToolNameFromValue,
+  type ToolRegistry,
+} from "#src/exposure/tool-registry";
 import type { GateRunner } from "#src/handlers/gates/runner";
 import type {
   GateNotifier,
@@ -14,11 +19,6 @@ import {
   formatUnknownToolReason,
 } from "#src/permission-prompts";
 import type { PermissionSession } from "#src/permission-session";
-import {
-  checkRequestedToolRegistration,
-  getToolNameFromValue,
-  type ToolRegistry,
-} from "#src/tool-registry";
 import { toRecord } from "#src/value-guards";
 
 /** Minimal subset of InputEvent used by handleInput. */

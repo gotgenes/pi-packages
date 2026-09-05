@@ -4,8 +4,8 @@ import type {
   ResolvedAccessIntent,
 } from "#src/access-intent/access-intent";
 import { surfaceFamilyMembers } from "#src/access-intent/path-surfaces";
+import type { SkillPermissionChecker } from "#src/exposure/skill-prompt-sanitizer";
 import type { SessionRules } from "#src/session-rules";
-import type { SkillPermissionChecker } from "#src/skill-prompt-sanitizer";
 import type { PermissionCheckResult, PermissionState } from "#src/types";
 import type { ScopedPermissionManager } from "./permission-manager";
 import { mostRestrictiveOf } from "./restrictiveness";

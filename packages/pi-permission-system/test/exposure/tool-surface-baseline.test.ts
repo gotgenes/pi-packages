@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ToolSurfaceBaseline } from "#src/tool-surface-baseline";
+import { ToolSurfaceBaseline } from "#src/exposure/tool-surface-baseline";
 
 /** Policy double: every named tool is withheld, everything else is exposed. */
 function denying(...denied: string[]) {

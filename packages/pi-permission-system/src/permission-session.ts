@@ -5,6 +5,12 @@ import type { ShellToolsConfig } from "#src/config/config-schema";
 import type { SessionConfigStore } from "#src/config/config-store";
 import type { PermissionSystemExtensionConfig } from "#src/config/extension-config";
 import type { ExtensionPaths } from "#src/config/extension-paths";
+import type { SkillPromptEntry } from "#src/exposure/skill-prompt-sanitizer";
+import {
+  ToolSurfaceBaseline,
+  type ToolSurfaceObservation,
+  type ToolSurfaceResolution,
+} from "#src/exposure/tool-surface-baseline";
 import type { ToolCallGateInputs } from "#src/handlers/gates/tool-call-gate-pipeline";
 import type { PathFlavor } from "#src/path/path-flavor";
 import { PathNormalizer } from "#src/path/path-normalizer";
@@ -18,12 +24,6 @@ import {
   getActiveAgentNameFromSystemPrompt,
 } from "./active-agent";
 import type { SessionRules } from "./session-rules";
-import type { SkillPromptEntry } from "./skill-prompt-sanitizer";
-import {
-  ToolSurfaceBaseline,
-  type ToolSurfaceObservation,
-  type ToolSurfaceResolution,
-} from "./tool-surface-baseline";
 
 /**
  * Encapsulates all mutable session state and exposes operations instead of

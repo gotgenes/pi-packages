@@ -1,4 +1,4 @@
-import type { SkillPromptEntry } from "#src/skill-prompt-sanitizer";
+import type { SkillPromptEntry } from "#src/exposure/skill-prompt-sanitizer";
 import type { PromptPayload } from "./prompt-payload";
 import { localRequester } from "./prompt-payload";
 

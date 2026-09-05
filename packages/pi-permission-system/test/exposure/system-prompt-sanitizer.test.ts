@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 
-import { sanitizeAvailableToolsSection } from "#src/system-prompt-sanitizer";
+import { sanitizeAvailableToolsSection } from "#src/exposure/system-prompt-sanitizer";
 
 afterEach(() => {
   vi.restoreAllMocks();
