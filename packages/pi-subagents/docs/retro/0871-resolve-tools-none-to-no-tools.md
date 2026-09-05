@@ -112,7 +112,13 @@ The substantive finding is epistemic rather than procedural — the roadmap step
 ### Changes made
 
 1. `AGENTS.md` — added a paragraph to § Reading this repo's own artifacts, beside the existing `Outcome:` rule: a roadmap step's `**Cause:**` bullet is the mechanism the discovery sweep saw, not a census of the ones present, so trace the whole function before accepting it as the scope.
-2. `packages/pi-subagents/docs/retro/0871-resolve-tools-none-to-no-tools.md` — this Final Retrospective stage entry.
+2. `.pi/prompts/retro.md`, `.pi/prompts/tdd-plan.md`, `.pi/prompts/build-plan.md` — each `## Load skills` lead-in now says to skip skills already in this session's context and to re-load after a compaction.
+3. `packages/pi-subagents/docs/retro/0871-resolve-tools-none-to-no-tools.md` — this Final Retrospective stage entry.
+
+Change 2 came from an operator question prompted by this session's own behavior.
+The `## Load skills` sections load unconditionally, but this session ran all four stages in one process, so `package-pi-subagents`, `code-design`, `markdown-conventions`, and `testing` were already in context when `/retro` asked for them again — and I silently skipped three of the four rather than re-reading, departing from the template's literal text with no license to.
+The qualifier is keyed on *presence in context*, not on *having loaded earlier*: a compaction drops a skill's body while leaving the memory of having read it, so "already loaded" alone would license running on that memory.
+Scoped by operator decision to the three templates that run warm; `plan-issue`, `pr-review`, `plan-improvements`, `finish-phase`, and `triage-backlog` normally open a session and were left alone.
 
 One proposal was declined: adding a clause to `.pi/prompts/plan-issue.md` Gather-context step 8 telling the planner to read the roadmap entry's `Cause:`/`Target:`/`Outcome:`/`Commit type:` bullets alongside its `Release:` tag.
 The evidence was thin — the bullets were harvested anyway, just incidentally.

@@ -49,7 +49,8 @@ Check whether prior sessions have already done work on this issue:
 
 ## Load skills
 
-Before executing the plan, load skills relevant to the change:
+Before executing the plan, load skills relevant to the change.
+Skip any already in this session's context — the trunk flow runs planning, implementation, ship, and retro in one process — but re-load after a compaction, which drops the body while leaving the memory of having read it.
 
 - Load the `package-<PKG>` skill (e.g., `package-pi-permission-system`) for package-specific architecture, priorities, and testing context.
 - Load the `code-design` skill if the plan touches code.

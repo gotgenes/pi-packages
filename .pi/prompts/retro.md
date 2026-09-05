@@ -22,7 +22,8 @@ Before reading anything, make sure the working tree is up to date with the remot
 
 ## Load skills
 
-Before investigating or proposing changes, load skills relevant to the retro:
+Before investigating or proposing changes, load skills relevant to the retro.
+Skip any already in this session's context — the trunk flow runs planning, implementation, ship, and retro in one process — but re-load after a compaction, which drops the body while leaving the memory of having read it.
 
 - Load the `ask-user` skill for the structured clarification flow.
 - Load the `package-<PKG>` skill (e.g., `package-pi-permission-system`) for package-specific architecture, priorities, and testing context.
