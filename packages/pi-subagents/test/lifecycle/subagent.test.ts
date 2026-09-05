@@ -950,6 +950,106 @@ describe("Subagent — workspaceNotice", () => {
 	});
 });
 
+describe("Subagent — announcing a notice produced after the result was delivered", () => {
+	/** A held-workspace agent whose observer records every workspace notice. */
+	async function heldAgentWithObserver() {
+		const onWorkspaceNotice = vi.fn<(agent: Subagent, notice: string) => void>();
+		const stub = createSubagentSessionStub();
+		let askParent: ((question: string) => void) | undefined;
+		const factory = async (params: CreateSubagentSessionParams) => {
+			askParent = params.askParent;
+			return toSubagentSession(stub);
+		};
+		stub.runTurnLoop.mockImplementation(() => {
+			askParent?.("Which one?");
+			return Promise.resolve({ responseText: "Mapped the configs.", aborted: false, steered: false });
+		});
+		const workspace = makeWorkspace("/ws/dir", { resultAddendum: ADDENDUM });
+		const agent = createRunnableAgent({
+			createSubagentSession: factory,
+			workspaceProvider: makeWorkspaceProvider(workspace),
+			observer: { onWorkspaceNotice },
+		});
+		await agent.run();
+		return { agent, workspace, stub, onWorkspaceNotice };
+	}
+
+	it("announces when the retention sweep releases the session", async () => {
+		const { agent, onWorkspaceNotice } = await heldAgentWithObserver();
+		await agent.releaseSession();
+		expect(onWorkspaceNotice).toHaveBeenCalledExactlyOnceWith(agent, ADDENDUM);
+	});
+
+	it("announces when the record's session is torn down", async () => {
+		const { agent, onWorkspaceNotice } = await heldAgentWithObserver();
+		await agent.disposeSession();
+		expect(onWorkspaceNotice).toHaveBeenCalledExactlyOnceWith(agent, ADDENDUM);
+	});
+
+	it("announces once across a release and the teardown that follows it", async () => {
+		const { agent, onWorkspaceNotice } = await heldAgentWithObserver();
+		await agent.releaseSession();
+		await agent.disposeSession();
+		expect(onWorkspaceNotice).toHaveBeenCalledOnce();
+	});
+
+	it("announces nothing when the teardown reported nothing", async () => {
+		const onWorkspaceNotice = vi.fn<(agent: Subagent, notice: string) => void>();
+		const { factory, stub } = createFactory();
+		stub.runTurnLoop.mockRejectedValue(new Error("turn loop exploded"));
+		const agent = createRunnableAgent({
+			createSubagentSession: factory,
+			workspaceProvider: makeWorkspaceProvider(makeWorkspace("/ws/dir")),
+			observer: { onWorkspaceNotice },
+		});
+		await agent.run();
+		await agent.disposeSession();
+		expect(onWorkspaceNotice).not.toHaveBeenCalled();
+	});
+
+	it("leaves a running agent's workspace — and its notice — alone", async () => {
+		const onWorkspaceNotice = vi.fn<(agent: Subagent, notice: string) => void>();
+		const { factory, stub } = createFactory();
+		const turnLoop = Promise.withResolvers<TurnLoopResult>();
+		stub.runTurnLoop.mockReturnValue(turnLoop.promise);
+		const agent = createRunnableAgent({
+			createSubagentSession: factory,
+			workspaceProvider: makeWorkspaceProvider(makeWorkspace("/ws/dir", { resultAddendum: ADDENDUM })),
+			observer: { onWorkspaceNotice },
+		});
+		agent.start();
+		await vi.waitFor(() => { expect(agent.isSessionReady()).toBe(true); });
+
+		await agent.disposeSession();
+		expect(onWorkspaceNotice).not.toHaveBeenCalled();
+
+		turnLoop.resolve({ responseText: "done", aborted: false, steered: false });
+		await agent.promise;
+	});
+
+	it("does not announce for a failed run, whose own notification carries it", async () => {
+		const onWorkspaceNotice = vi.fn<(agent: Subagent, notice: string) => void>();
+		const { factory, stub } = createFactory();
+		stub.runTurnLoop.mockRejectedValue(new Error("turn loop exploded"));
+		const agent = createRunnableAgent({
+			createSubagentSession: factory,
+			workspaceProvider: makeWorkspaceProvider(makeWorkspace("/ws/dir", { resultAddendum: ADDENDUM })),
+			observer: { onWorkspaceNotice },
+		});
+		await agent.run();
+		expect(agent.workspaceNotice).toBe(ADDENDUM);
+		expect(onWorkspaceNotice).not.toHaveBeenCalled();
+	});
+
+	it("does not announce for a failed resume, whose own notification carries it", async () => {
+		const { agent, stub, onWorkspaceNotice } = await heldAgentWithObserver();
+		stub.resumeTurnLoop.mockRejectedValue(new Error("resume exploded"));
+		await agent.resume("the answer");
+		expect(agent.workspaceNotice).toBe(ADDENDUM);
+		expect(onWorkspaceNotice).not.toHaveBeenCalled();
+	});
+});
+
 describe("Subagent.run() — error handling", () => {
 	it("transitions to error when the turn loop throws", async () => {
 		const { factory, stub } = createFactory();

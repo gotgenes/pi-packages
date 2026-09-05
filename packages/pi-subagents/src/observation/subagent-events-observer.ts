@@ -100,6 +100,16 @@ export class SubagentEventsObserver implements SubagentManagerObserver {
 		this.notifications.sendUpdate(record, message);
 	}
 
+	/**
+	 * A teardown after the child's result was delivered reported where its work
+	 * went. Announced only: no event channel, because no consumer asks for one,
+	 * and nothing is persisted — the outcome this belongs to was recorded when
+	 * the run ended.
+	 */
+	onSubagentWorkspaceNotice(record: Subagent, notice: string): void {
+		this.notifications.sendWorkspaceNotice(record, notice);
+	}
+
 	onSubagentCompacted(record: Subagent, info: CompactionInfo): void {
 		// Emit compacted event when agent's session compacts (preserves count on record).
 		this.emit("subagents:compacted", {

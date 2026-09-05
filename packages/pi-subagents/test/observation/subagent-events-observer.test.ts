@@ -302,4 +302,33 @@ describe("SubagentEventsObserver", () => {
 			expect(appendEntry).not.toHaveBeenCalled();
 		});
 	});
+
+	describe("onSubagentWorkspaceNotice", () => {
+		const NOTICE = "\n\n---\nChanges saved to branch `pi-agent-1`.";
+
+		it("announces where the teardown left the child's work", () => {
+			const { observer, notifications } = makeObserver();
+			const record = createTestSubagent({ id: "agent-1" });
+
+			observer.onSubagentWorkspaceNotice(record, NOTICE);
+
+			expect(notifications.sendWorkspaceNotice).toHaveBeenCalledExactlyOnceWith(record, NOTICE);
+		});
+
+		it("emits no event — no consumer asks for one, and a vacant channel is not added", () => {
+			const { observer, emit } = makeObserver();
+
+			observer.onSubagentWorkspaceNotice(createTestSubagent(), NOTICE);
+
+			expect(emit).not.toHaveBeenCalled();
+		});
+
+		it("persists nothing — the outcome it belongs to was recorded long ago", () => {
+			const { observer, appendEntry } = makeObserver();
+
+			observer.onSubagentWorkspaceNotice(createTestSubagent(), NOTICE);
+
+			expect(appendEntry).not.toHaveBeenCalled();
+		});
+	});
 });

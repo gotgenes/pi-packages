@@ -41,6 +41,19 @@ export class CompositeSubagentObserver implements SubagentManagerObserver {
     this.dispatch((o) => o.onSubagentUpdate?.(record, message), "onSubagentUpdate");
   }
 
+  /**
+   * Required here even though `SubagentManagerObserver` declares it optional:
+   * the manager's observer is always this composite, so a member it does not
+   * enumerate is dropped silently — no compiler error, no runtime error, and
+   * the announcement simply never fires.
+   */
+  onSubagentWorkspaceNotice(record: Subagent, notice: string): void {
+    this.dispatch(
+      (o) => o.onSubagentWorkspaceNotice?.(record, notice),
+      "onSubagentWorkspaceNotice",
+    );
+  }
+
   onSubagentCompacted(record: Subagent, info: CompactionInfo): void {
     this.dispatch((o) => o.onSubagentCompacted(record, info), "onSubagentCompacted");
   }

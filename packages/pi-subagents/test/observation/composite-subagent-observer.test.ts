@@ -15,6 +15,7 @@ function makeDelegate(): SubagentManagerObserver {
 }
 
 const COMPACTION: CompactionInfo = { reason: "threshold", tokensBefore: 1000 };
+const NOTICE = "\n\n---\nChanges saved to branch `pi-agent-10`.";
 
 describe("CompositeSubagentObserver", () => {
 	describe("fan-out", () => {
@@ -146,6 +147,28 @@ describe("CompositeSubagentObserver", () => {
 
 			expect(() => composite.onSubagentUpdate(record, "Course change.")).not.toThrow();
 			expect(listening.onSubagentUpdate).toHaveBeenCalledExactlyOnceWith(record, "Course change.");
+		});
+
+		it("forwards onSubagentWorkspaceNotice to the delegates that implement it", () => {
+			const a = { ...makeDelegate(), onSubagentWorkspaceNotice: vi.fn() };
+			const b = { ...makeDelegate(), onSubagentWorkspaceNotice: vi.fn() };
+			const composite = new CompositeSubagentObserver([a, b]);
+			const record = createTestSubagent({ id: "agent-10" });
+
+			composite.onSubagentWorkspaceNotice(record, NOTICE);
+
+			expect(a.onSubagentWorkspaceNotice).toHaveBeenCalledExactlyOnceWith(record, NOTICE);
+			expect(b.onSubagentWorkspaceNotice).toHaveBeenCalledExactlyOnceWith(record, NOTICE);
+		});
+
+		it("skips a workspace-notice delegate that does not implement it", () => {
+			const widgetLike = makeDelegate(); // no onSubagentWorkspaceNotice, like AgentWidget
+			const listening = { ...makeDelegate(), onSubagentWorkspaceNotice: vi.fn() };
+			const composite = new CompositeSubagentObserver([widgetLike, listening]);
+			const record = createTestSubagent({ id: "agent-10" });
+
+			expect(() => composite.onSubagentWorkspaceNotice(record, NOTICE)).not.toThrow();
+			expect(listening.onSubagentWorkspaceNotice).toHaveBeenCalledExactlyOnceWith(record, NOTICE);
 		});
 	});
 });

@@ -109,6 +109,13 @@ export interface SubagentManagerObserver {
    * vacant one.
    */
   onSubagentUpdate?(record: Subagent, message: string): void;
+  /**
+   * Fires when a teardown after the record's result was delivered reported
+   * where its work went.
+   * Optional for the same reason as `onSubagentUpdate`: the widget has no use
+   * for it, and a hook nobody supplies is a vacant one.
+   */
+  onSubagentWorkspaceNotice?(record: Subagent, notice: string): void;
   onSubagentCompacted(record: Subagent, info: CompactionInfo): void;
   /** Fires synchronously after a background agent record is created (before run). */
   onSubagentCreated(record: Subagent): void;
@@ -226,6 +233,9 @@ export class SubagentManager {
       },
       onUpdateSent: (agent, message) => {
         this.observer?.onSubagentUpdate?.(agent, message);
+      },
+      onWorkspaceNotice: (agent, notice) => {
+        this.observer?.onSubagentWorkspaceNotice?.(agent, notice);
       },
       onCompacted: (agent, info) => {
         this.observer?.onSubagentCompacted(agent, info);

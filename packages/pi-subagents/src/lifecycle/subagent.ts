@@ -33,6 +33,12 @@ export interface SubagentLifecycleObserver {
 	onResumeFinished?(agent: Subagent): void;
 	/** Fires when the running agent sends its parent a mid-run message. */
 	onUpdateSent?(agent: Subagent, message: string): void;
+	/**
+	 * Fires when a teardown after the agent's result was delivered reported where
+	 * its work went. Not fired for a failed run or resume: those reach a terminal
+	 * notification of their own, which carries the notice.
+	 */
+	onWorkspaceNotice?(agent: Subagent, notice: string): void;
 	/** Fires on compaction events during the run. */
 	onCompacted?(agent: Subagent, info: CompactionInfo): void;
 }
@@ -642,7 +648,10 @@ export class Subagent {
 	 */
 	private disposeHeldWorkspace(): void {
 		if (this.isActive()) return;
-		this.disposeWorkspaceQuietly(this.status);
+		// Announce what *this* disposal produced, not what the record holds: both
+		// release and teardown reach here, and the second finds nothing to dispose.
+		const notice = this.disposeWorkspaceQuietly(this.status);
+		if (notice) this.execution.observer?.onWorkspaceNotice?.(this, notice);
 	}
 
 	/**

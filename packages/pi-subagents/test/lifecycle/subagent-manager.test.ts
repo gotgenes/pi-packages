@@ -64,6 +64,7 @@ function createManager(overrides?: {
         onSubagentResumed: overrides.observer.onSubagentResumed ?? (() => {}),
         onSubagentCompacted: overrides.observer.onSubagentCompacted ?? (() => {}),
         onSubagentCreated: overrides.observer.onSubagentCreated ?? (() => {}),
+        onSubagentWorkspaceNotice: overrides.observer.onSubagentWorkspaceNotice,
       }
     : undefined;
   const limiter = new ConcurrencyLimiter(overrides?.getMaxConcurrent ?? (() => DEFAULT_MAX_CONCURRENT));
@@ -1363,6 +1364,40 @@ describe("SubagentManager", () => {
       const second = makeProvider();
       manager.registerWorkspaceProvider(second);
       expect(manager.workspaceProvider).toBe(second);
+    });
+
+    it("relays a held workspace's notice to the manager observer when the session is released", async () => {
+      const onSubagentWorkspaceNotice = vi.fn<(record: Subagent, notice: string) => void>();
+      const notice = "\n\n---\nChanges saved to branch `pi-agent-1`.";
+      const stub = createSubagentSessionStub();
+      let askParent: ((question: string) => void) | undefined;
+      stub.runTurnLoop.mockImplementation(() => {
+        askParent?.("Which config?");
+        return Promise.resolve({ responseText: "Mapped them.", aborted: false, steered: false });
+      });
+      ({ manager } = createManager({
+        createSubagentSession: vi.fn(async (params: CreateSubagentSessionParams) => {
+          askParent = params.askParent;
+          return toSubagentSession(stub);
+        }),
+        observer: { onSubagentWorkspaceNotice },
+      }));
+      manager.registerWorkspaceProvider({
+        prepare: vi.fn(async () => ({
+          cwd: "/ws/dir",
+          dispose: vi.fn(() => ({ resultAddendum: notice })),
+        })),
+      });
+
+      const id = manager.spawn(STUB_SNAPSHOT, "general-purpose", "test", {
+        description: "held agent",
+        background: { kind: "explicit", isBackground: true },
+      });
+      const record = manager.getRecord(id)!;
+      await record.promise;
+      await record.releaseSession();
+
+      expect(onSubagentWorkspaceNotice).toHaveBeenCalledExactlyOnceWith(record, notice);
     });
 
     it("stale disposer does not evict a later provider", () => {
