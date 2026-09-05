@@ -115,8 +115,10 @@ No decline, so the regular improvement rotation continues.
   It is `scope:repo` lint tooling at the repository root affecting every package, and shares no mechanism with the capability axis; Step 13 is where it surfaced, not what caused it.
 - [#873] — out of scope for the roadmap and fixed independently.
   The `ToolSurfaceBaseline` monotonic-shrink bug (a tool denied on one turn stayed removed after its rule was relaxed) is a tool-exposure lifecycle defect, not a capability-axis question; no Phase 14 step names `tool-surface-baseline.ts` or `resolveExposedTools`.
-- [#863] and [#859] — out of scope for a structural phase, ordinary bugs in the same family as [#821]/[#822]/[#823] (a token misclassified as a path by the ADR 0009 classifier — a `node -e` inline script's leading `//` comment, a git revision range's `..`).
-  Neither touches a capability-axis file.
+- [#863] and [#859] — deferred to a later phase with recorded rationale, the same disposition [#822] received; 1st consecutive sweep.
+  All three are ADR 0009 classifier false positives — a token that is not a path reaches the `external_directory` gate (a `node -e` inline script's leading `//` comment, a git revision range's `..`, a bracket glob's literal text) — so they raise spurious asks, which is the prompt-volume cause ADR 0013 measures rather than a defect unrelated to it.
+  Out of scope for *this* phase because no Phase 14 step names `token-classification.ts`, and the capability axis decides what a surface may permit rather than which tokens reach one.
+  They belong beside [#822] in Phase 15's projection-completeness work.
 - [#860] — out of scope: a third-party host integration crash (`omp`), unrelated to the capability axis.
 - [#856] — out of scope for a structural phase: a JSONC config-format enhancement request, the same bucket as the Feature issues bullet above.
 
@@ -704,8 +706,8 @@ Follow-on issues — filed during the phase window, not carried as steps, and al
 - [#874] — a `pi-subagents` settings-overlay scrollback-smear report, filed by that package's own planning; out of scope for this phase, tracked in `pi-subagents`.
 - [#879] — `rumdl`'s per-file `MD057` cache left four links stale after Step 13's file moves, caught only on a fresh checkout; `scope:repo` lint tooling, fixed independently.
 
-Deferred to Phase 15 or later, with recorded rationale in the dispositions above: [#609] (redirect projection, staging slice 4), [#802] and [#804] (staging slices 6 and 7), [#620] (opaque-bash adjudicator, third consecutive phase), [#519] (blocked on Pi SDK `UIContext`), [#751] (ADR 0011 §4 reachable-complete-view residual), [#799] (forwarding-channel ADR), [#861] (locally-adjudicating child skips an excluded authority link), [#868] (`authorizerChain` array element documentation), [#875] (Step 14's own enumeration residual), [#822] (glob-expansion projection completeness).
-Out of scope for the roadmap, recorded and left open: [#797] (answered with a config recipe instead of a mechanism), [#735] scenario 2 / [#722] (unchanged from Phase 13), [#762], [#780], the Feature issues bullet ([#736], [#720], [#691], [#688], [#687], [#686], [#680], [#658], [#654], [#648], [#604], [#603], [#472]), [#863], [#859], [#860], [#856].
+Deferred to Phase 15 or later, with recorded rationale in the dispositions above: [#609] (redirect projection, staging slice 4), [#802] and [#804] (staging slices 6 and 7), [#620] (opaque-bash adjudicator, third consecutive phase), [#519] (blocked on Pi SDK `UIContext`), [#751] (ADR 0011 §4 reachable-complete-view residual), [#799] (forwarding-channel ADR), [#861] (locally-adjudicating child skips an excluded authority link), [#868] (`authorizerChain` array element documentation), [#875] (Step 14's own enumeration residual), [#822] (glob-expansion projection completeness), and [#863] and [#859] (ADR 0009 classifier false positives, beside [#822]).
+Out of scope for the roadmap, recorded and left open: [#797] (answered with a config recipe instead of a mechanism), [#735] scenario 2 / [#722] (unchanged from Phase 13), [#762], [#780], the Feature issues bullet ([#736], [#720], [#691], [#688], [#687], [#686], [#680], [#658], [#654], [#648], [#604], [#603], [#472]), [#860], [#856].
 
 ### Delivered vs. predicted metrics
 
