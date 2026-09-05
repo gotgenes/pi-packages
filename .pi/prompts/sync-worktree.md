@@ -70,6 +70,7 @@ The stage note lives in an `exclude-paths` dir, so it triggers no release — bu
 2. Rebase onto the ref `/ship-worktree` will merge into — **local** `main`, which the shared `.git` makes visible: `git rebase main`.
    If `git rev-list --count main..origin/main` is non-zero, local `main` is behind the remote; stop and report, since the root must `git pull` before this rebase has the right target.
 3. On a conflict: run `git rebase --abort`, then stop and report the conflicting files.
+   Name what actually collided — `git log --oneline HEAD..main` for the commits, and the conflicting hunks — not a cause inferred from the file's recent history (Refs #870).
    Do not auto-resolve — the operator decides.
 4. Verify the merge will succeed: `git merge-base --is-ancestor main HEAD`.
    This, not the `origin/main` comparison, is what predicts the ff-merge (Refs #815).

@@ -138,7 +138,7 @@ Deleting `CompositeSubagentObserver.onSubagentWorkspaceNotice` leaves production
 
 Pre-push checks both passed clean on first run: `pnpm run lint` (0 findings, 1116 files) and `pnpm fallow dead-code` (0 issues, 329 entry points).
 No fixes needed before rebase.
-The plan's `**Release:** ship independently` marker stands — no batch to coordinate, and the dispatch at ship time should name both `pi-subagents` and `pi-subagents-worktrees` (the latter for its `fix:` and `docs:` commits: `86fcaa6f fix(pi-subagents-worktrees): warn about unmerged rescue branches at session start` and `086bbd0b docs(pi-subagents-worktrees): document the unmerged-branch warning`).
+The plan's `**Release:** ship independently` marker stands — no batch to coordinate, and the dispatch at ship time should name both `pi-subagents` and `pi-subagents-worktrees` (the latter for its `fix:` and `docs:` commits: `fix(pi-subagents-worktrees): warn about unmerged rescue branches at session start` and `docs(pi-subagents-worktrees): document the unmerged-branch warning`).
 
 **Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-870--/2026-09-04T19-11-10-073Z_01a06dd4-fcf8-7597-aab2-150693ad6260.jsonl` — read with `read_session_file({ path: "..." })` for message-level verification at land/retro time.
 
@@ -153,3 +153,97 @@ The sweep list itself auto-merged; only the link-reference definitions collided,
 Resolved by keeping both in numeric order, and verified by diffing the rebased file against `main` — the only removed lines are the five module-tree entries and three Step 12 lines this branch rewrites on purpose, so nothing from the concurrent commits was dropped.
 
 Every gate was re-run after the rebase rather than trusting the pre-rebase run, since `main` brought a large `pi-permission-system` directory refactor and a new `ci: flag alias imports` check: `pnpm install --frozen-lockfile`, `pnpm run lint`, `pnpm run check`, `pnpm run test`, and `pnpm fallow dead-code` all pass, with `pi-subagents` at 1561/76 and `pi-subagents-worktrees` at 74/8.
+
+## Stage: Ship (worktree) (2026-09-05T05:20:00Z)
+
+### Session summary
+
+Fast-forwarded the peer branch onto `main` (13 commits, `c90228c1..61f94664`), pushed, verified CI green, closed [#870], and released both packages in one dispatch: `pi-subagents` v21.4.1 and `pi-subagents-worktrees` v0.3.3.
+Worktree and branch torn down cleanly.
+Every step of the ship flow ran first-try — no rejected merge, no CI retry, no release refusal.
+
+### Observations
+
+The ff-merge prediction (`git merge-base --is-ancestor main <branch>`) and the zero-count unpushed check both passed, so the peer's rebase target was still current at land time.
+Nothing landed on `main` between the peer's `/sync-worktree` and this session.
+
+## Stage: Final Retrospective (2026-09-05T05:24:01Z)
+
+### Session summary
+
+Issue [#870] ran the full four-stage worktree lifecycle — planning, TDD, sync, ship — across two sessions and shipped as Phase 22 Step 12, closing a five-edge delivery gap with three complementary channels.
+The technical execution was strong: every plan step landed as its own commit, every killing mutation was applied and counted against its prediction, and the pre-completion reviewer returned PASS.
+The friction that remains is concentrated in two places — a gate whose option semantics were written from a name rather than the source, and a conflict report that inferred its cause instead of reading it.
+
+### Observations
+
+#### What went well
+
+- **The Tidy-First assessor earned its dispatch by contradicting the design, not by tidying.**
+  It found that `CompositeSubagentObserver` enumerates every observer method explicitly, so the design's *optional* `onSubagentWorkspaceNotice` would have been dropped with no compiler error, no test failure, and no runtime error — the feature would have no-opped in production with a fully green suite.
+  The TDD stage then confirmed this exactly: deleting the composite's method leaves production code compiling, with the two fan-out tests the only pin.
+  This is the strongest case yet for the skill's claim that planning is the right dispatch point — the finding was a correction to the design while the design was still cheap to change.
+- **A vacuous test was caught by the Red step's own evidence.**
+  The ordering assertion in `get-result-report.test.ts` passed during Red because `indexOf` returns `-1` for an absent needle, and `-1` sorts below any real index.
+  Fixed before Green by asserting presence first.
+  The `testing` skill names this exact case, and the discipline of actually reading the Red output — rather than assuming a new test fails — is what surfaced it.
+- **The ship stage refused a stale SHA it was handed.**
+  The sync note named two commits by pre-rebase SHA; both are unreachable from `main`.
+  Deriving the close comment from the commit range rather than from the note's text kept two dangling hashes out of a published GitHub comment.
+  The `AGENTS.md` rule (Refs #814) worked as written.
+
+#### What caused friction (agent side)
+
+- `missing-context` — **the delivery-mode gate described `deliverAs: "nextTurn"` from the option name rather than from the SDK.**
+  The option was offered as "shown to the user immediately and read by the parent at its next turn"; reading `sendCustomMessage` in the pinned `@earendil-works/pi-coding-agent@0.84.4` showed `nextTurn` is checked first and unconditionally and only buffers — nothing rendered, nothing written to the session, discarded on quit.
+  The option actually intended (`triggerTurn: false` with no `deliverAs`) was not in the set at all.
+  Self-identified, before the plan was written.
+  Impact: one `ask_user` gate re-run and a corrected record; the operator answered the same decision twice.
+  Notably the correction also *removed* work — the parent-run withhold, a third `PendingAnnouncement` variant, and the assessor's exhaustive-switch refactor all dropped out — so the cost of the error was bounded and the cost of not catching it would have been three unnecessary steps.
+- `instruction-violation` (self-identified) — **a scripted mutation matched more sites than intended.**
+  `perl -pi -e 's/^    if \(this\.disposed\) return;\n//'` deleted *every* 4-space-indented copy of that guard, not the one under test, so two mutations ran in one pass.
+  The unexpected reds were the tell.
+  `/tdd-plan` already says to apply mutations with `Edit`; the existing warning covers a substitution that matches *nothing*, not one that matches too much.
+  Recovered by switching to a Python `str.replace` guarded by `assert count == 1`, which fails loudly on a bad anchor.
+  Impact: one wasted mutation cycle, no rework — the guard pattern was then used for every subsequent mutation in the session.
+- `missing-context` — **the rebase-conflict report inferred its cause instead of reading it.**
+  The peer aborted correctly per the prompt, but reported a speculative cause ("a concurrent sweep-disposition entry **or** another Phase 22 step landing on `main` would collide there") without running `git log HEAD..main`.
+  The real conflict, found in two commands after the operator said to proceed, was far narrower: the disposition list body auto-merged and only the trailing `[#N]:` link-reference definitions collided.
+  Impact: the operator was handed a report describing a bigger conflict than existed, and a round-trip was spent before the actual scope was known.
+  `/ship-worktree` already carries the sibling rule for its own failed ff-merge ("report those commits, not a cause inferred…", Refs #815); `/sync-worktree`'s conflict branch has no equivalent.
+- `instruction-violation` (agent-caught at ship time) — **the sync note cited branch SHAs the rebase then orphaned.**
+  `/sync-worktree` step 3 says explicitly: "Do not cite a branch commit SHA in this note — step 4's rebase rewrites every one, leaving a dangling citation on `main`.
+  Name the commit by its subject instead (Refs #814)."
+  The note named the two `pi-subagents-worktrees` commits by their pre-rebase SHAs; both still resolve locally and neither is reachable from `main`.
+  Corrected to commit subjects in this retro's changes below.
+  The instruction was in the prompt body being executed, and the note was written in step 3 — one step before the rebase the rule warns about.
+  Impact: two dead references now on `main`; no rework, because the ship stage re-derived from the range.
+
+#### What caused friction (user side)
+
+Nothing blocking.
+The operator's one intervention — "Go ahead and resolve the conflict" — was the right call and correctly gated by the prompt's own constraint.
+One opportunity: the peer's abort report invited a decision without having established the conflict's real scope, so the operator authorized a resolution sight-unseen.
+A report that had run `git log HEAD..main` first would have let that authorization be specific ("keep both link definitions in numeric order") rather than general.
+
+### Diagnostic details
+
+- **Model-performance correlation** — planning and TDD ran on `anthropic/claude-opus-5`; a model change to `anthropic/claude-sonnet-5` landed immediately before `/sync-worktree`, and the session switched back to opus-5 when the operator answered the conflict prompt.
+  The one stage that ran on sonnet-5 is the stage that produced the speculative conflict report and the dangling-SHA violation; opus-5 then diagnosed the same conflict precisely in two commands.
+  Both defects are prompt-adherence failures on an explicitly-worded instruction rather than reasoning failures, which is the expected shape of a weaker model on a checklist-heavy stage.
+  The remedy is prompt salience, not a model floor — `/sync-worktree` is mechanical enough that a cheaper model is the right default.
+- **Escalation-delay tracking** — no `rabbit-hole` friction points.
+  The longest same-error sequence was the double-mutation recovery: two tool calls to detect and one to switch approach.
+  Nothing approached the five-call threshold.
+- **Unused-tool detection** — the planning stage's SDK read was the correct inline choice (a targeted read of a known file, per `AGENTS.md`), and no subagent was warranted.
+  For the `missing-context` conflict-report finding, no subagent was needed either: the gap was one `git log HEAD..main` invocation, not a hunt.
+- **Feedback-loop gap analysis** — verification was incremental and well-placed.
+  `pnpm run check` ran inside steps 2, 3, 4, and 5 rather than only at the end, `pnpm fallow dead-code` ran mid-cycle at steps 4 and 6, and the full suite ran after every step.
+  The post-rebase re-run of all five gates — rather than trusting the pre-rebase green — was the correct call given that `main` had brought a `pi-permission-system` refactor and a new CI check.
+
+### Changes made
+
+1. `.pi/prompts/sync-worktree.md` — the conflict branch of step 4 now requires naming what actually collided (`git log --oneline HEAD..main` plus the conflicting hunks) rather than a cause inferred from the file's recent history, mirroring the rule `/ship-worktree` already carries for a failed ff-merge.
+2. `.pi/prompts/tdd-plan.md` — the mutation-verification clause now names the over-matching failure alongside the existing under-matching one: a substitution that hits every sibling site reddens tests the mutation was never meant to touch.
+3. `AGENTS.md` § Clarification gates — added: an option whose differentiator is a dependency's behavior is a claim about that dependency, so read its compiled source before writing the option, never its type declaration or its name.
+4. `docs/retro/0870-deliver-post-result-workspace-addendum.md` — replaced the two pre-rebase SHAs in the Sync stage note with the commit subjects `/sync-worktree` prescribes; the rebase had orphaned both, leaving dead references on `main`.

@@ -243,6 +243,7 @@ Refs #787: three wiring options all grew `AgentPrepHandler`, and the operator's 
 Refs #639: three gates on `commandEffects` all assumed pattern-keyed matching, and the operator's "done with pattern-based expressions" produced the structured shape that dissolved the overlap, merge, and guard questions at once.
 When a gate offers mechanisms for fixing a hazard, first name which component or config rule owns the lever and what happens today in each concrete configuration — a mechanism menu without that grounding gets bounced for it (Refs #789, #803).
 In a bundled gate the substance requirement is per question, not per message — the least-supported question bounces the whole batch (Refs #866).
+An option whose differentiator is a dependency's behavior is a claim about that dependency — read its compiled source before writing the option, never its type declaration or its name (Refs #870).
 
 #### Background agent guardrails
 
