@@ -6,6 +6,7 @@ description: Land the work (trunk or worktree branch), verify CI, close the issu
 # Ship the implementation
 
 Argument: `$1` is the issue number that was just implemented, or the number of an adopted third-party PR.
+When it is empty, derive the number from the newest plan commit (`git log --format='%s' --grep='^docs: plan ' -1` → the trailing `(#N)`), name the issue you derived, and confirm it before step 3.
 
 `/ship` runs at the **root** checkout on `main` in both of its lanes:
 

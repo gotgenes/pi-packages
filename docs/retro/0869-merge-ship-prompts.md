@@ -104,5 +104,85 @@ The pre-completion reviewer returned WARN with two documentation findings, both 
   This session still has `/ship-issue` and `/ship-worktree` registered and does not have `/ship`; Pi loads prompt templates at startup.
   A note to that effect was added to `AGENTS.md` § Stale in-process extension code.
 
+## Stage: Final Retrospective (2026-09-05T18:53:14Z)
+
+### Session summary
+
+One Pi process carried #869 end to end — planning, build, ship, and this retrospective — replacing `/ship-issue` and `/ship-worktree` with a single lane-detecting `/ship`, applying the union of both prompts' rules to both lanes, and repointing 40 references across eleven files.
+The ship ran the merged prompt on the very change that created it, in the trunk lane, closing #869 with nothing released (repo tooling touches no package).
+The session produced ten commits and one round of post-review corrections; no gate failed, no CI retry, and no rework beyond two documentation fixes.
+
+### Observations
+
+#### What went well
+
+- **A plan step designed to distrust the plan found the defect the plan would have missed.**
+  Build step 8 was written to audit the merged prompt against the two *recovered deleted files*, explicitly not against the plan's own 15-row union table, on the stated grounds that the hand-derived table was the artifact most likely to have dropped a row.
+  It found one real loss (the examples of what a sync handoff note carries) that the table did not list.
+  This is the first plan in this repo to name its own analysis as the thing to re-derive rather than the thing to check against, and it paid.
+
+- **The adversarial re-derivation mandate produced independent findings, not an echo.**
+  The `pre-completion-reviewer` dispatch said, in effect, "the implementing session claims exactly one loss — verify by re-deriving, not by checking."
+  It independently enumerated every `Refs #N` in both originals, confirmed the one-loss claim, and then returned two defects the implementing session had not seen.
+  Contrast with the [#639] precedent where a reviewer handed its own numbers returned PASS.
+
+- **A clarification gate overturned its own recommendation on a correct objection.**
+  The first gate recommended the extension's `skill:` frontmatter as the sharing mechanism, having read `model-selection.ts` and `index.ts` to price it.
+  The operator rejected it as an extension dependency rather than Pi core, which is the sharper framing: an ignored `model:` degrades to the session model, while an ignored `skill:` silently drops the shared step.
+  The second gate then priced merging the two prompts outright — an option the issue had not listed — and that became the design.
+
+- **The operator asked a question where a directive would have closed the door.**
+  "Are we able to specify multiple models?"
+  produced a reading of the resolver that changed the answer's shape: a comma list is an *acceptable set* (no switch when the current model is already in it), not a preference order.
+  A directive to pin a specific model would have shipped the same frontmatter with a wrong mental model of what it does.
+
+#### What caused friction (agent side)
+
+- `missing-context` (self-identified only via the reviewer) — the new `AGENTS.md` convergence preamble asserted "every step after the push is identical in both lanes", which the same numbered list contradicts two items later (worktree-only teardown), and which the plan's own Design Overview contradicts explicitly.
+  The sentence was written, re-read during the `README` step, and re-read again at commit time without the contradiction registering.
+  Impact: one extra commit (`528abded`); no shipped defect, because the reviewer caught it pre-push.
+
+- `other` — an `Edit` call for `README.md` carried a stray `oldText2` key on one entry.
+  `AGENTS.md` documents this exact shape as a trap: extra suffixed keys are silently ignored while the tool still reports success.
+  Ten array entries produced ten replaced blocks, so nothing was dropped, but the count check is the only thing that would have caught it.
+  Impact: none — a near-miss worth recording because the guardrail worked only by luck of counting.
+
+- `other` — the autoformatter reflowed `§ *7. Verify CI on the pushed commit*` into two lines, splitting at the numeral's period, which it reads as a sentence end.
+  Impact: one extra `Edit` round in build step 3; the citation form was changed to `` the `## 7. ...` section of `` , which survives the reflow.
+
+- `other` — `/ship` was invoked with an empty argument, so `$1` substituted to nothing throughout the prompt body.
+  The issue number was unambiguous from session context, so the ship proceeded, but the prompt has no fallback of its own.
+  `/sync-worktree` handles the same case by deriving `N` from the branch name; the trunk lane has no branch to derive from.
+  Impact: none this session; a silent hazard in a fresh session where context would not supply the number.
+
+#### What caused friction (user side)
+
+- The `README.md` developer-flow scope arrived as a mid-session steer after planning had begun rather than in the issue body.
+  It was absorbed cleanly — the reference sweep had already enumerated the nine `README` hits — but the diagrams and stage tables were a larger addition than a rename, and naming them up front would have put them in the plan's Module-Level Changes from the start rather than as an amendment.
+
+### Diagnostic details
+
+- **Model-performance correlation** — planning and build ran on `anthropic/claude-opus-5` (declared by `plan-issue.md`; `build-plan.md` declares no `model:` and inherited it), the ship on `anthropic/claude-sonnet-5`, and this retrospective on `anthropic/claude-opus-5` (declared by `retro.md`).
+  The ship's sonnet-5 came from a manual operator switch, exactly as the [#843] retro recorded, because the old `ship-issue.md` declared no `model:`.
+  The merged `.pi/prompts/ship.md` now pins `anthropic/claude-sonnet-5, opencode-go/deepseek-v4-flash`, so that manual step is gone.
+  Subagents: one `pre-completion-reviewer` on its declared `anthropic/claude-sonnet-5` (43 tool uses, 441 s) — appropriate, since the mandate was mechanical re-derivation against two recovered files rather than open-ended judgment.
+  No `tidy-first-assessor` ran: the change touches no `src/` or `test/` file, which is the skill's applicability gate.
+- **Escalation-delay tracking** — no `rabbit-hole` points.
+  The longest same-target sequence was three calls establishing which session file held the transcript during this retrospective, abandoned in favor of the labels already observed rather than pursued further.
+- **Unused-tool detection** — not applicable to the friction above.
+  The `AGENTS.md` contradiction was not a search failure; the text was in the edit buffer.
+- **Feedback-loop gap analysis** — `pnpm exec rumdl check` ran after every markdown-touching step rather than once at the end, and `mmdc` verified all three diagrams inside the step that edited them.
+  The one deliberate deferral was the `.rumdl_cache` clear, held to build step 8 because `MD057` caches per file and this change deletes two linked-to files — the plan called that ordering out in advance.
+
+### Changes made
+
+1. `.pi/prompts/ship.md` — the `Argument:` line gains an empty-`$1` fallback: derive the number from the newest `docs: plan … (#N)` commit, name the issue, and confirm before step 3.
+   This session invoked `/ship` with no argument and proceeded only because context supplied the number.
+2. `AGENTS.md` § Tool-injected messages — a fourth reflow trap: the formatter reads a numbered section citation (`§ *7. Verify CI*`) as a sentence end and splits it; cite the heading instead.
+3. `AGENTS.md` worktree convergence item 1 — `git rebase origin/main` corrected to `git rebase main` (local `main`, the ref the root merges into), matching `/sync-worktree` step 4.2.
+   The build stage note recorded this as left-alone because item 1 was not a rewritten passage; it is the same falsehood already fixed in the `README` sequence diagram.
+
+[#639]: https://github.com/gotgenes/pi-packages/issues/639
 [#814]: https://github.com/gotgenes/pi-packages/issues/814
+[#843]: https://github.com/gotgenes/pi-packages/issues/843
 [#849]: https://github.com/gotgenes/pi-packages/issues/849

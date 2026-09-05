@@ -157,6 +157,7 @@ Continue the current step (e.g. Red→Green→Verify→Commit) until it is compl
 It also reflows what you just wrote (line wrapping, quote style), so an `oldText` — or a shell/regex pattern — built from the layout you emitted can fail to match; re-read a region you just edited before matching against it again.
 It also joins a line ending in `:` with the sentence after it — to add a sentence there, start a new paragraph, not a new line.
 It likewise joins a sentence onto the previous line when the sentence opens with a lowercase token (a package or command name such as `git-cliff`) — lead with a capital instead (Refs #816).
+It also reads a numbered section citation (`§ *7. Verify CI*`) as a sentence end and splits it — cite the heading instead (`` the `## 7. Verify CI` section ``).
 It fires on `Edit`/`Write` only, so a file appended with a shell heredoc skips formatting entirely and fails `pnpm run lint` — append source with `Write`/`Edit` too, not just markdown.
 
 #### Stale prompt-template expansion
@@ -293,7 +294,7 @@ Convergence (the two-session ship flow):
 The root half is the ordinary `/ship <N>`: it detects a **worktree lane** from the presence of an `issue-<N>-*` branch and fast-forward-merges it, where a trunk ship has nothing to merge.
 The close and release steps are identical in both lanes — no branching at all — which is what keeps the two paths from drifting apart; only the CI-failure recovery rule and the teardown remain lane-specific after the push (Refs #869):
 
-1. Peer session — `/sync-worktree <N>`: run pre-push checks, write a **sync** stage note (committed on the branch so it rides the land), then `git fetch origin` + `git rebase origin/main`.
+1. Peer session — `/sync-worktree <N>`: run pre-push checks, write a **sync** stage note (committed on the branch so it rides the land), then `git fetch origin` + `git rebase main` (local `main` — the ref the root will merge into).
    The peer never touches `main`, never pushes the branch, never force-pushes — worktrees share the same `.git`, so the root sees the branch ref directly.
    The peer writes only stage breadcrumbs (planning/TDD/sync); the deliberate, interactive final `/retro` does not run here.
 2. Root session — `/ship <N>`: `git merge --ff-only <branch>` into `main`, run the pre-push checks on the merged tree, push, verify CI, `issue_close`, then release.
