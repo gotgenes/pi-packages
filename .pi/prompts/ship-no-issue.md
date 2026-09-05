@@ -30,13 +30,14 @@ If either fails, fix the issues and commit before pushing.
 
 ## 4. Verify CI on the pushed commit
 
-1. Use `ci_find` with the pushed SHA (`git rev-parse HEAD`) and workflow `ci` to locate the CI run.
-2. Use `ci_watch` with the returned `run_id`, workflow `ci`, and `timeout: 600` to wait for it to complete.
-3. If the run conclusion is `failure`, stop and report.
-   Do not release anything.
-4. If it lands `success`, continue.
+Read the `## 7. Verify CI on the pushed commit` section of `.pi/prompts/ship.md` and follow it, with one difference: there is no worktree lane here, so the fix-forward rule for a failed ff-merge does not apply.
+On a `failure` conclusion, stop and report — do not release anything.
+
+That section is the single source for the SHA discipline this step depends on (pass the exact `git rev-parse HEAD` value, never hand-expand a short SHA, do not measure its shape, re-check the SHA on a `ci_find` timeout).
 
 ## 5. Dispatch the release (if anything is releasable)
+
+The package set is derived differently here, because there is no issue plan to name it:
 
 1. Ask which packages have releasable commits:
 
@@ -46,14 +47,10 @@ If either fails, fix the issues and commit before pushing.
 
    Each package prints the tag it would cut, or nothing.
 2. If none prints a tag, skip to step 6.
-3. There is no issue plan here to say which packages this push was for, so **show the operator the list and ask which to release** — do not release everything that happens to be releasable.
-4. Dispatch the confirmed set:
+3. **Show the operator the list and ask which to release** — do not release everything that happens to be releasable.
 
-   ```bash
-   gh workflow run release.yml -f packages="<pkg> <pkg2>" -f sha="$(git rev-parse HEAD)"
-   ```
-
-5. Follow it with `ci_find` (workflow `release`, that same SHA) and `ci_watch` with `timeout: 600`, then `git pull --ff-only`.
+With the set confirmed, read the `## 10. Dispatch the release` section of `.pi/prompts/ship.md` (from its dispatch command onward) and the `## 11. Verify the release run` section, and follow both.
+Skip the path-based package derivation in section 10 — steps 1–3 above replace it.
 
 ## 6. Final report
 
