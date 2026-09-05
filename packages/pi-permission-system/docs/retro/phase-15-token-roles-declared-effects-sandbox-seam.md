@@ -56,6 +56,9 @@ That split the shape-indistinguishable class across two complementary levers and
 - **Both levers are the same ADR 0013 §7 layering applied to candidacy rather than effect**: a declared fact at zero tokens on the ask-producing side, judgment on the ask-consuming side for what nobody declared.
   The framing that dissolved the "complementary or redundant?"
   question was naming which side of `evaluate()` each lever sits on.
+- **Steps are numbered in landing order, at the operator's request.**
+  The first draft numbered the spine first ([#609] as Step 1) and the small fixes that precede it as Steps 2 and 3, then told the reader to land them 2 → 3 → 1.
+  A roadmap's numbering is its sequence; when the tracks section has to say "land 2 before 1", renumber the steps rather than annotate them.
 
 [#609]: https://github.com/gotgenes/pi-packages/issues/609
 [#620]: https://github.com/gotgenes/pi-packages/issues/620

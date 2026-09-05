@@ -1031,7 +1031,7 @@ Two open defects are that one loss seen from both sides.
 A redirect destination arrives at `projectRuleCandidates` tagged `{ effect: "write", source: "syntax" }` and is dropped, because `newfile` is bare and does not exist yet ([#609]'s residual; ADR 0013 measured it as "collection is real; classification then drops the token").
 An interpreter's inline script (`node -e "// comment…"`) is projected, because after quote removal the token starts with `/` ([#863]).
 ADR 0013 §10 says effects attach per path token, and the collector already tags them there; threading the role the same way is the decide-once fix.
-The symptom fallow sees is the `child.type === "command_name" || child.type === "variable_assignment"` disjunction spelled literally at three sites while `COMMAND_PREFIX_TYPES` exists for it — cited as a symptom, and paid down as Step 1's tidy-first prep.
+The symptom fallow sees is the `child.type === "command_name" || child.type === "variable_assignment"` disjunction spelled literally at three sites while `COMMAND_PREFIX_TYPES` exists for it — cited as a symptom, and paid down as Step 3's tidy-first prep.
 
 A second cause surfaced while measuring: **blame never reaches the entries a human decides**.
 Each bash gate stamps `effect`/`effectSource` and the flagged paths on its `logContext`, and the runner spreads that context into the entries it writes — but on `ask` the gate writes nothing, and `PermissionPrompter` brackets the ask (`waiting`/`approved`/`denied`) from `PromptPermissionDetails`, a second projection that never sees the context.
@@ -1048,7 +1048,7 @@ The repeated-discriminator sweep found one new family, the `COMMAND_PREFIX_TYPES
 
 The craftsmanship scout **refuted all six** fallow large-function flags on test files (each a nested tree of behavior-named `it`s with `it.each` collapsing near-duplicates) and refuted the planner's first reading that the generic and pattern-first token walkers, or `readCommandWords` and `commandArgumentWords`, are one state machine spelled twice — their filters and outputs differ.
 It found one concentrated test-design cluster: `test/handlers/gates/bash-path-extractor.test.ts` re-tests ~300 lines of `BashProgram` coverage through the facade (`/etc/[p]asswd`, the `for` word list, `$(cat /etc/hosts)`, redirect targets), so [#821] and [#839] each landed in two files.
-That rides Step 1 as a `test:` prep commit — Step 1 would otherwise land in both files a third time.
+That rides Step 3 as a `test:` prep commit — Step 3 would otherwise land in both files a third time.
 `collectPatternCommandTokens` (cognitive 45) is adjudicated a justified state machine, `runDescriptor` stays whole (Phase 14's call holds), and `src/index.ts` is unchanged since Phase 14's clearance.
 The `scripts/` prelude duplication is scattered and rides whichever step next adds an instrument.
 
@@ -1058,7 +1058,7 @@ Trajectory: Phase 12's maximum step priority was 20, Phase 13's 20, Phase 14's 2
 No decline, so the regular improvement rotation continues.
 
 The operator's clarification shaped the composition: the friction that matters is the **false positive** — a token that is not a path at all — not the ask about a real external file.
-After Steps 2 and 3 close the cases syntax or a known table decides, what remains is the shape-indistinguishable class ([#797]'s `/Sheet1/B1`, which no rule separates from `/etc/passwd`), and it has two complementary levers on opposite sides of `evaluate()`: a declaration that withdraws a *named* tool's operands (Step 4's `effects: []`, the ask-producing side, zero tokens, permanent) and judgment that dismisses an ask for a token naming nothing on disk (Step 7, the ask-consuming side, for the tool nobody declared).
+After Steps 1 and 2 close the cases syntax or a known table decides, what remains is the shape-indistinguishable class ([#797]'s `/Sheet1/B1`, which no rule separates from `/etc/passwd`), and it has two complementary levers on opposite sides of `evaluate()`: a declaration that withdraws a *named* tool's operands (Step 4's `effects: []`, the ask-producing side, zero tokens, permanent) and judgment that dismisses an ask for a token naming nothing on disk (Step 7, the ask-consuming side, for the tool nobody declared).
 That is ADR 0013 §7's own core-versus-chain layering applied to candidacy, and neither lever makes the other redundant.
 Step 7 exists because ADR 0007 §5 and ADR 0013 §7 contradict each other on this population — §7 says the judge absorbs the surplus, §5 excludes `external_directory` from a link's `allow`, so the judge can only defer it back to the human ([#859]'s reporter noticed; [#684] presses for a blanket opt-out this phase does not adopt).
 
@@ -1066,8 +1066,8 @@ Deferred by composition, with the reason each carries: [#804] (staging slice 7, 
 
 #### Open-issue sweep dispositions
 
-- [#609] — adopted as Step 1 (staging slice 4), carrying the phase's breaking change.
-- [#863] and [#859] — adopted as Steps 2 and 3 (2nd consecutive sweep, scheduled).
+- [#609] — adopted as Step 3 (staging slice 4), carrying the phase's breaking change.
+- [#863] and [#859] — adopted as Steps 1 and 2 (2nd consecutive sweep, scheduled).
   Both are shape decisions the classifier makes on tokens whose role the collector already knew, and each fix is fail-closed: a script string was never a path, and the [#645] existence probe still admits a real file named `a..b`.
 - [#802] — adopted as Step 6 (staging slice 6, first two of its three parts).
 - [#880] — filed for Step 4 (`commandEffects`); the unfiled remainder of staging slice 2 (ADR 0013 §7).
@@ -1092,17 +1092,17 @@ Deferred by composition, with the reason each carries: [#804] (staging slice 7, 
 
 #### Deferred tidyings swept
 
-`token-collection.ts`'s three near-identical prefix-skip loops and its hand-rolled child loop (recorded under [#839] and [#823]) are Step 1's tidy-first prep; `runner.ts`'s `runDescriptor` split stays deferred on the scout's re-adjudication; the twin registries, `agent-renderer.test.ts`'s flat describes, and `service.test.ts`'s repeated `afterEach` stay scattered.
+`token-collection.ts`'s three near-identical prefix-skip loops and its hand-rolled child loop (recorded under [#839] and [#823]) are Step 3's tidy-first prep; `runner.ts`'s `runDescriptor` split stays deferred on the scout's re-adjudication; the twin registries, `agent-renderer.test.ts`'s flat describes, and `service.test.ts`'s repeated `afterEach` stay scattered.
 
 ### Health metrics
 
 | Metric                                                                        | Baseline (2026-09-05) | Phase 15 target |
 | ----------------------------------------------------------------------------- | --------------------- | --------------- |
+| Interpreter script-role commands in `token-collection.ts`                     | 0                     | ≥ 4             |
+| Substring `..` tests in `token-classification.ts`                             | 2                     | 0               |
 | Token-role vocabulary in `token-collection.ts` (`TokenRole`)                  | 0                     | ≥ 1             |
 | Role-bypass site in `bash-path-resolver.ts` (`redirect-destination`)          | 0                     | ≥ 1             |
 | Literal `COMMAND_PREFIX_TYPES` re-spellings in `access-intent/bash/`          | 3                     | 0               |
-| Interpreter script-role commands in `token-collection.ts`                     | 0                     | ≥ 4             |
-| Substring `..` tests in `token-classification.ts`                             | 2                     | 0               |
 | `commandEffects` in `config-schema.ts`                                        | 0                     | ≥ 1             |
 | Effect provenance in the ask payload (`effectSource`, `path-ask-payload.ts`)  | 0                     | ≥ 1             |
 | `getPolicyScope` on the public service (`service.ts`)                         | 0                     | ≥ 1             |
@@ -1114,10 +1114,10 @@ Deferred by composition, with the reason each carries: [#804] (staging slice 7, 
 
 Recompute commands (run from the repo root):
 
-- Token-role vocabulary: `grep -c 'TokenRole' packages/pi-permission-system/src/access-intent/bash/token-collection.ts`
-- Role-bypass site: `grep -c 'redirect-destination' packages/pi-permission-system/src/access-intent/bash/bash-path-resolver.ts`
 - Interpreter script-role commands: `grep -cE '"(node|python|python3|perl|ruby)"' packages/pi-permission-system/src/access-intent/bash/token-collection.ts`
 - Substring `..` tests: `grep -c 'includes("..")' packages/pi-permission-system/src/access-intent/bash/token-classification.ts`
+- Token-role vocabulary: `grep -c 'TokenRole' packages/pi-permission-system/src/access-intent/bash/token-collection.ts`
+- Role-bypass site: `grep -c 'redirect-destination' packages/pi-permission-system/src/access-intent/bash/bash-path-resolver.ts`
 - `commandEffects` schema key: `grep -c 'commandEffects' packages/pi-permission-system/src/config/config-schema.ts`
 - Effect provenance in the payload: `grep -c 'effectSource' packages/pi-permission-system/src/presentation/path-ask-payload.ts`
 - Policy-scope export: `grep -c 'getPolicyScope' packages/pi-permission-system/src/service.ts`
@@ -1132,31 +1132,13 @@ grep -rn 'child.type === "command_name" || child.type === "variable_assignment"'
 ```
 
 Five rows grep for a name the phase has not created when it opens — `TokenRole`, `redirect-destination`, `commandEffects`, `effectSource` in the payload module, and `getPolicyScope`.
-The step that creates each (Steps 1, 1, 4, 5, 6) must either use the roadmap's name or update the metric row in the same commit, or the rename silently breaks the delivered-vs-predicted verification at phase close.
+The step that creates each (Steps 3, 3, 4, 5, 6) must either use the roadmap's name or update the metric row in the same commit, or the rename silently breaks the delivered-vs-predicted verification at phase close.
 `commandEffects` and `getPolicyScope` are ADR 0013's own spellings (§7, §8), so a rename there is an ADR amendment too.
 The fallow health score is carried as a floor: it is blind to the type-level wins a cause-driven phase produces.
 
 ### Steps
 
-#### Step 1: A redirect destination is projected by its role, not its shape ([#609])
-
-**Cause:** the collector proves a redirect destination names a file — that is what `redirectDestinationEffect` attributes a `syntax` write from — and then hands the projection a `PathToken` carrying only the effect, so `projectRuleCandidates` re-asks the shape classifier and the existence probe, both written for operands of unknown role, and a bare creating redirect (`> newfile`) is dropped.
-ADR 0013 measured the drop and ADR 0009 lists redirect targets among the projection's guarantees, so this is inside the contract, not a residual.
-
-- **Smell:** Category C (decided once at collection, re-decided at projection; the `COMMAND_PREFIX_TYPES` clone at three sites is the same fact fallow can see).
-- **Target:** `src/access-intent/bash/token-collection.ts` — `PathToken` gains a `role` (`redirect-destination` | `operand`, with room for Step 2's `script`), stamped where the effect is; `src/access-intent/bash/bash-path-resolver.ts` — `projectRuleCandidates` and `projectExternalPaths` admit a `redirect-destination` token without the shape gate or the existence probe, resolving it against the effective base like any operand (an unknown base still flags conservatively, per [#393]); `docs/decisions/0009-bash-path-projection-completeness-contract.md` — the wording ADR 0013 flagged.
-  Tidy-first prep, as separate commits ahead of the change: export `COMMAND_PREFIX_TYPES` and replace its three literal re-spellings (`refactor:`), and settle which layer owns generic bash-path coverage by removing `bash-path-extractor.test.ts`'s duplication of `program.test.ts` (`test:`), so this step lands its cases once.
-- **Constraint:** the role decides candidacy only; the direction still comes from the effect, and an unresolvable redirect ([#814]) still proves nothing and projects nothing.
-  A descriptor duplication (`2>&1`) collects no token at all and is unaffected.
-- **Breaking change:** a bare creating redirect newly reaches `path_write` and, under an unknown base, `external_directory_write`, so an unconfigured install prompts on `echo hi > out.txt` where it did not.
-  The plan measures the affected share of real commands from the review log and writes the migration note (`path_write: {"*": "allow"}` restores the old posture) into the `BREAKING CHANGE:` footer.
-- **Outcome:** `cat x > newfile` under `path_write: {"*": "ask"}` prompts; `PathToken` carries a role; the prefix-type disjunction is spelled once; `bash-path-extractor.test.ts` tests the facade only.
-- **Commit type:** `fix!:`.
-- **Impact 4 / Risk 2 / Priority 16.**
-
-Release: independent
-
-#### Step 2: An interpreter's inline script is a script, not an operand ([#863])
+#### Step 1: An interpreter's inline script is a script, not an operand ([#863])
 
 **Cause:** the same role loss from the other side — `node -e "…"`, `python -c "…"`, `perl -e`, `ruby -e` hand the collector a program text in a flag's argument slot, and with no role recorded the shape classifier reads its first character.
 The `script` role already exists in `PATTERN_FIRST_COMMANDS` (that is how `sed -e` and `awk -f` are read since [#823]); these commands are simply absent from the table.
@@ -1171,7 +1153,7 @@ The `script` role already exists in `PATTERN_FIRST_COMMANDS` (that is how `sed -
 
 Release: independent
 
-#### Step 3: `..` is a path signal only as a whole segment ([#859])
+#### Step 2: `..` is a path signal only as a whole segment ([#859])
 
 **Cause:** `classifyTokenAsPathCandidate` and `classifyTokenAsRuleCandidate` test `token.includes("..")`, a substring rule, so a git revision range (`HEAD..origin/main`, `a...b`) is a parent-traversal candidate, and under an unknown base ([#393]'s conservatism after `cd ~/x`) it is flagged external.
 
@@ -1180,6 +1162,24 @@ Release: independent
 - **Outcome:** `cd ~/x && git log HEAD..origin/main` raises no `external_directory` ask; the two substring tests read 0.
 - **Commit type:** `fix:`.
 - **Impact 2 / Risk 1 / Priority 10.**
+
+Release: independent
+
+#### Step 3: A redirect destination is projected by its role, not its shape ([#609])
+
+**Cause:** the collector proves a redirect destination names a file — that is what `redirectDestinationEffect` attributes a `syntax` write from — and then hands the projection a `PathToken` carrying only the effect, so `projectRuleCandidates` re-asks the shape classifier and the existence probe, both written for operands of unknown role, and a bare creating redirect (`> newfile`) is dropped.
+ADR 0013 measured the drop and ADR 0009 lists redirect targets among the projection's guarantees, so this is inside the contract, not a residual.
+
+- **Smell:** Category C (decided once at collection, re-decided at projection; the `COMMAND_PREFIX_TYPES` clone at three sites is the same fact fallow can see).
+- **Target:** `src/access-intent/bash/token-collection.ts` — `PathToken` gains a `role` (`redirect-destination` | `operand`, and the `script` value Step 1's table entries become if the plan folds them in), stamped where the effect is; `src/access-intent/bash/bash-path-resolver.ts` — `projectRuleCandidates` and `projectExternalPaths` admit a `redirect-destination` token without the shape gate or the existence probe, resolving it against the effective base like any operand (an unknown base still flags conservatively, per [#393]); `docs/decisions/0009-bash-path-projection-completeness-contract.md` — the wording ADR 0013 flagged.
+  Tidy-first prep, as separate commits ahead of the change: export `COMMAND_PREFIX_TYPES` and replace its three literal re-spellings (`refactor:`), and settle which layer owns generic bash-path coverage by removing `bash-path-extractor.test.ts`'s duplication of `program.test.ts` (`test:`), so this step lands its cases once.
+- **Constraint:** the role decides candidacy only; the direction still comes from the effect, and an unresolvable redirect ([#814]) still proves nothing and projects nothing.
+  A descriptor duplication (`2>&1`) collects no token at all and is unaffected.
+- **Breaking change:** a bare creating redirect newly reaches `path_write` and, under an unknown base, `external_directory_write`, so an unconfigured install prompts on `echo hi > out.txt` where it did not.
+  The plan measures the affected share of real commands from the review log and writes the migration note (`path_write: {"*": "allow"}` restores the old posture) into the `BREAKING CHANGE:` footer.
+- **Outcome:** `cat x > newfile` under `path_write: {"*": "ask"}` prompts; `PathToken` carries a role; the prefix-type disjunction is spelled once; `bash-path-extractor.test.ts` tests the facade only.
+- **Commit type:** `fix!:`.
+- **Impact 4 / Risk 2 / Priority 16.**
 
 Release: independent
 
@@ -1251,27 +1251,27 @@ Release: independent
 
 ```mermaid
 flowchart TD
-    S2["Step 2 (#863): inline scripts are scripts"] -.-> S1["Step 1 (#609): redirect destinations by role"]
-    S3["Step 3 (#859): .. as a whole segment"] -.-> S1
+    S1["Step 1 (#863): inline scripts are scripts"] -.-> S3["Step 3 (#609): redirect destinations by role"]
+    S2["Step 2 (#859): .. as a whole segment"] -.-> S3
     S4["Step 4 (#880): commandEffects"] --> S5["Step 5 (#881): blame reaches the ask"]
-    S1 -.-> S5
+    S3 -.-> S5
     S6["Step 6 (#802): policy-scope export + launcher"]
     S5 -.-> S7["Step 7 (#882): may a link dismiss a nonexistent-path ask?"]
 ```
 
-The dashed edges are sequencing preferences, not dependencies.
-Steps 2 and 3 are one-file fixes in `token-collection.ts` and `token-classification.ts`; landing them before Step 1 keeps the role thread's diff about the role, and Step 1's `TokenRole` then has a `script` value to absorb Step 2's table entries into if the plan chooses.
-Step 5 stamps the deciding token's provenance onto the payload from the same `worstEntry` Step 1 gives a role, so landing Step 1 first means Step 5 reads one shape rather than two.
+The steps are numbered in the order they are meant to land, and the dashed edges are sequencing preferences, not dependencies.
+Steps 1 and 2 are one-file fixes in `token-collection.ts` and `token-classification.ts`; landing them before Step 3 keeps the role thread's diff about the role, and Step 3's `TokenRole` then has a `script` value to absorb Step 1's table entries into if the plan chooses.
+Step 5 stamps the deciding token's provenance onto the payload from the same `worstEntry` Step 3 gives a role, so landing Step 3 first means Step 5 reads one shape rather than two.
 Step 5 hard-depends on Step 4 only for its teaching sentence, which names the config key.
 Step 7's deliberation can start any time; only its code half, if any, waits on Step 5's request-core vehicle.
 
 ### Parallel tracks
 
-- **Track A — role-carrying projection:** Steps 2 → 3 → 1.
+- **Track A — role-carrying projection:** Steps 1 → 2 → 3.
   Owns `src/access-intent/bash/token-collection.ts`, `token-classification.ts`, `bash-path-resolver.ts`, and the bash-path tests.
 - **Track B — declared effects and blame:** Steps 4 → 5.
   Step 4 owns `src/config/` and `command-effects.ts`; Step 5 owns `src/presentation/` and the two bash path gates.
-  Step 5 touches `bash-path.ts` / `bash-external-directory.ts`, which Track A's Step 1 also edits — sequence Step 5 after Step 1, not concurrently.
+  Step 5 touches `bash-path.ts` / `bash-external-directory.ts`, which Track A's Step 3 also edits — sequence Step 5 after Step 3, not concurrently.
 - **Track C — the sandbox seam:** Step 6, disjoint from both (`service.ts`, `service/permissions-service.ts`, `scripts/`).
 - **Track D — the judgment lane:** Step 7, a deliberation first; its code half touches `authority/delegation-envelope.ts`, `authority/permission-forwarding.ts`, and the payload core Step 5 owns, so it lands after Step 5.
 
@@ -1279,7 +1279,7 @@ Step 7's deliberation can start any time; only its code half, if any, waits on S
 
 - **Batch "declared-effects":** Steps 4, 5 (ship together; tail = Step 5; release vehicle = Step 4's `feat:` with Step 5's `fix:` riding the same release).
   They ship together because Step 5's blame line names the config key Step 4 creates, and a prompt telling the user to declare an effect they cannot declare is worse than the prompt it replaces.
-- Independently releasable: Step 1 (`fix!:` — newly prompts on a bare creating redirect under an unconfigured `path_write`), Step 2 (`fix:`), Step 3 (`fix:`), Step 6 (`feat:` — a new public service method ships in the declaration bundle), Step 7 (`feat:` if the checkpoint changes; a `docs:` amendment alone cuts no release).
+- Independently releasable: Step 1 (`fix:`), Step 2 (`fix:`), Step 3 (`fix!:` — newly prompts on a bare creating redirect under an unconfigured `path_write`), Step 6 (`feat:` — a new public service method ships in the declaration bundle), Step 7 (`feat:` if the checkpoint changes; a `docs:` amendment alone cuts no release).
 
 ## Refactoring history
 
