@@ -78,7 +78,9 @@ The peer worktree shares this repo's `.git`, so the branch ref is visible locall
    Do not measure its shape (`| wc -c`) — it is command output, not a value you typed (Refs #839).
 2. `ci_watch` with the returned `run_id` (workflow `ci`) and `timeout: 600`.
 3. If the conclusion is `failure`, stop and report — do not close the issue, release, or tear down.
-4. On `success`, continue.
+4. A failure the landed change caused (not flaky infra) is fixed forward on `main`: land the fix as its own commit, re-verify CI on the new HEAD, then resume at step 5.
+   Never revert the ff-merge — the branch is already in `main`.
+5. On `success`, continue.
 
 ## 5. Close the issue
 
