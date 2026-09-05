@@ -1105,7 +1105,7 @@ The manager's observer is always the composite, which implements the interface b
 
 Release: independent
 
-#### Step 13: Resolve `tools: none` to no tools ([#871])
+#### ✅ Step 13: Resolve `tools: none` to no tools ([#871])
 
 **Cause:** `AgentTypeRegistry.getToolNamesForType` picks with `config?.toolNames?.length ? config.toolNames : [...BUILTIN_TOOL_NAMES]`, so a deliberate empty list takes the same branch as an omitted key.
 The frontmatter parser is correct and `test/config/custom-agents.test.ts` pins `tools: none` to `[]`; the distinction is lost one layer down, and the child session's SDK allowlist becomes the full built-in set.
@@ -1116,6 +1116,10 @@ It fails open — the tools silently granted include `edit`, `write`, and `bash`
 - **Outcome:** an agent declaring `tools: none` runs with no tools and the omitted-key fallback is unchanged, pinned by a test for each of the three inputs (absent, empty, listed).
 - **Commit type:** `fix:`.
 - **Impact 3 / Risk 1 / Priority 15.**
+
+Landed by removing two coalescing points rather than one.
+`getToolNamesForType` now delegates to `resolveAgentConfig` and reads `?? [...BUILTIN_TOOL_NAMES]`, which drops the truthiness check **and** the `enabled !== false` guard that turned a disabled agent into a request for all seven built-ins — a second fail-open of the same shape, unreachable because `SubagentManager.resolveSpawn` rejects a disabled type at every front door, and now failing closed if a future door ever bypassed it.
+The registry resolves a type through one lookup, so the two methods can no longer disagree about which config a type names.
 
 Release: independent
 
@@ -1165,7 +1169,7 @@ flowchart TD
     S10["✅ Step 10 (#857)<br/>Workspace-backed resume"] -.informs.-> S11
     S10 --> S12["✅ Step 12 (#870)<br/>Post-result addendum delivery"]
     S11 --> S14["Step 14 (#872)<br/>Update gate on resume"]
-    S13["Step 13 (#871)<br/>Empty tool allowlist"]
+    S13["✅ Step 13 (#871)<br/>Empty tool allowlist"]
     S10 --> S15["Step 15 (#878)<br/>Resume affordance honesty"]
     S11 --> S15
 ```
