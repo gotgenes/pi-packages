@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [21.4.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v21.4.0...pi-subagents-v21.4.1) (2026-09-05)
+
+
+### Bug Fixes
+
+* **pi-subagents:** tell the parent where a failed child's work was saved ([cf71b16](https://github.com/gotgenes/pi-packages/commit/cf71b161e8d83b2ddf9255ab57e4fdc3f8a3fd7e)), closes [#870](https://github.com/gotgenes/pi-packages/issues/870)
+* **pi-subagents:** announce where a late-disposed child's work was saved ([3747d66](https://github.com/gotgenes/pi-packages/commit/3747d667a98efe175e471eb1afe8a9ec3cc1b388)), closes [#870](https://github.com/gotgenes/pi-packages/issues/870)
+
 ## [21.4.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v21.3.0...pi-subagents-v21.4.0) (2026-09-03)
 
 

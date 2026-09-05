@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.3.3](https://github.com/gotgenes/pi-packages/compare/pi-subagents-worktrees-v0.3.2...pi-subagents-worktrees-v0.3.3) (2026-09-05)
+
+
+### Bug Fixes
+
+* **pi-subagents-worktrees:** warn about unmerged rescue branches at session start ([c6a382f](https://github.com/gotgenes/pi-packages/commit/c6a382fd3b86ae006b56202a86dfe0de494a114f)), closes [#870](https://github.com/gotgenes/pi-packages/issues/870)
+
+### Documentation
+
+* **pi-subagents-worktrees:** document the unmerged-branch warning ([04d97f5](https://github.com/gotgenes/pi-packages/commit/04d97f5a8e7bfbde3ce13d990e8f4eab47c1761a)), closes [#870](https://github.com/gotgenes/pi-packages/issues/870)
+
 ## [0.3.2](https://github.com/gotgenes/pi-packages/compare/pi-subagents-worktrees-v0.3.1...pi-subagents-worktrees-v0.3.2) (2026-09-02)
 
 
