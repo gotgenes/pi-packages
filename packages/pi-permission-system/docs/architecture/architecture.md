@@ -1057,7 +1057,12 @@ Directory check: skipped — `src/` holds five root files and every module this 
 Trajectory: Phase 12's maximum step priority was 20, Phase 13's 20, Phase 14's 20; this phase's is 20 (Step 4).
 No decline, so the regular improvement rotation continues.
 
-Deferred by composition, with the reason each carries: [#804] (staging slice 7, structured bash rules) is the largest slice and depends on Step 4's config shape as its precedent, so it opens Phase 16 with that shape settled; the three design deliberations — [#799] (channels), an ADR 0007 §5 amendment on whether a link may dismiss an `external_directory` false positive (the tension [#859]'s reporter noticed and [#684] presses on: ADR 0013 §7 says the judge absorbs the surplus, and §5's exclusion means it can only defer it), and [#780] — compete for one ADR budget, which this phase spends on none of them so the code slices land first.
+The operator's clarification shaped the composition: the friction that matters is the **false positive** — a token that is not a path at all — not the ask about a real external file.
+After Steps 2 and 3 close the cases syntax or a known table decides, what remains is the shape-indistinguishable class ([#797]'s `/Sheet1/B1`, which no rule separates from `/etc/passwd`), and it has two complementary levers on opposite sides of `evaluate()`: a declaration that withdraws a *named* tool's operands (Step 4's `effects: []`, the ask-producing side, zero tokens, permanent) and judgment that dismisses an ask for a token naming nothing on disk (Step 7, the ask-consuming side, for the tool nobody declared).
+That is ADR 0013 §7's own core-versus-chain layering applied to candidacy, and neither lever makes the other redundant.
+Step 7 exists because ADR 0007 §5 and ADR 0013 §7 contradict each other on this population — §7 says the judge absorbs the surplus, §5 excludes `external_directory` from a link's `allow`, so the judge can only defer it back to the human ([#859]'s reporter noticed; [#684] presses for a blanket opt-out this phase does not adopt).
+
+Deferred by composition, with the reason each carries: [#804] (staging slice 7, structured bash rules) is the largest slice and depends on Step 4's config shape as its precedent, so it opens Phase 16 with that shape settled; [#799] (channels) and [#780] compete with Step 7 for one ADR budget, and Step 7 won it because it is the one the false-positive population needs.
 
 #### Open-issue sweep dispositions
 
@@ -1080,7 +1085,9 @@ Deferred by composition, with the reason each carries: [#804] (staging slice 7, 
 - [#861], [#868], [#875] — deferred with recorded rationale (2nd consecutive sweep each): the same dispositions as Phase 14's, unchanged by this phase's cause — [#861] is the ADR 0007 §5 deliberation's neighbor, [#868] reopens `config-schema.ts` and may ride Step 4's schema edit as a boy-scout tidy, and [#875] is an enumeration residual with no verdict-fold lever.
 - [#874] — out of scope for the roadmap; PR [#757] moves the settings dialog off the overlay path and is its candidate close target.
 - [#688] ↔ PR [#703], [#658] ↔ PR [#693], [#736] ↔ PR [#749], [#686] ↔ Step 6 — each open PR is recorded against the issue it serves; none is merged, per the repo's reimplement-through-TDD practice.
-- [#797], [#735] scenario 2 / [#722], [#762], [#860], [#856] — unchanged from Phase 14.
+- [#797] — adopted as Step 4's named acceptance case (`commandEffects: { officecli: { effects: [] } }` produces no ask) and as the example population of Step 7; Phase 14's config-recipe answer (`external_directory: {"/Sheet1/*": "allow"}`) stands as the interim workaround.
+- [#882] — filed for Step 7 (the ADR 0007 §5 deliberation); PR [#684] is its close target either way.
+- [#735] scenario 2 / [#722], [#762], [#860], [#856] — unchanged from Phase 14.
 - Feature issues [#691], [#687], [#680], [#654], [#648], [#604], [#603], [#472] — out of scope for a structural phase; [#680] is narrowed further by Step 4 (a declared reader needs no floor override), and [#604] by [#813].
 
 #### Deferred tidyings swept
@@ -1099,6 +1106,7 @@ Deferred by composition, with the reason each carries: [#804] (staging slice 7, 
 | `commandEffects` in `config-schema.ts`                                        | 0                     | ≥ 1             |
 | Effect provenance in the ask payload (`effectSource`, `path-ask-payload.ts`)  | 0                     | ≥ 1             |
 | `getPolicyScope` on the public service (`service.ts`)                         | 0                     | ≥ 1             |
+| ADR 0007 amendments (`#### Amendment` headings)                               | 0                     | ≥ 1             |
 | Non-path tokens flagged per month (`measure-path-false-positives.mjs`)        | 6 (2026-08)           | 0               |
 | fallow health score                                                           | 78 (B)                | ≥ 78            |
 | Production clone groups in `src/`                                             | 2                     | ≤ 2             |
@@ -1113,6 +1121,7 @@ Recompute commands (run from the repo root):
 - `commandEffects` schema key: `grep -c 'commandEffects' packages/pi-permission-system/src/config/config-schema.ts`
 - Effect provenance in the payload: `grep -c 'effectSource' packages/pi-permission-system/src/presentation/path-ask-payload.ts`
 - Policy-scope export: `grep -c 'getPolicyScope' packages/pi-permission-system/src/service.ts`
+- ADR 0007 amendments: `grep -c '#### Amendment' packages/pi-permission-system/docs/decisions/0007-model-judge-authorizer-chain-adr.md` (Step 7 records its answer as an amendment whether accepted or rejected, so the row reads ≥ 1 either way)
 - Non-path tokens per month: `node packages/pi-permission-system/scripts/measure-path-false-positives.mjs` (read the latest month's `non-path` column; the log grows with use, so re-run rather than trusting the figure)
 - Health / clone groups / dead exports: `pnpm fallow health --score --hotspots --targets --workspace @gotgenes/pi-permission-system` / `pnpm fallow dupes --workspace @gotgenes/pi-permission-system` (count the groups whose paths are under `src/`) / `pnpm fallow dead-code --workspace @gotgenes/pi-permission-system`
 
@@ -1184,7 +1193,8 @@ The long tail has nowhere to live but the package's own frozen core, which is th
 - **Constraint:** a declaration narrows uncertainty toward fewer effects and never lifts the wrapper floor (§11: `xargs sed -n` keeps its floor); undeclared is unknown; a guard retracts and never substitutes.
   The pipe-safety argument is the same as the core's: a wrong declaration is the user's own allow, at finer grain than the standing grants the record already accepts.
 - **Design question the plan must settle:** whether subcommand descent is exact-word (§7) or routes through `bash-arity.ts`'s meaningful-prefix machinery so `git -C ~/other log` resolves as `git log`; §7 says exact, §10 says structural, and Phase 16's [#804] will need the same answer.
-- **Outcome:** `git: { subcommands: { log: "read" } }` plus `external_directory_read: {"*": "allow"}` silences `git log ~/other`; `scripts/measure-core-coverage.mjs` accepts a declarations file and reports the relieved share; the review log's `effectSource` can read `declared`.
+- **Acceptance case:** [#797] — `commandEffects: { officecli: { effects: [] } }` withdraws the tool's operands from the path surfaces, so `officecli set data.xlsx /Sheet1/B1` raises no `external_directory` ask while `bash: {"officecli *": …}` still governs the command; `[]` is the enforcement-relevant value §7 names beside `"read"`, and it is the ask-producing-side lever for the shape-indistinguishable class (Step 7 is the ask-consuming one).
+- **Outcome:** `git: { subcommands: { log: "read" } }` plus `external_directory_read: {"*": "allow"}` silences `git log ~/other`; the [#797] acceptance case passes; `scripts/measure-core-coverage.mjs` accepts a declarations file and reports the relieved share; the review log's `effectSource` can read `declared`.
 - **Commit type:** `feat:`.
 - **Impact 5 / Risk 2 / Priority 20.**
 
@@ -1219,6 +1229,24 @@ Release: batch "declared-effects"
 
 Release: independent
 
+#### Step 7: May a link dismiss an `external_directory` ask for a token that names nothing on disk? ([#882])
+
+**Cause:** two decision records promise opposite things about the shape-indistinguishable false positive.
+ADR 0013 §7 layers the projection over judgment ("the judge absorbs the surplus"); ADR 0007 §5 excludes the whole `external_directory` family from a link's `allow`, so on the one surface where the projection's false positives land, `model-judge` can only defer them to the human.
+Step 4 answers this for a tool the user has declared; the undeclared tool has no lever at all.
+
+- **Smell:** Category F (two records, one population, contradictory boundaries) over Category C (a checkpoint that reads the surface but not the fact that would license the verdict).
+- **Target:** `docs/decisions/0007-model-judge-authorizer-chain-adr.md` — an amendment, settled interactively in the pattern of ADR 0007 / 0011 / 0012, deciding the bound: nothing exists at the path, no ancestor exists short of the root, or the effect is proven `read` and the path is absent (the `_read` half of a nonexistent path is vacuous; the `_write` half is where `mkdir -p` / `install -D` / `git clone` create parents).
+  If accepted, the same issue lands the narrow change: an existence fact fixed at the child on `ForwardedAccessFacts` and the payload request core (never re-derived at the serving node, ADR 0008), read by `encloseInDelegationEnvelope` beside the surface, and carried onto the `authorizer` decider's review entry so the licensing fact is auditable.
+  If rejected, the amendment records why, PR [#684] closes with that reasoning, and the class stays on Step 4 and the human.
+- **Constraint:** this is not [#684]'s blanket flag — a link never gains `allow` over the outside-the-tree boundary for a path that exists; `path` stays excluded regardless.
+- **Soft dependency:** Step 5, whose request-core addition is the vehicle the existence fact rides.
+- **Outcome:** ADR 0007 carries its first amendment; `officecli set data.xlsx /Sheet1/B1` with no declaration and `model-judge` in the chain either raises no prompt or the record says why it must.
+- **Commit type:** `docs:` for the amendment; `feat:` if the checkpoint change lands under it.
+- **Impact 4 / Risk 3 / Priority 12.**
+
+Release: independent
+
 ### Step dependency diagram
 
 ```mermaid
@@ -1228,12 +1256,14 @@ flowchart TD
     S4["Step 4 (#880): commandEffects"] --> S5["Step 5 (#881): blame reaches the ask"]
     S1 -.-> S5
     S6["Step 6 (#802): policy-scope export + launcher"]
+    S5 -.-> S7["Step 7 (#882): may a link dismiss a nonexistent-path ask?"]
 ```
 
 The dashed edges are sequencing preferences, not dependencies.
 Steps 2 and 3 are one-file fixes in `token-collection.ts` and `token-classification.ts`; landing them before Step 1 keeps the role thread's diff about the role, and Step 1's `TokenRole` then has a `script` value to absorb Step 2's table entries into if the plan chooses.
 Step 5 stamps the deciding token's provenance onto the payload from the same `worstEntry` Step 1 gives a role, so landing Step 1 first means Step 5 reads one shape rather than two.
 Step 5 hard-depends on Step 4 only for its teaching sentence, which names the config key.
+Step 7's deliberation can start any time; only its code half, if any, waits on Step 5's request-core vehicle.
 
 ### Parallel tracks
 
@@ -1243,12 +1273,13 @@ Step 5 hard-depends on Step 4 only for its teaching sentence, which names the co
   Step 4 owns `src/config/` and `command-effects.ts`; Step 5 owns `src/presentation/` and the two bash path gates.
   Step 5 touches `bash-path.ts` / `bash-external-directory.ts`, which Track A's Step 1 also edits — sequence Step 5 after Step 1, not concurrently.
 - **Track C — the sandbox seam:** Step 6, disjoint from both (`service.ts`, `service/permissions-service.ts`, `scripts/`).
+- **Track D — the judgment lane:** Step 7, a deliberation first; its code half touches `authority/delegation-envelope.ts`, `authority/permission-forwarding.ts`, and the payload core Step 5 owns, so it lands after Step 5.
 
 ### Release batches
 
 - **Batch "declared-effects":** Steps 4, 5 (ship together; tail = Step 5; release vehicle = Step 4's `feat:` with Step 5's `fix:` riding the same release).
   They ship together because Step 5's blame line names the config key Step 4 creates, and a prompt telling the user to declare an effect they cannot declare is worse than the prompt it replaces.
-- Independently releasable: Step 1 (`fix!:` — newly prompts on a bare creating redirect under an unconfigured `path_write`), Step 2 (`fix:`), Step 3 (`fix:`), Step 6 (`feat:` — a new public service method ships in the declaration bundle).
+- Independently releasable: Step 1 (`fix!:` — newly prompts on a bare creating redirect under an unconfigured `path_write`), Step 2 (`fix:`), Step 3 (`fix:`), Step 6 (`feat:` — a new public service method ships in the declaration bundle), Step 7 (`feat:` if the checkpoint changes; a `docs:` amendment alone cuts no release).
 
 ## Refactoring history
 
@@ -1347,4 +1378,5 @@ Each phase's findings, numbered plan, dependency diagram, and health metrics are
 [#875]: https://github.com/gotgenes/pi-packages/issues/875
 [#880]: https://github.com/gotgenes/pi-packages/issues/880
 [#881]: https://github.com/gotgenes/pi-packages/issues/881
+[#882]: https://github.com/gotgenes/pi-packages/issues/882
 [ADR-0002]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-subagents/docs/decisions/0002-extensions-on-a-minimal-core.md
