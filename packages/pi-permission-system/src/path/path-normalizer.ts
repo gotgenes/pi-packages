@@ -1,16 +1,14 @@
 import { lstatSync } from "node:fs";
-
-import type { PathFlavor } from "#src/path/path-flavor";
-
-import { AccessPath } from "./access-intent/access-path";
+import { AccessPath } from "#src/access-intent/access-path";
 import {
   canonicalNormalizePathForComparison,
   normalizePathForComparison,
   normalizePathPolicyLiteral,
-} from "./access-intent/path-normalization";
-import { deriveApprovalPattern } from "./path/approval-pattern";
-import { isPathOutsideWorkingDirectory } from "./path/path-containment";
-import { isPiInfrastructureRead } from "./path/pi-infrastructure-read";
+} from "#src/access-intent/path-normalization";
+import { deriveApprovalPattern } from "./approval-pattern";
+import { isPathOutsideWorkingDirectory } from "./path-containment";
+import type { PathFlavor } from "./path-flavor";
+import { isPiInfrastructureRead } from "./pi-infrastructure-read";
 
 /**
  * The interpreted effect of a literal `cd` target on the effective base, under

@@ -18,7 +18,7 @@ vi.mock("node:fs", () => ({
   default: { existsSync: mockExistsSync },
 }));
 
-import { discoverGlobalNodeModulesRoot } from "#src/node-modules-discovery";
+import { discoverGlobalNodeModulesRoot } from "#src/path/node-modules-discovery";
 
 describe("discoverGlobalNodeModulesRoot", () => {
   beforeEach(() => {

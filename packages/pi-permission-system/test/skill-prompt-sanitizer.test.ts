@@ -1,7 +1,7 @@
 import { resolve } from "node:path";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { posixPathFlavor } from "#src/path/path-flavor";
-import { PathNormalizer } from "#src/path-normalizer";
+import { PathNormalizer } from "#src/path/path-normalizer";
 import type { ScopedPermissionManager } from "#src/permission-manager";
 import {
   findSkillPathMatch,

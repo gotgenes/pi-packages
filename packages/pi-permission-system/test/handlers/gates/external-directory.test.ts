@@ -8,7 +8,7 @@ import { isGateBypass, isGateDescriptor } from "#src/handlers/gates/descriptor";
 import { describeExternalDirectoryGate } from "#src/handlers/gates/external-directory";
 import type { ToolCallContext } from "#src/handlers/gates/types";
 import { pathFlavorForPlatform, win32PathFlavor } from "#src/path/path-flavor";
-import { PathNormalizer } from "#src/path-normalizer";
+import { PathNormalizer } from "#src/path/path-normalizer";
 import type { ScopedPermissionResolver } from "#src/permission-resolver";
 import type { ToolAccessExtractorLookup } from "#src/tool-access-extractor-registry";
 import { makeResolver } from "#test/helpers/gate-fixtures";

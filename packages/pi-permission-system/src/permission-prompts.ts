@@ -1,4 +1,4 @@
-import { classifyToolKind } from "./access-intent/tool-kind";
+import { classifyToolKind } from "#src/access-intent/tool-kind";
 
 // NOTE: the ask prompts are now payload builders under src/presentation/, and
 // denial text is a render over the payload (presentation/agent-renderer.ts).

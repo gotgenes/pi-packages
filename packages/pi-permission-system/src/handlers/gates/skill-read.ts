@@ -1,4 +1,4 @@
-import type { PathNormalizer } from "#src/path-normalizer";
+import type { PathNormalizer } from "#src/path/path-normalizer";
 import { buildSkillPathAskPayload } from "#src/presentation/skill-ask-payload";
 import type { SkillPromptEntry } from "#src/skill-prompt-sanitizer";
 import { findSkillPathMatch } from "#src/skill-prompt-sanitizer";

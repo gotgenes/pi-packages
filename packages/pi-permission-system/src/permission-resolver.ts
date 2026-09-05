@@ -2,8 +2,8 @@ import type {
   AccessIntent,
   PathValuesAccessIntent,
   ResolvedAccessIntent,
-} from "./access-intent/access-intent";
-import { surfaceFamilyMembers } from "./access-intent/path-surfaces";
+} from "#src/access-intent/access-intent";
+import { surfaceFamilyMembers } from "#src/access-intent/path-surfaces";
 import type { ScopedPermissionManager } from "./permission-manager";
 import { mostRestrictiveOf } from "./restrictiveness";
 import type { Rule } from "./rule";

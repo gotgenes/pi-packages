@@ -1,6 +1,6 @@
 import { join } from "node:path";
+import { discoverGlobalNodeModulesRoot } from "#src/path/node-modules-discovery";
 import { getGlobalLogsDir } from "./config-paths";
-import { discoverGlobalNodeModulesRoot } from "./node-modules-discovery";
 
 /**
  * Immutable path constants derived from `agentDir` at construction time.

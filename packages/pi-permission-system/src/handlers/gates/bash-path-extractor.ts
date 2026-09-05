@@ -1,5 +1,5 @@
 import { BashProgram } from "#src/access-intent/bash/program";
-import type { PathNormalizer } from "#src/path-normalizer";
+import type { PathNormalizer } from "#src/path/path-normalizer";
 
 /**
  * Extract paths from a bash command that resolve outside CWD.

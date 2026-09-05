@@ -5,7 +5,7 @@ const { mockDiscoverGlobalNodeModulesRoot } = vi.hoisted(() => ({
   mockDiscoverGlobalNodeModulesRoot: vi.fn<() => string | null>(),
 }));
 
-vi.mock("#src/node-modules-discovery", () => ({
+vi.mock("#src/path/node-modules-discovery", () => ({
   discoverGlobalNodeModulesRoot: mockDiscoverGlobalNodeModulesRoot,
 }));
 

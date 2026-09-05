@@ -31,7 +31,7 @@ vi.mock("node:fs", async () => {
 });
 
 import { posixPathFlavor, win32PathFlavor } from "#src/path/path-flavor";
-import { PathNormalizer } from "#src/path-normalizer";
+import { PathNormalizer } from "#src/path/path-normalizer";
 import { createTmpFixture } from "#test/helpers/tmp-fixture";
 
 describe("PathNormalizer", () => {

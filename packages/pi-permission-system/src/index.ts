@@ -1,37 +1,43 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { getAgentDir, getPackageDir } from "@earendil-works/pi-coding-agent";
-import { warmBashParser } from "./access-intent/bash/parser";
-import { buildResolvedIntentFromMatchValues } from "./access-intent/input-normalizer";
+import { warmBashParser } from "#src/access-intent/bash/parser";
+import { buildResolvedIntentFromMatchValues } from "#src/access-intent/input-normalizer";
 import {
   AuthorizerRegistry,
   ObservedAuthorizerRegistrar,
-} from "./authority/authorizer-registry";
-import { AuthorizerSelection } from "./authority/authorizer-selection";
-import { ChildNodeAudit } from "./authority/child-node-audit";
+} from "#src/authority/authorizer-registry";
+import { AuthorizerSelection } from "#src/authority/authorizer-selection";
+import { ChildNodeAudit } from "#src/authority/child-node-audit";
 import {
   ForwardedRequestServer,
   type ServingPolicy,
-} from "./authority/forwarded-request-server";
+} from "#src/authority/forwarded-request-server";
 import {
   ForwardingLivenessJudge,
   ServingHeartbeatStore,
-} from "./authority/forwarding-liveness";
-import { ForwardingManager } from "./authority/forwarding-manager";
+} from "#src/authority/forwarding-liveness";
+import { ForwardingManager } from "#src/authority/forwarding-manager";
 import {
   AncestorNodes,
   InheritingToolAccessExtractorLookup,
   InheritingToolInputFormatterLookup,
-} from "./authority/inherited-registrations";
-import { PERMISSION_FORWARDING_TIMEOUT_MS } from "./authority/permission-forwarding";
-import { requestPermissionDecision } from "./authority/permission-prompt-component";
-import { PermissionPrompter } from "./authority/permission-prompter";
+} from "#src/authority/inherited-registrations";
+import { PERMISSION_FORWARDING_TIMEOUT_MS } from "#src/authority/permission-forwarding";
+import { requestPermissionDecision } from "#src/authority/permission-prompt-component";
+import { PermissionPrompter } from "#src/authority/permission-prompter";
 import {
   composeServingAnnouncers,
   getServingSessionRegistry,
-} from "./authority/serving-registry";
-import { SubagentDetection } from "./authority/subagent-detection";
-import { subscribeSubagentLifecycle } from "./authority/subagent-lifecycle-events";
-import { getSubagentSessionRegistry } from "./authority/subagent-registry";
+} from "#src/authority/serving-registry";
+import { SubagentDetection } from "#src/authority/subagent-detection";
+import { subscribeSubagentLifecycle } from "#src/authority/subagent-lifecycle-events";
+import { getSubagentSessionRegistry } from "#src/authority/subagent-registry";
+import { GateRunner } from "#src/handlers/gates/runner";
+import { SkillInputGatePipeline } from "#src/handlers/gates/skill-input-gate-pipeline";
+import { ToolCallGatePipeline } from "#src/handlers/gates/tool-call-gate-pipeline";
+import { createFailClosedToolCall } from "#src/handlers/tool-call-boundary";
+import { pathFlavorForPlatform } from "#src/path/path-flavor";
+import { resolveRenderBudget } from "#src/presentation/dialog-renderer";
 import { registerBuiltinToolInputFormatters } from "./builtin-tool-input-formatters";
 import { registerPermissionSystemCommand } from "./config-modal";
 import { getGlobalConfigPath } from "./config-paths";
@@ -46,16 +52,10 @@ import {
   SessionLifecycleHandler,
   SessionTurnPrep,
 } from "./handlers";
-import { GateRunner } from "./handlers/gates/runner";
-import { SkillInputGatePipeline } from "./handlers/gates/skill-input-gate-pipeline";
-import { ToolCallGatePipeline } from "./handlers/gates/tool-call-gate-pipeline";
-import { createFailClosedToolCall } from "./handlers/tool-call-boundary";
-import { pathFlavorForPlatform } from "./path/path-flavor";
 import { PermissionManager } from "./permission-manager";
 import { PermissionResolver } from "./permission-resolver";
 import { PermissionSession } from "./permission-session";
 import { LocalPermissionsService } from "./permissions-service";
-import { resolveRenderBudget } from "./presentation/dialog-renderer";
 import { getPermissionsService, type PermissionsService } from "./service";
 import { PermissionServiceLifecycle } from "./service-lifecycle";
 import { PermissionSessionLogger } from "./session-logger";

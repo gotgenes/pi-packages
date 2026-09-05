@@ -2,6 +2,13 @@ import type {
   ExtensionContext,
   InputEventResult,
 } from "@earendil-works/pi-coding-agent";
+import type { GateRunner } from "#src/handlers/gates/runner";
+import type {
+  GateNotifier,
+  SkillInputGatePipeline,
+} from "#src/handlers/gates/skill-input-gate-pipeline";
+import type { ToolCallGatePipeline } from "#src/handlers/gates/tool-call-gate-pipeline";
+import type { GateOutcome, ToolCallContext } from "#src/handlers/gates/types";
 import {
   formatMissingToolNameReason,
   formatUnknownToolReason,
@@ -13,13 +20,6 @@ import {
   type ToolRegistry,
 } from "#src/tool-registry";
 import { toRecord } from "#src/value-guards";
-import type { GateRunner } from "./gates/runner";
-import type {
-  GateNotifier,
-  SkillInputGatePipeline,
-} from "./gates/skill-input-gate-pipeline";
-import type { ToolCallGatePipeline } from "./gates/tool-call-gate-pipeline";
-import type { GateOutcome, ToolCallContext } from "./gates/types";
 
 /** Minimal subset of InputEvent used by handleInput. */
 interface InputPayload {

@@ -2,7 +2,7 @@ import type { AccessPath } from "#src/access-intent/access-path";
 import type { BashProgram } from "#src/access-intent/bash/program";
 import type { TokenEffect } from "#src/access-intent/effect";
 import { capabilitySurfaceForEffect } from "#src/access-intent/path-surfaces";
-import type { PathNormalizer } from "#src/path-normalizer";
+import type { PathNormalizer } from "#src/path/path-normalizer";
 import type { ScopedPermissionResolver } from "#src/permission-resolver";
 import { buildPathAskPayload } from "#src/presentation/path-ask-payload";
 import { pickMostRestrictive } from "#src/restrictiveness";

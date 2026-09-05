@@ -27,7 +27,7 @@ import type { GateResult } from "#src/handlers/gates/descriptor";
 import { isGateDescriptor } from "#src/handlers/gates/descriptor";
 import type { ToolCallContext } from "#src/handlers/gates/types";
 import { posixPathFlavor } from "#src/path/path-flavor";
-import { PathNormalizer } from "#src/path-normalizer";
+import { PathNormalizer } from "#src/path/path-normalizer";
 import { PermissionResolver } from "#src/permission-resolver";
 import { SessionRules } from "#src/session-rules";
 import { createManagerWithConfig } from "#test/helpers/manager-harness";

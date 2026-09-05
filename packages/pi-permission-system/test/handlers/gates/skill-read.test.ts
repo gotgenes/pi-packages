@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { describeSkillReadGate } from "#src/handlers/gates/skill-read";
 import type { ToolCallContext } from "#src/handlers/gates/types";
 import { posixPathFlavor } from "#src/path/path-flavor";
-import { PathNormalizer } from "#src/path-normalizer";
+import { PathNormalizer } from "#src/path/path-normalizer";
 import type { SkillPromptEntry } from "#src/skill-prompt-sanitizer";
 
 // All test tccs use cwd "/test/project"; one normalizer serves every call.

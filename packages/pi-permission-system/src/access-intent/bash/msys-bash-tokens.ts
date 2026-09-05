@@ -7,7 +7,7 @@
  * module so the shape knowledge is unit-testable in isolation (no filesystem,
  * no platform read).
  */
-import { isSafeSystemPath } from "#src/safe-system-paths";
+import { isSafeSystemPath } from "#src/path/safe-system-paths";
 
 /**
  * The MSYS interpretation of a win32 bash token:

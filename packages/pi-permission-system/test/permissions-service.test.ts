@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import type { AccessIntent } from "#src/access-intent/access-intent";
 import type { AuthorizerRegistrar } from "#src/authority/authorizer-registry";
 import { posixPathFlavor } from "#src/path/path-flavor";
-import { PathNormalizer } from "#src/path-normalizer";
+import { PathNormalizer } from "#src/path/path-normalizer";
 import { LocalPermissionsService } from "#src/permissions-service";
 import {
   type ToolAccessExtractorLookup,

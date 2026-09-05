@@ -1,5 +1,5 @@
-import { isSafeSystemPath } from "#src/safe-system-paths";
 import type { PathFlavor } from "./path-flavor";
+import { isSafeSystemPath } from "./safe-system-paths";
 
 /**
  * Pure geometry: is `canonicalPath` outside `canonicalCwd`?

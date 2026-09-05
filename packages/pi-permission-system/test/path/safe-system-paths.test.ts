@@ -1,6 +1,9 @@
 import { describe, expect, test } from "vitest";
 
-import { isSafeSystemPath, SAFE_SYSTEM_PATHS } from "#src/safe-system-paths";
+import {
+  isSafeSystemPath,
+  SAFE_SYSTEM_PATHS,
+} from "#src/path/safe-system-paths";
 
 describe("SAFE_SYSTEM_PATHS", () => {
   test("contains /dev/null, /dev/stdin, /dev/stdout, /dev/stderr", () => {

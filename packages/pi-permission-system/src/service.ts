@@ -18,7 +18,7 @@
  * ensures resilience across `/reload` and load-order edge cases.
  */
 
-import type { Authorizer } from "./authority/authorizer";
+import type { Authorizer } from "#src/authority/authorizer";
 import type { ToolAccessExtractor } from "./tool-access-extractor-registry";
 import type { ToolInputFormatter } from "./tool-input-formatter-registry";
 import type { PermissionCheckResult, PermissionState } from "./types";
@@ -26,7 +26,7 @@ import type { PermissionCheckResult, PermissionState } from "./types";
 export type {
   Authorizer,
   AuthorizerVerdict,
-} from "./authority/authorizer";
+} from "#src/authority/authorizer";
 
 /**
  * The narrow review-log seam handed to a chain link at `authorize` time
@@ -43,7 +43,18 @@ export interface AuthorizerLog {
   review(event: string, details?: Record<string, unknown>): void;
   debug(event: string, details?: Record<string, unknown>): void;
 }
-export type { PromptPermissionDetails } from "./authority/permission-prompter";
+export type { PromptPermissionDetails } from "#src/authority/permission-prompter";
+// The declaration bundle already inlines these through `PromptPermissionDetails`
+// and `PermissionUiPromptEvent`; the named exports are what a consumer needs to
+// annotate a variable of their own.
+export type {
+  PromptAnnotation,
+  PromptEvidence,
+  PromptPayload,
+  PromptPayloadKind,
+  PromptRequester,
+  PromptRequestFacts,
+} from "#src/presentation/prompt-payload";
 export type {
   ForwardedPromptContext,
   PermissionDecisionEvent,
@@ -56,17 +67,6 @@ export {
   PERMISSIONS_READY_CHANNEL,
   PERMISSIONS_UI_PROMPT_CHANNEL,
 } from "./permission-events";
-// The declaration bundle already inlines these through `PromptPermissionDetails`
-// and `PermissionUiPromptEvent`; the named exports are what a consumer needs to
-// annotate a variable of their own.
-export type {
-  PromptAnnotation,
-  PromptEvidence,
-  PromptPayload,
-  PromptPayloadKind,
-  PromptRequester,
-  PromptRequestFacts,
-} from "./presentation/prompt-payload";
 export type { PermissionCheckResult, PermissionState, ToolInputFormatter };
 
 /** Process-global key for the session-keyed service map (ADR 0012 decision 2). */

@@ -1,15 +1,18 @@
 import { join } from "node:path";
-import type { ResolvedAccessIntent } from "./access-intent/access-intent";
-import { normalizeInput } from "./access-intent/input-normalizer";
-import { PATH_SURFACES, surfaceFamilyOf } from "./access-intent/path-surfaces";
-import { classifyToolKind } from "./access-intent/tool-kind";
+import type { ResolvedAccessIntent } from "#src/access-intent/access-intent";
+import { normalizeInput } from "#src/access-intent/input-normalizer";
+import {
+  PATH_SURFACES,
+  surfaceFamilyOf,
+} from "#src/access-intent/path-surfaces";
+import { classifyToolKind } from "#src/access-intent/tool-kind";
+import { type PathFlavor, posixPathFlavor } from "#src/path/path-flavor";
 import {
   getGlobalConfigPath,
   getProjectAgentsDir,
   getProjectConfigPath,
 } from "./config-paths";
 import { normalizeFlatConfig } from "./normalize";
-import { type PathFlavor, posixPathFlavor } from "./path/path-flavor";
 import {
   FilePolicyLoader,
   type PolicyLoader,

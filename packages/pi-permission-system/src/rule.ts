@@ -1,7 +1,6 @@
+import { PATH_SURFACES } from "#src/access-intent/path-surfaces";
+import { expandHomePath } from "#src/path/expand-home";
 import type { PathFlavor } from "#src/path/path-flavor";
-
-import { PATH_SURFACES } from "./access-intent/path-surfaces";
-import { expandHomePath } from "./expand-home";
 import type { PermissionState } from "./types";
 import { type WildcardMatchOptions, wildcardMatch } from "./wildcard-matcher";
 

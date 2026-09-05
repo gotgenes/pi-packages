@@ -1,6 +1,6 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
-import type { AdjudicationRole } from "./authority/authorizer-selection";
-import type { NodeIdentity } from "./authority/inherited-registrations";
+import type { AdjudicationRole } from "#src/authority/authorizer-selection";
+import type { NodeIdentity } from "#src/authority/inherited-registrations";
 import { emitReadyEvent, type PermissionEventBus } from "./permission-events";
 import {
   type PermissionsService,

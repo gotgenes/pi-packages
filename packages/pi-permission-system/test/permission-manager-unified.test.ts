@@ -13,7 +13,7 @@ import { BashProgram } from "#src/access-intent/bash/program";
 import { getPathPolicyValues } from "#src/access-intent/path-normalization";
 import { getGlobalConfigPath, getProjectAgentsDir } from "#src/config-paths";
 import { posixPathFlavor, win32PathFlavor } from "#src/path/path-flavor";
-import { PathNormalizer } from "#src/path-normalizer";
+import { PathNormalizer } from "#src/path/path-normalizer";
 import {
   PermissionManager,
   type ScopedPermissionManager,

@@ -5,8 +5,8 @@ import {
   UNPROVEN_EFFECT,
 } from "#src/access-intent/effect";
 import { normalizePathPolicyLiteral } from "#src/access-intent/path-normalization";
-import type { PathNormalizer } from "#src/path-normalizer";
-import { isSafeSystemPath } from "#src/safe-system-paths";
+import type { PathNormalizer } from "#src/path/path-normalizer";
+import { isSafeSystemPath } from "#src/path/safe-system-paths";
 import { ARG_NODE_TYPES, SKIP_SUBTREE_TYPES } from "./node-text";
 import type { TSNode } from "./parser";
 import {

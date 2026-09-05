@@ -23,7 +23,7 @@ import {
 import { describeExternalDirectoryGate } from "#src/handlers/gates/external-directory";
 import type { ToolCallContext } from "#src/handlers/gates/types";
 import { pathFlavorForPlatform } from "#src/path/path-flavor";
-import { PathNormalizer } from "#src/path-normalizer";
+import { PathNormalizer } from "#src/path/path-normalizer";
 import { PermissionResolver } from "#src/permission-resolver";
 import { SessionRules } from "#src/session-rules";
 import type { ScopeConfig } from "#src/types";

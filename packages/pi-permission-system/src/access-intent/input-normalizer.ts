@@ -1,5 +1,5 @@
 import { stripBashCommentLines } from "#src/bash-arity";
-import type { PathNormalizer } from "#src/path-normalizer";
+import type { PathNormalizer } from "#src/path/path-normalizer";
 import { getNonEmptyString, toRecord } from "#src/value-guards";
 import type { AccessIntent, ResolvedAccessIntent } from "./access-intent";
 import { createMcpPermissionTargets } from "./mcp-targets";

@@ -1,9 +1,9 @@
-import type { AccessIntent } from "./access-intent/access-intent";
-import { buildAccessIntentForSurface } from "./access-intent/input-normalizer";
-import type { Authorizer } from "./authority/authorizer";
-import type { AuthorizerRegistrar } from "./authority/authorizer-registry";
+import type { AccessIntent } from "#src/access-intent/access-intent";
+import { buildAccessIntentForSurface } from "#src/access-intent/input-normalizer";
+import type { Authorizer } from "#src/authority/authorizer";
+import type { AuthorizerRegistrar } from "#src/authority/authorizer-registry";
+import type { PathNormalizer } from "#src/path/path-normalizer";
 import { resolveBashAdvisoryCheck } from "./bash-advisory-check";
-import type { PathNormalizer } from "./path-normalizer";
 import type { PermissionsService } from "./service";
 import type {
   ToolAccessExtractor,

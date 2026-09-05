@@ -8,7 +8,7 @@ vi.mock("node:os", () => ({
   default: { homedir: mockHomedir },
 }));
 
-import { expandHomePath } from "#src/expand-home";
+import { expandHomePath } from "#src/path/expand-home";
 
 const FAKE_HOME = "/home/testuser";
 

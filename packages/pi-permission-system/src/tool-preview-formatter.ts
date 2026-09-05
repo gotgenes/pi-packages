@@ -1,4 +1,4 @@
-import { classifyToolKind, isMcpCheck } from "./access-intent/tool-kind";
+import { classifyToolKind, isMcpCheck } from "#src/access-intent/tool-kind";
 import type { ToolInputFormatterLookup } from "./tool-input-formatter-registry";
 import {
   serializeRedactedToolInputPreview,

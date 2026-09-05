@@ -2,7 +2,7 @@ import {
   type CapabilityDirection,
   PATH_BEARING_TOOLS,
   surfaceFamilyOf,
-} from "./access-intent/path-surfaces";
+} from "#src/access-intent/path-surfaces";
 import type { ApprovalGrant } from "./approval-grant";
 import { prefix, stripBashCommentLines } from "./bash-arity";
 

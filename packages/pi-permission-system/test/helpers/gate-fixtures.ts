@@ -11,7 +11,7 @@ import type { SkillInputGateInputs } from "#src/handlers/gates/skill-input-gate-
 import type { ToolCallGateInputs } from "#src/handlers/gates/tool-call-gate-pipeline";
 import type { ToolCallContext } from "#src/handlers/gates/types";
 import { pathFlavorForPlatform } from "#src/path/path-flavor";
-import { PathNormalizer } from "#src/path-normalizer";
+import { PathNormalizer } from "#src/path/path-normalizer";
 import type { ScopedPermissionResolver } from "#src/permission-resolver";
 import type { SessionApprovalRecorder } from "#src/session-approval-recorder";
 import type { SkillPromptEntry } from "#src/skill-prompt-sanitizer";

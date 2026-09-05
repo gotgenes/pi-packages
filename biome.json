@@ -56,9 +56,9 @@
     },
     {
       "includes": [
-        "packages/pi-permission-system/src/expand-home.ts",
+        "packages/pi-permission-system/src/path/expand-home.ts",
         "packages/pi-permission-system/src/access-intent/bash/**",
-        "packages/pi-permission-system/test/expand-home.test.ts",
+        "packages/pi-permission-system/test/path/expand-home.test.ts",
         "packages/pi-permission-system/test/access-intent/bash/**"
       ],
       "linter": {

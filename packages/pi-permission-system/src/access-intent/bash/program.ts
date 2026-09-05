@@ -1,4 +1,4 @@
-import type { PathNormalizer } from "#src/path-normalizer";
+import type { PathNormalizer } from "#src/path/path-normalizer";
 import {
   type BashExternalPath,
   BashPathResolver,

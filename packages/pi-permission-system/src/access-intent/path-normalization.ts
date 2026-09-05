@@ -1,5 +1,5 @@
-import { expandHomePath } from "#src/expand-home";
 import { canonicalizePath } from "#src/path/canonicalize-path";
+import { expandHomePath } from "#src/path/expand-home";
 import type { PathFlavor } from "#src/path/path-flavor";
 
 /**

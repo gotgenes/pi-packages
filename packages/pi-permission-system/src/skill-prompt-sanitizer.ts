@@ -1,6 +1,6 @@
 import { dirname } from "node:path";
 
-import type { PathNormalizer } from "./path-normalizer";
+import type { PathNormalizer } from "#src/path/path-normalizer";
 import type { PermissionCheckResult, PermissionState } from "./types";
 
 /**

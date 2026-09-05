@@ -1,4 +1,4 @@
-import { expandHomePath } from "./expand-home";
+import { expandHomePath } from "#src/path/expand-home";
 
 /**
  * A pattern compiled once for repeated matching.

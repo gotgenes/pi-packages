@@ -20,7 +20,7 @@ import {
   posixPathFlavor,
   win32PathFlavor,
 } from "#src/path/path-flavor";
-import { PathNormalizer } from "#src/path-normalizer";
+import { PathNormalizer } from "#src/path/path-normalizer";
 
 import {
   makeGateCheckResult as makeCheckResult,

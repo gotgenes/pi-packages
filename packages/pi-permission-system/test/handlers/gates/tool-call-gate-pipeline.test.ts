@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { BashExternalPath } from "#src/access-intent/bash/bash-path-resolver";
 import { ToolCallGatePipeline } from "#src/handlers/gates/tool-call-gate-pipeline";
-import { PathNormalizer } from "#src/path-normalizer";
+import { PathNormalizer } from "#src/path/path-normalizer";
 
 import {
   makeGateInputs,

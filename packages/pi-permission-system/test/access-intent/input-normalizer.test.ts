@@ -24,7 +24,7 @@ import {
 } from "#src/access-intent/input-normalizer";
 import { createMcpPermissionTargets } from "#src/access-intent/mcp-targets";
 import { posixPathFlavor } from "#src/path/path-flavor";
-import { PathNormalizer } from "#src/path-normalizer";
+import { PathNormalizer } from "#src/path/path-normalizer";
 
 afterEach(() => {
   mockHomedir.mockClear();
