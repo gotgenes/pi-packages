@@ -361,7 +361,7 @@ src/
 │   ├── create-subagent-session.ts  assembly factory: session creation, spawn-tool denylist, core child-tool install, binding
 │   ├── subagent-session.ts         born-complete child session: turn loop, steer, shutdown-then-dispose teardown
 │   ├── turn-limits.ts              normalizeMaxTurns (turn-count policy)
-│   ├── subagent.ts                 owns full execution lifecycle (run, resume, abort, steer, wait-until-settled)
+│   ├── subagent.ts                 owns full execution lifecycle (run, resume, abort, steer, wait-until-settled); a teardown with no result text to carry its addendum records it as a notice and announces one produced after delivery
 │   ├── subagent-state.ts           lifecycle status + metrics + result-delivery value object (transitions, accumulators, classification predicates); delivery carries a revocable carrier claim and a one-way consumption latch
 │   ├── run-listeners.ts            per-run observer-unsub and signal-detach handles
 │   ├── workspace-bracket.ts        child workspace prepare/dispose lifecycle; idempotent dispose, reports a torn-down workspace
@@ -374,10 +374,10 @@ src/
 │
 ├── observation/                    progress tracking and notification
 │   ├── record-observer.ts          session-event stats observer
-│   ├── notification.ts             completion nudges and mid-run updates, in one arrival-ordered withheld queue (announce-only; completions gated on the carrier claim, updates not; withheld during the parent's agent run, flushed on agent_settled)
-│   ├── outcome-delivery.ts         shared outcome rendering every result carrier composes: one status vocabulary in two presentations, body, ask-back affordance
-│   ├── renderer.ts                 notification and mid-run-update TUI components
-│   ├── composite-subagent-observer.ts fans manager notifications out to multiple observers
+│   ├── notification.ts             completion nudges and mid-run updates, in one arrival-ordered withheld queue (announce-only; completions gated on the carrier claim, updates not; withheld during the parent's agent run, flushed on agent_settled), plus workspace notices, which are announced straight through
+│   ├── outcome-delivery.ts         shared outcome rendering every result carrier composes: one status vocabulary in two presentations, body, ask-back affordance, workspace notice
+│   ├── renderer.ts                 notification, mid-run-update, and workspace-notice TUI components
+│   ├── composite-subagent-observer.ts fans manager notifications out to multiple observers; enumerates every member, so an optional one it omits is dropped silently
 │   └── subagent-events-observer.ts manager lifecycle observer (event emission + persistence + notification)
 │
 ├── service/                        cross-extension API boundary
@@ -1073,7 +1073,7 @@ The retention half of [#858]'s motivation was a sweep bug rather than a missing 
 
 Release: independent
 
-#### Step 12: Deliver a workspace addendum produced after the result edge ([#870])
+#### ✅ Step 12: Deliver a workspace addendum produced after the result edge ([#870])
 
 **Cause:** `Workspace.dispose()` returns a `resultAddendum` the core folds into the child's result text, so the string only has a reader while a result is still being built.
 Step 10 holds a question-ending child's workspace open and moves its disposal to `releaseSession()`/`disposeSession()`, where the child's result was delivered long ago — the addendum is produced and dropped.
@@ -1086,6 +1086,22 @@ For `@gotgenes/pi-subagents-worktrees` that string is the only thing naming the 
 - **Outcome:** a workspace disposed after its child's result was delivered still reaches the parent or the user, pinned by a test that drives disposal through the retention path.
 - **Commit type:** `fix:`.
 - **Impact 3 / Risk 3 / Priority 9.**
+
+Landed as all three candidate channels rather than a choice between them, because each covers a different subset of the five disposal edges and none covers them all.
+The record carries the notice and the four existing outcome carriers report it, which fixes `failRun` and `failResume` — a drop that predates Step 10, since `cleanupWorktree` commits a dirty tree whatever the status.
+A standalone `<workspace-notice>` announcement covers the retention sweep and the session switch.
+Neither reaches shutdown: `handleSessionShutdown` disposes notifications before the manager, deliberately, so no in-band channel exists there at all.
+
+The shutdown edge is covered outside the core instead, by a stateless scan in `@gotgenes/pi-subagents-worktrees` for `pi-agent-*` branches unmerged into `HEAD`, reported at the next session start beside the preserved-worktree warning.
+A scan of durable state rather than a record of what was dropped, so it covers a crash too, and `--no-merged` makes it self-validating — a branch leaves the report when its work is merged, with no clearing rule to get wrong.
+The cost, accepted at plan time, is that it also names a branch the parent was told about and never merged.
+An earlier candidate that would have told the provider its addendum has no reader was dropped: the scan needs no per-disposal signal, so `WorkspaceDisposeOutcome` is unchanged.
+
+The announcement uses `triggerTurn: false` with no `deliverAs`, read from the pinned SDK's `sendCustomMessage` rather than inferred: `nextTurn` only buffers, rendering nothing and discarding on quit, while the chosen path appends immediately when the parent is idle and at `turn_end` when it is streaming.
+That also removed the need for a parent-run withhold, a third `PendingAnnouncement` variant, and the exhaustive-switch refactor the Tidy-First assessment had recommended for it.
+
+`CompositeSubagentObserver` declares the new member **required** though `SubagentManagerObserver` has it optional.
+The manager's observer is always the composite, which implements the interface by enumerating every method, so an optional member it omits is dropped with no compiler error and no runtime error — the assessment caught this in the design, and a test is the only pin for it.
 
 Release: independent
 
@@ -1147,7 +1163,7 @@ flowchart TD
     S6["✅ Step 6 (#827)<br/>UICtx capture"] --> S9["✅ Step 9 (#849)<br/>Widget teardown"]
     S8 --> S11["✅ Step 11 (#858)<br/>Mid-run channel"]
     S10["✅ Step 10 (#857)<br/>Workspace-backed resume"] -.informs.-> S11
-    S10 --> S12["Step 12 (#870)<br/>Post-result addendum delivery"]
+    S10 --> S12["✅ Step 12 (#870)<br/>Post-result addendum delivery"]
     S11 --> S14["Step 14 (#872)<br/>Update gate on resume"]
     S13["Step 13 (#871)<br/>Empty tool allowlist"]
     S10 --> S15["Step 15 (#878)<br/>Resume affordance honesty"]
