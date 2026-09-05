@@ -8,6 +8,37 @@ import {
 } from "#src/observation/notification";
 import { createTestSubagent } from "#test/helpers/make-subagent";
 
+/** Options a notification carrier hands `pi.sendMessage`. */
+interface SendOptions {
+  triggerTurn?: boolean;
+  deliverAs?: "steer" | "followUp" | "nextTurn";
+}
+
+/**
+ * Which path Pi takes for a custom message, mirroring the branch order of
+ * `AgentSession.sendCustomMessage` in `@earendil-works/pi-coding-agent`.
+ *
+ * The order matters more than any single branch: `nextTurn` is tested first and
+ * unconditionally, so it wins over `triggerTurn` rather than combining with it.
+ *
+ * - `buffered` — held until the user submits a prompt; nothing is rendered or
+ *   written to the session, and the buffer is discarded if they never do.
+ * - `queued` — handed to the running turn's unrecallable steer/followUp queue.
+ * - `started` — appended, and a fresh turn is run for it.
+ * - `deferred` — appended once the current turn ends, so it never lands between
+ *   a tool call and its result.
+ * - `appended` — appended and rendered immediately.
+ */
+function piDeliveryPath(
+  streaming: boolean,
+  opts?: SendOptions,
+): "buffered" | "queued" | "started" | "deferred" | "appended" {
+  if (opts?.deliverAs === "nextTurn") return "buffered";
+  if (streaming && opts?.triggerTurn !== false) return "queued";
+  if (opts?.triggerTurn) return "started";
+  return streaming ? "deferred" : "appended";
+}
+
 // ---- Pure helper tests ----
 
 describe("escapeXml", () => {
@@ -278,20 +309,26 @@ describe("NotificationManager", () => {
     }
 
     /**
-     * Models Pi's delivery semantics. While the parent's agent run is active a
-     * `followUp` is queued unrecallably and drained at turn end; once the run has
-     * settled (`_isAgentRunActive` is already false when extensions are notified)
-     * a `triggerTurn` message starts a fresh turn.
-     * See `agent-session.ts:1443-1450` and `:581-582`.
+     * A parent whose delivery follows `piDeliveryPath`, so a carrier's choice of
+     * options is honoured rather than assumed.
+     *
+     * `deliveredToLlm` holds what the parent model can actually read. A deferred
+     * message joins it when the turn ends, which Pi does before extensions are
+     * notified that the run settled.
      */
     function makePiParent() {
       const deliveredToLlm: string[] = [];
+      let deferredUntilTurnEnd: string[] = [];
       let runActive = false;
       const manager = new NotificationManager((msg, opts) => {
-        if (runActive && opts?.deliverAs === "followUp") {
-          deliveredToLlm.push(msg.content); // handed to the unrecallable queue
-        } else if (opts?.triggerTurn) {
-          deliveredToLlm.push(msg.content);
+        switch (piDeliveryPath(runActive, opts)) {
+          case "buffered":
+            return;
+          case "deferred":
+            deferredUntilTurnEnd.push(msg.content);
+            return;
+          default:
+            deliveredToLlm.push(msg.content);
         }
       });
       return {
@@ -303,10 +340,36 @@ describe("NotificationManager", () => {
         },
         settleRun() {
           runActive = false;
+          deliveredToLlm.push(...deferredUntilTurnEnd);
+          deferredUntilTurnEnd = [];
           manager.onParentAgentSettled();
         },
       };
     }
+
+    describe("the Pi delivery model the parent stub is built on", () => {
+      it("buffers a nextTurn message invisibly, whatever else is asked for", () => {
+        expect(piDeliveryPath(false, { deliverAs: "nextTurn", triggerTurn: true })).toBe("buffered");
+        expect(piDeliveryPath(true, { deliverAs: "nextTurn", triggerTurn: false })).toBe("buffered");
+      });
+
+      it("queues a mid-stream message onto the run's unrecallable queue", () => {
+        expect(piDeliveryPath(true, { deliverAs: "followUp", triggerTurn: true })).toBe("queued");
+        expect(piDeliveryPath(true, {})).toBe("queued");
+      });
+
+      it("starts a turn for an idle parent that asked for one", () => {
+        expect(piDeliveryPath(false, { deliverAs: "followUp", triggerTurn: true })).toBe("started");
+      });
+
+      it("defers a mid-stream message that refuses a turn until the turn ends", () => {
+        expect(piDeliveryPath(true, { triggerTurn: false })).toBe("deferred");
+      });
+
+      it("appends a message an idle parent gets with no turn asked for", () => {
+        expect(piDeliveryPath(false, { triggerTurn: false })).toBe("appended");
+      });
+    });
 
     it("withholds a nudge that arrives while the parent's run is active", () => {
       const parent = makePiParent();
