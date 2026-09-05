@@ -106,7 +106,7 @@ pi
 This gives the agent access to:
 
 - `.pi/settings.json` — loads all packages from local source (with npm versions disabled)
-- `.pi/prompts/` — slash commands (`/plan-improvements`, `/plan-issue`, `/tdd-plan`, `/ship-issue`, etc.)
+- `.pi/prompts/` — slash commands (`/plan-improvements`, `/plan-issue`, `/tdd-plan`, `/ship`, etc.)
 - Root `AGENTS.md` — monorepo-wide conventions
 
 #### Standard workflow
@@ -125,8 +125,8 @@ flowchart LR
         Plan["/plan-issue #N"] --> Kind{code or docs?}
         Kind -->|code| TDD["/tdd-plan"]
         Kind -->|docs / config| Build["/build-plan"]
-        TDD --> Ship["/ship-issue #N"]
-        Build --> Ship["/ship-issue #N"]
+        TDD --> Ship["/ship #N"]
+        Build --> Ship["/ship #N"]
         Ship --> Retro["/retro"]
     end
 ```
@@ -136,7 +136,7 @@ flowchart LR
 | 1. Discover      | `/plan-improvements`         | Updates a package's architecture document and creates GitHub Issues outlining the implementation work.    |
 | 2. Plan          | `/plan-issue #N`             | Reads the issue, explores the codebase, produces a numbered plan, and commits it.                         |
 | 3. Implement     | `/tdd-plan` or `/build-plan` | Executes the plan — TDD for code changes, build for docs/config. A pre-completion review runs at the end. |
-| 4. Ship          | `/ship-issue #N`             | Pushes, verifies CI, closes the issue, and dispatches the release.                                        |
+| 4. Ship          | `/ship #N`                   | Pushes, verifies CI, closes the issue, and dispatches the release.                                        |
 | 5. Retrospective | `/retro`                     | Reviews the session(s) for workflow improvements and persists retro notes.                                |
 
 Each issue repeats stages 2–5.
@@ -150,7 +150,8 @@ The peer session is born in its worktree (CWD set at spawn, never `cd`), so it h
 The launcher trusts the new worktree for both Pi (`--approve`) and `mise` (`mise trust`) — each tool gates trust by path, so a fresh worktree would otherwise block on a prompt or silently skip the `mise.toml` `[env]` PATH shims.
 
 Each peer runs the same plan → implement loop as the standard workflow.
-Shipping, though, is split across two sessions: `main` stays linear, and the trunk `/ship-issue` assumes a single writer, so a peer cannot push to `main` directly.
+Shipping, though, is split across two sessions: `main` stays linear and has a single writer, so a peer cannot push to `main` directly.
+The root half is the same `/ship #N` the standard workflow ends with — it detects a worktree lane from the presence of an `issue-N-*` branch and fast-forward-merges it, where a trunk ship has nothing to merge.
 
 ```mermaid
 flowchart TB
@@ -169,12 +170,12 @@ flowchart TB
         B1["/plan-issue 43"] --> B2["/tdd-plan or /build-plan"] --> B3["/sync-worktree 43"]
     end
 
-    A3 -->|"rebased branch, hand off"| Ship["Root — /ship-worktree N<br/>ff-merge, push, CI, close, release, teardown"]
+    A3 -->|"rebased branch, hand off"| Ship["Root — /ship N<br/>ff-merge, push, CI, close, release, teardown"]
     B3 -->|"rebased branch, hand off"| Ship
 ```
 
 The convergence is a peer-to-root handoff.
-The peer rebases its branch onto the latest `origin/main`; the root fast-forward-merges it into `main`.
+The peer rebases its branch onto local `main` — the ref the root will merge into, which the shared `.git` makes visible — and the root fast-forward-merges it.
 Because both sessions share one `.git`, the root sees the branch ref directly — the peer never pushes the branch or force-pushes anything.
 
 ```mermaid
@@ -186,29 +187,30 @@ sequenceDiagram
     Note over Peer: /sync-worktree N
     Peer->>Peer: lint, fallow dead-code, sync stage note (committed on branch)
     Peer->>Origin: git fetch
-    Peer->>Peer: git rebase origin/main
-    Peer-->>Root: hand off — run /ship-worktree N
+    Peer->>Peer: git rebase main (the ref the root will merge into)
+    Peer-->>Root: hand off — run /ship N
     Root->>Origin: git pull --ff-only
     Note over Root: git merge --ff-only the peer branch
+    Root->>Root: lint, fallow dead-code on the merged tree
     Root->>Origin: git push (main advances)
     Root->>Root: verify CI, then issue_close
     Root->>Origin: dispatch release.yml for the package (serialized)
     Note over Root: scripts/worktree-rm.sh N --delete-branch
 ```
 
-| Stage            | Command                                      | Session | What happens                                                                                          |
-| ---------------- | -------------------------------------------- | ------- | ----------------------------------------------------------------------------------------------------- |
-| Launch           | `/worktree #N`                               | root    | Creates the branch + worktree, installs deps, opens a peer session running `/plan-issue #N`.          |
-| Plan + implement | `/plan-issue` → `/tdd-plan` or `/build-plan` | peer    | The standard loop, inside the worktree.                                                               |
-| Sync             | `/sync-worktree #N`                          | peer    | Lint + `fallow dead-code`, a sync stage note committed on the branch, then rebase onto `origin/main`. |
-| Ship             | `/ship-worktree #N`                          | root    | ff-merge into `main`, push, verify CI, close the issue, release, and tear down the worktree.          |
+| Stage            | Command                                      | Session | What happens                                                                                         |
+| ---------------- | -------------------------------------------- | ------- | ---------------------------------------------------------------------------------------------------- |
+| Launch           | `/worktree #N`                               | root    | Creates the branch + worktree, installs deps, opens a peer session running `/plan-issue #N`.         |
+| Plan + implement | `/plan-issue` → `/tdd-plan` or `/build-plan` | peer    | The standard loop, inside the worktree.                                                              |
+| Sync             | `/sync-worktree #N`                          | peer    | Lint + `fallow dead-code`, a sync stage note committed on the branch, then rebase onto local `main`. |
+| Ship             | `/ship #N`                                   | root    | ff-merge into `main`, re-run the checks, push, verify CI, close the issue, release, and tear down.   |
 
 Guardrails:
 
 - One package per peer — two peers touching `pnpm-lock.yaml` or the same package's source is the main hazard.
 - Release is the root's responsibility — peers never dispatch one, and a `release` concurrency group serializes runs anyway.
   A dispatch names its packages explicitly, so a deferral holds one package rather than all nine.
-- Whoever lands second rebases first — if `/ship-worktree`'s ff-merge is rejected because `main` advanced, the peer re-runs `/sync-worktree #N` to rebase onto the new `origin/main`, then the root retries.
+- Whoever lands second rebases first — if `/ship`'s ff-merge is rejected because `main` advanced, the peer re-runs `/sync-worktree #N` to rebase onto the new `main`, then the root retries.
 - Tear down a worktree manually with `scripts/worktree-rm.sh <issue> [--delete-branch]`.
 
 Package-specific context (architecture, priorities, testing strategy) lives in skills.
