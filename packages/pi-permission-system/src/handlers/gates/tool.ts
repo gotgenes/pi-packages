@@ -8,7 +8,7 @@ import {
 import {
   suggestPathSessionPattern,
   suggestSessionPattern,
-} from "#src/pattern-suggest";
+} from "#src/presentation/pattern-suggest";
 import { buildToolAskPayload } from "#src/presentation/tool-ask-payload";
 import { SessionApproval } from "#src/session/session-approval";
 import type { ToolPreviewFormatter } from "#src/tool-input/tool-preview-formatter";

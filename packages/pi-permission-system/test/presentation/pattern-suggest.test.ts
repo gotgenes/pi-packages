@@ -7,7 +7,7 @@ import {
   suggestMcpPattern,
   suggestPathSessionPattern,
   suggestSessionPattern,
-} from "#src/pattern-suggest";
+} from "#src/presentation/pattern-suggest";
 
 describe("suggestBashPattern", () => {
   it("returns <command> <subcommand> * using the arity table", () => {

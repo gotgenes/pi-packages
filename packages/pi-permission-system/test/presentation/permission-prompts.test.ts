@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import {
   formatMissingToolNameReason,
   formatUnknownToolReason,
-} from "#src/permission-prompts";
+} from "#src/presentation/permission-prompts";
 
 describe("formatMissingToolNameReason", () => {
   test("mentions missing tool name and pi.getAllTools()", () => {

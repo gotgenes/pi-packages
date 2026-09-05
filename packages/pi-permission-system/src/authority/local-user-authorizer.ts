@@ -3,7 +3,7 @@ import {
   buildDirectionalSessionLabels,
   buildForwardedScopeLabels,
   describeGrantTarget,
-} from "#src/pattern-suggest";
+} from "#src/presentation/pattern-suggest";
 import {
   emitUiPromptEvent,
   type PermissionEventBus,

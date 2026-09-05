@@ -17,7 +17,7 @@ import type { GateOutcome, ToolCallContext } from "#src/handlers/gates/types";
 import {
   formatMissingToolNameReason,
   formatUnknownToolReason,
-} from "#src/permission-prompts";
+} from "#src/presentation/permission-prompts";
 import type { PermissionSession } from "#src/session/permission-session";
 import { toRecord } from "#src/value-guards";
 
