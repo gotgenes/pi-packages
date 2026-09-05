@@ -3,7 +3,11 @@ import {
   isTerminalErrorStatus,
   type SubagentStatus,
 } from "#src/lifecycle/subagent-state";
-import type { NotificationDetails, UpdateDetails } from "#src/observation/notification";
+import type {
+  NotificationDetails,
+  UpdateDetails,
+  WorkspaceNoticeDetails,
+} from "#src/observation/notification";
 import { formatMs, formatTokens, formatTurns } from "#src/ui/display";
 import { GLYPHS } from "#src/ui/glyphs";
 
@@ -21,6 +25,11 @@ interface RendererMessage {
 /** Narrow message interface for the update renderer. */
 interface UpdateMessage {
   details?: UpdateDetails;
+}
+
+/** Narrow message interface for the workspace-notice renderer. */
+interface WorkspaceNoticeMessage {
+  details?: WorkspaceNoticeDetails;
 }
 
 /** Narrow render options — only the fields the renderer reads. */
@@ -121,6 +130,30 @@ export function createUpdateRenderer() {
 
     let line = `${theme.fg("info", GLYPHS.agentsActive)} ${theme.bold(d.description)} ${theme.fg("dim", "update")}`;
     for (const l of buildPreviewLines(d.message, expanded)) {
+      line += "\n  " + theme.fg("dim", expanded ? `  ${l}` : `${GLYPHS.subLine}  ${l}`);
+    }
+    return new Text(line, 0, 0);
+  };
+}
+
+/**
+ * Create the workspace-notice renderer for `pi.registerMessageRenderer`.
+ *
+ * Separate from the completion renderer because the agent's outcome was
+ * reported long ago and has not changed: this reports only what a teardown did
+ * with the child's work, so it carries no status, stats, or result preview.
+ */
+export function createWorkspaceNoticeRenderer() {
+  return (
+    message: WorkspaceNoticeMessage,
+    { expanded }: RenderOptions,
+    theme: RendererTheme,
+  ): Text | undefined => {
+    const d = message.details;
+    if (!d) return undefined;
+
+    let line = `${theme.fg("warning", GLYPHS.success)} ${theme.bold(d.description)} ${theme.fg("dim", "workspace")}`;
+    for (const l of buildPreviewLines(d.notice.trim(), expanded)) {
       line += "\n  " + theme.fg("dim", expanded ? `  ${l}` : `${GLYPHS.subLine}  ${l}`);
     }
     return new Text(line, 0, 0);

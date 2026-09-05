@@ -72,6 +72,25 @@ export function formatTaskNotification(record: Subagent, resultMaxLen: number): 
 }
 
 /**
+ * Format a `<workspace-notice>` block for what a teardown reported after the
+ * child's result had already been delivered.
+ *
+ * A distinct element from `<task-notification>`: the outcome was reported long
+ * ago and has not changed. This says only where the child's work ended up, so
+ * the parent's next action is to act on that artifact, never to collect a
+ * result it already has.
+ */
+export function formatWorkspaceNotice(record: Subagent, notice: string): string {
+  return joinNotificationLines([
+    "<workspace-notice>",
+    `<task-id>${record.id}</task-id>`,
+    `<summary>Subagent "${escapeXml(record.description)}" left work behind when its workspace was torn down</summary>`,
+    `<notice>${escapeXml(notice)}</notice>`,
+    "</workspace-notice>",
+  ]);
+}
+
+/**
  * Format a `<subagent-update>` block for a message a still-running child sent.
  *
  * A distinct element from `<task-notification>`: the child has not finished, so
@@ -169,6 +188,7 @@ export function buildEventData(record: Subagent) {
 export interface NotificationSystem {
   sendCompletion: (record: Subagent) => void;
   sendUpdate: (record: Subagent, message: string) => void;
+  sendWorkspaceNotice: (record: Subagent, notice: string) => void;
   dispose: () => void;
 }
 
@@ -177,6 +197,13 @@ export interface UpdateDetails {
   id: string;
   description: string;
   message: string;
+}
+
+/** Details the workspace-notice renderer reads. */
+export interface WorkspaceNoticeDetails {
+  id: string;
+  description: string;
+  notice: string;
 }
 
 /**
@@ -262,6 +289,35 @@ export class NotificationManager implements NotificationSystem {
       return;
     }
     this.emitUpdate(record, message);
+  }
+
+  /**
+   * Announce where a teardown left a child's work, after its result was already
+   * delivered.
+   *
+   * Consults neither the carrier claim nor consumption: both record that the
+   * child's *outcome* has an owner, and this is a fact about the workspace
+   * rather than that outcome told again. It is not withheld for the parent's
+   * run either — the withheld queue exists for the unrecallable `followUp` a
+   * mid-run send becomes, and this delivery mode never reaches it. Pi appends
+   * it once the current turn ends, or immediately when there is none.
+   */
+  sendWorkspaceNotice(record: Subagent, notice: string): void {
+    if (this.disposed) return;
+    const details: WorkspaceNoticeDetails = {
+      id: record.id,
+      description: record.description,
+      notice,
+    };
+    this.sendMessage(
+      {
+        customType: "subagent-workspace-notice",
+        content: formatWorkspaceNotice(record, notice),
+        display: true,
+        details,
+      },
+      { triggerTurn: false },
+    );
   }
 
   /** The parent's agent run became active; nudges are withheld until it settles. */

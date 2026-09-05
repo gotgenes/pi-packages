@@ -4,6 +4,7 @@ import {
   buildNotificationDetails,
   escapeXml,
   formatTaskNotification,
+  formatWorkspaceNotice,
   NotificationManager,
 } from "#src/observation/notification";
 import { createTestSubagent } from "#test/helpers/make-subagent";
@@ -118,6 +119,26 @@ describe("formatTaskNotification", () => {
       const record = createTestSubagent({ status: "stopped", stoppedWhileQueued: true, result: undefined });
       expect(formatTaskNotification(record, 500)).not.toContain("tool-use-id");
     });
+  });
+});
+
+describe("formatWorkspaceNotice", () => {
+  const NOTICE = "\n\n---\nChanges saved to branch `pi-agent-3`.";
+
+  it("names the agent, its description, and what the teardown reported", () => {
+    const record = createTestSubagent({ id: "agent-3", description: "Port the parser" });
+    const block = formatWorkspaceNotice(record, NOTICE);
+
+    expect(block).toContain("<task-id>agent-3</task-id>");
+    expect(block).toContain("Port the parser");
+    expect(block).toContain("Changes saved to branch `pi-agent-3`.");
+  });
+
+  it("escapes a notice so a provider's wording cannot forge markup", () => {
+    const record = createTestSubagent({ id: "agent-3" });
+    const block = formatWorkspaceNotice(record, "saved to <branch> & more");
+
+    expect(block).toContain("saved to &lt;branch&gt; &amp; more");
   });
 });
 
@@ -261,6 +282,63 @@ describe("NotificationManager", () => {
     );
     const content = (args.sendMessage.mock.calls[0][0] as { content: string }).content;
     expect(content).toContain("Changes saved to branch `pi-agent-3`.");
+  });
+
+  describe("sendWorkspaceNotice", () => {
+    const NOTICE = "\n\n---\nChanges saved to branch `pi-agent-3`.";
+
+    /** The options the manager handed `sendMessage` on its first call. */
+    function optionsOf(args: ReturnType<typeof makeArgs>) {
+      return args.sendMessage.mock.calls[0][1] as {
+        triggerTurn?: boolean;
+        deliverAs?: string;
+      };
+    }
+
+    it("appends without starting a turn, so a swept agent never drives one", () => {
+      const args = makeArgs();
+      makeManager(args).sendWorkspaceNotice(baseRecord, NOTICE);
+
+      expect(optionsOf(args)).toEqual({ triggerTurn: false });
+    });
+
+    it("announces for a record whose outcome a carrier already claimed", () => {
+      const args = makeArgs();
+      const record = createTestSubagent({ id: "claimed-1" });
+      record.claim();
+      makeManager(args).sendWorkspaceNotice(record, NOTICE);
+
+      expect(args.sendMessage).toHaveBeenCalledOnce();
+    });
+
+    it("announces for a record whose outcome the parent already collected", () => {
+      const args = makeArgs();
+      const record = createTestSubagent({ id: "consumed-1" });
+      record.markConsumed();
+      makeManager(args).sendWorkspaceNotice(record, NOTICE);
+
+      expect(args.sendMessage).toHaveBeenCalledOnce();
+    });
+
+    it("is silent once the manager is disposed", () => {
+      const args = makeArgs();
+      const system = makeManager(args);
+      system.dispose();
+      system.sendWorkspaceNotice(baseRecord, NOTICE);
+
+      expect(args.sendMessage).not.toHaveBeenCalled();
+    });
+
+    it("hands the notice over during the parent's run rather than withholding it", () => {
+      // The withheld queue exists for the unrecallable followUp a mid-run send
+      // becomes. This delivery mode never reaches it, so there is nothing to hold.
+      const args = makeArgs();
+      const system = makeManager(args);
+      system.onParentAgentStart();
+      system.sendWorkspaceNotice(baseRecord, NOTICE);
+
+      expect(args.sendMessage).toHaveBeenCalledOnce();
+    });
   });
 
   it("omits the retrieval instruction for an agent that never started", () => {
@@ -472,6 +550,19 @@ describe("NotificationManager", () => {
         parent.manager.dispose();
         parent.manager.sendUpdate(createTestSubagent({ id: "live-1" }), "Course change.");
         expect(parent.deliveredToLlm).toHaveLength(0);
+      });
+
+      it("reaches a parent that was mid-run, once that run ends", () => {
+        // Pi defers it to turn end so it cannot land between a tool call and its
+        // result; the manager itself does not hold it (see sendWorkspaceNotice).
+        const parent = makePiParent();
+        parent.startRun();
+        parent.manager.sendWorkspaceNotice(
+          createTestSubagent({ id: "swept-1" }),
+          "\n\n---\nChanges saved to branch `pi-agent-1`.",
+        );
+        parent.settleRun();
+        expect(parent.deliveredToLlm).toHaveLength(1);
       });
 
       it("keeps every update, because two updates are two facts", () => {

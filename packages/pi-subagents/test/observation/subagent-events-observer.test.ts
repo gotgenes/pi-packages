@@ -8,6 +8,7 @@ function makeNotifications(): NotificationSystem {
 	return {
 		sendCompletion: vi.fn(),
 		sendUpdate: vi.fn(),
+		sendWorkspaceNotice: vi.fn(),
 		dispose: vi.fn(),
 	};
 }

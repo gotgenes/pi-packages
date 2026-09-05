@@ -1,10 +1,15 @@
 import { describe, expect, it } from "vitest";
-import type { NotificationDetails, UpdateDetails } from "#src/observation/notification";
+import type {
+  NotificationDetails,
+  UpdateDetails,
+  WorkspaceNoticeDetails,
+} from "#src/observation/notification";
 import {
   buildPreviewLines,
   buildStatsParts,
   createNotificationRenderer,
   createUpdateRenderer,
+  createWorkspaceNoticeRenderer,
   resolveStatusPresentation,
 } from "#src/observation/renderer";
 
@@ -279,6 +284,50 @@ describe("createUpdateRenderer", () => {
     const renderer = createUpdateRenderer();
     const text = renderText(
       renderer({ details: makeUpdate({ message: "headline\nbody" }) }, { expanded: true }, stubTheme()),
+    );
+
+    expect(text).toContain("headline");
+    expect(text).toContain("body");
+  });
+});
+
+describe("createWorkspaceNoticeRenderer", () => {
+  function makeNotice(overrides: Partial<WorkspaceNoticeDetails> = {}): WorkspaceNoticeDetails {
+    return {
+      id: "agent-1",
+      description: "Test agent",
+      notice: "Changes saved to branch `pi-agent-1`.",
+      ...overrides,
+    };
+  }
+
+  it("returns undefined when the message has no details", () => {
+    const renderer = createWorkspaceNoticeRenderer();
+    expect(renderer({ details: undefined }, { expanded: false }, stubTheme())).toBeUndefined();
+  });
+
+  it("names the agent and what the teardown saved", () => {
+    const renderer = createWorkspaceNoticeRenderer();
+    const text = renderText(renderer({ details: makeNotice() }, { expanded: false }, stubTheme()));
+
+    expect(text).toContain("**Test agent**");
+    expect(text).toContain("Changes saved to branch `pi-agent-1`.");
+  });
+
+  it("shows the first line only when collapsed", () => {
+    const renderer = createWorkspaceNoticeRenderer();
+    const text = renderText(
+      renderer({ details: makeNotice({ notice: "headline\nbody" }) }, { expanded: false }, stubTheme()),
+    );
+
+    expect(text).toContain("headline");
+    expect(text).not.toContain("body");
+  });
+
+  it("shows every line when expanded", () => {
+    const renderer = createWorkspaceNoticeRenderer();
+    const text = renderText(
+      renderer({ details: makeNotice({ notice: "headline\nbody" }) }, { expanded: true }, stubTheme()),
     );
 
     expect(text).toContain("headline");

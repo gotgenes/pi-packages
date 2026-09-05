@@ -216,6 +216,23 @@ describe("composition root: io.createSession", () => {
   });
 });
 
+describe("composition root: message renderers", () => {
+  it("registers a renderer for every custom message type the extension sends", () => {
+    const { pi } = makePi();
+    subagentsExtension(pi);
+
+    const registered = vi
+      .mocked(pi.registerMessageRenderer)
+      .mock.calls.map((call: unknown[]) => call[0] as string);
+
+    expect(registered).toEqual([
+      "subagent-notification",
+      "subagent-update",
+      "subagent-workspace-notice",
+    ]);
+  });
+});
+
 describe("composition root: widget activation", () => {
   beforeEach(() => {
     vi.useFakeTimers();
