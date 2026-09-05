@@ -115,6 +115,22 @@ Pre-completion reviewer: **WARN** (no blocking findings).
 - The `pi-subagents` own-directory count was cited as 76 in five places and measures 80.
   Corrected in the plan, this retro, the architecture roadmap, the rule's comment, and [#877]'s body before the rollout could inherit it.
 
+## Stage: Sync (worktree) (2026-09-05T03:40:20Z)
+
+### Session summary
+
+Pre-push checks pass clean: root `pnpm run lint` and `pnpm fallow dead-code` both exit 0.
+No deferred work rides this branch — all 14 plan steps landed, the pre-completion reviewer's one WARN (the `pi-subagents` count) was corrected in place before this stage.
+Plan's `**Release:**` marker is `ship independently`; `./scripts/release/next-version.sh pi-permission-system` prints `pi-permission-system-v31.1.1` (corrected from the plan's original "no release" claim during implementation — the documentation commit touches three shipped user docs, and `^docs` is a visible changelog group).
+Follow-up [#877] (repo-wide own-directory lint rollout, deferred against `pi-subagents` Phase 22) is filed and open; its roadmap disposition bullet is intentionally **not yet written** to `pi-subagents/docs/architecture/architecture.md` — `issue-870` holds that file, and the bullet lands after it does.
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-837--/2026-09-04T19-12-08-237Z_01a06dd5-e02c-734c-a240-5e977df91527.jsonl` — read with `read_session_file({ path: "..." })` for message-level verification at land/retro time.
+
+### Observations
+
+Nothing new since the TDD stage note — this session ran only the pre-push gates and this breadcrumb.
+The final `/retro 837` is deliberately not run here; it runs at the root after `/ship-worktree 837`.
+
 [#870]: https://github.com/gotgenes/pi-packages/issues/870
 [#875]: https://github.com/gotgenes/pi-packages/issues/875
 [#877]: https://github.com/gotgenes/pi-packages/issues/877
