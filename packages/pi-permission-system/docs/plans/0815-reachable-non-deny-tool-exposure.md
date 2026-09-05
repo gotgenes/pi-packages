@@ -14,7 +14,7 @@ It is a third-party bug report against a surface the capability axis does not to
 
 ## Problem Statement
 
-Phase-1 tool filtering asks `getToolPermission(toolName)` whether a tool should reach the model, and that method evaluates the surface against the **literal string `"*"`** as the candidate value ([`src/permission-manager.ts:263`](../../src/permission-manager.ts)).
+Phase-1 tool filtering asks `getToolPermission(toolName)` whether a tool should reach the model, and that method evaluates the surface against the **literal string `"*"`** as the candidate value ([`src/permission-manager.ts:263`](../../src/policy/permission-manager.ts)).
 So it only ever reads the surface's own catch-all entry.
 Any surface written as a pattern map whose catch-all is `deny` is therefore hidden from the model entirely, no matter what exceptions sit under it — the agent never sees the tool, so it can never issue the command the operator explicitly wanted to be asked about.
 
@@ -62,12 +62,12 @@ It changes no default, removes no export, and alters no existing method's answer
 
 Relevant modules, and the constraints that bear on them:
 
-- [`src/rule.ts`](../../src/rule.ts) — the decision engine.
+- [`src/rule.ts`](../../src/policy/rule.ts) — the decision engine.
   `evaluate(surface, value, rules, flavor)` returns the **last** rule whose surface and pattern both wildcard-match, or a synthesized `ask` default.
   `ruleMatches` matches the surface exactly (`wildcardMatch(rule.surface, surface)`) and applies `pathMatchOptions` to the value side only for `PATH_SURFACES`.
-- [`src/wildcard-matcher.ts`](../../src/wildcard-matcher.ts) — `compileWildcardPattern` runs `expandHomePath` on the **pattern** side only; the value side gets separator folding but no home expansion.
+- [`src/wildcard-matcher.ts`](../../src/policy/wildcard-matcher.ts) — `compileWildcardPattern` runs `expandHomePath` on the **pattern** side only; the value side gets separator folding but no home expansion.
   A trailing `" *"` compiles to `( .*)?`, so `"git *"` matches bare `"git"`.
-- [`src/permission-manager.ts`](../../src/permission-manager.ts) — `resolvePermissions(agentName)` produces the cached `composedRules`.
+- [`src/permission-manager.ts`](../../src/policy/permission-manager.ts) — `resolvePermissions(agentName)` produces the cached `composedRules`.
   Two composition-stage rewrites apply to that list: the yolo `ask`→`allow` rewrite is deliberately applied **post-cache** inside `check()` so display surfaces stay yolo-free ([#526]), while the fail-closed `allow`→`ask` floor is applied **at composition** so display surfaces do reflect it ([#646]).
   Reading `composedRules` therefore inherits the fail-closed floor and not the yolo rewrite — which is exactly what an exposure decision wants, since neither rewrite creates or removes a `deny`.
 - [`src/handlers/before-agent-start.ts`](../../src/handlers/before-agent-start.ts) — `shouldExposeTool` is a pure exported helper taking a permission-lookup callback; `AgentPrepHandler.handle` iterates `toolRegistry.getActive()` and passes the survivors to `setActive` and to `sanitizeAvailableToolsSection`.
