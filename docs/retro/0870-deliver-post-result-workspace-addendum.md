@@ -131,3 +131,25 @@ Deleting `CompositeSubagentObserver.onSubagentWorkspaceNotice` leaves production
   Not filed — recorded here for whoever next touches either gate.
 - `.pi/skills/package-pi-subagents/SKILL.md`'s Observation-domain row does not mention the new announcement.
   Pre-existing and deliberate: the row already omits [#858]'s mid-run updates, so it is incomplete rather than made false, and the plan recorded the no-edit decision.
+
+## Stage: Sync (worktree) (2026-09-05T05:01:15Z)
+
+### Session summary
+
+Pre-push checks both passed clean on first run: `pnpm run lint` (0 findings, 1116 files) and `pnpm fallow dead-code` (0 issues, 329 entry points).
+No fixes needed before rebase.
+The plan's `**Release:** ship independently` marker stands — no batch to coordinate, and the dispatch at ship time should name both `pi-subagents` and `pi-subagents-worktrees` (the latter for its `fix:` and `docs:` commits: `86fcaa6f fix(pi-subagents-worktrees): warn about unmerged rescue branches at session start` and `086bbd0b docs(pi-subagents-worktrees): document the unmerged-branch warning`).
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-870--/2026-09-04T19-11-10-073Z_01a06dd4-fcf8-7597-aab2-150693ad6260.jsonl` — read with `read_session_file({ path: "..." })` for message-level verification at land/retro time.
+
+### Observations
+
+Nothing further to hand off beyond what the TDD stage already recorded: [#878] is filed and dispositioned as Phase 22 Step 15, and no other deferred work surfaced during sync.
+Both packages' commits in this range are releasable together in one dispatch.
+
+The rebase onto `main` conflicted once, in `packages/pi-subagents/docs/architecture/architecture.md`, on the `docs(pi-subagents): disposition #878 against Phase 22` commit.
+Two sibling dispositions ([#872], [#876]) landed on `main` while this branch was open.
+The sweep list itself auto-merged; only the link-reference definitions collided, where both sides appended a line at the same position.
+Resolved by keeping both in numeric order, and verified by diffing the rebased file against `main` — the only removed lines are the five module-tree entries and three Step 12 lines this branch rewrites on purpose, so nothing from the concurrent commits was dropped.
+
+Every gate was re-run after the rebase rather than trusting the pre-rebase run, since `main` brought a large `pi-permission-system` directory refactor and a new `ci: flag alias imports` check: `pnpm install --frozen-lockfile`, `pnpm run lint`, `pnpm run check`, `pnpm run test`, and `pnpm fallow dead-code` all pass, with `pi-subagents` at 1561/76 and `pi-subagents-worktrees` at 74/8.
