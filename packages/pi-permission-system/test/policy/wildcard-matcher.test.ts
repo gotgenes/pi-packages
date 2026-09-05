@@ -16,7 +16,7 @@ import {
   findCompiledWildcardMatch,
   findCompiledWildcardMatchForNames,
   wildcardMatch,
-} from "#src/wildcard-matcher";
+} from "#src/policy/wildcard-matcher";
 
 afterEach(() => {
   mockHomedir.mockClear();

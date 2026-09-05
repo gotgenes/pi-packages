@@ -1,7 +1,7 @@
 import { capabilitySurfaceForTool } from "#src/access-intent/path-surfaces";
 import { getToolInputPath } from "#src/access-intent/tool-input-path";
 import type { PathNormalizer } from "#src/path/path-normalizer";
-import type { ScopedPermissionResolver } from "#src/permission-resolver";
+import type { ScopedPermissionResolver } from "#src/policy/permission-resolver";
 import { buildExternalDirectoryAskPayload } from "#src/presentation/path-ask-payload";
 import { SessionApproval } from "#src/session-approval";
 import type { ToolAccessExtractorLookup } from "#src/tool-access-extractor-registry";

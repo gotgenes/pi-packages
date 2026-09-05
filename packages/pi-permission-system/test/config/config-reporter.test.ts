@@ -10,8 +10,8 @@ import { join } from "node:path";
 import { expect, test } from "vitest";
 import { buildResolvedConfigLogEntry } from "#src/config/config-reporter";
 import { createPermissionSystemLogger } from "#src/logging/logging";
-import type { ResolvedPolicyPaths } from "#src/permission-manager";
-import { PermissionManager } from "#src/permission-manager";
+import type { ResolvedPolicyPaths } from "#src/policy/permission-manager";
+import { PermissionManager } from "#src/policy/permission-manager";
 
 test("buildResolvedConfigLogEntry includes policy paths and legacy detection flags", () => {
   const policyPaths: ResolvedPolicyPaths = {

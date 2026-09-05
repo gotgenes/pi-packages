@@ -1,5 +1,8 @@
 import { describe, expect, test } from "vitest";
-import { expandDirectionalSugar, normalizeFlatConfig } from "#src/normalize";
+import {
+  expandDirectionalSugar,
+  normalizeFlatConfig,
+} from "#src/policy/normalize";
 import type { FlatPermissionConfig } from "#src/types";
 
 describe("normalizeFlatConfig", () => {

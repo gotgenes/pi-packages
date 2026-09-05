@@ -8,11 +8,11 @@ import type { ExtensionPaths } from "#src/config/extension-paths";
 import type { ToolCallGateInputs } from "#src/handlers/gates/tool-call-gate-pipeline";
 import type { PathFlavor } from "#src/path/path-flavor";
 import { PathNormalizer } from "#src/path/path-normalizer";
+import type { ScopedPermissionManager } from "#src/policy/permission-manager";
 import {
   getActiveAgentName,
   getActiveAgentNameFromSystemPrompt,
 } from "./active-agent";
-import type { ScopedPermissionManager } from "./permission-manager";
 
 import type { SessionRules } from "./session-rules";
 import type { SkillPromptEntry } from "./skill-prompt-sanitizer";

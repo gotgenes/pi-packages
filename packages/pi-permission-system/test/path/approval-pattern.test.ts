@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { deriveApprovalPattern } from "#src/path/approval-pattern";
 import type { PathFlavor } from "#src/path/path-flavor";
 import { posixPathFlavor, win32PathFlavor } from "#src/path/path-flavor";
-import { evaluate } from "#src/rule";
+import { evaluate } from "#src/policy/rule";
 import { SessionRules } from "#src/session-rules";
 
 /** Record the derived pattern as a session grant, as the gates do. */

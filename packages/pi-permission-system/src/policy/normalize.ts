@@ -1,7 +1,7 @@
 import { surfaceFamilyMembers } from "#src/access-intent/path-surfaces";
+import type { FlatPermissionConfig, PatternValue } from "#src/types";
+import { isDenyWithReason, isPermissionState } from "#src/types";
 import type { Rule, Ruleset } from "./rule";
-import type { FlatPermissionConfig, PatternValue } from "./types";
-import { isDenyWithReason, isPermissionState } from "./types";
 
 /**
  * A surface's value in a flat permission config: a catch-all or a pattern map.

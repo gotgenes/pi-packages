@@ -3,8 +3,8 @@ import type {
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 import type { DebugLogger } from "#src/logging/session-logger";
-import type { PermissionResolver } from "#src/permission-resolver";
 import type { PermissionSession } from "#src/permission-session";
+import type { PermissionResolver } from "#src/policy/permission-resolver";
 import { resolveSkillPromptEntries } from "#src/skill-prompt-sanitizer";
 import { sanitizeAvailableToolsSection } from "#src/system-prompt-sanitizer";
 import { getToolNameFromValue, type ToolRegistry } from "#src/tool-registry";

@@ -4,12 +4,12 @@ import type {
   ResolvedAccessIntent,
 } from "#src/access-intent/access-intent";
 import { surfaceFamilyMembers } from "#src/access-intent/path-surfaces";
+import type { SessionRules } from "#src/session-rules";
+import type { SkillPermissionChecker } from "#src/skill-prompt-sanitizer";
+import type { PermissionCheckResult, PermissionState } from "#src/types";
 import type { ScopedPermissionManager } from "./permission-manager";
 import { mostRestrictiveOf } from "./restrictiveness";
 import type { Rule } from "./rule";
-import type { SessionRules } from "./session-rules";
-import type { SkillPermissionChecker } from "./skill-prompt-sanitizer";
-import type { PermissionCheckResult, PermissionState } from "./types";
 
 /**
  * Answers an {@link AccessIntent} a gate emits, applying the current session

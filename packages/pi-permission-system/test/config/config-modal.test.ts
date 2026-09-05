@@ -10,7 +10,7 @@ import {
   normalizePermissionSystemConfig,
   type PermissionSystemExtensionConfig,
 } from "#src/config/extension-config";
-import type { Rule, Ruleset } from "#src/rule";
+import type { Rule, Ruleset } from "#src/policy/rule";
 
 vi.mock("@earendil-works/pi-coding-agent", () => ({
   getSettingsListTheme: () => ({}),

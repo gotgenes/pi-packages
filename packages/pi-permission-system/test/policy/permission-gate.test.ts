@@ -4,7 +4,7 @@ import type { PermissionPromptDecision } from "#src/authority/permission-dialog"
 import {
   applyPermissionGate,
   type PermissionGateParams,
-} from "#src/permission-gate";
+} from "#src/policy/permission-gate";
 import {
   DECIDED_BY_ABSENT_AUTHORITY,
   DECIDED_BY_HUMAN,

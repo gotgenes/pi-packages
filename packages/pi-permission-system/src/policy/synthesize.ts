@@ -1,5 +1,5 @@
+import type { PermissionState } from "#src/types";
 import type { Rule, RuleOrigin, Ruleset } from "./rule";
-import type { PermissionState } from "./types";
 
 /**
  * Synthesize a single universal catch-all rule from the universal default.

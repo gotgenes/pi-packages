@@ -4,7 +4,7 @@ import type {
   PatternValue,
   PermissionState,
 } from "#src/config/config-schema";
-import type { RuleOrigin } from "./rule";
+import type { RuleOrigin } from "#src/policy/rule";
 
 // The config-file shape types are derived from the zod schema
 // (config-schema.ts) — the single source of truth — and re-exported here so

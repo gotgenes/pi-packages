@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { posixPathFlavor } from "#src/path/path-flavor";
-import { evaluate } from "#src/rule";
+import { evaluate } from "#src/policy/rule";
 import { SessionApproval } from "#src/session-approval";
 import type { SessionApprovalRecorder } from "#src/session-approval-recorder";
 import { SessionRules } from "#src/session-rules";

@@ -45,6 +45,8 @@ import { DecisionAudit } from "#src/logging/decision-audit";
 import { GateDecisionReporter } from "#src/logging/decision-reporter";
 import { PermissionSessionLogger } from "#src/logging/session-logger";
 import { pathFlavorForPlatform } from "#src/path/path-flavor";
+import { PermissionManager } from "#src/policy/permission-manager";
+import { PermissionResolver } from "#src/policy/permission-resolver";
 import { resolveRenderBudget } from "#src/presentation/dialog-renderer";
 import { registerBuiltinToolInputFormatters } from "./builtin-tool-input-formatters";
 import {
@@ -53,8 +55,6 @@ import {
   SessionLifecycleHandler,
   SessionTurnPrep,
 } from "./handlers";
-import { PermissionManager } from "./permission-manager";
-import { PermissionResolver } from "./permission-resolver";
 import { PermissionSession } from "./permission-session";
 import { LocalPermissionsService } from "./permissions-service";
 import { getPermissionsService, type PermissionsService } from "./service";

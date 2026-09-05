@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { MergedScopes } from "#src/scope-merge";
-import { mergeScopesWithOrigins } from "#src/scope-merge";
+import type { MergedScopes } from "#src/policy/scope-merge";
+import { mergeScopesWithOrigins } from "#src/policy/scope-merge";
 
 describe("mergeScopesWithOrigins", () => {
   it("returns empty result for empty scopes array", () => {

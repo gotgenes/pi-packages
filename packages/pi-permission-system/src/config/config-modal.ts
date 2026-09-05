@@ -4,7 +4,7 @@ import {
   getSettingsListTheme,
 } from "@earendil-works/pi-coding-agent";
 import { type SettingItem, SettingsList } from "@earendil-works/pi-tui";
-import type { Ruleset } from "#src/rule";
+import type { Ruleset } from "#src/policy/rule";
 import type { CommandConfigStore } from "./config-store";
 import {
   DEFAULT_EXTENSION_CONFIG,

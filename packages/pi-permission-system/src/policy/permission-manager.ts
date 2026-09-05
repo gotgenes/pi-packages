@@ -18,6 +18,12 @@ import {
   type ResolvedPolicyPaths,
 } from "#src/config/policy-loader";
 import { type PathFlavor, posixPathFlavor } from "#src/path/path-flavor";
+import type {
+  FlatPermissionConfig,
+  PermissionCheckResult,
+  PermissionState,
+} from "#src/types";
+import { isPermissionState } from "#src/types";
 import { normalizeFlatConfig } from "./normalize";
 import type { Rule, RuleOrigin, Ruleset } from "./rule";
 import {
@@ -34,12 +40,6 @@ import {
   synthesizeBaseline,
   synthesizeDefaults,
 } from "./synthesize";
-import type {
-  FlatPermissionConfig,
-  PermissionCheckResult,
-  PermissionState,
-} from "./types";
-import { isPermissionState } from "./types";
 
 const SPECIAL_PERMISSION_KEYS = new Set(["external_directory", "path"]);
 

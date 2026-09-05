@@ -27,7 +27,7 @@ import { PermissionGateHandler } from "#src/handlers/permission-gate-handler";
 import { GateDecisionReporter } from "#src/logging/decision-reporter";
 import type { PermissionDecisionEvent } from "#src/permission-events";
 import { PERMISSIONS_DECISION_CHANNEL } from "#src/permission-events";
-import type { Rule } from "#src/rule";
+import type { Rule } from "#src/policy/rule";
 import { SessionRules } from "#src/session-rules";
 import type { ToolRegistry } from "#src/tool-registry";
 import type { PermissionCheckResult, PermissionState } from "#src/types";

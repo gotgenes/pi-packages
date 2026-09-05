@@ -3,9 +3,9 @@ import { resolutionFor } from "#src/authority/decision-resolution";
 import type { DecisionSource } from "#src/authority/decision-source";
 import type { PermissionPromptDecision } from "#src/authority/permission-dialog";
 import type { DecisionReporter } from "#src/logging/decision-reporter";
-import { applyPermissionGate } from "#src/permission-gate";
 import { createPermissionRequestId } from "#src/permission-request-id";
-import type { ScopedPermissionResolver } from "#src/permission-resolver";
+import { applyPermissionGate } from "#src/policy/permission-gate";
+import type { ScopedPermissionResolver } from "#src/policy/permission-resolver";
 import {
   renderPolicyDenial,
   renderRefusal,

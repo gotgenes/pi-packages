@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { PermissionManager } from "#src/permission-manager";
+import { PermissionManager } from "#src/policy/permission-manager";
 import type { ScopeConfig } from "#src/types";
 import { createInMemoryPolicyLoader } from "#test/helpers/manager-harness";
 

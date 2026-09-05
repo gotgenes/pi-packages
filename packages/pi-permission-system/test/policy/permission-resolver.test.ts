@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AccessPath } from "#src/access-intent/access-path";
 import { posixPathFlavor } from "#src/path/path-flavor";
-import type { ScopedPermissionManager } from "#src/permission-manager";
-import { PermissionResolver } from "#src/permission-resolver";
-import type { Ruleset } from "#src/rule";
+import type { ScopedPermissionManager } from "#src/policy/permission-manager";
+import { PermissionResolver } from "#src/policy/permission-resolver";
+import type { Ruleset } from "#src/policy/rule";
 import { SessionApproval } from "#src/session-approval";
 import { SessionRules } from "#src/session-rules";
 import type { PermissionState } from "#src/types";

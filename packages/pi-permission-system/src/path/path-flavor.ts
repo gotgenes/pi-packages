@@ -5,7 +5,7 @@ import {
   type BashTokenShape,
   classifyWin32BashToken,
 } from "#src/access-intent/bash/msys-bash-tokens";
-import type { WildcardMatchOptions } from "#src/wildcard-matcher";
+import type { WildcardMatchOptions } from "#src/policy/wildcard-matcher";
 
 /**
  * The resolved product of the single win32-vs-POSIX platform decision: the

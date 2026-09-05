@@ -21,10 +21,10 @@ import { DEFAULT_EXTENSION_CONFIG } from "#src/config/extension-config";
 import type { ExtensionPaths } from "#src/config/extension-paths";
 import type { SessionLogger } from "#src/logging/session-logger";
 import { type PathFlavor, pathFlavorForPlatform } from "#src/path/path-flavor";
-import type { ScopedPermissionManager } from "#src/permission-manager";
-import { PermissionResolver } from "#src/permission-resolver";
 import { PermissionSession } from "#src/permission-session";
-import type { Ruleset } from "#src/rule";
+import type { ScopedPermissionManager } from "#src/policy/permission-manager";
+import { PermissionResolver } from "#src/policy/permission-resolver";
+import type { Ruleset } from "#src/policy/rule";
 import { SessionRules } from "#src/session-rules";
 import type { PermissionCheckResult, PermissionState } from "#src/types";
 

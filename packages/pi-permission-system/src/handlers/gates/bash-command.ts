@@ -2,8 +2,8 @@ import type {
   BashCommand,
   WrapperKind,
 } from "#src/access-intent/bash/command-enumeration";
-import type { ScopedPermissionResolver } from "#src/permission-resolver";
-import { pickMostRestrictive } from "#src/restrictiveness";
+import type { ScopedPermissionResolver } from "#src/policy/permission-resolver";
+import { pickMostRestrictive } from "#src/policy/restrictiveness";
 import type { PermissionCheckResult } from "#src/types";
 
 /**

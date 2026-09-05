@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { normalize } from "node:path";
 import type { ZodError } from "zod";
-import { mergeFlatPermissions } from "#src/permission-merge";
+import { mergeFlatPermissions } from "#src/policy/permission-merge";
 import type { FlatPermissionConfig, PatternValue } from "#src/types";
 import { isDenyWithReason, isPermissionState } from "#src/types";
 import {

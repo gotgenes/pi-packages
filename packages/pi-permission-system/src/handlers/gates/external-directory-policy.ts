@@ -2,8 +2,8 @@ import type { AccessPath } from "#src/access-intent/access-path";
 import type { BashExternalPath } from "#src/access-intent/bash/bash-path-resolver";
 import type { TokenEffect } from "#src/access-intent/effect";
 import { capabilitySurfaceForEffect } from "#src/access-intent/path-surfaces";
-import type { ScopedPermissionResolver } from "#src/permission-resolver";
-import { pickMostRestrictive } from "#src/restrictiveness";
+import type { ScopedPermissionResolver } from "#src/policy/permission-resolver";
+import { pickMostRestrictive } from "#src/policy/restrictiveness";
 import type { PermissionCheckResult } from "#src/types";
 
 /** An external path whose resolved `external_directory` state is not "allow". */

@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { mostRestrictiveOf, pickMostRestrictive } from "#src/restrictiveness";
+import {
+  mostRestrictiveOf,
+  pickMostRestrictive,
+} from "#src/policy/restrictiveness";
 
 import { makeGateCheckResult } from "#test/helpers/gate-fixtures";
 

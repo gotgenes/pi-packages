@@ -1,12 +1,12 @@
 import { describe, expect, test } from "vitest";
 import { posixPathFlavor } from "#src/path/path-flavor";
-import type { RuleOrigin } from "#src/rule";
-import { evaluate } from "#src/rule";
+import type { RuleOrigin } from "#src/policy/rule";
+import { evaluate } from "#src/policy/rule";
 import {
   composeRuleset,
   synthesizeBaseline,
   synthesizeDefaults,
-} from "#src/synthesize";
+} from "#src/policy/synthesize";
 
 // ── synthesizeDefaults ─────────────────────────────────────────────────────
 

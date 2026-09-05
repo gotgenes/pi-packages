@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { mergeFlatPermissions } from "#src/permission-merge";
+import { mergeFlatPermissions } from "#src/policy/permission-merge";
 
 describe("mergeFlatPermissions", () => {
   test("string replaces string", () => {

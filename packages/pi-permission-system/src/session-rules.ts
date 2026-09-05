@@ -1,5 +1,5 @@
 import { surfaceFamilyMembers } from "#src/access-intent/path-surfaces";
-import type { Ruleset } from "./rule";
+import type { Ruleset } from "#src/policy/rule";
 import type { SessionApproval } from "./session-approval";
 import type { SessionApprovalRecorder } from "./session-approval-recorder";
 

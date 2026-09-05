@@ -14,7 +14,7 @@ import { BashProgram } from "#src/access-intent/bash/program";
 import { resolveBashCommandCheck } from "#src/handlers/gates/bash-command";
 import { pathFlavorForPlatform } from "#src/path/path-flavor";
 import { PathNormalizer } from "#src/path/path-normalizer";
-import type { ScopedPermissionResolver } from "#src/permission-resolver";
+import type { ScopedPermissionResolver } from "#src/policy/permission-resolver";
 import type { PermissionState } from "#src/types";
 
 import { makeCheckResult } from "#test/helpers/handler-fixtures";

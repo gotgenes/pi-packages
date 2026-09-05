@@ -1,4 +1,4 @@
-import type { PermissionCheckResult, PermissionState } from "./types";
+import type { PermissionCheckResult, PermissionState } from "#src/types";
 
 /**
  * Select the most restrictive permission result from a possibly-empty list

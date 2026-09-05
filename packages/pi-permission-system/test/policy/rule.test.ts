@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { posixPathFlavor, win32PathFlavor } from "#src/path/path-flavor";
-import type { Rule, RuleOrigin, Ruleset } from "#src/rule";
+import type { Rule, RuleOrigin, Ruleset } from "#src/policy/rule";
 import {
   evaluate,
   evaluateAnyValue,
@@ -9,7 +9,7 @@ import {
   floorAllowsToAsk,
   isSurfaceFullyDenied,
   rewriteAsksToYolo,
-} from "#src/rule";
+} from "#src/policy/rule";
 
 describe("evaluate", () => {
   const allowBashGit: Rule = {

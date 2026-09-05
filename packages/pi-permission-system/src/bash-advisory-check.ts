@@ -1,6 +1,6 @@
 import { parseBashCommandsSync } from "#src/access-intent/bash/sync-commands";
 import { resolveBashCommandCheck } from "#src/handlers/gates/bash-command";
-import type { ScopedPermissionResolver } from "./permission-resolver";
+import type { ScopedPermissionResolver } from "#src/policy/permission-resolver";
 import type { PermissionCheckResult } from "./types";
 
 /**
