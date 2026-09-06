@@ -3,12 +3,17 @@ import { AgentTypeRegistry } from "#src/config/agent-types";
 import { ConcurrencyLimiter } from "#src/lifecycle/concurrency-limiter";
 import type { CreateSubagentSessionParams } from "#src/lifecycle/create-subagent-session";
 import type { AgentSpawnConfig } from "#src/lifecycle/subagent-manager";
-import { resolveRetentionWindow, SubagentManager, type SubagentManagerObserver } from "#src/lifecycle/subagent-manager";
+import {
+  MAX_SNAPSHOT_UTF8_BYTES,
+  resolveRetentionWindow,
+  SubagentManager,
+  type SubagentManagerObserver,
+} from "#src/lifecycle/subagent-manager";
 import type { SubagentSession } from "#src/lifecycle/subagent-session";
 import type { WorkspaceProvider } from "#src/lifecycle/workspace";
 import { NotificationManager } from "#src/observation/notification";
 import type { RunConfig } from "#src/runtime";
-import type { AgentConfig, Subagent } from "#src/types";
+import type { AgentConfig, ControlResultPayloadV1, Subagent } from "#src/types";
 import { createBlockingFactory, createSessionFactory } from "#test/helpers/manager-stubs";
 import { createMockSession, createSubagentSessionStub, emitResumeUsageAndCompaction, toSubagentSession } from "#test/helpers/mock-session";
 import { STUB_SNAPSHOT } from "#test/helpers/stub-ctx";
@@ -86,6 +91,20 @@ function spawnBg(mgr: SubagentManager, prompt = "test", desc = prompt) {
     description: desc,
     background: { kind: "explicit", isBackground: true },
   });
+}
+
+function makeControlResult(resultId = "00000000-0000-4000-8000-000000000001"): ControlResultPayloadV1 {
+  return {
+    protocol: "mecha.control/v1",
+    result_id: resultId,
+    request_id: "00000000-0000-4000-8000-000000000002",
+    target_session_epoch: 0,
+    runtime_generation: "00000000-0000-4000-8000-000000000003",
+    manifest_sha256: "a".repeat(64),
+    status: "ok",
+    content: "completed control result",
+    details: { source: "test" },
+  };
 }
 
 /** Spawn a foreground agent using STUB_SNAPSHOT. */
@@ -1480,5 +1499,105 @@ describe("resolveRetentionWindow", () => {
         ),
       ).toEqual({ referenceAt: 9_000, windowMinutes: 720 });
     });
+  });
+});
+
+describe("SubagentManager lifecycle V2", () => {
+  let manager: SubagentManager;
+
+  afterEach(async () => {
+    await manager.dispose();
+  });
+
+  it("projects frozen per-run source snapshots and only emits mutations", async () => {
+    const persisted = new Map<string, ControlResultPayloadV1>();
+    const { promise: finish, resolve: resolveFinish } = Promise.withResolvers<void>(); // eslint-disable-line @typescript-eslint/no-invalid-void-type -- Promise.withResolvers<void> is valid; rule does not allow void in generic fn call type args
+    const session = createMockSession();
+    const stub = createSubagentSessionStub(session);
+    stub.runTurnLoop.mockImplementation(async () => {
+      await finish;
+      return { responseText: "done", aborted: false, steered: false };
+    });
+    const lifecycleStub = {
+      ...stub,
+      appendControlResult: vi.fn(async (payload: ControlResultPayloadV1): Promise<void> => {
+        persisted.set(payload.result_id, payload);
+      }),
+      findControlResultById: vi.fn((resultId: string): ControlResultPayloadV1 | undefined => persisted.get(resultId)),
+    };
+    const childSession = toSubagentSession(lifecycleStub);
+    ({ manager } = createManager({ createSubagentSession: vi.fn(async () => childSession) }));
+
+    const updates: Array<{ sequence: number; changes: object }> = [];
+    manager.subscribeLifecycleV2((_row, delta) => {
+      updates.push({ sequence: delta.sequence, changes: delta.changes });
+    });
+
+    const id = manager.spawn(STUB_SNAPSHOT, "general-purpose", "work", {
+      description: "source-backed task",
+      background: { kind: "explicit", isBackground: true },
+      parentSession: { parentSessionId: "parent-session", parentEntryId: "assistant-entry" },
+    });
+    await vi.waitFor(() => expect(manager.getRecord(id)?.isRunning()).toBe(true));
+
+    const snapshot = manager.getLifecycleSnapshotV2("parent-session");
+    expect(snapshot).toMatchObject({
+      protocol: "mecha.children/v1",
+      owner_session_id: "parent-session",
+      runs: [{ task_id: id, parent_entry_id: "assistant-entry", lifecycle_state: "running" }],
+    });
+    expect(Object.isFrozen(snapshot)).toBe(true);
+    expect(Object.isFrozen(snapshot.runs)).toBe(true);
+    expect(Object.isFrozen(snapshot.runs[0])).toBe(true);
+    expect(snapshot.runs[0].context_ref).toMatch(/^ctx1_/);
+
+    const updateCountBeforeRead = updates.length;
+    manager.getLifecycleSnapshotV2("parent-session");
+    expect(updates).toHaveLength(updateCountBeforeRead);
+
+    session.emit({ type: "compaction_start", reason: "threshold" });
+    await vi.waitFor(() => expect(updates.at(-1)?.changes).toMatchObject({ compaction: { state: "compacting" } }));
+
+    const contextRef = snapshot.runs[0]?.context_ref;
+    if (!contextRef) throw new Error("Expected an active lifecycle V2 control context.");
+    const result = makeControlResult();
+    await expect(manager.appendControlResultV1(contextRef, result)).resolves.toEqual({
+      kind: "accepted",
+      result_id: result.result_id,
+    });
+    await expect(manager.appendControlResultV1(contextRef, result)).resolves.toEqual({
+      kind: "already_present",
+      result_id: result.result_id,
+    });
+    await expect(manager.appendControlResultV1(contextRef, {
+      ...result,
+      content: "different content",
+    })).resolves.toMatchObject({ kind: "rejected", error: { code: "CONFLICT" } });
+
+    resolveFinish();
+    await manager.getRecord(id)?.promise;
+    await expect(manager.appendControlResultV1(contextRef, result)).resolves.toMatchObject({
+      kind: "rejected",
+      error: { code: "STALE_CHILD_CONTEXT", retryable: false },
+    });
+    const completedRunId = manager.getLifecycleSnapshotV2("parent-session").runs[0].run_id;
+    await manager.resume(id, "continue");
+    const resumedRunId = manager.getLifecycleSnapshotV2("parent-session").runs[0].run_id;
+    expect(resumedRunId).not.toBe(completedRunId);
+  });
+
+  it("drops excess source rows rather than returning an oversized snapshot", () => {
+    ({ manager } = createManager());
+    for (let index = 0; index < 6; index++) {
+      manager.spawn(STUB_SNAPSHOT, "general-purpose", `work ${index}`, {
+        description: "x".repeat(8_000),
+        background: { kind: "explicit", isBackground: true },
+        parentSession: { parentSessionId: "parent-session", parentEntryId: `assistant-entry-${index}` },
+      });
+    }
+
+    const snapshot = manager.getLifecycleSnapshotV2("parent-session");
+    expect(snapshot.runs.length).toBeLessThan(6);
+    expect(Buffer.byteLength(JSON.stringify(snapshot), "utf8")).toBeLessThanOrEqual(MAX_SNAPSHOT_UTF8_BYTES);
   });
 });

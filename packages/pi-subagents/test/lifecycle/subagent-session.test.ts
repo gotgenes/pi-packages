@@ -1,6 +1,7 @@
 import type { AgentSession } from "@earendil-works/pi-coding-agent";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SubagentSession } from "#src/lifecycle/subagent-session";
+import type { ControlResultPayloadV1 } from "#src/types";
 import { createChildLifecycleMock } from "#test/helpers/subagent-session-io";
 
 // ── Session mock factory ───────────────────────────────────────────────────────
@@ -27,6 +28,8 @@ function createSession(finalText: string) {
     }),
     abort: vi.fn(),
     steer: vi.fn().mockResolvedValue(undefined),
+    sendCustomMessage: vi.fn().mockResolvedValue(undefined),
+    sessionManager: { getBranch: vi.fn<() => unknown[]>(() => []) },
     dispose: vi.fn(() => {
       calls.push("dispose");
     }),
@@ -112,6 +115,68 @@ describe("SubagentSession — accessors", () => {
     const { session } = createSession("X");
     const { sub } = makeSubagentSession(session, { outputFile: undefined });
     expect(sub.outputFile).toBeUndefined();
+  });
+});
+
+describe("SubagentSession — closed control results", () => {
+  const result: ControlResultPayloadV1 = {
+    protocol: "mecha.control/v1",
+    result_id: "00000000-0000-4000-8000-000000000001",
+    request_id: "00000000-0000-4000-8000-000000000002",
+    target_session_epoch: 0,
+    runtime_generation: "00000000-0000-4000-8000-000000000003",
+    manifest_sha256: "a".repeat(64),
+    status: "ok",
+    content: "control completed",
+    details: { source: "test" },
+  };
+
+  it("uses Pi's hidden custom-message path without triggering another child turn", async () => {
+    const { session } = createSession("X");
+    const { sub } = makeSubagentSession(session);
+
+    await sub.appendControlResult(result);
+
+    expect(session.sendCustomMessage).toHaveBeenCalledWith({
+      customType: "mecha.control.result.v1",
+      content: "control completed",
+      display: false,
+      details: {
+        protocol: "mecha.control/v1",
+        result_id: result.result_id,
+        request_id: result.request_id,
+        target_session_epoch: 0,
+        runtime_generation: result.runtime_generation,
+        manifest_sha256: result.manifest_sha256,
+        status: "ok",
+        details: { source: "test" },
+      },
+    }, { triggerTurn: false });
+  });
+
+  it("finds only matching persisted V2 results on the active child branch", () => {
+    const { session } = createSession("X");
+    session.sessionManager.getBranch.mockReturnValue([
+      {
+        type: "custom_message",
+        customType: "mecha.control.result.v1",
+        content: result.content,
+        details: {
+          protocol: result.protocol,
+          result_id: result.result_id,
+          request_id: result.request_id,
+          target_session_epoch: result.target_session_epoch,
+          runtime_generation: result.runtime_generation,
+          manifest_sha256: result.manifest_sha256,
+          status: result.status,
+          details: result.details,
+        },
+      },
+    ]);
+    const { sub } = makeSubagentSession(session);
+
+    expect(sub.findControlResultById(result.result_id)).toEqual(result);
+    expect(sub.findControlResultById("00000000-0000-4000-8000-000000000099")).toBeUndefined();
   });
 });
 

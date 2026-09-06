@@ -8,7 +8,7 @@
 
 import { buildParentSnapshot, type ParentSnapshot } from "#src/lifecycle/parent-snapshot";
 import type { ModelInfo } from "#src/tools/spawn-config";
-import type { SessionContext } from "#src/types";
+import type { ParentSessionInfo, SessionContext } from "#src/types";
 
 /**
  * Narrow config subset read by Agent when driving the turn loop (defaultMaxTurns, graceTurns).
@@ -68,6 +68,89 @@ export class SubagentRuntime {
       parentSessionId: this.currentCtx?.sessionManager.getSessionId() ?? "",
     };
   }
+
+  /** Bind a direct service spawn to the active persisted parent-session leaf. */
+  getServiceParentSessionInfo(): ParentSessionInfo {
+    const sessionManager = this.currentCtx?.sessionManager;
+    if (!sessionManager) {
+      throw new Error("Cannot spawn a lifecycle-tracked subagent without an active parent session.");
+    }
+    const parentSessionId = sessionManager.getSessionId();
+    if (!isNonEmptyString(parentSessionId)) {
+      throw new Error("Cannot spawn a lifecycle-tracked subagent without an active parent session.");
+    }
+    const parentSessionFile = sessionManager.getSessionFile() ?? "";
+    const parentEntryId = sessionManager.getLeafId?.();
+    if (!isNonEmptyString(parentEntryId)) {
+      // Older embeddings can still spawn normally, but do not participate in
+      // the V2 source projection because they cannot name a persisted entry.
+      return Object.freeze({ parentSessionFile, parentSessionId });
+    }
+    return Object.freeze({ parentSessionFile, parentSessionId, parentEntryId });
+  }
+
+  /** Bind a tool spawn to the persisted assistant entry that contains its tool call. */
+  getToolParentSessionInfo(toolCallId: string): ParentSessionInfo {
+    const sessionManager = this.currentCtx?.sessionManager;
+    if (!sessionManager) {
+      throw new Error("Cannot spawn a subagent without an active parent session.");
+    }
+    const { parentSessionFile, parentSessionId } = this.getSessionInfo();
+    if (!isNonEmptyString(parentSessionId)) {
+      throw new Error("Cannot spawn a subagent without an active parent session.");
+    }
+    if (!sessionManager.getLeafEntry || !sessionManager.getEntry) {
+      // See getServiceParentSessionInfo: this is a legacy adapter path, not a
+      // V2-capable identity. The canonical SDK exposes both traversal methods.
+      return Object.freeze({ parentSessionFile, parentSessionId, toolCallId });
+    }
+
+    const visitedEntryIds = new Set<string>();
+    let entry = sessionManager.getLeafEntry();
+    while (isSessionBranchEntry(entry) && !visitedEntryIds.has(entry.id)) {
+      visitedEntryIds.add(entry.id);
+      if (isAssistantToolCallEntry(entry, toolCallId)) {
+        return Object.freeze({ parentSessionFile, parentSessionId, parentEntryId: entry.id, toolCallId });
+      }
+      entry = entry.parentId === null ? undefined : sessionManager.getEntry(entry.parentId);
+    }
+
+    throw new Error("Cannot spawn a subagent without a matching persisted assistant tool-call entry.");
+  }
+}
+
+/** The narrow session-entry shape needed to traverse a persisted branch. */
+type SessionBranchEntry = {
+  id: string;
+  parentId: string | null;
+  type: string;
+  message?: unknown;
+};
+
+function isSessionBranchEntry(value: unknown): value is SessionBranchEntry {
+  if (!isRecord(value)) return false;
+  return (
+    typeof value.id === "string"
+    && value.id.length > 0
+    && (typeof value.parentId === "string" || value.parentId === null)
+    && typeof value.type === "string"
+  );
+}
+
+function isAssistantToolCallEntry(entry: SessionBranchEntry, toolCallId: string): boolean {
+  if (entry.type !== "message" || !isRecord(entry.message)) return false;
+  if (entry.message.role !== "assistant" || !Array.isArray(entry.message.content)) return false;
+  return entry.message.content.some(
+    (block) => isRecord(block) && block.type === "toolCall" && block.id === toolCallId,
+  );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.length > 0;
 }
 
 /**

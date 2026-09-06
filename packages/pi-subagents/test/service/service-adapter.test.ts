@@ -5,7 +5,13 @@ import type { WorkspaceProvider } from "#src/lifecycle/workspace";
 import type { SubagentsService } from "#src/service/service";
 import type { ServiceRuntimeLike, SubagentManagerLike } from "#src/service/service-adapter";
 import { SubagentsServiceAdapter, toSubagentRecord } from "#src/service/service-adapter";
-import { type SessionContext, Subagent } from "#src/types";
+import {
+  type ContextRefV1,
+  type ControlResultPayloadV1,
+  type LifecycleSnapshotV2ServiceResult,
+  type SessionContext,
+  Subagent,
+} from "#src/types";
 import { makeModel } from "#test/helpers/make-model";
 import { createTestSubagent, makeStubExecution } from "#test/helpers/make-subagent";
 import { createMockSession, createSubagentSessionStub, toSubagentSession } from "#test/helpers/mock-session";
@@ -212,6 +218,13 @@ function createManagerStub() {
     abort: vi.fn<SubagentManagerLike["abort"]>(() => true),
     waitForAll: vi.fn<SubagentManagerLike["waitForAll"]>(async () => {}),
     hasRunning: vi.fn<SubagentManagerLike["hasRunning"]>(() => false),
+    getLifecycleSnapshotV2: vi.fn((_ownerSessionId: string): LifecycleSnapshotV2ServiceResult => {
+      throw new Error("not configured");
+    }),
+    appendControlResultV1: vi.fn(async (_contextRef: ContextRefV1, _payload: ControlResultPayloadV1) => ({
+      kind: "accepted" as const,
+      result_id: "00000000-0000-4000-8000-000000000001",
+    })),
     registerWorkspaceProvider: vi.fn<SubagentManagerLike["registerWorkspaceProvider"]>(() => () => {}),
   };
 }
@@ -551,6 +564,41 @@ describe("SubagentsServiceAdapter — steer, abort, waitForAll, hasRunning", () 
       expect(await svc.steer("a-1", "focus on tests")).toBe(true);
       expect(mockSteer).toHaveBeenCalledWith("focus on tests");
     });
+  });
+});
+
+describe("SubagentsServiceAdapter — lifecycle V2", () => {
+  it("delegates snapshots and closed result delivery to the current manager", async () => {
+    const snapshot: LifecycleSnapshotV2ServiceResult = {
+      protocol: "mecha.children/v1",
+      snapshot_id: "snapshot1_test",
+      owner_session_id: "parent-session",
+      sequence: 2,
+      runs: [],
+    };
+    const payload: ControlResultPayloadV1 = {
+      protocol: "mecha.control/v1",
+      result_id: "00000000-0000-4000-8000-000000000001",
+      request_id: "00000000-0000-4000-8000-000000000002",
+      target_session_epoch: 0,
+      runtime_generation: "00000000-0000-4000-8000-000000000003",
+      manifest_sha256: "a".repeat(64),
+      status: "ok",
+      content: "done",
+      details: {},
+    };
+    const contextRef: ContextRefV1 = "ctx1_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    const mgr = createManagerStub();
+    mgr.getLifecycleSnapshotV2.mockReturnValue(snapshot);
+    const svc = new SubagentsServiceAdapter(mgr, vi.fn(), makeRuntimeStub());
+
+    expect(svc.getLifecycleSnapshotV2("parent-session")).toBe(snapshot);
+    await expect(svc.appendControlResultV1(contextRef, payload)).resolves.toEqual({
+      kind: "accepted",
+      result_id: payload.result_id,
+    });
+    expect(mgr.getLifecycleSnapshotV2).toHaveBeenCalledWith("parent-session");
+    expect(mgr.appendControlResultV1).toHaveBeenCalledWith(contextRef, payload);
   });
 });
 

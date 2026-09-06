@@ -33,6 +33,9 @@ export interface AgentToolManager {
 export interface AgentToolRuntime {
 	buildSnapshot(inheritContext: boolean): ParentSnapshot;
 	getModelInfo(): ModelInfo;
+	/** Canonical runtime path: identifies the persisted assistant tool-call entry. */
+	getToolParentSessionInfo?(toolCallId: string): ParentSessionInfo;
+	/** Compatibility seam for older embeddings that cannot participate in lifecycle V2. */
 	getSessionInfo(): { parentSessionFile: string; parentSessionId: string };
 }
 
@@ -82,8 +85,8 @@ export class AgentTool {
 
 		// ---- Boundary extraction (after config so inheritContext is resolved) ----
 		const snapshot = this.runtime.buildSnapshot(config.execution.inheritContext);
-		const { parentSessionFile, parentSessionId } = this.runtime.getSessionInfo();
-		const parentSession: ParentSessionInfo = { parentSessionFile, parentSessionId, toolCallId };
+		const parentSession = this.runtime.getToolParentSessionInfo?.(toolCallId)
+			?? { ...this.runtime.getSessionInfo(), toolCallId };
 
 		// ---- Resume existing agent ----
 		if (params.resume) {

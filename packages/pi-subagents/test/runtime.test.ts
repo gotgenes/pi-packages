@@ -153,4 +153,54 @@ describe("SubagentRuntime context query methods", () => {
     expect(info.parentSessionFile).toBe("");
     expect(info.parentSessionId).toBe("session-99");
   });
+
+  it("binds service spawns to the persisted session leaf", () => {
+    const runtime = createSubagentRuntime();
+    runtime.setSessionContext(makeSessionCtx({
+      sessionManager: {
+        getSessionFile: () => "/sessions/parent.jsonl",
+        getSessionId: () => "session-42",
+        getBranch: () => [],
+        getLeafId: () => "leaf-entry",
+      },
+    }));
+
+    expect(runtime.getServiceParentSessionInfo()).toEqual({
+      parentSessionFile: "/sessions/parent.jsonl",
+      parentSessionId: "session-42",
+      parentEntryId: "leaf-entry",
+    });
+  });
+
+  it("walks persisted session ancestry to bind tool spawns to their assistant call", () => {
+    const runtime = createSubagentRuntime();
+    const assistantEntry = {
+      id: "assistant-entry",
+      parentId: null,
+      type: "message",
+      message: { role: "assistant", content: [{ type: "toolCall", id: "call-42" }] },
+    };
+    const leafEntry = {
+      id: "tool-result-entry",
+      parentId: "assistant-entry",
+      type: "message",
+      message: { role: "toolResult", content: [] },
+    };
+    runtime.setSessionContext(makeSessionCtx({
+      sessionManager: {
+        getSessionFile: () => "/sessions/parent.jsonl",
+        getSessionId: () => "session-42",
+        getBranch: () => [],
+        getLeafEntry: () => leafEntry,
+        getEntry: (id: string) => id === assistantEntry.id ? assistantEntry : undefined,
+      },
+    }));
+
+    expect(runtime.getToolParentSessionInfo("call-42")).toEqual({
+      parentSessionFile: "/sessions/parent.jsonl",
+      parentSessionId: "session-42",
+      parentEntryId: "assistant-entry",
+      toolCallId: "call-42",
+    });
+  });
 });

@@ -12,7 +12,15 @@ import type { AgentSpawnConfig } from "#src/lifecycle/subagent-manager";
 import type { WorkspaceProvider } from "#src/lifecycle/workspace";
 import type { SpawnOptions, SubagentRecord, SubagentsService } from "#src/service/service";
 import type { ModelRegistry } from "#src/session/model-resolver";
-import type { SessionContext, Subagent, ThinkingLevel } from "#src/types";
+import type {
+  ContextRefV1,
+  ControlResultAppendOutcomeV1,
+  ControlResultPayloadV1,
+  LifecycleSnapshotV2ServiceResult,
+  SessionContext,
+  Subagent,
+  ThinkingLevel,
+} from "#src/types";
 
 /** Narrow interface for the SubagentManager — avoids coupling to the concrete class. */
 export interface SubagentManagerLike {
@@ -22,6 +30,11 @@ export interface SubagentManagerLike {
   abort(id: string): boolean;
   waitForAll(): Promise<void>;
   hasRunning(): boolean;
+  getLifecycleSnapshotV2?(ownerSessionId: string): LifecycleSnapshotV2ServiceResult;
+  appendControlResultV1?(
+    contextRef: ContextRefV1,
+    payload: ControlResultPayloadV1,
+  ): Promise<ControlResultAppendOutcomeV1>;
   registerWorkspaceProvider(provider: WorkspaceProvider): () => void;
 }
 
@@ -32,7 +45,9 @@ export interface SubagentManagerLike {
 export interface ServiceRuntimeLike {
   readonly currentCtx: SessionContext | undefined;
   buildSnapshot(inheritContext: boolean): ParentSnapshot;
-  /** Parent session identity, so an SDK-spawned child nests under its parent. */
+  /** Parent session identity and persisted leaf for a service-spawned child. */
+  getServiceParentSessionInfo?(): import("#src/types").ParentSessionInfo;
+  /** Compatibility seam for older embeddings that cannot participate in lifecycle V2. */
   getSessionInfo(): { parentSessionFile: string; parentSessionId: string };
 }
 
@@ -53,13 +68,13 @@ export class SubagentsServiceAdapter implements SubagentsService {
     const description = options?.description ?? prompt.slice(0, 80);
 
     const snapshot = this.runtime.buildSnapshot(options?.inheritContext ?? false);
-    const { parentSessionFile, parentSessionId } = this.runtime.getSessionInfo();
+    const parentSession = this.runtime.getServiceParentSessionInfo?.() ?? this.runtime.getSessionInfo();
     return this.manager.spawn(snapshot, type, prompt, {
       description,
       model,
       // No toolCallId — an SDK spawn has no originating tool call, and
       // Subagent.toolCallId reporting undefined there is the truth.
-      parentSession: { parentSessionFile, parentSessionId },
+      parentSession,
       maxTurns: options?.maxTurns,
       thinkingLevel: this.resolveThinkingLevel(options?.thinkingLevel),
       inheritContext: options?.inheritContext,
@@ -102,6 +117,30 @@ export class SubagentsServiceAdapter implements SubagentsService {
 
   hasRunning(): boolean {
     return this.manager.hasRunning();
+  }
+
+  getLifecycleSnapshotV2(ownerSessionId: string): LifecycleSnapshotV2ServiceResult {
+    if (!this.manager.getLifecycleSnapshotV2) {
+      throw new Error("The installed subagent manager does not support lifecycle V2.");
+    }
+    return this.manager.getLifecycleSnapshotV2(ownerSessionId);
+  }
+
+  appendControlResultV1(
+    contextRef: ContextRefV1,
+    payload: ControlResultPayloadV1,
+  ): Promise<ControlResultAppendOutcomeV1> {
+    if (!this.manager.appendControlResultV1) {
+      return Promise.resolve({
+        kind: "rejected",
+        error: {
+          code: "STALE_CHILD_CONTEXT",
+          message: "The installed subagent manager does not support lifecycle V2.",
+          retryable: true,
+        },
+      });
+    }
+    return this.manager.appendControlResultV1(contextRef, payload);
   }
 
   registerWorkspaceProvider(provider: WorkspaceProvider): () => void {

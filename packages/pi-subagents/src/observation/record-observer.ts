@@ -8,9 +8,10 @@
  */
 
 import type { SubagentState } from "#src/lifecycle/subagent-state";
-import type { CompactionInfo, SubscribableSession } from "#src/types";
+import type { CompactionInfo, CompactionTransitionV2, SubscribableSession } from "#src/types";
 
 export interface SubagentObserverOptions {
+  onCompactionTransition?: (transition: CompactionTransitionV2) => void;
   onCompact?: (info: CompactionInfo) => void;
 }
 
@@ -24,7 +25,8 @@ export interface SubagentObserverOptions {
  * - `message_update` (text_delta) → `state.appendResponseText(delta)`
  * - `message_end` (assistant, with usage) → `state.addUsage(…)`
  * - `turn_end` → `state.incrementTurnCount()`
- * - `compaction_end` (not aborted) → `state.incrementCompactions()`, call `onCompact`
+ * - `compaction_start` → emit an explicit lifecycle transition
+ * - `compaction_end` → update lifetime counts and emit the terminal transition
  *
  * @returns An unsubscribe function.
  */
@@ -67,12 +69,26 @@ export function subscribeSubagentObserver(
       });
     }
 
-    if (event.type === "compaction_end" && !event.aborted && event.result) {
-      state.incrementCompactions();
-      options?.onCompact?.({
-        reason: event.reason,
-        tokensBefore: event.result.tokensBefore,
+    if (event.type === "compaction_start") {
+      options?.onCompactionTransition?.({
+        type: "start",
+        started_at: new Date().toISOString(),
       });
+    }
+
+    if (event.type === "compaction_end") {
+      if (!event.aborted && event.result) {
+        state.incrementCompactions();
+        options?.onCompactionTransition?.({ type: "completed" });
+        options?.onCompact?.({
+          reason: event.reason,
+          tokensBefore: event.result.tokensBefore,
+        });
+      } else if (event.aborted) {
+        options?.onCompactionTransition?.({ type: "aborted" });
+      } else {
+        options?.onCompactionTransition?.({ type: "failed" });
+      }
     }
   });
 }

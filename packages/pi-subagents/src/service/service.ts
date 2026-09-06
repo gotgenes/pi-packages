@@ -18,11 +18,24 @@ import type {
   WorkspacePrepareContext,
   WorkspaceProvider,
 } from "#src/lifecycle/workspace";
+import type {
+  ContextRefV1,
+  ControlResultAppendOutcomeV1,
+  ControlResultPayloadV1,
+  LifecycleSnapshotV2ServiceResult,
+} from "#src/types";
 
 
 // SubagentStatus is defined in the lifecycle layer (single home) and re-exported
 // here for the public API surface — mirrors the LifetimeUsage / workspace pattern.
 export type { SubagentStatus } from "#src/lifecycle/subagent";
+export type {
+  ContextRefV1,
+  ControlResultAppendOutcomeV1,
+  ControlResultPayloadV1,
+  LifecycleSnapshotV2ServiceResult,
+  SubagentLifecycleSnapshotV2,
+} from "#src/types";
 // Generative extension seam (ADR 0002, Phase 16 Step 2). The provider type
 // and all four collaborator types it references are re-exported by name so
 // consumers can import them directly rather than recovering them via
@@ -101,6 +114,19 @@ export interface SubagentsService {
 
   /** Whether any agents are running or queued. */
   hasRunning(): boolean;
+
+  /**
+   * Return an immutable, bounded lifecycle V2 snapshot for one parent session.
+   * Its opaque context references are service-only; router payloads use the
+   * `SubagentLifecycleSnapshotV2` projection without those references.
+   */
+  getLifecycleSnapshotV2(ownerSessionId: string): LifecycleSnapshotV2ServiceResult;
+
+  /** Deliver a closed, idempotent control result to a live V2 child context. */
+  appendControlResultV1(
+    contextRef: ContextRefV1,
+    payload: ControlResultPayloadV1,
+  ): Promise<ControlResultAppendOutcomeV1>;
 
   /**
    * Register the single workspace provider that supplies a child's working

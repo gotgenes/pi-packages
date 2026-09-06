@@ -6,6 +6,7 @@
  * Behavior (abort, steer buffering) lives here rather than on SubagentManager.
  */
 
+import { randomUUID } from "node:crypto";
 import type { Model } from "@earendil-works/pi-ai";
 import type { AgentSessionEvent, ToolDefinition } from "@earendil-works/pi-coding-agent";
 import { debugLog } from "#src/debug";
@@ -19,7 +20,17 @@ import type { WorkspaceProvider } from "#src/lifecycle/workspace";
 import { WorkspaceBracket } from "#src/lifecycle/workspace-bracket";
 import { subscribeSubagentObserver } from "#src/observation/record-observer";
 import type { RunConfig } from "#src/runtime";
-import type { CompactionInfo, ParentSessionInfo, SessionMessage, SubagentType, ThinkingLevel } from "#src/types";
+import type {
+  CompactionInfo,
+  CompactionTransitionV2,
+  ParentSessionInfo,
+  SessionMessage,
+  SourceCompactionV2,
+  SourceModelV2,
+  SubagentLifecycleRunV2,
+  SubagentType,
+  ThinkingLevel,
+} from "#src/types";
 
 /** Per-subagent lifecycle observer — created by SubagentManager for each spawn. */
 export interface SubagentLifecycleObserver {
@@ -29,8 +40,12 @@ export interface SubagentLifecycleObserver {
 	onSessionCreated?(agent: Subagent): void;
 	/** Fires once when the run completes or fails (for concurrency drain). */
 	onRunFinished?(agent: Subagent): void;
+	/** Fires when a resumed run transitions to running. */
+	onResumeStarted?(agent: Subagent): void;
 	/** Fires once when a resumed run reaches a terminal state. */
 	onResumeFinished?(agent: Subagent): void;
+	/** Fires after each explicit compaction transition updates the current run. */
+	onCompactionTransition?(agent: Subagent, transition: CompactionTransitionV2): void;
 	/** Fires when the running agent sends its parent a mid-run message. */
 	onUpdateSent?(agent: Subagent, message: string): void;
 	/**
@@ -54,6 +69,70 @@ export type SteerOutcome =
 	| { kind: "delivered" }
 	| { kind: "buffered" }
 	| { kind: "rejected"; status: SubagentStatus };
+
+/** Mutable source state for one execution. A resume creates a new run. */
+class LifecycleRunStateV2 {
+  private readonly runId = randomUUID();
+  private model: SourceModelV2 | null;
+  private compactionState: SourceCompactionV2["state"] = "idle";
+  private compactionCount = 0;
+  private compactionStartedAt: string | null = null;
+  private lastCompactionOutcome: SourceCompactionV2["last_outcome"] = null;
+
+  constructor(model: Model<any> | undefined) {
+    this.model = toSourceModelV2(model);
+  }
+
+  captureResolvedModel(model: Model<any> | undefined): void {
+    if (model) this.model = toSourceModelV2(model);
+  }
+
+  applyCompactionTransition(transition: CompactionTransitionV2): void {
+    switch (transition.type) {
+      case "start":
+        this.compactionState = "compacting";
+        this.compactionStartedAt = transition.started_at;
+        return;
+      case "completed":
+        this.compactionState = "idle";
+        this.compactionCount++;
+        this.compactionStartedAt = null;
+        this.lastCompactionOutcome = "completed";
+        return;
+      case "failed":
+        this.compactionState = "idle";
+        this.compactionStartedAt = null;
+        this.lastCompactionOutcome = "failed";
+        return;
+      case "aborted":
+        this.compactionState = "idle";
+        this.compactionStartedAt = null;
+        this.lastCompactionOutcome = "aborted";
+        return;
+    }
+  }
+
+  project(taskId: string, startedAt: number, completedAt: number | undefined): SubagentLifecycleRunV2 {
+    return {
+      task_id: taskId,
+      run_id: this.runId,
+      model: this.model === null ? null : { ...this.model },
+      started_at: new Date(startedAt).toISOString(),
+      finished_at: completedAt === undefined ? null : new Date(completedAt).toISOString(),
+      duration_ms: completedAt === undefined ? null : completedAt - startedAt,
+      compaction: {
+        state: this.compactionState,
+        count: this.compactionCount,
+        started_at: this.compactionStartedAt,
+        last_outcome: this.lastCompactionOutcome,
+      },
+    };
+  }
+}
+
+function toSourceModelV2(model: Model<any> | undefined): SourceModelV2 | null {
+  return model ? { provider: model.provider, id: model.id, name: model.name } : null;
+}
 
 /**
  * The execution machinery a Subagent needs to run. A single mandatory
@@ -107,6 +186,9 @@ export class Subagent {
 	 * a per-call display snapshot only the tool door ever built (#724).
 	 */
 	readonly isBackground: boolean;
+	private readonly lifecycleOwnerSessionIdValue?: string;
+	private readonly lifecycleParentEntryIdValue?: string;
+	private lifecycleRun: LifecycleRunStateV2;
 
 	// Lifecycle status and metrics — owned by a private value object; getters and
 	// mutation methods below delegate to it one line.
@@ -141,6 +223,17 @@ export class Subagent {
 	isRunning(): boolean { return this.state.isRunning(); }
 	canBeSteered(): boolean { return this.state.canBeSteered(); }
 	get maxTurns(): number | undefined { return this.execution.maxTurns; }
+
+	/** Immutable owner binding for lifecycle V2 snapshots. */
+	get lifecycleOwnerSessionId(): string | undefined { return this.lifecycleOwnerSessionIdValue; }
+
+	/** Persisted parent entry binding for lifecycle V2 snapshots. */
+	get lifecycleParentEntryId(): string | undefined { return this.lifecycleParentEntryIdValue; }
+
+	/** Source-backed fields for the current execution. */
+	getLifecycleRunV2(): SubagentLifecycleRunV2 {
+		return this.lifecycleRun.project(this.id, this.startedAt, this.completedAt);
+	}
 
 	readonly abortController: AbortController;
 	private _promise?: Promise<void>;
@@ -258,6 +351,9 @@ export class Subagent {
 
 		// Execution machinery — a single mandatory collaborator
 		this.execution = init.execution;
+		this.lifecycleOwnerSessionIdValue = this.execution.parentSession?.parentSessionId;
+		this.lifecycleParentEntryIdValue = this.execution.parentSession?.parentEntryId;
+		this.lifecycleRun = new LifecycleRunStateV2(this.execution.model);
 
 		// Per-run lifecycle collaborators
 		this.workspaceBracket = new WorkspaceBracket(
@@ -318,8 +414,10 @@ export class Subagent {
 			return;
 		}
 
+		this.lifecycleRun.captureResolvedModel(this.subagentSession.session.model);
 		this.flushPendingSteers();
 		this.listeners.attachObserver(subscribeSubagentObserver(this.subagentSession, this.state, {
+			onCompactionTransition: (transition) => this.handleCompactionTransition(transition),
 			onCompact: (info) => this.execution.observer?.onCompacted?.(this, info),
 		}));
 		this.execution.observer?.onSessionCreated?.(this);
@@ -432,14 +530,17 @@ export class Subagent {
 			return Promise.reject(new Error("Subagent not configured for resume — missing session"));
 		}
 
+		this.lifecycleRun = new LifecycleRunStateV2(subagentSession.session.model ?? this.execution.model);
+		this.resetForResume(Date.now());
+		this.execution.observer?.onResumeStarted?.(this);
 		this._promise = this.runResume(subagentSession, prompt, signal);
 		return this._promise;
 	}
 
 	/** The resume body. Always resolves — errors terminate through failResume(). */
 	private async runResume(subagentSession: SubagentSession, prompt: string, signal?: AbortSignal): Promise<void> {
-		this.resetForResume(Date.now());
 		this.listeners.attachObserver(subscribeSubagentObserver(subagentSession, this.state, {
+			onCompactionTransition: (transition) => this.handleCompactionTransition(transition),
 			onCompact: (info) => this.execution.observer?.onCompacted?.(this, info),
 		}));
 
@@ -573,6 +674,12 @@ export class Subagent {
 			this.subagentSession?.steer(msg).catch(() => {});
 		}
 		this._pendingSteers = [];
+	}
+
+	/** Apply a source lifecycle transition before notifying the manager. */
+	private handleCompactionTransition(transition: CompactionTransitionV2): void {
+		this.lifecycleRun.applyCompactionTransition(transition);
+		this.execution.observer?.onCompactionTransition?.(this, transition);
 	}
 
 	/** Reset for resume: running status, new startedAt, clear completedAt/result/error/consumedAt/listeners. */

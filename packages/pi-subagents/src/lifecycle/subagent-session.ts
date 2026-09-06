@@ -21,7 +21,7 @@ import { normalizeMaxTurns } from "#src/lifecycle/turn-limits";
 import { getSessionContextPercent, type SessionStatsLike } from "#src/lifecycle/usage";
 import { extractText } from "#src/session/context";
 import { getAgentConversation } from "#src/session/conversation";
-import type { SessionMessage } from "#src/types";
+import type { BoundedJsonObjectV1, ControlResultPayloadV1, SessionMessage } from "#src/types";
 
 /** Outcome of one turn loop. */
 export interface TurnLoopResult {
@@ -158,6 +158,41 @@ export class SubagentSession {
     await this._session.steer(message);
   }
 
+  /**
+   * Append one validated control result through Pi's model-visible custom-message path.
+   * `triggerTurn: false` preserves the active child turn and lets Pi defer the
+   * entry safely until that turn has completed.
+   */
+  async appendControlResult(payload: ControlResultPayloadV1): Promise<void> {
+    const details = {
+      protocol: payload.protocol,
+      result_id: payload.result_id,
+      request_id: payload.request_id,
+      target_session_epoch: payload.target_session_epoch,
+      runtime_generation: payload.runtime_generation,
+      manifest_sha256: payload.manifest_sha256,
+      status: payload.status,
+      details: payload.details,
+      ...(payload.error === undefined ? {} : { error: payload.error }),
+    };
+    await this._session.sendCustomMessage({
+      customType: "mecha.control.result.v1",
+      content: payload.content,
+      display: false,
+      details,
+    }, { triggerTurn: false });
+  }
+
+  /** Find a persisted control result on this child's active session branch. */
+  findControlResultById(resultId: string): ControlResultPayloadV1 | undefined {
+    const branch = this._session.sessionManager.getBranch();
+    for (let index = branch.length - 1; index >= 0; index--) {
+      const result = controlResultFromPersistedEntry(branch[index], resultId);
+      if (result !== undefined) return result;
+    }
+    return undefined;
+  }
+
   /** Return the session's conversation as formatted text. */
   getConversation(): string {
     return getAgentConversation(this._session);
@@ -216,7 +251,84 @@ export class SubagentSession {
   }
 }
 
-// ── Private turn-loop helpers ───────────────────────────────────────────────────
+// ── Private control-result and turn-loop helpers ─────────────────────────────────
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function isJsonValue(value: unknown, depth = 0): boolean {
+  if (depth > 8 || value === null || typeof value === "boolean" || typeof value === "string") {
+    return depth <= 8;
+  }
+  if (typeof value === "number") return Number.isFinite(value);
+  if (Array.isArray(value)) return value.every((item) => isJsonValue(item, depth + 1));
+  if (!isPlainRecord(value)) return false;
+  return Object.values(value).every((item) => isJsonValue(item, depth + 1));
+}
+
+function isBoundedJsonObject(value: unknown): value is BoundedJsonObjectV1 {
+  return isPlainRecord(value) && isJsonValue(value);
+}
+
+function controlResultFromPersistedEntry(entry: unknown, resultId: string): ControlResultPayloadV1 | undefined {
+  const custom = isPlainRecord(entry) ? entry : undefined;
+  if (
+    custom?.type !== "custom_message"
+    || custom.customType !== "mecha.control.result.v1"
+    || typeof custom.content !== "string"
+    || !isPlainRecord(custom.details)
+  ) {
+    return undefined;
+  }
+  const details = custom.details;
+  if (
+    details.protocol !== "mecha.control/v1"
+    || details.result_id !== resultId
+    || typeof details.request_id !== "string"
+    || typeof details.target_session_epoch !== "number"
+    || !Number.isSafeInteger(details.target_session_epoch)
+    || typeof details.runtime_generation !== "string"
+    || typeof details.manifest_sha256 !== "string"
+    || (details.status !== "ok" && details.status !== "error")
+    || !isBoundedJsonObject(details.details)
+  ) {
+    return undefined;
+  }
+
+  const error = details.error;
+  if (details.status === "ok" && error !== undefined) return undefined;
+  let normalizedError: ControlResultPayloadV1["error"];
+  if (details.status === "error") {
+    const errorRecord = isPlainRecord(error) ? error : undefined;
+    if (
+      !errorRecord
+      || typeof errorRecord.code !== "string"
+      || typeof errorRecord.message !== "string"
+      || typeof errorRecord.retryable !== "boolean"
+    ) {
+      return undefined;
+    }
+    normalizedError = {
+      code: errorRecord.code,
+      message: errorRecord.message,
+      retryable: errorRecord.retryable,
+    };
+  }
+
+  return {
+    protocol: "mecha.control/v1",
+    result_id: resultId,
+    request_id: details.request_id,
+    target_session_epoch: details.target_session_epoch,
+    runtime_generation: details.runtime_generation,
+    manifest_sha256: details.manifest_sha256,
+    status: details.status,
+    content: custom.content,
+    details: details.details,
+    ...(normalizedError === undefined ? {} : { error: normalizedError }),
+  };
+}
 
 /**
  * Subscribe to a session and collect the last assistant message text.
