@@ -244,3 +244,63 @@ One authoring note worth carrying, because it caused a near-miss in this retro's
 A sentence beginning `#883` at the start of a line is read as a markdown heading by `pi-autoformat`, and the formatter then **renormalized every subsequent heading level in `AGENTS.md`** to stay consistent with the phantom `##` — 13 headings demoted one level.
 Fixing the offending line did not undo that; the demotions survived into the first commit and had to be reverted by hand.
 Lead with `Issue #883`, and after any `AGENTS.md` edit diff the heading lines (`git diff <base> -- AGENTS.md | grep '^[+-]#'`) before committing — `rumdl check` passes on the renormalized file, so no gate catches it.
+
+## Stage: PR Review — Contributor Reply (2026-09-06T02:56:58Z)
+
+### Session summary
+
+@georgeharker replied on both #883 and #884 within the hour: he verified the byte-mismatch trace against his own captured query, posted a correction to his own root-cause chain, prototyped the bridge-side fix, and filed it as `elidickinson/pi-claude-bridge#88`.
+He offered to reframe or withdraw PR #884, deferring to this repo and to `@elidickinson`.
+The operator's call is to reply now with two additions and hold the disposition until `@elidickinson` responds on the bridge issue; #883 stays open, cross-linked.
+
+### Evaluation
+
+#### Why both root-cause analyses were correct
+
+The most valuable thing in the reply is a reconciliation neither side could have reached alone. @georgeharker's bridge fork carried `fix/subagent-provider-registration` (`ff505ac`, 2026-08-25), which routed child streaming through the child's **own** module instance because the parent-routed path broke prompt capture — its commit message quotes the bridge's `prompt-capture: no capture for this system prompt` throw.
+That was a bridge-side resolution of the same problem `f805ffc` (2026-08-28, "inherit runtime-registered providers in child sessions", #812) solved on this side.
+Under his fork the capture maps genuinely were separate, so instance isolation *was* the operative mechanism; under upstream `pi-subagents` the child uses the parent's registered provider object, the singleton is shared, and bytes became the blocker.
+
+The review's PR-side comment treated his instance-isolation claim as simply wrong.
+It was configuration-dependent, and neither party could see the other's configuration.
+This is the sharper form of the `AGENTS.md` rule added in this issue's retro: a third-party report's claim about the other side needs checking, but "checked and false" may mean "false in *our* configuration", not "false".
+
+#### The prototype and what it covers
+
+`fix/tail-stripped-inheritance-key` (`83621a3`): `record()` derives a `tailStrippedPrompt` cut at the same boundaries `inheritedIdentity` cuts at, and `findInheritedPrompts` matches under either key — both exact substring searches, no fuzzy matching.
+Measured live against **default `full` inheritance**, the child's forwarded append drops from roughly 6.2k to 0.9k characters, with pi's base and both trigger phrases absent and the parent's portable parts substituted in place.
+One file plus one plumbing line, no new modes, and the child's pi-side prompt is untouched, so the byte-identical parent prefix `#180`/`#400` protect is preserved.
+
+#### Two corrections contributed back
+
+1. **The worktree residual fails silently, not loudly.**
+   An empty capture map does not surface as the bridge's `no capture for this system prompt` throw: the child's own `before_agent_start` records a self-capture, so the resolver finds an exact match and simply has no inherited edge.
+   The base is forwarded verbatim and the symptom is the same silent 400.
+   The underlying mechanism was confirmed here — `useExtensionCacheCwd` in pi's `core/extensions/loader.ts` calls `clearExtensionCache()` on any cwd change, so a worktree child loads a fresh bridge module.
+2. **Reconstructing `Available tools:` needs snippets, not names.**
+   His plan was to rebuild the section from `assembleSessionConfig`'s `toolNames`, but `registry.getToolNamesForType(type)` yields names only while pi renders `- ${name}: ${toolSnippets[name]}`.
+   The snippets are already in the capture he takes: `BuildSystemPromptOptions.toolSnippets` is populated in `_baseSystemPromptOptions` beside `selectedTools`.
+   Filtering the parent's snippets by the child's `toolNames` reproduces pi's list exactly, because pi itself lists only tools that have a snippet (`visibleTools = tools.filter((name) => !!toolSnippets?.[name])`).
+   The sole gap is child-only tools, `ask_parent` and `notify_parent`.
+
+#### What would remain ours after a bridge-side fix
+
+Two cases, both narrower than #884's current framing:
+
+1. A **worktree child**, whose differing cwd clears pi's extension cache and leaves any capture-based projection with an empty map.
+2. Any **other re-homing provider** with no projection to fix.
+
+That is a real but narrow warrant for a second inheritance strategy in a core the package skill describes as deliberately narrow, against an inheritance question ADR 0006 already settled once.
+It is not zero, which is why the disposition waits rather than resolving to withdrawal.
+
+### Decision and attribution
+
+**Hold the disposition; reply now.**
+Posted on #884: the two corrections above, and the position that `@elidickinson`'s read of bridge #88 should decide whether #884 is reframed as an escape hatch or withdrawn.
+If the bridge fix lands, `portable` stops being necessary for #883 and becomes an opt-in for re-homing hosts that cannot fix their projection, plus the worktree case.
+If it does not, #884 is the fallback and is taken with the six simplifications recorded in the PR Review stage.
+
+**#883 stays open**, cross-linked to `elidickinson/pi-claude-bridge#88`.
+The bridge fix mitigates the symptom for bridge users; it does not change that a `pi-subagents` child carries pi's base prompt into any provider that re-homes it.
+
+Attribution is unchanged from the PR Review stage: `Co-authored-by: George Harker <george@george-graphics.co.uk>` on any implementation or docs commit, `@georgeharker` credited by name in the close comment, and any ADR crediting `elidickinson`'s `diag/EXTRA-USAGE-400.md` for the original bisection.
