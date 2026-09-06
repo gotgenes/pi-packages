@@ -69,3 +69,17 @@ Test count 1564 → 1589 (+25) in pi-subagents.
   Its requested routing re-derivation found no stranding path beyond the ones the plan enumerates and accepts.
 
 [#885]: https://github.com/gotgenes/pi-packages/issues/885
+
+## Stage: Sync (worktree) (2026-09-06T17:13:55Z)
+
+### Session summary
+
+Pre-push checks (`pnpm run lint`, `pnpm fallow dead-code`) both passed clean with no fixes needed.
+The branch rebases cleanly onto local `main` with no conflicts (verified below); the plan's `**Release:** ship independently` marker stands — no batch to defer to.
+Follow-up #885 (expose `resume` on `SubagentsService`, adopted as Phase 22 Step 16) is already filed and dispositioned.
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-872--/2026-09-06T03-23-05-831Z_01a074bd-b8e7-731e-ab05-981b5fb1a787.jsonl` — read with `read_session_file({ path: "<path>" })` for message-level verification at land/retro time.
+
+### Observations
+
+Nothing further beyond the deviations and the reviewer's WARN already recorded in the Implementation stage above — this sync found no new issues.
