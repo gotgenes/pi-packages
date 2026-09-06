@@ -309,7 +309,7 @@ export class Subagent {
 				thinkingLevel: this.execution.thinkingLevel,
 				askParent: (question) => { this.state.setPendingQuestion(question); },
 				notifyParent: this.canSendUpdates(runConfig)
-					? (message) => this.execution.observer?.onUpdateSent?.(this, message)
+					? (message) => { this.announceUpdate(message); }
 					: undefined,
 			});
 		} catch (err) {
@@ -340,13 +340,31 @@ export class Subagent {
 	/**
 	 * Whether this run gets the mid-run update channel.
 	 *
-	 * Background only: a foreground parent is blocked inside its own `subagent`
-	 * tool call, so the nudge carrying an update is withheld until that run
-	 * settles — by which time the child's own result has already returned.
+	 * The operator's setting is the whole gate: where an update lands is decided
+	 * per message by announceUpdate(), not per child at session creation, so no
+	 * child has to be refused the tool for a condition that can change mid-run.
 	 * Defaults to on when no run config is supplied, matching the setting.
 	 */
 	private canSendUpdates(runConfig: RunConfig | undefined): boolean {
-		return this.isBackground && (runConfig?.midRunUpdates ?? true);
+		return runConfig?.midRunUpdates ?? true;
+	}
+
+	/**
+	 * Route an update the child sent: to the carrier holding this run's outcome
+	 * when one has claimed it, to the announcement channel otherwise.
+	 *
+	 * A claim means a carrier is blocked awaiting this run, so an announcement
+	 * would reach the parent only after that carrier's own return — and cost it
+	 * a turn to read what it already has. Buffering hands the message to the
+	 * carrier instead; NotificationManager reads the same claim and stays quiet.
+	 *
+	 * The observer is told either way: an update is a fact about the run, like
+	 * the terminal transitions, so the lifecycle event fires regardless of which
+	 * carrier delivers it.
+	 */
+	private announceUpdate(message: string): void {
+		if (this.claimed) this.state.recordUpdate(message);
+		this.execution.observer?.onUpdateSent?.(this, message);
 	}
 
 	/**
@@ -508,8 +526,8 @@ export class Subagent {
 	/** The carrier abandoned its commitment; announcing is owed again. */
 	// Called on the `Subagent` returned by `getRecord()` from get-result-tool.ts
 	// and agent-tool.ts, both of which declare it through their own structural
-	// interface — fallow cannot trace through interfaces.
-	// fallow-ignore-next-line unused-class-member
+	// interface — fallow cannot trace through interfaces, and reaches this only
+	// through the release-then-announce test.
 	release(): void {
 		this.state.release();
 	}

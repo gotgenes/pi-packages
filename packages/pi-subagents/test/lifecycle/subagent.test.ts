@@ -1184,7 +1184,7 @@ describe("Subagent — the mid-run update channel", () => {
 		expect(onUpdateSent).toHaveBeenCalledWith(agent, "The bug is in the retry wrapper.");
 	});
 
-	it("withholds the channel from a foreground child, whose update could not arrive in time", async () => {
+	it("gives a foreground child the same channel, since where its update lands is not its concern", async () => {
 		const { factory } = createSpyFactory();
 		const agent = createRunnableAgent({
 			createSubagentSession: factory,
@@ -1194,7 +1194,67 @@ describe("Subagent — the mid-run update channel", () => {
 
 		await agent.run();
 
-		expect(factory.mock.calls[0][0].notifyParent).toBeUndefined();
+		expect(factory.mock.calls[0][0].notifyParent).toBeTypeOf("function");
+	});
+
+	describe("routing by who holds the outcome", () => {
+		it("holds an update for the carrier that claimed the run's outcome", async () => {
+			const { factory } = createSpyFactory();
+			const agent = createRunnableAgent({
+				createSubagentSession: factory,
+				getRunConfig: () => updatesOn,
+			});
+			await agent.run();
+			agent.claim();
+
+			factory.mock.calls[0][0].notifyParent?.("The bug is in the retry wrapper.");
+
+			expect(agent.runUpdates).toEqual(["The bug is in the retry wrapper."]);
+		});
+
+		it("holds nothing back when no carrier has claimed the outcome", async () => {
+			const { factory } = createSpyFactory();
+			const agent = createRunnableAgent({
+				createSubagentSession: factory,
+				getRunConfig: () => updatesOn,
+			});
+			await agent.run();
+
+			factory.mock.calls[0][0].notifyParent?.("The bug is in the retry wrapper.");
+
+			expect(agent.runUpdates).toEqual([]);
+		});
+
+		it("tells the observer either way, because the update is a fact about the run", async () => {
+			const { factory } = createSpyFactory();
+			const onUpdateSent = vi.fn<(agent: Subagent, message: string) => void>();
+			const agent = createRunnableAgent({
+				createSubagentSession: factory,
+				observer: { onUpdateSent },
+				getRunConfig: () => updatesOn,
+			});
+			await agent.run();
+			agent.claim();
+
+			factory.mock.calls[0][0].notifyParent?.("The bug is in the retry wrapper.");
+
+			expect(onUpdateSent).toHaveBeenCalledWith(agent, "The bug is in the retry wrapper.");
+		});
+
+		it("keeps the channel live across a resume, whose parent is blocked awaiting it", async () => {
+			const { factory } = createSpyFactory();
+			const agent = createRunnableAgent({
+				createSubagentSession: factory,
+				getRunConfig: () => updatesOn,
+			});
+			await agent.run();
+			agent.claim();
+			await agent.resume("keep going");
+
+			factory.mock.calls[0][0].notifyParent?.("The premise is wrong.");
+
+			expect(agent.runUpdates).toEqual(["The premise is wrong."]);
+		});
 	});
 
 	it("withholds the channel when the operator turned mid-run updates off", async () => {

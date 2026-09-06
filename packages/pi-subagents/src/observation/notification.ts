@@ -277,13 +277,19 @@ export class NotificationManager implements NotificationSystem {
   /**
    * Announce a message a still-running child sent its parent.
    *
-   * Unlike a completion, this consults neither the carrier claim nor
-   * consumption: both record that the child's *outcome* has an owner, and an
-   * update is a new fact rather than that outcome told again. The disposal
-   * latch and the parent-run withhold apply as they do to any announcement.
+   * Consumption is not consulted: it records that the child's *outcome* was
+   * collected, and an update is a new fact rather than that outcome told again.
+   * The carrier claim is, for a different reason than a completion's — not that
+   * the message would duplicate a delivery, but that the claiming carrier is
+   * blocked awaiting this run, so an announcement could only arrive after its
+   * return. That carrier renders the update itself (`renderRunUpdates`), and
+   * `Subagent.announceUpdate` reads the same claim to hand it over.
+   * The disposal latch and the parent-run withhold apply as they do to any
+   * announcement.
    */
   sendUpdate(record: Subagent, message: string): void {
     if (this.disposed) return;
+    if (record.claimed) return;
     if (this.parentRunActive) {
       this.pending.push({ kind: "update", record, message });
       return;

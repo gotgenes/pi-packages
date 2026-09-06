@@ -600,10 +600,23 @@ describe("NotificationManager", () => {
         expect(parent.deliveredToLlm).toHaveLength(1);
       });
 
-      it("is announced even while a carrier holds the outcome", () => {
+      it("is left to the carrier that holds the outcome, which is blocked meanwhile", () => {
         const parent = makePiParent();
         const record = createTestSubagent({ id: "live-1" });
         record.claim();
+
+        parent.manager.sendUpdate(record, "Course change.");
+
+        // A claimed carrier is blocked awaiting this run, so an announcement
+        // would arrive after its own return. It renders the update instead.
+        expect(parent.deliveredToLlm).toHaveLength(0);
+      });
+
+      it("is announced again once the carrier abandons its claim", () => {
+        const parent = makePiParent();
+        const record = createTestSubagent({ id: "live-1" });
+        record.claim();
+        record.release();
 
         parent.manager.sendUpdate(record, "Course change.");
 
