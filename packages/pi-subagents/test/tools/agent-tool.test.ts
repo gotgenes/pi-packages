@@ -224,6 +224,26 @@ describe("AgentTool — resume path", () => {
 		expect(result.content[0].text).toContain('resume: "agent-9"');
 	});
 
+	it("reports the updates a resumed child sent while the parent was blocked", async () => {
+		const deps = createToolDeps();
+		const resumeRecord = createTestSubagent();
+		resumeRecord.subagentSession = toSubagentSession(createSubagentSessionStub(createMockSession()));
+		deps.manager.getRecord = vi.fn().mockReturnValue(resumeRecord);
+		deps.manager.resume = vi.fn().mockResolvedValue(
+			createTestSubagent({ id: "agent-9", runUpdates: ["The bug is in the retry wrapper."] }),
+		);
+
+		const result = await execute(deps, {
+			prompt: "continue",
+			description: "resume",
+			subagent_type: "general-purpose",
+			resume: "agent-1",
+		});
+
+		expect(result.content[0].text).toContain("Updates this agent sent while it worked:");
+		expect(result.content[0].text).toContain("The bug is in the retry wrapper.");
+	});
+
 	it("names where a teardown saved the work of a resumed child", async () => {
 		const deps = createToolDeps();
 		const resumeRecord = createTestSubagent();

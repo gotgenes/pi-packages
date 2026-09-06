@@ -35,6 +35,8 @@ export interface AgentReport {
 	conversation?: string;
 	/** Persisted transcript path; rendered as a pointer so the parent can read it directly. */
 	transcriptPath?: string;
+	/** The updates the agent sent while this call's carrier held the outcome. */
+	runUpdates?: readonly string[];
 	/** The question the agent ended its turn with, when it declared one. */
 	pendingQuestion?: string;
 	/** Where a teardown with no result text to carry it saved the agent's work. */

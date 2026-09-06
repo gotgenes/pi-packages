@@ -63,6 +63,33 @@ describe("runForeground", () => {
 		expect(result.content[0].text).toContain("Changes saved to branch `pi-agent-5`.");
 	});
 
+	it("reports the updates the agent sent while the parent was blocked", async () => {
+		const { manager } = createToolDeps();
+		manager.spawnAndWait = vi.fn().mockResolvedValue(
+			createTestSubagent({ runUpdates: ["The bug is in the retry wrapper."] }),
+		);
+
+		const result = await runForeground(manager, makeParams(), undefined, undefined);
+
+		expect(result.content[0].text).toContain("Updates this agent sent while it worked:");
+		expect(result.content[0].text).toContain("The bug is in the retry wrapper.");
+	});
+
+	it("reports the updates of an agent whose run then failed", async () => {
+		const { manager } = createToolDeps();
+		manager.spawnAndWait = vi.fn().mockResolvedValue(
+			createTestSubagent({
+				status: "error",
+				error: "turn loop exploded",
+				runUpdates: ["The premise is wrong."],
+			}),
+		);
+
+		const result = await runForeground(manager, makeParams(), undefined, undefined);
+
+		expect(result.content[0].text).toContain("The premise is wrong.");
+	});
+
 	it("names where a teardown saved the work of an agent that failed", async () => {
 		const { manager } = createToolDeps();
 		manager.spawnAndWait = vi.fn().mockResolvedValue(

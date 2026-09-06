@@ -57,6 +57,8 @@ export interface TestSubagentOptions {
 	turnCount?: number;
 	/** Seed active tools by name. */
 	activeTools?: string[];
+	/** Seed the run's updates, in order (each replays recordUpdate). */
+	runUpdates?: string[];
 	/** Seed responseText. */
 	responseText?: string;
 	/** Thread maxTurns into the stub execution. Ignored when `execution` is supplied. */
@@ -64,7 +66,7 @@ export interface TestSubagentOptions {
 }
 
 export function createTestSubagent(overrides: TestSubagentOptions = {}): Subagent {
-	const { id, type, description, isBackground, execution, toolCallId, toolUses, lifetimeUsage, compactionCount, turnCount, activeTools, responseText, maxTurns, ...stateOverrides } =
+	const { id, type, description, isBackground, execution, toolCallId, toolUses, lifetimeUsage, compactionCount, turnCount, activeTools, responseText, runUpdates, maxTurns, ...stateOverrides } =
 		overrides;
 	const state = new SubagentState({
 		status: "completed",
@@ -79,6 +81,7 @@ export function createTestSubagent(overrides: TestSubagentOptions = {}): Subagen
 		...(responseText !== undefined ? { responseText } : {}),
 		...stateOverrides,
 	});
+	for (const update of runUpdates ?? []) state.recordUpdate(update);
 	return new Subagent({
 		id: id ?? "agent-1",
 		type: type ?? "general-purpose",

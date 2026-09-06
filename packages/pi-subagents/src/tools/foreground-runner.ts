@@ -4,6 +4,7 @@ import type { AgentSpawnConfig } from "#src/lifecycle/subagent-manager";
 import {
   renderOutcomeAddenda,
   renderOutcomeBody,
+  renderRunUpdates,
   renderStatusNote,
   renderWorkspaceNotice,
 } from "#src/observation/outcome-delivery";
@@ -121,9 +122,13 @@ export async function runForeground(
 
   if (record.status === "error") {
     // A failed run has no result text, so this return is the only carrier that
-    // can say where its workspace saved the work.
+    // can say where its workspace saved the work — or what the child flagged
+    // before the failure, which is the one place those findings survive.
+    // The ask-back affordance is not composed here: a failed run answers no
+    // question, so this is the addenda tail minus the one that cannot apply.
     return textResult(
       `${noteText}Agent failed: ${record.error}\nAgent ID: ${record.id}` +
+        renderRunUpdates(record.runUpdates) +
         renderWorkspaceNotice(record.workspaceNotice),
       details,
     );

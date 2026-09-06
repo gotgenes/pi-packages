@@ -76,6 +76,7 @@ export class GetResultTool {
 			// Transcript pointer: lets the parent read the full session from disk,
 			// and covers verbose after the live session was released (no conversation).
 			transcriptPath: record.outputFile,
+			runUpdates: record.runUpdates,
 			pendingQuestion: record.pendingQuestion,
 			workspaceNotice: record.workspaceNotice,
 		};

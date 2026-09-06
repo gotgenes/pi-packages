@@ -14,9 +14,13 @@
  * result was already delivered reaches none of them and is announced on its
  * own instead.
  *
- * The notice and the ask-back affordance are appended in one fixed order by
- * `renderOutcomeAddenda`, so the three carriers that compose them cannot
- * disagree about what follows the body.
+ * The updates a child sent mid-run ride the carriers too, for the runs whose
+ * outcome a blocked carrier holds: the announcement channel would deliver them
+ * after that carrier's own return, so it renders them itself instead.
+ *
+ * The updates, the notice, and the ask-back affordance are appended in one
+ * fixed order by `renderOutcomeAddenda`, so the three carriers that compose
+ * them cannot disagree about what follows the body.
  *
  * Pure functions only: no SDK types, no record types, no side effects.
  */
@@ -123,6 +127,7 @@ export function renderWorkspaceNotice(notice: string | undefined): string {
  */
 export interface OutcomeAddenda {
 	id: string;
+	runUpdates?: readonly string[];
 	workspaceNotice?: string;
 	pendingQuestion?: string;
 }
@@ -130,9 +135,31 @@ export interface OutcomeAddenda {
 /** The addenda tail every outcome carrier appends, in one order. */
 export function renderOutcomeAddenda(outcome: OutcomeAddenda): string {
 	return (
+		// What the agent flagged along the way, then where the work went, then the
+		// call to action that follows both.
+		renderRunUpdates(outcome.runUpdates) +
 		renderWorkspaceNotice(outcome.workspaceNotice) +
 		renderQuestionAffordance(outcome.id, outcome.pendingQuestion)
 	);
+}
+
+/**
+ * The updates a child sent while a carrier held this run's outcome, quoted the
+ * way the ask-back affordance quotes the child's question. Empty for a run the
+ * child said nothing during — which is every run whose updates the parent was
+ * free to receive as they happened.
+ */
+export function renderRunUpdates(updates: readonly string[] | undefined): string {
+	if (!updates?.length) return "";
+	const quoted = updates
+		.map((update) =>
+			update
+				.split("\n")
+				.map((line) => `  ${line}`)
+				.join("\n"),
+		)
+		.join("\n\n");
+	return `\n\nUpdates this agent sent while it worked:\n\n${quoted}`;
 }
 
 /**

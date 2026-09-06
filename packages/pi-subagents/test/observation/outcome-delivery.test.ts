@@ -6,6 +6,7 @@ import {
 	renderOutcomeAddenda,
 	renderOutcomeBody,
 	renderQuestionAffordance,
+	renderRunUpdates,
 	renderStatusLabel,
 	renderStatusNote,
 	renderWorkspaceNotice,
@@ -168,5 +169,46 @@ describe("renderOutcomeAddenda", () => {
 			renderWorkspaceNotice(addenda.workspaceNotice) +
 				renderQuestionAffordance(addenda.id, addenda.pendingQuestion),
 		);
+	});
+
+	it("leads with what the agent flagged along the way", () => {
+		const rendered = renderOutcomeAddenda(
+			makeAddenda({
+				runUpdates: ["The bug is in the retry wrapper."],
+				workspaceNotice: "\n\n---\nChanges saved to branch `pi-agent-1`.",
+			}),
+		);
+
+		// Both must be present, or the index comparison passes on a -1 that means
+		// "absent" rather than "earlier".
+		expect(rendered).toContain("retry wrapper");
+		expect(rendered).toContain("Changes saved");
+		expect(rendered.indexOf("retry wrapper")).toBeLessThan(rendered.indexOf("Changes saved"));
+	});
+});
+
+describe("renderRunUpdates", () => {
+	it("renders nothing when the agent sent none", () => {
+		expect(renderRunUpdates([])).toBe("");
+	});
+
+	it("renders nothing when the carrier has no updates field", () => {
+		expect(renderRunUpdates(undefined)).toBe("");
+	});
+
+	it("introduces a single update and quotes it", () => {
+		expect(renderRunUpdates(["The bug is in the retry wrapper."])).toBe(
+			"\n\nUpdates this agent sent while it worked:\n\n  The bug is in the retry wrapper.",
+		);
+	});
+
+	it("separates several updates with a blank line, in order", () => {
+		expect(renderRunUpdates(["First.", "Second."])).toBe(
+			"\n\nUpdates this agent sent while it worked:\n\n  First.\n\n  Second.",
+		);
+	});
+
+	it("quotes every line of a multi-line update", () => {
+		expect(renderRunUpdates(["A or B?\nOr C?"])).toContain("  A or B?\n  Or C?");
 	});
 });

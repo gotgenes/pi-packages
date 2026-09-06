@@ -109,6 +109,17 @@ describe("formatAgentReport", () => {
 		expect(formatAgentReport(makeReport())).not.toContain("waiting on an answer");
 	});
 
+	it("reports the updates the agent sent while the parent waited", () => {
+		const text = formatAgentReport(makeReport({ runUpdates: ["The bug is in the retry wrapper."] }));
+
+		expect(text).toContain("Updates this agent sent while it worked:");
+		expect(text).toContain("The bug is in the retry wrapper.");
+	});
+
+	it("adds nothing when the agent sent no updates", () => {
+		expect(formatAgentReport(makeReport())).not.toContain("Updates this agent sent");
+	});
+
 	it("names where a teardown saved the agent's work", () => {
 		const text = formatAgentReport(
 			makeReport({ workspaceNotice: "\n\n---\nChanges saved to branch `pi-agent-7`." }),

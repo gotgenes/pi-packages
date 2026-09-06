@@ -117,6 +117,16 @@ describe("GetResultTool", () => {
 		expect(text).toContain("All done.");
 	});
 
+	it("reports the updates the agent sent during the run", async () => {
+		const records = new Map([
+			["agent-1", createTestSubagent({ runUpdates: ["The bug is in the retry wrapper."] })],
+		]);
+
+		const result = await execute(makeManager(records), { agent_id: "agent-1" });
+
+		expect(result.content[0].text).toContain("The bug is in the retry wrapper.");
+	});
+
 	it("shows running message for in-progress agent", async () => {
 		const records = new Map([["agent-1", createTestSubagent({ status: "running", completedAt: undefined })]]);
 		const result = await execute(makeManager(records), { agent_id: "agent-1" });

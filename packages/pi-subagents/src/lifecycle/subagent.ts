@@ -121,6 +121,7 @@ export class Subagent {
 	get consumed(): boolean { return this.state.consumed; }
 	get claimed(): boolean { return this.state.claimed; }
 	get pendingQuestion(): string | undefined { return this.state.pendingQuestion; }
+	get runUpdates(): readonly string[] { return this.state.runUpdates; }
 	/**
 	 * What the workspace reported at a teardown with no result text to fold it
 	 * into — the provider's own wording for where the child's work ended up.
