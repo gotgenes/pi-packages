@@ -1087,6 +1087,9 @@ Deferred by composition, with the reason each carries: [#804] (staging slice 7, 
 - [#688] ↔ PR [#703], [#658] ↔ PR [#693], [#736] ↔ PR [#749], [#686] ↔ Step 6 — each open PR is recorded against the issue it serves; none is merged, per the repo's reimplement-through-TDD practice.
 - [#797] — adopted as Step 4's named acceptance case (`commandEffects: { officecli: { effects: [] } }` produces no ask) and as the example population of Step 7; Phase 14's config-recipe answer (`external_directory: {"/Sheet1/*": "allow"}`) stands as the interim workaround.
 - [#882] — filed for Step 7 (the ADR 0007 §5 deliberation); PR [#684] is its close target either way.
+- [#886] — filed by Step 1's planning; deferred to a later phase.
+  It is real roadmap work, but it is not this phase's cause: the phase is about a lost role producing false positives, and [#886] adds prompts in the opposite direction — 270 of 5918 corpus commands carry an interpreter inline script.
+  Step 4's `commandEffects` deliberately does not lift the wrapper floor (ADR 0013 §11) and Step 6's sandbox seam answers band C without belief, so both change its calculus before it is worth scheduling.
 - [#735] scenario 2 / [#722], [#762], [#860], [#856] — unchanged from Phase 14.
 - [#890] — filed by the `pi-subagents` [#884] PR review; deferred to a later phase with rationale.
   `AgentPrepHandler`'s in-place rewrite of the child's `Available tools:` list lands inside the region `pi-subagents` keeps byte-identical with the parent's, collapsing the shared prefix for any child with a narrowed tool set.
@@ -1383,5 +1386,6 @@ Each phase's findings, numbered plan, dependency diagram, and health metrics are
 [#881]: https://github.com/gotgenes/pi-packages/issues/881
 [#882]: https://github.com/gotgenes/pi-packages/issues/882
 [#884]: https://github.com/gotgenes/pi-packages/pull/884
+[#886]: https://github.com/gotgenes/pi-packages/issues/886
 [#890]: https://github.com/gotgenes/pi-packages/issues/890
 [ADR-0002]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-subagents/docs/decisions/0002-extensions-on-a-minimal-core.md
