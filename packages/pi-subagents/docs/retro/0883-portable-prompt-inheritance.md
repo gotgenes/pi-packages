@@ -304,3 +304,9 @@ If it does not, #884 is the fallback and is taken with the six simplifications r
 The bridge fix mitigates the symptom for bridge users; it does not change that a `pi-subagents` child carries pi's base prompt into any provider that re-homes it.
 
 Attribution is unchanged from the PR Review stage: `Co-authored-by: George Harker <george@george-graphics.co.uk>` on any implementation or docs commit, `@georgeharker` credited by name in the close comment, and any ADR crediting `elidickinson`'s `diag/EXTRA-USAGE-400.md` for the original bisection.
+
+**No new ADR.**
+The finding is a consequence of a decision already made, not a new one, so it lands as a Consequences bullet on ADR 0006 rather than as a `proposed` 0008 — which would also collide with the 0008 in PR #884's own diff.
+The precedent is exact: 0006 already carries a bullet for `@gotgenes/pi-nocd`, whose rewrite path was premised on verbatim inheritance, tracked as #846.
+`pi-claude-bridge` is the same failure shape and is now recorded beside it, tracked as #883.
+ADR 0006 keeps `status: accepted` — the decision is unchanged; only its recorded consequences grew.

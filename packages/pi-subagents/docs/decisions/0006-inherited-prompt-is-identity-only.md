@@ -84,6 +84,10 @@ Both anchors match whole lines, which keeps a footer naming a directory that mer
   Nothing that remains in the child's prompt moved out of that prefix, so no additional tokens require processing.
 - `@gotgenes/pi-nocd` documents a rewrite path premised on subagents inheriting the prompt verbatim, which this decision ends.
   Tracked as [#846].
+- A consumer that recovers the inherited region by searching a child's prompt for the parent's *full* assembled prompt finds nothing, because truncation ends the containment it matches on.
+  `pi-claude-bridge` does exactly this to project a child's prompt onto another harness, so a child on that provider forwards Pi's base prompt where the parent forwards only its portable parts.
+  Reported as [#883]; a consumer-side matcher fix is proposed at [pi-claude-bridge#88].
+  A child whose cwd differs from its parent's is beyond any such fix: Pi's `useExtensionCacheCwd` clears the extension cache on a cwd change, so the consumer's capture of the parent never exists in the child's module instance at all.
 
 [#180]: https://github.com/gotgenes/pi-packages/issues/180
 [#400]: https://github.com/gotgenes/pi-packages/issues/400
@@ -91,3 +95,5 @@ Both anchors match whole lines, which keeps a footer naming a directory that mer
 [#696]: https://github.com/gotgenes/pi-packages/issues/696
 [#801]: https://github.com/gotgenes/pi-packages/issues/801
 [#846]: https://github.com/gotgenes/pi-packages/issues/846
+[#883]: https://github.com/gotgenes/pi-packages/issues/883
+[pi-claude-bridge#88]: https://github.com/elidickinson/pi-claude-bridge/issues/88
