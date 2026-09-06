@@ -36,4 +36,36 @@ Filed [#885] (expose `resume` on `SubagentsService`) and recorded it as Phase 22
   The assessor verified every file/line citation in the design summary; no contradictions.
 - **No deferred tidyings** worth recording: the assessor's two rejections were a doc-drift note (already covered by the plan's documentation table) and a declined unification of the update buffer with `_pendingSteers`, which re-delivers into a live session rather than rendering into a carrier's return.
 
+## Stage: Implementation — TDD (2026-09-06T04:32:46Z)
+
+### Session summary
+
+Executed all five plan steps as separate commits, plus one doc fixup.
+`notify_parent` now reaches every child gated only on `midRunUpdates`, and each message is routed by `record.claimed`: a claimed run's update is rendered by the carrier holding that outcome, an unclaimed run's is announced as it happens, and the lifecycle event fires either way.
+Test count 1564 → 1589 (+25) in pi-subagents.
+
+### Observations
+
+- **Deviation — a fourth carrier site.**
+  The plan listed three addenda call sites; `foreground-runner.ts`'s error branch returns before the tail, so it composes `renderRunUpdates` directly.
+  That branch is where the plan's own edge-case reasoning lands ("a failed run is where mid-run findings are the only thing that survives"), so omitting it would have contradicted the design.
+  The reviewer confirmed the omitted `renderQuestionAffordance` is provably a no-op there: every route to `status === "error"` clears `pendingQuestion`.
+- **Deviation — TDD-order adjustment.**
+  Step 2 planned the `Subagent.runUpdates` delegating getter alongside the state buffer; `pnpm fallow dead-code` rejected it as an unused class member with no consumer, so it moved to step 3 with its first reader.
+  The plan's risk table predicted this getter would trace — it does, but only once a consumer exists.
+- **A test that was green during Red.**
+  "Leads with what the agent flagged along the way" passed pre-fix, because `indexOf` returned `-1` for the absent text and `-1 < N` holds.
+  Caught before Green and strengthened with presence assertions, copying the guard comment the sibling ordering test already carried.
+- **Mutation results against the plan's predictions.**
+  Restoring the `isBackground` conjunct killed one test, not the two the plan named: the resume test uses a background child by default, so it belongs to the routing class (killed by removing the buffer branch) rather than the spawn-mode class.
+  Every other predicted mutation killed what it named; removing `renderRunUpdates`' body reddened all four carriers plus the unit tests.
+- **A stale fallow suppression surfaced.**
+  The new release-then-announce test gives `Subagent.release()` a direct call site, so its `fallow-ignore-next-line` became stale.
+  Removed the directive, kept the note explaining why `src/` reaches it only through structural interfaces.
+- **An atomic `Edit` batch rejection dropped two edits silently.**
+  The batch carrying Step 14's `✅` heading and Mermaid marks was rejected on an unrelated third edit; only the third was re-applied, so the marks were missing until the pre-completion reviewer caught it.
+  This is the `AGENTS.md` hazard exactly — after a rejection, re-apply *every* intended edit, not just the one retried.
+- **Pre-completion reviewer: WARN** (one finding, the missing `✅` marks above; fixed in `0f4f2e79`).
+  Its requested routing re-derivation found no stranding path beyond the ones the plan enumerates and accepts.
+
 [#885]: https://github.com/gotgenes/pi-packages/issues/885
