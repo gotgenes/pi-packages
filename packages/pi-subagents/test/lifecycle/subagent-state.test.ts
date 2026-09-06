@@ -4,6 +4,7 @@ import {
 	isRunningStatus,
 	isTerminalErrorStatus,
 	SubagentState,
+	type SubagentStateInit,
 	type SubagentStatus,
 } from "#src/lifecycle/subagent-state";
 
@@ -565,5 +566,49 @@ describe("SubagentState — classification predicates", () => {
 				expect(state.canBeSteered()).toBe(running.has(status));
 			});
 		}
+	});
+});
+
+describe("SubagentState — run updates", () => {
+	it("starts with none", () => {
+		expect(new SubagentState().runUpdates).toEqual([]);
+	});
+
+	it("keeps the order the child sent them in", () => {
+		const state = new SubagentState();
+
+		state.recordUpdate("The bug is in the retry wrapper.");
+		state.recordUpdate("The fixture is stale too.");
+
+		expect(state.runUpdates).toEqual([
+			"The bug is in the retry wrapper.",
+			"The fixture is stale too.",
+		]);
+	});
+
+	it("drops the previous run's updates when a fresh run starts", () => {
+		const state = new SubagentState();
+		state.recordUpdate("From the first run.");
+
+		state.markRunning(1000);
+
+		expect(state.runUpdates).toEqual([]);
+	});
+
+	it("drops the previous run's updates when a resume starts", () => {
+		const state = new SubagentState();
+		state.recordUpdate("From the run being resumed.");
+
+		state.resetForResume(2000);
+
+		expect(state.runUpdates).toEqual([]);
+	});
+
+	it("cannot be seeded from a rehydrated record", () => {
+		// Transient runtime state, like the carrier claim: a rehydrated record has
+		// no run to have produced it.
+		const state = new SubagentState({ runUpdates: ["seeded"] } as unknown as SubagentStateInit);
+
+		expect(state.runUpdates).toEqual([]);
 	});
 });

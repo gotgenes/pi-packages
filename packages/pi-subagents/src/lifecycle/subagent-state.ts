@@ -124,6 +124,14 @@ export class SubagentState {
 	private _workspaceNotice?: string;
 	get workspaceNotice(): string | undefined { return this._workspaceNotice; }
 
+	// The updates the child sent while a carrier held this run's outcome, for
+	// that carrier to render alongside the result rather than announce after it.
+	// Scoped to the run, so it clears wherever a run begins.
+	// Transient runtime state, so deliberately not seedable via SubagentStateInit
+	// — a rehydrated record has no run to have produced these.
+	private _runUpdates: string[] = [];
+	get runUpdates(): readonly string[] { return this._runUpdates; }
+
 	// Stats — accumulated via mutation methods, readable via getters
 	private _toolUses: number;
 	get toolUses(): number { return this._toolUses; }
@@ -238,6 +246,12 @@ export class SubagentState {
 	markRunning(startedAt: number): void {
 		this._status = "running";
 		this._startedAt = startedAt;
+		this._runUpdates.length = 0;
+	}
+
+	/** Record an update the child sent during this run. */
+	recordUpdate(message: string): void {
+		this._runUpdates.push(message);
 	}
 
 	/**
@@ -354,5 +368,7 @@ export class SubagentState {
 		// A resumed run answers the old question; whether it asks a new one is
 		// decided when it terminates.
 		this._pendingQuestion = undefined;
+		// The updates belong to the run that produced them, and this starts another.
+		this._runUpdates.length = 0;
 	}
 }
