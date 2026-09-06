@@ -22,6 +22,7 @@ import type { AgentConfigLookup } from "#src/config/agent-types";
 import type { ChildLifecyclePublisher } from "#src/lifecycle/child-lifecycle";
 import type { ParentSnapshot } from "#src/lifecycle/parent-snapshot";
 import { SubagentSession } from "#src/lifecycle/subagent-session";
+import type { RunConfig } from "#src/runtime";
 import { AskParentTool, type QuestionRecorder } from "#src/session/ask-parent-tool";
 import type { EnvInfo } from "#src/session/env";
 import type { ModelRegistry } from "#src/session/model-resolver";
@@ -150,6 +151,8 @@ export interface CreateSubagentSessionParams {
   parentSession?: ParentSessionInfo;
   model?: Model<any>;
   thinkingLevel?: ThinkingLevel;
+  /** Parent run config; supplies the default prompt inheritance for silent frontmatter. */
+  runConfig?: RunConfig;
   /**
    * Records a question the child declares with `ask_parent`. Supplied for every
    * child; its absence installs no ask-back tool.
@@ -200,8 +203,11 @@ export async function createSubagentSession(
     {
       cwd: snapshot.cwd,
       parentSystemPrompt: snapshot.systemPrompt,
+      parentPortablePrompt: snapshot.portablePrompt,
       parentModel: snapshot.model,
       modelRegistry: snapshot.modelRegistry,
+      promptInheritanceDefault: params.runConfig?.promptInheritance,
+      promptInheritanceProviders: params.runConfig?.promptInheritanceProviders,
     },
     {
       cwd: params.cwd,

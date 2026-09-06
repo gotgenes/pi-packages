@@ -70,3 +70,34 @@ describe("buildParentSnapshot", () => {
     expect(snapshot.parentContext).toBeUndefined();
   });
 });
+
+describe("buildParentSnapshot — portable prompt parts", () => {
+  it("is undefined when no prompt options were captured", () => {
+    const snapshot = buildParentSnapshot(makeCtx());
+    expect(snapshot.portablePrompt).toBeUndefined();
+  });
+
+  it("joins context files, guidelines, custom and append prompts", () => {
+    const snapshot = buildParentSnapshot(makeCtx(), undefined, {
+      contextFiles: [{ path: "/p/AGENTS.md", content: "# Rules" }],
+      promptGuidelines: ["- Be terse"],
+      customPrompt: "custom",
+      appendSystemPrompt: "append",
+    });
+    expect(snapshot.portablePrompt).toContain('<project_instructions path="/p/AGENTS.md">');
+    expect(snapshot.portablePrompt).toContain("# Rules");
+    expect(snapshot.portablePrompt).toContain("- Be terse");
+    expect(snapshot.portablePrompt).toContain("custom");
+    expect(snapshot.portablePrompt).toContain("append");
+  });
+
+  it("is undefined when every part is empty", () => {
+    const snapshot = buildParentSnapshot(makeCtx(), undefined, { contextFiles: [] });
+    expect(snapshot.portablePrompt).toBeUndefined();
+  });
+
+  it("omits absent parts without blank-line gaps", () => {
+    const snapshot = buildParentSnapshot(makeCtx(), undefined, { customPrompt: "only-custom" });
+    expect(snapshot.portablePrompt).toBe("only-custom");
+  });
+});

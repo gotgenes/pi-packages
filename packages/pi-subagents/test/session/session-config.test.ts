@@ -270,3 +270,62 @@ describe("assembleSessionConfig — thinking level", () => {
     expect(result.thinkingLevel).toBe("medium");
   });
 });
+
+describe("assembleSessionConfig — prompt inheritance scoping", () => {
+  it("applies the provider rule for the resolved child model's provider", () => {
+    mockResolveAgentConfig.mockReturnValueOnce(exploreConfig());
+    const bridgeModel = makeModel({ id: "claude-opus-5", name: "Opus", provider: "claude-bridge" });
+    assembleSessionConfig(
+      "Explore",
+      { ...ctx, promptInheritanceProviders: { "claude-bridge": "portable" } },
+      { model: bridgeModel },
+      mockEnv,
+      mockAgentLookup,
+      mockIO,
+    );
+    expect(mockBuildAgentPrompt).toHaveBeenCalledWith(
+      expect.objectContaining({ promptInheritance: "portable" }),
+      expect.any(String),
+      mockEnv,
+      expect.anything(),
+    );
+  });
+
+  it("falls through to the default for unlisted providers", () => {
+    mockResolveAgentConfig.mockReturnValueOnce(exploreConfig());
+    const zaiModel = makeModel({ id: "glm-5.3", name: "GLM", provider: "zai" });
+    assembleSessionConfig(
+      "Explore",
+      { ...ctx, promptInheritanceProviders: { "claude-bridge": "portable" }, promptInheritanceDefault: "full" },
+      { model: zaiModel },
+      mockEnv,
+      mockAgentLookup,
+      mockIO,
+    );
+    expect(mockBuildAgentPrompt).toHaveBeenCalledWith(
+      expect.objectContaining({ promptInheritance: "full" }),
+      expect.any(String),
+      mockEnv,
+      expect.anything(),
+    );
+  });
+
+  it("frontmatter inherit_prompt wins over provider rules and defaults", () => {
+    mockResolveAgentConfig.mockReturnValueOnce(exploreConfig({ promptInheritance: "portable" }));
+    const zaiModel = makeModel({ id: "glm-5.3", name: "GLM", provider: "zai" });
+    assembleSessionConfig(
+      "Explore",
+      { ...ctx, promptInheritanceDefault: "full", promptInheritanceProviders: { zai: "full" } },
+      { model: zaiModel },
+      mockEnv,
+      mockAgentLookup,
+      mockIO,
+    );
+    expect(mockBuildAgentPrompt).toHaveBeenCalledWith(
+      expect.objectContaining({ promptInheritance: "portable" }),
+      expect.any(String),
+      mockEnv,
+      expect.anything(),
+    );
+  });
+});

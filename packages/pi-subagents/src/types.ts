@@ -53,6 +53,15 @@ export interface AgentIdentity {
 export interface AgentPromptConfig {
   name: string;
   promptMode: "replace" | "append";
+  /**
+   * What the child inherits as its prompt identity: `"full"` (default) the
+   * parent's identity layers, byte for byte; `"portable"` only the parent's
+   * portable parts (context files, custom/append prompts, added guidelines),
+   * for children whose provider re-homes the prompt into another harness.
+   * Omitted: the spawn-time `promptInheritance` setting decides (`"full"`).
+   * See ADR 0008.
+   */
+  promptInheritance?: "full" | "portable";
   systemPrompt: string;
 }
 

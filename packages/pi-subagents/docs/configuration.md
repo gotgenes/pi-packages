@@ -39,6 +39,20 @@ Inheriting the parent's copies instead would give such a child a catalogue of sk
 
 Inheriting the identity rather than the whole prompt also keeps the child's leading text byte-identical to the parent's, which prefix-caching providers and local inference engines reuse instead of reprocessing.
 
+### Portable inheritance (opt-in)
+
+The identity layers include Pi's own preamble and tool guidelines — correct when the child talks to the same raw API as its parent, wrong when the child's provider **re-homes** the prompt into another harness (for example pi-claude-bridge, which projects the child's prompt onto Claude Code's as an append).
+For those children, `inherit_prompt: portable` (frontmatter) or a `promptInheritance` provider rule (settings) switches the inherited identity to the parent's **portable parts** only: project context files, added guideline bullets, and custom/append prompts.
+Skills remain un-inherited (the child builds its own catalogue), and context files must ride along because the child session never loads its own.
+
+| Strategy   | Child's identity                                    | Shares prefix with parent | Use when                                        |
+| ---------- | --------------------------------------------------- | ------------------------- | ----------------------------------------------- |
+| `full`     | parent identity layers, byte for byte (default)     | yes                       | child talks to the same raw API as the parent   |
+| `portable` | parent's context files + custom/append + guidelines | no                        | child's provider re-homes the prompt elsewhere  |
+
+Resolution: agent frontmatter `inherit_prompt` > the `promptInheritance` provider rule for the child's resolved provider > the `promptInheritance` default.
+The reasoning and the provider-scoping rationale are recorded in [ADR 0008](decisions/0008-portable-prompt-inheritance.md).
+
 If you write extensions that add to the system prompt, see [Extensions that append to the system prompt](../README.md#extensions-that-append-to-the-system-prompt).
 The reasoning behind the boundary is recorded in [ADR 0006](decisions/0006-inherited-prompt-is-identity-only.md).
 
@@ -90,19 +104,20 @@ subagent({ subagent_type: "auditor", prompt: "Review the auth module", descripti
 
 All fields are optional — sensible defaults for everything.
 
-| Field               | Default        | Description                                                                                                                                                                                                                                                                                                             |
-| ------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `description`       | filename       | Agent description shown in tool listings                                                                                                                                                                                                                                                                                |
-| `display_name`      | —              | Display name for UI (e.g. widget, agent list)                                                                                                                                                                                                                                                                           |
-| `tools`             | all 7          | The agent's complete tool allowlist — built-in or extension-registered names. `none` for no tools. See [Tool selection](#tool-selection)                                                                                                                                                                                |
-| `model`             | inherit parent | Model — `provider/modelId` or fuzzy name (`"haiku"`, `"sonnet"`)                                                                                                                                                                                                                                                        |
-| `thinking`          | inherit        | off, minimal, low, medium, high, xhigh, max. An unrecognized value is dropped, and the agent inherits the parent's level                                                                                                                                                                                                |
-| `max_turns`         | unlimited      | Max agentic turns before graceful shutdown. `0` or omit for unlimited                                                                                                                                                                                                                                                   |
-| `prompt_mode`       | `append`       | `replace`: parent prompt is the cacheable base; body is appended last with full control (no `<sub_agent_context>` bridge, no `<agent_instructions>` wrapper). `append`: parent prompt is the base; body is wrapped in `<agent_instructions>` and a sub-agent context bridge is injected (agent acts as a "parent twin") |
-| `inherit_context`   | `false`        | Fork parent conversation into agent                                                                                                                                                                                                                                                                                     |
-| `run_in_background` | `false`        | Run in background by default                                                                                                                                                                                                                                                                                            |
-| `enabled`           | `true`         | Set to `false` to disable an agent (useful for hiding a default agent per-project)                                                                                                                                                                                                                                      |
-| `locked`            | —              | Fields a `subagent` tool caller may not override. `true` or a list of field names. See [Locking fields against callers](#locking-fields-against-callers)                                                                                                                                                                |
+| Field               | Default        | Description                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| ------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `description`       | filename       | Agent description shown in tool listings                                                                                                                                                                                                                                                                                                                                                                                           |
+| `display_name`      | —              | Display name for UI (e.g. widget, agent list)                                                                                                                                                                                                                                                                                                                                                                                      |
+| `tools`             | all 7          | The agent's complete tool allowlist — built-in or extension-registered names. `none` for no tools. See [Tool selection](#tool-selection)                                                                                                                                                                                                                                                                                           |
+| `model`             | inherit parent | Model — `provider/modelId` or fuzzy name (`"haiku"`, `"sonnet"`)                                                                                                                                                                                                                                                                                                                                                                   |
+| `thinking`          | inherit        | off, minimal, low, medium, high, xhigh, max. An unrecognized value is dropped, and the agent inherits the parent's level                                                                                                                                                                                                                                                                                                           |
+| `max_turns`         | unlimited      | Max agentic turns before graceful shutdown. `0` or omit for unlimited                                                                                                                                                                                                                                                                                                                                                              |
+| `prompt_mode`       | `append`       | `replace`: parent prompt is the cacheable base; body is appended last with full control (no `<sub_agent_context>` bridge, no `<agent_instructions>` wrapper). `append`: parent prompt is the base; body is wrapped in `<agent_instructions>` and a sub-agent context bridge is injected (agent acts as a "parent twin")                                                                                                            |
+| `inherit_prompt`    | `full`         | What the child inherits as its prompt identity. `full`: the parent's assembled prompt (minus pi's per-session layers) — byte-stable cache prefix with the parent. `portable`: only the parent's portable parts (context files, custom/append prompts, added guidelines) — for children whose provider re-homes the prompt into another harness. The `promptInheritance` setting supplies the default for agents that omit this key |
+| `inherit_context`   | `false`        | Fork parent conversation into agent                                                                                                                                                                                                                                                                                                                                                                                                |
+| `run_in_background` | `false`        | Run in background by default                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `enabled`           | `true`         | Set to `false` to disable an agent (useful for hiding a default agent per-project)                                                                                                                                                                                                                                                                                                                                                 |
+| `locked`            | —              | Fields a `subagent` tool caller may not override. `true` or a list of field names. See [Locking fields against callers](#locking-fields-against-callers)                                                                                                                                                                                                                                                                           |
 
 The caller decides, and the agent file fills the gaps.
 A `subagent` tool parameter wins over the agent file's value for `model`, `thinking`, `max_turns`, `inherit_context`, and `run_in_background`; the agent file supplies whichever of those the caller left unset.
@@ -203,7 +218,24 @@ Two files, merged on load:
   Written by `/subagents:settings`.
 
 **Precedence:** project overrides global on any field present in both.
-Missing fields fall back to the hardcoded defaults (max concurrency `4`, default max turns unlimited, grace turns `5`, consumed-session retention `10` minutes, unconsumed-session retention `720` minutes, abort-all-on-interrupt `true`, mid-run updates `true`).
+Missing fields fall back to the hardcoded defaults (max concurrency `4`, default max turns unlimited, grace turns `5`, consumed-session retention `10` minutes, unconsumed-session retention `720` minutes, abort-all-on-interrupt `true`, mid-run updates `true`, prompt inheritance `full`).
+
+**Prompt inheritance** — `promptInheritance` selects what children inherit as their prompt identity (see [Portable inheritance](#portable-inheritance-opt-in)).
+Either form works:
+
+```json
+"promptInheritance": "portable"
+```
+
+```json
+"promptInheritance": {
+  "default": "full",
+  "providers": { "claude-bridge": "portable" }
+}
+```
+
+The `providers` map keys on the provider id of the **child's resolved model** — only children whose requests actually go through that provider change strategy, so same-API children keep the byte-identical cache prefix.
+An agent's `inherit_prompt` frontmatter wins over both forms.
 
 **Example — global defaults for a beefy machine:**
 

@@ -92,7 +92,8 @@ describe("SubagentRuntime context query methods", () => {
     runtime.setSessionContext(ctx);
     mockBuildParentSnapshot.mockReturnValueOnce(STUB_SNAPSHOT);
     const result = runtime.buildSnapshot(true);
-    expect(mockBuildParentSnapshot).toHaveBeenCalledWith(ctx, true);
+    // Third arg: the latest before_agent_start prompt options (undefined until a turn runs).
+    expect(mockBuildParentSnapshot).toHaveBeenCalledWith(ctx, true, undefined);
     expect(result).toBe(STUB_SNAPSHOT);
   });
 
@@ -102,7 +103,18 @@ describe("SubagentRuntime context query methods", () => {
     runtime.setSessionContext(ctx);
     mockBuildParentSnapshot.mockReturnValueOnce(STUB_SNAPSHOT);
     runtime.buildSnapshot(false);
-    expect(mockBuildParentSnapshot).toHaveBeenCalledWith(ctx, false);
+    expect(mockBuildParentSnapshot).toHaveBeenCalledWith(ctx, false, undefined);
+  });
+
+  it("buildSnapshot forwards captured prompt options for portable inheritance", () => {
+    const runtime = createSubagentRuntime();
+    const ctx = makeSessionCtx();
+    runtime.setSessionContext(ctx);
+    const options = { contextFiles: [{ path: "AGENTS.md", content: "# hi" }] };
+    runtime.setSystemPromptOptions(options);
+    mockBuildParentSnapshot.mockReturnValueOnce(STUB_SNAPSHOT);
+    runtime.buildSnapshot(true);
+    expect(mockBuildParentSnapshot).toHaveBeenCalledWith(ctx, true, options);
   });
 
   it("getModelInfo returns model and modelRegistry from current context", () => {

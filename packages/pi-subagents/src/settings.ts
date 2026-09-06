@@ -35,6 +35,102 @@ export interface SubagentsSettings {
    * The package's skills, prompts, and themes stay available to children.
    */
   excludedExtensionPackages?: string[];
+  /**
+   * Default prompt inheritance for agents whose frontmatter is silent.
+   * Either the simple global default (`"full"` | `"portable"`) or a scoped
+   * rule object — see `PromptInheritanceRules`. Frontmatter `inherit_prompt`
+   * wins over both.
+   */
+  promptInheritance?: PromptInheritance | PromptInheritanceRules;
+}
+
+/** The two prompt-inheritance strategies, as settable in subagents.json. */
+export type PromptInheritance = "full" | "portable";
+
+/**
+ * Scoped prompt-inheritance rules.
+ *
+ * `providers` keys the provider id of the child's resolved model (e.g.
+ * `claude-bridge`) to the strategy that child should use; `default` applies to
+ * every provider not listed. Scoping matters because the strategies' costs are
+ * asymmetric by provider: `"full"` keeps a byte-identical cache prefix with
+ * the parent, worthless once the child's requests leave through another
+ * harness, while `"portable"` drops the harness base prompt, which a re-homing
+ * host may reject, and costs the shared prefix when parent and child share the
+ * raw API.
+ */
+export interface PromptInheritanceRules {
+  /** Strategy for providers not named in `providers`. Default `"full"`. */
+  default?: PromptInheritance;
+  /** Per-provider strategy, keyed by provider id of the child's model. */
+  providers?: Record<string, PromptInheritance>;
+}
+
+/** Normalized form the runtime consumes. */
+export interface PromptInheritanceConfig {
+  def: PromptInheritance;
+  providers: Record<string, PromptInheritance>;
+}
+
+/** Parse the settings union into the normalized form. Unknown values → defaults. */
+export function normalizePromptInheritance(
+  value: PromptInheritance | PromptInheritanceRules | undefined,
+): PromptInheritanceConfig {
+  if (value === "portable" || value === "full") return { def: value, providers: {} };
+  if (value && typeof value === "object") {
+    const providers: Record<string, PromptInheritance> = {};
+    for (const [provider, strategy] of Object.entries(value.providers ?? {})) {
+      if (isPromptInheritance(strategy)) providers[provider] = strategy;
+    }
+    return {
+      def: isPromptInheritance(value.default) ? value.default : DEFAULT_PROMPT_INHERITANCE,
+      providers,
+    };
+  }
+  return { def: DEFAULT_PROMPT_INHERITANCE, providers: {} };
+}
+
+/**
+ * Runtime guard for the strategy enums. Settings arrive from JSON, where the
+ * declared types are aspirations — every comparison site funnels through here
+ * so narrowing never convinces a linter the check is dead.
+ */
+function isPromptInheritance(value: unknown): value is PromptInheritance {
+  return value === "full" || value === "portable";
+}
+
+/**
+ * Sanitize the promptInheritance union onto `out`: the enum passes through, a
+ * rule object keeps only valid strategies and drops the rest, anything else
+ * leaves the field absent. Assigns inside so `sanitize` gains no branches —
+ * the audit gate re-scores every function a changed file touches.
+ */
+function applyPromptInheritance(out: SubagentsSettings, value: unknown): void {
+  if (isPromptInheritance(value)) {
+    out.promptInheritance = value;
+    return;
+  }
+  if (!value || typeof value !== "object") return;
+  const raw = value as { default?: unknown; providers?: unknown };
+  const rules: PromptInheritanceRules = {};
+  if (isPromptInheritance(raw.default)) rules.default = raw.default;
+  const providers = sanitizePromptInheritanceProviders(raw.providers);
+  if (providers) rules.providers = providers;
+  if (rules.default !== undefined || rules.providers !== undefined) {
+    out.promptInheritance = rules;
+  }
+}
+
+/** Keep only provider entries whose strategy is a known enum, absent when none survive. */
+function sanitizePromptInheritanceProviders(
+  raw: unknown,
+): Record<string, PromptInheritance> | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const providers: Record<string, PromptInheritance> = {};
+  for (const [provider, strategy] of Object.entries(raw)) {
+    if (isPromptInheritance(strategy)) providers[provider] = strategy;
+  }
+  return Object.keys(providers).length > 0 ? providers : undefined;
 }
 
 /**
@@ -56,6 +152,8 @@ export interface SettingsSnapshot {
    * hand-edited value would otherwise be erased by any unrelated setting change.
    */
   excludedExtensionPackages?: string[];
+  /** Present only when non-default (either form), so files that never set it gain no noise. */
+  promptInheritance?: PromptInheritance | PromptInheritanceRules;
 }
 
 
@@ -68,6 +166,7 @@ const DEFAULT_CONSUMED_RETENTION_MINUTES = 10;
 const DEFAULT_UNCONSUMED_RETENTION_MINUTES = 720;
 const DEFAULT_ABORT_ALL_ON_INTERRUPT = true;
 const DEFAULT_MID_RUN_UPDATES = true;
+const DEFAULT_PROMPT_INHERITANCE: PromptInheritance = "full";
 
 /**
  * Owns all three in-memory settings values and their load/save/persist cycle.
@@ -81,6 +180,8 @@ export class SettingsManager {
   private _unconsumedSessionRetentionMinutes: number = DEFAULT_UNCONSUMED_RETENTION_MINUTES;
   private _abortAllOnInterrupt: boolean = DEFAULT_ABORT_ALL_ON_INTERRUPT;
   private _midRunUpdates: boolean = DEFAULT_MID_RUN_UPDATES;
+  private _promptInheritance: PromptInheritanceConfig = normalizePromptInheritance(undefined);
+  private _promptInheritanceRaw: SubagentsSettings["promptInheritance"] = undefined;
   private _excludedExtensionPackages: string[] = [];
 
   private readonly emit: SettingsEmit;
@@ -178,6 +279,8 @@ export class SettingsManager {
     if (typeof settings.abortAllOnInterrupt === "boolean")
       this._abortAllOnInterrupt = settings.abortAllOnInterrupt;
     if (typeof settings.midRunUpdates === "boolean") this._midRunUpdates = settings.midRunUpdates;
+    this._promptInheritance = normalizePromptInheritance(settings.promptInheritance);
+    this._promptInheritanceRaw = settings.promptInheritance;
     // Assigned unconditionally: removing the key from disk must clear the value.
     this._excludedExtensionPackages = [...(settings.excludedExtensionPackages ?? [])];
     this.emit("subagents:settings_loaded", { settings });
@@ -198,6 +301,18 @@ export class SettingsManager {
       abortAllOnInterrupt: this._abortAllOnInterrupt,
       midRunUpdates: this._midRunUpdates,
     };
+    if (this._promptInheritanceRaw !== undefined) {
+      snapshot.promptInheritance = this._promptInheritanceRaw;
+    } else if (
+      this._promptInheritance.def !== DEFAULT_PROMPT_INHERITANCE ||
+      Object.keys(this._promptInheritance.providers).length > 0
+    ) {
+      const { def, providers } = this._promptInheritance;
+      snapshot.promptInheritance = {
+        ...(def !== DEFAULT_PROMPT_INHERITANCE ? { default: def } : {}),
+        ...(Object.keys(providers).length > 0 ? { providers: { ...providers } } : {}),
+      };
+    }
     if (this._excludedExtensionPackages.length > 0) {
       snapshot.excludedExtensionPackages = [...this._excludedExtensionPackages];
     }
@@ -259,6 +374,16 @@ export class SettingsManager {
     return this._midRunUpdates;
   }
 
+  /** Default prompt inheritance for agents without an explicit `inherit_prompt`. */
+  get promptInheritance(): PromptInheritance {
+    return this._promptInheritance.def;
+  }
+
+  /** Per-provider inheritance overrides, keyed by provider id of the child's model. */
+  get promptInheritanceProviders(): Record<string, PromptInheritance> {
+    return this._promptInheritance.providers;
+  }
+
   /**
    * Flip whether a background child may interrupt the parent with a mid-run
    * update, persist, and return the toast.
@@ -306,27 +431,7 @@ function sanitize(raw: unknown): SubagentsSettings {
   if (!raw || typeof raw !== "object") return {};
   const r = raw as Record<string, unknown>;
   const out: SubagentsSettings = {};
-  if (
-    Number.isInteger(r.maxConcurrent) &&
-    (r.maxConcurrent as number) >= 1 &&
-    (r.maxConcurrent as number) <= MAX_CONCURRENT_CEILING
-  ) {
-    out.maxConcurrent = r.maxConcurrent as number;
-  }
-  if (
-    Number.isInteger(r.defaultMaxTurns) &&
-    (r.defaultMaxTurns as number) >= 0 &&
-    (r.defaultMaxTurns as number) <= MAX_TURNS_CEILING
-  ) {
-    out.defaultMaxTurns = r.defaultMaxTurns as number;
-  }
-  if (
-    Number.isInteger(r.graceTurns) &&
-    (r.graceTurns as number) >= 1 &&
-    (r.graceTurns as number) <= GRACE_TURNS_CEILING
-  ) {
-    out.graceTurns = r.graceTurns as number;
-  }
+  sanitizeTuningFields(out, r);
   if (isRetentionMinutes(r.consumedSessionRetentionMinutes)) {
     out.consumedSessionRetentionMinutes = r.consumedSessionRetentionMinutes;
   }
@@ -339,6 +444,7 @@ function sanitize(raw: unknown): SubagentsSettings {
   if (typeof r.midRunUpdates === "boolean") {
     out.midRunUpdates = r.midRunUpdates;
   }
+  applyPromptInheritance(out, r.promptInheritance);
   if (Array.isArray(r.excludedExtensionPackages)) {
     const sources = r.excludedExtensionPackages
       .filter((value): value is string => typeof value === "string")
@@ -347,6 +453,28 @@ function sanitize(raw: unknown): SubagentsSettings {
     out.excludedExtensionPackages = [...new Set(sources)];
   }
   return out;
+}
+
+/**
+ * Sanitize the concurrency and turn-limit tuning fields into `out`.
+ * Extracted from `sanitize` so the dispatcher stays under the complexity
+ * thresholds the audit gate enforces on changed files.
+ */
+function sanitizeTuningFields(out: SubagentsSettings, r: Record<string, unknown>): void {
+  if (isBoundedInt(r.maxConcurrent, 1, MAX_CONCURRENT_CEILING)) {
+    out.maxConcurrent = r.maxConcurrent;
+  }
+  if (isBoundedInt(r.defaultMaxTurns, 0, MAX_TURNS_CEILING)) {
+    out.defaultMaxTurns = r.defaultMaxTurns;
+  }
+  if (isBoundedInt(r.graceTurns, 1, GRACE_TURNS_CEILING)) {
+    out.graceTurns = r.graceTurns;
+  }
+}
+
+/** Integer within [min, max] — the shape every tuning-field check shares. */
+function isBoundedInt(n: unknown, min: number, max: number): n is number {
+  return Number.isInteger(n) && (n as number) >= min && (n as number) <= max;
 }
 
 function projectPath(cwd: string): string {
