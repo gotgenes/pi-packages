@@ -126,6 +126,11 @@ Phase 14 Step 10 promised `cat /outside/a.ts > /outside/b.ts` would narrow, but 
 A step's `**Cause:**` bullet is likewise the mechanism the discovery sweep saw, not a census of the ones present.
 Trace the whole function before accepting it as the scope: Phase 22 Step 13 named one truthiness check, and the same five lines held a second fail-open of the same shape (Refs #871).
 
+A third-party report's root-cause narrative is the reporter's model of a system they do not maintain, so its claim about the *other* side is the one to check.
+Read that project's source and the published tarball of the version they ran (`pnpm view <pkg> dist.tarball`), never the claim alone.
+Issue #883 asserted a bridge's safeguard could never match; it shipped in the reported version, worked, and was defeated by a truncation on our side.
+Ask separately whether the defect reaches us at all — a sibling `@gotgenes/*` extension may already mitigate it, which changes the priority and the owner but not the defect (Refs #883).
+
 ### Workflow
 
 - Keep scope tight.

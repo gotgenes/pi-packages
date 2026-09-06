@@ -29,6 +29,9 @@ Stop after recording the decision and handing off; do not start implementation h
 4. Determine the target package(s) from the changed files (`gh pr diff $1 --name-only`).
    The package owns where the triage note lands (`packages/<PKG>/docs/retro/`); cross-package work uses the top-level `docs/retro/`.
 5. Note the PR's base commit (`gh pr view $1 --json baseRefOid`) — every "does this defect exist" question below is asked against **current `main`**, not against the PR's narrative.
+6. Establish whether the defect can reach **us**.
+   Check the `@gotgenes/*` extensions this repo actually runs under — including ones outside this monorepo, such as `pi-anthropic-auth` — for something that already mitigates it.
+   A defect we are immune to is still real; its priority and its owner are not the same (Refs #883).
 
 A fork PR's workflow runs sit at `action_required` until a maintainer approves them, so `statusCheckRollup` is usually **empty** — absent checks mean *not run*, never *passed*.
 Do not read `mergeable`/`mergeStateStatus` as evidence of a green build.
@@ -56,6 +59,10 @@ Establish the problem is real **on current `main`** before you read the diff for
 5. **Verify any alternative you propose.**
    An evaluation that names a better seam is a claim about code you have not run.
    Hold it to the same standard as the defect: confirm the alternative's call order and available data in the compiled source before recommending it (Refs #696).
+6. **Read the downstream consumer.**
+   When the report names another project as the failure path — a provider, a bridge, a host harness — read that project before judging the diff: `fetch_content` its repo, then its `docs/`/`diag/` and the module the report blames.
+   Ask there the same question item 2 asks here: is it already fixed, and does the reporter's version have it?
+   `pnpm view <pkg> dist.tarball` fetches what they actually ran (Refs #883).
 
 Record the outcome of this gate in the evaluation, with the commands and results that back it.
 If the defect is unconfirmed, the `ask-user` decision gate below should offer "ask the reporter for version + fresh repro" as a direction.
