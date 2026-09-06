@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [21.4.3](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v21.4.2...pi-subagents-v21.4.3) (2026-09-06)
+
+
+### Bug Fixes
+
+* **pi-subagents:** deliver a child's update with the result when its parent is blocked ([d36bfcf](https://github.com/gotgenes/pi-packages/commit/d36bfcf1d9f13e5dbf2dd82ffa01d370f49c2f48)), closes [#872](https://github.com/gotgenes/pi-packages/issues/872)
+
+### Documentation
+
+* **pi-subagents:** state the update channel's rationale as claim-based ([450470d](https://github.com/gotgenes/pi-packages/commit/450470d598cd944f87b72b04ae6bf0f7d5a8b968)), closes [#872](https://github.com/gotgenes/pi-packages/issues/872)
+
 ## [21.4.2](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v21.4.1...pi-subagents-v21.4.2) (2026-09-05)
 
 
