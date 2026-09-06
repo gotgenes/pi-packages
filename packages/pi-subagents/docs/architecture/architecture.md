@@ -1127,7 +1127,7 @@ The registry resolves a type through one lookup, so the two methods can no longe
 
 Release: independent
 
-#### Step 14: Hold the mid-run update gate on the resume path ([#872])
+#### ✅ Step 14: Hold the mid-run update gate on the resume path ([#872])
 
 **Cause:** `Subagent.canSendUpdates()` reads `isBackground`, fixed at construction, and is consulted only inside `run()`.
 A resume reuses the session and the tools installed with it, so nothing recomputes the gate — while `AgentTool` awaits `manager.resume(...)` inside the parent's own tool call, which is the same blockage the gate refuses for a foreground child.
@@ -1196,7 +1196,7 @@ flowchart TD
     S8 --> S11["✅ Step 11 (#858)<br/>Mid-run channel"]
     S10["✅ Step 10 (#857)<br/>Workspace-backed resume"] -.informs.-> S11
     S10 --> S12["✅ Step 12 (#870)<br/>Post-result addendum delivery"]
-    S11 --> S14["Step 14 (#872)<br/>Update gate on resume"]
+    S11 --> S14["✅ Step 14 (#872)<br/>Update gate on resume"]
     S13["✅ Step 13 (#871)<br/>Empty tool allowlist"]
     S10 --> S15["Step 15 (#878)<br/>Resume affordance honesty"]
     S11 --> S15
