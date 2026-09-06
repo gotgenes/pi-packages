@@ -83,3 +83,70 @@ Follow-up #885 (expose `resume` on `SubagentsService`, adopted as Phase 22 Step 
 ### Observations
 
 Nothing further beyond the deviations and the reviewer's WARN already recorded in the Implementation stage above — this sync found no new issues.
+
+## Stage: Final Retrospective (2026-09-06T17:25:54Z)
+
+### Session summary
+
+Shipped #872 through the worktree lane: fast-forward-merged `issue-872-pi-subagents-notify-parent-s-background` into `main`, verified CI, closed the issue, released `pi-subagents-v21.4.3`, and tore down the worktree.
+The whole four-stage arc (plan → TDD → sync → ship) produced one friction point worth recording, and it was caught by a gate rather than by the operator.
+
+### Observations
+
+#### What went well
+
+1. **The shared-premise rule produced the design.**
+   `AGENTS.md` § Clarification gates says that when every option shares a premise, name it and offer the option that removes it.
+   All three of the issue's options assumed the nudge is an update's only carrier; naming that premise in the gate's substance message produced option D (claim-based routing), which the operator chose.
+   The rule did not merely improve the gate's phrasing — it produced a design that subsumes the old gate instead of patching it, and that no option in the issue body described.
+2. **Investigation refuted the issue's own framing before the first gate.**
+   Reading `get-result-tool.ts` found a third instance of the defect — `get_subagent_result(wait: true)` claims and blocks the parent on a *background* child's initial run — which no spawn-mode or resume-based predicate can express.
+   This is the `/plan-issue` "trace what triggers the defect" instruction paying off on a self-filed issue, where the temptation to treat the body as a spec is strongest.
+3. **The mandatory "Verify the pins" step caught a vacuous test.**
+   "Leads with what the agent flagged along the way" passed pre-fix because `indexOf` returned `-1` and `-1 < N` holds.
+   Red's own evidence could not have surfaced this; the step's separate mutation pass did, before Green.
+4. **`fallow dead-code` shaped the commit sequence.**
+   It rejected `Subagent.runUpdates` as an unused class member in step 2, moving the getter to step 3 with its first reader.
+   The plan's risk table predicted the getter would trace — it does, but only once a consumer exists, which the gate made concrete rather than arguable.
+5. **Zero-friction ship across a full worktree lane.**
+   Lane detection, ff-merge prediction (`git merge-base --is-ancestor`), pre-push checks, CI, `next-version.sh`, release dispatch, release verification, and teardown all ran first-try with no retries and no manual recovery.
+
+#### What caused friction (agent side)
+
+1. `instruction-violation` — an atomic `Edit` batch on `docs/architecture/architecture.md` was rejected on its third edit; only that third edit was re-applied, silently dropping the Step 14 `✅` heading mark and its Mermaid node mark.
+   `AGENTS.md` § Edit tool batches states the correct repair verbatim ("re-apply every intended edit (not just the ones you retried)").
+   Neither `pnpm run lint` nor `rumdl` can see a missing `✅`, so no deterministic gate covered it.
+   Caught by the `pre-completion-reviewer`, not self-identified and not operator-caught.
+   Impact: one extra follow-on commit (`0f4f2e79`), no rework of code or tests.
+2. `other` — the TDD stage applied killing mutations with `python3` heredoc substitutions rather than the `Edit` tool that `/tdd-plan` step 3 prescribes.
+   Four of roughly six mutations were confirmed applied (`git diff --stat`, `grep -n`) before reading the suite; the rest were not.
+   Impact: none observed — every mutation reddened something, so no silent no-op occurred — but the verification the rule exists to guarantee was left to discretion.
+
+#### What caused friction (user side)
+
+1. The intent to expose `resume` on `SubagentsService` surfaced mid-gate, after the first direction gate had already been answered.
+   It falsifies "a resume implies a blocked parent" — the premise options A/B/C rested on — so it was directly material to the choice already made.
+   Opportunity: an unrecorded intent that would invalidate a candidate option is worth stating at the start of planning, where it becomes an input to the first gate rather than a second one.
+   The recovery was clean (both decisions were bundled into one follow-up gate, and the chosen predicate is immune to the change), so this cost a gate round-trip and nothing else.
+
+### Diagnostic details
+
+- **Model-performance correlation** — Planning and TDD ran on `anthropic/claude-opus-5`; Sync and Ship ran on `anthropic/claude-sonnet-5`; this retrospective on `anthropic/claude-opus-5`.
+  The split matches the work: the judgment-heavy stages (refuting the issue's framing, designing the claim predicate, mutation reasoning) drew the stronger model, and the procedural stages did not.
+  Ship executed a 13-step template — lane detection, ff-merge, CI, release, teardown — first-try on the cheaper model, which is evidence the template carries enough determinism to not need the expensive one.
+  Two subagents were dispatched (`tidy-first-assessor` at planning, `pre-completion-reviewer` at TDD close), both on their frontmatter-locked models; no mismatch.
+- **Escalation-delay tracking** — no `rabbit-hole` friction points.
+  The longest same-target tool sequence was the step 3 and step 4 mutation passes (roughly two calls per mutation, save-mutate-run-restore), which is the prescribed loop rather than a stall.
+- **Unused-tool detection** — `colgrep` was not used during planning exploration.
+  Not a finding: every search was an exact symbol match (`canSendUpdates`, `claimed`, `onUpdateSent`, `midRunUpdates`), which is the documented `grep` case in the `colgrep` skill's decision table.
+- **Feedback-loop gap analysis** — no gap.
+  `pnpm run check` ran mid-step whenever a shared type changed, and `check` + `lint` + full suite + `fallow dead-code` ran at every one of the five commit boundaries rather than once at the end.
+  The step 2 `fallow` finding and the step 4 stale-suppression finding were both caught at their own commit boundary, which is why neither needed a later fixup commit.
+
+### Changes made
+
+1. `.pi/prompts/tdd-plan.md` — step 7 gained a post-condition for the roadmap-step `✅` marks: `grep -c '✅.*Step <N>' <arch-doc>` must report 2 before committing.
+   The mandate existed; the verification did not, and no lint or type gate can see a missing `✅`.
+2. `.pi/prompts/build-plan.md` — the same post-condition added to step 4, which carries the identical mandate on one line.
+   The operator raised this during the retro gate; `/build-plan` is the more exposed of the two, since a docs-or-config change has no test suite and leaves the `pre-completion-reviewer` as the only gate.
+3. This retro file — Final Retrospective stage entry.

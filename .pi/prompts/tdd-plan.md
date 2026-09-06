@@ -147,6 +147,7 @@ The skill exits at its first step when no phase is open, and recording a disposi
    If a listed file was not touched, update it now or note the deviation.
 7. If `packages/<PKG>/docs/architecture/` exists, check whether the changes affect the module structure or data-flow descriptions and update them.
    If the issue completes a numbered roadmap step, prefix `✅` on both the step heading and its Mermaid diagram node — a `Landed:` detail line is not a substitute for the `✅`.
+   Confirm both landed before committing: `grep -c '✅.*Step <N>' <arch-doc>` must report 2 — no lint gate sees a missing `✅` (Refs #872).
    Flip the phase status row only when every step in the phase is done.
 8. Commit doc updates as `docs: <summary>`.
 9. Preview the changelog: `git log --format='%s' <plan-commit>..HEAD | grep -E '^(feat|fix)'`.
