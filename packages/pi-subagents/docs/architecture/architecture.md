@@ -820,6 +820,9 @@ Steps 2, 6, and 8 have design-dependent shapes and are verified by their plans' 
 - [#878] — filed by Step 12's planning; becomes Step 15 by operator decision.
   A carrier names a remediation the extension refuses: a released session's record keeps its `pendingQuestion`, so `get_subagent_result` and the completion nudge still advertise a resume that `AgentTool` declines.
   The same delivery-boundary family as Steps 5–7 and 12, and a peer-sized piece rather than a line in Step 12's fix, whose plan lists it as an explicit Non-Goal.
+- [#885] — filed by Step 14's planning; becomes Step 16 by operator decision.
+  Step 14 establishes that `record.claimed`, not spawn mode, is what marks a blocking carrier, which is the precondition for a front door that resumes without carrying the result.
+  The refusal policy it must relocate from `AgentTool` into `SubagentManager` is the same front-door-parity work as Step 1, applied to the one door Step 1 did not reach.
 - [#791] — deferred by operator decision (offered and declined): small self-contained warning, suitable for pickup outside a phase.
 - [#733] — deferred: TUI overlay defect requiring SDK-level rendering investigation, unrelated to this phase's cause.
 - [#755], [#711], [#636], [#695], [#676], [#660] — deferred: feature/UX requests that do not gate a structural phase ([#660] overlaps [#695]/[#676]).
@@ -1155,6 +1158,22 @@ Release: independent
 
 Release: independent
 
+#### Step 16: Expose resume on `SubagentsService` ([#885])
+
+**Cause:** `SubagentManager.resume` has exactly one caller — `AgentTool`'s resume branch — so a resume can originate only from a parent model's tool call, and no extension can continue a child.
+The front door is also unequal to its siblings: `AgentTool` owns four distinct refusals (unknown id, no active session, released session, disposed workspace), each with its own operator-facing sentence, while `SubagentManager.resume` checks `isSessionReady()` alone and collapses all four into `undefined`.
+That is the same policy-above-the-choke-point shape Step 1 corrected for spawn.
+
+- **Smell:** Category A (a front door whose policy lives in one caller rather than at the choke point) plus `enhancement`.
+- **Target:** `src/lifecycle/subagent-manager.ts` (`resume`, which gains the refusal policy), `src/tools/agent-tool.ts` (its resume branch, which comes to read that policy rather than own it), `src/service/service-adapter.ts` and `src/service/service.ts` (the new method and its contract).
+- **Hard dependency:** after Step 14, whose claim-based routing is what lets a non-blocking front door exist at all — a service resume that carries no result must not be treated as a blocking carrier.
+- **Design decision at plan time:** what a refusal looks like across the service boundary (thrown error, discriminated result, or `undefined` plus a reason); whether the caller declares that it will carry the outcome (`record.claim()`) rather than the door deciding; and whether [#832]'s `subagents:resumed` emission is folded in, since a service resume has no tool result to observe.
+- **Outcome:** an extension can resume a child through `SubagentsService`, and both front doors report the same four refusals from one place, pinned by a test per refusal at each door.
+- **Commit type:** `feat:` (semver-minor on the service contract).
+- **Impact 3 / Risk 2 / Priority 12.**
+
+Release: independent
+
 ### Step dependencies
 
 ```mermaid
@@ -1172,6 +1191,7 @@ flowchart TD
     S13["✅ Step 13 (#871)<br/>Empty tool allowlist"]
     S10 --> S15["Step 15 (#878)<br/>Resume affordance honesty"]
     S11 --> S15
+    S14 --> S16["Step 16 (#885)<br/>Service resume"]
 ```
 
 ### Parallel tracks
@@ -1181,6 +1201,7 @@ flowchart TD
 - **Track C — Widget lifecycle:** Steps 6 → 9 (independent of the other tracks; Step 6 complements Step 1 — parity makes SDK agents _eligible_, this makes the widget _present_ — and Step 9 releases what Step 6 acquires).
 - **Track D — Result delivery and ask-back:** Steps 7 → 8 → 11 → 14, with Step 10 → 12 joining as a resume-path fix and the residual it creates, Step 10 also informing Step 11, and Step 15 joining downstream of both 10 and 11 (Steps 7 → 8 is soft ordering; 8 → 11, 11 → 14, 10 → 12, and 10/11 → 15 are hard).
 - **Track E — Agent config resolution:** Step 13 (fully independent; it corrects the base list Step 11 appends to, but neither step needs the other).
+- **Track F — Service surface:** Step 16 (downstream of Step 14; it re-enters Track A's front-door concern at the one door Step 1 left in the tool layer).
 
 ### Release batches
 
@@ -1311,5 +1332,7 @@ The upstream test suite is run periodically as a regression canary for the sessi
 [#872]: https://github.com/gotgenes/pi-packages/issues/872
 [#876]: https://github.com/gotgenes/pi-packages/issues/876
 [#878]: https://github.com/gotgenes/pi-packages/issues/878
+[#832]: https://github.com/gotgenes/pi-packages/issues/832
+[#885]: https://github.com/gotgenes/pi-packages/issues/885
 [ADR-0002]: ../decisions/0002-extensions-on-a-minimal-core.md
 [ADR-0004]: ../decisions/0004-reconsider-ui-direction.md
