@@ -374,8 +374,8 @@ src/
 │
 ├── observation/                    progress tracking and notification
 │   ├── record-observer.ts          session-event stats observer
-│   ├── notification.ts             completion nudges and mid-run updates, in one arrival-ordered withheld queue (announce-only; completions gated on the carrier claim, updates not; withheld during the parent's agent run, flushed on agent_settled), plus workspace notices, which are announced straight through
-│   ├── outcome-delivery.ts         shared outcome rendering every result carrier composes: one status vocabulary in two presentations, body, ask-back affordance, workspace notice
+│   ├── notification.ts             completion nudges and mid-run updates, in one arrival-ordered withheld queue (announce-only; both gated on the carrier claim, since a claimed outcome is one a blocked carrier delivers itself; withheld during the parent's agent run, flushed on agent_settled), plus workspace notices, which are announced straight through
+│   ├── outcome-delivery.ts         shared outcome rendering every result carrier composes: one status vocabulary in two presentations, body, and the addenda tail (mid-run updates, workspace notice, ask-back affordance) in one fixed order
 │   ├── renderer.ts                 notification, mid-run-update, and workspace-notice TUI components
 │   ├── composite-subagent-observer.ts fans manager notifications out to multiple observers; enumerates every member, so an optional one it omits is dropped silently
 │   └── subagent-events-observer.ts manager lifecycle observer (event emission + persistence + notification)
@@ -1070,7 +1070,8 @@ The design decision the step names was answered by dissolving it.
 The marker Step 8 shipped was itself a tool wearing a protocol's clothes: `ask-back.ts` was 222 lines, of which roughly 120 were quote-detection that exists only because a marker embedded in free text can be quoted by the child that must not trip it.
 So `ask_parent` replaces the marker rather than joining it, and the change is a carrier swap rather than an allowlist widening — the core already installed that protocol in every child through the prompt. § "Child tool selection" and the scope table now draw the boundary at capability rather than provenance, which answers the additive-key gap [#775] recorded.
 The concurrency-slot concern in the step's design note lapsed with the blocking half: nothing waits, so no slot is held.
-`notify_parent` is background-only — a foreground parent is blocked inside its own `subagent` call, and the nudge is withheld until that run settles, so the update could only ever arrive after the result did.
+`notify_parent` shipped background-only — a foreground parent is blocked inside its own `subagent` call, and the nudge is withheld until that run settles, so the update could only ever arrive after the result did.
+Step 14 replaced that gate with the carrier claim, which describes the same blockage on the two paths spawn mode misses.
 
 The retention half of [#858]'s motivation was a sweep bug rather than a missing channel, and landed as its own `fix:`: reading a child's question counted as collecting its outcome, dropping the session to the 10-minute consumed window when the answer is delivered by resuming that very session.
 
@@ -1140,6 +1141,14 @@ A background child's update during a resumed run therefore lands after that resu
 - **Outcome:** the gate and its stated rationale agree on every path a child can run, pinned by a test that drives `notify_parent` through a resumed run — the path `subagent.test.ts` does not currently reach.
 - **Commit type:** `fix:`.
 - **Impact 2 / Risk 2 / Priority 8.**
+
+Landed by replacing the predicate rather than recomputing it.
+Planning found a third window the step's cause does not name: `get_subagent_result` with `wait: true` claims the outcome and blocks the parent on a **background** child's initial run, with no resume involved — so neither spawn mode nor "is this a resume" describes the condition.
+`record.claimed` does, it was already set at all three blocking front doors, and `sendCompletion` already consulted it; the substitution subsumes the old gate rather than replacing it, since a foreground run is claimed for its whole duration.
+
+The tool now reaches every child, and each message is routed per call: a claimed run's update is rendered by the carrier holding that outcome, an unclaimed run's is announced as it happens, and the lifecycle event fires either way.
+The three carriers' duplicated `renderWorkspaceNotice + renderQuestionAffordance` tail became `renderOutcomeAddenda` first, so the new element was inserted once rather than three times.
+The foreground error branch composes it directly — that return never reaches the tail, and a failed run is where mid-run findings are the only thing that survives.
 
 Release: independent
 

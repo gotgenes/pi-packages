@@ -25,7 +25,9 @@ A child's **capability** tool set is exactly its agent's `tools:` frontmatter li
 Pi treats the `tools` option to `createAgentSession` as an allowlist and applies it *before* building the session's tool registry, so an extension that calls `registerTool` inside a child succeeds and is then filtered out unless the agent names that tool.
 Extension tool names are therefore supported `tools:` entries — that is the documented way to give a child an extension's tool, and `docs/configuration.md` is where the contract lives.
 
-The core installs two child-facing tools of its own on top of that list, in every child regardless of what the agent declares: `ask_parent` (records the child's question, then it ends its turn) and `notify_parent` (one-way mid-run update; background children only, gated on the `midRunUpdates` setting).
+The core installs two child-facing tools of its own on top of that list, in every child regardless of what the agent declares: `ask_parent` (records the child's question, then it ends its turn) and `notify_parent` (one-way mid-run update, gated on the `midRunUpdates` setting).
+An update is routed by `record.claimed` rather than by spawn mode: a claim means a carrier is blocked awaiting this run, so that carrier renders the update into its own return (`renderRunUpdates`, in the shared addenda tail) and `NotificationManager.sendUpdate` stays quiet; an unclaimed run's update is announced as it happens.
+The lifecycle event fires either way (Refs #872).
 The boundary the `tools:` allowlist draws is **capability**, not provenance — neither tool reaches the filesystem, the shell, or the network, so a read-only agent that gains them stays read-only, and #612's and #768's refusals still hold.
 They are appended to the allowlist at `createSubagentSession` and passed as SDK `customTools`; both halves are needed, because Pi filters `customTools` through the allowlist and drops an unlisted one with no error.
 This replaced the `<question-for-parent>` text marker and its 222-line fence-aware parser (#858) — do not reintroduce a marker protocol.

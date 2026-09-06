@@ -202,6 +202,8 @@ notify_parent
 `notify_parent` is withheld from a foreground child because its message cannot arrive in time to matter: the parent is blocked inside `spawnAndWait`, and `NotificationManager` withholds nudges while the parent's run is active, flushing at `agent_settled` — after the child's own result has already returned.
 A tool whose every call is late is worse than no tool.
 
+Superseded by #872: the same blockage occurs on a resume and on a `get_subagent_result` wait, which spawn mode cannot express, so the row above now reads "yes" for both columns and lateness is avoided by rendering the update into the blocked carrier's own return.
+
 ### The call path
 
 ```typescript

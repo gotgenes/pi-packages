@@ -163,7 +163,9 @@ Two names are always **added**, whatever an agent lists: `ask_parent` and `notif
 These are the child's channel back to the agent that delegated to it — protocol the core installs in every child, like the `<active_agent>` tag and the parent-context prefix.
 Neither reaches the filesystem, the shell, or the network, so a read-only agent stays read-only.
 `ask_parent` records a question and tells the child to end its turn, so the delegating agent can answer by resuming it; `notify_parent` sends a one-way update and returns at once.
-`notify_parent` is given only to a background agent — a foreground parent is blocked awaiting its child, so the update could not reach it until after the result did — and only while [`midRunUpdates`](#persistent-settings) is on.
+Both go to every agent, `notify_parent` only while [`midRunUpdates`](#persistent-settings) is on.
+Where an update lands depends on what you are doing when it is sent: while you are blocked awaiting that agent — a foreground call, a resume, or `get_subagent_result` with `wait` — it rides that call's own result, under "Updates this agent sent while it worked".
+Otherwise it arrives as its own message while the agent keeps working.
 
 Accepted forms, all equivalent:
 
@@ -191,7 +193,7 @@ Runtime tuning values set via `/subagents:settings` (max concurrency, default ma
 A completed subagent's record is kept for the whole parent session (so `get_subagent_result` never misses); only its heavy in-memory session is released — after `consumedSessionRetentionMinutes` once the result has been collected, or after the `unconsumedSessionRetentionMinutes` safety cap if it never was.
 An agent that asked a question and has not been answered holds the safety cap rather than the consumed window, because reading a question is not finishing with the agent — the answer is delivered by resuming the very session the short window would release.
 
-Set `midRunUpdates` to `false` to withhold `notify_parent` from background agents, leaving them no way to interrupt you before they finish.
+Set `midRunUpdates` to `false` to withhold `notify_parent` from every agent, leaving them no way to tell you anything before they finish.
 `ask_parent` is unaffected: a blocked agent can still end its turn with a question.
 Two files, merged on load:
 

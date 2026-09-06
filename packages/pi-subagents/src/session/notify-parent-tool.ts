@@ -7,10 +7,11 @@
  * returns at once; the parent may reply by steering, which the child picks up
  * at its next turn boundary.
  *
- * Supplied only to a background child. A foreground parent is blocked inside
- * its own `subagent` tool call, and the nudge that carries the update is
- * withheld until that run settles — which is after the child's own result has
- * already returned.
+ * Supplied to every child, gated only on the `midRunUpdates` setting. Where
+ * the message lands is decided per call rather than per child: while a carrier
+ * holds this run's outcome it is blocked awaiting the child, so that carrier
+ * renders the update into its own return instead of an announcement arriving
+ * after it. A child whose parent is free is nudged as it goes.
  *
  * Lives in `session/` alongside `ask-parent-tool.ts`, for the same reason.
  */
@@ -23,9 +24,9 @@ export const NOTIFY_PARENT_TOOL_NAME = "notify_parent";
 /**
  * The longest update the channel carries.
  *
- * A nudge is the message's only carrier — unlike a result, there is no
- * `get_subagent_result` to pull the untruncated text from later — so the cut is
- * made here, where the child is told about it and can be briefer next time.
+ * Neither carrier can be pulled from again — unlike a result, there is no
+ * `get_subagent_result` that returns the untruncated text — so the cut is made
+ * here, where the child is told about it and can be briefer next time.
  */
 export const UPDATE_MESSAGE_MAX_LENGTH = 2000;
 
