@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { SubagentStatus } from "#src/lifecycle/subagent-state";
 import {
+	type OutcomeAddenda,
 	type OutcomeBody,
+	renderOutcomeAddenda,
 	renderOutcomeBody,
 	renderQuestionAffordance,
 	renderStatusLabel,
@@ -133,5 +135,38 @@ describe("renderOutcomeBody", () => {
 		expect(
 			renderOutcomeBody(makeOutcome({ status: "error", error: "boom", stoppedWhileQueued: true })),
 		).toBe("Error: boom");
+	});
+});
+
+describe("renderOutcomeAddenda", () => {
+	function makeAddenda(overrides: Partial<OutcomeAddenda> = {}): OutcomeAddenda {
+		return { id: "agent-1", ...overrides };
+	}
+
+	it("renders nothing when the run produced no addenda", () => {
+		expect(renderOutcomeAddenda(makeAddenda())).toBe("");
+	});
+
+	it("puts where the work went before the call to action that follows it", () => {
+		const rendered = renderOutcomeAddenda(
+			makeAddenda({
+				workspaceNotice: "\n\n---\nChanges saved to branch `pi-agent-1`.",
+				pendingQuestion: "Which config?",
+			}),
+		);
+
+		expect(rendered.indexOf("Changes saved")).toBeLessThan(rendered.indexOf("waiting on an answer"));
+	});
+
+	it("composes the same text the carriers built by hand", () => {
+		const addenda = makeAddenda({
+			workspaceNotice: "\n\n---\nChanges saved to branch `pi-agent-1`.",
+			pendingQuestion: "Which config?",
+		});
+
+		expect(renderOutcomeAddenda(addenda)).toBe(
+			renderWorkspaceNotice(addenda.workspaceNotice) +
+				renderQuestionAffordance(addenda.id, addenda.pendingQuestion),
+		);
 	});
 });

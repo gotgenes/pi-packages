@@ -6,10 +6,9 @@ import { AgentTypeRegistry } from "#src/config/agent-types";
 import type { ParentSnapshot } from "#src/lifecycle/parent-snapshot";
 import type { AgentSpawnConfig } from "#src/lifecycle/subagent-manager";
 import {
+	renderOutcomeAddenda,
 	renderOutcomeBody,
-	renderQuestionAffordance,
 	renderStatusNote,
-	renderWorkspaceNotice,
 } from "#src/observation/outcome-delivery";
 import { spawnBackground } from "#src/tools/background-spawner";
 import { runForeground } from "#src/tools/foreground-runner";
@@ -130,8 +129,7 @@ export class AgentTool {
 			return textResult(
 				`Agent ID: ${record.id}${renderStatusNote(record.status)}\n\n` +
 					renderOutcomeBody(record) +
-					renderWorkspaceNotice(record.workspaceNotice) +
-					renderQuestionAffordance(record.id, record.pendingQuestion),
+					renderOutcomeAddenda(record),
 				buildDetails(config.presentation.detailBase, record),
 			);
 		}

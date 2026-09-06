@@ -14,6 +14,10 @@
  * result was already delivered reaches none of them and is announced on its
  * own instead.
  *
+ * The notice and the ask-back affordance are appended in one fixed order by
+ * `renderOutcomeAddenda`, so the three carriers that compose them cannot
+ * disagree about what follows the body.
+ *
  * Pure functions only: no SDK types, no record types, no side effects.
  */
 
@@ -108,6 +112,27 @@ export function renderQuestionAffordance(agentId: string, question: string | und
  */
 export function renderWorkspaceNotice(notice: string | undefined): string {
 	return notice ?? "";
+}
+
+/**
+ * What a carrier appends after the outcome body: where the work went, then the
+ * call to action that follows it.
+ *
+ * The fields rather than a record, so a carrier holding any shape can call it
+ * — both `Subagent` and `AgentReport` satisfy this structurally.
+ */
+export interface OutcomeAddenda {
+	id: string;
+	workspaceNotice?: string;
+	pendingQuestion?: string;
+}
+
+/** The addenda tail every outcome carrier appends, in one order. */
+export function renderOutcomeAddenda(outcome: OutcomeAddenda): string {
+	return (
+		renderWorkspaceNotice(outcome.workspaceNotice) +
+		renderQuestionAffordance(outcome.id, outcome.pendingQuestion)
+	);
 }
 
 /**

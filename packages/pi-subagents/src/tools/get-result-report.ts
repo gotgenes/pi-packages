@@ -9,10 +9,9 @@
 
 import type { SubagentStatus } from "#src/lifecycle/subagent";
 import {
+	renderOutcomeAddenda,
 	renderOutcomeBody,
-	renderQuestionAffordance,
 	renderStatusNote,
-	renderWorkspaceNotice,
 } from "#src/observation/outcome-delivery";
 
 /** The data a get_subagent_result report renders from — only what the formatter reads. */
@@ -67,9 +66,7 @@ export function formatAgentReport(report: AgentReport): string {
 		`Type: ${report.displayName} | Status: ${report.status}${renderStatusNote(report.status)} | ${renderStatsParts(report).join(" | ")}\n` +
 		`Description: ${report.description}\n\n`;
 	output += renderReportBody(report);
-	// Where the work went, before the call to action that follows it.
-	output += renderWorkspaceNotice(report.workspaceNotice);
-	output += renderQuestionAffordance(report.id, report.pendingQuestion);
+	output += renderOutcomeAddenda(report);
 	if (report.conversation) {
 		output += `\n\n--- Agent Conversation ---\n${report.conversation}`;
 	}
