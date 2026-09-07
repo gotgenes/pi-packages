@@ -202,7 +202,7 @@ Priority = Impact × (6 − Risk)
 ## Grouping heuristics
 
 - **One issue per extraction** — each "extract X from Y" is a single issue.
-- **Dependency order** — if Step B depends on Step A's output, order them.
+- **Dependency order** — when one step consumes another's output, place the consumer's section after the producer's; section order is the working sequence.
 - **Independent tracks** — identify parallel tracks (e.g., "bag decomposition" vs. "complexity reduction") that can proceed without blocking each other.
 - **Max 9 steps per phase** — beyond 9, split into two phases.
 - **Test duplication gets its own step** — shared fixture extraction is a distinct concern from production code refactoring.
@@ -218,8 +218,8 @@ The plan should produce:
    Prefer cause-level metrics recomputable by a single command (a `grep -c`, `wc -l`, or fallow field — e.g. `canConfirm` occurrences in `src/`, role-interface count) and record the recompute command with the metric, so `/finish-phase` can verify delivered vs. predicted deterministically.
    Verify the command against the _predicted_ end state, not only today's tree — a command counting the mechanism being replaced reads 0, not the target, once the replacement lands.
    The fallow health score alone is a poor phase metric — it is blind to the type-level wins (a bug class made unrepresentable) that cause-driven phases produce.
-2. **Step list** — numbered steps, each with:
-   - Title and issue reference
+2. **Step list** — steps in working-sequence order, each with:
+   - Title, with the step's issue number as its identity
    - **Cause** — the first-principles structural cause the step dissolves (name it explicitly), with any fallow signal cited as the _symptom_ of that cause, not the motivation.
      A step whose only stated justification is a fallow finding is a symptom-driven step; trace it to a cause or drop it.
    - What smell it addresses (Category A–F)
@@ -229,10 +229,14 @@ The plan should produce:
    - **Impact / Risk / Priority** — the per-step scores from the prioritization framework (`Priority = Impact × (6 − Risk)`), published on the step so the ranking is auditable in the committed roadmap (and at `/plan-issue` time), not left in the session transcript.
 
    Render each step in this exact shape — a bold `**Cause:**` lead paragraph, then a bulleted list with bold field labels, `Commit type` and `Impact/Risk/Priority` last, and any step-specific field (`Constraint`, `Design question(s) the step must settle`, `Hard dependency`, `Soft dependency`, `Design note`, …) inserted between `Target` and `Outcome` in whatever order the step needs.
-   Use a colon after `Step N`, never an em dash — several step titles already contain their own em dash, and a second one after `Step N` reads as doubled and ambiguous:
+   A step is identified by its **GitHub issue number**, never by an ordinal, and the order of the sections _is_ the recommended working sequence.
+   Inserting a step at any priority is therefore "write the section where it belongs" — nothing renumbers, because nothing is numbered.
+   Mid-phase insertion is the normal case rather than the exception: append-only numbering is what mid-phase discovery produces, so the operation to keep cheap is insertion at an arbitrary position.
+   Issue numbers sort chronologically, so identity preserves provenance for free.
+   A step that absorbs a folded-in issue leads with its primary issue and names the fold-in as a suffix (`#### [#802] Title (with [#892])`), which keeps the primary issue countable and the two roles distinct:
 
    ```markdown
-   #### [✅ ]Step N: Title ([#NNN])
+   #### [✅ ][#NNN] Title
 
    **Cause:** the first-principles structural cause, as prose (one sentence per line; a second sentence continues on the next line with no blank line between).
 
@@ -253,7 +257,15 @@ The plan should produce:
    ```
 
 3. **Step dependency diagram** — Mermaid flowchart showing which steps unblock others.
-4. **Tracks** — group steps into named parallel tracks.
+   It stays purely structural: it lays out by dependency, not by sequence.
+   Node IDs take the form `S<issue>` (a valid Mermaid identifier, unlike a bare number) and the label carries the bare issue number, because that is what `/tdd-plan`'s and `/build-plan`'s `✅`-mark verification counts:
+
+   ```text
+   S857["✅ #857<br/>Workspace-backed resume"] --> S878["✅ #878<br/>Resume affordance honesty"]
+   ```
+
+   A `[#N]` reference link does not render inside a Mermaid label, so the node uses the bare form while the heading uses the link.
+4. **Tracks** — group steps into named parallel tracks, naming members as `[#N]` (`**Track A — Result delivery:** [#857] → [#878]`).
 5. **Release batches** — make release coordination grep-able, in two artifacts:
 
 - A per-step `Release:` tag on its own line in each step (alongside `Smell:`/`Outcome:`), exactly one of:
@@ -266,8 +278,8 @@ The plan should produce:
      ```markdown
      ### Release batches
 
-     - **Batch "activity-disentanglement":** Steps 1, 2, 3 (ship together; tail = Step 3).
-     - Independently releasable: Steps 4, 5.
+     - **Batch "activity-disentanglement":** [#301], [#302], [#303] (ship together; tail = [#303]).
+     - Independently releasable: [#304], [#305].
      ```
 
   Agents locate the data by grepping for the `Release:` line (per step) and the `Release batches` heading (per phase) — never by parsing prose.
