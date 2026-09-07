@@ -96,3 +96,17 @@ The outcome is [#892] (the sandbox ADR, folded into Step 6 and moved first), [#8
 [#886]: https://github.com/gotgenes/pi-packages/issues/886
 [#891]: https://github.com/gotgenes/pi-packages/issues/891
 [#892]: https://github.com/gotgenes/pi-packages/issues/892
+
+## Stage: Sync (worktree) (2026-09-07T04:26:01Z)
+
+### Session summary
+
+Pre-push checks pass (`pnpm run lint`, `pnpm fallow dead-code`), rebase onto local `main` is clean, and this branch is docs-only: the plan's `**Release:** ship independently` marker refers to the code change as originally scoped, which was never implemented — the Strategic review stage above records why (folded into [#892]).
+Nothing here should dispatch a release; the five commits are the plan, its planning retro, this sync note, and three roadmap dispositions (#886, #891, #892).
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-863--/2026-09-06T04-26-34-471Z_01a074f7-d666-74ca-8763-acc838562474.jsonl` — read with `read_session_file({ path: "<path>" })` for message-level verification at land/retro time.
+
+### Observations
+
+No deferred work beyond what [#892], [#891], and [#886] already track.
+The final `/retro 863` at the root is where the strategic-review turn (the sandbox-vs-projection discussion, the nono measurements, the two upstream reports) should be synthesized — this session's transcript above is the primary source for it, since the Strategic review stage note is a summary, not a transcript.
