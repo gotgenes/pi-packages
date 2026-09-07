@@ -1090,6 +1090,8 @@ Deferred by composition, with the reason each carries: [#804] (staging slice 7, 
 - [#886] — filed by Step 1's planning; deferred to a later phase.
   It is real roadmap work, but it is not this phase's cause: the phase is about a lost role producing false positives, and [#886] adds prompts in the opposite direction — 270 of 5918 corpus commands carry an interpreter inline script.
   Step 4's `commandEffects` deliberately does not lift the wrapper floor (ADR 0013 §11) and Step 6's sandbox seam answers band C without belief, so both change its calculus before it is worth scheduling.
+- [#892] — filed by Step 1's planning; folds into Step 6, which it scopes up and moves first.
+  The sandbox is the enforcement boundary for bash and the projection becomes a hint, so Steps 1–5 and 7 are re-evaluated after the record lands rather than before; [#863]'s plan is committed but not implemented for that reason.
 - [#891] — filed by Step 1's planning; deferred to a later phase.
   Pi's built-in `powershell` tool (v0.84.3, recommended on Windows) reaches only the `tools:` surface today.
   The issue asks for a Codex-shaped static layer — a small literal subset lowered to argv, fail closed on the rest, and deliberately **no** path projection — which is a new shell surface rather than this phase's role-loss cause, and it is sequenced behind the sandbox re-planning that Step 6 opens.
@@ -1224,7 +1226,11 @@ So the blame reaches the review log on every path except the one a human decides
 
 Release: batch "declared-effects"
 
-#### Step 6: The policy-scope export and a launcher that consumes it ([#802])
+#### Step 6: The policy-scope export and a launcher that consumes it ([#802], with [#892])
+
+**Re-sequenced first (2026-09-07):** [#892] folds in and scopes this step up from "export + launcher" to the decision record that makes the OS sandbox the enforcement boundary for bash — the manifest compiler, a `bash` tool override, a Linux backend (seccomp-notify `capability_elevation` answered by a webhook this package serves) and a macOS backend (fresh child per command, `--rollback`), and a fallback prompt for the cases the kernel cannot name.
+It lands ahead of Steps 1–5 and 7, each of which polishes the projection the record demotes to a hint, and each is re-evaluated once it is recorded.
+The measurements and upstream references are in [#892]'s body.
 
 **Cause:** ADR 0013 §8 revised this package's boundary to "does not implement isolation, and exports its scope decisions to something that does", and nothing exports them — the seam its flagship decision rests on is vacant, and band C (interpreters and build tools, 54 of 388 recent asks) has no relief that does not require believing a classifier.
 
@@ -1281,7 +1287,8 @@ Step 7's deliberation can start any time; only its code half, if any, waits on S
 - **Track B — declared effects and blame:** Steps 4 → 5.
   Step 4 owns `src/config/` and `command-effects.ts`; Step 5 owns `src/presentation/` and the two bash path gates.
   Step 5 touches `bash-path.ts` / `bash-external-directory.ts`, which Track A's Step 3 also edits — sequence Step 5 after Step 3, not concurrently.
-- **Track C — the sandbox seam:** Step 6, disjoint from both (`service.ts`, `service/permissions-service.ts`, `scripts/`).
+- **Track C — the sandbox seam:** Step 6, now first; it opens with the [#892] decision record, and its code adds a `sandbox/` directory (a vocabulary-table edit), a `bash` tool override, and the Linux webhook listener beside the `service.ts` / `service/permissions-service.ts` / `scripts/` surface it already owned.
+  Tracks A, B, and D wait on the record, since each polishes the layer it demotes.
 - **Track D — the judgment lane:** Step 7, a deliberation first; its code half touches `authority/delegation-envelope.ts`, `authority/permission-forwarding.ts`, and the payload core Step 5 owns, so it lands after Step 5.
 
 ### Release batches
@@ -1392,4 +1399,5 @@ Each phase's findings, numbered plan, dependency diagram, and health metrics are
 [#886]: https://github.com/gotgenes/pi-packages/issues/886
 [#890]: https://github.com/gotgenes/pi-packages/issues/890
 [#891]: https://github.com/gotgenes/pi-packages/issues/891
+[#892]: https://github.com/gotgenes/pi-packages/issues/892
 [ADR-0002]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-subagents/docs/decisions/0002-extensions-on-a-minimal-core.md
