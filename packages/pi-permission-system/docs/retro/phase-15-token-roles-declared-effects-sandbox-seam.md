@@ -74,4 +74,21 @@ That split the shape-indistinguishable class across two complementary levers and
 [#880]: https://github.com/gotgenes/pi-packages/issues/880
 [#881]: https://github.com/gotgenes/pi-packages/issues/881
 [#882]: https://github.com/gotgenes/pi-packages/issues/882
+
+## Stage: Re-sequencing — sandbox first (2026-09-07T04:18:01Z)
+
+### Session summary
+
+During [#863]'s planning session the operator asked whether the projection is in diminishing returns, and the answer — measured on macOS and in a Docker Linux container — reshaped the phase: [#892] (the sandbox ADR) folds into Step 6, which moves first and is scoped up; Steps 1–5 and 7 wait on the record.
+The full account, measurements, and the `#### Phase handoff` note live in `0863-interpreter-inline-script-role.md`; this entry exists so the phase's own record says where its spine moved and why.
+
+### Observations
+
+- The phase's cause statement ("a bash token's role is established at collection and discarded before projection") is still true; what changed is whether closing it is worth a phase.
+  Under the record, the projection becomes a hint for the fallback prompt and the Windows layer, so a role thread that makes it see *more* is polishing a demoted layer.
+- Step 6's Track C is no longer disjoint from the others by *files* only; it is prior to them by *decision*.
+  `/finish-phase` should reconcile Steps 1–5 and 7 against the record's dispositions in [#892] rather than against their original `Outcome:` lines.
+- Two upstream dependencies were filed with instrumented evidence: nolabs-ai/nono#1796 (macOS denial reporting below the direct child) and nolabs-ai/nono#1797 (Linux elevation does not trap creation).
+
 [#797]: https://github.com/gotgenes/pi-packages/issues/797
+[#892]: https://github.com/gotgenes/pi-packages/issues/892

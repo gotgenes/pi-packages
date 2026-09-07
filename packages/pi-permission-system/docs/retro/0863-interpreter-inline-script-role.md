@@ -55,4 +55,44 @@ The assessor found nothing preparatory; its one considered candidate (a `scriptF
   Filed because #863 removes the last accidental signal that an interpreter payload is opaque, even though it removes no real protection.
   Disposition recorded against Phase 15 as deferred to a later phase (commit `1f5b983c`): it adds prompts in the opposite direction from this phase's cause, and Steps 4 and 6 change its calculus before it is worth scheduling.
 
+## Stage: Strategic review (2026-09-07T04:18:01Z)
+
+### Session summary
+
+After the plan was committed, the operator stepped back and asked whether the bash path projection is in diminishing returns, whether prior art exists for deterministic command evaluation, and whether a different approach would be more effective.
+The answer to all three was yes, and the session measured it rather than argued it: Pi's `bash` override seam, nono's per-command cost, rollback, denial reporting, nesting, and Linux capability elevation with a webhook backend were each verified by execution on macOS and in a Docker Linux container.
+The outcome is [#892] (the sandbox ADR, folded into Step 6 and moved first), [#891] (PowerShell, deferred), two upstream nono reports, and the decision **not** to implement this plan.
+
+### Observations
+
+- **The projection is the part that diminishes; the decision layer is the product.**
+  What a sandbox cannot do is the whole rest of the package: `bash:` prefix rules on actions the sandbox permits (`git push --force`), in-process `read`/`write`/`edit` prompts with session grants, tool/MCP/skill surfaces, tool exposure, per-agent precedence, forwarding a child's ask to its parent, the review log's `decidedBy`, and the authorizer chain.
+  Pi core ships no permission layer and no sandbox (verified: the only `sandbox` reference in `packages/coding-agent/src` is a workaround for running *under* nono), which is why the package is popular.
+  Every third-party issue in two months (#797, #800, #684, #859, #863) is a false positive of the one layer a sandbox replaces.
+- **Codex is prior art for the architecture, with the same parser.**
+  `codex-rs/shell-command/src/bash.rs` uses `tree-sitter-bash` to *reject* any script beyond plain word commands joined by `&& || ; |`; `is_dangerous_command.rs` is one denylist entry plus `sudo`/`env`/`trap`/`bash -lc` unwrapping; the PowerShell module lowers "a deliberately small literal subset" and fails closed.
+  A well-resourced team holding our parser chose not to build the projection.
+  Every Phase 13–15 fix made the enumerator descend *deeper*; Codex's design says the safe direction for a static analyzer is to recognize *less* and hand the rest to something that enforces.
+- **Measured, not inferred** (nono 0.75.0): per-command overhead ~95 ms `run` / ~40 ms `wrap` on macOS, ~20 ms on Linux; `--rollback --no-rollback-prompt` restores a failed run's writes; nono refuses to nest, so per-command and whole-process are alternatives; macOS `--diagnostics-json` reports denials for the **direct child only** (`bash -c 'cat X'` reports nothing, `bash -c 'exec cat X'` reports) — posted on nolabs-ai/nono#1796; Linux `capability_elevation` + `webhook` traps a grandchild's `open` mid-syscall with `{path, access: Read|Write|ReadWrite}` and a `granted` answer lets the same `cat` proceed, but creation (`O_CREAT`, `mkdir`) is never trapped — filed as nolabs-ai/nono#1797.
+- **`tree-sitter-bash` drops newlines from a multi-line double-quoted string** (one `string_content` per line, concatenated), so the issue's "collapsed" token is a parser property, and a "contains a newline" rule would never have fired on the reported command.
+  Worth remembering before anyone reasons about token text from the source command.
+- **The two measurement scripts this session wrote were throwaway spikes**, not committed instruments, because the numbers they produced argue for *not* landing the change they priced.
+  The corpus diff (105 tokens lost, 0 real paths, 0 gained over 5918 commands) is recorded in the plan's Background for whoever revisits.
+
+#### Phase handoff
+
+- **Candidate cause:** the bash path projection infers a shell command's filesystem effects from its text and uses the inference as a security boundary; the problem is undecidable in general, each fix adds a table row that "rots silently" (ADR 0009's own words), and the unrecoverable failure (a dropped operand) is the one no corpus can measure.
+- **Sequencing call:** [#892] opens *before* this issue's implementation.
+  Step 6 folds it in, is scoped up from "export + launcher" to "decision record + manifest compiler + `bash` override + Linux webhook backend + macOS re-run backend + fallback prompt", and lands ahead of Steps 1–5 and 7, each of which is re-evaluated once the record exists.
+  Recorded in the roadmap's sweep list and Track C (commit `42458eb0`).
+- **What this plan becomes:** not implemented as written.
+  Its Change A (a consumed flag argument is searched for hosted executions) is a genuine ADR 0009 guarantee violation and may land alone; its Change B (interpreter rows) amends the ADR 0009 bound the record would rather freeze.
+  [#863] and [#859] close against the sandbox, or [#859] lands as its one-regex fix.
+- **Open upstream dependencies:** nolabs-ai/nono#1796 (macOS denial reporting below the direct child) and nolabs-ai/nono#1797 (Linux elevation does not trap creation).
+  Neither blocks; each narrows how often the fallback prompt fires instead of the kernel-named one.
+- **Windows:** keeps the frozen projection for Git Bash, advisory; PowerShell is [#891]; WSL2 is the sandboxed path.
+
+[#859]: https://github.com/gotgenes/pi-packages/issues/859
 [#886]: https://github.com/gotgenes/pi-packages/issues/886
+[#891]: https://github.com/gotgenes/pi-packages/issues/891
+[#892]: https://github.com/gotgenes/pi-packages/issues/892
