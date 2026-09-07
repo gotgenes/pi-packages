@@ -176,6 +176,7 @@ If not available, report **WARN** — note that `mmdc` is not installed and Merm
 If available, for each modified markdown file containing Mermaid blocks:
 
 1. Run `mmdc -i <file> -o /tmp/mermaid-check.svg 2>&1` — report parse errors as **FAIL**.
+   The command's own output is the verdict; the SVG is disposable and never needs to be found or inspected.
 2. Scan the Mermaid blocks for known renderer pitfalls and report as **WARN**:
    - Semicolons inside arrow messages or `Note over` bodies (use `—` or commas instead).
    - Raw `<word>` tokens in arrow messages or participant aliases (use `{word}` or backticks).

@@ -126,5 +126,86 @@ The operator's call was to fix this at retro rather than mid-implementation: the
 
 Investigating that stall also produced [#899] (see the disposition in `pi-permission-system`'s Phase 15 sweep list): an `ask` on an earlier gate suspends the call before a later gate's unconditional `deny` is consulted, so the operator's `find / *` deny rule never ran even though it matches the chained unit correctly.
 
+## Stage: Final Retrospective (2026-09-07T18:06:01Z)
+
+### Session summary
+
+Planned, implemented, and shipped [#889] end to end in one trunk-lane session: a six-step plan, six TDD commits plus two review-driven follow-ons, `pi-subagents` v21.4.5 released, and Phase 22 Step 17 marked complete.
+Two residuals were found and filed rather than folded in — [#898] (a failed compaction hides the turn error it stripped) and [#899] (a `pi-permission-system` gate-ordering defect) — each dispositioned into its package's roadmap at filing time.
+The `pi-subagents` suite went from 1611 to 1628 tests.
+
+### Observations
+
+#### What went well
+
+- **A design was displaced by a cheaper one at planning time, and the assessor verified it rather than agreeing with it.**
+  The obvious shape — a `failure?: string` field on `TurnLoopResult` — lost to having the turn loops *throw*, which joins the error path `failRun`/`failResume` already implement.
+  The `tidy-first-assessor` was asked to check the zero-change prediction for `src/lifecycle/subagent.ts` and confirmed it against the real file.
+  Net effect: one helper, two call sites, no new fields, no churn in the shared `test/helpers/mock-session.ts` fixture.
+- **The pre-completion reviewer caught a genuinely vacuous test — the failure mode it exists for.**
+  The integration block added in `7851905d` drove `agent.run()`, not `agent.resume()`, so it re-verified an already-fixed path and would have survived a revert of its own commit.
+  Neither the Red step nor the green suite could have surfaced that; only reading the test against the commit's claim did.
+- **A spike disproved my own leading hypothesis during the permission investigation.**
+  I expected the compound-command split to be the defect.
+  Running the package's real parser showed `BashProgram.commands()` splitting the chain correctly and `find / *` matching the second unit — which relocated the bug from the matcher to gate ordering and produced [#899].
+
+#### What caused friction (agent side)
+
+- `instruction-violation` (user-caught, subagent) — the round-2 `pre-completion-reviewer` ran `ls /tmp/mermaid-check*.svg 2>&1; find / -maxdepth 2 -iname 'mermaid-check*'`.
+  Its own definition forbids this by name: `.pi/agents/pre-completion-reviewer.md` § `## Search scope` says "`find /` … is out of bounds" and predicts the exact consequence ("trips the external-directory permission gate").
+  Root cause is a **conflict inside that same file**, not disobedience: § 2f step 1 instructs `mmdc -i <file> -o /tmp/mermaid-check.svg`, writing outside the repo, and the scope section then leaves no in-scope way to confirm an artifact the agent was just told to create there.
+  Round 1 ran the same `mmdc` command without hunting, so the escalation is intermittent and triggered by uncertainty about whether the output landed.
+  Impact: a 600 s permission stall inside a 953 s review, ended by an auto-deny; no rework, and the review's conclusions were unaffected.
+- `missing-context` (self-identified) — the disposable spike for [#899] hand-guessed `PathNormalizer`'s constructor and called `wildcardMatch(value, pattern)` with the operands reversed.
+  The `testing` skill states the rule directly: a spike constructing a domain object uses the same `test/helpers/` builder the real tests use.
+  Impact: two wasted spike iterations (three tool calls).
+  Self-caught because *every* probe returned `false`, including `sudo *` — a result too uniform to be real, which is what exposed the harness rather than the policy.
+- `other` (tool misuse, self-identified) — a TDD Step 5 `Edit` ended its `newText` mid-expression and silently dropped the `return textResult(...)` block, leaving `src/tools/foreground-runner.ts` unparseable.
+  `AGENTS.md` already records the rule (emit both ends of an enclosing block, or use `Write`).
+  Impact: one repair cycle; `pi-autoformat` surfaced the parse error immediately.
+- `other` (tool misuse, self-identified) — one `Edit` call on `architecture.md` carried stray `oldText2`/`newText2` keys, which `AGENTS.md` documents as silently ignored.
+  Impact: none — that entry's own `oldText`/`newText` were valid and all five edits were verified individually — but it is a rule that was in context and still missed.
+
+#### What caused friction (user side)
+
+Nothing that cost time.
+Two interventions were unusually well-placed and worth naming as a pattern:
+
+- The `find /` question arrived as a **question, not a correction** ("I thought our config rejects such a command"), which sent me to the review log and the parser instead of to a defensive explanation.
+  It produced two durable artifacts: [#899] and this retro's scope-conflict finding.
+- Deferring the scope-binding fix to the retro kept the ship clean rather than interleaving an unrelated change into a release.
+
+#### Correction to the TDD stage note
+
+The TDD stage's `#### Carried to the final retrospective` entry claims the guardrail "currently lives only in `AGENTS.md` prose, so it depends on the dispatching agent remembering it per call."
+That is **wrong**, and the proposed remedy that followed from it — add a standing scope bound to the agent definitions — would have been pure duplication.
+`pre-completion-reviewer.md` has carried a `## Search scope` section all along, naming `find /` explicitly.
+The note was written from memory of the `AGENTS.md` rule without opening the agent file; reading it first would have found the § 2f conflict immediately.
+
+### Diagnostic details
+
+- **Model-performance correlation** — all three subagent definitions pin `anthropic/claude-sonnet-5`; the two `pre-completion-reviewer` dispatches and the `tidy-first-assessor` ran there.
+  No mismatch: the assessor's judgment call (rejecting the merge of `getLastAssistantText` with the new stop-reason scan, on a burden-of-proof argument) is reasoning-heavy work that `sonnet-5` handled correctly, and both reviewer rounds returned findings that survived scrutiny.
+  The ship stage ran entirely on `anthropic/claude-sonnet-5` (verified across 46 consecutive turns) and the retrospective on `anthropic/claude-opus-5` — a cheap model on a deterministic procedure and a strong one on judgment, which is the right allocation.
+  I did **not** attribute the planning and TDD stages: pinning the `opus-5` → `sonnet-5` boundary needs a full-transcript read whose context cost outweighed the finding, and extrapolating from the three `model_change` entries alone is exactly the invented attribution [#778] warns against.
+- **Escalation-delay tracking** — no sequence exceeded five consecutive tool calls on one error.
+  The longest was the [#899] spike at three calls before the uniform-`false` result redirected me to read the signature.
+- **Unused-tool detection** — none.
+  `colgrep` was used for the permission investigation and located `policy/wildcard-matcher.ts` semantically on the first query.
+  The one genuine gap was not a missing tool but an unread file: `.pi/agents/pre-completion-reviewer.md`, which would have answered the scope question directly.
+- **Feedback-loop gap analysis** — clean.
+  Verification ran per step, not only at the end: per-file `vitest` at each Red and Green, `pnpm run check` after every type-touching step, `pnpm run lint` after each source edit, and the full package suite before each commit.
+  Every one of the plan's named killing mutations was applied and reverted before its commit.
+
+### Changes made
+
+1. `.pi/agents/pre-completion-reviewer.md` — § 2f step 1 now states that `mmdc`'s own output is the verdict and the SVG is disposable, removing the reason the agent searched for an artifact it had written outside the repo.
+   This resolves the conflict with the file's own `## Search scope` section rather than restating the prohibition, which was already explicit.
+2. `packages/pi-subagents/docs/retro/0889-failed-child-run-reports-failed.md` — this Final Retrospective entry, including the correction to the TDD stage's misdiagnosis of where the scope guardrail lives.
+
+Declined by the operator: adding a `## Search scope` section to `.pi/agents/tidy-first-assessor.md` and `.pi/agents/craftsmanship-scout.md`.
+Both grant `find` and carry no scope guard, but neither misbehaved this session, so the change was preventive rather than evidence-driven.
+If either agent is later observed widening a search past the repo root, the reviewer's existing section is the text to copy.
+
 [#898]: https://github.com/gotgenes/pi-packages/issues/898
 [#899]: https://github.com/gotgenes/pi-packages/issues/899
