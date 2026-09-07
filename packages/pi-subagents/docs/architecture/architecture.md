@@ -832,6 +832,8 @@ Steps 2, 6, and 8 have design-dependent shapes and are verified by their plans' 
   Step 16 relocates `AgentTool`'s resume-refusal policy into `SubagentManager` so both front doors report the same refusals from one place, and a still-running agent is a refusal neither door makes today — it belongs in that union rather than added to `AgentTool` first and moved a step later.
 - [#889] — filed by the [#884] PR review; becomes Step 17 by operator decision.
   A child whose provider errors is delivered to the parent as a successful, empty completion — the same delivery-boundary family as Steps 5–7, 10, 12, and 15, and peer-sized rather than a residual of either open step.
+- [#898] — filed by Step 17's implementation (its pre-completion review); becomes Step 19 by operator decision.
+  Step 17's failure read cannot see a turn error that a failed compaction attempt already stripped from session state, and the evidence is gone before the read runs — so the remedy is a different mechanism rather than a wider predicate, which makes it peer-sized rather than a residual of the shipped step.
 - [#890] — filed by the [#884] PR review; becomes Step 18 by operator decision.
   `pi-permission-system` rewrites the child's prompt inside the region [ADR-0006] keeps byte-identical with the parent's, so the shared prefix [#180] and [#400] created ends at the tool list for every child with a narrowed tool set.
   Scheduled here rather than deferred because the interaction is measured now and the decision is this package's to make — it may amend or supersede [ADR-0006].
@@ -1240,6 +1242,22 @@ The conflict is arithmetic rather than a defect in either package: a byte-identi
 
 Release: independent
 
+#### Step 19: Report a run whose failed compaction erased the turn error ([#898])
+
+**Cause:** Step 17 decides a run failed by reading the last assistant message's stop reason, but `_checkCompaction`'s first-overflow branch strips that message from `agent.state.messages` before attempting compaction, and restores nothing when the compaction attempt itself fails.
+`AgentSession.messages` is that array by reference, so the failure read scans past the erased turn to an earlier assistant message and reports success — stale text from a prior turn, or `""` on the first.
+The second overflow attempt does not strip, so it is the first attempt's own failure that is invisible.
+
+- **Smell:** Category C (an outcome reconstructed after the fact from state a collaborator is free to rewrite) plus `bug`.
+- **Target:** `src/lifecycle/subagent-session.ts` (the failure read, which cannot see this) and `src/observation/record-observer.ts` (which already subscribes to `compaction_end`).
+- **Hard dependency:** after Step 17, whose failure read this extends to the one door it cannot reach.
+- **Design decision at plan time:** which event carries enough to distinguish "compaction failed and took the turn's error with it" from "compaction failed but the turn was fine" — establish this against the pinned SDK before designing, since the fix is a mechanism change rather than a wider predicate.
+- **Outcome:** a run whose compaction attempt failed reports `error` rather than a stale-text success, pinned by a test driving the strip-then-fail sequence.
+- **Commit type:** `fix:`.
+- **Impact 3 / Risk 3 / Priority 9.**
+
+Release: independent
+
 ### Step dependencies
 
 ```mermaid
@@ -1258,7 +1276,7 @@ flowchart TD
     S10 --> S15["✅ Step 15 (#878)<br/>Resume affordance honesty"]
     S11 --> S15
     S14 --> S16["Step 16 (#885)<br/>Service resume"]
-    S17["✅ Step 17 (#889)<br/>Failed run reports failed"]
+    S17["✅ Step 17 (#889)<br/>Failed run reports failed"] --> S19["Step 19 (#898)<br/>Compaction-erased turn error"]
     S5 -.informs.-> S18["Step 18 (#890)<br/>Inherited-region guarantee"]
 ```
 
@@ -1270,7 +1288,7 @@ flowchart TD
 - **Track D — Result delivery and ask-back:** Steps 7 → 8 → 11 → 14, with Step 10 → 12 joining as a resume-path fix and the residual it creates, Step 10 also informing Step 11, and Step 15 joining downstream of both 10 and 11 (Steps 7 → 8 is soft ordering; 8 → 11, 11 → 14, 10 → 12, and 10/11 → 15 are hard).
 - **Track E — Agent config resolution:** Step 13 (fully independent; it corrects the base list Step 11 appends to, but neither step needs the other).
 - **Track F — Service surface:** Step 16 (downstream of Step 14; it re-enters Track A's front-door concern at the one door Step 1 left in the tool layer).
-- **Track G — Outcome truthfulness:** Step 17 (fully independent; Track D delivers the outcome, this decides whether the outcome is true).
+- **Track G — Outcome truthfulness:** Steps 17 → 19 (Track D delivers the outcome, this decides whether the outcome is true; Step 19 reaches the one door Step 17's failure read cannot see).
 - **Track H — Inherited-prompt contract:** Step 18 (Track B's Step 5 informs it — both settle what the inherited region contains — but neither blocks the other; it is the one step whose resolution binds `@gotgenes/pi-permission-system`).
 
 ### Release batches
@@ -1279,8 +1297,8 @@ flowchart TD
   Step 3 is `fix!:` and Step 4 is `refactor!:` with a `BREAKING CHANGE:` footer.
   The two landed in the other order, so Step 4 completed the batch: Step 3's release PR stayed open across it, and both breaking changes ship under the one major bump Step 3's `fix!:` opened.
   Step 2 was provisionally batched here in case its required/optional decision came out breaking; it did not — `SubagentRecord` is produced, never implemented, so its widening is semver-minor and it left the batch as the batch's own line anticipated.
-- Independently releasable: Steps 1, 2, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18.
-  Steps 1, 5, 6, 7, 9, 10, 12, 13, 14, 17 are `fix:`, Step 2 is `feat:`, and Steps 8 and 11 are `feat:` — each an unhidden release vehicle on its own.
+- Independently releasable: Steps 1, 2, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 19.
+  Steps 1, 5, 6, 7, 9, 10, 12, 13, 14, 17, 19 are `fix:`, Step 2 is `feat:`, and Steps 8 and 11 are `feat:` — each an unhidden release vehicle on its own.
   Step 18 releases only if it lands as `fix:`; a `docs:` outcome that accepts the loss cuts no release.
 
 ## Refactoring history
@@ -1408,6 +1426,7 @@ The upstream test suite is run periodically as a regression canary for the sessi
 [#884]: https://github.com/gotgenes/pi-packages/pull/884
 [#889]: https://github.com/gotgenes/pi-packages/issues/889
 [#890]: https://github.com/gotgenes/pi-packages/issues/890
+[#898]: https://github.com/gotgenes/pi-packages/issues/898
 [#896]: https://github.com/gotgenes/pi-packages/issues/896
 [#180]: https://github.com/gotgenes/pi-packages/issues/180
 [#400]: https://github.com/gotgenes/pi-packages/issues/400
