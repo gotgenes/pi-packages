@@ -43,7 +43,7 @@ Note:
 Determine the next phase number N (last completed phase + 1), then immediately call `set_session_name` with `$1 — Phase N Planning` so the session is labelled for the rest of the work.
 
 **Hard gate — the previous phase must be archived first.**
-If Phase N−1's full detailed roadmap (numbered steps with `Outcome:` lines and a dependency diagram) is still inline in `architecture.md` rather than archived to a `history/phase-(N−1)-<slug>.md` file with only a "Refactoring history" table row left behind, stop and tell the user to run `/finish-phase $1` first, then resume `/plan-improvements $1`.
+If Phase N−1's full detailed roadmap (its steps with `Outcome:` lines and a dependency diagram) is still inline in `architecture.md` rather than archived to a `history/phase-(N−1)-<slug>.md` file with only a "Refactoring history" table row left behind, stop and tell the user to run `/finish-phase $1` first, then resume `/plan-improvements $1`.
 Archiving the prior phase — with its step-completion gate and doc reconciliation — is `/finish-phase`'s job; do not do it inline here.
 
 A declared direction for Phase N most often lives **not** in `architecture.md` but in the previous phase's history file — `history/phase-(N−1)-<slug>.md`, whose **Findings** section is where `/finish-phase` records the "leading Phase N candidate."
@@ -173,11 +173,27 @@ The deferral gate decides whether _this_ phase exists; the trajectory decides wh
 **Track composition.**
 When the surviving candidates span multiple independent tracks (a spine plus unrelated parallel work), offer the composition to the user via `ask_user` (a multi-select over the tracks) rather than committing to a fixed set — track selection is preference-sensitive (scope vs. focus), and the user may want to drop or add a track before you draft the steps.
 Bundle the first `ask_user`: the declared candidate, the track composition, the repeat-deferral dispositions, and (when the trajectory check fires) the cadence question belong in one call — one round-trip, not four.
+That call also carries the **filing confirmation**, because a step is identified by its issue number and the issues must therefore exist before the roadmap can be written.
+Approving the composition approves filing its issues.
+Declining ends the run: report the proposed composition and write no roadmap, so there is no half-finished document to clean up.
 
 **Feasibility probe.**
 Before committing any step whose outcome claim depends on the SDK/type surface (e.g. "remove the file-level `eslint-disable` once the SDK exports usable types"), confirm the named type or export actually exists in the real surface (SDK `.d.ts`, `--help`, schema).
 Do not commit an outcome the surface cannot deliver — this mirrors the AGENTS.md rule that a named remediation in a migration note must be verified against the real surface.
 For an SDK **UI or behavioral** capability (not just "does this method exist"), confirm the behavior in the Pi core source (`../pi`, or `../../pi` from a worktree) and a sibling extension that already uses it, not only the exported type — a `.d.ts` says a method exists but not that it behaves the way the step needs (e.g. `ctx.ui.custom` renders inline by default only per the core's `overlay ?? false`, invisible in the type signature).
+
+## File the issues
+
+A step is identified by its GitHub issue number, so the issues are filed **before** the roadmap is written — there is no link-back pass and no second commit.
+Steps adopted from already-filed issues need no new issue; file only the steps without one, and when every step adopts an existing issue there is nothing to file at all.
+
+1. Load the `github-voice` skill, then file the issues **one `gh issue create --label "enhancement,pkg:$1"` call per issue**, with the title and `--body-file` paired literally in the same command — never via shell-array index arithmetic (the shell is zsh; its 1-indexed arrays silently shift titles relative to bodies).
+   A `bug`-typed step keeps the `bug` label instead of `enhancement`.
+   Run `gh` from the repo root (it must execute inside the repository).
+   Use the repo's `## What` / `## Why` / `## Proposed change` / `## Context` sections.
+   File in dependency order, so a body can cite an earlier-filed sibling by number; refer to a sibling filed **later** in prose (by title or by what it does), since it has no number yet.
+2. Verify each created issue's title matches its body before continuing.
+3. Record the number each step will carry into the roadmap write below.
 
 ## Output
 
@@ -193,18 +209,20 @@ The section should include:
    Run each recompute command before committing and confirm it reproduces the stated baseline — a wrong command silently breaks `/finish-phase`'s delivered-vs-predicted verification.
    A command containing `|` cannot sit in a table cell verbatim: the cell requires `\|`, so the raw source — what `/finish-phase` copies and runs — carries a corrupted command.
    Prefer pipe-free forms (`grep -c`, multiple `-e` patterns, a single-path `grep -rc`); when a pipeline is unavoidable, put the command in a fenced block below the table and point the row at it.
-2. Numbered steps with:
-   - Title
+2. Steps, in working-sequence order — the section order _is_ the sequence, so nothing is numbered — each with:
+   - Title, in a `#### [#N] Title` heading carrying the step's issue number as its identity (`#### [#N] Title (with [#M])` when a step absorbs a folded-in issue)
    - **Cause** — the first-principles structural cause the step dissolves, named explicitly; a fallow signal is cited as the _symptom_ of that cause, never as the step's motivation (a step justified only by a fallow finding is symptom-driven — trace it to a cause or drop it).
    - Target files/functions — when a step extracts or moves code and a domain directory applies (Step 6), name the destination path (e.g. `src/<domain>/<file>.ts`) so directory placement rides along with the change rather than landing flat and being moved later.
    - Smell category addressed
    - Expected measurable outcome
    - **Impact / Risk / Priority** — the per-step scores (`Priority = Impact × (6 − Risk)`), published on the step so the ranking is auditable in the committed roadmap and at `/plan-issue` time, not left in the session transcript.
    - A `Release:` tag on its own line — `Release: independent` or `Release: batch "<batch-name>"` (see the `improvement-discovery` skill's Output format).
-3. Step dependency diagram (Mermaid flowchart).
-4. Named parallel tracks.
-5. A `Release batches` subsection (after the parallel tracks) naming each batch, its member steps in dependency order (last listed = tail), and the independently releasable steps.
+3. Step dependency diagram (Mermaid flowchart), laid out by dependency rather than by sequence, with `S<issue>` node IDs and the bare issue number in the label (`S857["✅ #857<br/>Workspace-backed resume"]`) — that bare number is what `/tdd-plan`'s and `/build-plan`'s `✅`-mark verification counts.
+4. Named parallel tracks, naming their members as `[#N]`.
+5. A `Release batches` subsection (after the parallel tracks) naming each batch, its member steps as `[#N]` in dependency order (last listed = tail), and the independently releasable steps.
    This is the deterministic source `/plan-issue` reads to recommend a release decision — keep it grep-able, not prose.
+
+Add a reference-link definition for every `[#N]` at the end of the file, then verify every `[#N]` reference resolves to one — `rumdl`'s MD053 flags _unused_ definitions but not _missing_ ones, so a dangling reference inherited from a prior phase's summary passes lint silently.
 
 After writing the plan, present a summary to the user and ask whether to commit.
 If confirmed, commit with:
@@ -215,23 +233,7 @@ git commit -m "docs($1): propose Phase N improvement roadmap"
 git push
 ```
 
-## File the issues
-
-The roadmap is not done until each step has a GitHub issue and the document links back to it.
-When **every** step adopts an existing issue, there is nothing to file: add the heading/diagram link-backs and reference definitions **before** the roadmap commit, skip the filing ask, and go straight to the working sequence — one commit, no second round-trip (Phase 22 shipped this way).
-Otherwise, after the plan is committed, ask whether to file the issues now; if confirmed:
-
-1. Steps adopted from already-filed issues need no new issue — skip creation and link the existing number; file only the steps without one.
-   Load the `github-voice` skill, then file the issues **one `gh issue create --label "enhancement,pkg:$1"` call per issue**, with the title and `--body-file` paired literally in the same command — never via shell-array index arithmetic (the shell is zsh; its 1-indexed arrays silently shift titles relative to bodies).
-   A `bug`-typed step keeps the `bug` label instead of `enhancement`.
-   Run `gh` from the repo root (it must execute inside the repository).
-   Use the repo's `## What` / `## Why` / `## Proposed change` / `## Context` sections, referencing cross-step dependencies as "Phase N Step M" prose, not hardcoded numbers (the issue numbers are not known until filed).
-2. Verify each created issue's title matches its body before continuing.
-3. Link the doc back: append `([#N])` to each step heading, add `(#N)` to each Mermaid node, and add reference-link definitions at the end of the file.
-   Then verify every `[#N]` reference in the file resolves to a matching `[#N]:` definition — `rumdl`'s MD053 flags _unused_ definitions but not _missing_ ones, so a dangling reference inherited from a prior phase's summary passes lint silently; add any missing definitions while you are in the file.
-4. Commit with `docs($1): link Phase N roadmap steps to issues #A-#B` and push.
-
-Finally, restate the recommended working sequence: list the issues as `#N — title` lines in dependency order (a topological order of the step diagram), noting which can proceed in parallel and which are blocked until an earlier one lands.
+Finally, restate the recommended working sequence: list the issues as `#N — title` lines in the roadmap's section order, noting which can proceed in parallel and which are blocked until an earlier one lands.
 
 ## Write planning notes
 
