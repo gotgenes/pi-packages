@@ -206,6 +206,13 @@ export function renderRunUpdates(updates: readonly string[] | undefined): string
 /**
  * The outcome body every carrier reports: a running note, an error line, a
  * never-started note, or the trimmed result.
+ *
+ * The empty-result fallback tests truthiness rather than nullishness. A `??`
+ * here passed an empty string through, which is exactly what a run whose
+ * provider errored carries — so the parent received a completion header
+ * followed by nothing and confabulated the child's work. The two renderers in
+ * `notification.ts` always guarded this by truthiness; this is the third
+ * agreeing with them (#889).
  */
 export function renderOutcomeBody(outcome: OutcomeBody): string {
 	if (outcome.status === "running")
@@ -213,5 +220,7 @@ export function renderOutcomeBody(outcome: OutcomeBody): string {
 	if (outcome.status === "error") return `Error: ${outcome.error}`;
 	if (outcome.stoppedWhileQueued)
 		return "Agent was stopped while queued and never started. No work was performed.";
-	return outcome.result?.trim() ?? "No output.";
+	const trimmed = outcome.result?.trim();
+	// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- || intentional: converts falsy values to fallback
+	return trimmed || "No output.";
 }

@@ -176,6 +176,14 @@ describe("renderOutcomeBody", () => {
 		expect(renderOutcomeBody(makeOutcome({ result: undefined }))).toBe("No output.");
 	});
 
+	// The empty string is what a child whose provider errored actually carries:
+	// the streamed-text collector holds "" and no earlier assistant message has
+	// text to fall back to. `??` passes it through, rendering the parent a
+	// completion header followed by nothing (#889).
+	it("falls back to No output when the result is an empty string", () => {
+		expect(renderOutcomeBody(makeOutcome({ result: "" }))).toBe("No output.");
+	});
+
 	it("prefers the running note over a result a running agent has already accumulated", () => {
 		expect(renderOutcomeBody(makeOutcome({ status: "running", result: "partial" }))).toBe(
 			"Agent is still running. Use wait: true or check back later.",
