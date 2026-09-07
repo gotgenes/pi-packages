@@ -42,5 +42,42 @@ The Tidy-First assessor rejected two candidates as scope creep, both with reason
 Its two **Recommended** items became TDD Order steps 1 and 2 (`sessionReady?: boolean` on `createTestSubagent`, then opting the three affordance fixtures into it).
 It confirmed the fixture-gap hypothesis it was handed and named the three tests that would have flipped meaning silently — the finding that most changed the plan's shape.
 
+## Stage: Implementation — TDD (2026-09-07T05:56:21Z)
+
+### Session summary
+
+Executed all six TDD Order steps plus one reviewer-driven fixup, in seven commits.
+`Subagent.resumeRefusal` is now the single home for the three record-level facts the resume door checks, `AgentTool` switches over it exhaustively, and all four result carriers read it — so an unanswerable question is reported with its reason instead of a `resume` call.
+Tests went 1589 → 1611 (+22) across 76 files; `check`, root `lint`, and `fallow dead-code` all clean.
+
+### Observations
+
+- **The plan's wording had a defect only a test could find.**
+  The planned `no-session` clause was "it has no session to resume", and the template appends a colon to the clause — producing the literal `resume:`, the exact token the change exists to suppress.
+  It was caught by the assertion that iterates all three reasons and asserts `not.toContain("resume:")`, not by anyone reading the string.
+  Reworded to "it has no active session", with a comment at the constant saying why.
+  Writing the negative assertion as a loop over the whole union, rather than one spot check, is what made this cheap.
+- **Two existing assertions were too weak to kill the refactor's mutation.**
+  `AgentTool`'s released-session and no-session refusal tests were `toContain` substring matches, so an arm returning the wrong sentence would have passed.
+  Tightened to full-string `toBe` inside step 4, which is what made mutation (b) killable.
+- **The design's riskiest structural claim held.**
+  `src/tools/foreground-runner.ts` and `agent-tool.ts` pass a live `Subagent` into `renderOutcomeAddenda`, and the plan predicted the new **required** field would be satisfied structurally by a getter with no call-site edit.
+  `tsc` confirmed it: `foreground-runner.ts` is untouched in the whole change, only its test moved.
+  This is why the predicate is a getter and not an `isResumable()` method.
+- **The nudge test needed an aborted child, not a completed one.**
+  A first draft seeded `pendingQuestion` and ran the agent, but `completeRun`'s `holdForResume` keeps the workspace for a *completed* child with a question — so nothing was disposed and the test would have pinned the wrong state.
+  Rewritten to drive `ask_parent` from inside a turn loop returning `aborted: true`, which is the real path that reaches the refusal.
+- **Mutation testing found nothing wrong, which is itself the result.**
+  All 10 planned mutations killed exactly their predicted equivalence class — suppressing the refusal branch reddened 10 refusal tests and left every resumable test green; forcing it reddened the 5 carrier tests asserting `resume: "<id>"` plus 2 ordering tests.
+  Two `toBeUndefined()` tests in step 3 stayed green through Red, so they got their own mutation (return a refusal unconditionally) rather than being taken on trust.
+- **Pre-completion reviewer: WARN**, one non-blocking finding, fixed in `b9a39b75`.
+
+#### Reviewer warnings
+
+- `src/session/ask-parent-tool.ts`'s module comment justified recording-without-announcing on the claim that "every result carrier already renders a pending question with the exact resume call" — the universal claim this issue retired.
+  It was the one place outside the three planned doc targets that still made it; the plan's own grep covered `README.md`, `docs/configuration.md`, `docs/architecture/`, and `.pi/skills/`, but not `src/` module comments.
+  A `src/`-comment sweep for a retired *claim* (as opposed to a removed symbol) is the gap worth remembering.
+  The reviewer also noted the child-facing `ask_parent` result text still says the parent "will answer by resuming you"; left as-is deliberately — at the moment a child asks, its session is live and that promise is true.
+
 [#885]: https://github.com/gotgenes/pi-packages/issues/885
 [#896]: https://github.com/gotgenes/pi-packages/issues/896
