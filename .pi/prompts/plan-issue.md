@@ -199,12 +199,16 @@ Then an H1 title (e.g., `# <short descriptive title>`) — required by markdownl
   When a step tightens an **optional** interface field to required (drops `| undefined`), grep the exact `<field>: undefined` literal across all `test/` files — an incidental fixture sets the field to `undefined` without ever reading it, so a grep for the field's *use* sites under-catches (Refs #611).
   When a step adds a **new required** field to a shared interface, grep for constructors of that type — inline object literals and `test/helpers/` factories — not its use sites.
   The field never existed, so the grep above has no `<field>: undefined` literal to match; a shared test fixture is the common miss (Refs #744).
+  When the design predicts a file will **not** change despite being in the blast radius, list it with that prediction and the claim it rests on.
+  A predicted-unchanged file is a falsifiable claim; an omitted one is invisible (Refs #878).
 - **Test Impact Analysis** — for extraction and refactoring issues: (1) what new unit tests does the extraction enable that were previously impossible or impractical?
   (2) what existing tests become redundant with the new lower-level tests, and can they be simplified or removed?
   (3) which existing tests must stay as-is because they genuinely exercise the layer being extracted?
   For a prompt or skill change, the shell commands the new text prescribes are its testable surface: dry-run each at planning time and record the expected output, so `/build-plan` can re-run them as verification (Refs #767).
   When the plan introduces a parser or matcher, its testable surface is the input domain rather than the inputs you can picture.
   Run the candidate over every real sample available, and include this repo's own authoring conventions among the shapes it must survive — `markdown-conventions`' four-backtick fence is the case this missed (Refs #818).
+  When the change's goal is a token's **absence** from output, apply that predicate to every literal the plan specifies, and assert it across the whole variant set rather than one example.
+  A planned clause ending in `resume`, plus the template's trailing colon, produced the exact `resume:` token the change removes (Refs #878).
 - **Invariants at risk** — when the change touches a surface a prior phase step already refactored, list that step's documented invariants (the architecture roadmap's `Outcome:`/`Landed:` bullets) and name the test that pins each — add a test if the invariant lives only in prose.
   Open each test you name — a file that mocks the layer under test pins nothing about it (Refs #806).
   A later step must not regress an earlier step's outcome with a green suite.

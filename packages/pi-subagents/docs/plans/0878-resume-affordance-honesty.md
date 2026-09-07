@@ -306,7 +306,7 @@ Steps 1 and 2 are the Tidy-First preparation.
 
 2. **`test:` opt the three affordance fixtures into `sessionReady`.**
    *Friction it prepares:* isolates the fixture repair from the behavior change, so step 5 does not have to explain three failures in files it is not otherwise touching.
-   *Surface:* `test/tools/agent-tool.test.ts` (~~211), `test/tools/foreground-runner.test.ts` ~~:34), `test/observation/notification.test.ts` (~:264).
+   *Surface:* `test/tools/agent-tool.test.ts` line ~211, `test/tools/foreground-runner.test.ts` line ~34, `test/observation/notification.test.ts` line ~264.
    *Covers:* nothing new — a no-op today, green before and after.
    *Killing mutation:* none applies; this step adds no assertion.
    Verification is that the suite stays at its current count and the three tests still assert `'resume: "<id>"'`.

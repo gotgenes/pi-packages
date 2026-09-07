@@ -163,6 +163,7 @@ It also reflows what you just wrote (line wrapping, quote style), so an `oldText
 It also joins a line ending in `:` with the sentence after it — to add a sentence there, start a new paragraph, not a new line.
 It likewise joins a sentence onto the previous line when the sentence opens with a lowercase token (a package or command name such as `git-cliff`) — lead with a capital instead (Refs #816).
 It also reads a numbered section citation (`§ *7. Verify CI*`) as a sentence end and splits it — cite the heading instead (`` the `## 7. Verify CI` section ``).
+It also reads a leading `~` as strikethrough and rewrites a `~`-prefixed token (`(~:211)` → `(~~211)`), which `rumdl check` passes — write an approximate line reference as `line ~211` (Refs #878).
 It fires on `Edit`/`Write` only, so a file appended with a shell heredoc skips formatting entirely and fails `pnpm run lint` — append source with `Write`/`Edit` too, not just markdown.
 
 #### Stale prompt-template expansion
