@@ -1088,6 +1088,9 @@ Deferred by composition, with the reason each carries: [#804] (staging slice 7, 
 - [#797] — adopted as Step 4's named acceptance case (`commandEffects: { officecli: { effects: [] } }` produces no ask) and as the example population of Step 7; Phase 14's config-recipe answer (`external_directory: {"/Sheet1/*": "allow"}`) stands as the interim workaround.
 - [#882] — filed for Step 7 (the ADR 0007 §5 deliberation); PR [#684] is its close target either way.
 - [#735] scenario 2 / [#722], [#762], [#860], [#856] — unchanged from Phase 14.
+- [#890] — filed by the `pi-subagents` [#884] PR review; deferred to a later phase with rationale.
+  `AgentPrepHandler`'s in-place rewrite of the child's `Available tools:` list lands inside the region `pi-subagents` keeps byte-identical with the parent's, collapsing the shared prefix for any child with a narrowed tool set.
+  It is this package's `exposure/system-prompt-sanitizer.ts`, which no step in this phase opens — the spine is token roles and declared effects — and the resolution is scheduled as `pi-subagents` Phase 22 Step 18, which must settle what the inherited region guarantees before this side can act on it.
 - Feature issues [#691], [#687], [#680], [#654], [#648], [#604], [#603], [#472] — out of scope for a structural phase; [#680] is narrowed further by Step 4 (a declared reader needs no floor override), and [#604] by [#813].
 
 #### Deferred tidyings swept
@@ -1379,4 +1382,6 @@ Each phase's findings, numbered plan, dependency diagram, and health metrics are
 [#880]: https://github.com/gotgenes/pi-packages/issues/880
 [#881]: https://github.com/gotgenes/pi-packages/issues/881
 [#882]: https://github.com/gotgenes/pi-packages/issues/882
+[#884]: https://github.com/gotgenes/pi-packages/pull/884
+[#890]: https://github.com/gotgenes/pi-packages/issues/890
 [ADR-0002]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-subagents/docs/decisions/0002-extensions-on-a-minimal-core.md
