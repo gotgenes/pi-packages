@@ -45,6 +45,16 @@ describe("createTestSubagent", () => {
 		});
 	});
 
+	describe("session readiness", () => {
+		it("builds a record with no session by default", () => {
+			expect(createTestSubagent().isSessionReady()).toBe(false);
+		});
+
+		it("attaches a session stub when sessionReady is requested", () => {
+			expect(createTestSubagent({ sessionReady: true }).isSessionReady()).toBe(true);
+		});
+	});
+
 	it("returns a completed agent with expected defaults", () => {
 		const record = createTestSubagent();
 		expect(record.id).toBe("agent-1");

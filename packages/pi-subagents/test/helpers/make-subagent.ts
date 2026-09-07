@@ -63,10 +63,16 @@ export interface TestSubagentOptions {
 	responseText?: string;
 	/** Thread maxTurns into the stub execution. Ignored when `execution` is supplied. */
 	maxTurns?: number;
+	/**
+	 * Attach a session stub after construction, so the record reads as
+	 * session-ready. Defaults to false: a passive fixture has never run, so it has
+	 * no session, which is what most callers want.
+	 */
+	sessionReady?: boolean;
 }
 
 export function createTestSubagent(overrides: TestSubagentOptions = {}): Subagent {
-	const { id, type, description, isBackground, execution, toolCallId, toolUses, lifetimeUsage, compactionCount, turnCount, activeTools, responseText, runUpdates, maxTurns, ...stateOverrides } =
+	const { id, type, description, isBackground, execution, toolCallId, toolUses, lifetimeUsage, compactionCount, turnCount, activeTools, responseText, runUpdates, maxTurns, sessionReady, ...stateOverrides } =
 		overrides;
 	const state = new SubagentState({
 		status: "completed",
@@ -82,7 +88,7 @@ export function createTestSubagent(overrides: TestSubagentOptions = {}): Subagen
 		...stateOverrides,
 	});
 	for (const update of runUpdates ?? []) state.recordUpdate(update);
-	return new Subagent({
+	const agent = new Subagent({
 		id: id ?? "agent-1",
 		type: type ?? "general-purpose",
 		description: description ?? "Test task",
@@ -93,4 +99,8 @@ export function createTestSubagent(overrides: TestSubagentOptions = {}): Subagen
 		}),
 		state,
 	});
+	// Assigned rather than passed to the constructor: run() is what sets this in
+	// production, and a passive fixture never runs.
+	if (sessionReady) agent.subagentSession = toSubagentSession(createSubagentSessionStub());
+	return agent;
 }
