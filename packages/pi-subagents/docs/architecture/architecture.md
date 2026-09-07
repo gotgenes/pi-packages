@@ -828,6 +828,8 @@ Steps 2, 6, and 8 have design-dependent shapes and are verified by their plans' 
 - [#755], [#711], [#636], [#695], [#676], [#660] — deferred: feature/UX requests that do not gate a structural phase ([#660] overlaps [#695]/[#676]).
 - [#683] — deferred: glyph-audit polish at boy-scout scale.
 - [#876] — filed by operator request outside any phase step; out of scope for the roadmap.
+- [#896] — filed by Step 15's planning; folded into Step 16.
+  Step 16 relocates `AgentTool`'s resume-refusal policy into `SubagentManager` so both front doors report the same refusals from one place, and a still-running agent is a refusal neither door makes today — it belongs in that union rather than added to `AgentTool` first and moved a step later.
 - [#889] — filed by the [#884] PR review; becomes Step 17 by operator decision.
   A child whose provider errors is delivered to the parent as a successful, empty completion — the same delivery-boundary family as Steps 5–7, 10, 12, and 15, and peer-sized rather than a residual of either open step.
 - [#890] — filed by the [#884] PR review; becomes Step 18 by operator decision.
@@ -1172,17 +1174,18 @@ Release: independent
 
 Release: independent
 
-#### Step 16: Expose resume on `SubagentsService` ([#885])
+#### Step 16: Expose resume on `SubagentsService` ([#885], with [#896])
 
 **Cause:** `SubagentManager.resume` has exactly one caller — `AgentTool`'s resume branch — so a resume can originate only from a parent model's tool call, and no extension can continue a child.
 The front door is also unequal to its siblings: `AgentTool` owns four distinct refusals (unknown id, no active session, released session, disposed workspace), each with its own operator-facing sentence, while `SubagentManager.resume` checks `isSessionReady()` alone and collapses all four into `undefined`.
 That is the same policy-above-the-choke-point shape Step 1 corrected for spawn.
+Neither door refuses a resume of a **running** agent at all ([#896]): `resetForResume()` rewinds the record and `resumeTurnLoop` starts while the original `runTurnLoop` is still awaiting the same session, and the ask-back affordance names that call during the window between `ask_parent` and the child's turn ending.
 
 - **Smell:** Category A (a front door whose policy lives in one caller rather than at the choke point) plus `enhancement`.
-- **Target:** `src/lifecycle/subagent-manager.ts` (`resume`, which gains the refusal policy), `src/tools/agent-tool.ts` (its resume branch, which comes to read that policy rather than own it), `src/service/service-adapter.ts` and `src/service/service.ts` (the new method and its contract).
+- **Target:** `src/lifecycle/subagent-manager.ts` (`resume`, which gains the refusal policy), `src/tools/agent-tool.ts` (its resume branch, which comes to read that policy rather than own it), `src/service/service-adapter.ts` and `src/service/service.ts` (the new method and its contract), and `src/lifecycle/subagent.ts`'s `resumeRefusal` (Step 15's predicate, which gains the still-running arm).
 - **Hard dependency:** after Step 14, whose claim-based routing is what lets a non-blocking front door exist at all — a service resume that carries no result must not be treated as a blocking carrier.
 - **Design decision at plan time:** what a refusal looks like across the service boundary (thrown error, discriminated result, or `undefined` plus a reason); whether the caller declares that it will carry the outcome (`record.claim()`) rather than the door deciding; and whether [#832]'s `subagents:resumed` emission is folded in, since a service resume has no tool result to observe.
-- **Outcome:** an extension can resume a child through `SubagentsService`, and both front doors report the same four refusals from one place, pinned by a test per refusal at each door.
+- **Outcome:** an extension can resume a child through `SubagentsService`, and both front doors report the same refusals — the four `AgentTool` owns today plus the still-running one from [#896] — from one place, pinned by a test per refusal at each door.
 - **Commit type:** `feat:` (semver-minor on the service contract).
 - **Impact 3 / Risk 2 / Priority 12.**
 
@@ -1388,6 +1391,7 @@ The upstream test suite is run periodically as a regression canary for the sessi
 [#884]: https://github.com/gotgenes/pi-packages/pull/884
 [#889]: https://github.com/gotgenes/pi-packages/issues/889
 [#890]: https://github.com/gotgenes/pi-packages/issues/890
+[#896]: https://github.com/gotgenes/pi-packages/issues/896
 [#180]: https://github.com/gotgenes/pi-packages/issues/180
 [#400]: https://github.com/gotgenes/pi-packages/issues/400
 [ADR-0002]: ../decisions/0002-extensions-on-a-minimal-core.md
