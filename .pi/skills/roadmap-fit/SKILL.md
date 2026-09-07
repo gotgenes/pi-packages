@@ -32,7 +32,7 @@ Most sessions exit at this step.
 
 ## Step 2: Propose a disposition, then ask
 
-Read the roadmap's numbered steps, pick the disposition that fits, and state a one-sentence rationale.
+Read the roadmap's steps, pick the disposition that fits, and state a one-sentence rationale.
 
 | Disposition                               | When it applies                                                                                       |
 | ----------------------------------------- | ----------------------------------------------------------------------------------------------------- |
@@ -40,6 +40,9 @@ Read the roadmap's numbered steps, pick the disposition that fits, and state a o
 | Becomes a new step in this phase          | It is the foundation another step needs, or a peer-sized piece of the phase's spine                   |
 | Deferred to a later phase, with rationale | Real roadmap work that does not fit this phase's budget or spine                                      |
 | Out of scope for the roadmap              | A feature or bug unrelated to the phase's cause                                                       |
+
+A step is identified by its issue number and the section order is the working sequence, so "becomes a new step" carries no ordinal to assign.
+The decision is purely **where in the section order** the step goes — name the step it follows.
 
 Put the proposal to the operator with `ask_user`: all four as options, yours marked `recommended: true` with the rationale in its description.
 The sweep list is user-decided by convention, and two of the four change the phase's scope.
@@ -55,13 +58,14 @@ Create that subsection at the end of `### Findings` if the roadmap has none.
 The list must stay inside the roadmap section: `/finish-phase` moves that section wholesale into `history/phase-N-<slug>.md`, so a disposition recorded anywhere else is orphaned at archive time.
 
 ```markdown
-- [#N] — filed by <Step M's planning | Step M's implementation | the #X retrospective>; <disposition>.
+- [#N] — filed by <[#M]'s planning | [#M]'s implementation | the #X retrospective>; <disposition>.
   <One or two sentences of rationale.>
 ```
 
 Add the matching `[#N]:` reference definition at the end of `architecture.md` — the doc uses reference-style issue links, and a bare `[#N]` renders as literal text.
 
-A fold-in also edits the named step: its heading gains the issue (`([#610], with [#753])`), and its `Target:`/`Outcome:` gain the added scope.
+A fold-in also edits the named step: its heading gains the issue as a suffix (`#### [#610] Title (with [#753])`), and its `Target:`/`Outcome:` gain the added scope.
+The step keeps leading with its primary issue, which is what `/tdd-plan`'s `✅`-mark verification counts.
 When the disposition narrows a step that has already **shipped**, edit that step's `Outcome:` to match what landed rather than reopening the step.
 
 ## Step 4: Commit it separately
