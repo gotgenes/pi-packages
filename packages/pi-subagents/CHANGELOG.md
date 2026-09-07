@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [21.4.4](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v21.4.3...pi-subagents-v21.4.4) (2026-09-07)
+
+
+### Bug Fixes
+
+* **pi-subagents:** report an unanswerable question without naming a resume ([fba1f81](https://github.com/gotgenes/pi-packages/commit/fba1f8150e1c253d7a73ea92c61aed92390af599)), closes [#878](https://github.com/gotgenes/pi-packages/issues/878)
+
+### Documentation
+
+* **pi-subagents:** record what a result promises about resuming ([48cb44a](https://github.com/gotgenes/pi-packages/commit/48cb44a2390de9aec0118d148971d92fc1bf4c8c)), closes [#878](https://github.com/gotgenes/pi-packages/issues/878)
+* **pi-subagents:** qualify the ask-back module's resume promise ([b9a39b7](https://github.com/gotgenes/pi-packages/commit/b9a39b75a4ae8d288ea8534bcdabb56fe7d069a7)), closes [#878](https://github.com/gotgenes/pi-packages/issues/878)
+
 ## [21.4.3](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v21.4.2...pi-subagents-v21.4.3) (2026-09-06)
 
 
