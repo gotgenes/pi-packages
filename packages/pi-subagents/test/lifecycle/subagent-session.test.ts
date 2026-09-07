@@ -17,7 +17,12 @@ function createSession(finalText: string) {
     messages: [] as unknown[],
     subscribe: vi.fn((listener: (event: any) => void) => {
       listeners.push(listener);
-      return () => {};
+      // A real remover, not a no-op: `listeners` is what pins whether a
+      // subscription the session owns for its whole life is actually released.
+      return () => {
+        const at = listeners.indexOf(listener);
+        if (at !== -1) listeners.splice(at, 1);
+      };
     }),
     prompt: vi.fn(async () => {
       session.messages.push({
@@ -308,6 +313,14 @@ describe("SubagentSession — runTurnLoop lifecycle events", () => {
       aborted: false,
       steered: false,
     });
+  });
+
+  it("releases its turn-outcome subscription on dispose", async () => {
+    const { session, listeners } = createSession("X");
+    const { sub } = makeSubagentSession(session);
+    expect(listeners).toHaveLength(1);
+    await sub.dispose();
+    expect(listeners).toHaveLength(0);
   });
 
   it("does not emit disposed from runTurnLoop (disposal is separate)", async () => {
