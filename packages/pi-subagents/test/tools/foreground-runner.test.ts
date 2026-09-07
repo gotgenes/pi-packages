@@ -131,6 +131,39 @@ describe("runForeground", () => {
 		expect(result.content[0].text).toContain("Changes saved to branch `pi-agent-5`.");
 	});
 
+	// A failed run's body carries no result, so the transcript is the only route
+	// to what the child did before it died. The nudge and get_subagent_result
+	// both name it; this carrier did not (#889).
+	it("names the transcript of an agent that failed", async () => {
+		const { manager } = createToolDeps();
+		manager.spawnAndWait = vi.fn().mockResolvedValue(
+			createTestSubagent({
+				status: "error",
+				error: "429 rate limit exceeded",
+				sessionReady: true,
+				outputFile: "/sessions/child.jsonl",
+			}),
+		);
+
+		const result = await runForeground(manager, makeParams(), undefined, undefined);
+
+		expect(result.content[0].text).toContain("Agent failed: 429 rate limit exceeded");
+		expect(result.content[0].text).toContain(
+			"Full transcript available at: /sessions/child.jsonl",
+		);
+	});
+
+	it("omits the transcript line for a failed agent that persisted none", async () => {
+		const { manager } = createToolDeps();
+		manager.spawnAndWait = vi.fn().mockResolvedValue(
+			createTestSubagent({ status: "error", error: "429 rate limit exceeded" }),
+		);
+
+		const result = await runForeground(manager, makeParams(), undefined, undefined);
+
+		expect(result.content[0].text).not.toContain("Full transcript available at:");
+	});
+
 	it("marks the returned record consumed (foreground-return delivery edge)", async () => {
 		const record = createTestSubagent();
 		const deps = createToolDeps({

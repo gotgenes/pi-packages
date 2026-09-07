@@ -124,10 +124,16 @@ export async function runForeground(
     // A failed run has no result text, so this return is the only carrier that
     // can say where its workspace saved the work — or what the child flagged
     // before the failure, which is the one place those findings survive.
+    // The transcript pointer rides here for the same reason: with no result to
+    // read, it is the parent's only route to what the child did before it died.
+    // The success branch omits it deliberately — that return carries the result.
     // The ask-back affordance is not composed here: a failed run answers no
     // question, so this is the addenda tail minus the one that cannot apply.
+    const transcriptLine = record.outputFile
+      ? `\nFull transcript available at: ${record.outputFile}`
+      : "";
     return textResult(
-      `${noteText}Agent failed: ${record.error}\nAgent ID: ${record.id}` +
+      `${noteText}Agent failed: ${record.error}\nAgent ID: ${record.id}${transcriptLine}` +
         renderRunUpdates(record.runUpdates) +
         renderWorkspaceNotice(record.workspaceNotice),
       details,
