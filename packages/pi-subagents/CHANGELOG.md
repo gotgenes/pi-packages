@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [21.4.5](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v21.4.4...pi-subagents-v21.4.5) (2026-09-07)
+
+
+### Bug Fixes
+
+* **pi-subagents:** stop rendering an empty subagent result as nothing ([e6f4a8d](https://github.com/gotgenes/pi-packages/commit/e6f4a8d1443d8840c44fb88c7af23d9c8e38ad5b)), closes [#889](https://github.com/gotgenes/pi-packages/issues/889)
+* **pi-subagents:** fail a child run whose provider errored ([3d29780](https://github.com/gotgenes/pi-packages/commit/3d29780b9485d88c183e7b5a0e6cfe9891c901c0)), closes [#889](https://github.com/gotgenes/pi-packages/issues/889)
+* **pi-subagents:** fail a resumed child run whose provider errored ([7851905](https://github.com/gotgenes/pi-packages/commit/7851905d8b2a5f76d5ce20f36abd58c9c7a27fa8)), closes [#889](https://github.com/gotgenes/pi-packages/issues/889)
+* **pi-subagents:** name the transcript when a foreground agent fails ([75712e0](https://github.com/gotgenes/pi-packages/commit/75712e0d2867ec9d8e95d7f050a4c7ae9dc19ecd)), closes [#889](https://github.com/gotgenes/pi-packages/issues/889)
+
 ## [21.4.4](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v21.4.3...pi-subagents-v21.4.4) (2026-09-07)
 
 
