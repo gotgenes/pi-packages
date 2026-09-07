@@ -1,15 +1,16 @@
 import { describe, expect, it, vi } from "vitest";
 import type { CreateSubagentSessionParams } from "#src/lifecycle/create-subagent-session";
 import { Subagent, type SubagentExecution, type SubagentLifecycleObserver } from "#src/lifecycle/subagent";
-import type { SubagentSession, TurnLoopResult } from "#src/lifecycle/subagent-session";
+import { SubagentSession, type TurnLoopResult } from "#src/lifecycle/subagent-session";
 import { SubagentState, type SubagentStateInit } from "#src/lifecycle/subagent-state";
 import type { WorkspacePrepareContext, WorkspaceProvider } from "#src/lifecycle/workspace";
 import type { RunConfig } from "#src/runtime";
 import type { CompactionInfo, SubagentType } from "#src/types";
 import { createTestSubagent, makeStubExecution } from "#test/helpers/make-subagent";
 import { makeWorkspace, makeWorkspaceProvider } from "#test/helpers/make-workspace";
-import { createMockSession, createSubagentSessionStub, emitResumeUsageAndCompaction, toSubagentSession } from "#test/helpers/mock-session";
+import { createMockSession, createSubagentSessionStub, emitResumeUsageAndCompaction, toAgentSession, toSubagentSession } from "#test/helpers/mock-session";
 import { STUB_SNAPSHOT } from "#test/helpers/stub-ctx";
+import { createChildLifecycleMock } from "#test/helpers/subagent-session-io";
 
 type SessionFactory = (params: CreateSubagentSessionParams) => Promise<SubagentSession>;
 
@@ -1632,6 +1633,64 @@ describe("Subagent.resume() — observer lifecycle", () => {
 		await agent.resume("continue");
 		expect(onResumeFinished).toHaveBeenCalledExactlyOnceWith(agent);
 		expect(agent.status).toBe("error");
+	});
+});
+
+// Every other rejection test here stubs runTurnLoop with a vi.fn, so it pins
+// how a throw is routed but nothing about what produces one. These wire a real
+// SubagentSession over a mock AgentSession so the provider-error read and the
+// failRun routing are exercised as one path (#889).
+describe("Subagent — provider failures reach the record", () => {
+	/** A factory resolving to a real SubagentSession over the given mock session. */
+	function realSessionFactory(session: ReturnType<typeof createMockSession>): SessionFactory {
+		return vi.fn(async (_params: CreateSubagentSessionParams) =>
+			new SubagentSession(toAgentSession(session), {
+				outputFile: "/sessions/child.jsonl",
+				sessionId: "child-1",
+				sessionDir: "/sessions",
+				agentName: "Explore",
+				agentMaxTurns: undefined,
+				parentContext: undefined,
+				lifecycle: createChildLifecycleMock(),
+			}),
+		);
+	}
+
+	it("lands the provider's error on the record instead of a successful empty result", async () => {
+		const session = createMockSession();
+		session.prompt = vi.fn(async () => {
+			session.messages.push({
+				role: "assistant",
+				content: [{ type: "text", text: "" }],
+				stopReason: "error",
+				errorMessage: "429 rate limit exceeded",
+			});
+		});
+		const agent = createRunnableAgent({ createSubagentSession: realSessionFactory(session) });
+
+		await agent.run();
+
+		expect(agent.status).toBe("error");
+		expect(agent.error).toBe("429 rate limit exceeded");
+		expect(agent.result).toBeUndefined();
+	});
+
+	it("completes normally when the provider did not error", async () => {
+		const session = createMockSession();
+		session.prompt = vi.fn(async () => {
+			session.messages.push({
+				role: "assistant",
+				content: [{ type: "text", text: "the answer" }],
+				stopReason: "stop",
+			});
+		});
+		const agent = createRunnableAgent({ createSubagentSession: realSessionFactory(session) });
+
+		await agent.run();
+
+		expect(agent.status).toBe("completed");
+		expect(agent.result).toBe("the answer");
+		expect(agent.error).toBeUndefined();
 	});
 });
 

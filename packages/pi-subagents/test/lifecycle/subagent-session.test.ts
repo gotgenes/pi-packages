@@ -358,6 +358,34 @@ describe("SubagentSession — resumeTurnLoop", () => {
     expect(lifecycle.completed).not.toHaveBeenCalled();
     expect(lifecycle.disposed).not.toHaveBeenCalled();
   });
+
+  // The same fail-open the initial run carried: a resume whose provider errors
+  // would otherwise be marked completed, carrying stale text from the turn
+  // before the failure (#889).
+  it("rejects with the provider's error message when the resumed turn errored", async () => {
+    const { session } = createSession("unused");
+    programMessages(session, [providerErrorMessage("401 invalid api key")]);
+    const { sub } = makeSubagentSession(session);
+    await expect(sub.resumeTurnLoop("Continue")).rejects.toThrow("401 invalid api key");
+  });
+
+  it("does not report an earlier turn's text as the resumed answer", async () => {
+    const { session } = createSession("unused");
+    session.messages.push({
+      role: "assistant",
+      content: [{ type: "text", text: "work from the turn before the failure" }],
+      stopReason: "stop",
+    });
+    programMessages(session, [providerErrorMessage("stream disconnected")]);
+    const { sub } = makeSubagentSession(session);
+    await expect(sub.resumeTurnLoop("Continue")).rejects.toThrow("stream disconnected");
+  });
+
+  it("resolves normally when the resumed turn did not error", async () => {
+    const { session } = createSession("RESUMED");
+    const { sub } = makeSubagentSession(session);
+    await expect(sub.resumeTurnLoop("Continue")).resolves.toBe("RESUMED");
+  });
 });
 
 describe("SubagentSession — steer", () => {

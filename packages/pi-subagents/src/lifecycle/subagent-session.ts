@@ -146,6 +146,7 @@ export class SubagentSession {
 
     try {
       await session.prompt(prompt);
+      failIfProviderErrored(session);
     } finally {
       collector.unsubscribe();
       cleanupAbort();
