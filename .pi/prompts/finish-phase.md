@@ -63,7 +63,7 @@ Run `gh` from the repo root (it must execute inside the repository).
 
 ### Reconcile phase-born issues
 
-The gate above sees only issues carrying a numbered step.
+The gate above sees only issues carrying a step of their own.
 An issue spun off *during* the phase — by a step's implementation, by one step's planning, or by a retrospective — has no step, so the gate is blind to it and the archive drops it from the phase's history entirely.
 The `roadmap-fit` skill dispositions these at filing time; this is the net for the ones that escaped it, including any filed by hand outside a prompt.
 
@@ -112,7 +112,7 @@ Do not copy a doc metric forward — recompute it:
   The fallow subcommands are root-level and take `--workspace @gotgenes/$1`; the `--filter`/`-C package` forms used elsewhere do **not** apply to them.
 - "Total LOC" / "Source LOC" counts `src/` only (`find packages/$1/src -name '*.ts' | wc -l` for the file count; `… -exec wc -l {} +` for LOC).
   Test counts come from `pnpm --filter @gotgenes/$1 run test`.
-- If a doc metric carries a mid-phase label ("as of Step N", "Phase N Step M"), replace it with the end-of-phase value and drop the label — the archived doc should read as the settled post-phase baseline, not a snapshot.
+- If a doc metric carries a mid-phase label ("as of Step N", "Phase N Step M", "as of [#N]"), replace it with the end-of-phase value and drop the label — the archived doc should read as the settled post-phase baseline, not a snapshot.
 - When the phase findings table records a recompute command for a target metric (a `grep -c`, `wc -l`, or fallow field), run it and record predicted vs. delivered in the history file's health-metrics table (a "delivered" column) and summarise it in the reconciliation commit body.
   Report misses honestly — they are retro input for the next planning round, not something to paper over (the Phase 8 precedent: "fallow refactoring targets did not clear to 0" was recorded verbatim).
 
@@ -147,11 +147,11 @@ Without this pass, every phase close re-inflates the document and the read cost 
 Follow the package's **existing** convention — read `history/` and the document's "Refactoring history" section first, and match the established style (both packages now use an intro paragraph plus a per-phase table under "Refactoring history" — pi-subagents adds a structural-issues table).
 Do not impose a new format, and per Step 4 do **not** add a completion-summary paragraph or a `### Phase N (complete)` prose subsection — the table row plus the history file are the only two tiers.
 
-1. Create `packages/$1/docs/architecture/history/phase-N-<slug>.md` (create the `history/` directory if the package does not have one yet) and move the **full** detailed roadmap — findings table, numbered steps with outcomes, dependency diagram, and tracks — into it.
+1. Create `packages/$1/docs/architecture/history/phase-N-<slug>.md` (create the `history/` directory if the package does not have one yet) and move the **full** detailed roadmap — findings table, steps with outcomes, dependency diagram, and tracks — into it.
    Move the prose verbatim, but **rebase link targets**: same-doc anchors become `../architecture.md#…`, and relative paths gain one `../` level (`../decisions/…` → `../../decisions/…`).
    "Verbatim" applies to the words, not the paths — an un-rebased anchor dangles silently.
-   "Verbatim" governs the step *content and wording*, not the heading level: promoting a `##`-rooted roadmap into a standalone doc shifts every heading up one (`##` → `#` title, `###` → `##`, `#### Step` → `### Step`).
-   Matching the archived per-step *layout* (a numbered `1. ✅ **Title.**` list vs. `#### ✅ Step N:` headings) is **not** required — the live roadmap's own format may already differ from older history files, and preserving the live wording wins over reformatting it.
+   "Verbatim" governs the step *content and wording*, not the heading level: promoting a `##`-rooted roadmap into a standalone doc shifts every heading up one (`##` → `#` title, `###` → `##`, `#### ✅ [#N] Title` → `### ✅ [#N] Title`).
+   Matching the archived per-step *layout* (a numbered `1. ✅ **Title.**` list, `#### ✅ Step N:` headings, or `#### ✅ [#N]` headings) is **not** required — the live roadmap's own format may already differ from older history files, and preserving the live wording wins over reformatting it.
    Before moving, verify every `[#N]` reference in the block has a matching `[#N]:` definition somewhere in `architecture.md`; a live roadmap can carry a reference whose definition was never added (it renders as literal `[#N]` text on GitHub) — add the missing definitions to the history file when you move the references.
    Mechanics: author the history file fresh with the `Write` tool, then delete the roadmap from `architecture.md` with a scripted start/end-marker replacement (a small `python3` or `sed` block keyed on the section heading and the next `##` heading).
    Do **not** attempt an `Edit` `oldText` match on the roadmap block — it is typically multiple KB and the match is impractical and error-prone.
@@ -168,13 +168,15 @@ Do not impose a new format, and per Step 4 do **not** add a completion-summary p
 
 1. Run `pnpm run lint` (or at least the markdown lint) to confirm the documents are clean — fix any `rumdl`/MD0xx findings.
 2. Confirm the move is loss-free with deterministic checks against the history file rather than eyeballing.
-   Do **not** hardcode `^### Step` — the step heading shape varies (a `✅` prefix, and the level shifts up one on promotion), so `grep -c '^### Step'` returns 0 against `### ✅ Step N:` and reads as a false "lost every step" alarm.
-   Detect the actual heading first (`grep -nE '^#+ .*Step [0-9]' …`), then:
-   - a tolerant count — `grep -cE '^#+ .*\bStep [0-9]' …/history/phase-N-<slug>.md` — equals the step count.
+   Do **not** hardcode `^### Step` — the step heading shape varies by `✅` prefix, by heading level on promotion, and by **identity scheme**: phases planned before issue identity carry an ordinal (`#### ✅ Step 15: Title ([#878])`) while later ones carry the issue (`#### ✅ [#878] Title`), and the two live phases will archive under ordinals.
+   One regex covers both.
+   Detect the actual heading first (`grep -nE '^#+ .*(\bStep [0-9]|\[#[0-9]+\])' …`), then:
+   - a tolerant count — `grep -cE '^#+ .*(\bStep [0-9]|\[#[0-9]+\])' …/history/phase-N-<slug>.md` — equals the step count.
+     Read it as a **loss check** against the step count you already know from Step 1, not as an authority on what a step is: any heading carrying a `[#N]` matches (there are none besides steps in either live document today, but the regex does not know that).
    - `grep -c '```mermaid' …` accounts for the dependency diagram (and any others moved).
    - the tracks table and findings table are present.
    - `architecture.md` no longer contains the phase's roadmap section at all — only its "Refactoring history" table row.
-     Confirm nothing was left behind: `grep -nE '^## (Improvement roadmap — Phase N|Phase N \(complete\))' architecture.md` returns nothing, and no `Step`-heading for the archived phase survives outside the history file.
+     Confirm nothing was left behind: `grep -nE '^## (Improvement roadmap — Phase N|Phase N \(complete\))' architecture.md` returns nothing, and no step heading for the archived phase survives outside the history file (same dual regex).
    - No dangling inbound anchor links: for any section heading this archive removed or renamed (the archived roadmap section, plus any Step 4 hygiene deletions), grep the package docs for links to its slug — `grep -rn '#<slug>' packages/$1/docs` (e.g. `#phase-N-complete`, `#improvement-roadmap-phase-N`) — and repoint each hit to the history file or the new anchor.
      `rumdl` does **not** catch cross-file anchor breaks, so a sibling doc's `[label](./architecture.md#phase-N-complete)` renders fine in source but silently 404s on GitHub once the section is gone (this session broke `client-server-opportunities.md`'s `[Phase 18]` link that way).
    - Also confirm the package skill (`.pi/skills/package-$1/SKILL.md`) — note any stale phase-scored numbers it carries (test counts, file/domain counts); flag them in the hand-off but do not necessarily fix them here.
