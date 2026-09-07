@@ -117,4 +117,14 @@ Round 2 WARN, both items closed or accepted:
 - `**Release:** ship independently` — Phase 22 Step 17, four `fix:` commits, all naming user-observable outcomes.
 - [#898] is filed and dispositioned; it is **not** closed by this work and must not be swept into #889's close comment.
 
+#### Carried to the final retrospective
+
+Both reviewer dispatches in this session omitted a **search-scope bound**, which `AGENTS.md` requires for a read-only subagent ("`find /` is read-only and still walks every mounted volume, trips the external-directory permission gate", Refs #696).
+The round-2 reviewer ran `ls /tmp/mermaid-check*.svg 2>&1; find / -maxdepth 2 -iname 'mermaid-check*'`, which stalled 600 s against the `external_directory` ask and then auto-denied — roughly ten of that round's 953 s.
+The guardrail currently lives only in `AGENTS.md` prose, so it depends on the dispatching agent remembering it per call, and it was not remembered twice in one session.
+The operator's call was to fix this at retro rather than mid-implementation: the candidate is a standing scope bound in the `.pi/agents/` definitions for `pre-completion-reviewer`, `tidy-first-assessor`, and `craftsmanship-scout`, so it holds by construction instead of by per-dispatch discipline.
+
+Investigating that stall also produced [#899] (see the disposition in `pi-permission-system`'s Phase 15 sweep list): an `ask` on an earlier gate suspends the call before a later gate's unconditional `deny` is consulted, so the operator's `find / *` deny rule never ran even though it matches the chained unit correctly.
+
 [#898]: https://github.com/gotgenes/pi-packages/issues/898
+[#899]: https://github.com/gotgenes/pi-packages/issues/899
