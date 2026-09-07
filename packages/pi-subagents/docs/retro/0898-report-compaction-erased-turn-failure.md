@@ -77,4 +77,80 @@ That green-stays-green half is the evidence that the preparatory step did not qu
   A successful auto-retry emits a later clean `message_end`, and latching would report a recovered run as a failure.
 - Step 3 is one commit for both turn loops: `failIfProviderErrored`'s signature changes at both call sites and the type checker will not accept them apart.
 
+## Stage: Implementation — TDD (2026-09-07T23:52:44Z)
+
+### Session summary
+
+Executed the plan's four steps as separate commits, then two more from three rounds of pre-completion review that between them relocated the fix's central mechanism.
+The `pi-subagents` suite went from 1628 to 1636 tests (+8).
+The failure read moved from a post-run scan of `session.messages` to a collector the `SubagentSession` owns for its whole life, seeded from history at construction and updated from `message_end` as the session emits it.
+
+### Observations
+
+#### The plan's mutation predictions were exact
+
+All three of Step 3's named mutations matched their predictions to the test.
+Restoring the deleted scan reddened exactly the three new strip cases and left every [#889] case green — the green-stays-green half that was the point, since it is the evidence that Step 2's fixture migration did not weaken the coverage it rewrote.
+The latch mutation reddened two, one of which had stayed green through Red; that is the case where the mutation is the *only* evidence the test discriminates.
+Deleting the resume call site reddened four, all resume-path.
+
+#### The assessor's `usage` hazard was real, and I measured it rather than trusting it
+
+Removing the `usage` field from the emitted `message_end` in `subagent.test.ts` turns exactly three tests red with a `TypeError` from `subscribeSubagentObserver`'s unguarded `event.message.usage.input`.
+That is a fixture defect that would have read as a failure of the mechanism under test.
+The measurement cost one command and is recorded in the commit body.
+
+#### Two review rounds moved the mechanism, and the second one moved it again
+
+This is the substantive story of the session.
+The plan's design — a per-call collector replacing the scan — was wrong in a way neither the plan, the Tidy-First assessment, nor any of my mutations could see, because all of them assumed at least one `message_end` per `prompt()` call.
+
+Round 1 found the first hole: `AgentSession.prompt()` has three early returns that resolve **without running a turn** (an extension command matched, an `input` handler returned `{ action: "handled" }`, the message was queued while streaming), and `Subagent.resumeRefusal` does not refuse an agent whose earlier run errored.
+So a resume could observe nothing and report the errored session as a completion.
+The plan had asserted the opposite in as many words — "production emits at least one assistant `message_end` per `prompt()` on every path that reaches the read" — and used it to decline a fallback.
+`pi-permission-system` returns `{ action: "handled" }` from exactly this path when its skill-input gate denies a `/skill:<name>` prompt, so the trigger is a standard prompt syntax, not a contrivance.
+
+Round 2 found that the adopted fix — seeding the per-call collector from `session.messages` — did not close it: the failure an earlier call observed may be exactly the one Pi's overflow recovery stripped from that history.
+I checked that finding against the pre-#898 code before escalating it and established it was **not** a regression — the deleted scan was equally blind — which is what turned the question from "fix a regression" into a scope decision for the operator.
+
+The adopted answer relocates the state: the collector is a `private readonly` field on `SubagentSession`, constructed once, seeded from history at that moment, unsubscribed in `dispose()`.
+That is a better design than the plan's on its own terms — how the last turn ended is a property of the session, not of each call — and it is the shape the plan would have reached had it enumerated `prompt()`'s early returns.
+
+#### The lesson worth carrying
+
+The plan verified, thoroughly, what the SDK does when a turn **runs**: six exits from `_runAutoCompaction`, the `message_end` ordering, `_prepareRetry`, `_replaceMessageInPlace`.
+It never asked what `prompt()` does when a turn does **not** run.
+A design that replaces a guard's evidence source has two questions to answer, and I answered only the first: what the new source sees that the old one missed, and what the old source saw that the new one misses.
+The second is where both failures lived.
+
+#### A test that pinned nothing
+
+Round 3 passed but noted that the local session stub's `subscribe` returned a static no-op, so deleting the `dispose()` unsubscribe reddened nothing.
+Closed it rather than deferring: the stub's remover is now real, and a test asserts the subscription is gone after teardown (mutation-verified — deleting the line turns it red).
+A line that no mutation can kill is unpinned however new it is.
+
+#### Deviations from the plan
+
+- Step 3's planned test "an errored `message_end` followed by a clean one resolves" was already covered once Step 2 made the pre-existing [#889] case event-driven.
+  Rather than duplicate it I added a distinct case modelling the real recovery sequence: the error emitted, its message absent from history, then a clean message.
+  The reviewer judged the substitution sound.
+- Two commits beyond the plan's four, both review-driven, both closing holes the plan's own premise had ruled out.
+- The architecture `Landed:` note was rewritten twice as the mechanism moved; it now describes the session-lifetime collector rather than the per-call one the plan specified.
+
+#### Pre-completion review
+
+Three rounds: FAIL, FAIL, **PASS**.
+Both FAILs were legitimate and both were fixed rather than argued down.
+Round 3's non-blocking notes, recorded rather than actioned:
+
+- A resume aborted mid-flight after an earlier failed turn reports the stale prior error rather than a clean cancellation.
+  Pre-existing and identical under every design considered here; not a regression from this change.
+- No test pins `stopReason: "length"` by name.
+  It falls to the same branch as `"aborted"` and an absent stop reason, both of which are tested, and an unrescued truncation reporting as a completion is a recorded Non-Goal.
+
+#### For the shipping session
+
+- `**Release:** ship independently` — Phase 22 Step 19, two `fix:` commits, both naming user-observable outcomes.
+- Nothing is deferred to a follow-up issue; the truncation Non-Goal was an explicit operator decision at the design gate.
+
 [#889]: https://github.com/gotgenes/pi-packages/issues/889
