@@ -4,6 +4,7 @@ import { Text } from "@earendil-works/pi-tui";
 import { Type } from "@sinclair/typebox";
 import { AgentTypeRegistry } from "#src/config/agent-types";
 import type { ParentSnapshot } from "#src/lifecycle/parent-snapshot";
+import type { ResumeRefusal } from "#src/lifecycle/subagent";
 import type { AgentSpawnConfig } from "#src/lifecycle/subagent-manager";
 import {
 	renderOutcomeAddenda,
@@ -93,23 +94,12 @@ export class AgentTool {
 					`Agent not found: "${params.resume as string}". Records are cleared at session start/switch, so it may be from a previous session.`,
 				);
 			}
-			if (!existing.isSessionReady()) {
-				if (existing.sessionReleased) {
-					return textResult(
-						`Agent "${params.resume as string}" had its session released after its retention window; resume is unavailable, but its result is still retrievable via get_subagent_result.`,
-					);
-				}
-				return textResult(
-					`Agent "${params.resume as string}" has no active session to resume.`,
-				);
-			}
-			if (existing.workspaceDisposed) {
-				return textResult(
-					`Agent "${params.resume as string}" ran in an isolated workspace that no longer ` +
-						"exists; resume is unavailable because the agent would re-enter a directory that " +
-						"has been removed. Spawn a new agent instead — the agent's result records where " +
-						"any work was saved.",
-				);
+			// The record owns the decision; this door owns only how it is worded. The
+			// result carriers read the same predicate, so an affordance can no longer
+			// name a resume this branch would decline.
+			const refusal = existing.resumeRefusal;
+			if (refusal) {
+				return textResult(resumeRefusalMessage(refusal, params.resume as string));
 			}
 			// Resuming commits this call to delivering the resumed outcome. Claim it
 			// before the resume starts: resetForResume runs synchronously inside
@@ -274,5 +264,27 @@ ${guidelines}
 				ctx: ExtensionContext,
 			) => this.execute(toolCallId, params, signal, onUpdate, ctx),
 		});
+	}
+}
+
+/**
+ * The operator-facing sentence for each reason a resume is refused.
+ *
+ * Exhaustive over `ResumeRefusal`, so a reason added later fails to compile
+ * here rather than falling through to an attempted resume.
+ */
+function resumeRefusalMessage(refusal: ResumeRefusal, id: string): string {
+	switch (refusal) {
+		case "session-released":
+			return `Agent "${id}" had its session released after its retention window; resume is unavailable, but its result is still retrievable via get_subagent_result.`;
+		case "no-session":
+			return `Agent "${id}" has no active session to resume.`;
+		case "workspace-disposed":
+			return (
+				`Agent "${id}" ran in an isolated workspace that no longer ` +
+				"exists; resume is unavailable because the agent would re-enter a directory that " +
+				"has been removed. Spawn a new agent instead — the agent's result records where " +
+				"any work was saved."
+			);
 	}
 }

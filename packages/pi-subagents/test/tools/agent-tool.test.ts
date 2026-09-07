@@ -110,7 +110,7 @@ describe("AgentTool — resume path", () => {
 			subagent_type: "general-purpose",
 			resume: "agent-1",
 		});
-		expect(result.content[0].text).toContain("no active session");
+		expect(result.content[0].text).toBe('Agent "agent-1" has no active session to resume.');
 	});
 
 	it("returns not-found copy without claiming cleanup for an unknown resume ID", async () => {
@@ -138,7 +138,10 @@ describe("AgentTool — resume path", () => {
 			subagent_type: "general-purpose",
 			resume: "agent-1",
 		});
-		expect(result.content[0].text).toContain("get_subagent_result");
+		expect(result.content[0].text).toBe(
+			'Agent "agent-1" had its session released after its retention window; resume is ' +
+				"unavailable, but its result is still retrievable via get_subagent_result.",
+		);
 		expect(deps.manager.resume).not.toHaveBeenCalled();
 	});
 
