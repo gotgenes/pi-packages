@@ -266,7 +266,7 @@ describe("NotificationManager", () => {
     const args = makeArgs();
     const system = makeManager(args);
     system.sendCompletion(
-      createTestSubagent({ id: "agent-3", pendingQuestion: "Which config?" }),
+      createTestSubagent({ id: "agent-3", pendingQuestion: "Which config?", sessionReady: true }),
     );
     const content = (args.sendMessage.mock.calls[0][0] as { content: string }).content;
     expect(content).toContain("This agent is waiting on an answer:");

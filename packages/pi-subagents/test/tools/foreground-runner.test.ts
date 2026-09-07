@@ -36,7 +36,12 @@ describe("runForeground", () => {
 		manager.spawnAndWait = vi
 			.fn()
 			.mockResolvedValue(
-				createTestSubagent({ id: "agent-5", result: "Mapped them.", pendingQuestion: "Which config?" }),
+				createTestSubagent({
+					id: "agent-5",
+					result: "Mapped them.",
+					pendingQuestion: "Which config?",
+					sessionReady: true,
+				}),
 			);
 
 		const result = await runForeground(manager, makeParams(), undefined, undefined);

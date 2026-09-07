@@ -209,7 +209,12 @@ describe("AgentTool — resume path", () => {
 		resumeRecord.subagentSession = toSubagentSession(createSubagentSessionStub(createMockSession()));
 		deps.manager.getRecord = vi.fn().mockReturnValue(resumeRecord);
 		deps.manager.resume = vi.fn().mockResolvedValue(
-			createTestSubagent({ id: "agent-9", result: "Thanks.", pendingQuestion: "And the fallback?" }),
+			createTestSubagent({
+				id: "agent-9",
+				result: "Thanks.",
+				pendingQuestion: "And the fallback?",
+				sessionReady: true,
+			}),
 		);
 
 		const result = await execute(deps, {
