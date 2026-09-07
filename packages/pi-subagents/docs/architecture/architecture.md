@@ -1265,6 +1265,10 @@ The silent `preparation` exit is the one a child most plausibly takes — `prepa
 So the outcome is recorded from the session's own `message_end` events as they arrive — `collectTurnFailure`, a sibling of the `collectResponseText` collector already in the file — rather than reconstructed from `session.messages` afterwards.
 That covers every exit and stops the read depending on who owns `agent.state.messages`; `src/observation/record-observer.ts` was left untouched, and its `compaction_end` gate still ignores failures because a compaction that failed did not happen.
 Last-one-wins rather than latched, so a recovered auto-retry still reports success.
+The collector is owned by the `SubagentSession` and subscribed for the session's whole life rather than per turn loop, which the pre-completion review established over two rounds is load-bearing.
+`prompt()` resolves without running a turn when an extension command matches, when an `input` handler reports the prompt handled, or when the message is queued while streaming, and a resume is not refused for an agent whose earlier run failed — so such a call observes no event of its own and must read what the collector was already holding.
+A per-call collector cannot supply that, and neither can a per-call history read: the failure an earlier call observed may be exactly the one Pi's overflow recovery stripped.
+The collector is still seeded from history at construction, for turns that predate its subscription.
 The predicate is unchanged from Step 17: an unrescued truncation (`stopReason: "length"`), which Case 1 also strips, deliberately still reports as a completion, because it carries the child's real text.
 
 Release: independent

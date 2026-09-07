@@ -65,10 +65,23 @@ export interface SubagentSessionMeta {
 export class SubagentSession {
   private disposed = false;
 
+  /**
+   * How the session's last assistant turn ended, tracked for the session's
+   * whole life rather than per call.
+   *
+   * Per call is not enough: a `prompt()` can resolve without running a turn at
+   * all, and the failure a *previous* call observed may never have reached
+   * `session.messages` for a later one to re-derive — Pi's overflow recovery
+   * strips it and restores nothing when its compaction fails (#898).
+   */
+  private readonly turnFailure: ReturnType<typeof collectTurnFailure>;
+
   constructor(
     private readonly _session: AgentSession,
     private readonly meta: SubagentSessionMeta,
-  ) {}
+  ) {
+    this.turnFailure = collectTurnFailure(_session);
+  }
 
   /**
    * Wrapped session — for lifecycle-internal use only.
@@ -111,7 +124,6 @@ export class SubagentSession {
       }
     });
 
-    const failures = collectTurnFailure(session);
     const collector = collectResponseText(session);
     const cleanupAbort = forwardAbortSignal(session, opts.signal);
 
@@ -122,7 +134,7 @@ export class SubagentSession {
 
     try {
       await session.prompt(effectivePrompt);
-      failIfProviderErrored(failures.getFailure());
+      failIfProviderErrored(this.turnFailure.getFailure());
       this.meta.lifecycle.completed({
         sessionDir: this.meta.sessionDir,
         agentName: this.meta.agentName,
@@ -131,7 +143,6 @@ export class SubagentSession {
       });
     } finally {
       unsubTurns();
-      failures.unsubscribe();
       collector.unsubscribe();
       cleanupAbort();
     }
@@ -143,15 +154,13 @@ export class SubagentSession {
   /** Re-prompt the same session (resume); does not emit `completed`. */
   async resumeTurnLoop(prompt: string, signal?: AbortSignal): Promise<string> {
     const session = this._session;
-    const failures = collectTurnFailure(session);
     const collector = collectResponseText(session);
     const cleanupAbort = forwardAbortSignal(session, signal);
 
     try {
       await session.prompt(prompt);
-      failIfProviderErrored(failures.getFailure());
+      failIfProviderErrored(this.turnFailure.getFailure());
     } finally {
-      failures.unsubscribe();
       collector.unsubscribe();
       cleanupAbort();
     }
@@ -215,6 +224,7 @@ export class SubagentSession {
   async dispose(): Promise<void> {
     if (this.disposed) return;
     this.disposed = true;
+    this.turnFailure.unsubscribe();
     await emitChildSessionShutdown(this._session);
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- dispose may not exist on all session implementations
     this._session.dispose?.();
@@ -255,9 +265,17 @@ function failIfProviderErrored(failure: string | undefined): void {
  * clean `message_end`, and that run recovered. A hard abort and a user stop
  * both yield `stopReason: "aborted"`, which is a terminal outcome the run
  * already reports through its own channel.
+ *
+ * Subscribed for the session's whole life, and seeded from whatever history it
+ * already had. `prompt()` can resolve without running a turn at all — an
+ * extension command matched, an `input` handler reported the prompt handled, a
+ * message was queued while streaming — and a resume is not refused for an agent
+ * whose earlier run failed. Such a call observes no event of its own, so the
+ * answer has to be one the collector was already holding: what an earlier call
+ * observed, or, for turns that predate the subscription, what the history says.
  */
 function collectTurnFailure(session: AgentSession) {
-  let failure: string | undefined;
+  let failure = readLastTurnFailure(session);
   const unsubscribe = session.subscribe((event: AgentSessionEvent) => {
     if (event.type !== "message_end" || event.message.role !== "assistant") return;
     failure =
@@ -267,6 +285,18 @@ function collectTurnFailure(session: AgentSession) {
         : undefined;
   });
   return { getFailure: () => failure, unsubscribe };
+}
+
+/** How the session's last assistant message ended, read from its history. */
+function readLastTurnFailure(session: AgentSession): string | undefined {
+  for (let i = session.messages.length - 1; i >= 0; i--) {
+    const msg = session.messages[i];
+    if (msg.role !== "assistant") continue;
+    if (msg.stopReason !== "error") return undefined;
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- || intentional: an empty errorMessage is as uninformative as an absent one, and ?? would pass it through
+    return msg.errorMessage || PROVIDER_ERROR_WITHOUT_MESSAGE;
+  }
+  return undefined;
 }
 
 /**

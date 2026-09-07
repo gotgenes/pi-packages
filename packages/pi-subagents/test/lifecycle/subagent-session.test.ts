@@ -479,6 +479,50 @@ describe("SubagentSession — resumeTurnLoop", () => {
     await expect(sub.resumeTurnLoop("Continue")).rejects.toThrow("503 upstream unavailable");
   });
 
+  // `AgentSession.prompt()` resolves without running a turn when an extension
+  // command matches, when an `input` handler reports the prompt handled, or
+  // when the message is queued while streaming. A resume on an agent whose
+  // earlier run failed is not refused, so on those paths the session's own
+  // terminal state is the only answer available (#898).
+  it("rejects when the resume ran no turn and the session's last turn had errored", async () => {
+    const { session } = createSession("unused");
+    session.messages.push(providerErrorMessage("429 rate limit exceeded"));
+    session.prompt = vi.fn(async () => {});
+    const { sub } = makeSubagentSession(session);
+    await expect(sub.resumeTurnLoop("/skill:audit go")).rejects.toThrow(
+      "429 rate limit exceeded",
+    );
+  });
+
+  // The composed case: the earlier run's failure was never in `session.messages`
+  // to begin with, because Pi's overflow recovery stripped it. A history read at
+  // the resume's start cannot see it either, so the outcome is tracked for the
+  // session's lifetime rather than re-derived per call (#898).
+  it("rejects when a stripped earlier failure is followed by a resume that runs no turn", async () => {
+    const { session, listeners } = createSession("unused");
+    session.messages.push({
+      role: "assistant",
+      content: [{ type: "text", text: "work from an earlier turn" }],
+      stopReason: "stop",
+    });
+    programStrippedFailure(session, listeners, "prompt is too long: 210000 tokens > 200000 maximum");
+    const { sub } = makeSubagentSession(session);
+    await expect(sub.runTurnLoop("go", {})).rejects.toThrow("prompt is too long");
+
+    session.prompt = vi.fn(async () => {});
+    await expect(sub.resumeTurnLoop("/skill:audit go")).rejects.toThrow("prompt is too long");
+  });
+
+  it("resolves when the resume's own turn succeeded after an earlier failure", async () => {
+    const { session, listeners } = createSession("unused");
+    session.messages.push(providerErrorMessage("429 rate limit exceeded"));
+    programMessages(session, listeners, [
+      { role: "assistant", content: [{ type: "text", text: "the second answer" }], stopReason: "stop" },
+    ]);
+    const { sub } = makeSubagentSession(session);
+    await expect(sub.resumeTurnLoop("Continue")).resolves.toBe("the second answer");
+  });
+
   it("resolves normally when the resumed turn did not error", async () => {
     const { session } = createSession("RESUMED");
     const { sub } = makeSubagentSession(session);
