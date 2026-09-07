@@ -1710,6 +1710,38 @@ describe("Subagent — provider failures reach the record", () => {
 		expect(agent.error).toBeUndefined();
 	});
 
+	// Pi's overflow recovery removes the failed assistant message from agent state
+	// before attempting compaction and restores nothing when that attempt fails, so
+	// the record must be driven by what the session emitted, not by what survived
+	// in its history (#898).
+	it("lands the provider's error even when overflow recovery stripped the errored turn", async () => {
+		const session = createMockSession();
+		session.messages.push({
+			role: "assistant",
+			content: [{ type: "text", text: "work from an earlier turn" }],
+			stopReason: "stop",
+		});
+		session.prompt = vi.fn(async () => {
+			session.emit({
+				type: "message_end",
+				message: {
+					role: "assistant",
+					content: [{ type: "text", text: "" }],
+					stopReason: "error",
+					errorMessage: "prompt is too long: 210000 tokens > 200000 maximum",
+					usage: { input: 0, output: 0, cacheWrite: 0 },
+				},
+			});
+		});
+		const agent = createRunnableAgent({ createSubagentSession: realSessionFactory(session) });
+
+		await agent.run();
+
+		expect(agent.status).toBe("error");
+		expect(agent.error).toBe("prompt is too long: 210000 tokens > 200000 maximum");
+		expect(agent.result).toBeUndefined();
+	});
+
 	// The resume half of the same path: a run that succeeded, then a resume whose
 	// provider errored. Without the resumeTurnLoop read the record would be marked
 	// completed carrying "the first answer" — the previous turn's work, presented

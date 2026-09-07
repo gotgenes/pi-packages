@@ -111,6 +111,7 @@ export class SubagentSession {
       }
     });
 
+    const failures = collectTurnFailure(session);
     const collector = collectResponseText(session);
     const cleanupAbort = forwardAbortSignal(session, opts.signal);
 
@@ -121,7 +122,7 @@ export class SubagentSession {
 
     try {
       await session.prompt(effectivePrompt);
-      failIfProviderErrored(session);
+      failIfProviderErrored(failures.getFailure());
       this.meta.lifecycle.completed({
         sessionDir: this.meta.sessionDir,
         agentName: this.meta.agentName,
@@ -130,6 +131,7 @@ export class SubagentSession {
       });
     } finally {
       unsubTurns();
+      failures.unsubscribe();
       collector.unsubscribe();
       cleanupAbort();
     }
@@ -141,13 +143,15 @@ export class SubagentSession {
   /** Re-prompt the same session (resume); does not emit `completed`. */
   async resumeTurnLoop(prompt: string, signal?: AbortSignal): Promise<string> {
     const session = this._session;
+    const failures = collectTurnFailure(session);
     const collector = collectResponseText(session);
     const cleanupAbort = forwardAbortSignal(session, signal);
 
     try {
       await session.prompt(prompt);
-      failIfProviderErrored(session);
+      failIfProviderErrored(failures.getFailure());
     } finally {
+      failures.unsubscribe();
       collector.unsubscribe();
       cleanupAbort();
     }
@@ -233,28 +237,36 @@ const PROVIDER_ERROR_WITHOUT_MESSAGE = "provider reported an error with no messa
  * message with `stopReason: "error"` and an `errorMessage`, then ends the turn
  * normally. Without this read a failed turn is indistinguishable from a quiet
  * one, and the run reports a successful, empty completion (#889).
- *
- * Keyed on the *last* assistant message rather than any errored one in the
- * history: Pi removes a retried error from agent state before retrying, so a
- * message still in last position is one the retry budget did not rescue. A
- * hard abort and a user stop both yield `stopReason: "aborted"`, which is a
- * terminal outcome the run already reports through its own channel.
  */
-function failIfProviderErrored(session: AgentSession): void {
-  const failure = readTurnFailure(session);
+function failIfProviderErrored(failure: string | undefined): void {
   if (failure) throw new Error(failure);
 }
 
-/** The provider's error on the last turn, or undefined when it did not error. */
-function readTurnFailure(session: AgentSession): string | undefined {
-  for (let i = session.messages.length - 1; i >= 0; i--) {
-    const msg = session.messages[i];
-    if (msg.role !== "assistant") continue;
-    if (msg.stopReason !== "error") return undefined;
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- || intentional: an empty errorMessage is as uninformative as an absent one, and ?? would pass it through
-    return msg.errorMessage || PROVIDER_ERROR_WITHOUT_MESSAGE;
-  }
-  return undefined;
+/**
+ * Subscribe to a session and record how its last assistant message ended.
+ *
+ * Read live rather than scanned back from `session.messages` once the run has
+ * settled: Pi's overflow recovery removes the failed message from agent state
+ * before attempting compaction and restores nothing when that compaction fails,
+ * so a run's own error may no longer be in the history by the time it ends
+ * (#898). `message_end` is emitted before any of that runs.
+ *
+ * Last-one-wins rather than latched: a successful auto-retry emits a later,
+ * clean `message_end`, and that run recovered. A hard abort and a user stop
+ * both yield `stopReason: "aborted"`, which is a terminal outcome the run
+ * already reports through its own channel.
+ */
+function collectTurnFailure(session: AgentSession) {
+  let failure: string | undefined;
+  const unsubscribe = session.subscribe((event: AgentSessionEvent) => {
+    if (event.type !== "message_end" || event.message.role !== "assistant") return;
+    failure =
+      event.message.stopReason === "error"
+        ? // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- || intentional: an empty errorMessage is as uninformative as an absent one, and ?? would pass it through
+          event.message.errorMessage || PROVIDER_ERROR_WITHOUT_MESSAGE
+        : undefined;
+  });
+  return { getFailure: () => failure, unsubscribe };
 }
 
 /**

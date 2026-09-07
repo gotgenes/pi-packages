@@ -119,6 +119,28 @@ function programMessages(
   });
 }
 
+/**
+ * Program session.prompt to emit an errored `message_end` whose message never
+ * reaches `session.messages`.
+ *
+ * This is the sequence Pi produces when a context overflow triggers recovery:
+ * `_checkCompaction` removes the failed assistant message from agent state
+ * before attempting compaction, and restores nothing when that attempt fails
+ * (#898). The event is emitted before any of that runs.
+ */
+function programStrippedFailure(
+  session: ReturnType<typeof createSession>["session"],
+  listeners: ReturnType<typeof createSession>["listeners"],
+  errorMessage: string,
+) {
+  session.prompt = vi.fn(async () => {
+    emit(listeners, {
+      type: "message_end",
+      message: { usage: EMPTY_USAGE, ...providerErrorMessage(errorMessage) },
+    });
+  });
+}
+
 /** Build a SubagentSession around a session stub with default meta. */
 function makeSubagentSession(
   session: ReturnType<typeof createSession>["session"],
@@ -365,6 +387,45 @@ describe("SubagentSession — runTurnLoop provider failures", () => {
     expect(result.responseText).toBe("recovered");
     expect(lifecycle.completed).toHaveBeenCalledOnce();
   });
+
+  // The failure is read from the event stream rather than from session history,
+  // so a turn error Pi's overflow recovery already stripped still fails the run
+  // instead of reporting an earlier turn's work as the answer (#898).
+  it("rejects when overflow recovery stripped the errored turn before the run settled", async () => {
+    const { session, listeners } = createSession("unused");
+    session.messages.push({
+      role: "assistant",
+      content: [{ type: "text", text: "work from an earlier turn" }],
+      stopReason: "stop",
+    });
+    programStrippedFailure(session, listeners, "prompt is too long: 210000 tokens > 200000 maximum");
+    const { sub } = makeSubagentSession(session, { lifecycle });
+    await expect(sub.runTurnLoop("go", {})).rejects.toThrow("prompt is too long");
+    expect(lifecycle.completed).not.toHaveBeenCalled();
+  });
+
+  // The other half of the same sequence: when the compaction succeeds, the
+  // continued turn emits its own clean message_end and the run recovered.
+  it("resolves when overflow recovery stripped the errored turn and the retry succeeded", async () => {
+    const { session, listeners } = createSession("unused");
+    const recovered = {
+      role: "assistant",
+      content: [{ type: "text", text: "recovered" }],
+      stopReason: "stop",
+    };
+    session.prompt = vi.fn(async () => {
+      emit(listeners, {
+        type: "message_end",
+        message: { usage: EMPTY_USAGE, ...providerErrorMessage("context overflow") },
+      });
+      session.messages.push(recovered);
+      emit(listeners, { type: "message_end", message: { usage: EMPTY_USAGE, ...recovered } });
+    });
+    const { sub } = makeSubagentSession(session, { lifecycle });
+    const result = await sub.runTurnLoop("go", {});
+    expect(result.responseText).toBe("recovered");
+    expect(lifecycle.completed).toHaveBeenCalledOnce();
+  });
 });
 
 describe("SubagentSession — resumeTurnLoop", () => {
@@ -404,6 +465,18 @@ describe("SubagentSession — resumeTurnLoop", () => {
     programMessages(session, listeners, [providerErrorMessage("stream disconnected")]);
     const { sub } = makeSubagentSession(session);
     await expect(sub.resumeTurnLoop("Continue")).rejects.toThrow("stream disconnected");
+  });
+
+  it("rejects when overflow recovery stripped the resumed turn's error", async () => {
+    const { session, listeners } = createSession("unused");
+    session.messages.push({
+      role: "assistant",
+      content: [{ type: "text", text: "work from the turn before the failure" }],
+      stopReason: "stop",
+    });
+    programStrippedFailure(session, listeners, "503 upstream unavailable");
+    const { sub } = makeSubagentSession(session);
+    await expect(sub.resumeTurnLoop("Continue")).rejects.toThrow("503 upstream unavailable");
   });
 
   it("resolves normally when the resumed turn did not error", async () => {
