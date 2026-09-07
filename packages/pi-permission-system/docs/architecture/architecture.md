@@ -1090,6 +1090,9 @@ Deferred by composition, with the reason each carries: [#804] (staging slice 7, 
 - [#886] — filed by Step 1's planning; deferred to a later phase.
   It is real roadmap work, but it is not this phase's cause: the phase is about a lost role producing false positives, and [#886] adds prompts in the opposite direction — 270 of 5918 corpus commands carry an interpreter inline script.
   Step 4's `commandEffects` deliberately does not lift the wrapper floor (ADR 0013 §11) and Step 6's sandbox seam answers band C without belief, so both change its calculus before it is worth scheduling.
+- [#891] — filed by Step 1's planning; deferred to a later phase.
+  Pi's built-in `powershell` tool (v0.84.3, recommended on Windows) reaches only the `tools:` surface today.
+  The issue asks for a Codex-shaped static layer — a small literal subset lowered to argv, fail closed on the rest, and deliberately **no** path projection — which is a new shell surface rather than this phase's role-loss cause, and it is sequenced behind the sandbox re-planning that Step 6 opens.
 - [#735] scenario 2 / [#722], [#762], [#860], [#856] — unchanged from Phase 14.
 - [#890] — filed by the `pi-subagents` [#884] PR review; deferred to a later phase with rationale.
   `AgentPrepHandler`'s in-place rewrite of the child's `Available tools:` list lands inside the region `pi-subagents` keeps byte-identical with the parent's, collapsing the shared prefix for any child with a narrowed tool set.
@@ -1388,4 +1391,5 @@ Each phase's findings, numbered plan, dependency diagram, and health metrics are
 [#884]: https://github.com/gotgenes/pi-packages/pull/884
 [#886]: https://github.com/gotgenes/pi-packages/issues/886
 [#890]: https://github.com/gotgenes/pi-packages/issues/890
+[#891]: https://github.com/gotgenes/pi-packages/issues/891
 [ADR-0002]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-subagents/docs/decisions/0002-extensions-on-a-minimal-core.md
