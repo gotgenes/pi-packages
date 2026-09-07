@@ -46,8 +46,13 @@ function createSession(finalText: string) {
   return { session, listeners, calls };
 }
 
+/** Broadcast an arbitrary session event to every subscriber of a `createSession` stub. */
+function emit(listeners: Array<(e: any) => void>, event: unknown) {
+  for (const l of listeners) l(event);
+}
+
 function emitTurnEnd(listeners: Array<(e: any) => void>) {
-  for (const l of listeners) l({ type: "turn_end" });
+  emit(listeners, { type: "turn_end" });
 }
 
 /**
