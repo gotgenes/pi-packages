@@ -500,6 +500,8 @@ Verify with `git interpret-trailers --parse` (Refs #710).
 When a commit-lint or format gate fires a false positive, disable the single offending check (the specific `committed.toml` field), not the whole gate.
 Avoid `git rebase -i` in this environment — `$EDITOR` opens an interactive editor that aborts non-interactively.
 Reorder or fix unpushed commits with `git reset` + re-commit, or set `GIT_SEQUENCE_EDITOR`/`EDITOR=true`.
+`git rebase --continue` opens the *commit-message* editor through `GIT_EDITOR`, which `GIT_SEQUENCE_EDITOR` does not cover — set `GIT_EDITOR=true` for it.
+In a worktree `.git` is a file, so rebase state lives at `$(git rev-parse --git-dir)/rebase-merge`; a bare `.git/rebase-merge` test reports a live rebase as absent (Refs #863).
 A scripted rebase reports `Successfully rebased` even when the sequence editor matched nothing and every line replayed as `pick` — this git writes its todo as `pick <sha> # <subject>`.
 Verify by diffing the subjects, and confirm the content is untouched with `git diff <backup-tag> HEAD` (Refs #710).
 After `git reset --soft HEAD~N`, all N commits' changes are staged together — to re-split into separate commits, run `git reset` (mixed) first, then `git add` per commit.
