@@ -67,6 +67,33 @@ function programTurns(
   });
 }
 
+/**
+ * The assistant message Pi appends when a provider fails a turn.
+ *
+ * Both SDK paths produce this shape: the agent loop returns the provider's
+ * errored message, and `Agent.handleRunFailure` synthesises one with empty text
+ * content. Neither throws, which is what made a failed turn indistinguishable
+ * from a quiet one (#889).
+ */
+function providerErrorMessage(errorMessage?: string) {
+  return {
+    role: "assistant",
+    content: [{ type: "text", text: "" }],
+    stopReason: "error",
+    ...(errorMessage === undefined ? {} : { errorMessage }),
+  };
+}
+
+/** Program session.prompt to settle the run by appending raw messages. */
+function programMessages(
+  session: ReturnType<typeof createSession>["session"],
+  messages: unknown[],
+) {
+  session.prompt = vi.fn(async () => {
+    for (const message of messages) session.messages.push(message);
+  });
+}
+
 /** Build a SubagentSession around a session stub with default meta. */
 function makeSubagentSession(
   session: ReturnType<typeof createSession>["session"],
@@ -250,6 +277,68 @@ describe("SubagentSession — runTurnLoop lifecycle events", () => {
     await expect(sub.runTurnLoop("go", {})).rejects.toThrow("prompt failed");
     expect(lifecycle.completed).not.toHaveBeenCalled();
     expect(lifecycle.disposed).not.toHaveBeenCalled();
+  });
+});
+
+describe("SubagentSession — runTurnLoop provider failures", () => {
+  it("rejects with the provider's error message when the last turn errored", async () => {
+    const { session } = createSession("unused");
+    programMessages(session, [providerErrorMessage("429 rate limit exceeded")]);
+    const { sub } = makeSubagentSession(session);
+    await expect(sub.runTurnLoop("go", {})).rejects.toThrow("429 rate limit exceeded");
+  });
+
+  it("rejects with a fallback when the errored turn carries no message", async () => {
+    const { session } = createSession("unused");
+    programMessages(session, [providerErrorMessage()]);
+    const { sub } = makeSubagentSession(session);
+    await expect(sub.runTurnLoop("go", {})).rejects.toThrow(
+      "provider reported an error with no message",
+    );
+  });
+
+  it("does not emit completed for a run whose provider errored", async () => {
+    const { session } = createSession("unused");
+    programMessages(session, [providerErrorMessage("boom")]);
+    const { sub } = makeSubagentSession(session, { lifecycle });
+    await expect(sub.runTurnLoop("go", {})).rejects.toThrow("boom");
+    expect(lifecycle.completed).not.toHaveBeenCalled();
+  });
+
+  it("resolves normally when the last turn was aborted rather than errored", async () => {
+    const { session } = createSession("unused");
+    programMessages(session, [
+      { role: "assistant", content: [{ type: "text", text: "partial" }], stopReason: "aborted" },
+    ]);
+    const { sub } = makeSubagentSession(session, { lifecycle });
+    const result = await sub.runTurnLoop("go", {});
+    expect(result.responseText).toBe("partial");
+    expect(lifecycle.completed).toHaveBeenCalledOnce();
+  });
+
+  // The package's own fixtures push assistant messages carrying no stopReason
+  // at all, so an absent field must read as "not a failure" rather than being
+  // assumed present.
+  it("resolves normally when the last assistant message carries no stopReason", async () => {
+    const { session } = createSession("ALL DONE");
+    const { sub } = makeSubagentSession(session, { lifecycle });
+    const result = await sub.runTurnLoop("go", {});
+    expect(result.responseText).toBe("ALL DONE");
+    expect(lifecycle.completed).toHaveBeenCalledOnce();
+  });
+
+  // Pi removes a retried error from agent state before retrying, so an errored
+  // message that is no longer last is one the retry budget rescued.
+  it("resolves normally when an errored turn was followed by a clean one", async () => {
+    const { session } = createSession("unused");
+    programMessages(session, [
+      providerErrorMessage("transient stream drop"),
+      { role: "assistant", content: [{ type: "text", text: "recovered" }], stopReason: "stop" },
+    ]);
+    const { sub } = makeSubagentSession(session, { lifecycle });
+    const result = await sub.runTurnLoop("go", {});
+    expect(result.responseText).toBe("recovered");
+    expect(lifecycle.completed).toHaveBeenCalledOnce();
   });
 });
 

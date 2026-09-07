@@ -121,6 +121,7 @@ export class SubagentSession {
 
     try {
       await session.prompt(effectivePrompt);
+      failIfProviderErrored(session);
       this.meta.lifecycle.completed({
         sessionDir: this.meta.sessionDir,
         agentName: this.meta.agentName,
@@ -217,6 +218,43 @@ export class SubagentSession {
 }
 
 // ── Private turn-loop helpers ───────────────────────────────────────────────────
+
+/**
+ * What a failed turn reports when the provider named no reason. An empty
+ * `errorMessage` is as uninformative as an absent one, so both land here.
+ */
+const PROVIDER_ERROR_WITHOUT_MESSAGE = "provider reported an error with no message";
+
+/**
+ * Throw when the run's last turn ended in a provider error.
+ *
+ * Pi does not throw on a provider failure: the agent loop appends an assistant
+ * message with `stopReason: "error"` and an `errorMessage`, then ends the turn
+ * normally. Without this read a failed turn is indistinguishable from a quiet
+ * one, and the run reports a successful, empty completion (#889).
+ *
+ * Keyed on the *last* assistant message rather than any errored one in the
+ * history: Pi removes a retried error from agent state before retrying, so a
+ * message still in last position is one the retry budget did not rescue. A
+ * hard abort and a user stop both yield `stopReason: "aborted"`, which is a
+ * terminal outcome the run already reports through its own channel.
+ */
+function failIfProviderErrored(session: AgentSession): void {
+  const failure = readTurnFailure(session);
+  if (failure) throw new Error(failure);
+}
+
+/** The provider's error on the last turn, or undefined when it did not error. */
+function readTurnFailure(session: AgentSession): string | undefined {
+  for (let i = session.messages.length - 1; i >= 0; i--) {
+    const msg = session.messages[i];
+    if (msg.role !== "assistant") continue;
+    if (msg.stopReason !== "error") return undefined;
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- || intentional: an empty errorMessage is as uninformative as an absent one, and ?? would pass it through
+    return msg.errorMessage || PROVIDER_ERROR_WITHOUT_MESSAGE;
+  }
+  return undefined;
+}
 
 /**
  * Subscribe to a session and collect the last assistant message text.
