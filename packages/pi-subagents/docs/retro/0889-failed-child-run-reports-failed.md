@@ -58,3 +58,63 @@ It became preparatory Step 1 rather than inline friction in Step 5.
 - Step 2's value is in the half that stays green: today's suite passes under both the `??` and the truthiness spelling, so the `result: undefined` case must be asserted to still pass alongside the new `result: ""` case.
 - Step 4 asserts at the second call site on purpose.
   A relocated or duplicated line is as unpinned at its new site as at its old one.
+
+## Stage: Implementation — TDD (2026-09-07T17:23:21Z)
+
+### Session summary
+
+Executed all six plan steps as separate commits, plus two follow-on commits from the pre-completion review.
+The `pi-subagents` suite went from 1611 to 1628 tests (+17).
+Every predicted-unchanged file held — `src/lifecycle/subagent.ts`, `src/lifecycle/child-lifecycle.ts`, `src/lifecycle/subagent-state.ts`, `src/observation/notification.ts`, `src/observation/subagent-events-observer.ts`, `src/service/`, and `test/helpers/mock-session.ts` — which is what the throw-based design was chosen to buy.
+
+### Observations
+
+#### The plan's mutation predictions were right about direction, wrong about magnitude
+
+Step 3's mutation B (`stopReason !== "error"` → `=== "stop"`) was predicted to redden 2 tests and reddened 12.
+Both predicted cases were among them; the other 10 were existing tests whose fixtures push assistant messages carrying **no** `stopReason` at all.
+The over-kill confirmed the hazard the planning stage flagged rather than contradicting it — an absent `stopReason` really is the dominant shape in this package's fixtures, so a predicate written as "not `stop`" would have failed loudly rather than subtly.
+Mutations A (3 red) and C (1 red, the ordering pin) matched exactly.
+
+#### Two `||`-with-disable sites, both load-bearing
+
+`renderOutcomeBody` and `readTurnFailure` both needed `// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing`.
+I checked rather than assumed: removing the disable from `renderOutcomeBody` produced a real lint error, so it was not speculative.
+In both cases `??` would reintroduce the bug's exact shape — an empty string passing through a nullish guard.
+The second site (`msg.errorMessage || PROVIDER_ERROR_WITHOUT_MESSAGE`) matters because `Agent.handleRunFailure` sets `errorMessage: error.message`, which is `""` for a bare `new Error()`.
+
+#### A truncated `Edit` broke the file mid-function
+
+Step 5's first edit ended its `newText` mid-expression and silently dropped the `return textResult(...)` block, leaving an unparseable file.
+`pi-autoformat` caught it immediately with a parse error, but the lesson is the one `AGENTS.md` already records: when an edit spans a block's opening and closing, emit both ends or use `Write`.
+Repaired by reading the region and re-anchoring rather than retrying the same edit.
+
+#### Pre-completion review found a real residual and a real test gap
+
+Round 1 returned WARN with two findings, both legitimate:
+
+1. A pre-existing gap this change does not reach: `_checkCompaction`'s first-overflow branch strips the errored assistant message from `agent.state.messages` before attempting compaction and restores nothing if the compaction itself fails, so `readTurnFailure` scans past the erased turn and reports a stale-text success.
+   Filed as [#898] and dispositioned into Phase 22 as Step 19 by operator decision.
+2. The integration block added in `7851905d` drove `agent.run()`, not `agent.resume()`, so it re-verified the already-fixed run path and would have survived a revert of that commit's own change.
+   The plan's Step 4 had promised a resume-path integration assertion; commit `9d5afa25` adds it, mutation-verified (removing `failIfProviderErrored` from `resumeTurnLoop` alone turns it red with `Expected: "error"` / `Received: "completed"`).
+
+Round 2 (delta-scoped) returned WARN with one actionable item: [#898]'s body cited the wrong line range for the non-stripping second-attempt branch.
+I re-derived the range from the pinned SDK myself rather than transcribing the reviewer's correction, fixed the body, and recorded the correction in a comment.
+That re-read also surfaced a lead the first pass missed — `record-observer.ts` already subscribes to `compaction_end` but gates on `!event.aborted && event.result`, so it ignores exactly the failure case Step 19 needs.
+Logged in the issue as a lead, not a finding, since whether it fires on the stripping path is unverified.
+
+#### Reviewer warnings
+
+Round 2 WARN, both items closed or accepted:
+
+- [#898] line citation — **fixed** (body corrected, correction commented).
+- The resume test's base `vi.fn()` implementation duplicates its first `mockImplementationOnce` and is unreachable.
+  The reviewer confirmed it harmless (a third `prompt` call would reuse the first answer rather than fail loudly) and required no action.
+  Left as reviewed rather than amended, to avoid landing an unreviewed change in a file the round had just cleared.
+
+#### For the shipping session
+
+- `**Release:** ship independently` — Phase 22 Step 17, four `fix:` commits, all naming user-observable outcomes.
+- [#898] is filed and dispositioned; it is **not** closed by this work and must not be swept into #889's close comment.
+
+[#898]: https://github.com/gotgenes/pi-packages/issues/898
