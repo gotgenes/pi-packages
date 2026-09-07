@@ -6,8 +6,9 @@
  * child, which continues with its context intact.
  *
  * The tool records; it does not announce. Every result carrier already renders
- * a pending question with the exact resume call that answers it, so announcing
- * here would tell the parent the same thing twice.
+ * a pending question — with the exact resume call while the record is still
+ * resumable, and why it is not once `Subagent.resumeRefusal` says otherwise —
+ * so announcing here would tell the parent the same thing twice.
  *
  * Lives in `session/` rather than `tools/` because it is installed on the
  * child's session by the assembly factory, where every `tools/` module is
