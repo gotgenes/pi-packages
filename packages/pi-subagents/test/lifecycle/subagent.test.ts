@@ -6,7 +6,7 @@ import { SubagentState, type SubagentStateInit } from "#src/lifecycle/subagent-s
 import type { WorkspacePrepareContext, WorkspaceProvider } from "#src/lifecycle/workspace";
 import type { RunConfig } from "#src/runtime";
 import type { CompactionInfo, SubagentType } from "#src/types";
-import { makeStubExecution } from "#test/helpers/make-subagent";
+import { createTestSubagent, makeStubExecution } from "#test/helpers/make-subagent";
 import { makeWorkspace, makeWorkspaceProvider } from "#test/helpers/make-workspace";
 import { createMockSession, createSubagentSessionStub, emitResumeUsageAndCompaction, toSubagentSession } from "#test/helpers/mock-session";
 import { STUB_SNAPSHOT } from "#test/helpers/stub-ctx";
@@ -750,6 +750,44 @@ describe("Subagent — workspaceDisposed", () => {
 		const agent = createRunnableAgent({ workspaceProvider: makeWorkspaceProvider(undefined) });
 		await agent.run();
 		expect(agent.workspaceDisposed).toBe(false);
+	});
+});
+
+describe("Subagent — resumeRefusal", () => {
+	it("refuses nothing for an agent whose session is live and workspace intact", async () => {
+		const agent = createRunnableAgent();
+		await agent.run();
+		expect(agent.resumeRefusal).toBeUndefined();
+	});
+
+	it("reports no-session for an agent that never got one", () => {
+		expect(makeSubagent().resumeRefusal).toBe("no-session");
+	});
+
+	it("reports session-released once the retention sweep has freed the session", async () => {
+		const agent = createRunnableAgent();
+		await agent.run();
+		await agent.releaseSession();
+		expect(agent.resumeRefusal).toBe("session-released");
+	});
+
+	it("reports workspace-disposed while the session is still live", async () => {
+		const agent = createRunnableAgent({ workspaceProvider: makeWorkspaceProvider(makeWorkspace("/ws/dir")) });
+		await agent.run();
+		expect(agent.isSessionReady()).toBe(true);
+		expect(agent.resumeRefusal).toBe("workspace-disposed");
+	});
+
+	it("prefers the released session over the workspace when both are gone", async () => {
+		const agent = createRunnableAgent({ workspaceProvider: makeWorkspaceProvider(makeWorkspace("/ws/dir")) });
+		await agent.run();
+		await agent.releaseSession();
+		expect(agent.workspaceDisposed).toBe(true);
+		expect(agent.resumeRefusal).toBe("session-released");
+	});
+
+	it("leaves a session-ready test fixture resumable", () => {
+		expect(createTestSubagent({ sessionReady: true }).resumeRefusal).toBeUndefined();
 	});
 });
 

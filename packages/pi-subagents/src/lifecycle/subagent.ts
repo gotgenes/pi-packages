@@ -46,6 +46,16 @@ export interface SubagentLifecycleObserver {
 export type { SubagentStatus } from "#src/lifecycle/subagent-state";
 
 /**
+ * Why a resume of an agent would be refused.
+ *
+ * One vocabulary for a fact three record-level conditions used to answer
+ * separately: the resume door decided it from `isSessionReady()`,
+ * `sessionReleased`, and `workspaceDisposed`, while the result carriers never
+ * consulted any of them and advertised the resume regardless.
+ */
+export type ResumeRefusal = "no-session" | "session-released" | "workspace-disposed";
+
+/**
  * The result of a steer attempt. `Subagent.steer` owns the non-running
  * rejection rule and reports it here, so coordinators switch on the outcome
  * instead of pre-checking status (tell by id, with outcomes).
@@ -190,6 +200,25 @@ export class Subagent {
 	/** Returns true when a SubagentSession is available (session is ready). */
 	isSessionReady(): boolean {
 		return this.subagentSession != null;
+	}
+
+	/**
+	 * Why a resume of this agent would be refused, or undefined when one would be
+	 * accepted.
+	 *
+	 * The conditions are checked in the order the resume door checks them, so a
+	 * record whose session was released *and* whose workspace is gone reports the
+	 * session — the door's message for it names the retention window, which is
+	 * the fact that explains both.
+	 *
+	 * A getter rather than a predicate method because the result carriers read it
+	 * as a field: `OutcomeAddenda` and `AgentReport` both declare it, and a live
+	 * record satisfies them structurally only if it is a property.
+	 */
+	get resumeRefusal(): ResumeRefusal | undefined {
+		if (!this.isSessionReady()) return this._sessionReleased ? "session-released" : "no-session";
+		if (this.workspaceDisposed) return "workspace-disposed";
+		return undefined;
 	}
 
 	/**
