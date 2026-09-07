@@ -403,7 +403,7 @@ export class NotificationManager implements NotificationSystem {
       // Where the work went leads, so the parent reads it before the pointers.
       renderWorkspaceNotice(record.workspaceNotice) +
       `${transcriptLine}\nCall get_subagent_result("${record.id}") to collect the full result.` +
-      renderQuestionAffordance(record.id, record.pendingQuestion)
+      renderQuestionAffordance(record.id, record.pendingQuestion, record.resumeRefusal)
     );
   }
 }

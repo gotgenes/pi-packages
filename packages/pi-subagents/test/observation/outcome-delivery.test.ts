@@ -70,23 +70,73 @@ describe("status vocabulary", () => {
 });
 
 describe("renderQuestionAffordance", () => {
-	it("names the exact resume call that answers the question", () => {
-		expect(renderQuestionAffordance("b15f500f-314b-49b", "Which config?")).toBe(
-			"\n\nThis agent is waiting on an answer:\n\n  Which config?\n\n" +
-				'Answer by calling subagent with resume: "b15f500f-314b-49b" and your answer as the prompt.',
-		);
+	describe("when a resume would be accepted", () => {
+		it("names the exact resume call that answers the question", () => {
+			expect(renderQuestionAffordance("b15f500f-314b-49b", "Which config?", undefined)).toBe(
+				"\n\nThis agent is waiting on an answer:\n\n  Which config?\n\n" +
+					'Answer by calling subagent with resume: "b15f500f-314b-49b" and your answer as the prompt.',
+			);
+		});
+
+		it("indents every line of a multi-line question", () => {
+			expect(renderQuestionAffordance("agent-1", "A or B?\nOr C?", undefined)).toContain(
+				"  A or B?\n  Or C?",
+			);
+		});
+	});
+
+	describe("when a resume would be refused", () => {
+		it("reports a released session without naming a resume", () => {
+			expect(renderQuestionAffordance("agent-7", "Which config?", "session-released")).toBe(
+				"\n\nThis agent ended its run with a question that can no longer be answered \u2014 " +
+					"its session was released after its retention window:\n\n  Which config?\n\n" +
+					"Spawn a new agent with the context it needs; this one cannot be resumed.",
+			);
+		});
+
+		it("names a removed workspace as the reason", () => {
+			expect(renderQuestionAffordance("agent-7", "Which config?", "workspace-disposed")).toContain(
+				"it ran in an isolated workspace that has since been removed",
+			);
+		});
+
+		it("names a missing session as the reason", () => {
+			expect(renderQuestionAffordance("agent-7", "Which config?", "no-session")).toContain(
+				"it has no active session",
+			);
+		});
+
+		it("still reports the question itself", () => {
+			expect(renderQuestionAffordance("agent-7", "Which config?", "session-released")).toContain(
+				"  Which config?",
+			);
+		});
+
+		it("indents every line of a multi-line question", () => {
+			expect(renderQuestionAffordance("agent-1", "A or B?\nOr C?", "no-session")).toContain(
+				"  A or B?\n  Or C?",
+			);
+		});
+
+		it("names no resume call for any reason", () => {
+			for (const refusal of ["no-session", "session-released", "workspace-disposed"] as const) {
+				expect(renderQuestionAffordance("agent-7", "Which config?", refusal)).not.toContain(
+					"resume:",
+				);
+			}
+		});
 	});
 
 	it("renders nothing when the child asked nothing", () => {
-		expect(renderQuestionAffordance("agent-1", undefined)).toBe("");
+		expect(renderQuestionAffordance("agent-1", undefined, undefined)).toBe("");
 	});
 
 	it("renders nothing for an empty question", () => {
-		expect(renderQuestionAffordance("agent-1", "")).toBe("");
+		expect(renderQuestionAffordance("agent-1", "", undefined)).toBe("");
 	});
 
-	it("indents every line of a multi-line question", () => {
-		expect(renderQuestionAffordance("agent-1", "A or B?\nOr C?")).toContain("  A or B?\n  Or C?");
+	it("renders nothing for an unanswerable agent that asked nothing", () => {
+		expect(renderQuestionAffordance("agent-1", undefined, "session-released")).toBe("");
 	});
 });
 
@@ -141,7 +191,7 @@ describe("renderOutcomeBody", () => {
 
 describe("renderOutcomeAddenda", () => {
 	function makeAddenda(overrides: Partial<OutcomeAddenda> = {}): OutcomeAddenda {
-		return { id: "agent-1", ...overrides };
+		return { id: "agent-1", resumeRefusal: undefined, ...overrides };
 	}
 
 	it("renders nothing when the run produced no addenda", () => {
@@ -167,8 +217,17 @@ describe("renderOutcomeAddenda", () => {
 
 		expect(renderOutcomeAddenda(addenda)).toBe(
 			renderWorkspaceNotice(addenda.workspaceNotice) +
-				renderQuestionAffordance(addenda.id, addenda.pendingQuestion),
+				renderQuestionAffordance(addenda.id, addenda.pendingQuestion, addenda.resumeRefusal),
 		);
+	});
+
+	it("passes the refusal through, so the tail does not name a refused resume", () => {
+		const rendered = renderOutcomeAddenda(
+			makeAddenda({ pendingQuestion: "Which config?", resumeRefusal: "session-released" }),
+		);
+
+		expect(rendered).toContain("Which config?");
+		expect(rendered).not.toContain("resume:");
 	});
 
 	it("leads with what the agent flagged along the way", () => {

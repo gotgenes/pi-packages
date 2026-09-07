@@ -22,6 +22,7 @@ function makeReport(overrides: Partial<AgentReport> = {}): AgentReport {
 		stoppedWhileQueued: false,
 		conversation: undefined,
 		transcriptPath: undefined,
+		resumeRefusal: undefined,
 		...overrides,
 	};
 }
@@ -107,6 +108,21 @@ describe("formatAgentReport", () => {
 
 	it("adds no affordance when the agent asked nothing", () => {
 		expect(formatAgentReport(makeReport())).not.toContain("waiting on an answer");
+	});
+
+	it("reports a question the released session can no longer answer, without a resume call", () => {
+		const text = formatAgentReport(
+			makeReport({
+				id: "agent-7",
+				pendingQuestion: "Which config?",
+				resumeRefusal: "session-released",
+			}),
+		);
+
+		expect(text).toContain("can no longer be answered");
+		expect(text).toContain("its session was released after its retention window");
+		expect(text).toContain("Which config?");
+		expect(text).not.toContain("resume:");
 	});
 
 	it("reports the updates the agent sent while the parent waited", () => {

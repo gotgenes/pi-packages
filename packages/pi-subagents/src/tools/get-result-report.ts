@@ -7,7 +7,7 @@
  * result-renderer.ts pattern used by the subagent tool's TUI renderer.
  */
 
-import type { SubagentStatus } from "#src/lifecycle/subagent";
+import type { ResumeRefusal, SubagentStatus } from "#src/lifecycle/subagent";
 import {
 	renderOutcomeAddenda,
 	renderOutcomeBody,
@@ -39,6 +39,11 @@ export interface AgentReport {
 	runUpdates?: readonly string[];
 	/** The question the agent ended its turn with, when it declared one. */
 	pendingQuestion?: string;
+	/**
+	 * Why a resume would be refused; undefined when one would be accepted.
+	 * Required, for the reason `OutcomeAddenda` gives.
+	 */
+	resumeRefusal: ResumeRefusal | undefined;
 	/** Where a teardown with no result text to carry it saved the agent's work. */
 	workspaceNotice?: string;
 }

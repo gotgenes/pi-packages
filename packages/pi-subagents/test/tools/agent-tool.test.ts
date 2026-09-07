@@ -232,6 +232,33 @@ describe("AgentTool — resume path", () => {
 		expect(result.content[0].text).toContain('resume: "agent-9"');
 	});
 
+	it("reports a resumed child's question without a resume call once its session is gone", async () => {
+		const deps = createToolDeps();
+		const resumeRecord = createTestSubagent({ sessionReady: true });
+		deps.manager.getRecord = vi.fn().mockReturnValue(resumeRecord);
+		const answered = createTestSubagent({
+			id: "agent-9",
+			result: "Thanks.",
+			pendingQuestion: "And the fallback?",
+			sessionReady: true,
+		});
+		await answered.releaseSession();
+		deps.manager.resume = vi.fn().mockResolvedValue(answered);
+
+		const result = await execute(deps, {
+			prompt: "continue",
+			description: "resume",
+			subagent_type: "general-purpose",
+			resume: "agent-1",
+		});
+
+		expect(result.content[0].text).toContain("And the fallback?");
+		expect(result.content[0].text).toContain(
+			"its session was released after its retention window",
+		);
+		expect(result.content[0].text).not.toContain("resume:");
+	});
+
 	it("reports the updates a resumed child sent while the parent was blocked", async () => {
 		const deps = createToolDeps();
 		const resumeRecord = createTestSubagent();

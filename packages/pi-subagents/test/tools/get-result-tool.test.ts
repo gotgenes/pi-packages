@@ -127,6 +127,35 @@ describe("GetResultTool", () => {
 		expect(result.content[0].text).toContain("The bug is in the retry wrapper.");
 	});
 
+	describe("resume affordance", () => {
+		it("names the resume call while the agent is still resumable", async () => {
+			const records = new Map([
+				["agent-1", createTestSubagent({ pendingQuestion: "Which config?", sessionReady: true })],
+			]);
+
+			const result = await execute(makeManager(records), { agent_id: "agent-1" });
+
+			expect(result.content[0].text).toContain('resume: "agent-1"');
+		});
+
+		it("forwards the record's refusal, so a swept record names no resume", async () => {
+			const released = createTestSubagent({
+				pendingQuestion: "Which config?",
+				sessionReady: true,
+			});
+			await released.releaseSession();
+			const records = new Map([["agent-1", released]]);
+
+			const result = await execute(makeManager(records), { agent_id: "agent-1" });
+
+			expect(result.content[0].text).toContain("Which config?");
+			expect(result.content[0].text).toContain(
+				"its session was released after its retention window",
+			);
+			expect(result.content[0].text).not.toContain("resume:");
+		});
+	});
+
 	it("shows running message for in-progress agent", async () => {
 		const records = new Map([["agent-1", createTestSubagent({ status: "running", completedAt: undefined })]]);
 		const result = await execute(makeManager(records), { agent_id: "agent-1" });

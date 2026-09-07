@@ -78,6 +78,7 @@ export class GetResultTool {
 			transcriptPath: record.outputFile,
 			runUpdates: record.runUpdates,
 			pendingQuestion: record.pendingQuestion,
+			resumeRefusal: record.resumeRefusal,
 			workspaceNotice: record.workspaceNotice,
 		};
 	}

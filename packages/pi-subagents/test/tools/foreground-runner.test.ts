@@ -51,6 +51,26 @@ describe("runForeground", () => {
 		expect(result.content[0].text).toContain('resume: "agent-5"');
 	});
 
+	it("reports a question a released session cannot answer, without naming a resume", async () => {
+		const { manager } = createToolDeps();
+		const released = createTestSubagent({
+			id: "agent-5",
+			result: "Mapped them.",
+			pendingQuestion: "Which config?",
+			sessionReady: true,
+		});
+		await released.releaseSession();
+		manager.spawnAndWait = vi.fn().mockResolvedValue(released);
+
+		const result = await runForeground(manager, makeParams(), undefined, undefined);
+
+		expect(result.content[0].text).toContain("Which config?");
+		expect(result.content[0].text).toContain(
+			"its session was released after its retention window",
+		);
+		expect(result.content[0].text).not.toContain("resume:");
+	});
+
 	it("adds no affordance when the agent asked nothing", async () => {
 		const { manager } = createToolDeps();
 		const result = await runForeground(manager, makeParams(), undefined, undefined);

@@ -20,11 +20,14 @@
  *
  * The updates, the notice, and the ask-back affordance are appended in one
  * fixed order by `renderOutcomeAddenda`, so the three carriers that compose
- * them cannot disagree about what follows the body.
+ * them cannot disagree about what follows the body. The affordance is the one
+ * addendum that asks the parent to call back, so it is also the one that has
+ * to know whether that call would be accepted.
  *
  * Pure functions only: no SDK types, no record types, no side effects.
  */
 
+import type { ResumeRefusal } from "#src/lifecycle/subagent";
 import type { SubagentStatus } from "#src/lifecycle/subagent-state";
 
 /**
@@ -50,6 +53,21 @@ const STATUS_MEANINGS: Partial<Record<SubagentStatus, StatusMeaning>> = {
 	// "user request" rather than "stopped by user": the detail must stand on its
 	// own after the label, which both presentations already supply.
 	stopped: { label: "Stopped", detail: "user request" },
+};
+
+/**
+ * Why a resume is unavailable, worded as a subordinate clause.
+ *
+ * The resume door words the same three facts as standalone refusals; a clause
+ * that continues someone else's sentence is different grammar, not a different
+ * fact — the split `STATUS_MEANINGS` makes between `label` and `detail`.
+ */
+const RESUME_REFUSAL_CLAUSES: Record<ResumeRefusal, string> = {
+	// Deliberately not "...no session to resume": the clause is followed by a
+	// colon, and "resume:" is the exact token the parent must not see here.
+	"no-session": "it has no active session",
+	"session-released": "its session was released after its retention window",
+	"workspace-disposed": "it ran in an isolated workspace that has since been removed",
 };
 
 /**
@@ -88,18 +106,33 @@ export interface OutcomeBody {
 }
 
 /**
- * The trailing affordance for a child that ended its turn with a question,
- * naming the exact call that answers it. Empty when the child asked nothing.
+ * The trailing affordance for a child that ended its turn with a question.
+ * Empty when the child asked nothing.
  *
- * Takes the id and question rather than a record: the two facts it needs, so a
- * carrier holding any shape can call it.
+ * Names the exact call that answers it when a resume would be accepted, and
+ * why it cannot be answered when one would be refused — the parent is never
+ * told to make a call this extension declines.
+ *
+ * Takes the id, question, and refusal rather than a record: the three facts it
+ * needs, so a carrier holding any shape can call it.
  */
-export function renderQuestionAffordance(agentId: string, question: string | undefined): string {
+export function renderQuestionAffordance(
+	agentId: string,
+	question: string | undefined,
+	refusal: ResumeRefusal | undefined,
+): string {
 	if (!question) return "";
 	const quoted = question
 		.split("\n")
 		.map((line) => `  ${line}`)
 		.join("\n");
+	if (refusal) {
+		return (
+			"\n\nThis agent ended its run with a question that can no longer be answered \u2014 " +
+			`${RESUME_REFUSAL_CLAUSES[refusal]}:\n\n${quoted}\n\n` +
+			"Spawn a new agent with the context it needs; this one cannot be resumed."
+		);
+	}
 	return (
 		`\n\nThis agent is waiting on an answer:\n\n${quoted}\n\n` +
 		`Answer by calling subagent with resume: "${agentId}" and your answer as the prompt.`
@@ -130,6 +163,14 @@ export interface OutcomeAddenda {
 	runUpdates?: readonly string[];
 	workspaceNotice?: string;
 	pendingQuestion?: string;
+	/**
+	 * Why a resume would be refused; undefined when one would be accepted.
+	 *
+	 * Required rather than optional so a carrier that forgets it fails to
+	 * compile. An omitted optional would silently mean "resumable", which is the
+	 * fail-open this field exists to close.
+	 */
+	resumeRefusal: ResumeRefusal | undefined;
 }
 
 /** The addenda tail every outcome carrier appends, in one order. */
@@ -139,7 +180,7 @@ export function renderOutcomeAddenda(outcome: OutcomeAddenda): string {
 		// call to action that follows both.
 		renderRunUpdates(outcome.runUpdates) +
 		renderWorkspaceNotice(outcome.workspaceNotice) +
-		renderQuestionAffordance(outcome.id, outcome.pendingQuestion)
+		renderQuestionAffordance(outcome.id, outcome.pendingQuestion, outcome.resumeRefusal)
 	);
 }
 

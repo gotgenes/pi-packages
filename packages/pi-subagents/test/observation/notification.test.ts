@@ -7,7 +7,9 @@ import {
   formatWorkspaceNotice,
   NotificationManager,
 } from "#src/observation/notification";
-import { createTestSubagent } from "#test/helpers/make-subagent";
+import { createTestSubagent, makeStubExecution } from "#test/helpers/make-subagent";
+import { makeWorkspace, makeWorkspaceProvider } from "#test/helpers/make-workspace";
+import { createSubagentSessionStub, toSubagentSession } from "#test/helpers/mock-session";
 
 /** Options a notification carrier hands `pi.sendMessage`. */
 interface SendOptions {
@@ -272,6 +274,39 @@ describe("NotificationManager", () => {
     expect(content).toContain("This agent is waiting on an answer:");
     expect(content).toContain("Which config?");
     expect(content).toContain('resume: "agent-3"');
+  });
+
+  it("reports a question the torn-down workspace can no longer answer, without a resume call", async () => {
+    // An aborted child keeps its question but does not hold its workspace, so
+    // the disposal is driven by the production path rather than seeded state.
+    const stub = createSubagentSessionStub();
+    let askParent: ((question: string) => void) | undefined;
+    stub.runTurnLoop.mockImplementation(() => {
+      askParent?.("Which config?");
+      return Promise.resolve({ responseText: "Got partway.", aborted: true, steered: false });
+    });
+    const disposed = createTestSubagent({
+      id: "agent-3",
+      execution: makeStubExecution({
+        createSubagentSession: (params) => {
+          askParent = params.askParent;
+          return Promise.resolve(toSubagentSession(stub));
+        },
+        getWorkspaceProvider: () => makeWorkspaceProvider(makeWorkspace("/ws/dir")),
+      }),
+    });
+    await disposed.run();
+    expect(disposed.pendingQuestion).toBe("Which config?");
+    expect(disposed.workspaceDisposed).toBe(true);
+    const args = makeArgs();
+    const system = makeManager(args);
+
+    system.sendCompletion(disposed);
+
+    const content = (args.sendMessage.mock.calls[0][0] as { content: string }).content;
+    expect(content).toContain("Which config?");
+    expect(content).toContain("it ran in an isolated workspace that has since been removed");
+    expect(content).not.toContain("resume:");
   });
 
   it("names where a teardown saved the agent's work", () => {
