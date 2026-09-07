@@ -120,7 +120,7 @@ Check in both directions:
 - READMEs — check the root `README.md` and any package `README.md` files that describe affected modules.
   When a change removes or renames a slash command or user-facing feature, grep the package `README.md` for the command/feature name — a README documents commands, not module filenames, so a module-name match misses it (Refs #470).
 - Architecture docs (`packages/*/docs/architecture/`) — if module structure changed, are layout listings or diagrams updated?
-- Roadmap status (`packages/*/docs/architecture/`) — if the issue completes a numbered step, do **both** the step heading and its Mermaid diagram node carry `✅` (a `Landed:` line alone is not enough)?
+- Roadmap status (`packages/*/docs/architecture/`) — if the issue completes a roadmap step, do **both** the step heading and its Mermaid diagram node carry `✅` (a `Landed:` line alone is not enough)?
   The phase status row flips only when every step is done — verify it against the actual step count.
 
 #### Reverse — does existing content need condensing or removal?

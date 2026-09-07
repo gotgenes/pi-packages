@@ -55,8 +55,9 @@ It is a workflow change for the operator only in that the next `/plan-improvemen
   The two are independent: the proposed format was checked clean under 0.2.24 **and** 0.2.68 (see Test Impact Analysis).
 - Renaming the prompts' own `## Step 1`–`## Step 10` workflow headings.
   `plan-improvements.md`, `finish-phase.md`, `retro.md`, and the agent files all number their own procedures, and those ordinals are unrelated to roadmap steps.
-- Any change to `.pi/agents/pre-completion-reviewer.md`, `.pi/prompts/ship.md`, `.pi/prompts/triage-backlog.md`, or `AGENTS.md`.
+- Any change to `.pi/prompts/ship.md`, `.pi/prompts/triage-backlog.md`, or `AGENTS.md`.
   Each refers to a roadmap step without parsing its shape (see "Files deliberately not changed").
+  `.pi/agents/pre-completion-reviewer.md` is likewise unparsed, but one word of it describes the very gate this change re-keys and is corrected (see "Files deliberately not changed").
 
 ## Background
 
@@ -292,10 +293,10 @@ Each is a predicted-unchanged file, with the claim it rests on:
 | File                                               | Claim                                                                                                                                                                                                          |
 | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `AGENTS.md`                                        | Its `Phase 14 Step 10` / `Phase 22 Step 13` citations are historical, and both phases keep their ordinals. Its `roadmap-fit` and release-batching paragraphs (L226, L230) describe mechanisms, not step shape. |
-| `.pi/agents/pre-completion-reviewer.md`            | L195/L280/L286 say "an earlier, already-completed roadmap step" — no ordinal parsed.                                                                                                                           |
+| `.pi/agents/pre-completion-reviewer.md`            | L195/L280/L286 say "an earlier, already-completed roadmap step" — no ordinal parsed. L123 says "completes a numbered step" about the gate this change re-keys, so that one word is corrected.                  |
 | `.pi/prompts/ship.md`                              | L262 says "the **last** step of a roadmap phase" — correct under both schemes.                                                                                                                                 |
 | `.pi/prompts/triage-backlog.md`                    | L56 reads the `## Improvement roadmap` section heading, which does not change.                                                                                                                                 |
-| `.pi/skills/package-pi-permission-system/SKILL.md` | L21 says "completes a numbered roadmap step"; operator scoped the change to the eight files above. Recorded as a known residual.                                                                               |
+| `.pi/skills/package-pi-permission-system/SKILL.md` | Two instances — L19 ("a flat numbered step list") and L21 ("completes a numbered roadmap step"). Operator scoped the change to the eight files above; both recorded as known residuals.                        |
 | `packages/*/docs/architecture/architecture.md`     | Both live phases keep ordinals through their close; that is the premise of the dual-shape detection.                                                                                                           |
 | `.pi/skills/mermaid/SKILL.md`                      | Its `S1["✅ Step 1 - Spike (#446)"]` example illustrates label quoting, which the new node form also requires.                                                                                                 |
 
@@ -387,6 +388,7 @@ The set must land together before the next `/plan-improvements` run — an inter
 6. **Residual vocabulary.**
    Edit `.pi/prompts/plan-issue.md` L188 and `.pi/prompts/retro.md` L218.
    Verify: `grep -rn 'numbered roadmap step\|incomplete numbered step' .pi/` returns only `.pi/skills/package-pi-permission-system/SKILL.md` L21, the recorded residual.
+   Widen to the bare phrase `numbered step` as well — the narrower pattern misses `.pi/agents/pre-completion-reviewer.md` L123 and `.pi/skills/package-pi-permission-system/SKILL.md` L19.
    Confirm `retro.md`'s ten `## Step N` workflow headings are intact (`grep -c '^## Step ' == 10`).
    Commit: `docs: drop ordinal vocabulary from roadmap step references`.
 
@@ -421,9 +423,12 @@ None blocking.
 
 Two items are recorded rather than resolved:
 
-`.pi/skills/package-pi-permission-system/SKILL.md` L21 keeps the phrase "a numbered roadmap step".
-It is package-local, refers to a phase that keeps its ordinals, and the operator scoped this change to the eight files above.
-It becomes wrong only when pi-permission-system opens its first issue-identity phase, which is a natural moment to fix it in place.
+`.pi/skills/package-pi-permission-system/SKILL.md` keeps ordinal vocabulary in two places — L19's "a flat numbered step list" and L21's "a numbered roadmap step".
+Both are package-local, both refer to a phase that keeps its ordinals, and the operator scoped this change to the eight files above.
+They become wrong only when pi-permission-system opens its first issue-identity phase, which is a natural moment to fix them in place.
+
+The issue-keyed `✅` gate can report `1` rather than `0` for an incomplete step when a **completed** upstream node shares its Mermaid arrow line: `S17["✅ … (#889)"] --> S19["Step 19 (#898)…"]` yields 1 for `#898`.
+The gate asserts exactly 2, so an incomplete step is still correctly refused, and the ordinal-keyed predecessor had the identical property — this is pre-existing behavior rather than something the re-keying introduces.
 
 [#894] asks whether the working sequence should be *derived* from each step's `Priority` and hard dependencies rather than curated.
 Its own body notes it is worth re-examining once this format lands — the format may make it unnecessary, or reshape what the script should do.
