@@ -1202,7 +1202,7 @@ Neither door refuses a resume of a **running** agent at all ([#896]): `resetForR
 
 Release: independent
 
-#### Step 17: Report a failed child run as failed ([#889])
+#### ✅ Step 17: Report a failed child run as failed ([#889])
 
 **Cause:** `runTurnLoop` calls `lifecycle.completed(...)` unconditionally once `session.prompt()` resolves, and Pi does not throw on a provider failure — `_handlePostAgentRun` records an assistant message with `stopReason: "error"` and an `errorMessage`, then ends the turn normally.
 Neither field is read anywhere in `src/`, so `record.status` never becomes `error` and the `Agent failed:` branch is unreachable for this class of failure.
@@ -1215,6 +1215,12 @@ A second fail-open of the same shape masks it: `renderOutcomeBody` guards with `
 - **Outcome:** a child turn ending in `stopReason: "error"` is reported as a failed run carrying its error text, and an empty result renders `No output.` in every carrier — pinned by a test for the errored turn and one for the empty-string render, which today's `undefined`-only test does not cover.
 - **Commit type:** `fix:`.
 - **Impact 4 / Risk 2 / Priority 16.**
+
+Landed: the failed edge **throws** rather than reporting a distinct outcome, joining the path workspace-prepare and session-factory failures already take into `failRun`/`failResume`.
+`readTurnFailure` reads the last assistant message's stop reason and `failIfProviderErrored` throws on `"error"`, called from both `runTurnLoop` (before the `completed` emit) and `resumeTurnLoop`.
+So `src/lifecycle/subagent.ts` needed no change, `resumeTurnLoop` kept its `Promise<string>` signature, and `src/lifecycle/child-lifecycle.ts` was left untouched: a failed run publishes no `completed` event, which is what a session-factory failure already did.
+`getLastAssistantText` was examined and deliberately left alone — it skips empty-text messages to find the child's last words, and the provider's failure message is exactly a message with no text, so reusing its predicate would walk past the erroring message to an unrelated earlier one.
+The errored turn maps onto the existing `error` status with `errorMessage` verbatim and uncapped; the failed foreground return additionally names the transcript, which is the parent's only route to the child's partial work.
 
 Release: independent
 
@@ -1252,7 +1258,7 @@ flowchart TD
     S10 --> S15["✅ Step 15 (#878)<br/>Resume affordance honesty"]
     S11 --> S15
     S14 --> S16["Step 16 (#885)<br/>Service resume"]
-    S17["Step 17 (#889)<br/>Failed run reports failed"]
+    S17["✅ Step 17 (#889)<br/>Failed run reports failed"]
     S5 -.informs.-> S18["Step 18 (#890)<br/>Inherited-region guarantee"]
 ```
 
