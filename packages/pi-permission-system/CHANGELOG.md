@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [31.1.2](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v31.1.1...pi-permission-system-v31.1.2) (2026-09-07)
+
+
+### Miscellaneous Chores
+
+* **pi-permission-system:** add path false-positive measurement script ([464c6a1](https://github.com/gotgenes/pi-packages/commit/464c6a10a2795cbae5fac4e518d0b60ed90c7eaf)), closes [#863](https://github.com/gotgenes/pi-packages/issues/863)
+
 ## [31.1.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v31.1.0...pi-permission-system-v31.1.1) (2026-09-05)
 
 
