@@ -1220,6 +1220,7 @@ A second fail-open of the same shape masks it: `renderOutcomeBody` guards with `
 
 Landed: the failed edge **throws** rather than reporting a distinct outcome, joining the path workspace-prepare and session-factory failures already take into `failRun`/`failResume`.
 `readTurnFailure` reads the last assistant message's stop reason and `failIfProviderErrored` throws on `"error"`, called from both `runTurnLoop` (before the `completed` emit) and `resumeTurnLoop`.
+Step 19 later replaced that backward scan over `session.messages` with a live `message_end` recorder; the throw, both call sites, and the `"error"` predicate are unchanged.
 So `src/lifecycle/subagent.ts` needed no change, `resumeTurnLoop` kept its `Promise<string>` signature, and `src/lifecycle/child-lifecycle.ts` was left untouched: a failed run publishes no `completed` event, which is what a session-factory failure already did.
 `getLastAssistantText` was examined and deliberately left alone — it skips empty-text messages to find the child's last words, and the provider's failure message is exactly a message with no text, so reusing its predicate would walk past the erroring message to an unrelated earlier one.
 The errored turn maps onto the existing `error` status with `errorMessage` verbatim and uncapped; the failed foreground return additionally names the transcript, which is the parent's only route to the child's partial work.
@@ -1242,7 +1243,7 @@ The conflict is arithmetic rather than a defect in either package: a byte-identi
 
 Release: independent
 
-#### Step 19: Report a run whose failed compaction erased the turn error ([#898])
+#### ✅ Step 19: Report a run whose failed compaction erased the turn error ([#898])
 
 **Cause:** Step 17 decides a run failed by reading the last assistant message's stop reason, but `_checkCompaction`'s first-overflow branch strips that message from `agent.state.messages` before attempting compaction, and restores nothing when the compaction attempt itself fails.
 `AgentSession.messages` is that array by reference, so the failure read scans past the erased turn to an earlier assistant message and reports success — stale text from a prior turn, or `""` on the first.
@@ -1255,6 +1256,16 @@ The second overflow attempt does not strip, so it is the first attempt's own fai
 - **Outcome:** a run whose compaction attempt failed reports `error` rather than a stale-text success, pinned by a test driving the strip-then-fail sequence.
 - **Commit type:** `fix:`.
 - **Impact 3 / Risk 3 / Priority 9.**
+
+Landed: neither candidate event carries enough, which is what displaced the event-driven design the `Target:` anticipated.
+`_runAutoCompaction` has six exits after the strip: three emit nothing at all (`!this.model`, an auth throw before `started`, and a falsy `preparation`), two emit only `aborted: true`, and only the summarization throw carries an `errorMessage`.
+The silent `preparation` exit is the one a child most plausibly takes — `prepareCompaction` returns `undefined` when nothing is left to summarize, which is exactly a child whose spawn prompt alone overflows on its first LLM call.
+`compaction_end` also cannot separate the stripping Case 1 from the non-stripping Case 2, since both carry `reason: "overflow"`.
+
+So the outcome is recorded from the session's own `message_end` events as they arrive — `collectTurnFailure`, a sibling of the `collectResponseText` collector already in the file — rather than reconstructed from `session.messages` afterwards.
+That covers every exit and stops the read depending on who owns `agent.state.messages`; `src/observation/record-observer.ts` was left untouched, and its `compaction_end` gate still ignores failures because a compaction that failed did not happen.
+Last-one-wins rather than latched, so a recovered auto-retry still reports success.
+The predicate is unchanged from Step 17: an unrescued truncation (`stopReason: "length"`), which Case 1 also strips, deliberately still reports as a completion, because it carries the child's real text.
 
 Release: independent
 
@@ -1276,7 +1287,7 @@ flowchart TD
     S10 --> S15["✅ Step 15 (#878)<br/>Resume affordance honesty"]
     S11 --> S15
     S14 --> S16["Step 16 (#885)<br/>Service resume"]
-    S17["✅ Step 17 (#889)<br/>Failed run reports failed"] --> S19["Step 19 (#898)<br/>Compaction-erased turn error"]
+    S17["✅ Step 17 (#889)<br/>Failed run reports failed"] --> S19["✅ Step 19 (#898)<br/>Compaction-erased turn error"]
     S5 -.informs.-> S18["Step 18 (#890)<br/>Inherited-region guarantee"]
 ```
 
