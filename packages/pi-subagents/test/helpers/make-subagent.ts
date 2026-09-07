@@ -69,10 +69,15 @@ export interface TestSubagentOptions {
 	 * no session, which is what most callers want.
 	 */
 	sessionReady?: boolean;
+	/**
+	 * Transcript path the attached session stub reports. Ignored unless
+	 * `sessionReady` is set — a record with no session has no transcript.
+	 */
+	outputFile?: string;
 }
 
 export function createTestSubagent(overrides: TestSubagentOptions = {}): Subagent {
-	const { id, type, description, isBackground, execution, toolCallId, toolUses, lifetimeUsage, compactionCount, turnCount, activeTools, responseText, runUpdates, maxTurns, sessionReady, ...stateOverrides } =
+	const { id, type, description, isBackground, execution, toolCallId, toolUses, lifetimeUsage, compactionCount, turnCount, activeTools, responseText, runUpdates, maxTurns, sessionReady, outputFile, ...stateOverrides } =
 		overrides;
 	const state = new SubagentState({
 		status: "completed",
@@ -101,6 +106,8 @@ export function createTestSubagent(overrides: TestSubagentOptions = {}): Subagen
 	});
 	// Assigned rather than passed to the constructor: run() is what sets this in
 	// production, and a passive fixture never runs.
-	if (sessionReady) agent.subagentSession = toSubagentSession(createSubagentSessionStub());
+	if (sessionReady) {
+		agent.subagentSession = toSubagentSession(createSubagentSessionStub(undefined, outputFile));
+	}
 	return agent;
 }
