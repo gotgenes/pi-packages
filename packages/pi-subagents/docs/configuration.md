@@ -163,6 +163,7 @@ Two names are always **added**, whatever an agent lists: `ask_parent` and `notif
 These are the child's channel back to the agent that delegated to it — protocol the core installs in every child, like the `<active_agent>` tag and the parent-context prefix.
 Neither reaches the filesystem, the shell, or the network, so a read-only agent stays read-only.
 `ask_parent` records a question and tells the child to end its turn, so the delegating agent can answer by resuming it; `notify_parent` sends a one-way update and returns at once.
+A question outlives the window in which it can be answered — the session is released after its retention window, and a workspace is torn down at run end unless the child completed — so once a resume would be refused, the result reports the question and the reason rather than the `resume` call.
 Both go to every agent, `notify_parent` only while [`midRunUpdates`](#persistent-settings) is on.
 Where an update lands depends on what you are doing when it is sent: while you are blocked awaiting that agent — a foreground call, a resume, or `get_subagent_result` with `wait` — it rides that call's own result, under "Updates this agent sent while it worked".
 Otherwise it arrives as its own message while the agent keeps working.

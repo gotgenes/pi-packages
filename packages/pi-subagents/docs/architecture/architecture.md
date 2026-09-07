@@ -361,7 +361,7 @@ src/
 │   ├── create-subagent-session.ts  assembly factory: session creation, spawn-tool denylist, core child-tool install, binding
 │   ├── subagent-session.ts         born-complete child session: turn loop, steer, shutdown-then-dispose teardown
 │   ├── turn-limits.ts              normalizeMaxTurns (turn-count policy)
-│   ├── subagent.ts                 owns full execution lifecycle (run, resume, abort, steer, wait-until-settled); a teardown with no result text to carry its addendum records it as a notice and announces one produced after delivery
+│   ├── subagent.ts                 owns full execution lifecycle (run, resume, abort, steer, wait-until-settled); a teardown with no result text to carry its addendum records it as a notice and announces one produced after delivery; answers why a resume would be refused (resumeRefusal), which the resume door and every result carrier read rather than re-deriving
 │   ├── subagent-state.ts           lifecycle status + metrics + result-delivery value object (transitions, accumulators, classification predicates); delivery carries a revocable carrier claim and a one-way consumption latch
 │   ├── run-listeners.ts            per-run observer-unsub and signal-detach handles
 │   ├── workspace-bracket.ts        child workspace prepare/dispose lifecycle; idempotent dispose, reports a torn-down workspace
@@ -375,7 +375,7 @@ src/
 ├── observation/                    progress tracking and notification
 │   ├── record-observer.ts          session-event stats observer
 │   ├── notification.ts             completion nudges and mid-run updates, in one arrival-ordered withheld queue (announce-only; both gated on the carrier claim, since a claimed outcome is one a blocked carrier delivers itself; withheld during the parent's agent run, flushed on agent_settled), plus workspace notices, which are announced straight through
-│   ├── outcome-delivery.ts         shared outcome rendering every result carrier composes: one status vocabulary in two presentations, body, and the addenda tail (mid-run updates, workspace notice, ask-back affordance) in one fixed order
+│   ├── outcome-delivery.ts         shared outcome rendering every result carrier composes: one status vocabulary in two presentations, body, and the addenda tail (mid-run updates, workspace notice, ask-back affordance — which names a resume only when the record says one would be accepted) in one fixed order
 │   ├── renderer.ts                 notification, mid-run-update, and workspace-notice TUI components
 │   ├── composite-subagent-observer.ts fans manager notifications out to multiple observers; enumerates every member, so an optional one it omits is dropped silently
 │   └── subagent-events-observer.ts manager lifecycle observer (event emission + persistence + notification)
@@ -1159,7 +1159,7 @@ The foreground error branch composes it directly — that return never reaches t
 
 Release: independent
 
-#### Step 15: Stop advertising a resume that will be refused ([#878])
+#### ✅ Step 15: Stop advertising a resume that will be refused ([#878])
 
 **Cause:** `renderQuestionAffordance` renders "Answer by calling subagent with resume" from `pendingQuestion` alone, and nothing clears that field when a resume stops being possible.
 `releaseSession()` leaves it set, so a swept record still advertises the call `AgentTool` refuses as a released session; Step 10's `workspaceDisposed` refusal is a second such path.
@@ -1171,6 +1171,17 @@ Release: independent
 - **Outcome:** no carrier names a resume the extension would refuse, pinned by a test for each refusal path (released session and disposed workspace).
 - **Commit type:** `fix:`.
 - **Impact 2 / Risk 2 / Priority 8.**
+
+Landed as one record predicate both sides read: `Subagent.resumeRefusal` returns `"no-session" | "session-released" | "workspace-disposed" | undefined`, composing the three facts in the order the resume door checked them, and `AgentTool`'s three inline guards became an exhaustive switch over it.
+The carriers read the same value, so a fourth refusal cannot reopen the gap: the union is what the switch is exhaustive over, and the field is **required** on `OutcomeAddenda` and `AgentReport`, which is what makes an omission a compile error rather than a silent re-advertisement.
+It is a getter rather than a predicate method for that requirement — a live record satisfies a field structurally only as a property, and two of the four carriers pass the record straight into `renderOutcomeAddenda`.
+
+The affordance names what is still possible rather than falling silent: an unanswerable child still reports its question, with a subordinate clause naming why and a pointer at spawning a new agent.
+The clauses are a `Record<ResumeRefusal, string>` beside `STATUS_MEANINGS`, echoing the door's own sentences without sharing a string with them — the same `label`/`detail` split, for the same reason.
+
+Planning found the faster of the two paths, which the issue does not name: `completeRun()` holds the workspace only for a `completed` child, while an aborted or steered one keeps its question, so that child advertised a refused resume at run end with no sweep involved.
+It is the path the nudge's test drives.
+The `no-session` clause was reworded from "it has no session to resume" to "it has no active session" because the template appends a colon to it, producing the literal `resume:` — caught by a test asserting the token's absence across all three reasons rather than by reading the string.
 
 Release: independent
 
@@ -1238,7 +1249,7 @@ flowchart TD
     S10 --> S12["✅ Step 12 (#870)<br/>Post-result addendum delivery"]
     S11 --> S14["✅ Step 14 (#872)<br/>Update gate on resume"]
     S13["✅ Step 13 (#871)<br/>Empty tool allowlist"]
-    S10 --> S15["Step 15 (#878)<br/>Resume affordance honesty"]
+    S10 --> S15["✅ Step 15 (#878)<br/>Resume affordance honesty"]
     S11 --> S15
     S14 --> S16["Step 16 (#885)<br/>Service resume"]
     S17["Step 17 (#889)<br/>Failed run reports failed"]
