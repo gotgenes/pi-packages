@@ -1692,6 +1692,47 @@ describe("Subagent — provider failures reach the record", () => {
 		expect(agent.result).toBe("the answer");
 		expect(agent.error).toBeUndefined();
 	});
+
+	// The resume half of the same path: a run that succeeded, then a resume whose
+	// provider errored. Without the resumeTurnLoop read the record would be marked
+	// completed carrying "the first answer" — the previous turn's work, presented
+	// as the answer to the resume prompt.
+	it("lands a resume's provider error on the record instead of the prior answer", async () => {
+		const session = createMockSession();
+		session.prompt = vi
+			.fn(async () => {
+				session.messages.push({
+					role: "assistant",
+					content: [{ type: "text", text: "the first answer" }],
+					stopReason: "stop",
+				});
+			})
+			.mockImplementationOnce(async () => {
+				session.messages.push({
+					role: "assistant",
+					content: [{ type: "text", text: "the first answer" }],
+					stopReason: "stop",
+				});
+			})
+			.mockImplementationOnce(async () => {
+				session.messages.push({
+					role: "assistant",
+					content: [{ type: "text", text: "" }],
+					stopReason: "error",
+					errorMessage: "503 upstream unavailable",
+				});
+			});
+		const agent = createRunnableAgent({ createSubagentSession: realSessionFactory(session) });
+
+		await agent.run();
+		expect(agent.status).toBe("completed");
+
+		await agent.resume("and now the other half");
+
+		expect(agent.status).toBe("error");
+		expect(agent.error).toBe("503 upstream unavailable");
+		expect(agent.result).toBeUndefined();
+	});
 });
 
 describe("Subagent.resume() — error handling", () => {
