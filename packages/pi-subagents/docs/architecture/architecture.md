@@ -828,6 +828,11 @@ Steps 2, 6, and 8 have design-dependent shapes and are verified by their plans' 
 - [#755], [#711], [#636], [#695], [#676], [#660] — deferred: feature/UX requests that do not gate a structural phase ([#660] overlaps [#695]/[#676]).
 - [#683] — deferred: glyph-audit polish at boy-scout scale.
 - [#876] — filed by operator request outside any phase step; out of scope for the roadmap.
+- [#889] — filed by the [#884] PR review; becomes Step 17 by operator decision.
+  A child whose provider errors is delivered to the parent as a successful, empty completion — the same delivery-boundary family as Steps 5–7, 10, 12, and 15, and peer-sized rather than a residual of either open step.
+- [#890] — filed by the [#884] PR review; becomes Step 18 by operator decision.
+  `pi-permission-system` rewrites the child's prompt inside the region [ADR-0006] keeps byte-identical with the parent's, so the shared prefix [#180] and [#400] created ends at the tool list for every child with a narrowed tool set.
+  Scheduled here rather than deferred because the interaction is measured now and the decision is this package's to make — it may amend or supersede [ADR-0006].
   Transcript-pane chrome is cosmetic UI polish, unrelated to this phase's front-door contract and delivery-boundary spine, and [ADR 0007](../decisions/0007-transcript-viewer-is-not-an-overlay.md) already settles the constraint it must respect.
 - [#849] — filed by Step 6's planning; adopted as Step 9 (Track C, after Step 6).
   The widget's teardown half: `AgentWidget.dispose()` has no call site, so `session_shutdown` leaves the 80 ms interval and the widget/status registrations live.
@@ -1183,6 +1188,38 @@ That is the same policy-above-the-choke-point shape Step 1 corrected for spawn.
 
 Release: independent
 
+#### Step 17: Report a failed child run as failed ([#889])
+
+**Cause:** `runTurnLoop` calls `lifecycle.completed(...)` unconditionally once `session.prompt()` resolves, and Pi does not throw on a provider failure — `_handlePostAgentRun` records an assistant message with `stopReason: "error"` and an `errorMessage`, then ends the turn normally.
+Neither field is read anywhere in `src/`, so `record.status` never becomes `error` and the `Agent failed:` branch is unreachable for this class of failure.
+A second fail-open of the same shape masks it: `renderOutcomeBody` guards with `??`, which passes an empty string through, so the parent receives a completion header followed by nothing and confabulates the child's work.
+
+- **Smell:** Category C (a run outcome derived from whether a call returned, when the fact it reports rests on the turn's own stop reason) plus `bug`.
+- **Target:** `src/lifecycle/subagent-session.ts` (`runTurnLoop`, `resumeTurnLoop`, and `getLastAssistantText`, which reads message text and ignores the stop reason), `src/lifecycle/child-lifecycle.ts` (whichever outcome the failed edge comes to publish), and `src/observation/outcome-delivery.ts` (`renderOutcomeBody`'s empty-string guard).
+- **Hard dependency:** none — independent of Steps 15 and 16.
+- **Design decision at plan time:** whether an errored turn maps onto the existing `error` status or a distinct one, since the child may have done real work over several turns before failing on a later one; and whether `errorMessage` reaches the parent verbatim or is summarized.
+- **Outcome:** a child turn ending in `stopReason: "error"` is reported as a failed run carrying its error text, and an empty result renders `No output.` in every carrier — pinned by a test for the errored turn and one for the empty-string render, which today's `undefined`-only test does not cover.
+- **Commit type:** `fix:`.
+- **Impact 4 / Risk 2 / Priority 16.**
+
+Release: independent
+
+#### Step 18: Decide what the inherited prompt region guarantees ([#890])
+
+**Cause:** `AgentPrepHandler` in `@gotgenes/pi-permission-system` narrows the child's `Available tools:` list by rewriting the assembled prompt in place and returning it from `before_agent_start`.
+That block sits inside the identity region [ADR-0006] keeps, and `buildAgentPrompt` places that region first precisely so the child's leading bytes match the parent's, so for any child with a narrowed tool set the shared prefix ends at the tool list — measured at offset 412 of a 22,157-character prompt.
+The conflict is arithmetic rather than a defect in either package: a byte-identical prefix and an honest child tool list cannot coexist while the list lives inside the prefix.
+
+- **Smell:** Category A (two packages asserting different invariants over the same bytes, with load order deciding which wins) plus `bug`.
+- **Target:** `src/session/prompts.ts` (`inheritedIdentity` and what it guarantees), `docs/decisions/0006-inherited-prompt-is-identity-only.md` (amended or superseded), and the contract `@gotgenes/pi-permission-system`'s `exposure/system-prompt-sanitizer.ts` writes against.
+- **Hard dependency:** none, but it is the one step here whose resolution binds another package; [#890] records the four candidate resolutions.
+- **Design decision at plan time:** which invariant wins, and whether the child's tool section is cut from the inherited identity like the catalogue and footer before it, appended after it, or built at assembly time from the `toolSnippets` `before_agent_start` already carries — the last composes with the other two rather than replacing them.
+- **Outcome:** one recorded decision about what the inherited region guarantees, and the two packages stop using "byte-stable" for two different invariants.
+- **Commit type:** `fix:` if the prefix is restored, `docs:` if the loss is accepted and recorded.
+- **Impact 4 / Risk 3 / Priority 12.**
+
+Release: independent
+
 ### Step dependencies
 
 ```mermaid
@@ -1201,6 +1238,8 @@ flowchart TD
     S10 --> S15["Step 15 (#878)<br/>Resume affordance honesty"]
     S11 --> S15
     S14 --> S16["Step 16 (#885)<br/>Service resume"]
+    S17["Step 17 (#889)<br/>Failed run reports failed"]
+    S5 -.informs.-> S18["Step 18 (#890)<br/>Inherited-region guarantee"]
 ```
 
 ### Parallel tracks
@@ -1211,6 +1250,8 @@ flowchart TD
 - **Track D — Result delivery and ask-back:** Steps 7 → 8 → 11 → 14, with Step 10 → 12 joining as a resume-path fix and the residual it creates, Step 10 also informing Step 11, and Step 15 joining downstream of both 10 and 11 (Steps 7 → 8 is soft ordering; 8 → 11, 11 → 14, 10 → 12, and 10/11 → 15 are hard).
 - **Track E — Agent config resolution:** Step 13 (fully independent; it corrects the base list Step 11 appends to, but neither step needs the other).
 - **Track F — Service surface:** Step 16 (downstream of Step 14; it re-enters Track A's front-door concern at the one door Step 1 left in the tool layer).
+- **Track G — Outcome truthfulness:** Step 17 (fully independent; Track D delivers the outcome, this decides whether the outcome is true).
+- **Track H — Inherited-prompt contract:** Step 18 (Track B's Step 5 informs it — both settle what the inherited region contains — but neither blocks the other; it is the one step whose resolution binds `@gotgenes/pi-permission-system`).
 
 ### Release batches
 
@@ -1218,8 +1259,9 @@ flowchart TD
   Step 3 is `fix!:` and Step 4 is `refactor!:` with a `BREAKING CHANGE:` footer.
   The two landed in the other order, so Step 4 completed the batch: Step 3's release PR stayed open across it, and both breaking changes ship under the one major bump Step 3's `fix!:` opened.
   Step 2 was provisionally batched here in case its required/optional decision came out breaking; it did not — `SubagentRecord` is produced, never implemented, so its widening is semver-minor and it left the batch as the batch's own line anticipated.
-- Independently releasable: Steps 1, 2, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14.
-  Steps 1, 5, 6, 7, 9, 10, 12, 13, 14 are `fix:`, Step 2 is `feat:`, and Steps 8 and 11 are `feat:` — each an unhidden release vehicle on its own.
+- Independently releasable: Steps 1, 2, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18.
+  Steps 1, 5, 6, 7, 9, 10, 12, 13, 14, 17 are `fix:`, Step 2 is `feat:`, and Steps 8 and 11 are `feat:` — each an unhidden release vehicle on its own.
+  Step 18 releases only if it lands as `fix:`; a `docs:` outcome that accepts the loss cuts no release.
 
 ## Refactoring history
 
@@ -1343,5 +1385,11 @@ The upstream test suite is run periodically as a regression canary for the sessi
 [#878]: https://github.com/gotgenes/pi-packages/issues/878
 [#832]: https://github.com/gotgenes/pi-packages/issues/832
 [#885]: https://github.com/gotgenes/pi-packages/issues/885
+[#884]: https://github.com/gotgenes/pi-packages/pull/884
+[#889]: https://github.com/gotgenes/pi-packages/issues/889
+[#890]: https://github.com/gotgenes/pi-packages/issues/890
+[#180]: https://github.com/gotgenes/pi-packages/issues/180
+[#400]: https://github.com/gotgenes/pi-packages/issues/400
 [ADR-0002]: ../decisions/0002-extensions-on-a-minimal-core.md
 [ADR-0004]: ../decisions/0004-reconsider-ui-direction.md
+[ADR-0006]: ../decisions/0006-inherited-prompt-is-identity-only.md
