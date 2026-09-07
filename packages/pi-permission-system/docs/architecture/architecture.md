@@ -1099,6 +1099,9 @@ Deferred by composition, with the reason each carries: [#804] (staging slice 7, 
 - [#890] — filed by the `pi-subagents` [#884] PR review; deferred to a later phase with rationale.
   `AgentPrepHandler`'s in-place rewrite of the child's `Available tools:` list lands inside the region `pi-subagents` keeps byte-identical with the parent's, collapsing the shared prefix for any child with a narrowed tool set.
   It is this package's `exposure/system-prompt-sanitizer.ts`, which no step in this phase opens — the spine is token roles and declared effects — and the resolution is scheduled as `pi-subagents` Phase 22 Step 18, which must settle what the inherited region guarantees before this side can act on it.
+- [#899] — filed by the `pi-subagents` [#889] implementation; deferred to a later phase with rationale.
+  An `ask` on an earlier gate suspends the call before a later gate's unconditional `deny` is consulted, so an operator is prompted to approve a command policy already forbids and both answers end in denial — measured as a full 600 s subagent stall on a `bash` rule that resolved correctly when tested directly.
+  The cause is the pipeline's resolve-and-prompt-per-gate loop rather than this phase's role loss or its blame gap, and the fix hoists resolution ahead of the prompt in `GateRunner.runDescriptor` — the split this phase's `#### Deferred tidyings swept` list already holds as deferred on the scout's re-adjudication, so the two want to move together rather than one landing under the other's step.
 - Feature issues [#691], [#687], [#680], [#654], [#648], [#604], [#603], [#472] — out of scope for a structural phase; [#680] is narrowed further by Step 4 (a declared reader needs no floor override), and [#604] by [#813].
 
 #### Deferred tidyings swept
@@ -1400,4 +1403,5 @@ Each phase's findings, numbered plan, dependency diagram, and health metrics are
 [#890]: https://github.com/gotgenes/pi-packages/issues/890
 [#891]: https://github.com/gotgenes/pi-packages/issues/891
 [#892]: https://github.com/gotgenes/pi-packages/issues/892
+[#899]: https://github.com/gotgenes/pi-packages/issues/899
 [ADR-0002]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-subagents/docs/decisions/0002-extensions-on-a-minimal-core.md
