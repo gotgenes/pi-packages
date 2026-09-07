@@ -1641,6 +1641,23 @@ describe("Subagent.resume() — observer lifecycle", () => {
 // SubagentSession over a mock AgentSession so the provider-error read and the
 // failRun routing are exercised as one path (#889).
 describe("Subagent — provider failures reach the record", () => {
+	/**
+	 * Settle a turn the way the SDK does: append the assistant message to agent
+	 * state and emit the `message_end` the session's listeners see.
+	 *
+	 * `usage` is mandatory rather than decorative — `subscribeSubagentObserver`,
+	 * which a real Subagent wires over this session, reads `message.usage.input`
+	 * unguarded. `Agent.handleRunFailure` gives its synthetic failure message
+	 * `EMPTY_USAGE`, which is what these zeros model.
+	 */
+	function settleWith(session: ReturnType<typeof createMockSession>, message: Record<string, unknown>): void {
+		session.messages.push(message);
+		session.emit({
+			type: "message_end",
+			message: { usage: { input: 0, output: 0, cacheWrite: 0 }, ...message },
+		});
+	}
+
 	/** A factory resolving to a real SubagentSession over the given mock session. */
 	function realSessionFactory(session: ReturnType<typeof createMockSession>): SessionFactory {
 		return vi.fn(async (_params: CreateSubagentSessionParams) =>
@@ -1659,7 +1676,7 @@ describe("Subagent — provider failures reach the record", () => {
 	it("lands the provider's error on the record instead of a successful empty result", async () => {
 		const session = createMockSession();
 		session.prompt = vi.fn(async () => {
-			session.messages.push({
+			settleWith(session, {
 				role: "assistant",
 				content: [{ type: "text", text: "" }],
 				stopReason: "error",
@@ -1678,7 +1695,7 @@ describe("Subagent — provider failures reach the record", () => {
 	it("completes normally when the provider did not error", async () => {
 		const session = createMockSession();
 		session.prompt = vi.fn(async () => {
-			session.messages.push({
+			settleWith(session, {
 				role: "assistant",
 				content: [{ type: "text", text: "the answer" }],
 				stopReason: "stop",
@@ -1701,21 +1718,21 @@ describe("Subagent — provider failures reach the record", () => {
 		const session = createMockSession();
 		session.prompt = vi
 			.fn(async () => {
-				session.messages.push({
+				settleWith(session, {
 					role: "assistant",
 					content: [{ type: "text", text: "the first answer" }],
 					stopReason: "stop",
 				});
 			})
 			.mockImplementationOnce(async () => {
-				session.messages.push({
+				settleWith(session, {
 					role: "assistant",
 					content: [{ type: "text", text: "the first answer" }],
 					stopReason: "stop",
 				});
 			})
 			.mockImplementationOnce(async () => {
-				session.messages.push({
+				settleWith(session, {
 					role: "assistant",
 					content: [{ type: "text", text: "" }],
 					stopReason: "error",

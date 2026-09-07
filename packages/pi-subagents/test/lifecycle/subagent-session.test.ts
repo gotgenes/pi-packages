@@ -89,13 +89,33 @@ function providerErrorMessage(errorMessage?: string) {
   };
 }
 
-/** Program session.prompt to settle the run by appending raw messages. */
+/**
+ * Usage every real assistant message carries. `Agent.handleRunFailure` gives its
+ * synthetic failure message `EMPTY_USAGE`, and `subscribeSubagentObserver` reads
+ * `message.usage.input` unguarded, so an emitted `message_end` without this
+ * field throws inside any fixture that wires a real Subagent over the session.
+ */
+const EMPTY_USAGE = { input: 0, output: 0, cacheWrite: 0 };
+
+/**
+ * Program session.prompt to settle the run by appending raw messages, emitting
+ * the `message_end` the SDK emits for each one.
+ *
+ * Both halves are modelled deliberately: the event is what the session's own
+ * listeners see, and the push is the agent state a later collaborator may
+ * rewrite. A failure fixture that models only the state half cannot express a
+ * turn whose error was stripped before the run settled (#898).
+ */
 function programMessages(
   session: ReturnType<typeof createSession>["session"],
-  messages: unknown[],
+  listeners: ReturnType<typeof createSession>["listeners"],
+  messages: Array<Record<string, unknown>>,
 ) {
   session.prompt = vi.fn(async () => {
-    for (const message of messages) session.messages.push(message);
+    for (const message of messages) {
+      session.messages.push(message);
+      emit(listeners, { type: "message_end", message: { usage: EMPTY_USAGE, ...message } });
+    }
   });
 }
 
@@ -287,15 +307,15 @@ describe("SubagentSession — runTurnLoop lifecycle events", () => {
 
 describe("SubagentSession — runTurnLoop provider failures", () => {
   it("rejects with the provider's error message when the last turn errored", async () => {
-    const { session } = createSession("unused");
-    programMessages(session, [providerErrorMessage("429 rate limit exceeded")]);
+    const { session, listeners } = createSession("unused");
+    programMessages(session, listeners, [providerErrorMessage("429 rate limit exceeded")]);
     const { sub } = makeSubagentSession(session);
     await expect(sub.runTurnLoop("go", {})).rejects.toThrow("429 rate limit exceeded");
   });
 
   it("rejects with a fallback when the errored turn carries no message", async () => {
-    const { session } = createSession("unused");
-    programMessages(session, [providerErrorMessage()]);
+    const { session, listeners } = createSession("unused");
+    programMessages(session, listeners, [providerErrorMessage()]);
     const { sub } = makeSubagentSession(session);
     await expect(sub.runTurnLoop("go", {})).rejects.toThrow(
       "provider reported an error with no message",
@@ -303,16 +323,16 @@ describe("SubagentSession — runTurnLoop provider failures", () => {
   });
 
   it("does not emit completed for a run whose provider errored", async () => {
-    const { session } = createSession("unused");
-    programMessages(session, [providerErrorMessage("boom")]);
+    const { session, listeners } = createSession("unused");
+    programMessages(session, listeners, [providerErrorMessage("boom")]);
     const { sub } = makeSubagentSession(session, { lifecycle });
     await expect(sub.runTurnLoop("go", {})).rejects.toThrow("boom");
     expect(lifecycle.completed).not.toHaveBeenCalled();
   });
 
   it("resolves normally when the last turn was aborted rather than errored", async () => {
-    const { session } = createSession("unused");
-    programMessages(session, [
+    const { session, listeners } = createSession("unused");
+    programMessages(session, listeners, [
       { role: "assistant", content: [{ type: "text", text: "partial" }], stopReason: "aborted" },
     ]);
     const { sub } = makeSubagentSession(session, { lifecycle });
@@ -335,8 +355,8 @@ describe("SubagentSession — runTurnLoop provider failures", () => {
   // Pi removes a retried error from agent state before retrying, so an errored
   // message that is no longer last is one the retry budget rescued.
   it("resolves normally when an errored turn was followed by a clean one", async () => {
-    const { session } = createSession("unused");
-    programMessages(session, [
+    const { session, listeners } = createSession("unused");
+    programMessages(session, listeners, [
       providerErrorMessage("transient stream drop"),
       { role: "assistant", content: [{ type: "text", text: "recovered" }], stopReason: "stop" },
     ]);
@@ -368,20 +388,20 @@ describe("SubagentSession — resumeTurnLoop", () => {
   // would otherwise be marked completed, carrying stale text from the turn
   // before the failure (#889).
   it("rejects with the provider's error message when the resumed turn errored", async () => {
-    const { session } = createSession("unused");
-    programMessages(session, [providerErrorMessage("401 invalid api key")]);
+    const { session, listeners } = createSession("unused");
+    programMessages(session, listeners, [providerErrorMessage("401 invalid api key")]);
     const { sub } = makeSubagentSession(session);
     await expect(sub.resumeTurnLoop("Continue")).rejects.toThrow("401 invalid api key");
   });
 
   it("does not report an earlier turn's text as the resumed answer", async () => {
-    const { session } = createSession("unused");
+    const { session, listeners } = createSession("unused");
     session.messages.push({
       role: "assistant",
       content: [{ type: "text", text: "work from the turn before the failure" }],
       stopReason: "stop",
     });
-    programMessages(session, [providerErrorMessage("stream disconnected")]);
+    programMessages(session, listeners, [providerErrorMessage("stream disconnected")]);
     const { sub } = makeSubagentSession(session);
     await expect(sub.resumeTurnLoop("Continue")).rejects.toThrow("stream disconnected");
   });
