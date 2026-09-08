@@ -46,6 +46,40 @@ The change creates new `scripts/` and root `test/` files but modifies no pre-exi
 
 The `roadmap-fit` skill exited at its first step for [#902]: it is `scope:repo` with no `pkg:*` label and no resolvable package, so there is no open phase to disposition it against — the same outcome [#900] had under [#893].
 
+## Stage: Implementation — TDD (2026-09-08T16:49:20Z)
+
+### Session summary
+
+Executed all seven TDD steps plus a reviewer-driven eighth, landing the roadmap validator as `scripts/roadmap-check.mjs` over three pure modules, with a new root `vitest` harness the repo did not have before.
+The root suite went from nothing to 66 tests in four files; no package suite changed.
+The validator's first run on the live roadmaps found the three defects the plan predicted, and step 6 corrected them, so `./scripts/roadmap-check.mjs` now exits 0 with only the three dependency-bullet warnings the plan deliberately leaves.
+Pre-completion reviewer: PASS, then WARN on the re-review of the follow-up commit, with no blocking findings.
+
+### Observations
+
+Every number the plan predicted reproduced exactly: 19 steps / 19 nodes / 14 edges / 10 hard / 4 soft for pi-subagents and 7 / 7 / 5 / 1 / 4 for pi-permission-system, and the finding set was the same 2 errors and 5 warnings the planning spike produced.
+All five of the plan's Test Impact Analysis verification runs reproduced too, including both exit-2 cases.
+
+The mutation step earned its place three times, and twice it was the **plan** that was wrong rather than the code.
+The plan's step 1 mutation (`break` → `continue` in the leading-run tokenizer) survived, because the parenthetical split ahead of it was doing the work for that fixture; a second mutation then showed the parenthetical split itself was dead, since `(` always attaches to a following word and the `break` already stops there.
+The `none` guard turned out to be dead for the same reason — `none` is not a list token.
+Both were removed, leaving one mechanism that a single mutation now kills across all four equivalence classes.
+The plan's step 2 mutation (taking step blocks from the whole roadmap section) also survived, because the heading regex — not the `### Steps` slice — is what rejects `#### Open-issue sweep dispositions`.
+A fenced step-heading example in the Findings prose was added to the fixture to make the slice load-bearing, which is a realistic hazard since this repo's docs do embed markdown examples.
+The general lesson: a mutation that survives is a finding about which mechanism is actually carrying the behavior, and answering it shrank the code twice.
+
+The pre-completion reviewer mutated the shipped code itself and found three branches no fixture reached, which the plan's own mutation list had not anticipated.
+The consequential one was `checkBatchTails`' ordinal arm: both live roadmaps spell their tail `tail = Step 3`, so the branch runs on real input today while every fixture used issue-identity steps.
+That is the shape to watch for — a dual-shape parser whose fixtures all pick one shape.
+The reviewer's re-review then flagged one of the added fixtures as redundant with an existing test rather than new coverage, and it was removed; the real proof of the malformed-heading path lives at the parser layer.
+
+One deviation from the plan, all else being as written: the CLI reports a nonexistent package and a package with no roadmap through the same message rather than two, since both are the same answer — the question could not be answered.
+
+The `docs(pi-subagents)` remediation revised published `Priority` values on two landed steps.
+That is a transcription correction rather than a revision of judgement — `Impact` and `Risk` are the recorded judgement and were untouched — but it is worth naming, because the same reasoning does **not** extend to the three dependency-bullet warnings, which are left standing for exactly that reason.
+
+The `→` token was dropped from the dependency-bullet vocabulary: no bullet in either live roadmap uses one, and the arrow belongs to the tracks prose, which a separate and separately-tested vocabulary reads.
+
 [#802]: https://github.com/gotgenes/pi-packages/issues/802
 [#857]: https://github.com/gotgenes/pi-packages/issues/857
 [#858]: https://github.com/gotgenes/pi-packages/issues/858
