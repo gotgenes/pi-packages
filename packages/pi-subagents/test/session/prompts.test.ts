@@ -727,5 +727,50 @@ describe("buildAgentPrompt", () => {
         expect(catalogues).toEqual([]);
       });
     });
+
+    describe("shared prefix with the parent", () => {
+      /**
+       * An identity shaped like Pi's own: the preamble sentence, then the tool
+       * surface, then the layers that follow it. The tool section is what
+       * `@gotgenes/pi-permission-system` used to rewrite in place, which is the
+       * edit this prefix exists to stay clear of (#890).
+       */
+      const IDENTITY_WITH_TOOLS = [
+        "You are a parent coding agent.",
+        "",
+        "Available tools:",
+        "- read: Read file contents",
+        "- bash: Execute bash commands",
+        "",
+        "Guidelines:",
+        "- Be concise in your responses",
+      ].join("\n");
+
+      it("opens an append-mode child with the parent's identity verbatim", () => {
+        const prompt = buildAgentPrompt(appendConfig(), "/workspace", env, {
+          systemPrompt: parentPrompt({
+            identity: IDENTITY_WITH_TOOLS,
+            skills: [skill("colgrep")],
+            footerCwd: PARENT_CWD,
+          }),
+          cwd: PARENT_CWD,
+        });
+
+        expect(prompt.startsWith(IDENTITY_WITH_TOOLS)).toBe(true);
+      });
+
+      it("opens a replace-mode child with the parent's identity verbatim", () => {
+        const prompt = buildAgentPrompt(replaceConfig(), "/workspace", env, {
+          systemPrompt: parentPrompt({
+            identity: IDENTITY_WITH_TOOLS,
+            skills: [skill("colgrep")],
+            footerCwd: PARENT_CWD,
+          }),
+          cwd: PARENT_CWD,
+        });
+
+        expect(prompt.startsWith(IDENTITY_WITH_TOOLS)).toBe(true);
+      });
+    });
   });
 });
