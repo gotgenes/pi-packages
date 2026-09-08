@@ -80,3 +80,17 @@ Pre-completion reviewer: WARN on the first round (four non-blocking findings), P
   Pre-existing (the narrowing implementation mangled the same line), now pinned by a test that documents rather than endorses it, with the anchoring fix named in ADR 0014.
 
 [pi-claude-bridge#89]: https://github.com/elidickinson/pi-claude-bridge/issues/89
+
+## Stage: Sync (worktree) (2026-09-08T16:02:33Z)
+
+### Session summary
+
+Pre-push checks (`pnpm run lint`, `pnpm fallow dead-code`) both pass with no changes needed.
+Both packages (`pi-permission-system`, `pi-subagents`) will cut a release on land — the plan's `**Release:** ship independently` marker — so `/ship` should dispatch both by name.
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-890--/2026-09-08T03-07-01-691Z_01a07efb-baba-7785-9d81-764a12a7235d.jsonl` — read with `read_session_file({ path: "<path>" })` for message-level verification at land/retro time.
+
+### Observations
+
+No deferred work beyond what's already recorded: [#901] (a child without `pi-permission-system` inherits the parent's tool list) is filed, deferred against `pi-subagents` Phase 22 with rationale.
+The `pi-claude-bridge` compatibility claim in both ADRs is explicitly recorded as unverified (0.7.0 is the latest published version; the stripped-key fix is an open, unmerged PR) — nothing to act on here, just carrying it forward for the root session's awareness.
