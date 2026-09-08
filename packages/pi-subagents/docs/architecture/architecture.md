@@ -837,6 +837,9 @@ Steps 2, 6, and 8 have design-dependent shapes and are verified by their plans' 
 - [#890] — filed by the [#884] PR review; becomes Step 18 by operator decision.
   `pi-permission-system` rewrites the child's prompt inside the region [ADR-0006] keeps byte-identical with the parent's, so the shared prefix [#180] and [#400] created ends at the tool list for every child with a narrowed tool set.
   Scheduled here rather than deferred because the interaction is measured now and the decision is this package's to make — it amended [ADR-0006] with [ADR-0008].
+- [#904] — filed by the [#884] PR review (second pass); becomes Step 20 by operator decision.
+  Step 18's own residual, one constant below the one it fixed: [ADR-0008] removed `<sub_agent_context>` for naming `edit` and `write` to a child that holds neither, and `genericBase` asserts the same capabilities four lines down in the same file.
+  It survived that sweep because it sits on the colder no-parent-prompt path rather than on append mode's every-child path, which is the same shape as [#871] — a second instance of a step's defect class inside the lines the step already touched.
 - [#901] — filed by Step 18's planning; deferred to a later phase with rationale.
   A child without `pi-permission-system` installed inherits the parent's `Available tools:` list, because Pi writes none under `customPrompt` and nothing in this package corrects the inherited one.
   Step 18 makes `pi-permission-system` the single writer of the relocated tool-surface block and records the order-independent contract a second writer must honor; honoring it here means this package's first per-turn `before_agent_start` handler plus a shared render function whose home is unsettled, which is new mechanism outside this phase's front-door and delivery-boundary spine.
@@ -1285,6 +1288,22 @@ The predicate is unchanged from Step 17: an unrescued truncation (`stopReason: "
 
 Release: independent
 
+#### Step 20: Stop the fallback base claiming tools the child does not hold ([#904])
+
+**Cause:** `genericBase` in `src/session/prompts.ts` asserts "You have full access to read, write, edit files, and execute commands" to every agent type, including `Explore` and `Plan`, whose `tools:` lists in `src/config/default-agents.ts` carry neither `edit` nor `write`.
+[ADR-0008] removed the `<sub_agent_context>` block for making that exact claim, and did not reach the constant four lines below it in the same file.
+
+- **Smell:** Category C (prose asserting a capability set the session does not own) plus `bug`.
+- **Target:** `src/session/prompts.ts` (`genericBase` and the `buildAgentPrompt` fallback that reaches it).
+- **Hard dependency:** none; Step 18 shipped the reasoning this applies.
+- **Design decision at plan time:** whether the sentence is deleted outright or the base is rendered from parts.
+  Establish how reachable the no-parent-prompt path actually is first — if it is genuinely cold, the deletion is the whole fix, and rendering from parts is scope [ADR-0014] already covers per session.
+- **Outcome:** no child prompt asserts a capability its tool set does not include, pinned by a test asserting a read-only agent's fallback prompt names neither `edit` nor `write`.
+- **Commit type:** `fix:`.
+- **Impact 2 / Risk 1 / Priority 2.**
+
+Release: independent
+
 ### Step dependencies
 
 ```mermaid
@@ -1456,6 +1475,7 @@ The upstream test suite is run periodically as a regression canary for the sessi
 [#898]: https://github.com/gotgenes/pi-packages/issues/898
 [#901]: https://github.com/gotgenes/pi-packages/issues/901
 [#896]: https://github.com/gotgenes/pi-packages/issues/896
+[#904]: https://github.com/gotgenes/pi-packages/issues/904
 [#180]: https://github.com/gotgenes/pi-packages/issues/180
 [#400]: https://github.com/gotgenes/pi-packages/issues/400
 [ADR-0002]: ../decisions/0002-extensions-on-a-minimal-core.md
