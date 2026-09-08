@@ -5,7 +5,8 @@ import type {
 import { resolveSkillPromptEntries } from "#src/exposure/skill-prompt-sanitizer";
 import { sanitizeAvailableToolsSection } from "#src/exposure/system-prompt-sanitizer";
 import {
-  getToolNameFromValue,
+  type RegisteredTools,
+  readRegisteredTools,
   type ToolRegistry,
 } from "#src/exposure/tool-registry";
 import type { ToolSurfaceObservation } from "#src/exposure/tool-surface-baseline";
@@ -70,8 +71,9 @@ export class AgentPrepHandler {
     this.turnPrep.prepare(ctx);
 
     const agentName = this.session.resolveAgentName(ctx, event.systemPrompt);
+    const registered = readRegisteredTools(this.toolRegistry.getAll());
     const surface = this.session.resolveExposedTools(
-      this.observeToolSurface(),
+      this.observeToolSurface(registered),
       (toolName) =>
         shouldExposeTool(toolName, agentName, (t, a) =>
           this.resolver.isToolFullyDenied(t, a),
@@ -104,21 +106,12 @@ export class AgentPrepHandler {
       : {};
   }
 
-  private observeToolSurface(): ToolSurfaceObservation {
+  private observeToolSurface(
+    registered: RegisteredTools,
+  ): ToolSurfaceObservation {
     return {
-      active: toolNamesOf(this.toolRegistry.getActive()),
-      registered: new Set(toolNamesOf(this.toolRegistry.getAll())),
+      active: readRegisteredTools(this.toolRegistry.getActive()).names,
+      registered: new Set(registered.names),
     };
   }
-}
-
-function toolNamesOf(tools: readonly unknown[]): string[] {
-  const names: string[] = [];
-  for (const tool of tools) {
-    const toolName = getToolNameFromValue(tool);
-    if (toolName) {
-      names.push(toolName);
-    }
-  }
-  return names;
 }

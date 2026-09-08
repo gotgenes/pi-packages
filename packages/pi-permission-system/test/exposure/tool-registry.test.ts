@@ -4,6 +4,7 @@ import {
   checkRequestedToolRegistration,
   getToolNameFromValue,
   getToolPromptGuidelinesFromValue,
+  readRegisteredTools,
 } from "#src/exposure/tool-registry";
 
 afterEach(() => {
@@ -117,6 +118,47 @@ describe("getToolPromptGuidelinesFromValue", () => {
     expect(getToolPromptGuidelinesFromValue("read")).toEqual([]);
     expect(getToolPromptGuidelinesFromValue(null)).toEqual([]);
     expect(getToolPromptGuidelinesFromValue(undefined)).toEqual([]);
+  });
+});
+
+describe("readRegisteredTools", () => {
+  test("reads names and guidelines in one pass", () => {
+    const registered = readRegisteredTools([
+      { name: "read", promptGuidelines: ["Use read."] },
+      { name: "bash", promptGuidelines: ["Use bash.", "Be careful."] },
+    ]);
+
+    expect(registered.names).toEqual(["read", "bash"]);
+    expect(registered.guidelinesByTool.get("read")).toEqual(["Use read."]);
+    expect(registered.guidelinesByTool.get("bash")).toEqual([
+      "Use bash.",
+      "Be careful.",
+    ]);
+  });
+
+  test("records no guidelines entry for a tool that declares none", () => {
+    const registered = readRegisteredTools([{ name: "read" }]);
+
+    expect(registered.names).toEqual(["read"]);
+    expect(registered.guidelinesByTool.has("read")).toBe(false);
+  });
+
+  test("reads bare tool-name strings, as getActive() returns", () => {
+    const registered = readRegisteredTools(["read", "bash"]);
+
+    expect(registered.names).toEqual(["read", "bash"]);
+    expect(registered.guidelinesByTool.size).toBe(0);
+  });
+
+  test("skips entries carrying no resolvable tool name", () => {
+    const registered = readRegisteredTools([
+      { name: "read" },
+      { unknown: "x" },
+      42,
+      null,
+    ]);
+
+    expect(registered.names).toEqual(["read"]);
   });
 });
 

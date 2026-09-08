@@ -9,6 +9,44 @@ export interface ToolRegistry {
   setActive(names: string[]): void;
 }
 
+/** Tool names and their guideline bullets, read from one pass over a registry. */
+export interface RegisteredTools {
+  /** Resolvable tool names, in registry order. */
+  readonly names: string[];
+  /** Guideline bullets per tool; a tool declaring none has no entry. */
+  readonly guidelinesByTool: ReadonlyMap<string, readonly string[]>;
+}
+
+/**
+ * Read a registry listing once, yielding both the answers this package needs.
+ *
+ * `getActive()` returns bare names and `getAll()` returns `ToolInfo` records,
+ * so both are accepted: a listing carrying no guidelines simply produces an
+ * empty map.
+ */
+export function readRegisteredTools(
+  tools: readonly unknown[],
+): RegisteredTools {
+  const names: string[] = [];
+  const guidelinesByTool = new Map<string, readonly string[]>();
+
+  for (const tool of tools) {
+    const name = getToolNameFromValue(tool);
+    if (!name) {
+      continue;
+    }
+
+    names.push(name);
+
+    const guidelines = getToolPromptGuidelinesFromValue(tool);
+    if (guidelines.length > 0) {
+      guidelinesByTool.set(name, guidelines);
+    }
+  }
+
+  return { names, guidelinesByTool };
+}
+
 export type ToolRegistrationCheckResult =
   | {
       status: "missing-tool-name";
