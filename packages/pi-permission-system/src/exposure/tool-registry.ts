@@ -98,6 +98,35 @@ export function getToolNameFromValue(value: unknown): string | null {
   return null;
 }
 
+/**
+ * The guideline bullets a registered tool contributes to the system prompt.
+ *
+ * Pi carries them per tool on `ToolInfo.promptGuidelines` and flattens them
+ * into one `Guidelines:` block when it builds the prompt. Reading them per tool
+ * is what lets this package rebuild that block for the allowed set alone,
+ * rather than matching Pi's rendered sentences by literal text.
+ *
+ * Kept defensively wide, like {@link getToolNameFromValue}: anything that is
+ * not a non-empty string is dropped, and a value that is not an array of them
+ * yields no guidelines rather than throwing.
+ */
+export function getToolPromptGuidelinesFromValue(value: unknown): string[] {
+  const guidelines = toRecord(value).promptGuidelines;
+  if (!Array.isArray(guidelines)) {
+    return [];
+  }
+
+  const bullets: string[] = [];
+  for (const entry of guidelines) {
+    const bullet = getNonEmptyString(entry);
+    if (bullet) {
+      bullets.push(bullet);
+    }
+  }
+
+  return bullets;
+}
+
 export function checkRequestedToolRegistration(
   requestedToolName: string | null,
   registeredTools: readonly unknown[],

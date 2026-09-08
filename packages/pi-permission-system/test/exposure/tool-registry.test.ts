@@ -3,6 +3,7 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import {
   checkRequestedToolRegistration,
   getToolNameFromValue,
+  getToolPromptGuidelinesFromValue,
 } from "#src/exposure/tool-registry";
 
 afterEach(() => {
@@ -62,6 +63,60 @@ describe("getToolNameFromValue", () => {
 
   test("returns null for number input", () => {
     expect(getToolNameFromValue(42)).toBeNull();
+  });
+});
+
+describe("getToolPromptGuidelinesFromValue", () => {
+  test("returns the tool's guideline bullets", () => {
+    expect(
+      getToolPromptGuidelinesFromValue({
+        name: "read",
+        promptGuidelines: [
+          "Use read to examine files instead of cat or sed.",
+          "Read whole files.",
+        ],
+      }),
+    ).toEqual([
+      "Use read to examine files instead of cat or sed.",
+      "Read whole files.",
+    ]);
+  });
+
+  test("returns an empty array when the tool declares none", () => {
+    expect(getToolPromptGuidelinesFromValue({ name: "read" })).toEqual([]);
+  });
+
+  test("drops blank and non-string entries", () => {
+    expect(
+      getToolPromptGuidelinesFromValue({
+        name: "bash",
+        promptGuidelines: ["Use bash.", "", "   ", 42, null, "Be careful."],
+      }),
+    ).toEqual(["Use bash.", "Be careful."]);
+  });
+
+  test("trims surrounding whitespace, mirroring Pi's own normalization", () => {
+    expect(
+      getToolPromptGuidelinesFromValue({
+        name: "edit",
+        promptGuidelines: ["  Use edit for precise changes.  "],
+      }),
+    ).toEqual(["Use edit for precise changes."]);
+  });
+
+  test("returns an empty array when promptGuidelines is not an array", () => {
+    expect(
+      getToolPromptGuidelinesFromValue({
+        name: "read",
+        promptGuidelines: "Use read.",
+      }),
+    ).toEqual([]);
+  });
+
+  test("returns an empty array for a non-object value", () => {
+    expect(getToolPromptGuidelinesFromValue("read")).toEqual([]);
+    expect(getToolPromptGuidelinesFromValue(null)).toEqual([]);
+    expect(getToolPromptGuidelinesFromValue(undefined)).toEqual([]);
   });
 });
 
