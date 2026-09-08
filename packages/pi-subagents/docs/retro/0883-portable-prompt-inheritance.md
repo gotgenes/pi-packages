@@ -492,3 +492,67 @@ ADR 0009 is planned because the "no new ADR" non-goal was offered and **not** se
 #### Deferred tidyings
 
 None — the assessor recommended no preparatory commits, and its one rejection (`settings.ts` `sanitize()` range-check triplication) is already inventoried as scattered boy-scout debt at `architecture.md:853`, so it needs no new record here.
+
+## Stage: Implementation — TDD (2026-09-08T21:30:33Z)
+
+### Session summary
+
+Executed all seven plan steps plus one review-driven follow-up: five `refactor:` commits landing the setting, the snapshot render, the runtime capture, the identity branch, and the model-resolution reorder; one `feat:` commit wiring them; one `docs:` commit with ADR 0009.
+Tests went 1638 → 1676 (+38).
+Pre-completion review returned **PASS** with one WARN, which was closed by `ec3308fb` and confirmed by a scoped delta review (also PASS).
+
+### Observations
+
+#### Two mutations were wrong before they were right
+
+The plan's killing mutations mostly landed as predicted, but two needed reshaping at the bench, and both taught the same lesson: a mutation must be *narrow*, or its blast radius stops being evidence.
+
+- Inverting `buildPortablePrompt`'s `if (!options)` guard reddened **12** tests, not the 3 the plan named — because the inverted guard let the no-options path fall through to `options.customPrompt` and throw.
+  A crash is not a discrimination signal.
+  Replacing the whole return with `undefined` gave the predicted 3.
+- Inserting an early `return` above the strategy branch tripped Biome's `noUnreachable` and `pi-autoformat` rejected the write.
+  Changing the compared literal (`"portable"` → `"never-matches"`) is the cleaner shape for mutating a branch condition and left the file parseable.
+
+#### A vacuous probe survived its own mutation
+
+The composition-root test asserting the deps bag carries a settings-backed resolver was written as `expect(deps.resolvePromptInheritance("claude-bridge")).toBe("full")` — true under the real resolver *and* under a hardcoded `() => "full"`, which is exactly the mutation it was supposed to kill.
+The mutation ran green and the gap surfaced only because the step's prediction said it should not.
+
+Rewriting it to `mkdtemp` a project dir, write a real `.pi/subagents.json` with a `portable` rule, and `vi.spyOn(process, "cwd")` made it discriminate.
+The general shape: **a wiring test whose assertion is the system's default value cannot distinguish "wired" from "not wired"** — it has to assert a value only the wiring can produce.
+
+#### `promptGuidelines` was the design's real finding, and it held up
+
+Planning excluded `promptGuidelines` from the portable identity on the grounds that Pi derives it per session from the tools in the registry, correcting PR #884, which includes it.
+The reviewer re-derived this against `../pi/…/agent-session.ts` `_rebuildSystemPrompt` and confirmed it, then went further and checked the three fields that *are* included — `contextFiles`, `customPrompt`, `appendSystemPrompt` all come from the resource loader's operator-facing config surface, none tool- or session-derived.
+That is the check the plan should have specified itself: excluding the wrong field is only half the question.
+
+#### Deviations from the plan
+
+1. **One existing assertion needed updating.**
+   `session-config.test.ts`'s "forwards the parent's cwd alongside its system prompt" pinned the inherited-prompt argument's exact shape with `toHaveBeenCalledWith`, so the two new fields broke it.
+   Folded into Step 6 as the plan's TDD rules direct.
+   The plan's symbol sweep predicted no breakage because every field is optional — true at the type level, and this is the case that rule does not cover: an *exact-equality assertion* on a produced object breaks when the producer adds a field, whichever way the type is declared.
+2. **`buildAgentPrompt`'s test-helper stub had to be typed.**
+   `createSubagentSessionIO` declared it `vi.fn((..._args: unknown[]) => string)`, so a test could not read back the fourth argument.
+   Retyping it to `vi.fn<AssemblerIO["buildAgentPrompt"]>()` cascaded into one placeholder call in `subagent-session-io.test.ts` that passed `{}` for the config and env.
+3. **One extra commit.**
+   `ec3308fb` closes the reviewer's WARN — the agent-`model:`-string path had no dedicated prompt-inheritance assertion.
+   Verified discriminating: the parent-provider mutation now kills two tests rather than one.
+
+#### Verified at the bench
+
+- The `full` path's byte-identical prefix (ADR 0008) is genuinely pinned: inverting the strategy branch reddens **22** tests, including the whole `describe("shared prefix with the parent")` block.
+- The `available_skills` roadmap metric row stays at **3**, as the plan predicted.
+- The changelog preview over the whole range yields exactly one line — the `feat:` — and it names the observable outcome rather than the seam.
+- `rumdl` was re-run from a cleared `.rumdl_cache` across all 1142 files after the docs commit, since `MD057` caches per file but depends on the filesystem around it.
+
+### Reviewer verdict
+
+**PASS** (full review of `2e7cd91e..8f983184`), then **PASS** on the scoped delta review of `ec3308fb`.
+
+One WARN, now closed: the agent-`model:`-string resolution path had no combined assertion with `resolvePromptInheritance`.
+
+The delta reviewer flagged that `rumdl`'s output line was missing from its captured lint run and asked for independent verification.
+Re-verified here: `pnpm exec rumdl check .` reports `No issues found in 1142 files` with the cache cleared.
+It was an output-buffering artifact, as the reviewer suspected — and a standalone `rumdl` on `PATH` resolves to a newer Homebrew build (0.2.67) than the repo's pinned 0.2.24, which reports hundreds of pre-existing findings; always go through `pnpm exec`.
