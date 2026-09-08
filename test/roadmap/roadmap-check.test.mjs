@@ -127,6 +127,17 @@ describe("checkRoadmaps", () => {
       expect(result.report).not.toContain("pi-quiet");
     });
 
+    it("keeps the unanswerable status when another named package also has an error", () => {
+      givenPackage("pi-example", roadmapDocument({ priority: 9 }));
+      givenPackage("pi-quiet", "# Architecture\n\nNo roadmap yet.\n");
+      const result = checkRoadmaps({
+        root: workspace,
+        packages: ["pi-quiet", "pi-example"],
+      });
+      expect(result.code).toBe(2);
+      expect(result.report).toContain("published Priority 9");
+    });
+
     it("checks only the packages named", () => {
       givenPackage("pi-example", roadmapDocument({ priority: 9 }));
       givenPackage("pi-other", roadmapDocument({ priority: 9 }));

@@ -37,6 +37,14 @@ The shape a step takes this phase:
 
 Release: independent
 
+#### A heading that names no issue at all
+
+**Cause:** it is malformed, and the parser cannot key it.
+
+- **Impact 1 / Risk 1 / Priority 5.**
+
+Release: independent
+
 #### Step 2: Decide the allowlist policy ([#830], with [#834])
 
 **Cause:** the record is produced, never implemented.
@@ -130,6 +138,14 @@ describe("parseRoadmap", () => {
 
     it("records each step's ordinal alongside its issue", () => {
       expect(roadmap.steps.map((step) => step.ordinal)).toEqual([1, 2]);
+    });
+
+    it("drops a heading it cannot key, leaving its diagram node to surface the loss", () => {
+      // The parser has no identity to file such a step under. `validateRoadmap`
+      // reports the orphaned node, so the step is not lost silently.
+      expect(roadmap.steps.map((step) => step.title)).not.toContain(
+        "A heading that names no issue at all",
+      );
     });
 
     it("reads the scores", () => {

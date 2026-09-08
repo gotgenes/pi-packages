@@ -19,7 +19,7 @@
  * @typedef {{ kind: "issue" | "ordinal", n: number }} StepReference
  */
 
-const RUN_TOKEN = /^(?:after|steps?|and|,|→|\[#\d+\]|\d+)$/i;
+const RUN_TOKEN = /^(?:after|steps?|and|,|\[#\d+\]|\d+)$/i;
 const BRACKETED = /^\[#(\d+)\]$/;
 const MENTION_RUN = /\bSteps?\b((?:\s*(?:\d+|,|and|→)\s*)+)/g;
 const BRACKETED_MENTION = /\[#(\d+)\]/g;

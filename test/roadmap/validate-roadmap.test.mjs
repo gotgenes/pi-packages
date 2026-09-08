@@ -179,6 +179,29 @@ describe("validateRoadmap", () => {
         'error: batch "front-door" names #724 as its tail, but #724 does not declare that batch',
       );
     });
+
+    describe("a tail spelled as an ordinal, which is how both live roadmaps spell it", () => {
+      const ordinalBatched = (issue, ordinal) =>
+        makeStep({ issue, ordinal, releaseTags: ['batch "front-door"'] });
+
+      it("accepts an ordinal tail naming a step that declares the batch", () => {
+        const roadmap = makeRoadmap({
+          steps: [ordinalBatched(828, 4), ordinalBatched(829, 3)],
+          batchesText: '- **Batch "front-door":** Steps 4, 3 (tail = Step 3).',
+        });
+        expect(messages(roadmap)).toEqual([]);
+      });
+
+      it("reports an ordinal tail naming a step that does not declare the batch", () => {
+        const roadmap = makeRoadmap({
+          steps: [ordinalBatched(829, 3), makeStep({ issue: 724, ordinal: 1 })],
+          batchesText: '- **Batch "front-door":** Steps 3 (tail = Step 1).',
+        });
+        expect(messages(roadmap)).toContain(
+          'error: batch "front-door" names #1 as its tail, but #1 does not declare that batch',
+        );
+      });
+    });
   });
 
   describe("step and diagram correspondence", () => {
