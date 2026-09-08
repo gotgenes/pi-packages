@@ -437,3 +437,58 @@ Co-authored-by: George Harker <george@george-graphics.co.uk>
 
 The PR close comment thanks `@georgeharker` by name and links the implementing SHAs; any ADR credits `elidickinson`'s `diag/EXTRA-USAGE-400.md` for the original bisection.
 Reference the PR as `Refs #884`, never `Closes #884`.
+
+## Stage: Planning (2026-09-08T20:34:56Z)
+
+### Session summary
+
+Wrote `docs/plans/0883-portable-prompt-inheritance.md` (`2e7cd91e`) against the direction the PR-review stages settled: a `portable` strategy selected by a provider-keyed `promptInheritance` map, `full` unchanged as the default, no agent frontmatter.
+Seven TDD steps — four `refactor:` (settings, snapshot render, runtime capture, assembler branch), one preparatory `refactor:` reorder, one `feat:` wiring commit, one `docs:` commit.
+Two planning-time investigations changed the design from what the PR-review stage had recorded.
+
+### Observations
+
+#### `promptGuidelines` must not be inherited — a correction to PR #884
+
+The PR includes `promptGuidelines` in the portable parts, and the PR-review stage carried that forward unexamined.
+Reading Pi's `_rebuildSystemPrompt` (`../pi/packages/coding-agent/src/core/agent-session.ts`) shows it is derived per session from `this._toolPromptGuidelines.get(name)` over the session's valid tool names — it is **tool-attached** guidance.
+Inheriting the parent's would assert guidance for the parent's tools to a child that may hold none, which is precisely the defect [ADR 0008] removed when it deleted `<sub_agent_context>` for naming `edit` and `write` to a child with neither.
+
+Excluding it produced a sharper boundary than the PR had: the portable identity is `contextFiles` + `customPrompt` + `appendSystemPrompt` — **the operator's own text, and nothing Pi or a tool contributed.**
+It also removed the `Guidelines:` rendering question entirely.
+
+The same read settled the render order: Pi composes `customPrompt` → `appendSystemPrompt` → `<project_context>` in both branches of `buildSystemPrompt`, so the portable identity mirrors that.
+PR #884's `buildPortablePrompt` had the order inverted (context files first) and omitted Pi's `Project-specific instructions and guidelines:` lead-in.
+
+#### The unresolved-model residual is unreachable — the plan-time task discharged
+
+The PR-review decision left one open item: provider-only selection has no backstop when a child resolves no model, so measure how reachable that is and warn if it is.
+Measured: `ctx.model` is `agent.state.model`, and Pi leaves it `undefined` only in `core/sdk.ts:211-223`'s `formatNoModelsAvailableMessage()` branch — no authenticated model exists at all.
+Such a parent cannot run a turn, so it emits no `before_agent_start`, holds no capture, and cannot spawn a child that reaches an API.
+The other two paths always carry a provider: `resolveDefaultModel` falls back to `parentModel`, and a per-spawn `options.model` is a `Model<any>`.
+
+So **no diagnostic is warranted**, and the surface stays the flat map with no backstop.
+The `provider === undefined → "full"` arm is documented in the plan as defensive rather than reachable.
+
+#### Tidy-First: no preparatory commits
+
+The assessor found none, and its reasoning was the useful part: every interface this change touches grows by **optional** fields following patterns already in the package — `excludedExtensionPackages`' sanitize block, the `createSubagentSessionDeps` overrides factory, trailing-bag positionals — so none of the ~29 `InheritedPrompt` construction sites in `prompts.test.ts` or the ~15 deps sites in `create-subagent-session.test.ts` need touching.
+It explicitly declined the `settings.ts` `sanitize()` range-check extraction as scope creep: the new block mirrors the `excludedExtensionPackages` array-filter shape, not the integer triplets the scout inventory named, so this change touches none of that debt.
+It also declined converting `buildParentSnapshot` to an options object, on the local precedent that `buildAgentPrompt` has four positionals and `assembleSessionConfig` six.
+
+One mechanical consequence it flagged and the plan records: `runtime.test.ts`'s two `toHaveBeenCalledWith(ctx, true)` assertions gain a third argument in Step 3.
+
+#### Step 5 is a preparatory refactor the assessor did not name
+
+The `assembleSessionConfig` model-resolution reorder is part of the change, not preparation for it — but isolating it as a pure no-op commit ahead of the wiring step keeps the `feat:` diff small against a green tree.
+Verified independent at planning time: `resolveDefaultModel` reads only `ctx.parentModel`, `ctx.modelRegistry`, and `agentConfig.model`, and the function is documented side-effect-free.
+This also corrects the first PR-review stage's claim that the reorder was the PR's highest-blast-radius change.
+
+#### Scope decisions carried from the PR review, not re-litigated
+
+The `ask_user` gate was satisfied by the PR-review stages: direction (adopt with a simplified design), default (`full` stays), surface (provider map only), and `portable`'s scope (re-homing hosts only, documented not enforced) were all decided there and are recorded in the plan's Goals and Non-Goals rather than reopened.
+ADR 0009 is planned because the "no new ADR" non-goal was offered and **not** selected, and the decision needs a durable record of why the key is the provider and why the default did not flip.
+
+#### Deferred tidyings
+
+None — the assessor recommended no preparatory commits, and its one rejection (`settings.ts` `sanitize()` range-check triplication) is already inventoried as scattered boy-scout debt at `architecture.md:853`, so it needs no new record here.
