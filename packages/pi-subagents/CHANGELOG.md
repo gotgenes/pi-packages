@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [21.4.7](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v21.4.6...pi-subagents-v21.4.7) (2026-09-08)
+
+
+### Bug Fixes
+
+* **pi-subagents:** stop telling a child to use tools it does not have ([e3f31b3](https://github.com/gotgenes/pi-packages/commit/e3f31b3e3cf75714d7d5b5fa520301ff34734637)), closes [#890](https://github.com/gotgenes/pi-packages/issues/890)
+
+### Documentation
+
+* record that the inherited region is shared parts, not shared bytes ([#890](https://github.com/gotgenes/pi-packages/issues/890)) ([5755a9a](https://github.com/gotgenes/pi-packages/commit/5755a9a8ea34bf5c7e08a4cb8abc988c12eb3a59))
+* correct the sub-agent bridge description and the header-match residual ([#890](https://github.com/gotgenes/pi-packages/issues/890)) ([b0db764](https://github.com/gotgenes/pi-packages/commit/b0db764e0ffa484eb18bad2883710e77d93ec99b)), closes [#890](https://github.com/gotgenes/pi-packages/issues/890)
+
 ## [21.4.6](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v21.4.5...pi-subagents-v21.4.6) (2026-09-08)
 
 
