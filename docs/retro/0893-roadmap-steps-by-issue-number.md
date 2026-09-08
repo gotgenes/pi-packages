@@ -65,4 +65,20 @@ The gate asserts exactly 2, so an incomplete step is still refused, and the ordi
 
 No `src/`, `test/`, or `.ts` file was touched and nothing under `packages/` changed, so this ships no package release.
 
+## Stage: Sync (worktree) (2026-09-08T01:53:44Z)
+
+### Session summary
+
+Pre-push checks (`pnpm run lint`, `pnpm fallow dead-code`) both pass clean with no fixes needed.
+This is a docs/`.pi/`-only change with no `packages/` files touched, so the plan's `**Release:** ship independently` marker is moot — nothing releases regardless.
+Two follow-ups are already filed and dispositioned: [#894] (derive the working sequence from priority/dependencies, explicitly deferred until this format lands) and [#900] (rumdl pin re-evaluation, independent of this change).
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-893--/2026-09-07T19-23-57-043Z_01a07d53-c4f2-754e-8441-d091e4aa2336.jsonl` — read with `read_session_file({ path: "<path>" })` for message-level verification at land/retro time.
+
+### Observations
+
+Nothing deferred to root beyond the standard ff-merge and issue close.
+The pre-completion reviewer's WARN (an under-counted residual in the plan) was already remediated in a follow-up commit during the build stage; nothing outstanding from that review.
+
+[#894]: https://github.com/gotgenes/pi-packages/issues/894
 [#900]: https://github.com/gotgenes/pi-packages/issues/900
