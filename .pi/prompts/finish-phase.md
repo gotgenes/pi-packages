@@ -89,6 +89,16 @@ The `roadmap-fit` skill dispositions these at filing time; this is the net for t
 Expect a non-trivial residual: against pi-permission-system Phase 13's window the query returned 15 issues, 7 of them already stepped or dispositioned.
 The survivors mix genuine phase-born work with ordinary tracker noise, and the grouped bullet is what keeps the pass bounded.
 
+### Check the roadmap's published inputs before it is archived
+
+```bash
+./scripts/roadmap-check.mjs $1
+```
+
+Advisory rather than a gate — the phase is finished, so a finding here is a correction to the record rather than a reason not to archive.
+Fix what is cheap and clearly wrong (a `Priority` that does not follow from its own `Impact` and `Risk`, a step missing from the release-batch accounting) so the history file preserves a roadmap that agrees with itself, and note anything you leave in the reconciliation commit body.
+This is the last moment the document is still live; once Step 5 moves it to `history/`, nobody runs the check against it again.
+
 ## Step 3: Reconcile the architecture document with delivered code
 
 The architecture document describes the **current** architecture; after a phase lands it must match what shipped — not what was planned.

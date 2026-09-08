@@ -224,6 +224,15 @@ The section should include:
 
 Add a reference-link definition for every `[#N]` at the end of the file, then verify every `[#N]` reference resolves to one — `rumdl`'s MD053 flags _unused_ definitions but not _missing_ ones, so a dangling reference inherited from a prior phase's summary passes lint silently.
 
+Then check the roadmap you just wrote against its own published inputs:
+
+```bash
+./scripts/roadmap-check.mjs $1
+```
+
+Resolve every **error** before going further — each one reads a strictly-formatted field, so it is a defect in what you wrote rather than a judgement call: a `Priority` that does not follow from its own `Impact` and `Risk`, a missing or unrecognized `Release:` tag, a batch name with no bullet, a step missing from the diagram, or a dependency cycle.
+Read the **warnings** and fix the ones that are wrong: a step named in no track or no release batch is usually an omission, and a `**Hard dependency:**` bullet disagreeing with the diagram means one of the two is stale.
+
 After writing the plan, present a summary to the user and ask whether to commit.
 If confirmed, commit with:
 
