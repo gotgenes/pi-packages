@@ -155,16 +155,19 @@ export function assembleSessionConfig(
 
   const toolNames = registry.getToolNamesForType(type);
 
+  // Model resolution: explicit option > config model string > parent model.
+  // Resolved before the prompt because the child's provider is what selects a
+  // prompt-inheritance strategy; the two computations are otherwise
+  // independent, so the order is free.
+  const model =
+    options.model ??
+    resolveDefaultModel(ctx.parentModel, ctx.modelRegistry, agentConfig.model);
+
   // Build system prompt from the resolved agent config
   const systemPrompt = io.buildAgentPrompt(agentConfig, effectiveCwd, env, {
     systemPrompt: ctx.parentSystemPrompt,
     cwd: ctx.cwd,
   });
-
-  // Model resolution: explicit option > config model string > parent model
-  const model =
-    options.model ??
-    resolveDefaultModel(ctx.parentModel, ctx.modelRegistry, agentConfig.model);
 
   // Thinking level: explicit option > agent config > undefined (inherit)
   const thinkingLevel = options.thinkingLevel ?? agentConfig.thinking;
