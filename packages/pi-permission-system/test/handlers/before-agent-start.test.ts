@@ -239,11 +239,11 @@ describe("AgentPrepHandler.handle", () => {
     );
   });
 
-  it("returns empty object on repeated calls with unchanged inputs", async () => {
+  it("returns the same override on repeated calls with unchanged inputs", async () => {
     const { handler } = makeSetup();
-    await handler.handle(makeEvent(), makeCtx());
-    const result = await handler.handle(makeEvent(), makeCtx());
-    expect(result).toEqual({});
+    const first = await handler.handle(makeEvent(), makeCtx());
+    const second = await handler.handle(makeEvent(), makeCtx());
+    expect(second.systemPrompt).toBe(first.systemPrompt);
   });
 
   it("stores resolved skill entries on the session", async () => {
@@ -260,15 +260,30 @@ describe("AgentPrepHandler.handle", () => {
     expect(result).toHaveProperty("systemPrompt");
   });
 
-  it("returns empty object when systemPrompt is unchanged", async () => {
+  it("states the session's tools for a prompt that carries no tool surface", async () => {
+    // A subagent child's inherited identity has none: its parent's node already
+    // relocated the surface out of the region the child copies (#890).
     const prompt = "No tools section here.";
-    const { handler } = makeSetup();
-    const result = await handler.handle(makeEvent(prompt), makeCtx());
-    expect(result).toEqual({});
+    const { handler } = makeSetup({
+      toolRegistry: { getActive: vi.fn().mockReturnValue(["read"]) },
+    });
+
+    const result = await handler.handle(
+      makeEvent(prompt, { toolSnippets: { read: "Read file contents" } }),
+      makeCtx(),
+    );
+
+    expect(result.systemPrompt).toContain(
+      "Available tools:\n- read: Read file contents",
+    );
+    expect(result.systemPrompt?.startsWith(prompt)).toBe(true);
   });
 
-  it("narrows a denied tool out of the Available tools listing without removing the section", async () => {
+  it("states the allowed tools instead of editing the listing Pi wrote", async () => {
+    const identity = "You are an assistant.";
     const systemPrompt = [
+      identity,
+      "",
       "Available tools:",
       "- read: Read file contents",
       "- bash: Run shell commands",
@@ -282,16 +297,24 @@ describe("AgentPrepHandler.handle", () => {
       (tool) => tool === "bash",
     );
 
-    const result = await handler.handle(makeEvent(systemPrompt), makeCtx());
+    const result = await handler.handle(
+      makeEvent(systemPrompt, {
+        toolSnippets: {
+          read: "Read file contents",
+          bash: "Run shell commands",
+        },
+      }),
+      makeCtx(),
+    );
 
-    expect(result.systemPrompt).toBeDefined();
     const out = result.systemPrompt ?? "";
-    expect(out).toContain("Available tools:");
-    expect(out).toContain("- read: Read file contents");
+    // The identity Pi wrote is left alone; the surface is restated after it.
+    expect(out.startsWith(identity)).toBe(true);
+    expect(out).toContain("Available tools:\n- read: Read file contents");
     expect(out).not.toContain("- bash");
   });
 
-  it("keeps the wire system prompt byte-stable across the tool-listing drift between turns", async () => {
+  it("keeps the wire system prompt stable across the tool-listing drift between turns", async () => {
     const fullProse = [
       "You are an assistant.",
       "",
@@ -299,11 +322,9 @@ describe("AgentPrepHandler.handle", () => {
       "- bash: Run shell commands",
       "- read: Read file contents",
       "- edit: Edit a file",
-      "- write: Write a file",
       "",
       "Guidelines:",
-      "- use bash for file operations like ls, rg, find",
-      "- use read to examine files instead of cat or sed.",
+      "- Use bash for file operations like ls, rg, find",
       "- Be concise in your responses",
     ].join("\n");
     const narrowedProse = [
@@ -312,15 +333,18 @@ describe("AgentPrepHandler.handle", () => {
       "Available tools:",
       "- read: Read file contents",
       "- edit: Edit a file",
-      "- write: Write a file",
       "",
       "Guidelines:",
-      "- use read to examine files instead of cat or sed.",
       "- Be concise in your responses",
     ].join("\n");
+    const snippets = {
+      bash: "Run shell commands",
+      read: "Read file contents",
+      edit: "Edit a file",
+    };
     const { handler, permissionManager } = makeSetup({
       toolRegistry: {
-        getActive: vi.fn().mockReturnValue(["bash", "read", "edit", "write"]),
+        getActive: vi.fn().mockReturnValue(["bash", "read", "edit"]),
       },
     });
     vi.mocked(permissionManager.isToolFullyDenied).mockImplementation(
@@ -328,15 +352,31 @@ describe("AgentPrepHandler.handle", () => {
     );
 
     // Turn 1: Pi feeds the full default listing.
-    const first = await handler.handle(makeEvent(fullProse), makeCtx());
+    const first = await handler.handle(
+      makeEvent(fullProse, { toolSnippets: snippets }),
+      makeCtx(),
+    );
     // Turn 2: Pi's setActive rebuild means the event now carries the narrowed
     // listing, so the override the handler returns must still match turn 1.
-    const second = await handler.handle(makeEvent(narrowedProse), makeCtx());
+    const second = await handler.handle(
+      makeEvent(narrowedProse, { toolSnippets: snippets }),
+      makeCtx(),
+    );
 
-    const wire1 = first.systemPrompt ?? fullProse;
-    const wire2 = second.systemPrompt ?? narrowedProse;
-    expect(wire1).toBe(narrowedProse);
-    expect(wire2).toBe(narrowedProse);
+    expect(second.systemPrompt).toBe(first.systemPrompt);
+    expect(first.systemPrompt).toBe(
+      [
+        "You are an assistant.",
+        "",
+        "Available tools:",
+        "- read: Read file contents",
+        "- edit: Edit a file",
+        "",
+        "Guidelines:",
+        "- Be concise in your responses",
+        "- Show file paths clearly when working with files",
+      ].join("\n"),
+    );
   });
 
   describe("policy changes across turns", () => {

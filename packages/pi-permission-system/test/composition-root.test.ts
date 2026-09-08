@@ -1069,8 +1069,16 @@ describe("ready emitted after service publication", () => {
     const ctx = makeBaseCtx(cwd, "latch-session");
     await fireSessionStart(pi, ctx);
 
-    await pi.fire("before_agent_start", { systemPrompt: "" }, ctx);
-    await pi.fire("before_agent_start", { systemPrompt: "" }, ctx);
+    await pi.fire(
+      "before_agent_start",
+      { systemPrompt: "", systemPromptOptions: { cwd: "/test" } },
+      ctx,
+    );
+    await pi.fire(
+      "before_agent_start",
+      { systemPrompt: "", systemPromptOptions: { cwd: "/test" } },
+      ctx,
+    );
 
     // One emission at session_start, one at the *first* before_agent_start —
     // the second turn adds none.
@@ -1095,14 +1103,26 @@ describe("ready emitted after service publication", () => {
     piPermissionSystemExtension(pi as unknown as ExtensionAPI);
     const ctx = makeBaseCtx(cwd, "latch-reload-session");
     await fireSessionStart(pi, ctx);
-    await pi.fire("before_agent_start", { systemPrompt: "" }, ctx);
+    await pi.fire(
+      "before_agent_start",
+      { systemPrompt: "", systemPromptOptions: { cwd: "/test" } },
+      ctx,
+    );
     expect(emissions).toBe(2);
 
     // A reload runs session_start again: the new generation announces at
     // session_start and once more at its first turn.
     await fireSessionStart(pi, ctx);
-    await pi.fire("before_agent_start", { systemPrompt: "" }, ctx);
-    await pi.fire("before_agent_start", { systemPrompt: "" }, ctx);
+    await pi.fire(
+      "before_agent_start",
+      { systemPrompt: "", systemPromptOptions: { cwd: "/test" } },
+      ctx,
+    );
+    await pi.fire(
+      "before_agent_start",
+      { systemPrompt: "", systemPromptOptions: { cwd: "/test" } },
+      ctx,
+    );
     expect(emissions).toBe(4);
 
     rmSync(cwd, { recursive: true, force: true });
