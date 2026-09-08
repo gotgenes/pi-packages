@@ -69,4 +69,83 @@ describe("buildParentSnapshot", () => {
     const snapshot = buildParentSnapshot(makeCtx(), true);
     expect(snapshot.parentContext).toBeUndefined();
   });
+
+  describe("portablePrompt", () => {
+    it("is undefined when no prompt options were captured", () => {
+      expect(buildParentSnapshot(makeCtx(), false).portablePrompt).toBeUndefined();
+    });
+
+    it("is undefined when the captured options carry no operator-authored parts", () => {
+      const snapshot = buildParentSnapshot(makeCtx(), false, { contextFiles: [] });
+      expect(snapshot.portablePrompt).toBeUndefined();
+    });
+
+    it("renders context files the way Pi's buildSystemPrompt does", () => {
+      // Byte-exact against core/system-prompt.ts, which writes the lead-in
+      // sentence and separates each block with a blank line.
+      const snapshot = buildParentSnapshot(makeCtx(), false, {
+        contextFiles: [
+          { path: "/repo/AGENTS.md", content: "Repo rules." },
+          { path: "/repo/sub/AGENTS.md", content: "Nested rules." },
+        ],
+      });
+      expect(snapshot.portablePrompt).toBe(
+        [
+          "<project_context>",
+          "",
+          "Project-specific instructions and guidelines:",
+          "",
+          '<project_instructions path="/repo/AGENTS.md">',
+          "Repo rules.",
+          "</project_instructions>",
+          "",
+          '<project_instructions path="/repo/sub/AGENTS.md">',
+          "Nested rules.",
+          "</project_instructions>",
+          "",
+          "</project_context>",
+        ].join("\n"),
+      );
+    });
+
+    it("orders the parts the way Pi composes them: custom, append, then context", () => {
+      const snapshot = buildParentSnapshot(makeCtx(), false, {
+        contextFiles: [{ path: "/repo/AGENTS.md", content: "Repo rules." }],
+        customPrompt: "You are a specialist.",
+        appendSystemPrompt: "Extra instructions.",
+      });
+      expect(snapshot.portablePrompt).toBe(
+        [
+          "You are a specialist.",
+          "",
+          "Extra instructions.",
+          "",
+          "<project_context>",
+          "",
+          "Project-specific instructions and guidelines:",
+          "",
+          '<project_instructions path="/repo/AGENTS.md">',
+          "Repo rules.",
+          "</project_instructions>",
+          "",
+          "</project_context>",
+        ].join("\n"),
+      );
+    });
+
+    it("omits a section whose input is absent", () => {
+      const snapshot = buildParentSnapshot(makeCtx(), false, {
+        customPrompt: "You are a specialist.",
+      });
+      expect(snapshot.portablePrompt).toBe("You are a specialist.");
+    });
+
+    it("treats a whitespace-only custom or append prompt as absent", () => {
+      const snapshot = buildParentSnapshot(makeCtx(), false, {
+        customPrompt: "   ",
+        appendSystemPrompt: "\n\n",
+      });
+      expect(snapshot.portablePrompt).toBeUndefined();
+    });
+  });
 });
