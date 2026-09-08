@@ -27,7 +27,13 @@ import type { EnvInfo } from "#src/session/env";
 import type { ModelRegistry } from "#src/session/model-resolver";
 import { NotifyParentTool, type UpdateAnnouncer } from "#src/session/notify-parent-tool";
 import { type AssemblerIO, assembleSessionConfig } from "#src/session/session-config";
-import type { ParentSessionInfo, ShellExec, SubagentType, ThinkingLevel } from "#src/types";
+import type {
+  ParentSessionInfo,
+  PromptInheritance,
+  ShellExec,
+  SubagentType,
+  ThinkingLevel,
+} from "#src/types";
 
 /**
  * Recursion guard: names of tools registered by this extension that subagents
@@ -138,6 +144,14 @@ export interface SubagentSessionDeps {
   registry: AgentConfigLookup;
   /** Publishes the child-execution lifecycle so consumers can observe it. */
   lifecycle: ChildLifecyclePublisher;
+  /**
+   * Which prompt-inheritance strategy a child on the given provider adopts.
+   *
+   * Resolved at the composition root from the operator's settings, so this
+   * factory stays policy-free — the same shape the extension-exclusion policy
+   * reaches it in.
+   */
+  resolvePromptInheritance: (provider: string | undefined) => PromptInheritance;
 }
 
 /** Per-spawn parameters — the fields that vary per child session. */
@@ -200,8 +214,10 @@ export async function createSubagentSession(
     {
       cwd: snapshot.cwd,
       parentSystemPrompt: snapshot.systemPrompt,
+      parentPortablePrompt: snapshot.portablePrompt,
       parentModel: snapshot.model,
       modelRegistry: snapshot.modelRegistry,
+      resolvePromptInheritance: deps.resolvePromptInheritance,
     },
     {
       cwd: params.cwd,

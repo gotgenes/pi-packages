@@ -168,6 +168,11 @@ export default function (pi: ExtensionAPI) {
     exec: (cmd, args, opts) => pi.exec(cmd, args, opts),
     registry,
     lifecycle: createChildLifecyclePublisher((channel, data) => pi.events.emit(channel, data)),
+    // Resolved here, at the composition root, so the assembly factory stays
+    // free of the policy and gets a ready-made settings view — the same shape
+    // the extension-exclusion policy reaches it in. It is a resolver rather
+    // than a value because only the assembler knows the child's provider.
+    resolvePromptInheritance: (provider) => settings.promptInheritanceFor(provider),
   };
 
   // ConcurrencyLimiter: schedules background run thunks FIFO against the limit.
@@ -215,6 +220,14 @@ export default function (pi: ExtensionAPI) {
   // `abortAll()` and the awaited `manager.dispose()` have finished — no terminal
   // transition is left to drive an `update()` at a half-disposed widget.
   pi.on("session_shutdown", () => widgetEvents.handleSessionShutdown());
+
+  // Capture the prompt parts Pi assembled for the parent's turn. This is the
+  // only event carrying them — `getSystemPromptOptions()` is attached to a
+  // command context, not to the session context the runtime holds — and a spawn
+  // renders the parent's portable identity from the latest capture.
+  pi.on("before_agent_start", (event) => {
+    runtime.setSystemPromptOptions(event.systemPromptOptions);
+  });
 
   // Abort all subagents when the parent agent loop is interrupted (ESC), unless
   // the user has turned that policy off. The predicate is read at abort time.

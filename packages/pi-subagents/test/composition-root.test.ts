@@ -6,6 +6,9 @@
  * `test/session/provider-inheritance.test.ts`, but those tests pass whether or
  * not the root calls it — only this file fails if the wiring is removed.
  */
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const sdk = vi.hoisted(() => {
@@ -347,5 +350,90 @@ describe("composition root: widget teardown", () => {
 
     expect(ui.setWidget).toHaveBeenLastCalledWith("agents", undefined);
     expect(ui.setStatus).toHaveBeenLastCalledWith("subagents", undefined);
+  });
+});
+
+describe("composition root: prompt-inheritance wiring", () => {
+  /**
+   * Run the extension through one parent turn and one spawn, and return what
+   * the root handed `createSubagentSession`.
+   *
+   * Only this file fails if the `before_agent_start` capture or the resolver
+   * entry is dropped from the deps bag — the unit tests for each half pass
+   * whether or not the root wires them together.
+   */
+  async function spawnAfterParentTurn(systemPromptOptions?: unknown) {
+    // The module mock is shared across this file, so drop earlier tests' calls
+    // before reading back the one this spawn makes.
+    vi.mocked(createSubagentSession).mockClear();
+    vi.mocked(createSubagentSession).mockResolvedValue(
+      toSubagentSession(createSubagentSessionStub(createMockSession(), "/sessions/child.jsonl")),
+    );
+    const { pi, tools, fire } = makePi();
+    subagentsExtension(pi);
+    await fire("session_start", {}, makeSessionStartCtx(makeParentRegistry().registry, makeRecordingUI()));
+    if (systemPromptOptions !== undefined) {
+      await fire("before_agent_start", { systemPromptOptions });
+    }
+
+    await tools.get("subagent").execute(
+      "tool-call-1",
+      {
+        prompt: "hi",
+        description: "child",
+        subagent_type: "general-purpose",
+        run_in_background: true,
+      },
+      undefined,
+      undefined,
+    );
+
+    return vi.mocked(createSubagentSession).mock.calls[0];
+  }
+
+  it("captures the parent's prompt options and renders them into the spawn snapshot", async () => {
+    const [params] = await spawnAfterParentTurn({
+      contextFiles: [{ path: "/repo/AGENTS.md", content: "Repo rules." }],
+    });
+
+    expect(params.snapshot.portablePrompt).toContain('<project_instructions path="/repo/AGENTS.md">');
+  });
+
+  it("leaves the snapshot's portable parts absent when the parent has run no turn", async () => {
+    const [params] = await spawnAfterParentTurn();
+
+    expect(params.snapshot.portablePrompt).toBeUndefined();
+  });
+
+  describe("the session factory's inheritance resolver", () => {
+    let projectDir: string;
+
+    beforeEach(() => {
+      projectDir = mkdtempSync(join(tmpdir(), "pi-root-inherit-"));
+      mkdirSync(join(projectDir, ".pi"), { recursive: true });
+      writeFileSync(
+        join(projectDir, ".pi", "subagents.json"),
+        JSON.stringify({ promptInheritance: { "claude-bridge": "portable" } }),
+      );
+      // The root reads settings from process.cwd(), so point it at the fixture.
+      vi.spyOn(process, "cwd").mockReturnValue(projectDir);
+    });
+
+    afterEach(() => {
+      vi.mocked(process.cwd).mockRestore();
+      rmSync(projectDir, { recursive: true, force: true });
+    });
+
+    it("answers portable for a provider the operator configured", async () => {
+      const [, deps] = await spawnAfterParentTurn();
+
+      expect(deps.resolvePromptInheritance("claude-bridge")).toBe("portable");
+    });
+
+    it("answers full for a provider the operator did not configure", async () => {
+      const [, deps] = await spawnAfterParentTurn();
+
+      expect(deps.resolvePromptInheritance("anthropic")).toBe("full");
+    });
   });
 });

@@ -50,7 +50,11 @@ describe("createSubagentSessionIO", () => {
 	it("assemblerIO methods can be configured after creation", () => {
 		const io = createSubagentSessionIO();
 		io.assemblerIO.buildAgentPrompt.mockReturnValue("custom prompt");
-		const result = io.assemblerIO.buildAgentPrompt({}, "/cwd", {});
+		const result = io.assemblerIO.buildAgentPrompt(
+			{ name: "Explore", systemPrompt: "", promptMode: "replace" },
+			"/cwd",
+			{ isGitRepo: false, branch: "", platform: "linux" },
+		);
 		expect(result).toBe("custom prompt");
 	});
 

@@ -1,7 +1,8 @@
 import { vi } from "vitest";
 import type { AgentConfigLookup } from "#src/config/agent-types";
 import type { ChildLifecyclePublisher } from "#src/lifecycle/child-lifecycle";
-import type { AgentConfig, ShellExec } from "#src/types";
+import type { AssemblerIO } from "#src/session/session-config";
+import type { AgentConfig, PromptInheritance, ShellExec } from "#src/types";
 import { createMockSession } from "#test/helpers/mock-session";
 
 /** Default AgentConfig returned by createAgentLookup. Matches the Explore stub used in factory tests. */
@@ -45,7 +46,9 @@ export function createSubagentSessionIO() {
 		createLoaderSettingsManager: vi.fn().mockImplementation((parent: unknown) => parent),
 		createSession: vi.fn(),
 		assemblerIO: {
-			buildAgentPrompt: vi.fn((..._args: unknown[]): string => "system prompt"),
+			// Typed against the real signature so a test can read back the
+			// inherited-prompt argument the assembler composed.
+			buildAgentPrompt: vi.fn<AssemblerIO["buildAgentPrompt"]>(() => "system prompt"),
 		},
 	};
 }
@@ -84,12 +87,16 @@ export function createSubagentSessionDeps(overrides?: {
 	exec?: ShellExec;
 	registry?: AgentConfigLookup;
 	lifecycle?: ReturnType<typeof createChildLifecycleMock>;
+	resolvePromptInheritance?: (provider: string | undefined) => PromptInheritance;
 }) {
 	return {
 		io: overrides?.io ?? createSubagentSessionIO(),
 		exec: overrides?.exec ?? vi.fn(),
 		registry: overrides?.registry ?? createAgentLookup(),
 		lifecycle: overrides?.lifecycle ?? createChildLifecycleMock(),
+		resolvePromptInheritance:
+			overrides?.resolvePromptInheritance ??
+			vi.fn((_provider: string | undefined): PromptInheritance => "full"),
 	};
 }
 

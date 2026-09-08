@@ -419,3 +419,40 @@ describe("createSubagentSession — the core's own child tools", () => {
     });
   });
 });
+
+describe("createSubagentSession — prompt inheritance", () => {
+  /** The inherited-prompt argument the assembler handed the prompt builder. */
+  function inheritedArgument() {
+    return io.assemblerIO.buildAgentPrompt.mock.calls[0]?.[3];
+  }
+
+  it("hands the prompt builder the snapshot's portable parts", async () => {
+    arrangeFactory();
+
+    await createSubagentSession(
+      {
+        snapshot: { ...STUB_SNAPSHOT, portablePrompt: "<project_context>…</project_context>" },
+        type: "Explore",
+      },
+      defaultDeps(),
+    );
+
+    expect(inheritedArgument()?.portablePrompt).toBe("<project_context>…</project_context>");
+  });
+
+  it("applies the strategy the deps' resolver returns", async () => {
+    arrangeFactory();
+
+    await createSubagentSession(
+      { snapshot: STUB_SNAPSHOT, type: "Explore" },
+      createSubagentSessionDeps({
+        io,
+        exec,
+        registry: mockAgentLookup,
+        resolvePromptInheritance: () => "portable",
+      }),
+    );
+
+    expect(inheritedArgument()?.strategy).toBe("portable");
+  });
+});
