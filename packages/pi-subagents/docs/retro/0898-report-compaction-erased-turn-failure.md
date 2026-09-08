@@ -168,4 +168,67 @@ Nothing is deferred; `**Release:** ship independently` per the plan.
 The TDD stage's own retro entry already carries the substantive story (three pre-completion review rounds, two of which found real gaps in the plan's central premise about `message_end` always firing).
 Nothing further to add here — this is a clean handoff.
 
+## Stage: Final Retrospective (2026-09-08T01:43:26Z)
+
+### Session summary
+
+Shipped this issue through the worktree lane: fast-forward-merged the peer branch, ran the pre-push gates on the merged tree, verified CI, closed the issue, and released `pi-subagents` v21.4.6.
+This retrospective spans four stages across two sessions — planning, TDD, and sync in the peer worktree, ship at the root.
+The substance is entirely in the first two stages; the sync and ship halves ran without a single correction.
+
+### Observations
+
+#### What went well
+
+- **The pre-completion reviewer did design work, not gate-checking.**
+  Three rounds (FAIL → FAIL → PASS) moved the fix's central mechanism twice — from a per-call collector, to a history-seeded one, to a collector the `SubagentSession` owns for its whole life.
+  Both FAILs were legitimate and neither was argued down.
+  This is the strongest instance so far of that agent finding something no mutation in the plan could: all three planned killing mutations assumed at least one `message_end` per `prompt()` call, which is exactly the premise that was false.
+- **Round 2's finding was checked against the pre-change code before it was escalated.**
+  Establishing that the composed path was equally blind under the deleted `readTurnFailure` scan turned the report from "fix a regression" into a scope decision for the operator, and the honest framing is what made the resulting structural change a deliberate choice rather than a panic fix.
+- **The Tidy-First assessor's fixture hazard was measured rather than trusted.**
+  Removing the `usage` field from a synthesized `message_end` turns exactly three `subagent.test.ts` tests red with a `TypeError` from `subscribeSubagentObserver`'s unguarded `event.message.usage.input`.
+  One command, recorded in the commit body — and a defect that would otherwise have read as a failure of the mechanism under test.
+
+#### What caused friction (agent side)
+
+- `missing-context` — The plan verified, exhaustively, what the SDK does when a turn **runs**: six exits from `_runAutoCompaction`, the `message_end` ordering, `_prepareRetry`, `_replaceMessageInPlace`.
+  It never asked what `AgentSession.prompt()` does when a turn does **not** run.
+  It then used the resulting universal claim — "production emits at least one assistant `message_end` per `prompt()` on every path that reaches the read" — to *decline* a fallback at the design gate.
+  Three early returns falsify it: an extension command matched the prompt, an `input` handler reported it handled, or the message was queued while streaming.
+  Impact: two pre-completion FAIL rounds and two commits beyond the plan's four, plus the architecture `Landed:` note rewritten twice as the mechanism moved.
+  Reviewer-caught, twice — not self-identified.
+  The generalizable shape: replacing a guard's evidence source has two questions, and only the first was answered — what the new source sees that the old missed, and what the old source saw that the new one misses.
+- `other` (shell quoting) — The `fix:` commit at TDD step 3 was written with `git commit -m` carrying a body full of escaped double quotes; the message landed truncated and corrupted, ending `only \`stopReason: "error"""`. Caught one turn later by reading it back with `git log -1 --format=%B`, fixed with `--amend`. Every subsequent commit body in the session went through `git commit -F` with a heredoc.
+  Impact: one amend, about two tool calls, no rework.
+  Self-identified.
+
+#### What caused friction (user side)
+
+- The operator's "should the latest Pi source be checked first?"
+  at the design gate was the highest-leverage intervention of the whole issue, and it arrived as a redirecting question rather than a correction.
+  The session was ready to gate on the pinned `0.84.4` alone.
+  The check confirmed all four load-bearing mechanisms are byte-identical at `0.85.1` and that `earendil-works/pi` carries no open issue on the strip — which is what makes "no upstream fix is coming" a verified claim instead of an assumption.
+  Opportunity: this is a standing question for any design resting on a dependency's internals, so it belongs in the planning prompt rather than in the operator's head.
+
+### Diagnostic details
+
+- **Model-performance correlation** — Planning and TDD ran on `anthropic/claude-opus-5` (SDK source trace, two design gates, three review rounds); sync and ship ran on `anthropic/claude-sonnet-5` (deterministic checklists).
+  Both appropriate.
+  Subagents: `tidy-first-assessor` once and `pre-completion-reviewer` three times, both declaring `anthropic/claude-sonnet-5`.
+  The reviewer's two FAILs were multi-hop reachability traces spanning `prompt()`'s early returns and a sibling package's handler — judgment-heavy work sonnet handled correctly, and the parent independently reproduced each before escalating.
+  No mismatch in either direction.
+- **Feedback-loop gap analysis** — No gap.
+  The baseline was verified green before step 1 (1628 tests), `pnpm run check` ran inside nearly every Green step, and the full suite, root `lint`, and `fallow dead-code` ran at every commit boundary (1636 tests at the end).
+- **Escalation-delay tracking** — No `rabbit-hole` points.
+  The longest same-target run — five mutate/restore cycles on `subagent-session.ts` during TDD step 3 — is the prescribed Verify-the-pins protocol, not thrashing.
+- **Unused-tool detection** — Not applicable.
+  The one `missing-context` point was a question never asked, not a hunt run with the wrong instrument: `prompt()`'s early returns sit in `agent-session.js`, the same file the session already had open for the compaction trace.
+
+### Changes made
+
+1. `.pi/prompts/plan-issue.md` (Design Overview) — added the two-sided evidence-source rule: when a design replaces the evidence a guard reads, enumerate what the new source sees that the old missed **and** what the old source saw that the new one misses, and verify any universal claim about the new source before it justifies dropping a fallback.
+2. `.pi/prompts/plan-issue.md` (Gather context) — added the instruction to read a dependency's mechanism in the tracking checkout and confirm it is unchanged from the pinned version when the design rests on internal behavior rather than API; the tracker answers posture, the checkout answers whether the code moved.
+3. `AGENTS.md` (Shell and search) — extended the `--body-file` rule to `git commit`: a body with quotes or backticks belongs in a file passed with `-F`.
+
 [#889]: https://github.com/gotgenes/pi-packages/issues/889

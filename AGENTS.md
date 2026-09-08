@@ -436,6 +436,7 @@ Use `echo ---`.
 Each `bash` call runs in a fresh shell — a variable set in one call is unset in the next.
 Chain producer and consumer in one call, or re-derive the value (Refs #772).
 A `gh issue comment` / `gh pr comment` body containing backticks or fences belongs in a file passed with `--body-file` — inside single quotes a `` \` `` ships literally (Refs #794).
+A `git commit` body with quotes or backticks belongs in a file passed with `-F` — a `-m` string corrupted one, invisible until `git log -1 --format=%B` (Refs #898).
 A shell snippet quoted inside a `/* */` block comment must not contain `*/` — a `sed 's/,.*//'` closes the comment and breaks the file's parse.
 Use `cut -d, -f1`.
 Pass file tool paths repo-relative (`packages/<pkg>/src/x.ts`), not hand-built absolute ones — a mistyped absolute path trips the `external_directory` gate instead of failing fast (Refs #726).

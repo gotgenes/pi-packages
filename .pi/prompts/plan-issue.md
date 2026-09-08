@@ -62,6 +62,8 @@ Before investigating the issue, load skills relevant to the change:
    When the diagnosis attributes the defect to an upstream dependency, search that tracker before treating the mechanism as settled (`gh issue list --repo <owner/repo> --state all --search "<mechanism>"`).
    Verifying the source and verifying the maintainer's posture are different claims (Refs #733).
    Searching the tracker is not reading the code: when the report blames a named project, read that project's source and the published tarball of the version the reporter ran (`pnpm view <pkg> dist.tarball`).
+   When the design rests on the dependency's internal behavior rather than its API, also read that mechanism in the tracking checkout and confirm it is unchanged from the pinned version.
+   The tracker answers the maintainer's posture; the checkout answers whether the code already moved (Refs #898).
 5. Open the source files most relevant to the change and skim them before writing.
 6. When a bug report does not reproduce locally, dispatch `Explore` (`model: "sonnet-5"`) for the root-cause hunt instead of running it inline — a hunt that ends in "not determinable from the code" still costs this session's context, and the plan is written right after (Refs #719).
    Verifying a diagnosis the report already supplies (named files, a numbered source trace) is not that hunt — keep it inline, since what it establishes is the design's input (Refs #709).
@@ -177,6 +179,8 @@ Then an H1 title (e.g., `# <short descriptive title>`) — required by markdownl
   When the design has N sibling call sites each supply the same derived fact, check whether a shared downstream point already stamps per-call fields (a runner, a writer, a factory) — a fact every sibling merely relays belongs there, not in N places (Refs #746).
   When the issue proposes moving or relocating a class to a new owner, list every method's callers and what fields/state each method touches.
   If most methods operate on the target owner's fields, the class may be an intermediary that should be dissolved into the owner rather than relocated intact.
+  When the design replaces the evidence a guard reads (a scan swapped for a subscription, polling for an event), enumerate both directions: what the new source sees that the old missed, **and** what the old source saw that the new one misses.
+  A universal claim about the new source ("every path emits X") is the one to verify before it justifies dropping a fallback (Refs #898).
 - **Module-Level Changes** — file-by-file list of what's added, changed, or removed.
   When a step removes or renames an export, grep all `src/` and `test/` files — plus `.pi/skills/package-*/SKILL.md` and `packages/<PKG>/docs/architecture/` (which name internal symbols in narrative prose, not only tree listings) — for every removed symbol before finalizing the file list (Refs #476).
   When the removed export is a public or cross-extension API surface (a `package.json` `exports` re-export, an event channel, a `Symbol.for()` accessor), also grep the whole `packages/<PKG>/docs/` tree — user guides and top-level docs reference a public mechanism by name, not just `docs/architecture/` (Refs #531).
