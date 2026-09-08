@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [21.5.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v21.4.7...pi-subagents-v21.5.0) (2026-09-08)
+
+
+### Features
+
+* **pi-subagents:** inherit only portable prompt parts on a re-homing provider ([dba4899](https://github.com/gotgenes/pi-packages/commit/dba48999a8f6eaf7b76a3d471e9b7ddebe1eb35a)), closes [#883](https://github.com/gotgenes/pi-packages/issues/883), closes [#884](https://github.com/gotgenes/pi-packages/issues/884)
+
+### Documentation
+
+* **pi-subagents:** document provider-scoped portable prompt inheritance ([8f98318](https://github.com/gotgenes/pi-packages/commit/8f983184d94cd08406954c296a67fd3cbbd58701)), closes [#883](https://github.com/gotgenes/pi-packages/issues/883), closes [#884](https://github.com/gotgenes/pi-packages/issues/884)
+
 ## [21.4.7](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v21.4.6...pi-subagents-v21.4.7) (2026-09-08)
 
 
