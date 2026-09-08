@@ -308,6 +308,32 @@ describe("assembleSessionConfig — prompt inheritance", () => {
     expect(resolvePromptInheritance).toHaveBeenCalledWith("claude-bridge");
   });
 
+  it("asks about the provider named by the agent's own model string", () => {
+    // The third resolution path: no per-spawn override, and the agent file
+    // names a model whose provider differs from the parent's.
+    const bridgeModel = makeModel({ provider: "claude-bridge", id: "opus" });
+    mockRegistry.find.mockReturnValueOnce(bridgeModel);
+    mockRegistry.getAvailable.mockReturnValueOnce([bridgeModel]);
+    mockResolveAgentConfig.mockReturnValueOnce(
+      exploreConfig({ model: "claude-bridge/opus" }),
+    );
+
+    assembleSessionConfig(
+      "Explore",
+      {
+        ...ctx,
+        parentModel: makeModel({ provider: "anthropic", id: "sonnet" }),
+        resolvePromptInheritance,
+      },
+      {},
+      mockEnv,
+      mockAgentLookup,
+      mockIO,
+    );
+
+    expect(resolvePromptInheritance).toHaveBeenCalledWith("claude-bridge");
+  });
+
   it("passes the resolved strategy to the prompt builder", () => {
     resolvePromptInheritance.mockImplementation(() => "portable");
 
