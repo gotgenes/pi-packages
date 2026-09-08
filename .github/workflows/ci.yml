@@ -35,7 +35,7 @@ jobs:
         run: pnpm run lint
 
       - name: Test
-        run: pnpm -r run test
+        run: pnpm run test
 
       # Runs on its own, after the concurrent workspace suite. These tests spawn
       # the real `pi` CLI, and doing so alongside eight other packages' vitest

@@ -10,7 +10,8 @@
   "scripts": {
     "prepare": "command -v prek >/dev/null 2>&1 && prek install || echo 'prek not found \u2014 skipping hook install (see README)'",
     "check": "pnpm -r run check",
-    "test": "pnpm -r run test",
+    "test": "pnpm -r run test && vitest run",
+    "test:scripts": "vitest run",
     "lint": "biome check . && eslint packages/ && rumdl check .",
     "lint:fix": "biome check --write . && eslint packages/ --fix && rumdl fmt .",
     "format": "biome format --write .",
@@ -26,6 +27,7 @@
     "fallow": "catalog:",
     "globals": "catalog:",
     "rumdl": "catalog:",
-    "typescript-eslint": "catalog:"
+    "typescript-eslint": "catalog:",
+    "vitest": "catalog:"
   }
 }
