@@ -47,6 +47,40 @@ Without that extension installed, a child inherits the parent's `Available tools
 If you write extensions that add to the system prompt, see [Extensions that append to the system prompt](../README.md#extensions-that-append-to-the-system-prompt).
 The reasoning behind the boundary is recorded in [ADR 0006](decisions/0006-inherited-prompt-is-identity-only.md), and what the inherited region guarantees in [ADR 0008](decisions/0008-inherited-region-is-shared-parts.md).
 
+### Portable inheritance (opt-in)
+
+The inherited identity includes Pi's own preamble.
+That is correct when the child talks to the same API as its parent, and wrong when the child's provider **re-homes** the prompt into another harness — `pi-claude-bridge`, for example, projects it onto Claude Code's preset as an append.
+There, Pi's preamble reaches an API that already has a base prompt of its own, and Anthropic's subscription gate scores the documentation-routing line inside it as a third-party app ([#883]).
+
+Opt such a provider into `portable`, which replaces the inherited identity with the parent's operator-authored parts only:
+
+```json
+{
+  "promptInheritance": { "claude-bridge": "portable" }
+}
+```
+
+| Strategy         | The child's identity                                           | Shares a prefix with the parent |
+| ---------------- | -------------------------------------------------------------- | ------------------------------- |
+| `full` (default) | the parent's identity layers, byte for byte                    | yes                             |
+| `portable`       | the parent's custom prompt, append prompt, and project context | no                              |
+
+The map keys on the **provider id of the child's resolved model**, so only children whose requests actually travel through that provider change strategy.
+That is also why the key is the provider rather than the agent: a `subagent` call may override an agent's model, which moves the child to a different transport, and the strategy follows it.
+
+Skills stay un-inherited either way — the child builds its own catalogue — and the parent's tool guidelines are never inherited under `portable`, because Pi derives them from the tools a session actually holds.
+Project context files ride along, and must: the child's loader is built with context files suppressed, so this is the only way a portable child sees your `AGENTS.md` at all.
+
+**Use `portable` only for a provider that re-homes the prompt into a harness supplying its own base.**
+It is not enforced, because Pi exposes no way to identify such a provider — but pointing it at an ordinary provider is worse than leaving the default.
+`@gotgenes/pi-anthropic-auth`, for instance, finds Pi's role line in order to shape the OAuth system prompt; a portable child has no such line, so shaping returns it unchanged and the child never receives the neutral role prompt that shaping would have substituted.
+
+If the parent has no context files, custom prompt, or append prompt, a portable child falls back to a short generic base rather than to the full parent prompt — opting in never silently re-embeds the preamble it exists to avoid.
+
+The reasoning is recorded in [ADR 0009](decisions/0009-portable-inheritance-is-provider-scoped.md).
+
+[#883]: https://github.com/gotgenes/pi-packages/issues/883
 [#901]: https://github.com/gotgenes/pi-packages/issues/901
 
 ## Custom Agents
@@ -259,6 +293,8 @@ What this does and does not do:
 
 This key is hand-edited in the global or project `subagents.json`; `/subagents:settings` does not expose it, but it is preserved when you change other settings there.
 An absent or empty list reproduces the default behavior, in which children inherit every parent extension.
+
+The same is true of [`promptInheritance`](#portable-inheritance-opt-in): hand-edited only, preserved across other settings changes, and absent means every child inherits the full parent identity.
 
 #### Excluding a permission extension
 

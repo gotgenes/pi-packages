@@ -68,10 +68,14 @@ It sat after the identity, so removing it costs no prefix.
   Tracked as [#901]; this package has no `before_agent_start` handler today, and adding one is that issue's work.
 - A consumer that projects a child's prompt by matching the parent's — `pi-claude-bridge` — is helped rather than hindered: the region it looks for is verbatim again.
   That interaction is recorded, with what remains unverified, in [its ADR 0014].
+- The region is still Pi's preamble, which a provider that re-homes the prompt into another harness carries into that harness's API.
+  [#883] is that case, and [ADR 0009] adds an opt-in `portable` strategy for it — scoped per provider, so the shared prefix this record restored stays the default everywhere else.
 
 [#180]: https://github.com/gotgenes/pi-packages/issues/180
 [#400]: https://github.com/gotgenes/pi-packages/issues/400
 [#890]: https://github.com/gotgenes/pi-packages/issues/890
 [#901]: https://github.com/gotgenes/pi-packages/issues/901
+[#883]: https://github.com/gotgenes/pi-packages/issues/883
 [ADR 0006]: 0006-inherited-prompt-is-identity-only.md
+[ADR 0009]: 0009-portable-inheritance-is-provider-scoped.md
 [its ADR 0014]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-permission-system/docs/decisions/0014-tool-surface-is-node-local-prose.md

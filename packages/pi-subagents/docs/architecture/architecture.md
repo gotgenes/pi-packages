@@ -344,7 +344,7 @@ src/
 │
 ├── session/                        session assembly and preparation
 │   ├── session-config.ts           pure assembler (main entry)
-│   ├── prompts.ts                  system prompt building; inherits only the parent prompt's identity, cutting the session-resolved tail (ADR 0006)
+│   ├── prompts.ts                  system prompt building; inherits the parent prompt's identity, cutting the session-resolved tail (ADR 0006), or its portable parts alone for a re-homing provider (ADR 0009)
 │   ├── ask-parent-tool.ts          child-facing ask_parent: records the child's question, tells it to end its turn
 │   ├── notify-parent-tool.ts       child-facing notify_parent: one-way mid-run update, capped at 2000 characters
 │   ├── content-items.ts            shared message content parsing (tool-call names, assistant content)
@@ -366,7 +366,7 @@ src/
 │   ├── run-listeners.ts            per-run observer-unsub and signal-detach handles
 │   ├── workspace-bracket.ts        child workspace prepare/dispose lifecycle; idempotent dispose, reports a torn-down workspace
 │   ├── concurrency-limiter.ts       background admission gate: schedules run thunks FIFO against the limit
-│   ├── parent-snapshot.ts          immutable spawn-time parent state
+│   ├── parent-snapshot.ts          immutable spawn-time parent state, including the parent's portable prompt parts rendered from Pi's own composition order
 │   ├── child-lifecycle.ts          child-execution lifecycle event publisher
 │   ├── child-shutdown.ts           bounded session_shutdown emit for a child being disposed
 │   ├── workspace.ts                workspace provider seam (generative extension surface)

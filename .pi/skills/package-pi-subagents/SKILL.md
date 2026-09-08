@@ -48,6 +48,14 @@ It pays on hosts that render tool definitions after the system text, which is #1
 Per-session prose about the tool surface therefore does not belong in the inherited region: `@gotgenes/pi-permission-system` states each session's tools *after* the layers a child inherits rather than editing them in place.
 The shared prefix is pinned by tests in `test/session/prompts.test.ts` (`shared prefix with the parent`); it had none before #890.
 
+That identity is Pi's preamble, so a provider that **re-homes** the prompt into another harness carries Pi's base into that harness's API — which is how a `pi-claude-bridge` child tripped Anthropic's third-party-app classifier (#883).
+`docs/decisions/0009-portable-inheritance-is-provider-scoped.md` adds an opt-in second strategy for that case: `promptInheritance` in `subagents.json` maps a **provider id** to `portable`, and such a child's identity is built from the parent's operator-authored parts alone (custom prompt, append prompt, project context), composed in Pi's own order.
+The key is the provider, never the agent — re-homing is a property of the transport, and a per-spawn `model` override moves a child between transports, so an agent-level declaration would survive the move and select the wrong strategy.
+There is no global default arm by design: one would silently cost #180's local-inference constituency the prefix #890 restored.
+`promptGuidelines` is never inherited under `portable` (Pi derives it per session from the tools in the registry, so the parent's would assert guidance for tools the child lacks — the ADR 0008 defect), while context files must be, because the child's loader runs `noContextFiles: true`.
+An absent or whitespace-only capture falls back to `genericBase`, never to the full prompt.
+The capture comes from this package's only `before_agent_start` handler: `getSystemPromptOptions()` is attached to a command context, not to the session context the runtime holds.
+
 ## Architecture
 
 See `docs/architecture/architecture.md` for the full architecture document with Mermaid diagrams, domain model, structural analysis, and improvement roadmap.
