@@ -22,6 +22,17 @@ export type { AgentSessionEvent };
 export type ThinkingLevel = SubagentThinkingLevel;
 
 /**
+ * How a child adopts its parent's prompt as its own identity.
+ *
+ * `full` embeds the parent's assembled prompt minus Pi's per-session layers —
+ * a leading prefix the child shares with its parent (ADR 0006, ADR 0008).
+ * `portable` embeds only the parent's operator-authored parts, for a child
+ * whose provider re-homes the prompt into another harness that supplies its
+ * own base (ADR 0009).
+ */
+export type PromptInheritance = "full" | "portable";
+
+/**
  * One message in a child session's history, typed from Pi's `SessionContext`.
  *
  * Derived from the barrel-exported `SessionContext` (whose `messages` field is

@@ -264,6 +264,34 @@ describe("settings persistence", () => {
         expect(loadSettings(globalDir, projectDir)).toEqual({ excludedExtensionPackages: [] });
       });
     });
+
+    describe("promptInheritance", () => {
+      it("keeps entries whose strategy is a known value", () => {
+        writeProject({ promptInheritance: { "claude-bridge": "portable", anthropic: "full" } });
+        expect(loadSettings(globalDir, projectDir)).toEqual({
+          promptInheritance: { "claude-bridge": "portable", anthropic: "full" },
+        });
+      });
+
+      it("drops entries whose strategy is not a known value", () => {
+        writeProject({
+          promptInheritance: { "claude-bridge": "portable", bogus: "sideways", nope: 42 },
+        });
+        expect(loadSettings(globalDir, projectDir)).toEqual({
+          promptInheritance: { "claude-bridge": "portable" },
+        });
+      });
+
+      it("drops the key entirely when no entry survives", () => {
+        writeProject({ promptInheritance: { bogus: "sideways" } });
+        expect(loadSettings(globalDir, projectDir)).toEqual({});
+      });
+
+      it("drops the key entirely when the value is not an object", () => {
+        writeProject({ promptInheritance: "portable" });
+        expect(loadSettings(globalDir, projectDir)).toEqual({});
+      });
+    });
   });
 
   describe("save result + corrupt-file warning", () => {
@@ -356,6 +384,60 @@ describe("SettingsManager", () => {
     it("defaults to no excluded extension packages", () => {
       const sm = new SettingsManager({ emit: vi.fn(), cwd: "/tmp", agentDir: "/nonexistent" });
       expect(sm.excludedExtensionPackages).toEqual([]);
+    });
+
+    it("defaults every provider to full prompt inheritance", () => {
+      const sm = new SettingsManager({ emit: vi.fn(), cwd: "/tmp", agentDir: "/nonexistent" });
+      expect(sm.promptInheritanceFor("claude-bridge")).toBe("full");
+    });
+  });
+
+  describe("promptInheritanceFor()", () => {
+    let projectDir: string;
+
+    beforeEach(() => {
+      projectDir = mkdtempSync(join(tmpdir(), "pi-sm-inherit-"));
+      mkdirSync(join(projectDir, ".pi"), { recursive: true });
+    });
+
+    afterEach(() => {
+      rmSync(projectDir, { recursive: true, force: true });
+    });
+
+    /** A manager loaded from a project file declaring the given rules. */
+    function managerWith(rules: Record<string, string>): SettingsManager {
+      writeFileSync(
+        join(projectDir, ".pi", "subagents.json"),
+        JSON.stringify({ promptInheritance: rules }),
+      );
+      const sm = new SettingsManager({ emit: vi.fn(), cwd: projectDir, agentDir: "/nonexistent" });
+      sm.load();
+      return sm;
+    }
+
+    it("returns the configured strategy for a listed provider", () => {
+      expect(managerWith({ "claude-bridge": "portable" }).promptInheritanceFor("claude-bridge")).toBe(
+        "portable",
+      );
+    });
+
+    it("returns full for a provider the rules do not list", () => {
+      expect(managerWith({ "claude-bridge": "portable" }).promptInheritanceFor("anthropic")).toBe(
+        "full",
+      );
+    });
+
+    it("returns full when the child resolved no provider", () => {
+      expect(managerWith({ "claude-bridge": "portable" }).promptInheritanceFor(undefined)).toBe(
+        "full",
+      );
+    });
+
+    it("clears rules that a later load no longer declares", () => {
+      const sm = managerWith({ "claude-bridge": "portable" });
+      writeFileSync(join(projectDir, ".pi", "subagents.json"), JSON.stringify({ graceTurns: 7 }));
+      sm.load();
+      expect(sm.promptInheritanceFor("claude-bridge")).toBe("full");
     });
   });
 
@@ -592,6 +674,11 @@ describe("SettingsManager", () => {
       const sm = new SettingsManager({ emit: vi.fn(), cwd: "/tmp", agentDir: "/nonexistent" });
       expect(sm.snapshot()).toEqual({ maxConcurrent: 4, defaultMaxTurns: 0, graceTurns: 5, consumedSessionRetentionMinutes: 10, unconsumedSessionRetentionMinutes: 720, abortAllOnInterrupt: true, midRunUpdates: true });
     });
+
+    it("omits promptInheritance when no rules are configured", () => {
+      const sm = new SettingsManager({ emit: vi.fn(), cwd: "/tmp", agentDir: "/nonexistent" });
+      expect(sm.snapshot()).toEqual({ maxConcurrent: 4, defaultMaxTurns: 0, graceTurns: 5, consumedSessionRetentionMinutes: 10, unconsumedSessionRetentionMinutes: 720, abortAllOnInterrupt: true, midRunUpdates: true });
+    });
   });
 
   describe("saveAndNotify()", () => {
@@ -629,6 +716,34 @@ describe("SettingsManager", () => {
         abortAllOnInterrupt: true,
         midRunUpdates: true,
         excludedExtensionPackages: ["npm:@cortexkit/pi-magic-context"],
+      });
+    });
+
+    it("preserves hand-edited promptInheritance rules across an unrelated edit", () => {
+      // Same rationale as excludedExtensionPackages: the key has no
+      // /subagents:settings affordance, so a snapshot that omitted it would
+      // destroy a hand-edited value on the next unrelated setting change.
+      mkdirSync(join(projectDir, ".pi"), { recursive: true });
+      const settingsPath = join(projectDir, ".pi", "subagents.json");
+      writeFileSync(
+        settingsPath,
+        JSON.stringify({ promptInheritance: { "claude-bridge": "portable" } }),
+      );
+      const sm = new SettingsManager({ emit: vi.fn(), cwd: projectDir, agentDir: "/nonexistent" });
+      sm.load();
+
+      sm.applyGraceTurns(7);
+
+      const written = JSON.parse(readFileSync(settingsPath, "utf-8"));
+      expect(written).toEqual({
+        maxConcurrent: 4,
+        defaultMaxTurns: 0,
+        graceTurns: 7,
+        consumedSessionRetentionMinutes: 10,
+        unconsumedSessionRetentionMinutes: 720,
+        abortAllOnInterrupt: true,
+        midRunUpdates: true,
+        promptInheritance: { "claude-bridge": "portable" },
       });
     });
 
