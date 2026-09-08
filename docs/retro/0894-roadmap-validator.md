@@ -80,6 +80,21 @@ That is a transcription correction rather than a revision of judgement — `Impa
 
 The `→` token was dropped from the dependency-bullet vocabulary: no bullet in either live roadmap uses one, and the arrow belongs to the tracks prose, which a separate and separately-tested vocabulary reads.
 
+## Stage: Sync (worktree) (2026-09-08T21:57:16Z)
+
+### Session summary
+
+Pre-push checks (`pnpm run lint`, `pnpm fallow dead-code`) both pass clean with no fixes needed.
+This is repo-root tooling (`scripts/`, root `test/`, `.pi/`) plus one `docs/architecture/` correction under `packages/pi-subagents/`, which `scripts/release/lib.sh` excludes from release scope — the plan's `**Release:** ship independently` marker is moot, since nothing releases regardless.
+The operator pre-authorized resolving conflicts in architecture documents during this session's rebase, anticipating overlap with concurrent work on `packages/pi-subagents/docs/architecture/architecture.md`.
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-894--/2026-09-08T03-06-16-072Z_01a07efb-0887-765d-9969-b242822808e9.jsonl` — read with `read_session_file({ path: "<path>" })` for message-level verification at land/retro time.
+
+### Observations
+
+No follow-up work is deferred to root beyond the standard ff-merge and issue close.
+Both follow-ups from planning are already filed and dispositioned: [#902] (dashed-edge vocabulary standardization, independent of this change) and the roadmap-fit skill's exit-at-first-step outcome recorded in the Planning stage note.
+
 [#802]: https://github.com/gotgenes/pi-packages/issues/802
 [#857]: https://github.com/gotgenes/pi-packages/issues/857
 [#858]: https://github.com/gotgenes/pi-packages/issues/858
