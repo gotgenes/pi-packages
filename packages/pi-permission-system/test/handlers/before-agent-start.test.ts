@@ -1,3 +1,4 @@
+import type { BuildSystemPromptOptions } from "@earendil-works/pi-coding-agent";
 import { describe, expect, it, vi } from "vitest";
 import type { ToolRegistry } from "#src/exposure/tool-registry";
 import {
@@ -29,8 +30,19 @@ vi.mock("@earendil-works/pi-coding-agent", async (importOriginal) => {
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
-function makeEvent(systemPrompt = "You are an assistant.") {
-  return { systemPrompt };
+function makeEvent(
+  systemPrompt = "You are an assistant.",
+  systemPromptOptions: Partial<BuildSystemPromptOptions> = {},
+) {
+  return {
+    systemPrompt,
+    systemPromptOptions: {
+      cwd: "/test/project",
+      toolSnippets: {},
+      promptGuidelines: [],
+      ...systemPromptOptions,
+    },
+  };
 }
 
 function makeSetup(opts?: {
