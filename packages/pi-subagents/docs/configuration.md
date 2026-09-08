@@ -26,21 +26,28 @@ Its own preamble and tool guidelines come first, then your `AGENTS.md` or `CLAUD
 A child inherits only the **stable identity** layers: everything up to, but not including, the skills catalogue.
 The layers after it are resolved against one session, so Pi and the child's own extensions rebuild them for the child rather than the child borrowing the parent's:
 
-| Layer                                         | Where a child's copy comes from                          |
-| --------------------------------------------- | -------------------------------------------------------- |
-| Pi preamble, tool guidelines, project context | inherited from the parent, byte for byte                 |
-| Skills catalogue                              | rebuilt by Pi for the child's own directory and tool set |
-| `Current working directory:`                  | rebuilt by Pi for the child's own directory              |
-| Extension-appended blocks                     | rebuilt by the child's own extensions                    |
+| Layer                              | Where a child's copy comes from                            |
+| ---------------------------------- | ---------------------------------------------------------- |
+| Pi preamble, project context       | inherited from the parent, byte for byte                   |
+| `Available tools:` / `Guidelines:` | stated by the child's own `@gotgenes/pi-permission-system` |
+| Skills catalogue                   | rebuilt by Pi for the child's own directory and tool set   |
+| `Current working directory:`       | rebuilt by Pi for the child's own directory                |
+| Extension-appended blocks          | rebuilt by the child's own extensions                      |
 
 This matters most for a child that runs somewhere other than the parent — one given an isolated workspace by a `WorkspaceProvider`.
 Its skills resolve from its own workspace, and its working-directory claim names that workspace.
 Inheriting the parent's copies instead would give such a child a catalogue of skills it may not have and a directory claim that walks it back out of its workspace.
 
-Inheriting the identity rather than the whole prompt also keeps the child's leading text byte-identical to the parent's, which prefix-caching providers and local inference engines reuse instead of reprocessing.
+Inheriting the identity rather than the whole prompt also gives the child a leading prefix it shares with the parent, which local inference engines reuse instead of reprocessing.
+How much that is worth depends on the host: a provider whose cache prefix covers the tool definitions ahead of the system prompt — Anthropic's does — reuses nothing for a child, because a child's tool set always differs from its parent's.
+
+The tool sections are listed above as the child's own rather than inherited because `@gotgenes/pi-permission-system` relocates them to the end of the prompt, so each session states the tools it actually holds without editing the bytes a child inherits.
+Without that extension installed, a child inherits the parent's `Available tools:` listing unchanged, which names the parent's tools rather than the child's ([#901]).
 
 If you write extensions that add to the system prompt, see [Extensions that append to the system prompt](../README.md#extensions-that-append-to-the-system-prompt).
-The reasoning behind the boundary is recorded in [ADR 0006](decisions/0006-inherited-prompt-is-identity-only.md).
+The reasoning behind the boundary is recorded in [ADR 0006](decisions/0006-inherited-prompt-is-identity-only.md), and what the inherited region guarantees in [ADR 0008](decisions/0008-inherited-region-is-shared-parts.md).
+
+[#901]: https://github.com/gotgenes/pi-packages/issues/901
 
 ## Custom Agents
 
@@ -90,19 +97,19 @@ subagent({ subagent_type: "auditor", prompt: "Review the auth module", descripti
 
 All fields are optional — sensible defaults for everything.
 
-| Field               | Default        | Description                                                                                                                                                                                                                                                                                                             |
-| ------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `description`       | filename       | Agent description shown in tool listings                                                                                                                                                                                                                                                                                |
-| `display_name`      | —              | Display name for UI (e.g. widget, agent list)                                                                                                                                                                                                                                                                           |
-| `tools`             | all 7          | The agent's complete tool allowlist — built-in or extension-registered names. `none` for no tools. See [Tool selection](#tool-selection)                                                                                                                                                                                |
-| `model`             | inherit parent | Model — `provider/modelId` or fuzzy name (`"haiku"`, `"sonnet"`)                                                                                                                                                                                                                                                        |
-| `thinking`          | inherit        | off, minimal, low, medium, high, xhigh, max. An unrecognized value is dropped, and the agent inherits the parent's level                                                                                                                                                                                                |
-| `max_turns`         | unlimited      | Max agentic turns before graceful shutdown. `0` or omit for unlimited                                                                                                                                                                                                                                                   |
-| `prompt_mode`       | `append`       | `replace`: parent prompt is the cacheable base; body is appended last with full control (no `<sub_agent_context>` bridge, no `<agent_instructions>` wrapper). `append`: parent prompt is the base; body is wrapped in `<agent_instructions>` and a sub-agent context bridge is injected (agent acts as a "parent twin") |
-| `inherit_context`   | `false`        | Fork parent conversation into agent                                                                                                                                                                                                                                                                                     |
-| `run_in_background` | `false`        | Run in background by default                                                                                                                                                                                                                                                                                            |
-| `enabled`           | `true`         | Set to `false` to disable an agent (useful for hiding a default agent per-project)                                                                                                                                                                                                                                      |
-| `locked`            | —              | Fields a `subagent` tool caller may not override. `true` or a list of field names. See [Locking fields against callers](#locking-fields-against-callers)                                                                                                                                                                |
+| Field               | Default        | Description                                                                                                                                                                                                                                   |
+| ------------------- | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `description`       | filename       | Agent description shown in tool listings                                                                                                                                                                                                      |
+| `display_name`      | —              | Display name for UI (e.g. widget, agent list)                                                                                                                                                                                                 |
+| `tools`             | all 7          | The agent's complete tool allowlist — built-in or extension-registered names. `none` for no tools. See [Tool selection](#tool-selection)                                                                                                      |
+| `model`             | inherit parent | Model — `provider/modelId` or fuzzy name (`"haiku"`, `"sonnet"`)                                                                                                                                                                              |
+| `thinking`          | inherit        | off, minimal, low, medium, high, xhigh, max. An unrecognized value is dropped, and the agent inherits the parent's level                                                                                                                      |
+| `max_turns`         | unlimited      | Max agentic turns before graceful shutdown. `0` or omit for unlimited                                                                                                                                                                         |
+| `prompt_mode`       | `append`       | `replace`: parent prompt is the cacheable base; body is appended last with full control and no `<agent_instructions>` wrapper. `append`: parent prompt is the base; body is wrapped in `<agent_instructions>` (agent acts as a "parent twin") |
+| `inherit_context`   | `false`        | Fork parent conversation into agent                                                                                                                                                                                                           |
+| `run_in_background` | `false`        | Run in background by default                                                                                                                                                                                                                  |
+| `enabled`           | `true`         | Set to `false` to disable an agent (useful for hiding a default agent per-project)                                                                                                                                                            |
+| `locked`            | —              | Fields a `subagent` tool caller may not override. `true` or a list of field names. See [Locking fields against callers](#locking-fields-against-callers)                                                                                      |
 
 The caller decides, and the agent file fills the gaps.
 A `subagent` tool parameter wins over the agent file's value for `model`, `thinking`, `max_turns`, `inherit_context`, and `run_in_background`; the agent file supplies whichever of those the caller left unset.

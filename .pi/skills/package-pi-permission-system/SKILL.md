@@ -38,15 +38,19 @@ Neither rule sees a `vi.mock()` specifier, which is a call argument rather than 
 - Default to least privilege — when in doubt, prompt (`ask`), do not silently allow.
 - Enforce permissions deterministically; the same policy + same input must always produce the same decision.
 - Keep config files the source of truth; do not bake policy into code.
-- Hide denied tools from the agent before it starts (tool filtering + system-prompt sanitization), but only when the surface is *fully* denied.
+- Hide denied tools from the agent before it starts (tool filtering + the tool-surface prompt pass), but only when the surface is *fully* denied.
   `shouldExposeTool` asks `isToolFullyDenied` — backed by `isSurfaceFullyDenied` (`src/policy/rule.ts`), which probes each pattern configured on the surface through `evaluate` — not `getToolPermission`, which reports the catch-all alone and withheld `bash: {"*": "deny", "git *": "ask"}` outright (Refs #815).
   Probing through `evaluate` is what makes ordering count: an exception after the `deny` catch-all is reachable, one before it is shadowed.
   Exposure is not authorization — the `tool_call` gate re-evaluates the real value either way.
   The set that question is asked of is `ToolSurfaceBaseline` (`src/exposure/tool-surface-baseline.ts`), owned by `PermissionSession` and reached through `resolveExposedTools`, not `toolRegistry.getActive()` directly: filtering writes its answer back through `setActive`, so narrowing the read-back each turn made the surface monotonically shrink and stranded a tool once its rule was relaxed (Refs #873).
   The baseline is rebuilt per turn from the tools still active plus the ones this extension's own filtering withheld, so a relaxed rule restores its tool while another party's deactivation sticks, and it grows only from tools observed **active** — never the registry — which is what keeps filtering restrict-only (#385).
   `resetForNewSession` and `shutdown` reset it; **`reload` must not**, because a reload is exactly when a relaxed policy arrives and reseeding there strands the tool it just un-denied.
-  A restored tool is callable on the turn it returns but is advertised in `Available tools:` one turn later — pi evaluates the base prompt before any handler runs, and `ctx.getSystemPrompt()` inside `before_agent_start` is shadowed to that same chained value, so the line cannot be regenerated in-extension.
+  A restored tool is callable on the turn it returns but is advertised in `Available tools:` one turn later — pi builds the prompt parts before any handler runs, so `systemPromptOptions.toolSnippets` carries no one-line description for a tool withheld last turn, and the line cannot be rendered until it is already active.
   Each change to the effective surface is recorded as a `tool_surface.changed` debug entry.
+  The prompt half is a **relocation**, not an edit: `renderToolSurface` (`src/exposure/tool-surface-prompt.ts`) removes the `Available tools:` and `Guidelines:` sections pi wrote and renders this session's own at the end of the prompt, past every layer a subagent child inherits (ADR 0014, Refs #890).
+  Two constraints carry that: it must run in **every** node — relocating in children alone leaves the parent's list at offset 171 and collapses the shared identity to 171 characters, worse than the 365 the in-place rewrite left — and it must **render from parts** (`toolSnippets` ∩ allowed, plus each allowed tool's `ToolInfo.promptGuidelines`) rather than filter text, because a child's inherited identity carries no section to narrow.
+  Do not reintroduce a table of pi's literal guideline sentences: it attributed no third-party tool's bullets and broke on any upstream rewording.
+  A child without this extension keeps inheriting its parent's listing (#901).
 - Keep block/ask/allow decisions reviewable: write to the permission review log by default.
 - Preserve the `/permission-system` slash command name — renaming it is a breaking change.
 - In the flat permission format, `permission["*"]` is the universal fallback; pattern ordering is last-match-wins.
@@ -308,7 +312,7 @@ This resolver-internal boundary is a deliberate, formalized seam, not transition
 - Test permission resolution (allow/deny/ask decisions across tools, bash, MCP, skills, special).
 - Test wildcard matching (bash patterns, skill globs) including over-match and under-match cases.
 - Test policy merge precedence: global → project → per-agent frontmatter.
-- Test system-prompt sanitization (denied tool lines narrowed out of the `Available tools:` listing, allowed tools preserved).
+- Test the tool-surface prompt pass (pi's sections removed, this session's rendered at the tail, denied tools and their guidelines absent, the identity ahead of them left byte-identical).
 - Test the external-directory guard for path-bearing file tools, including extension and MCP tools (default-on path gating, #352).
 - Test config loading, validation issues, and tolerance of deprecated keys.
 - When a change reads a **new** `ExtensionContext` field/method (e.g. `ctx.isProjectTrusted()`), update `makeCtx` **and** grep every hand-built ctx literal — `grep -rln "hasUI:" test/` (18 files cast `as unknown as ExtensionContext` / `as never`).

@@ -379,6 +379,9 @@ Two cases need care:
 
 Extensions that _shape_ the prompt at the provider boundary rather than appending to it are unaffected — the region they rewrite is the identity a child inherits verbatim.
 
+An extension that states something **per session** — which tools this session may call, which skills it loaded — should append it rather than edit the inherited identity, even when Pi wrote its own copy up there.
+Editing that region rewrites bytes the child inherited from its parent, which ends the prefix the two share; `@gotgenes/pi-permission-system` relocates the `Available tools:` and `Guidelines:` sections to the end of the prompt for exactly this reason ([#890](https://github.com/gotgenes/pi-packages/issues/890)).
+
 ## Scope and non-goals
 
 **Purpose.**

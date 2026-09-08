@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: amended by 0008
 date: 2026-08-30
 ---
 
@@ -7,8 +7,11 @@ date: 2026-08-30
 
 ## Status
 
-Accepted.
+Accepted, and amended by [ADR 0008].
 Supersedes the equal-cwd exception recorded in [#640] and generalizes it into one rule for every layer Pi resolves per session.
+
+The mechanism below is unchanged: a child still inherits the identity region and nothing after it.
+[ADR 0008] amends what that placement *guarantees* — shared parts rather than shared bytes, scoped to hosts that reuse a prefix over the system text independently of the tool definitions — after [#890] found that an extension narrowing the `Available tools:` listing inside this region ended the shared prefix at offset 171.
 
 ## Context
 
@@ -95,5 +98,7 @@ Both anchors match whole lines, which keeps a footer naming a directory that mer
 [#696]: https://github.com/gotgenes/pi-packages/issues/696
 [#801]: https://github.com/gotgenes/pi-packages/issues/801
 [#846]: https://github.com/gotgenes/pi-packages/issues/846
+[#890]: https://github.com/gotgenes/pi-packages/issues/890
+[ADR 0008]: 0008-inherited-region-is-shared-parts.md
 [#883]: https://github.com/gotgenes/pi-packages/issues/883
 [pi-claude-bridge#88]: https://github.com/elidickinson/pi-claude-bridge/issues/88

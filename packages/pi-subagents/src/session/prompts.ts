@@ -17,8 +17,9 @@ export interface InheritedPrompt {
  * Build the system prompt for an agent from its config.
  *
  * Both modes place the shared/stable parent prompt (or `genericBase` when no
- * parent is available) first so the LLM's KV cache can reuse the inherited
- * prefix across all subagent invocations.
+ * parent is available) first, so the inherited identity is a leading prefix the
+ * child shares with its parent across all subagent invocations. What that is
+ * worth is host-dependent — see ADR 0008.
  *
  * - "replace" mode: parent/genericBase + active_agent tag + env header +
  *   config.systemPrompt.  No `<agent_instructions>` wrapper — the custom
@@ -112,7 +113,10 @@ const SKILLS_CATALOGUE_CLOSE = "</available_skills>";
  *
  * Everything from the first such layer onward is therefore dropped. What
  * precedes it is returned byte for byte, so it stays a shared prefix with the
- * parent's prompt for prefix-caching providers (#180, #400).
+ * parent's prompt for hosts that reuse one over the system text (#180, #400).
+ * That is why no extension may edit the region in place: `Available tools:`
+ * sits a few hundred characters into it, and narrowing it there ended the
+ * shared prefix for every child with a narrowed tool set (#890).
  *
  * A prompt carrying neither layer is not one `buildSystemPrompt` assembled, and
  * is returned unchanged.

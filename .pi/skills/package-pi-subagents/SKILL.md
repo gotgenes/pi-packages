@@ -17,6 +17,7 @@ The fork carries two original patches from the thin-patch era, still present in 
 
 1. **Peer-dep rename** - peer dependencies point at `@earendil-works/pi-*` (the active scope) rather than the deprecated `@mariozechner/pi-*` scope.
 2. **Patch 3 (active_agent tag)** - `buildAgentPrompt` includes `<active_agent name="${agentConfig.name}"/>` in every assembled child system prompt (both `replace` and `append` modes); the tag follows the cacheable parent-prompt prefix so `@gotgenes/pi-permission-system` can resolve per-agent `permission:` frontmatter inside the child.
+   Since #890 the two modes differ only in the `<agent_instructions>` wrapper: the hard-coded `<sub_agent_context>` bridge append mode carried was removed, because its tool bullets duplicated the `promptGuidelines` pi's own tools contribute and named `edit`/`write` to children that have neither.
 
 Note: Patch 2 (post-bind active-tool re-filter) was simplified in Phase 14 (#239) and retired in #725.
 The filter dance is gone: `EXCLUDED_TOOL_NAMES` reaches the SDK as the `excludeTools` denylist at session creation, which it reapplies on every tool-registry rebuild.
@@ -40,6 +41,12 @@ The child's own session rebuilds all of them, so `inheritedIdentity` cuts the in
 The catalogue is identified by position rather than document order: `buildSystemPrompt` writes the cwd footer immediately after it, unconditionally, so Pi's own catalogue is the one whose `</available_skills>` sits on the line before the footer — which keeps a catalogue quoted in a project-context file or in an appended block from being taken for the section, in either direction.
 The heading is then found by searching back from that tag; the footer is the cut when the parent resolved no skills, and both anchors match whole lines.
 Do not re-add the equal-cwd exception #640 originally carried: the catalogue precedes the footer, so once the catalogue is cut the footer is already past the divergence point and the exception preserves no shared prefix.
+
+What that placement guarantees is **shared parts, not shared bytes** (`docs/decisions/0008-inherited-region-is-shared-parts.md`, amending ADR 0006, Refs #890).
+The benefit is host-dependent and the package must not claim otherwise: Anthropic builds its cache prefix as `tools` → `system` → `messages`, so a child — whose tool array always differs from its parent's, if only by `ask_parent`/`notify_parent` — gets no hit from a byte-identical system prompt.
+It pays on hosts that render tool definitions after the system text, which is #180's own local-model constituency.
+Per-session prose about the tool surface therefore does not belong in the inherited region: `@gotgenes/pi-permission-system` states each session's tools *after* the layers a child inherits rather than editing them in place.
+The shared prefix is pinned by tests in `test/session/prompts.test.ts` (`shared prefix with the parent`); it had none before #890.
 
 ## Architecture
 

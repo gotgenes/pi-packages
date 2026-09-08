@@ -836,7 +836,7 @@ Steps 2, 6, and 8 have design-dependent shapes and are verified by their plans' 
   Step 17's failure read cannot see a turn error that a failed compaction attempt already stripped from session state, and the evidence is gone before the read runs — so the remedy is a different mechanism rather than a wider predicate, which makes it peer-sized rather than a residual of the shipped step.
 - [#890] — filed by the [#884] PR review; becomes Step 18 by operator decision.
   `pi-permission-system` rewrites the child's prompt inside the region [ADR-0006] keeps byte-identical with the parent's, so the shared prefix [#180] and [#400] created ends at the tool list for every child with a narrowed tool set.
-  Scheduled here rather than deferred because the interaction is measured now and the decision is this package's to make — it may amend or supersede [ADR-0006].
+  Scheduled here rather than deferred because the interaction is measured now and the decision is this package's to make — it amended [ADR-0006] with [ADR-0008].
 - [#901] — filed by Step 18's planning; deferred to a later phase with rationale.
   A child without `pi-permission-system` installed inherits the parent's `Available tools:` list, because Pi writes none under `customPrompt` and nothing in this package corrects the inherited one.
   Step 18 makes `pi-permission-system` the single writer of the relocated tool-surface block and records the order-independent contract a second writer must honor; honoring it here means this package's first per-turn `before_agent_start` handler plus a shared render function whose home is unsettled, which is new mechanism outside this phase's front-door and delivery-boundary spine.
@@ -928,7 +928,7 @@ Release: batch "front-door-majors"
 
 - **Smell:** Category C (boundary flaw in prompt inheritance) plus `bug`.
 - **Target:** `src/session/prompts.ts` (extend the inherited-appendage handling beside `withoutContradictoryCwdFooter`), `test/session/prompts.test.ts`.
-- **Design note:** match [#640]'s discipline — strip only when the duplication is real, and preserve the byte-identical cacheable prefix where possible; the step's plan decides whether other Pi-appended blocks belong to the same strip.
+- **Design note:** match [#640]'s discipline — strip only when the duplication is real, and preserve the shared cacheable prefix where possible; the step's plan decides whether other Pi-appended blocks belong to the same strip.
 - **Outcome:** an assembled child prompt contains one `available_skills` block, pinned by a regression test; the `prompts.ts` grep row goes 0 → ≥ 1.
 - **Commit type:** `fix:`.
 - **Impact 3 / Risk 2 / Priority 12.**
@@ -995,7 +995,7 @@ Release: independent
 - **Impact 3 / Risk 3 / Priority 9.**
 
 Landed: the mechanism is a child-declared marker, parsed deterministically at the terminal transition and rendered by every result carrier with the exact `resume` call.
-The protocol sits beside `<active_agent>` in a header both prompt modes share, because `Explore` and `Plan` are `promptMode: "replace"` and never receive the `<sub_agent_context>` bridge — the extraction that gave the two branches one home was the step's Tidy-First preparation, and it is why deleting the block now fails both modes' tests instead of one.
+The protocol sits beside `<active_agent>` in a header both prompt modes share, because `Explore` and `Plan` are `promptMode: "replace"` and never received the `<sub_agent_context>` bridge append mode then carried (Step 18 removed that bridge) — the extraction that gave the two branches one home was the step's Tidy-First preparation, and it is why deleting the block now fails both modes' tests instead of one.
 The parser ignores fenced regions and takes the last well-formed block, so a child quoting the protocol back does not trip it; the protocol's own example is fenced and its prose names the marker without angle brackets, since a bare opening tag there pairs with the fenced closing one.
 
 Three defects surfaced under the feature and were fixed with it.
@@ -1230,19 +1230,28 @@ The errored turn maps onto the existing `error` status with `errorMessage` verba
 
 Release: independent
 
-#### Step 18: Decide what the inherited prompt region guarantees ([#890])
+#### ✅ Step 18: Decide what the inherited prompt region guarantees ([#890])
 
 **Cause:** `AgentPrepHandler` in `@gotgenes/pi-permission-system` narrows the child's `Available tools:` list by rewriting the assembled prompt in place and returning it from `before_agent_start`.
 That block sits inside the identity region [ADR-0006] keeps, and `buildAgentPrompt` places that region first precisely so the child's leading bytes match the parent's, so for any child with a narrowed tool set the shared prefix ends at the tool list — measured at offset 412 of a 22,157-character prompt.
 The conflict is arithmetic rather than a defect in either package: a byte-identical prefix and an honest child tool list cannot coexist while the list lives inside the prefix.
 
 - **Smell:** Category A (two packages asserting different invariants over the same bytes, with load order deciding which wins) plus `bug`.
-- **Target:** `src/session/prompts.ts` (`inheritedIdentity` and what it guarantees), `docs/decisions/0006-inherited-prompt-is-identity-only.md` (amended or superseded), and the contract `@gotgenes/pi-permission-system`'s `exposure/system-prompt-sanitizer.ts` writes against.
+- **Target:** `src/session/prompts.ts` (`inheritedIdentity` and what it guarantees), `docs/decisions/0006-inherited-prompt-is-identity-only.md` (amended or superseded), and the contract `@gotgenes/pi-permission-system`'s tool-surface pass writes against.
 - **Hard dependency:** none, but it is the one step here whose resolution binds another package; [#890] records the four candidate resolutions.
 - **Design decision at plan time:** which invariant wins, and whether the child's tool section is cut from the inherited identity like the catalogue and footer before it, appended after it, or built at assembly time from the `toolSnippets` `before_agent_start` already carries — the last composes with the other two rather than replacing them.
 - **Outcome:** one recorded decision about what the inherited region guarantees, and the two packages stop using "byte-stable" for two different invariants.
 - **Commit type:** `fix:` if the prefix is restored, `docs:` if the loss is accepted and recorded.
 - **Impact 4 / Risk 3 / Priority 12.**
+
+Landed: the prefix is restored, by a fifth resolution none of the four candidates named — the tool surface is **relocated** out of the identity rather than the two invariants being traded off.
+`pi-permission-system` now removes the `Available tools:` and `Guidelines:` sections pi wrote and renders its own after the cwd footer, in every node, from `systemPromptOptions.toolSnippets` and each allowed tool's `promptGuidelines` ([its ADR 0014]).
+Rendering from parts rather than narrowing text is what makes the child case work: a child's inherited identity carries no tool section to narrow, because its parent's node already relocated it — and it retires a hard-coded table of eight literal pi sentences that attributed no third-party tool's guidelines.
+The relocation had to run in every node: doing it in children alone would leave the parent's list at offset 171 and collapse the identity to 171 shared characters, worse than the 365 measured before the change.
+
+[ADR 0006] is amended rather than superseded by [ADR 0008]: the cut is unchanged, but the byte-identical goal is retired for "shared parts", scoped to hosts that reuse a prefix over the system text independently of the tool definitions — Anthropic's cache prefix covers `tools` first, so a child never had a hit to lose there.
+This package's half is the `<sub_agent_context>` removal (its tool bullets duplicated pi's own `promptGuidelines` and named `edit`/`write` to children that have neither) plus the first test to pin the shared prefix at all, which the property had never had.
+The no-`pi-permission-system` case is left to [#901] with its order-independence contract recorded.
 
 Release: independent
 
@@ -1295,7 +1304,7 @@ flowchart TD
     S11 --> S15
     S14 --> S16["Step 16 (#885)<br/>Service resume"]
     S17["✅ Step 17 (#889)<br/>Failed run reports failed"] --> S19["✅ Step 19 (#898)<br/>Compaction-erased turn error"]
-    S5 -.informs.-> S18["Step 18 (#890)<br/>Inherited-region guarantee"]
+    S5 -.informs.-> S18["✅ Step 18 (#890)<br/>Inherited-region guarantee"]
 ```
 
 ### Parallel tracks
@@ -1452,3 +1461,5 @@ The upstream test suite is run periodically as a regression canary for the sessi
 [ADR-0002]: ../decisions/0002-extensions-on-a-minimal-core.md
 [ADR-0004]: ../decisions/0004-reconsider-ui-direction.md
 [ADR-0006]: ../decisions/0006-inherited-prompt-is-identity-only.md
+[ADR-0008]: ../decisions/0008-inherited-region-is-shared-parts.md
+[its ADR 0014]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-permission-system/docs/decisions/0014-tool-surface-is-node-local-prose.md

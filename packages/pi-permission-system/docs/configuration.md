@@ -1155,11 +1155,11 @@ permission:
 
 The extension integrates via Pi's lifecycle hooks:
 
-| Hook                 | Behavior                                                                                                                            |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `before_agent_start` | Filters the active tool set (restrict-only), narrows the `Available tools:` system-prompt listing to match, and hides denied skills |
-| `tool_call`          | Enforces permissions for every tool invocation                                                                                      |
-| `input`              | Intercepts `/skill:<name>` requests and enforces skill policy                                                                       |
+| Hook                 | Behavior                                                                                                                                                                  |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `before_agent_start` | Filters the active tool set (restrict-only), restates the `Available tools:` and `Guidelines:` sections at the end of the system prompt to match, and hides denied skills |
+| `tool_call`          | Enforces permissions for every tool invocation                                                                                                                            |
+| `input`              | Intercepts `/skill:<name>` requests and enforces skill policy                                                                                                             |
 
 Additional behaviors:
 
@@ -1167,10 +1167,12 @@ Additional behaviors:
 - Tool filtering is restrict-only: the active set starts from pi's already-active tools (`pi.getActiveTools()`) and only ever has denied tools removed — the permission system never activates a tool pi left off by default (e.g. `find`, `grep`, `ls`)
 - Policy is applied to the tool surface pi has activated over the session, not to the previous turn's filtered result, so removing a `deny` rule restores the tool it had hidden without restarting pi.
   A tool that stops being active for any other reason (another extension deactivating it, pi unregistering it) is not restored.
-- On the turn a tool is restored, it is callable immediately but its `Available tools:` line reappears one turn later: pi builds the prompt an extension receives before the extension runs, so the line is only regenerated once the restored tool is already active
+- On the turn a tool is restored, it is callable immediately but its `Available tools:` line reappears one turn later: pi builds the prompt parts an extension receives before the extension runs, so the restored tool has no one-line description to render until it is already active
 - A tool is removed only when every value under its surface resolves to `deny`; a surface with any reachable `allow` or `ask` pattern stays available (see [Tool Surfaces](#tool-surfaces))
-- The `Available tools:` system prompt section is narrowed to match the filtered active tool set: denied tools' lines are dropped, the rest are kept, and the section is removed entirely only when no tool is allowed
-- The narrowed prompt is recomputed and returned on every turn but is byte-stable for a stable policy/agent, so the provider's prompt cache (tools + system prefix) is preserved rather than rewritten each turn.
+- The `Available tools:` and `Guidelines:` sections are **relocated** rather than edited in place: the copies pi wrote are removed, and this session's own are rendered at the end of the system prompt, after pi's `Current working directory:` footer.
+  Each session states its own tool surface, which is what keeps a subagent child's inherited prompt byte-identical to its parent's (see [ADR 0014](decisions/0014-tool-surface-is-node-local-prose.md)); the tool list moves to the end of the prompt for every session, whether or not anything is denied
+- The rendered sections follow pi's own rules: a tool is listed only when pi supplied a one-line description for it, and the guideline bullets are the allowed tools' own contributions around pi's built-in ones
+- The prompt is recomputed and returned on every turn but is stable across turns for a stable policy/agent, so the provider's prompt cache (tools + system prefix) is preserved rather than rewritten each turn.
   A policy change is an intentional cache transition, as a mid-session agent switch already is.
 - Extension-provided tools like `task`, `mcp`, and third-party tools are handled by exact registered name
 - Generic extension-tool approval prompts include a bounded input preview; built-in file tools use concise human-readable summaries
