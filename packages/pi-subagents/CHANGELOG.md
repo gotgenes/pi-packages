@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [21.4.6](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v21.4.5...pi-subagents-v21.4.6) (2026-09-08)
+
+
+### Bug Fixes
+
+* **pi-subagents:** report a child run whose failed compaction erased the turn error ([8333fc6](https://github.com/gotgenes/pi-packages/commit/8333fc6468958e4d90ff71651cddb1acc2929186)), closes [#898](https://github.com/gotgenes/pi-packages/issues/898)
+* **pi-subagents:** keep reporting a failed turn when a later call runs no turn ([c3a5348](https://github.com/gotgenes/pi-packages/commit/c3a5348553acc3608224f3760566ea72b907c076)), closes [#898](https://github.com/gotgenes/pi-packages/issues/898)
+
 ## [21.4.5](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v21.4.4...pi-subagents-v21.4.5) (2026-09-07)
 
 
