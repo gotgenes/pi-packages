@@ -774,4 +774,118 @@ describe("buildAgentPrompt", () => {
       });
     });
   });
+
+  // Issue #883: a provider that re-homes the prompt into another harness
+  // carries Pi's base preamble into that harness's API, where Anthropic's
+  // subscription gate scores it. Such a child adopts the parent's
+  // operator-authored parts instead (ADR 0009).
+  describe("portable inheritance", () => {
+    /** Pi's base preamble, including the documentation-routing line #883 bisected to. */
+    const PI_BASE = [
+      "You are an expert coding assistant operating inside pi, a coding agent harness.",
+      "",
+      "Pi documentation (read only when the user asks about pi itself):",
+      "- When asked about: custom providers (docs/custom-provider.md), pi packages (docs/packages.md)",
+    ].join("\n");
+
+    /** What the parent's operator-authored layers render to. */
+    const PORTABLE = [
+      "<project_context>",
+      "",
+      "Project-specific instructions and guidelines:",
+      "",
+      '<project_instructions path="/parent/AGENTS.md">',
+      "Repo rules.",
+      "</project_instructions>",
+      "",
+      "</project_context>",
+    ].join("\n");
+
+    function agentConfig(promptMode: "append" | "replace"): AgentConfig {
+      return {
+        name: "scout",
+        description: "Scout",
+        toolNames: [],
+        systemPrompt: "",
+        promptMode,
+        inheritContext: false,
+        runInBackground: false,
+      };
+    }
+
+    for (const promptMode of ["append", "replace"] as const) {
+      describe(`${promptMode} mode`, () => {
+        it("opens with the parent's portable identity", () => {
+          const prompt = buildAgentPrompt(agentConfig(promptMode), "/workspace", env, {
+            systemPrompt: PI_BASE,
+            cwd: PARENT_CWD,
+            strategy: "portable",
+            portablePrompt: PORTABLE,
+          });
+          expect(prompt.startsWith(PORTABLE)).toBe(true);
+        });
+
+        it("carries none of Pi's base preamble", () => {
+          const prompt = buildAgentPrompt(agentConfig(promptMode), "/workspace", env, {
+            systemPrompt: PI_BASE,
+            cwd: PARENT_CWD,
+            strategy: "portable",
+            portablePrompt: PORTABLE,
+          });
+          expect(prompt).not.toContain("operating inside pi, a coding agent harness");
+          expect(prompt).not.toContain("custom providers (docs/custom-provider.md)");
+          expect(prompt).not.toContain("pi packages (docs/packages.md)");
+        });
+      });
+    }
+
+    describe("fail-safe when the capture is unusable", () => {
+      /**
+       * Opting into portable must never silently re-embed the harness base it
+       * exists to avoid, so an unusable capture falls back to the generic base
+       * rather than to the parent's assembled prompt.
+       */
+      it("falls back to the generic base when no capture is present", () => {
+        const prompt = buildAgentPrompt(agentConfig("append"), "/workspace", env, {
+          systemPrompt: PI_BASE,
+          cwd: PARENT_CWD,
+          strategy: "portable",
+        });
+        expect(prompt.startsWith("# Role")).toBe(true);
+        expect(prompt).not.toContain("pi packages (docs/packages.md)");
+      });
+
+      it("falls back to the generic base when the capture is whitespace only", () => {
+        const prompt = buildAgentPrompt(agentConfig("append"), "/workspace", env, {
+          systemPrompt: PI_BASE,
+          cwd: PARENT_CWD,
+          strategy: "portable",
+          portablePrompt: "   \n\n  ",
+        });
+        expect(prompt.startsWith("# Role")).toBe(true);
+        expect(prompt).not.toContain("pi packages (docs/packages.md)");
+      });
+    });
+
+    describe("the full strategy is unaffected", () => {
+      it("adopts the assembled prompt when the strategy is explicitly full", () => {
+        const prompt = buildAgentPrompt(agentConfig("append"), "/workspace", env, {
+          systemPrompt: PI_BASE,
+          cwd: PARENT_CWD,
+          strategy: "full",
+          portablePrompt: PORTABLE,
+        });
+        expect(prompt.startsWith(PI_BASE)).toBe(true);
+      });
+
+      it("adopts the assembled prompt when no strategy is stated", () => {
+        const prompt = buildAgentPrompt(agentConfig("append"), "/workspace", env, {
+          systemPrompt: PI_BASE,
+          cwd: PARENT_CWD,
+          portablePrompt: PORTABLE,
+        });
+        expect(prompt.startsWith(PI_BASE)).toBe(true);
+      });
+    });
+  });
 });

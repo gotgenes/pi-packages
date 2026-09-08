@@ -3,7 +3,7 @@
  */
 
 import type { EnvInfo } from "#src/session/env";
-import type { AgentPromptConfig } from "#src/types";
+import type { AgentPromptConfig, PromptInheritance } from "#src/types";
 
 /** The parent session's contribution to a child prompt, plus the cwd that text claims. */
 export interface InheritedPrompt {
@@ -11,6 +11,18 @@ export interface InheritedPrompt {
   systemPrompt: string;
   /** The parent's working directory — the cwd its prompt footer names. */
   cwd: string;
+  /**
+   * Which of the parent's contributions the child adopts as its identity.
+   * Absent means `"full"`, the strategy every provider gets unless its
+   * operator has said otherwise.
+   */
+  strategy?: PromptInheritance;
+  /**
+   * The parent's operator-authored parts, for a `"portable"` child. May be
+   * absent even then — the parent may have assembled no prompt yet, or have no
+   * such parts.
+   */
+  portablePrompt?: string;
 }
 
 /**
@@ -51,9 +63,7 @@ export function buildAgentPrompt(
 ): string {
   const header = buildPromptHeader(config.name, cwd, env);
 
-  const identity = inherited
-    ? inheritedIdentity(inherited.systemPrompt, inherited.cwd)
-    : genericBase;
+  const identity = inherited ? adoptedIdentity(inherited) : genericBase;
 
   if (config.promptMode === "append") {
     const customSection = config.systemPrompt.trim()
@@ -72,6 +82,26 @@ export function buildAgentPrompt(
   // <agent_instructions> wrapper is injected — the custom prompt retains full
   // control.
   return identity + "\n\n" + header + "\n\n" + config.systemPrompt;
+}
+
+/**
+ * The parent contribution the child adopts, per the strategy its provider set.
+ *
+ * `full` takes the assembled prompt's identity region, which stays a leading
+ * prefix shared with the parent (ADR 0008). `portable` takes the parent's
+ * operator-authored parts instead, for a provider that re-homes the prompt into
+ * a harness supplying its own base (ADR 0009).
+ *
+ * An absent or whitespace-only portable capture falls back to the generic base,
+ * never to the full prompt: opting into portable must never silently re-embed
+ * the harness base it exists to avoid.
+ */
+function adoptedIdentity(inherited: InheritedPrompt): string {
+  if (inherited.strategy !== "portable") {
+    return inheritedIdentity(inherited.systemPrompt, inherited.cwd);
+  }
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- || intentional: a whitespace-only capture must fall back too, which ?? would not do
+  return inherited.portablePrompt?.trim() || genericBase;
 }
 
 /**
