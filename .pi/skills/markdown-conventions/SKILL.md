@@ -14,6 +14,7 @@ Load this skill when writing or editing markdown files.
 
 The enforcer is `rumdl` (runs as part of `pnpm run lint`; also the pre-commit `rumdl fmt` hook), not `markdownlint-cli2` — there is no markdownlint binary in this repo.
 Rules below are named by their markdownlint `MDxxx` IDs because `rumdl` implements the same rule family; use the IDs for reference, not the tool.
+Checking a file outside the repository (a scratch sample in `/tmp`) needs `--config .rumdl.toml` — `rumdl` does not discover repo config for it, so MD013 fires against the default 80-character limit (Refs #893).
 
 ### Lines and sentences
 

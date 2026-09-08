@@ -146,7 +146,7 @@ Empty output means the work auto-batches until a releasing commit lands: `refact
 A `docs:` or `chore:` commit counts only when it touches a file under `packages/<pkg>/` that is not an internal docs directory (`docs/plans`, `docs/retro`, `docs/architecture`, `docs/decisions`, `docs/assets`).
 Files outside the package tree (`.pi/skills/`, `.pi/prompts/`, root `AGENTS.md`/`README.md`) belong to no package and release nothing.
 
-For a repo-root tooling change (plan under `docs/plans/`, no `<pkg>`), skip the command — every commit is outside the package tree, so nothing releases now.
+For a repo-root tooling change — no `packages/` file in the range (`git diff --name-only "$PLAN"^..HEAD | grep '^packages/'` is empty), whatever the plan's location — skip the command; every commit is outside the package tree, so nothing releases now.
 Say so in the final report and skip the batch-vs-release question.
 
 Then apply the decision recorded in step 2.
