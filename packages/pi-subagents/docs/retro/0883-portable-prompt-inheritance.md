@@ -310,3 +310,130 @@ The finding is a consequence of a decision already made, not a new one, so it la
 The precedent is exact: 0006 already carries a bullet for `@gotgenes/pi-nocd`, whose rewrite path was premised on verbatim inheritance, tracked as #846.
 `pi-claude-bridge` is the same failure shape and is now recorded beside it, tracked as #883.
 ADR 0006 keeps `status: accepted` — the decision is unchanged; only its recorded consequences grew.
+
+## Stage: PR Review — Post-#890 Disposition (2026-09-08T20:22:31Z)
+
+### Session summary
+
+The held disposition resolves: **adopt the capability, plan a simplified design**, with `full` staying the default and `portable` selected by a provider-keyed settings map alone.
+The review re-ran the Verify gate on current `main` (post-#890), re-ran the PR's checks, and traced eight concrete stack scenarios that reframed both the surface and `portable`'s scope — including the finding that `portable` on `anthropic` is strictly worse than `full` for this repo's own stack.
+Bridge PR `elidickinson/pi-claude-bridge#89` remains open with no maintainer response, so the capability is still warranted, but for a narrower reason than the PR states.
+
+### Evaluation
+
+#### Verify gate — still reproduces on current `main`
+
+A scratch test (`packages/pi-subagents/test/scratch-verify-883.test.ts`, written, run, deleted) built a parent prompt matching pi `0.84.4`'s `buildSystemPrompt` shape and pushed it through `buildAgentPrompt`.
+Three assertions, all passing:
+
+- the parent carries `custom providers (docs/custom-provider.md)` and `pi packages (docs/packages.md)`;
+- an `append`-mode child inherits both, plus `operating inside pi, a coding agent harness`;
+- a `replace`-mode child does too, and neither child is a verbatim superstring of the parent (cwd footer and `<available_skills>` cut).
+
+The routing line is at `../pi/packages/coding-agent/src/core/system-prompt.ts:142`, inside pi's base preamble — emitted before `<project_context>`, the catalogue, and the footer, so `inheritedIdentity`'s cut leaves it on the kept side by construction.
+**#890 did not change this**; it made the identity more verbatim, not less.
+
+#### Checks
+
+Scratch worktree off `pr-884` (`f5d4ba9d`, unchanged since the first review), torn down after: `pnpm run check` rc=0, `pnpm run lint` rc=0, `pi-subagents` suite rc=0.
+Green on its own base — but the PR is now `mergeable: CONFLICTING` / `mergeStateStatus: DIRTY`, because #890 rewrote `prompts.ts` and `prompts.test.ts`, two of the files it touches.
+
+#### Upstream status
+
+`elidickinson/pi-claude-bridge#88` open; PR #89 (@georgeharker's tail-stripped key) open with zero comments since 2026-09-06; `pnpm view pi-claude-bridge version` still `0.7.0`.
+The bridge-side fix has not landed and has drawn no maintainer response, so the capability is not moot.
+
+#### What #890 settled, and what it did not
+
+| PR element                                  | Post-#890 status                                                        |
+| ------------------------------------------- | ----------------------------------------------------------------------- |
+| `0008-portable-prompt-inheritance.md`       | Collides with the shipped `0008-inherited-region-is-shared-parts.md`    |
+| "a portable child loses `Available tools:`" | Closed with `pi-permission-system` installed; #901 owns the absent case |
+| "keep `full` for same-API children"         | Stronger — the shared prefix went from 365 chars back to ~57k           |
+
+#### The eight-scenario trace
+
+The decisive analysis. `pi-subagents` captures the parent's **post-extension** prompt: `parent-snapshot.ts:40` calls `ctx.getSystemPrompt()`, which returns `this.agent.state.systemPrompt`, assigned from `result.systemPrompt` after `before_agent_start` (`../pi/…/agent-session.ts:1298-1300`, `:930-932`).
+
+| #   | Stack                           | Strategy   | Result                                                          |
+| --- | ------------------------------- | ---------- | --------------------------------------------------------------- |
+| 1   | subagents alone                 | `full`     | child advertises the parent's 28 tools holding 8 — this is #901 |
+| 2   | subagents alone                 | `portable` | no tool prose at all (pi writes none under `customPrompt`)      |
+| 3   | + permission-system             | `full`     | identity carries no tool list; child's own node renders its 8   |
+| 4   | + anthropic-auth                | `full`     | trigger stripped before the wire; 2894 → 1291 chars measured    |
+| 5   | + anthropic-auth                | `portable` | shaping **no-ops**; strictly worse than 4                       |
+| 6   | + claude-bridge, no perm-system | `full`     | #883's 400; bridge #89 fixes it                                 |
+| 7   | + claude-bridge + perm-system   | `full`     | **#890 is the precondition** that makes bridge #89 match        |
+| 8   | + claude-bridge                 | `portable` | the one case `portable` is load-bearing                         |
+
+Each downstream layer anchors on text the layer beneath leaves in place: `pi-permission-system` on the `Available tools:`/`Guidelines:` headers, `pi-anthropic-auth` on pi's role line, `pi-claude-bridge` on the parent's assembled prompt as a capture key.
+`portable` removes the anchor all three key on, which is why it is correct **only** where the host harness supplies its own base.
+
+Scenario 5 is the finding that settles `portable`'s scope.
+`shapeAnthropicOAuthSystemPrompt` opens with `indexOf(PI_DEFAULT_PROMPT_PREFIX)` and returns the prompt unchanged on `-1` (`~/development/pi/pi-anthropic-auth/src/system-prompt-shaping.ts:123-126`).
+A portable child has no pi role line, so shaping does nothing — and the child never receives `MINIMAL_ANTHROPIC_OAUTH_PROMPT`, which under `full` *replaces* the stripped preamble.
+Combined with `general-purpose`'s `systemPrompt: ""` (`src/config/default-agents.ts:23`), a portable child on `anthropic` runs with `AGENTS.md`, a tag, an env block, and no role framing.
+Under `full` the same stack already produces `portable`'s intended outcome and supplies role framing as well.
+
+Scenario 7 is worth carrying: pre-#890 the permission system rewrote the tool list inside the identity, so the child diverged from the parent at offset ~412, a tail-stripped key would still have missed, the bridge threw `no capture`, and #889 swallowed it as an empty completion.
+
+#### Why the precedence chain inverts
+
+The PR ranks `inherit_prompt` frontmatter **above** the provider rule.
+That resolves wrongly under a per-spawn `model:` override — the very override the PR's `assembleSessionConfig` reorder exists to honor.
+An agent declaring `inherit_prompt: portable` because its `model:` names a bridge model keeps that strategy when spawned onto raw Anthropic, discarding the parent identity for a transport that never needed it.
+An agent has no opinion about prompt inheritance; a **transport has a requirement**.
+
+Provider-declared policy would be the cleanest expression and is **not reachable**: `ProviderConfigInput` in the pinned SDK `0.84.4` (`dist/core/provider-composer.d.ts:16-40`) carries `name`, `baseUrl`, `apiKey`, `api`, `streamSimple`, `headers`, `authHeader`, `oauth`, `models`, `refreshModels` — no policy field.
+Recorded so a later stage does not re-derive it.
+
+#### Why the default does not flip
+
+With `pi-permission-system` installed, `full`'s surplus over `portable` is pi's one-sentence role line plus the doc-routing block.
+Loader-registered `appendSystemPrompt` is in both; extension blocks appended at the end are in neither, since they sit past the cwd footer.
+So the case for flipping is not about content — it is that flipping would undo #890's just-restored ~57k shared prefix by default, change every child's prompt on a routine upgrade with no user edit (this repo's own `feat!:` criterion), and for non-`pi-permission-system` users trade #901's wrong tool list for no tool list at all, pre-empting #901's own call.
+
+#### Code-level findings carried forward
+
+Still applicable if the PR's shape is reused: the settings union is over-built; `_promptInheritanceRaw`'s reconstruction branch is unreachable; `index.ts` threads the whole `SettingsManager` as `runConfig`; `buildPortablePrompt` hand-rolls `<project_context>` without pi's `Project-specific instructions and guidelines:` lead-in; `PromptInheritanceConfig.def` is an abbreviation; `buildParentSnapshot` gains a third positional.
+
+Correction to the first review's framing: the `assembleSessionConfig` reorder is **not** high-blast-radius.
+`resolveDefaultModel` reads only `ctx.parentModel`, `ctx.modelRegistry`, and `agentConfig.model`, and the function is documented side-effect-free, so swapping the two blocks is safe.
+The cost of provider keying is the settings machinery, not the reorder.
+
+### Decision and attribution
+
+**Direction: adopt the capability, plan a simplified design.**
+PR #884 is reference, not merge target — it conflicts with `main` and its precedence chain resolves wrongly.
+
+Agreed scope:
+
+1. **Default stays `full`.** `portable` is opt-in.
+2. **Provider-keyed settings map only** — `"promptInheritance": { "claude-bridge": "portable" }`.
+   No `inherit_prompt` frontmatter, no union form, no global `default` arm, no `normalizePromptInheritance`, no dual raw/normalized state.
+3. **`portable` is documented as re-homing-hosts-only**, not enforced, with scenario 5 as the worked counter-example in `docs/configuration.md`.
+   `genericBase` keeps its existing narrow role, including the PR's empty-capture fallback.
+4. **Plan-time task:** measure how reachable an unresolved child model is (`SessionContext.model` is `Model<any> | undefined` at `src/types.ts:101`, propagated optionally at `runtime.ts:59`) and warn if it is — provider-only has no backstop there.
+
+Adopted from the PR essentially as designed: `ParentPromptOptions` as a narrow structural slice of `BuildSystemPromptOptions`; `buildPortablePrompt` rendering from parts rather than slicing assembled text; the fail-safe that an absent or whitespace-only capture never re-embeds the full prompt; skills un-inherited with context files riding along (load-bearing — the child loader runs `noContextFiles: true`); and the `before_agent_start` capture seam, which the first review established is the only one available.
+
+Non-goals:
+
+- **No tool-docs work** — #890/ADR 0014 and #901 own it.
+- **No provenance marker or side channel** — any marker before the inherited text breaks the prefix #890 restored; bridge #89 solves it downstream.
+- **No provider-declared policy** — `ProviderConfigInput` has no field for it.
+- **No worktree-specific handling** — measured to have been the permission-system rewrite, fixed by #890.
+- **No change to the default.**
+
+Spun off: **#904** — `genericBase` asserts "full access to read, write, edit files, and execute commands" to every agent type including read-only ones, the same claim ADR 0008 removed from `<sub_agent_context>` four lines above it in the same file.
+Dispositioned as Phase 22 Step 20 (`760f1461`).
+
+Attribution is unchanged.
+Every implementation and docs commit carries:
+
+```text
+Co-authored-by: George Harker <george@george-graphics.co.uk>
+```
+
+The PR close comment thanks `@georgeharker` by name and links the implementing SHAs; any ADR credits `elidickinson`'s `diag/EXTRA-USAGE-400.md` for the original bisection.
+Reference the PR as `Refs #884`, never `Closes #884`.
