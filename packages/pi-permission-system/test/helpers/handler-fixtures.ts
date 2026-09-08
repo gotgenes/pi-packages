@@ -129,7 +129,10 @@ export function makeToolRegistry(
   overrides: Partial<ToolRegistry> = {},
 ): ToolRegistry {
   return {
-    getAll: vi.fn().mockReturnValue([{ name: "read" }, { name: "bash" }]),
+    getAll: vi.fn().mockReturnValue([
+      { name: "read", promptGuidelines: ["Use read to examine files."] },
+      { name: "bash", promptGuidelines: ["Use bash for file operations."] },
+    ]),
     getActive: vi.fn().mockReturnValue(["read", "bash"]),
     setActive: vi.fn(),
     ...overrides,

@@ -103,6 +103,27 @@ describe("renderToolSurface", () => {
       expect(twice).toBe(once);
     });
 
+    it("removes a section-header-shaped line in project context, indented or not", () => {
+      // Documents current behavior rather than endorsing it: the headers are
+      // matched on their trimmed text with no check that Pi wrote them, so a
+      // project's own AGENTS.md heading of the same name is removed too.
+      // Carried over from the narrowing implementation, which mangled the same
+      // line; recorded as an accepted residual in ADR 0014.
+      const prompt = [
+        "You are an assistant.",
+        "",
+        "<project_context>",
+        "  Guidelines:",
+        "  - Our team writes conventional commits.",
+        "</project_context>",
+      ].join("\n");
+
+      const result = renderToolSurface(prompt, inputs());
+
+      expect(result).not.toContain("Our team writes conventional commits.");
+      expect(result).toContain("<project_context>");
+    });
+
     it("keeps a Guidelines section that ends the prompt from swallowing later prose", () => {
       const prompt = [
         "Guidelines:",

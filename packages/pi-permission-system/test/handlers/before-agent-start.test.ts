@@ -314,6 +314,21 @@ describe("AgentPrepHandler.handle", () => {
     expect(out).not.toContain("- bash");
   });
 
+  it("carries the registry's guidelines for allowed tools and drops a denied tool's", async () => {
+    // The whole path: toolRegistry.getAll() -> readRegisteredTools ->
+    // guidelinesByTool -> renderToolSurface. The unit tests cover each hop; this
+    // pins that the handler actually connects them.
+    const { handler, permissionManager } = makeSetup();
+    vi.mocked(permissionManager.isToolFullyDenied).mockImplementation(
+      (tool) => tool === "bash",
+    );
+
+    const result = await handler.handle(makeEvent(), makeCtx());
+
+    expect(result.systemPrompt).toContain("- Use read to examine files.");
+    expect(result.systemPrompt).not.toContain("Use bash for file operations.");
+  });
+
   it("keeps the wire system prompt stable across the tool-listing drift between turns", async () => {
     const fullProse = [
       "You are an assistant.",
@@ -373,6 +388,7 @@ describe("AgentPrepHandler.handle", () => {
         "- edit: Edit a file",
         "",
         "Guidelines:",
+        "- Use read to examine files.",
         "- Be concise in your responses",
         "- Show file paths clearly when working with files",
       ].join("\n"),

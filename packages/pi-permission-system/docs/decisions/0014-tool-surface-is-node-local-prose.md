@@ -72,8 +72,10 @@ This is not a new cost — the override was already re-emitted every turn so ski
 - The identity a child shares with its parent is the full identity minus the relocated sections, rather than the 365 characters it had been.
 - A tool restored by a relaxed rule is still advertised one turn late: `toolSnippets` is rebuilt by Pi from the tools active at its last prompt build, so a tool withheld last turn has no snippet to render this turn.
   Unchanged by this decision.
-- A prompt whose `<project_context>` quotes a bare `Available tools:` line at column zero, in a session where Pi wrote none, would have that quote removed.
-  The previous implementation mangled the same quote by narrowing it; the exposure is not new, and no such prompt is known.
+- **Accepted residual:** the two headers are matched on a line's *trimmed* text, with nothing tying them to Pi's authorship, so indentation does not protect a quote.
+  A project's own `AGENTS.md` heading reading `Guidelines:` — inside `<project_context>`, indented or not — is removed along with the bullet-shaped lines beneath it.
+  The previous implementation mangled the same heading by narrowing it, so the exposure is not new and no such prompt is known; a test documents the behavior rather than endorsing it.
+  Anchoring the match to Pi's own position — as `pi-subagents` locates the skills catalogue, by the footer that unconditionally follows it — is the fix if one is ever needed.
 - **Accepted residual:** a child running without this extension installed still inherits its parent's list, because nothing then relocates or restates it.
   Tracked as [#901], which records the contract a second writer must honor to stay order-independent with this one: membership from the live registry (`pi.getActiveTools()`, the one input that changes mid-chain), text from `toolSnippets`, guidelines from `getAllTools()`, and idempotent remove-then-render so the last writer in the chain is correct in either order.
 - A shared prompt-composer that owns prompt layout for every extension editing this string is the direction this points at; four packages currently anchor on Pi's literal section headers.
