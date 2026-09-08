@@ -205,6 +205,7 @@ Then an H1 title (e.g., `# <short descriptive title>`) — required by markdownl
   When a step tightens an **optional** interface field to required (drops `| undefined`), grep the exact `<field>: undefined` literal across all `test/` files — an incidental fixture sets the field to `undefined` without ever reading it, so a grep for the field's *use* sites under-catches (Refs #611).
   When a step adds a **new required** field to a shared interface, grep for constructors of that type — inline object literals and `test/helpers/` factories — not its use sites.
   The field never existed, so the grep above has no `<field>: undefined` literal to match; a shared test fixture is the common miss (Refs #744).
+  When a step adds an **optional** field to an object a `src/` function *produces*, grep `test/` for exact-equality assertions on it (`toEqual`, `toHaveBeenCalledWith`) — optionality satisfies `tsc` and does not satisfy an exact assertion, so a "no construction site breaks" prediction misses them (Refs #883).
   When the design predicts a file will **not** change despite being in the blast radius, list it with that prediction and the claim it rests on.
   A predicted-unchanged file is a falsifiable claim; an omitted one is invisible (Refs #878).
 - **Test Impact Analysis** — for extraction and refactoring issues: (1) what new unit tests does the extraction enable that were previously impossible or impractical?

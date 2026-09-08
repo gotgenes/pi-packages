@@ -556,3 +556,94 @@ One WARN, now closed: the agent-`model:`-string resolution path had no combined 
 The delta reviewer flagged that `rumdl`'s output line was missing from its captured lint run and asked for independent verification.
 Re-verified here: `pnpm exec rumdl check .` reports `No issues found in 1142 files` with the cache cleared.
 It was an output-buffering artifact, as the reviewer suspected — and a standalone `rumdl` on `PATH` resolves to a newer Homebrew build (0.2.67) than the repo's pinned 0.2.24, which reports hundreds of pre-existing findings; always go through `pnpm exec`.
+
+## Stage: Final Retrospective (2026-09-08T21:42:47Z)
+
+### Session summary
+
+One session carried #883 from a held PR-review disposition through planning, seven TDD steps, and the ship of `pi-subagents` 21.5.0, closing both the issue and PR #884.
+The design that shipped is materially different from the one the session opened with: the operator's five elaboration rounds on the configuration gate removed the agent-level frontmatter key entirely, and a planning-time read of Pi's own source removed `promptGuidelines` from the portable identity.
+One accepted residual was filed as #904 and dispositioned as Phase 22 Step 20.
+
+### Observations
+
+#### What went well
+
+- **The clarification gate produced five substantive design changes, not one decision.**
+  Each `ask_user` round on the configuration surface was bounced with a question rather than an answer, and each bounce changed the design: showing the config combinations in the real files; the operator's "inheritance is a property of the provider" insight, which inverted the PR's precedence chain; a pressure test against [#180]'s local-model user, which confirmed the choice and strengthened its rationale; a request for stack-by-stack scenarios, which produced the finding that `portable` on `anthropic` is *worse* than the default; and "what is `genericBase`?", which surfaced a live capability-claim defect and became [#904].
+  Novel: no prior retro in this package records a gate whose every round changed the artifact rather than selecting among prepared options.
+- **Reading the dependency's source at planning time corrected the contributed design.**
+  `promptGuidelines` was in PR #884's portable parts and in this session's own recorded PR-review decision.
+  Opening `../pi/…/agent-session.ts` `_rebuildSystemPrompt` showed it is built by walking `_toolPromptGuidelines` over the session's valid tool names — tool-derived, so inheriting the parent's would assert guidance for tools the child lacks, the exact defect [ADR 0008] removed.
+  Excluding it produced a sharper boundary than the PR had ("the operator's own text, and nothing Pi or a tool contributed") and dissolved a rendering question along with it.
+- **The mandated mutation step caught a probe that Red had already blessed.**
+  The composition-root test asserting the deps bag carries a settings-backed resolver went red during Red — but for a *signature* reason (`deps.resolvePromptInheritance` did not exist), not a behavioral one.
+  Its assertion (`…).toBe("full")`) was satisfied by both the real resolver and the hardcoded `() => "full"` it was meant to reject.
+  This is precisely the case `/tdd-plan`'s step-3 bullet 1 names, and it is the first time that bullet's stated rationale has been validated against a real vacuous probe here.
+- **The scoped delta re-review is a cheap pattern.**
+  Full pre-completion review: 1330 s, 76 tool uses.
+  The follow-up review of the one-file WARN fix: 261 s, 22 tool uses, with an explicit "prior rounds are PASS and not re-litigated" instruction.
+  Roughly a fifth of the cost for a genuine second gate.
+- **The reviewer flagged its own uncertainty rather than asserting.**
+  It noted `rumdl`'s output line was missing from its captured lint run and asked for independent verification instead of reporting either PASS or FAIL on it.
+  Verifying took one call and confirmed the check had run.
+
+#### What caused friction (agent side)
+
+- `instruction-violation` (user-caught) — the first configuration gate offered four options, and three of them kept PR #884's `inherit_prompt` frontmatter key.
+  `AGENTS.md` already says: "When every option shares a premise — the same object grown, the same representation assumed, the same vocabulary kept — name it and offer the option that removes it."
+  The shared premise here was the contributed PR's own decomposition, which I treated as the given surface rather than as a claim to test.
+  The operator removed it in one sentence.
+  Impact: the largest of the session — five elaboration rounds, and the shipped precedence chain is the inverse of the one first proposed.
+  The rule exists and did not fire because the premise arrived from the artifact under review rather than from my own draft.
+- `other` — two of the eleven killing mutations were malformed and had to be reshaped at the bench.
+  Inverting `buildPortablePrompt`'s `if (!options)` guard reddened 12 tests instead of the predicted 3, because the inverted guard let the no-options path fall through and throw — a crash is not a discrimination signal.
+  Inserting an early `return` above the strategy branch tripped Biome's `noUnreachable`, and `pi-autoformat` rejected the write outright.
+  Impact: about 4 extra tool calls; no rework.
+  Changing a compared literal (`"portable"` → `"never-matches"`) is the shape that works for a branch condition.
+- `missing-context` — the shared test helper's `buildAgentPrompt` stub was typed `vi.fn((..._args: unknown[]) => string)`, so a test could not read back its fourth argument.
+  Retyping it to `vi.fn<AssemblerIO["buildAgentPrompt"]>()` cascaded into a placeholder call in `test/helpers/subagent-session-io.test.ts` that passed `{}` for the config and env.
+  Impact: 3 tool calls and one unplanned file edit.
+  Checking the helper's typing belonged in planning, since the plan already knew these tests would assert on that argument.
+- `missing-context` — read back `io.assemblerIO.buildAgentPrompt.mock.calls[0]` and `createSubagentSession.mock.calls[0]` without checking whether each mock is per-test or file-scope.
+  `create-subagent-session.test.ts` rebuilds `io` in `beforeEach` so `calls[0]` is correct there; `composition-root.test.ts` shares one module mock across the file, so `calls[0]` was an earlier test's spawn.
+  Impact: one debugging cycle, about 3 tool calls, fixed with a `mockClear()` in the local helper.
+- `other` — the plan's symbol sweep predicted no test breakage on the grounds that every new interface field is optional.
+  True at the type level, and wrong for `session-config.test.ts`'s "forwards the parent's cwd alongside its system prompt", which pins the inherited-prompt argument with an exact `toHaveBeenCalledWith`.
+  An exact-equality assertion on a **produced** object breaks when the producer gains a field, whatever the declaration says.
+  Impact: one test update folded into Step 6, as the plan's own rules direct; no separate commit.
+- `other` — `pnpm exec rumdl check <dir> <file>` silently checked only the file, reporting "1 file" for what looked like a directory sweep.
+  Impact: 1 extra call; caught because the count was implausible.
+  `rumdl check .` is the reliable form; a directory argument is not expanded.
+
+#### What caused friction (user side)
+
+- Framed as opportunity: the operator's five gate bounces were each a *question* rather than a correction — "show me what the configuration combinations actually look like", "pressure test my choice against #180", "what is `genericBase`?"
+  That is the highest-yield form of intervention in this repo's flow, and it worked: every round improved the artifact.
+  The one thing that would have compressed it is the premise check above, which is mine to fix, not the operator's.
+- The operator's `pi-anthropic-auth` requirement ("I want to make sure I am covered") arrived at round four.
+  Surfacing a deployed-stack requirement earlier would have reached scenario 5 sooner — but the `/pr-review` prompt was already amended in the prior session's retro to require exactly that reachability check, so the structural fix is in place and simply had not been carried into `/plan-issue`'s gate design.
+
+### Diagnostic details
+
+- **Model-performance correlation** — the PR-review disposition, planning, and all seven TDD steps ran on `anthropic/claude-opus-5`; `/ship` ran on `anthropic/claude-sonnet-5`; this retro on `anthropic/claude-opus-5`.
+  That allocation matches the work: `/ship` is a deterministic checklist with no design judgment, and it executed cleanly on the cheaper model.
+  Three subagents dispatched, all `anthropic/claude-sonnet-5` per their frontmatter: `tidy-first-assessor` (returned "no preparatory commits", with useful verification of call-site counts on the way past) and `pre-completion-reviewer` twice.
+  No mismatch to flag — the reviewer's re-derivation work was judgment-heavy and sonnet handled it, including catching a coverage-grid asymmetry.
+- **Escalation-delay tracking** — no `rabbit-hole` friction points.
+  The longest same-error sequence was the vacuous-probe diagnosis at 4 consecutive calls, under the five-call threshold, and it ended in a fix rather than a widening search.
+- **Unused-tool detection** — `colgrep` was available and never used; every exploration was exact-symbol (`grep` for `excludedExtensionPackages`, `buildSnapshot`, `promptGuidelines`), which is the right tool for those.
+  The two `missing-context` points above were both about *typing and lifecycle of test helpers*, which no search tool surfaces — reading the helper file would have.
+- **Feedback-loop gap analysis** — verification ran incrementally throughout: `pnpm run check` after every interface-touching step (Steps 2, 3, 4, 6), the affected test file after every Red and Green, and the full suite at Steps 6 and the end.
+  The baseline was established before Step 1 with all four gates, which made the single `available_skills` metric row and the 1638 → 1676 test delta checkable rather than asserted.
+  No gap to flag.
+
+### Changes made
+
+1. `AGENTS.md`, `## Clarification gates` — extended the shared-premise rule: when the change adopts a third-party artifact, that artifact's own decomposition is a premise too.
+   Derive the option space from the problem, then check the contribution against it.
+   The rule already existed and did not fire here because the premise arrived from the PR under review rather than from an option set of my own drafting.
+2. `.pi/prompts/plan-issue.md`, Module-Level Changes — added the optional-field clause: an optional field added to a **produced** object still breaks an exact-equality assertion (`toEqual`, `toHaveBeenCalledWith`), so "every new field is optional, nothing breaks" is a `tsc` claim rather than a test-suite one.
+3. `.pi/prompts/tdd-plan.md`, step 3 (Verify the pins) — added the mutation-shape clause: prefer changing a compared literal over restructuring control flow, because a mutation that crashes or that the linter rejects produces reds that are not discrimination signals.
+
+Declined during the retro: a `rumdl` directory-argument note (one self-caught call, and that paragraph is already long), a `.mock.calls[0]` file-scope-mock rule (an application of the `testing` skill's existing mock-reset discipline, not a new rule), and any further rule about reading dependency source at planning time — the prior session's retro already amended both `AGENTS.md` and `/plan-issue` for exactly that, and the amendment is what produced this session's `promptGuidelines` finding.
