@@ -173,16 +173,16 @@ The comment should include:
   Run `git rev-parse` for **every** SHA the comment will contain — the landing commit and any follow-on commits — before you start drafting.
   Paste each exactly; never hand-type or extend a short SHA from memory, and never leave a placeholder to fill in later.
   A fabricated SHA does not auto-link (Refs #704, #777).
-  Then verify the draft, not your intent to cite: extract every hex token from the finished comment body and re-resolve each (`git rev-parse <sha>^{commit}`).
-  A pre-draft resolve cannot cover a hash drafting itself introduced (Refs #788).
-  A SHA quoted from the plan or a stage note was written before a rebase, so `git rev-parse` resolves it while it is unreachable.
-  Confirm each with `git merge-base --is-ancestor <sha> main` and substitute the landed SHA (Refs #814).
+  A SHA quoted from the plan or a stage note was written before a rebase, so `git rev-parse` resolves it while it is unreachable — substitute the landed SHA (Refs #814).
   Write them as plain text — no backticks — so GitHub auto-links them to the commits (Refs #733).
 - A short bullet list of feature/breaking commits.
 - One sentence on user-visible behavior change.
 - A note flagging any breaking change (matches `feat!:` commits).
 - If the change unblocks or partially addresses other issues, mention them.
 - If the release was deferred (mid-batch), note that the fix is on `main` and releases with the batch — do not cite a released version.
+
+Before calling `issue_close`, re-resolve every hex token in the finished draft (`git rev-parse <sha>^{commit}`) and confirm each is an ancestor of `main` (`git merge-base --is-ancestor <sha> main`).
+Verify the draft, not your intent to cite — a pre-draft resolve cannot cover a hash drafting itself introduced, and after the call it can no longer prevent publishing one (Refs #788, #814, #890).
 
 Then use `issue_close` with issue number `$1` and the summary as the comment.
 

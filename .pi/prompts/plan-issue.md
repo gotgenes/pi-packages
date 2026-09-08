@@ -71,6 +71,8 @@ Before investigating the issue, load skills relevant to the change:
    A fix whose trigger is unreachable is dead code, and the trigger is gate substance — #873's plan named `reload()`, but policy is re-read on any turn from the policy files' mtimes (Refs #873).
    For a third-party report, also establish whether the defect can reach **us**: check the `@gotgenes/*` extensions this repo actually runs under — including ones outside this monorepo, such as `pi-anthropic-auth` — for something that already mitigates it.
    A defect we are immune to is still real; its priority and its owner are not the same (Refs #883).
+   When the change edits a shared mutable artifact several parties write — the system prompt string, a global registry, a config file — enumerate the other writers first, including `@gotgenes/*` extensions outside this monorepo such as `pi-anthropic-auth`.
+   The issue names the collision it noticed, not the ones it did not (Refs #890).
 7. When the plan introduces a public API pattern (package `exports`, `Symbol.for()` accessor, service interface) or agent-facing message formatting (attribution tags, error prefixes, log labels), use colgrep or grep to search sibling packages for the established convention and follow it unless there is a documented reason to diverge.
    When a config key or public field names an SDK/domain concept (a tool-call part, event, or content type), use the SDK's own term for it — verify against the SDK types — rather than adopting a term from the issue body verbatim (Refs #580: `commandField` shipped, then needed renaming to `commandArgument` to match `ToolCall.arguments`).
    When the change introduces a mechanism a mature ecosystem already standardizes (log redaction, retry/backoff, caching, rate limiting), check what established libraries in that space actually do before building the `ask_user` option set — a set built only from first principles can omit the standard, lowest-maintenance choice (Refs #647).
@@ -219,6 +221,7 @@ Then an H1 title (e.g., `# <short descriptive title>`) — required by markdownl
   When an invariant is quantitative (a byte-identical prefix, a token budget, a cache or latency characteristic), measure the baseline and predict the post-change value at planning time.
   A prose argument that the change is "at the tail" or "negligible" is not evidence, and a test pinning adjacent content does not pin the number (Refs #640).
   When the plan removes the mechanism an existing test's comment credits, spike the removal and run that test at planning time — that the test stays green is a measurement, not an argument (Refs #653).
+  Name the constituency each invariant serves and confirm it still holds for them — an invariant can be dead for one consumer and load-bearing for another, and a design that improves the loudest one regresses the original (Refs #890).
 - **TDD Order** — numbered red→green→verify→commit cycles.
   Each item names the test surface, what's covered, and the suggested commit message (`test:`, `feat:`, `feat!:`, `fix:`, `docs:`).
   A suggested `feat:`/`fix:` subject names the observable outcome, not the seam it edits — it ships to the changelog verbatim (Refs #724).

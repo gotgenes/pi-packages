@@ -94,3 +94,94 @@ Both packages (`pi-permission-system`, `pi-subagents`) will cut a release on lan
 
 No deferred work beyond what's already recorded: [#901] (a child without `pi-permission-system` inherits the parent's tool list) is filed, deferred against `pi-subagents` Phase 22 with rationale.
 The `pi-claude-bridge` compatibility claim in both ADRs is explicitly recorded as unverified (0.7.0 is the latest published version; the stripped-key fix is an open, unmerged PR) — nothing to act on here, just carrying it forward for the root session's awareness.
+
+## Stage: Final Retrospective (2026-09-08T16:24:47Z)
+
+### Session summary
+
+Shipped #890 through the worktree lane: fast-forward-merged the peer branch, ran pre-push checks, pushed, verified CI, closed the issue, and dispatched a release that cut `pi-permission-system-v31.1.3` and `pi-subagents-v21.4.7`.
+The issue spanned four stages across two sessions — planning and TDD and sync in the peer worktree, ship and this retrospective at the root.
+The dominant story is a design that the operator's two questions changed twice, away from all four candidates the issue proposed and toward relocating the tool-surface prose out of the inherited region entirely.
+
+### Observations
+
+#### What went well
+
+- **A disposable spike retired two of the issue's four candidates on measurement rather than argument.**
+  Running the pinned SDK's real `buildSystemPrompt` against both packages' real source produced 365 chars shared today, 57,425 with the child rewrite skipped, and 171 if `inheritedIdentity` truncates at the tool section — making issue option 3 provably *worse* than the status quo it was offered to improve.
+  The spike was deleted and the plan instructed re-measurement rather than reuse, which is the AGENTS.md measurement-scoping rule working exactly as written.
+- **A planned-in verification step caught a planned-in inference.**
+  The plan carried the `pi-claude-bridge` compatibility claim as a Risk with an explicit instruction to read `findInheritedPrompts` before the ADR asserted it.
+  Implementation read the published 0.7.0 tarball and found the matcher keys on `parent.assembledPrompt` — the parent's *full* prompt — so it fails independently of this change.
+  Both ADRs now record the interaction as unverified instead of shipping the overstatement.
+  Writing the doubt into the plan as an obligation, rather than trusting it to be remembered, is what made this work.
+- **Mutation testing predicted its own partial kills.**
+  Step 1's mutation killed 3 of 6 tests, and the plan had already named which equivalence class should survive and why (the three empty-array cases legitimately expect `[]`).
+  Naming the class per mutation is what makes a partial kill readable as a pass rather than an unexplained gap.
+- **The pre-completion reviewer caught an unlanded promise from the plan's own table.**
+  WARN on four findings — including a fixture (`makeToolRegistry` defaults gaining `promptGuidelines`) the plan's Module-Level Changes listed but implementation had not landed — then PASS on a delta re-review that was explicitly asked to check whether fixing it had bent an unrelated assertion.
+
+#### What caused friction (agent side)
+
+- `missing-context` — The first design gate offered the issue's four candidates plus one synthesis, without having established who else writes the system-prompt string.
+  The operator's "are we missing anything bigger picture" question produced a read of `pi-anthropic-auth`, verification of Anthropic's `tools → system → messages` cache hierarchy, and the five-parties table — which retired the framing all three prior gates rested on.
+  Impact: three `ask_user` gates spent on a superseded framing, and a large share of planning context.
+  No code rework (nothing was implemented yet).
+  User-caught.
+  The existing `/plan-issue` rule that would have caught this is scoped `For a third-party report`, and #890 was operator-filed, so it never fired.
+- `premature-convergence` — The recommended option at the reframed gate (compose the child identity from `systemPromptOptions`, making [#884]'s `portable` the default) diverges from the parent at byte 0 — *below* the 365 chars it was meant to improve.
+  The operator's question about [#180]'s local-model reporter surfaced it; the corrected design keeps the parent's identity bytes and relocates the varying part to the tail, which is what shipped.
+  Impact: one gate cycle.
+  Had it shipped, it would have regressed the exact constituency the invariant was created for.
+  User-caught.
+- `missing-context` — The plan's Module-Level Changes did not list `test/composition-root.test.ts`, whose three hand-built `pi.fire("before_agent_start", { systemPrompt: "" }, ctx)` literals broke when the handler read a new payload field.
+  The untyped fake means `tsc` saw nothing; it threw only at the full-suite run.
+  Impact: one extra fix folded into the same commit — and it drove a design improvement (the field shipped optional, avoiding a mid-turn `TypeError` on a host that omits it).
+  Self-identified.
+  The package skill warns about this class for `ExtensionContext` (`makeCtx`, `ctx.isProjectTrusted()`) but not for a hand-built **event payload**, so the near-miss rule's trigger did not match.
+- `instruction-violation` — The ship session ran the post-draft SHA re-resolution *after* `issue_close` rather than before it.
+  All six hashes resolved and were ancestors of `main`, so impact was nil — but the check exists precisely to catch a hash that drafting introduced, and after the call it can no longer prevent publishing one.
+  Self-identified.
+  The instruction currently sits inside a bullet describing comment *content*, several lines above the `issue_close` sentence.
+- `instruction-violation` — Two trivial, self-corrected slips during implementation: an absolute file-tool path built from the root checkout while working in the worktree (AGENTS.md mandates repo-relative), and `npm view` where the repo mandates pnpm exclusively (the repo's shim caught it).
+  Impact: one wasted tool call each.
+  Both rules already exist and were followed on retry; no change proposed.
+- `other` — The `pi-autoformat` reflow invalidated an `Edit` `oldText` twice (ADR 0014's "column zero" sentence, and `prompts.ts`), each recovered by re-reading the region.
+  Impact: two wasted calls.
+  AGENTS.md already documents this hazard and the recovery used was the documented one.
+
+#### What caused friction (user side)
+
+- **The two highest-leverage interventions in the whole issue were redirecting questions, not corrections.**
+  "What's actually happening here… are we missing anything bigger picture?"
+  and the follow-up about [#180]'s local-model user each changed the design, and neither prescribed an answer.
+  This is the pattern worth keeping — a correction would have fixed one option; the questions replaced the option set.
+- **Opportunity: the co-writer context lived with the operator, not in the issue.**
+  That `pi-anthropic-auth` rewrites the same string at the wire is not discoverable from this monorepo — it is a separate checkout outside it.
+  Naming the known co-writers in the issue body (or at the first gate) would have front-loaded the reframing and saved three gates.
+  Framed as opportunity, not criticism: the agent should also ask, and one of the proposals below makes it ask.
+
+### Diagnostic details
+
+- **Model-performance correlation** — Planning ran on `claude-opus-5`, switched to `claude-fable-5-1` for the reframing and the ownership gates, then back to `claude-opus-5` to write the plan; TDD on `claude-opus-5`; sync on `claude-sonnet-5`; ship and this retro on `claude-opus-5`.
+  Worth stating precisely, to avoid a false correlation: the reframing *and* the wrong `portable`-by-default recommendation both occurred under `claude-fable-5-1`, within two turns of each other.
+  The design breakthrough tracks the operator's question, not the model switch that happened to precede it.
+  Subagents: `tidy-first-assessor` once at planning, `pre-completion-reviewer` twice (initial WARN, delta re-review PASS) — both judgment-heavy tasks on their declared models, no mismatch.
+- **Escalation-delay tracking** — No sequence exceeded five consecutive tool calls on the same error.
+  The longest same-target run was the four step-5 killing mutations (deliberate, each with a predicted kill class), and the six-call `pi-claude-bridge` tarball hunt, which was the plan's own mandate rather than a rabbit hole.
+- **Unused-tool detection** — Nothing was missed.
+  The `pi-anthropic-auth` read was correctly kept inline rather than delegated, per the AGENTS.md rule that a universal claim the design rests on should not come back as a subagent summary requiring re-verification.
+- **Feedback-loop gap analysis** — `pnpm run check` ran after every step that touched a shared type, and per-file Vitest ran at every Red and Green.
+  The one gap is structural rather than procedural: the composition-root fixtures are untyped fakes, so no incremental gate could have caught them ahead of the full-suite run — which is what the skill amendment below addresses.
+
+### Changes made
+
+All four changes widen the trigger of a rule that already existed but did not fire for this issue.
+
+1. `.pi/prompts/plan-issue.md` — "Invariants at risk" gains a line requiring each invariant's **constituency** to be named and confirmed still-holding.
+   ADR 0006's prefix invariant served [#180]'s local-model users and was already dead on Anthropic; nobody had written down who it was for, so three gates argued about it in the abstract and a fourth nearly regressed it.
+2. `.pi/prompts/plan-issue.md` — Gather context step 6 gains a clause requiring the **other writers of a shared mutable artifact** to be enumerated, naming `pi-anthropic-auth` as an out-of-monorepo example.
+   The adjacent existing rule was scoped `For a third-party report`, so this operator-filed issue never triggered it.
+3. `.pi/prompts/ship.md` — the post-draft SHA re-resolution moved out of the comment-*content* bullet and into an explicit gate immediately before the `issue_close` call, merged with the ancestor-of-`main` check.
+   The content bullet keeps the pre-draft resolve and the rebase-staleness warning; refs #788 and #814 are preserved at the new site.
+4. `.pi/skills/package-pi-permission-system/SKILL.md` — the hand-built-fixture warning extends from `ExtensionContext` to a hand-built **event payload**, citing the `composition-root.test.ts` `before_agent_start` fakes that compile clean and throw at run time.
