@@ -1050,7 +1050,7 @@ A child spawned under a registered `WorkspaceProvider` therefore resumes into a 
 - **Design decision at plan time:** re-prepare on resume versus refuse with a message, per the `sessionReleased` precedent.
 - **Outcome:** a workspace-backed resume either re-prepares its workspace or is refused with a message naming why; pinned by a test with a stub provider.
 - **Commit type:** `fix:`.
-- **Impact 2 / Risk 2 / Priority 9.**
+- **Impact 2 / Risk 2 / Priority 8.**
 
 Landed: both halves, because re-prepare turned out not to be available and refusal alone would have left the ask-back loop closed to exactly the agents the step was filed for.
 A completed run that declared a question holds its workspace for the resume that question invites; every other outcome disposes at run end as before, so a stopped child still gets its rescue branch immediately.
@@ -1075,7 +1075,7 @@ A non-terminal one-way message (a material finding mid-run) has no expression at
   A blocked child also holds its concurrency slot.
 - **Outcome:** a running child can signal its parent and receive a reply without terminating (mechanism per plan), pinned by an end-to-end test.
 - **Commit type:** `feat:`.
-- **Impact 3 / Risk 4 / Priority 7.**
+- **Impact 3 / Risk 4 / Priority 6.**
 
 Landed as two tools rather than one blocking channel, because the blocking half turned out to duplicate Step 8.
 A blocking `ask` delivers the same outcome as the end-and-resume loop — child needs an answer, parent supplies it, child continues with full context — differing only in which status the child sits in, which parent tool answers, and which clock bounds the wait; shipping both would have made the child choose between two protocols taught by two prompt blocks.
@@ -1343,8 +1343,8 @@ flowchart TD
   Step 3 is `fix!:` and Step 4 is `refactor!:` with a `BREAKING CHANGE:` footer.
   The two landed in the other order, so Step 4 completed the batch: Step 3's release PR stayed open across it, and both breaking changes ship under the one major bump Step 3's `fix!:` opened.
   Step 2 was provisionally batched here in case its required/optional decision came out breaking; it did not — `SubagentRecord` is produced, never implemented, so its widening is semver-minor and it left the batch as the batch's own line anticipated.
-- Independently releasable: Steps 1, 2, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 19.
-  Steps 1, 5, 6, 7, 9, 10, 12, 13, 14, 17, 19 are `fix:`, Step 2 is `feat:`, and Steps 8 and 11 are `feat:` — each an unhidden release vehicle on its own.
+- Independently releasable: Steps 1, 2, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19.
+  Steps 1, 5, 6, 7, 9, 10, 12, 13, 14, 15, 17, 19 are `fix:`, Steps 2 and 16 are `feat:`, and Steps 8 and 11 are `feat:` — each an unhidden release vehicle on its own.
   Step 18 releases only if it lands as `fix:`; a `docs:` outcome that accepts the loss cuts no release.
 
 ## Refactoring history
