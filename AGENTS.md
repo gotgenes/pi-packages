@@ -497,6 +497,9 @@ Do not put `Closes #N` / `Fixes #N` / `Resolves #N` in commit messages.
 `/ship` posts a curated close comment (implemented-in SHA, behavior summary) via `issue_close`; a commit keyword auto-closes the issue on push and pre-empts that comment, leaving the issue with no summary.
 Reference issues as `(#N)` in the subject or `Refs #N` in the body instead.
 Still separate footer tokens (`Refs #N`, `BREAKING CHANGE:`) from the body with a blank line for readability; it is not enforced — `committed` validates only the header grammar and parses a body-line `#N` correctly, so the `conventional-commits-parser` footer false positive that motivated the swap no longer applies (Refs #468).
+Credit a contributor with `Co-authored-by:` whenever their **accepted design** ships, whether or not their patch was taken and whether or not they opened a PR — a constraint or mechanism adopted from an issue, a PR review, or a comment thread all qualify.
+The trigger is adoption, not the artifact it arrived in: #664 was a proposal implemented in-repo, and #890 shipped a constraint stated in an open PR's review thread, uncredited, because the rule was read as covering adopted PRs alone (Refs #664, #890).
+A measured bug report with no design contribution is not this case — name the reporter in the issue body and the close comment instead.
 Put `Co-authored-by:` in the **final** paragraph, below `Refs #N` — git reads only the last paragraph as trailers, and `Refs #N` (no colon) is not trailer-shaped, so a co-author line above it is invisible to GitHub attribution.
 Verify with `git interpret-trailers --parse` (Refs #710).
 When a commit-lint or format gate fires a false positive, disable the single offending check (the specific `committed.toml` field), not the whole gate.
