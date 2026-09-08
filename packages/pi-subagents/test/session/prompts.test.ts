@@ -68,7 +68,7 @@ describe("buildAgentPrompt", () => {
       cwd: PARENT_CWD,
     });
     expect(prompt).toContain("parent coding agent with full powers");
-    expect(prompt).toContain("<sub_agent_context>");
+    expect(prompt).not.toContain("<sub_agent_context>");
     expect(prompt).not.toContain("<inherited_system_prompt>");
     expect(prompt).not.toContain("READ-ONLY");
     // Empty systemPrompt means no <agent_instructions> section
@@ -99,7 +99,7 @@ describe("buildAgentPrompt", () => {
     });
     expect(prompt).toContain("/workspace");
     expect(prompt).toContain("parent coding agent with special powers");
-    expect(prompt).toContain("<sub_agent_context>");
+    expect(prompt).not.toContain("<sub_agent_context>");
     expect(prompt).not.toContain("<inherited_system_prompt>");
     expect(prompt).toContain("<agent_instructions>");
     expect(prompt).toContain("Extra custom instructions here.");
@@ -137,7 +137,7 @@ describe("buildAgentPrompt", () => {
       cwd: PARENT_CWD,
     });
     expect(prompt).toContain("parent coding agent");
-    expect(prompt).toContain("<sub_agent_context>");
+    expect(prompt).not.toContain("<sub_agent_context>");
     expect(prompt).not.toContain("<inherited_system_prompt>");
     expect(prompt).not.toContain("<agent_instructions>");
   });
@@ -226,20 +226,22 @@ describe("buildAgentPrompt", () => {
     expect(idxCustom).toBeGreaterThan(idxEnv);
   });
 
-  it("append mode bridge contains tool reminders", () => {
+  // Removed in #890: the bridge asserted these unconditionally, so a child
+  // without `edit` was still told to use it. Pi's own tools contribute the
+  // equivalent `promptGuidelines`, rendered per session for the tools the
+  // child actually has.
+  it("append mode contributes no tool reminders of its own", () => {
     const config = getDefaultConfig("general-purpose");
-    const prompt = buildAgentPrompt(
-      config,
-      "/workspace",
-      env,
-      { systemPrompt: "Parent prompt.", cwd: PARENT_CWD },
-    );
-    expect(prompt).toContain("Use the read tool instead of cat");
-    expect(prompt).toContain("Use the edit tool instead of sed");
-    expect(prompt).toContain("Use the grep tool instead of");
+    const prompt = buildAgentPrompt(config, "/workspace", env, {
+      systemPrompt: "Parent prompt.",
+      cwd: PARENT_CWD,
+    });
+    expect(prompt).not.toContain("Use the read tool instead of cat");
+    expect(prompt).not.toContain("Use the edit tool instead of sed");
+    expect(prompt).not.toContain("Use the grep tool instead of");
   });
 
-  it("append mode without parent prompt still has bridge", () => {
+  it("append mode without parent prompt falls back to the generic base", () => {
     const config: AgentConfig = {
       name: "no-parent",
       description: "No parent",
@@ -250,9 +252,8 @@ describe("buildAgentPrompt", () => {
       runInBackground: false,
     };
     const prompt = buildAgentPrompt(config, "/workspace", env);
-    expect(prompt).toContain("<sub_agent_context>");
+    expect(prompt).not.toContain("<sub_agent_context>");
     expect(prompt).not.toContain("<inherited_system_prompt>");
-    expect(prompt).toContain("Use the read tool instead of cat");
     expect(prompt).toContain("general-purpose coding agent");
     expect(prompt).toContain("Extra stuff.");
   });
@@ -285,7 +286,7 @@ describe("buildAgentPrompt", () => {
       expect(idxTag).toBeGreaterThan(idxIdentity);
     });
 
-    it("includes <active_agent name=...> tag in append mode after sub_agent_context", () => {
+    it("includes <active_agent name=...> tag in append mode after the identity", () => {
       const config: AgentConfig = {
         name: "general-purpose",
         description: "Twin",
@@ -302,11 +303,11 @@ describe("buildAgentPrompt", () => {
         { systemPrompt: "Parent prompt content.", cwd: PARENT_CWD },
       );
       const tagIdx = prompt.indexOf('<active_agent name="general-purpose"/>');
-      const ctxIdx = prompt.indexOf("<sub_agent_context>");
+      const identityIdx = prompt.indexOf("Parent prompt content.");
       expect(tagIdx).toBeGreaterThan(-1);
-      expect(ctxIdx).toBeGreaterThan(-1);
-      // Sub-agent context comes before the agent-specific active_agent tag
-      expect(ctxIdx).toBeLessThan(tagIdx);
+      expect(identityIdx).toBeGreaterThan(-1);
+      // The inherited identity comes before the agent-specific active_agent tag
+      expect(identityIdx).toBeLessThan(tagIdx);
     });
 
     it("uses agent name verbatim in the tag (no escaping or normalization)", () => {

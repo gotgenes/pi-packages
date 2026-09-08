@@ -21,13 +21,17 @@ export interface InheritedPrompt {
  * prefix across all subagent invocations.
  *
  * - "replace" mode: parent/genericBase + active_agent tag + env header +
- *   config.systemPrompt.  No `<sub_agent_context>` bridge and no
- *   `<agent_instructions>` wrapper — the custom prompt has full control and
- *   the final say.
- * - "append" mode: parent/genericBase + sub-agent context bridge +
- *   active_agent tag + env header + config.systemPrompt (wrapped in
- *   `<agent_instructions>` when non-empty).
+ *   config.systemPrompt.  No `<agent_instructions>` wrapper — the custom
+ *   prompt has full control and the final say.
+ * - "append" mode: parent/genericBase + active_agent tag + env header +
+ *   config.systemPrompt (wrapped in `<agent_instructions>` when non-empty).
  * - "append" with empty systemPrompt: pure parent clone.
+ *
+ * The two modes now differ only in the `<agent_instructions>` wrapper. The
+ * `<sub_agent_context>` bridge append mode used to carry was removed in #890:
+ * its tool bullets duplicated the `promptGuidelines` Pi's own tools contribute
+ * to every child's prompt, and it asserted them unconditionally — telling a
+ * read-only child to use `edit` and `write` when it has neither.
  *
  * Both modes include an `<active_agent name="${config.name}"/>` tag so
  * downstream extensions (e.g. `@gotgenes/pi-permission-system`) can resolve
@@ -51,43 +55,21 @@ export function buildAgentPrompt(
     : genericBase;
 
   if (config.promptMode === "append") {
-
-    const bridge = `<sub_agent_context>
-You are operating as a sub-agent invoked to handle a specific task.
-- Use the read tool instead of cat/head/tail
-- Use the edit tool instead of sed/awk
-- Use the write tool instead of echo/heredoc
-- Use the find tool instead of bash find/ls for file search
-- Use the grep tool instead of bash grep/rg for content search
-- Make independent tool calls in parallel
-- Use absolute file paths
-- Do not use emojis
-- Be concise but complete
-</sub_agent_context>`;
-
     const customSection = config.systemPrompt.trim()
       ? `\n\n<agent_instructions>\n${config.systemPrompt}\n</agent_instructions>`
       : "";
 
-    // Place shared/stable content first so the LLM's KV cache can reuse the
-    // inherited prefix across all subagent invocations. The parent prompt is
-    // placed verbatim (no wrapper tag) so it forms an identical byte prefix
-    // with the parent session, maximising KV cache hits. The <active_agent>
-    // tag and env block vary per call and are placed after the cached prefix.
-    return (
-      identity +
-      "\n\n" +
-      bridge +
-      "\n\n" +
-      header +
-      customSection
-    );
+    // Place the inherited identity first so it forms a shared leading prefix
+    // with the parent session, which prefix-reusing inference engines reuse
+    // instead of reprocessing. The <active_agent> tag and env block vary per
+    // call and are placed after that prefix.
+    return identity + "\n\n" + header + customSection;
   }
 
-  // "replace" mode — parent/genericBase prefix first for KV cache reuse, then
-  // the active_agent tag, env block, and the config's full system prompt.
-  // Unlike append mode, no <sub_agent_context> bridge or <agent_instructions>
-  // wrapper is injected — the custom prompt retains full control.
+  // "replace" mode — identity prefix first, then the active_agent tag, env
+  // block, and the config's full system prompt. Unlike append mode, no
+  // <agent_instructions> wrapper is injected — the custom prompt retains full
+  // control.
   return identity + "\n\n" + header + "\n\n" + config.systemPrompt;
 }
 
