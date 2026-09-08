@@ -45,3 +45,38 @@ Filed [#901] for the residual (a child without `pi-permission-system` still inhe
 [#180]: https://github.com/gotgenes/pi-packages/issues/180
 [#884]: https://github.com/gotgenes/pi-packages/issues/884
 [#901]: https://github.com/gotgenes/pi-packages/issues/901
+
+## Stage: Implementation — TDD (2026-09-08T16:00:35Z)
+
+### Session summary
+
+Executed all seven planned TDD cycles across both packages, plus one follow-up commit addressing the pre-completion review.
+`pi-permission-system` now relocates the tool surface instead of editing it in place (`src/exposure/tool-surface-prompt.ts`, renamed from `system-prompt-sanitizer.ts`), and `pi-subagents` dropped the hard-coded `<sub_agent_context>` bridge.
+Test count: `pi-permission-system` 4117 → 4126, `pi-subagents` 1636 → 1638.
+Pre-completion reviewer: WARN on the first round (four non-blocking findings), PASS on the delta re-review after all four were fixed.
+
+### Observations
+
+- **The plan's Risk item paid off.**
+  The plan required reading `pi-claude-bridge`'s matcher before the ADR asserted compatibility, rather than inheriting the claim from [#884]'s thread.
+  Reading the published 0.7.0 tarball showed `findInheritedPrompts` keys on `parent.assembledPrompt` — the parent's **full** prompt — which a child never contains, so that matcher fails independently of this change; and the stripped-key fix ([pi-claude-bridge#89]) is an open PR with 0.7.0 still the latest published version.
+  Both ADRs record the end-to-end interaction as unverified rather than claiming compatibility.
+  The inference in the plan would have shipped as an overstatement.
+- **Two design improvements over the plan, both from friction the plan did not predict.**
+  The plan put the single-pass registry reader inside `before-agent-start.ts`; it went to `tool-registry.ts` as an exported `readRegisteredTools` instead, because a module-private helper in the handler is not directly testable and the plan's own killing mutation for that step assumed a test existed.
+  And `BeforeAgentStartPayload.systemPromptOptions` shipped **optional and narrowed to `{ toolSnippets? }`** rather than the full `BuildSystemPromptOptions` the plan named — ISP, and it avoids a mid-turn `TypeError` on a host that omits the field.
+- **The composition-root tests caught what `tsc` could not.**
+  Three `pi.fire("before_agent_start", { systemPrompt: "" }, ctx)` call sites hand-build the event through an untyped fake, so reading a new field compiled fine and threw at the full-suite run — exactly the hand-built-ctx class the package skill warns about.
+  Fixed the fixtures *and* made the field optional.
+- **A fixture default is a shared input, not a local one.**
+  Landing the reviewer's finding #4 (`makeToolRegistry` defaults gaining `promptGuidelines`) changed an unrelated test's expected output, because that test used the default registry.
+  Re-derived the new expected block from `renderGuidelines`' order rather than pasting the received value; the re-review was explicitly asked to check that assertion for bending, and confirmed it.
+- **Mutation testing behaved as the plan predicted, including the partial kills.**
+  Step 1's mutation killed 3 of 6 tests — the three empty-array cases legitimately survive because they expect `[]`.
+  Naming which class each mutation should kill is what made that readable as a pass rather than a gap.
+- **Deviation worth flagging at ship:** this changes the system-prompt layout for **every** `pi-permission-system` user, not only those spawning subagents — the tool list moves to the end of the prompt whether or not anything is denied.
+  The every-node requirement is load-bearing (relocating in children alone measures *worse* than the status quo), and it is recorded in ADR 0014 and `configuration.md`.
+- **Accepted residual made explicit:** the section headers are matched on trimmed text with no tie to Pi's authorship, so a project's own `Guidelines:` heading inside `<project_context>` is removed with its bullets.
+  Pre-existing (the narrowing implementation mangled the same line), now pinned by a test that documents rather than endorses it, with the anchoring fix named in ADR 0014.
+
+[pi-claude-bridge#89]: https://github.com/elidickinson/pi-claude-bridge/issues/89
