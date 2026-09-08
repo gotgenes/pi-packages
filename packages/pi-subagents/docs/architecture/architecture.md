@@ -837,6 +837,9 @@ Steps 2, 6, and 8 have design-dependent shapes and are verified by their plans' 
 - [#890] — filed by the [#884] PR review; becomes Step 18 by operator decision.
   `pi-permission-system` rewrites the child's prompt inside the region [ADR-0006] keeps byte-identical with the parent's, so the shared prefix [#180] and [#400] created ends at the tool list for every child with a narrowed tool set.
   Scheduled here rather than deferred because the interaction is measured now and the decision is this package's to make — it may amend or supersede [ADR-0006].
+- [#901] — filed by Step 18's planning; deferred to a later phase with rationale.
+  A child without `pi-permission-system` installed inherits the parent's `Available tools:` list, because Pi writes none under `customPrompt` and nothing in this package corrects the inherited one.
+  Step 18 makes `pi-permission-system` the single writer of the relocated tool-surface block and records the order-independent contract a second writer must honor; honoring it here means this package's first per-turn `before_agent_start` handler plus a shared render function whose home is unsettled, which is new mechanism outside this phase's front-door and delivery-boundary spine.
   Transcript-pane chrome is cosmetic UI polish, unrelated to this phase's front-door contract and delivery-boundary spine, and [ADR 0007](../decisions/0007-transcript-viewer-is-not-an-overlay.md) already settles the constraint it must respect.
 - [#849] — filed by Step 6's planning; adopted as Step 9 (Track C, after Step 6).
   The widget's teardown half: `AgentWidget.dispose()` has no call site, so `session_shutdown` leaves the 80 ms interval and the widget/status registrations live.
@@ -1442,6 +1445,7 @@ The upstream test suite is run periodically as a regression canary for the sessi
 [#889]: https://github.com/gotgenes/pi-packages/issues/889
 [#890]: https://github.com/gotgenes/pi-packages/issues/890
 [#898]: https://github.com/gotgenes/pi-packages/issues/898
+[#901]: https://github.com/gotgenes/pi-packages/issues/901
 [#896]: https://github.com/gotgenes/pi-packages/issues/896
 [#180]: https://github.com/gotgenes/pi-packages/issues/180
 [#400]: https://github.com/gotgenes/pi-packages/issues/400
