@@ -153,4 +153,19 @@ Round 3's non-blocking notes, recorded rather than actioned:
 - `**Release:** ship independently` — Phase 22 Step 19, two `fix:` commits, both naming user-observable outcomes.
 - Nothing is deferred to a follow-up issue; the truncation Non-Goal was an explicit operator decision at the design gate.
 
+## Stage: Sync (worktree) (2026-09-08T01:35:10Z)
+
+### Session summary
+
+Pre-push checks are green: `pnpm run lint` (biome, eslint, rumdl all clean) and `pnpm fallow dead-code` (0 issues, 330 entry points).
+The branch rebases cleanly onto local `main` with no conflicts.
+Nothing is deferred; `**Release:** ship independently` per the plan.
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-898--/2026-09-07T19-09-36-710Z_01a07d46-a446-7451-b5da-ce1c13d9f822.jsonl` — read with `read_session_file({ path: "..." })` for message-level verification at land/retro time.
+
+### Observations
+
+The TDD stage's own retro entry already carries the substantive story (three pre-completion review rounds, two of which found real gaps in the plan's central premise about `message_end` always firing).
+Nothing further to add here — this is a clean handoff.
+
 [#889]: https://github.com/gotgenes/pi-packages/issues/889
