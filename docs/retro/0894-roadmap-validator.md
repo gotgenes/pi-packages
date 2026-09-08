@@ -95,12 +95,76 @@ The operator pre-authorized resolving conflicts in architecture documents during
 No follow-up work is deferred to root beyond the standard ff-merge and issue close.
 Both follow-ups from planning are already filed and dispositioned: [#902] (dashed-edge vocabulary standardization, independent of this change) and the roadmap-fit skill's exit-at-first-step outcome recorded in the Planning stage note.
 
+## Stage: Final Retrospective (2026-09-08T22:23:26Z)
+
+### Session summary
+
+Shipped #894 through the worktree lane: 12 commits fast-forward-merged into `main`, CI green, and no package released — the range is repo-root tooling (`scripts/`, root `test/`, `.pi/`) plus one `packages/pi-subagents/docs/architecture/` correction that `scripts/release/lib.sh` excludes from release scope.
+The retrospective spans four stages across two sessions: planning, TDD, and sync in the peer worktree, then ship at the root.
+The dominant pattern across all four is that **measurement kept overturning the plausible answer** — twice at planning time, twice during mutation testing, and once in pre-completion review.
+
+### Observations
+
+#### What went well
+
+- **Spiking parse rules against the real documents before writing the plan** — novel, and it is what justified the tested host.
+  The first draft of the leading-run tokenizer returned `[]` for six of ten real `**Hard dependency:**` bullets, and the first draft of the mention check produced eight false positives, both while looking entirely plausible.
+  Neither defect is visible from a dry run; both were found because the planning session ran the candidate over every real sample rather than the inputs it could picture.
+- **A survived mutation read as a design finding, not a test gap** — novel.
+  Twice the plan's own killing mutation survived, and both times the answer was that the targeted code was dead: the parenthetical split in `parseStepReferenceRun` (the `break` already stopped there) and the `none` guard (`none` is not a list token).
+  Removing both left one mechanism that a single mutation now kills across all four equivalence classes, so the mutation step **shrank** the code rather than adding tests to it.
+- **The pre-completion reviewer mutated the shipped code itself** and found three branches no fixture reached, none of which the plan's mutation list had anticipated.
+  The consequential one was `checkBatchTails`' ordinal arm: both live roadmaps spell their tail `tail = Step 3`, so the branch runs on real input today while every fixture used issue-identity steps.
+- **The sync stage note pre-answered the ship's release question.**
+  `/ship`'s step 2 reads the plan's `**Release:**` marker, which said `ship independently`; the sync note recorded that the marker was moot because nothing in the range is release-scoped.
+  The root session therefore reached the release decision from a committed breadcrumb rather than re-deriving it, and `next-version.sh pi-subagents` confirmed it independently.
+  This is the cross-session context bridge working exactly as designed.
+
+#### What caused friction (agent side)
+
+- `premature-convergence` — the planning session recommended bash as the validator's host on the strength of `scripts/` convention, without checking whether that convention was ever chosen for this kind of work.
+  The honest comparison, produced only after the operator challenged it, showed repo bash scripts have no linter, no test harness, and no data structures for graph work.
+  Impact: two operator interventions on the same decision and roughly four tool calls of re-measurement; the flip also changed the issue from a `/build-plan` to a `/tdd-plan` one, so the wrong answer would have shipped an untested parser.
+  User-caught, and the session named the failure itself once challenged ("that recommendation was convention-following, not reasoning").
+- `instruction-violation` — a commit body containing backticks was passed with a heredoc rather than `git commit -F <file>`, which `AGENTS.md` § Shell and search already requires.
+  Impact: one failed commit call, after which the session settled into a stable write-file / `git add` / `git commit -F` pattern for every remaining commit.
+  Self-identified.
+- `other` — a `perl -pi -e` mutation silently matched nothing because `biome` had rewrapped the target line since it was written, so the suite read as "mutation killed nothing" when no mutation had been applied.
+  Impact: two wasted tool calls before the session re-read the file and switched to `Edit`.
+  Both halves of this are already written down ([#870] in `/tdd-plan` step 3, and the autoformat-reflow warning in `AGENTS.md`), so this is a salience miss rather than a missing rule.
+
+#### What caused friction (user side)
+
+- The two host challenges arrived as challenges rather than as context, and the second one ("why not vitest?") is what produced the best answer — after the session had already committed to `node --test` in its revised recommendation.
+  Framed as opportunity: the operator was carrying a fact the agent could not derive (that vitest is already a workspace catalog entry, so it costs no new version resolution), and surfacing it with the first challenge would have collapsed two rounds into one.
+  The agent's share of this is larger — it never asked what the root's test story was before recommending a host.
+- The mid-rebase pre-authorization ("You have permission to resolve conflicts in the architecture documents, which I'm sure we'll encounter") was anticipatory and cost nothing when the conflict failed to materialize.
+  This is the right shape for a worktree hand-off: it removes a stop-and-ask round trip in advance rather than after the agent has already halted.
+
+### Diagnostic details
+
+- **Model-performance correlation** — planning and TDD ran on `anthropic/claude-opus-5` (judgment-heavy: a design pivot away from the issue's premise, then eight TDD cycles with mutation analysis), sync on `anthropic/claude-sonnet-5` (mechanical: two gates, a stage note, a rebase), and ship plus this retro on `anthropic/claude-opus-5`.
+  Both `pre-completion-reviewer` dispatches ran on `anthropic/claude-sonnet-5` per the agent's frontmatter, and the first returned three real coverage gaps on a judgment task — no mismatch to flag.
+- **Escalation-delay tracking** — no `rabbit-hole` friction points, and no sequence exceeded five consecutive tool calls on the same error.
+  The longest same-target run was the four calls spent re-applying the `checkBatchTails` mutation after the `perl` miss, which resolved by changing instrument rather than by retrying.
+- **Feedback-loop gap analysis** — verification ran incrementally throughout: `pnpm run test:scripts` after every red and every green, root `pnpm run lint` at every commit boundary, and the live-document run (`./scripts/roadmap-check.mjs`) after each check was added.
+  The full `pnpm run check` / `test` / `fallow dead-code` set ran at baseline and again at the end, with no end-of-cycle surprise.
+
+### Changes made
+
+1. `.pi/prompts/tdd-plan.md` — the survived-mutation rule in the **Verify the pins** step named two causes; added the third this session hit twice (the mutated code is dead), and cited #894 alongside #844.
+2. `.pi/skills/testing/SKILL.md` — added a fixture-coverage bullet to the mutation/equivalence-class cluster: when the code under test accepts two shapes of the same input, check that the fixtures do not all pick one shape.
+
+A third proposal — a host-choice rule for `/plan-issue` step 7, drawn from the bash-versus-`.mjs` friction — was presented and declined by the operator.
+The friction itself is recorded above under `premature-convergence`.
+
 [#802]: https://github.com/gotgenes/pi-packages/issues/802
 [#857]: https://github.com/gotgenes/pi-packages/issues/857
 [#858]: https://github.com/gotgenes/pi-packages/issues/858
 [#878]: https://github.com/gotgenes/pi-packages/issues/878
 [#881]: https://github.com/gotgenes/pi-packages/issues/881
 [#885]: https://github.com/gotgenes/pi-packages/issues/885
+[#870]: https://github.com/gotgenes/pi-packages/issues/870
 [#890]: https://github.com/gotgenes/pi-packages/issues/890
 [#893]: https://github.com/gotgenes/pi-packages/issues/893
 [#900]: https://github.com/gotgenes/pi-packages/issues/900

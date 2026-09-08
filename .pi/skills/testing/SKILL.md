@@ -75,6 +75,8 @@ Load this skill when writing, debugging, or planning tests.
   Decide by mutation: break the code the pin covers and confirm the pin fails — a pin that survives its own mutation is a broken probe (Refs #807).
 - A mutation is scoped to one claim, so it kills one equivalence class and no more.
   Ignoring frontmatter entirely killed the three `default`-request pins and correctly left the two `explicit` pins green — "I mutated and saw reds" is not evidence the whole set is sound (Refs #724).
+- When the code under test accepts two shapes of the same input (an ordinal or an issue number, a string or an array), check that the fixtures do not all pick one shape.
+  The live input can exercise the other arm exclusively — both roadmaps spell their batch tail `tail = Step 3` while every fixture used issue identity (Refs #894).
 - A bulk red caused by a signature change masks per-test probe quality.
   Twenty-one tests failing because a required field does not exist yet says nothing about whether any individual assertion discriminates; that is not the per-test red the rule above asks for.
 - A test authored or rewritten **after** Green never had a Red step, so the rule above never triggers for it.

@@ -101,7 +101,7 @@ For **each** step in the plan's "TDD Order", in order:
    Re-run before committing; never commit with a mutation in the tree.
    Apply the mutation with `Edit`, and confirm the file changed before reading the suite — a scripted multi-line substitution that matches nothing reads exactly like a mutation that killed nothing, and one that matches every sibling site reddens tests the mutation was never meant to touch (Refs #870).
    Prefer changing a compared literal over restructuring control flow: a mutation that crashes, or that the linter rejects, produces reds that are not discrimination signals (Refs #883).
-   Count the reds against the step's prediction: a mutation that kills fewer tests than the plan named is a finding, not a pass — either the test was never written or the plan's claim was wrong (Refs #844).
+   Count the reds against the step's prediction: a mutation that kills fewer tests than the plan named is a finding, not a pass — the test was never written, the plan's claim was wrong, or the mutated code is dead (Refs #844, #894).
 4. **Commit.**
    Use the commit message the plan suggests, or a Conventional Commits message that matches:
    - `test:` for test-only commits (rare; usually folded into the feat).
