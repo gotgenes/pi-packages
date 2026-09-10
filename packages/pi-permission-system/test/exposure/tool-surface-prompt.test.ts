@@ -53,8 +53,25 @@ function piPrompt(): string {
     "Current working directory: /repo",
   ].join("\n");
 }
-
 describe("renderToolSurface", () => {
+  describe("OMP prompt payload compatibility", () => {
+    it("normalizes an array of prompt fragments before rendering", () => {
+      const result = renderToolSurface(
+        [
+          "You are a child agent.",
+          "",
+          "Available tools:",
+          "- bash: Execute bash commands",
+        ],
+        inputs(),
+      );
+
+      expect(result).toContain("You are a child agent.");
+      expect(result).toContain("Available tools:\n- read: Read file contents");
+      expect(result).not.toContain("- bash: Execute bash commands");
+    });
+  });
+
   describe("removing what Pi wrote", () => {
     it("drops the tool list, the filler sentence, and the guidelines", () => {
       const result = renderToolSurface(piPrompt(), inputs());

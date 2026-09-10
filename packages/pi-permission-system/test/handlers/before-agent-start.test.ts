@@ -259,6 +259,23 @@ describe("AgentPrepHandler.handle", () => {
     const result = await handler.handle(makeEvent(systemPrompt), makeCtx());
     expect(result).toHaveProperty("systemPrompt");
   });
+  it("normalizes an OMP array prompt before resolving the active agent", async () => {
+    const { handler, session } = makeSetup();
+    const resolveAgentName = vi.spyOn(session, "resolveAgentName");
+
+    await handler.handle(
+      makeEvent([
+        "You are an assistant.",
+        "<active_agent name='worker'>",
+      ] as unknown as string),
+      makeCtx(),
+    );
+
+    expect(resolveAgentName).toHaveBeenCalledWith(
+      expect.anything(),
+      "You are an assistant.\n<active_agent name='worker'>",
+    );
+  });
 
   it("states the session's tools for a prompt that carries no tool surface", async () => {
     // A subagent child's inherited identity has none: its parent's node already

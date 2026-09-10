@@ -9,7 +9,10 @@ import {
   type ToolRegistry,
 } from "#src/exposure/tool-registry";
 import type { ToolSurfaceObservation } from "#src/exposure/tool-surface-baseline";
-import { renderToolSurface } from "#src/exposure/tool-surface-prompt";
+import {
+  normalizePrompt,
+  renderToolSurface,
+} from "#src/exposure/tool-surface-prompt";
 import type { DebugLogger } from "#src/logging/session-logger";
 import type { PermissionResolver } from "#src/policy/permission-resolver";
 import type { PermissionSession } from "#src/session/permission-session";
@@ -17,7 +20,7 @@ import type { TurnPreparation } from "./session-turn-prep";
 
 /** Minimal subset of BeforeAgentStartEvent used by this handler. */
 interface BeforeAgentStartPayload {
-  systemPrompt: string;
+  systemPrompt: string | readonly string[];
   /**
    * The parts Pi assembled the prompt from. `toolSnippets` is what lets this
    * handler render the session's own tool list instead of editing the one Pi
@@ -80,9 +83,10 @@ export class AgentPrepHandler {
     event: BeforeAgentStartPayload,
     ctx: ExtensionContext,
   ): Promise<BeforeAgentStartEventResult> {
+    const systemPrompt = normalizePrompt(event.systemPrompt);
     this.turnPrep.prepare(ctx);
 
-    const agentName = this.session.resolveAgentName(ctx, event.systemPrompt);
+    const agentName = this.session.resolveAgentName(ctx, systemPrompt);
     const registered = readRegisteredTools(this.toolRegistry.getAll());
     const surface = this.session.resolveExposedTools(
       this.observeToolSurface(registered),
@@ -102,7 +106,7 @@ export class AgentPrepHandler {
       });
     }
 
-    const toolSurfacePrompt = renderToolSurface(event.systemPrompt, {
+    const toolSurfacePrompt = renderToolSurface(systemPrompt, {
       allowedTools,
       toolSnippets: event.systemPromptOptions?.toolSnippets ?? {},
       guidelinesByTool: registered.guidelinesByTool,
@@ -114,7 +118,7 @@ export class AgentPrepHandler {
       this.session.getPathNormalizer(),
     );
     this.session.setActiveSkillEntries(skillPromptResult.entries);
-    return skillPromptResult.prompt !== event.systemPrompt
+    return skillPromptResult.prompt !== systemPrompt
       ? { systemPrompt: skillPromptResult.prompt }
       : {};
   }
