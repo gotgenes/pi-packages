@@ -37,3 +37,31 @@ Plan committed at `packages/pi-subagents/docs/plans/0903-exactly-once-mid-run-up
 
 - `test/observation/notification.test.ts` — a local `liveRecord()` factory to de-duplicate the repeated `{ id: "live-1", status: "running" }` literal; the assessor rated it marginal at seven sites and left it to taste.
 - `src/observation/notification.ts` — the assessor considered extracting a shared announce-predicate as *preparation* and declined: the duplication does not exist in today's code, it is created by this change, so it is a shape decision inside step 3 (where the plan does adopt it as `canAnnounceUpdate`).
+
+## Stage: Implementation — TDD (2026-09-10T03:21:58Z)
+
+### Session summary
+
+Four TDD cycles, exactly as planned: the fixture-status prep, the `refactor:` landing the per-update announcement latch, the `fix:` carrying the whole delivery change, and the `docs:` recording it. pi-subagents test count went 1676 → 1684 (+8: three latch tests in `subagent-state.test.ts`, four delivery-matrix tests in `notification.test.ts`, one rewritten ledger assertion in `subagent.test.ts`, and one added mid-review).
+Pre-completion reviewer: PASS.
+
+### Observations
+
+- **Two of the plan's killing-mutation predictions were wrong, and both were findings rather than passes.**
+  Mutation (a) — restoring `if (this.claimed)` in `announceUpdate` — was predicted to redden the `wait: true` ordering test in `notification.test.ts`; it reddened only `subagent.test.ts`.
+  The notification tests seed the ledger through `createTestSubagent`, which calls `state.recordUpdate` directly and bypasses `announceUpdate` entirely, so that layer can never exercise the conjunct.
+  The reviewer confirmed this is correct test layering rather than a gap.
+- **Mutation (b) exposed a real hole and produced a new test.**
+  Dropping `record.isActive()` was predicted to redden both reported orderings; it reddened only the completion-nudge one, because the reporter's own scenario (`get_subagent_result` with `wait: true`) claims the outcome and is therefore suppressed by the claim conjunct alone.
+  Added *"stays quiet once a pull without wait has rendered it"* — the collect-without-waiting path is the one only liveness catches, and it is a real production ordering.
+  Re-ran mutation (b) afterwards: two reds, as intended.
+- **The plan's predicted rewrite of *"is announced even after the parent collected an earlier outcome"* never happened.**
+  The step-1 fixture tidy gave it `status: "running"`, under which it passes unchanged and still pins that consumption does not gate an update.
+  Reviewer WARN (non-blocking): that fixture is now a state production cannot reach — every `markConsumed()` call site fires only after the record is terminal — so the test remains a valid unit pin on `canAnnounceUpdate` but its name implies a reachable ordering that no longer exists.
+  Left as-is rather than renaming after the review; worth a rename on the next touch of that file.
+- **The plan's own step-4 verification grep was imprecise.**
+  It asserted `arrives as its own message` would return nothing; the corrected `configuration.md` sentence deliberately reuses the phrase ("It arrives as its own message when you are idle…").
+  The doc is right and the command was wrong — a reminder that a stale-phrase grep needs a phrase the replacement will not legitimately contain.
+- **No deviation in the production shape.**
+  `canAnnounceUpdate`, the `RunUpdate` entry, `markUpdateAnnounced`, and the `buildPointerLines` prepend all landed as designed, and the five files the plan predicted unchanged were unchanged.
+  The `fallow dead-code` hazard the plan anticipated did not fire, because step 2 landed `markUpdateAnnounced` with its `NotificationManager` call site as planned.
