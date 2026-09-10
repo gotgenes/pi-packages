@@ -356,6 +356,9 @@ export class NotificationManager implements NotificationSystem {
   }
 
   private emitUpdate(record: Subagent, message: string): void {
+    // This channel is delivering the message, so no outcome carrier may repeat
+    // it — the record renders only what is still owed.
+    record.markUpdateAnnounced(message);
     const details: UpdateDetails = {
       id: record.id,
       description: record.description,

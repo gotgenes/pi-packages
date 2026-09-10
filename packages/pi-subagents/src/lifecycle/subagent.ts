@@ -547,6 +547,11 @@ export class Subagent {
 		this.state.markConsumed(at);
 	}
 
+	/** The announcement channel delivered this update; no outcome carrier repeats it. */
+	markUpdateAnnounced(message: string): void {
+		this.state.markUpdateAnnounced(message);
+	}
+
 	/** A carrier has committed to delivering this outcome; nothing else announces it. */
 	claim(): void {
 		this.state.claim();

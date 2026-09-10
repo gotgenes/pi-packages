@@ -611,4 +611,35 @@ describe("SubagentState — run updates", () => {
 
 		expect(state.runUpdates).toEqual([]);
 	});
+
+	describe("the announcement latch", () => {
+		it("omits a message the announcement channel delivered", () => {
+			const state = new SubagentState();
+			state.recordUpdate("Announced already.");
+			state.recordUpdate("Still owed to a carrier.");
+
+			state.markUpdateAnnounced("Announced already.");
+
+			expect(state.runUpdates).toEqual(["Still owed to a carrier."]);
+		});
+
+		it("marks the first unannounced copy, leaving a later duplicate owed", () => {
+			const state = new SubagentState();
+			state.recordUpdate("Same finding twice.");
+			state.recordUpdate("Same finding twice.");
+
+			state.markUpdateAnnounced("Same finding twice.");
+
+			expect(state.runUpdates).toEqual(["Same finding twice."]);
+		});
+
+		it("ignores a message this run never produced", () => {
+			const state = new SubagentState();
+			state.recordUpdate("From this run.");
+
+			state.markUpdateAnnounced("From a run that was reset.");
+
+			expect(state.runUpdates).toEqual(["From this run."]);
+		});
+	});
 });

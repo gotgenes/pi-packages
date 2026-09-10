@@ -647,6 +647,19 @@ describe("NotificationManager", () => {
         expect(parent.deliveredToLlm).toHaveLength(0);
       });
 
+      it("is no longer owed to a carrier once the announcement delivered it", () => {
+        const parent = makePiParent();
+        const record = createTestSubagent({
+          id: "live-1",
+          status: "running",
+          runUpdates: ["Course change.", "A second finding."],
+        });
+
+        parent.manager.sendUpdate(record, "Course change.");
+
+        expect(record.runUpdates).toEqual(["A second finding."]);
+      });
+
       it("is announced again once the carrier abandons its claim", () => {
         const parent = makePiParent();
         const record = createTestSubagent({ id: "live-1", status: "running" });

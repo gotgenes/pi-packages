@@ -50,6 +50,12 @@ export function isRunningStatus(status: SubagentStatus): boolean {
 	return status === "running";
 }
 
+/** One update a child sent during a run, and whether an announcement delivered it. */
+interface RunUpdate {
+	message: string;
+	announced: boolean;
+}
+
 export interface SubagentStateInit {
 	status?: SubagentStatus;
 	result?: string;
@@ -124,13 +130,17 @@ export class SubagentState {
 	private _workspaceNotice?: string;
 	get workspaceNotice(): string | undefined { return this._workspaceNotice; }
 
-	// The updates the child sent while a carrier held this run's outcome, for
-	// that carrier to render alongside the result rather than announce after it.
+	// The updates the child sent during this run, each remembering whether the
+	// announcement channel delivered it — so a message reaches the parent once,
+	// through whichever channel could reach it, and no carrier repeats it.
 	// Scoped to the run, so it clears wherever a run begins.
 	// Transient runtime state, so deliberately not seedable via SubagentStateInit
 	// — a rehydrated record has no run to have produced these.
-	private _runUpdates: string[] = [];
-	get runUpdates(): readonly string[] { return this._runUpdates; }
+	private _runUpdates: RunUpdate[] = [];
+	/** The updates no announcement delivered — what an outcome carrier must render. */
+	get runUpdates(): readonly string[] {
+		return this._runUpdates.filter((update) => !update.announced).map((update) => update.message);
+	}
 
 	// Stats — accumulated via mutation methods, readable via getters
 	private _toolUses: number;
@@ -249,9 +259,19 @@ export class SubagentState {
 		this._runUpdates.length = 0;
 	}
 
-	/** Record an update the child sent during this run. */
+	/** Record an update the child sent during this run, owed to a carrier until delivered. */
 	recordUpdate(message: string): void {
-		this._runUpdates.push(message);
+		this._runUpdates.push({ message, announced: false });
+	}
+
+	/**
+	 * The announcement channel delivered this message, so no outcome carrier may
+	 * repeat it. Marks the first copy still owed: two identical messages are two
+	 * facts the child sent twice, and one announcement delivered one of them.
+	 */
+	markUpdateAnnounced(message: string): void {
+		const owed = this._runUpdates.find((update) => !update.announced && update.message === message);
+		if (owed) owed.announced = true;
 	}
 
 	/**
