@@ -3,6 +3,7 @@ import type { SubagentStatus } from "#src/lifecycle/subagent-state";
 import { getLifetimeTotal } from "#src/lifecycle/usage";
 import {
   renderQuestionAffordance,
+  renderRunUpdates,
   renderStatusLabel,
   renderWorkspaceNotice,
 } from "#src/observation/outcome-delivery";
@@ -279,22 +280,35 @@ export class NotificationManager implements NotificationSystem {
    *
    * Consumption is not consulted: it records that the child's *outcome* was
    * collected, and an update is a new fact rather than that outcome told again.
-   * The carrier claim is, for a different reason than a completion's — not that
-   * the message would duplicate a delivery, but that the claiming carrier is
-   * blocked awaiting this run, so an announcement could only arrive after its
-   * return. That carrier renders the update itself (`renderRunUpdates`), and
-   * `Subagent.announceUpdate` reads the same claim to hand it over.
-   * The disposal latch and the parent-run withhold apply as they do to any
-   * announcement.
+   * What is consulted is whether an announcement is still the right channel at
+   * all — see `canAnnounceUpdate`. The disposal latch and the parent-run
+   * withhold apply as they do to any announcement.
    */
   sendUpdate(record: Subagent, message: string): void {
     if (this.disposed) return;
-    if (record.claimed) return;
+    if (!this.canAnnounceUpdate(record)) return;
     if (this.parentRunActive) {
       this.pending.push({ kind: "update", record, message });
       return;
     }
     this.emitUpdate(record, message);
+  }
+
+  /**
+   * Whether an announcement is still the right channel for this run's updates.
+   *
+   * A claimed outcome is one a blocked carrier is already delivering, so an
+   * announcement could only arrive after its return. A terminated run has an
+   * outcome, and every carrier of an outcome renders what the run still owes —
+   * including the completion nudge — so the message arrives with it rather than
+   * as a live update the child can no longer act on.
+   *
+   * Consulted at enqueue and again at emit, because a run withheld for the
+   * parent's turn can terminate or be claimed in between. That re-read is what
+   * keeps a `<subagent-update>` block's steering affordance true.
+   */
+  private canAnnounceUpdate(record: Subagent): boolean {
+    return !record.claimed && record.isActive();
   }
 
   /**
@@ -356,6 +370,7 @@ export class NotificationManager implements NotificationSystem {
   }
 
   private emitUpdate(record: Subagent, message: string): void {
+    if (!this.canAnnounceUpdate(record)) return;
     // This channel is delivering the message, so no outcome carrier may repeat
     // it — the record renders only what is still owed.
     record.markUpdateAnnounced(message);
@@ -403,7 +418,10 @@ export class NotificationManager implements NotificationSystem {
     const outputFile = record.outputFile;
     const transcriptLine = outputFile ? `\nFull transcript available at: ${outputFile}` : "";
     return (
-      // Where the work went leads, so the parent reads it before the pointers.
+      // What the child flagged along the way leads — for a run nothing else
+      // collected, this nudge is the carrier those updates ride. Then where the
+      // work went, so the parent reads it before the pointers.
+      renderRunUpdates(record.runUpdates) +
       renderWorkspaceNotice(record.workspaceNotice) +
       `${transcriptLine}\nCall get_subagent_result("${record.id}") to collect the full result.` +
       renderQuestionAffordance(record.id, record.pendingQuestion, record.resumeRefusal)

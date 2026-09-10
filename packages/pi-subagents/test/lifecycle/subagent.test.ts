@@ -1251,7 +1251,7 @@ describe("Subagent — the mid-run update channel", () => {
 			expect(agent.runUpdates).toEqual(["The bug is in the retry wrapper."]);
 		});
 
-		it("holds nothing back when no carrier has claimed the outcome", async () => {
+		it("records the update for a carrier even when none has claimed the outcome", async () => {
 			const { factory } = createSpyFactory();
 			const agent = createRunnableAgent({
 				createSubagentSession: factory,
@@ -1261,7 +1261,9 @@ describe("Subagent — the mid-run update channel", () => {
 
 			factory.mock.calls[0][0].notifyParent?.("The bug is in the retry wrapper.");
 
-			expect(agent.runUpdates).toEqual([]);
+			// The announcement channel is what decides to announce, and it marks what
+			// it delivers. Until then the run owes the message to a carrier.
+			expect(agent.runUpdates).toEqual(["The bug is in the retry wrapper."]);
 		});
 
 		it("tells the observer either way, because the update is a fact about the run", async () => {
