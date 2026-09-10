@@ -52,11 +52,11 @@ const THIRD_PARTY_SUBAGENT_ENV_HINTS = [
 /**
  * Env vars whose presence marks the current process as a subagent child.
  *
- * A process that names a parent session is a child by definition, so every
- * parent-session candidate is a detection hint too. That is what makes the
- * subagent adapter convention's single out-of-process obligation — set
- * `PI_SUBAGENT_PARENT_SESSION` — sufficient on its own: an implementation owes
- * the announcement and nothing else, and detection is this package's job.
+ * Parent-session candidates remain detection hints so the subagent adapter
+ * convention's single out-of-process obligation — set
+ * `PI_SUBAGENT_PARENT_SESSION` — is sufficient on its own. The detector has a
+ * narrow compatibility exception for a UI host inheriting its own id as that
+ * marker; all other non-empty hints remain child evidence.
  */
 export const SUBAGENT_ENV_HINT_KEYS: readonly string[] = [
   ...THIRD_PARTY_SUBAGENT_ENV_HINTS,

@@ -1,9 +1,16 @@
-import { afterEach, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
+import { SUBAGENT_ENV_HINT_KEYS } from "#src/authority/permission-forwarding";
 import type { SubagentDetectionContext } from "#src/authority/subagent-context";
 import { SubagentDetection } from "#src/authority/subagent-detection";
 import { SubagentSessionRegistry } from "#src/authority/subagent-registry";
 import { posixPathFlavor } from "#src/path/path-flavor";
+
+beforeEach(() => {
+  for (const key of SUBAGENT_ENV_HINT_KEYS) {
+    vi.stubEnv(key, undefined);
+  }
+});
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -15,6 +22,7 @@ function makeCtx(
   sessionId: string = "",
 ): SubagentDetectionContext {
   return {
+    hasUI: false,
     sessionManager: {
       getSessionDir: vi.fn(() => sessionDir ?? ""),
       getSessionId: vi.fn(() => sessionId),

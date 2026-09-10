@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { SUBAGENT_ENV_HINT_KEYS } from "#src/authority/permission-forwarding";
 import {
   isRegisteredSubagentChild,
@@ -9,6 +9,12 @@ import {
 import { SubagentSessionRegistry } from "#src/authority/subagent-registry";
 import { posixPathFlavor, win32PathFlavor } from "#src/path/path-flavor";
 
+beforeEach(() => {
+  for (const key of SUBAGENT_ENV_HINT_KEYS) {
+    vi.stubEnv(key, undefined);
+  }
+});
+
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.restoreAllMocks();
@@ -17,8 +23,10 @@ afterEach(() => {
 function makeCtx(
   sessionDir: string | null,
   sessionId: string = "",
+  hasUI: boolean = false,
 ): SubagentDetectionContext {
   return {
+    hasUI,
     sessionManager: {
       getSessionDir: vi.fn(() => sessionDir ?? ""),
       getSessionId: vi.fn(() => sessionId),
@@ -54,6 +62,7 @@ describe("isRegisteredSubagentChild", () => {
     const registry = new SubagentSessionRegistry();
     registry.register(childSessionId, {});
     const ctx: SubagentDetectionContext = {
+      hasUI: false,
       sessionManager: {
         getSessionDir: vi.fn(() => ""),
         getSessionId: vi.fn(() => {
@@ -261,6 +270,7 @@ describe("isSubagentExecutionContext — env hint detection", () => {
   // The adapter convention's parent-session variables (ADR 0012 decision 5).
   // A process that names a parent session is a child by definition, so naming
   // one is sufficient on its own — an implementation owes no second marker.
+  // The UI host's own inherited marker is the one compatibility exception.
   test("returns true when PI_SUBAGENT_PARENT_SESSION is set alone", () => {
     vi.stubEnv("PI_SUBAGENT_PARENT_SESSION", "parent-session-id");
     expect(
@@ -271,6 +281,107 @@ describe("isSubagentExecutionContext — env hint detection", () => {
       ),
     ).toBe(true);
   });
+
+  test("does not classify a UI host from its own parent-session hint", () => {
+    vi.stubEnv("PI_SUBAGENT_PARENT_SESSION", "ui-session");
+    expect(
+      isSubagentExecutionContext(
+        makeCtx(null, "ui-session", true),
+        "/sessions/subagents",
+        posixPathFlavor,
+      ),
+    ).toBe(false);
+  });
+
+  test.each([
+    "PI_AGENT_ROUTER_PARENT_SESSION_ID",
+    "PI_SUBAGENT_PARENT_SESSION",
+  ])("ignores a whitespace-padded self hint from a UI host (%s)", (key) => {
+    vi.stubEnv(key, "  ui-session  ");
+    expect(
+      isSubagentExecutionContext(
+        makeCtx(null, " ui-session ", true),
+        "/sessions/subagents",
+        posixPathFlavor,
+      ),
+    ).toBe(false);
+  });
+
+  test("keeps a headless child classified when its parent hint equals its own id", () => {
+    vi.stubEnv("PI_SUBAGENT_PARENT_SESSION", "child-session");
+    expect(
+      isSubagentExecutionContext(
+        makeCtx(null, "child-session"),
+        "/sessions/subagents",
+        posixPathFlavor,
+      ),
+    ).toBe(true);
+  });
+
+  test("keeps a UI child classified when its parent hint names another session", () => {
+    vi.stubEnv("PI_SUBAGENT_PARENT_SESSION", "parent-session");
+    expect(
+      isSubagentExecutionContext(
+        makeCtx(null, "ui-session", true),
+        "/sessions/subagents",
+        posixPathFlavor,
+      ),
+    ).toBe(true);
+  });
+
+  test("keeps a distinct parent hint alongside a self hint", () => {
+    vi.stubEnv("PI_AGENT_ROUTER_PARENT_SESSION_ID", "ui-session");
+    vi.stubEnv("PI_SUBAGENT_PARENT_SESSION", "parent-session");
+    expect(
+      isSubagentExecutionContext(
+        makeCtx(null, "ui-session", true),
+        "/sessions/subagents",
+        posixPathFlavor,
+      ),
+    ).toBe(true);
+  });
+
+  test("keeps a UI child classified when another child marker is also set", () => {
+    vi.stubEnv("PI_SUBAGENT_PARENT_SESSION", "ui-session");
+    vi.stubEnv("PI_SUBAGENT_CHILD", "1");
+    expect(
+      isSubagentExecutionContext(
+        makeCtx(null, "ui-session", true),
+        "/sessions/subagents",
+        posixPathFlavor,
+      ),
+    ).toBe(true);
+  });
+
+  test("keeps a parent hint when a UI session id is unavailable", () => {
+    vi.stubEnv("PI_SUBAGENT_PARENT_SESSION", "ui-session");
+    const ctx: SubagentDetectionContext = {
+      hasUI: true,
+      sessionManager: {
+        getSessionDir: vi.fn(() => ""),
+        getSessionId: vi.fn(() => {
+          throw new Error("session id unavailable");
+        }),
+      },
+    };
+    expect(
+      isSubagentExecutionContext(ctx, "/sessions/subagents", posixPathFlavor),
+    ).toBe(true);
+  });
+
+  test.each(["", "   "])(
+    "keeps a parent hint when a UI session id is blank (%j)",
+    (sessionId) => {
+      vi.stubEnv("PI_SUBAGENT_PARENT_SESSION", "ui-session");
+      expect(
+        isSubagentExecutionContext(
+          makeCtx(null, sessionId, true),
+          "/sessions/subagents",
+          posixPathFlavor,
+        ),
+      ).toBe(true);
+    },
+  );
 
   test("returns true when PI_AGENT_ROUTER_PARENT_SESSION_ID is set alone", () => {
     vi.stubEnv("PI_AGENT_ROUTER_PARENT_SESSION_ID", "parent-session-id");
@@ -346,6 +457,17 @@ describe("isSubagentExecutionContext — session dir detection", () => {
     expect(
       isSubagentExecutionContext(
         makeCtx(subagentRoot),
+        subagentRoot,
+        posixPathFlavor,
+      ),
+    ).toBe(true);
+  });
+
+  test("keeps filesystem evidence alongside a UI host's self hint", () => {
+    vi.stubEnv("PI_SUBAGENT_PARENT_SESSION", "ui-session");
+    expect(
+      isSubagentExecutionContext(
+        makeCtx(`${subagentRoot}/ui-session`, "ui-session", true),
         subagentRoot,
         posixPathFlavor,
       ),
@@ -547,6 +669,20 @@ describe("isSubagentExecutionContext — registry detection", () => {
     expect(
       isSubagentExecutionContext(
         makeCtx(outsideDir, childSessionId),
+        subagentRoot,
+        posixPathFlavor,
+        registry,
+      ),
+    ).toBe(true);
+  });
+
+  test("registry evidence wins over a UI host's self hint", () => {
+    const registry = new SubagentSessionRegistry();
+    registry.register("ui-session", {});
+    vi.stubEnv("PI_SUBAGENT_PARENT_SESSION", "ui-session");
+    expect(
+      isSubagentExecutionContext(
+        makeCtx(outsideDir, "ui-session", true),
         subagentRoot,
         posixPathFlavor,
         registry,

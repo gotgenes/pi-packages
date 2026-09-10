@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { SUBAGENT_ENV_HINT_KEYS } from "#src/authority/permission-forwarding";
 import { getGlobalConfigPath } from "#src/config/config-paths";
 import piPermissionSystemExtension from "#src/index";
 import type {
@@ -19,6 +20,16 @@ import {
   PERMISSIONS_UI_PROMPT_CHANNEL,
 } from "#src/service/permission-events";
 import { makePromptPayload } from "#test/helpers/prompt-details-fixtures";
+
+beforeEach(() => {
+  for (const key of SUBAGENT_ENV_HINT_KEYS) {
+    vi.stubEnv(key, undefined);
+  }
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 // ── Minimal EventBus stub ──────────────────────────────────────────────────
 

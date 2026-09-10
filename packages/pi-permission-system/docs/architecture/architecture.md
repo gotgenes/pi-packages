@@ -509,8 +509,9 @@ This requires two detections:
    Each concurrent sibling child of the same parent receives a unique session id from `sessionManager.newSession()`, so siblings occupy distinct keys - one sibling's `disposed` event cannot evict another's entry (fixes #298).
    The registry is a process-global singleton (via `getSubagentSessionRegistry()`, backed by `globalThis` + `Symbol.for()`) because each session's `ResourceLoader` creates its own `pi.events` bus: the parent's instance registers the child over the parent bus, while the child's separate jiti instance reads the same global store to detect itself and resolve its forwarding target.
 2. **Env vars** (`SUBAGENT_ENV_HINT_KEYS`) - returns `true` when any key is set to a non-empty, non-whitespace value.
-   Used by process-based subagent extensions.
-   The list is composed from the per-extension markers plus `SUBAGENT_PARENT_SESSION_ENV_CANDIDATES`, since a process that names a parent session is a child by definition - which is what makes the convention's single out-of-process obligation sufficient on its own (#789).
+   A UI host's parent-session hint is ignored only when it matches that host's own non-empty session id.
+   All other hints remain child evidence, including a matching parent-session hint in a headless process.
+   The list is composed from the per-extension markers plus `SUBAGENT_PARENT_SESSION_ENV_CANDIDATES`, so naming a parent session remains the convention's single sufficient out-of-process obligation (#789).
 3. **Filesystem path** - session-directory path-based fallback (child session dir is nested under `subagentSessionsDir`).
 
 ### Parent-session resolution (`resolvePermissionForwardingTargetSessionId`)

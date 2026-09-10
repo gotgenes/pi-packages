@@ -51,7 +51,9 @@ PI_SUBAGENT_PARENT_SESSION=<parent-session-id>
 ```
 
 That is the whole obligation.
-The variable identifies the session the child forwards its asks to, and naming a parent session is itself sufficient to mark the process as a child — a separate "I am a subagent" marker is neither required nor expected.
+The variable identifies the session the child forwards its asks to, and naming a parent session is itself sufficient to mark a process as a child — a separate "I am a subagent" marker is neither required nor expected.
+For compatibility with extensions that export the marker from their interactive host, the permission detector ignores it only when it matches that UI host's own session id.
+A headless process receives no such exception.
 
 Earlier per-extension variables are grandfathered for compatibility: the markers `PI_IS_SUBAGENT`, `PI_SUBAGENT_CHILD`, `PI_SUBAGENT_NAME` and their siblings still register as child hints, and `PI_AGENT_ROUTER_PARENT_SESSION_ID` is still honored as a parent-session source, checked ahead of the convention name.
 New implementations use `PI_SUBAGENT_PARENT_SESSION` only.

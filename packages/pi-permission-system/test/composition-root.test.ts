@@ -33,6 +33,7 @@ import { childNodeAbsentMessage } from "#src/authority/child-node-audit";
 import {
   createPermissionForwardingLocation,
   type ForwardedPermissionRequest,
+  SUBAGENT_ENV_HINT_KEYS,
 } from "#src/authority/permission-forwarding";
 import { getServingSessionRegistry } from "#src/authority/serving-registry";
 import {
@@ -78,6 +79,9 @@ const EXPECTED_HANDLERS = [
 let agentDir: string;
 
 beforeEach(() => {
+  for (const key of SUBAGENT_ENV_HINT_KEYS) {
+    vi.stubEnv(key, undefined);
+  }
   agentDir = mkdtempSync(join(tmpdir(), "pi-perm-comp-root-"));
   vi.stubEnv("PI_CODING_AGENT_DIR", agentDir);
 });
@@ -497,6 +501,36 @@ describe("unguarded in-process child detection", () => {
     expect(notified).toEqual([]);
 
     rmSync(childCwd, { recursive: true, force: true });
+  });
+});
+
+describe("interactive serving eligibility", () => {
+  it("keeps serving when the root inherits its own parent-session marker", async () => {
+    const cwd = mkdtempSync(join(tmpdir(), "pi-perm-root-serving-cwd-"));
+    const pi = makeFakePi();
+    const ctx = makeBaseCtx(cwd, "ui-root-session");
+    piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+
+    await fireSessionStart(pi, ctx);
+    expect(getServingSessionRegistry().servingIds()).toEqual([
+      "ui-root-session",
+    ]);
+
+    // pi-subagents sets this marker after the root has initialized, and child
+    // processes inherit it when they are launched later.
+    vi.stubEnv("PI_SUBAGENT_PARENT_SESSION", "ui-root-session");
+    await pi.fire(
+      "before_agent_start",
+      { systemPrompt: "", systemPromptOptions: { cwd: "/test" } },
+      ctx,
+    );
+
+    expect(getServingSessionRegistry().servingIds()).toEqual([
+      "ui-root-session",
+    ]);
+
+    await pi.fire("session_shutdown");
+    rmSync(cwd, { recursive: true, force: true });
   });
 });
 

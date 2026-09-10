@@ -1,14 +1,19 @@
 import type { PathFlavor } from "#src/path/path-flavor";
 import { readSessionId } from "#src/session/session-identity";
-import { SUBAGENT_ENV_HINT_KEYS } from "./permission-forwarding";
+import {
+  normalizePermissionForwardingSessionId,
+  SUBAGENT_ENV_HINT_KEYS,
+  SUBAGENT_PARENT_SESSION_ENV_CANDIDATES,
+} from "./permission-forwarding";
 import type { SubagentSessionRegistry } from "./subagent-registry";
 
 /**
- * Narrow context for subagent detection — the only session-manager readers
+ * Narrow context for subagent detection — the only context fields
  * {@link isSubagentExecutionContext} and {@link isRegisteredSubagentChild}
  * consume. A full `ExtensionContext` satisfies this structurally.
  */
 export interface SubagentDetectionContext {
+  hasUI: boolean;
   sessionManager: {
     getSessionId(): string;
     getSessionDir(): string;
@@ -56,14 +61,28 @@ export function isSubagentExecutionContext(
   }
 
   const sessionDir = ctx.sessionManager.getSessionDir();
+  const ownSessionId = ctx.hasUI
+    ? normalizePermissionForwardingSessionId(readSessionId(ctx))
+    : null;
 
   // 2. Env vars — process-based subagent extensions (nicobailon/pi-subagents,
-  //    HazAT/pi-interactive-subagents, pi-agent-router, etc.).
+  //    HazAT/pi-interactive-subagents, pi-agent-router, etc.). A UI host may
+  //    inherit its own id as a parent-session marker from an extension that
+  //    prepares child processes. That marker is not child evidence, but every
+  //    other hint remains authoritative.
   for (const key of SUBAGENT_ENV_HINT_KEYS) {
     const value = process.env[key];
-    if (typeof value === "string" && value.trim()) {
-      return true;
+    if (typeof value !== "string" || !value.trim()) {
+      continue;
     }
+    if (
+      ownSessionId !== null &&
+      SUBAGENT_PARENT_SESSION_ENV_CANDIDATES.includes(key) &&
+      value.trim() === ownSessionId
+    ) {
+      continue;
+    }
+    return true;
   }
 
   // 3. Filesystem path — fallback heuristic for extensions that store sessions
