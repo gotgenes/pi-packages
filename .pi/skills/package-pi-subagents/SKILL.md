@@ -27,8 +27,10 @@ Pi treats the `tools` option to `createAgentSession` as an allowlist and applies
 Extension tool names are therefore supported `tools:` entries — that is the documented way to give a child an extension's tool, and `docs/configuration.md` is where the contract lives.
 
 The core installs two child-facing tools of its own on top of that list, in every child regardless of what the agent declares: `ask_parent` (records the child's question, then it ends its turn) and `notify_parent` (one-way mid-run update, gated on the `midRunUpdates` setting).
-An update is routed by `record.claimed` rather than by spawn mode: a claim means a carrier is blocked awaiting this run, so that carrier renders the update into its own return (`renderRunUpdates`, in the shared addenda tail) and `NotificationManager.sendUpdate` stays quiet; an unclaimed run's update is announced as it happens.
-The lifecycle event fires either way (Refs #872).
+Every update joins the run's ledger on `SubagentState`, each entry remembering whether the announcement channel delivered it, so `runUpdates` renders what the run still **owes** a carrier.
+`NotificationManager` announces one only while nothing has claimed the outcome and the child is still running (`canAnnounceUpdate`), re-read at emit rather than replayed from enqueue — a message parked for the parent's turn can be claimed or outlived by its child in between.
+Every other update rides that run's outcome through the shared addenda tail (`renderRunUpdates`), including the completion nudge, so it reaches the parent exactly once and never as a prompt to steer a finished child.
+The lifecycle event fires either way (Refs #872, #903).
 The boundary the `tools:` allowlist draws is **capability**, not provenance — neither tool reaches the filesystem, the shell, or the network, so a read-only agent that gains them stays read-only, and #612's and #768's refusals still hold.
 They are appended to the allowlist at `createSubagentSession` and passed as SDK `customTools`; both halves are needed, because Pi filters `customTools` through the allowlist and drops an unlisted one with no error.
 This replaced the `<question-for-parent>` text marker and its 222-line fence-aware parser (#858) — do not reintroduce a marker protocol.

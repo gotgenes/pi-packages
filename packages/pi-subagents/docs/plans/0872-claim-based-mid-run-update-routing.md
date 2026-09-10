@@ -146,6 +146,9 @@ recordUpdate(message: string): void { this._runUpdates.push(message); }
 
 Not seedable through `SubagentStateInit`, for the reason `_claimed` is not: it is transient runtime state, and a rehydrated record has no run to have produced it.
 
+[#903] superseded the claim-gated recording above: every update joins the ledger, each entry remembering whether the announcement channel delivered it, so an update-then-claim ordering no longer leaves the announcement path as the message's only carrier.
+The non-drain reasoning stands for the result body; the addenda tail was never byte-stable, since `resumeRefusal` is a live getter.
+
 ### Rendering: one addenda tail, three carriers
 
 All three carriers already end with the identical two-call sequence, in the same order, on shapes that both satisfy the same structural type:
@@ -334,3 +337,4 @@ No quantitative invariant (prefix bytes, token budget, cache characteristics) is
 [#870]: https://github.com/gotgenes/pi-packages/issues/870
 [#878]: https://github.com/gotgenes/pi-packages/issues/878
 [#885]: https://github.com/gotgenes/pi-packages/issues/885
+[#903]: https://github.com/gotgenes/pi-packages/issues/903

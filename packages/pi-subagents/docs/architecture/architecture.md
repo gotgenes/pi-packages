@@ -362,7 +362,7 @@ src/
 │   ├── subagent-session.ts         born-complete child session: turn loop, steer, shutdown-then-dispose teardown
 │   ├── turn-limits.ts              normalizeMaxTurns (turn-count policy)
 │   ├── subagent.ts                 owns full execution lifecycle (run, resume, abort, steer, wait-until-settled); a teardown with no result text to carry its addendum records it as a notice and announces one produced after delivery; answers why a resume would be refused (resumeRefusal), which the resume door and every result carrier read rather than re-deriving
-│   ├── subagent-state.ts           lifecycle status + metrics + result-delivery value object (transitions, accumulators, classification predicates); delivery carries a revocable carrier claim and a one-way consumption latch
+│   ├── subagent-state.ts           lifecycle status + metrics + result-delivery value object (transitions, accumulators, classification predicates); delivery carries a revocable carrier claim, a one-way consumption latch, and a per-run update ledger that renders only what no announcement delivered
 │   ├── run-listeners.ts            per-run observer-unsub and signal-detach handles
 │   ├── workspace-bracket.ts        child workspace prepare/dispose lifecycle; idempotent dispose, reports a torn-down workspace
 │   ├── concurrency-limiter.ts       background admission gate: schedules run thunks FIFO against the limit
@@ -374,7 +374,7 @@ src/
 │
 ├── observation/                    progress tracking and notification
 │   ├── record-observer.ts          session-event stats observer
-│   ├── notification.ts             completion nudges and mid-run updates, in one arrival-ordered withheld queue (announce-only; both gated on the carrier claim, since a claimed outcome is one a blocked carrier delivers itself; withheld during the parent's agent run, flushed on agent_settled), plus workspace notices, which are announced straight through
+│   ├── notification.ts             completion nudges and mid-run updates, in one arrival-ordered withheld queue (announce-only; withheld during the parent's agent run and flushed on agent_settled, each re-checking its gates at emit rather than replaying them from enqueue — a completion on claim and consumption, an update on the claim and on the child still running, since a terminated run's updates ride its outcome and this nudge is one of their carriers), plus workspace notices, which are announced straight through
 │   ├── outcome-delivery.ts         shared outcome rendering every result carrier composes: one status vocabulary in two presentations, body, and the addenda tail (mid-run updates, workspace notice, ask-back affordance — which names a resume only when the record says one would be accepted) in one fixed order
 │   ├── renderer.ts                 notification, mid-run-update, and workspace-notice TUI components
 │   ├── composite-subagent-observer.ts fans manager notifications out to multiple observers; enumerates every member, so an optional one it omits is dropped silently
@@ -840,6 +840,8 @@ Steps 2, 6, and 8 have design-dependent shapes and are verified by their plans' 
 - [#904] — filed by the [#884] PR review (second pass); becomes Step 20 by operator decision.
   Step 18's own residual, one constant below the one it fixed: [ADR-0008] removed `<sub_agent_context>` for naming `edit` and `write` to a child that holds neither, and `genericBase` asserts the same capabilities four lines down in the same file.
   It survived that sweep because it sits on the colder no-parent-prompt path rather than on append mode's every-child path, which is the same shape as [#871] — a second instance of a step's defect class inside the lines the step already touched.
+- [#903] — filed by a third-party reporter against the shipped package; becomes Step 21 by operator decision.
+  Step 14's own residual on the announcement side: it settled where an update is _routed_ when it is sent, and left the withheld queue flushing whatever it parked with no re-read — the same delivery-boundary family as Steps 5–7, 10, 12, 15, 17, and 19, and peer-sized rather than a line in any open step.
 - [#901] — filed by Step 18's planning; deferred to a later phase with rationale.
   A child without `pi-permission-system` installed inherits the parent's `Available tools:` list, because Pi writes none under `customPrompt` and nothing in this package corrects the inherited one.
   Step 18 makes `pi-permission-system` the single writer of the relocated tool-surface block and records the order-independent contract a second writer must honor; honoring it here means this package's first per-turn `before_agent_start` handler plus a shared render function whose home is unsettled, which is new mechanism outside this phase's front-door and delivery-boundary spine.
@@ -1304,6 +1306,32 @@ Release: independent
 
 Release: independent
 
+#### ✅ Step 21: Deliver each mid-run update once, on the channel that can reach the parent ([#903])
+
+**Cause:** `NotificationManager` withholds an announcement for the parent's agent run and flushes it at `agent_settled`, but the flush re-reads nothing for an update — `emitIndividualNudge` re-checks the claim and consumption, `emitUpdate` re-checks neither.
+A message parked before the parent collected that child's outcome therefore arrives after it, still carrying the unconditional "The agent is still running.
+Steer it with `steer_subagent(…)`" affordance that `SteerTool` refuses for a completed child.
+The content had nowhere else to go: Step 14 records an update on the run only when a carrier had _already_ claimed it, so an update-then-claim ordering leaves the announcement path its sole carrier.
+
+- **Smell:** Category C (a decision taken at one lifecycle edge and acted on at another) plus `bug`.
+- **Target:** `src/observation/notification.ts` (`sendUpdate`, the flush, `emitUpdate`, `buildPointerLines`), `src/lifecycle/subagent.ts` (`announceUpdate`), and `src/lifecycle/subagent-state.ts` (the run-update buffer).
+- **Hard dependency:** after Step 14, which introduced the routing this corrects; Step 15 informs it — both hold a carrier to naming only what the extension would accept.
+- **Design decision at plan time:** whether a stale update is reworded, dropped, or re-routed, and whether the completion nudge becomes a carrier of the run's updates.
+- **Outcome:** every update reaches the parent exactly once, on a channel that can act on it, pinned by a test per delivery path — including the two orderings the report names.
+- **Commit type:** `fix:`.
+- **Impact 3 / Risk 2 / Priority 12.**
+
+Landed as one ledger and one predicate.
+Every update now joins the run's buffer whoever delivers it, each entry remembering whether the announcement channel took it, so `runUpdates` renders what the run still _owes_ rather than what a claim happened to capture.
+`canAnnounceUpdate` (`!claimed && isActive()`) is read at enqueue and again at emit, which is the re-check the flush lacked; a terminated run's updates ride its outcome instead, and the completion nudge — until now the one carrier rendering none — renders them.
+The "still running" affordance is left worded as it was: the guard immediately above it is what makes the sentence true, and a second home for that invariant would only let the two disagree.
+
+Planning measured Pi's own loop in the pinned `@earendil-works/pi-coding-agent@0.84.4` bundle rather than reasoning from the extension's queue: steering is polled every turn, follow-ups only where the run would otherwise end.
+The withhold is therefore not what makes an update late — deleting it would move delivery by one boundary — and it is the only place a parked message can still be re-read, which is what kept it.
+End-of-run delivery became the designed semantics by operator decision, so the README's "rather than only at the end" was corrected instead of chased with a `deliverAs: "steer"` change.
+
+Release: independent
+
 ### Step dependencies
 
 ```mermaid
@@ -1324,6 +1352,8 @@ flowchart TD
     S14 --> S16["Step 16 (#885)<br/>Service resume"]
     S17["✅ Step 17 (#889)<br/>Failed run reports failed"] --> S19["✅ Step 19 (#898)<br/>Compaction-erased turn error"]
     S5 -.informs.-> S18["✅ Step 18 (#890)<br/>Inherited-region guarantee"]
+    S14 --> S21["✅ Step 21 (#903)<br/>Exactly-once update delivery"]
+    S15 -.informs.-> S21
 ```
 
 ### Parallel tracks
@@ -1331,7 +1361,8 @@ flowchart TD
 - **Track A — Front-door contract:** Steps 1 → 2, 3, 4 (the spine; Step 1 unblocks the rest).
 - **Track B — Prompt assembly:** Step 5 (fully independent).
 - **Track C — Widget lifecycle:** Steps 6 → 9 (independent of the other tracks; Step 6 complements Step 1 — parity makes SDK agents _eligible_, this makes the widget _present_ — and Step 9 releases what Step 6 acquires).
-- **Track D — Result delivery and ask-back:** Steps 7 → 8 → 11 → 14, with Step 10 → 12 joining as a resume-path fix and the residual it creates, Step 10 also informing Step 11, and Step 15 joining downstream of both 10 and 11 (Steps 7 → 8 is soft ordering; 8 → 11, 11 → 14, 10 → 12, and 10/11 → 15 are hard).
+- **Track D — Result delivery and ask-back:** Steps 7 → 8 → 11 → 14 → 21, with Step 10 → 12 joining as a resume-path fix and the residual it creates, Step 10 also informing Step 11, and Step 15 joining downstream of both 10 and 11 (Steps 7 → 8 is soft ordering; 8 → 11, 11 → 14, 10 → 12, 10/11 → 15, and 14 → 21 are hard).
+  Step 15 informs Step 21 without blocking it: both hold a carrier to naming only what the extension would accept.
 - **Track E — Agent config resolution:** Step 13 (fully independent; it corrects the base list Step 11 appends to, but neither step needs the other).
 - **Track F — Service surface:** Step 16 (downstream of Step 14; it re-enters Track A's front-door concern at the one door Step 1 left in the tool layer).
 - **Track G — Outcome truthfulness:** Steps 17 → 19 (Track D delivers the outcome, this decides whether the outcome is true; Step 19 reaches the one door Step 17's failure read cannot see).
@@ -1343,8 +1374,8 @@ flowchart TD
   Step 3 is `fix!:` and Step 4 is `refactor!:` with a `BREAKING CHANGE:` footer.
   The two landed in the other order, so Step 4 completed the batch: Step 3's release PR stayed open across it, and both breaking changes ship under the one major bump Step 3's `fix!:` opened.
   Step 2 was provisionally batched here in case its required/optional decision came out breaking; it did not — `SubagentRecord` is produced, never implemented, so its widening is semver-minor and it left the batch as the batch's own line anticipated.
-- Independently releasable: Steps 1, 2, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19.
-  Steps 1, 5, 6, 7, 9, 10, 12, 13, 14, 15, 17, 19 are `fix:`, Steps 2 and 16 are `feat:`, and Steps 8 and 11 are `feat:` — each an unhidden release vehicle on its own.
+- Independently releasable: Steps 1, 2, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 21.
+  Steps 1, 5, 6, 7, 9, 10, 12, 13, 14, 15, 17, 19, 21 are `fix:`, Steps 2 and 16 are `feat:`, and Steps 8 and 11 are `feat:` — each an unhidden release vehicle on its own.
   Step 18 releases only if it lands as `fix:`; a `docs:` outcome that accepts the loss cuts no release.
 
 ## Refactoring history
@@ -1475,6 +1506,7 @@ The upstream test suite is run periodically as a regression canary for the sessi
 [#898]: https://github.com/gotgenes/pi-packages/issues/898
 [#901]: https://github.com/gotgenes/pi-packages/issues/901
 [#896]: https://github.com/gotgenes/pi-packages/issues/896
+[#903]: https://github.com/gotgenes/pi-packages/issues/903
 [#904]: https://github.com/gotgenes/pi-packages/issues/904
 [#180]: https://github.com/gotgenes/pi-packages/issues/180
 [#400]: https://github.com/gotgenes/pi-packages/issues/400
