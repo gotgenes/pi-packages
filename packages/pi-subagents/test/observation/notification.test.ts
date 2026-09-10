@@ -567,14 +567,14 @@ describe("NotificationManager", () => {
     describe("a running child's mid-run update", () => {
       it("is delivered immediately when the parent is idle", () => {
         const parent = makePiParent();
-        parent.manager.sendUpdate(createTestSubagent({ id: "live-1" }), "Course change.");
+        parent.manager.sendUpdate(createTestSubagent({ id: "live-1", status: "running" }), "Course change.");
         expect(parent.deliveredToLlm).toHaveLength(1);
       });
 
       it("is withheld while the parent's run is active, then flushed", () => {
         const parent = makePiParent();
         parent.startRun();
-        parent.manager.sendUpdate(createTestSubagent({ id: "live-1" }), "Course change.");
+        parent.manager.sendUpdate(createTestSubagent({ id: "live-1", status: "running" }), "Course change.");
         expect(parent.deliveredToLlm).toHaveLength(0);
         parent.settleRun();
         expect(parent.deliveredToLlm).toHaveLength(1);
@@ -583,7 +583,7 @@ describe("NotificationManager", () => {
       it("is dropped after dispose, like every other announcement", () => {
         const parent = makePiParent();
         parent.manager.dispose();
-        parent.manager.sendUpdate(createTestSubagent({ id: "live-1" }), "Course change.");
+        parent.manager.sendUpdate(createTestSubagent({ id: "live-1", status: "running" }), "Course change.");
         expect(parent.deliveredToLlm).toHaveLength(0);
       });
 
@@ -602,7 +602,7 @@ describe("NotificationManager", () => {
 
       it("keeps every update, because two updates are two facts", () => {
         const parent = makePiParent();
-        const record = createTestSubagent({ id: "live-1" });
+        const record = createTestSubagent({ id: "live-1", status: "running" });
         parent.startRun();
         parent.manager.sendUpdate(record, "First finding.");
         parent.manager.sendUpdate(record, "Second finding.");
@@ -612,7 +612,7 @@ describe("NotificationManager", () => {
 
       it("keeps its place ahead of the same child's later completion", () => {
         const parent = makePiParent();
-        const record = createTestSubagent({ id: "live-1" });
+        const record = createTestSubagent({ id: "live-1", status: "running" });
         parent.startRun();
         parent.manager.sendUpdate(record, "Course change.");
         parent.manager.sendCompletion(record);
@@ -625,7 +625,7 @@ describe("NotificationManager", () => {
 
       it("is announced even after the parent collected an earlier outcome", () => {
         const parent = makePiParent();
-        const record = createTestSubagent({ id: "live-1" });
+        const record = createTestSubagent({ id: "live-1", status: "running" });
         record.markConsumed();
 
         parent.manager.sendUpdate(record, "Course change.");
@@ -637,7 +637,7 @@ describe("NotificationManager", () => {
 
       it("is left to the carrier that holds the outcome, which is blocked meanwhile", () => {
         const parent = makePiParent();
-        const record = createTestSubagent({ id: "live-1" });
+        const record = createTestSubagent({ id: "live-1", status: "running" });
         record.claim();
 
         parent.manager.sendUpdate(record, "Course change.");
@@ -649,7 +649,7 @@ describe("NotificationManager", () => {
 
       it("is announced again once the carrier abandons its claim", () => {
         const parent = makePiParent();
-        const record = createTestSubagent({ id: "live-1" });
+        const record = createTestSubagent({ id: "live-1", status: "running" });
         record.claim();
         record.release();
 
