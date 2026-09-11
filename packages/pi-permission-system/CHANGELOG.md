@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [32.0.2](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v32.0.1...pi-permission-system-v32.0.2) (2026-09-11)
+
+
+### Bug Fixes
+
+* **pi-permission-system:** keep a forwarded write when a file lock blocks the atomic rename ([d901116](https://github.com/gotgenes/pi-packages/commit/d9011165203b130675a3affd20a2792f7abd7105)), closes [#914](https://github.com/gotgenes/pi-packages/issues/914)
+* **pi-permission-system:** create a forwarding directory blocked by a transient file lock ([245683c](https://github.com/gotgenes/pi-packages/commit/245683c9153712d8991ceb21ece7884b2fb12f2a)), closes [#914](https://github.com/gotgenes/pi-packages/issues/914)
+
+### Documentation
+
+* **pi-permission-system:** record the transient filesystem retry ([eb7ab58](https://github.com/gotgenes/pi-packages/commit/eb7ab58cfd79d15de77bafa6afe8813e9dff7b72)), closes [#914](https://github.com/gotgenes/pi-packages/issues/914)
+
 ## [32.0.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v32.0.0...pi-permission-system-v32.0.1) (2026-09-11)
 
 
