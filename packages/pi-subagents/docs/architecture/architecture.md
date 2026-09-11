@@ -837,6 +837,12 @@ Steps 2, 6, and 8 have design-dependent shapes and are verified by their plans' 
 - [#890] — filed by the [#884] PR review; becomes Step 18 by operator decision.
   `pi-permission-system` rewrites the child's prompt inside the region [ADR-0006] keeps byte-identical with the parent's, so the shared prefix [#180] and [#400] created ends at the tool list for every child with a narrowed tool set.
   Scheduled here rather than deferred because the interaction is measured now and the decision is this package's to make — it amended [ADR-0006] with [ADR-0008].
+- [#912] — filed by Step 16's planning; deferred to a later phase with rationale.
+  A consumer cannot ask whether an agent is resumable before calling `resume`: `SubagentRecord` carries `status` but neither `sessionReleased` nor `workspaceDisposed`, so a UI cannot grey out a Resume affordance.
+  Its shape is undecided between a snapshot field (which needs an admission argument under [decision 0005](../decisions/0005-subagent-record-admission-policy.md), whose rule 3 declines derived live state) and a service query, and it has no named consumer — an enhancement rather than a piece of this phase's front-door and delivery-boundary spine.
+- [#913] — filed by Step 16's planning; becomes Step 22 by operator decision.
+  `Subagent.abort()` fires the record's construction-time controller, which `resumeTurnLoop` never sees, so `abort(id)` reports success on a resumed agent while its turn loop keeps running — the same shape as Steps 15 and 21, a lever set at one lifecycle edge and read at another.
+  Peer-sized rather than a line in Step 16, which mitigates it for the new door with a caller `signal` and leaves the controller alone.
 - [#904] — filed by the [#884] PR review (second pass); becomes Step 20 by operator decision.
   Step 18's own residual, one constant below the one it fixed: [ADR-0008] removed `<sub_agent_context>` for naming `edit` and `write` to a child that holds neither, and `genericBase` asserts the same capabilities four lines down in the same file.
   It survived that sweep because it sits on the colder no-parent-prompt path rather than on append mode's every-child path, which is the same shape as [#871] — a second instance of a step's defect class inside the lines the step already touched.
@@ -1332,6 +1338,22 @@ End-of-run delivery became the designed semantics by operator decision, so the R
 
 Release: independent
 
+#### Step 22: Give a resumed run an abort lever the record can pull ([#913])
+
+**Cause:** `Subagent.abort()` fires `this.abortController`, created once at construction, while `resume()` passes the caller's signal straight through to `resumeTurnLoop` and deliberately does not route through that controller — an agent aborted on its original run would hold a pre-aborted one.
+So `abort(id)` marks a resumed record `stopped` (and `completeResume`'s later `markCompleted` is a no-op against the status guard) while the child keeps taking turns.
+The tool door masks it, because the parent's tool-call signal reaches `resumeTurnLoop`; Step 16's service door has no such signal unless the caller supplies one.
+
+- **Smell:** Category C (a control lever set at one lifecycle edge and read at another) plus `bug`.
+- **Target:** `src/lifecycle/subagent.ts` (`abortController`'s lifetime, `abort()`, `resume()`, `runResume()`), `src/lifecycle/subagent-session.ts` (`resumeTurnLoop`'s forwarded signal).
+- **Hard dependency:** after Step 16, which is what makes the gap reachable without a parent tool call.
+- **Design decision at plan time:** whether the record takes a fresh `AbortController` per run (the candidate the issue names, which removes the reason the resume path bypasses it) or `abort()` reports `false` for a run it cannot reach; and whether a caller-supplied signal and the record's own lever compose or one wins.
+- **Outcome:** `abort(id)` either stops a resumed run or declines it, pinned by a test that aborts mid-resume and asserts the turn loop was signalled.
+- **Commit type:** `fix:`.
+- **Impact 3 / Risk 2 / Priority 12.**
+
+Release: independent
+
 ### Step dependencies
 
 ```mermaid
@@ -1352,6 +1374,7 @@ flowchart TD
     S14 --> S16["Step 16 (#885)<br/>Service resume"]
     S17["✅ Step 17 (#889)<br/>Failed run reports failed"] --> S19["✅ Step 19 (#898)<br/>Compaction-erased turn error"]
     S5 -.informs.-> S18["✅ Step 18 (#890)<br/>Inherited-region guarantee"]
+    S16 --> S22["Step 22 (#913)<br/>Resume abort lever"]
     S14 --> S21["✅ Step 21 (#903)<br/>Exactly-once update delivery"]
     S15 -.informs.-> S21
 ```
@@ -1364,7 +1387,7 @@ flowchart TD
 - **Track D — Result delivery and ask-back:** Steps 7 → 8 → 11 → 14 → 21, with Step 10 → 12 joining as a resume-path fix and the residual it creates, Step 10 also informing Step 11, and Step 15 joining downstream of both 10 and 11 (Steps 7 → 8 is soft ordering; 8 → 11, 11 → 14, 10 → 12, 10/11 → 15, and 14 → 21 are hard).
   Step 15 informs Step 21 without blocking it: both hold a carrier to naming only what the extension would accept.
 - **Track E — Agent config resolution:** Step 13 (fully independent; it corrects the base list Step 11 appends to, but neither step needs the other).
-- **Track F — Service surface:** Step 16 (downstream of Step 14; it re-enters Track A's front-door concern at the one door Step 1 left in the tool layer).
+- **Track F — Service surface:** Steps 16 → 22 (Step 16 is downstream of Step 14; it re-enters Track A's front-door concern at the one door Step 1 left in the tool layer, and Step 22 fixes the abort lever that door stops masking).
 - **Track G — Outcome truthfulness:** Steps 17 → 19 (Track D delivers the outcome, this decides whether the outcome is true; Step 19 reaches the one door Step 17's failure read cannot see).
 - **Track H — Inherited-prompt contract:** Step 18 (Track B's Step 5 informs it — both settle what the inherited region contains — but neither blocks the other; it is the one step whose resolution binds `@gotgenes/pi-permission-system`).
 
@@ -1374,8 +1397,8 @@ flowchart TD
   Step 3 is `fix!:` and Step 4 is `refactor!:` with a `BREAKING CHANGE:` footer.
   The two landed in the other order, so Step 4 completed the batch: Step 3's release PR stayed open across it, and both breaking changes ship under the one major bump Step 3's `fix!:` opened.
   Step 2 was provisionally batched here in case its required/optional decision came out breaking; it did not — `SubagentRecord` is produced, never implemented, so its widening is semver-minor and it left the batch as the batch's own line anticipated.
-- Independently releasable: Steps 1, 2, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 21.
-  Steps 1, 5, 6, 7, 9, 10, 12, 13, 14, 15, 17, 19, 21 are `fix:`, Steps 2 and 16 are `feat:`, and Steps 8 and 11 are `feat:` — each an unhidden release vehicle on its own.
+- Independently releasable: Steps 1, 2, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22.
+  Steps 1, 5, 6, 7, 9, 10, 12, 13, 14, 15, 17, 19, 21, 22 are `fix:`, Steps 2 and 16 are `feat:`, and Steps 8 and 11 are `feat:` — each an unhidden release vehicle on its own.
   Step 18 releases only if it lands as `fix:`; a `docs:` outcome that accepts the loss cuts no release.
 
 ## Refactoring history
@@ -1508,6 +1531,8 @@ The upstream test suite is run periodically as a regression canary for the sessi
 [#896]: https://github.com/gotgenes/pi-packages/issues/896
 [#903]: https://github.com/gotgenes/pi-packages/issues/903
 [#904]: https://github.com/gotgenes/pi-packages/issues/904
+[#912]: https://github.com/gotgenes/pi-packages/issues/912
+[#913]: https://github.com/gotgenes/pi-packages/issues/913
 [#180]: https://github.com/gotgenes/pi-packages/issues/180
 [#400]: https://github.com/gotgenes/pi-packages/issues/400
 [ADR-0002]: ../decisions/0002-extensions-on-a-minimal-core.md
