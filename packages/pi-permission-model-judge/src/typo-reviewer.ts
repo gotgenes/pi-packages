@@ -30,6 +30,7 @@ import type {
 import type { ModelJudgeConfig } from "./config-schema";
 import {
   type CompleteFn,
+  type ModelCallDeferReason,
   type ModelRegistryLike,
   reviewPath,
 } from "./model-review";
@@ -60,6 +61,21 @@ interface DecisionBase {
   matchedPattern: string;
   modelId: string;
 }
+
+/**
+ * One `model_judge.decision` record, whole.
+ *
+ * The model-call bookkeeping is discriminated on `modelCalled` so the "absent
+ * exactly when no call was made" rule is carried by the type rather than by two
+ * object literals agreeing with each other.
+ */
+type DecisionRecord = DecisionBase & {
+  verdict: AuthorizerVerdict["kind"];
+  deferReason: ModelCallDeferReason | PreModelDeferReason | null;
+} & (
+    | { modelCalled: true; latencyMs: number }
+    | { modelCalled: false; latencyMs: null }
+  );
 
 /** Collaborators for the reviewer, injected so the extension and tests wire them. */
 export interface TypoReviewerDeps {
@@ -142,13 +158,9 @@ export function createTypoReviewer(
         rawReply: outcome.rawReply,
       });
     }
-    log.review(DECISION_EVENT, {
-      requestId,
-      surface: REVIEWED_SURFACE,
-      path,
-      matchedPattern,
+    writeDecision(log, {
+      ...base,
       modelCalled: true,
-      modelId,
       latencyMs: outcome.latencyMs,
       verdict: outcome.verdict.kind,
       deferReason: outcome.deferReason ?? null,
@@ -167,18 +179,23 @@ function deferWith(
   base: DecisionBase,
   deferReason: PreModelDeferReason,
 ): AuthorizerVerdict {
-  log.review(DECISION_EVENT, {
-    requestId: base.requestId,
-    surface: REVIEWED_SURFACE,
-    path: base.path,
-    matchedPattern: base.matchedPattern,
+  writeDecision(log, {
+    ...base,
     modelCalled: false,
-    modelId: base.modelId,
     latencyMs: null,
     verdict: "defer",
     deferReason,
   });
   return { kind: "defer" };
+}
+
+/**
+ * Write one decision record to the review log. The only writer of
+ * `DECISION_EVENT`, so neither caller can omit a field or spell the surface
+ * differently.
+ */
+function writeDecision(log: AuthorizerLog, record: DecisionRecord): void {
+  log.review(DECISION_EVENT, { surface: REVIEWED_SURFACE, ...record });
 }
 
 /** The gate-authoritative surface, falling back to the display surface. */
