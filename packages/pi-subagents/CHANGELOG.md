@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [21.7.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v21.6.0...pi-subagents-v21.7.0) (2026-09-11)
+
+
+### Features
+
+* **pi-subagents:** show subagent results compactly, expandable with Ctrl+O ([46dc3f0](https://github.com/gotgenes/pi-packages/commit/46dc3f0e98fa19821be68c52aaba9b326ba0fba4)), closes [#636](https://github.com/gotgenes/pi-packages/issues/636)
+
+### Documentation
+
+* **pi-subagents:** document the compact result presentation ([b5a4a86](https://github.com/gotgenes/pi-packages/commit/b5a4a86a4df6d3bae7e346f5bf8caecb759dd945))
+
 ## [21.6.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v21.5.1...pi-subagents-v21.6.0) (2026-09-11)
 
 
