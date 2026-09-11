@@ -15,9 +15,10 @@ import type { SubagentSessionRegistry } from "./subagent-registry";
  * It answers "is this process a child", which is **not** "should this node relay
  * rather than decide". A UI host answers `true` here whenever its process
  * carries a parent-session marker — a spawner may export one from the root so
- * the children it launches inherit it. Every consumer therefore tests `hasUI`
- * first: `selectAuthorizer` returns before reaching this predicate, and serving
- * eligibility does not consult it at all (#907).
+ * the children it launches inherit it. No consumer may read it as a relay
+ * decision: `selectAuthorizer` relays a node with a UI only when a forwarding
+ * target resolves *and* that target is serving (#909), and serving eligibility
+ * does not consult this predicate at all (#907).
  */
 export interface SubagentDetector {
   isSubagent(ctx: SubagentDetectionContext): boolean;

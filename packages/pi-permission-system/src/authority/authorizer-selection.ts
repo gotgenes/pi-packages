@@ -48,9 +48,13 @@ export interface AskEscalator {
  * so a sibling extension learns it without knowing what a subagent is) and by
  * the registration observer (which records a link registered where no chain
  * runs). Both depend on this single-method view rather than the selection
- * itself, and neither may re-derive the role from `detection.isSubagent(ctx)`:
- * `selectAuthorizer` tests `hasUI` first, so a subagent with its own UI
- * adjudicates locally.
+ * itself, and neither may re-derive the role from `ctx.hasUI` or
+ * `detection.isSubagent(ctx)`: a node with a UI relays when it names another
+ * session that is draining its inbox, and decides locally otherwise (#909).
+ *
+ * Because the selection is remade on every activation, the answer can change
+ * within one session — a node stops relaying as soon as its declared parent
+ * stops serving.
  */
 export interface AdjudicationRole {
   adjudicatesLocally(): boolean;

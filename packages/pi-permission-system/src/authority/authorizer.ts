@@ -4,9 +4,12 @@ import type { AuthorizerLog, PermissionQuery } from "#src/service";
 import type { PermissionEventBus } from "#src/service/permission-events";
 import { ParentAuthorizer } from "./approval-escalator";
 import { DenyingAuthorizer } from "./denying-authorizer";
+import { getSessionId } from "./forwarder-context";
 import type { TargetServingLookup } from "./forwarding-liveness";
 import { LocalUserAuthorizer } from "./local-user-authorizer";
 import type { PermissionPromptDecision } from "./permission-dialog";
+import type { PermissionForwardingTarget } from "./permission-forwarding";
+import { resolvePermissionForwardingTarget } from "./permission-forwarding";
 import type {
   PromptPreferences,
   requestPermissionDecision,
@@ -77,9 +80,10 @@ export interface TerminalAuthorizer {
  * whether this node adjudicates them with its own chain.
  *
  * The chain role is the selection's product, not a discriminator a consumer
- * re-derives: `selectAuthorizer` tests `hasUI` before `isSubagent`, so a
- * subagent that has its own UI decides locally, and re-deriving the role from
- * `detection.isSubagent(ctx)` alone would get that case wrong.
+ * re-derives: a node with a UI decides locally unless it names another session
+ * that is draining its forwarded-permission inbox (#909), so re-deriving the
+ * role from `ctx.hasUI` or `detection.isSubagent(ctx)` alone would get that
+ * case wrong in opposite directions.
  */
 export interface SelectedAuthority {
   /** The terminal that decides this node's asks, or relays them upward. */
@@ -92,6 +96,12 @@ export interface SelectedAuthority {
    * twice.
    */
   readonly adjudicatesLocally: boolean;
+  /**
+   * The target this selection itself verified as live, for the relay-transition
+   * record. Absent on the headless relay arm, where the target is resolved per
+   * ask by `ParentAuthorizer` rather than at selection.
+   */
+  readonly relayTarget?: PermissionForwardingTarget;
 }
 
 /** Construction inputs for {@link selectAuthorizer}. */
@@ -117,27 +127,36 @@ export interface AuthorizerSelectionDeps {
 
 /**
  * Select the live authority for the current context: the single owner of the
- * three-way `hasUI` / `isSubagent` / deny dispatch, and of the chain role that
- * dispatch implies.
+ * three-way local / relay / deny dispatch, and of the chain role that dispatch
+ * implies.
  *
- * Evaluated once per session activation (`AuthorizerSelection.activate`),
- * replacing the re-derivation of the same predicates across
- * `PromptingGateway`, `PermissionPrompter`, and `ApprovalEscalator`.
+ * Evaluated on every session activation (`AuthorizerSelection.activate`), which
+ * is what lets a node with a UI follow its declared parent's liveness: the
+ * moment that parent stops serving, the next activation selects the local
+ * dialog again.
  */
 export function selectAuthorizer(
   ctx: ExtensionContext,
   deps: AuthorizerSelectionDeps,
 ): SelectedAuthority {
   if (ctx.hasUI) {
+    const relayTarget = resolveLiveRelayTarget(ctx, deps);
+    if (relayTarget === null) {
+      return {
+        terminal: new LocalUserAuthorizer({
+          ui: ctx.ui,
+          mode: ctx.mode,
+          events: deps.events,
+          getPromptPreferences: deps.getPromptPreferences,
+          requestPermissionDecision: deps.requestPermissionDecision,
+        }),
+        adjudicatesLocally: true,
+      };
+    }
     return {
-      terminal: new LocalUserAuthorizer({
-        ui: ctx.ui,
-        mode: ctx.mode,
-        events: deps.events,
-        getPromptPreferences: deps.getPromptPreferences,
-        requestPermissionDecision: deps.requestPermissionDecision,
-      }),
-      adjudicatesLocally: true,
+      terminal: buildParentAuthorizer(ctx, deps),
+      adjudicatesLocally: false,
+      relayTarget,
     };
   }
   if (deps.detection.isSubagent(ctx)) {
@@ -147,6 +166,33 @@ export function selectAuthorizer(
     };
   }
   return { terminal: new DenyingAuthorizer(), adjudicatesLocally: true };
+}
+
+/**
+ * The session a node with a UI should relay to, or `null` when it should decide
+ * for itself.
+ *
+ * A human is present here, so only a definite "yes" relays: a target nobody can
+ * confirm is draining its inbox leaves the ask with the human who is already
+ * watching. That is the opposite burden of proof from
+ * `ParentAuthorizer.checkServingLiveness`, where an unjudgeable target waits
+ * out the timeout because a headless child has no alternative.
+ */
+function resolveLiveRelayTarget(
+  ctx: ExtensionContext,
+  deps: AuthorizerSelectionDeps,
+): PermissionForwardingTarget | null {
+  const sessionId = getSessionId(ctx);
+  const target = resolvePermissionForwardingTarget({
+    isSubagent: deps.detection.isSubagent(ctx),
+    currentSessionId: sessionId,
+    sessionId,
+    registry: deps.registry,
+  });
+  if (target === null || deps.serving.isServing(target) !== true) {
+    return null;
+  }
+  return target;
 }
 
 /** The relaying terminal for `ctx`, built from the selection's own deps. */

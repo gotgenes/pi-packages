@@ -964,11 +964,19 @@ describe("fact-shaping inheritance stops at live authority", () => {
     });
     piPermissionSystemExtension(childPi as unknown as ExtensionAPI);
 
-    await fireSessionStart(parentPi, makeBaseCtx(parentCwd, parentSessionId));
+    // The parent is headless so it serves no inbox: a serving parent would make
+    // the child relay its ask instead of deciding it (#909), and the question
+    // here is what a *locally adjudicating* child does with a link it does not
+    // have. It still publishes its service and its registry entry, which is all
+    // the ancestor walk under test needs.
+    await fireSessionStart(
+      parentPi,
+      makeBaseCtx(parentCwd, parentSessionId, { hasUI: false }),
+    );
     getSubagentSessionRegistry().register(childSessionId, { parentSessionId });
 
-    // hasUI makes the child adjudicate locally, so its own chain runs — the
-    // one shape in which a missing link changes the verdict.
+    // The child has UI and no serving parent, so it adjudicates locally and its
+    // own chain runs — the one shape in which a missing link changes the verdict.
     const capturedTitles: string[] = [];
     const childCtx = makeBaseCtx(childCwd, childSessionId, {
       select: async (title: string): Promise<string | undefined> => {
