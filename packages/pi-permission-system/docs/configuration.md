@@ -559,6 +559,10 @@ Use `path` to **deny** sensitive files everywhere (`.env`, `~/.ssh/*`); use `ext
 Because the layers compose with most-restrictive-wins, a `path` allow cannot loosen an `external_directory: ask` boundary — `ask` is more restrictive than `allow`, so the prompt still fires.
 Adding `"~/.cargo/registry": "allow"` to the `path` surface therefore does **not** stop the outside-CWD prompt; put the rule on `external_directory` instead (see below).
 
+The same ordering runs the other way at the top of the scale.
+`deny` is more restrictive than `ask`, so a `deny` on any layer refuses the call **without prompting**, whichever layer carries the rule.
+A `bash: {"find / *": "deny"}` rule therefore suppresses the outside-CWD prompt that `find /` would otherwise raise, and the refusal names the `bash` rule that decided rather than the boundary that asked.
+
 Configs without a `path` key behave identically to before — the gate does not fire.
 When no `path` key is present, the universal fallback (`permission["*"]`) applies: `"*": "allow"` keeps the gate transparent, while `"*": "deny"` would deny all file access via every surface including `path`.
 

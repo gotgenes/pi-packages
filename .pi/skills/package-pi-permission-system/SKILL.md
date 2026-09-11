@@ -56,6 +56,10 @@ Neither rule sees a `vi.mock()` specifier, which is a call argument rather than 
 - In the flat permission format, `permission["*"]` is the universal fallback; pattern ordering is last-match-wins.
 - The four path layers (`path`, `external_directory`, per-tool, `bash`) compose with **most-restrictive-wins** across surfaces: a more-permissive rule on one surface cannot loosen a more-restrictive rule on another (`ask` > `allow`).
   So a `path` allow cannot suppress an `external_directory: ask` prompt — allow outside-CWD directories on `external_directory`, not `path`.
+  The ordering's top half is enforced in the pipeline rather than the resolver: `ToolCallGatePipeline.evaluate` produces all six gates before running any, and `orderDenyFirst` (`src/handlers/gates/descriptor.ts`) runs an unconditionally denying one first, so an earlier gate's `ask` cannot suspend the call ahead of a later gate's `deny` (Refs #899).
+  `deny` is absorbing, which is what makes that an ordering change rather than a semantic one — do not extend it to `ask`, where two gates ask two genuinely different questions ([#915]).
+  `isUnconditionalDeny` excludes a `source: "session"` check because `GateRunner.runDescriptor` tests the session fast path first; the predicate and the runner read one `preResolvedCheckOf`, so the precedence is expressed once.
+  A pre-empted call records the denial alone — a gate whose answer had no consequence emits no `permissions:decision` event.
 - `path` and `external_directory` each carry a **read/write axis** (ADR 0013 §3–§4, Refs #806), and the two directions are independent bits, not tiers — a `path_write` allow grants no read, a `path_read` deny floors no write.
   A bare family key is **load-time sugar**: `expandDirectionalSugar` (`src/policy/normalize.ts`), called once per scope inside `mergeScopesWithOrigins` before origin bookkeeping and the merge, rewrites it into both directional members, sugar entries first and explicit directional entries appended after, whatever the file's key order.
   Expanding after composition would attribute every expanded rule to `builtin`; do not move it.
@@ -477,6 +481,7 @@ When a plan or test asserts a specific bash repro string, trace the token throug
 [#645]: https://github.com/gotgenes/pi-packages/issues/645
 [#520]: https://github.com/gotgenes/pi-packages/issues/520
 [#694]: https://github.com/gotgenes/pi-packages/issues/694
+[#915]: https://github.com/gotgenes/pi-packages/issues/915
 [#839]: https://github.com/gotgenes/pi-packages/issues/839
 [earendil-works/pi#4731]: https://github.com/earendil-works/pi/issues/4731
 [ADR-0002]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-subagents/docs/decisions/0002-extensions-on-a-minimal-core.md

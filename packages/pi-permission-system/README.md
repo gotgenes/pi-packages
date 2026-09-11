@@ -97,6 +97,7 @@ The trailing `*` is greedy and crosses subdirectory boundaries, so it allows eve
 
 Four layers compose with most-restrictive-wins: `path` (cross-cutting) → `external_directory` (CWD boundary) → per-tool patterns → `bash` command patterns.
 Because `ask` is more restrictive than `allow`, a `path` allow cannot loosen an `external_directory: ask` boundary — allow outside-CWD directories on `external_directory`.
+And because `deny` is more restrictive than `ask`, a `deny` on any layer refuses the call without prompting, naming the rule that decided.
 See [docs/configuration.md](docs/configuration.md) for the full recipe.
 
 Both path surfaces also carry a **direction**, so you can permit reading somewhere without permitting writing there: `path_read`, `path_write`, `external_directory_read`, and `external_directory_write`.
