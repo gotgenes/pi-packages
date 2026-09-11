@@ -40,8 +40,8 @@ describe("resolveToolChoice", () => {
       expect(resolveToolChoice("some-custom-api")).toBe("required");
     });
 
-    it("defaults an absent api to 'required'", () => {
-      expect(resolveToolChoice(undefined)).toBe("required");
+    it("defaults the empty api a model without one resolves to", () => {
+      expect(resolveToolChoice("")).toBe("required");
     });
   });
 });

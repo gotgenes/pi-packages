@@ -49,9 +49,6 @@ const FORCED_TOOL_CHOICE_BY_API: Record<string, ForcedToolChoice | undefined> =
   };
 
 /** The forcing value to send a model on `api`. */
-export function resolveToolChoice(api: string | undefined): ForcedToolChoice {
-  if (api === undefined) {
-    return DEFAULT_FORCED_TOOL_CHOICE;
-  }
+export function resolveToolChoice(api: string): ForcedToolChoice {
   return FORCED_TOOL_CHOICE_BY_API[api] ?? DEFAULT_FORCED_TOOL_CHOICE;
 }

@@ -18,16 +18,17 @@ import type {
 import type { AuthorizerVerdict } from "@gotgenes/pi-permission-system";
 
 import type { ModelJudgeConfig } from "./config-schema";
+import { type ForcedToolChoice, resolveToolChoice } from "./tool-choice";
 
 /** The reason used for a deny when the model omits its own. */
 export const GENERIC_TEACHING_REASON =
   "This looks like a mistyped path. Verify the correct location before retrying.";
 
 /**
- * The single tool the model is forced to call. Forcing it (`toolChoice: "any"`)
- * removes free-text JSON parsing by construction — the verdict arrives as
- * structured `arguments`, so a Markdown fence or a prose preamble can no longer
- * cost a verdict.
+ * The single tool the model is forced to call. Forcing it removes free-text JSON
+ * parsing by construction — the verdict arrives as structured `arguments`, so a
+ * Markdown fence or a prose preamble can no longer cost a verdict. The forcing
+ * value itself is per provider API; see `tool-choice.ts`.
  *
  * The Anthropic provider reads only `parameters.properties` / `parameters.required`,
  * so a plain JSON-Schema object is correct at runtime; the `as unknown as Tool`
@@ -67,7 +68,7 @@ export type CompleteFn = (
     signal?: AbortSignal;
     apiKey?: string;
     headers?: Record<string, string>;
-    toolChoice?: string;
+    toolChoice?: ForcedToolChoice;
   },
 ) => Promise<AssistantMessage>;
 
@@ -122,6 +123,10 @@ export interface ReviewOutcome {
   deferReason?: ModelCallDeferReason;
   latencyMs: number;
   rawReply?: string;
+  /** The `Model.api` the call was addressed to. */
+  api: string;
+  /** The forcing spelling actually sent, so a mismatch is readable from the trail. */
+  toolChoice: ForcedToolChoice;
 }
 
 /**
@@ -139,6 +144,11 @@ export async function reviewPath(
     controller.abort();
   }, inputs.config.timeoutMs);
   const startedAt = Date.now();
+  // Resolved before the call so a timeout or a rejection still reports what
+  // went on the wire. A model without an `api` resolves to the default spelling,
+  // the same as an api the map does not name.
+  const api = typeof inputs.model.api === "string" ? inputs.model.api : "";
+  const toolChoice = resolveToolChoice(api);
   try {
     const context: Context = {
       systemPrompt: inputs.config.instructions,
@@ -155,14 +165,21 @@ export async function reviewPath(
       signal: controller.signal,
       apiKey: inputs.apiKey,
       headers: inputs.headers,
-      toolChoice: "any",
+      toolChoice,
     });
-    return { ...readToolCallOutcome(reply), latencyMs: Date.now() - startedAt };
+    return {
+      ...readToolCallOutcome(reply),
+      latencyMs: Date.now() - startedAt,
+      api,
+      toolChoice,
+    };
   } catch {
     return {
       verdict: { kind: "defer" },
       deferReason: controller.signal.aborted ? "timeout" : "call-failed",
       latencyMs: Date.now() - startedAt,
+      api,
+      toolChoice,
     };
   } finally {
     clearTimeout(timer);

@@ -52,6 +52,9 @@ describe("reviewPath", () => {
     expect(outcome.deferReason).toBeUndefined();
     expect(outcome.rawReply).toBe(JSON.stringify(args));
     expect(typeof outcome.latencyMs).toBe("number");
+    // What the call was addressed to, so the decision trail can name it.
+    expect(outcome.api).toBe("anthropic-messages");
+    expect(outcome.toolChoice).toBe("any");
   });
 
   it("reads the tool call by position, ignoring the (rewritten) tool name", async () => {
@@ -148,19 +151,48 @@ describe("reviewPath", () => {
       complete,
     });
     expect(complete).toHaveBeenCalledTimes(1);
-    const [model, context, options] = complete.mock.calls[0] as [
-      unknown,
-      Context,
-      { toolChoice?: string } | undefined,
-    ];
+    const [model, context] = complete.mock.calls[0] as [unknown, Context];
     expect(model).toBe(MODEL);
     expect(context.systemPrompt).toBe(CONFIG.instructions);
     const firstMessage = context.messages[0] as { content: string };
     expect(firstMessage.content).toContain("/x/doubled/doubled/a.ts");
-    // Exactly one tool, forced with toolChoice "any".
     expect(context.tools).toHaveLength(1);
     expect(context.tools?.[0]?.name).toBe("report_verdict");
-    expect(options?.toolChoice).toBe("any");
+  });
+
+  describe("the forcing spelling sent for the model's provider API", () => {
+    /** The `toolChoice` `reviewPath` put on the wire for a model on `api`. */
+    async function sentToolChoice(api: string): Promise<unknown> {
+      const complete = completeReporting({ verdict: "defer" });
+      await reviewPath({
+        path: "/x/a.ts",
+        config: CONFIG,
+        model: makeModel({ api }),
+        complete,
+      });
+      const [, , options] = complete.mock.calls[0] as [
+        unknown,
+        unknown,
+        { toolChoice?: string } | undefined,
+      ];
+      return options?.toolChoice;
+    }
+
+    it("sends an Anthropic-family model 'any'", async () => {
+      await expect(sentToolChoice("anthropic-messages")).resolves.toBe("any");
+    });
+
+    it("sends an OpenAI-family model 'required'", async () => {
+      // "any" is not in this API's enum: the endpoint discards it, the request
+      // degrades to "auto", and the verdict arrives as prose (#905).
+      await expect(sentToolChoice("openai-completions")).resolves.toBe(
+        "required",
+      );
+    });
+
+    it("sends a model on an unrecognized api 'required'", async () => {
+      await expect(sentToolChoice("some-custom-api")).resolves.toBe("required");
+    });
   });
 
   it("forwards the resolved apiKey and headers into the completion", async () => {
@@ -208,5 +240,9 @@ describe("reviewPath", () => {
     const outcome = await promise;
     expect(outcome.verdict).toEqual({ kind: "defer" });
     expect(outcome.deferReason).toBe("timeout");
+    // A timeout is exactly when knowing what was sent matters, so the API facts
+    // are recorded on the failure paths too.
+    expect(outcome.api).toBe("anthropic-messages");
+    expect(outcome.toolChoice).toBe("any");
   });
 });
