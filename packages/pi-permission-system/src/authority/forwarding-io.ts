@@ -29,6 +29,10 @@ import {
   type ForwardedSessionApproval,
   type PermissionForwardingLocation,
 } from "./permission-forwarding";
+import {
+  retryOnTransientFsError,
+  type TransientFsRetryRecord,
+} from "./transient-fs-retry";
 
 /** Valid `permissions:ui_prompt` source values, for tolerant request reads. */
 const UI_PROMPT_SOURCES = [
@@ -399,15 +403,49 @@ export function writeJsonFileAtomic(
   try {
     // `rename` preserves the temp file's mode, so setting it here is enough —
     // a response overwriting an existing file also comes through a fresh temp.
+    // The temp write is deliberately outside the retry: its failure shape is a
+    // write-denied directory, which no number of attempts resolves.
     writeFileSync(tempPath, JSON.stringify(value), {
       encoding: "utf-8",
       mode: OWNER_ONLY_FILE_MODE,
     });
-    renameSync(tempPath, filePath);
+    recordFsRetry(
+      logger,
+      "rename",
+      filePath,
+      retryOnTransientFsError(() => {
+        renameSync(tempPath, filePath);
+      }),
+    );
   } catch (error) {
     safeDeleteFile(logger, tempPath, "temporary permission-forwarding");
     throw error;
   }
+}
+
+/**
+ * Record a filesystem operation that only succeeded after retrying.
+ *
+ * Debug-only: a recovered write decided nothing, so it does not belong in the
+ * permission-decision record — but `attempts` and `code` are the whole
+ * diagnosis when a host keeps losing writes, and `debugLog` is exactly the
+ * switch a user reaching for that diagnosis turns on.
+ */
+function recordFsRetry(
+  logger: DebugReviewLogger | null,
+  operation: "rename" | "mkdir",
+  path: string,
+  record: TransientFsRetryRecord,
+): void {
+  if (record.attempts === 1) {
+    return;
+  }
+  logger?.debug("permission_forwarding.fs_retried", {
+    operation,
+    path,
+    attempts: record.attempts,
+    code: record.code,
+  });
 }
 
 export function readForwardedPermissionRequest(
