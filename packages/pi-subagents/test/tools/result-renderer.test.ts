@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { SubagentStatus } from "#src/lifecycle/subagent-state";
 import {
 	renderAgentResult,
 	renderBackground,
@@ -6,6 +7,7 @@ import {
 	renderFailed,
 	renderRunning,
 	renderStats,
+	renderStatusIcon,
 	renderStopped,
 } from "#src/tools/result-renderer";
 import type { AgentDetails, Theme } from "#src/ui/display";
@@ -292,5 +294,28 @@ describe("renderAgentResult", () => {
 		expect(renderAgentResult(details, "", false, false, theme)).toContain(
 			"[warning:  \u23BF  Aborted (max turns exceeded)]",
 		);
+	});
+});
+
+describe("renderStatusIcon", () => {
+	const theme = makeTheme();
+
+	const cases: ReadonlyArray<[SubagentStatus, string]> = [
+		["completed", "[success:\u2713]"],
+		["steered", "[warning:\u2713]"],
+		["stopped", "[dim:\u25A0]"],
+		["error", "[error:\u2717]"],
+		["aborted", "[error:\u2717]"],
+		["queued", "[dim:\u25E6]"],
+		["running", "[dim:\u25CD]"],
+	];
+
+	it.each(cases)("renders %s with its own glyph and colour", (status, expected) => {
+		expect(renderStatusIcon(status, theme)).toBe(expected);
+	});
+
+	it("gives every status a distinct rendering except the two failure statuses", () => {
+		const rendered = cases.map(([status]) => renderStatusIcon(status, theme));
+		expect(new Set(rendered).size).toBe(6);
 	});
 });
