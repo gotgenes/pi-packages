@@ -140,10 +140,10 @@ The repo intentionally does not use Prettier - a top-level `.prettierignore` blo
 
 This package publishes two public subpath entries, each with a rolled self-contained `.d.ts`:
 
-| Subpath      | Source                    | Declaration          | Purpose                                                            |
-| ------------ | ------------------------- | -------------------- | ------------------------------------------------------------------ |
-| `.`          | `src/service/service.ts`  | `dist/public.d.ts`   | Cross-extension service contract: spawn/abort/steer/workspace seam |
-| `./settings` | `src/layered-settings.ts` | `dist/settings.d.ts` | Generic layered JSON config loader for `@gotgenes/pi-*` extensions |
+| Subpath      | Source                    | Declaration          | Purpose                                                                   |
+| ------------ | ------------------------- | -------------------- | ------------------------------------------------------------------------- |
+| `.`          | `src/service/service.ts`  | `dist/public.d.ts`   | Cross-extension service contract: spawn/abort/steer/resume/workspace seam |
+| `./settings` | `src/layered-settings.ts` | `dist/settings.d.ts` | Generic layered JSON config loader for `@gotgenes/pi-*` extensions        |
 
 Use `loadLayeredSettings<T>({ agentDir, cwd, filename, sanitize, warnLabel })` from `@gotgenes/pi-subagents/settings` to read global + project JSON config with the standard `@gotgenes/pi-*` layering convention.
 See the `## For Extension Authors` section of `README.md` for the full wiring example.

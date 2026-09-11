@@ -357,11 +357,11 @@ src/
 │   └── session-dir.ts              session directory derivation
 │
 ├── lifecycle/                      agent execution and state tracking
-│   ├── subagent-manager.ts         collection manager + observer wiring + session-retention sweep (consumption-aware; an unanswered question holds the safety cap)
+│   ├── subagent-manager.ts         collection manager + observer wiring + session-retention sweep (consumption-aware; an unanswered question holds the safety cap); the resume choke point, refusing from the record's own predicate and reporting a discriminated outcome, so every front door declines the same resumes
 │   ├── create-subagent-session.ts  assembly factory: session creation, spawn-tool denylist, core child-tool install, binding
 │   ├── subagent-session.ts         born-complete child session: turn loop, steer, shutdown-then-dispose teardown
 │   ├── turn-limits.ts              normalizeMaxTurns (turn-count policy)
-│   ├── subagent.ts                 owns full execution lifecycle (run, resume, abort, steer, wait-until-settled); a teardown with no result text to carry its addendum records it as a notice and announces one produced after delivery; answers why a resume would be refused (resumeRefusal), which the resume door and every result carrier read rather than re-deriving
+│   ├── subagent.ts                 owns full execution lifecycle (run, resume, abort, steer, wait-until-settled); a teardown with no result text to carry its addendum records it as a notice and announces one produced after delivery; answers why a resume would be refused (resumeRefusal, including a live run), which the resume choke point and every result carrier read rather than re-deriving; reports a resume's start as well as its end
 │   ├── subagent-state.ts           lifecycle status + metrics + result-delivery value object (transitions, accumulators, classification predicates); delivery carries a revocable carrier claim, a one-way consumption latch, and a per-run update ledger that renders only what no announcement delivered
 │   ├── run-listeners.ts            per-run observer-unsub and signal-detach handles
 │   ├── workspace-bracket.ts        child workspace prepare/dispose lifecycle; idempotent dispose, reports a torn-down workspace
@@ -375,14 +375,14 @@ src/
 ├── observation/                    progress tracking and notification
 │   ├── record-observer.ts          session-event stats observer
 │   ├── notification.ts             completion nudges and mid-run updates, in one arrival-ordered withheld queue (announce-only; withheld during the parent's agent run and flushed on agent_settled, each re-checking its gates at emit rather than replaying them from enqueue — a completion on claim and consumption, an update on the claim and on the child still running, since a terminated run's updates ride its outcome and this nudge is one of their carriers), plus workspace notices, which are announced straight through
-│   ├── outcome-delivery.ts         shared outcome rendering every result carrier composes: one status vocabulary in two presentations, body, and the addenda tail (mid-run updates, workspace notice, ask-back affordance — which names a resume only when the record says one would be accepted) in one fixed order
+│   ├── outcome-delivery.ts         shared outcome rendering every result carrier composes: one status vocabulary in two presentations, body, and the addenda tail (mid-run updates, workspace notice, ask-back affordance — which names a resume only when the record says one would be accepted, and asks the parent to wait when the child has merely not settled) in one fixed order
 │   ├── renderer.ts                 notification, mid-run-update, and workspace-notice TUI components
 │   ├── composite-subagent-observer.ts fans manager notifications out to multiple observers; enumerates every member, so an optional one it omits is dropped silently
 │   └── subagent-events-observer.ts manager lifecycle observer (event emission + persistence + notification)
 │
 ├── service/                        cross-extension API boundary
-│   ├── service.ts                  SubagentsService interface + Symbol.for() accessors
-│   └── service-adapter.ts          SubagentsServiceAdapter class wrapping SubagentManager
+│   ├── service.ts                  SubagentsService interface (spawn, query, abort, steer, resume, workspace seam) + Symbol.for() accessors
+│   └── service-adapter.ts          SubagentsServiceAdapter class wrapping SubagentManager; maps live records to by-value snapshots at the boundary
 │
 ├── tools/                          LLM-facing tool implementations
 │   ├── agent-tool.ts               subagent tool definition, validation, dispatch
@@ -527,7 +527,8 @@ The dynamic import provides compile-time types; the `Symbol.for()` key is the ac
 See `src/service.ts` for the canonical definition.
 Key types:
 
-- `SubagentsService` — `spawn`, `getRecord`, `listAgents`, `abort`, `steer`, `waitForAll`, `hasRunning`.
+- `SubagentsService` — `spawn`, `getRecord`, `listAgents`, `abort`, `steer`, `resume`, `waitForAll`, `hasRunning`.
+- `ResumeOptions` — `claimOutcome`, `signal`; `ResumeResult` — the resumed snapshot or a `ResumeRefusalReason`.
 - `SubagentRecord` — serializable by-value agent snapshot; admission policy in [decision 0005](../decisions/0005-subagent-record-admission-policy.md).
 - `SpawnOptions` — `description`, `model`, `maxTurns`, `thinkingLevel`, `inheritContext`, `foreground`, `bypassQueue`.
 - `SUBAGENT_EVENTS` — channel constants for `pi.events` subscriptions.
@@ -559,6 +560,7 @@ The core emits events on `pi.events` that any extension can observe:
 | `subagents:started`   | `{ id, type, description }`                                                         | Agent begins running                                                                      |
 | `subagents:completed` | `{ id, type, description, status, result?, error?, toolUses, durationMs, tokens? }` | Agent finishes successfully                                                               |
 | `subagents:failed`    | same as `completed` (`buildEventData` shape)                                        | Agent ends in `error`/`stopped`/`aborted`                                                 |
+| `subagents:resuming`  | `{ id, type, description }`                                                         | A resume starts, from either front door                                                   |
 | `subagents:resumed`   | same as `completed` (`buildEventData` shape)                                        | Resumed run reaches a terminal state (`completed`/`error`); `status`/`error` discriminate |
 | `subagents:compacted` | `{ id, type, description, reason, tokensBefore, compactionCount }`                  | Child session compacts                                                                    |
 | `subagents:created`   | `{ id, type, description, isBackground }`                                           | Background agent created (pre-admission)                                                  |
@@ -1201,7 +1203,7 @@ The `no-session` clause was reworded from "it has no session to resume" to "it h
 
 Release: independent
 
-#### Step 16: Expose resume on `SubagentsService` ([#885], with [#896])
+#### ✅ Step 16: Expose resume on `SubagentsService` ([#885], with [#896])
 
 **Cause:** `SubagentManager.resume` has exactly one caller — `AgentTool`'s resume branch — so a resume can originate only from a parent model's tool call, and no extension can continue a child.
 The front door is also unequal to its siblings: `AgentTool` owns four distinct refusals (unknown id, no active session, released session, disposed workspace), each with its own operator-facing sentence, while `SubagentManager.resume` checks `isSessionReady()` alone and collapses all four into `undefined`.
@@ -1215,6 +1217,18 @@ Neither door refuses a resume of a **running** agent at all ([#896]): `resetForR
 - **Outcome:** an extension can resume a child through `SubagentsService`, and both front doors report the same refusals — the four `AgentTool` owns today plus the still-running one from [#896] — from one place, pinned by a test per refusal at each door.
 - **Commit type:** `feat:` (semver-minor on the service contract).
 - **Impact 3 / Risk 2 / Priority 12.**
+
+Landed: the policy relocation found less to move than the step's cause describes, because Step 15 had already put the _policy_ on the record — what stayed above the choke point was the **check**.
+`SubagentManager.resume` now reads `resumeRefusal` and returns `{ kind: "resumed"; record } | { kind: "refused"; reason }` over the record's four reasons plus `unknown-agent`, the one refusal that is not a fact about a record; `AgentTool` keeps only a sentence per reason.
+Two things went with it: the door's `getRecord` pre-read, and its "Failed to resume" branch, which nothing could reach once the refusal check and `Subagent.resume` had no await between them.
+
+[#896]'s arm is checked first and reads `isRunning()`, so a run that has not created its session yet reports the live run rather than the missing session; a queued agent keeps `no-session`, which is the truth about it.
+The affordance needed a second template rather than a fourth clause: the three existing reasons ask the parent to give up, where this one asks it to wait, so the clause table narrowed by type (`Exclude<ResumeRefusal, "still-running">`) and the renderer branches.
+The transient wording names no `resume:` call at all, which widened Step 15's token-absence assertion from three reasons to four.
+
+[#832] was folded in on a new `subagents:resuming` channel, fired from `Subagent.runResume` after the rewind — so it covers the tool door too, and a subscriber reading the record sees the run that just started.
+The widget takes it as `startLoop` rather than `update`, a defect planning did not anticipate: its timer stops once nothing is running, and a resumed agent is running again.
+Two residuals were filed rather than absorbed: [#912] (no pre-call resumability query) and [#913] (`abort(id)` does not reach a resumed turn loop, which `ResumeOptions.signal` mitigates for the new door only).
 
 Release: independent
 
@@ -1371,7 +1385,7 @@ flowchart TD
     S13["✅ Step 13 (#871)<br/>Empty tool allowlist"]
     S10 --> S15["✅ Step 15 (#878)<br/>Resume affordance honesty"]
     S11 --> S15
-    S14 --> S16["Step 16 (#885)<br/>Service resume"]
+    S14 --> S16["✅ Step 16 (#885)<br/>Service resume"]
     S17["✅ Step 17 (#889)<br/>Failed run reports failed"] --> S19["✅ Step 19 (#898)<br/>Compaction-erased turn error"]
     S5 -.informs.-> S18["✅ Step 18 (#890)<br/>Inherited-region guarantee"]
     S16 --> S22["Step 22 (#913)<br/>Resume abort lever"]

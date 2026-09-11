@@ -32,7 +32,7 @@ Run them in foreground or background, steer them mid-run, resume completed sessi
 - **Context inheritance** — optionally fork the parent conversation into a sub-agent so it knows what's been discussed
 - **Styled completion notifications** — background agent results render as themed, compact notification boxes (icon, stats, result preview) instead of raw XML.
   Expandable to show full output
-- **Event bus** — lifecycle events (`subagents:created`, `started`, `completed`, `failed`, `resumed`, `steered`, `compacted`) emitted via `pi.events`, enabling other extensions to react to sub-agent activity
+- **Event bus** — lifecycle events (`subagents:created`, `started`, `completed`, `failed`, `resuming`, `resumed`, `steered`, `compacted`) emitted via `pi.events`, enabling other extensions to react to sub-agent activity
 
 ## Install
 
@@ -225,6 +225,7 @@ Agent lifecycle events are emitted via `pi.events.emit()` so other extensions ca
 | `subagents:started`          | Agent transitions to running (including queued→running) | `id`, `type`, `description`                                                                                          |
 | `subagents:completed`        | Agent finished successfully                             | `id`, `type`, `durationMs`, `tokens` (lifetime `{ input, output, total }`), `toolUses`, `result`                     |
 | `subagents:failed`           | Agent errored, stopped, or aborted                      | same as completed + `error`, `status`                                                                                |
+| `subagents:resuming`         | Resume started, from either front door                  | `id`, `type`, `description`                                                                                          |
 | `subagents:resumed`          | Resumed run reached a terminal state (completed/error)  | same as completed + `error`, `status` (`buildEventData` shape) — `status`/`error` discriminate                       |
 | `subagents:steered`          | Steering message sent                                   | `id`, `message`                                                                                                      |
 | `subagents:compacted`        | Agent's session successfully compacted                  | `id`, `type`, `description`, `reason` (`"manual"` / `"threshold"` / `"overflow"`), `tokensBefore`, `compactionCount` |
@@ -330,6 +331,31 @@ A pulled snapshot of momentary state would be stale on arrival; [decision 0005](
 
 `SubagentRecord` and `SubagentsService` are types this package produces and you read — not contracts to implement.
 A new field is therefore a minor release; use a cast or a `Partial<>` for a test double rather than implementing either type.
+
+#### `resume` contract
+
+`resume(id, prompt, options?)` continues a settled agent's session, and is the one service call that waits: it resolves when the resumed run reaches a terminal state, carrying the terminal snapshot.
+A caller that does not need the outcome can ignore the promise.
+
+It never throws and never rejects.
+A resume that could not start resolves to `{ kind: "refused", reason }` instead, promptly — the checks are synchronous and no turn loop runs:
+
+| `reason`             | Meaning                                                         |
+| -------------------- | --------------------------------------------------------------- |
+| `unknown-agent`      | No record answers to that id (records are cleared per session)  |
+| `still-running`      | The agent has not settled; wait, or `steer` it while it runs    |
+| `no-session`         | The agent never had a session to continue                       |
+| `session-released`   | Its session was released after the retention window             |
+| `workspace-disposed` | Its isolated workspace is gone, so a resume cannot re-enter it  |
+
+A resumed run that _fails_ is still `{ kind: "resumed" }`; the snapshot carries `status: "error"` and the message.
+Refused means nothing started.
+
+By default the resumed outcome is announced to the parent like any other background completion.
+Pass `claimOutcome: true` to declare that your extension is delivering it, which suppresses that announcement — do this only if you will actually carry the result to the parent, or it reaches nobody.
+
+Pass `signal` to cancel the resumed turn loop.
+`abort(id)` does not reach it: a resume does not run under the record's own abort controller.
 
 ### `@gotgenes/pi-subagents/settings` — layered config loader
 
