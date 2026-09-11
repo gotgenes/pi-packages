@@ -662,6 +662,54 @@ describe("out-of-process forwarding liveness", () => {
     rmSync(childCwd, { recursive: true, force: true });
     rmSync(externalDir, { recursive: true, force: true });
   });
+
+  // A subprocess child kept visible for observability — a Pi Herdsman managed
+  // agent in its own Herdr pane — has a UI of its own and still names the lead
+  // session as its forwarding target (#909).
+  it("forwards from a child that has its own UI while the named parent serves", async () => {
+    writeGlobalConfig(externalAsk);
+    const childCwd = mkdtempSync(join(tmpdir(), "pi-perm-child-cwd-"));
+    const externalDir = mkdtempSync(join(tmpdir(), "pi-perm-external-"));
+    const forwardingDir = join(agentDir, "sessions", "permission-forwarding");
+    const parentSessionId = "parent-session-ui-child";
+    vi.stubEnv("PI_SUBAGENT_PARENT_SESSION", parentSessionId);
+    publishServingHeartbeat(forwardingDir, parentSessionId);
+
+    const capturedTitles: string[] = [];
+    const childPi = makeFakePi({
+      events: createEventBus(),
+      toolNames: ["read"],
+    });
+    piPermissionSystemExtension(childPi as unknown as ExtensionAPI);
+    const firePromise = childPi.fire(
+      "tool_call",
+      {
+        toolName: "read",
+        toolCallId: "ui-child-external-read",
+        input: { path: join(externalDir, "secret.txt") },
+      },
+      makeBaseCtx(childCwd, "child-session-ui", {
+        select: async (title: string): Promise<string | undefined> => {
+          capturedTitles.push(title);
+          return "Yes";
+        },
+      }),
+    );
+
+    const request = await approveForwardedRequest(
+      forwardingDir,
+      parentSessionId,
+    );
+    expect(request.requesterSessionId).toBe("child-session-ui");
+
+    const result = (await firePromise) as { block?: true };
+    expect(result.block).toBeUndefined();
+    // The pane's own dialog never opened: the parent answered.
+    expect(capturedTitles).toEqual([]);
+
+    rmSync(childCwd, { recursive: true, force: true });
+    rmSync(externalDir, { recursive: true, force: true });
+  });
 });
 
 describe("shutdown teardown chain", () => {
