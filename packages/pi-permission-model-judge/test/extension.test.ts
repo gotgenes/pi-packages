@@ -19,6 +19,7 @@ import { getGlobalConfigPath, type LoadConfigResult } from "#src/config-loader";
 import { createModelJudgeExtension } from "#src/extension";
 import type { CompleteFn } from "#src/model-review";
 import { assistantToolCall } from "#test/fixtures/assistant-message";
+import { makeModel } from "#test/fixtures/model";
 import { makePromptDetails } from "#test/fixtures/permission-details";
 
 const READY_CHANNEL = "permissions:ready";
@@ -39,7 +40,7 @@ const CONFIG_RESULT: LoadConfigResult = {
   issues: [],
 };
 
-const MODEL = { provider: "anthropic", id: "claude-haiku" } as Model<any>;
+const MODEL = makeModel();
 
 interface FakePi {
   lifecycle: Map<string, (event: unknown, ctx: unknown) => void>;

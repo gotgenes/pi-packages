@@ -12,6 +12,7 @@ import {
   assistantText,
   assistantToolCall,
 } from "#test/fixtures/assistant-message";
+import { makeModel } from "#test/fixtures/model";
 
 const CONFIG: ModelJudgeConfig = {
   provider: "anthropic",
@@ -21,8 +22,7 @@ const CONFIG: ModelJudgeConfig = {
   timeoutMs: 5000,
 };
 
-// A minimal model stand-in — reviewPath only forwards it to `complete`.
-const MODEL = { provider: "anthropic", id: "claude-haiku" } as never;
+const MODEL = makeModel();
 
 /** A `complete` seam that returns a forced tool call carrying `args`. */
 function completeReporting(args: Record<string, unknown>): Mock<CompleteFn> {

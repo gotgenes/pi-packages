@@ -7,6 +7,7 @@ import type { ModelJudgeConfig } from "#src/config-schema";
 import type { CompleteFn, ModelRegistryLike } from "#src/model-review";
 import { createTypoReviewer } from "#src/typo-reviewer";
 import { assistantToolCall } from "#test/fixtures/assistant-message";
+import { makeModel } from "#test/fixtures/model";
 import { makePromptDetails } from "#test/fixtures/permission-details";
 
 const CONFIG: ModelJudgeConfig = {
@@ -20,7 +21,7 @@ const CONFIG: ModelJudgeConfig = {
 const TYPO_PATH =
   "/x/packages/pi-permission-system/packages/pi-permission-system/src/a.ts";
 
-const MODEL = { provider: "anthropic", id: "claude-haiku" } as Model<any>;
+const MODEL = makeModel();
 
 function makeDetails(
   overrides: Partial<PromptPermissionDetails> = {},
