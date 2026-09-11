@@ -11,6 +11,7 @@ import type {
   AssistantMessage,
   Context,
   Model,
+  ProviderHeaders,
   TextContent,
   Tool,
   ToolCall,
@@ -67,7 +68,7 @@ export type CompleteFn = (
   options?: {
     signal?: AbortSignal;
     apiKey?: string;
-    headers?: Record<string, string>;
+    headers?: ProviderHeaders;
     toolChoice?: ForcedToolChoice;
   },
 ) => Promise<AssistantMessage>;
@@ -78,7 +79,7 @@ export type CompleteFn = (
  * re-exported from `@earendil-works/pi-coding-agent`.
  */
 export type ResolvedRequestAuth =
-  | { ok: true; apiKey?: string; headers?: Record<string, string> }
+  | { ok: true; apiKey?: string; headers?: ProviderHeaders }
   | { ok: false; error: string };
 
 /** The narrow model-registry projection the reviewer needs (ISP). */
@@ -94,7 +95,7 @@ export interface ReviewPathInputs {
   model: Model<any>;
   complete: CompleteFn;
   apiKey?: string;
-  headers?: Record<string, string>;
+  headers?: ProviderHeaders;
 }
 
 /**

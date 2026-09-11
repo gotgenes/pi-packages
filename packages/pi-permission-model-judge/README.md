@@ -61,6 +61,11 @@ This extension does nothing on its own — it requires `@gotgenes/pi-permission-
 The peer must be **27.0.0 or later**.
 The link registers into the service of the session node that announced itself on `permissions:ready`, and an older pi-permission-system announces no session id — so on one, the link never registers and the extension says so once per session.
 
+Pi must supply `@earendil-works/pi-ai` **0.84.3 or later**.
+The reviewer forces the model to call its verdict tool, and three provider APIs — `openai-responses` and `openai-codex-responses` (from 0.80.7), `azure-openai-responses` (from 0.84.3) — ignore the forcing value on earlier versions.
+On one of those the model is free to answer in prose, so the judge defers every ask with `no-tool-call`: safe, but useless.
+Below **0.80.1** the extension does not load at all — pi-ai's 0.80 entrypoint split introduced the `compat` module this extension imports, and no earlier release exposes it, as an `exports` subpath or through Pi's extension loader. (0.80.0 was tagged but never published, so 0.80.1 is the earliest installable release that loads.)
+
 ## Enable
 
 Two independent config files are involved — the safety policy lives in pi-permission-system, the model mechanism lives here.

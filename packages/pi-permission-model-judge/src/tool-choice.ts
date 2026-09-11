@@ -31,8 +31,13 @@ const DEFAULT_FORCED_TOOL_CHOICE: ForcedToolChoice = "required";
 /**
  * Keyed on `Model.api`. Deliberately `Record<string, …>` rather than
  * `Record<KnownApi, …>`: a `KnownApi` key set would turn every `pi-ai` release
- * that adds an API into a build break instead of a graceful default, and the
- * supported floor's `KnownApi` does not yet contain `pi-messages`.
+ * that adds an API into a build break instead of a graceful default.
+ *
+ * Every row is live at the supported floor (`pi-ai` 0.84.3). Below it three
+ * rows are inert — `openai-responses` and `openai-codex-responses` do not read
+ * `toolChoice` before 0.80.7, and `azure-openai-responses` not before 0.84.3 —
+ * which is why the floor is where it is rather than at the 0.79.0 the rest of
+ * this repo declares.
  */
 const FORCED_TOOL_CHOICE_BY_API: Record<string, ForcedToolChoice | undefined> =
   {

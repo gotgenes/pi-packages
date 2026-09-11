@@ -122,4 +122,5 @@ A non-`external_directory` ask is not logged at all.
 
 To diagnose "the judge defers everything," read the review log for `model_judge.decision` entries and inspect `deferReason`: an empty result means no ask ever matched a pattern, `auth-failed` / `model-unresolved` means it is misconfigured, `non-deny-verdict` means the model saw the path and chose not to deny, and `no-tool-call` means the model replied without calling the verdict tool.
 For a run of `no-tool-call` entries, check the same entry's `api` and `toolChoice`: the tool is forced per provider API, so a spelling that provider does not accept is discarded silently and the model answers in prose.
-That is what made the judge inert on every OpenAI-compatible provider before the per-API mapping landed.
+That is what made the judge inert on every provider on `openai-completions` before the per-API mapping landed.
+The same symptom appears on a Pi supplying `@earendil-works/pi-ai` older than 0.84.3, where `openai-responses`, `openai-codex-responses`, and `azure-openai-responses` ignore the forcing value whatever it says.

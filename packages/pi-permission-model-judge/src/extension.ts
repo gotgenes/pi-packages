@@ -11,7 +11,11 @@
  * the node whose chain consults this link.
  */
 
-import { complete as realComplete } from "@earendil-works/pi-ai";
+// `complete` lives on pi-ai's `compat` entrypoint from 0.84 on. Pi's extension
+// loader maps the pi-ai *root* to that same compat module for extensions, so
+// both spellings resolve to one object at runtime; naming it explicitly is what
+// typechecks against the pinned SDK.
+import { complete as realComplete } from "@earendil-works/pi-ai/compat";
 import {
   type ExtensionAPI,
   getAgentDir,
