@@ -439,9 +439,9 @@ describe("AuthorizerSelection", () => {
       expect(selection.adjudicatesLocally()).toBe(false);
     });
 
-    it("reports true for a subagent node that has its own UI", () => {
-      // selectAuthorizer tests hasUI before isSubagent, so the role cannot be
-      // re-derived from subagent detection alone.
+    it("reports true for a subagent node that has its own UI and no parent", () => {
+      // A node with a UI relays only while a declared parent is serving, so the
+      // role cannot be re-derived from subagent detection alone.
       const selection = new AuthorizerSelection(
         makeDeps({ detection: makeDetection(true) }),
       );
@@ -548,6 +548,132 @@ describe("AuthorizerSelection", () => {
         "authorizer_chain_delegated",
         expect.anything(),
       );
+    });
+  });
+
+  describe("relay transition records", () => {
+    /**
+     * A node with a UI whose environment names a parent that is serving — the
+     * shape that relays. `activate` runs on every turn event, so the record has
+     * to mark the transition rather than the activation.
+     */
+    function makeUiSelection(
+      logger: ReturnType<typeof makeAuthorizerLog>,
+      serving = true,
+    ) {
+      return new AuthorizerSelection(
+        makeDeps({
+          logger,
+          detection: makeDetection(true),
+          serving: {
+            isServing: () => serving,
+            describe: () => ({
+              channel: "none",
+              state: null,
+              servingIds: [],
+            }),
+          },
+        }),
+      );
+    }
+
+    it("records the target and its channel when relaying starts", () => {
+      vi.stubEnv("PI_SUBAGENT_PARENT_SESSION", "lead-session");
+      const logger = makeAuthorizerLog();
+
+      makeUiSelection(logger).activate(makeCtx({ hasUI: true }));
+
+      expect(logger.review).toHaveBeenCalledWith(
+        "forwarded_permission.relay_started",
+        { targetSessionId: "lead-session", channel: "env" },
+      );
+    });
+
+    it("records nothing further while the same target keeps serving", () => {
+      vi.stubEnv("PI_SUBAGENT_PARENT_SESSION", "lead-session");
+      const logger = makeAuthorizerLog();
+      const selection = makeUiSelection(logger);
+
+      selection.activate(makeCtx({ hasUI: true }));
+      selection.activate(makeCtx({ hasUI: true }));
+      selection.activate(makeCtx({ hasUI: true }));
+
+      expect(logger.review).toHaveBeenCalledTimes(1);
+    });
+
+    it("records the stop when the declared parent stops serving", () => {
+      vi.stubEnv("PI_SUBAGENT_PARENT_SESSION", "lead-session");
+      const logger = makeAuthorizerLog();
+      let serving = true;
+      const selection = new AuthorizerSelection(
+        makeDeps({
+          logger,
+          detection: makeDetection(true),
+          serving: {
+            isServing: () => serving,
+            describe: () => ({
+              channel: "none",
+              state: null,
+              servingIds: [],
+            }),
+          },
+        }),
+      );
+
+      selection.activate(makeCtx({ hasUI: true }));
+      serving = false;
+      selection.activate(makeCtx({ hasUI: true }));
+
+      expect(logger.review).toHaveBeenCalledWith(
+        "forwarded_permission.relay_stopped",
+        { targetSessionId: "lead-session" },
+      );
+    });
+
+    it("records a stop and a start when the target changes", () => {
+      vi.stubEnv("PI_SUBAGENT_PARENT_SESSION", "lead-session");
+      const logger = makeAuthorizerLog();
+      const selection = makeUiSelection(logger);
+
+      selection.activate(makeCtx({ hasUI: true }));
+      vi.stubEnv("PI_SUBAGENT_PARENT_SESSION", "other-lead");
+      selection.activate(makeCtx({ hasUI: true }));
+
+      expect(logger.review).toHaveBeenNthCalledWith(
+        2,
+        "forwarded_permission.relay_stopped",
+        { targetSessionId: "lead-session" },
+      );
+      expect(logger.review).toHaveBeenNthCalledWith(
+        3,
+        "forwarded_permission.relay_started",
+        { targetSessionId: "other-lead", channel: "env" },
+      );
+    });
+
+    it("records the stop when a relaying node is deactivated", () => {
+      vi.stubEnv("PI_SUBAGENT_PARENT_SESSION", "lead-session");
+      const logger = makeAuthorizerLog();
+      const selection = makeUiSelection(logger);
+
+      selection.activate(makeCtx({ hasUI: true }));
+      selection.deactivate();
+
+      expect(logger.review).toHaveBeenNthCalledWith(
+        2,
+        "forwarded_permission.relay_stopped",
+        { targetSessionId: "lead-session" },
+      );
+    });
+
+    it("records nothing for a node that never relays", () => {
+      const logger = makeAuthorizerLog();
+      const selection = makeUiSelection(logger, false);
+
+      selection.activate(makeCtx({ hasUI: true }));
+      selection.deactivate();
+
+      expect(logger.review).not.toHaveBeenCalled();
     });
   });
 });

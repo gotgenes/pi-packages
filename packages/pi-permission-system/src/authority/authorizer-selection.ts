@@ -10,6 +10,7 @@ import { composeAuthorizerChain } from "./authorizer-chain";
 import type { AuthorizerLookup } from "./authorizer-registry";
 import { encloseInDelegationEnvelope } from "./delegation-envelope";
 import type { PermissionPromptDecision } from "./permission-dialog";
+import type { PermissionForwardingTarget } from "./permission-forwarding";
 import type {
   PermissionPrompterApi,
   PromptPermissionDetails,
@@ -76,6 +77,7 @@ export class AuthorizerSelection
   implements AskEscalator, AuthorizerSelectionLifecycle, AdjudicationRole
 {
   private authority: SelectedAuthority | null = null;
+  private relayTarget: PermissionForwardingTarget | null = null;
 
   constructor(
     private readonly deps: AuthorizerSelectionDeps & {
@@ -96,7 +98,39 @@ export class AuthorizerSelection
    * activation, so link resolution is deferred to the session's first ask.
    */
   activate(ctx: ExtensionContext): void {
-    this.authority = selectAuthorizer(ctx, this.deps);
+    const authority = selectAuthorizer(ctx, this.deps);
+    this.recordRelayTransition(authority.relayTarget ?? null);
+    this.authority = authority;
+  }
+
+  /**
+   * Record that this node started, stopped, or redirected its relaying.
+   *
+   * `activate` runs on every turn event, so only a change is worth a line: the
+   * pair reads beside the serving node's own
+   * `forwarded_permission.serving_started`/`serving_stopped`, which is what
+   * makes a misdirected relay a one-line diff across the two sessions. A node
+   * that never relays writes nothing at all.
+   */
+  private recordRelayTransition(
+    target: PermissionForwardingTarget | null,
+  ): void {
+    const previous = this.relayTarget;
+    if (previous?.sessionId === target?.sessionId) {
+      return;
+    }
+    this.relayTarget = target;
+    if (previous !== null) {
+      this.deps.logger.review("forwarded_permission.relay_stopped", {
+        targetSessionId: previous.sessionId,
+      });
+    }
+    if (target !== null) {
+      this.deps.logger.review("forwarded_permission.relay_started", {
+        targetSessionId: target.sessionId,
+        channel: target.source,
+      });
+    }
   }
 
   /**
@@ -185,6 +219,7 @@ export class AuthorizerSelection
 
   /** Clear the stored selection. */
   deactivate(): void {
+    this.recordRelayTransition(null);
     this.authority = null;
   }
 
