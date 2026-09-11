@@ -643,6 +643,33 @@ describe("ParentAuthorizer abandonment", () => {
     );
   });
 
+  test("reports a self-naming marker as unresolvable and writes no request", async () => {
+    // A child's own copy of a subagent extension can overwrite the spawner's
+    // marker with the child's own session id. The real parent is then gone from
+    // the process, so the honest answer is an actionable refusal rather than a
+    // request filed into an inbox nobody drains (#907).
+    const temp = createForwardingTempDir("child-session");
+    try {
+      vi.stubEnv("PI_SUBAGENT_PARENT_SESSION", "child-session");
+      const authorizer = new ParentAuthorizer(
+        makeForwarderContext({ hasUI: false, sessionId: "child-session" }),
+        makeParentAuthorizerDeps({
+          forwardingDir: temp.forwardingDir,
+          registry: makeSubagentRegistry("child-session"),
+        }),
+      );
+
+      await expect(authorizer.authorize({ ...forwardedAsk })).resolves.toEqual(
+        unavailableDecision(
+          "Could not resolve a parent session to forward this permission request to",
+        ),
+      );
+      expect(readdirSync(temp.location.requestsDir)).toEqual([]);
+    } finally {
+      temp.cleanup();
+    }
+  });
+
   test("reports unusable forwarding directories as unavailable", async () => {
     const root = mkdtempSync(join(tmpdir(), "permission-forwarding-blocked-"));
     try {

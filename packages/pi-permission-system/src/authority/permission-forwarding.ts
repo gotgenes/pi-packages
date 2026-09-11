@@ -319,20 +319,32 @@ export function resolvePermissionForwardingTarget(options: {
     return null;
   }
 
+  // A candidate naming the requester itself is not a usable target: the
+  // request would land in an inbox this node is not draining, and no other node
+  // would ever answer it. A child's own copy of a subagent extension can
+  // overwrite the spawner's marker with the child's own session id, which is
+  // how such a candidate arises (#907).
+  const own = normalizePermissionForwardingSessionId(options.currentSessionId);
+  const namesAnotherSession = (candidate: string): boolean => candidate !== own;
+
   // 1. Registry — in-process subagents register parentSessionId explicitly.
   if (options.registry && options.sessionId) {
     const entry = options.registry.get(options.sessionId);
     const resolved = normalizePermissionForwardingSessionId(
       entry?.parentSessionId,
     );
-    if (resolved) return { sessionId: resolved, source: "registry" };
+    if (resolved && namesAnotherSession(resolved)) {
+      return { sessionId: resolved, source: "registry" };
+    }
   }
 
   // 2. Env vars — process-based subagent extensions.
   const env = options.env ?? process.env;
   for (const key of SUBAGENT_PARENT_SESSION_ENV_CANDIDATES) {
     const resolved = normalizePermissionForwardingSessionId(env[key]);
-    if (resolved) return { sessionId: resolved, source: "env" };
+    if (resolved && namesAnotherSession(resolved)) {
+      return { sessionId: resolved, source: "env" };
+    }
   }
   return null;
 }

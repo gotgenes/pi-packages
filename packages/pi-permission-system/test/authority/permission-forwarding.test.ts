@@ -141,6 +141,46 @@ describe("resolvePermissionForwardingTarget", () => {
     ).toBeNull();
   });
 
+  // A request written into your own inbox is drained by a watcher you are not
+  // running, so it can never be answered. A spawner's marker is overwritten
+  // with the child's own id when the child's own copy of that extension does
+  // not recognize it as a child (#907).
+  test("skips a candidate naming the requesting session and takes the next", () => {
+    expect(
+      resolvePermissionForwardingTarget({
+        hasUI: false,
+        isSubagent: true,
+        currentSessionId: "session-xyz",
+        env: {
+          PI_AGENT_ROUTER_PARENT_SESSION_ID: "session-xyz",
+          PI_SUBAGENT_PARENT_SESSION: "parent-from-convention",
+        },
+      }),
+    ).toEqual({ sessionId: "parent-from-convention", source: "env" });
+  });
+
+  test("returns null when the only candidate names the requesting session", () => {
+    expect(
+      resolvePermissionForwardingTarget({
+        hasUI: false,
+        isSubagent: true,
+        currentSessionId: "session-xyz",
+        env: { PI_SUBAGENT_PARENT_SESSION: "session-xyz" },
+      }),
+    ).toBeNull();
+  });
+
+  test("skips a self-naming candidate that is whitespace-padded", () => {
+    expect(
+      resolvePermissionForwardingTarget({
+        hasUI: false,
+        isSubagent: true,
+        currentSessionId: " session-xyz ",
+        env: { PI_SUBAGENT_PARENT_SESSION: "  session-xyz  " },
+      }),
+    ).toBeNull();
+  });
+
   test("env defaults to process.env when omitted", () => {
     vi.stubEnv("PI_AGENT_ROUTER_PARENT_SESSION_ID", "env-session-abc");
     expect(
@@ -185,6 +225,23 @@ describe("resolvePermissionForwardingTarget — registry resolution", () => {
         env: { PI_AGENT_ROUTER_PARENT_SESSION_ID: "parent-from-env" },
       }),
     ).toEqual({ sessionId: "parent-from-registry", source: "registry" });
+  });
+
+  test("falls through to env vars when the registry entry names the requesting session", () => {
+    const registry = makeSubagentRegistry(childSessionId, {
+      parentSessionId: childSessionId,
+    });
+
+    expect(
+      resolvePermissionForwardingTarget({
+        hasUI: false,
+        isSubagent: true,
+        currentSessionId: childSessionId,
+        sessionId: childSessionId,
+        registry,
+        env: { PI_AGENT_ROUTER_PARENT_SESSION_ID: "parent-from-env" },
+      }),
+    ).toEqual({ sessionId: "parent-from-env", source: "env" });
   });
 
   test("falls through to env vars when registry entry has no parentSessionId", () => {
