@@ -60,7 +60,7 @@ const UNIVERSAL_GUIDELINES: readonly string[] = [
  * describes its own tools.
  */
 export function renderToolSurface(
-  systemPrompt: string,
+  systemPrompt: string | readonly string[],
   inputs: ToolSurfaceInputs,
 ): string {
   const lines = removeToolSurfaceSections(
@@ -201,8 +201,20 @@ function fileExplorationGuideline(
   return "Use bash for file operations like ls, rg, find";
 }
 
-function normalizePrompt(prompt: string): string {
-  return (prompt || "").replace(/\r\n/g, "\n");
+/** Normalize Pi/OMP prompt payloads to the string expected by this renderer. */
+export function normalizePrompt(prompt: string | readonly string[]): string {
+  if (typeof prompt === "string") {
+    return prompt.replace(/\r\n/g, "\n");
+  }
+
+  if (Array.isArray(prompt)) {
+    return prompt
+      .filter((part): part is string => typeof part === "string")
+      .join("\n")
+      .replace(/\r\n/g, "\n");
+  }
+
+  return "";
 }
 
 function collapseExtraBlankLines(text: string): string {
