@@ -16,6 +16,9 @@ import { GLYPHS } from "#src/ui/glyphs";
 /** How many report lines the expanded view draws before it defers to the transcript. */
 export const MAX_EXPANDED_LINES = 50;
 
+/** How much of the result body the collapsed preview may carry into `details`. */
+export const PREVIEW_CHARS = 200;
+
 /**
  * Compact presentation metadata for a get_subagent_result result.
  *
@@ -23,7 +26,7 @@ export const MAX_EXPANDED_LINES = 50;
  * serialized verbatim into the session JSONL and is never sent to the model, so
  * carrying either would duplicate on disk what `content` already holds. The
  * renderer reads the report text from the result's own content instead, and
- * `preview` is bounded to a fixed character budget by its producer.
+ * `preview` is bounded at `PREVIEW_CHARS` by its producer.
  */
 export interface GetResultDetails {
 	agentId: string;

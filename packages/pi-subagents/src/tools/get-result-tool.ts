@@ -1,10 +1,19 @@
+import type { AgentToolResult, ToolRenderResultOptions } from "@earendil-works/pi-coding-agent";
 import { defineTool } from "@earendil-works/pi-coding-agent";
+import { Text } from "@earendil-works/pi-tui";
 import { Type } from "@sinclair/typebox";
 import type { AgentConfigLookup } from "#src/config/agent-types";
+import {
+	type GetResultDetails,
+	PREVIEW_CHARS,
+	renderGetResultLines,
+} from "#src/tools/get-result-renderer";
 import { type AgentReport, formatAgentReport } from "#src/tools/get-result-report";
 import { formatLifetimeTokens, textResult } from "#src/tools/helpers";
 import type { Subagent } from "#src/types";
-import { formatDuration, getDisplayName } from "#src/ui/display";
+import { BoundedLines } from "#src/ui/bounded-lines";
+import { formatDuration, getDisplayName, type Theme } from "#src/ui/display";
+import { GLYPHS } from "#src/ui/glyphs";
 
 // ---- Deps interfaces ----
 
@@ -29,7 +38,7 @@ export class GetResultTool {
 	) {
 		const record = this.manager.getRecord(params.agent_id);
 		if (!record) {
-			return textResult(`Agent not found: "${params.agent_id}". Records are cleared at session start/switch, so it may be from a previous session.`);
+			return textResult<GetResultDetails>(`Agent not found: "${params.agent_id}". Records are cleared at session start/switch, so it may be from a previous session.`);
 		}
 
 		// Wait for completion if requested. The record owns the decision of whether
@@ -55,7 +64,11 @@ export class GetResultTool {
 			record.release();
 		}
 
-		return textResult(formatAgentReport(this.buildReport(record, params.verbose)));
+		const verbose = params.verbose === true;
+		return textResult<GetResultDetails>(
+			formatAgentReport(this.buildReport(record, verbose)),
+			this.buildGetResultDetails(record, verbose),
+		);
 	}
 
 	private buildReport(record: Subagent, verbose?: boolean): AgentReport {
@@ -80,6 +93,30 @@ export class GetResultTool {
 			pendingQuestion: record.pendingQuestion,
 			resumeRefusal: record.resumeRefusal,
 			workspaceNotice: record.workspaceNotice,
+		};
+	}
+
+	/**
+	 * The compact metadata the TUI renders from.
+	 *
+	 * Named in full because `helpers.ts` exports a module-level `buildDetails`
+	 * producing the structurally different `AgentDetails`.
+	 */
+	private buildGetResultDetails(record: Subagent, verbose: boolean): GetResultDetails {
+		return {
+			agentId: record.id,
+			displayName: getDisplayName(record.type, this.registry),
+			status: record.status,
+			description: record.description,
+			toolUses: record.toolUses,
+			tokens: formatLifetimeTokens(record),
+			contextPercent: record.getContextPercent(),
+			compactionCount: record.compactionCount,
+			duration: formatDuration(record.startedAt, record.completedAt),
+			preview: buildPreview(record.result),
+			error: record.error,
+			verbose,
+			transcriptPath: record.outputFile,
 		};
 	}
 
@@ -108,6 +145,34 @@ export class GetResultTool {
 					}),
 				),
 			}),
+			// ---- Custom rendering: a bounded, Ctrl+O-expandable retrieval row ----
+
+			renderCall(args: { agent_id: string; wait?: boolean; verbose?: boolean }, theme: Theme) {
+				const notes = [args.wait === true ? "waiting" : "", args.verbose === true ? "verbose" : ""]
+					.filter(Boolean)
+					.join(", ");
+				return new Text(
+					`${GLYPHS.toolCall} ` +
+						theme.fg("toolTitle", theme.bold("Get Agent Result")) +
+						"  " +
+						theme.fg("muted", args.agent_id) +
+						(notes ? " " + theme.fg("muted", `(${notes})`) : ""),
+					0,
+					0,
+				);
+			},
+
+			renderResult(
+				result: AgentToolResult<GetResultDetails | undefined>,
+				{ expanded }: ToolRenderResultOptions,
+				theme: Theme,
+			) {
+				const reportText = result.content[0]?.type === "text" ? result.content[0].text : "";
+				const details = result.details;
+				if (!details) return new Text(reportText, 0, 0);
+				return new BoundedLines(renderGetResultLines(details, reportText, expanded, theme));
+			},
+
 			execute: (
 				toolCallId: string,
 				params: { agent_id: string; wait?: boolean; verbose?: boolean },
@@ -117,4 +182,11 @@ export class GetResultTool {
 			) => this.execute(toolCallId, params, signal, onUpdate, ctx),
 		});
 	}
+}
+
+/** The first non-empty line of a result body, clipped to the preview budget. */
+function buildPreview(result: string | undefined): string | undefined {
+	const line = result?.split("\n").find((candidate) => candidate.trim())?.trim();
+	if (!line) return undefined;
+	return line.length > PREVIEW_CHARS ? line.slice(0, PREVIEW_CHARS - 1) + "\u2026" : line;
 }

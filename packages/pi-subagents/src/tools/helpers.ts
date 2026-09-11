@@ -38,8 +38,14 @@ export function renderSpawnNotes(notes: readonly string[]): string {
   return notes.length > 0 ? `${notes.join("\n")}\n\n` : "";
 }
 
-/** Tool execute return value for a text response. */
-export function textResult(msg: string, details?: AgentDetails) {
+/**
+ * Tool execute return value for a text response.
+ *
+ * Generic over the details payload so a tool with its own presentation metadata
+ * can attach it; defaults to `AgentDetails`, which is what every subagent-tool
+ * call site passes.
+ */
+export function textResult<T = AgentDetails>(msg: string, details?: T) {
   return { content: [{ type: "text" as const, text: msg }], details };
 }
 
