@@ -3,6 +3,7 @@ import type { AgentSpawnConfig } from "#src/lifecycle/subagent-manager";
 import { renderSpawnNotes, textResult } from "#src/tools/helpers";
 import type { ResolvedSpawnConfig } from "#src/tools/spawn-config";
 import type { ParentSessionInfo, Subagent } from "#src/types";
+import type { AgentDetails } from "#src/ui/display";
 
 /** Narrow manager interface for the background spawner. */
 export interface BackgroundManagerDeps {
@@ -48,6 +49,17 @@ export function spawnBackground(
   const record = manager.getRecord(id);
 
   const isQueued = record?.status === "queued";
+  // Annotated rather than inlined into the call: `textResult` is generic over its
+  // details, so an inline literal would define the type instead of being checked
+  // against it.
+  const details: AgentDetails = {
+    ...presentation.detailBase,
+    toolUses: 0,
+    tokens: "",
+    durationMs: 0,
+    status: "background",
+    agentId: id,
+  };
   return textResult(
     renderSpawnNotes(notes) +
       `Agent ${isQueued ? "queued" : "started"} in background.\n` +
@@ -61,13 +73,6 @@ export function spawnBackground(
       `\nYou will be notified when this agent completes.\n` +
       `Use get_subagent_result to retrieve full results, or steer_subagent to send it messages.\n` +
       `Do not duplicate this agent's work.`,
-    {
-      ...presentation.detailBase,
-      toolUses: 0,
-      tokens: "",
-      durationMs: 0,
-      status: "background" as const,
-      agentId: id,
-    },
+    details,
   );
 }
