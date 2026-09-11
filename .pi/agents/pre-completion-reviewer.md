@@ -32,6 +32,16 @@ Fix the pattern before widening the root, in this order:
 To confirm an SDK or dependency API, read the installed types under `node_modules/.pnpm/<pkg>@<version>/` and pin the version to the one the package depends on.
 A store can hold several versions of the same package, so an unpinned match may come from a copy the code never loads.
 
+Two reads outside the repo are sanctioned, and neither is a search:
+
+- The sibling Pi checkout (`../pi` from the root checkout, `../../pi` from a worktree) for Pi SDK mechanism.
+  It tracks `main` and runs ahead of the pinned dependency, so confirm any API against the installed version too.
+- The published tarball for an exact version (`pnpm view <pkg>@<version> dist.tarball`), for a version-boundary question.
+
+A version-boundary question — "at which release did X change?"
+— is the signal to stop searching the working tree.
+The store holds one or two versions, so no amount of widening answers it (Refs #905).
+
 If you genuinely cannot answer a question within the repo, report it as an open question in your findings rather than escalating the search.
 
 ## Input

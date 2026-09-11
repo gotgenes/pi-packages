@@ -110,6 +110,8 @@ A shared table row asserts its fact of every implementation the *name* reaches: 
 A dependency floor is a claim about **each** symbol the change uses, not about the release that introduced the feature.
 `git tag --contains <sha>` answers which release carries one commit; sibling accessors can land in a later one.
 Resolve every symbol against the candidate floor (`git show <tag>:<path> | grep <symbol>`) before pinning it (Refs #812).
+Sampling one version without the symbol and one with it bounds an interval, not a boundary — name the later one only after checking every version between.
+Enumerate them from the registry (`pnpm view <pkg> versions`), not from git tags: `pi-ai@0.80.0` was tagged and never published, so no operator can be on it (Refs #905).
 
 Pull-request status is an **inverted** signal here, because the repo reimplements adopted third-party changes through its own TDD cycle rather than merging them.
 Seven of nine closed-unmerged external PRs on `pi-permission-system`, and six on `pi-subagents`, shipped as capability with `Co-authored-by` credit — so "closed unmerged" usually means *accepted*.

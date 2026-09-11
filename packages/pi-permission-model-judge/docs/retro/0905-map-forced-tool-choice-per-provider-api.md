@@ -155,4 +155,74 @@ The root should note in its close comment that the fix landed as `fix(pi-permiss
 
 No new findings at sync time — the deterministic gates were already green after the pre-completion reviewer's round 4 PASS, and this step reconfirmed them from the worktree root rather than the package scope used mid-implementation.
 
+## Stage: Final Retrospective (2026-09-11T07:24:57Z)
+
+### Session summary
+
+Shipped the per-API forced tool choice through the worktree lane: fast-forward merged `issue-905-pi-permission-model-judge-any-is-not-a-v` into `main`, ran the pre-push gates, pushed, verified CI, closed the issue with a contributor-facing comment to `@Jopqior`, dispatched the release, and released `@gotgenes/pi-permission-model-judge` v3.0.0 (the breaking floor raise).
+The ship itself was uneventful — no rebase collision, no CI failure, no deferred release — so this retrospective is about the four stages that preceded it.
+
+### Observations
+
+#### What went well
+
+- **The pre-completion reviewer earned four rounds.**
+  All four `FAIL → FAIL → FAIL → PASS` rounds found real defects, and three of them overturned a claim the implementing agent had derived itself: the three inert map rows below the declared floor, then two successive wrong version boundaries in the `BREAKING CHANGE:` footer.
+  The pattern that produced them is the dispatch prompt naming _which of my claims to re-derive_ rather than asking for a general review.
+  This is the first #905-scale case where a reviewer's cost was justified on every round.
+- **Reading each provider module instead of the issue's stated root cause.**
+  The issue attributed the defect to `ToolChoice = "auto" | "none"`, which governs `streamSimple`, not `complete`.
+  A plan written from that framing would have swapped everything to `"required"` and newly broken Google (falls through to `AUTO`), Bedrock (emits no `toolChoice`), and Anthropic (`{type:"required"}` → 400).
+  Ten per-module declarations read at the pinned version is what turned a one-line swap into a ten-row map.
+- **Killing mutations caught two plan errors for free.**
+  Step 1's predicted mutation killed nothing (no test read `MODEL.provider`/`MODEL.id`), and step 3's killed two tests rather than the predicted one.
+  Both are findings the plan's prediction made visible; without the predicted count, a surviving test and a deliberate pin look identical.
+
+#### What caused friction (agent side)
+
+- `missing-context` — the plan recorded that `openai-responses` is "dropped entirely on the 0.79.1 floor" as a parenthetical in its Background table, then reasoned as though all ten rows were live at the declared floor.
+  The disconfirming fact was in hand at planning time and was not treated as a contradiction.
+  Impact: reviewer round 1 FAIL, an unplanned eighth commit (`fix(pi-permission-model-judge)!: require pi-ai 0.84.3`), two type-level SDK migrations that were not priced into the `ask_user` gate, and an inverted breaking classification the plan still contradicts.
+- `other` — **a bracket read as a boundary, twice.**
+  Rounds 2 and 3 both failed on one sentence of the `BREAKING CHANGE:` footer.
+  Round 2's claim ("on an older Pi the extension still loads") was false; round 3's correction ("the load floor is 0.80.7") was also false, derived by sampling the tags `v0.79.1`, `v0.80.7`, `v0.82.0` and reading the earliest tested tag as the boundary.
+  The alias is present at `v0.80.0`, and `0.80.0` was tagged but never published, so the true installable floor is `0.80.1`.
+  Impact: two reviewer rounds and two amended commits on a single sentence.
+  The generalizable rule is sharper than [#812]'s: sampling `A` (absent) and `B` (present) establishes only the interval `(A, B]`, and the answer must come from the **registry** (`pnpm view <pkg> versions`), not from git tags, because a tagged-but-unpublished version is not a version any operator can be on.
+- `instruction-violation` (user-caught) — the `pre-completion-reviewer` reached for `find /` repeatedly across the four dispatches, which its own charter forbids.
+  The cause is structural rather than careless: every round asked a version-boundary question about a peer dependency, three of the four named `../../pi` (a path `AGENTS.md` sanctions and the agent's charter forbids), and `node_modules/.pnpm/` answers such a question only for the versions that happen to be in the store.
+  Impact: wasted reviewer turns and one external-directory permission prompt per round; no rework to the change itself.
+- `other` — this retrospective called `list_session_files` to attribute models across stages and received all 586 session paths for this cwd, since the tool takes no limit.
+  Impact: a large context hit for one datum; the peer transcript path recorded in the Sync stage note was the cheaper route and was already available.
+
+#### What caused friction (user side)
+
+- The `ask_user` gate on the provider vocabulary bounced on terms of art ("What do these values mean?
+Why do all have `auto` and only some have `any`?"), which cost one round-trip but produced a materially better gate — the second framing (three intents, two vendor vocabularies) is the one that made the design legible.
+The opportunity is on the agent side, not the user's: `AGENTS.md` already requires defining a gate's terms of art before its substance.
+- The floor-vs-document decision was presented as "a semver-major bump" and was in fact a major bump **plus** two type-level SDK migrations (`complete` moving to pi-ai's `compat` entrypoint, `ResolvedRequestAuth.headers` widening to `ProviderHeaders`).
+  Neither was priced in the option the operator accepted.
+
+### Diagnostic details
+
+- **Model-performance correlation** — planning and the full TDD cycle ran on `anthropic/claude-opus-5`; `/sync-worktree` ran on `anthropic/claude-sonnet-5` (mechanical: two gates, a stage note, a rebase — appropriate); `/ship` and this retrospective on `anthropic/claude-opus-5`.
+  The `tidy-first-assessor` and the four `pre-completion-reviewer` dispatches ran on their charter default `anthropic/claude-sonnet-5`; the reviewer's judgment work was strong enough at that tier to overturn three opus-derived claims, so no escalation is indicated.
+- **Escalation-delay tracking** — no `rabbit-hole` friction points.
+  The longest single-question run was the version-boundary hunt in the peer session (roughly eight consecutive tool calls across turns 156–167 establishing where `complete` is exported and whether the loader aliases it), which resolved without a strategy change and produced the correct answer.
+- **Unused-tool detection** — the version-boundary question had a cheap tool the whole time: `pnpm view <pkg> versions` / the published tarball.
+  It surfaced only when the reviewer used it in round 3, after two rounds of git-tag sampling had already shipped a wrong number twice.
+- **Feedback-loop gap analysis** — verification was incremental throughout: `pnpm run check` plus the package suite after every TDD step, killing mutations before each commit, and the four root-level gates at the end of the cycle and again after the floor bump.
+  No gap found.
+
+### Changes made
+
+1. `.pi/agents/pre-completion-reviewer.md` — named the two sanctioned out-of-repo reads (the sibling Pi checkout, the published tarball for an exact version) in § Search scope, and stated that a version-boundary question is the signal to stop searching the working tree.
+   This resolves the charter contradiction that produced `find /` in all four #905 dispatches.
+2. `AGENTS.md` — extended the [#812] dependency-floor bullet: two samples bound an interval rather than a boundary, and the version list comes from the registry (`pnpm view <pkg> versions`) rather than git tags, since `pi-ai@0.80.0` was tagged and never published.
+3. Filed [#916] against `pi-session-tools` — `list_session_files` has no `limit` and returned all 586 session paths for this cwd during this retrospective, while its sibling transcript tools already accept one.
+   Not implemented here; it is a code change and belongs in its own plan.
+   The `roadmap-fit` skill exited at Step 1 — `pi-session-tools` has no architecture doc, so no phase is open and no disposition was recorded.
+
+[#916]: https://github.com/gotgenes/pi-packages/issues/916
+
 [#812]: https://github.com/gotgenes/pi-packages/issues/812
