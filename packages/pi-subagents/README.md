@@ -139,6 +139,10 @@ Check status and retrieve results from a background agent.
 | `wait`     | boolean | no       | Wait for completion           |
 | `verbose`  | boolean | no       | Include full conversation log |
 
+The result renders as a compact three-line summary — status, stats, description, and a one-line preview.
+Press `Ctrl+O` to expand it to the full report, bounded so a long result cannot fill the terminal; the expanded view names the transcript path when it withholds anything.
+The complete report, including the conversation `verbose` requests, always reaches the model regardless of what the terminal shows.
+
 ### `steer_subagent`
 
 Send a steering message to a running agent.

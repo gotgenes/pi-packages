@@ -110,6 +110,7 @@ flowchart TB
         FgRunner["foreground-runner"]
         BgSpawner["background-spawner"]
         GetResult["get_subagent_result"]
+        GetResultRenderer["get-result-renderer<br/>(pure rendering)"]
         Steer["steer_subagent"]
     end
 
@@ -392,6 +393,7 @@ src/
 │   ├── background-spawner.ts       background spawn setup
 │   ├── get-result-tool.ts          get_subagent_result tool
 │   ├── get-result-report.ts        pure get_subagent_result report formatter
+│   ├── get-result-renderer.ts      pure get_subagent_result line assembly for the collapsed and expanded TUI views
 │   ├── steer-tool.ts               steer_subagent tool
 │   └── helpers.ts                  shared tool utilities
 │
@@ -399,6 +401,7 @@ src/
 │   ├── agent-widget.ts             above-editor live status widget
 │   ├── widget-renderer.ts          pure rendering for widget
 │   ├── display.ts                  pure formatters and shared types
+│   ├── bounded-lines.ts            component spending exactly one clipped terminal row per line
 │   ├── glyphs.ts                   semantic display-glyph vocabulary (monospace-coverage constraint, #669)
 │   ├── subagents-settings.ts       /subagents:settings command handler
 │   ├── session-navigation.ts       pure session-selection and transcript-source logic
