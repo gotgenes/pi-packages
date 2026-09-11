@@ -176,6 +176,8 @@ The gradient is the argument for shipping deny-first.
 An ask is adjudicated by exactly one node's chain: the node whose terminal decides it.
 
 A node with UI (`LocalUserAuthorizer`) and a headless node with no reachable authority (`DenyingAuthorizer`) both decide locally, so both run their chain.
+Since [#909] a node with UI is the first of those only while it names no parent session that is draining its inbox; when it does name one, it relays and the clause below governs it instead.
+The rule is unchanged — what narrowed is which nodes are terminal-local.
 A subagent node whose terminal is `ParentAuthorizer` does not decide — it relays the ask to a serving node, which resolves it against its own recorded authority and escalates it through its own chain over the same child-fixed facts ([#635]).
 So a relaying node resolves no links, and its terminal's forwarding *is* how the ask reaches a chain.
 
@@ -252,3 +254,4 @@ The two compose cleanly: a promoted token emits the same structured descriptor a
 [#635]: https://github.com/gotgenes/pi-packages/issues/635
 [#699]: https://github.com/gotgenes/pi-packages/issues/699
 [#727]: https://github.com/gotgenes/pi-packages/issues/727
+[#909]: https://github.com/gotgenes/pi-packages/issues/909

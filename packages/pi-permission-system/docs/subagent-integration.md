@@ -63,6 +63,19 @@ A value naming the reading session itself is ignored as a forwarding target, sin
 That matters when an implementation rewrites an inherited marker with the current session's id: doing so in a child destroys the only record of its real parent, and the child's asks then fail closed with an unresolved-target error.
 Guard such a rewrite on the process being a root — for example, skip it when a child marker such as `PI_SUBAGENT_CHILD` is present.
 
+#### Children that keep a UI of their own
+
+An implementation may spawn each child as a full interactive session — a visible pane per agent, for observability and direct inspection — while keeping permission authority with the human at the lead session.
+A child like that forwards its asks to the session the variable names, rather than opening its own dialog, for as long as that session is draining its forwarded-permission inbox.
+It is the declared target that decides this, so an implementation opts in by naming a parent, and opts out by not naming one; nothing else is required of it.
+
+The liveness condition is what keeps a visible child usable.
+A child whose named parent has exited, been killed, or stopped polling opens its own dialog instead of refusing the tool call, and the decision is remade on every turn: a pane whose lead exits mid-run returns to prompting locally at its next turn, and one whose lead comes back starts forwarding again.
+Only an ask already in flight when the parent disappears is refused, with the usual approval-unavailable reason.
+
+A session that relays still serves its own inbox, so a `lead → agent → agent` tree relays through the middle hop.
+What it does not do is run its own authorizer chain: live authority converges at the node that decides, which is the serving one ([ADR 0007] §7).
+
 ### What an implementation does not owe
 
 None of the following is an implementation's responsibility, on either process shape:
@@ -132,7 +145,7 @@ When `@gotgenes/pi-permission-system` is not installed, an implementation emits 
 
 ## Permission Forwarding
 
-When a delegated or routed subagent runs without direct UI access, `ask` permissions can still be enforced by forwarding the confirmation request through Pi session directories.
+When a delegated or routed subagent cannot decide an `ask` where it runs — because it has no UI of its own, or because it names a parent session that is answering for it — the confirmation request is forwarded through Pi session directories instead.
 The main interactive session polls for forwarded requests, shows the confirmation prompt, writes the response, and the subagent resumes once that decision is available.
 A parent `allow`/`deny` rule governs a child's escalation directly (the serving node resolves it as recorded authority before prompting), and a "whole session" grant recorded on the parent auto-approves later forwards of the same pattern.
 

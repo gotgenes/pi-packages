@@ -491,6 +491,8 @@ This requires two detections:
    - `resolvePermissionForwardingTarget()` in `src/authority/permission-forwarding.ts`.
 
 Neither decides whether *this* node serves an inbox of its own, which is `hasUI` alone (#907).
+Together with a third question — is that parent draining its inbox right now?
+— they decide whether a node with a UI of its own relays instead of prompting ([#909]).
 
 ### Known extension env var inventory
 
@@ -514,7 +516,7 @@ Neither decides whether *this* node serves an inbox of its own, which is `hasUI`
    Used by process-based subagent extensions.
    The list is composed from the per-extension markers plus `SUBAGENT_PARENT_SESSION_ENV_CANDIDATES`, since a process that names a parent session is a child by definition - which is what makes the convention's single out-of-process obligation sufficient on its own (#789).
    A UI host can therefore answer `true` here too, because an implementation may export the marker from its own root process so the children it spawns inherit it.
-   The predicate answers "is this process a child", not "should this node relay rather than decide": every consumer tests `hasUI` first, and serving eligibility does not consult it at all (#907).
+   The predicate answers "is this process a child", not "should this node relay rather than decide": `selectAuthorizer` relays a node with a UI only when a target resolves *and* that target is serving ([#909]), and serving eligibility does not consult the predicate at all (#907).
 3. **Filesystem path** - session-directory path-based fallback (child session dir is nested under `subagentSessionsDir`).
 
 ### Parent-session resolution (`resolvePermissionForwardingTarget`)
@@ -528,6 +530,9 @@ Neither decides whether *this* node serves an inbox of its own, which is `hasUI`
 
 Either source skips a candidate naming the requesting session itself: a request filed into one's own inbox is drained by no watcher and answered by nobody (#907).
 When no candidate survives, forwarding fails with an explicit log message naming the variables checked.
+
+The function answers only "which *other* session", so it is also what `selectAuthorizer` asks before relaying a node that has a UI: no target means the human here decides ([#909]).
+That node additionally requires `ForwardingLivenessJudge` to report the target as serving, and records `forwarded_permission.relay_started` / `relay_stopped` when the answer changes — the requester-side counterpart of the serving node's own `serving_started` / `serving_stopped`.
 
 HazAT sets no parent-session env var today, so forwarding still fails for it with that message pointing to #98.
 Adding a new env var candidate when an extension adopts the convention is a one-line change to the array.
@@ -615,8 +620,8 @@ The "for this session" dialog option writes a session rule; a future "always" wr
 
 On `ask`, the gate escalates to **one `Authorizer`, selected once per session from context**, and is told the decision.
 
-1. **`LocalUserAuthorizer`** — the session has UI; prompt the human here.
-2. **`ParentAuthorizer`** — the session is a subagent; escalate up the tree to the parent's authority.
+1. **`LocalUserAuthorizer`** — the session has UI and names no parent that is draining its inbox; prompt the human here.
+2. **`ParentAuthorizer`** — the session is a subagent without UI, or one whose declared parent is serving ([#909]); escalate up the tree to the parent's authority.
 3. **`DenyingAuthorizer`** — no authority is reachable; deny (least privilege).
 
 There is no "can anyone answer" pre-check.
@@ -923,7 +928,7 @@ src/
 │       ├── path.ts                       describePathGate - pure descriptor factory for cross-cutting path rules; builds an `AccessPath` and emits an `access-path` `AccessIntent` on the narrowest `path`-family surface the tool's identity proves (`capabilitySurfaceForTool`) so it matches the canonical (symlink-resolved) form like `external_directory`
 │       └── tool.ts                       describeToolGate - pure descriptor factory for the per-tool gate; for path-bearing built-in tools the pipeline builds an `AccessPath` and emits an `access-path` intent on the tool-name surface so per-tool rules match lexical ∪ canonical, and the session-approval value derives from `accessPath.value()`; bash/MCP/extension tools keep the raw `tool` intent. Stamps a bash wrapper's `floorExemption` on the log context when one applies, the same routing the bash path gates give `effect`/`effectSource` — an exempt unit usually raises no prompt at all, so the fact is not a payload fact
 ├── authority/            Subagent detection, the Authorizer spine, and forwarded-permission escalation
-│   ├── authorizer.ts                   `Authorizer` (non-terminal chain link, `authorize(details, query, log): Promise<AuthorizerVerdict>` - handed a session-scoped `PermissionQuery` and an `AuthorizerLog` review-log seam per ADR 0007 §3) + `TerminalAuthorizer` (terminal, `authorize(details): Promise<PermissionPromptDecision>` - cannot defer, enforced type-level) + `AuthorizerVerdict` (`allow | deny | defer`) + `SelectedAuthority` (`{ terminal, adjudicatesLocally }`) + `AuthorizerSelectionDeps` + `selectAuthorizer(ctx, deps): SelectedAuthority` - the once-per-activation hasUI/isSubagent/deny dispatch, returning the chain role that dispatch implies (`adjudicatesLocally: false` only for the relaying `ParentAuthorizer` arm, ADR 0007 §7)
+│   ├── authorizer.ts                   `Authorizer` (non-terminal chain link, `authorize(details, query, log): Promise<AuthorizerVerdict>` - handed a session-scoped `PermissionQuery` and an `AuthorizerLog` review-log seam per ADR 0007 §3) + `TerminalAuthorizer` (terminal, `authorize(details): Promise<PermissionPromptDecision>` - cannot defer, enforced type-level) + `AuthorizerVerdict` (`allow | deny | defer`) + `SelectedAuthority` (`{ terminal, adjudicatesLocally, relayTarget? }`) + `AuthorizerSelectionDeps` + `selectAuthorizer(ctx, deps): SelectedAuthority` - the per-activation local/relay/deny dispatch, returning the chain role that dispatch implies (`adjudicatesLocally: false` only for the relaying `ParentAuthorizer` arm, ADR 0007 §7). Constraint: a node with a UI relays only when a forwarding target resolves to another session **and** the private `resolveLiveRelayTarget` reads `serving.isServing(target) === true` - a human is present, so an unconfirmable target keeps the local dialog, the opposite burden of proof from `ParentAuthorizer.checkServingLiveness` (#909). It is re-evaluated on every activation, which is what returns a pane to its own dialog when its parent exits; `relayTarget` is the target that selection itself verified, absent on the headless arm where `ParentAuthorizer` resolves one per ask
 │   ├── authorizer-chain.ts             `composeAuthorizerChain(links, terminal, query, log)` - folds non-terminal `NamedAuthorizer` links ahead of the context-selected terminal (`defer` → next link, `allow`/`deny` → decision stamped `decidedBy: {kind: "authorizer", name, verdict, reason}` at the point the loop breaks, so a link that deferred is not credited), injecting `query` and the review-log `log` into each link; zero links returns the terminal instance (identity)
 │   ├── decision-source.ts              `DecisionSource` discriminated union (`user | authorizer | rule | session_approval | yolo | infrastructure_read | unavailable | gate_error | forwarded`) + depth-bounded tolerant guard `asDecisionSource` + `effectiveDecider` (unwraps a `forwarded` hop to the decider inside the responding session, so a reader asking *what* decided is not answered with *where*). Constraint: each variant is self-contained (it repeats its own surface/pattern/origin/name/reason) because the forwarded response file carries no such columns to lean on; the recursive `forwarded` variant is read off disk, so its guard is depth-bounded and rejects an over-deep chain whole rather than truncating it
 │   ├── decision-resolution.ts          `resolutionFor(decidedBy, outcome)` — the one place a `DecisionSource` becomes a `PermissionDecisionResolution`, shared by the gate runner and the serving node so the two records of one request cannot disagree. Constraint: exhaustive with no `default`, so a new decider variant is a compile error rather than a silent `user_approved`; `outcome` supplies only what the decider does not record (allowed, and whether the human scoped the grant to the session)
@@ -1111,6 +1116,8 @@ Deferred by composition, with the reason each carries: [#804] (staging slice 7, 
   The cause is the pipeline's resolve-and-prompt-per-gate loop rather than this phase's role loss or its blame gap, and the fix hoists resolution ahead of the prompt in `GateRunner.runDescriptor` — the split this phase's `#### Deferred tidyings swept` list already holds as deferred on the scout's re-adjudication, so the two want to move together rather than one landing under the other's step.
 - [#907] — out of scope for the roadmap; PR [#911] is its close target.
   A root interactive session stops serving forwarded permission requests because `ForwardingManager` reads the root's own inherited `PI_SUBAGENT_PARENT_SESSION` marker as subagent evidence — an `authority/` forwarding-lifecycle defect, not this phase's role loss.
+- [#909] — out of scope for the roadmap; a third-party request from the Pi Herdsman maintainer, landed as a breaking `feat!:`.
+  A subprocess child kept visible in its own pane adjudicated locally because `selectAuthorizer` tested `hasUI` before subagent detection — an `authority/` authority-selection dispatch, not this phase's role loss.
 - [#914] — filed by [#907]'s planning; out of scope for the roadmap.
   A Windows atomic-rename failure in `forwarding-io.ts`'s shared write helper drops heartbeat and forwarded-file writes; it is platform robustness in the same layer as [#907], sharing no step's mechanism.
 - Feature issues [#691], [#687], [#680], [#654], [#648], [#604], [#603], [#472] — out of scope for a structural phase; [#680] is narrowed further by Step 4 (a declared reader needs no floor override), and [#604] by [#813].
@@ -1416,6 +1423,7 @@ Each phase's findings, numbered plan, dependency diagram, and health metrics are
 [#892]: https://github.com/gotgenes/pi-packages/issues/892
 [#899]: https://github.com/gotgenes/pi-packages/issues/899
 [#907]: https://github.com/gotgenes/pi-packages/issues/907
+[#909]: https://github.com/gotgenes/pi-packages/issues/909
 [#911]: https://github.com/gotgenes/pi-packages/pull/911
 [#914]: https://github.com/gotgenes/pi-packages/issues/914
 [ADR-0002]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-subagents/docs/decisions/0002-extensions-on-a-minimal-core.md
