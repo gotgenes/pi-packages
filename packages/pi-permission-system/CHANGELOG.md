@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [32.0.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v32.0.0...pi-permission-system-v32.0.1) (2026-09-11)
+
+
+### Bug Fixes
+
+* **pi-permission-system:** deny a forbidden command without prompting first ([b840196](https://github.com/gotgenes/pi-packages/commit/b8401962a9eeb012317771fc204c3fde8aa8a9a2)), closes [#899](https://github.com/gotgenes/pi-packages/issues/899)
+
+### Documentation
+
+* **pi-permission-system:** document that a deny on any layer needs no prompt ([e526e95](https://github.com/gotgenes/pi-packages/commit/e526e950ab6d957e6b5bc4d6f7740bcce2e35dca)), closes [#899](https://github.com/gotgenes/pi-packages/issues/899)
+
 ## [32.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v31.1.4...pi-permission-system-v32.0.0) (2026-09-11)
 
 
