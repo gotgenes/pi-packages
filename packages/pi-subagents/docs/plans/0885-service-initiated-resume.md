@@ -259,8 +259,8 @@ Wait for it to settle — get_subagent_result with wait: true returns when it do
 - **A resume of an agent whose session is being released mid-flight.**
   The sweep releases only terminal records, and `resumeRefusal` is read synchronously before `agent.resume()` — no await between the two.
 - **A previous run's withheld update.**
-  See Risks: an unclaimed resume can let one parked update from the prior run announce.
-  Bounded and already priced by `docs/plans/0903-exactly-once-mid-run-update-delivery.md`.
+  See Risks: an unclaimed resume can let the prior run's parked updates announce.
+  Already priced by `docs/plans/0903-exactly-once-mid-run-update-delivery.md`, though not by its "once" — the withheld queue does not collapse updates per record.
 
 ## Module-Level Changes
 
@@ -332,8 +332,12 @@ The [#903] window, quoted from its own plan, is the one this step makes reachabl
 > `resetForResume` clears the ledger; the claim deliberately survives, so a claimed resume's stale queue entry is declined by `canAnnounceUpdate` and a service-initiated unclaimed resume ([#885], unshipped) would announce a previous run's message once.
 
 Accepted rather than fixed: the message in question was **never delivered to the parent**, and the child is live again when it lands, so announcing it is the correct outcome rather than a duplicate.
-It is bounded to one message per resumed run.
-Recorded here so the next reader finds it priced rather than missed.
+
+The quoted "once" is the predecessor plan's wording, and this plan does not inherit it as a bound.
+`NotificationManager.pending` holds one entry per update with no per-record collapse — unlike `withholdCompletion`, which does collapse, and which `notification.test.ts`'s "keeps every update, because two updates are two facts" pins for the update path.
+So a child that sent several updates inside one withheld parent turn can flush all of them after an unclaimed resume.
+What is bounded is the **content**: every such message is one the parent has not seen, on a child that is running again.
+Recorded here so the next reader finds it priced rather than missed (pre-completion review, #885).
 
 ## TDD Order
 
@@ -378,7 +382,7 @@ Recorded here so the next reader finds it priced rather than missed.
 | Risk                                                                        | Mitigation                                                                                                                                                                                                                           |
 | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | The still-running refusal reddens unrelated tests that resume a fixture     | Measured at planning time: `createTestSubagent()` defaults to `status: "completed"`, and `get-result-report.test.ts` builds DTOs with an explicit `resumeRefusal`. Step 4 is where any surprise surfaces, before the interface churn |
-| An unclaimed resume lets one parked update from the previous run announce   | Accepted and priced above — the message was never delivered and the child is live again. Bounded to one per resumed run                                                                                                              |
+| An unclaimed resume lets the previous run's parked updates announce         | Accepted and priced above — each message was never delivered and the child is live again; the queue does not collapse them per record                                                                                                |
 | A claiming service caller that never delivers silently swallows the outcome | `claimOutcome` defaults to false, so the failure mode requires an explicit opt-in; the doc comment states the obligation. The general release path is [#897]'s, not this step's                                                      |
 | `abort(id)` cannot cancel an in-flight service resume                       | `ResumeOptions.signal` gives the caller the same lever the tool door has; the underlying defect is filed as [#913] and the doc comment names it rather than implying `abort` works                                                   |
 | Widening `ResumeRefusal` fails open somewhere that reads it loosely         | It cannot: the `AgentTool` switch is exhaustive, `RESUME_REFUSAL_CLAUSES` is a total `Record`, and `OutcomeAddenda.resumeRefusal` is required. All three are compile errors until handled — the property Step 15 built them for      |
