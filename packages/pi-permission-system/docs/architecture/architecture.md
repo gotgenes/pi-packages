@@ -1120,6 +1120,10 @@ Deferred by composition, with the reason each carries: [#804] (staging slice 7, 
   A subprocess child kept visible in its own pane adjudicated locally because `selectAuthorizer` tested `hasUI` before subagent detection — an `authority/` authority-selection dispatch, not this phase's role loss.
 - [#914] — filed by [#907]'s planning; out of scope for the roadmap.
   A Windows atomic-rename failure in `forwarding-io.ts`'s shared write helper drops heartbeat and forwarded-file writes; it is platform robustness in the same layer as [#907], sharing no step's mechanism.
+- [#915] — filed by [#899]'s planning; deferred to a later phase with rationale.
+  Two gates that each resolve to `ask` on one tool call raise one prompt each — measured as two `escalate` calls for `cat /etc/hosts` under `external_directory: {"*": "ask"}` plus `bash: {"*": "ask"}`.
+  Coalescing them needs an ADR 0011 §2 payload that composes several gates' evidence and a `SessionApproval` recording a grant per asking surface, which is the prompt-presentation seam Phase 13 opened rather than this phase's role loss.
+  Step 5 enriches the fields one ask carries; [#915] changes how many asks there are, so no step produces or consumes what it needs.
 - Feature issues [#691], [#687], [#680], [#654], [#648], [#604], [#603], [#472] — out of scope for a structural phase; [#680] is narrowed further by Step 4 (a declared reader needs no floor override), and [#604] by [#813].
 
 #### Deferred tidyings swept
@@ -1426,4 +1430,5 @@ Each phase's findings, numbered plan, dependency diagram, and health metrics are
 [#909]: https://github.com/gotgenes/pi-packages/issues/909
 [#911]: https://github.com/gotgenes/pi-packages/pull/911
 [#914]: https://github.com/gotgenes/pi-packages/issues/914
+[#915]: https://github.com/gotgenes/pi-packages/issues/915
 [ADR-0002]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-subagents/docs/decisions/0002-extensions-on-a-minimal-core.md
