@@ -119,11 +119,39 @@ describe("renderQuestionAffordance", () => {
 		});
 
 		it("names no resume call for any reason", () => {
-			for (const refusal of ["no-session", "session-released", "workspace-disposed"] as const) {
+			for (const refusal of [
+				"still-running",
+				"no-session",
+				"session-released",
+				"workspace-disposed",
+			] as const) {
 				expect(renderQuestionAffordance("agent-7", "Which config?", refusal)).not.toContain(
 					"resume:",
 				);
 			}
+		});
+	});
+
+	describe("when the child has not finished running", () => {
+		it("says the question cannot be answered yet and points at the waiting pull", () => {
+			expect(renderQuestionAffordance("agent-7", "Which config?", "still-running")).toBe(
+				"\n\nThis agent asked a question before it finished running, so it cannot be " +
+					"resumed yet:\n\n  Which config?\n\n" +
+					"Wait for it to settle \u2014 get_subagent_result with wait: true returns when it " +
+					"does \u2014 then answer it.",
+			);
+		});
+
+		it("does not tell the parent to spawn a new agent, which a permanent refusal does", () => {
+			expect(renderQuestionAffordance("agent-7", "Which config?", "still-running")).not.toContain(
+				"Spawn a new agent",
+			);
+		});
+
+		it("indents every line of a multi-line question", () => {
+			expect(renderQuestionAffordance("agent-1", "A or B?\nOr C?", "still-running")).toContain(
+				"  A or B?\n  Or C?",
+			);
 		});
 	});
 

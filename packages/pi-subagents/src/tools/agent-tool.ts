@@ -289,6 +289,11 @@ ${guidelines}
  */
 function resumeRefusalMessage(refusal: ResumeRefusal, id: string): string {
 	switch (refusal) {
+		case "still-running":
+			return (
+				`Agent "${id}" is still running; wait for it to finish before resuming. ` +
+				"Use steer_subagent to send it a message while it runs."
+			);
 		case "session-released":
 			return `Agent "${id}" had its session released after its retention window; resume is unavailable, but its result is still retrievable via get_subagent_result.`;
 		case "no-session":

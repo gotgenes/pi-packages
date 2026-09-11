@@ -765,6 +765,20 @@ describe("Subagent — resumeRefusal", () => {
 		expect(makeSubagent().resumeRefusal).toBe("no-session");
 	});
 
+	it("reports still-running for a live run whose session is ready", () => {
+		expect(
+			createTestSubagent({ status: "running", sessionReady: true }).resumeRefusal,
+		).toBe("still-running");
+	});
+
+	it("prefers the live run over the missing session it has not created yet", () => {
+		expect(createTestSubagent({ status: "running" }).resumeRefusal).toBe("still-running");
+	});
+
+	it("leaves a queued agent reporting no-session, which is what it has", () => {
+		expect(createTestSubagent({ status: "queued" }).resumeRefusal).toBe("no-session");
+	});
+
 	it("reports session-released once the retention sweep has freed the session", async () => {
 		const agent = createRunnableAgent();
 		await agent.run();

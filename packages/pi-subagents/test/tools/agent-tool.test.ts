@@ -150,6 +150,26 @@ describe("AgentTool — resume path", () => {
 			expect(deps.manager.resume).not.toHaveBeenCalled();
 		});
 
+		it("refuses a resume of an agent that has not finished running", async () => {
+			const deps = createToolDeps();
+			deps.manager.getRecord = vi
+				.fn()
+				.mockReturnValue(createTestSubagent({ status: "running", sessionReady: true }));
+
+			const result = await execute(deps, {
+				prompt: "continue",
+				description: "resume",
+				subagent_type: "general-purpose",
+				resume: "agent-1",
+			});
+
+			expect(result.content[0].text).toBe(
+				'Agent "agent-1" is still running; wait for it to finish before resuming. ' +
+					"Use steer_subagent to send it a message while it runs.",
+			);
+			expect(deps.manager.resume).not.toHaveBeenCalled();
+		});
+
 		it("refuses a resume whose workspace was torn down at run end", async () => {
 			const deps = createToolDeps();
 			const workspace = makeWorkspace("/ws/dir");

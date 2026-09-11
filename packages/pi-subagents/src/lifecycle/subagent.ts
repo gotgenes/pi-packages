@@ -52,8 +52,15 @@ export type { SubagentStatus } from "#src/lifecycle/subagent-state";
  * separately: the resume door decided it from `isSessionReady()`,
  * `sessionReleased`, and `workspaceDisposed`, while the result carriers never
  * consulted any of them and advertised the resume regardless.
+ *
+ * `still-running` is the one transient member: it is a refusal of *now* rather
+ * than of ever, and the carriers word it accordingly.
  */
-export type ResumeRefusal = "no-session" | "session-released" | "workspace-disposed";
+export type ResumeRefusal =
+	| "still-running"
+	| "no-session"
+	| "session-released"
+	| "workspace-disposed";
 
 /**
  * The result of a steer attempt. `Subagent.steer` owns the non-running
@@ -209,13 +216,19 @@ export class Subagent {
 	 * The conditions are checked in the order the resume door checks them, so a
 	 * record whose session was released *and* whose workspace is gone reports the
 	 * session — the door's message for it names the retention window, which is
-	 * the fact that explains both.
+	 * the fact that explains both. A live run outranks all of them: nothing about
+	 * a settled record is decided yet.
 	 *
 	 * A getter rather than a predicate method because the result carriers read it
 	 * as a field: `OutcomeAddenda` and `AgentReport` both declare it, and a live
 	 * record satisfies them structurally only if it is a property.
 	 */
 	get resumeRefusal(): ResumeRefusal | undefined {
+		// Before the session check: a run transitions to running before it creates
+		// its session, and "still running" describes that record better than "no
+		// session" does. A queued agent is not running and keeps the no-session
+		// answer, which is the truth about it.
+		if (this.isRunning()) return "still-running";
 		if (!this.isSessionReady()) return this._sessionReleased ? "session-released" : "no-session";
 		if (this.workspaceDisposed) return "workspace-disposed";
 		return undefined;

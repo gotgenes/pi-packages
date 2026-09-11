@@ -56,13 +56,17 @@ const STATUS_MEANINGS: Partial<Record<SubagentStatus, StatusMeaning>> = {
 };
 
 /**
- * Why a resume is unavailable, worded as a subordinate clause.
+ * Why a resume is unavailable *for good*, worded as a subordinate clause.
  *
  * The resume door words the same three facts as standalone refusals; a clause
  * that continues someone else's sentence is different grammar, not a different
  * fact — the split `STATUS_MEANINGS` makes between `label` and `detail`.
+ *
+ * `still-running` is excluded by type rather than by omission: a refusal that
+ * lifts when the run settles asks the parent to wait, where these three ask it
+ * to give up, so it gets its own sentence in the renderer below.
  */
-const RESUME_REFUSAL_CLAUSES: Record<ResumeRefusal, string> = {
+const RESUME_REFUSAL_CLAUSES: Record<Exclude<ResumeRefusal, "still-running">, string> = {
 	// Deliberately not "...no session to resume": the clause is followed by a
 	// colon, and "resume:" is the exact token the parent must not see here.
 	"no-session": "it has no active session",
@@ -109,9 +113,10 @@ export interface OutcomeBody {
  * The trailing affordance for a child that ended its turn with a question.
  * Empty when the child asked nothing.
  *
- * Names the exact call that answers it when a resume would be accepted, and
- * why it cannot be answered when one would be refused — the parent is never
- * told to make a call this extension declines.
+ * Names the exact call that answers it when a resume would be accepted, why it
+ * cannot be answered when one would be refused for good, and what to wait for
+ * when the child is simply not finished — the parent is never told to make a
+ * call this extension declines.
  *
  * Takes the id, question, and refusal rather than a record: the three facts it
  * needs, so a carrier holding any shape can call it.
@@ -126,6 +131,14 @@ export function renderQuestionAffordance(
 		.split("\n")
 		.map((line) => `  ${line}`)
 		.join("\n");
+	if (refusal === "still-running") {
+		return (
+			"\n\nThis agent asked a question before it finished running, so it cannot be " +
+			`resumed yet:\n\n${quoted}\n\n` +
+			"Wait for it to settle \u2014 get_subagent_result with wait: true returns when it " +
+			"does \u2014 then answer it."
+		);
+	}
 	if (refusal) {
 		return (
 			"\n\nThis agent ended its run with a question that can no longer be answered \u2014 " +
