@@ -157,7 +157,7 @@ export async function reviewPath(
       headers: inputs.headers,
       toolChoice: "any",
     });
-    return readToolCallOutcome(reply, Date.now() - startedAt);
+    return { ...readToolCallOutcome(reply), latencyMs: Date.now() - startedAt };
   } catch {
     return {
       verdict: { kind: "defer" },
@@ -181,15 +181,18 @@ function renderReviewPrompt(path: string): string {
 }
 
 /**
- * Map the forced tool call to an outcome; anything but a clean `deny` defers
- * with the reason that distinguishes it. The tool call is read by position (the
- * first one), not by name — under OAuth the provider rewrites the registered
- * name, so the reply's tool-call name cannot be relied on.
+ * Map the forced tool call to a verdict; anything but a clean `deny` defers with
+ * the reason that distinguishes it. The tool call is read by position (the first
+ * one), not by name — under OAuth the provider rewrites the registered name, so
+ * the reply's tool-call name cannot be relied on.
+ *
+ * Per-call bookkeeping such as `latencyMs` is stamped by `reviewPath`, which
+ * owns the call — keeping it out of here means a new per-call field lands at one
+ * place rather than at every verdict branch.
  */
 function readToolCallOutcome(
   reply: AssistantMessage,
-  latencyMs: number,
-): ReviewOutcome {
+): Pick<ReviewOutcome, "verdict" | "deferReason" | "rawReply"> {
   const call = reply.content.find(
     (part): part is ToolCall => part.type === "toolCall",
   );
@@ -197,7 +200,6 @@ function readToolCallOutcome(
     return {
       verdict: { kind: "defer" },
       deferReason: "no-tool-call",
-      latencyMs,
       rawReply: extractText(reply),
     };
   }
@@ -207,7 +209,6 @@ function readToolCallOutcome(
     return {
       verdict: { kind: "defer" },
       deferReason: "non-deny-verdict",
-      latencyMs,
       rawReply,
     };
   }
@@ -215,7 +216,7 @@ function readToolCallOutcome(
     typeof args.reason === "string" && args.reason.length > 0
       ? args.reason
       : GENERIC_TEACHING_REASON;
-  return { verdict: { kind: "deny", reason }, latencyMs, rawReply };
+  return { verdict: { kind: "deny", reason }, rawReply };
 }
 
 /** Concatenate the text parts of an assistant reply. */
