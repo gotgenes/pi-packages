@@ -39,6 +39,34 @@ export function makeResolver(defaultCheck?: PermissionCheckResult) {
 }
 
 /**
+ * Permission resolver mock that denies exactly one surface.
+ *
+ * Every other surface answers the neutral `makeCheckResult()` allow, so a
+ * block can only have come from the gate that resolves on the named surface —
+ * which is what lets a pipeline test name the (asking gate, denying gate)
+ * pairing it is exercising.
+ *
+ * Return type is intentionally unannotated so callers retain full `vi.fn()`
+ * mock access.
+ */
+export function makeSurfaceDenyingResolver(
+  surface: string,
+  denyOverrides: Partial<PermissionCheckResult> = {},
+) {
+  const resolver = makeResolver();
+  resolver.resolve.mockImplementation((intent) =>
+    intent.surface === surface
+      ? makeCheckResult({
+          state: "deny",
+          matchedPattern: "*",
+          ...denyOverrides,
+        })
+      : makeCheckResult(),
+  );
+  return resolver;
+}
+
+/**
  * Gate descriptor factory with runner-test defaults.
  *
  * Carries the payload every render over this descriptor reads, so a test that

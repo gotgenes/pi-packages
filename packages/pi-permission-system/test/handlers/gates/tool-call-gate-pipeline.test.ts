@@ -8,6 +8,7 @@ import {
   makeGateInputs,
   makeGateRunner,
   makeResolver,
+  makeSurfaceDenyingResolver,
   makeTcc,
 } from "#test/helpers/gate-fixtures";
 import { makeCheckResult } from "#test/helpers/handler-fixtures";
@@ -364,18 +365,6 @@ describe("ToolCallGatePipeline", () => {
   // ── customExtractors threading (#352) ────────────────────────────────────
 
   describe("evaluate — customExtractors threading (#352)", () => {
-    // Deny only the cross-cutting `path` surface; allow everything else, so a
-    // block can only come from the path gate seeing the extracted path.
-    function pathDenyingResolver() {
-      const resolver = makeResolver();
-      resolver.resolve.mockImplementation((intent) =>
-        intent.surface === "path"
-          ? makeCheckResult({ state: "deny", matchedPattern: "*" })
-          : makeCheckResult(),
-      );
-      return resolver;
-    }
-
     const extractors = {
       resolve: (name: string) =>
         name === "ffgrep"
@@ -388,7 +377,9 @@ describe("ToolCallGatePipeline", () => {
     };
 
     it("forwards extractors so a custom-shaped tool is path-gated", async () => {
-      const resolver = pathDenyingResolver();
+      // Deny only the cross-cutting `path` surface, so a block can only come
+      // from the path gate seeing the extracted path.
+      const resolver = makeSurfaceDenyingResolver("path");
       const inputs = makeGateInputs();
       const { runner } = makeGateRunner();
       const pipeline = new ToolCallGatePipeline(
@@ -410,7 +401,7 @@ describe("ToolCallGatePipeline", () => {
     });
 
     it("without extractors the custom-shaped tool is not path-gated", async () => {
-      const resolver = pathDenyingResolver();
+      const resolver = makeSurfaceDenyingResolver("path");
       const inputs = makeGateInputs();
       const { runner } = makeGateRunner();
       const pipeline = new ToolCallGatePipeline(resolver, inputs);
