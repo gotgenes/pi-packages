@@ -34,6 +34,33 @@ The plan is committed at `packages/pi-permission-system/docs/plans/0909-ui-child
 - `src/authority/authorizer-selection.ts` and `src/authority/forwarding-manager.ts` — the assessor declined extracting a shared "log on transition only" helper for the two change-detection sites: they track different state shapes (a bare session id vs. a role plus optional target) and would be the abstraction's only two call sites.
   Revisit only if a third appears.
 
+## Stage: Implementation — TDD (2026-09-11T06:29:39Z)
+
+### Session summary
+
+Executed all seven plan steps as seven commits: three preparatory (`refactor:` × 2, `test:` × 1), the breaking `feat!:` that relays a UI session's asks to a declared live parent, a `test:` step pinning the live-authority boundary end to end, a `feat:` step recording relay transitions, and the `docs:` step.
+The package suite went from 4143 to 4157 tests (+14); `check`, root `lint`, full `test`, and `fallow dead-code` are all green.
+
+### Observations
+
+- **Deviation — the boundary repair moved into step 4.**
+  The plan sequenced the `composition-root.test.ts` repair (`fact-shaping inheritance stops at live authority`, whose parent ctx becomes headless) as step 5, but step 4's feature is what breaks it, so it landed in step 4's commit to keep the tree green.
+  Noted in that commit body.
+  The Tidy-First assessor had predicted this breakage exactly, and it materialized in an instructive way: the child relayed, the parent's server escalated through the *parent's* chain, and the parent's link ran — the opposite of what the test claims to prove.
+- **Deviation — `approval-escalator.test.ts` needed no edit**, though the plan listed it as a touch point; its expectations never named `hasUI`.
+- **Deviation — `deactivate` also records a relay stop**, which the plan's step 6 did not enumerate.
+  It is the same transition, and a session teardown is where the last one happens.
+- Every killing mutation the plan named behaved as predicted.
+  Dropping the `isServing` conjunct killed the three liveness cases and left the live-parent cases green; substituting `detection.isSubagent` killed the self-naming case; restoring the unconditional local arm killed both relay cases; flipping `adjudicatesLocally` killed exactly one (only one test asserts the chain role on the relay arm).
+- The `null` arm of `TargetServingLookup.isServing` is unreachable through the real `ForwardingLivenessJudge` once `"self"` is gone — both remaining channels return plain booleans.
+  The selection's `=== true` test still earns its keep as the documented burden of proof, and the case is pinned through a test double.
+- Pre-completion reviewer: WARN.
+
+#### Reviewer warnings
+
+- Phase 9's structural invariant ("the dispatch exists in exactly one place; predicates evaluated once per activation") still holds — the reviewer re-verified by grep — but is pinned by prose and code reading rather than by a test.
+  Non-blocking, and unchanged by this work.
+
 [#658]: https://github.com/gotgenes/pi-packages/issues/658
 [#693]: https://github.com/gotgenes/pi-packages/pull/693
 [#907]: https://github.com/gotgenes/pi-packages/issues/907
