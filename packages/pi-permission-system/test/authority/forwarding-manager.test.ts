@@ -27,6 +27,22 @@ function makeForwarder() {
   return { processInbox: mockProcessInbox };
 }
 
+/**
+ * A ctx whose session id can change after `start`, as an in-place session fork
+ * does — the churn that desynchronizes the announcement from the drained inbox.
+ */
+function makeChurningCtx(sessionId: string) {
+  const getSessionId = vi.fn((): string => sessionId);
+  return {
+    getSessionId,
+    ctx: {
+      hasUI: true,
+      sessionManager: { getSessionId },
+      cwd: "/project",
+    } as unknown as import("@earendil-works/pi-coding-agent").ExtensionContext,
+  };
+}
+
 /** A `ServingAnnouncer` whose calls can be counted, for the refresh tests. */
 function makeAnnouncer() {
   return { markServing: vi.fn(), clearServing: vi.fn() };
@@ -246,6 +262,21 @@ describe("ForwardingManager", () => {
 
       expect(serving.servingIds()).toEqual([]);
     });
+
+    it("marks nothing when the session id is unreachable", () => {
+      // A serving record under the `unknown` sentinel names a session no child
+      // can target, so publishing one only litters the heartbeat directory.
+      const serving = new ServingSessionRegistry();
+      const { ctx, getSessionId } = makeChurningCtx("sess-1");
+      getSessionId.mockImplementation(() => {
+        throw new Error("session id unavailable");
+      });
+
+      makeManager(serving).start(ctx);
+
+      expect(serving.servingIds()).toEqual([]);
+      expect(mockReview).not.toHaveBeenCalled();
+    });
   });
 
   describe("serving refresh", () => {
@@ -283,6 +314,61 @@ describe("ForwardingManager", () => {
 
       await vi.advanceTimersByTimeAsync(1000);
 
+      expect(mockReview).not.toHaveBeenCalled();
+    });
+
+    it("republishes under the new id when the session id changes mid-session", async () => {
+      // `processInbox` reads the live id on every tick, so an announcement
+      // pinned to the id captured at `start` drifts away from the inbox being
+      // drained: a child holding the old id waits out the full timeout while a
+      // child holding the new one finds no heartbeat at all (#907).
+      const serving = makeAnnouncer();
+      const { ctx, getSessionId } = makeChurningCtx("sess-1");
+      makeManager(serving).start(ctx);
+      serving.markServing.mockClear();
+
+      getSessionId.mockReturnValue("sess-2");
+      await vi.advanceTimersByTimeAsync(250);
+
+      expect(serving.clearServing).toHaveBeenCalledExactlyOnceWith("sess-1");
+      expect(serving.markServing).toHaveBeenCalledExactlyOnceWith("sess-2");
+
+      serving.markServing.mockClear();
+      await vi.advanceTimersByTimeAsync(500);
+
+      expect(serving.markServing).toHaveBeenCalledTimes(2);
+      expect(serving.markServing).toHaveBeenCalledWith("sess-2");
+    });
+
+    it("logs the migration once, not once per tick", async () => {
+      const { ctx, getSessionId } = makeChurningCtx("sess-1");
+      makeManager(makeAnnouncer()).start(ctx);
+      mockReview.mockClear();
+
+      getSessionId.mockReturnValue("sess-2");
+      await vi.advanceTimersByTimeAsync(1000);
+
+      expect(mockReview.mock.calls).toEqual([
+        ["forwarded_permission.serving_stopped", { sessionId: "sess-1" }],
+        ["forwarded_permission.serving_started", { sessionId: "sess-2" }],
+      ]);
+    });
+
+    it("keeps serving the last reachable id when the live id is unreachable", async () => {
+      const serving = makeAnnouncer();
+      const { ctx, getSessionId } = makeChurningCtx("sess-1");
+      makeManager(serving).start(ctx);
+      serving.markServing.mockClear();
+      mockReview.mockClear();
+
+      getSessionId.mockImplementation(() => {
+        throw new Error("session id unavailable");
+      });
+      await vi.advanceTimersByTimeAsync(750);
+
+      expect(serving.markServing).toHaveBeenCalledTimes(3);
+      expect(serving.markServing).toHaveBeenCalledWith("sess-1");
+      expect(serving.clearServing).not.toHaveBeenCalled();
       expect(mockReview).not.toHaveBeenCalled();
     });
 
