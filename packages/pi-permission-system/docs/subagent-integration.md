@@ -56,6 +56,13 @@ The variable identifies the session the child forwards its asks to, and naming a
 Earlier per-extension variables are grandfathered for compatibility: the markers `PI_IS_SUBAGENT`, `PI_SUBAGENT_CHILD`, `PI_SUBAGENT_NAME` and their siblings still register as child hints, and `PI_AGENT_ROUTER_PARENT_SESSION_ID` is still honored as a parent-session source, checked ahead of the convention name.
 New implementations use `PI_SUBAGENT_PARENT_SESSION` only.
 
+Setting the variable in the implementation's **own** root process, so that children inherit it rather than receiving it per spawn, is supported.
+A session with a UI serves its forwarded-permission inbox whatever its environment names, so a root carrying the marker keeps answering its children's asks.
+
+A value naming the reading session itself is ignored as a forwarding target, since a request filed into one's own inbox can never be answered.
+That matters when an implementation rewrites an inherited marker with the current session's id: doing so in a child destroys the only record of its real parent, and the child's asks then fail closed with an unresolved-target error.
+Guard such a rewrite on the process being a root — for example, skip it when a child marker such as `PI_SUBAGENT_CHILD` is present.
+
 ### What an implementation does not owe
 
 None of the following is an implementation's responsibility, on either process shape:
