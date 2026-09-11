@@ -9,6 +9,8 @@ import type { TSNode } from "#src/access-intent/bash/parser";
  * `variable_name`, a quoted string's inner content) can be expressed directly.
  * A fake node is a well-formed one: it reports no parse error and no preceding
  * sibling, because the helpers this builds for read neither.
+ * Its span is `0..text.length`, the range a real parse reports for a node that
+ * begins at the source's own first character.
  *
  * Prefer a real parse (`getParser()`) when the test's subject is the AST shape
  * tree-sitter actually produces; use this when the subject is the helper's
@@ -23,6 +25,7 @@ export function makeTSNode(
     type,
     text,
     startIndex: 0,
+    endIndex: text.length,
     childCount: children.length,
     isNamed: true,
     hasError: false,

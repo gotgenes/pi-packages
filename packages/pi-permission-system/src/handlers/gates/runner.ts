@@ -109,6 +109,12 @@ export class GateRunner {
       ...renderReviewLogFacts(descriptor.payload),
       agentName,
       requestId,
+      // The resolved spelling, when a rule matched it rather than the command as
+      // typed. The entry's own `command` is the text the operator wrote, so
+      // without this the recorded rule and command read as a mismatch.
+      ...(check.matchedAlias === undefined
+        ? {}
+        : { matchedAlias: check.matchedAlias }),
     };
 
     // Each resolution below states its own decider. The provenance is built

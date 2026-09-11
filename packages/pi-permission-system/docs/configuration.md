@@ -349,6 +349,17 @@ Command patterns use wildcards matched against each top-level command in the cha
 
 **Last matching rule wins** within a single command — put broad catch-alls first, specific overrides after.
 
+A path argument is matched in its resolved spellings as well as the one the command used.
+Each top-level command is evaluated against the text as typed **and** against the same text with every path argument replaced by its absolute form — and by its canonical form where a symlink resolves it elsewhere.
+So `"rm /tmp/agent-builds/*": "allow"` also covers `cd /tmp && rm agent-builds/x`, and a rule written in either spelling of a symlinked directory matches.
+**Last matching rule wins across that union**, exactly as it does within one text: an `allow` written after a broader `ask` decides, and one written before it does not.
+The prompt and the review log name the resolved spelling whenever it, rather than the text as typed, was what the rule matched.
+
+Three limits are worth knowing.
+A command whose path arguments resolve to spellings that disagree — one under a symlink, one not — matches a rule naming only one of them when that rule's own path agrees with every argument it names; a per-argument cross product is deliberately not built, because it would make the number of pattern lookups a function of how many arguments the command has.
+A session approval records the command the prompt showed, so approving one spelling does not cover the other and the next call in the other spelling asks once more.
+A quoted relative argument is substituted whole, delimiters included, so `rm "agent-builds/x"` matches the same rule as its unquoted form; a quoted *absolute* argument is left as typed, because its spelling already names the path and the string surface has never matched a quoted spelling.
+
 A bash invocation may be a chain of commands joined by `&&`, `||`, `;`, `|`, `&`, or newlines.
 Each top-level command is evaluated independently against the patterns, and the most restrictive result wins (`deny` > `ask` > `allow`).
 So `cd /repo && npm install x` evaluates both `cd /repo` and `npm install x`; if `npm *` is denied, the whole invocation is denied even when `cd *` is allowed.

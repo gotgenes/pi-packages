@@ -334,6 +334,24 @@ export class PermissionManager implements ScopedPermissionManager {
       );
     }
 
+    if (intent.kind === "alias-values") {
+      const lookupValues =
+        intent.values.length > 0 ? [...intent.values] : ["*"];
+      return buildCheckResult(
+        intent.surface,
+        lookupValues,
+        intent.resultExtras,
+        intent.surface,
+        intent.surface,
+        fullRules,
+        this.flavor,
+        // The texts name one invocation, so the last rule matching any of
+        // them decides — `evaluateFirst` would stop at the first text with a
+        // rule, which is exactly what the alias exists to look past.
+        true,
+      );
+    }
+
     // kind === "tool"
     const toolName = intent.surface.trim();
     const { surface, values, resultExtras } = normalizeInput(
@@ -368,10 +386,16 @@ function buildCheckResult(
   toolName: string,
   fullRules: Ruleset,
   flavor: PathFlavor,
+  /**
+   * Force alias matching for a surface the path check does not claim, because
+   * the intent's values name one invocation in several spellings.
+   */
+  aliasMatching = false,
 ): PermissionCheckResult {
-  const { rule, value } = PATH_SURFACES.has(surface)
-    ? evaluateAnyValue(surface, values, fullRules, flavor)
-    : evaluateFirst(surface, values, fullRules, flavor);
+  const { rule, value } =
+    aliasMatching || PATH_SURFACES.has(surface)
+      ? evaluateAnyValue(surface, values, fullRules, flavor)
+      : evaluateFirst(surface, values, fullRules, flavor);
 
   // For MCP, replace the normalizer's fallback target with the actual
   // matched candidate value so PermissionCheckResult.target is accurate.
@@ -391,6 +415,9 @@ function buildCheckResult(
     source: deriveSource(rule, normalizedToolName),
     origin: rule.origin,
     ...extras,
+    // Only an alias has a spelling to report: when the first value decided,
+    // the result keeps the shape it had before this intent existed.
+    ...(aliasMatching && value !== values[0] ? { matchedAlias: value } : {}),
   };
 }
 

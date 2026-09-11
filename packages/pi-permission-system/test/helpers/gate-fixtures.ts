@@ -214,7 +214,10 @@ export function makePathDispatchResolver(
       }
       return defaultResult;
     }
-    const values = intent.path.matchValues();
+    const values =
+      intent.kind === "alias-values"
+        ? intent.values
+        : intent.path.matchValues();
     for (const value of values) {
       if (value in byPath) return byPath[value];
     }

@@ -50,8 +50,14 @@ export interface AccessPathAccessIntent {
   agentName?: string;
 }
 
-/** What a gate emits — a raw tool input or an `AccessPath`. */
-export type AccessIntent = ToolAccessIntent | AccessPathAccessIntent;
+/**
+ * What a gate emits — a raw tool input, an `AccessPath`, or the spellings of
+ * one invocation on a text-matching surface.
+ */
+export type AccessIntent =
+  | ToolAccessIntent
+  | AccessPathAccessIntent
+  | AliasValuesAccessIntent;
 
 /**
  * What the manager consumes — the `access-path` variant has already been
@@ -62,4 +68,31 @@ export type AccessIntent = ToolAccessIntent | AccessPathAccessIntent;
  * (`docs/decisions/0002-path-values-string-boundary.md`), guarded by a
  * `no-restricted-imports` lint rule on `permission-manager.ts`.
  */
-export type ResolvedAccessIntent = ToolAccessIntent | PathValuesAccessIntent;
+export type ResolvedAccessIntent =
+  | ToolAccessIntent
+  | PathValuesAccessIntent
+  | AliasValuesAccessIntent;
+
+/**
+ * Several spellings of one invocation, for a surface that matches text.
+ *
+ * The `bash` surface matches a command string, and the same command can name
+ * the same file in its absolute spelling. The gate supplies the unit's texts
+ * here — the text as typed first — so the manager evaluates them as *aliases*:
+ * last-match-wins across the union, rather than stopping at the first text that
+ * matches a rule. That is the treatment `AccessPath.matchValues()` already
+ * gives the lexical and canonical forms of a path (#418).
+ *
+ * `resultExtras` is the emitter's, because it knows the surface's own fields
+ * (`command` for bash) and the manager must not learn them: it is copied onto
+ * the result exactly as `NormalizedInput.resultExtras` is.
+ */
+export interface AliasValuesAccessIntent {
+  kind: "alias-values";
+  /** The surface whose rules the texts are matched against. */
+  surface: string;
+  /** The invocation's spellings, the one as typed first. */
+  values: readonly string[];
+  resultExtras: Record<string, unknown>;
+  agentName?: string;
+}

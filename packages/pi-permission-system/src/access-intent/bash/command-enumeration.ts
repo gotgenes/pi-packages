@@ -1,6 +1,11 @@
 import type { BashCommandContext, FloorExemption } from "#src/types";
 import { EXECUTION_HOST_TYPES, forEachExecutionIn } from "./nested-execution";
-import { parseUnresolvedWithin, type TSNode } from "./parser";
+import {
+  parseUnresolvedWithin,
+  type SourceSpan,
+  spanOf,
+  type TSNode,
+} from "./parser";
 import { redirectMayWriteFile } from "./redirect-analysis";
 import {
   type CommandWord,
@@ -206,16 +211,51 @@ const STATEMENT_TYPES = new Set([
  * wrapper unit (`bash -c`/`eval`, or an indirection wrapper such as `sudo`) is
  * tagged with a {@link WrapperKind} so its decision is later floored to `ask`.
  */
+/**
+ * One command unit paired with the source span it was read from.
+ *
+ * The pairing matters because the two are not interchangeable: `text` is a
+ * slice of `span`, with any leading `variable_assignment` prefix stripped.
+ */
+interface EmittedUnit {
+  readonly unit: BashCommand;
+  readonly span: SourceSpan;
+}
+
+/**
+ * Records one unit and its span in a single call, so the two slices an
+ * enumeration produces cannot drift apart.
+ */
+type EmitUnit = (emitted: EmittedUnit) => void;
+
+/** The two parallel slices one enumeration pass produces. */
+export interface BashCommandUnits {
+  /** The command-pattern units, in source order. */
+  readonly commands: BashCommand[];
+  /** One source span per unit, at the same index. */
+  readonly spans: SourceSpan[];
+}
+
 export function collectCommands(node: TSNode): BashCommand[] {
-  const out: BashCommand[] = [];
-  collectCommandsInto(node, TOP_LEVEL_SCOPE, out);
-  return out;
+  return collectCommandUnits(node).commands;
+}
+
+/** Enumerate `node`'s command units together with their source spans. */
+export function collectCommandUnits(node: TSNode): BashCommandUnits {
+  const commands: BashCommand[] = [];
+  const spans: SourceSpan[] = [];
+  const emit: EmitUnit = ({ unit, span }) => {
+    commands.push(unit);
+    spans.push(span);
+  };
+  collectCommandsInto(node, TOP_LEVEL_SCOPE, emit);
+  return { commands, spans };
 }
 
 function collectCommandsInto(
   node: TSNode,
   inherited: UnitScope,
-  out: BashCommand[],
+  emit: EmitUnit,
 ): void {
   // Anonymous tokens (operators `&&`/`;`/`|`, delimiters `$(`/`)`/`` ` ``/`(`)
   // carry no command.
@@ -225,44 +265,44 @@ function collectCommandsInto(
   const scope = unresolvedScope(node, inherited);
 
   if (node.type === "command") {
-    out.push(makeCommandUnit(node, scope));
+    emit(makeCommandUnit(node, scope));
     // A command's text already contains any substitution; descend its subtree
     // to ALSO emit the inner commands of command/process substitutions.
-    collectHostedCommands(node, out);
+    collectHostedCommands(node, emit);
     return;
   }
 
   if (node.type === "redirected_statement") {
-    descendCommandChildren(node, redirectedScope(node, scope), out);
+    descendCommandChildren(node, redirectedScope(node, scope), emit);
     return;
   }
 
   if (EXECUTION_HOST_TYPES.has(node.type)) {
     // Not a command itself, but its subtree can host one that really runs
     // (`> $(rm x)`, `< <(rm c)`). Emit only what it hosts (#741).
-    collectHostedCommands(node, out);
+    collectHostedCommands(node, emit);
     return;
   }
 
   if (node.type === "subshell") {
-    out.push(makeUnit(node.text, scope)); // never-weaker whole emit
-    descendCommandChildren(node, { ...scope, context: "subshell" }, out);
+    emitWhole(node, scope, emit);
+    descendCommandChildren(node, { ...scope, context: "subshell" }, emit);
     return;
   }
 
   if (COMMAND_ENUM_DESCEND.has(node.type)) {
-    descendCommandChildren(node, scope, out);
+    descendCommandChildren(node, scope, emit);
     return;
   }
 
   if (COMPOUND_STATEMENT_TYPES.has(node.type)) {
-    out.push(makeUnit(node.text, scope)); // never-weaker whole emit
-    descendStatementChildren(node, scope, out);
+    emitWhole(node, scope, emit);
+    descendStatementChildren(node, scope, emit);
     return;
   }
 
   if (STATEMENT_GROUP_TYPES.has(node.type)) {
-    descendStatementChildren(node, scope, out);
+    descendStatementChildren(node, scope, emit);
     return;
   }
 
@@ -271,7 +311,7 @@ function collectCommandsInto(
     // inside an ERROR subtree are not evidence that anything runs: descending
     // one turns backtick-quoted prose in an unterminated heredoc into command
     // units. Emit the unparsed blob whole and stop (#742).
-    out.push(makeUnit(node.text, scope));
+    emitWhole(node, scope, emit);
     return;
   }
 
@@ -280,8 +320,8 @@ function collectCommandsInto(
   // A declaration, assignment, test, or `unset` still hosts executions that
   // really run (`local x=$(rm y)`, `[[ $(rm x) ]]`), so those are enumerated
   // in addition to the statement (#742).
-  out.push(makeUnit(node.text, scope));
-  collectHostedCommands(node, out);
+  emitWhole(node, scope, emit);
+  collectHostedCommands(node, emit);
 }
 
 /**
@@ -334,20 +374,31 @@ function makeUnit(
 }
 
 /**
+ * Emit one whole-node unit — a subshell, compound statement, ERROR blob, or
+ * other statement — whose text is the node's own text.
+ */
+function emitWhole(node: TSNode, scope: UnitScope, emit: EmitUnit): void {
+  emit({ unit: makeUnit(node.text, scope), span: spanOf(node) });
+}
+
+/**
  * Build the unit for a `command` node, reading its words once to answer all
  * three wrapper questions: whether the unit is floored, what it actually runs,
  * and whether the floor still has a reason to hold.
  */
-function makeCommandUnit(node: TSNode, scope: UnitScope): BashCommand {
-  const text = commandUnitText(node);
+function makeCommandUnit(node: TSNode, scope: UnitScope): EmittedUnit {
+  const { text, span } = commandUnitText(node);
   const words = readCommandWords(node);
-  return makeUnit(text, scope, {
-    wrapperKind: classifyWrapperWords(words),
-    executedUnit: executedUnitOf(text, words) ?? undefined,
-    floorExemption: isTransparentWrapper(words, scope)
-      ? "core-reader"
-      : undefined,
-  });
+  return {
+    unit: makeUnit(text, scope, {
+      wrapperKind: classifyWrapperWords(words),
+      executedUnit: executedUnitOf(text, words) ?? undefined,
+      floorExemption: isTransparentWrapper(words, scope)
+        ? "core-reader"
+        : undefined,
+    }),
+    span,
+  };
 }
 
 /**
@@ -403,25 +454,30 @@ function readCommandWords(node: TSNode): CommandWord[] {
  * (the `command_name`) onward, sliced verbatim to preserve spacing. A pure
  * assignment (`FOO=bar`, no `command_name`) runs no command and is returned
  * unchanged.
+ * Returns the span alongside the text: the text is what a rule is matched
+ * against, and the span is what locates the unit's path tokens in the source.
  */
-function commandUnitText(node: TSNode): string {
+function commandUnitText(node: TSNode): { text: string; span: SourceSpan } {
   for (let i = 0; i < node.childCount; i++) {
     const child = node.child(i);
     if (child?.isNamed && child.type !== "variable_assignment") {
-      return node.text.slice(child.startIndex - node.startIndex);
+      return {
+        text: node.text.slice(child.startIndex - node.startIndex),
+        span: { start: child.startIndex, end: node.endIndex },
+      };
     }
   }
-  return node.text;
+  return { text: node.text, span: spanOf(node) };
 }
 
 function descendCommandChildren(
   node: TSNode,
   scope: UnitScope,
-  out: BashCommand[],
+  emit: EmitUnit,
 ): void {
   for (let i = 0; i < node.childCount; i++) {
     const child = node.child(i);
-    if (child) collectCommandsInto(child, scope, out);
+    if (child) collectCommandsInto(child, scope, emit);
   }
 }
 
@@ -444,13 +500,14 @@ function descendCommandChildren(
 function descendStatementChildren(
   node: TSNode,
   scope: UnitScope,
-  out: BashCommand[],
+  emit: EmitUnit,
 ): void {
   for (let i = 0; i < node.childCount; i++) {
     const child = node.child(i);
     if (!child?.isNamed) continue;
-    if (STATEMENT_TYPES.has(child.type)) collectCommandsInto(child, scope, out);
-    else collectHostedCommands(child, out);
+    if (STATEMENT_TYPES.has(child.type))
+      collectCommandsInto(child, scope, emit);
+    else collectHostedCommands(child, emit);
   }
 }
 
@@ -465,7 +522,7 @@ function descendStatementChildren(
  * `node` may be a context outright or merely host one, so the traversal is the
  * root-inclusive `forEachExecutionIn`.
  */
-function collectHostedCommands(node: TSNode, out: BashCommand[]): void {
+function collectHostedCommands(node: TSNode, emit: EmitUnit): void {
   forEachExecutionIn(node, (contextNode, context) => {
     // A nested execution starts fresh: an enclosing statement's redirect is
     // that statement's, not the substitution's, exactly as #807 attributes a
@@ -476,7 +533,7 @@ function collectHostedCommands(node: TSNode, out: BashCommand[]): void {
     descendCommandChildren(
       contextNode,
       { context, writesViaRedirect: false, parseUnresolved: false },
-      out,
+      emit,
     );
   });
 }

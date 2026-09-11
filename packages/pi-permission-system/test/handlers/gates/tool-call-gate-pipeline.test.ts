@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import type { BashExternalPath } from "#src/access-intent/bash/bash-path-resolver";
+import type { BashCommand } from "#src/access-intent/bash/command-enumeration";
 import { isGateDescriptor } from "#src/handlers/gates/descriptor";
 import { ToolCallGatePipeline } from "#src/handlers/gates/tool-call-gate-pipeline";
 import { PathNormalizer } from "#src/path/path-normalizer";
@@ -37,9 +37,10 @@ vi.mock("node:fs", () => ({
 function makeMockBashProgram(command = "echo hello") {
   return {
     commandText: vi.fn(() => command),
-    commands: vi.fn<() => []>(() => []),
+    commands: vi.fn<() => BashCommand[]>(() => []),
     pathRuleCandidates: vi.fn<() => []>(() => []),
     externalAccesses: vi.fn<() => BashExternalPath[]>(() => []),
+    commandAliasTexts: vi.fn<() => string[][]>(() => []),
   };
 }
 
@@ -223,6 +224,29 @@ describe("ToolCallGatePipeline", () => {
       expect(result).toEqual({ action: "allow" });
     });
 
+    it("offers the parsed program's alias texts to the bash check", async () => {
+      const program = makeMockBashProgram("rm agent-builds/x");
+      program.commands.mockReturnValue([{ text: "rm agent-builds/x" }]);
+      program.commandAliasTexts.mockReturnValue([["rm /tmp/agent-builds/x"]]);
+      mockBashProgramParse.mockResolvedValue(program);
+      const resolver = makeResolver(makeCheckResult());
+      const { runner } = makeGateRunner();
+      const pipeline = new ToolCallGatePipeline(resolver, makeGateInputs());
+
+      await pipeline.evaluate(
+        makeTcc({ toolName: "bash", input: { command: "rm agent-builds/x" } }),
+        runner,
+      );
+
+      expect(resolver.resolve).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "alias-values",
+          surface: "bash",
+          values: ["rm agent-builds/x", "rm /tmp/agent-builds/x"],
+        }),
+      );
+    });
+
     it("parses BashProgram exactly once per evaluate for bash tools with a command", async () => {
       const resolver = makeResolver(makeCheckResult());
       const inputs = makeGateInputs();
@@ -292,6 +316,7 @@ describe("ToolCallGatePipeline", () => {
         commands: vi.fn(() => [{ text }]),
         pathRuleCandidates: vi.fn<() => []>(() => []),
         externalAccesses: vi.fn<() => BashExternalPath[]>(() => []),
+        commandAliasTexts: vi.fn<() => []>(() => []),
       };
     }
 

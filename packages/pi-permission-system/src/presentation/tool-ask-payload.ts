@@ -44,7 +44,7 @@ export function buildToolAskPayload(facts: ToolAskFacts): PromptPayload {
       executedUnit: check.executedUnit ?? null,
     },
     evidence: bash
-      ? fullCommandEvidence(facts)
+      ? [...fullCommandEvidence(facts), ...aliasEvidence(check)]
       : inputPreviewEvidence(facts, mcp),
     annotations: [],
   };
@@ -81,6 +81,20 @@ function fullCommandEvidence(facts: ToolAskFacts): PromptEvidence[] {
     return [];
   }
   return [{ label: "full command", text: fullCommand, detail: null }];
+}
+/**
+ * The resolved spelling whose rule decided, when one did.
+ *
+ * An ask raised by a rule that matched a *resolved* spelling cannot be read off
+ * the command alone: the rule names the path in one spelling and the command
+ * uses another, so a reader who sees only the command sees a rule that does not
+ * appear to cover it. Shown only when the alias was what decided, so a prompt
+ * never displays a form no rule consulted.
+ */
+function aliasEvidence(check: PermissionCheckResult): PromptEvidence[] {
+  const alias = getNonEmptyString(check.matchedAlias);
+  if (alias === null || alias === check.command) return [];
+  return [{ label: "resolved as", text: alias, detail: null }];
 }
 
 /**

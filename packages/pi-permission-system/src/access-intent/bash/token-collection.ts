@@ -7,7 +7,7 @@ import {
   resolveNodeText,
   SKIP_SUBTREE_TYPES,
 } from "./node-text";
-import type { TSNode } from "./parser";
+import { type SourceSpan, spanOf, type TSNode } from "./parser";
 import { redirectEffectForDestination } from "./redirect-analysis";
 
 /**
@@ -20,6 +20,16 @@ import { redirectEffectForDestination } from "./redirect-analysis";
 export interface PathToken {
   readonly token: string;
   readonly effect: TokenEffect;
+  /**
+   * The source span of the argument node this token was read from, for the one
+   * caller that rewrites the command text with resolved paths.
+   *
+   * Absent when the token is derived from something other than a node's own
+   * text — an embedded `--opt=value`, a `find` directive path — because that
+   * node's span covers text the token does not stand for, so rewriting it would
+   * drop the flag. A token without a span takes no part in the rewrite.
+   */
+  readonly span?: SourceSpan;
 }
 
 // ── Public surface ─────────────────────────────────────────────────────────
@@ -117,7 +127,12 @@ export function collectRedirectTokens(node: TSNode): PathToken[] {
     if (!child) continue;
     if (ARG_NODE_TYPES.has(child.type)) {
       const effect = redirectEffectForDestination(node, child);
-      if (effect) tokens.push({ token: resolveNodeText(child), effect });
+      if (effect)
+        tokens.push({
+          token: resolveNodeText(child),
+          effect,
+          span: spanOf(child),
+        });
     }
     tokens.push(...collectHostedExecutionTokens(child));
   }
@@ -201,7 +216,11 @@ function collectStatementOperandTokens(
       tokens.push(...collectPathCandidateTokens(child));
       continue;
     }
-    tokens.push({ token: resolveNodeText(child), effect: UNPROVEN_EFFECT });
+    tokens.push({
+      token: resolveNodeText(child),
+      effect: UNPROVEN_EFFECT,
+      span: spanOf(child),
+    });
     tokens.push(...collectHostedExecutionTokens(child));
   }
   return tokens;
@@ -632,7 +651,12 @@ function collectPatternCommandTokens(
         tokens.push(...collectPathCandidateTokens(child));
         continue;
       }
-      const discharge = dischargePendingConsumption(consumption, text, effect);
+      const discharge = dischargePendingConsumption(
+        consumption,
+        text,
+        effect,
+        spanOf(child),
+      );
       if (discharge.token) tokens.push(discharge.token);
       if (discharge.consumed) continue;
     }
@@ -695,7 +719,7 @@ function collectPatternCommandTokens(
     if (!hasExplicitScript && positionalsSeen < patternPositionals) {
       positionalsSeen++; // Skip: this is an inline pattern/script.
     } else {
-      tokens.push({ token: text, effect });
+      tokens.push({ token: text, effect, span: spanOf(child) });
     }
     // A quoted flag never reaches the flag branch above, so its embedded value
     // is split here instead.
@@ -736,10 +760,11 @@ function dischargePendingConsumption(
   role: PatternFlagRole,
   text: string,
   effect: TokenEffect,
+  span: SourceSpan,
 ): ConsumptionDischarge {
   switch (role) {
     case "script-file":
-      return { consumed: true, token: { token: text, effect } };
+      return { consumed: true, token: { token: text, effect, span } };
     case "script":
     case "value":
       return { consumed: true };
@@ -781,7 +806,11 @@ function collectGenericCommandTokens(
 
     // Argument nodes: resolve their text and collect.
     if (ARG_NODE_TYPES.has(child.type)) {
-      tokens.push({ token: resolveNodeText(child), effect });
+      tokens.push({
+        token: resolveNodeText(child),
+        effect,
+        span: spanOf(child),
+      });
       continue;
     }
 

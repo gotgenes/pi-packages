@@ -320,6 +320,14 @@ export function makeHandler(overrides?: {
             sessionRules,
           );
         }
+        if (intent.kind === "alias-values") {
+          return surfaceCheck(
+            intent.surface,
+            { command: intent.values[0] ?? "*" },
+            intent.agentName,
+            sessionRules,
+          );
+        }
         return surfaceCheck(
           intent.surface,
           intent.input,

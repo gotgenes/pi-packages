@@ -91,6 +91,9 @@ Neither rule sees a `vi.mock()` specifier, which is a call argument rather than 
   `docs/configuration.md` publishes the roster between `<!-- BEGIN PURE_READER_CORE -->` markers and a parity test in `test/access-intent/bash/command-effects.test.ts` fails on drift — edit both or neither.
   Doc guidance to repeat: the useful *grants* are `*_read: allow` and the bare key; `*_write` earns its keep as a *restriction* (`path_write: {"*": "deny"}` is a read-only-agent posture), and a `*_write: allow` alone does not silence an `edit`, which also reads.
 - Wildcard matching must be explicit and tested — silent over-matching is a permission bypass.
+- A `bash` rule is matched against the command as typed **and** against the same command with its path arguments resolved (`BashProgram.commandAliasTexts()`), last-match-wins across the union — the `bash` surface's counterpart of `AccessPath.matchValues()`, so `rm /tmp/x/*: allow` reaches `cd /tmp && rm x/f` without the operator writing a second rule.
+  The alias texts are built in `program.ts`, where the source text, the unit spans, and the resolver's `pathRewrites()` meet; a gate must not re-derive them, and the resolver records a rewrite only where an absolute form differs from the token as written, which is what keeps a non-literal base and a glob token on their typed text.
+  A decision that an alias decided carries `matchedAlias`, which the prompt shows as `resolved as` evidence and the review log records as a fact — the command as typed and the rule that matched it otherwise read as a mismatch.
 - `*` already crosses directory boundaries; `**` is not a distinct globstar and compiles identically.
   Write `~/dev/*`, never `~/dev/**` — in config examples, ADRs, schema descriptions, and tests alike (Refs #806).
 - Prefer config patterns over new runtime mechanisms.

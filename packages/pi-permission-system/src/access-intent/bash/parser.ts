@@ -13,8 +13,18 @@ import { memoizeAsyncWithRetry } from "./async-cache";
 export interface TSNode {
   readonly type: string;
   readonly text: string;
-  /** Absolute byte offset of this node's start in the parsed source. */
+  /**
+   * Start of this node in the parsed source, as a UTF-16 code-unit index into
+   * the source *string* — not a byte offset, and not a row/column.
+   *
+   * The distinction matters to any caller that slices the source: measured
+   * against the installed `web-tree-sitter`, an emoji costs two code units
+   * (`"cat 😀 /tmp/x"` puts the emoji at 4..6 and the next word at 7), where a
+   * byte offset would have put them at 4..8 and 9. Pinned in `parser.test.ts`.
+   */
   readonly startIndex: number;
+  /** End of this node, in the same index space as {@link startIndex}. */
+  readonly endIndex: number;
   readonly childCount: number;
   /** False for anonymous tokens (operators, delimiters); true for named nodes. */
   readonly isNamed: boolean;
@@ -23,6 +33,20 @@ export interface TSNode {
   /** The node immediately before this one under the same parent, named or not. */
   readonly previousSibling: TSNode | null;
   child(index: number): TSNode | null;
+}
+
+/**
+ * A half-open range of the parsed source, in {@link TSNode.startIndex}'s
+ * UTF-16 code-unit index space.
+ */
+export interface SourceSpan {
+  readonly start: number;
+  readonly end: number;
+}
+
+/** The source span of `node`, for a caller that slices the command text. */
+export function spanOf(node: TSNode): SourceSpan {
+  return { start: node.startIndex, end: node.endIndex };
 }
 
 /**

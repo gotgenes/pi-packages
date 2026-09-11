@@ -8,7 +8,7 @@ import { normalizePathPolicyLiteral } from "#src/access-intent/path-normalizatio
 import type { PathNormalizer } from "#src/path/path-normalizer";
 import { isSafeSystemPath } from "#src/path/safe-system-paths";
 import { ARG_NODE_TYPES, SKIP_SUBTREE_TYPES } from "./node-text";
-import type { TSNode } from "./parser";
+import type { SourceSpan, TSNode } from "./parser";
 import {
   classifyBareTokenCandidate,
   classifyTokenAsPathCandidate,
@@ -47,6 +47,8 @@ interface PathCandidate {
   readonly token: string;
   readonly base: EffectiveBase;
   readonly effect: TokenEffect;
+  /** The argument node's span, when the token was read from one. */
+  readonly span?: SourceSpan;
 }
 
 /** A promoted bare token and its resolved path, before an effect is attached. */
@@ -64,12 +66,41 @@ export interface BashPathRuleCandidate {
   readonly path: AccessPath;
   /** The attributed effect that routes the token to a directional surface. */
   readonly effect: TokenEffect;
+  /**
+   * The argument node's span in the source command, for the one caller that
+   * rewrites the command text with resolved paths.
+   *
+   * Absent for a token the collectors derived from something other than a
+   * node's own text; such a token takes no part in the rewrite.
+   */
 }
 
 /** A path resolving outside the working directory, with its attributed effect. */
 export interface BashExternalPath {
   readonly path: AccessPath;
   readonly effect: TokenEffect;
+}
+
+/**
+ * One path argument to substitute in the command text, and what to put there.
+ *
+ * The rewrite exists so a `bash` rule written with a path in its absolute
+ * spelling also matches the command that names the same path relatively. The
+ * span is the argument node's own range, quotes included, because replacing a
+ * resolved token *inside* a quoted argument would leave the delimiters in the
+ * rewritten command where no path pattern matches them.
+ */
+export interface BashPathRewrite {
+  readonly span: SourceSpan;
+  /**
+   * The forms to substitute, at most one per alias text: the path's absolute
+   * lexical form first, then its canonical form when a symlink resolves it
+   * elsewhere.
+   *
+   * A rewrite with one form leaves the second alias text with its own first
+   * form, so the alias count is the longest list rather than a cross product.
+   */
+  readonly replacements: readonly string[];
 }
 
 /**
@@ -81,6 +112,14 @@ export interface ResolvedBashPaths {
   readonly externalAccesses: readonly BashExternalPath[];
   /** Every path-rule token paired with its cd-aware policy values (#393). */
   readonly ruleCandidates: readonly BashPathRuleCandidate[];
+  /**
+   * Path arguments to substitute with their absolute form, for the `bash`
+   * surface's second lookup value.
+   *
+   * One entry per rule candidate that carries a span and an absolute form, in
+   * source order.
+   */
+  readonly pathRewrites: readonly BashPathRewrite[];
 }
 
 // ── Walk-time constants ──────────────────────────────────────────────────────
@@ -134,11 +173,14 @@ export class BashPathResolver {
         ? CWD_BASE
         : this.deriveBaseFromCdTarget(CWD_BASE, this.workdir);
     const candidates = this.collectPathCandidates(rootNode, initialBase);
+    const { ruleCandidates, pathRewrites } =
+      this.projectRuleCandidates(candidates);
     return {
       externalAccesses: this.withWorkdirExternal(
         this.projectExternalPaths(candidates),
       ),
-      ruleCandidates: this.projectRuleCandidates(candidates),
+      ruleCandidates,
+      pathRewrites,
     };
   }
 
@@ -534,13 +576,15 @@ export class BashPathResolver {
    * A token after a non-literal `cd` keeps only its literal value so no
    * spurious absolute rule can match (#393).
    */
-  private projectRuleCandidates(
-    candidates: readonly PathCandidate[],
-  ): BashPathRuleCandidate[] {
+  private projectRuleCandidates(candidates: readonly PathCandidate[]): {
+    ruleCandidates: BashPathRuleCandidate[];
+    pathRewrites: BashPathRewrite[];
+  } {
     const seen = new Map<string, number>();
     const result: BashPathRuleCandidate[] = [];
+    const rewrites: BashPathRewrite[] = [];
 
-    for (const { token, base, effect } of candidates) {
+    for (const { token, base, effect, span } of candidates) {
       const shaped = classifyTokenAsRuleCandidate(
         token,
         this.normalizer.flavor,
@@ -553,6 +597,23 @@ export class BashPathResolver {
 
       const matchValues = probed.path.matchValues();
       if (matchValues.length === 0) continue;
+
+      // One rewrite per *occurrence*, not per resolved path: the dedup below
+      // folds two tokens naming the same path into one candidate, but both
+      // spans still appear in the command text and both must be substituted.
+      //
+      // Recorded only when a form actually differs from the token as written.
+      // A token already spelled absolutely needs no rewrite, and leaving it out
+      // keeps the list to the arguments whose text has to change. A token whose
+      // base was unknown keeps its literal value, which is not absolute, so it
+      // is excluded by the same test.
+      const replacements = [probed.path.value(), probed.path.resolvedAlias()]
+        .filter((value): value is string => value !== undefined)
+        .filter((value) => this.normalizer.isAbsolute(value));
+      const changesText = replacements.some((value) => value !== token);
+      if (span !== undefined && changesText) {
+        rewrites.push({ span, replacements });
+      }
 
       const key = matchValues.join("\0");
       const index = seen.get(key);
@@ -571,7 +632,7 @@ export class BashPathResolver {
       result.push({ ...probed, effect });
     }
 
-    return result;
+    return { ruleCandidates: result, pathRewrites: rewrites };
   }
 
   /**
@@ -659,7 +720,8 @@ function tagTokens(
   base: EffectiveBase,
   out: PathCandidate[],
 ): void {
-  for (const { token, effect } of tokens) out.push({ token, base, effect });
+  for (const { token, effect, span } of tokens)
+    out.push({ token, base, effect, span });
 }
 
 /**

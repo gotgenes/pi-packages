@@ -2091,3 +2091,154 @@ describe("BashProgram", () => {
     });
   });
 });
+
+/**
+ * The alias text is the bash surface's second lookup value: the same command
+ * with its path arguments in an absolute spelling, so a rule written that way
+ * matches a command written relatively.
+ *
+ * A resolver rewrite exists only where an absolute form differs from the token
+ * as written, which is what keeps a non-literal base and a token already spelled
+ * absolutely on their typed text.
+ */
+describe("BashProgram commandAliasTexts", () => {
+  const cwd = "/projects/my-app";
+  const normalizer = new PathNormalizer(
+    pathFlavorForPlatform(process.platform),
+    cwd,
+  );
+
+  beforeEach(() => {
+    realpathSync.mockReset();
+    realpathSync.mockImplementation((p: string) => p);
+  });
+
+  describe("relative arguments", () => {
+    it("aliases a relative operand to the directory a literal cd establishes", async () => {
+      const program = await BashProgram.parse(
+        "cd /tmp && rm agent-builds/x",
+        normalizer,
+      );
+      expect(program.commands().map(({ text }) => text)).toEqual([
+        "cd /tmp",
+        "rm agent-builds/x",
+      ]);
+      expect(program.commandAliasTexts()).toEqual([
+        [],
+        ["rm /tmp/agent-builds/x"],
+      ]);
+    });
+
+    it("leaves the flags and the env prefix outside the substituted path", async () => {
+      const program = await BashProgram.parse(
+        "cd /tmp && AWS_PROFILE=prod rm -rf agent-builds/x",
+        normalizer,
+      );
+      expect(program.commandAliasTexts()).toEqual([
+        [],
+        ["rm -rf /tmp/agent-builds/x"],
+      ]);
+    });
+
+    it("rewrites every relative argument of one unit", async () => {
+      const program = await BashProgram.parse(
+        "cd /tmp && cp -r agent-builds/a agent-builds/b",
+        normalizer,
+      );
+      expect(program.commandAliasTexts()).toEqual([
+        [],
+        ["cp -r /tmp/agent-builds/a /tmp/agent-builds/b"],
+      ]);
+    });
+
+    it("drops the delimiters of a quoted relative operand", async () => {
+      const program = await BashProgram.parse(
+        "cd /tmp && rm 'agent-builds/x'",
+        normalizer,
+      );
+      expect(program.commandAliasTexts()).toEqual([
+        [],
+        ["rm /tmp/agent-builds/x"],
+      ]);
+    });
+
+    it("adds the canonical form as a second alias when a symlink resolves it", async () => {
+      realpathSync.mockImplementation((p: string) => {
+        if (p === "/tmp") return "/private/tmp";
+        if (p.startsWith("/tmp/")) return `/private/tmp${p.slice(4)}`;
+        return p;
+      });
+      const program = await BashProgram.parse(
+        "cd /tmp && rm agent-builds/x",
+        normalizer,
+      );
+      expect(program.commandAliasTexts()).toEqual([
+        ["cd /private/tmp"],
+        ["rm /tmp/agent-builds/x", "rm /private/tmp/agent-builds/x"],
+      ]);
+    });
+
+    it("reuses a rewrite's last form when it has fewer than the alias count", async () => {
+      // `../var/b` has one form and `agent-builds/a` has two, so the second
+      // alias text pairs the canonical form with the only form available.
+      realpathSync.mockImplementation((p: string) => {
+        if (p === "/tmp") return "/private/tmp";
+        if (p.startsWith("/tmp/")) return `/private/tmp${p.slice(4)}`;
+        return p;
+      });
+      const program = await BashProgram.parse(
+        "cd /tmp && cp agent-builds/a ../var/b",
+        normalizer,
+      );
+      expect(program.commandAliasTexts()).toEqual([
+        ["cd /private/tmp"],
+        [
+          "cp /tmp/agent-builds/a /var/b",
+          "cp /private/tmp/agent-builds/a /var/b",
+        ],
+      ]);
+    });
+
+    it("yields no alias for a value split out of an option", async () => {
+      // The token was read from the `--directory=value` split, not from a node
+      // of its own, so there is no span to replace and the flag survives.
+      const program = await BashProgram.parse(
+        "cd /tmp && tar --directory=x/y -xf a.tar",
+        normalizer,
+      );
+      expect(program.pathRuleCandidates().map(({ token }) => token)).toEqual([
+        "/tmp",
+        "x/y",
+      ]);
+      expect(program.commandAliasTexts()).toEqual([[], []]);
+    });
+
+    it("aliases an operand a statement names for itself", async () => {
+      const program = await BashProgram.parse(
+        "for f in etc/shadow; do cat $f; done",
+        normalizer,
+      );
+      expect(program.commandAliasTexts()).toEqual([
+        ["for f in /projects/my-app/etc/shadow; do cat $f; done"],
+        // The loop body is its own unit, and its variable is no path.
+        [],
+      ]);
+    });
+
+    it("yields no alias for a unit already spelled absolutely", async () => {
+      const program = await BashProgram.parse(
+        "rm /tmp/agent-builds/x",
+        normalizer,
+      );
+      expect(program.commandAliasTexts()).toEqual([[]]);
+    });
+
+    it("yields no alias when the effective base is not literal", async () => {
+      const program = await BashProgram.parse(
+        'cd "$DIR" && rm etc/shadow',
+        normalizer,
+      );
+      expect(program.commandAliasTexts()).toEqual([[], []]);
+    });
+  });
+});
