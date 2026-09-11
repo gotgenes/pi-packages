@@ -109,6 +109,84 @@ The branch's last substantive commit is `docs: refresh the pi-subagents module c
 No new findings at this stage; the two pre-completion review rounds already surfaced and resolved the substantive issues (see the Implementation — TDD stage entry above).
 Ready for `git rebase main` and handoff to the root `/ship 636`.
 
+## Stage: Final Retrospective (2026-09-11T15:53:11Z)
+
+### Session summary
+
+Shipped [#636] through the worktree lane: fast-forward merged `issue-636-add-compact-ctrl-o-expandable-rendering` into `main`, verified CI, closed the issue and superseded PR [#729] with contributor credit, and released `pi-subagents` v21.7.0.
+The issue spanned three peer-session stages (planning, TDD, sync) on `claude-opus-5` plus a root ship on `claude-sonnet-5`, landing eight commits and +52 tests.
+The dominant pattern across all four stages was measurement displacing argument — at the design gate, at every killing mutation, and in both pre-completion review rounds.
+
+### Observations
+
+#### What went well
+
+- **Measurement replaced argument at the design gate, and overturned the in-package convention.**
+  Three candidate expanded-view policies were costed at three terminal widths against the real stored 182-line result, which showed the existing convention — a 50-line cap, as `result-renderer.ts` already does for `subagent` — overshooting its own budget by roughly 25 % because `Text` word-wraps rather than clips.
+  The width-aware component delivered exactly 51 rows at every width against 227–258 today.
+  No prose argument reaches that conclusion; the plan would have adopted the existing convention on consistency grounds alone.
+- **`/ship` step 2's plan-and-retro read paid off exactly as designed.**
+  PR [#729] was named as a ship-time close target in the Planning stage note, and no commit in the `"$PLAN"^..HEAD` range mentions it.
+  A step that only greps the plan for `**Release:**` would have left it open — the precise failure [#849] added this read to prevent.
+- **The `pre-completion-reviewer` found a defect in the change's central claim, in two consecutive rounds.**
+  `BoundedLines.render` returned one array element per line, but an element carrying an embedded `\n` still cost the terminal extra rows, so the bound held in the assertion and not on screen.
+  A test asserting `render(w).length` structurally cannot see the difference.
+  Round 2 widened the same gap to `\v` and `\f`, which are zero-width and so survive a width clip while still moving the cursor down.
+  Both fixes went into `BoundedLines` rather than its two call sites, because the component is what promises the bound.
+- **Two `AGENTS.md` version-discipline rules earned their keep.**
+  Enumerating *published* versions (`pnpm view … versions`) rather than git tags pinned `0.84.2` as the fallback-cap boundary.
+  Reading the persistence path rather than the `.d.ts` established that `details` is `JSON.stringify`'d into the session JSONL and never sent to the model — the single most decision-relevant fact, invisible from the type declarations, and what justified diverging from PR [#729]'s design.
+
+#### What caused friction (agent side)
+
+- `instruction-violation` (self-identified) — the PR [#729] close comment was posted with `gh pr comment --body` and an inline double-quoted body containing backticks and backslash escapes.
+  `AGENTS.md` requires `--body-file` for a body containing backticks, but states its rationale for *single* quotes (`` \` `` ships literally), so the double-quoted form read as permitted.
+  Three opening backticks were lost to escape collapse, publishing `` `\n`/\r`/\v`/\f` `` on a contributor-facing comment.
+  Impact: 2 extra tool calls to read the comment back via `gh api` and `PATCH` it from a `--body-file` heredoc, which worked first try; malformed for under a minute, no other rework.
+- `instruction-violation` (self-identified, no impact) — the ship session ran `pnpm run lint 2>&1 | tail -40` and `pnpm fallow dead-code 2>&1 | tail -60`, the exact pipe-through-`tail` pattern `AGENTS.md` forbids because a pipeline's exit status is the filter's.
+  Nothing was gated on the status and both outputs carried explicit success text, so the gate held by reading rather than by construction.
+  Impact: none this time.
+- `instruction-violation` (self-identified) — a test block was appended to `test/tools/get-result-tool.test.ts` with a python heredoc, writing a literal `\n` into the file.
+  This is the hazard `AGENTS.md` names outright; the autoformatter surfaced it immediately.
+  Impact: 2 calls to detect and repair.
+- `instruction-violation` (self-identified) — a mid-file `Edit` inserting a sibling function into `src/ui/bounded-lines.ts` closed the class early and reparented `render`.
+  Impact: recovered by rewriting the file with `Write`.
+- `instruction-violation` (self-identified) — `git checkout -- src/tools/background-spawner.ts`, used to revert an excess-property-checking probe, discarded the uncommitted fix because HEAD was the pre-fix commit.
+  Notable as a pattern break rather than a knowledge gap: the session used the correct `cp /tmp/green-*.ts` save-and-restore for all five plan-named killing mutations, then abandoned it for an ad-hoc probe run during review-fix verification — after `/tdd-plan`'s "Verify the pins" step, which is where the rule lives.
+  Impact: fix re-applied, ~2 calls.
+
+#### What caused friction (user side)
+
+- Nothing that cost the session anything — both operator interventions were unusually well-timed.
+  The paste of the operator's own collapsed render settled the stale-premise question at the exact moment the session was about to spend more calls on version archaeology.
+  The one-sentence redirect "we already have some sort of custom result rendering somewhere else" pointed at the `agent-tool.ts` + `result-renderer.ts` convention before the design committed, rather than as a correction after it.
+  Recorded as the pattern to keep, not as an opportunity.
+
+### Diagnostic details
+
+- **Model-performance correlation** — planning and TDD ran on `anthropic/claude-opus-5`, sync and ship on `anthropic/claude-sonnet-5`, this retro on `claude-opus-5`.
+  All four subagent dispatches were appropriately matched: `Explore` with an explicit `model: "sonnet-5"` for the multi-hop Pi-checkout trace (the `AGENTS.md` rule, rather than the weak haiku default), and `tidy-first-assessor` plus two `pre-completion-reviewer` rounds on their frontmatter default `anthropic/claude-sonnet-5`.
+  No mismatch found in either direction.
+- **Escalation-delay tracking** — no `rabbit-hole` friction points.
+  The longest same-target sequence was the `background-spawner.ts` type-check fix at roughly 8 calls, but it changed approach three times deliberately (explicit type argument → rejected by `@typescript-eslint/no-unnecessary-type-arguments` → typed local), each redirect driven by a new gate result rather than by repetition.
+- **Feedback-loop gap analysis** — no gap.
+  `pnpm run check`, root `pnpm run lint`, and the per-file vitest run fired after every step, with `pnpm fallow dead-code` after steps 2, 3, and 4 and the killing mutation verified before every commit.
+  Two fallow findings were caught at the step that created them — the `BoundedLines` `invalidate` suppression, and `PREVIEW_CHARS` having no consumer until step 4 — rather than at end-of-cycle, which is what let `PREVIEW_CHARS` move to its consumer's step instead of being suppressed.
+- **Unused-tool detection** — skipped; no `rabbit-hole` or `missing-context` findings to attribute.
+  Worth noting only that `colgrep` went unused across all stages, with exploration done by exact-symbol grep and whole-file reads — defensible here, since the issue named its own target modules.
+
+### Changes made
+
+1. `AGENTS.md` § Shell and search — widened the `gh issue comment` / `gh pr comment` rule to require `--body-file` *whatever the quoting*, and split the quoting mechanism onto its own sentence.
+   The rule previously stated only the single-quote failure, so the double-quoted form this session used read as the sanctioned workaround.
+2. `AGENTS.md` § Commits — widened the `git checkout <ref> -- <path>` warning from "as the swap in an A/B measurement" to "to revert any probe — an A/B swap, a killing mutation, a type-check spike".
+   The probe that lost work here was none of the framings the rule named.
+3. Declined: a read-back rule for posted GitHub comments (`gh api …/comments/<id> --jq .body`).
+   It detects rather than prevents, and change 1 closes the source.
+4. Declined: restating the pipe-through-`tail`, heredoc-`\n`, and mid-file-`Edit` hazards.
+   All three are already in `AGENTS.md` naming this exact failure mode; three self-caught trips in one session is a salience signal, and more text worsens salience.
+
 [#636]: https://github.com/gotgenes/pi-packages/issues/636
 [#729]: https://github.com/gotgenes/pi-packages/pull/729
 [#755]: https://github.com/gotgenes/pi-packages/issues/755
+[#849]: https://github.com/gotgenes/pi-packages/issues/849

@@ -442,7 +442,8 @@ Do not start a bash word with `=` — zsh's `equals` expansion reads `=word` as 
 Use `echo ---`.
 Each `bash` call runs in a fresh shell — a variable set in one call is unset in the next.
 Chain producer and consumer in one call, or re-derive the value (Refs #772).
-A `gh issue comment` / `gh pr comment` body containing backticks or fences belongs in a file passed with `--body-file` — inside single quotes a `` \` `` ships literally (Refs #794).
+A `gh issue comment` / `gh pr comment` body containing backticks or fences belongs in a file passed with `--body-file`, whatever the quoting (Refs #794, #636).
+Single quotes ship a `` \` `` literally, and double quotes need every `` ` `` escaped, where one miscount publishes mismatched code spans.
 A `git commit` body with quotes or backticks belongs in a file passed with `-F` — a `-m` string corrupted one, invisible until `git log -1 --format=%B` (Refs #898).
 A shell snippet quoted inside a `/* */` block comment must not contain `*/` — a `sed 's/,.*//'` closes the comment and breaks the file's parse.
 Use `cut -d, -f1`.
@@ -520,7 +521,7 @@ A scripted rebase reports `Successfully rebased` even when the sequence editor m
 Verify by diffing the subjects, and confirm the content is untouched with `git diff <backup-tag> HEAD` (Refs #710).
 After `git reset --soft HEAD~N`, all N commits' changes are staged together — to re-split into separate commits, run `git reset` (mixed) first, then `git add` per commit.
 A commit a pre-commit hook rejected never moved `HEAD`, so a following `git reset --soft HEAD~1` undoes the *previous* commit — confirm with `git log -1` first (Refs #866).
-`git checkout <ref> -- <path>` as the swap in an A/B measurement destroys uncommitted work: the restore half (`git checkout HEAD -- <path>`) restores HEAD, which is the *previous* commit while the current step is still uncommitted.
+`git checkout <ref> -- <path>` to revert any probe — an A/B swap, a killing mutation, a type-check spike — destroys uncommitted work: the restore half (`git checkout HEAD -- <path>`) restores HEAD, which is the *previous* commit while the current step is still uncommitted.
 Back both sides up as files first — `cp` the working state aside, `git show <ref>:<path> >` the baseline — and swap with `cp` in both directions; never lead the restore with `rm -rf <path>`, which the permission gate denies mid-command and leaves a partial tree (Refs #742).
 Staged deletions from `git rm` ride along with the next `git commit` even when you `git add` only unrelated paths — commit with an explicit pathspec (`git commit -- <paths>`) or check `git status` first.
 Before `git commit --amend`, confirm HEAD is your own commit (`git log -1`) — a concurrent session may have committed since yours, and amend rewrites whatever HEAD points at.
