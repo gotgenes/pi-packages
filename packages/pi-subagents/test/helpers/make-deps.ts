@@ -1,13 +1,14 @@
 import { vi } from "vitest";
 import { AgentTypeRegistry } from "#src/config/agent-types";
 import type { ParentSnapshot } from "#src/lifecycle/parent-snapshot";
+import type { Subagent } from "#src/lifecycle/subagent";
 import {
 	type AgentToolManager,
 	type AgentToolRuntime,
 	type AgentToolSettings,
 } from "#src/tools/agent-tool";
 import { makeModel } from "./make-model";
-import { createTestSubagent } from "./make-subagent";
+import { createTestSubagent, type TestSubagentOptions } from "./make-subagent";
 import { STUB_SNAPSHOT } from "./stub-ctx";
 
 /** Minimal registry with no user agents — sufficient for tool tests that don't exercise agent-type lookup. */
@@ -62,6 +63,22 @@ export function createToolDeps(overrides: Partial<AgentToolFixture> = {}): Agent
 		agentDir: "/home/user/.pi",
 		...overrides,
 	};
+}
+
+/**
+ * Point the fixture's `manager.resume` at a record built from `overrides`, and
+ * return that record so the test can assert on it.
+ *
+ * Owns the mock's result shape in one place: a test says which record comes
+ * back, not how the manager reports it.
+ */
+export function mockResumeRecord(
+	deps: AgentToolFixture,
+	overrides: TestSubagentOptions = {},
+): Subagent {
+	const record = createTestSubagent(overrides);
+	deps.manager.resume = vi.fn().mockResolvedValue(record);
+	return record;
 }
 
 /**

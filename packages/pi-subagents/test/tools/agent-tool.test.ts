@@ -1,7 +1,11 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { describe, expect, it, vi } from "vitest";
 import { AgentTool } from "#src/tools/agent-tool";
-import { createToolDeps, createToolDepsWithDisabledBuiltInAgents } from "#test/helpers/make-deps";
+import {
+	createToolDeps,
+	createToolDepsWithDisabledBuiltInAgents,
+	mockResumeRecord,
+} from "#test/helpers/make-deps";
 import { createTestSubagent, makeStubExecution } from "#test/helpers/make-subagent";
 import { makeWorkspace, makeWorkspaceProvider } from "#test/helpers/make-workspace";
 import { createMockSession, createSubagentSessionStub, toSubagentSession } from "#test/helpers/mock-session";
@@ -181,7 +185,7 @@ describe("AgentTool — resume path", () => {
 			const noWorkspace = createTestSubagent();
 			await noWorkspace.run();
 			deps.manager.getRecord = vi.fn().mockReturnValue(noWorkspace);
-			deps.manager.resume = vi.fn().mockResolvedValue(createTestSubagent({ result: "Resumed output." }));
+			mockResumeRecord(deps, { result: "Resumed output." });
 
 			const result = await execute(deps, {
 				prompt: "continue",
@@ -199,7 +203,7 @@ describe("AgentTool — resume path", () => {
 			const resumeRecord = createTestSubagent();
 			resumeRecord.subagentSession = toSubagentSession(createSubagentSessionStub(createMockSession()));
 			deps.manager.getRecord = vi.fn().mockReturnValue(resumeRecord);
-			deps.manager.resume = vi.fn().mockResolvedValue(createTestSubagent({ result: "Resumed output." }));
+			mockResumeRecord(deps, { result: "Resumed output." });
 			const result = await execute(deps, {
 				prompt: "continue",
 				description: "resume",
@@ -214,14 +218,12 @@ describe("AgentTool — resume path", () => {
 			const resumeRecord = createTestSubagent();
 			resumeRecord.subagentSession = toSubagentSession(createSubagentSessionStub(createMockSession()));
 			deps.manager.getRecord = vi.fn().mockReturnValue(resumeRecord);
-			deps.manager.resume = vi.fn().mockResolvedValue(
-				createTestSubagent({
-					id: "agent-9",
-					result: "Thanks.",
-					pendingQuestion: "And the fallback?",
-					sessionReady: true,
-				}),
-			);
+			mockResumeRecord(deps, {
+				id: "agent-9",
+				result: "Thanks.",
+				pendingQuestion: "And the fallback?",
+				sessionReady: true,
+			});
 
 			const result = await execute(deps, {
 				prompt: "continue",
@@ -267,9 +269,7 @@ describe("AgentTool — resume path", () => {
 			const resumeRecord = createTestSubagent();
 			resumeRecord.subagentSession = toSubagentSession(createSubagentSessionStub(createMockSession()));
 			deps.manager.getRecord = vi.fn().mockReturnValue(resumeRecord);
-			deps.manager.resume = vi.fn().mockResolvedValue(
-				createTestSubagent({ id: "agent-9", runUpdates: ["The bug is in the retry wrapper."] }),
-			);
+			mockResumeRecord(deps, { id: "agent-9", runUpdates: ["The bug is in the retry wrapper."] });
 
 			const result = await execute(deps, {
 				prompt: "continue",
@@ -287,14 +287,12 @@ describe("AgentTool — resume path", () => {
 			const resumeRecord = createTestSubagent();
 			resumeRecord.subagentSession = toSubagentSession(createSubagentSessionStub(createMockSession()));
 			deps.manager.getRecord = vi.fn().mockReturnValue(resumeRecord);
-			deps.manager.resume = vi.fn().mockResolvedValue(
-				createTestSubagent({
-					id: "agent-9",
-					status: "error",
-					error: "resume exploded",
-					workspaceNotice: "\n\n---\nChanges saved to branch `pi-agent-9`.",
-				}),
-			);
+			mockResumeRecord(deps, {
+				id: "agent-9",
+				status: "error",
+				error: "resume exploded",
+				workspaceNotice: "\n\n---\nChanges saved to branch `pi-agent-9`.",
+			});
 
 			const result = await execute(deps, {
 				prompt: "continue",
@@ -311,9 +309,7 @@ describe("AgentTool — resume path", () => {
 			const resumeRecord = createTestSubagent();
 			resumeRecord.subagentSession = toSubagentSession(createSubagentSessionStub(createMockSession()));
 			deps.manager.getRecord = vi.fn().mockReturnValue(resumeRecord);
-			deps.manager.resume = vi
-				.fn()
-				.mockResolvedValue(createTestSubagent({ status: "aborted", result: "Half of it" }));
+			mockResumeRecord(deps, { status: "aborted", result: "Half of it" });
 
 			const result = await execute(deps, {
 				prompt: "continue",
@@ -373,8 +369,7 @@ describe("AgentTool — resume path", () => {
 			const resumeRecord = createTestSubagent();
 			resumeRecord.subagentSession = toSubagentSession(createSubagentSessionStub(createMockSession()));
 			deps.manager.getRecord = vi.fn().mockReturnValue(resumeRecord);
-			const resumed = createTestSubagent({ result: "Resumed output." });
-			deps.manager.resume = vi.fn().mockResolvedValue(resumed);
+			const resumed = mockResumeRecord(deps, { result: "Resumed output." });
 			await execute(deps, {
 				prompt: "continue",
 				description: "resume",
@@ -389,7 +384,7 @@ describe("AgentTool — resume path", () => {
 			const resumeRecord = createTestSubagent();
 			resumeRecord.subagentSession = toSubagentSession(createSubagentSessionStub(createMockSession()));
 			deps.manager.getRecord = vi.fn().mockReturnValue(resumeRecord);
-			deps.manager.resume = vi.fn().mockResolvedValue(createTestSubagent({ result: "Resumed output." }));
+			mockResumeRecord(deps, { result: "Resumed output." });
 			const result = await execute(deps, {
 				prompt: "continue",
 				description: "resume",
