@@ -69,12 +69,25 @@ export function resolveBashCommandCheck(
   commands: BashCommand[],
   agentName: string | undefined,
   resolver: ScopedPermissionResolver,
+  /**
+   * Per-unit alias texts, at the same index as `commands`.
+   *
+   * Each is the unit's text with its path arguments in an absolute spelling, so
+   * a rule written with that path matches a command written relatively. The
+   * gate tries them after the text as typed, last-match-wins across the union.
+   *
+   * Empty (the default) means the unit is matched on its text alone, which is
+   * what the whole-command and wrapper-inner resolves below do — both stay
+   * fail-closed rather than reaching for an alias they cannot attribute to a
+   * unit.
+   */
+  aliasTexts: readonly (readonly string[])[] = [],
 ): PermissionCheckResult {
   if (commands.length === 0) {
     if (isTriviallyEmptyCommand(command)) {
-      return resolveOnBashSurface(command, agentName, resolver);
+      return resolveOnBashSurface(command, [], agentName, resolver);
     }
-    const whole = resolveOnBashSurface(command, agentName, resolver);
+    const whole = resolveOnBashSurface(command, [], agentName, resolver);
     if (whole.state === "deny") {
       return whole;
     }
@@ -88,12 +101,18 @@ export function resolveBashCommandCheck(
     };
   }
 
-  const results = commands.map((cmd) =>
-    resolveCommandUnit(cmd, command, agentName, resolver),
+  const results = commands.map((cmd, index) =>
+    resolveCommandUnit(
+      cmd,
+      aliasTexts[index] ?? [],
+      command,
+      agentName,
+      resolver,
+    ),
   );
   return (
     pickMostRestrictive(results) ??
-    resolveOnBashSurface(command, agentName, resolver)
+    resolveOnBashSurface(command, [], agentName, resolver)
   );
 }
 
@@ -104,11 +123,12 @@ export function resolveBashCommandCheck(
  */
 function resolveCommandUnit(
   cmd: BashCommand,
+  aliases: readonly string[],
   command: string,
   agentName: string | undefined,
   resolver: ScopedPermissionResolver,
 ): PermissionCheckResult {
-  const base = resolveOnBashSurface(cmd.text, agentName, resolver);
+  const base = resolveOnBashSurface(cmd.text, aliases, agentName, resolver);
   const floored =
     cmd.wrapperKind && base.state === "allow"
       ? resolveWrapperUnit(cmd, cmd.wrapperKind, base, agentName, resolver)
@@ -190,7 +210,7 @@ function resolveWrapperUnit(
   // `command`, and naming a fragment of the command line there would offer a
   // grant that does not cover what the user is looking at.
   return {
-    ...resolveOnBashSurface(inner, agentName, resolver),
+    ...resolveOnBashSurface(inner, [], agentName, resolver),
     command: base.command,
     floorExemption: cmd.floorExemption,
   };
@@ -219,13 +239,27 @@ function isTriviallyEmptyCommand(command: string): boolean {
  */
 function resolveOnBashSurface(
   command: string,
+  aliases: readonly string[],
   agentName: string | undefined,
   resolver: ScopedPermissionResolver,
 ): PermissionCheckResult {
+  if (aliases.length === 0) {
+    return resolver.resolve({
+      kind: "tool",
+      surface: "bash",
+      input: { command },
+      agentName,
+    });
+  }
+  // The alias-aware intent, so the manager evaluates the texts as spellings of
+  // one invocation (`evaluateAnyValue`) rather than stopping at the first text
+  // that matches a rule. `command` rides `resultExtras` because the surface's
+  // own field is the emitter's business, not the manager's.
   return resolver.resolve({
-    kind: "tool",
+    kind: "alias-values",
     surface: "bash",
-    input: { command },
+    values: [command, ...aliases],
+    resultExtras: { command },
     agentName,
   });
 }

@@ -146,6 +146,42 @@ describe("buildToolAskPayload", () => {
         detail: null,
       });
     });
+    test("carries the resolved spelling a rule matched instead of the text as typed", () => {
+      expect(
+        findEvidence(
+          buildPayload({
+            check: toolResult("bash", {
+              command: "rm agent-builds/x",
+              matchedPattern: "rm /tmp/agent-builds/*",
+              matchedAlias: "rm /tmp/agent-builds/x",
+            }),
+            input: { command: "rm agent-builds/x" },
+            formatter: makeFormatter(),
+          }),
+          "resolved as",
+        ),
+      ).toEqual({
+        label: "resolved as",
+        text: "rm /tmp/agent-builds/x",
+        detail: null,
+      });
+    });
+
+    test("omits the resolved spelling when the text as typed decided", () => {
+      expect(
+        findEvidence(
+          buildPayload({
+            check: toolResult("bash", {
+              command: "rm /tmp/agent-builds/x",
+              matchedPattern: "rm /tmp/agent-builds/*",
+            }),
+            input: { command: "rm /tmp/agent-builds/x" },
+            formatter: makeFormatter(),
+          }),
+          "resolved as",
+        ),
+      ).toBeUndefined();
+    });
 
     test("omits the enclosing command when it is the gated unit", () => {
       expect(

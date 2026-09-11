@@ -2,10 +2,11 @@ import type { PathNormalizer } from "#src/path/path-normalizer";
 import {
   type BashExternalPath,
   BashPathResolver,
+  type BashPathRewrite,
   type BashPathRuleCandidate,
 } from "./bash-path-resolver";
-import { type BashCommand, collectCommands } from "./command-enumeration";
-import { getParser } from "./parser";
+import { type BashCommand, collectCommandUnits } from "./command-enumeration";
+import { getParser, type SourceSpan } from "./parser";
 
 export type { BashCommand, BashExternalPath, BashPathRuleCandidate };
 
@@ -23,8 +24,10 @@ export class BashProgram {
   private constructor(
     private readonly sourceCommand: string,
     private readonly commandUnits: readonly BashCommand[],
+    private readonly unitSpans: readonly SourceSpan[],
     private readonly resolvedExternalAccesses: readonly BashExternalPath[],
     private readonly resolvedRuleCandidates: readonly BashPathRuleCandidate[],
+    private readonly resolvedPathRewrites: readonly BashPathRewrite[],
   ) {}
 
   /**
@@ -53,18 +56,21 @@ export class BashProgram {
   ): Promise<BashProgram> {
     const parser = await getParser();
     const tree = parser.parse(command);
-    if (!tree) return new BashProgram(command, [], [], []);
+    if (!tree) return new BashProgram(command, [], [], [], [], []);
 
     try {
-      const { externalAccesses, ruleCandidates } = new BashPathResolver(
-        normalizer,
-        options?.workdir,
-      ).resolve(tree.rootNode);
+      const { externalAccesses, ruleCandidates, pathRewrites } =
+        new BashPathResolver(normalizer, options?.workdir).resolve(
+          tree.rootNode,
+        );
+      const { commands, spans } = collectCommandUnits(tree.rootNode);
       return new BashProgram(
         command,
-        collectCommands(tree.rootNode),
+        commands,
+        spans,
         externalAccesses,
         ruleCandidates,
+        pathRewrites,
       );
     } finally {
       tree.delete();
@@ -132,4 +138,67 @@ export class BashProgram {
   pathRuleCandidates(): BashPathRuleCandidate[] {
     return [...this.resolvedRuleCandidates];
   }
+
+  /**
+   * The alias texts for each command unit, at the same index as {@link commands}.
+   *
+   * Each is the unit's text with its resolved path arguments replaced by an
+   * absolute form, so a `bash` rule written in that spelling matches a command
+   * the operator wrote relatively. The gate tries them after the text as typed,
+   * last-match-wins across the union — the treatment
+   * `AccessPath.matchValues()` already gives the path surfaces.
+   *
+   * At most two per unit: the absolute lexical forms, then the canonical form of
+   * each argument a symlink resolves elsewhere. A unit whose arguments are every
+   * one already spelled absolutely yields none, because the resolver records a
+   * rewrite only when a form differs from the token as written, and any text
+   * equal to the unit's own is dropped here.
+   */
+  commandAliasTexts(): string[][] {
+    const source = this.sourceCommand;
+    return this.unitSpans.map((unit) => {
+      const inside = this.resolvedPathRewrites.filter(
+        (rewrite) =>
+          rewrite.span.start >= unit.start && rewrite.span.end <= unit.end,
+      );
+      if (inside.length === 0) return [];
+      const widths = Math.max(1, ...inside.map((r) => r.replacements.length));
+      const typed = source.slice(unit.start, unit.end);
+      const seen = new Set<string>([typed]);
+      const aliases: string[] = [];
+      for (let index = 0; index < widths; index++) {
+        const text = rewriteUnitText(source, unit, inside, index);
+        if (seen.has(text)) continue;
+        seen.add(text);
+        aliases.push(text);
+      }
+      return aliases;
+    });
+  }
+}
+
+/**
+ * `unit`'s source text with each rewrite's `index`-th replacement applied.
+ *
+ * Replacements run right to left, so the offsets of the ones not yet applied
+ * stay valid. A rewrite offering fewer forms than `index` reuses its last one,
+ * which is what keeps the alias count the longest list rather than a cross
+ * product over the command's arguments.
+ */
+function rewriteUnitText(
+  source: string,
+  unit: SourceSpan,
+  rewrites: readonly BashPathRewrite[],
+  index: number,
+): string {
+  let text = source.slice(unit.start, unit.end);
+  const ordered = [...rewrites].sort((a, b) => b.span.start - a.span.start);
+  for (const rewrite of ordered) {
+    const replacement =
+      rewrite.replacements[Math.min(index, rewrite.replacements.length - 1)];
+    const start = rewrite.span.start - unit.start;
+    const end = rewrite.span.end - unit.start;
+    text = `${text.slice(0, start)}${replacement}${text.slice(end)}`;
+  }
+  return text;
 }

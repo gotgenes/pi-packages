@@ -3573,3 +3573,87 @@ describe("check — path-values intent", () => {
     }
   });
 });
+
+/**
+ * The bash surface matches text, so one command can name the same path in two
+ * spellings. The gate supplies both as aliases; the last rule matching either
+ * decides, exactly as the path surfaces treat a path's lexical and canonical
+ * forms (#418).
+ */
+describe("checkPermission — alias values on the bash surface", () => {
+  function aliasIntent(values: readonly string[]): ResolvedAccessIntent {
+    return {
+      kind: "alias-values",
+      surface: "bash",
+      values,
+      resultExtras: { command: values[0] ?? "" },
+    };
+  }
+
+  it("lets a later absolute-path allow decide over an earlier ask", () => {
+    const manager = createInMemoryManager({
+      global: {
+        permission: {
+          "*": "ask",
+          bash: {
+            "*": "allow",
+            "rm *": "ask",
+            "rm /tmp/agent-builds/*": "allow",
+          },
+        },
+      },
+    });
+    const result = manager.check(
+      aliasIntent(["rm agent-builds/x", "rm /tmp/agent-builds/x"]),
+    );
+    expect(result.state).toBe("allow");
+    expect(result.matchedPattern).toBe("rm /tmp/agent-builds/*");
+    expect(result.source).toBe("bash");
+    expect(result.command).toBe("rm agent-builds/x");
+    expect(result.matchedAlias).toBe("rm /tmp/agent-builds/x");
+  });
+
+  it("keeps the order the operator wrote, so a later ask still asks", () => {
+    const manager = createInMemoryManager({
+      global: {
+        permission: {
+          "*": "ask",
+          bash: {
+            "rm /tmp/agent-builds/*": "allow",
+            "rm *": "ask",
+          },
+        },
+      },
+    });
+    const result = manager.check(
+      aliasIntent(["rm agent-builds/x", "rm /tmp/agent-builds/x"]),
+    );
+    expect(result.state).toBe("ask");
+    expect(result.matchedPattern).toBe("rm *");
+  });
+
+  it("reports no alias when the text as typed decided", () => {
+    const manager = createInMemoryManager({
+      global: { permission: { "*": "ask", bash: { "*": "allow" } } },
+    });
+    const result = manager.check(
+      aliasIntent(["rm agent-builds/x", "rm /tmp/agent-builds/x"]),
+    );
+    expect(result.state).toBe("allow");
+    expect(result.matchedAlias).toBeUndefined();
+  });
+
+  it("still evaluates a deny on the alias text", () => {
+    const manager = createInMemoryManager({
+      global: {
+        permission: {
+          "*": "allow",
+          bash: { "rm /etc/*": "deny" },
+        },
+      },
+    });
+    const result = manager.check(aliasIntent(["rm shadow", "rm /etc/shadow"]));
+    expect(result.state).toBe("deny");
+    expect(result.matchedPattern).toBe("rm /etc/*");
+  });
+});

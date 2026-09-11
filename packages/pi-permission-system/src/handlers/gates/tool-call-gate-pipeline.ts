@@ -187,6 +187,7 @@ export class ToolCallGatePipeline {
             bashProgram.commands(),
             tcc.agentName ?? undefined,
             this.resolver,
+            bashProgram.commandAliasTexts(),
           ),
         };
       }

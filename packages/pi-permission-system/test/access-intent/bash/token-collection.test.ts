@@ -721,7 +721,11 @@ describe("statement operands", () => {
     const tree = parser.parse(command);
     if (!tree) throw new Error("parse returned null");
     try {
-      return collectPathCandidateTokens(tree.rootNode);
+      // Spans are dropped: this helper's subject is what a statement's own
+      // operand collects, not where it sits in the source.
+      return collectPathCandidateTokens(tree.rootNode).map(
+        ({ token, effect }) => ({ token, effect }),
+      );
     } finally {
       tree.delete();
     }
@@ -963,7 +967,12 @@ describe("effect attribution", () => {
     const tree = parser.parse(command);
     if (!tree) throw new Error("parse returned null");
     try {
-      return collectPathCandidateTokens(tree.rootNode);
+      // Spans are dropped: this helper's subject is the effect a token's
+      // position proved, and the span is asserted where a caller uses it
+      // (`program.test.ts`).
+      return collectPathCandidateTokens(tree.rootNode).map(
+        ({ token, effect }) => ({ token, effect }),
+      );
     } finally {
       tree.delete();
     }

@@ -1,10 +1,15 @@
 import { describe, expect, it } from "vitest";
 
+import { BashProgram } from "#src/access-intent/bash/program";
 import { resolveBashCommandCheck } from "#src/handlers/gates/bash-command";
+import { pathFlavorForPlatform } from "#src/path/path-flavor";
+import { PathNormalizer } from "#src/path/path-normalizer";
+import { PermissionResolver } from "#src/policy/permission-resolver";
 import type { PermissionCheckResult } from "#src/types";
 
 import { makeResolver } from "#test/helpers/gate-fixtures";
 import { makeCheckResult } from "#test/helpers/handler-fixtures";
+import { createInMemoryManager } from "#test/helpers/manager-harness";
 
 /** Build a bash-surface check result for a single command unit. */
 function bashResult(
@@ -678,6 +683,96 @@ describe("resolveBashCommandCheck", () => {
 
       expect(result.state).toBe("ask");
       expect(result.matchedPattern).toBe("<indirection-bash-wrapper>");
+    });
+  });
+});
+
+/**
+ * A `bash` rule that names a path in its absolute spelling has to reach the
+ * command that names the same path relatively, or the rule silently misses the
+ * command it was written for.
+ */
+describe("resolveBashCommandCheck — alias texts", () => {
+  const normalizer = new PathNormalizer(
+    pathFlavorForPlatform(process.platform),
+    "/projects/my-app",
+  );
+
+  /** A cwd that makes `agent-builds/x` resolve to the absolute spelling. */
+  const tmpCwd = new PathNormalizer(
+    pathFlavorForPlatform(process.platform),
+    "/tmp",
+  );
+
+  function resolverFor(bash: Record<string, "allow" | "ask" | "deny">) {
+    const manager = createInMemoryManager({
+      global: { permission: { "*": "ask", bash } },
+    });
+    return new PermissionResolver(manager, { getRuleset: () => [] });
+  }
+
+  const relativeRm = "cd /tmp && rm agent-builds/x";
+  const bashRules = {
+    "*": "allow",
+    "rm *": "ask",
+    "rm /tmp/agent-builds/*": "allow",
+  } as const;
+
+  it("decides on the alias text when the text as typed matches only an ask", async () => {
+    const program = await BashProgram.parse(relativeRm, normalizer);
+    const result = resolveBashCommandCheck(
+      program.commandText(),
+      program.commands(),
+      undefined,
+      resolverFor(bashRules),
+      program.commandAliasTexts(),
+    );
+    // The chain folds to its most permissive unit here, so the state is what
+    // this case turns on; the attribution is asserted on a single unit below.
+    expect(result.state).toBe("allow");
+  });
+
+  it("attributes the decision to the alias text and the rule it matched", async () => {
+    const program = await BashProgram.parse("rm agent-builds/x", tmpCwd);
+    const result = resolveBashCommandCheck(
+      program.commandText(),
+      program.commands(),
+      undefined,
+      resolverFor({ "rm *": "ask", "rm /tmp/agent-builds/*": "allow" }),
+      program.commandAliasTexts(),
+    );
+    expect(result.state).toBe("allow");
+    expect(result.matchedPattern).toBe("rm /tmp/agent-builds/*");
+    expect(result.matchedAlias).toBe("rm /tmp/agent-builds/x");
+  });
+
+  it("asks for the same command when no alias text is supplied", async () => {
+    const program = await BashProgram.parse(relativeRm, normalizer);
+    const result = resolveBashCommandCheck(
+      program.commandText(),
+      program.commands(),
+      undefined,
+      resolverFor(bashRules),
+    );
+    expect(result.state).toBe("ask");
+    expect(result.matchedPattern).toBe("rm *");
+  });
+
+  it("offers a unit's alias texts on the bash surface, beside the text as typed", () => {
+    const resolver = makeResolver(bashResult("ask", "rm agent-builds/x"));
+    resolveBashCommandCheck(
+      "rm agent-builds/x",
+      [{ text: "rm agent-builds/x" }],
+      undefined,
+      resolver,
+      [["rm /tmp/agent-builds/x"]],
+    );
+    expect(resolver.resolve).toHaveBeenCalledWith({
+      kind: "alias-values",
+      surface: "bash",
+      values: ["rm agent-builds/x", "rm /tmp/agent-builds/x"],
+      resultExtras: { command: "rm agent-builds/x" },
+      agentName: undefined,
     });
   });
 });

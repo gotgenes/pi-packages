@@ -63,6 +63,14 @@ export interface PermissionCheckResult {
   matchedPattern?: string;
   command?: string;
   target?: string;
+  /**
+   * The alias spelling that decided, when the winning rule matched one of the
+   * `bash` surface's alias texts rather than the command as typed.
+   *
+   * Absent otherwise, and absent whenever no alias was consulted, so a result
+   * that never used one keeps the shape it had.
+   */
+  matchedAlias?: string;
   source: "tool" | "bash" | "mcp" | "skill" | "special" | "default" | "session";
   /** Which source contributed the winning rule. */
   origin: RuleOrigin;

@@ -244,3 +244,46 @@ describe("parseUnresolvedWithin", () => {
     });
   });
 });
+
+describe("node source spans", () => {
+  /**
+   * The one place the index space is asserted, because a caller that slices
+   * the source by these indices depends on it.
+   *
+   * A byte offset — what tree-sitter's own column reports — would put the
+   * words after a non-ASCII character at the wrong place, and the resolved-path
+   * rewrite would then replace the wrong text.
+   */
+  it("indexes the source in UTF-16 code units, not bytes", async () => {
+    const parser = await getParser();
+    const cases = [
+      { source: "cat é /tmp/x", nextWord: "/tmp/x", start: 6 },
+      { source: "cat 😀 /tmp/x", nextWord: "/tmp/x", start: 7 },
+      { source: "cat /tmp/x", nextWord: "/tmp/x", start: 4 },
+    ];
+    for (const { source, nextWord, start } of cases) {
+      const tree = parser.parse(source);
+      const words = collectNodes(tree?.rootNode ?? null).filter(
+        (node) => node.type === "word",
+      );
+      const word = words.find((node) => node.text === nextWord);
+      expect(word?.startIndex, source).toBe(start);
+      expect(word?.endIndex, source).toBe(start + nextWord.length);
+      expect(source.slice(word?.startIndex, word?.endIndex), source).toBe(
+        nextWord,
+      );
+      tree?.delete();
+    }
+  });
+});
+
+/** Every node of the tree, in walk order. */
+function collectNodes(root: TSNode | null): TSNode[] {
+  if (root === null) return [];
+  const found: TSNode[] = [root];
+  for (let i = 0; i < root.childCount; i++) {
+    const child = root.child(i);
+    if (child) found.push(...collectNodes(child));
+  }
+  return found;
+}

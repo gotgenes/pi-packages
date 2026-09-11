@@ -1150,4 +1150,46 @@ describe("GateRunner — request identity", () => {
     await runner.run(makeDescriptor(), null);
     expect(decisions[0].requestId).toMatch(/^perm-/);
   });
+
+  it("records the resolved spelling a rule matched, not the command as typed", async () => {
+    const { runner, deps } = makeGateRunner({
+      resolveResult: makeCheckResult({
+        state: "deny",
+        matchedPattern: "rm /etc/*",
+        matchedAlias: "rm /etc/shadow",
+      }),
+    });
+    await runner.run(
+      makeDescriptor({
+        surface: "bash",
+        input: { command: "rm shadow" },
+        decision: { surface: "bash", value: "rm shadow" },
+      }),
+      null,
+    );
+    expect(deps.reporter.writeReviewLog).toHaveBeenCalledWith(
+      "permission_request.blocked",
+      expect.objectContaining({
+        matchedAlias: "rm /etc/shadow",
+      }),
+    );
+  });
+
+  it("omits the resolved spelling when the text as typed decided", async () => {
+    const { runner, deps } = makeGateRunner({
+      resolveResult: makeCheckResult({ state: "deny", matchedPattern: "rm *" }),
+    });
+    await runner.run(
+      makeDescriptor({
+        surface: "bash",
+        input: { command: "rm shadow" },
+        decision: { surface: "bash", value: "rm shadow" },
+      }),
+      null,
+    );
+    const entry = vi
+      .mocked(deps.reporter.writeReviewLog)
+      .mock.calls.find(([event]) => event === "permission_request.blocked");
+    expect(entry?.[1]).not.toHaveProperty("matchedAlias");
+  });
 });
