@@ -287,10 +287,9 @@ export function createPermissionForwardingLocation(
  * **in-process** child of `sessionId`, so the two share a `globalThis` and the
  * requester may consult the serving-session registry to decide whether anyone
  * is draining its inbox. `"env"` means the target lives in another process,
- * where that signal is unavailable; `"self"` is the UI host owning its own
- * forwarding location.
+ * where that signal is unavailable.
  */
-export type PermissionForwardingTargetSource = "self" | "registry" | "env";
+export type PermissionForwardingTargetSource = "registry" | "env";
 
 /** The resolved forwarding target together with how it was found. */
 export interface PermissionForwardingTarget {
@@ -298,8 +297,14 @@ export interface PermissionForwardingTarget {
   source: PermissionForwardingTargetSource;
 }
 
+/**
+ * The session this node relays its asks to, or `null` when it has none.
+ *
+ * Answers only "which *other* session", never "myself": a node that owns its
+ * forwarding location has nothing to resolve, and a request filed into one's
+ * own inbox is drained by no watcher.
+ */
 export function resolvePermissionForwardingTarget(options: {
-  hasUI: boolean;
   isSubagent: boolean;
   currentSessionId?: string | null;
   env?: NodeJS.ProcessEnv;
@@ -308,13 +313,6 @@ export function resolvePermissionForwardingTarget(options: {
   /** In-process subagent session registry (checked before env vars). */
   registry?: SubagentSessionRegistry;
 }): PermissionForwardingTarget | null {
-  if (options.hasUI) {
-    const own = normalizePermissionForwardingSessionId(
-      options.currentSessionId,
-    );
-    return own === null ? null : { sessionId: own, source: "self" };
-  }
-
   if (!options.isSubagent) {
     return null;
   }

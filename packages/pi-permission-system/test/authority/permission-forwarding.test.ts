@@ -37,32 +37,9 @@ describe("SUBAGENT_PARENT_SESSION_ENV_CANDIDATES", () => {
 });
 
 describe("resolvePermissionForwardingTarget", () => {
-  test("hasUI=true returns the current session ID as its own target", () => {
+  test("isSubagent=false returns null", () => {
     expect(
       resolvePermissionForwardingTarget({
-        hasUI: true,
-        isSubagent: false,
-        currentSessionId: "parent-session-abc",
-        env: {},
-      }),
-    ).toEqual({ sessionId: "parent-session-abc", source: "self" });
-  });
-
-  test("hasUI=true with isSubagent=true still returns current session ID", () => {
-    expect(
-      resolvePermissionForwardingTarget({
-        hasUI: true,
-        isSubagent: true,
-        currentSessionId: "session-xyz",
-        env: { PI_AGENT_ROUTER_PARENT_SESSION_ID: "other" },
-      }),
-    ).toEqual({ sessionId: "session-xyz", source: "self" });
-  });
-
-  test("hasUI=false, isSubagent=false returns null", () => {
-    expect(
-      resolvePermissionForwardingTarget({
-        hasUI: false,
         isSubagent: false,
         currentSessionId: "session-xyz",
         env: { PI_AGENT_ROUTER_PARENT_SESSION_ID: "parent-session-abc" },
@@ -73,7 +50,6 @@ describe("resolvePermissionForwardingTarget", () => {
   test("isSubagent=true, no candidates set returns null", () => {
     expect(
       resolvePermissionForwardingTarget({
-        hasUI: false,
         isSubagent: true,
         currentSessionId: "session-xyz",
         env: {},
@@ -84,7 +60,6 @@ describe("resolvePermissionForwardingTarget", () => {
   test("isSubagent=true, PI_AGENT_ROUTER_PARENT_SESSION_ID set returns its value", () => {
     expect(
       resolvePermissionForwardingTarget({
-        hasUI: false,
         isSubagent: true,
         currentSessionId: "session-xyz",
         env: { PI_AGENT_ROUTER_PARENT_SESSION_ID: "parent-session-abc" },
@@ -95,7 +70,6 @@ describe("resolvePermissionForwardingTarget", () => {
   test("isSubagent=true, PI_SUBAGENT_PARENT_SESSION resolves when PI_AGENT_ROUTER_PARENT_SESSION_ID is absent", () => {
     expect(
       resolvePermissionForwardingTarget({
-        hasUI: false,
         isSubagent: true,
         currentSessionId: "session-xyz",
         env: {
@@ -108,7 +82,6 @@ describe("resolvePermissionForwardingTarget", () => {
   test("isSubagent=true, PI_AGENT_ROUTER_PARENT_SESSION_ID takes precedence over PI_SUBAGENT_PARENT_SESSION", () => {
     expect(
       resolvePermissionForwardingTarget({
-        hasUI: false,
         isSubagent: true,
         currentSessionId: "session-xyz",
         env: {
@@ -122,7 +95,6 @@ describe("resolvePermissionForwardingTarget", () => {
   test("isSubagent=true, candidate value is empty string returns null", () => {
     expect(
       resolvePermissionForwardingTarget({
-        hasUI: false,
         isSubagent: true,
         currentSessionId: "session-xyz",
         env: { PI_AGENT_ROUTER_PARENT_SESSION_ID: "" },
@@ -133,7 +105,6 @@ describe("resolvePermissionForwardingTarget", () => {
   test("isSubagent=true, candidate value is 'unknown' returns null", () => {
     expect(
       resolvePermissionForwardingTarget({
-        hasUI: false,
         isSubagent: true,
         currentSessionId: "session-xyz",
         env: { PI_AGENT_ROUTER_PARENT_SESSION_ID: "unknown" },
@@ -148,7 +119,6 @@ describe("resolvePermissionForwardingTarget", () => {
   test("skips a candidate naming the requesting session and takes the next", () => {
     expect(
       resolvePermissionForwardingTarget({
-        hasUI: false,
         isSubagent: true,
         currentSessionId: "session-xyz",
         env: {
@@ -162,7 +132,6 @@ describe("resolvePermissionForwardingTarget", () => {
   test("returns null when the only candidate names the requesting session", () => {
     expect(
       resolvePermissionForwardingTarget({
-        hasUI: false,
         isSubagent: true,
         currentSessionId: "session-xyz",
         env: { PI_SUBAGENT_PARENT_SESSION: "session-xyz" },
@@ -173,7 +142,6 @@ describe("resolvePermissionForwardingTarget", () => {
   test("skips a self-naming candidate that is whitespace-padded", () => {
     expect(
       resolvePermissionForwardingTarget({
-        hasUI: false,
         isSubagent: true,
         currentSessionId: " session-xyz ",
         env: { PI_SUBAGENT_PARENT_SESSION: "  session-xyz  " },
@@ -185,7 +153,6 @@ describe("resolvePermissionForwardingTarget", () => {
     vi.stubEnv("PI_AGENT_ROUTER_PARENT_SESSION_ID", "env-session-abc");
     expect(
       resolvePermissionForwardingTarget({
-        hasUI: false,
         isSubagent: true,
       }),
     ).toEqual({ sessionId: "env-session-abc", source: "env" });
@@ -202,7 +169,6 @@ describe("resolvePermissionForwardingTarget — registry resolution", () => {
 
     expect(
       resolvePermissionForwardingTarget({
-        hasUI: false,
         isSubagent: true,
         sessionId: childSessionId,
         registry,
@@ -218,7 +184,6 @@ describe("resolvePermissionForwardingTarget — registry resolution", () => {
 
     expect(
       resolvePermissionForwardingTarget({
-        hasUI: false,
         isSubagent: true,
         sessionId: childSessionId,
         registry,
@@ -234,7 +199,6 @@ describe("resolvePermissionForwardingTarget — registry resolution", () => {
 
     expect(
       resolvePermissionForwardingTarget({
-        hasUI: false,
         isSubagent: true,
         currentSessionId: childSessionId,
         sessionId: childSessionId,
@@ -249,7 +213,6 @@ describe("resolvePermissionForwardingTarget — registry resolution", () => {
 
     expect(
       resolvePermissionForwardingTarget({
-        hasUI: false,
         isSubagent: true,
         sessionId: childSessionId,
         registry,
@@ -263,7 +226,6 @@ describe("resolvePermissionForwardingTarget — registry resolution", () => {
 
     expect(
       resolvePermissionForwardingTarget({
-        hasUI: false,
         isSubagent: true,
         sessionId: childSessionId,
         registry,
@@ -277,7 +239,6 @@ describe("resolvePermissionForwardingTarget — registry resolution", () => {
 
     expect(
       resolvePermissionForwardingTarget({
-        hasUI: false,
         isSubagent: true,
         sessionId: childSessionId,
         registry,
@@ -289,7 +250,6 @@ describe("resolvePermissionForwardingTarget — registry resolution", () => {
   test("omitting registry preserves existing behaviour", () => {
     expect(
       resolvePermissionForwardingTarget({
-        hasUI: false,
         isSubagent: true,
         sessionId: childSessionId,
         env: { PI_AGENT_ROUTER_PARENT_SESSION_ID: "parent-from-env" },
@@ -304,7 +264,6 @@ describe("resolvePermissionForwardingTarget — registry resolution", () => {
 
 test("Permission forwarding resolves the parent interactive session from subagent runtime env", () => {
   const target = resolvePermissionForwardingTarget({
-    hasUI: false,
     isSubagent: true,
     currentSessionId: "child-session",
     env: {
@@ -317,7 +276,6 @@ test("Permission forwarding resolves the parent interactive session from subagen
 
 test("Permission forwarding does not guess a target session when subagent runtime env is missing", () => {
   const target = resolvePermissionForwardingTarget({
-    hasUI: false,
     isSubagent: true,
     currentSessionId: "child-session",
     env: {},
@@ -359,7 +317,6 @@ test("Permission forwarding request routing only matches the intended UI session
 
 test("Permission forwarding rejects unresolved sentinel session ids", () => {
   const target = resolvePermissionForwardingTarget({
-    hasUI: true,
     isSubagent: false,
     currentSessionId: "unknown",
   });

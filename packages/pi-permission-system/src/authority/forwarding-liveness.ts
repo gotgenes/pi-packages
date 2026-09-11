@@ -92,8 +92,7 @@ export interface HeartbeatReader {
  * Keyed on the target rather than a session id because the answer depends on
  * how the target was resolved. An in-process child and its parent share a
  * `globalThis`, so the registry answers for them; an out-of-process pair shares
- * only the filesystem; and a session that owns the inbox it is forwarding to is
- * not a case either channel describes.
+ * only the filesystem.
  *
  * Consolidating that into one collaborator is what keeps `ParentAuthorizer`
  * from holding two lookups and re-deciding which one applies — the decision has
@@ -108,6 +107,10 @@ export interface TargetServingLookup {
 
 /** What answered a liveness question, and what it saw. */
 export interface ServingObservation {
+  /**
+   * Which channel answered. `"none"` belongs to a lookup that consulted none —
+   * the real judge never gives it, since every target it sees names a channel.
+   */
   channel: "registry" | "heartbeat" | "none";
   /** The heartbeat state behind a `"heartbeat"` answer; `null` on the other channels. */
   state: HeartbeatState | null;
@@ -138,8 +141,6 @@ export class ForwardingLivenessJudge implements TargetServingLookup {
         return this.deps.registry.isServing(target.sessionId);
       case "env":
         return this.deps.heartbeats.read(target.sessionId) === "alive";
-      case "self":
-        return null;
     }
   }
 
@@ -157,8 +158,6 @@ export class ForwardingLivenessJudge implements TargetServingLookup {
           state: this.deps.heartbeats.read(target.sessionId),
           servingIds: this.deps.heartbeats.servingIds(),
         };
-      case "self":
-        return { channel: "none", state: null, servingIds: [] };
     }
   }
 }

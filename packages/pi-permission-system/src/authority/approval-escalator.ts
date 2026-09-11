@@ -221,10 +221,9 @@ export class ParentAuthorizer implements TerminalAuthorizer {
   ): Promise<PermissionPromptDecision> {
     const requesterSessionId = getSessionId(ctx);
     const target = resolvePermissionForwardingTarget({
-      hasUI: ctx.hasUI,
-      // Invariant: selectAuthorizer only selects ParentAuthorizer for a
-      // no-UI subagent context, so this is always true — no detection dep
-      // needed to re-derive it here.
+      // Invariant: selectAuthorizer only selects ParentAuthorizer for a context
+      // it has already established is a child — no detection dep needed to
+      // re-derive it here.
       isSubagent: true,
       currentSessionId: requesterSessionId,
       env: process.env,

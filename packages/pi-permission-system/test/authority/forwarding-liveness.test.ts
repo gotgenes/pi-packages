@@ -388,10 +388,6 @@ const ENV_TARGET: PermissionForwardingTarget = {
   sessionId: "parent",
   source: "env",
 };
-const SELF_TARGET: PermissionForwardingTarget = {
-  sessionId: "parent",
-  source: "self",
-};
 
 function makeRegistry(marked: string[] = []) {
   return {
@@ -443,14 +439,6 @@ describe("ForwardingLivenessJudge.isServing", () => {
     },
   );
 
-  it("declines to judge a session that owns the inbox it is forwarding to", () => {
-    const judge = new ForwardingLivenessJudge({
-      registry: makeRegistry(),
-      heartbeats: makeHeartbeats("absent"),
-    });
-    expect(judge.isServing(SELF_TARGET)).toBeNull();
-  });
-
   it("does not touch the filesystem for an in-process target", () => {
     const heartbeats = makeHeartbeats("absent");
     const judge = new ForwardingLivenessJudge({
@@ -496,18 +484,6 @@ describe("ForwardingLivenessJudge.describe", () => {
       channel: "heartbeat",
       state: "dead_pid",
       servingIds: ["other-parent"],
-    });
-  });
-
-  it("reports no channel for a target it does not judge", () => {
-    const judge = new ForwardingLivenessJudge({
-      registry: makeRegistry(["unrelated"]),
-      heartbeats: makeHeartbeats("alive", ["unrelated"]),
-    });
-    expect(judge.describe(SELF_TARGET)).toEqual({
-      channel: "none",
-      state: null,
-      servingIds: [],
     });
   });
 });
