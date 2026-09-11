@@ -95,8 +95,10 @@ Worktree lane: the peer worktree shares this repo's `.git`, so the branch ref is
 
 1. Predict the merge before running it: `git merge-base --is-ancestor main "$BRANCH" && echo ff-ok`.
    If it fails, stop and send the peer back to `/sync-worktree $1` — do not push root commits to `origin` to make a stale rebase target agree (Refs #813).
-2. `git merge --ff-only "$BRANCH"`.
-3. If the merge is **not** a fast-forward, stop and report.
+2. Record the pre-merge tip — `PRE_MERGE=$(git rev-parse main)` — and report it.
+   A branch can carry commits that precede its plan commit (a roadmap disposition, a baseline fixup), and steps 9 and 10 read a range anchored on the plan (Refs #899).
+3. `git merge --ff-only "$BRANCH"`.
+4. If the merge is **not** a fast-forward, stop and report.
    Name the divergent commits with `git log --oneline "$BRANCH"..main` — run it without `wc -l`, and report those commits, not a cause inferred from `git log main`'s recent subjects (Refs #815).
    The peer must re-run `/sync-worktree $1`, rebasing onto the ref this merge will actually use, then retry this step.
 
@@ -171,6 +173,7 @@ git log --oneline "$PLAN"^..HEAD
 ```
 
 If no plan commit matches, anchor on the parent of the issue's first commit.
+In the worktree lane, use step 4's `PRE_MERGE` as the anchor instead when it is an ancestor of `"$PLAN"^` — the branch then carried pre-plan commits the plan range cannot see.
 
 The comment should include:
 
@@ -221,6 +224,9 @@ Skip this step entirely if step 8 recorded a defer/batch decision — the releas
    PLAN=$(git log --format='%H' --grep="docs: plan .*(#$1)" -1)
    git diff --name-only "$PLAN"^..HEAD | sed -n 's#^packages/\([^/]*\)/.*#\1#p' | sort -u
    ```
+
+   Use step 4's `PRE_MERGE` as the anchor instead when it is an ancestor of `"$PLAN"^`.
+   A pre-plan commit touching a sibling package is invisible to the plan range, and the dispatch would silently omit that package (Refs #899).
 
    Do not filter by commit type: `docs:` and `chore:` are visible changelog groups that cut a patch on their own, so a `feat|fix` scope grep silently drops a sibling bumped by a docs-only commit (Refs #857).
    Step 2 below is the authority on which candidates actually release.

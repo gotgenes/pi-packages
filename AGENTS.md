@@ -451,6 +451,7 @@ A hand-written convention drifts — `Open-issue sweep dispositions` had three s
 When re-verifying a count established earlier in the session, re-run the original command — do not re-derive it with a new pattern.
 A looser one (`rg -l` for an anchored `rg -c '^…'`) admits prose mentions and overturns a correct number (Refs #843).
 Do not spend a tool call measuring the shape of a deterministic command's own output — `git rev-parse` emits exactly 40 hex characters, so `| wc -c` on it tests git, not your work.
+Re-running it a second way (`git log -1 --format=%H`) is the same mistake wearing a disguise.
 Re-resolve the identifiers you *typed*, which is the only place a wrong value can enter (Refs #839).
 
 ##### Markdown

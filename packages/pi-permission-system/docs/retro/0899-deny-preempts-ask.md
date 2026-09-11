@@ -108,4 +108,66 @@ No deferred work rides this branch — the plan's Release Recommendation is `shi
 
 Nothing further to add beyond the TDD stage note above — this is a clean handoff to the root session.
 
+## Stage: Final Retrospective (2026-09-11T08:02:05Z)
+
+### Session summary
+
+Shipped #899 through the worktree lane: fast-forward-merged `issue-899-pi-permission-system-an-ask-on-an-earlie` into `main`, ran the pre-push gates on the merged tree, verified CI, closed the issue, released `pi-permission-system-v32.0.1`, and tore down the worktree.
+The whole ship ran without a clarification gate, because the plan's `**Release:**` marker and the peer's sync note answered every question `/ship` asks before it does irreversible work.
+Both CI and the release run succeeded on the first attempt.
+
+### Observations
+
+#### What went well
+
+- **`/ship` step 2 earned its placement.**
+  Gathering the release decision and close targets *before* the pull, the ff-merge, and the push meant the `ship independently` marker and the peer's explicit "no deferred work rides this branch" note were both in hand before anything was irreversible.
+  That step exists because PR #850 stayed open after its work shipped ([#849]); here it correctly established there was nothing to close beyond the issue itself.
+- **The planning stage overrode the `tidy-first-assessor` on the right grounds.**
+  The assessor declined to extract the shared `preCheck`/`preResolved` reader because the design summary declared `runner.ts` out of scope — a premise the planning session had supplied, not a decision anyone made.
+  Recognizing that a scope boundary asserted in a subagent's prompt returns as a constraint in its verdict is a subtle read of a real failure mode, and it produced Step 1 of the plan.
+- **Measurement over argument held across all three implementation stages.**
+  Planning spiked both candidate rules against the real suite rather than reasoning about them (4157 vs. 4156); TDD applied four mutations and found one plan prediction wrong; the pre-completion reviewer's "structural guarantee, not a gap" was converted into an actual spike, which became a permanent pin (`gate-producer-failure.test.ts`).
+
+#### What caused friction (agent side)
+
+- `instruction-violation` (self-identified, and acted on anyway) — resolving one SHA took three tool calls: `git rev-parse HEAD`, then `git rev-parse HEAD | tee /tmp/head_sha.txt`, then `git log -1 --format=%H`.
+  The stated reason — "this length looks off for 41 characters" — was a fabricated observation about a 40-character string `git rev-parse` cannot get wrong, and `/ship` step 7.1 bans exactly this ("Do not measure its shape (`| wc -c`) — it is command output, not a value you typed").
+  The rule was violated in a form it does not name: not `| wc -c`, but re-deriving the same value with a second command.
+  Impact: two wasted tool calls, no rework — the first call's answer was correct and was ultimately the one used.
+- `other` — an unverified claim stated as fact.
+  After `gh workflow run release.yml` printed a run URL, the session dismissed it ("that URL probably isn't the actual run since `workflow_dispatch` doesn't return one directly via gh cli") and went to `ci_find` instead.
+  `ci_find` returned run `34576732389` — the same run the printed URL named.
+  Impact: none, since `ci_find` is the prescribed step regardless, but the dismissal was asserted rather than checked.
+- `other` — `/ship`'s commit range is anchored on the plan commit, and a worktree branch can carry commits that precede it.
+  This branch did: `c792df10 docs(pi-permission-system): disposition #915 against Phase 15` was committed before the plan, landed on `main` through the ff-merge, and sits outside the `"$PLAN"^..HEAD` range that step 9 (close-comment commit list) and step 10.1 (release-candidate derivation) both read.
+  Harmless here — `docs/architecture/` is an excluded internal-docs path and the package released anyway — but a pre-plan commit touching a *sibling* package would have been silently dropped from the release dispatch.
+  Impact: no rework this time; recorded as a latent gap of the same class as the commit-type filter [#857] removed from that step.
+
+#### What caused friction (user side)
+
+- Nothing.
+  The operator's only interventions were in the peer session's planning stage, and one of them — challenging the first design gate for leading with a test count rather than a reason ("Is the recommendation for A simply to avoid changing tests?") — was precisely the redirecting question that made the gate answerable, and it arrived before any code was written.
+
+### Diagnostic details
+
+- **Model-performance correlation** — the peer session ran planning and TDD on `anthropic/claude-opus-5` (design gates, mutation-table reasoning, an overridden subagent verdict — judgment-heavy, appropriately matched) and the sync stage on `anthropic/claude-sonnet-5` (lint, `fallow`, rebase — mechanical, appropriately matched).
+  This session ran `/ship` on `anthropic/claude-sonnet-5` and this retrospective on `anthropic/claude-opus-5`.
+  No mismatch: the one ship-stage lapse was a rule-application slip, not a reasoning-capacity one.
+  Subagents dispatched: `tidy-first-assessor` (planning) and `pre-completion-reviewer` twice (TDD, the second scoped to the delta commit).
+- **Escalation-delay tracking** — no `rabbit-hole` friction points; the longest same-target sequence was the three-call SHA re-derivation, below the five-call flag.
+- **Feedback-loop gap analysis** — verification was incremental throughout, not end-loaded.
+  The peer session established a green baseline (`check`, `lint`, `test`, `fallow`) before step 1, ran `pnpm run check` mid-step whenever a shared type moved, and applied each step's killing mutation before its commit.
+  `/ship` ran `lint` and `fallow dead-code` on the merged tree after the ff-merge — the placement that exists because the peer checks *before* it rebases.
+  One gap, already recorded in the TDD stage note: Biome reports unused imports at warning level (exit 0), so a stale `PermissionCheckResult` import survived step 1's green `pnpm run lint` and surfaced only under the `grep -c 'lint/'` count at the docs step.
+
+### Changes made
+
+1. `AGENTS.md` — extended the #839 rule to name re-derivation, not only `| wc -c`, as a way of measuring a deterministic command's own output.
+   The rule already cited `git rev-parse`; this session violated it by running `git log -1 --format=%H` as a "second opinion" on a value `git rev-parse` had already produced correctly.
+2. `.pi/prompts/ship.md` — step 4 now records the pre-merge tip (`PRE_MERGE=$(git rev-parse main)`) before the fast-forward merge, and steps 9 and 10.1 prefer it over `"$PLAN"^` when it is an ancestor of the plan commit's parent.
+   A worktree branch can carry pre-plan commits; this one did, and a sibling package bumped by such a commit would have been silently omitted from the release dispatch.
+
+[#849]: https://github.com/gotgenes/pi-packages/issues/849
+[#857]: https://github.com/gotgenes/pi-packages/issues/857
 [#915]: https://github.com/gotgenes/pi-packages/issues/915
