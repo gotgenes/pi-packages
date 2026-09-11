@@ -72,3 +72,73 @@ That technique is nowhere in the agent's charter.
 - Name the sanctioned out-of-repo read paths explicitly (the sibling `pi` checkout at `../../pi` from a worktree, `../pi` from the root checkout) as an allowed exception to the repo-root rule, with the AGENTS.md caveat that the checkout runs ahead of the pinned dependency.
 - Add "fetch the published tarball for the exact version" (`pnpm view <pkg>@<version> dist.tarball`) as the sanctioned technique for a version-boundary question, ahead of any search widening.
 - State that a version-boundary question is the signal: if the answer depends on _when_ a dependency changed, no amount of searching the working tree will produce it.
+
+## Stage: Implementation — TDD (2026-09-11T07:14:12Z)
+
+### Session summary
+
+Executed all seven planned TDD steps plus one unplanned eighth commit, landing the per-API forced-tool-choice map, the two new decision-trail fields, and a dependency-floor raise.
+Test count went 54 → 69 (+12 in the new `test/tool-choice.test.ts`, +3 per-API assertions in `test/model-review.test.ts`); 6 → 7 test files.
+The pre-completion reviewer ran four rounds: FAIL, FAIL, FAIL, PASS — each FAIL a real defect, two of them in claims I had derived myself.
+
+### Observations
+
+#### Deviations from the plan
+
+- **Step 1's killing mutation killed nothing.**
+  The plan predicted that flipping the hoisted fixture's `provider` would redden `typo-reviewer.test.ts`'s `modelId` assertions.
+  It does not: `modelId` derives from `CONFIG.provider`/`CONFIG.model`, and the model object is used only for identity (`toHaveBeenCalledWith(MODEL)`).
+  No field of the fixture was load-bearing until the `api` default landed at step 5, where flipping it reddens three tests across two suites — verified there instead.
+  A pure fixture hoist may simply have no field-level mutation available; the plan asserted one without checking.
+- **`latencyMs` is weakly pinned.**
+  Setting it to `0` kills nothing — the assertions are `typeof === "number"` and `expect.any(Number)`.
+  Appropriate for a wall-clock field, but it meant `tsc` (TS2741) was the discriminating instrument for step 2, not the suite.
+  The two new fields are deterministic, so they are asserted by exact value.
+- **Step 3's mutation killed two tests, not the predicted one.**
+  The `model-unresolved` case also asserts `modelCalled` through `expect.objectContaining`, which the plan's count missed.
+- **An eighth commit: `fix(pi-permission-model-judge)!: require pi-ai 0.84.3`.**
+  Not in the plan, and it inverts the plan's explicit "This is **not** a breaking change" — see below.
+
+#### The floor defect (reviewer round 1)
+
+The plan's own Background table recorded that `openai-responses` is "dropped entirely on the 0.79.1 floor", and then reasoned as though all ten rows were live.
+Three of them are not: `pi-ai` does not read `options.toolChoice` on `openai-responses` or `openai-codex-responses` before v0.80.7, nor on `azure-openai-responses` before v0.84.3, and the package declared `>=0.79.0`.
+So the fix's stated scope — "every OpenAI-compatible provider" — was false across most of the supported range, and the `docs/configuration.md` sentence saying so would have shipped.
+This is AGENTS.md's [#812] rule exactly: a dependency-floor claim is a claim about **each symbol at the candidate floor**, not about the release that introduced the feature.
+I had the disconfirming fact in hand at planning time and wrote it down as a parenthetical rather than as a contradiction.
+
+The operator chose the floor raise over documenting the gate.
+That turned out to carry two type-level SDK migrations — `complete` moved to pi-ai's `compat` entrypoint, and `ResolvedRequestAuth.headers` widened to `ProviderHeaders` — neither of which I had priced in the gate.
+Both are runtime-neutral within the supported range (Pi's extension loader maps the pi-ai root to `compat` for extensions), but an option priced as "a semver-major bump" was in fact a major bump plus a migration.
+
+#### Two rounds spent on one sentence
+
+Rounds 2 and 3 both failed on the `BREAKING CHANGE:` footer, and both times the defect was a claim I had derived and the reviewer had not.
+
+- Round 2: the footer said "on an older Pi the extension still loads".
+  False — `pi-coding-agent@0.79.1`'s loader has no `compat` alias and `pi-ai@0.79.1` exposes no `./compat` export, so the import resolves by no route and the extension fails to load outright.
+- Round 3: my correction said the load floor was 0.80.7.
+  Also false — I had sampled tags `v0.79.1`, `v0.80.7`, `v0.82.0`, … and read the earliest tag I happened to test as the boundary.
+  The alias is already present at `v0.80.0`; the true installable floor is 0.80.1, since 0.80.0 was tagged but never published.
+
+The generalizable error is the same both times and is the sharper version of [#812]: **a bracket is not a boundary**.
+Sampling `A` (absent) and `B` (present) establishes the change happened in `(A, B]`, and nothing more.
+Naming `B` as the boundary in user-facing text is an invention unless every version between was checked — and the answer must come from the **registry** (`pnpm view <pkg> versions`), not from git tags, because a tagged version that was never published is not a version any operator can be on.
+
+#### Reviewer effectiveness
+
+All four rounds were worth their cost, which is not the usual pattern.
+The deterministic checks were green from round 1 onward; every finding was a judgment defect in a factual claim, and three of the four came from the reviewer independently re-deriving something I had asserted.
+The explicit "verify rather than accept" framing in each dispatch prompt, naming which of my claims to re-derive, is what produced them.
+
+See the User Note above for the `find /` problem these dispatches exposed in the reviewer's own charter.
+
+#### Reviewer verdict
+
+Pre-completion reviewer: **PASS** (round 4, commit `083efff6`).
+Rounds 1–3 returned FAIL; each finding was fixed and re-dispatched scoped to the delta.
+No warnings outstanding.
+One non-blocking observation carried forward: the plan document states "This is **not** a breaking change", which the shipped `fix(...)!:` commit contradicts.
+The plan is a historical artifact and was deliberately left unedited — `/ship`'s close comment should say so, so a reader of the plan is not misled.
+
+[#812]: https://github.com/gotgenes/pi-packages/issues/812
