@@ -95,4 +95,17 @@ Pre-completion reviewer: **PASS** (two rounds — the second scoped to the delta
   Issue #899 shipped from the roadmap's open-issue sweep list, not as a numbered Phase 15 step, so there is no `✅` to flip.
   The sweep entry was corrected in place instead: its recorded deferral rationale predicted a mechanism (hoisting resolution out of `GateRunner.runDescriptor`) that planning measured to be already done.
 
+## Stage: Sync (worktree) (2026-09-11T07:50:47Z)
+
+### Session summary
+
+Pre-push checks pass clean (`pnpm run lint`: no findings; `pnpm fallow dead-code`: no issues, 337 entry points).
+No deferred work rides this branch — the plan's Release Recommendation is `ship independently`, and the neighboring multiple-ask defect is filed separately as [#915] with its own Phase 15 disposition already recorded.
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-899--/2026-09-11T06-50-03-457Z_01a08f3a-ff40-7111-8cb0-b7d4c85e71a7.jsonl` — read with `read_session_file({ path: "<path>" })` for message-level verification at land/retro time.
+
+### Observations
+
+Nothing further to add beyond the TDD stage note above — this is a clean handoff to the root session.
+
 [#915]: https://github.com/gotgenes/pi-packages/issues/915
