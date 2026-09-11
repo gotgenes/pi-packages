@@ -138,6 +138,29 @@ describe("GetResultTool", () => {
 			expect(result.content[0].text).toContain('resume: "agent-1"');
 		});
 
+		it("names no resume for a child that asked before its turn ended", async () => {
+			// The reported path: ask_parent records the question during the run, and a
+			// pull in the window before the turn ends used to name the resume call
+			// that would have started a second turn loop on the same session.
+			const records = new Map([
+				[
+					"agent-1",
+					createTestSubagent({
+						status: "running",
+						completedAt: undefined,
+						pendingQuestion: "Which config?",
+						sessionReady: true,
+					}),
+				],
+			]);
+
+			const result = await execute(makeManager(records), { agent_id: "agent-1" });
+
+			expect(result.content[0].text).toContain("Which config?");
+			expect(result.content[0].text).toContain("cannot be resumed yet");
+			expect(result.content[0].text).not.toContain("resume:");
+		});
+
 		it("forwards the record's refusal, so a swept record names no resume", async () => {
 			const released = createTestSubagent({
 				pendingQuestion: "Which config?",
