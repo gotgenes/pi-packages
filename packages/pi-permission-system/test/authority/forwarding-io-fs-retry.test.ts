@@ -38,10 +38,11 @@ const { renameSync: realRenameSync, mkdirSync: realMkdirSync } =
 // ── helpers ────────────────────────────────────────────────────────────────
 
 /** An `fs`-shaped error: a plain `Error` carrying an errno `code`. */
-function errnoError(code: string): Error {
-  return Object.assign(new Error(`${code}: operation not permitted, rename`), {
-    code,
-  });
+function errnoError(code: string, operation: string): Error {
+  return Object.assign(
+    new Error(`${code}: operation not permitted, ${operation}`),
+    { code },
+  );
 }
 
 /** Fail the next `failures` renames with `code`, then let the real one run. */
@@ -50,7 +51,7 @@ function failRenames(failures: number, code: string): void {
   renameSync.mockImplementation((from: string, to: string) => {
     calls += 1;
     if (calls <= failures) {
-      throw errnoError(code);
+      throw errnoError(code, "rename");
     }
     realRenameSync(from, to);
   });
@@ -63,7 +64,7 @@ function failMkdirs(failures: number, code: string): void {
     (path: string, options: Parameters<typeof realMkdirSync>[1]) => {
       calls += 1;
       if (calls <= failures) {
-        throw errnoError(code);
+        throw errnoError(code, "mkdir");
       }
       return realMkdirSync(path, options);
     },
@@ -187,7 +188,7 @@ describe("ensureDirectoryExists under a transient file lock", () => {
       "permission_forwarding.error",
       {
         message: `Failed to create requests directory '${dirPath}'`,
-        error: "EPERM: operation not permitted, rename",
+        error: "EPERM: operation not permitted, mkdir",
       },
     );
   });
