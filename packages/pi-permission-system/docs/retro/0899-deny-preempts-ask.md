@@ -52,4 +52,47 @@ Filed [#915] for the neighboring multiple-ask defect and recorded its Phase 15 d
 - `src/handlers/gates/tool-call-gate-pipeline.test.ts` / `test/helpers/gate-fixtures.ts` — a `makeMockBashProgram` variant returning non-empty `pathRuleCandidates()`/`externalAccesses()`, so the two bash path gates are reachable in a pipeline unit test rather than only at the handler level.
   Declined as Optional by the assessor and not needed by this plan's matrix.
 
+## Stage: Implementation — TDD (2026-09-11T07:49:11Z)
+
+### Session summary
+
+Five commits: the two Tidy-First preparatory steps (`preResolvedCheckOf` extraction, the shared `makeSurfaceDenyingResolver` fixture), the `fix:` itself, the `docs:` step, and one unplanned `test:` commit pinning a newly-reachable fail-closed path.
+`ToolCallGatePipeline.evaluate` now produces all six gates before running any and runs an unconditionally denying one first, so a command the policy forbids is refused without an unanswerable prompt.
+Test count 4157 → 4177 (+20), with one existing test rewritten rather than added.
+Pre-completion reviewer: **PASS** (two rounds — the second scoped to the delta commit).
+
+### Observations
+
+- **Every plan prediction held, including the measured breakage.**
+  The plan named exactly one existing test that would break (`external-directory-integration.test.ts`'s `emits separate decision events…`), and exactly that one broke, for exactly the predicted reason.
+  Spiking both candidate rules at planning time is what bought that — the rewrite was a known cost before the first line was written rather than a mid-cycle surprise.
+
+- **One mutation prediction was wrong, and the direction is worth remembering.**
+  The plan claimed the `isUnconditionalDeny`-returns-`false` mutation would leave the `orderDenyFirst` unit tests green, treating them as an independent equivalence class.
+  It killed three of them, because `orderDenyFirst` calls the predicate on the very `GateResult` values those tests construct — the two are one class, not two.
+  Over-discrimination, not a coverage gap: the stability mutation still killed exactly one test, which is the claim those tests exist to pin.
+  Lesson: a mutation table's equivalence classes must be derived from the *call graph*, not from the function names.
+
+- **The reviewer's "structural guarantee, not a gap" was worth converting into a test.**
+  Round one flagged that no test pinned a producer throwing from inside the new eager loop, then argued the boundary's mechanism makes it safe anyway.
+  The plan's own Risks section had already said this risk must be **spiked**, not inferred — so it was, and the spike became a permanent pin.
+
+- **The first draft of that pin did not discriminate, and only writing the mutation revealed it.**
+  It denied the `read` surface (producer 6), so the old lazy loop reached the throwing producer 5 first either way and the test passed against both versions.
+  Denying `path_read` (producer 2's surface for a read tool) is what makes the block land ahead of producer 5.
+  This is the exact failure mode the "authored after Green never had a Red step" rule exists to catch, and it was caught only because the mutation was actually applied rather than reasoned about.
+
+- **The `source !== "session"` clause is unreachable today, deliberately.**
+  `SessionRules` records only `action: "allow"`, so a session-sourced `deny` cannot exist; the reviewer confirmed this from the producer rather than from test survival.
+  It is kept because it makes `isUnconditionalDeny` correct on its own terms rather than by way of a distant invariant, and because it errs toward today's behavior by declining to pre-empt.
+
+- **One lint warning arrived a commit late.**
+  Step 1 left `PermissionCheckResult` unused in `runner.ts`; Biome reports unused imports at *warning* level, which exits 0, so `pnpm run lint` passed at that commit and the finding only surfaced under the `grep -c 'lint/'` count at the docs step.
+  Fixed by amending the `fix:` commit (nothing pushed).
+  The count-the-findings habit is what caught it — the exit code never would have.
+
+- **No roadmap step to mark.**
+  Issue #899 shipped from the roadmap's open-issue sweep list, not as a numbered Phase 15 step, so there is no `✅` to flip.
+  The sweep entry was corrected in place instead: its recorded deferral rationale predicted a mechanism (hoisting resolution out of `GateRunner.runDescriptor`) that planning measured to be already done.
+
 [#915]: https://github.com/gotgenes/pi-packages/issues/915
