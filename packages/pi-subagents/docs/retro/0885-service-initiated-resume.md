@@ -48,3 +48,34 @@ Filed [#912] and [#913] as follow-ups and recorded their Phase 22 dispositions (
 [#903]: https://github.com/gotgenes/pi-packages/issues/903
 [#912]: https://github.com/gotgenes/pi-packages/issues/912
 [#913]: https://github.com/gotgenes/pi-packages/issues/913
+
+## Stage: Implementation — TDD (2026-09-11T05:00:55Z)
+
+### Session summary
+
+Executed all eight planned TDD cycles plus two unplanned commits: `SubagentsService.resume` with a discriminated result and a per-call `claimOutcome`, the refusal policy relocated to `SubagentManager.resume`, [#896]'s still-running refusal, and [#832]'s `subagents:resuming` channel.
+The pi-subagents suite went 1684 → 1712 tests (+28), all green, with `check`, root `lint`, `fallow dead-code`, and `verify:public-types` clean.
+Pre-completion reviewer: WARN (no blocking findings).
+
+### Observations
+
+- **The plan's prediction for the widget was wrong, and the test caught it.**
+  `Module-Level Changes` said `AgentWidget.onSubagentResuming` calls `update()`, mirroring `onSubagentResumed`.
+  The test asserted the timer restarts, which `update()` does not do: `clearWidget()` stops the interval once nothing is active, so a resume arriving after a child settled would repaint once and leave a static spinner.
+  `startLoop()` is the right call, and the deviation is recorded in the architecture doc's `Landed:` note.
+- **The transient affordance was reworded during planning to keep `resume:` out of it**, and that paid off here: the existing `names no resume call for any reason` loop widened from three reasons to four with no exception, instead of needing one.
+- **Two of the plan's preparatory steps earned their place; the third earned more than expected.**
+  Extracting `resumeExisting` meant step 5 replaced one small method.
+  The refused/accepted nesting turned out to mark exactly the seam the rewiring split: the five refused tests stopped constructing records entirely and now state the reason they are wording (`mockResumeRefusal`), while the accepted half only re-wrapped its mock value.
+  A second builder (`mockResumeRefusal`) was added during step 5 that the plan had not named.
+- **Removing the `getRecord` pre-read left seven identical three-line setups dead in the accepted tests**, since the door no longer reads the record it was mocking.
+  Deleting them also emptied three imports, which `biome check --write` would not fix (unsafe-classified) and which had to be hand-edited.
+- **`resetForResume` ordering was worth a dedicated pin.**
+  The claim must land before `Subagent.resume()` because `resetForResume` runs synchronously inside it; the manager test drives a `resumeTurnLoop` that never settles and asserts `claimed` while the resume is in flight, and moving `claim()` after the `await` reddens exactly that test.
+- **The plan's "Failed to resume" removal held up under review.**
+  The reviewer re-derived it: nothing awaits between the refusal read and `agent.resume()`, and `Subagent.resume` rejects only on the missing session `resumeRefusal` has already excluded — so no path strands a claim.
+- **Reviewer warnings** — WARN, two findings, neither blocking. (1) The plan's "bounded to one message per resumed run" for the accepted [#903] residual was quoted from that plan rather than re-derived: `NotificationManager.pending` does not collapse updates per record (only completions), so an unclaimed resume can flush several.
+  Corrected in `099a7c35` — what is bounded is the content, not the count. (2) A pre-existing race the reviewer flagged for awareness: `abort()` sets `stopped` synchronously while the cancelled turn loop is still settling, so `resumeRefusal` reports resumable during that window.
+  Unchanged by this diff (the old getter had the same gap) and adjacent to [#913], which Step 22 owns.
+- **One unplanned `test:` commit** (`ea6c081a`) pins the pull path [#896] actually reports — `get_subagent_result` on a running child carrying a `pendingQuestion`.
+  The plan listed that file as a touch point but the Tidy-First assessor had already found no existing case there; the test passed on first run, so it was mutation-checked (removing the `still-running` arm reddens it) before being committed as a pin rather than a probe.
