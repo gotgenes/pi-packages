@@ -160,6 +160,8 @@ Note the deferral in the final report.
 
 ## 9. Close the issue
 
+Load the `github-voice` skill before drafting — this comment and any PR close comment are contributor-facing.
+
 Build the close comment from this issue's own commits, anchored on the plan commit — not on the package's last tag.
 Each package releases on its own cadence, so a tag range spans every sibling issue that landed since: measured at 165 commits across 32 issues for a 13-commit change (Refs #817).
 
@@ -173,6 +175,7 @@ If no plan commit matches, anchor on the parent of the issue's first commit.
 The comment should include:
 
 - The commit hash that lands the change ("Implemented in <sha> …") — the commit carrying the behavior, not the range's last commit.
+  With several `fix:`/`feat:` commits in range, anchor on the one that fixes the **issue's title defect** and list the rest as bullets — not the newest or largest (Refs #907).
   Run `git rev-parse` for **every** SHA the comment will contain — the landing commit and any follow-on commits — before you start drafting.
   Paste each exactly; never hand-type or extend a short SHA from memory, and never leave a placeholder to fill in later.
   A fabricated SHA does not auto-link (Refs #704, #777).
@@ -197,6 +200,7 @@ The multi-SHA credit list here is where hand-extended short hashes slip in (Refs
 
 A shipped issue can also supersede open third-party PRs without either being the close target — this repo reimplements rather than merges.
 Close each PR that step 2's plan-and-retro read named, with `gh pr comment` then `gh pr close`, never merge, crediting the author by `@login` (Refs #670, #690).
+Read each PR's body first (`gh pr view <M> --json body -q .body`) — what a PR flagged, covered, or omitted is a claim about the PR, and the plan's summary of it is not that source (Refs #907).
 
 Then check whether this push shipped work for **other** issues in the `"$PLAN"^..HEAD` range.
 A co-shipped issue shows as a stacked refactor/enabler, a subject-trailing `(#M)` commit ref, or a sibling `docs/plans/`/`docs/retro/` file added in range — a body-line `Refs #M` is a citation, not a ship (Refs #793).
