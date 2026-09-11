@@ -9,11 +9,12 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { ParentAuthorizer } from "#src/authority/approval-escalator";
 import {
   type ForwardedPermissionRequest,
   PERMISSION_FORWARDING_SERVING_GRACE_MS,
+  SUBAGENT_ENV_HINT_KEYS,
 } from "#src/authority/permission-forwarding";
 import { ServingSessionRegistry } from "#src/authority/serving-registry";
 import {
@@ -28,6 +29,18 @@ import {
   makePromptDetails,
   makePromptPayload,
 } from "#test/helpers/prompt-details-fixtures";
+
+// Target resolution reads ambient `process.env`, so clear the hints a host
+// session may export before each test decides what it wants set.
+beforeEach(() => {
+  for (const key of SUBAGENT_ENV_HINT_KEYS) {
+    vi.stubEnv(key, undefined);
+  }
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 // ── Local poll helper ────────────────────────────────────────────────────
 //

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { SUBAGENT_ENV_HINT_KEYS } from "#src/authority/permission-forwarding";
 import {
   isRegisteredSubagentChild,
@@ -8,6 +8,15 @@ import {
 } from "#src/authority/subagent-context";
 import { SubagentSessionRegistry } from "#src/authority/subagent-registry";
 import { posixPathFlavor, win32PathFlavor } from "#src/path/path-flavor";
+
+// The subject reads ambient `process.env`, so a contributor running the suite
+// from inside a session that exports a subagent marker would otherwise see
+// different answers than CI.
+beforeEach(() => {
+  for (const key of SUBAGENT_ENV_HINT_KEYS) {
+    vi.stubEnv(key, undefined);
+  }
+});
 
 afterEach(() => {
   vi.unstubAllEnvs();
