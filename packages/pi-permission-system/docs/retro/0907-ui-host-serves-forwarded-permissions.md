@@ -44,6 +44,41 @@ And `architecture.md`'s env-var inventory is stale in the exact row this issue c
 The assessor's one Recommended item — extract a non-logging `setServingId` from `announceServing` — was **dissolved rather than deferred**.
 It assumed the heartbeat migration must stay silent; the design settled that a migration is a rare, diagnosis-worthy event that should log, which is exactly `announceServing`'s existing behavior, so `refreshServing` delegates to it and no extraction is needed.
 
+## Stage: Implementation — TDD (2026-09-11T05:04:54Z)
+
+### Session summary
+
+Executed all five steps of `docs/plans/0907-ui-host-serves-forwarded-permissions.md` — one `test:` env-hygiene step, three `fix:` steps, one `docs:` step — each its own commit with the plan's killing mutations applied and reverted before committing.
+Serving eligibility is now `ctx.hasUI` alone, the heartbeat re-resolves the live session id each tick and republishes through `announceServing` on a change, and `resolvePermissionForwardingTarget` skips a candidate naming the requesting session in both channels.
+Tests went 4126 → 4147 (+21) in `pi-permission-system`; `check`, root `lint`, full `test`, and `fallow dead-code` all green.
+
+### Observations
+
+The plan held exactly: the changed-file list matches its `Module-Level Changes` table with no additions, and all four predicted-unchanged files held — including `src/authority/subagent-context.ts`, which is the file PR [#911] edits and whose staying untouched was the design's falsifiable claim.
+
+Every mutation killed the predicted set and no more.
+Two are worth recording.
+The `hasUI`-guard deletion mutation killed four tests (the two `start()` no-UI cases plus two serving-announcement cases) while leaving the new serving-eligibility scenarios green, which is the signal that the guard's two halves are pinned separately rather than by one overlapping assertion.
+And `keeps serving the last reachable id when the live id is unreachable` **passed during Red** — today's `refreshServing` re-marks the stored id unconditionally, so an unreachable live id was already harmless.
+That is the case the testing skill flags as indistinguishable from a broken probe, so it was mutated explicitly (drop the `normalizePermissionForwardingSessionId` guard); it went red alone, confirming a real invariant pin.
+
+The Step 4 red produced the reported symptom directly: `reports a self-naming marker as unresolvable and writes no request` took 5006 ms before the fix, forwarding to itself and waiting out the serving grace window, and is instant after.
+
+Two facts were confirmed against Pi's own checkout at `../../pi` after the pre-completion reviewer raised them, both mechanism reads rather than pinned-version API claims.
+`SessionManager`'s `createSessionId()` is `randomUUID()` and `generateId` is a collision-checked 8-hex id, so two live sessions never share one — closing the reviewer's open question about whether the self-target skip could refuse a legitimate target.
+More usefully, `this.sessionId = newSessionId` appears at two sites in `SessionManager`: the session id genuinely mutates **in place** on the same object, with no fresh `ExtensionContext` and no `session_start`.
+That is the churn mechanism the reporter asserted in follow-up finding 1, and until this read the evidence for it was the reporter's word plus the upstream env-refresh gap.
+
+The env-hygiene step was verified in the inverse direction, since it repairs no current failure: with an ambient `PI_SUBAGENT_PARENT_SESSION`, 18 tests across three files fail without it and pass with it.
+
+One small deviation, in test mechanics rather than design.
+The `hasUI`-guard-deletion mutation was first written as `if (false)`, which Biome rejects as `noConstantCondition` — a lint error is not a discrimination signal.
+Rewritten as `if (ctx.hasUI === undefined)`, a compared-literal change that depends on a runtime value, per the guidance to prefer changing a literal over restructuring control flow.
+
+Pre-completion reviewer: **PASS** — ready for `/ship`.
+It independently re-derived the narrowed guard (confirming `selectAuthorizer` is the only other `isSubagent` consumer and that it returns on `hasUI` first), traced the #719/#721 invariants to their Phase 13 history entry and confirmed both still hold and are pinned by tests rather than prose, and spot-checked the `nicobailon/pi-subagents` root-process claim at `v0.67.0`.
+No WARN findings.
+
 [#22]: https://github.com/gotgenes/pi-packages/issues/22
 [#789]: https://github.com/gotgenes/pi-packages/issues/789
 [#907]: https://github.com/gotgenes/pi-packages/issues/907
