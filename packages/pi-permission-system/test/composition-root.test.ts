@@ -506,6 +506,61 @@ describe("unguarded in-process child detection", () => {
   });
 });
 
+describe("interactive serving eligibility", () => {
+  // A spawner may export the parent-session marker from its own root process so
+  // the children it later launches inherit it — `nicobailon/pi-subagents` sets
+  // it to the root's own session id at `session_start`. A node with a UI has a
+  // human who can answer, so it serves its inbox whatever the marker names
+  // (#907).
+  async function startRootThenSetMarker(
+    markerValue: string,
+  ): Promise<{ cwd: string; pi: ReturnType<typeof makeFakePi> }> {
+    const cwd = mkdtempSync(join(tmpdir(), "pi-perm-root-serving-cwd-"));
+    const pi = makeFakePi();
+    const ctx = makeBaseCtx(cwd, "ui-root-session");
+    piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+
+    await fireSessionStart(pi, ctx);
+    expect(getServingSessionRegistry().servingIds()).toEqual([
+      "ui-root-session",
+    ]);
+
+    vi.stubEnv("PI_SUBAGENT_PARENT_SESSION", markerValue);
+    await pi.fire(
+      "before_agent_start",
+      { systemPrompt: "", systemPromptOptions: { cwd: "/test" } },
+      ctx,
+    );
+
+    return { cwd, pi };
+  }
+
+  it("keeps serving when the root inherits its own session id as the marker", async () => {
+    const { cwd, pi } = await startRootThenSetMarker("ui-root-session");
+
+    expect(getServingSessionRegistry().servingIds()).toEqual([
+      "ui-root-session",
+    ]);
+
+    await pi.fire("session_shutdown");
+    rmSync(cwd, { recursive: true, force: true });
+  });
+
+  it("keeps serving when the marker names a different session", async () => {
+    // Not merely the self-naming case: the marker is stale after any mid-session
+    // id change, since the spawner refreshes it only at `session_start`. A UI
+    // host serves regardless of what the marker names.
+    const { cwd, pi } = await startRootThenSetMarker("some-other-session");
+
+    expect(getServingSessionRegistry().servingIds()).toEqual([
+      "ui-root-session",
+    ]);
+
+    await pi.fire("session_shutdown");
+    rmSync(cwd, { recursive: true, force: true });
+  });
+});
+
 describe("out-of-process forwarding liveness", () => {
   // A child spawned as its own `pi` process resolves its parent from the
   // environment and shares no `globalThis` with it, so the serving registry the

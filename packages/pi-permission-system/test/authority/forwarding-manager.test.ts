@@ -1,15 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ForwardingManager } from "#src/authority/forwarding-manager";
+import { SUBAGENT_ENV_HINT_KEYS } from "#src/authority/permission-forwarding";
 import {
   type ServingAnnouncer,
   ServingSessionRegistry,
 } from "#src/authority/serving-registry";
-import type { SubagentDetector } from "#src/authority/subagent-detection";
 
 // ── Mocks ─────────────────────────────────────────────────────────────────
 
 const mockProcessInbox = vi.fn((): Promise<void> => Promise.resolve());
-const mockIsSubagent = vi.fn((): boolean => false);
 const mockReview = vi.fn();
 
 // ── Helpers ───────────────────────────────────────────────────────────────
@@ -28,10 +27,6 @@ function makeForwarder() {
   return { processInbox: mockProcessInbox };
 }
 
-function makeDetection(): SubagentDetector {
-  return { isSubagent: mockIsSubagent };
-}
-
 /** A `ServingAnnouncer` whose calls can be counted, for the refresh tests. */
 function makeAnnouncer() {
   return { markServing: vi.fn(), clearServing: vi.fn() };
@@ -39,7 +34,6 @@ function makeAnnouncer() {
 
 function makeManager(serving: ServingAnnouncer = new ServingSessionRegistry()) {
   return new ForwardingManager({
-    detection: makeDetection(),
     forwarder: makeForwarder(),
     serving,
     logger: { review: mockReview, debug: vi.fn() },
@@ -51,8 +45,9 @@ function makeManager(serving: ServingAnnouncer = new ServingSessionRegistry()) {
 describe("ForwardingManager", () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    mockIsSubagent.mockReset();
-    mockIsSubagent.mockReturnValue(false);
+    for (const key of SUBAGENT_ENV_HINT_KEYS) {
+      vi.stubEnv(key, undefined);
+    }
     mockProcessInbox.mockReset();
     mockProcessInbox.mockResolvedValue(undefined);
     mockReview.mockReset();
@@ -60,6 +55,7 @@ describe("ForwardingManager", () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.unstubAllEnvs();
   });
 
   describe("stop()", () => {
@@ -105,31 +101,20 @@ describe("ForwardingManager", () => {
       expect(mockProcessInbox).not.toHaveBeenCalled();
     });
 
-    it("does not start polling when the detector reports a subagent context", async () => {
-      mockIsSubagent.mockReturnValue(true);
-      const manager = makeManager();
-      const ctx = makeCtx();
-      manager.start(ctx);
+    it.each(SUBAGENT_ENV_HINT_KEYS)(
+      "keeps polling a UI context when %s is set",
+      async (key) => {
+        // Serving eligibility is `hasUI` alone. A spawner may export a marker
+        // from its own root process so its children inherit it, and that root
+        // must keep draining the inbox those children write into (#907).
+        vi.stubEnv(key, "sess-1");
+        const manager = makeManager();
+        manager.start(makeCtx({ sessionId: "sess-1" }));
 
-      await vi.advanceTimersByTimeAsync(500);
-      expect(mockProcessInbox).not.toHaveBeenCalled();
-    });
-
-    it("stops any existing poll when called with a subagent context", async () => {
-      mockIsSubagent.mockReturnValueOnce(false);
-      const manager = makeManager();
-      const ctx1 = makeCtx();
-      manager.start(ctx1);
-
-      // Second call with a subagent context.
-      mockIsSubagent.mockReturnValue(true);
-      const ctx2 = makeCtx();
-      manager.start(ctx2);
-
-      mockProcessInbox.mockClear();
-      await vi.advanceTimersByTimeAsync(500);
-      expect(mockProcessInbox).not.toHaveBeenCalled();
-    });
+        await vi.advanceTimersByTimeAsync(500);
+        expect(mockProcessInbox).toHaveBeenCalled();
+      },
+    );
 
     it("starts polling and calls processInbox on tick", async () => {
       const manager = makeManager();
@@ -188,14 +173,6 @@ describe("ForwardingManager", () => {
       resolveProcess!();
       await vi.advanceTimersByTimeAsync(250);
       expect(mockProcessInbox).toHaveBeenCalledTimes(2);
-    });
-
-    it("consults the detector with the current context", () => {
-      const manager = makeManager();
-      const ctx = makeCtx();
-      manager.start(ctx);
-
-      expect(mockIsSubagent).toHaveBeenCalledWith(ctx);
     });
   });
 

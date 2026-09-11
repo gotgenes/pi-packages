@@ -4,7 +4,6 @@ import type { InboxProcessor } from "./forwarded-request-server";
 import { getSessionId } from "./forwarder-context";
 import { PERMISSION_FORWARDING_POLL_INTERVAL_MS } from "./permission-forwarding";
 import type { ServingAnnouncer } from "./serving-registry";
-import type { SubagentDetector } from "./subagent-detection";
 
 /**
  * Narrow interface for the forwarding lifecycle used by `PermissionSession`.
@@ -17,8 +16,6 @@ export interface ForwardingController {
 
 /** Constructor config for {@link ForwardingManager}. */
 export interface ForwardingManagerDeps {
-  /** Single owner of subagent detection; gates whether this session may serve. */
-  detection: SubagentDetector;
   /** Drains this session's forwarded-permission inbox on each tick. */
   forwarder: InboxProcessor;
   /** Publishes that this session is draining its inbox, for forwarding children. */
@@ -39,6 +36,13 @@ export interface ForwardingManagerDeps {
  * into — and the review log records that id, so a child forwarding to a
  * *different* id is visible as a one-line diff against its
  * `forwarded_permission.request_created` entry (#719).
+ *
+ * Serving eligibility is `hasUI` and nothing else: a node with a UI has a human
+ * who can answer, so it drains its own inbox. It deliberately does **not** ask
+ * whether this process looks like a subagent — a spawner may export a
+ * parent-session marker from its own root process so the children it later
+ * launches inherit it, which made the root withdraw serving and fail every
+ * forwarded ask closed (#907).
  */
 export class ForwardingManager {
   private timer: NodeJS.Timeout | null = null;
@@ -49,13 +53,13 @@ export class ForwardingManager {
   constructor(private readonly deps: ForwardingManagerDeps) {}
 
   /**
-   * Start polling if `ctx` has UI and is not a subagent execution context.
+   * Start polling if `ctx` has UI.
    * No-op (timer stays running) if already polling — updates the stored
    * context so the next tick uses the latest session.
    * Stops any existing poll when the context does not qualify for forwarding.
    */
   start(ctx: ExtensionContext): void {
-    if (!ctx.hasUI || this.deps.detection.isSubagent(ctx)) {
+    if (!ctx.hasUI) {
       this.stop();
       return;
     }
