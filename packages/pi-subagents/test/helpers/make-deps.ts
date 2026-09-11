@@ -2,6 +2,7 @@ import { vi } from "vitest";
 import { AgentTypeRegistry } from "#src/config/agent-types";
 import type { ParentSnapshot } from "#src/lifecycle/parent-snapshot";
 import type { Subagent } from "#src/lifecycle/subagent";
+import type { ResumeRefusalReason } from "#src/lifecycle/subagent-manager";
 import {
 	type AgentToolManager,
 	type AgentToolRuntime,
@@ -54,7 +55,7 @@ export function createToolDeps(overrides: Partial<AgentToolFixture> = {}): Agent
 		manager: {
 			spawn: vi.fn().mockReturnValue("agent-1"),
 			spawnAndWait: vi.fn().mockResolvedValue(createTestSubagent()),
-			resume: vi.fn().mockResolvedValue(createTestSubagent()),
+			resume: vi.fn().mockResolvedValue({ kind: "resumed", record: createTestSubagent() }),
 			getRecord: vi.fn().mockReturnValue(createTestSubagent()),
 		},
 		runtime,
@@ -77,8 +78,16 @@ export function mockResumeRecord(
 	overrides: TestSubagentOptions = {},
 ): Subagent {
 	const record = createTestSubagent(overrides);
-	deps.manager.resume = vi.fn().mockResolvedValue(record);
+	deps.manager.resume = vi.fn().mockResolvedValue({ kind: "resumed", record });
 	return record;
+}
+
+/**
+ * Point the fixture's `manager.resume` at a refusal, so a door test states the
+ * reason it is wording rather than assembling a record that produces it.
+ */
+export function mockResumeRefusal(deps: AgentToolFixture, reason: ResumeRefusalReason): void {
+	deps.manager.resume = vi.fn().mockResolvedValue({ kind: "refused", reason });
 }
 
 /**

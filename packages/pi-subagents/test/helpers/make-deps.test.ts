@@ -17,10 +17,11 @@ describe("createToolDeps", () => {
 			expect(record.status).toBe("completed");
 		});
 
-		it("resume resolves to a completed record", async () => {
+		it("resume resolves to a resumed outcome carrying a completed record", async () => {
 			const { manager } = createToolDeps();
-			const record = await manager.resume("id-1", "prompt", new AbortController().signal);
-			expect(record?.status).toBe("completed");
+			const outcome = await manager.resume("id-1", "prompt", {});
+			expect(outcome.kind).toBe("resumed");
+			expect(outcome.kind === "resumed" && outcome.record.status).toBe("completed");
 		});
 
 		it("getRecord returns a completed record", () => {

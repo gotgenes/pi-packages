@@ -5,10 +5,9 @@ import {
 	createToolDeps,
 	createToolDepsWithDisabledBuiltInAgents,
 	mockResumeRecord,
+	mockResumeRefusal,
 } from "#test/helpers/make-deps";
-import { createTestSubagent, makeStubExecution } from "#test/helpers/make-subagent";
-import { makeWorkspace, makeWorkspaceProvider } from "#test/helpers/make-workspace";
-import { createMockSession, createSubagentSessionStub, toSubagentSession } from "#test/helpers/mock-session";
+import { createTestSubagent } from "#test/helpers/make-subagent";
 
 function makeCtx(overrides: Record<string, unknown> = {}) {
 	return {
@@ -93,22 +92,24 @@ describe("AgentTool", () => {
 
 describe("AgentTool — resume path", () => {
 	describe("refused", () => {
-		it("returns not-found when resume ID does not exist", async () => {
+		it("names an id no record answers to", async () => {
 			const deps = createToolDeps();
-			deps.manager.getRecord = vi.fn().mockReturnValue(undefined);
+			mockResumeRefusal(deps, "unknown-agent");
 			const result = await execute(deps, {
 				prompt: "continue",
 				description: "resume",
 				subagent_type: "general-purpose",
 				resume: "nonexistent",
 			});
-			expect(result.content[0].text).toContain("Agent not found");
+			expect(result.content[0].text).toBe(
+				'Agent not found: "nonexistent". Records are cleared at session start/switch, so it ' +
+					"may be from a previous session.",
+			);
 		});
 
-		it("returns no-session when agent has no active session", async () => {
+		it("names a missing session without offering a cleanup story it cannot tell", async () => {
 			const deps = createToolDeps();
-			// No execution state set — session not yet created
-			deps.manager.getRecord = vi.fn().mockReturnValue(createTestSubagent());
+			mockResumeRefusal(deps, "no-session");
 			const result = await execute(deps, {
 				prompt: "continue",
 				description: "resume",
@@ -118,25 +119,9 @@ describe("AgentTool — resume path", () => {
 			expect(result.content[0].text).toBe('Agent "agent-1" has no active session to resume.');
 		});
 
-		it("returns not-found copy without claiming cleanup for an unknown resume ID", async () => {
-			const deps = createToolDeps();
-			deps.manager.getRecord = vi.fn().mockReturnValue(undefined);
-			const result = await execute(deps, {
-				prompt: "continue",
-				description: "resume",
-				subagent_type: "general-purpose",
-				resume: "nonexistent",
-			});
-			expect(result.content[0].text).toContain("Agent not found");
-			expect(result.content[0].text).not.toContain("cleaned up");
-		});
-
 		it("points a released-agent resume at get_subagent_result instead of resuming", async () => {
 			const deps = createToolDeps();
-			const released = createTestSubagent();
-			released.subagentSession = toSubagentSession(createSubagentSessionStub(createMockSession(), "/tasks/agent.jsonl"));
-			await released.releaseSession();
-			deps.manager.getRecord = vi.fn().mockReturnValue(released);
+			mockResumeRefusal(deps, "session-released");
 			const result = await execute(deps, {
 				prompt: "continue",
 				description: "resume",
@@ -147,14 +132,11 @@ describe("AgentTool — resume path", () => {
 				'Agent "agent-1" had its session released after its retention window; resume is ' +
 					"unavailable, but its result is still retrievable via get_subagent_result.",
 			);
-			expect(deps.manager.resume).not.toHaveBeenCalled();
 		});
 
-		it("refuses a resume of an agent that has not finished running", async () => {
+		it("tells the parent to wait out a run that has not finished", async () => {
 			const deps = createToolDeps();
-			deps.manager.getRecord = vi
-				.fn()
-				.mockReturnValue(createTestSubagent({ status: "running", sessionReady: true }));
+			mockResumeRefusal(deps, "still-running");
 
 			const result = await execute(deps, {
 				prompt: "continue",
@@ -167,21 +149,11 @@ describe("AgentTool — resume path", () => {
 				'Agent "agent-1" is still running; wait for it to finish before resuming. ' +
 					"Use steer_subagent to send it a message while it runs.",
 			);
-			expect(deps.manager.resume).not.toHaveBeenCalled();
 		});
 
-		it("refuses a resume whose workspace was torn down at run end", async () => {
+		it("names a torn-down workspace as the reason a resume cannot re-enter it", async () => {
 			const deps = createToolDeps();
-			const workspace = makeWorkspace("/ws/dir");
-			const disposed = createTestSubagent({
-				execution: makeStubExecution({
-					getWorkspaceProvider: () => makeWorkspaceProvider(workspace),
-				}),
-			});
-			// A real run, so the workspace is disposed by the code under test rather
-			// than by seeded state: the stub turn loop ends with no declared question.
-			await disposed.run();
-			deps.manager.getRecord = vi.fn().mockReturnValue(disposed);
+			mockResumeRefusal(deps, "workspace-disposed");
 
 			const result = await execute(deps, {
 				prompt: "continue",
@@ -195,7 +167,6 @@ describe("AgentTool — resume path", () => {
 					"unavailable because the agent would re-enter a directory that has been removed. " +
 					"Spawn a new agent instead — the agent's result records where any work was saved.",
 			);
-			expect(deps.manager.resume).not.toHaveBeenCalled();
 		});
 	});
 
@@ -220,9 +191,6 @@ describe("AgentTool — resume path", () => {
 
 		it("returns result text on successful resume", async () => {
 			const deps = createToolDeps();
-			const resumeRecord = createTestSubagent();
-			resumeRecord.subagentSession = toSubagentSession(createSubagentSessionStub(createMockSession()));
-			deps.manager.getRecord = vi.fn().mockReturnValue(resumeRecord);
 			mockResumeRecord(deps, { result: "Resumed output." });
 			const result = await execute(deps, {
 				prompt: "continue",
@@ -235,9 +203,6 @@ describe("AgentTool — resume path", () => {
 
 		it("surfaces a follow-up question from a resumed child as answerable", async () => {
 			const deps = createToolDeps();
-			const resumeRecord = createTestSubagent();
-			resumeRecord.subagentSession = toSubagentSession(createSubagentSessionStub(createMockSession()));
-			deps.manager.getRecord = vi.fn().mockReturnValue(resumeRecord);
 			mockResumeRecord(deps, {
 				id: "agent-9",
 				result: "Thanks.",
@@ -259,16 +224,13 @@ describe("AgentTool — resume path", () => {
 
 		it("reports a resumed child's question without a resume call once its session is gone", async () => {
 			const deps = createToolDeps();
-			const resumeRecord = createTestSubagent({ sessionReady: true });
-			deps.manager.getRecord = vi.fn().mockReturnValue(resumeRecord);
-			const answered = createTestSubagent({
+			const answered = mockResumeRecord(deps, {
 				id: "agent-9",
 				result: "Thanks.",
 				pendingQuestion: "And the fallback?",
 				sessionReady: true,
 			});
 			await answered.releaseSession();
-			deps.manager.resume = vi.fn().mockResolvedValue(answered);
 
 			const result = await execute(deps, {
 				prompt: "continue",
@@ -286,9 +248,6 @@ describe("AgentTool — resume path", () => {
 
 		it("reports the updates a resumed child sent while the parent was blocked", async () => {
 			const deps = createToolDeps();
-			const resumeRecord = createTestSubagent();
-			resumeRecord.subagentSession = toSubagentSession(createSubagentSessionStub(createMockSession()));
-			deps.manager.getRecord = vi.fn().mockReturnValue(resumeRecord);
 			mockResumeRecord(deps, { id: "agent-9", runUpdates: ["The bug is in the retry wrapper."] });
 
 			const result = await execute(deps, {
@@ -304,9 +263,6 @@ describe("AgentTool — resume path", () => {
 
 		it("names where a teardown saved the work of a resumed child", async () => {
 			const deps = createToolDeps();
-			const resumeRecord = createTestSubagent();
-			resumeRecord.subagentSession = toSubagentSession(createSubagentSessionStub(createMockSession()));
-			deps.manager.getRecord = vi.fn().mockReturnValue(resumeRecord);
 			mockResumeRecord(deps, {
 				id: "agent-9",
 				status: "error",
@@ -326,9 +282,6 @@ describe("AgentTool — resume path", () => {
 
 		it("names an abort on the resume return, which previously reported nothing", async () => {
 			const deps = createToolDeps();
-			const resumeRecord = createTestSubagent();
-			resumeRecord.subagentSession = toSubagentSession(createSubagentSessionStub(createMockSession()));
-			deps.manager.getRecord = vi.fn().mockReturnValue(resumeRecord);
 			mockResumeRecord(deps, { status: "aborted", result: "Half of it" });
 
 			const result = await execute(deps, {
@@ -342,18 +295,9 @@ describe("AgentTool — resume path", () => {
 			expect(result.content[0].text).toContain("Half of it");
 		});
 
-		it("claims the outcome before resuming, so the resume is never announced", async () => {
+		it("claims the outcome as it resumes, so the resume is never announced", async () => {
 			const deps = createToolDeps();
-			const resumeRecord = createTestSubagent();
-			resumeRecord.subagentSession = toSubagentSession(createSubagentSessionStub(createMockSession()));
-			deps.manager.getRecord = vi.fn().mockReturnValue(resumeRecord);
-			// resetForResume runs synchronously inside resume(), so a claim that only
-			// survives if it is caller-scoped is the thing being pinned here.
-			deps.manager.resume = vi.fn(() => {
-				expect(resumeRecord.claimed).toBe(true);
-				resumeRecord.resetForResume(Date.now());
-				return Promise.resolve(createTestSubagent({ result: "Resumed output." }));
-			});
+			mockResumeRecord(deps, { result: "Resumed output." });
 
 			await execute(deps, {
 				prompt: "continue",
@@ -362,16 +306,18 @@ describe("AgentTool — resume path", () => {
 				resume: "agent-1",
 			});
 
-			expect(deps.manager.resume).toHaveBeenCalled();
-			expect(resumeRecord.claimed).toBe(true);
+			// The claim is the manager's to take, at the one edge it can be taken:
+			// resetForResume runs synchronously inside Subagent.resume().
+			expect(deps.manager.resume).toHaveBeenCalledWith(
+				"agent-1",
+				"continue",
+				expect.objectContaining({ claimOutcome: true }),
+			);
 		});
 
-		it("releases the claim when the resume fails", async () => {
+		it("reports a resumed run that failed as the error it carries", async () => {
 			const deps = createToolDeps();
-			const resumeRecord = createTestSubagent();
-			resumeRecord.subagentSession = toSubagentSession(createSubagentSessionStub(createMockSession()));
-			deps.manager.getRecord = vi.fn().mockReturnValue(resumeRecord);
-			deps.manager.resume = vi.fn().mockResolvedValue(undefined);
+			mockResumeRecord(deps, { status: "error", error: "resume exploded" });
 
 			const result = await execute(deps, {
 				prompt: "continue",
@@ -380,15 +326,11 @@ describe("AgentTool — resume path", () => {
 				resume: "agent-1",
 			});
 
-			expect(result.content[0].text).toContain("Failed to resume");
-			expect(resumeRecord.claimed).toBe(false);
+			expect(result.content[0].text).toContain("resume exploded");
 		});
 
 		it("marks the resumed record consumed (resume-return delivery edge)", async () => {
 			const deps = createToolDeps();
-			const resumeRecord = createTestSubagent();
-			resumeRecord.subagentSession = toSubagentSession(createSubagentSessionStub(createMockSession()));
-			deps.manager.getRecord = vi.fn().mockReturnValue(resumeRecord);
 			const resumed = mockResumeRecord(deps, { result: "Resumed output." });
 			await execute(deps, {
 				prompt: "continue",
@@ -401,9 +343,6 @@ describe("AgentTool — resume path", () => {
 
 		it("names the agent ID in the resumed result text", async () => {
 			const deps = createToolDeps();
-			const resumeRecord = createTestSubagent();
-			resumeRecord.subagentSession = toSubagentSession(createSubagentSessionStub(createMockSession()));
-			deps.manager.getRecord = vi.fn().mockReturnValue(resumeRecord);
 			mockResumeRecord(deps, { result: "Resumed output." });
 			const result = await execute(deps, {
 				prompt: "continue",

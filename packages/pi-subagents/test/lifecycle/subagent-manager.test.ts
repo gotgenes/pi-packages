@@ -9,6 +9,7 @@ import type { WorkspaceProvider } from "#src/lifecycle/workspace";
 import { NotificationManager } from "#src/observation/notification";
 import type { RunConfig } from "#src/runtime";
 import type { AgentConfig, Subagent } from "#src/types";
+import { makeWorkspace, makeWorkspaceProvider } from "#test/helpers/make-workspace";
 import { createBlockingFactory, createSessionFactory } from "#test/helpers/manager-stubs";
 import { createMockSession, createSubagentSessionStub, emitResumeUsageAndCompaction, toSubagentSession } from "#test/helpers/mock-session";
 import { STUB_SNAPSHOT } from "#test/helpers/stub-ctx";
@@ -1412,6 +1413,147 @@ describe("SubagentManager", () => {
       disposeFirst();
 
       expect(manager.workspaceProvider).toBe(second);
+    });
+  });
+
+  describe("resume", () => {
+    let manager: SubagentManager;
+
+    afterEach(async () => {
+      await manager.dispose();
+    });
+
+    describe("refused", () => {
+      it("reports an id no record answers to", async () => {
+        ({ manager } = createManager());
+
+        expect(await manager.resume("nope", "continue")).toEqual({
+          kind: "refused",
+          reason: "unknown-agent",
+        });
+      });
+
+      it("reports a run that has not settled", async () => {
+        ({ manager } = createManager({ createSubagentSession: createBlockingFactory() }));
+        const id = spawnBg(manager);
+
+        await vi.waitFor(() => expect(manager.getRecord(id)!.status).toBe("running"));
+
+        expect(await manager.resume(id, "continue")).toEqual({
+          kind: "refused",
+          reason: "still-running",
+        });
+      });
+
+      it("reports a session released by the retention sweep", async () => {
+        const { factory } = createSessionFactory();
+        ({ manager } = createManager({ createSubagentSession: factory }));
+        const id = spawnBg(manager);
+        await manager.getRecord(id)!.promise;
+        await manager.getRecord(id)!.releaseSession();
+
+        expect(await manager.resume(id, "continue")).toEqual({
+          kind: "refused",
+          reason: "session-released",
+        });
+      });
+
+      it("reports a workspace torn down at run end, which the old guard let through", async () => {
+        const { factory } = createSessionFactory();
+        ({ manager } = createManager({ createSubagentSession: factory }));
+        manager.registerWorkspaceProvider(makeWorkspaceProvider(makeWorkspace("/ws/dir")));
+        const id = spawnBg(manager);
+        await manager.getRecord(id)!.promise;
+
+        expect(await manager.resume(id, "continue")).toEqual({
+          kind: "refused",
+          reason: "workspace-disposed",
+        });
+      });
+
+      it("starts no turn loop for a refused resume", async () => {
+        const { factory, stub } = createSessionFactory();
+        ({ manager } = createManager({ createSubagentSession: factory }));
+        const id = spawnBg(manager);
+        await manager.getRecord(id)!.promise;
+        await manager.getRecord(id)!.releaseSession();
+
+        await manager.resume(id, "continue");
+
+        expect(stub.resumeTurnLoop).not.toHaveBeenCalled();
+      });
+    });
+
+    describe("accepted", () => {
+      it("returns the resumed record", async () => {
+        const { factory, stub } = createSessionFactory();
+        stub.resumeTurnLoop.mockResolvedValue("second");
+        ({ manager } = createManager({ createSubagentSession: factory }));
+        const id = spawnBg(manager);
+        await manager.getRecord(id)!.promise;
+
+        expect(await manager.resume(id, "continue")).toEqual({
+          kind: "resumed",
+          record: manager.getRecord(id),
+        });
+      });
+
+      it("reports a resumed run that failed as resumed, carrying the error", async () => {
+        const { factory, stub } = createSessionFactory();
+        stub.resumeTurnLoop.mockRejectedValue(new Error("resume exploded"));
+        ({ manager } = createManager({ createSubagentSession: factory }));
+        const id = spawnBg(manager);
+        await manager.getRecord(id)!.promise;
+
+        const outcome = await manager.resume(id, "continue");
+
+        expect(outcome.kind).toBe("resumed");
+        expect(manager.getRecord(id)!.status).toBe("error");
+      });
+
+      it("leaves the outcome unclaimed by default", async () => {
+        const { factory, stub } = createSessionFactory();
+        stub.resumeTurnLoop.mockResolvedValue("second");
+        ({ manager } = createManager({ createSubagentSession: factory }));
+        const id = spawnBg(manager);
+        await manager.getRecord(id)!.promise;
+
+        await manager.resume(id, "continue");
+
+        expect(manager.getRecord(id)!.claimed).toBe(false);
+      });
+
+      it("claims the outcome before the turn loop starts when the caller asks", async () => {
+        const { factory, stub } = createSessionFactory();
+        ({ manager } = createManager({ createSubagentSession: factory }));
+        const id = spawnBg(manager);
+        await manager.getRecord(id)!.promise;
+        const record = manager.getRecord(id)!;
+        // resetForResume runs synchronously inside Subagent.resume(), so a claim
+        // taken after the await would miss the terminal edge entirely.
+        const { promise, resolve } = Promise.withResolvers<string>();
+        stub.resumeTurnLoop.mockReturnValue(promise);
+
+        const resumed = manager.resume(id, "continue", { claimOutcome: true });
+        await vi.waitFor(() => expect(stub.resumeTurnLoop).toHaveBeenCalled());
+
+        expect(record.claimed).toBe(true);
+        resolve("second");
+        await resumed;
+      });
+
+      it("forwards the caller's signal to the resumed turn loop", async () => {
+        const { factory, stub } = createSessionFactory();
+        stub.resumeTurnLoop.mockResolvedValue("second");
+        ({ manager } = createManager({ createSubagentSession: factory }));
+        const id = spawnBg(manager);
+        await manager.getRecord(id)!.promise;
+        const signal = new AbortController().signal;
+
+        await manager.resume(id, "continue", { signal });
+
+        expect(stub.resumeTurnLoop).toHaveBeenCalledWith("continue", signal);
+      });
     });
   });
 });
