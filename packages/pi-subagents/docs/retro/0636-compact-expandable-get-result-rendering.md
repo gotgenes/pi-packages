@@ -95,6 +95,20 @@ Pre-completion reviewer: **WARN** (both rounds), no blocking findings.
 Round 1 raised four findings; three were fixed (the row-bound gap, the `textResult` loosening, a stale module-count table in the package skill) and one accepted (the `asSdkTheme` cast).
 Round 2 raised two; one was fixed (`\v`/`\f`) and one accepted (mid-line `\r` truncation).
 
+## Stage: Sync (worktree) (2026-09-11T15:40:54Z)
+
+### Session summary
+
+Pre-push checks (`pnpm run lint`, `pnpm fallow dead-code`) both pass with no changes needed.
+The branch's last substantive commit is `docs: refresh the pi-subagents module counts in its skill`, closing out the second pre-completion review round; the plan's `**Release:** ship independently` marker stands, and PR [#729] remains an open ship-time close target with credit already resolved into the `feat:` commit's trailers.
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-636--/2026-09-11T07-48-29-040Z_01a08f70-7cef-705d-9571-151dde301bed.jsonl` — read with `read_session_file({ path: "..." })` for message-level verification at land/retro time.
+
+### Observations
+
+No new findings at this stage; the two pre-completion review rounds already surfaced and resolved the substantive issues (see the Implementation — TDD stage entry above).
+Ready for `git rebase main` and handoff to the root `/ship 636`.
+
 [#636]: https://github.com/gotgenes/pi-packages/issues/636
 [#729]: https://github.com/gotgenes/pi-packages/pull/729
 [#755]: https://github.com/gotgenes/pi-packages/issues/755
