@@ -141,4 +141,18 @@ No warnings outstanding.
 One non-blocking observation carried forward: the plan document states "This is **not** a breaking change", which the shipped `fix(...)!:` commit contradicts.
 The plan is a historical artifact and was deliberately left unedited — `/ship`'s close comment should say so, so a reader of the plan is not misled.
 
+## Stage: Sync (worktree) (2026-09-11T07:16:09Z)
+
+### Session summary
+
+`pnpm run lint` and `pnpm fallow dead-code` both pass from the worktree root with no fixes needed.
+The plan's `**Release:**` marker is `ship independently`, so no batch coordination is needed at land time.
+The root should note in its close comment that the fix landed as `fix(pi-permission-model-judge)!:` (a breaking floor raise to `@earendil-works/pi-ai`/`@earendil-works/pi-coding-agent` `>=0.84.3`), which the plan itself did not anticipate — it classified the change as non-breaking before the pre-completion reviewer's rounds 1–3 findings forced the floor raise.
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-905--/2026-09-11T05-38-39-588Z_01a08ef9-a163-751f-a725-5593cff8e299.jsonl` — read with `read_session_file({ path: "<path>" })` for message-level verification at land/retro time.
+
+### Observations
+
+No new findings at sync time — the deterministic gates were already green after the pre-completion reviewer's round 4 PASS, and this step reconfirmed them from the worktree root rather than the package scope used mid-implementation.
+
 [#812]: https://github.com/gotgenes/pi-packages/issues/812
