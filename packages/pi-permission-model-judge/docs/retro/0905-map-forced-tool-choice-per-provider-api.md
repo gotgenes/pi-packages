@@ -38,3 +38,37 @@ The plan is `packages/pi-permission-model-judge/docs/plans/0905-map-forced-tool-
 
 - `test/fixtures/assistant-message.ts` — the assessor declined merging its hardcoded `api: "anthropic-messages"` (the assistant reply envelope's provider echo) with the new model-registry `api` concept; two different fields on two different types sharing a name, so merging would be the wrong abstraction.
 - `src/model-review.ts` — the assessor declined restructuring `readToolCallOutcome`'s three verdict branches into a lookup table; this change adds fields orthogonal to those branches and does not touch the verdict logic.
+
+## Stage: User Note (2026-09-11T07:13:27Z)
+
+`pre-completion-reviewer` _repeatedly_ reached for `find /`, so it needs better instruction on where common files live.
+
+### What the four #905 dispatches had in common
+
+Every one of the four rounds asked the reviewer to verify a fact about `@earendil-works/pi-ai` that is **not answerable from inside the repo**:
+
+1. Round 1 — which `toolChoice` value each provider API declares (ten rows of external fact).
+2. Round 2 — where `complete` is exported from at 0.84.x, and whether Pi's extension loader aliases the pi-ai root to `compat`.
+3. Round 3 — at which release the loader's `compat` alias first appears.
+4. Round 4 — the same, re-derived at exact boundary versions.
+
+The common shape is a **version-boundary question about a peer dependency**: "at which release did X change?"
+The installed `node_modules/.pnpm/` tree answers it only for the one or two versions that happen to be in the store, which is why the agent kept widening its search.
+
+### The charter contradiction
+
+`.pi/agents/pre-completion-reviewer.md` says "never widen past the repo root" and points at `node_modules/.pnpm/<pkg>@<version>/` for SDK facts.
+But three of the four dispatches named `../../pi` — the sibling Pi checkout, which AGENTS.md sanctions and which is **outside** the repo root the agent is forbidden to leave.
+Round 2's report says so explicitly: it read the sourcemap instead "since that's outside this worktree's permitted root".
+So the agent was handed a question its own scope rule forbids it to answer directly, and `find /` is what that dead end looks like from the inside.
+
+### What actually worked
+
+Round 3 and 4 succeeded by pulling **published npm tarballs** (`pnpm view` / registry download) for the exact versions in question — and round 3 caught a real error in my own derivation that way, where my git-tag sampling had bracketed `0.80.7` and I misread the bracket as the boundary.
+That technique is nowhere in the agent's charter.
+
+### Candidate fixes for the agent file
+
+- Name the sanctioned out-of-repo read paths explicitly (the sibling `pi` checkout at `../../pi` from a worktree, `../pi` from the root checkout) as an allowed exception to the repo-root rule, with the AGENTS.md caveat that the checkout runs ahead of the pinned dependency.
+- Add "fetch the published tarball for the exact version" (`pnpm view <pkg>@<version> dist.tarball`) as the sanctioned technique for a version-boundary question, ahead of any search widening.
+- State that a version-boundary question is the signal: if the answer depends on _when_ a dependency changed, no amount of searching the working tree will produce it.
