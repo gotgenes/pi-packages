@@ -79,6 +79,21 @@ Pre-completion reviewer: **PASS** — ready for `/ship`.
 It independently re-derived the narrowed guard (confirming `selectAuthorizer` is the only other `isSubagent` consumer and that it returns on `hasUI` first), traced the #719/#721 invariants to their Phase 13 history entry and confirmed both still hold and are pinned by tests rather than prose, and spot-checked the `nicobailon/pi-subagents` root-process claim at `v0.67.0`.
 No WARN findings.
 
+## Stage: Sync (worktree) (2026-09-11T05:18:04Z)
+
+### Session summary
+
+Pre-push checks are green from the worktree root: `pnpm run lint` (1148 files, no issues) and `pnpm fallow dead-code` (0 issues, 335 entry points).
+The plan's `**Release:** ship independently` marker holds — no batch, no deferral.
+No work was deferred out of implementation; #914 (the Windows `EPERM` heartbeat-rename follow-up) is already filed and dispositioned against Phase 15, and #722 is left open as documented in the plan's Non-Goals.
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-907--/2026-09-11T04-10-51-927Z_01a08ea9-4097-7735-8c75-ec498a76c384.jsonl` — read with `read_session_file({ path: "<path>" })` for message-level verification at land/retro time.
+
+### Observations
+
+Branch `issue-907-pi-permission-system-root-session-is-det`, HEAD `f19af63e` before this commit.
+Nothing further to flag beyond the TDD stage's own observations — the pre-push gates were already green from the implementation session's own end-of-cycle checks, so this step reconfirmed rather than surfaced anything new.
+
 [#22]: https://github.com/gotgenes/pi-packages/issues/22
 [#789]: https://github.com/gotgenes/pi-packages/issues/789
 [#907]: https://github.com/gotgenes/pi-packages/issues/907
