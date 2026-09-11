@@ -221,7 +221,14 @@ export function ensureDirectoryExists(
   description: string,
 ): boolean {
   try {
-    mkdirSync(path, { recursive: true, mode: OWNER_ONLY_DIRECTORY_MODE });
+    recordFsRetry(
+      logger,
+      "mkdir",
+      path,
+      retryOnTransientFsError(() => {
+        mkdirSync(path, { recursive: true, mode: OWNER_ONLY_DIRECTORY_MODE });
+      }),
+    );
     return true;
   } catch (error) {
     logPermissionForwardingError(
