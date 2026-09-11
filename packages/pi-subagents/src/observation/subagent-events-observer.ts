@@ -55,6 +55,20 @@ export class SubagentEventsObserver implements SubagentManagerObserver {
 		this.persistAndNotify(record);
 	}
 
+	/**
+	 * A settled agent went back to running. Announced only, and on its own
+	 * channel: `subagents:started` reports the first run, and a consumer counting
+	 * it once per agent must not see it twice. Nothing is persisted — the session
+	 * entry records outcomes, and a run that has just begun is not one.
+	 */
+	onSubagentResuming(record: Subagent): void {
+		this.emit("subagents:resuming", {
+			id: record.id,
+			type: record.type,
+			description: record.description,
+		});
+	}
+
 	onSubagentResumed(record: Subagent): void {
 		// A resumed run terminates only as completed or error; a single distinct
 		// channel carries both — the payload's status/error discriminate. Existing

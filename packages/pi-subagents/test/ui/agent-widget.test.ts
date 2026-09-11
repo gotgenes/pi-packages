@@ -316,6 +316,16 @@ describe("AgentWidget — self-drives from lifecycle notifications", () => {
 		expect(typeof lastContent()).toBe("function");
 	});
 
+	it("restarts the update timer on onSubagentResuming, since the agent is live again", () => {
+		const { widget, lastContent } = makeWidget([{ id: "a1", status: "running" }]);
+		expect(vi.getTimerCount()).toBe(0);
+
+		widget.onSubagentResuming(createTestSubagent({ id: "a1", status: "running" }));
+
+		expect(vi.getTimerCount()).toBe(1);
+		expect(typeof lastContent()).toBe("function");
+	});
+
 	it("renders on onSubagentCompacted", () => {
 		const { widget, lastContent } = makeWidget([{ id: "a1", status: "running" }]);
 

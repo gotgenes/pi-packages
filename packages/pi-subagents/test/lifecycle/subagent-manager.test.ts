@@ -63,6 +63,7 @@ function createManager(overrides?: {
         onSubagentStarted: overrides.observer.onSubagentStarted ?? (() => {}),
         onSubagentCompleted: overrides.observer.onSubagentCompleted ?? (() => {}),
         onSubagentResumed: overrides.observer.onSubagentResumed ?? (() => {}),
+        onSubagentResuming: overrides.observer.onSubagentResuming ?? (() => {}),
         onSubagentCompacted: overrides.observer.onSubagentCompacted ?? (() => {}),
         onSubagentCreated: overrides.observer.onSubagentCreated ?? (() => {}),
         onSubagentWorkspaceNotice: overrides.observer.onSubagentWorkspaceNotice,
@@ -1540,6 +1541,25 @@ describe("SubagentManager", () => {
         expect(record.claimed).toBe(true);
         resolve("second");
         await resumed;
+      });
+
+      it("tells the observer a resume started, before it reports one finished", async () => {
+        const calls: string[] = [];
+        const { factory, stub } = createSessionFactory();
+        stub.resumeTurnLoop.mockResolvedValue("second");
+        ({ manager } = createManager({
+          createSubagentSession: factory,
+          observer: {
+            onSubagentResuming: () => calls.push("resuming"),
+            onSubagentResumed: () => calls.push("resumed"),
+          },
+        }));
+        const id = spawnBg(manager);
+        await manager.getRecord(id)!.promise;
+
+        await manager.resume(id, "continue");
+
+        expect(calls).toEqual(["resuming", "resumed"]);
       });
 
       it("forwards the caller's signal to the resumed turn loop", async () => {

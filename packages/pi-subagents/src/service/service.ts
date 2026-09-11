@@ -156,6 +156,7 @@ export const SUBAGENT_EVENTS = {
   STARTED: "subagents:started",
   COMPLETED: "subagents:completed",
   FAILED: "subagents:failed",
+  RESUMING: "subagents:resuming",
   RESUMED: "subagents:resumed",
   COMPACTED: "subagents:compacted",
   CREATED: "subagents:created",

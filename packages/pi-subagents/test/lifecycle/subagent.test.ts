@@ -1633,6 +1633,31 @@ describe("Subagent.resume() — observer lifecycle", () => {
 		expect(agent.toolUses).toBe(0);
 	});
 
+	it("fires observer.onResumeStarted once the resumed run is under way", async () => {
+		const seen: Array<{ status: string; completedAt: number | undefined }> = [];
+		const onResumeStarted = (agent: Subagent) =>
+			seen.push({ status: agent.status, completedAt: agent.completedAt });
+		const { agent } = createResumableAgent({ observer: { onResumeStarted } });
+
+		await agent.resume("continue");
+
+		// After the rewind, not before it: a subscriber reading the record must see
+		// the run that just started, not the outcome of the one it replaced.
+		expect(seen).toEqual([{ status: "running", completedAt: undefined }]);
+		expect(agent.status).toBe("completed");
+	});
+
+	it("fires observer.onResumeStarted even when the resumed run fails", async () => {
+		const onResumeStarted = vi.fn();
+		const stub = createSubagentSessionStub();
+		stub.resumeTurnLoop.mockRejectedValue(new Error("resume exploded"));
+		const { agent } = createResumableAgent({ observer: { onResumeStarted }, stub });
+
+		await agent.resume("continue");
+
+		expect(onResumeStarted).toHaveBeenCalledExactlyOnceWith(agent);
+	});
+
 	it("fires observer.onResumeFinished once the resume completes", async () => {
 		const onResumeFinished = vi.fn();
 		const { agent } = createResumableAgent({ observer: { onResumeFinished } });

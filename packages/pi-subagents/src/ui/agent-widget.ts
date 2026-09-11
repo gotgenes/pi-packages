@@ -130,6 +130,15 @@ export class AgentWidget implements SubagentManagerObserver {
     this.update();
   }
 
+  /**
+   * A subagent went back to running — ensure the loop is live and render.
+   * `startLoop` rather than `update`: the timer stops once nothing is running,
+   * and a resumed agent is running again.
+   */
+  onSubagentResuming(_record: Subagent) {
+    this.startLoop();
+  }
+
   /** A subagent finished a resume — render so the refreshed result is shown. */
   onSubagentResumed(_record: Subagent) {
     this.update();

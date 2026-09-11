@@ -131,6 +131,12 @@ export function resolveRetentionWindow(
 export interface SubagentManagerObserver {
   onSubagentStarted(record: Subagent): void;
   onSubagentCompleted(record: Subagent): void;
+  /**
+   * Fires when a resume starts, from whichever front door asked for it.
+   * Required: a consumer that tracks the widget's live set has to learn that a
+   * settled record went back to running, and the only alternative is polling.
+   */
+  onSubagentResuming(record: Subagent): void;
   /** Fires when a resumed run reaches a terminal state (distinct from a fresh completion). */
   onSubagentResumed(record: Subagent): void;
   /**
@@ -257,6 +263,9 @@ export class SubagentManager {
       // the run rather than announcements.
       onRunFinished: (agent) => {
         try { this.observer?.onSubagentCompleted(agent); } catch (err) { debugLog("onSubagentCompleted observer", err); }
+      },
+      onResumeStarted: (agent) => {
+        try { this.observer?.onSubagentResuming(agent); } catch (err) { debugLog("onSubagentResuming observer", err); }
       },
       onResumeFinished: (agent) => {
         try { this.observer?.onSubagentResumed(agent); } catch (err) { debugLog("onSubagentResumed observer", err); }

@@ -29,6 +29,12 @@ export interface SubagentLifecycleObserver {
 	onSessionCreated?(agent: Subagent): void;
 	/** Fires once when the run completes or fails (for concurrency drain). */
 	onRunFinished?(agent: Subagent): void;
+	/**
+	 * Fires once a resumed run is under way — after the record is rewound, so a
+	 * subscriber reading it sees the run that just started rather than the
+	 * outcome of the one it replaced.
+	 */
+	onResumeStarted?(agent: Subagent): void;
 	/** Fires once when a resumed run reaches a terminal state. */
 	onResumeFinished?(agent: Subagent): void;
 	/** Fires when the running agent sends its parent a mid-run message. */
@@ -481,6 +487,7 @@ export class Subagent {
 	/** The resume body. Always resolves — errors terminate through failResume(). */
 	private async runResume(subagentSession: SubagentSession, prompt: string, signal?: AbortSignal): Promise<void> {
 		this.resetForResume(Date.now());
+		this.execution.observer?.onResumeStarted?.(this);
 		this.listeners.attachObserver(subscribeSubagentObserver(subagentSession, this.state, {
 			onCompact: (info) => this.execution.observer?.onCompacted?.(this, info),
 		}));

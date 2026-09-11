@@ -126,6 +126,34 @@ describe("SubagentEventsObserver", () => {
 		});
 	});
 
+	describe("onSubagentResuming", () => {
+		it("emits subagents:resuming with id, type, description", () => {
+			const { observer, emit } = makeObserver();
+			const record = createTestSubagent({
+				id: "agent-1",
+				type: "general-purpose",
+				description: "do work",
+			});
+
+			observer.onSubagentResuming(record);
+
+			expect(emit).toHaveBeenCalledExactlyOnceWith("subagents:resuming", {
+				id: "agent-1",
+				type: "general-purpose",
+				description: "do work",
+			});
+		});
+
+		it("persists nothing and announces nothing: a run that started is not an outcome", () => {
+			const { observer, appendEntry, notifications } = makeObserver();
+
+			observer.onSubagentResuming(createTestSubagent());
+
+			expect(appendEntry).not.toHaveBeenCalled();
+			expect(notifications.sendCompletion).not.toHaveBeenCalled();
+		});
+	});
+
 	describe("onSubagentResumed", () => {
 		it("emits subagents:resumed with the buildEventData payload for a completed resume", () => {
 			const { observer, emit } = makeObserver();
