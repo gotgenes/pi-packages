@@ -7,7 +7,10 @@ import { LocalUserAuthorizer } from "#src/authority/local-user-authorizer";
 import {
   makeAuthorizerSelectionDeps as makeDeps,
   makeDetection,
+  neutralizeSubagentEnvHints,
 } from "#test/helpers/authorizer-fixtures";
+
+neutralizeSubagentEnvHints();
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 

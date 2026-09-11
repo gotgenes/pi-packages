@@ -23,11 +23,14 @@ import {
   makeDetection,
   makeInvokingPrompter,
   makePrompterApi,
+  neutralizeSubagentEnvHints,
   registerLink as register,
 } from "#test/helpers/authorizer-fixtures";
 import { makeAuthorizerLog } from "#test/helpers/authorizer-log-fixtures";
 import { DECIDED_BY_HUMAN } from "#test/helpers/decision-fixtures";
 import { makePromptDetails as makeDetails } from "#test/helpers/prompt-details-fixtures";
+
+neutralizeSubagentEnvHints();
 
 // ── Test helpers ──────────────────────────────────────────────────────────
 

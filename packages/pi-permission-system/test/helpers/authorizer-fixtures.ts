@@ -8,13 +8,14 @@
  * `AskEscalator` to exercise the chain end to end.
  */
 
-import { type Mock, vi } from "vitest";
+import { afterEach, beforeEach, type Mock, vi } from "vitest";
 import type {
   AuthorizerVerdict,
   AuthorizerSelectionDeps as SelectionCtorDeps,
 } from "#src/authority/authorizer";
 import { AuthorizerRegistry } from "#src/authority/authorizer-registry";
 import { ForwardingLivenessJudge } from "#src/authority/forwarding-liveness";
+import { SUBAGENT_ENV_HINT_KEYS } from "#src/authority/permission-forwarding";
 import type { PermissionPrompterApi } from "#src/authority/permission-prompter";
 import { ServingSessionRegistry } from "#src/authority/serving-registry";
 import type { SubagentDetector } from "#src/authority/subagent-detection";
@@ -30,6 +31,29 @@ export type AuthorizerSelectionTestDeps = SelectionCtorDeps & {
   authorizerRegistry: AuthorizerRegistry;
   getAuthorizerChain: () => string[];
 };
+
+/**
+ * Clear every subagent env hint before each test in the calling file, and
+ * restore the host environment afterwards.
+ *
+ * `selectAuthorizer` resolves a forwarding target through ambient
+ * `process.env`, so a developer running with `PI_SUBAGENT_PARENT_SESSION`
+ * exported would otherwise change what these fixtures select. The same pair is
+ * spelled out in `approval-escalator.test.ts` and `forwarding-manager.test.ts`;
+ * it lives here so the files sharing these fixtures do not copy it a third and
+ * fourth time.
+ */
+export function neutralizeSubagentEnvHints(): void {
+  beforeEach(() => {
+    for (const key of SUBAGENT_ENV_HINT_KEYS) {
+      vi.stubEnv(key, undefined);
+    }
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+}
 
 /** A `SubagentDetector` answering a fixed verdict. */
 export function makeDetection(isSubagent = false): SubagentDetector {
