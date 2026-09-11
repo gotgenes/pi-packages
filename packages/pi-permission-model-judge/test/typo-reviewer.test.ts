@@ -161,6 +161,8 @@ describe("createTypoReviewer", () => {
       modelCalled: true,
       modelId: "anthropic/claude-haiku",
       latencyMs: expect.any(Number),
+      api: "anthropic-messages",
+      toolChoice: "any",
       verdict: "deny",
       deferReason: null,
     });
@@ -250,6 +252,8 @@ describe("createTypoReviewer", () => {
       modelCalled: false,
       modelId: "anthropic/claude-haiku",
       latencyMs: null,
+      api: null,
+      toolChoice: null,
       verdict: "defer",
       deferReason: "auth-failed",
     });
@@ -312,6 +316,8 @@ describe("createTypoReviewer", () => {
       modelCalled: true,
       modelId: "anthropic/claude-haiku",
       latencyMs: expect.any(Number),
+      api: "anthropic-messages",
+      toolChoice: "any",
       verdict: "deny",
       deferReason: null,
     });
