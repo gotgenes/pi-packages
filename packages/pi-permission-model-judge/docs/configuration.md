@@ -51,6 +51,8 @@ If the model does not resolve (wrong id, no credentials), the reviewer records a
 This is the model's system prompt.
 Describe the typo shape you care about and instruct the model to give the wrong segment and the correct location, so the invoking agent can self-correct.
 The reviewer forces the model to call a single `report_verdict` tool, so the verdict is read from structured tool-call arguments rather than parsed from free text — a `deny` verdict with a `reason` rejects the path, and anything else (including no tool call) defers.
+The forcing value is chosen per provider API: Anthropic, Google, Bedrock, and Mistral spell it `any`, the OpenAI-family APIs spell it `required`, and an API the judge does not recognize gets `required`.
+The entry's `api` and `toolChoice` fields record which was used.
 
 ### `typoPatterns`
 
@@ -110,10 +112,14 @@ The **review** log (`~/.pi/agent/extensions/pi-permission-system/logs/pi-permiss
 | `modelCalled`    | `false` for a `model-unresolved` / `auth-failed` defer.                                                                      |
 | `modelId`        | `<provider>/<model>`.                                                                                                        |
 | `latencyMs`      | Model-call wall-clock in milliseconds, or `null` when no call was made.                                                      |
+| `api`            | The provider API the call was addressed to, or `null` when no call was made.                                                 |
+| `toolChoice`     | The forcing value sent (`any` or `required`, per API), or `null` when no call was made.                                      |
 | `verdict`        | `"deny"` or `"defer"`.                                                                                                       |
 | `deferReason`    | `null` on a deny, else `model-unresolved` / `auth-failed` / `no-tool-call` / `non-deny-verdict` / `timeout` / `call-failed`. |
 
 The **debug** log (same directory, `pi-permission-system-debug.jsonl`, only when pi-permission-system's `debugLog` is on) carries the verbose and cheap-path detail: `model_judge.short_circuit` (a `no-path` or `pattern-miss` defer before the model stage), `model_judge.model_reply` (the verdict tool-call arguments as JSON, or the model's text when it emitted no tool call), and `model_judge.invalid_patterns` (skipped `typoPatterns`).
 A non-`external_directory` ask is not logged at all.
 
-To diagnose "the judge defers everything," read the review log for `model_judge.decision` entries and inspect `deferReason`: an empty result means no ask ever matched a pattern, `auth-failed` / `model-unresolved` means it is misconfigured, `non-deny-verdict` means the model saw the path and chose not to deny, and `no-tool-call` means the model replied without calling the verdict tool (rare, since the tool is forced).
+To diagnose "the judge defers everything," read the review log for `model_judge.decision` entries and inspect `deferReason`: an empty result means no ask ever matched a pattern, `auth-failed` / `model-unresolved` means it is misconfigured, `non-deny-verdict` means the model saw the path and chose not to deny, and `no-tool-call` means the model replied without calling the verdict tool.
+For a run of `no-tool-call` entries, check the same entry's `api` and `toolChoice`: the tool is forced per provider API, so a spelling that provider does not accept is discarded silently and the model answers in prose.
+That is what made the judge inert on every OpenAI-compatible provider before the per-API mapping landed.

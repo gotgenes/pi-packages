@@ -40,6 +40,8 @@ Once an ask matches a `typoPattern` — the case that _should_ reach the model �
 | `modelCalled`    | `false` when the model or its auth did not resolve.                                                                                 |
 | `modelId`        | `<provider>/<model>`.                                                                                                               |
 | `latencyMs`      | Model-call wall-clock in ms, or `null` when no call was made.                                                                       |
+| `api`            | The provider API the call was addressed to (`anthropic-messages`, `openai-completions`, …), or `null` when no call was made.        |
+| `toolChoice`     | The forcing value sent to make the model call the verdict tool — `any` or `required`, per API — or `null` when no call was made.    |
 | `verdict`        | `"deny"` or `"defer"`.                                                                                                              |
 | `deferReason`    | `null` on a deny, else one of `model-unresolved` / `auth-failed` / `no-tool-call` / `non-deny-verdict` / `timeout` / `call-failed`. |
 
