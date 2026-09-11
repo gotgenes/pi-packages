@@ -77,6 +77,16 @@ The stage note lives in an `exclude-paths` dir, so it triggers no release — bu
    Any other conflict — including one where a definition's URL differs — still aborts and stops.
 4. Verify the merge will succeed: `git merge-base --is-ancestor main HEAD`.
    This, not the `origin/main` comparison, is what predicts the ff-merge (Refs #815).
+5. Confirm no stage note in the retro file cites a SHA the rebase just rewrote:
+
+   ```bash
+   git grep -hoE '[0-9a-f]{7,40}' HEAD -- <retro-file> | sort -u | while read -r s; do
+     git rev-parse -q --verify "$s^{commit}" >/dev/null 2>&1 && ! git merge-base --is-ancestor "$s" main && echo "dangling: $s"
+   done
+   ```
+
+   Rewrite each hit to the commit's subject and amend.
+   This covers the TDD stage note as well as step 3's, since every pre-rebase stage wrote its SHAs against the old history (Refs #814, #914).
 
 Do **not** push this branch and do **not** force-push anything — the root session shares this repo's `.git` and merges the local branch ref directly.
 
