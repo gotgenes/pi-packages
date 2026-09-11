@@ -8,9 +8,15 @@
 import type { Model } from "@earendil-works/pi-ai";
 import { parseThinkingLevel, thinkingLevelError } from "#src/config/thinking-level";
 import type { ParentSnapshot } from "#src/lifecycle/parent-snapshot";
-import type { AgentSpawnConfig } from "#src/lifecycle/subagent-manager";
+import type { AgentSpawnConfig, ResumeCallOptions, ResumeOutcome } from "#src/lifecycle/subagent-manager";
 import type { WorkspaceProvider } from "#src/lifecycle/workspace";
-import type { SpawnOptions, SubagentRecord, SubagentsService } from "#src/service/service";
+import type {
+  ResumeOptions,
+  ResumeResult,
+  SpawnOptions,
+  SubagentRecord,
+  SubagentsService,
+} from "#src/service/service";
 import type { ModelRegistry } from "#src/session/model-resolver";
 import type { SessionContext, Subagent, ThinkingLevel } from "#src/types";
 
@@ -23,6 +29,7 @@ export interface SubagentManagerLike {
   waitForAll(): Promise<void>;
   hasRunning(): boolean;
   registerWorkspaceProvider(provider: WorkspaceProvider): () => void;
+  resume(id: string, prompt: string, options: ResumeCallOptions): Promise<ResumeOutcome>;
 }
 
 /**
@@ -94,6 +101,18 @@ export class SubagentsServiceAdapter implements SubagentsService {
     }
     const outcome = await record.steer(message);
     return outcome.kind !== "rejected";
+  }
+
+  async resume(id: string, prompt: string, options?: ResumeOptions): Promise<ResumeResult> {
+    const outcome = await this.manager.resume(id, prompt, {
+      claimOutcome: options?.claimOutcome,
+      signal: options?.signal,
+    });
+    // A refusal is the same value on both sides; only the resumed arm crosses
+    // the by-value boundary the snapshot draws.
+    return outcome.kind === "refused"
+      ? outcome
+      : { kind: "resumed", record: toSubagentRecord(outcome.record) };
   }
 
   async waitForAll(): Promise<void> {

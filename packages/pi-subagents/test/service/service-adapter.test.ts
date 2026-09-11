@@ -213,6 +213,10 @@ function createManagerStub() {
     waitForAll: vi.fn<SubagentManagerLike["waitForAll"]>(async () => {}),
     hasRunning: vi.fn<SubagentManagerLike["hasRunning"]>(() => false),
     registerWorkspaceProvider: vi.fn<SubagentManagerLike["registerWorkspaceProvider"]>(() => () => {}),
+    resume: vi.fn<SubagentManagerLike["resume"]>(async () => ({
+      kind: "resumed",
+      record: createTestSubagent(),
+    })),
   };
 }
 
@@ -550,6 +554,72 @@ describe("SubagentsServiceAdapter — steer, abort, waitForAll, hasRunning", () 
       const svc = createSvc(mgr);
       expect(await svc.steer("a-1", "focus on tests")).toBe(true);
       expect(mockSteer).toHaveBeenCalledWith("focus on tests");
+    });
+  });
+});
+
+describe("SubagentsServiceAdapter — resume", () => {
+  function createSvc(mgr: ReturnType<typeof createManagerStub>) {
+    return new SubagentsServiceAdapter(mgr, vi.fn(), makeRuntimeStub());
+  }
+
+  it("delegates to manager.resume with the caller's prompt", async () => {
+    const mgr = createManagerStub();
+    await createSvc(mgr).resume("a-1", "use the staging config");
+
+    expect(mgr.resume).toHaveBeenCalledWith("a-1", "use the staging config", {
+      claimOutcome: undefined,
+      signal: undefined,
+    });
+  });
+
+  it("forwards the caller's delivery claim and signal", async () => {
+    const mgr = createManagerStub();
+    const signal = new AbortController().signal;
+
+    await createSvc(mgr).resume("a-1", "continue", { claimOutcome: true, signal });
+
+    expect(mgr.resume).toHaveBeenCalledWith("a-1", "continue", { claimOutcome: true, signal });
+  });
+
+  it("reports a refusal verbatim, so a consumer can word its own message", async () => {
+    const mgr = createManagerStub();
+    mgr.resume.mockResolvedValue({ kind: "refused", reason: "session-released" });
+
+    expect(await createSvc(mgr).resume("a-1", "continue")).toEqual({
+      kind: "refused",
+      reason: "session-released",
+    });
+  });
+
+  it("returns the resumed agent by value, never the live record", async () => {
+    const mgr = createManagerStub();
+    const record = createTestSubagent({
+      id: "a-1",
+      type: "Explore",
+      description: "task A",
+      result: "Resumed output.",
+      toolUses: 5,
+      lifetimeUsage: { input: 100, output: 200, cacheWrite: 50 },
+    });
+    mgr.resume.mockResolvedValue({ kind: "resumed", record });
+
+    expect(await createSvc(mgr).resume("a-1", "continue")).toEqual({
+      kind: "resumed",
+      record: {
+        id: "a-1",
+        type: "Explore",
+        description: "task A",
+        status: "completed",
+        isBackground: true,
+        result: "Resumed output.",
+        toolUses: 5,
+        turnCount: 1,
+        startedAt: 1000,
+        completedAt: 2000,
+        lifetimeUsage: { input: 100, output: 200, cacheWrite: 50 },
+        compactionCount: 0,
+      },
     });
   });
 });
