@@ -490,6 +490,7 @@ After adding or heavily editing files, count them: `pnpm run lint >/tmp/l.log 2>
 `biome check --write` reports `No fixes applied` for a warning, whose fix is unsafe-classified — hand-edit it, or `--write --unsafe` the one file.
 `rumdl` caches per markdown file keyed on that file's own content, but `MD057` (relative-link existence) depends on the filesystem around it — so moving or renaming a linked-to file leaves every unchanged doc that links to it cached as clean.
 After a commit that moves or renames files, clear the cache before trusting the gate: `find .rumdl_cache -type f -delete` (Refs #879).
+Clearing it otherwise is waste, not caution — a cold `rumdl check .` costs ~1.9 s against ~0.1 s warm, and a content edit already invalidates its own entry.
 When a shell loop or script needs a status variable, do not name it `status` — zsh reserves `$status` (an alias for `$?`) as read-only, so the assignment aborts with `read-only variable: status`; use `state`/`rc` instead.
 Do not edit `CHANGELOG.md` — `scripts/release/prepare-release.sh` owns it, splicing each release in below the header.
 Do not name an unreleased version in docs — git-cliff assigns it at release time, so a number written during implementation is a guess. (`./scripts/release/next-version.sh <pkg>` will tell you what it would be, but that answer moves with every commit until the release runs.) Describe the condition instead: "a version that predates the heartbeat", not "older than 25.2.0" (Refs #721).

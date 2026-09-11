@@ -185,6 +185,10 @@ The dominant pattern across all four stages was measurement displacing argument 
    It detects rather than prevents, and change 1 closes the source.
 4. Declined: restating the pipe-through-`tail`, heredoc-`\n`, and mid-file-`Edit` hazards.
    All three are already in `AGENTS.md` naming this exact failure mode; three self-caught trips in one session is a salience signal, and more text worsens salience.
+5. `AGENTS.md` § Commits — added a cost clause to the `rumdl` cache rule, after the operator asked why the cache was being cleared at all.
+   The rule's trigger is a commit that moves or renames files; this session cleared the cache three times on content-only edits, which invalidate their own entries.
+   Measured on this tree: a cold `rumdl check .` reports 1927 ms against 93 ms warm (4.32 s vs 2.44 s wall, 17.68 s vs 0.65 s CPU), and discards a 4.5 MB cache the next run rebuilds.
+   The rule stated when to clear and never that clearing costs anything, which reads as "clear when unsure".
 
 [#636]: https://github.com/gotgenes/pi-packages/issues/636
 [#729]: https://github.com/gotgenes/pi-packages/pull/729
