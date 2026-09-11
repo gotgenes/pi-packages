@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [32.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v31.1.4...pi-permission-system-v32.0.0) (2026-09-11)
+
+
+### Features
+
+* **pi-permission-system:** **breaking:** prompt in the parent session for a subagent that has its own UI ([24b56a2](https://github.com/gotgenes/pi-packages/commit/24b56a2181df3db8b17e45b1acefd5a53fe2eddf)), closes [#907](https://github.com/gotgenes/pi-packages/issues/907), closes [#909](https://github.com/gotgenes/pi-packages/issues/909)
+* **pi-permission-system:** record when a session starts or stops relaying its asks ([7d1e2bb](https://github.com/gotgenes/pi-packages/commit/7d1e2bbe69d59360a66a27d3277d41aedecbefb5)), closes [#909](https://github.com/gotgenes/pi-packages/issues/909)
+
+### Documentation
+
+* **pi-permission-system:** document relaying from a session that has its own UI ([0250d68](https://github.com/gotgenes/pi-packages/commit/0250d68bb3a89e32782836ed1b6a17d4e52d25e8)), closes [#909](https://github.com/gotgenes/pi-packages/issues/909)
+
 ## [31.1.4](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v31.1.3...pi-permission-system-v31.1.4) (2026-09-11)
 
 
