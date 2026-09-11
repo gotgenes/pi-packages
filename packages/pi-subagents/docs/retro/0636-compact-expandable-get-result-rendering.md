@@ -51,6 +51,50 @@ Plan committed as `docs/plans/0636-compact-expandable-get-result-rendering.md`.
 The `tidy-first-assessor` corrected two premises before the plan was written: `textResult` has 15 call sites (13 unaffected), not the 14 the design summary asserted, and there is no structural argument for splitting `get-result-tool.ts` first.
 It recommended one preparatory commit — extracting the status→(glyph, colour) mapping from `result-renderer.ts` — which became TDD Step 1, and rejected a shared `renderStats` extraction as a wrong abstraction, since `AgentDetails` and `GetResultDetails` overlap in only two fields.
 
+## Stage: Implementation — TDD (2026-09-11T15:38:34Z)
+
+### Session summary
+
+All five TDD Order steps completed as planned, in order, each with its killing mutation verified before commit: the status-glyph extraction, `BoundedLines`, `get-result-renderer.ts`, the tool wiring, and the docs.
+Two pre-completion review rounds followed, producing three further commits.
+Test count went from 1712 to 1764 (+52: `result-renderer` +8, `bounded-lines` +11, `get-result-renderer` +24, `get-result-tool` +9).
+
+### Observations
+
+- **Every predicted mutation killed exactly the predicted class.**
+  Step 1's mutation reddened three *pre-existing* `renderStopped`/`renderFailed` tests alongside the new table, which is what proved the extraction was behavior-preserving rather than merely green.
+  Step 3's two mutations split 15 collapsed / 9 expanded and 5 cap / 19 other, matching the plan's per-class predictions.
+  Two negative-assertion tests (`omits the compaction glyph`, `omits the context percent`) stayed green under the collapsed mutation; each has a positive sibling that went red, so the pair discriminates even though neither half does alone.
+- **The plan's central claim was incomplete, and only the reviewer's adversarial input enumeration found it.**
+  `BoundedLines.render` returned one array element per line, but an element carrying an embedded `\n` still cost the terminal extra rows — so the bound held in the test and not on screen.
+  The fix went into `BoundedLines` rather than the two `subLine` call sites: the component is what promises the bound, and putting it at the call sites would have left the guarantee resting on every future caller's care.
+  Pi's own `TruncatedText` cuts at the first newline for the same reason.
+- **The second review round widened the same gap again.**
+  `\v` and `\f` are zero-width, so they survive a width-based clip, and a VT100-class terminal moves the cursor down for both exactly as for `\n`.
+  The cut is now `/[\r\n\v\f]/`.
+  Lesson: "one row per line" is a claim about what the *terminal* does with the string, not about array length — the test that asserts `render(w).length` cannot see the difference, which is precisely why the reviewer's re-derivation mandate was worth writing.
+- **A generic default silently removed a type check.**
+  Widening `textResult` to `<T = AgentDetails>` meant `background-spawner.ts`'s inline details literal began *defining* `T` instead of being checked against `AgentDetails`.
+  `tsc` stayed green because the literal happened to conform.
+  Fixed by hoisting to `const details: AgentDetails = {…}`; an explicit `textResult<AgentDetails>(…)` was tried first and rejected by `@typescript-eslint/no-unnecessary-type-arguments`.
+  Verified by adding an unknown field and confirming `tsc` now fails where it previously passed.
+- **Accepted residuals.**
+  The `asSdkTheme` cast in `test/tools/get-result-tool.test.ts` stands: the registered hooks take Pi's full `Theme`, while `display.ts` narrows it to the two methods the renderers call, so a double is structurally short of the SDK type by design.
+  The plan's claim that no cast would be needed was true of the pure-function tests and not of the hook-invoking ones.
+  The `\r` cut can also drop trailing content on a report line embedding a mid-line carriage return — the same trade-off `TruncatedText` already makes, and the full text remains in `content` and the session entry.
+- **Three process notes.**
+  Appending a test block with a python heredoc wrote a literal `\n` into the file, the exact hazard `AGENTS.md` warns about; the autoformatter caught it immediately.
+  A mid-file `Edit` inserting a sibling function closed the `BoundedLines` class early and reparented `render` — recovered by rewriting the file with `Write`.
+  `git checkout -- <file>` used to revert a mutation probe discarded an uncommitted fix, because HEAD was the pre-fix commit; the fix had to be re-applied.
+- Two `--autosquash` rebases folded the review fixes into the commit that introduced the code, since nothing had shipped and a `fix:` for a never-released defect would have been a false changelog entry.
+  Both were verified with a backup tag and a subject diff.
+
+### Reviewer verdict
+
+Pre-completion reviewer: **WARN** (both rounds), no blocking findings.
+Round 1 raised four findings; three were fixed (the row-bound gap, the `textResult` loosening, a stale module-count table in the package skill) and one accepted (the `asSdkTheme` cast).
+Round 2 raised two; one was fixed (`\v`/`\f`) and one accepted (mid-line `\r` truncation).
+
 [#636]: https://github.com/gotgenes/pi-packages/issues/636
 [#729]: https://github.com/gotgenes/pi-packages/pull/729
 [#755]: https://github.com/gotgenes/pi-packages/issues/755
