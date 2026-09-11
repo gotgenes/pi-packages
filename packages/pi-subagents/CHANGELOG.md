@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [21.6.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v21.5.1...pi-subagents-v21.6.0) (2026-09-11)
+
+
+### Features
+
+* **pi-subagents:** let an extension resume a subagent through the service ([0e15734](https://github.com/gotgenes/pi-packages/commit/0e157344ac5a6b00ded9db6228a8437d185ba8ba)), closes [#885](https://github.com/gotgenes/pi-packages/issues/885)
+* **pi-subagents:** emit an event when a subagent resume starts ([315640c](https://github.com/gotgenes/pi-packages/commit/315640c2d7c783a97543d47a568d6d44d76d6499)), closes [#832](https://github.com/gotgenes/pi-packages/issues/832)
+
+### Bug Fixes
+
+* **pi-subagents:** refuse to resume an agent that is still running ([5853ec0](https://github.com/gotgenes/pi-packages/commit/5853ec07430234cc4ff3bb3b994fe951bc6432c5)), closes [#896](https://github.com/gotgenes/pi-packages/issues/896)
+
+### Documentation
+
+* **pi-subagents:** document the service resume door and the resuming event ([1ac3bd0](https://github.com/gotgenes/pi-packages/commit/1ac3bd0ae8fa9e991505a90071d0889279c1dfe9))
+
 ## [21.5.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v21.5.0...pi-subagents-v21.5.1) (2026-09-10)
 
 
