@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [31.1.4](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v31.1.3...pi-permission-system-v31.1.4) (2026-09-11)
+
+
+### Bug Fixes
+
+* keep serving forwarded permissions when a parent-session marker is inherited ([0e1188b](https://github.com/gotgenes/pi-packages/commit/0e1188bb88b8d5b3ee14db3027baf4038644678b)), closes [#907](https://github.com/gotgenes/pi-packages/issues/907)
+* republish the serving heartbeat when the session id changes mid-session ([3fcb1a1](https://github.com/gotgenes/pi-packages/commit/3fcb1a1b040709510b774d873e08548da519b09a)), closes [#907](https://github.com/gotgenes/pi-packages/issues/907)
+* refuse a forwarding target that names the requesting session ([30ab5cc](https://github.com/gotgenes/pi-packages/commit/30ab5cc1f1418b38cc572d53b4d166d4097ce3e1)), closes [#907](https://github.com/gotgenes/pi-packages/issues/907)
+
+### Documentation
+
+* record that a UI host always serves forwarded permissions ([f62ca0b](https://github.com/gotgenes/pi-packages/commit/f62ca0b5ed920c0912691a8878375d7ce98d7770)), closes [#907](https://github.com/gotgenes/pi-packages/issues/907)
+
 ## [31.1.3](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v31.1.2...pi-permission-system-v31.1.3) (2026-09-08)
 
 
