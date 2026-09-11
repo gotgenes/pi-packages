@@ -72,3 +72,17 @@ Test count for `pi-permission-system`: 4157 → 4172 (+15, across two new files)
 - The shared `errnoError` test fixture hardcoded a `", rename"` message suffix that the `mkdir` tests then asserted on — fixed in `733dd7eb` by taking the operation name as a parameter.
 - The plan's risk table said 60 ms of worst-case blocking per heartbeat tick, but `markServing` makes *two* retryable calls (`ensureDirectoryExists` then `writeJsonFileAtomic`), so the real figure is ~120 ms — corrected in `f3f5f66e`.
   Still inside the 250 ms poll tick the safety argument rests on, and the reviewer re-derived that no other call site chains more than two retryable operations in a bounded per-tick window.
+
+## Stage: Sync (worktree) (2026-09-11T14:26:04Z)
+
+### Session summary
+
+Pre-push checks pass clean from the worktree root: `pnpm run lint` and `pnpm fallow dead-code` both report no issues, matching the TDD stage's end-of-cycle run.
+The plan's `**Release:** ship independently` marker is unchanged since planning — this issue is out of scope for the Phase 15 roadmap, so the root should dispatch a release for `pi-permission-system` alone after landing, with no batch-mate to wait on.
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-914--/2026-09-11T07-32-20-611Z_01a08f61-b602-71d1-9cd0-a74133636b29.jsonl` — read with `read_session_file({ path: "<path>" })` for message-level verification at land/retro time.
+
+### Observations
+
+No new deferred work surfaced since the TDD stage note.
+The two reviewer-WARN follow-up commits (`733dd7eb`, `f3f5f66e`) are already on this branch and included in the rebase below.
