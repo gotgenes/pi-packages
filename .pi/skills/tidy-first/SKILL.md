@@ -53,6 +53,7 @@ The report is advisory — you decide what the plan says.
   Record it in the Planning stage note under a `#### Deferred tidyings` heading, one line naming the file and the friction, so `/plan-improvements` can find it (Refs #787).
 
 Read a rejection's reasoning, not just its verdict — one that contradicts the design is a signal to re-examine the design, which is cheap here and expensive later (Refs #726).
+A contradiction that names a test the change will break is a **sequencing** constraint, not only a note: the repair belongs in the step whose commit breaks it, never a later one (Refs #909).
 Read a "no preparatory tidying warranted" verdict the same way: what it verified on the way past — interface fit, call-site counts, fixture assumptions — routinely confirms or refutes the design's structural claims (Refs #787).
 If a recommendation would **reshape** the design rather than prepare it, surface it to the operator before writing the plan instead of absorbing it silently.
 
