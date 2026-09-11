@@ -142,15 +142,23 @@ export function selectAuthorizer(
   }
   if (deps.detection.isSubagent(ctx)) {
     return {
-      terminal: new ParentAuthorizer(ctx, {
-        forwardingDir: deps.forwardingDir,
-        registry: deps.registry,
-        serving: deps.serving,
-        getTimeoutMs: deps.getForwardingTimeoutMs,
-        logger: deps.logger,
-      }),
+      terminal: buildParentAuthorizer(ctx, deps),
       adjudicatesLocally: false,
     };
   }
   return { terminal: new DenyingAuthorizer(), adjudicatesLocally: true };
+}
+
+/** The relaying terminal for `ctx`, built from the selection's own deps. */
+function buildParentAuthorizer(
+  ctx: ExtensionContext,
+  deps: AuthorizerSelectionDeps,
+): ParentAuthorizer {
+  return new ParentAuthorizer(ctx, {
+    forwardingDir: deps.forwardingDir,
+    registry: deps.registry,
+    serving: deps.serving,
+    getTimeoutMs: deps.getForwardingTimeoutMs,
+    logger: deps.logger,
+  });
 }
