@@ -43,3 +43,32 @@ Four TDD steps: `refactor:` for the module, two `fix:` steps for the two call si
 
 `rg -rn "renameSync" src/` was run by mistake — `-r` is `--replace`, so it printed every match rewritten to `n` and dropped the line numbers, exactly as `AGENTS.md` warns.
 It was re-run correctly, and the corrected run is what surfaced the second write site in `config-store.ts`.
+
+## Stage: Implementation — TDD (2026-09-11T08:18:42Z)
+
+### Session summary
+
+All four planned TDD steps completed, plus two follow-up commits addressing the reviewer's WARNs.
+`retryOnTransientFsError` (`src/authority/transient-fs-retry.ts`) now backs both `writeJsonFileAtomic`'s `renameSync` and `ensureDirectoryExists`'s `mkdirSync`, with a recovery recorded as a debug-only `permission_forwarding.fs_retried` entry.
+Test count for `pi-permission-system`: 4157 → 4172 (+15, across two new files).
+
+### Observations
+
+- **Every planned killing mutation landed on exactly the predicted tests**, with one instructive exception.
+  The step-1 mutation "treat every thrown value as transient" killed only one of its two predicted tests, because `transientErrorCode`'s early `"code" in error` guard returns first for a code-less `Error` — so the two non-transient claims are pinned by two *different* guards, and killing both needed both mutated.
+  That is a finding the plan's single-mutation prediction would have missed.
+- **Four tests were green during their Red step** (`records nothing when the rename succeeds outright`, `rethrows a lock that outlasts the budget…`, `reports failure without throwing…`, and the added `leaves an unrelated errno alone`).
+  All four are deliberate invariant pins, and each was mutated explicitly rather than trusted: `attempts === 1` → `=== 0`, dropping `safeDeleteFile` from the catch, `return false` → `return true`, and adding `ENOSPC` to the errno set.
+- **Two tests were added beyond the plan's list.**
+  `leaves an unrelated errno alone` pins the errno-set boundary from the wiring side (the plan pinned it only in the unit tests), and `honors an injected delay sequence` pins the `delaysMs` seam the unit tests rely on.
+  The plan's `it.each` row also splits into two reported tests.
+- **`vi.mock("node:fs")` in a new file needed the `importOriginal` spread**, per the `testing` skill, so the temp write, the `0o600`/`0o700` mode assertions, and the cleanup all still run against a real temp directory with only one export faked.
+  The reviewer confirmed no leakage into the sibling real-filesystem tests.
+- **Every predicted-unchanged file stayed unchanged**, including `test/authority/forwarding-io.test.ts` and the two fault-injecting `approval-escalator.test.ts` tests — the planning trace that one fails at the un-retried temp write (`EACCES`) and the other at `ENOTDIR` held exactly.
+- **Pre-completion reviewer: PASS** (full range), then **PASS** again on the two-commit delta.
+
+#### Reviewer warnings (both addressed before stopping)
+
+- The shared `errnoError` test fixture hardcoded a `", rename"` message suffix that the `mkdir` tests then asserted on — fixed in `733dd7eb` by taking the operation name as a parameter.
+- The plan's risk table said 60 ms of worst-case blocking per heartbeat tick, but `markServing` makes *two* retryable calls (`ensureDirectoryExists` then `writeJsonFileAtomic`), so the real figure is ~120 ms — corrected in `f3f5f66e`.
+  Still inside the 250 ms poll tick the safety argument rests on, and the reviewer re-derived that no other call site chains more than two retryable operations in a bounded per-tick window.
