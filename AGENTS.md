@@ -165,6 +165,8 @@ It likewise joins a sentence onto the previous line when the sentence opens with
 It also reads a numbered section citation (`§ *7. Verify CI*`) as a sentence end and splits it — cite the heading instead (`` the `## 7. Verify CI` section ``).
 It also reads a leading `~` as strikethrough and rewrites a `~`-prefixed token (`(~:211)` → `(~~211)`), which `rumdl check` passes — write an approximate line reference as `line ~211` (Refs #878).
 It fires on `Edit`/`Write` only, so a file appended with a shell heredoc skips formatting entirely and fails `pnpm run lint` — append source with `Write`/`Edit` too, not just markdown.
+It also merges a new `export type { … }` statement into an adjacent one and emits the merge unformatted, so the pre-commit hook rewrites the file and rejects the commit.
+Write the merged statement by hand (Refs #885).
 
 #### Stale prompt-template expansion
 
@@ -476,6 +478,7 @@ Commit at meaningful checkpoints without waiting for an explicit reminder.
 Prefer small, reviewable commits that leave the repository in a valid state.
 Do not gate a commit (or any `&&` step) on a check piped through `tail`/`head` — a pipeline's exit status is the filter's, so a failed `pnpm run lint`/`check` is masked and the commit still runs.
 Run the check unpiped, or test `${PIPESTATUS[0]}`.
+`git commit … | tail -3` likewise hides a hook rejection behind the hook's own PASS lines — confirm the commit landed with `git log -1` (Refs #885).
 To keep the output short without losing the gate, redirect rather than pipe: `pnpm run check >/tmp/check.log 2>&1 || tail -30 /tmp/check.log`.
 That redirect hides Biome findings at **warning** level, which exit 0 — `pnpm run lint` reports PASS while new warnings accumulate.
 After adding or heavily editing files, count them: `pnpm run lint >/tmp/l.log 2>&1; grep -c 'lint/' /tmp/l.log || true` — `grep -c` exits 1 on a zero count (Refs #694).

@@ -6,7 +6,7 @@ description: Land the work (trunk or worktree branch), verify CI, close the issu
 # Ship the implementation
 
 Argument: `$1` is the issue number that was just implemented, or the number of an adopted third-party PR.
-When it is empty, derive the number from the newest plan commit (`git log --format='%s' --grep='^docs: plan ' -1` → the trailing `(#N)`), name the issue you derived, and confirm it before step 3.
+When it is empty, derive the number from the newest plan commit (`git log --format='%s' --grep='^docs: plan ' -1` → the trailing `(#N)`), name the issue you derived, and confirm it in step 0 — lane detection reads it.
 
 `/ship` runs at the **root** checkout on `main` in both of its lanes:
 
@@ -23,12 +23,15 @@ Run `git rev-parse --show-toplevel` and `git branch --show-current`.
 1. If the branch is not `main`, stop and report.
    On an `issue-<N>-*` branch you are in a peer worktree: run `/sync-worktree $1` here, then `/ship $1` from the root session.
 2. If the toplevel is not the root checkout, stop and report — the same applies.
+3. Resolve the issue number before step 1.
+   With `$1` empty, step 1's glob widens and matches a sibling peer's `issue-<M>-*` branch, which reads as this issue's worktree lane (Refs #885).
 
 Do this before anything else, so a mis-invocation costs nothing.
 
 ## 1. Detect the lane and name the session
 
 1. Run `git branch --list "issue-$1-*"`.
+   Glob the resolved number literally (`issue-885-*`), never a widened `issue-*-*`.
    - Exactly one match → **worktree lane**.
      Record the branch: `BRANCH=$(git branch --list "issue-$1-*" | tr -d ' +*')`.
    - Zero matches → **trunk lane**.
@@ -197,6 +200,7 @@ Close each PR that step 2's plan-and-retro read named, with `gh pr comment` then
 
 Then check whether this push shipped work for **other** issues in the `"$PLAN"^..HEAD` range.
 A co-shipped issue shows as a stacked refactor/enabler, a subject-trailing `(#M)` commit ref, or a sibling `docs/plans/`/`docs/retro/` file added in range — a body-line `Refs #M` is a citation, not a ship (Refs #793).
+A roadmap step heading that names a second issue (`#### Step 16: … ([#885], with [#896])`) is a fold-in: its work shipped here and it closes with this issue, even where no commit subject carries its number (Refs #885).
 A mid-batch sibling that shipped on its own ship is already closed by it — this scan is for stacked work that never had a ship of its own.
 Close each with its own short summary — `refactor:` commits are omitted from the changelog, so a stacked refactor issue leaves no reminder.
 
