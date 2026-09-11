@@ -97,6 +97,38 @@ export interface GateBypass {
 /** Union of possible gate function return values. */
 export type GateResult = GateDescriptor | GateBypass | null;
 
+// ── Resolved-state readers ─────────────────────────────────────────────────
+
+/**
+ * The permission check a descriptor already carries, or `null` when it
+ * resolves nothing of its own.
+ *
+ * Every tool-call gate resolves its own state before the runner sees it —
+ * five of the six stamp a full `preCheck`, and the skill-read gate stamps the
+ * `preResolved` state it read off the matched skill entry. This is the one
+ * place that precedence is expressed, so the runner and the pre-emption
+ * predicate cannot answer it differently.
+ *
+ * A `null` answer is not "allow": it means the caller must resolve the
+ * descriptor itself.
+ */
+export function preResolvedCheckOf(
+  descriptor: GateDescriptor,
+): PermissionCheckResult | null {
+  if (descriptor.preCheck) {
+    return descriptor.preCheck;
+  }
+  if (descriptor.preResolved) {
+    return {
+      state: descriptor.preResolved.state,
+      toolName: descriptor.surface,
+      source: "tool",
+      origin: "builtin",
+    };
+  }
+  return null;
+}
+
 // ── Type guard helpers ─────────────────────────────────────────────────────
 
 /** Check whether a GateResult is a GateBypass (early allow). */

@@ -18,7 +18,7 @@ import type {
   GateDescriptor,
   GateResult,
 } from "./descriptor";
-import { isGateBypass } from "./descriptor";
+import { isGateBypass, preResolvedCheckOf } from "./descriptor";
 import { buildDecisionEvent, resolveYoloGrant } from "./helpers";
 import type { GateOutcome } from "./types";
 
@@ -89,25 +89,16 @@ export class GateRunner {
     agentName: string | null,
     requestId: string,
   ): Promise<GateOutcome> {
-    // 1. Resolve permission state — pre-check, pre-resolved, or via resolver
-    let check: PermissionCheckResult;
-    if (descriptor.preCheck) {
-      check = descriptor.preCheck;
-    } else if (descriptor.preResolved) {
-      check = {
-        state: descriptor.preResolved.state,
-        toolName: descriptor.surface,
-        source: "tool",
-        origin: "builtin",
-      };
-    } else {
-      check = this.resolver.resolve({
+    // 1. Resolve permission state — what the descriptor already carries, or
+    // via the resolver when it carries nothing.
+    const check =
+      preResolvedCheckOf(descriptor) ??
+      this.resolver.resolve({
         kind: "tool",
         surface: descriptor.surface,
         input: descriptor.input,
         agentName: agentName ?? undefined,
       });
-    }
 
     // The fields every review-log write for this gate shares, whatever the
     // resolution — built once so a field added here reaches all of them. The
