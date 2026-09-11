@@ -129,6 +129,49 @@ export function preResolvedCheckOf(
   return null;
 }
 
+/**
+ * Whether this gate blocks without escalating, whatever the other gates say.
+ *
+ * A `deny` is absorbing: wherever it sits in the pipeline's order, the call is
+ * refused, so no other gate's answer — and no human's — can change the
+ * outcome. That is what makes running it first an ordering change rather than
+ * a semantic one, and it is why the same treatment is *not* extended to `ask`
+ * (#915): two asking gates ask two different questions.
+ *
+ * Subordinate to {@link GateRunner.runDescriptor}'s own precedence, which
+ * tests `source === "session"` before the deny/ask/allow gate is reached — a
+ * session-sourced check is allowed there, so it is not pre-emptive here.
+ * `SessionRules` records only allows, so that combination is unreachable
+ * today; the clause is kept so the predicate is correct on its own terms
+ * rather than by way of a distant invariant, and it errs toward today's
+ * behavior by declining to pre-empt.
+ *
+ * Yolo needs no clause: `resolveYoloGrant` matches an `allow` of origin
+ * `yolo` and an `ask`, never a `deny`.
+ */
+export function isUnconditionalDeny(gate: GateResult): boolean {
+  if (!isGateDescriptor(gate)) {
+    return false;
+  }
+  const check = preResolvedCheckOf(gate);
+  return check !== null && check.state === "deny" && check.source !== "session";
+}
+
+/**
+ * The gates in run order, with any unconditional deny moved to the front.
+ *
+ * A stable partition, so two denying gates keep their relative order (the
+ * earlier one still decides, exactly as before) and the remainder keeps its
+ * own. With no deny present the array is returned unchanged.
+ */
+export function orderDenyFirst(gates: GateResult[]): GateResult[] {
+  const denying = gates.filter((gate) => isUnconditionalDeny(gate));
+  if (denying.length === 0) {
+    return gates;
+  }
+  return [...denying, ...gates.filter((gate) => !isUnconditionalDeny(gate))];
+}
+
 // ── Type guard helpers ─────────────────────────────────────────────────────
 
 /** Check whether a GateResult is a GateBypass (early allow). */

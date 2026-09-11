@@ -217,7 +217,7 @@ describe("external_directory — allow external reads, gate external writes (#14
     expect(result).toMatchObject({ action: "block" });
   });
 
-  it("emits separate decision events for external_directory and write surfaces", async () => {
+  it("emits only the denying surface's decision event", async () => {
     const { handler, events } = makeHandler({
       session: { checkPermission: makeExtDirCheck("allow", "deny") },
       tools: ALL_TOOLS,
@@ -228,16 +228,15 @@ describe("external_directory — allow external reads, gate external writes (#14
     await handler.handleToolCall(event, makeCtx());
     const decisions = getDecisionEvents(events);
     const writeDecision = decisions.find((d) => d.surface === "write");
-    expect(findExtDirDecision(events)).toMatchObject({
-      surface: "external_directory_write",
-      result: "allow",
-      resolution: "policy_allow",
-    });
     expect(writeDecision).toMatchObject({
       surface: "write",
       result: "deny",
       resolution: "policy_deny",
     });
+    // The `write` deny pre-empts every other gate, so the boundary gate that
+    // would have allowed this path never runs and states no decision about a
+    // call that did not happen (#899).
+    expect(findExtDirDecision(events)).toBeUndefined();
   });
 });
 

@@ -2,11 +2,13 @@ import { describe, expect, it, vi } from "vitest";
 
 import { getEventInput } from "#src/handlers/permission-gate-handler";
 import { findEvidence } from "#src/presentation/prompt-payload";
+import type { PermissionCheckResult } from "#src/types";
 import {
   DECIDED_BY_ABSENT_AUTHORITY,
   DECIDED_BY_HUMAN,
 } from "#test/helpers/decision-fixtures";
 
+import type { MockGateHandlerSession } from "#test/helpers/handler-fixtures";
 import {
   makeBashCommandCheck,
   makeCheckResult,
@@ -292,6 +294,79 @@ describe("handleToolCall — bash command chain gate", () => {
     const { handler } = makeHandler({ tools: ["bash"] });
     const event = makeToolCallEvent("bash", { input: { command: "echo hi" } });
     const result = await handler.handleToolCall(event, makeCtx());
+    expect(result).toEqual({ action: "allow" });
+  });
+});
+
+// ── deny pre-emption ───────────────────────────────────────────────────
+
+describe("handleToolCall — a deny needs no prompt", () => {
+  /**
+   * The reported policy: `find / *` is denied on the `bash` surface while
+   * every path outside the working directory asks (#899).
+   */
+  function denyFindAskOutside() {
+    return vi
+      .fn<MockGateHandlerSession["checkPermission"]>()
+      .mockImplementation((surface, input): PermissionCheckResult => {
+        if (surface === "bash") {
+          const command = (input as { command?: string }).command ?? "";
+          return command.startsWith("find /")
+            ? makeCheckResult({
+                state: "deny",
+                source: "bash",
+                command,
+                matchedPattern: "find / *",
+              })
+            : makeCheckResult({
+                state: "allow",
+                source: "bash",
+                command,
+                matchedPattern: "*",
+              });
+        }
+        if (surface.startsWith("external_directory")) {
+          return makeCheckResult({ state: "ask", matchedPattern: "*" });
+        }
+        return makeCheckResult({ state: "allow" });
+      });
+  }
+
+  it("blocks a denied command without asking the user to approve it", async () => {
+    const { handler, prompter } = makeHandler({
+      session: { checkPermission: denyFindAskOutside() },
+      tools: ["bash"],
+    });
+
+    const result = await handler.handleToolCall(
+      makeToolCallEvent("bash", {
+        input: {
+          command:
+            "ls /tmp/mermaid-check*.svg 2>&1; find / -maxdepth 2 -iname 'mermaid-check*'",
+        },
+      }),
+      makeCtx(),
+    );
+
+    expect(prompter.escalate).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ action: "block" });
+    expect((result as { reason: string }).reason).toContain("find / *");
+  });
+
+  it("still asks when the outside-path ask is the most restrictive answer", async () => {
+    const { handler, prompter } = makeHandler({
+      session: { checkPermission: denyFindAskOutside() },
+      tools: ["bash"],
+    });
+
+    const result = await handler.handleToolCall(
+      makeToolCallEvent("bash", {
+        input: { command: "cat /etc/hosts" },
+      }),
+      makeCtx(),
+    );
+
+    expect(prompter.escalate).toHaveBeenCalled();
     expect(result).toEqual({ action: "allow" });
   });
 });

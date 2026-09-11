@@ -18,7 +18,7 @@ import type { PermissionCheckResult } from "#src/types";
 import { resolveBashCommandCheck } from "./bash-command";
 import { describeBashExternalDirectoryGate } from "./bash-external-directory";
 import { describeBashPathGate } from "./bash-path";
-import type { GateResult } from "./descriptor";
+import { type GateResult, orderDenyFirst } from "./descriptor";
 import { describeExternalDirectoryGate } from "./external-directory";
 import { describePathGate } from "./path";
 import type { GateRunner } from "./runner";
@@ -62,7 +62,8 @@ export interface ToolCallGateInputs {
  * - `ToolPreviewFormatter` construction from `getToolPreviewLimits()`
  * - infrastructure-dir list from `getInfrastructureReadDirs()`
  * - all six gate producers in their prescribed order
- * - the run loop that returns the first block outcome, or allow
+ * - the run loop, which runs an unconditionally denying gate ahead of the
+ *   rest and returns the first block outcome, or allow
  */
 export class ToolCallGatePipeline {
   constructor(
@@ -141,8 +142,18 @@ export class ToolCallGatePipeline {
       },
     ];
 
+    // Produce every gate before running any of them, so an unconditional deny
+    // on a later gate is known before an earlier one suspends the call on an
+    // `ask` nobody's answer could change (#899). Producing is side-effect-free
+    // — all logging and event emission happens inside `runner.run` — and the
+    // loop below already produced every gate on any call it did not block.
+    const gates: GateResult[] = [];
     for (const produce of gateProducers) {
-      const outcome = await runner.run(await produce(), tcc.agentName);
+      gates.push(await produce());
+    }
+
+    for (const gate of orderDenyFirst(gates)) {
+      const outcome = await runner.run(gate, tcc.agentName);
       if (outcome.action === "block") {
         return outcome;
       }

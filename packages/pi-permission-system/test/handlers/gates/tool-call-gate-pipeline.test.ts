@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { BashExternalPath } from "#src/access-intent/bash/bash-path-resolver";
+import { isGateDescriptor } from "#src/handlers/gates/descriptor";
 import { ToolCallGatePipeline } from "#src/handlers/gates/tool-call-gate-pipeline";
 import { PathNormalizer } from "#src/path/path-normalizer";
 
@@ -152,6 +153,56 @@ describe("ToolCallGatePipeline", () => {
       await pipeline.evaluate(makeTcc({ toolName: "read", input: {} }), runner);
 
       expect(mockBashProgramParse).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── deny pre-emption (#899) ──────────────────────────────────────────────
+
+  describe("evaluate — a deny pre-empts a gate that would prompt", () => {
+    // The `path` gate (#2) asks and the per-tool gate (#6) denies, which is the
+    // reported ordering: an `ask` suspended the call before the deny was
+    // consulted.
+    function askingPathDenyingTool() {
+      const resolver = makeResolver();
+      resolver.resolve.mockImplementation((intent) =>
+        intent.surface === "read"
+          ? makeCheckResult({ state: "deny", matchedPattern: "secret*" })
+          : makeCheckResult({ state: "ask", matchedPattern: "*" }),
+      );
+      return resolver;
+    }
+
+    it("runs the denying gate first and never reaches the asking one", async () => {
+      const resolver = askingPathDenyingTool();
+      const { runner, deps } = makeGateRunner();
+      const runSpy = vi.spyOn(runner, "run");
+      const pipeline = new ToolCallGatePipeline(resolver, makeGateInputs());
+
+      const result = await pipeline.evaluate(
+        makeTcc({ toolName: "read", input: { path: "secrets.txt" } }),
+        runner,
+      );
+
+      expect(result).toMatchObject({ action: "block" });
+      expect(runSpy).toHaveBeenCalledTimes(1);
+      const firstGate = runSpy.mock.calls[0][0];
+      expect(isGateDescriptor(firstGate) && firstGate.surface).toBe("read");
+      expect(deps.escalate).not.toHaveBeenCalled();
+    });
+
+    it("still prompts when no gate denies", async () => {
+      const resolver = makeResolver(
+        makeCheckResult({ state: "ask", matchedPattern: "*" }),
+      );
+      const { runner, deps } = makeGateRunner();
+      const pipeline = new ToolCallGatePipeline(resolver, makeGateInputs());
+
+      await pipeline.evaluate(
+        makeTcc({ toolName: "read", input: { path: "secrets.txt" } }),
+        runner,
+      );
+
+      expect(deps.escalate).toHaveBeenCalled();
     });
   });
 
