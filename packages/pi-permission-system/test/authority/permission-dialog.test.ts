@@ -41,6 +41,27 @@ describe("isPermissionDecisionState", () => {
 });
 
 describe("requestPermissionDecisionFromUi", () => {
+  it("emits a terminal bell before opening the prompt", async () => {
+    const writeSpy = vi
+      .spyOn(process.stdout, "write")
+      .mockImplementation(() => true);
+    const selectFn = vi.fn().mockResolvedValue("Yes");
+    const ui: PermissionDecisionUi = {
+      select: selectFn,
+      input: vi.fn(),
+    };
+
+    try {
+      await requestPermissionDecisionFromUi(ui, "Title", "Message");
+      expect(writeSpy).toHaveBeenCalledWith("\x07");
+      expect(writeSpy.mock.invocationCallOrder[0]).toBeLessThan(
+        selectFn.mock.invocationCallOrder[0],
+      );
+    } finally {
+      writeSpy.mockRestore();
+    }
+  });
+
   it("returns approved when user selects Yes", async () => {
     const ui: PermissionDecisionUi = {
       select: vi.fn().mockResolvedValue("Yes"),
