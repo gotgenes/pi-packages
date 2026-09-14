@@ -22,8 +22,8 @@ import type { TurnPreparation } from "./session-turn-prep";
 
 /** Minimal subset of BeforeAgentStartEvent used by this handler. */
 interface BeforeAgentStartPayload {
-  /** The prompt rendered from `systemPromptOptions` as it stands right now. */
-  readonly systemPrompt: string;
+  /** Pi renders a string; a host may supply ordered prompt fragments instead. */
+  readonly systemPrompt: string | readonly string[];
   /**
    * The mutable parts Pi renders the prompt from; later handlers, and Pi
    * itself, see what this handler writes here. `customPrompt` says whether Pi
@@ -32,7 +32,7 @@ interface BeforeAgentStartPayload {
    * renders from, and `sections` is where it is stated. `skills` is the
    * catalogue Pi renders, which policy narrows.
    */
-  systemPromptOptions: Pick<
+  systemPromptOptions?: Pick<
     NormalizedBuildSystemPromptOptions,
     "customPrompt" | "toolSnippets" | "promptGuidelines" | "sections" | "skills"
   >;
@@ -56,10 +56,12 @@ export function shouldExposeTool(
 /**
  * Handles the `before_agent_start` event: tool filtering + prompt sanitization.
  *
- * Every change to the prompt is stated through `event.systemPromptOptions`,
+ * When provided, prompt changes are stated through `event.systemPromptOptions`,
  * never as a returned `systemPrompt`: a returned prompt is frozen for the run,
  * so the sections an extension later in the chain adds (Pi's own
  * `<mcp_servers>` among them) would never reach the provider (#999).
+ * Without those options, only tool filtering and skill path resolution run;
+ * there is no mutable section or skill catalogue to narrow.
  *
  * Narrowing the active set is enough for a prompt Pi wrote: Pi renders its
  * `<tools>` and `<rules>` from the reconciled active set. A subagent child's
@@ -97,7 +99,12 @@ export class AgentPrepHandler {
   ): Promise<BeforeAgentStartEventResult> {
     this.turnPrep.prepare(ctx);
 
-    const agentName = this.session.resolveAgentName(ctx, event.systemPrompt);
+    // Normalize once at the boundary, before either prompt consumer reads it.
+    const systemPrompt =
+      typeof event.systemPrompt === "string"
+        ? event.systemPrompt
+        : event.systemPrompt.join("\n");
+    const agentName = this.session.resolveAgentName(ctx, systemPrompt);
     const registered = readRegisteredTools(this.toolRegistry.getAll());
     const surface = this.session.resolveExposedTools(
       this.observeToolSurface(registered),
@@ -118,7 +125,7 @@ export class AgentPrepHandler {
     }
 
     const options = event.systemPromptOptions;
-    if (this.isSubagentUnderCustomPrompt(event, ctx)) {
+    if (options && this.isSubagentUnderCustomPrompt(event, ctx)) {
       const sections = renderToolSurfaceSections({
         allowedTools,
         toolSnippets: options.toolSnippets,
@@ -134,12 +141,14 @@ export class AgentPrepHandler {
     // read before the skill list is narrowed.
     this.session.setActiveSkillEntries(
       visibleSkillPromptEntries(
-        event.systemPrompt,
+        systemPrompt,
         this.resolver,
         agentName,
         this.session.getPathNormalizer(),
       ),
     );
+    if (!options) return {};
+
     // Denials are judged on the list Pi renders `<skills>` from, not on the
     // rendered prompt: that prompt predates this turn's tool changes, and on
     // the turn `read`/`bash` return from a full denial it lists no catalogue.
@@ -181,5 +190,5 @@ export class AgentPrepHandler {
  * test, so an empty string reads here the way it reads there: as none.
  */
 function hasCustomPrompt(event: BeforeAgentStartPayload): boolean {
-  return Boolean(event.systemPromptOptions.customPrompt);
+  return Boolean(event.systemPromptOptions?.customPrompt);
 }

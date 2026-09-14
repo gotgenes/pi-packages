@@ -37,7 +37,7 @@ vi.mock("@earendil-works/pi-coding-agent", async (importOriginal) => {
 
 /** A fresh event per call, so a handler's option mutations never carry over. */
 function makeEvent(
-  systemPrompt = "You are an assistant.",
+  systemPrompt: string | readonly string[] = "You are an assistant.",
   systemPromptOptions: Partial<NormalizedBuildSystemPromptOptions> = {},
 ) {
   return {
@@ -348,6 +348,35 @@ describe("AgentPrepHandler.handle", () => {
     await handler.handle(makeEvent(), makeCtx());
     expect(spy).toHaveBeenCalledWith(expect.any(Array));
   });
+
+  it.each([true, false])(
+    "normalizes array prompts with systemPromptOptions=%s",
+    async (withOptions) => {
+      const { handler, session, toolRegistry } = makeSetup({
+        toolFullyDenied: true,
+        registry: makeStatefulToolRegistry({ active: ["read", "bash"] }),
+      });
+      const ctx = makeCtx();
+      const skills = [makeSkill("open")];
+      const systemPrompt = [
+        "<active_agent",
+        "name='worker'>",
+        formatSkillsForPrompt(skills),
+      ];
+      const event = withOptions
+        ? makeEvent(systemPrompt, { skills })
+        : { systemPrompt };
+
+      const result = await handler.handle(event, ctx);
+
+      expect(session.resolveAgentName(ctx)).toBe("worker");
+      expect(toolRegistry.getActive()).toEqual([]);
+      expect(
+        session.getActiveSkillEntries().map((entry) => entry.location),
+      ).toEqual([skills[0].filePath]);
+      expect(result).toEqual({});
+    },
+  );
 
   describe("on a prompt Pi wrote", () => {
     it("returns no override, so sections later handlers add still reach the provider", async () => {
