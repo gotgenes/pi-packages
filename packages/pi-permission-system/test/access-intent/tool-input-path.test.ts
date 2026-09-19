@@ -28,6 +28,21 @@ describe("getPathBearingToolPath", () => {
   });
 });
 
+describe("Oh My Pi edit payloads", () => {
+  test("extracts the target path from a hashline edit input", () => {
+    const input = {
+      i: "Applying a precise edit",
+      input: "[src/index.ts#A1B2]\nPUT 1.=1:\n+replacement",
+    };
+
+    expect(getPathBearingToolPath("edit", input)).toBe("src/index.ts");
+    expect(getToolInputPath("edit", input)).toEqual({
+      path: "src/index.ts",
+      source: "convention",
+    });
+  });
+});
+
 describe("getToolInputPath", () => {
   function lookupOf(
     toolName: string,
