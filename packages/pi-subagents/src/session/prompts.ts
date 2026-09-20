@@ -243,7 +243,7 @@ function sessionResolvedTailStart(
   parentCwd: string,
   cutProjectContext: boolean,
 ): number {
-  const tailAt = tailStart(lines, parentCwd);
+  const tailAt = cwdAnchoredTailStart(lines, parentCwd);
   if (!cutProjectContext || tailAt === -1) return tailAt;
   const projectContextAt = projectContextStart(lines, tailAt);
   return projectContextAt === -1 ? tailAt : projectContextAt;
@@ -258,9 +258,14 @@ function sessionResolvedTailStart(
  * assembled from tagged sections — the cwd as a `<cwd>` section, the catalogue
  * inside a `<skills>` section — so the footer never matches and the cwd
  * section takes the anchor's place. The two shapes are told apart by which
- * cwd layer is present, never by version sniffing.
+ * cwd layer is present, never by version sniffing — which is what the name
+ * records, so this reads apart from the `sessionResolvedTailStart` above it
+ * that extends the cut past this anchor.
  */
-function tailStart(lines: readonly string[], parentCwd: string): number {
+function cwdAnchoredTailStart(
+  lines: readonly string[],
+  parentCwd: string,
+): number {
   const footerAt = lines.lastIndexOf(
     `Current working directory: ${toPromptPath(parentCwd)}`,
   );
