@@ -164,13 +164,27 @@ const SKILLS_SECTION_HEADING =
 /** Closing tag of that catalogue. */
 const SKILLS_CATALOGUE_CLOSE = "</available_skills>";
 
+/** Opening tag of the section Pi ≥0.86 wraps the catalogue in. */
+const SKILLS_SECTION_OPEN = "<skills>";
+
+/** Closing tag of that section. */
+const SKILLS_SECTION_CLOSE = "</skills>";
+
+/** Opening tag of the section Pi ≥0.86 renders the working directory into. */
+const CWD_SECTION_OPEN = "<cwd>";
+
+/** Closing tag of that section. */
+const CWD_SECTION_CLOSE = "</cwd>";
+
 /** Opening tag of the block Pi renders the session's context files into. */
 const PROJECT_CONTEXT_OPEN = "<project_context>";
 
 /** Closing tag of that block. */
 const PROJECT_CONTEXT_CLOSE = "</project_context>";
 
-/** The sentence Pi writes two lines below the opening tag. */
+/** The sentence Pi writes below the opening tag — two lines below it through
+ *  0.85, whose block opens with a blank line, and directly below it from
+ *  0.86's section renderer. */
 const PROJECT_CONTEXT_LEAD_IN = "Project-specific instructions and guidelines:";
 
 /**
@@ -178,13 +192,14 @@ const PROJECT_CONTEXT_LEAD_IN = "Project-specific instructions and guidelines:";
  *
  * Pi's `buildSystemPrompt` ends every prompt with layers it resolves per
  * session — the `<available_skills>` catalogue, then a
- * `Current working directory:` footer — and extensions append further blocks
- * after those from `before_agent_start`, rebuilt from the base prompt on every
- * turn. The child's own session rebuilds all of it against the child's
- * directory, tool set, and extensions, so an inherited copy is a second, stale
- * claim of each: a catalogue naming skills the child may not have (#801), and
- * a footer that walks a workspace-isolated child back into the parent's
- * directory (#640).
+ * `Current working directory:` footer, or from 0.86 the same catalogue inside
+ * a `<skills>` section followed by a `<cwd>` section — and extensions append
+ * further blocks after those from `before_agent_start`, rebuilt from the base
+ * prompt on every turn. The child's own session rebuilds all of it against
+ * the child's directory, tool set, and extensions, so an inherited copy is a
+ * second, stale claim of each: a catalogue naming skills the child may not
+ * have (#801), and a footer that walks a workspace-isolated child back into
+ * the parent's directory (#640).
  *
  * Everything from the first such layer onward is therefore dropped. What
  * precedes it is returned byte for byte, so it stays a shared prefix with the
@@ -228,14 +243,87 @@ function sessionResolvedTailStart(
   parentCwd: string,
   cutProjectContext: boolean,
 ): number {
-  const footerAt = lines.lastIndexOf(
-    `Current working directory: ${toPromptPath(parentCwd)}`,
-  );
-  const catalogueAt = skillsSectionStart(lines, footerAt);
-  const tailAt = catalogueAt === -1 ? footerAt : catalogueAt;
+  const tailAt = tailStart(lines, parentCwd);
   if (!cutProjectContext || tailAt === -1) return tailAt;
   const projectContextAt = projectContextStart(lines, tailAt);
   return projectContextAt === -1 ? tailAt : projectContextAt;
+}
+
+/**
+ * Line index at which Pi's per-session layers begin, across both of its
+ * prompt renderers, or -1 when none is present.
+ *
+ * Through 0.85 the layers end in a `Current working directory:` footer line,
+ * and the catalogue is anchored to it positionally. From 0.86 the prompt is
+ * assembled from tagged sections — the cwd as a `<cwd>` section, the catalogue
+ * inside a `<skills>` section — so the footer never matches and the cwd
+ * section takes the anchor's place. The two shapes are told apart by which
+ * cwd layer is present, never by version sniffing.
+ */
+function tailStart(lines: readonly string[], parentCwd: string): number {
+  const footerAt = lines.lastIndexOf(
+    `Current working directory: ${toPromptPath(parentCwd)}`,
+  );
+  if (footerAt !== -1) {
+    const catalogueAt = skillsSectionStart(lines, footerAt);
+    return catalogueAt === -1 ? footerAt : catalogueAt;
+  }
+  const cwdAt = cwdSectionStart(lines, parentCwd);
+  if (cwdAt !== -1) return skillsSectionWrapperStart(lines, cwdAt);
+  // Neither cwd layer: something downstream rewrote a 0.85-shaped prompt, and
+  // the last closing tag is the best remaining guess.
+  return skillsSectionStart(lines, -1);
+}
+
+/**
+ * Line index of Pi ≥0.86's `<cwd>` section opening tag, or -1 when it wrote
+ * none.
+ *
+ * Located by content, not document order: the section is accepted only when
+ * the line inside it is exactly the parent's cwd and the closing tag follows,
+ * so a `<cwd>` quoted elsewhere — or one naming a directory that merely
+ * shares a prefix with the parent's — is not mistaken for it, the same
+ * whole-line discipline the 0.85 footer anchor applies.
+ */
+function cwdSectionStart(lines: readonly string[], parentCwd: string): number {
+  for (
+    let openAt = lines.lastIndexOf(CWD_SECTION_OPEN);
+    openAt !== -1;
+    openAt = lines.lastIndexOf(CWD_SECTION_OPEN, openAt - 1)
+  ) {
+    if (
+      lines[openAt + 1] === toPromptPath(parentCwd) &&
+      lines[openAt + 2] === CWD_SECTION_CLOSE
+    ) {
+      return openAt;
+    }
+  }
+  return -1;
+}
+
+/**
+ * Line index of the `<skills>` section's opening tag, or the cwd section's own
+ * opening when the parent resolved no skills.
+ *
+ * The catalogue section sits immediately below the cwd section in
+ * `buildSystemPrompt`'s order, separated only by the section join, so the
+ * closing tag on the other side of that join is Pi's own. Its opening is then
+ * accepted only when the heading is its first content line, keeping a custom
+ * section that merely ends where Pi's does from being taken for it. Cutting at
+ * the opening tag — not at the heading inside it — drops the wrapper with the
+ * layers it carries, and leaves the previous section's closing tag adjacent
+ * to the tail for the project-context anchor.
+ */
+function skillsSectionWrapperStart(
+  lines: readonly string[],
+  cwdAt: number,
+): number {
+  let closeAt = cwdAt - 1;
+  while (closeAt >= 0 && lines[closeAt] === "") closeAt--;
+  if (closeAt < 0 || lines[closeAt] !== SKILLS_SECTION_CLOSE) return cwdAt;
+  const openAt = lines.lastIndexOf(SKILLS_SECTION_OPEN, closeAt);
+  if (openAt === -1 || lines[openAt + 1] !== SKILLS_SECTION_HEADING) return cwdAt;
+  return openAt;
 }
 
 /**
@@ -245,9 +333,10 @@ function sessionResolvedTailStart(
  * Located by the same positional discipline as the catalogue: Pi writes the
  * block immediately before whichever session-resolved layer follows, so its
  * closing tag is the last non-blank line above the already-anchored tail. The
- * opening is then the nearest one above that tag carrying Pi's lead-in sentence
- * two lines below it, which keeps a context file quoting the opening — later in
- * the document than the real one — from being taken for it.
+ * opening is then the nearest one above that tag carrying Pi's lead-in
+ * sentence one or two lines below it — renderer-dependent, see
+ * `PROJECT_CONTEXT_LEAD_IN` — which keeps a context file quoting the opening —
+ * later in the document than the real one — from being taken for it.
  */
 function projectContextStart(lines: readonly string[], tailAt: number): number {
   let closeAt = tailAt - 1;
@@ -258,7 +347,12 @@ function projectContextStart(lines: readonly string[], tailAt: number): number {
     openAt !== -1;
     openAt = lines.lastIndexOf(PROJECT_CONTEXT_OPEN, openAt - 1)
   ) {
-    if (lines[openAt + 2] === PROJECT_CONTEXT_LEAD_IN) return openAt;
+    if (
+      lines[openAt + 2] === PROJECT_CONTEXT_LEAD_IN ||
+      lines[openAt + 1] === PROJECT_CONTEXT_LEAD_IN
+    ) {
+      return openAt;
+    }
   }
   return -1;
 }

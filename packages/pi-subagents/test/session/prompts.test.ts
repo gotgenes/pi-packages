@@ -780,6 +780,163 @@ describe("buildAgentPrompt", () => {
       });
     });
 
+    /**
+     * A parent prompt as pi ≥0.86's section renderer assembles it: tagged
+     * sections joined by blank lines, no footer line. The byte shapes are
+     * verified against the 0.86.1 SDK dist — `buildSystemPromptSections`
+     * wraps each section as `<name>\n…\n</name>` and joins them with `"\n\n"`,
+     * and 0.86's `renderProjectContext` drops the blank line below the opening
+     * tag that 0.85's wrote — so the fixtures cannot drift from the shapes the
+     * anchors must recognize. The skills layer still goes through Pi's own
+     * formatter: its heading is unchanged in 0.86, and the renderer trims it
+     * into the section.
+     */
+    function sectionParentPrompt(
+      layers: {
+        identity?: string;
+        contextFiles?: ContextFile[];
+        skills?: Skill[];
+        cwd?: string;
+        extensionTail?: string;
+      } = {},
+    ): string {
+      const sections: string[] = [];
+      if (layers.contextFiles) {
+        const content = [
+          "Project-specific instructions and guidelines:",
+          ...layers.contextFiles.map(
+            (file) =>
+              `<project_instructions path="${file.path}">\n${file.content}\n</project_instructions>`,
+          ),
+        ].join("\n\n");
+        sections.push(`<project_context>\n${content}\n</project_context>`);
+      }
+      if (layers.skills) {
+        sections.push(
+          `<skills>\n${formatSkillsForPrompt(layers.skills).trim()}\n</skills>`,
+        );
+      }
+      if (layers.cwd !== undefined) {
+        sections.push(`<cwd>\n${layers.cwd}\n</cwd>`);
+      }
+      const prompt = [layers.identity ?? IDENTITY, ...sections].join("\n\n");
+      return layers.extensionTail !== undefined
+        ? `${prompt}\n\n${layers.extensionTail}`
+        : prompt;
+    }
+
+    // Issue #918 on pi ≥0.86: the section renderer wraps the catalogue in a
+    // `<skills>` section and renders the cwd as a `<cwd>` section instead of a
+    // footer line, and its project-context block drops the blank line below
+    // the opening tag. All three deltas left the relocated-child cut dead —
+    // the guard found neither the close tag above the tail nor the lead-in two
+    // lines under the opening — so a relocated child inherited the parent's
+    // absolute-path context block alongside its own.
+    describe("pi ≥0.86 section shape", () => {
+      /** What the parent's own directory contributed to its prompt. */
+      const PARENT_CONTEXT: ContextFile[] = [
+        { path: `${PARENT_CWD}/AGENTS.md`, content: "Repo rules." },
+      ];
+
+      it("cuts the inherited skills section at its wrapper for a same-cwd child", () => {
+        const prompt = buildAgentPrompt(replaceConfig(), PARENT_CWD, env, {
+          systemPrompt: sectionParentPrompt({
+            skills: [skill("colgrep")],
+            cwd: PARENT_CWD,
+          }),
+          cwd: PARENT_CWD,
+        });
+
+        // Cutting at the section's opening tag drops the wrapper with the
+        // layers it carries; the identity ahead of it stays byte for byte.
+        expect(prompt).not.toContain("<skills>");
+        expect(prompt).not.toContain("</cwd>");
+        expect(prompt).toContain(IDENTITY);
+      });
+
+      it("cuts the inherited cwd section when the parent resolved no skills", () => {
+        const prompt = buildAgentPrompt(replaceConfig(), PARENT_CWD, env, {
+          systemPrompt: sectionParentPrompt({ cwd: PARENT_CWD }),
+          cwd: PARENT_CWD,
+        });
+
+        expect(prompt).not.toContain("<cwd>");
+        expect(prompt).toContain(IDENTITY);
+      });
+
+      it("cuts the inherited block for a relocated child at the project-context section", () => {
+        const prompt = buildAgentPrompt(replaceConfig(), "/workspace", env, {
+          systemPrompt: sectionParentPrompt({
+            contextFiles: PARENT_CONTEXT,
+            skills: [skill("colgrep")],
+            cwd: PARENT_CWD,
+          }),
+          cwd: PARENT_CWD,
+        });
+
+        expect(prompt).not.toContain("<project_context>");
+        expect(prompt).not.toContain(`path="${PARENT_CWD}/AGENTS.md"`);
+        expect(prompt).not.toContain("<skills>");
+      });
+
+      it("cuts the inherited block for a relocated child when the parent resolved no skills", () => {
+        const prompt = buildAgentPrompt(replaceConfig(), "/workspace", env, {
+          systemPrompt: sectionParentPrompt({
+            contextFiles: PARENT_CONTEXT,
+            cwd: PARENT_CWD,
+          }),
+          cwd: PARENT_CWD,
+        });
+
+        expect(prompt).not.toContain("<project_context>");
+      });
+
+      it("leaves a cwd section naming a different directory alone", () => {
+        const prompt = buildAgentPrompt(replaceConfig(), "/workspace", env, {
+          systemPrompt: sectionParentPrompt({ cwd: "/parent-worktrees/one" }),
+          cwd: PARENT_CWD,
+        });
+
+        // A whole-line content match, not a substring one: /parent must not
+        // truncate /parent-worktrees/one, and no other layer anchors the cut.
+        expect(prompt).toContain("<cwd>\n/parent-worktrees/one\n</cwd>");
+      });
+
+      it("anchors on Pi's own section, not one a context file quotes", () => {
+        const prompt = buildAgentPrompt(replaceConfig(), "/workspace", env, {
+          systemPrompt: sectionParentPrompt({
+            contextFiles: [
+              {
+                path: `${PARENT_CWD}/AGENTS.md`,
+                content: "Pi wraps these files in <project_context>:\n<project_context>",
+              },
+            ],
+            skills: [skill("colgrep")],
+            cwd: PARENT_CWD,
+          }),
+          cwd: PARENT_CWD,
+        });
+
+        // The quote sits inside the real block, later in the document than its
+        // opening; the walk-back from the anchored tail must find Pi's own.
+        expect(prompt).not.toContain("Project-specific instructions and guidelines:");
+        expect(prompt).not.toContain(`path="${PARENT_CWD}/AGENTS.md"`);
+      });
+
+      it("keeps the identity ahead of the skills section byte for byte", () => {
+        const parent = sectionParentPrompt({
+          skills: [skill("colgrep")],
+          cwd: PARENT_CWD,
+        });
+        const prompt = buildAgentPrompt(replaceConfig(), PARENT_CWD, env, {
+          systemPrompt: parent,
+          cwd: PARENT_CWD,
+        });
+
+        expect(prompt.startsWith(`${IDENTITY}\n\n`)).toBe(true);
+      });
+    });
+
     describe("no anchor present", () => {
       it("leaves a parent prompt with no session-resolved layer unchanged", () => {
         const parent = parentPrompt();
