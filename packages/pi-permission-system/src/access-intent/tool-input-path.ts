@@ -10,7 +10,19 @@ export function getPathBearingToolPath(
     return null;
   }
 
-  return getNonEmptyString(toRecord(input).path);
+  const record = toRecord(input);
+  return getNonEmptyString(record.path) ?? getHashlineEditPath(record);
+}
+
+/** Extract the file path carried by Oh My Pi's hashline edit envelope. */
+function getHashlineEditPath(
+  input: Record<string, unknown>,
+): string | null {
+  const editInput = getNonEmptyString(input.input);
+  if (editInput === null) return null;
+
+  const match = editInput.match(/^\[([^\]\r\n]+)#[^\]\r\n]+\]/);
+  return getNonEmptyString(match?.[1]);
 }
 
 /**
@@ -53,12 +65,11 @@ export function getToolInputPath(
   extractors?: ToolAccessExtractorLookup,
 ): ToolInputPathResult {
   const record = toRecord(input);
-
   switch (classifyToolKind(toolName)) {
     case "bash":
       return byConvention(null);
     case "path":
-      return byConvention(getNonEmptyString(record.path));
+      return byConvention(getPathBearingToolPath(toolName, input));
     case "mcp":
       return byConvention(getNonEmptyString(toRecord(record.arguments).path));
     case "skill":
