@@ -398,6 +398,7 @@ describe("collectCommandTokens — pattern-first commands", () => {
         ['node -e "// x"'],
         ['node --eval "// x"'],
         ["node --eval=//x"],
+        ["node --eval='// x'"],
         ["node -p '1+1'"],
         ["node --print '1+1'"],
         ['bun -e "// x"'],
@@ -444,16 +445,6 @@ describe("collectCommandTokens — pattern-first commands", () => {
     describe("spellings the change does not reach", () => {
       // Pinned as current behavior, not as intent. When the issue named in each
       // comment closes, the assertion below fails and points at it.
-      it("still projects a quoted --flag='script' value (#957)", async () => {
-        // A quoted value makes the argument a `concatenation`, which never
-        // reaches the flag branch's `child.type === "word"` guard, so the
-        // blind `--opt=value` split hands the script back.
-        expect(await tokensOf("node --eval='// x'")).toEqual([
-          "--eval=// x",
-          "// x",
-        ]);
-      });
-
       it("still projects a script behind a clustered flag", async () => {
         // `classifyPatternCommandFlag` reads `text.slice(0, 2)`, so `-pe` is
         // looked up as `-p` — unlisted for perl, and listing it would
@@ -636,15 +627,40 @@ describe("collectCommandTokens — pattern-first commands", () => {
       ]);
     });
 
-    it("leaves a quoted glued value unrecognized", async () => {
-      // `-g'!docs'` parses as a `concatenation`, not a `word`, so the flag
-      // branch never sees it and the pattern positional is spent on the flag
-      // token. The residual over-surfaces `pattern` rather than dropping the
-      // operand — widening flag detection to quoted tokens would reclassify a
-      // quoted leading-`-` pattern as a flag and eat the operand instead.
+    it("reads a quoted glued value on a recognized flag as a flag (#957)", async () => {
+      // `-g'!docs'` parses as a `concatenation`, not a `word`, but the
+      // directive it spells is one the table names, so it acts as the flag it
+      // is and leaves the pattern positional to the pattern. The `awk -F':'`
+      // instance is the one seen in the wild: its program text, led by a regex
+      // delimiter, reached the `external_directory` gate as if it were an
+      // absolute path, prompting for a file the command never opened.
       expect(await tokensOf("rg -g'!docs' pattern /etc/passwd")).toEqual([
-        "pattern",
         "/etc/passwd",
+      ]);
+      expect(await tokensOf("awk -F':' '/k/{print $2}' f.yml")).toEqual([
+        "f.yml",
+      ]);
+      expect(await tokensOf("sed -i'.bak' 's/a/b/' f.txt")).toEqual(["f.txt"]);
+      expect(await tokensOf("grep --regexp='/etc/passwd' f.txt")).toEqual([
+        "f.txt",
+      ]);
+    });
+
+    it("leaves a wholly quoted leading-`-` pattern its positional", async () => {
+      // The narrowing's other half: `'-old'` is quoted *whole*, so it is a
+      // `raw_string` rather than a concatenation of a flag and its quoted
+      // value, and it goes on spending a pattern positional. Admitting every
+      // `-`-leading token of any node type would read `'-new'` as `-n` and
+      // shift `file.txt` out of the walk — ADR 0009's unrecoverable
+      // direction, and the instance #957 names.
+      expect(await tokensOf("sd '-old' '-new' file.txt")).toEqual(["file.txt"]);
+      expect(await tokensOf("sd '-old' 'b' f.txt")).toEqual(["f.txt"]);
+      // `-i` is a grep flag that takes no value, so the table does not list
+      // it: the quoted value stays a token naming nothing, which the existence
+      // probe discards.
+      expect(await tokensOf("grep -i'foo' pattern f.txt")).toEqual([
+        "pattern",
+        "f.txt",
       ]);
     });
 

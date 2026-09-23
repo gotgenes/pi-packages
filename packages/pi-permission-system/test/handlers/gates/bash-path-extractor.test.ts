@@ -474,6 +474,32 @@ describe("extractExternalPathsFromBashCommand", () => {
     });
   });
 
+  describe("an inline pattern behind a quoted flag value (#957)", () => {
+    test("does not flag a quoted --regexp value", async () => {
+      const result = await extractExternalPathsFromBashCommand(
+        "grep --regexp='/etc/passwd' notes.txt",
+        cwd,
+      );
+      expect(result).toHaveLength(0);
+    });
+
+    test("does not flag an awk program behind a quoted -F value", async () => {
+      const result = await extractExternalPathsFromBashCommand(
+        "awk -F':' '/api_key:/{print $2}' config.yaml",
+        cwd,
+      );
+      expect(result).toHaveLength(0);
+    });
+
+    test("still flags a real external operand beside the quoted one", async () => {
+      const result = await extractExternalPathsFromBashCommand(
+        "grep --regexp='/etc/passwd' /etc/hosts",
+        cwd,
+      );
+      expect(result).toEqual(["/etc/hosts"]);
+    });
+  });
+
   describe("tokenizer edge cases", () => {
     test("does not flag path inside string when escaped quote is present", async () => {
       // tree-sitter correctly parses the escaped quote and keeps the path inside the string.
