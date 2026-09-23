@@ -3,6 +3,7 @@ import { EXECUTION_HOST_TYPES, forEachExecutionIn } from "./nested-execution";
 import { parseUnresolvedWithin, type TSNode } from "./parser";
 import { redirectMayWriteFile } from "./redirect-analysis";
 import {
+  bypassableWrapperUnit,
   type CommandWord,
   classifyWrapperWords,
   executedUnitOf,
@@ -51,6 +52,20 @@ export interface BashCommand {
    * and an established {@link executedUnit}.
    */
   readonly floorExemption?: FloorExemption;
+  /**
+   * The inner command this wrapper applies, and the config pattern that pins
+   * it, when the wrapper is one whose verb is stable
+   * ({@link bypassableWrapperUnit}, #490). Present only alongside
+   * `wrapperKind: "indirection"`.
+   *
+   * Both are carried to the gate together: the inner command is what a matched
+   * rule's text is tested against, and the pattern is what the check result
+   * publishes when that test passes, so the prompt offers a grant that
+   * actually lifts the floor on the next call rather than dead-matching the
+   * bare wrapper.
+   */
+  readonly bypassInnerCommand?: string;
+  readonly bypassPattern?: string;
   /**
    * Set when this unit was emitted from, or beneath, a statement holding a
    * region tree-sitter could not resolve. Its decision is floored to at least
@@ -388,6 +403,8 @@ interface WrapperFacts {
   readonly wrapperKind?: WrapperKind;
   readonly executedUnit?: string;
   readonly floorExemption?: FloorExemption;
+  readonly bypassInnerCommand?: string;
+  readonly bypassPattern?: string;
 }
 
 function makeUnit(
@@ -404,26 +421,40 @@ function makeUnit(
     executedUnit === undefined ? flagged : { ...flagged, executedUnit };
   const exempted =
     floorExemption === undefined ? named : { ...named, floorExemption };
+  const bypassed =
+    wrapper.bypassInnerCommand === undefined
+      ? exempted
+      : { ...exempted, bypassInnerCommand: wrapper.bypassInnerCommand };
+  const pinnable =
+    wrapper.bypassPattern === undefined
+      ? bypassed
+      : { ...bypassed, bypassPattern: wrapper.bypassPattern };
   const marked: BashCommand = scope.parseUnresolved
-    ? { ...exempted, parseUnresolved: true }
-    : exempted;
+    ? { ...pinnable, parseUnresolved: true }
+    : pinnable;
   return scope.salvaged ? { ...marked, salvaged: true } : marked;
 }
 
 /**
  * Build the unit for a `command` node, reading its words once to answer all
- * three wrapper questions: whether the unit is floored, what it actually runs,
- * and whether the floor still has a reason to hold.
+ * four wrapper questions: whether the unit is floored, what it actually runs,
+ * whether the floor still has a reason to hold, and whether a rule naming its
+ * inner command could lift the floor.
  */
 function makeCommandUnit(node: TSNode, scope: UnitScope): BashCommand {
   const text = commandUnitText(node);
   const words = readCommandWords(node);
+  const wrapperKind = classifyWrapperWords(words);
+  const bypass =
+    wrapperKind === "indirection" ? bypassableWrapperUnit(words, text) : null;
   return makeUnit(text, scope, {
-    wrapperKind: classifyWrapperWords(words),
+    wrapperKind,
     executedUnit: executedUnitOf(text, words) ?? undefined,
     floorExemption: isTransparentWrapper(words, scope)
       ? "core-reader"
       : undefined,
+    bypassInnerCommand: bypass?.innerCommand,
+    bypassPattern: bypass?.pattern,
   });
 }
 

@@ -222,12 +222,16 @@ export function suggestSessionPattern(
 }
 
 /**
- * Build the suggestion for a path surface from a pattern the caller already
- * derived through its `PathNormalizer` (#655).
+ * Build the suggestion from a pattern the caller already derived, and that this
+ * module must not re-derive.
  *
- * The derivation belongs to the normalizer, which owns the session's
- * `PathFlavor`; this module labels the result and must not re-interpret the
- * separators it is handed.
+ * Two callers. A path surface's pattern came through its `PathNormalizer`
+ * (#655), which owns the session's `PathFlavor` — this module labels the result
+ * and must not re-interpret the separators it is handed. A bypassable wrapper's
+ * pattern is the pinning pattern its matched rule already established (#490),
+ * which the bash arity table would flatten back to the bare wrapper — a rule
+ * that matches but never lifts the floor. Both are already the text the rule
+ * needs.
  */
 export function suggestPathSessionPattern(
   surface: string,

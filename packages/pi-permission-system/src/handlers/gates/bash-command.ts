@@ -2,6 +2,7 @@ import type {
   BashCommand,
   WrapperKind,
 } from "#src/access-intent/bash/command-enumeration";
+import { basename } from "#src/access-intent/bash/wrapper-analysis";
 import type { ScopedPermissionResolver } from "#src/policy/permission-resolver";
 import { pickMostRestrictive } from "#src/policy/restrictiveness";
 import type { PermissionCheckResult } from "#src/types";
@@ -176,11 +177,11 @@ function floorUnparsedUnit(
  *
  * A wrapper hides or indirects the command that should be gated, so its `allow`
  * is clamped up to a synthetic `ask` naming the kind that caused it — unless
- * the enumerator established that the floor has no reason left to hold, in
- * which case the unit is resolved by the rules of the command it runs (ADR 0013
- * §11, #803).
+ * the floor has no reason left to hold, which one of two things can establish:
+ * a transparency proof by the enumerator (ADR 0013 §11, #803), or a matched
+ * rule whose own text pins the command this wrapper applies (#490).
  *
- * Only an `allow` reaches here, which is what makes the exemption unable to
+ * Only an `allow` reaches here, which is what makes either exemption unable to
  * weaken anything: an explicit `deny` or `ask` on the wrapper is decided before
  * this function is consulted, and no inner rule is read at all.
  */
@@ -193,6 +194,16 @@ function resolveWrapperUnit(
 ): PermissionCheckResult {
   const inner = cmd.floorExemption && cmd.executedUnit;
   if (!inner) {
+    const pinned = pinnedPattern(cmd, base);
+    // #490 escape valve: the matched `allow` names the command this wrapper
+    // applies, so the grant is no broader than the inner command's own rule and
+    // the floor has nothing left to withhold. The unit is still what runs, so
+    // the result keeps the wrapper's `command` and `matchedPattern` — and
+    // publishes the pinning pattern, which the prompt offers for approval so a
+    // later call re-enters here and is let through.
+    if (pinned !== undefined) {
+      return { ...base, bypassPattern: pinned };
+    }
     return {
       ...base,
       state: "ask",
@@ -208,6 +219,48 @@ function resolveWrapperUnit(
     command: base.command,
     floorExemption: cmd.floorExemption,
   };
+}
+
+/**
+ * The pinning pattern to publish, or `undefined` when this unit's matched rule
+ * does not name the command the wrapper applies.
+ *
+ * Both halves must be present: the enumerator only stamps a bypass on a wrapper
+ * whose verb is stable, and a rule only lifts the floor when its own text names
+ * the inner command. A bare catch-all (`xargs *`, `*`) names nothing, so that
+ * grant stays floored — it is broader than the command it rides on.
+ */
+function pinnedPattern(
+  cmd: BashCommand,
+  base: PermissionCheckResult,
+): string | undefined {
+  const inner = cmd.bypassInnerCommand;
+  const pattern = cmd.bypassPattern;
+  if (inner === undefined || pattern === undefined) return undefined;
+  return rulePinsInnerCommand(base.matchedPattern, inner) ? pattern : undefined;
+}
+
+/**
+ * True when a matched allow rule's literal prefix names `innerCommand` as a
+ * whole token, compared by basename so a path-qualified inner command
+ * (`xargs /bin/cat`) still pins.
+ *
+ * Only the text before the rule's first `*` is consulted: that is the part the
+ * rule states, and everything after it is what the wildcard leaves open. A
+ * pattern with no literal prefix at all (`*`, `**`) states nothing and never
+ * pins.
+ */
+function rulePinsInnerCommand(
+  matchedPattern: string | undefined,
+  innerCommand: string,
+): boolean {
+  if (matchedPattern === undefined) return false;
+  const star = matchedPattern.indexOf("*");
+  const prefix = star === -1 ? matchedPattern : matchedPattern.slice(0, star);
+  return prefix
+    .split(/\s+/)
+    .filter(Boolean)
+    .some((token) => basename(token) === innerCommand);
 }
 
 /**

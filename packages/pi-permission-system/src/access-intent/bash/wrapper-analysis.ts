@@ -3,10 +3,11 @@
  * what it actually runs, and whether its floor still has a reason to hold.
  *
  * Pure and word-based; the AST walk that produces the words lives in
- * `command-enumeration.ts`. The three questions live here together
+ * `command-enumeration.ts`. The four questions live here together
  * deliberately: the shape that floors a unit to `ask`, the shape that names its
- * inner command, and the shape that exempts it must agree, and separate
- * classifiers over the same vocabulary would drift.
+ * inner command, the shape that exempts it, and the shape whose floor a rule
+ * may lift must agree, and separate classifiers over the same vocabulary would
+ * drift.
  */
 
 import { proveCommandEffect } from "./command-effects";
@@ -174,6 +175,53 @@ export function isTransparentWrapper(
   const head = unwrapped.words.at(0)?.text ?? "";
   const args = unwrapped.words.slice(1).map((word) => word.text);
   return proveCommandEffect(head, args).effect === "read";
+}
+
+/**
+ * The inner command a bypassable wrapper runs, and the config pattern that pins
+ * it; `null` when this unit is not one (#490).
+ *
+ * This is the one shape whose floor a *rule* may lift. It is confined to a
+ * wrapper whose verb is stable ({@link BYPASSABLE_WRAPPER_NAMES}): `xargs`
+ * applies one fixed command to a stream, so a rule naming that command is a
+ * real statement about what runs, and a grant no broader than the inner
+ * command's own rule withholds nothing the floor guards. For the prefix
+ * wrappers (`sudo`, `env`, `timeout`, …) each inner command is a fresh
+ * expression the rule text cannot anticipate, so their floors stay and no rule
+ * is read for them.
+ *
+ * The pattern stops after the inner command, so a persisted rule both matches
+ * the wrapper unit and leaves the inner command as its own token for the
+ * re-entry test.
+ */
+export function bypassableWrapperUnit(
+  words: readonly CommandWord[],
+  unitText: string,
+): WrapperBypass | null {
+  const name = wrapperName(words);
+  if (name === undefined || !BYPASSABLE_WRAPPER_NAMES.has(name)) return null;
+  if (classifyWrapperWords(words) !== "indirection") return null;
+
+  const start = innerCommandIndex(words);
+  if (start === -1 || start >= words.length) return null;
+  // A nested wrapper is not bypassable: the rule would have to pin a command
+  // this unit reaches only through another wrapper, which is the shape the
+  // floor exists for. An opaque payload (`xargs sh -c '…'`) is refused here
+  // for the same reason — its inner program is not re-parsed.
+  if (classifyWrapperWords(rebase(words, start, words.length)) !== undefined) {
+    return null;
+  }
+
+  return {
+    innerCommand: basename(words[start].text),
+    pattern: `${sliceWords(unitText, words, 0, start + 1).trimEnd()} *`,
+  };
+}
+
+/** An inner command a wrapper's rule can pin, and the pattern that pins it. */
+export interface WrapperBypass {
+  readonly innerCommand: string;
+  readonly pattern: string;
 }
 
 // ── Unwrapping ───────────────────────────────────────────────────────────────
@@ -394,6 +442,15 @@ const INDIRECTION_WRAPPER_NAMES = new Set([
 ]);
 
 /**
+ * The indirection wrappers whose verb is stable enough that a rule naming the
+ * inner command is a real statement about what runs, so the floor may lift on
+ * rule text ({@link bypassableWrapperUnit}, #490). Deliberately narrow: every
+ * other name in {@link INDIRECTION_WRAPPER_NAMES} runs an inner command the
+ * rule cannot anticipate, and their floors stay.
+ */
+const BYPASSABLE_WRAPPER_NAMES = new Set(["xargs"]);
+
+/**
  * Search tools that invoke a command per result only when an exec flag is
  * present; a bare search runs no subcommand. Floored only when an argument
  * exactly matches one of the tool's exec flags. Extend by adding a tool with
@@ -473,7 +530,7 @@ function execFlagIndex(commandName: string, args: readonly string[]): number {
 }
 
 /** The final path segment of a command name (`/bin/bash` → `bash`). */
-function basename(name: string): string {
+export function basename(name: string): string {
   const slash = name.lastIndexOf("/");
   return slash === -1 ? name : name.slice(slash + 1);
 }

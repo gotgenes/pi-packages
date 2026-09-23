@@ -85,6 +85,20 @@ export interface PermissionCheckResult {
    * once have prompted for is auditable to the reason that let it through.
    */
   floorExemption?: FloorExemption;
+  /**
+   * The config pattern that pins the inner command of a bypassable wrapper,
+   * published when the matched `allow` rule's own text names that command
+   * (#490). The wrapper floor is lifted for exactly that shape, because a
+   * grant no broader than the inner command's own rule withholds nothing the
+   * floor guards.
+   *
+   * The session-approval suggestion reads it verbatim, so approving the prompt
+   * persists this pinning pattern rather than the arity-derived `xargs *` — a
+   * rule that would match the bare wrapper and never lift the floor on a later
+   * call. Absent for ordinary commands, for wrappers no rule may lift, and for
+   * a bypassable wrapper whose matched rule does not pin its inner command.
+   */
+  bypassPattern?: string;
 }
 
 export function isPermissionState(value: unknown): value is PermissionState {
