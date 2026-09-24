@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  bypassableWrapperUnit,
   type CommandWord,
   classifyWrapperWords,
   executedUnitOf,
@@ -365,5 +366,56 @@ describe("isTransparentWrapper", () => {
         isTransparentWrapper(words(unit), { writesViaRedirect: true }),
       ).toBe(false);
     });
+  });
+});
+
+describe("bypassableWrapperUnit (#490)", () => {
+  it.each([
+    ["xargs cat", "cat", "xargs cat *"],
+    ["xargs rm -rf", "rm", "xargs rm *"],
+    ["xargs -r ls -t", "ls", "xargs -r ls *"],
+    ["xargs -0 rg -ln foo", "rg", "xargs -0 rg *"],
+    ["xargs -n 2 wc -l", "wc", "xargs -n 2 wc *"],
+    ["xargs -I {} cp src dst", "cp", "xargs -I {} cp *"],
+    ["xargs --no-run-if-empty cat", "cat", "xargs --no-run-if-empty cat *"],
+    ["xargs -a /tmp/files cat", "cat", "xargs -a /tmp/files cat *"],
+  ])(
+    "names the inner command and the pattern that pins it for %s",
+    (command, innerCommand, pattern) => {
+      expect(bypassableWrapperUnit(words(command), command)).toEqual({
+        innerCommand,
+        pattern,
+      });
+    },
+  );
+
+  it("names a path-qualified inner command by basename, pinning it as written", () => {
+    expect(
+      bypassableWrapperUnit(words("xargs /bin/cat foo"), "xargs /bin/cat foo"),
+    ).toEqual({ innerCommand: "cat", pattern: "xargs /bin/cat *" });
+  });
+
+  it.each(["xargs", "xargs -r", "xargs --no-run-if-empty"])(
+    "returns null for %s (no inner command)",
+    (command) => {
+      expect(bypassableWrapperUnit(words(command), command)).toBeNull();
+    },
+  );
+
+  it.each([
+    ["sudo rm -rf /", "the rule cannot anticipate each inner command"],
+    ["env FOO=bar aws s3 ls", "the same, behind an environment prefix"],
+    ["timeout 10 grep foo", "a wrapper that takes a leading operand"],
+    ["nice -n 10 cat", "a prefix wrapper with no stable verb"],
+  ])("returns null for %s (%s)", (command, _why) => {
+    expect(bypassableWrapperUnit(words(command), command)).toBeNull();
+  });
+
+  it.each([
+    ["xargs sudo rm", "an inner indirection wrapper"],
+    ["xargs env aws", "an inner prefix wrapper"],
+    ["xargs sh -c 'grep x'", "an inner opaque payload"],
+  ])("returns null for %s (%s)", (command, _why) => {
+    expect(bypassableWrapperUnit(words(command), command)).toBeNull();
   });
 });

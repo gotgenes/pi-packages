@@ -1664,7 +1664,6 @@ describe("BashProgram", () => {
       it.each([
         ["sudo aws s3 ls", "sudo aws s3 ls", "aws s3 ls"],
         ["env FOO=bar aws s3 ls", "env FOO=bar aws s3 ls", "aws s3 ls"],
-        ["xargs rm -rf", "xargs rm -rf", "rm -rf"],
         ["time aws s3 ls", "time aws s3 ls", "aws s3 ls"],
         ["nohup aws s3 ls", "nohup aws s3 ls", "aws s3 ls"],
         ["timeout 10 aws s3 ls", "timeout 10 aws s3 ls", "aws s3 ls"],
@@ -1685,6 +1684,22 @@ describe("BashProgram", () => {
           ]);
         },
       );
+
+      // `xargs` is the one wrapper whose verb is stable enough that a rule may
+      // lift its floor (#490), so its unit also carries the inner command and
+      // the pattern that pins it.
+      it("flags xargs rm -rf with the inner command and pinning pattern", async () => {
+        const program = await BashProgram.parse("xargs rm -rf", normalizer);
+        expect(program.commands()).toEqual([
+          {
+            text: "xargs rm -rf",
+            wrapperKind: "indirection",
+            executedUnit: "rm -rf",
+            bypassInnerCommand: "rm",
+            bypassPattern: "xargs rm *",
+          },
+        ]);
+      });
 
       // The remaining #575 wrappers, whose realistic inner commands are core
       // readers, so the unit also carries the floor exemption (#803).

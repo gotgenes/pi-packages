@@ -81,13 +81,19 @@ export function describeToolGate(
     PATH_BEARING_TOOLS,
   );
 
-  // Compute session approval suggestion for the "for this session" option.
-  const suggestion = pathAccess
-    ? suggestPathSessionPattern(gateSurface, pathAccess.approvalPattern)
-    : suggestSessionPattern(
-        gateSurface,
-        deriveSuggestionValue(gateSurface, check),
-      );
+  // Compute session approval suggestion for the "for this session" option. A
+  // pattern the check already derived is used verbatim: a path surface's own
+  // pattern (#655), or a bypassable wrapper's pinning pattern (#490), which
+  // the bash arity table would otherwise flatten back to the bare wrapper — a
+  // rule that matches on a later call but never lifts the floor.
+  const derived = pathAccess?.approvalPattern ?? check.bypassPattern;
+  const suggestion =
+    derived === undefined
+      ? suggestSessionPattern(
+          gateSurface,
+          deriveSuggestionValue(gateSurface, check),
+        )
+      : suggestPathSessionPattern(gateSurface, derived);
 
   const payload = buildToolAskPayload({
     check,
