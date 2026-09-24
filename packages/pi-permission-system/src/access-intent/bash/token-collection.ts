@@ -647,37 +647,6 @@ type PatternCommandFlagDirective =
 const LONG_OPTION_VALUE_PATTERN = /^(--[^=\s]+)=(.+)$/;
 
 /**
- * Whether a token carrying a quoted glued flag value reaches the flag branch.
- *
- * `-F':'` parses as a `concatenation` of the word `-F` and the string `':'`,
- * and `--regexp='/etc/passwd'` as the word `--regexp=` and the string
- * `'/etc/passwd'` — neither is one `word`, which is what kept them out of flag
- * detection until now. The head word decides: it names a flag the command's
- * config lists, with a long form's trailing `=` stripped and a short form's
- * first two characters standing for the cluster getopt sees.
- *
- * A token quoted *whole* (`'-old'`) is a `raw_string`, never a
- * `concatenation`, so it stays on the positional branch — the quoted
- * leading-`-` *pattern* that a node-type-wide widening would reclassify as a
- * flag and so drop the operand behind it (#957).
- */
-function isQuotedGluedFlag(
-  child: TSNode,
-  config: PatternCommandConfig,
-): boolean {
-  if (child.type !== "concatenation") return false;
-  const head = child.child(0);
-  if (head?.type !== "word") return false;
-  const headText = resolveNodeText(head);
-  if (!headText.startsWith("-")) return false;
-  const flag = headText.endsWith("=") ? headText.slice(0, -1) : headText;
-  return (
-    config.flags.has(flag) ||
-    (flag.length > 2 && config.flags.has(flag.slice(0, 2)))
-  );
-}
-
-/**
  * Classify a flag word from a pattern-first command into a directive that
  * tells the walker how to handle the flag and its value.
  *
@@ -811,29 +780,17 @@ function collectPatternCommandTokens(
 
     // Flag detection (only before "--" end-of-flags marker).
     //
-    // A recognized flag is acted on whatever node type carries it, because the
-    // node type is an accident of the *spelling*: a quoted value — the
-    // `=`-embedded (`grep --regexp='/etc/passwd'`) and the glued
-    // (`rg -g'!docs'`, `awk -F':' '/k/{print $2}'`) spellings alike — parses
-    // as a `concatenation` rather than a `word`. Skipping it spent the pattern
-    // positional on the flag and handed the pattern back as an operand, which
-    // for a regex-led `awk`/`sed`/`grep` script is spelled like an absolute
-    // path and so reached the `external_directory` gate as a false-positive
-    // ask (#957).
-    //
-    // Admission is by *shape plus recognition*, not by node type alone: only a
-    // `concatenation` whose head word names a flag the table lists — the shape
-    // a quoted glued value has — is read as a flag. A token quoted *whole*
-    // (`sd '-old' '-new' file.txt`) is a `raw_string` and is not, so a quoted
-    // leading-`-` *pattern* goes on spending its positional rather than being
-    // read as a flag that shifts the real operand out of the walk — the
-    // unrecoverable direction this guard seals, and the reason the widening is
-    // not "any `-`-leading token of any node type" (#957).
+    // A quoted flag value (`grep --regexp='/etc/passwd'`, `awk -F':'`) makes
+    // the argument a `concatenation`, so a recognized flag is acted on in that
+    // shape too. An unrecognized one is not, and neither is a token quoted
+    // whole (`sd '-old' '-new' file.txt`): reading either as a flag would stop
+    // a quoted `-`-leading *pattern* from spending its positional and drop the
+    // real operand, where leaving it positional only over-surfaces (#957).
     if (!pastEndOfFlags && text.startsWith("-") && text.length > 1) {
       const directive = classifyPatternCommandFlag(text, config);
       if (
         child.type === "word" ||
-        (directive.kind !== "regular-flag" && isQuotedGluedFlag(child, config))
+        (directive.kind !== "regular-flag" && hasUnquotedLeadingDash(child))
       ) {
         switch (directive.kind) {
           case "end-of-flags":
@@ -864,12 +821,23 @@ function collectPatternCommandTokens(
     } else {
       tokens.push({ token: text, effect });
     }
-    // A quoted flag whose directive the table does not recognize never acts as
-    // a flag, so its embedded value is split here instead.
+    // A quoted token that did not act as a flag above has its embedded value
+    // split here instead.
     tokens.push(...embeddedOptionValueToken(text, effect));
   }
 
   return tokens;
+}
+
+/**
+ * Whether a `concatenation` argument begins with an unquoted `-`, as a flag
+ * carrying a quoted value does (`-F':'` is the word `-F` then `':'`). A token
+ * quoted whole is a `raw_string` or `string`, never a `concatenation`.
+ */
+function hasUnquotedLeadingDash(child: TSNode): boolean {
+  if (child.type !== "concatenation") return false;
+  const head = child.child(0);
+  return head?.type === "word" && head.text.startsWith("-");
 }
 
 /**

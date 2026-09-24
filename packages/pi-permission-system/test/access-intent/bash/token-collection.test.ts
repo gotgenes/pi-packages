@@ -646,6 +646,15 @@ describe("collectCommandTokens — pattern-first commands", () => {
       ]);
     });
 
+    it("reads a recognized flag whose quote opens inside its name", async () => {
+      // grep receives `-e` and `--regexp=/etc/passwd` either way; only the
+      // leading `-` must sit outside the quotes.
+      expect(await tokensOf("grep -'e' /etc/passwd f.txt")).toEqual(["f.txt"]);
+      expect(await tokensOf("grep --reg'exp=/etc/passwd' f.txt")).toEqual([
+        "f.txt",
+      ]);
+    });
+
     it("leaves a wholly quoted leading-`-` pattern its positional", async () => {
       // The narrowing's other half: `'-old'` is quoted *whole*, so it is a
       // `raw_string` rather than a concatenation of a flag and its quoted
@@ -655,6 +664,8 @@ describe("collectCommandTokens — pattern-first commands", () => {
       // direction, and the instance #957 names.
       expect(await tokensOf("sd '-old' '-new' file.txt")).toEqual(["file.txt"]);
       expect(await tokensOf("sd '-old' 'b' f.txt")).toEqual(["f.txt"]);
+      // A concatenation whose leading `-` is itself quoted is a pattern too.
+      expect(await tokensOf("sd '-o'ld '-n'ew file.txt")).toEqual(["file.txt"]);
       // `-i` is a grep flag that takes no value, so the table does not list
       // it: the quoted value stays a token naming nothing, which the existence
       // probe discards.
