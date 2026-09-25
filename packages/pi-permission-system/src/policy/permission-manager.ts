@@ -7,6 +7,7 @@ import {
   getGlobalConfigPath,
   getProjectAgentsDir,
   getProjectConfigPath,
+  getProjectLocalConfigPath,
 } from "#src/config/config-paths";
 import {
   FilePolicyLoader,
@@ -402,6 +403,7 @@ function derivePolicyLoaderOptions(
     globalConfigPath: getGlobalConfigPath(agentDir),
     agentsDir: join(agentDir, "agents"),
     projectGlobalConfigPath: cwd ? getProjectConfigPath(cwd) : undefined,
+    projectLocalConfigPath: cwd ? getProjectLocalConfigPath(cwd) : undefined,
     projectAgentsDir: cwd ? getProjectAgentsDir(cwd) : undefined,
   };
 }

@@ -138,6 +138,7 @@
           "pi-permission-system/core",
           "pi-permission-system/logging",
           "pi-permission-system/path",
+          "pi-permission-system/persistence",
           "pi-permission-system/presentation",
           "pi-permission-system/service",
           "pi-permission-system/session",
@@ -188,6 +189,15 @@
         "allow": [
           "pi-permission-system/access-intent",
           "pi-permission-system/policy"
+        ]
+      },
+      {
+        "from": "pi-permission-system/persistence",
+        "allow": [
+          "pi-permission-system/config",
+          "pi-permission-system/core",
+          "pi-permission-system/logging",
+          "pi-permission-system/session"
         ]
       },
       {
@@ -260,6 +270,7 @@
           "pi-permission-system/handlers",
           "pi-permission-system/logging",
           "pi-permission-system/path",
+          "pi-permission-system/persistence",
           "pi-permission-system/policy",
           "pi-permission-system/presentation",
           "pi-permission-system/service",

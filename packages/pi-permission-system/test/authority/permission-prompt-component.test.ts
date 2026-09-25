@@ -1,9 +1,7 @@
 import { visibleWidth } from "@earendil-works/pi-tui";
 import { describe, expect, it, vi } from "vitest";
-import type {
-  RequestPermissionOptions,
-  UnattributedDecision,
-} from "#src/authority/permission-dialog";
+import type { UnattributedChoice } from "#src/authority/interactive-permission-choice";
+import type { RequestPermissionOptions } from "#src/authority/permission-dialog";
 import {
   type PermissionPromptUi,
   type PermissionPromptView,
@@ -38,7 +36,7 @@ type PromptFactory = (
   tui: { requestRender: () => void },
   theme: ReturnType<typeof plainTheme>,
   keybindings: { matches(data: string, action: string): boolean },
-  done: (decision: UnattributedDecision) => void,
+  done: (decision: UnattributedChoice) => void,
 ) => CapturedComponent;
 
 /** Pi's default binding for the `app.tools.expand` action. */
@@ -62,9 +60,9 @@ function makeFakeView(
   const custom = (
     factory: PromptFactory,
     options: unknown,
-  ): Promise<UnattributedDecision> => {
+  ): Promise<UnattributedChoice> => {
     captured.options = options;
-    return new Promise<UnattributedDecision>((resolve) => {
+    return new Promise<UnattributedChoice>((resolve) => {
       captured.component = factory(
         { requestRender: vi.fn() },
         plainTheme(),
@@ -110,6 +108,7 @@ function makeView(
     mode,
     ui: ui as PermissionPromptUi,
     ...makePromptPreferences({ doublePressToConfirm, budget, dialogKeys }),
+    setShowPersistenceSummary: vi.fn(() => true),
   };
 }
 
@@ -145,7 +144,7 @@ async function runPrompt(
   doublePressToConfirm: boolean,
   keys: string[],
   options?: RequestPermissionOptions,
-): Promise<UnattributedDecision> {
+): Promise<UnattributedChoice> {
   const { view, captured } = makeFakeView(doublePressToConfirm);
   const promise = presentInlinePermissionPrompt(
     view,
@@ -242,6 +241,9 @@ describe("presentInlinePermissionPrompt", () => {
       approve: "1",
       approveSession: "2",
       approveSessionBoth: "3",
+      editPatterns: "6",
+      persistProject: "7",
+      persistGlobal: "8",
       deny: "4",
       denyWithReason: "5",
     } as const;
@@ -578,6 +580,262 @@ describe("presentInlinePermissionPrompt", () => {
         approved: true,
         state: "approved_for_session",
       });
+    });
+  });
+
+  describe("durable approval shortcuts and navigation", () => {
+    const projectTarget = {
+      scope: "project" as const,
+      path: "/project/.pi/extensions/pi-permission-system/config.local.json",
+      expectedDir: "/project/.pi/extensions/pi-permission-system",
+    };
+    const globalTarget = {
+      scope: "global" as const,
+      path: "/agent/config.json",
+      expectedDir: "/agent",
+    };
+    const proposal = { grants: [{ surface: "bash", pattern: "git status" }] };
+    const options: RequestPermissionOptions = {
+      persistent: { proposal, projectTarget, globalTarget },
+    };
+    const BACKSPACE = "\u007f";
+
+    /** Like `runPrompt`, but paints between keys as a live terminal would. */
+    async function runPaintedPrompt(
+      doublePressToConfirm: boolean,
+      keys: string[],
+    ): Promise<UnattributedChoice> {
+      const { view, captured } = makeFakeView(doublePressToConfirm);
+      const promise = presentInlinePermissionPrompt(
+        view,
+        "Permission Required",
+        ASK,
+        options,
+      );
+      for (const key of keys) {
+        captured.component?.handleInput(key);
+        captured.component?.render(100);
+      }
+      return promise;
+    }
+
+    it("offers the durable rows and the summary toggle for a local ask", () => {
+      const { view, captured } = makeFakeView(true);
+      void presentInlinePermissionPrompt(
+        view,
+        "Permission Required",
+        ASK,
+        options,
+      );
+      const text = captured.component?.render(100).join("\n") ?? "";
+      expect(decisionOptionKeys(captured)).toEqual([
+        "y",
+        "s",
+        "e",
+        "p",
+        "g",
+        "n",
+        "r",
+      ]);
+      expect(text).toContain("(e) Edit proposed pattern(s)");
+      expect(text).toContain("(p) Persist for this project");
+      expect(text).toContain("(g) Persist globally");
+      expect(text).toContain("  [x] Show summary before saving (t)");
+    });
+
+    it("offers no durable rows without persistence options", () => {
+      const { view, captured } = makeFakeView(true);
+      void presentInlinePermissionPrompt(view, "Permission Required", ASK);
+      const text = captured.component?.render(100).join("\n") ?? "";
+      expect(decisionOptionKeys(captured)).toEqual(["y", "s", "n", "r"]);
+      expect(text).not.toContain("Show summary before saving");
+    });
+
+    it("persists project approval with p and a visible summary", async () => {
+      const { view, captured } = makeFakeView(true);
+      const promise = presentInlinePermissionPrompt(
+        view,
+        "Permission Required",
+        ASK,
+        options,
+      );
+
+      captured.component?.handleInput("p");
+      const summary = captured.component?.render(100).join("\n") ?? "";
+      expect(summary).toContain("Scope: project-local");
+      expect(summary).toContain("bash: git status → allow");
+      expect(summary).toContain(projectTarget.path);
+      captured.component?.handleInput(ENTER);
+
+      expect(await promise).toEqual({
+        kind: "persist",
+        scope: "project",
+        proposal,
+        target: projectTarget,
+        summaryShown: true,
+      });
+    });
+
+    it("persists global approval on a single press when the summary is shown", async () => {
+      expect(await runPaintedPrompt(true, ["g", ENTER])).toEqual({
+        kind: "persist",
+        scope: "global",
+        proposal,
+        target: globalTarget,
+        summaryShown: true,
+      });
+    });
+
+    it("does not accept summary confirmation before the summary renders", async () => {
+      const { view, captured } = makeFakeView(false);
+      const promise = presentInlinePermissionPrompt(
+        view,
+        "Permission Required",
+        ASK,
+        options,
+      );
+      let settled = false;
+      void promise.then(() => {
+        settled = true;
+      });
+
+      captured.component?.handleInput("p");
+      captured.component?.handleInput(ENTER);
+      await Promise.resolve();
+      expect(settled).toBe(false);
+
+      expect(captured.component?.render(100).join("\n")).toContain(
+        "Scope: project-local",
+      );
+      captured.component?.handleInput(ENTER);
+      await expect(promise).resolves.toMatchObject({
+        kind: "persist",
+        summaryShown: true,
+      });
+    });
+
+    it("toggles the sticky summary preference before saving", async () => {
+      const { view, captured } = makeFakeView(false);
+      const promise = presentInlinePermissionPrompt(
+        view,
+        "Permission Required",
+        ASK,
+        options,
+      );
+
+      expect(captured.component?.render(100)).toContain(
+        "  [x] Show summary before saving (t)",
+      );
+      captured.component?.handleInput("t");
+      expect(view.setShowPersistenceSummary).toHaveBeenCalledWith(false);
+      expect(captured.component?.render(100)).toContain(
+        "  [ ] Show summary before saving (t)",
+      );
+      captured.component?.handleInput("g");
+
+      expect(await promise).toEqual({
+        kind: "persist",
+        scope: "global",
+        proposal,
+        target: globalTarget,
+        summaryShown: false,
+      });
+    });
+
+    it("keeps the summary on when the preference write fails", () => {
+      const { view, captured } = makeFakeView(false);
+      vi.mocked(view.setShowPersistenceSummary)?.mockReturnValue(false);
+      void presentInlinePermissionPrompt(
+        view,
+        "Permission Required",
+        ASK,
+        options,
+      );
+
+      captured.component?.handleInput("t");
+      expect(captured.component?.render(100)).toContain(
+        "  [x] Show summary before saving (t)",
+      );
+    });
+
+    it("edits the proposal with e before approving it for the session", async () => {
+      // The editor opens prefilled with "git status"; erase the word and retype.
+      expect(
+        await runPaintedPrompt(false, [
+          "e",
+          ...Array.from({ length: 6 }, () => BACKSPACE),
+          ...Array.from("diff *"),
+          ENTER,
+          "s",
+        ]),
+      ).toEqual({
+        approved: true,
+        state: "approved_for_session",
+        sessionApproval: {
+          grants: [{ surface: "bash", pattern: "git diff *" }],
+        },
+      });
+    });
+
+    it("saves the edited proposal rather than the original", async () => {
+      expect(
+        await runPaintedPrompt(false, [
+          "e",
+          ...Array.from({ length: 6 }, () => BACKSPACE),
+          ...Array.from("diff *"),
+          ENTER,
+          "g",
+          ENTER,
+        ]),
+      ).toMatchObject({
+        kind: "persist",
+        proposal: { grants: [{ surface: "bash", pattern: "git diff *" }] },
+      });
+    });
+
+    it("returns from the editor with escape, keeping the original proposal", async () => {
+      expect(await runPaintedPrompt(false, ["e", ESCAPE, "s"])).toEqual({
+        approved: true,
+        state: "approved_for_session",
+      });
+    });
+
+    it("navigates through persistent choices with down and enter", async () => {
+      // y -> s -> e -> p, select persistence, then save from the summary.
+      expect(
+        await runPaintedPrompt(true, [
+          ARROW_DOWN,
+          ARROW_DOWN,
+          ARROW_DOWN,
+          ENTER,
+          ENTER,
+        ]),
+      ).toEqual({
+        kind: "persist",
+        scope: "project",
+        proposal,
+        target: projectTarget,
+        summaryShown: true,
+      });
+    });
+
+    it("keeps the inline keybind flow for durable choices in TUI mode", async () => {
+      const { view, captured } = makeFakeView(false);
+      const promise = requestPermissionDecision(
+        view,
+        "Permission Required",
+        ASK,
+        options,
+      );
+
+      expect(captured.component).toBeDefined();
+      captured.component?.handleInput("y");
+      expect(await promise).toEqual({
+        approved: true,
+        state: "approved",
+        decidedBy: { kind: "user", via: "dialog" },
+      });
+      expect(view.ui.select).not.toHaveBeenCalled();
     });
   });
 

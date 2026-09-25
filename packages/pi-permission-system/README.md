@@ -68,6 +68,7 @@ When the dialog prompts, you can approve once or approve a pattern for the rest 
 In an interactive TUI session the prompt is an inline keybind dialog — `y` approve, `s` approve for this session, `n` deny, `r` deny with a reason — where each hotkey arms and a second press confirms (configurable via `doublePressToConfirm`).
 The hotkeys themselves are remappable through `permissionDialogKeys`, which matters if you type with an input method editor: composition mode swallows letter keys before they reach the terminal, and digits do not.
 A file-access ask that proves a single direction offers `b` as well, granting the session both directions instead of only the one the gate proved.
+A local (not forwarded) ask that carries a rule proposal also offers `e` to edit the proposed pattern(s), `p` to persist an editable `allow` rule for this trusted project, and `g` to persist it globally; before writing, the dialog shows the exact rules and destination, a summary you can toggle off with `t` or through `/permission-system`.
 The prompt shows one fact per line — who is asking, the tool, the matched rule, the value being decided — within a row budget, so a large tool input cannot take over the transcript; `Ctrl+O` (`app.tools.expand`) expands it to the complete request.
 See [docs/configuration.md](docs/configuration.md#inline-permission-dialog-tui) for the hotkeys and [docs/session-approvals.md](docs/session-approvals.md) for session-scoped rules and pattern suggestions.
 
@@ -123,12 +124,14 @@ A token nothing proves still consults both directions, so an unrecognized comman
 
 Config lives in one JSON file per scope:
 
-| Scope   | Path                                                      |
-| ------- | --------------------------------------------------------- |
-| Global  | `~/.pi/agent/extensions/pi-permission-system/config.json` |
-| Project | `<cwd>/.pi/extensions/pi-permission-system/config.json`   |
+| Scope         | Path                                                          |
+| ------------- | ------------------------------------------------------------- |
+| Global        | `~/.pi/agent/extensions/pi-permission-system/config.json`     |
+| Project       | `<cwd>/.pi/extensions/pi-permission-system/config.json`       |
+| Project-local | `<cwd>/.pi/extensions/pi-permission-system/config.local.json` |
 
-Project overrides global; per-agent YAML frontmatter overrides both.
+Shared project config overrides global, project-local config overrides shared project config, and per-agent YAML frontmatter overrides file config.
+The prompt writes project approvals only to `config.local.json`; normally add that file to your own `.gitignore`.
 Project config (policy and runtime knobs) is loaded only once the project is trusted — in an untrusted directory only global config applies, so an untrusted repository cannot loosen your global policy (see [Upgrading](#2200--project-config-requires-project-trust)).
 
 Within a surface map like `bash` or `mcp`, **last matching rule wins** — put broad catch-alls first and specific overrides after.
@@ -251,6 +254,7 @@ Run `pnpm install` to set up hooks automatically.
 
 This project began as a fork of [MasuRii/pi-permission-system](https://github.com/MasuRii/pi-permission-system).
 Thank you to [MasuRii](https://github.com/MasuRii) for the original work that made this possible.
+The durable-approval design also builds on prior persistence and editable-pattern work by [rienkim in PR #73](https://github.com/gotgenes/pi-packages/pull/73).
 
 Thank you to the [OpenCode](https://opencode.ai) team for the permission model design that inspired the flat config format and evaluation semantics used in this extension.
 

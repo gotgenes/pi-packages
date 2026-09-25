@@ -2237,7 +2237,7 @@ describe("configured permission-dialog hotkeys reach the inline dialog", () => {
     ) as Promise<{ block?: true }>;
     await sleep(0);
 
-    expect(optionKeys(render())).toEqual(["1", "2", "4", "5"]);
+    expect(optionKeys(render())).toEqual(["1", "2", "e", "p", "g", "4", "5"]);
 
     // The default letter is no longer live; the configured one commits.
     press("n");
@@ -2286,7 +2286,7 @@ describe("configured permission-dialog hotkeys reach the inline dialog", () => {
       ctx,
     ) as Promise<{ block?: true }>;
     await sleep(0);
-    expect(optionKeys(render())).toEqual(["y", "s", "n", "r"]);
+    expect(optionKeys(render())).toEqual(["y", "s", "e", "p", "g", "n", "r"]);
     press("n");
     press("n");
     expect((await decision).block).toBe(true);

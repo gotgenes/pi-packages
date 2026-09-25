@@ -1,6 +1,9 @@
 import type { DecisionSource } from "#src/authority/decision-source";
 import type { PermissionPromptDecision } from "#src/authority/permission-dialog";
-import type { SessionGrantWidth } from "#src/session/approval-grant";
+import type {
+  ApprovalGrant,
+  SessionGrantWidth,
+} from "#src/session/approval-grant";
 
 /**
  * Result of applying the permission gate.
@@ -22,7 +25,14 @@ export type PermissionGateResult =
        * meaningless without the grant, and two optional fields could represent
        * a width for a grant that never happened.
        */
-      sessionGrant?: { width: SessionGrantWidth };
+      sessionGrant?: {
+        width: SessionGrantWidth;
+        /**
+         * The grants the human edited at the prompt, replacing the ones the
+         * gate proposed. Absent when the proposal was accepted as offered.
+         */
+        grants?: readonly ApprovalGrant[];
+      };
     }
   | { action: "block"; decidedBy: DecisionSource; reason: string };
 
@@ -123,8 +133,13 @@ export async function applyPermissionGate(
       return {
         action: "allow",
         decidedBy,
-        // Absent means the width every producer chose before #813.
-        sessionGrant: { width: decision.sessionGrantWidth ?? "proven" },
+        sessionGrant: {
+          // Absent means the width every producer chose before #813.
+          width: decision.sessionGrantWidth ?? "proven",
+          ...(decision.sessionApproval
+            ? { grants: decision.sessionApproval.grants }
+            : {}),
+        },
       };
     }
     return { action: "allow", decidedBy };

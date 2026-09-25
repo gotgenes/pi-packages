@@ -51,6 +51,7 @@ function cloneDefaultConfig(): PermissionSystemExtensionConfig {
     permissionReviewLog: DEFAULT_EXTENSION_CONFIG.permissionReviewLog,
     yoloMode: DEFAULT_EXTENSION_CONFIG.yoloMode,
     doublePressToConfirm: DEFAULT_EXTENSION_CONFIG.doublePressToConfirm,
+    showPersistenceSummary: DEFAULT_EXTENSION_CONFIG.showPersistenceSummary,
   };
 }
 
@@ -121,6 +122,14 @@ function buildSettingItems(
       currentValue: toOnOff(config.doublePressToConfirm),
       values: ON_OFF,
     },
+    {
+      id: "showPersistenceSummary",
+      label: "Show summary before saving",
+      description:
+        "Show the exact persistent rule and destination before saving it",
+      currentValue: toOnOff(config.showPersistenceSummary),
+      values: ON_OFF,
+    },
   ];
 }
 
@@ -138,6 +147,8 @@ function applySetting(
       return { ...config, debugLog: value === "on" };
     case "doublePressToConfirm":
       return { ...config, doublePressToConfirm: value === "on" };
+    case "showPersistenceSummary":
+      return { ...config, showPersistenceSummary: value === "on" };
     default:
       return config;
   }
@@ -156,6 +167,10 @@ function syncSettingValues(
   settingsList.updateValue(
     "doublePressToConfirm",
     toOnOff(config.doublePressToConfirm),
+  );
+  settingsList.updateValue(
+    "showPersistenceSummary",
+    toOnOff(config.showPersistenceSummary),
   );
 }
 

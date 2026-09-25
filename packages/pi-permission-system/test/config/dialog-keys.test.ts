@@ -102,6 +102,9 @@ describe("resolveDialogKeys", () => {
           approveSessionBoth: "3",
           deny: "4",
           denyWithReason: "5",
+          editPatterns: "6",
+          persistProject: "7",
+          persistGlobal: "8",
         }),
       ).toEqual({
         keys: {
@@ -110,6 +113,9 @@ describe("resolveDialogKeys", () => {
           approveSessionBoth: "3",
           deny: "4",
           denyWithReason: "5",
+          editPatterns: "6",
+          persistProject: "7",
+          persistGlobal: "8",
         },
         issues: [],
       });
@@ -148,6 +154,19 @@ describe("resolveDialogKeys", () => {
       expect(resolution.issues).toEqual([
         `permissionDialogKeys.approve: "${value}" is not a bindable key. ` +
           'Use one lowercase letter, digit, or symbol; keeping the default "y".',
+      ]);
+    });
+  });
+
+  describe("with the summary-toggle character", () => {
+    it("refuses the binding and keeps the default", () => {
+      const resolution = resolveDialogKeys({
+        permissionDialogKeys: { approve: "t" },
+      });
+      expect(resolution.keys).toEqual(DEFAULT_DIALOG_KEYS);
+      expect(resolution.issues).toEqual([
+        'permissionDialogKeys.approve: "t" is reserved for toggling the ' +
+          'save summary; keeping the default "y".',
       ]);
     });
   });

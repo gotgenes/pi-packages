@@ -21,6 +21,9 @@ test("buildResolvedConfigLogEntry includes policy paths and legacy detection fla
     projectConfigPath:
       "/projects/my-app/.pi/extensions/pi-permission-system/config.json",
     projectConfigExists: false,
+    projectLocalConfigPath:
+      "/projects/my-app/.pi/extensions/pi-permission-system/config.local.json",
+    projectLocalConfigExists: false,
     agentsDir: "/home/user/.pi/agent/agents",
     agentsDirExists: true,
     projectAgentsDir: "/projects/my-app/.pi/agent/agents",
@@ -37,6 +40,10 @@ test("buildResolvedConfigLogEntry includes policy paths and legacy detection fla
     "/projects/my-app/.pi/extensions/pi-permission-system/config.json",
   );
   expect(result.projectConfigExists).toBe(false);
+  expect(result.projectLocalConfigPath).toBe(
+    "/projects/my-app/.pi/extensions/pi-permission-system/config.local.json",
+  );
+  expect(result.projectLocalConfigExists).toBe(false);
   expect(result.agentsDir).toBe("/home/user/.pi/agent/agents");
   expect(result.agentsDirExists).toBe(true);
   expect(result.projectAgentsDir).toBe("/projects/my-app/.pi/agent/agents");
@@ -53,6 +60,8 @@ test("buildResolvedConfigLogEntry handles null project paths", () => {
     globalConfigExists: false,
     projectConfigPath: null,
     projectConfigExists: false,
+    projectLocalConfigPath: null,
+    projectLocalConfigExists: false,
     agentsDir: "/home/user/.pi/agent/agents",
     agentsDirExists: false,
     projectAgentsDir: null,
@@ -74,6 +83,8 @@ test("buildResolvedConfigLogEntry surfaces legacy detection flags", () => {
     globalConfigExists: true,
     projectConfigPath: null,
     projectConfigExists: false,
+    projectLocalConfigPath: null,
+    projectLocalConfigExists: false,
     agentsDir: "/home/user/.pi/agent/agents",
     agentsDirExists: false,
     projectAgentsDir: null,
@@ -114,6 +125,7 @@ test("config.resolved entry appears in review log via logger", () => {
         permissionReviewLog: true,
         yoloMode: false,
         doublePressToConfirm: true,
+        showPersistenceSummary: true,
       }),
       debugLogPath,
       reviewLogPath,

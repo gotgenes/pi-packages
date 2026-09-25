@@ -9,7 +9,11 @@ import {
   type KeyId,
   matchesKey,
 } from "@earendil-works/pi-tui";
-import type { DialogKeyBindings, PromptAction } from "#src/config/dialog-keys";
+import {
+  type DialogKeyBindings,
+  type PromptAction,
+  TOGGLE_SUMMARY_KEY,
+} from "#src/config/dialog-keys";
 import {
   completeViewBudget,
   type DialogView,
@@ -20,11 +24,14 @@ import { fitLinesToWidth } from "#src/presentation/line-fitting";
 import type { PromptPayload } from "#src/presentation/prompt-payload";
 import { collapsePastedNewlines } from "./bracketed-paste";
 import type { DecisionSource, UserDecisionSurface } from "./decision-source";
+import type {
+  InteractivePermissionChoice,
+  UnattributedChoice,
+} from "./interactive-permission-choice";
 import {
-  type PermissionPromptDecision,
   type RequestPermissionOptions,
+  renderPersistenceSummary,
   requestPermissionDecisionFromUi,
-  type UnattributedDecision,
 } from "./permission-dialog";
 import {
   initialPromptState,
@@ -41,8 +48,8 @@ import {
  * All interaction logic lives in the pure {@link reducePrompt} model; this
  * module is the thin adapter that renders the model's state to lines, maps raw
  * keystrokes to {@link PromptEvent}s, and resolves the `ctx.ui.custom` promise
- * with the committed {@link PermissionPromptDecision}. The component renders
- * inline (never as an overlay).
+ * with the committed {@link UnattributedChoice}. The component renders inline
+ * (never as an overlay).
  */
 
 /** The subset of the session UI surface the inline dialog needs. */
@@ -58,11 +65,19 @@ type PromptKeybindings = Pick<KeybindingsManager, "matches">;
 export interface PermissionPromptView extends PromptPreferences {
   mode: ExtensionContext["mode"];
   ui: PermissionPromptUi;
+  /**
+   * Persist a changed summary preference; returns false when the write failed
+   * and the dialog should keep showing the old value. Absent when the session
+   * cannot persist preferences.
+   */
+  setShowPersistenceSummary?: (enabled: boolean) => boolean;
 }
 
 /** Live prompt-behavior preferences read at prompt time (see `doublePressToConfirm`). */
 export interface PromptPreferences {
   doublePressToConfirm: boolean;
+  /** Show the exact durable rule and destination before saving it. */
+  showPersistenceSummary: boolean;
   /** How much room a render has; the terminal width is added per frame. */
   budget: RenderBudget;
   /** The character bound to each decision. */
@@ -86,7 +101,7 @@ export async function requestPermissionDecision(
   title: string,
   payload: PromptPayload,
   options?: RequestPermissionOptions,
-): Promise<PermissionPromptDecision> {
+): Promise<InteractivePermissionChoice> {
   if (view.mode === "tui") {
     return attributeToHuman(
       await presentInlinePermissionPrompt(view, title, payload, options),
@@ -106,21 +121,25 @@ export async function requestPermissionDecision(
       title,
       rendered.lines.join("\n"),
       options,
+      view.showPersistenceSummary,
     ),
     "select",
   );
 }
 
 function attributeToHuman(
-  decision: UnattributedDecision,
+  choice: UnattributedChoice,
   via: UserDecisionSurface,
-): PermissionPromptDecision {
+): InteractivePermissionChoice {
   const decidedBy: DecisionSource = { kind: "user", via };
-  return { ...decision, decidedBy };
+  return { ...choice, decidedBy };
 }
 
 /** The width the `select`/`input` fallback renders against. */
 const FALLBACK_RENDER_WIDTH = 80;
+
+/** The End key, as the terminal sends it. */
+const END_KEY = "\u001b[F";
 
 /** Minimal theme surface the dialog uses; satisfied by the real SDK theme. */
 interface PromptTheme {
@@ -133,6 +152,9 @@ const OPTION_LABELS: Record<PromptAction, string> = {
   approve: "Yes",
   approveSession: DEFAULT_SESSION_LABEL,
   approveSessionBoth: "Yes, for this session in both directions",
+  editPatterns: "Edit proposed pattern(s)",
+  persistProject: "Persist for this project",
+  persistGlobal: "Persist globally",
   deny: "No",
   denyWithReason: "No, provide reason",
 };
@@ -142,15 +164,17 @@ export function presentInlinePermissionPrompt(
   title: string,
   payload: PromptPayload,
   options?: RequestPermissionOptions,
-): Promise<UnattributedDecision> {
+): Promise<UnattributedChoice> {
   const config: PromptModelConfig = {
     doublePressToConfirm: view.doublePressToConfirm,
     sessionLabel: options?.sessionLabel ?? DEFAULT_SESSION_LABEL,
     widthLabel: options?.sessionWidth?.label,
     sessionScope: options?.sessionScope,
     keys: view.dialogKeys,
+    showPersistenceSummary: view.showPersistenceSummary,
+    persistent: options?.persistent,
   };
-  return view.ui.custom<UnattributedDecision>(
+  return view.ui.custom<UnattributedChoice>(
     (tui, theme, keybindings, done) =>
       new PermissionPromptComponent(
         theme,
@@ -159,6 +183,7 @@ export function presentInlinePermissionPrompt(
         payload,
         view.budget,
         (data) => handleToolsExpandAction(data, keybindings, view.ui),
+        view.setShowPersistenceSummary,
         () => {
           tui.requestRender();
         },
@@ -197,21 +222,35 @@ class PermissionPromptComponent implements Component {
   private state: PromptViewState;
   /** The denial-reason line editor, rebuilt each time the step is entered. */
   private reason: Input;
+  /** The pattern line editor, rebuilt for each grant the edit step visits. */
+  private patternEditor: Input;
   /** Whether the operator asked to see the complete request (ADR 0011 §4). */
   private expanded = false;
+  /**
+   * Whether the durable summary has been painted since the step was entered.
+   *
+   * A confirm before the first paint is ignored: the summary exists so the
+   * human sees exactly what will be written, and a keystroke that raced the
+   * render saw nothing.
+   */
+  private summaryRendered = false;
 
   constructor(
     private readonly theme: PromptTheme,
-    private readonly config: PromptModelConfig,
+    private config: PromptModelConfig,
     private readonly title: string,
     private readonly payload: PromptPayload,
     private readonly budget: RenderBudget,
     private readonly handleAppAction: (data: string) => boolean,
+    private readonly setShowPersistenceSummary:
+      | ((enabled: boolean) => boolean)
+      | undefined,
     private readonly requestRender: () => void,
-    private readonly done: (decision: UnattributedDecision) => void,
+    private readonly done: (choice: UnattributedChoice) => void,
   ) {
     this.state = initialPromptState(config);
     this.reason = this.createReasonEditor();
+    this.patternEditor = this.createPatternEditor("");
   }
 
   /**
@@ -235,6 +274,23 @@ class PermissionPromptComponent implements Component {
     return editor;
   }
 
+  /** A fresh editor per pattern, prefilled with the pattern as proposed. */
+  private createPatternEditor(initial: string): Input {
+    const editor = new Input();
+    editor.focused = true;
+    editor.setValue(initial);
+    // `setValue` leaves the cursor where it was (the start of a fresh editor);
+    // editing a proposed pattern almost always means appending to it.
+    editor.handleInput(END_KEY);
+    editor.onSubmit = (draft) => {
+      this.apply({ type: "submitEdit", draft });
+    };
+    editor.onEscape = () => {
+      this.apply({ type: "cancel" });
+    };
+    return editor;
+  }
+
   invalidate(): void {
     // No cached rendering state to clear.
   }
@@ -251,6 +307,11 @@ class PermissionPromptComponent implements Component {
         return this.renderReason(width);
       case "scope":
         return this.renderScope();
+      case "edit":
+        return this.renderEdit(width);
+      case "persistent-confirm":
+        this.summaryRendered = true;
+        return this.renderPersistenceConfirmation();
     }
   }
 
@@ -292,7 +353,15 @@ class PermissionPromptComponent implements Component {
 
   handleInput(data: string): void {
     if (this.state.step === "reason") {
-      this.handleReasonInput(data);
+      this.handleEditorInput(this.reason, data);
+      return;
+    }
+    if (this.state.step === "edit") {
+      this.handleEditorInput(this.patternEditor, data);
+      return;
+    }
+    if (this.offersToggle() && matchesKey(data, TOGGLE_SUMMARY_KEY)) {
+      this.togglePersistenceSummary();
       return;
     }
     if (this.handleAppAction(data)) {
@@ -302,22 +371,39 @@ class PermissionPromptComponent implements Component {
       this.requestRender();
       return;
     }
+    if (
+      this.state.step === "persistent-confirm" &&
+      matchesKey(data, "enter") &&
+      !this.summaryRendered
+    ) {
+      this.requestRender();
+      return;
+    }
     const event = this.toEvent(data);
     if (event) {
       this.apply(event);
     }
   }
 
+  /** The toggle is live only where the preference has something to govern. */
+  private offersToggle(): boolean {
+    return (
+      this.config.persistent !== undefined &&
+      (this.state.step === "decision" ||
+        this.state.step === "persistent-confirm")
+    );
+  }
+
   /**
-   * Hand the keystroke to the framework line editor.
+   * Hand the keystroke to a framework line editor.
    *
    * Delegating is what makes the field accept a paste: a paste arrives as one
    * multi-character chunk wrapped in bracketed-paste markers, which the editor
    * understands and a per-character reader cannot. Submit and cancel come back
    * through the editor's callbacks, so the decision model still owns them.
    */
-  private handleReasonInput(data: string): void {
-    this.reason.handleInput(collapsePastedNewlines(data));
+  private handleEditorInput(editor: Input, data: string): void {
+    editor.handleInput(collapsePastedNewlines(data));
     // The editor mutates its own buffer silently; only the dialog can repaint.
     this.requestRender();
   }
@@ -347,15 +433,46 @@ class PermissionPromptComponent implements Component {
   }
 
   private apply(event: PromptEvent): void {
+    const previous = this.state;
     const outcome = reducePrompt(this.config, this.state, event);
     if (outcome.kind === "decision") {
       this.done(outcome.decision);
       return;
     }
-    if (outcome.state.step === "reason" && this.state.step !== "reason") {
+    this.state = outcome.state;
+    this.syncEditors(previous);
+    this.requestRender();
+  }
+
+  /** Rebuild whichever editor a step transition (or edit advance) entered. */
+  private syncEditors(previous: PromptViewState): void {
+    if (this.state.step === "reason" && previous.step !== "reason") {
       this.reason = this.createReasonEditor();
     }
-    this.state = outcome.state;
+    if (
+      this.state.step === "edit" &&
+      (previous.step !== "edit" || previous.editIndex !== this.state.editIndex)
+    ) {
+      this.patternEditor = this.createPatternEditor(
+        this.state.editPatterns?.[this.state.editIndex ?? 0] ?? "",
+      );
+    }
+    if (
+      this.state.step === "persistent-confirm" &&
+      previous.step !== "persistent-confirm"
+    ) {
+      this.summaryRendered = false;
+    }
+  }
+
+  private togglePersistenceSummary(): void {
+    const enabled = !this.config.showPersistenceSummary;
+    // A failed write keeps the old value on screen, so what the dialog shows
+    // and what the next prompt will do never disagree.
+    if (this.setShowPersistenceSummary?.(enabled) === false) {
+      return;
+    }
+    this.config = { ...this.config, showPersistenceSummary: enabled };
     this.requestRender();
   }
 
@@ -369,9 +486,17 @@ class PermissionPromptComponent implements Component {
       const row = `${marker} (${this.boundKey(action)}) ${label}`;
       lines.push(selected ? this.theme.fg("accent", row) : row);
     }
+    if (this.config.persistent) {
+      lines.push("", this.renderToggleRow());
+    }
     lines.push("");
     lines.push(this.state.hint || this.hint(ask));
     return lines;
+  }
+
+  private renderToggleRow(): string {
+    const box = this.config.showPersistenceSummary ? "[x]" : "[ ]";
+    return `  ${box} Show summary before saving (${TOGGLE_SUMMARY_KEY})`;
   }
 
   /**
@@ -435,5 +560,42 @@ class PermissionPromptComponent implements Component {
     lines.push("");
     lines.push(this.theme.fg("muted", "↑/↓ move · enter confirm · esc back"));
     return lines;
+  }
+
+  private renderEdit(width: number): string[] {
+    const grants = this.state.proposal?.grants ?? [];
+    const editIndex = this.state.editIndex ?? 0;
+    const surface = grants[editIndex]?.surface ?? "permission";
+    const lines = [
+      this.theme.fg("accent", this.title),
+      `Edit ${surface} pattern ${editIndex + 1}/${grants.length}:`,
+      "",
+      // Exactly one row, whatever its length: the editor scrolls horizontally.
+      ...this.patternEditor.render(width),
+    ];
+    if (this.state.editError) {
+      lines.push(this.theme.fg("error", this.state.editError));
+    }
+    lines.push("");
+    lines.push(this.theme.fg("muted", "enter accept · esc back"));
+    return lines;
+  }
+
+  private renderPersistenceConfirmation(): string[] {
+    const target = this.state.persistenceTarget;
+    const proposal = this.state.proposal;
+    const summary =
+      target && proposal ? renderPersistenceSummary(proposal, target) : [];
+    return [
+      this.theme.fg("accent", this.title),
+      ...summary,
+      "",
+      this.renderToggleRow(),
+      "",
+      this.theme.fg(
+        "muted",
+        `enter save · ${TOGGLE_SUMMARY_KEY} toggle summary · esc back`,
+      ),
+    ];
   }
 }

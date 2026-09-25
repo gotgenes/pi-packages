@@ -1,5 +1,14 @@
-import type { SessionGrantWidth } from "#src/session/approval-grant";
+import type { PersistentApprovalTarget } from "#src/persistence/persistent-approval-service";
+import type {
+  ApprovalGrant,
+  SessionGrantWidth,
+} from "#src/session/approval-grant";
 import type { DecisionSource } from "./decision-source";
+import type {
+  PermissionRuleProposalData,
+  UnattributedChoice,
+  UnattributedPersistentChoice,
+} from "./interactive-permission-choice";
 
 export type PermissionDecisionState =
   | "approved"
@@ -35,6 +44,12 @@ export type PermissionPromptDecision = {
    */
   sessionGrantWidth?: SessionGrantWidth;
   /**
+   * The grants the human edited at a local prompt before granting for the
+   * session, replacing the ones the gate proposed. Local direct asks only:
+   * a forwarded ask offers no editor, and the wire reader drops the field.
+   */
+  sessionApproval?: PermissionRuleProposalData;
+  /**
    * What decided this request, stamped by the site that decided it.
    *
    * Required: every decision names its decider, and the type is what
@@ -62,22 +77,29 @@ export interface PermissionDecisionUi {
 
 const APPROVE_OPTION = "Yes";
 const APPROVE_FOR_SESSION_OPTION = "Yes, for this session";
+const EDIT_PATTERNS_OPTION = "Edit proposed pattern(s)";
+const APPROVE_FOR_PROJECT_OPTION = "Persist for this project";
+const APPROVE_GLOBALLY_OPTION = "Persist globally";
 const DENY_OPTION = "No";
 const DENY_WITH_REASON_OPTION = "No, provide reason";
+const CONFIRM_OPTION = "Confirm";
+const CANCEL_OPTION = "Cancel";
 
 /**
  * A session-granting decision, naming its width only when it is not the
  * default — so a narrow grant serializes exactly as it did before the width
- * option existed.
+ * option existed — and carrying edited grants only when the human edited.
  */
-function sessionApproval(
+export function sessionApprovalDecision(
   state: "approved_for_session" | "approved_for_serving_session",
   width: SessionGrantWidth,
+  edited?: PermissionRuleProposalData,
 ): UnattributedDecision {
   return {
     approved: true,
     state,
     ...(width === "family" ? { sessionGrantWidth: width } : {}),
+    ...(edited ? { sessionApproval: edited } : {}),
   };
 }
 
@@ -120,6 +142,19 @@ export function isPermissionDecisionState(
   );
 }
 
+/**
+ * The durable choices a local direct ask offers.
+ *
+ * The project target is absent when the project is untrusted; the global
+ * target is always resolvable. Both are resolved before the prompt so the
+ * summary can name the exact file, and re-resolved before the write.
+ */
+export interface PersistentPromptOptions {
+  proposal: PermissionRuleProposalData;
+  projectTarget?: PersistentApprovalTarget;
+  globalTarget: PersistentApprovalTarget;
+}
+
 export interface RequestPermissionOptions {
   /** Override the "for this session" option label (e.g. to show the suggested pattern). */
   sessionLabel?: string;
@@ -138,6 +173,37 @@ export interface RequestPermissionOptions {
     subagentLabel: string;
     servingSessionLabel: string;
   };
+  /** Local direct asks only; omitted for forwarded prompts. */
+  persistent?: PersistentPromptOptions;
+}
+
+/** The lines the durable summary shows before a write, shared by both presenters. */
+export function renderPersistenceSummary(
+  proposal: PermissionRuleProposalData,
+  target: PersistentApprovalTarget,
+): string[] {
+  return [
+    `Scope: ${target.scope === "project" ? "project-local" : "global"}`,
+    "Rules:",
+    ...proposal.grants.map(
+      (grant) => `  - ${grant.surface}: ${grant.pattern} → allow`,
+    ),
+    `File: ${target.path}`,
+  ];
+}
+
+export function persistentChoice(
+  proposal: PermissionRuleProposalData,
+  target: PersistentApprovalTarget,
+  summaryShown: boolean,
+): UnattributedPersistentChoice {
+  return {
+    kind: "persist",
+    scope: target.scope,
+    proposal,
+    target,
+    summaryShown,
+  };
 }
 
 export async function requestPermissionDecisionFromUi(
@@ -145,58 +211,164 @@ export async function requestPermissionDecisionFromUi(
   title: string,
   message: string,
   options?: RequestPermissionOptions,
-): Promise<UnattributedDecision> {
+  showPersistenceSummary = true,
+): Promise<UnattributedChoice> {
   const sessionOption = options?.sessionLabel ?? APPROVE_FOR_SESSION_OPTION;
   const widthOption = options?.sessionWidth?.label;
-  const decisionOptions = [
-    APPROVE_OPTION,
-    sessionOption,
-    ...(widthOption ? [widthOption] : []),
-    DENY_OPTION,
-    DENY_WITH_REASON_OPTION,
-  ];
+  const persistent = options?.persistent;
+  let proposal = persistent?.proposal;
+  let edited: PermissionRuleProposalData | undefined;
 
-  const selected = await ui.select(`${title}\n${message}`, decisionOptions);
+  // The edit option returns here so the human sees the edited proposal offered
+  // again before choosing how long it lives.
+  for (;;) {
+    const decisionOptions = [
+      APPROVE_OPTION,
+      sessionOption,
+      ...(widthOption ? [widthOption] : []),
+      ...(proposal ? [EDIT_PATTERNS_OPTION] : []),
+      ...(persistent?.projectTarget ? [APPROVE_FOR_PROJECT_OPTION] : []),
+      ...(persistent ? [APPROVE_GLOBALLY_OPTION] : []),
+      DENY_OPTION,
+      DENY_WITH_REASON_OPTION,
+    ];
 
-  if (selected === APPROVE_OPTION) {
-    return {
-      approved: true,
-      state: "approved",
-    };
-  }
+    const selected = await ui.select(`${title}\n${message}`, decisionOptions);
 
-  if (selected === sessionOption || (widthOption && selected === widthOption)) {
-    // The two session options differ only in the width they grant; the scope
-    // question below is the same for both.
-    const width: SessionGrantWidth =
-      selected === widthOption ? "family" : "proven";
-    if (options?.sessionScope) {
-      const scope = await ui.select(`${title}\nApply this session grant to:`, [
-        options.sessionScope.subagentLabel,
-        options.sessionScope.servingSessionLabel,
-      ]);
-      return sessionApproval(
-        // A cancelled scope select (undefined) falls back to the
-        // least-privilege subagent scope.
-        scope === options.sessionScope.servingSessionLabel
-          ? "approved_for_serving_session"
-          : "approved_for_session",
-        width,
+    if (selected === APPROVE_OPTION) {
+      return {
+        approved: true,
+        state: "approved",
+      };
+    }
+
+    if (selected === EDIT_PATTERNS_OPTION && proposal) {
+      const next = await editProposal(ui, title, proposal);
+      if (next) {
+        proposal = next;
+        edited = next;
+      }
+      continue;
+    }
+
+    if (
+      selected === sessionOption ||
+      (widthOption && selected === widthOption)
+    ) {
+      // The two session options differ only in the width they grant; the scope
+      // question below is the same for both.
+      const width: SessionGrantWidth =
+        selected === widthOption ? "family" : "proven";
+      if (options?.sessionScope) {
+        const scope = await ui.select(
+          `${title}\nApply this session grant to:`,
+          [
+            options.sessionScope.subagentLabel,
+            options.sessionScope.servingSessionLabel,
+          ],
+        );
+        return sessionApprovalDecision(
+          // A cancelled scope select (undefined) falls back to the
+          // least-privilege subagent scope.
+          scope === options.sessionScope.servingSessionLabel
+            ? "approved_for_serving_session"
+            : "approved_for_session",
+          width,
+          edited,
+        );
+      }
+      return sessionApprovalDecision("approved_for_session", width, edited);
+    }
+
+    if (
+      selected === APPROVE_FOR_PROJECT_OPTION &&
+      proposal &&
+      persistent?.projectTarget
+    ) {
+      return persistOrConfirm(
+        ui,
+        title,
+        proposal,
+        persistent.projectTarget,
+        showPersistenceSummary,
       );
     }
-    return sessionApproval("approved_for_session", width);
-  }
+    if (selected === APPROVE_GLOBALLY_OPTION && proposal && persistent) {
+      return persistOrConfirm(
+        ui,
+        title,
+        proposal,
+        persistent.globalTarget,
+        showPersistenceSummary,
+      );
+    }
 
-  if (selected === DENY_WITH_REASON_OPTION) {
-    const denialReason = normalizePermissionDenialReason(
+    if (selected === DENY_WITH_REASON_OPTION) {
+      const denialReason = normalizePermissionDenialReason(
+        await ui.input(
+          `${title}\nShare why this request was denied (optional).`,
+          "Reason shown back to the agent",
+        ),
+      );
+
+      return createDeniedPermissionDecision(denialReason);
+    }
+
+    return createDeniedPermissionDecision();
+  }
+}
+
+/**
+ * One `input()` per grant, prefilled with the current pattern; a cleared
+ * pattern abandons the whole edit rather than dropping the grant, so the
+ * proposal the human is then offered is always the one they last saw.
+ */
+async function editProposal(
+  ui: PermissionDecisionUi,
+  title: string,
+  proposal: PermissionRuleProposalData,
+): Promise<PermissionRuleProposalData | undefined> {
+  const grants: ApprovalGrant[] = [];
+  for (const grant of proposal.grants) {
+    const pattern = (
       await ui.input(
-        `${title}\nShare why this request was denied (optional).`,
-        "Reason shown back to the agent",
-      ),
-    );
-
-    return createDeniedPermissionDecision(denialReason);
+        `${title}\nEdit the exact ${grant.surface} pattern:`,
+        grant.pattern,
+      )
+    )?.trim();
+    if (!pattern) return undefined;
+    grants.push({ surface: grant.surface, pattern });
   }
+  return { grants: dedupeGrants(grants) };
+}
 
-  return createDeniedPermissionDecision();
+export function dedupeGrants(
+  grants: readonly ApprovalGrant[],
+): ApprovalGrant[] {
+  const seen = new Set<string>();
+  return grants.filter((grant) => {
+    const key = `${grant.surface}\u0000${grant.pattern}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+async function persistOrConfirm(
+  ui: PermissionDecisionUi,
+  title: string,
+  proposal: PermissionRuleProposalData,
+  target: PersistentApprovalTarget,
+  showPersistenceSummary: boolean,
+): Promise<UnattributedChoice> {
+  if (!showPersistenceSummary) {
+    return persistentChoice(proposal, target, false);
+  }
+  const summary = [title, ...renderPersistenceSummary(proposal, target)].join(
+    "\n",
+  );
+  const confirmed = await ui.select(summary, [CONFIRM_OPTION, CANCEL_OPTION]);
+  return confirmed === CONFIRM_OPTION
+    ? persistentChoice(proposal, target, true)
+    : createDeniedPermissionDecision();
 }

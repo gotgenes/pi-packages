@@ -24,6 +24,7 @@ import {
   InheritingToolAccessExtractorLookup,
   InheritingToolInputFormatterLookup,
 } from "#src/authority/inherited-registrations";
+import { LocalUserAuthorizer } from "#src/authority/local-user-authorizer";
 import { PERMISSION_FORWARDING_TIMEOUT_MS } from "#src/authority/permission-forwarding";
 import { requestPermissionDecision } from "#src/authority/permission-prompt-component";
 import { PermissionPrompter } from "#src/authority/permission-prompter";
@@ -49,6 +50,11 @@ import { DecisionAudit } from "#src/logging/decision-audit";
 import { GateDecisionReporter } from "#src/logging/decision-reporter";
 import { PermissionSessionLogger } from "#src/logging/session-logger";
 import { pathFlavorForPlatform } from "#src/path/path-flavor";
+import {
+  PersistentApprovalService,
+  PersistentApprovalTargetResolver,
+} from "#src/persistence/persistent-approval-service";
+import { PersistentPermissionWriter } from "#src/persistence/persistent-permission-writer";
 import { PermissionManager } from "#src/policy/permission-manager";
 import { PermissionResolver } from "#src/policy/permission-resolver";
 import { resolveRenderBudget } from "#src/presentation/dialog-renderer";
@@ -154,14 +160,36 @@ export default function piPermissionSystemExtension(pi: ExtensionAPI): void {
 
   const authorizerSelection = new AuthorizerSelection({
     detection: subagentDetection,
-    events: pi.events,
-    dialogs: askDialogQueue,
-    getPromptPreferences: () => ({
-      doublePressToConfirm: configStore.current().doublePressToConfirm,
-      budget: resolveRenderBudget(configStore.current()),
-      dialogKeys: resolveDialogKeys(configStore.current()).keys,
-    }),
-    requestPermissionDecision,
+    // The local dialog is built per activation because durable persistence
+    // needs the session's cwd and trust decision, which only the context has.
+    createLocalAuthorizer: (ctx) =>
+      new LocalUserAuthorizer({
+        ui: ctx.ui,
+        mode: ctx.mode,
+        events: pi.events,
+        dialogs: askDialogQueue,
+        getPromptPreferences: () => ({
+          doublePressToConfirm: configStore.current().doublePressToConfirm,
+          showPersistenceSummary: configStore.current().showPersistenceSummary,
+          budget: resolveRenderBudget(configStore.current()),
+          dialogKeys: resolveDialogKeys(configStore.current()).keys,
+        }),
+        setShowPersistenceSummary: (enabled) =>
+          configStore.setShowPersistenceSummary(enabled, (message) =>
+            ctx.ui.notify(message, "error"),
+          ),
+        requestPermissionDecision,
+        persistentApprovalService: new PersistentApprovalService({
+          targetResolver: new PersistentApprovalTargetResolver({
+            agentDir,
+            cwd: ctx.cwd,
+            isProjectTrusted: () => ctx.isProjectTrusted(),
+          }),
+          writer: new PersistentPermissionWriter(),
+          reload: (cwd) => permissionManager.configureForCwd(cwd),
+          logger,
+        }),
+      }),
     forwardingDir: paths.forwardingDir,
     registry: subagentRegistry,
     serving: servingLiveness,

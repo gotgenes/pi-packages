@@ -4,12 +4,15 @@
 
 One unified config file per scope:
 
-| Scope   | Path                                                                                       |
-| ------- | ------------------------------------------------------------------------------------------ |
-| Global  | `~/.pi/agent/extensions/pi-permission-system/config.json` (respects `PI_CODING_AGENT_DIR`) |
-| Project | `<cwd>/.pi/extensions/pi-permission-system/config.json`                                    |
+| Scope         | Path                                                                                       |
+| ------------- | ------------------------------------------------------------------------------------------ |
+| Global        | `~/.pi/agent/extensions/pi-permission-system/config.json` (respects `PI_CODING_AGENT_DIR`) |
+| Project       | `<cwd>/.pi/extensions/pi-permission-system/config.json`                                    |
+| Project-local | `<cwd>/.pi/extensions/pi-permission-system/config.local.json`                              |
 
-Project config overrides global config; per-agent frontmatter overrides both.
+Shared project config overrides global config; project-local config overrides shared project config; per-agent frontmatter overrides file config.
+The permission prompt writes project approvals only to `config.local.json`, never shared `config.json`.
+The local file is user-owned and should normally be ignored by Git.
 
 **Project config requires project trust.**
 Project and project-agent scopes (both permission policy and runtime config such as `yoloMode`) are loaded only when Pi reports the project as trusted (`ctx.isProjectTrusted()`).
@@ -31,16 +34,17 @@ See [migration/0644-project-trust-gating.md](migration/0644-project-trust-gating
 **Precedence order (later wins):**
 
 1. Global config file
-2. Project config file
-3. Global agent frontmatter
-4. Project agent frontmatter
+2. Shared project config file
+3. Project-local config file
+4. Global agent frontmatter
+5. Project agent frontmatter
 
 The `permission` object uses deep-shallow merge: string-vs-string replaces; both-object shallow-merges pattern maps; string-vs-object the override wins entirely.
-Scalar fields (`debugLog`, `permissionReviewLog`, `yoloMode`, `doublePressToConfirm`, `forwardingTimeoutMs`, `promptMaxRows`, `promptFieldMaxWidth`) use simple replacement.
+Scalar fields (`debugLog`, `permissionReviewLog`, `yoloMode`, `doublePressToConfirm`, `showPersistenceSummary`, `forwardingTimeoutMs`, `promptMaxRows`, `promptFieldMaxWidth`) use simple replacement.
 `permissionDialogKeys` replaces the whole map rather than merging entry by entry, so the map that was validated is the map that applies.
 
 **Invalid higher-precedence scope fails closed.**
-If a non-global scope (project config, global agent frontmatter, or project agent frontmatter) is present but fails to load or validate, it no longer contributes an empty scope that silently inherits the lower scope's rules.
+If a non-global scope (shared or local project config, global agent frontmatter, or project agent frontmatter) is present but fails to load or validate, it no longer contributes an empty scope that silently inherits the lower scope's rules.
 Instead the effective policy is floored so nothing resolves more permissively than `ask`: every `allow` (including one inherited from a lower scope) is clamped to `ask`, while `deny` and `ask` are unchanged.
 So a global `bash: allow` cannot remain effective behind a project scope that was meant to deny bash but contains a typo — bash prompts until the invalid config is fixed.
 A validation warning plus a distinct fail-closed notice are emitted, and a fix + reload restores the intended policy.
@@ -58,6 +62,7 @@ This clamp is deny-preserving and, like `yoloMode`, applied at composition; when
   "permissionReviewLog": true,
   "yoloMode": false,
   "doublePressToConfirm": true,
+  "showPersistenceSummary": true,
   "forwardingTimeoutMs": 600000,
   "piInfrastructureReadPaths": [],
 
@@ -104,6 +109,7 @@ This clamp is deny-preserving and, like `yoloMode`, applied at composition; when
 | `permissionReviewLog`       | `true`   | Enables the permission request/denial review log at `logs/pi-permission-system-permission-review.jsonl`. Records bash command strings, masked only where a name binds the secret — see [Log file sensitivity](#log-file-sensitivity)         |
 | `yoloMode`                  | `false`  | Auto-approves `ask` results instead of prompting when yolo mode is enabled                                                                                                                                                                   |
 | `doublePressToConfirm`      | `true`   | Requires a confirming second press of a decision hotkey in the inline TUI dialog (see below). TUI sessions only; set to `false` for single-press.                                                                                            |
+| `showPersistenceSummary`    | `true`   | Shows the exact rules and destination before saving a durable approval. Toggle persistently with `t` in the inline prompt or through `/permission-system`.                                                                                   |
 | `permissionDialogKeys`      | —        | Remaps the inline TUI dialog's decision hotkeys (see below). One printable character per decision; omitted decisions keep `y` / `s` / `b` / `n` / `r`.                                                                                       |
 | `forwardingTimeoutMs`       | `600000` | How long a subagent waits for the parent session to answer a forwarded permission request, in milliseconds. A child whose parent is not draining its inbox gives up in ~2 s regardless, whether that parent runs in this process or its own. |
 | `promptMaxRows`             | `24`     | Max rows a permission prompt renders before eliding its evidence. The request's own facts are never elided by this budget; `Ctrl+O` expands the prompt to the complete request.                                                              |
@@ -126,6 +132,9 @@ In an interactive **TUI** session, an `ask` decision opens an inline keybind dia
 | `y` | Approve once                                                      |
 | `s` | Approve for this session, in the direction the gate proved        |
 | `b` | Approve for this session in **both** directions (see below)       |
+| `e` | Edit the proposed pattern(s) before granting or saving them       |
+| `p` | Persist the proposed rule(s) for this trusted project             |
+| `g` | Persist the proposed rule(s) globally                             |
 | `n` | Deny                                                              |
 | `r` | Deny with a reason (opens an inline editor; a reason is required) |
 
@@ -136,6 +145,12 @@ See [session-approvals.md](session-approvals.md#grant-direction) for what the tw
 Arrow keys / `j`/`k` move the highlight, `enter` confirms the highlighted option, and `esc` denies.
 With `doublePressToConfirm` enabled (the default), a hotkey **arms** its action and shows a `Press y again to approve.` hint; press the same key again to commit.
 Set `doublePressToConfirm` to `false` to commit on the first press.
+
+The `e`, `p`, and `g` rows appear only for a local (not forwarded) ask that carries a rule proposal, and `p` only when the project is trusted.
+`e` opens one line editor per proposed pattern, prefilled with the pattern as proposed; the edited proposal is what a later `s`, `p`, or `g` records.
+With `showPersistenceSummary` enabled (the default), `p` or `g` opens a summary of the exact rules and destination on the first press, and `enter` saves; `esc` returns to the decision list without writing.
+Press `t` at the decision list or the summary to toggle that sticky preference; when it is off, `p` and `g` save directly, arming like any other hotkey under `doublePressToConfirm`.
+`permissionDialogKeys` can rebind `editPatterns`, `persistProject`, and `persistGlobal` too; `t` is reserved for the toggle.
 
 #### Remapping the hotkeys
 

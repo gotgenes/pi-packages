@@ -50,6 +50,8 @@ export function createInMemoryPolicyLoader(
       globalConfigExists: true,
       projectConfigPath: null,
       projectConfigExists: false,
+      projectLocalConfigPath: null,
+      projectLocalConfigExists: false,
       agentsDir: "/in-memory/agents",
       agentsDirExists: false,
       projectAgentsDir: null,
