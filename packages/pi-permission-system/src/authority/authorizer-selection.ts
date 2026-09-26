@@ -9,7 +9,10 @@ import {
 import { composeAuthorizerChain } from "./authorizer-chain";
 import type { UnregisteredLinkAuditor } from "./authorizer-chain-audit";
 import type { AuthorizerLookup } from "./authorizer-registry";
-import { encloseInDelegationEnvelope } from "./delegation-envelope";
+import {
+  type DelegationTrust,
+  encloseInDelegationEnvelope,
+} from "./delegation-envelope";
 import type { PermissionPromptDecision } from "./permission-dialog";
 import type { PermissionForwardingTarget } from "./permission-forwarding";
 import type {
@@ -80,6 +83,12 @@ export type AuthorizerSelectionConstructorDeps = AuthorizerSelectionDeps & {
   authorizerRegistry: AuthorizerLookup;
   /** The operator's configured link names, read live per ask. */
   getAuthorizerChain: () => string[];
+  /**
+   * The operator's per-link trust (`authorizerTrust`): link name → excluded
+   * surface families whose cap that link's `allow` is exempt from. Read live
+   * per ask, like the chain itself.
+   */
+  getAuthorizerTrust: () => Readonly<Record<string, readonly string[]>>;
   /** Told about each configured name the registry could not resolve. */
   chainAudit: UnregisteredLinkAuditor;
 };
@@ -182,7 +191,8 @@ export class AuthorizerSelection
    * fail-safe (invariant 2 — more prompting, never less) and handed to the
    * chain audit, which records it and tells the operator once per name; each
    * resolved link is wrapped in the bounded-delegation envelope so an `allow`
-   * on an excluded surface cannot exceed the operator's policy.
+   * on an excluded surface cannot exceed the operator's policy — except on the
+   * families the operator trusts that very link with (`authorizerTrust`).
    *
    * The resolved names are recorded against the ask before any link runs — a
    * link that defers decides nothing and would otherwise leave no evidence it
@@ -195,6 +205,7 @@ export class AuthorizerSelection
   ): NamedAuthorizer[] {
     const links: NamedAuthorizer[] = [];
     const resolved: string[] = [];
+    const trust = this.deps.getAuthorizerTrust();
     for (const name of configured) {
       const authorize = this.deps.authorizerRegistry.get(name);
       if (authorize === undefined) {
@@ -202,7 +213,13 @@ export class AuthorizerSelection
         continue;
       }
       resolved.push(name);
-      links.push({ name, authorize: encloseInDelegationEnvelope(authorize) });
+      links.push({
+        name,
+        authorize: encloseInDelegationEnvelope(
+          authorize,
+          trustFor(name, trust),
+        ),
+      });
     }
     if (resolved.length > 0) {
       this.deps.logger.review("authorizer_chain_resolved", {
@@ -263,4 +280,19 @@ export class AuthorizerSelection
     );
     return this.deps.prompter.prompt(chain, details);
   }
+}
+
+/**
+ * The envelope trust for link `name`, or `undefined` when the operator trusts
+ * it with nothing (the envelope then caps every excluded family).
+ */
+function trustFor(
+  name: string,
+  trust: Readonly<Record<string, readonly string[]>>,
+): DelegationTrust | undefined {
+  const families = Object.hasOwn(trust, name) ? trust[name] : undefined;
+  if (families === undefined || families.length === 0) {
+    return undefined;
+  }
+  return { link: name, families: new Set(families) };
 }
