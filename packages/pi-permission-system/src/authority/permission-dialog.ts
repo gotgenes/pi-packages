@@ -156,6 +156,7 @@ export async function requestPermissionDecisionFromUi(
     DENY_WITH_REASON_OPTION,
   ];
 
+  process.stdout.write("\x07");
   const selected = await ui.select(`${title}\n${message}`, decisionOptions);
 
   if (selected === APPROVE_OPTION) {
