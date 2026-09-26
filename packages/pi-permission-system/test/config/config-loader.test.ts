@@ -659,6 +659,22 @@ describe("mergeUnifiedConfigs", () => {
     expect(merged.authorizerChain).toEqual(["override-judge"]);
   });
 
+  it("override authorizerTrust replaces the base map whole", () => {
+    const merged = mergeUnifiedConfigs(
+      { authorizerTrust: { a: ["path"], b: ["external_directory"] } },
+      { authorizerTrust: { a: ["external_directory"] } },
+    );
+    expect(merged.authorizerTrust).toEqual({ a: ["external_directory"] });
+  });
+
+  it("base authorizerTrust survives when override omits it", () => {
+    const merged = mergeUnifiedConfigs(
+      { authorizerTrust: { a: ["path"] } },
+      { debugLog: true },
+    );
+    expect(merged.authorizerTrust).toEqual({ a: ["path"] });
+  });
+
   it("base authorizerChain survives when override omits it", () => {
     const merged = mergeUnifiedConfigs(
       { authorizerChain: ["kept-judge"] },

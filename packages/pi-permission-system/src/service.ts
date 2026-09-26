@@ -228,7 +228,9 @@ export interface PermissionsService extends PermissionQuery {
    * Registration alone grants **no authority**: the link decides nothing until
    * the operator names it in the `authorizerChain` config (opt-in activation),
    * and the chain owner caps every verdict with the bounded-delegation
-   * checkpoint (an `allow` on an excluded surface downgrades to `defer`). Only
+   * checkpoint (an `allow` on an excluded surface downgrades to `defer`,
+   * unless the operator's `authorizerTrust` trusts this link with that
+   * surface's family). Only
    * one link may be registered per name — a second call for the same name
    * throws. The returned disposer unregisters the link.
    *
