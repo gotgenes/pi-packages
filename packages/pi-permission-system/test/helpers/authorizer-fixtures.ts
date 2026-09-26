@@ -150,6 +150,7 @@ export function makeAuthorizerSelectionDeps(
     authorizerRegistry:
       overrides.authorizerRegistry ?? new AuthorizerRegistry(),
     getAuthorizerChain: overrides.getAuthorizerChain ?? (() => []),
+    getAuthorizerTrust: overrides.getAuthorizerTrust ?? (() => ({})),
     chainAudit: overrides.chainAudit ?? makeChainAudit(),
   };
 }

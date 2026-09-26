@@ -18,6 +18,7 @@ import {
   getProjectConfigPath,
 } from "./config-paths";
 import {
+  type AuthorizerTrustConfig,
   type ShellToolsConfig,
   type UnifiedPermissionConfig,
   unifiedConfigSchema,
@@ -28,7 +29,11 @@ import { type DialogKeysConfig, resolveDialogKeys } from "./dialog-keys";
 // the single source of truth) and re-exported so existing importers keep their
 // import path. All fields are optional so partial configs merge before
 // defaults are applied downstream.
-export type { ShellToolsConfig, UnifiedPermissionConfig };
+export type {
+  AuthorizerTrustConfig,
+  ShellToolsConfig,
+  UnifiedPermissionConfig,
+};
 
 export interface UnifiedConfigLoadResult {
   config: UnifiedPermissionConfig;
@@ -204,6 +209,7 @@ function formatConfigIssues(error: ZodError): string[] {
  * - Array fields (piInfrastructureReadPaths) replace the base when present in
  *   the override (override-wins, same as scalars).
  * - `permissionDialogKeys` replaces the base map whole, unlike `shellTools`.
+ * - `authorizerTrust` replaces the base map whole, like `authorizerChain`.
  * - `promptNotifications` replaces the base list whole, like the arrays.
  * - `commandEffects` is not merged here: its scope is load provenance the
  *   review log reports, so `loadAndMergeConfigs` folds it per layer with the
@@ -253,6 +259,14 @@ export function mergeUnifiedConfigs(
     if (value !== undefined) {
       merged[key] = value;
     }
+  }
+
+  // authorizerTrust: whole-object replacement, like the authorizerChain it
+  // qualifies — a scope that sets it states every link's trust, so a project
+  // can narrow a global grant rather than only add to it.
+  const trust = override.authorizerTrust ?? base.authorizerTrust;
+  if (trust !== undefined) {
+    merged.authorizerTrust = trust;
   }
 
   // permissionDialogKeys: whole-object replacement. A key map is validated as
