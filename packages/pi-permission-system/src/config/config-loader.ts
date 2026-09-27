@@ -195,6 +195,19 @@ function formatConfigIssues(error: ZodError): string[] {
   return messages;
 }
 
+/** Set `merged[key]` to the override's value, else the base's, when either defines it. */
+function takeOverride<K extends keyof UnifiedPermissionConfig>(
+  merged: UnifiedPermissionConfig,
+  base: UnifiedPermissionConfig,
+  override: UnifiedPermissionConfig,
+  key: K,
+): void {
+  const value = override[key] ?? base[key];
+  if (value !== undefined) {
+    merged[key] = value;
+  }
+}
+
 /**
  * Merge two unified configs.
  * - `permission` is deep-shallow merged (surface-level object maps are shallow-merged).
@@ -221,10 +234,7 @@ export function mergeUnifiedConfigs(
     "yoloMode",
     "doublePressToConfirm",
   ] as const) {
-    const value = override[key] ?? base[key];
-    if (value !== undefined) {
-      merged[key] = value;
-    }
+    takeOverride(merged, base, override, key);
   }
 
   // Number scalars: override replaces base when defined
@@ -236,37 +246,25 @@ export function mergeUnifiedConfigs(
     "toolInputPreviewMaxLength",
     "toolTextSummaryMaxLength",
   ] as const) {
-    const value = override[key] ?? base[key];
-    if (value !== undefined) {
-      merged[key] = value;
-    }
+    takeOverride(merged, base, override, key);
   }
 
   // Array fields: override replaces base when defined
   for (const key of ["piInfrastructureReadPaths", "authorizerChain"] as const) {
-    const value = override[key] ?? base[key];
-    if (value !== undefined) {
-      merged[key] = value;
-    }
+    takeOverride(merged, base, override, key);
   }
 
   // authorizerTrust: whole-object replacement, like the authorizerChain it
   // qualifies — a scope that sets it states every link's trust, so a project
   // can narrow a global grant rather than only add to it.
-  const trust = override.authorizerTrust ?? base.authorizerTrust;
-  if (trust !== undefined) {
-    merged.authorizerTrust = trust;
-  }
+  takeOverride(merged, base, override, "authorizerTrust");
 
   // permissionDialogKeys: whole-object replacement. A key map is validated as
   // a unit, so merging two individually valid maps could bind one character to
   // two decisions with neither file's own validation able to see it. Dropping a
   // base entry only restores a default letter, which is why this does not need
   // the shellTools rule below.
-  const dialogKeys = override.permissionDialogKeys ?? base.permissionDialogKeys;
-  if (dialogKeys !== undefined) {
-    merged.permissionDialogKeys = dialogKeys;
-  }
+  takeOverride(merged, base, override, "permissionDialogKeys");
 
   // shellTools: shallow-merge by tool name so a project entry overrides a
   // colliding tool's alias but never drops a global entry (a dropped alias is
