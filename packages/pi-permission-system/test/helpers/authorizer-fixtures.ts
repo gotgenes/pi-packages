@@ -15,11 +15,17 @@ import type { UnregisteredLinkAuditor } from "#src/authority/authorizer-chain-au
 import { AuthorizerRegistry } from "#src/authority/authorizer-registry";
 import type { AuthorizerSelectionConstructorDeps } from "#src/authority/authorizer-selection";
 import { ForwardingLivenessJudge } from "#src/authority/forwarding-liveness";
+import { LocalUserAuthorizer } from "#src/authority/local-user-authorizer";
 import { SUBAGENT_ENV_HINT_KEYS } from "#src/authority/permission-forwarding";
+import type {
+  PromptPreferences,
+  requestPermissionDecision,
+} from "#src/authority/permission-prompt-component";
 import type { PermissionPrompterApi } from "#src/authority/permission-prompter";
 import { ServingSessionRegistry } from "#src/authority/serving-registry";
 import type { SubagentDetector } from "#src/authority/subagent-detection";
 import type { PermissionQuery } from "#src/service";
+import type { PermissionEventBus } from "#src/service/permission-events";
 import { makeAuthorizerLog } from "./authorizer-log-fixtures";
 import { DECIDED_BY_HUMAN } from "./decision-fixtures";
 import { makePromptPreferences } from "./prompt-view-fixtures";
@@ -29,11 +35,19 @@ import { makePromptPreferences } from "./prompt-view-fixtures";
  * concrete `AuthorizerRegistry` so a test can register links into the same
  * instance it hands the selection.
  */
+/**
+ * The constructor deps, plus the three inputs the default local-terminal
+ * factory is built from — so a test can shape the local dialog without
+ * writing its own `createLocalAuthorizer`.
+ */
 export type AuthorizerSelectionTestDeps = Omit<
   AuthorizerSelectionConstructorDeps,
   "authorizerRegistry"
 > & {
   authorizerRegistry: AuthorizerRegistry;
+  events?: PermissionEventBus;
+  getPromptPreferences?: () => PromptPreferences;
+  requestPermissionDecision?: typeof requestPermissionDecision;
 };
 
 /**
@@ -119,22 +133,33 @@ export function makeChainAudit(): {
 export function makeAuthorizerSelectionDeps(
   overrides: Partial<AuthorizerSelectionTestDeps> = {},
 ): AuthorizerSelectionTestDeps {
+  const events: PermissionEventBus = overrides.events ?? {
+    emit: vi.fn(),
+    on: vi.fn().mockReturnValue(() => undefined),
+  };
+  const dialogs = new AskDialogQueue();
+  const getPromptPreferences =
+    overrides.getPromptPreferences ?? (() => makePromptPreferences());
+  const decide: typeof requestPermissionDecision =
+    overrides.requestPermissionDecision ??
+    vi.fn().mockResolvedValue({
+      approved: true,
+      state: "approved",
+      decidedBy: DECIDED_BY_HUMAN,
+    });
   return {
     detection: overrides.detection ?? makeDetection(),
-    events: overrides.events ?? {
-      emit: vi.fn(),
-      on: vi.fn().mockReturnValue(() => undefined),
-    },
-    dialogs: overrides.dialogs ?? new AskDialogQueue(),
-    getPromptPreferences:
-      overrides.getPromptPreferences ?? (() => makePromptPreferences()),
-    requestPermissionDecision:
-      overrides.requestPermissionDecision ??
-      vi.fn().mockResolvedValue({
-        approved: true,
-        state: "approved",
-        decidedBy: DECIDED_BY_HUMAN,
-      }),
+    createLocalAuthorizer:
+      overrides.createLocalAuthorizer ??
+      ((ctx) =>
+        new LocalUserAuthorizer({
+          ui: ctx.ui,
+          mode: ctx.mode,
+          events,
+          dialogs,
+          getPromptPreferences,
+          requestPermissionDecision: decide,
+        })),
     forwardingDir: overrides.forwardingDir ?? "/tmp/forwarding",
     registry: overrides.registry,
     serving:

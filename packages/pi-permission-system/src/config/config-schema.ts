@@ -268,6 +268,17 @@ const dialogKeysSchema = z
       description:
         "Key that approves for the session in both directions. Default: b.",
     }),
+    editPatterns: z.string().optional().meta({
+      description: "Key that opens the proposed-pattern editor. Default: e.",
+    }),
+    persistProject: z.string().optional().meta({
+      description:
+        "Key that saves the approval to the project-local config. Default: p.",
+    }),
+    persistGlobal: z.string().optional().meta({
+      description:
+        "Key that saves the approval to the global config. Default: g.",
+    }),
     deny: z.string().optional().meta({
       description: "Key that denies the pending call. Default: n.",
     }),
@@ -279,7 +290,7 @@ const dialogKeysSchema = z
     description:
       "Remaps the inline TUI permission dialog's decision hotkeys. Each value is one printable character.",
     markdownDescription:
-      "Remaps the inline **TUI** permission dialog's decision hotkeys, which default to `y` / `s` / `b` / `n` / `r`.\n\nEach value is a single printable character — a lowercase letter, a digit, or a symbol. Digits are the usual choice for input-method-editor (IME) users, whose composition mode swallows letter keys before they reach the terminal.\n\n`j` and `k` are reserved for moving the dialog's highlight, uppercase is rejected (pi lowercases a key identifier, so `\"Y\"` would answer to `y`), and two decisions may not share a character. An entry that breaks one of those rules is ignored with a warning and its decision keeps its default letter.\n\nA project config replaces a global one's map entirely rather than merging entry by entry.",
+      "Remaps the inline **TUI** permission dialog's decision hotkeys, which default to `y` / `s` / `b` / `e` / `p` / `g` / `n` / `r`.\n\nEach value is a single printable character — a lowercase letter, a digit, or a symbol. Digits are the usual choice for input-method-editor (IME) users, whose composition mode swallows letter keys before they reach the terminal.\n\n`j` and `k` are reserved for moving the dialog's highlight and `t` for toggling the save summary, uppercase is rejected (pi lowercases a key identifier, so `\"Y\"` would answer to `y`), and two decisions may not share a character. An entry that breaks one of those rules is ignored with a warning and its decision keeps its default letter.\n\nA project config replaces a global one's map entirely rather than merging entry by entry.",
     examples: [
       {
         approve: "1",
@@ -366,6 +377,13 @@ export const unifiedConfigSchema = z
         "Require a confirming second press of a decision hotkey in the inline permission dialog. Applies to TUI sessions only.",
       markdownDescription:
         "Require a confirming second press of a decision hotkey (`y`/`s`/`n`/`r`) in the inline permission dialog before it commits — the first press arms the action and shows a `Press y again to approve.` hint.\n\nApplies to interactive **TUI** sessions only; the non-TUI (RPC/frontend) prompt keeps its single-select flow. Set to `false` to commit decisions on the first hotkey press.",
+      default: true,
+    }),
+    showPersistenceSummary: z.boolean().optional().meta({
+      description:
+        "Show the exact rule and destination before saving a persistent approval.",
+      markdownDescription:
+        "Show a summary of the exact surface, patterns, scope, action, and destination before saving a project-local or global approval. The inline prompt can toggle this sticky preference with `t`.",
       default: true,
     }),
     permissionDialogKeys: dialogKeysSchema.optional(),

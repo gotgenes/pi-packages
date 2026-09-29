@@ -21,6 +21,10 @@ export function getProjectConfigPath(cwd: string): string {
   return join(cwd, ".pi", "extensions", EXTENSION_ID, "config.json");
 }
 
+export function getProjectLocalConfigPath(cwd: string): string {
+  return join(cwd, ".pi", "extensions", EXTENSION_ID, "config.local.json");
+}
+
 /**
  * Directory holding project-scoped custom agent definition files.
  *

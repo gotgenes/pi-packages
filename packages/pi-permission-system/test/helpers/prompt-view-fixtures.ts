@@ -18,6 +18,7 @@ export function makePromptPreferences(
 ): PromptPreferences {
   return {
     doublePressToConfirm: true,
+    showPersistenceSummary: true,
     budget: DEFAULT_RENDER_BUDGET,
     dialogKeys: DEFAULT_DIALOG_KEYS,
     ...overrides,

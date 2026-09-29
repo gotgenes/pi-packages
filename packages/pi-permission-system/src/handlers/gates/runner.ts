@@ -11,6 +11,7 @@ import {
   renderRefusal,
 } from "#src/presentation/agent-renderer";
 import { renderReviewLogFacts } from "#src/presentation/review-log-renderer";
+import { SessionApproval } from "#src/session/session-approval";
 import type { SessionApprovalRecorder } from "#src/session/session-approval-recorder";
 import type {
   DecisionEventFacts,
@@ -238,11 +239,13 @@ export class GateRunner {
     );
 
     // 6. Record session approval — tell the store; it owns the per-pattern loop
-    // A present grant already implies gateResult.action === "allow".
+    // A present grant already implies gateResult.action === "allow". Grants
+    // the human edited at the prompt replace the descriptor's proposal.
     if (sessionGrant && descriptor.sessionApproval) {
-      this.recorder.recordSessionApproval(
-        descriptor.sessionApproval.atWidth(sessionGrant.width),
-      );
+      const approval = sessionGrant.grants
+        ? SessionApproval.forGrants(sessionGrant.grants)
+        : descriptor.sessionApproval;
+      this.recorder.recordSessionApproval(approval.atWidth(sessionGrant.width));
     }
 
     if (gateResult.action === "block") {

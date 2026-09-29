@@ -11,6 +11,7 @@
 | External file path blocked                                                                              | `external_directory` is `ask` without UI or `deny`                                      | Allow/ask the permission or keep file tools inside the active working directory.                                                                                                                                                                                            |
 | Spurious external-path prompt for `cd <subdir> && grep … ../path`                                       | Relative path was resolved against cwd instead of the `cd` target                       | Fixed in current version — paths after a leading `cd <subdir> &&` are resolved against the cd target, matching actual shell behavior.                                                                                                                                       |
 | Permission prompt is too verbose                                                                        | Generic extension tool input is large                                                   | Built-in file tools are summarized automatically; third-party tools are capped to a bounded one-line JSON preview.                                                                                                                                                          |
+| Durable approval is denied                                                                              | Project is untrusted, config is invalid, or the atomic write/reload failed              | Read the `permission_rule.persistence_failed` review entry, fix the displayed destination, and retry; the pending tool call remains blocked.                                                                                                                                |
 | Windows: `permission_forwarding.error — EPERM … rename` in the logs, and a subagent's tool call refused | An antivirus scanner or the search indexer held a transient handle on a forwarding file | The write is retried automatically for a short window. If it still fails, enable `debugLog` and look for `permission_forwarding.fs_retried` entries — their `attempts` and `code` say whether retrying is helping — then exclude the forwarding directory from the scanner. |
 
 ## Diagnostic Logging
@@ -27,6 +28,8 @@ This makes it easy to verify which files the extension actually loaded:
   "globalConfigExists": true,
   "projectConfigPath": "/…/my-project/.pi/extensions/pi-permission-system/config.json",
   "projectConfigExists": false,
+  "projectLocalConfigPath": "/…/my-project/.pi/extensions/pi-permission-system/config.local.json",
+  "projectLocalConfigExists": false,
   "agentsDir": "/…/.pi/agent/agents",
   "agentsDirExists": true,
   "projectAgentsDir": "/…/my-project/.pi/agents",

@@ -382,6 +382,28 @@ describe("GateRunner — descriptor path", () => {
     expect(deps.recordSessionApproval).toHaveBeenCalledWith(approval);
   });
 
+  it("records the grants the human edited at the prompt instead of the descriptor's", async () => {
+    const { runner, deps } = makeGateRunner({
+      resolveResult: makeCheckResult({ state: "ask", matchedPattern: "*" }),
+      escalate: vi.fn().mockResolvedValue({
+        approved: true,
+        state: "approved_for_session",
+        sessionApproval: {
+          grants: [{ surface: "bash", pattern: "git status" }],
+        },
+        decidedBy: DECIDED_BY_HUMAN,
+      }),
+    });
+    const descriptor = makeDescriptor({
+      sessionApproval: SessionApproval.single("bash", "git *"),
+    });
+    const result = await runner.run(descriptor, null);
+    expect(result).toEqual({ action: "allow" });
+    expect(deps.recordSessionApproval).toHaveBeenCalledWith(
+      SessionApproval.single("bash", "git status"),
+    );
+  });
+
   it("returns block and emits user_denied when ask + user denies", async () => {
     const { runner, deps } = makeGateRunner({
       resolveResult: makeCheckResult({ state: "ask", matchedPattern: "*" }),

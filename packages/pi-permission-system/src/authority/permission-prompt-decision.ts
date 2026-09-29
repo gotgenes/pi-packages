@@ -1,43 +1,58 @@
 import type { DialogKeyBindings, PromptAction } from "#src/config/dialog-keys";
+import type { PersistentApprovalTarget } from "#src/persistence/persistent-approval-service";
 import type { SessionGrantWidth } from "#src/session/approval-grant";
+import type {
+  PermissionRuleProposalData,
+  UnattributedChoice,
+} from "./interactive-permission-choice";
 import {
   createDeniedPermissionDecision,
+  dedupeGrants,
   normalizePermissionDenialReason,
+  type PersistentPromptOptions,
+  persistentChoice,
   type RequestPermissionOptions,
-  type UnattributedDecision,
+  sessionApprovalDecision,
 } from "./permission-dialog";
 
 /**
  * Pure decision model for the inline keybind permission dialog.
  *
  * The interaction logic — which hotkey produces which decision, double-press
- * arming, step transitions, and reason validation — lives here with no SDK or
- * TUI imports, so it is unit-testable directly. The `ctx.ui.custom` component
+ * arming, step transitions, pattern editing, persistence confirmation, and
+ * reason validation — lives here with no SDK or TUI imports, so it is
+ * unit-testable directly. The `ctx.ui.custom` component
  * ({@link file://./permission-prompt-component.ts}) is a thin adapter that
  * forwards keystrokes to {@link reducePrompt} and renders the returned state.
  */
 
 /** Which sub-view the dialog is showing. */
-export type PromptStep = "decision" | "reason" | "scope";
+export type PromptStep =
+  | "decision"
+  | "reason"
+  | "scope"
+  | "edit"
+  | "persistent-confirm";
 
 /**
  * The decisions in display order.
  *
- * `approveSessionBoth` is conditional: it appears only for an ask whose session
- * grant can be widened to both directions (#813), so the roster an ask actually
- * offers comes from {@link visibleActions} rather than from this list.
+ * `approveSessionBoth` and the three persistence actions are conditional: the
+ * width option appears only for an ask whose session grant can be widened to
+ * both directions (#813), and the persistence actions only for a local direct
+ * ask that carries a proposal. The roster an ask actually offers comes from
+ * {@link visibleActions} rather than from this list.
  */
 const OPTION_ORDER: readonly PromptAction[] = [
   "approve",
   "approveSession",
   "approveSessionBoth",
+  "editPatterns",
+  "persistProject",
+  "persistGlobal",
   "deny",
   "denyWithReason",
 ];
-
-const NARROW_OPTION_ORDER: readonly PromptAction[] = OPTION_ORDER.filter(
-  (action) => action !== "approveSessionBoth",
-);
 
 /**
  * The decision step's options, in display order.
@@ -46,20 +61,32 @@ const NARROW_OPTION_ORDER: readonly PromptAction[] = OPTION_ORDER.filter(
  * an ask offers is decided in the model and the component renders whatever it
  * is handed — two copies of the roster would be two places to teach about a
  * conditional option.
- *
- * The width option is offered iff the ask supplied a label for it, so an ask
- * that proves no single direction is rendered and navigated exactly as before.
  */
 export function visibleActions(
   config: PromptModelConfig,
 ): readonly PromptAction[] {
-  return config.widthLabel ? OPTION_ORDER : NARROW_OPTION_ORDER;
+  return OPTION_ORDER.filter((action) => {
+    switch (action) {
+      case "approveSessionBoth":
+        return config.widthLabel !== undefined;
+      case "editPatterns":
+      case "persistGlobal":
+        return config.persistent !== undefined;
+      case "persistProject":
+        return config.persistent?.projectTarget !== undefined;
+      default:
+        return true;
+    }
+  });
 }
 
 const OPTION_VERBS: Record<PromptAction, string> = {
   approve: "approve",
   approveSession: "approve for this session",
   approveSessionBoth: "approve both directions for this session",
+  editPatterns: "edit the proposed patterns",
+  persistProject: "save for this project",
+  persistGlobal: "save globally",
   deny: "deny",
   denyWithReason: "deny with a reason",
 };
@@ -90,6 +117,10 @@ export interface PromptModelConfig {
    * default) or the whole serving session.
    */
   sessionScope?: NonNullable<RequestPermissionOptions["sessionScope"]>;
+  /** Show the exact durable rule and destination before saving it. */
+  showPersistenceSummary: boolean;
+  /** Local direct asks only: the proposal and the files it may be saved to. */
+  persistent?: PersistentPromptOptions;
 }
 
 /** The re-render view state the component draws from. */
@@ -113,6 +144,23 @@ export interface PromptViewState {
    * backed out of cannot ride along with a later narrow choice.
    */
   grantWidth: SessionGrantWidth;
+  /** The proposal as currently offered; replaced by each completed edit. */
+  proposal?: PermissionRuleProposalData;
+  /**
+   * The proposal once the human has changed it from what the gate offered.
+   *
+   * Separate from `proposal` so a session grant carries grants only when they
+   * differ from the descriptor's, and the wire stays byte-identical otherwise.
+   */
+  editedProposal?: PermissionRuleProposalData;
+  /** Edit step: the patterns being edited, one per grant, in proposal order. */
+  editPatterns?: string[];
+  /** Edit step: which grant's pattern the editor currently holds. */
+  editIndex?: number;
+  /** Set when a blank pattern submit is rejected. */
+  editError?: string;
+  /** Persistent-confirm step: the file the confirmed rule will be written to. */
+  persistenceTarget?: PersistentApprovalTarget;
 }
 
 /** An input event the reducer understands. */
@@ -121,16 +169,15 @@ export type PromptEvent =
   | { type: "hotkey"; action: PromptAction }
   | { type: "confirm" }
   | { type: "cancel" }
-  | { type: "submitReason"; draft: string };
+  | { type: "submitReason"; draft: string }
+  | { type: "submitEdit"; draft: string };
 
-/** Either a re-render or a terminal decision. */
+/** Either a re-render or a terminal choice. */
 export type PromptOutcome =
   | { kind: "render"; state: PromptViewState }
-  | { kind: "decision"; decision: UnattributedDecision };
+  | { kind: "decision"; decision: UnattributedChoice };
 
-export function initialPromptState(
-  _config: PromptModelConfig,
-): PromptViewState {
+export function initialPromptState(config: PromptModelConfig): PromptViewState {
   return {
     step: "decision",
     highlightedAction: "approve",
@@ -139,12 +186,13 @@ export function initialPromptState(
     reasonError: undefined,
     scopeServing: false,
     grantWidth: "proven",
+    ...(config.persistent ? { proposal: config.persistent.proposal } : {}),
   };
 }
 
 /**
  * Advance the dialog by one input event, returning either the next view state
- * to render or the committed {@link UnattributedDecision}.
+ * to render or the committed {@link UnattributedChoice}.
  *
  * The model states the outcome and not the decider: which human surface this
  * is gets attributed by the dispatcher that chose to render this dialog, so
@@ -162,6 +210,10 @@ export function reducePrompt(
       return reduceReasonStep(state, event);
     case "scope":
       return reduceScopeStep(state, event);
+    case "edit":
+      return reduceEditStep(state, event);
+    case "persistent-confirm":
+      return reducePersistentConfirmStep(state, event);
   }
 }
 
@@ -190,7 +242,7 @@ function reduceDecisionStep(
       return commit(config, state, state.highlightedAction);
     case "cancel":
       return { kind: "decision", decision: createDeniedPermissionDecision() };
-    case "submitReason":
+    default:
       return render(state);
   }
 }
@@ -200,7 +252,17 @@ function pressHotkey(
   state: PromptViewState,
   action: PromptAction,
 ): PromptOutcome {
-  if (!config.doublePressToConfirm || state.armedAction === action) {
+  // Double-press guards a commit; an action that only opens another step is
+  // safe on the first press, and the summary step is its own confirmation.
+  const opensStep =
+    action === "editPatterns" ||
+    ((action === "persistProject" || action === "persistGlobal") &&
+      config.showPersistenceSummary);
+  if (
+    opensStep ||
+    !config.doublePressToConfirm ||
+    state.armedAction === action
+  ) {
     return commit(config, state, action);
   }
   return render({
@@ -252,29 +314,58 @@ function commit(
       }
       return {
         kind: "decision",
-        decision: sessionDecision("approved_for_session", grantWidth),
+        decision: sessionApprovalDecision(
+          "approved_for_session",
+          grantWidth,
+          editedProposal(state),
+        ),
       };
     }
+    case "editPatterns":
+      if (!state.proposal) return render(state);
+      return render({
+        ...state,
+        step: "edit",
+        highlightedAction: "editPatterns",
+        armedAction: undefined,
+        hint: "",
+        editPatterns: state.proposal.grants.map((grant) => grant.pattern),
+        editIndex: 0,
+        editError: undefined,
+      });
+    case "persistProject":
+      return beginPersistence(config, state, config.persistent?.projectTarget);
+    case "persistGlobal":
+      return beginPersistence(config, state, config.persistent?.globalTarget);
   }
 }
 
-/**
- * A session-granting decision, naming its width only when it is not the
- * default.
- *
- * Absent means `"proven"` everywhere this value travels — the decision, the
- * gate result, and the forwarded wire — so the narrow grant serializes
- * exactly as it did before the option existed.
- */
-function sessionDecision(
-  state: "approved_for_session" | "approved_for_serving_session",
-  width: SessionGrantWidth,
-): UnattributedDecision {
-  return {
-    approved: true,
-    state,
-    ...(width === "family" ? { sessionGrantWidth: width } : {}),
-  };
+/** The proposal to carry on a session decision: only one the human changed. */
+function editedProposal(
+  state: PromptViewState,
+): PermissionRuleProposalData | undefined {
+  return state.editedProposal;
+}
+
+function beginPersistence(
+  config: PromptModelConfig,
+  state: PromptViewState,
+  target: PersistentApprovalTarget | undefined,
+): PromptOutcome {
+  if (!state.proposal || !target) return render(state);
+  if (!config.showPersistenceSummary) {
+    return {
+      kind: "decision",
+      decision: persistentChoice(state.proposal, target, false),
+    };
+  }
+  return render({
+    ...state,
+    step: "persistent-confirm",
+    armedAction: undefined,
+    hint: "",
+    persistenceTarget: target,
+  });
 }
 
 function reduceReasonStep(
@@ -282,14 +373,7 @@ function reduceReasonStep(
   event: PromptEvent,
 ): PromptOutcome {
   if (event.type === "cancel") {
-    return render({
-      ...state,
-      step: "decision",
-      armedAction: undefined,
-      hint: "",
-      reasonError: undefined,
-      grantWidth: "proven",
-    });
+    return backToDecision(state);
   }
   if (event.type === "submitReason") {
     const reason = normalizePermissionDenialReason(event.draft);
@@ -317,24 +401,94 @@ function reduceScopeStep(
     case "confirm":
       return {
         kind: "decision",
-        decision: sessionDecision(
+        decision: sessionApprovalDecision(
           state.scopeServing
             ? "approved_for_serving_session"
             : "approved_for_session",
           state.grantWidth,
+          editedProposal(state),
         ),
       };
     case "cancel":
-      return render({
-        ...state,
-        step: "decision",
-        armedAction: undefined,
-        hint: "",
-        grantWidth: "proven",
-      });
+      return backToDecision(state);
     default:
       return render(state);
   }
+}
+
+/**
+ * One pattern per visit: a submit advances to the next grant, and the last
+ * submit replaces the proposal and returns to the decision step, where the
+ * edited proposal is what every later choice records or saves.
+ */
+function reduceEditStep(
+  state: PromptViewState,
+  event: PromptEvent,
+): PromptOutcome {
+  if (event.type === "cancel") return backToDecision(state);
+  if (event.type !== "submitEdit" || !state.proposal) return render(state);
+
+  const pattern = event.draft.trim();
+  if (!pattern) {
+    return render({ ...state, editError: "A pattern is required." });
+  }
+  const editIndex = state.editIndex ?? 0;
+  const patterns = [...(state.editPatterns ?? [])];
+  patterns[editIndex] = pattern;
+  if (editIndex + 1 < patterns.length) {
+    return render({
+      ...state,
+      editPatterns: patterns,
+      editIndex: editIndex + 1,
+      editError: undefined,
+    });
+  }
+  const grants = dedupeGrants(
+    state.proposal.grants.map((grant, index) => ({
+      surface: grant.surface,
+      pattern: patterns[index] ?? grant.pattern,
+    })),
+  );
+  return render({
+    ...backToDecisionState(state),
+    highlightedAction: "editPatterns",
+    proposal: { grants },
+    editedProposal: { grants },
+  });
+}
+
+function reducePersistentConfirmStep(
+  state: PromptViewState,
+  event: PromptEvent,
+): PromptOutcome {
+  if (event.type === "cancel") return backToDecision(state);
+  if (event.type !== "confirm") return render(state);
+
+  const target = state.persistenceTarget;
+  if (!target || !state.proposal) return backToDecision(state);
+  return {
+    kind: "decision",
+    decision: persistentChoice(state.proposal, target, true),
+  };
+}
+
+function backToDecision(state: PromptViewState): PromptOutcome {
+  return render(backToDecisionState(state));
+}
+
+function backToDecisionState(state: PromptViewState): PromptViewState {
+  return {
+    ...state,
+    step: "decision",
+    armedAction: undefined,
+    hint: "",
+    reasonError: undefined,
+    grantWidth: "proven",
+    editPatterns: undefined,
+    editIndex: undefined,
+    editError: undefined,
+    persistenceTarget: undefined,
+  };
 }
 
 function shiftAction(

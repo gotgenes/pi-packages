@@ -263,6 +263,32 @@ describe("applyPermissionGate", () => {
       });
     });
 
+    it("carries the grants the human edited at the prompt", async () => {
+      const decision: PermissionPromptDecision = {
+        approved: true,
+        state: "approved_for_session",
+        sessionApproval: {
+          grants: [{ surface: "bash", pattern: "git status" }],
+        },
+        decidedBy: DECIDED_BY_HUMAN,
+      };
+      const result = await applyPermissionGate(
+        makeParams({
+          state: "ask",
+          promptForApproval: vi.fn().mockResolvedValue(decision),
+          canGrantForSession: true,
+        }),
+      );
+      expect(result).toEqual({
+        action: "allow",
+        decidedBy: DECIDED_BY_HUMAN,
+        sessionGrant: {
+          width: "proven",
+          grants: [{ surface: "bash", pattern: "git status" }],
+        },
+      });
+    });
+
     it("reports no session grant when the decision is approved (once)", async () => {
       const decision: PermissionPromptDecision = {
         approved: true,

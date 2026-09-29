@@ -34,6 +34,7 @@ function makeConfig(
     doublePressToConfirm: true,
     sessionLabel: "Yes, for this session",
     keys: DEFAULT_DIALOG_KEYS,
+    showPersistenceSummary: true,
     ...overrides,
   };
 }
@@ -622,11 +623,244 @@ describe("reducePrompt", () => {
     });
   });
 
+  describe("durable approvals", () => {
+    const globalTarget = {
+      scope: "global" as const,
+      path: "/agent/config.json",
+      expectedDir: "/agent",
+      expectedRoot: "/agent",
+    };
+    const projectTarget = {
+      scope: "project" as const,
+      path: "/project/config.local.json",
+      expectedDir: "/project",
+      expectedRoot: "/project",
+    };
+    const proposal = { grants: [{ surface: "bash", pattern: "git status" }] };
+
+    it("offers the durable actions only with a proposal, and project only with a target", () => {
+      expect(visibleActions(makeConfig())).toEqual([
+        "approve",
+        "approveSession",
+        "deny",
+        "denyWithReason",
+      ]);
+      expect(
+        visibleActions(makeConfig({ persistent: { proposal, globalTarget } })),
+      ).toEqual([
+        "approve",
+        "approveSession",
+        "editPatterns",
+        "persistGlobal",
+        "deny",
+        "denyWithReason",
+      ]);
+      expect(
+        visibleActions(
+          makeConfig({ persistent: { proposal, projectTarget, globalTarget } }),
+        ),
+      ).toEqual([
+        "approve",
+        "approveSession",
+        "editPatterns",
+        "persistProject",
+        "persistGlobal",
+        "deny",
+        "denyWithReason",
+      ]);
+    });
+
+    it("ignores a durable hotkey the ask does not offer", () => {
+      const config = makeConfig();
+      const state = initialPromptState(config);
+      expect(
+        reducePrompt(config, state, {
+          type: "hotkey",
+          action: "persistGlobal",
+        }),
+      ).toEqual({ kind: "render", state });
+    });
+
+    it("opens the summary on the first press even with double-press on", () => {
+      const config = makeConfig({
+        persistent: { proposal, projectTarget, globalTarget },
+      });
+      const outcome = reducePrompt(config, initialPromptState(config), {
+        type: "hotkey",
+        action: "persistProject",
+      });
+      assertRender(outcome);
+      expect(outcome.state.step).toBe("persistent-confirm");
+      expect(outcome.state.persistenceTarget).toEqual(projectTarget);
+    });
+
+    it("commits the durable choice from the summary and marks it shown", () => {
+      const config = makeConfig({ persistent: { proposal, globalTarget } });
+      const opened = reducePrompt(config, initialPromptState(config), {
+        type: "hotkey",
+        action: "persistGlobal",
+      });
+      assertRender(opened);
+      expect(reducePrompt(config, opened.state, { type: "confirm" })).toEqual({
+        kind: "decision",
+        decision: {
+          kind: "persist",
+          scope: "global",
+          proposal,
+          target: globalTarget,
+          summaryShown: true,
+        },
+      });
+    });
+
+    it("backs out of the summary to the decision step", () => {
+      const config = makeConfig({ persistent: { proposal, globalTarget } });
+      const opened = reducePrompt(config, initialPromptState(config), {
+        type: "hotkey",
+        action: "persistGlobal",
+      });
+      assertRender(opened);
+      const back = reducePrompt(config, opened.state, { type: "cancel" });
+      assertRender(back);
+      expect(back.state.step).toBe("decision");
+      expect(back.state.persistenceTarget).toBeUndefined();
+    });
+
+    it("persists immediately when the sticky summary preference is off", () => {
+      const config = makeConfig({
+        doublePressToConfirm: false,
+        showPersistenceSummary: false,
+        persistent: { proposal, globalTarget },
+      });
+
+      expect(
+        reducePrompt(config, initialPromptState(config), {
+          type: "hotkey",
+          action: "persistGlobal",
+        }),
+      ).toEqual({
+        kind: "decision",
+        decision: {
+          kind: "persist",
+          scope: "global",
+          proposal,
+          target: globalTarget,
+          summaryShown: false,
+        },
+      });
+    });
+
+    it("still arms a summary-less durable press under double-press", () => {
+      const config = makeConfig({
+        showPersistenceSummary: false,
+        persistent: { proposal, globalTarget },
+      });
+      const outcome = reducePrompt(config, initialPromptState(config), {
+        type: "hotkey",
+        action: "persistGlobal",
+      });
+      assertRender(outcome);
+      expect(outcome.state.armedAction).toBe("persistGlobal");
+      expect(outcome.state.hint).toBe("Press g again to save globally.");
+    });
+
+    it("edits each pattern in turn and carries the edit on a session grant", () => {
+      const twoGrants = {
+        grants: [
+          { surface: "external_directory:read", pattern: "/a/*" },
+          { surface: "external_directory:write", pattern: "/b/*" },
+        ],
+      };
+      const config = makeConfig({
+        doublePressToConfirm: false,
+        persistent: { proposal: twoGrants, globalTarget },
+      });
+      const opened = reducePrompt(config, initialPromptState(config), {
+        type: "hotkey",
+        action: "editPatterns",
+      });
+      assertRender(opened);
+      expect(opened.state.step).toBe("edit");
+      expect(opened.state.editPatterns).toEqual(["/a/*", "/b/*"]);
+      expect(opened.state.editIndex).toBe(0);
+
+      const first = reducePrompt(config, opened.state, {
+        type: "submitEdit",
+        draft: "/a/x/*",
+      });
+      assertRender(first);
+      expect(first.state.step).toBe("edit");
+      expect(first.state.editIndex).toBe(1);
+
+      const second = reducePrompt(config, first.state, {
+        type: "submitEdit",
+        draft: "  /b/y/*  ",
+      });
+      assertRender(second);
+      expect(second.state.step).toBe("decision");
+      expect(second.state.proposal).toEqual({
+        grants: [
+          { surface: "external_directory:read", pattern: "/a/x/*" },
+          { surface: "external_directory:write", pattern: "/b/y/*" },
+        ],
+      });
+
+      expect(
+        reducePrompt(config, second.state, {
+          type: "hotkey",
+          action: "approveSession",
+        }),
+      ).toEqual({
+        kind: "decision",
+        decision: {
+          approved: true,
+          state: "approved_for_session",
+          sessionApproval: second.state.proposal,
+        },
+      });
+    });
+
+    it("rejects a blank pattern and stays on the editor", () => {
+      const config = makeConfig({ persistent: { proposal, globalTarget } });
+      const opened = reducePrompt(config, initialPromptState(config), {
+        type: "hotkey",
+        action: "editPatterns",
+      });
+      assertRender(opened);
+      const rejected = reducePrompt(config, opened.state, {
+        type: "submitEdit",
+        draft: "   ",
+      });
+      assertRender(rejected);
+      expect(rejected.state.step).toBe("edit");
+      expect(rejected.state.editError).toBe("A pattern is required.");
+    });
+
+    it("carries no proposal on a session grant the human did not edit", () => {
+      const config = makeConfig({
+        doublePressToConfirm: false,
+        persistent: { proposal, globalTarget },
+      });
+      expect(
+        reducePrompt(config, initialPromptState(config), {
+          type: "hotkey",
+          action: "approveSession",
+        }),
+      ).toEqual({
+        kind: "decision",
+        decision: { approved: true, state: "approved_for_session" },
+      });
+    });
+  });
+
   describe("bound characters", () => {
     const REMAPPED = {
       approve: "1",
       approveSession: "2",
       approveSessionBoth: "3",
+      editPatterns: "6",
+      persistProject: "7",
+      persistGlobal: "8",
       deny: "4",
       denyWithReason: "5",
     } as const;

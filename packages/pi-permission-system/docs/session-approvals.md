@@ -10,8 +10,30 @@ Selecting **Yes, allow "\<pattern\>" for this session** approves the current req
 Subsequent requests that match the pattern skip the prompt for the remainder of the session.
 
 A file-access ask adds a fifth option — see [Grant direction](#grant-direction).
+A local (not forwarded) ask that carries a proposal adds three more: edit the proposed pattern(s), persist an `allow` rule to trusted project-local policy, or persist it globally — see [Durable approvals](#durable-approvals).
 
 Session approvals are ephemeral — they are never persisted to disk and are cleared on `session_shutdown`.
+Editing changes the pattern that is recorded; it never changes the permission surface a grant was proven on.
+
+## Durable Approvals
+
+Project persistence writes only to `<cwd>/.pi/extensions/pi-permission-system/config.local.json`, and is offered only after Pi trusts the project.
+It never modifies shared project `config.json`, agent frontmatter, Pi settings, or `.gitignore`.
+Global persistence writes `~/.pi/agent/extensions/pi-permission-system/config.json` (respecting `PI_CODING_AGENT_DIR`).
+
+By default, a summary shows every exact rule — surface, pattern, `allow` — plus the scope and destination before writing.
+Press `t` in the inline prompt, or use `/permission-system` settings, to persistently toggle **Show summary before saving**.
+When the summary is disabled, selecting project or global persistence saves after the configured hotkey confirmation without a separate summary or typed acknowledgement.
+
+Writes preserve unrelated JSONC comments and formatting, validate the complete result, and atomically replace the destination.
+Policy reloads immediately.
+If writing or reload fails, the pending request is denied, the original file is restored, and the failure is recorded in the review log.
+
+Persistent rules use normal precedence and most-restrictive composition.
+A global or project-local allow cannot override a higher-precedence agent rule or a deny on `path` / `external_directory`.
+To roll back, remove the generated pattern from the displayed destination and reload Pi.
+
+Forwarded subagent prompts do not offer editing or durable persistence, because the requester must perform its own project-trust check.
 
 ## Grant Direction
 
@@ -86,6 +108,9 @@ The review log records session approval decisions:
 - `resolution: "approved_for_session"` — when the user approves with the session pattern
 - `sessionGrantWidth: "proven" | "family"` — beside it, the direction width the grant was recorded at (see [Grant direction](#grant-direction))
 - `resolution: "session_approved"` — when a later request is matched by an existing session rule
+- `permission_rule.persistence_requested` — before trust revalidation and mutation
+- `permission_rule.persistence_succeeded` — after atomic write and immediate reload
+- `permission_rule.persistence_failed` — when validation, trust, write, or reload blocks persistence
 
 ## Permission Prompt Summaries
 

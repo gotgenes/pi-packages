@@ -27,6 +27,7 @@ describe("unifiedConfigSchema", () => {
         debugLog: true,
         permissionReviewLog: false,
         yoloMode: true,
+        showPersistenceSummary: false,
         toolInputPreviewMaxLength: 1000,
         toolTextSummaryMaxLength: 120,
         piInfrastructureReadPaths: ["/extra/path"],
