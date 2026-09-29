@@ -23,6 +23,7 @@ Alternatively, add it to your Pi settings (`~/.pi/agent/settings.json`):
 ## Prerequisites
 
 - [GitHub CLI (`gh`)](https://cli.github.com/) installed and authenticated (`gh auth login`)
+- [Git](https://git-scm.com/) on `PATH` for the default `issue_close` commit-SHA check (local `git rev-parse` in the inherited working directory; no fetch)
 - Node.js ≥ 22
 
 ## Tools
@@ -82,12 +83,25 @@ In a polling tool the backoff counts against the call's `timeout`, so retries ca
 #### `issue_close`
 
 Close a GitHub issue with an optional comment.
+Before that close, every distinct lowercase word-bounded hex token of 7 to 40 characters in the comment is resolved with `git rev-parse --verify <token>^{commit}` in the inherited working directory.
+Tokens are checked once, in first-seen order.
+The check is lexical: punctuation, backticks, and URL delimiters are boundaries, and a token in a code span or a URL is still a candidate.
+Resolution does not fetch and does not test ancestry.
+If Git cannot be started, the directory is not a checkout, or any token does not resolve to a commit, the tool refuses and does not call `gh`, so nothing is closed and no comment is posted.
+A missing object in a shallow checkout is a refusal; fetching history is the caller's decision.
+Correct a mistaken SHA.
+Do not set `skip_sha_validation` to publish a typo.
+That flag posts the original comment with no Git check, and it is only for a foreign commit or a non-commit hash you intend to leave unresolved.
+A token that resolves proves the object exists locally as a commit.
+It does not prove the commit is an ancestor of the default branch, or that it is the change the comment means to cite.
+The close remains one `gh issue close` and is not retried.
 
-| Parameter      | Type   | Required | Description                                |
-| -------------- | ------ | -------- | ------------------------------------------ |
-| `issue_number` | number | yes      | The issue number to close                  |
-| `comment`      | string | no       | Comment to add when closing                |
-| `reason`       | string | no       | `"completed"` (default) or `"not_planned"` |
+| Parameter             | Type    | Required | Description                                 |
+| --------------------- | ------- | -------- | ------------------------------------------- |
+| `issue_number`        | number  | yes      | The issue number to close                   |
+| `comment`             | string  | no       | Comment to add when closing                 |
+| `reason`              | string  | no       | `"completed"` (default) or `"not_planned"`  |
+| `skip_sha_validation` | boolean | no       | Skip local SHA resolution (default refuses) |
 
 ## Usage example
 
@@ -121,9 +135,14 @@ Making a tool wait where a human would otherwise wait, making a failure legible 
   Earlier versions shipped `release_pr_find`, `release_pr_merge`, and `release_watch`, which encoded release-please's pull-request conventions.
   A release triggered as a workflow is an ordinary Actions run, so `ci_find` and `ci_watch` already follow it and no release-specific tool is needed.
 - _A GitHub API client._
-  The `gh` CLI is the sole external binary dependency, and there are no runtime dependencies at all.
+  There are no runtime dependencies.
+  The tools shell out to the `gh` CLI.
+  `issue_close` also runs local `git rev-parse` before its single `gh issue close`, and refuses the close when a candidate does not resolve.
 - _Auto-retrying mutations._
   Reads retry on transient failures; `issue_close` does not, since a retried close would post a duplicate comment.
+- _Proving a cited commit is the right one._
+  Resolving a SHA shows only that the local checkout has that commit object.
+  Ancestry on the default branch, and whether the hash is the change the comment means, stay with the caller.
 
 **Where adjacent requests belong.**
 Whether to release now, and which packages a release bumps → the calling prompt, not the tool.
