@@ -326,6 +326,25 @@ const shellToolsSchema = z
     ],
   });
 
+// The surface families the bounded-delegation checkpoint caps
+// (`DELEGATION_EXCLUDED_SURFACES`, authority/delegation-envelope.ts): the only
+// families trust can lift a cap on.
+const authorizerTrustSchema = z
+  .record(
+    z.string().min(1).meta({
+      description: "An authorizerChain link name.",
+    }),
+    z.array(z.enum(["external_directory", "path"])),
+  )
+  .meta({
+    description:
+      "Per authorizerChain link, the excluded surface families (external_directory, path) on which that link's allow is honored instead of being capped to defer by the bounded-delegation checkpoint.",
+    markdownDescription:
+      'Per `authorizerChain` link, the excluded surface **families** (`external_directory`, `path`, each including its directional members) on which that link\'s `allow` is honored instead of being downgraded to `defer` by the bounded-delegation checkpoint.\n\nAn explicit grant to one link you trust to judge access outside your policy — e.g. an extension that implements a session-wide "approve everything" mode. Every other link stays capped, `deny` rules still deny (the chain only sees `ask`s), and an ask whose surface cannot be determined stays capped. A trusted grant is recorded as `authorizer_trusted_allow` in the review log.\n\nExample:\n\n```json\n"authorizerTrust": {\n  "my-mode-link": ["external_directory", "path"]\n}\n```\n\n**Merge order:** replaced whole, like `authorizerChain`: a project config that sets the key states the trust completely.\n\nDefaults to no trust (every link capped).',
+    default: {},
+    examples: [{ "my-mode-link": ["external_directory", "path"] }],
+  });
+
 /**
  * The on-disk config file shape.
  *
@@ -422,9 +441,10 @@ export const unifiedConfigSchema = z
       description:
         "Ordered names of registered live-authority chain links to consult before the terminal authorizer. Config order (not registration order) fixes the chain order; an unregistered name is skipped fail-safe (more prompting, never less); a link decides nothing until it is named here.",
       markdownDescription:
-        "Ordered names of registered **live-authority chain links** (e.g. a model judge) to consult before the terminal authorizer (the human, or the subagent-forwarding / headless-deny fallback).\n\nA link reviews an `ask` and returns `allow` / `deny` (with an optional teaching reason) / `defer` to the next link. Three invariants govern the chain:\n\n- **Config order wins.** The order here \u2014 not the order extensions register in \u2014 fixes the security-relevant chain order.\n- **Fail-safe skip.** A name with no registered link is skipped with a warning; the `ask` still reaches the terminal (more prompting, never less).\n- **Opt-in activation.** Installing a judge extension grants it no authority; a link decides nothing until you name it here.\n\nThe chain owner caps every verdict with a bounded-delegation checkpoint: a link's `allow` on an excluded surface (`external_directory` or `path`) is downgraded to `defer`, so a link cannot exceed your policy.\n\nDefaults to an empty list (no links).",
+        "Ordered names of registered **live-authority chain links** (e.g. a model judge) to consult before the terminal authorizer (the human, or the subagent-forwarding / headless-deny fallback).\n\nA link reviews an `ask` and returns `allow` / `deny` (with an optional teaching reason) / `defer` to the next link. Three invariants govern the chain:\n\n- **Config order wins.** The order here \u2014 not the order extensions register in \u2014 fixes the security-relevant chain order.\n- **Fail-safe skip.** A name with no registered link is skipped with a warning; the `ask` still reaches the terminal (more prompting, never less).\n- **Opt-in activation.** Installing a judge extension grants it no authority; a link decides nothing until you name it here.\n\nThe chain owner caps every verdict with a bounded-delegation checkpoint: a link's `allow` on an excluded surface (`external_directory` or `path`) is downgraded to `defer`, so a link cannot exceed your policy — unless `authorizerTrust` trusts that link with the surface's family.\n\nDefaults to an empty list (no links).",
       default: [],
     }),
+    authorizerTrust: authorizerTrustSchema.optional(),
     permission: permissionSchema.optional(),
     shellTools: shellToolsSchema.optional(),
   })
@@ -450,6 +470,9 @@ export type FlatPermissionConfig = z.infer<typeof permissionSchema>;
 
 /** The `shellTools` map: tool name → shell-alias argument mapping. */
 export type ShellToolsConfig = z.infer<typeof shellToolsSchema>;
+
+/** The `authorizerTrust` map: link name → excluded surface families it may allow on. */
+export type AuthorizerTrustConfig = z.infer<typeof authorizerTrustSchema>;
 
 /** The raw config file shape after validation (all fields optional). */
 export type UnifiedPermissionConfig = z.infer<typeof unifiedConfigSchema>;

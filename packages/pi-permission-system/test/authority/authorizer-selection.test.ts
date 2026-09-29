@@ -420,6 +420,77 @@ describe("AuthorizerSelection", () => {
       });
     });
 
+    it("honors a trusted link's allow on an excluded family (authorizerTrust)", async () => {
+      const registry = new AuthorizerRegistry();
+      register(registry, "judge", { kind: "allow" });
+      const selection = new AuthorizerSelection(
+        makeDeps({
+          prompter: makeInvokingPrompter(),
+          authorizerRegistry: registry,
+          getAuthorizerChain: () => ["judge"],
+          getAuthorizerTrust: () => ({ judge: ["external_directory"] }),
+        }),
+      );
+      selection.activate(makeCtx({ hasUI: false }));
+
+      const decision = await selection.escalate(
+        makeDetailsOn("external_directory_read"),
+      );
+
+      expect(decision).toEqual({
+        approved: true,
+        state: "approved",
+        decidedBy: {
+          kind: "authorizer",
+          name: "judge",
+          verdict: "allow",
+          reason: null,
+        },
+      });
+    });
+
+    it("keeps capping a trusted link on a family it is not trusted with", async () => {
+      const registry = new AuthorizerRegistry();
+      register(registry, "judge", { kind: "allow" });
+      const selection = new AuthorizerSelection(
+        makeDeps({
+          prompter: makeInvokingPrompter(),
+          authorizerRegistry: registry,
+          getAuthorizerChain: () => ["judge"],
+          getAuthorizerTrust: () => ({ judge: ["external_directory"] }),
+        }),
+      );
+      selection.activate(makeCtx({ hasUI: false }));
+
+      const decision = await selection.escalate(makeDetailsOn("path_write"));
+
+      expect(decision.approved).toBe(false);
+    });
+
+    it("keeps capping every other link when one link is trusted", async () => {
+      const registry = new AuthorizerRegistry();
+      register(registry, "judge", { kind: "allow" });
+      register(registry, "trusted", { kind: "defer" });
+      const selection = new AuthorizerSelection(
+        makeDeps({
+          prompter: makeInvokingPrompter(),
+          authorizerRegistry: registry,
+          getAuthorizerChain: () => ["judge", "trusted"],
+          getAuthorizerTrust: () => ({
+            trusted: ["external_directory", "path"],
+          }),
+        }),
+      );
+      selection.activate(makeCtx({ hasUI: false }));
+
+      const decision = await selection.escalate(
+        makeDetailsOn("external_directory"),
+      );
+
+      // judge's allow is capped to defer, trusted defers: the denying terminal decides.
+      expect(decision.approved).toBe(false);
+    });
+
     it("a registered but un-named link grants no authority (terminal identity)", async () => {
       const registry = new AuthorizerRegistry();
       register(registry, "judge", { kind: "allow" });

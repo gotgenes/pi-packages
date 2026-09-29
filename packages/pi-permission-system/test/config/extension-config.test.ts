@@ -208,6 +208,20 @@ describe("normalizePermissionSystemConfig", () => {
     expect("authorizerChain" in result).toBe(false);
   });
 
+  it("includes authorizerTrust when provided", () => {
+    const result = normalizePermissionSystemConfig({
+      authorizerTrust: { "model-judge": ["external_directory"] },
+    });
+    expect(result.authorizerTrust).toEqual({
+      "model-judge": ["external_directory"],
+    });
+  });
+
+  it("omits authorizerTrust when absent", () => {
+    const result = normalizePermissionSystemConfig({});
+    expect("authorizerTrust" in result).toBe(false);
+  });
+
   it("includes permissionDialogKeys when provided", () => {
     const result = normalizePermissionSystemConfig({
       permissionDialogKeys: { approve: "1", deny: "4" },

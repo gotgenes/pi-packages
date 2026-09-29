@@ -1171,6 +1171,77 @@ describe("service and chain share one authorizer registry", () => {
   });
 });
 
+describe("authorizerTrust lifts the delegation cap for one named link", () => {
+  // An outside-cwd read by bash raises an external_directory ask; the link
+  // allows it. Whether the allow stands is decided by authorizerTrust alone.
+  async function runOutsideRead(config: Record<string, unknown>): Promise<{
+    block: true | undefined;
+    titles: string[];
+    linkCalls: number;
+  }> {
+    writeGlobalConfig(config);
+    const cwd = mkdtempSync(join(tmpdir(), "pi-perm-trust-cwd-"));
+    const outside = mkdtempSync(join(tmpdir(), "pi-perm-trust-out-"));
+    const pi = makeFakePi();
+    piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+    const titles: string[] = [];
+    const { ctx } = makeUiCtx(cwd, titles);
+    await fireSessionStart(pi, ctx);
+    let linkCalls = 0;
+    getPermissionsService("ui-session")!.registerAuthorizer("mode", () => {
+      linkCalls += 1;
+      return Promise.resolve({ kind: "allow" });
+    });
+    const result = (await pi.fire(
+      "tool_call",
+      {
+        toolName: "bash",
+        toolCallId: "t-1",
+        input: { command: `ls ${outside}` },
+      },
+      ctx,
+    )) as { block?: true } | undefined;
+    rmSync(cwd, { recursive: true, force: true });
+    rmSync(outside, { recursive: true, force: true });
+    return { block: result?.block, titles, linkCalls };
+  }
+
+  const policy = {
+    permission: { "*": "allow", external_directory: { "*": "ask" } },
+    authorizerChain: ["mode"],
+  };
+
+  it("caps the link's allow without trust: the user is asked", async () => {
+    const run = await runOutsideRead(policy);
+    expect(run.linkCalls).toBe(1);
+    expect(run.titles).toHaveLength(1);
+  });
+
+  it("honors the trusted link's allow: no prompt, and the grant is recorded", async () => {
+    const run = await runOutsideRead({
+      ...policy,
+      authorizerTrust: { mode: ["external_directory"] },
+    });
+    expect(run.block).toBeUndefined();
+    expect(run.linkCalls).toBe(1);
+    expect(run.titles).toEqual([]);
+    expect(readReviewLog().map((e) => e.event)).toContain(
+      "authorizer_trusted_allow",
+    );
+  });
+
+  it("never consults the trusted link on a deny rule", async () => {
+    const run = await runOutsideRead({
+      ...policy,
+      permission: { "*": "allow", external_directory: { "*": "deny" } },
+      authorizerTrust: { mode: ["external_directory"] },
+    });
+    expect(run.block).toBe(true);
+    expect(run.linkCalls).toBe(0);
+    expect(run.titles).toEqual([]);
+  });
+});
+
 describe("ready emitted after service publication", () => {
   // Ordering contracts exist only at the composition root: a consumer reacting
   // to permissions:ready must be able to resolve the service immediately. The

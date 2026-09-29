@@ -288,6 +288,36 @@ describe("unifiedConfigSchema", () => {
     });
   });
 
+  describe("authorizerTrust field", () => {
+    it("accepts excluded families per link name", () => {
+      const result = unifiedConfigSchema.safeParse({
+        authorizerTrust: { "my-link": ["external_directory", "path"] },
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it("rejects a family the checkpoint does not cap", () => {
+      const result = unifiedConfigSchema.safeParse({
+        authorizerTrust: { "my-link": ["bash"] },
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it("rejects a directional member instead of its family", () => {
+      const result = unifiedConfigSchema.safeParse({
+        authorizerTrust: { "my-link": ["external_directory_read"] },
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it("rejects an empty link name", () => {
+      const result = unifiedConfigSchema.safeParse({
+        authorizerTrust: { "": ["path"] },
+      });
+      expect(result.success).toBe(false);
+    });
+  });
+
   // The schema checks shape; whether a well-formed string is a *usable*
   // binding is `resolveDialogKeys`' question, answered tolerantly. A
   // misspelled decision name has no such recovery — it would simply sit
