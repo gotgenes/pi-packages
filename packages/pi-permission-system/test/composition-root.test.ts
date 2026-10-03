@@ -223,6 +223,21 @@ function fireSessionStart(
   return pi.fire("session_start", { reason: "start" }, ctx);
 }
 
+/** Drive the `/yolo` command handler the factory registered. */
+async function runYoloCommand(
+  pi: ReturnType<typeof makeFakePi>,
+  ctx: unknown,
+  args: string,
+): Promise<void> {
+  const definition = pi.commands.get("yolo") as
+    | { handler: (args: string, ctx: unknown) => unknown }
+    | undefined;
+  if (!definition) {
+    throw new Error("No /yolo command registered");
+  }
+  await definition.handler(args, ctx);
+}
+
 /**
  * Simulate the parent UI session responding to a forwarded permission request.
  *
@@ -2070,6 +2085,7 @@ describe("yolo grants asks synthesized after resolution", () => {
   async function runBashCommand(
     config: Record<string, unknown>,
     command: string,
+    options: { yoloArgs?: string[] } = {},
   ): Promise<{ blocked: boolean; prompts: string[] }> {
     writeGlobalConfig(config);
     const cwd = mkdtempSync(join(tmpdir(), "pi-perm-yolo-cwd-"));
@@ -2079,6 +2095,9 @@ describe("yolo grants asks synthesized after resolution", () => {
     const prompts: string[] = [];
     const { ctx } = makeUiCtx(cwd, prompts);
     await fireSessionStart(pi, ctx);
+    for (const args of options.yoloArgs ?? []) {
+      await runYoloCommand(pi, ctx, args);
+    }
 
     const result = (await pi.fire(
       "tool_call",
@@ -2159,6 +2178,32 @@ describe("yolo grants asks synthesized after resolution", () => {
     );
 
     expect(outcome).toEqual({ blocked: true, prompts: [] });
+  });
+
+  it("auto-approves a floored wrapper after /yolo on, leaving the config untouched", async () => {
+    const outcome = await runBashCommand(
+      { ...permissiveBash, yoloMode: false },
+      flooredWrapper,
+      { yoloArgs: ["on"] },
+    );
+
+    expect(outcome).toEqual({ blocked: false, prompts: [] });
+    // The override lives in the session; the file still says what it said.
+    const saved = JSON.parse(
+      readFileSync(getGlobalConfigPath(agentDir), "utf8"),
+    ) as { yoloMode?: boolean };
+    expect(saved.yoloMode).toBe(false);
+  });
+
+  it("prompts for a floored wrapper again after /yolo off under a yolo config", async () => {
+    const outcome = await runBashCommand(
+      { ...permissiveBash, yoloMode: true },
+      flooredWrapper,
+      { yoloArgs: ["off"] },
+    );
+
+    expect(outcome.blocked).toBe(false);
+    expect(outcome.prompts[0]).toContain("<indirection-bash-wrapper>");
   });
 });
 

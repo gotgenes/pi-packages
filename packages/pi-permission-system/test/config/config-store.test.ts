@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   mockLoadAndMergeConfigs,
   mockLoadUnifiedConfig,
-  mockSyncPermissionSystemStatus,
+  mockSyncYoloStatus,
   mockBuildResolvedConfigLogEntry,
   mockExistsSync,
   mockMkdirSync,
@@ -15,7 +15,7 @@ const {
 } = vi.hoisted(() => ({
   mockLoadAndMergeConfigs: vi.fn(),
   mockLoadUnifiedConfig: vi.fn(),
-  mockSyncPermissionSystemStatus: vi.fn(),
+  mockSyncYoloStatus: vi.fn(),
   mockBuildResolvedConfigLogEntry: vi.fn(),
   mockExistsSync: vi.fn<(path: string) => boolean>(),
   mockMkdirSync: vi.fn(),
@@ -30,7 +30,7 @@ vi.mock("#src/config/config-loader", () => ({
 }));
 
 vi.mock("#src/config/status", () => ({
-  syncPermissionSystemStatus: mockSyncPermissionSystemStatus,
+  syncYoloStatus: mockSyncYoloStatus,
 }));
 
 vi.mock("#src/config/config-reporter", () => ({
@@ -125,7 +125,7 @@ describe("ConfigStore", () => {
       issues: [],
     });
     mockLoadUnifiedConfig.mockReset().mockReturnValue({ config: {} });
-    mockSyncPermissionSystemStatus.mockReset();
+    mockSyncYoloStatus.mockReset();
     mockBuildResolvedConfigLogEntry
       .mockReset()
       .mockReturnValue({ resolved: true });
@@ -266,7 +266,7 @@ describe("ConfigStore", () => {
     it("does not sync the status bar", () => {
       const { store } = makeStore();
       store.refresh("/my/project", true);
-      expect(mockSyncPermissionSystemStatus).not.toHaveBeenCalled();
+      expect(mockSyncYoloStatus).not.toHaveBeenCalled();
     });
 
     it("carries piInfrastructureReadPaths from merged config into current()", () => {
@@ -308,14 +308,18 @@ describe("ConfigStore", () => {
       expect(store.current().debugLog).toBe(true);
     });
 
-    it("calls syncPermissionSystemStatus after a successful save", () => {
+    it("syncs the status from the saved config after a successful save", () => {
       const { store } = makeStore();
       const ctx = makeCommandCtx();
       store.save({ ...DEFAULT_EXTENSION_CONFIG }, ctx);
-      expect(mockSyncPermissionSystemStatus).toHaveBeenCalledWith(
-        ctx,
-        expect.any(Object),
-      );
+      expect(mockSyncYoloStatus).toHaveBeenCalledWith(ctx, false);
+    });
+
+    it("syncs the status from the session's effective yolo state when the composition root supplies one", () => {
+      const { store } = makeStore({ isYoloActive: () => true });
+      const ctx = makeCommandCtx();
+      store.save({ ...DEFAULT_EXTENSION_CONFIG }, ctx);
+      expect(mockSyncYoloStatus).toHaveBeenCalledWith(ctx, true);
     });
 
     it("writes config.saved debug log after a successful save", () => {

@@ -3,11 +3,7 @@ import type {
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 
-import {
-  EXTENSION_ID,
-  isYoloModeEnabled,
-  type PermissionSystemExtensionConfig,
-} from "./extension-config";
+import { EXTENSION_ID } from "./extension-config";
 
 export const PERMISSION_SYSTEM_STATUS_KEY = EXTENSION_ID;
 export const PERMISSION_SYSTEM_YOLO_STATUS_VALUE = "yolo";
@@ -16,20 +12,21 @@ type PermissionStatusContext =
   | Pick<ExtensionContext, "hasUI" | "ui">
   | Pick<ExtensionCommandContext, "ui">;
 
-export function getPermissionSystemStatus(
-  config: PermissionSystemExtensionConfig,
-): string | undefined {
-  return isYoloModeEnabled(config)
-    ? PERMISSION_SYSTEM_YOLO_STATUS_VALUE
-    : undefined;
+/**
+ * The status-bar value for an effective yolo state, or `undefined` to clear it.
+ *
+ * The status bar reports what is *in effect* here, not what the config file
+ * says: a session may run under the `/yolo` override, and an indicator that
+ * disagreed with the gates would be a false signal in a permission surface.
+ */
+export function yoloStatusValue(yoloActive: boolean): string | undefined {
+  return yoloActive ? PERMISSION_SYSTEM_YOLO_STATUS_VALUE : undefined;
 }
 
-export function syncPermissionSystemStatus(
+/** Write the status bar from the effective yolo state. */
+export function syncYoloStatus(
   ctx: PermissionStatusContext,
-  config: PermissionSystemExtensionConfig,
+  yoloActive: boolean,
 ): void {
-  ctx.ui.setStatus(
-    PERMISSION_SYSTEM_STATUS_KEY,
-    getPermissionSystemStatus(config),
-  );
+  ctx.ui.setStatus(PERMISSION_SYSTEM_STATUS_KEY, yoloStatusValue(yoloActive));
 }

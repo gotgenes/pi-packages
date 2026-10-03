@@ -119,6 +119,26 @@ This clamp is deny-preserving and, like `yoloMode`, applied at composition; when
 Both logs write to `~/.pi/agent/extensions/pi-permission-system/logs/`.
 No debug output is printed to the terminal.
 
+### Session yolo override (`/yolo`)
+
+`yoloMode` is the persistent answer; `/yolo` is the transient one.
+The command changes yolo mode for the current session only and never writes the config file, so a full-permissive pass leaves no trace behind:
+
+| Invocation     | Effect                                                                |
+| -------------- | --------------------------------------------------------------------- |
+| `/yolo`        | Toggles the effective yolo state for this session                     |
+| `/yolo on`     | Turns yolo on for this session, whatever the config says              |
+| `/yolo off`    | Restores this session to the config's `yoloMode` value                |
+| `/yolo status` | Reports the effective state and what the config says; changes nothing |
+| `/yolo help`   | Shows the usage                                                       |
+
+The override sits above the config, and every gate reads the result: the `ask` → `allow` rewrite, the asks synthesized for wrapper and unparseable-command floors, and the `yolo` status-bar indicator, which always shows what is in effect rather than what the file says.
+The command reports both values, so `yolo mode: ON (session only; config yoloMode stays false)` names the difference rather than only the result.
+Nothing survives the session: a new session starts from the config, and `/yolo off` hands one back before then.
+A subagent session has its own override — run `/yolo` in that session to govern that node, and note that an ask the child forwards up is answered by the serving session under *its* state.
+
+Yolo is an explicit full-permissive opt-in: an explicit `deny` still denies under it.
+
 ### Inline permission dialog (TUI)
 
 In an interactive **TUI** session, an `ask` decision opens an inline keybind dialog with one-key shortcuts:

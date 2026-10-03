@@ -56,6 +56,8 @@ import { LocalPermissionsService } from "#src/service/permissions-service";
 import { PermissionServiceLifecycle } from "#src/service/service-lifecycle";
 import { PermissionSession } from "#src/session/permission-session";
 import { SessionRules } from "#src/session/session-rules";
+import { registerYoloCommand } from "#src/session/yolo-command";
+import { SessionYoloOverride } from "#src/session/yolo-override";
 import { registerBuiltinToolInputFormatters } from "#src/tool-input/builtin-tool-input-formatters";
 import { ToolAccessExtractorRegistry } from "#src/tool-input/tool-access-extractor-registry";
 import { ToolInputFormatterRegistry } from "#src/tool-input/tool-input-formatter-registry";
@@ -107,11 +109,20 @@ export default function piPermissionSystemExtension(pi: ExtensionAPI): void {
   // eslint-disable-next-line prefer-const -- forward-declared let; `const` requires an initializer
   let session: PermissionSession;
 
+  // One override per factory, so the `/yolo` switch cannot outlive its
+  // session: Pi caches extension imports per cwd (pi#5905), so module-level
+  // state here would survive a session switch in one process.
+  const yoloOverride = new SessionYoloOverride();
+
   // Declared after the `configStore` forward declaration so the reader can
   // close over it; every call runs after configStore is assigned below. yolo is
   // a composition-stage ask→allow rewrite (#526) that the gate runner extends
   // to asks synthesized after resolution (#712), so both share this reader.
-  const isYoloEnabled = (): boolean => isYoloModeEnabled(configStore.current());
+  // The reader answers the *effective* state, so a session's `/yolo` override
+  // reaches every consumer without any of them knowing the config exists.
+  const isYoloInConfig = (): boolean =>
+    isYoloModeEnabled(configStore.current());
+  const isYoloEnabled = (): boolean => yoloOverride.resolve(isYoloInConfig());
 
   const permissionManager = new PermissionManager({
     agentDir,
@@ -129,6 +140,7 @@ export default function piPermissionSystemExtension(pi: ExtensionAPI): void {
     agentDir,
     policyPaths: permissionManager,
     logger,
+    isYoloActive: isYoloEnabled,
   });
 
   const prompter = new PermissionPrompter({ logger });
@@ -240,6 +252,7 @@ export default function piPermissionSystemExtension(pi: ExtensionAPI): void {
     configStore,
     authorizerSelection,
     hostFlavor,
+    yoloOverride,
   );
 
   // refresh() must run after `session` is assigned: a debug-write IO failure
@@ -259,6 +272,10 @@ export default function piPermissionSystemExtension(pi: ExtensionAPI): void {
       permissionManager.getComposedConfigRules(
         session.lastKnownActiveAgentName ?? undefined,
       ),
+  });
+  registerYoloCommand(pi, {
+    override: yoloOverride,
+    getConfigYolo: isYoloInConfig,
   });
 
   // Explicitly annotated to break a type-inference cycle: the selection's
