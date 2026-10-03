@@ -143,9 +143,9 @@ const MIN_WIDGET_LINES = 3;
  * Dock rows below the widget that the budget must leave alone: Pi's editor plus
  * its footer, measured at 5 (3 + 2) against pi-tui 0.84.4 and reserved at 6 so a
  * taller editor still leaves the widget's first animated line inside the
- * viewport. Pi's differential renderer full-clears the screen and the scrollback
- * whenever the first changed line sits above the previous viewport top, and the
- * widget's spinner is that line on every tick (#864).
+ * viewport. Pi's regular-mode differential renderer full-clears the screen and
+ * the scrollback whenever the first changed line sits above the previous
+ * viewport top, and the widget's spinner is that line on every tick (#864).
  */
 const DOCK_LINES_BELOW_WIDGET = 6;
 

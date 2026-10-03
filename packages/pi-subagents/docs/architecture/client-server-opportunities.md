@@ -21,7 +21,7 @@ A subagent **is** a child `AgentSession`. pi-subagents already creates one via `
 Today that child session is an in-process object visible only through machinery pi-subagents had to invent because Pi has no session-sync client:
 
 - `record-observer` re-derives live activity from raw session events.
-- the 250 ms `SubagentManager.listAgents()` widget poll.
+- the 80 ms `SubagentManager.listAgents()` widget poll.
 - the [#277] Law-of-Demeter accessors (`Subagent.getConversation()`, `.messages`, `.subscribeToUpdates()`, `.getContextPercent()`) that re-expose session internals.
 - the bespoke `ConversationViewer`, and [ADR-0004]'s replacement, native session navigation.
 - [ADR-0004]'s dual-source-by-liveness split (tracked agent → in-memory record; evicted → file snapshot).
@@ -96,7 +96,7 @@ This validates and sharpens the direction the architecture doc is already headin
 | Today (pi-subagents reinvents it)                                        | Under the server architecture                              |
 | ------------------------------------------------------------------------ | ---------------------------------------------------------- |
 | `record-observer` re-deriving live activity                              | `subscribeSession` delta stream                            |
-| 250 ms `listAgents()` widget poll                                        | `session_created` / `session_status_changed` global events |
+| 80 ms `listAgents()` widget poll                                         | `session_created` / `session_status_changed` global events |
 | [#277] accessors (`messages`, `subscribeToUpdates`, `getContextPercent`) | `SessionSnapshot` + deltas                                 |
 | `ConversationViewer` / native session navigation                         | client renders the snapshot through Pi's own components    |
 | dual-source-by-liveness split                                            | server rehydrates; client sees one session shape           |

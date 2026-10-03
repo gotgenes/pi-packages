@@ -68,12 +68,13 @@ export type UICtx = {
 /**
  * How often the widget re-renders while a subagent animates.
  *
- * Pi renders the entire regular-mode component tree per request, and the widget
- * is the only thing requesting one while the parent idles, so this is the
- * cadence of that whole-tree walk. Deliberately slower than Pi's own `Loader`
- * default, which pays 80 ms only during a turn the user is already watching.
+ * 80 ms is Pi's own `Loader` value, drawing from the same 10 braille frames
+ * (`SPINNER` in `src/ui/glyphs.ts`).
+ * 250 ms was Issue #864's answer: in regular mode every spinner tick was the
+ * first changed row above the previous viewport top, which triggers a full
+ * clear. Fullscreen mode, Pi's default, has no such path.
  */
-const WIDGET_UPDATE_INTERVAL_MS = 250;
+const WIDGET_UPDATE_INTERVAL_MS = 80;
 
 // ---- Widget manager ----
 

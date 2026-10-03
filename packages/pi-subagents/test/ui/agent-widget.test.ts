@@ -515,7 +515,7 @@ describe("AgentWidget — animation cadence", () => {
 	// The widget is the only thing driving Pi's renderer while the parent idles,
 	// and each render walks the whole component tree, so the cadence is a cost
 	// paid per running agent for as long as it runs.
-	it("asks Pi for one render per 250 ms while an agent runs", () => {
+	it("asks Pi for one render per 80 ms while an agent runs", () => {
 		const record = createTestSubagent({
 			id: "a1",
 			status: "running",
@@ -535,7 +535,7 @@ describe("AgentWidget — animation cadence", () => {
 		widget.onSubagentStarted(record);
 		expect(requestRender).not.toHaveBeenCalled();
 
-		vi.advanceTimersByTime(249);
+		vi.advanceTimersByTime(79);
 		expect(requestRender).not.toHaveBeenCalled();
 
 		vi.advanceTimersByTime(1);
