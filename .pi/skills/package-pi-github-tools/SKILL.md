@@ -34,7 +34,7 @@ src/
 ## Implementation Priorities
 
 - `src/lib/` must not import from `@earendil-works/pi-coding-agent` — only `src/tools/` and `src/progress.ts` touch Pi types.
-- The `gh` CLI is the sole external binary dependency.
+- The `gh` CLI is the main external binary dependency; `issue_close` also runs local `git rev-parse` to refuse a comment citing an unresolvable commit SHA.
 - Retry is opt-in at the call site: read-only calls go through `ghJsonRetrying`, and `gh()` stays single-shot so a mutation cannot acquire retry by accident.
 - `ci_find` matches a run purely on `headSha` and never inspects the triggering event, so it follows a `workflow_dispatch` run — the repo's release workflow — as readily as a `push` one.
 

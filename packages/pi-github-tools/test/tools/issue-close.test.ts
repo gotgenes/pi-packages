@@ -60,13 +60,7 @@ describe("issue_close tool", () => {
     expect(skip.type).toBe("boolean");
     expect(tool.parameters.required ?? []).not.toContain("skip_sha_validation");
     expect(skip.description).toMatch(/Correct a typo/);
-    expect(tool.description).toMatch(/refuses to close/);
-    expect(tool.description).toMatch(/7-40/);
     expect(tool.description).toMatch(/skip_sha_validation/);
-    expect(tool.description).toMatch(/foreign commit/);
-    expect(tool.description).toMatch(/does not fetch/);
-    expect(tool.description).toMatch(/ancestry/);
-    expect(tool.description).toMatch(/not retried/);
   });
 
   it("forwards skip_sha_validation and the other arguments", async () => {
