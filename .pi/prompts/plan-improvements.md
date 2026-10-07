@@ -190,7 +190,7 @@ For an SDK **UI or behavioral** capability (not just "does this method exist"), 
 A step is identified by its GitHub issue number, so the issues are filed **before** the roadmap is written — there is no link-back pass and no second commit.
 Steps adopted from already-filed issues need no new issue; file only the steps without one, and when every step adopts an existing issue there is nothing to file at all.
 
-1. Load the `github-voice` skill, then file the issues **one `gh issue create --label "enhancement,pkg:$1"` call per issue**, with the title and `--body-file` paired literally in the same command — never via shell-array index arithmetic (the shell is zsh; its 1-indexed arrays silently shift titles relative to bodies).
+1. Load the `github-voice` skill, then file the issues **one `gh issue create --label "enhancement,pkg:$1"` call per issue**, with the title and `--body-file` paired literally in the same command — never via shell-array index arithmetic (an off-by-one in the index silently pairs a title with the wrong body).
    A `bug`-typed step keeps the `bug` label instead of `enhancement`.
    Run `gh` from the repo root (it must execute inside the repository).
    Use the repo's `## What` / `## Why` / `## Proposed change` / `## Context` sections.
