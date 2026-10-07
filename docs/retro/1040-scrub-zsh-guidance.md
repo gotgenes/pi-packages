@@ -19,3 +19,16 @@ The change is docs-only and goes to `/build-plan`.
 - Operator gate: move the glob rule to the `shell-traps` skill body (admission question 2: generic bash, not an environment fact) rather than keep it in `AGENTS.md`.
 - `$SHELL` still reports `/opt/homebrew/bin/zsh` (the login shell), so `scripts/release/lib.sh` lines 24–26 stay as written.
 - `docs/agent-docs-audit/2026-09-29/inventory-workflow.md` records the old zsh parenthetical as "keep"; it is historical and left alone.
+
+## Stage: Implementation — Build (2026-10-07T15:52:38Z)
+
+### Session summary
+
+I completed the plan's single step in a1bd95cc.
+It deletes the zsh lines from `AGENTS.md` `### Shell`, drops the zsh pointer and the zsh `echo` trap from `shell-traps`, adds the bash glob rule there, and rewords the `plan-improvements.md` line 193 parenthetical.
+
+### Observations
+
+- No deviations from the plan.
+- Verification checks 1–4 gave the predicted output: the absence grep is empty, and only `scripts/release/lib.sh` lines 24 and 26 still mention zsh.
+- Pre-completion reviewer: PASS.
