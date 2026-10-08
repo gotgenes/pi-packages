@@ -1340,6 +1340,8 @@ Deferred by composition, with the reason each carries: [#804] (staging slice 7, 
   It repairs repo-wide markdown that `rumdl`'s MD018 fix turned into headings, unrelated to token roles or declared effects.
 - [#1037] — filed by the #910 retrospective; out of scope for the roadmap.
   It lifts the repo's `rumdl` version pin, which is lint tooling, not this package's code.
+- [#1042] — filed by [#1039]'s implementation; **becomes a new step in this phase, directly after [#1027]** (operator decision, 2026-10-08).
+  `sudo -e`/`--edit` (sudoedit) edits its operands as files, but the wrapper peel skips `-e` as a flag and reads the next word as the inner command, so `sudo -e cat` earns the `core-reader` exemption for a root write; it is a fail-open in the `wrapper-analysis.ts` peel [#963] and [#1027] reshape.
 - Feature issues [#691], [#687], [#680], [#654], [#648], [#604], [#603], [#472] — out of scope for a structural phase; [#680] is narrowed further by [#880] (a declared reader needs no floor override), and [#604] by [#813].
 
 #### Deferred tidyings swept
@@ -1713,6 +1715,19 @@ The enumerator emits one unit for the whole line and never descends the subshell
 
 Release: independent
 
+#### [#1042] `sudo -e` operands are files, not an inner command
+
+**Cause:** sudoedit (`sudo -e`, `sudo --edit`) opens each operand in the user's editor and writes it back as root, but `innerCommandIndex` skips `-e` as an ordinary flag and takes the next word as the command `sudo` runs.
+When that word is a pure-reader core word, `floorExemptionOf` answers `"core-reader"`, so `sudo -e cat` resolves by `cat`'s rule instead of the `<indirection-bash-wrapper>` floor.
+
+- **Smell:** Category C (a write the peel proves as a read).
+- **Target:** `src/access-intent/bash/wrapper-analysis.ts` — a `sudo` layer carrying `-e`, `--edit`, or a short cluster containing `e` keeps the floor, and `executedUnitOf` names no inner command for it.
+- **Constraint:** fail-closed — the peel refuses rather than models sudoedit.
+- **Outcome:** under `bash: {"*": "allow"}`, `sudo -e cat` and `sudo --edit true` ask with `<indirection-bash-wrapper>`.
+- **Commit type:** `fix:`.
+
+Release: independent
+
 #### [#880] `commandEffects` — the user declares what their own tools do
 
 **Cause:** ADR 0013 §7 gives the deterministic layer three effect sources and the package ships two; without the third, every subcommand- or option-dependent reader (`git log`, `sed -n`, `strings`) is unproven, consults both directional surfaces, and asks on `_write` for a read — the largest measured population left after the core (`git` 92 and `sed` 24 of 388 recent asks, the latter net of the read-only share [#924] moves into the core — what remains for a declaration is `sed -i` and the scripts the parser cannot classify).
@@ -1781,6 +1796,7 @@ flowchart TD
     S1029 -.soft.-> S1030["✅ #1030<br/>A forwarded ask carries every unit"]
     S1030 -.soft.-> S1033["✅ #1033<br/>A session grant covers one unit"]
     S1033 -.soft.-> S1027["#1027<br/>Commands inside time ( … )"]
+    S1027 -.soft.-> S1042["#1042<br/>sudo -e keeps the floor"]
     S963 -.soft.-> S880["#880<br/>commandEffects"]
     S880 --> S881["#881<br/>Blame reaches the ask"]
     S609 -.soft.-> S881
@@ -1805,7 +1821,7 @@ The diagram is laid out by dependency instead, so its shape and the working sequ
 - **Track A — role-carrying projection:** [#945] → [#863] → [#859] → [#957] → [#609] → [#977] → [#979] → [#985] → [#978].
   [#977] also re-enters `command-enumeration.ts` and the argument words `command-effects.ts`'s guards read, which Track B's [#924] and [#880] edit — sequence it against whichever of them is in flight rather than concurrently.
   Owns `src/access-intent/bash/token-collection.ts`, `token-classification.ts`, `bash-path-resolver.ts`, and the bash-path tests.
-- **Track B — proven and declared effects, and blame:** [#924] → [#992] → [#995] → [#963] → [#1027] → [#880] → [#881].
+- **Track B — proven and declared effects, and blame:** [#924] → [#992] → [#995] → [#963] → [#1027] → [#1042] → [#880] → [#881].
   [#924] owns `command-effects.ts` and the pure-reader core section of `docs/configuration.md`; [#963] owns `wrapper-analysis.ts` and ADR 0013 §11; [#880] owns `src/config/` and re-enters `command-effects.ts`; [#881] owns `src/presentation/` and the two bash path gates.
   [#881] touches `bash-path.ts` / `bash-external-directory.ts`; [#609]'s plan leaves both gates unchanged, but [#881]'s blame reads the candidate set [#609] widens, so sequence [#881] after [#609].
 - **Track C — the judgment lane:** [#882], a deliberation first; its code half touches `authority/delegation-envelope.ts`, `authority/permission-forwarding.ts`, and the payload core [#881] owns, so it lands after [#881].
@@ -1818,7 +1834,7 @@ The sandbox seam that Phase 15 briefly carried as a track of its own is now Phas
 
 - **Batch "declared-effects":** [#880], [#881] (ship together; tail = [#881]; release vehicle = [#880]'s `feat:` with [#881]'s `fix:` riding the same release).
   They ship together because [#881]'s blame line names the config key [#880] creates, and a prompt telling the user to declare an effect they cannot declare is worse than the prompt it replaces.
-- Independently releasable: [#945] (`fix:`), [#863] (`fix:`), [#859] (`fix:`), [#957] (`fix:`), [#609] (`fix!:` — newly prompts on a bare creating redirect under an explicit `path`/`path_write` rule, or after a non-literal `cd`), [#977] (`fix:`), [#979] (`fix:`), [#985] (`fix:`), [#978] (no release), [#924] (`fix:`), [#992] (`fix!:` — newly prompts on a computed argument that may lead with `-`), [#995] (`fix:`), [#1029] (`fix:`), [#1030] (`fix:`), [#1033] (`fix:`), [#1027] (`fix:`), [#882] (`feat:` if the checkpoint changes; a `docs:` amendment alone cuts no release).
+- Independently releasable: [#945] (`fix:`), [#863] (`fix:`), [#859] (`fix:`), [#957] (`fix:`), [#609] (`fix!:` — newly prompts on a bare creating redirect under an explicit `path`/`path_write` rule, or after a non-literal `cd`), [#977] (`fix:`), [#979] (`fix:`), [#985] (`fix:`), [#978] (no release), [#924] (`fix:`), [#992] (`fix!:` — newly prompts on a computed argument that may lead with `-`), [#995] (`fix:`), [#1029] (`fix:`), [#1030] (`fix:`), [#1033] (`fix:`), [#1027] (`fix:`), [#1042] (`fix:`), [#882] (`feat:` if the checkpoint changes; a `docs:` amendment alone cuts no release).
 
 ## Refactoring history
 
@@ -1988,5 +2004,7 @@ Each phase's findings, step plan, dependency diagram, and health metrics are pre
 [#1033]: https://github.com/gotgenes/pi-packages/issues/1033
 [#1036]: https://github.com/gotgenes/pi-packages/issues/1036
 [#1037]: https://github.com/gotgenes/pi-packages/issues/1037
+[#1039]: https://github.com/gotgenes/pi-packages/issues/1039
+[#1042]: https://github.com/gotgenes/pi-packages/issues/1042
 [#490]: https://github.com/gotgenes/pi-packages/issues/490
 [ADR-0002]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-subagents/docs/decisions/0002-extensions-on-a-minimal-core.md
