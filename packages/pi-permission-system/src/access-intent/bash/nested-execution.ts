@@ -72,6 +72,27 @@ export function commandWordNodes(node: TSNode): TSNode[] {
 }
 
 /**
+ * The subshell a `command` node times, or `null` when it is not `time ( … )`.
+ *
+ * `tree-sitter-bash` has no `time` keyword, so `time (rm x)` parses as a
+ * command named `time` whose only argument is a `subshell`. Bash runs that
+ * subshell's commands as surely as a bare `( … )`'s, so both bash surfaces read
+ * the shape through this one recognizer rather than each re-deciding it.
+ *
+ * The words must be exactly a `time` spelled literally (a quoted `"time"` is
+ * not the keyword) and one subshell. Anything between them (`time -p ( … )`,
+ * whose `-p` the grammar cannot place) leaves the shape unrecognized, so it
+ * keeps whatever floor the enumerator gives it.
+ */
+export function timedSubshellOf(command: TSNode): TSNode | null {
+  const words = commandWordNodes(command);
+  if (words.length !== 2) return null;
+  const [name, argument] = words;
+  if (argument.type !== "subshell") return null;
+  return name.type === "command_name" && name.text === "time" ? argument : null;
+}
+
+/**
  * Visit every execution context `node` *is or contains*, in source order.
  *
  * The root-inclusive question, and the one nearly every consumer asks: a node

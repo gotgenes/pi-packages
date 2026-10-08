@@ -223,7 +223,10 @@ export function floorExemptionOf(
  *    past.
  * 4. The inner head is a literal command name. The grammar has no `time`
  *    keyword, so `time { …; }` and `time ( … )` reach here with shell syntax
- *    where the command name should be.
+ *    where the command name should be. A word list cannot tell whether that
+ *    syntax was enumerated, so both keep the floor here; the command
+ *    enumerator, which descends a `time ( … )` subshell, exempts that shape
+ *    itself.
  */
 function onlyModifiesExecution(
   peeled: readonly (readonly CommandWord[])[],

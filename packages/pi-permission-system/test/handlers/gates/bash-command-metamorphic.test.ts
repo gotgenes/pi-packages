@@ -406,7 +406,6 @@ describe("bash command gate — an execution modifier inherits the verdict", () 
     "nice --adj 5 rm -rf /",
     "time sudo rm -rf x",
     "time { rm -rf /tmp/x; }",
-    "time (rm -rf /tmp/x)",
     "timeout 5 bash -c 'rm x'",
     "timeout -- 5 sudo rm x",
     "timeout -s KILL -- 5 bash -c 'rm x'",
@@ -422,6 +421,52 @@ describe("bash command gate — an execution modifier inherits the verdict", () 
       const resolver = makePrefixResolver("rm", "deny");
 
       expect(await decide(command, resolver)).toBe("ask");
+    },
+  );
+});
+
+/**
+ * A subshell timed by `time` is decided exactly as the bare subshell (#1027).
+ *
+ * The grammar has no `time` keyword, so the enumerator reads `time ( … )`
+ * itself: the subshell's commands become units of their own, and the `time`
+ * unit resolves by the subshell's text, as the bare subshell's whole unit does.
+ */
+describe("bash command gate — a timed subshell decides as the bare subshell", () => {
+  const cases: { bare: string; prefix: string; state: PermissionState }[] = [
+    { bare: "pnpm test", prefix: "pnpm", state: "allow" },
+    { bare: "pnpm test", prefix: "pnpm", state: "ask" },
+    { bare: "pnpm test", prefix: "pnpm", state: "deny" },
+    { bare: "git push --force", prefix: "git push", state: "deny" },
+  ];
+
+  for (const { bare, prefix, state } of cases) {
+    it(`decides "time (${bare})" as "(${bare})" at ${state}`, async () => {
+      const resolver = makePrefixResolver(prefix, state);
+
+      expect(await decide(`(${bare})`, resolver)).toBe(state);
+      expect(await decide(`time (${bare})`, resolver)).toBe(state);
+    });
+  }
+
+  it("lets an inner deny reach a command inside the subshell", async () => {
+    const resolver = makePrefixResolver("rm", "deny");
+
+    expect(await decide("time (rm -rf /tmp/x)", resolver)).toBe("deny");
+  });
+
+  it("allows the timed lint run the review log asked about", async () => {
+    const command = "time (pnpm run lint >/tmp/l.log 2>&1)";
+
+    expect(await decide(command, makeKeyedResolver([]))).toBe("allow");
+  });
+
+  it.each(["ask", "deny"] as const)(
+    "keeps an explicit %s on the wrapper",
+    async (state) => {
+      const resolver = makePrefixResolver("time", state);
+
+      expect(await decide("time (pnpm test)", resolver)).toBe(state);
     },
   );
 });

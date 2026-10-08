@@ -3,6 +3,7 @@ import {
   commandWordNodes,
   EXECUTION_HOST_TYPES,
   forEachExecutionIn,
+  timedSubshellOf,
 } from "./nested-execution";
 import type { WordReader } from "./node-text";
 import { parseUnresolvedWithin } from "./parse-health";
@@ -273,7 +274,8 @@ const STATEMENT_TYPES = new Set([
  * substitution (`$(…)`, backticks), process substitution (`<(…)`/`>(…)`), and
  * subshells (`( … )`) — emitting each inner command as its own unit *in
  * addition to* the enclosing command, since those inner commands really execute
- * (#306).
+ * (#306). A subshell timed by `time`, which the grammar reads as the argument
+ * of a command named `time`, is descended the same way.
  * A compound statement (control flow, a function definition, a `{ … }` brace
  * group) is emitted whole and then descended for the statements it contains,
  * while its operand words — a loop variable, a word list, a `case` subject, a
@@ -367,6 +369,11 @@ function collectCommandsInto(
   const scope = unresolvedScope(node, inherited);
 
   if (node.type === "command") {
+    const timed = timedSubshellOf(node);
+    if (timed !== null) {
+      collectTimedSubshell(node, timed, scope, out);
+      return;
+    }
     out.push(makeCommandUnit(node, scope));
     // A command's text already contains any substitution; descend its subtree
     // to ALSO emit the inner commands of command/process substitutions.
@@ -424,6 +431,40 @@ function collectCommandsInto(
   // in addition to the statement (#742).
   out.push(makeUnit(node.text, scope));
   collectHostedCommands(node, scope, out);
+}
+
+/**
+ * Enumerate `time ( … )`: the `time` unit whole, then the subshell's commands
+ * as units of their own, exactly as a bare subshell's are.
+ *
+ * The `time` unit is the never-weaker whole emit, and it is exempt from the
+ * wrapper floor: the floor exists because a wrapper hides the command that
+ * should be gated, and every command in this subshell is a unit gated on its
+ * own rules. It resolves by its executed unit, the subshell's text, which is
+ * how the bare subshell's whole unit resolves.
+ *
+ * Substitutions the command hosts outside the subshell (in a redirect) are
+ * still enumerated, and the subshell is left to the descent so a substitution
+ * inside it is emitted once.
+ */
+function collectTimedSubshell(
+  node: TSNode,
+  subshell: TSNode,
+  scope: UnitScope,
+  out: BashCommand[],
+): void {
+  out.push(makeCommandUnit(node, scope, "execution-modifier"));
+  for (let i = 0; i < node.childCount; i++) {
+    const child = node.child(i);
+    if (child && child.startIndex !== subshell.startIndex) {
+      collectHostedCommands(child, scope, out);
+    }
+  }
+  descendCommandChildren(
+    subshell,
+    { ...redirectedScope(node, scope), context: "subshell" },
+    out,
+  );
 }
 
 /**
@@ -492,7 +533,11 @@ function makeUnit(
  * before or between the words (`>/tmp/o xargs grep foo`) writes a file as
  * surely as one on the enclosing statement.
  */
-function makeCommandUnit(node: TSNode, scope: UnitScope): BashCommand {
+function makeCommandUnit(
+  node: TSNode,
+  scope: UnitScope,
+  floorExemption?: FloorExemption,
+): BashCommand {
   const { text, words, argumentSpelling } = readCommandUnit(node, scope);
   return makeUnit(text, scope, {
     spellings: distinctSpellings(text, [
@@ -501,7 +546,8 @@ function makeCommandUnit(node: TSNode, scope: UnitScope): BashCommand {
     ]),
     wrapperKind: classifyWrapperWords(words),
     executedUnit: executedUnitOf(text, words) ?? undefined,
-    floorExemption: floorExemptionOf(words, redirectedScope(node, scope)),
+    floorExemption:
+      floorExemption ?? floorExemptionOf(words, redirectedScope(node, scope)),
   });
 }
 

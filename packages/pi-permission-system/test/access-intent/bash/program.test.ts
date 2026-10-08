@@ -1180,6 +1180,128 @@ describe("BashProgram", () => {
       ]);
     });
 
+    describe("a subshell timed by time", () => {
+      // The grammar has no `time` keyword: `time ( … )` parses as a command
+      // named `time` whose argument is the subshell, so the enumerator reads
+      // the shape itself and descends it as it descends a bare subshell.
+      it("emits the time unit whole and descends into the subshell", async () => {
+        const program = await BashProgram.parse(
+          "time (rm -rf /tmp/x)",
+          normalizer,
+        );
+        expect(program.commands()).toEqual([
+          {
+            text: "time (rm -rf /tmp/x)",
+            wrapperKind: "indirection",
+            executedUnit: "(rm -rf /tmp/x)",
+            floorExemption: "execution-modifier",
+          },
+          { text: "rm -rf /tmp/x", context: "subshell" },
+        ]);
+      });
+
+      it("descends into the subshell's pipeline", async () => {
+        const program = await BashProgram.parse(
+          "time (grep -l foo a | wc -l)",
+          normalizer,
+        );
+        expect(program.commands()).toEqual([
+          {
+            text: "time (grep -l foo a | wc -l)",
+            wrapperKind: "indirection",
+            executedUnit: "(grep -l foo a | wc -l)",
+            floorExemption: "execution-modifier",
+          },
+          { text: "grep -l foo a", context: "subshell" },
+          { text: "wc -l", context: "subshell" },
+        ]);
+      });
+
+      it("emits a substitution inside the subshell once", async () => {
+        const program = await BashProgram.parse(
+          "time (echo $(rm x))",
+          normalizer,
+        );
+        expect(program.commands()).toEqual([
+          {
+            text: "time (echo $(rm x))",
+            wrapperKind: "indirection",
+            executedUnit: "(echo $(rm x))",
+            floorExemption: "execution-modifier",
+          },
+          { text: "echo $(rm x)", context: "subshell" },
+          { text: "rm x", context: "command_substitution" },
+        ]);
+      });
+
+      it("still emits a substitution in a redirect the command hosts", async () => {
+        const program = await BashProgram.parse(
+          "2>$(rm y) time (rm x)",
+          normalizer,
+        );
+        expect(program.commands()).toEqual([
+          {
+            text: "time (rm x)",
+            wrapperKind: "indirection",
+            executedUnit: "(rm x)",
+            floorExemption: "execution-modifier",
+          },
+          { text: "rm y", context: "command_substitution" },
+          { text: "rm x", context: "subshell" },
+        ]);
+      });
+
+      it("descends a subshell nested inside the timed one", async () => {
+        const program = await BashProgram.parse("time ( (rm x) )", normalizer);
+        expect(program.commands()).toEqual([
+          {
+            text: "time ( (rm x) )",
+            wrapperKind: "indirection",
+            executedUnit: "( (rm x) )",
+            floorExemption: "execution-modifier",
+          },
+          { text: "(rm x)", context: "subshell" },
+          { text: "rm x", context: "subshell" },
+        ]);
+      });
+
+      it.each(["sudo (rm x)", "nice (rm x)"])(
+        "does not descend a subshell another command takes: %s",
+        async (command) => {
+          // Bash rejects these as syntax errors; only `time` takes a compound.
+          const program = await BashProgram.parse(command, normalizer);
+          expect(program.commands()).toEqual([
+            {
+              text: command,
+              wrapperKind: "indirection",
+              executedUnit: "(rm x)",
+            },
+          ]);
+        },
+      );
+
+      it("leaves a word after the subshell to the unresolved-parse floor", async () => {
+        // The grammar wraps `time (rm x)` in an ERROR, emitted whole and floored.
+        const program = await BashProgram.parse("time (rm x) y", normalizer);
+        expect(program.commands()).toEqual([
+          { text: "time (rm x)", parseUnresolved: true },
+          { text: "y" },
+        ]);
+      });
+
+      it("leaves time -p ( … ) to the unresolved-parse floor", async () => {
+        const program = await BashProgram.parse("time -p (rm x)", normalizer);
+        expect(program.commands()).toEqual([
+          {
+            text: "time -p (rm x)",
+            wrapperKind: "indirection",
+            executedUnit: "(rm x)",
+            parseUnresolved: true,
+          },
+        ]);
+      });
+    });
+
     it("descends recursively through nested contexts", async () => {
       const program = await BashProgram.parse("echo $( ( rm x ) )", normalizer);
       expect(program.commands()).toEqual([
@@ -1493,11 +1615,14 @@ describe("BashProgram", () => {
         ).resolves.toEqual(["execution-modifier"]);
       });
 
+      it("exempts a timed subshell, whose commands are units of their own", async () => {
+        await expect(exemptions("time (rm -rf /tmp/x)")).resolves.toEqual([
+          "execution-modifier",
+          undefined,
+        ]);
+      });
+
       it.each([
-        [
-          "time (rm -rf /tmp/x)",
-          "the grammar reads the subshell as an argument",
-        ],
         ["timeout --sig KILL 5 rm -rf /", "an abbreviation hides its value"],
         ["time sudo rm -rf x", "a peeled layer changes who runs it"],
         ["timeout {5,sudo} rm x", "brace expansion adds a word"],
@@ -1515,7 +1640,8 @@ describe("BashProgram", () => {
 
       it("does not exempt a brace group after time", async () => {
         // The grammar has no `time` keyword: the group's words become the
-        // `time` unit's arguments and the closing brace a unit of its own.
+        // `time` unit's arguments and the closing brace a unit of its own,
+        // so the group is not recovered and keeps the floor (#1043).
         await expect(exemptions("time { rm -rf /tmp/x; }")).resolves.toEqual([
           undefined,
           undefined,

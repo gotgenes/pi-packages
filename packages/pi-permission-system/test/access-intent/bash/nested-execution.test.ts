@@ -3,6 +3,7 @@ import {
   forEachExecutionIn,
   forEachNestedExecution,
   NESTED_EXECUTION_CONTEXTS,
+  timedSubshellOf,
 } from "#src/access-intent/bash/nested-execution";
 import { getParser, type TSNode } from "#src/access-intent/bash/parser";
 import type { BashCommandContext } from "#src/types";
@@ -165,5 +166,47 @@ describe("forEachExecutionIn", () => {
 
   it("finds nothing in a node hosting no execution", async () => {
     expect(await visitExecutionsIn("npm install pkg", "command")).toEqual([]);
+  });
+});
+
+/** Parse a bash snippet and ask which subshell its first `command` times. */
+async function timedSubshellTextOf(command: string): Promise<string | null> {
+  const parser = await getParser();
+  const tree = parser.parse(command);
+  if (!tree) throw new Error("parser.parse returned null");
+  try {
+    const node = findNode(tree.rootNode, "command");
+    if (!node) throw new Error(`no command node found in: ${command}`);
+    return timedSubshellOf(node)?.text ?? null;
+  } finally {
+    tree.delete();
+  }
+}
+
+describe("timedSubshellOf", () => {
+  describe("a time command whose only argument is a subshell", () => {
+    it.each([
+      ["time (rm x)", "(rm x)"],
+      ["time (rm x) > /tmp/out", "(rm x)"],
+      ["2>./err time (rm x)", "(rm x)"],
+      ["A=1 time (rm x)", "(rm x)"],
+      ["time ( cd /t && rm x )", "( cd /t && rm x )"],
+    ])("names the subshell of %s", async (command, subshell) => {
+      expect(await timedSubshellTextOf(command)).toBe(subshell);
+    });
+  });
+
+  describe("any other command", () => {
+    it.each([
+      ['"time" (rm x)', "a quoted time is not the keyword"],
+      ["sudo (rm x)", "only time takes a compound command"],
+      ["nice (rm x)", "only time takes a compound command"],
+      ["time $(rm x)", "a substitution is not a subshell"],
+      ["time -p (rm x)", "an unparsed word sits between"],
+      ["time ls (rm x)", "a word sits between"],
+      ["time pnpm test", "no subshell at all"],
+    ])("names nothing for %s (%s)", async (command) => {
+      expect(await timedSubshellTextOf(command)).toBeNull();
+    });
   });
 });
