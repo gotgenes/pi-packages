@@ -31,15 +31,21 @@ import { fileURLToPath } from "node:url";
  * `column` counts code points rather than UTF-16 units, so an astral
  * character earlier on the line does not skew the position.
  *
+ * `maskProse` blanks whatever is not prose; it defaults to markdown's code
+ * spans and fenced blocks.
+ *
  * @param {string} text
+ * @param {(text: string) => string} [maskProse]
  * @returns {{line: number, column: number, token: string, replacement: string | null}[]}
  */
-export function findUnicodeEscapes(text) {
-  return escapeMatches(text).map(({ index, token, replacement }) => ({
-    ...position(text, index),
-    token,
-    replacement,
-  }));
+export function findUnicodeEscapes(text, maskProse = maskCode) {
+  return escapeMatches(text, maskProse).map(
+    ({ index, token, replacement }) => ({
+      ...position(text, index),
+      token,
+      replacement,
+    }),
+  );
 }
 
 /**
@@ -65,13 +71,14 @@ export function formatFinding(path, finding) {
  * `text` with every decodable escape replaced by the character it spells.
  *
  * A finding with no replacement is left exactly where it is, and so is
- * anything inside code.
+ * anything `maskProse` blanks.
  *
  * @param {string} text
+ * @param {(text: string) => string} [maskProse]
  * @returns {{text: string, decoded: number}}
  */
-export function repairUnicodeEscapes(text) {
-  const decodable = escapeMatches(text).filter(
+export function repairUnicodeEscapes(text, maskProse = maskCode) {
+  const decodable = escapeMatches(text, maskProse).filter(
     ({ replacement }) => replacement !== null,
   );
   let repaired = "";
@@ -297,10 +304,11 @@ const INVISIBLE = /[\p{C}\p{Z}]/u;
  * Every escape and bare token in the prose of `text`, by UTF-16 offset.
  *
  * @param {string} text
+ * @param {(text: string) => string} maskProse
  * @returns {{index: number, token: string, replacement: string | null}[]}
  */
-function escapeMatches(text) {
-  const prose = maskCode(text);
+function escapeMatches(text, maskProse) {
+  const prose = maskProse(text);
   const matches = [];
   let consumedUntil = 0;
   for (const match of prose.matchAll(ESCAPE)) {

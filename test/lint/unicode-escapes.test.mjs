@@ -227,6 +227,14 @@ describe("findUnicodeEscapes", () => {
       ]);
     });
   });
+
+  describe("prose mask", () => {
+    it("scans whatever the given mask leaves visible", () => {
+      expect(findUnicodeEscapes("`\\u2014`", (text) => text)).toEqual([
+        finding(1, 2, "\\u2014", EM_DASH),
+      ]);
+    });
+  });
 });
 
 describe("formatFinding", () => {
@@ -322,6 +330,13 @@ describe("repairUnicodeEscapes", () => {
     ).toEqual({
       text: `${GRINNING_FACE}${EM_DASH} ${GRINNING_FACE} ${RIGHTWARDS_ARROW}.`,
       decoded: 4,
+    });
+  });
+
+  it("decodes whatever the given mask leaves visible", () => {
+    expect(repairUnicodeEscapes("`\\u2014`", (text) => text)).toEqual({
+      text: `\`${EM_DASH}\``,
+      decoded: 1,
     });
   });
 
