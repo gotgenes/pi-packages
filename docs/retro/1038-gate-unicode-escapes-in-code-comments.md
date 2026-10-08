@@ -26,3 +26,24 @@ The plan has 7 steps, with no preparatory tidyings, and was committed as `docs/p
 - `typescript-eslint` exposes `parser.parseForESLint`, not `parse`; the first prototype failed on this.
 - Sibling #974 (code-span list boundaries) touches `closingRunEnd`, which this plan reuses unchanged; it was left independent.
 - Predicted whole-tree lint cost is ~3.3 s (estimated), measured at step 5.
+
+## Stage: Implementation — TDD (2026-10-08T06:25:56Z)
+
+### Session summary
+
+All 7 plan steps were completed, each as its own commit: two `refactor(scripts):` steps, then `feat(scripts):`, `style(pi-subagents):`, two `build:` steps, and `docs:`.
+Root script tests went from 267 to 286 (+19); `check`, `lint`, `test`, and `fallow dead-code` are green.
+
+### Observations
+
+- Every named killing mutation reddened the tests it predicted.
+  The plan's "omit `filePath`" mutation survived, as the plan predicted.
+- Deviation: parse failures surface as a module-owned `UnparseableSourceError`, which `parseSource` translates from the parser's `TSError` (matched by `error.name`).
+  `run` catches only that error, so a real bug in the scan is not misreported as "does not parse".
+- Deviation: Biome's `noTemplateCurlyInString` warning on step 2's template-literal fixture was silenced with a `biome-ignore` comment in the step 3 commit (noted in that commit's body).
+- Red-phase pins: "throws on text that does not parse" and "reports an escape in a comment" were green during Red (the first because the function did not exist yet; the second because the markdown mask also finds it).
+  Mutations later confirmed both discriminate.
+- Measured: the whole-code-tree scan before step 4 reported exactly the 7 predicted findings; the whole-tree no-path scan takes 3.1 s (the plan estimated about 3.3 s); a single markdown file still takes 0.105 s, so the lazy parser load holds.
+- Verified the prek hook with `prek run -c <old config>` against the new config on a staged scratch `.ts`: the old config skipped the file and the new one decoded the comment while leaving the string literal unchanged.
+- `AGENTS.md` always-loaded words went from 1793 to 1796.
+- Pre-completion reviewer: PASS (with independent probes: hashbang, a comment inside a template substitution, and a mixed `--fix` run with one unparseable file).
