@@ -16,12 +16,13 @@ catalog:
   "eslint": "^10.9.1"
   "globals": "^17.12.0"
   "typescript-eslint": "^8.69.0"
-  # Pinned exactly, not caret-ranged: 0.2.45 regressed MD013's sentence-per-line
-  # reflow so that a bold lead-in ending `.**` followed by a line opening with a
-  # code span is counted as one sentence, and `rumdl fmt` joins the two lines --
-  # inverting the mode we configure in .rumdl.toml. On this repo's corpus 0.2.62
-  # reports 767 such findings across 333 files. 0.2.24 is the newest release that
-  # is clean on all 1086 files. Upstream: https://github.com/rvben/rumdl/issues/811
+  # Pinned exactly, not caret-ranged. Newer releases join a sentence that opens
+  # with a reference link or a lowercase word ("[#752] and ...", "release-please
+  # reads ...") onto the previous line under our sentence-per-line reflow:
+  # 0.2.78 reports 593 MD013 findings across 369 files, 0.2.24 reports none.
+  # require-sentence-capital = false trades those joins for false splits after
+  # "etc." and closing quotes, so it is not a workaround.
+  # Upstream: https://github.com/rvben/rumdl/issues/933
   # Keep prek.toml's rumdl-pre-commit rev in lockstep with this pin.
   "rumdl": "0.2.24"
   "typescript": "^6.0.3"

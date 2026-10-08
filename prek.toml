@@ -26,9 +26,8 @@ hooks = [
 ]
 
 [[repos]]
-# Pinned in lockstep with the `rumdl` catalog entry in pnpm-workspace.yaml.
-# 0.2.45+ regressed MD013 sentence-per-line reflow (rvben/rumdl#811); 0.2.24 is
-# the newest release clean on this repo's markdown.
+# Pinned in lockstep with the `rumdl` catalog entry in pnpm-workspace.yaml,
+# which records why (rvben/rumdl#933).
 repo = "https://github.com/rvben/rumdl-pre-commit"
 rev = "v0.2.24"
 hooks = [
