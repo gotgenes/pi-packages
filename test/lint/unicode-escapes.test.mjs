@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   findUnicodeEscapes,
   formatFinding,
+  maskAllButComments,
   maskCode,
   repairUnicodeEscapes,
   run,
@@ -106,6 +107,80 @@ describe("maskCode", () => {
   it("preserves the text's length and every line break", () => {
     const text = "p `q`\n```\nr\n```\ns ``t``\n";
     const masked = maskCode(text);
+
+    expect(masked.length).toBe(text.length);
+    expect(lineBreaks(masked)).toEqual(lineBreaks(text));
+  });
+});
+
+describe("maskAllButComments", () => {
+  describe("comments it keeps", () => {
+    it("keeps a line comment", () => {
+      expect(maskAllButComments("a(); // note\n", "a.ts")).toBe(
+        `${blank(5)}// note\n`,
+      );
+    });
+
+    it("keeps a block comment", () => {
+      expect(maskAllButComments("a(/* b */);", "a.ts")).toBe(
+        `${blank(2)}/* b */${blank(2)}`,
+      );
+    });
+
+    it("keeps a doc comment across lines", () => {
+      expect(maskAllButComments("/**\n * b\n */\nf();", "a.ts")).toBe(
+        `/**\n * b\n */\n${blank(4)}`,
+      );
+    });
+  });
+
+  describe("code it blanks", () => {
+    it("blanks a string literal", () => {
+      const text = 'const s = "\\u2014";';
+
+      expect(maskAllButComments(text, "a.ts")).toBe(blank(text.length));
+    });
+
+    it("blanks a template literal, comment-like text in its substitution included", () => {
+      const text = 'const t = `a ${"// no"} \\u2014`;';
+
+      expect(maskAllButComments(text, "a.ts")).toBe(blank(text.length));
+    });
+
+    it("blanks a regex literal that spells a comment opener", () => {
+      const text = "const r = /\\/\\/ \\u2014/;";
+
+      expect(maskAllButComments(text, "a.ts")).toBe(blank(text.length));
+    });
+
+    it("blanks a code span inside a comment", () => {
+      expect(maskAllButComments("// a `\\u2014` b", "a.ts")).toBe(
+        `// a ${blank(8)} b`,
+      );
+    });
+  });
+
+  describe("languages", () => {
+    it("parses TypeScript-only syntax", () => {
+      expect(maskAllButComments("const n: number = 1; // c", "a.ts")).toBe(
+        `${blank(21)}// c`,
+      );
+    });
+
+    it("parses a JavaScript module", () => {
+      expect(maskAllButComments("export const x = 1; // c", "a.mjs")).toBe(
+        `${blank(20)}// c`,
+      );
+    });
+
+    it("throws on text that does not parse", () => {
+      expect(() => maskAllButComments("const x = (;", "a.ts")).toThrow();
+    });
+  });
+
+  it("preserves the text's length and every line break", () => {
+    const text = 'f("x");\n// a\n/* b\n c */\ng(`\n`);\n';
+    const masked = maskAllButComments(text, "a.ts");
 
     expect(masked.length).toBe(text.length);
     expect(lineBreaks(masked)).toEqual(lineBreaks(text));

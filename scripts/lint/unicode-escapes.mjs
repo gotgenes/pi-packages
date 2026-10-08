@@ -19,6 +19,7 @@
 
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 
 /**
@@ -282,6 +283,48 @@ function startsBlankLine(text, start) {
  */
 function isAsciiPunctuation(character) {
   return character !== undefined && /^[!-/:-@[-`{-~]$/.test(character);
+}
+
+/**
+ * `text` with everything outside its comments blanked to spaces, and the
+ * code spans inside those comments blanked too.
+ *
+ * The comments come from a real parser, so a string, template, or regex
+ * literal that spells a comment opener or an escape stays code. Offsets and
+ * line feeds are preserved, as in `maskCode`. Throws when `text` does not
+ * parse as the JavaScript or TypeScript its `path` names.
+ *
+ * @param {string} text
+ * @param {string} path
+ * @returns {string}
+ */
+export function maskAllButComments(text, path) {
+  const { ast } = typescriptParser().parseForESLint(text, {
+    comment: true,
+    range: true,
+    filePath: path,
+  });
+  let comments = blankOut(text);
+  for (const { range } of ast.comments) {
+    const [start, end] = range;
+    comments =
+      comments.slice(0, start) + text.slice(start, end) + comments.slice(end);
+  }
+  return maskCodeSpans(comments);
+}
+
+/** @type {{parseForESLint: Function} | undefined} */
+let loadedParser;
+
+/**
+ * The `typescript-eslint` parser, loaded on first use so a markdown-only run
+ * never pays for it.
+ *
+ * @returns {{parseForESLint: Function}}
+ */
+function typescriptParser() {
+  loadedParser ??= createRequire(import.meta.url)("typescript-eslint").parser;
+  return loadedParser;
 }
 
 /**
