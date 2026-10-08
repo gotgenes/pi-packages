@@ -7,6 +7,7 @@ import {
   maskCode,
   repairUnicodeEscapes,
   run,
+  UnparseableSourceError,
 } from "../../scripts/lint/unicode-escapes.mjs";
 import { memoryIo } from "./memory-io.mjs";
 
@@ -142,6 +143,7 @@ describe("maskAllButComments", () => {
     });
 
     it("blanks a template literal, comment-like text in its substitution included", () => {
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: the substitution is the source under test
       const text = 'const t = `a ${"// no"} \\u2014`;';
 
       expect(maskAllButComments(text, "a.ts")).toBe(blank(text.length));
@@ -174,7 +176,9 @@ describe("maskAllButComments", () => {
     });
 
     it("throws on text that does not parse", () => {
-      expect(() => maskAllButComments("const x = (;", "a.ts")).toThrow();
+      expect(() => maskAllButComments("const x = (;", "a.ts")).toThrow(
+        UnparseableSourceError,
+      );
     });
   });
 
@@ -387,6 +391,85 @@ describe("run", () => {
       run({ paths: ["a.md"], fix: true }, io);
 
       expect(io.writes).toEqual([]);
+    });
+  });
+
+  describe("code files", () => {
+    const UNPARSEABLE =
+      "a.ts: does not parse as JavaScript or TypeScript; comments not scanned";
+
+    it("reports an escape in a comment", () => {
+      const io = memoryIo({
+        "a.ts": Buffer.from("f(); // x \\u2014\n", "utf8"),
+      });
+
+      expect(run({ paths: ["a.ts"] }, io)).toEqual({
+        lines: [
+          `a.ts:1:11: literal escape \\u2014 (--fix writes U+2014 ${EM_DASH})`,
+        ],
+        exitCode: 1,
+      });
+    });
+
+    it("passes an escape in a string literal", () => {
+      const io = memoryIo({
+        "a.ts": Buffer.from('const s = "\\u2014";\n', "utf8"),
+      });
+
+      expect(run({ paths: ["a.ts"] }, io)).toEqual({ lines: [], exitCode: 0 });
+    });
+
+    it("masks each file by its own type", () => {
+      const io = memoryIo({
+        "a.md": Buffer.from('x "\\u2014"\n', "utf8"),
+        "b.mjs": Buffer.from('const s = "\\u2014";\n', "utf8"),
+      });
+
+      expect(run({ paths: ["a.md", "b.mjs"] }, io)).toEqual({
+        lines: [
+          `a.md:1:4: literal escape \\u2014 (--fix writes U+2014 ${EM_DASH})`,
+        ],
+        exitCode: 1,
+      });
+    });
+
+    it("fails on a file that does not parse", () => {
+      const io = memoryIo({
+        "a.ts": Buffer.from("const x = (; // \\u2014\n", "utf8"),
+      });
+
+      expect(run({ paths: ["a.ts"] }, io)).toEqual({
+        lines: [UNPARSEABLE],
+        exitCode: 1,
+      });
+    });
+
+    describe("with fix", () => {
+      it("decodes the comment and leaves the string literal", () => {
+        const io = memoryIo({
+          "a.ts": Buffer.from('const s = "\\u2014"; // \\u2014\n', "utf8"),
+        });
+
+        expect(run({ paths: ["a.ts"], fix: true }, io)).toEqual({
+          lines: ["decoded a.ts"],
+          exitCode: 0,
+        });
+        expect(io.files["a.ts"].toString("utf8")).toBe(
+          `const s = "\\u2014"; // ${EM_DASH}\n`,
+        );
+      });
+
+      it("does not rewrite a file that does not parse, and still fails", () => {
+        const io = memoryIo({
+          "a.ts": Buffer.from("const x = (; // \\u2014\n", "utf8"),
+        });
+
+        expect(run({ paths: ["a.ts"], fix: true }, io)).toEqual({
+          lines: [UNPARSEABLE],
+          exitCode: 1,
+        });
+        expect(io.writes).toEqual([]);
+      });
     });
   });
 });

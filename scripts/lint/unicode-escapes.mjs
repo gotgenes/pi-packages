@@ -1,15 +1,19 @@
 #!/usr/bin/env node
-// Rejects literal Unicode escapes in the prose of markdown files.
+// Rejects literal Unicode escapes in the prose of markdown files and in the
+// comments of JavaScript and TypeScript files.
 //
 // A model's em-dash can reach a file as the six visible characters of its
 // escape rather than the character itself -- #859, #960, and #962 each
-// committed or nearly committed one. It is valid markdown, so rumdl passes it,
+// committed or nearly committed one, and #1033 wrote one into a TypeScript
+// comment. It is valid markdown and valid code, so rumdl and Biome pass it,
 // and it contains no control character, so invisible-characters.mjs passes it
 // too.
 //
 // Code is exempt: the documents that teach this rule quote the escape in
 // backticks on purpose, so the scan blanks inline code spans and fenced
-// blocks before it looks.
+// blocks before it looks. In a source file only the comments are prose --
+// a string literal spelling an escape is legitimate -- and a backtick quote
+// inside a comment is exempt too.
 //
 // Usage: node scripts/lint/unicode-escapes.mjs [--fix] [paths...]
 //
@@ -99,6 +103,9 @@ export function repairUnicodeEscapes(text, maskProse = maskCode) {
  * over the rewritten files, so a finding that needs a hand repair still fails.
  * A file with nothing to decode is not rewritten.
  *
+ * A code file that does not parse is never rewritten, and the scan counts it
+ * as a failure: the gate cannot vouch for comments it could not find.
+ *
  * @param {{paths: string[], fix?: boolean}} request
  * @param {{readFile: (path: string) => Buffer, writeFile: (path: string, text: string) => void}} io
  * @returns {{lines: string[], exitCode: number}}
@@ -107,23 +114,58 @@ export function run({ paths, fix = false }, io) {
   const lines = [];
   if (fix) {
     for (const path of paths) {
-      const { text, decoded } = repairUnicodeEscapes(
-        io.readFile(path).toString("utf8"),
-      );
-      if (decoded === 0) continue;
-      io.writeFile(path, text);
+      let repair;
+      try {
+        repair = repairUnicodeEscapes(
+          io.readFile(path).toString("utf8"),
+          proseMaskFor(path),
+        );
+      } catch (error) {
+        if (error instanceof UnparseableSourceError) continue;
+        throw error;
+      }
+      if (repair.decoded === 0) continue;
+      io.writeFile(path, repair.text);
       lines.push(`decoded ${path}`);
     }
   }
-  let findings = 0;
+  let failures = 0;
   for (const path of paths) {
     const text = io.readFile(path).toString("utf8");
-    for (const finding of findUnicodeEscapes(text)) {
+    let findings;
+    try {
+      findings = findUnicodeEscapes(text, proseMaskFor(path));
+    } catch (error) {
+      if (!(error instanceof UnparseableSourceError)) throw error;
+      lines.push(
+        `${path}: does not parse as JavaScript or TypeScript; comments not scanned`,
+      );
+      failures += 1;
+      continue;
+    }
+    for (const finding of findings) {
       lines.push(formatFinding(path, finding));
-      findings += 1;
+      failures += 1;
     }
   }
-  return { lines, exitCode: findings === 0 ? 0 : 1 };
+  return { lines, exitCode: failures === 0 ? 0 : 1 };
+}
+
+/** Extensions whose prose is their comments. */
+const CODE_EXTENSIONS = [".ts", ".mts", ".cts", ".js", ".mjs", ".cjs"];
+
+/**
+ * The mask that leaves a file's prose visible: its comments for JavaScript
+ * and TypeScript, and markdown's text outside code for anything else.
+ *
+ * @param {string} path
+ * @returns {(text: string) => string}
+ */
+function proseMaskFor(path) {
+  if (CODE_EXTENSIONS.some((extension) => path.endsWith(extension))) {
+    return (text) => maskAllButComments(text, path);
+  }
+  return maskCode;
 }
 
 /**
@@ -299,11 +341,7 @@ function isAsciiPunctuation(character) {
  * @returns {string}
  */
 export function maskAllButComments(text, path) {
-  const { ast } = typescriptParser().parseForESLint(text, {
-    comment: true,
-    range: true,
-    filePath: path,
-  });
+  const { ast } = parseSource(text, path);
   let comments = blankOut(text);
   for (const { range } of ast.comments) {
     const [start, end] = range;
@@ -311,6 +349,33 @@ export function maskAllButComments(text, path) {
       comments.slice(0, start) + text.slice(start, end) + comments.slice(end);
   }
   return maskCodeSpans(comments);
+}
+
+/** Thrown when a code file does not parse, so its comments are unknown. */
+export class UnparseableSourceError extends Error {
+  /** @param {string} path */
+  constructor(path) {
+    super(`${path} does not parse as JavaScript or TypeScript`);
+    this.name = "UnparseableSourceError";
+  }
+}
+
+/**
+ * @param {string} text
+ * @param {string} path
+ * @returns {{ast: {comments: {range: [number, number]}[]}}}
+ */
+function parseSource(text, path) {
+  try {
+    return typescriptParser().parseForESLint(text, {
+      comment: true,
+      range: true,
+      filePath: path,
+    });
+  } catch (error) {
+    if (error?.name !== "TSError") throw error;
+    throw new UnparseableSourceError(path);
+  }
 }
 
 /** @type {{parseForESLint: Function} | undefined} */
