@@ -1,5 +1,6 @@
 import type { BashCommandContext } from "#src/types";
 import type { TSNode } from "./parser";
+import { REDIRECT_NODE_TYPES } from "./redirect-analysis";
 
 /**
  * AST node types whose interior commands really execute when the shell runs the
@@ -46,6 +47,29 @@ export const EXECUTION_HOST_TYPES: ReadonlySet<string> = new Set([
   "herestring_redirect",
   "heredoc_body",
 ]);
+
+/**
+ * The word nodes of a `command` node, in source order: every named child except
+ * a prefix assignment and a hosted redirect.
+ *
+ * Shared so every consumer that reads a command's words, whether as words (the
+ * command enumerator's unit text) or as nodes (the log's command masker, which
+ * offsets a re-parse by the payload node's `startIndex`), walks the identical
+ * filtered list. Two walks over the same children with the same filter,
+ * written twice, is how the two come to disagree about which word is at which
+ * index.
+ */
+export function commandWordNodes(node: TSNode): TSNode[] {
+  const nodes: TSNode[] = [];
+  for (let i = 0; i < node.childCount; i++) {
+    const child = node.child(i);
+    if (!child?.isNamed) continue;
+    if (child.type === "variable_assignment") continue;
+    if (REDIRECT_NODE_TYPES.has(child.type)) continue;
+    nodes.push(child);
+  }
+  return nodes;
+}
 
 /**
  * Visit every execution context `node` *is or contains*, in source order.

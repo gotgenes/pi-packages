@@ -1,5 +1,9 @@
 import type { BashCommandContext, FloorExemption } from "#src/types";
-import { EXECUTION_HOST_TYPES, forEachExecutionIn } from "./nested-execution";
+import {
+  commandWordNodes,
+  EXECUTION_HOST_TYPES,
+  forEachExecutionIn,
+} from "./nested-execution";
 import type { WordReader } from "./node-text";
 import { parseUnresolvedWithin } from "./parse-health";
 import type { TSNode } from "./parser";
@@ -624,28 +628,6 @@ function gapBetween(
     before.endIndex - command.startIndex,
     after.startIndex - command.startIndex,
   );
-}
-
-/**
- * The nodes {@link readCommandUnit} reports words for, in the same order: every
- * named child except a prefix assignment and a hosted redirect.
- *
- * Split out so a consumer that needs a *node* rather than a word (the log's
- * command masker, which offsets a re-parse by the payload node's `startIndex`)
- * walks the identical filtered list. Two walks over the same children with the
- * same filter, written twice, is how the two come to disagree about which word
- * is at which index.
- */
-function commandWordNodes(node: TSNode): TSNode[] {
-  const nodes: TSNode[] = [];
-  for (let i = 0; i < node.childCount; i++) {
-    const child = node.child(i);
-    if (!child?.isNamed) continue;
-    if (child.type === "variable_assignment") continue;
-    if (REDIRECT_NODE_TYPES.has(child.type)) continue;
-    nodes.push(child);
-  }
-  return nodes;
 }
 
 /** The redirects a `command` node hosts among its own children. */
