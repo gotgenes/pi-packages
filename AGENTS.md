@@ -41,7 +41,7 @@ Two prose tripwires are now `pi-permission-system` deny rules in `.pi/extensions
 ### Tooling
 
 This project uses **pnpm** exclusively — never `npm` or `npx`.
-A `commit-msg` hook (`committed`, via `prek`) rejects a malformed Conventional Commits header; pre-commit hooks reject stray invisible characters, decode literal Unicode escapes in markdown prose, and run Biome, ESLint, and `rumdl fmt`.
+A `commit-msg` hook (`committed`, via `prek`) rejects a malformed Conventional Commits header; pre-commit hooks reject stray invisible characters, decode literal Unicode escapes in markdown prose and code comments, and run Biome, ESLint, and `rumdl fmt`.
 Use `colgrep` for intent-based codebase exploration and convention discovery; use `grep` for exact symbol matching.
 Pi's own source is checked out beside this repo (`../pi` from the root, `../../pi` from a worktree) and tracks Pi's `main`, ahead of the pinned dependency.
 

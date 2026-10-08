@@ -57,6 +57,7 @@ That literal form is gated in markdown.
 Outside code spans and fenced blocks, the pre-commit hook and `pi-autoformat` decode a `\u2014` or `\u{1F600}` escape to its character, and `pnpm run lint` rejects any left behind, along with a bare `u2014` whose backslash was lost; run `node scripts/lint/unicode-escapes.mjs [--fix]` on demand (Refs #967).
 A bare token, or an escape for an invisible character, it reports for a hand repair.
 To quote an escape on purpose, put it in backticks; in bare prose, write `\\u2014`, which CommonMark renders as the literal and the gate leaves alone.
+The same gate covers the comments of `.ts`/`.js`/`.mjs` files, where a string literal stays exempt and a backtick quote is the escape hatch too.
 The split-sentence form stays a manual scan: `rumdl`'s sentence-per-line reflow rejoins the split before any gate runs, so what survives is a missing word no pattern can see.
 
 ### Code fences

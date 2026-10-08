@@ -65,15 +65,16 @@ pnpm install
 ```
 
 This installs dependencies and wires the `prek` git hooks automatically via the `prepare` script.
-The hooks include a `pre-commit` stage (a stray-invisible-character check, a markdown Unicode-escape check, Biome, ESLint, rumdl) and a `commit-msg` stage that validates Conventional Commit headers via [committed](https://github.com/crate-ci/committed).
+The hooks include a `pre-commit` stage (a stray-invisible-character check, a Unicode-escape check for markdown prose and code comments, Biome, ESLint, rumdl) and a `commit-msg` stage that validates Conventional Commit headers via [committed](https://github.com/crate-ci/committed).
 
 The invisible-character check rejects C0 control characters other than tab, line feed, and carriage return, plus DEL and the zero-width characters.
 It deletes the two whose only correct repair is deletion (the zero-width space and the byte order mark) and reports the rest, because repairing those needs the surrounding sentence.
 Run it directly with `node scripts/lint/invisible-characters.mjs [--fix] [paths...]`; with no paths it scans every tracked file.
 
 The Unicode-escape check rejects a literal escape such as `\u2014` in the prose of a markdown file, outside code spans and fenced blocks, and a bare `u2014` token that lost its backslash.
+In a JavaScript or TypeScript file it checks only the comments, so a string literal that spells an escape stays legitimate; a backtick-quoted escape inside a comment is exempt too.
 Its `--fix` decodes each escape that spells a visible character and reports the rest for a hand repair.
-Run it directly with `node scripts/lint/unicode-escapes.mjs [--fix] [paths...]`; with no paths it scans every tracked markdown file.
+Run it directly with `node scripts/lint/unicode-escapes.mjs [--fix] [paths...]`; with no paths it scans every tracked markdown and code file.
 
 ### Commands
 
