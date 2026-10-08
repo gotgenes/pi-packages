@@ -8,6 +8,7 @@ import { normalizePathPolicyLiteral } from "#src/access-intent/path-normalizatio
 import type { PathNormalizer } from "#src/path/path-normalizer";
 import { isSafeSystemPath } from "#src/path/safe-system-paths";
 import type { ArgumentSpeller } from "./command-enumeration";
+import { timedSubshellOf } from "./nested-execution";
 import {
   ARG_NODE_TYPES,
   SKIP_SUBTREE_TYPES,
@@ -238,6 +239,8 @@ export class BashPathResolver {
    * does not update the running directory; subshell and brace-group interiors
    * inherit the enclosing base without folding their own `cd`s (a conservative
    * first tier).
+   * A subshell timed by `time`, which the grammar reads as the argument of a
+   * command named `time`, is walked as a bare subshell is.
    */
   private collectPathCandidates(
     rootNode: TSNode,
@@ -263,9 +266,14 @@ export class BashPathResolver {
       case "list":
       case "redirected_statement":
         return this.walkCurrentShellSequence(node, base, out);
-      case "command":
+      case "command": {
+        const timed = timedSubshellOf(node);
+        if (timed !== null) {
+          return this.walkTimedSubshell(node, timed, base, out);
+        }
         tagTokens(collectCommandTokens(node, this.words), base, out);
         return this.foldCd(node, base);
+      }
       case "pipeline":
         // tree-sitter-bash mis-groups a redirect-bearing `&&`/`;` list as the
         // first stage of a pipeline (`cd a && pnpm x 2>&1 | tail` parses as
@@ -292,6 +300,30 @@ export class BashPathResolver {
         tagTokens(collectPathCandidateTokens(node, this.words), base, out);
         return base;
     }
+  }
+
+  /**
+   * Walk `time ( … )`, returning the base in force after it, which is `base`.
+   *
+   * The subshell is walked as a subshell, so its `cd`s fold for the commands
+   * after them inside it and reset on exit. Every other named child but the
+   * `time` name, such as a redirect the command hosts (`2>err time ( … )`),
+   * is collected against `base`.
+   */
+  private walkTimedSubshell(
+    command: TSNode,
+    subshell: TSNode,
+    base: EffectiveBase,
+    out: PathCandidate[],
+  ): EffectiveBase {
+    for (let i = 0; i < command.childCount; i++) {
+      const child = command.child(i);
+      if (!child?.isNamed || child.type === "command_name") continue;
+      if (child.startIndex === subshell.startIndex) continue;
+      tagTokens(collectPathCandidateTokens(child, this.words), base, out);
+    }
+    this.walkForCandidates(subshell, base, out);
+    return base;
   }
 
   /**

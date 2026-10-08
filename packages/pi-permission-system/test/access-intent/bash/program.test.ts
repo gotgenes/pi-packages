@@ -129,6 +129,36 @@ describe("BashProgram", () => {
       });
     });
 
+    describe("a subshell timed by time", () => {
+      /** Each rule candidate's token, effect, and policy match values. */
+      async function ruleCandidatesOf(command: string) {
+        const program = await BashProgram.parse(command, normalizer);
+        return program.pathRuleCandidates().map(({ token, effect, path }) => ({
+          token,
+          effect: effect.effect,
+          matchValues: path.matchValues(),
+        }));
+      }
+
+      it("resolves a token after the subshell's cd as the bare subshell does", async () => {
+        const timed = await ruleCandidatesOf("time ( cd sub && cat ./x )");
+        expect(timed).toEqual(await ruleCandidatesOf("( cd sub && cat ./x )"));
+        expect(timed.map(({ matchValues }) => matchValues[0])).toEqual([
+          join(cwd, "sub/x"),
+        ]);
+      });
+
+      it("projects the target of a redirect the time command hosts", async () => {
+        expect(await ruleCandidatesOf("2>err.txt time (rm x)")).toEqual([
+          {
+            token: "err.txt",
+            effect: "write",
+            matchValues: [join(cwd, "err.txt"), "err.txt"],
+          },
+        ]);
+      });
+    });
+
     describe("operands of nested commands hosted in a redirect (#741)", () => {
       it("projects the operand of a redirect-hosted command", async () => {
         const program = await BashProgram.parse(

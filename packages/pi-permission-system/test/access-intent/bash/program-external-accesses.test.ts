@@ -812,6 +812,25 @@ describe("BashProgram", () => {
         ).toContain("/projects/y");
       });
 
+      it("folds a cd inside a timed subshell for paths within that subshell", async () => {
+        // `time ( … )` runs its subshell as a bare `( … )` does: ../x → cwd/x.
+        const program = await BashProgram.parse(
+          "time ( cd sub && cat ../x )",
+          normalizer,
+        );
+        expect(program.externalAccesses()).toHaveLength(0);
+      });
+
+      it("does not leak a timed subshell's cd to following commands", async () => {
+        const program = await BashProgram.parse(
+          "time ( cd sub ) && cat ../y",
+          normalizer,
+        );
+        expect(
+          program.externalAccesses().map(({ path }) => path.value()),
+        ).toContain("/projects/y");
+      });
+
       it("persists a cd inside a brace group to later commands in the group", async () => {
         // Brace groups run in the current shell, so cd sub persists to cat ../x.
         const program = await BashProgram.parse(
