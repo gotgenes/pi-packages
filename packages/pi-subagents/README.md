@@ -9,9 +9,7 @@ Run them in foreground or background, steer them mid-run, resume completed sessi
 > Originally forked from [`tintinweb/pi-subagents`](https://github.com/tintinweb/pi-subagents) by [@tintinweb](https://github.com/tintinweb), now an independently maintained hard fork.
 > See [Comparison with upstream](./docs/comparison-with-upstream.md) for a feature-by-feature comparison and guidance on which to choose.
 
-<img width="600" alt="pi-subagents screenshot" src="https://github.com/gotgenes/pi-subagents/raw/main/media/screenshot.png" />
-
-<https://github.com/user-attachments/assets/8685261b-9338-4fea-8dfe-1c590d5df543>
+![Six background Explore subagents run four at a time with two queued; completion notices arrive one by one, then /subagents:sessions opens a finished agent's transcript](https://raw.githubusercontent.com/gotgenes/pi-packages/main/packages/pi-subagents/docs/assets/demo.webp)
 
 ## Features
 
@@ -65,6 +63,8 @@ Background agents return an ID immediately and notify you on completion.
 ## UI
 
 The extension renders a persistent widget above the editor showing active background agents (foreground runs are rendered inline by the `subagent` tool's progress stream):
+
+![The agents widget: four running Explore agents, each with its model, turn count, tool uses, tokens and context use, and current activity, above a line reading 2 queued](https://raw.githubusercontent.com/gotgenes/pi-packages/main/packages/pi-subagents/docs/assets/widget.png)
 
 ```text
 ● Agents

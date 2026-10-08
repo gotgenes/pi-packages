@@ -85,7 +85,6 @@
     "extensions": [
       "./src/index.ts"
     ],
-    "video": "https://github.com/gotgenes/pi-subagents/raw/main/media/demo.mp4",
-    "image": "https://github.com/gotgenes/pi-subagents/raw/main/media/screenshot.png"
+    "image": "https://raw.githubusercontent.com/gotgenes/pi-packages/main/packages/pi-subagents/docs/assets/demo.webp"
   }
 }
