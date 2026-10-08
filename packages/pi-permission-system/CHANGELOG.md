@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [40.1.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v40.1.0...pi-permission-system-v40.1.1) (2026-10-08)
+
+
+### Bug Fixes
+
+* **pi-permission-system:** commands inside time ( … ) are gated on their own rules ([0b77df6](https://github.com/gotgenes/pi-packages/commit/0b77df61d03c31e394cf68971df0e526b44a1abd)), closes [#1027](https://github.com/gotgenes/pi-packages/issues/1027)
+* **pi-permission-system:** a cd inside time ( … ) resolves the paths after it in that subshell ([6994e15](https://github.com/gotgenes/pi-packages/commit/6994e15042e2ec6cb9e495973e0407d80fa2ff25)), closes [#1027](https://github.com/gotgenes/pi-packages/issues/1027)
+
+### Documentation
+
+* **pi-permission-system:** document the timed-subshell descent and mark #1027 complete ([8337f54](https://github.com/gotgenes/pi-packages/commit/8337f5494ddd7a6c84561e3092700112e1de78a8))
+
 ## [40.1.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v40.0.2...pi-permission-system-v40.1.0) (2026-10-08)
 
 
