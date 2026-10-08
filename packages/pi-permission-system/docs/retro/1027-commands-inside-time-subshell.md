@@ -26,4 +26,33 @@ The plan has four steps (one `refactor:` moving `commandWordNodes`, two `fix:`, 
 - Recognizer scope is `time` only; `sudo (rm x)` / `nice (rm x)` are bash syntax errors and keep today's floor.
 - The tidy-first assessor recommended moving `commandWordNodes` to `nested-execution.ts` so the recognizer shares one filter; I verified the no-cycle claim by reading the import lines.
 
+## Stage: Implementation — TDD (2026-10-08T07:17:11Z)
+
+### Session summary
+
+Completed all four plan steps in four commits:
+
+- `refactor`: share the command word filter from `nested-execution.ts`.
+- `fix`: commands inside `time ( … )` are gated on their own rules.
+- `fix`: a `cd` inside `time ( … )` resolves the paths after it in that subshell.
+- `docs`: document the timed-subshell descent and mark #1027 complete.
+
+The package suite went from 5688 to 5720 tests.
+
+### Observations
+
+- Every killing mutation the plan named killed the predicted class; I also mutation-checked each pin that stayed green during Red.
+  - Dropping the whole `time` unit emit reddened the explicit `time *` ask/deny rows.
+  - Dropping the `time` text test reddened the `sudo`/`nice`/quoted rows.
+- Deviation: ESLint (`no-unnecessary-condition`) rejected `argument?.type` on a destructured element, which it types as non-nullish even when the word list is short, so `timedSubshellOf` checks `words.length !== 2` explicitly.
+- Finding: that length check is defensive only.
+  I added a row expecting `time (rm x) y` to be unrecognized, but the grammar wraps `time (rm x)` in an `ERROR` and parses `y` as a separate command, so the inner `command` node still has exactly two words.
+  The `ERROR` is emitted whole and floored before the recognizer matters, so the row moved to `program.test.ts` as a unit-level pin (killed by making the `ERROR` branch descend).
+  A `[time, subshell, word]` word list was never observed, so mutating the length check to `< 2` survives.
+- `TSNode` has no `id`, so the subshell child is excluded by `startIndex`, in both the enumerator and `walkTimedSubshell`.
+- Plan literal corrected in step 3: `sub` in `time ( cd sub && cat ./x )` is not projected (it does not exist on disk), so the rule-candidate row compares against the bare subshell's output as its oracle, plus one concrete match value.
+- Pre-completion reviewer: PASS.
+  The reviewer ran its own probes of shapes that reach the recognizer: process substitution, `for` inside, chains, background, heredoc redirect.
+  It found no command riding the exemption ungated.
+
 [#1043]: https://github.com/gotgenes/pi-packages/issues/1043
