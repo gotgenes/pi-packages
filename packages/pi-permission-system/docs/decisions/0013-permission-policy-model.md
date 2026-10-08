@@ -188,7 +188,7 @@ Four guards keep the inherited verdict naming the command that really runs; with
   A `--` ends the options but not `timeout`'s duration, so `timeout -- 5 sudo rm x` peels to `sudo rm x`, not to a command named `5`.
 - The peel ends at an ordinary command, not a wrapper it could not see past.
 - The inner head is a literal command name, not shell syntax: `tree-sitter-bash` has no `time` keyword, so `time { rm …; }` and `time ( … )` reach the clause with `{` or a subshell where the name should be.
-  The subshell form keeps the floor until its inner commands are enumerated ([#1027]).
+  The command enumerator exempts the subshell form itself, since it descends that subshell and gates each command inside on its own rules ([#1027]); the brace-group form keeps the floor ([#1043]).
 
 Unlike the core-reader clause, this one carries **no redirect refusal**.
 The core-reader clause classifies the unit as a read, so a redirect that writes contradicts it; this clause classifies nothing and inherits a verdict, and a redirect destination is projected onto the path surfaces whatever the floor decides (`timeout 5 pnpm test > /tmp/x` gates `/tmp/x` as a syntax-proven write, as the bare command does).
@@ -812,4 +812,5 @@ Issue [#620] carries the judgment slice the chain retains under §7.
 [#992]: https://github.com/gotgenes/pi-packages/issues/992
 [#963]: https://github.com/gotgenes/pi-packages/issues/963
 [#1027]: https://github.com/gotgenes/pi-packages/issues/1027
+[#1043]: https://github.com/gotgenes/pi-packages/issues/1043
 [openai/codex#28732]: https://github.com/openai/codex/issues/28732

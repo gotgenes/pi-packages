@@ -1107,7 +1107,8 @@ All four of these must hold, and each keeps the decision about the command that 
    The admitted options are `time -p`/`-l`/`-h`/`-f`; `timeout -s`/`-k`/`-f`/`-p`/`-v` and their long forms; `nice -n`/`--adjustment`; and `stdbuf -i`/`-o`/`-e` and their long forms.
 3. The command it runs is not itself a wrapper or an inline shell, so `timeout 5 bash -c '…'` stays floored.
 4. The command it runs is named literally.
-   `time ( … )` and `time { …; }` stay floored: the parser reads the group as `time`'s arguments, so the commands inside are not yet gated on their own rules.
+   `time ( … )` is decided by the commands inside it, each on its own rule, so `time (rm -rf /tmp/x)` reaches an `rm *` deny.
+   `time { …; }` stays floored: the parser reads the group as `time`'s arguments, so the commands inside are not yet gated on their own rules.
 
 So under `bash: {"*": "allow", "git push *": "deny"}`, `time pnpm run lint >/tmp/lint.txt 2>&1` is allowed and `timeout 60 git push --force` is denied, exactly as without the wrapper.
 No redirect refusal applies here: the redirect destination goes through `path` and `external_directory` as it does for the bare command, and a destination the parse cannot resolve (`> $OUT`) is unprojected for both forms alike.
