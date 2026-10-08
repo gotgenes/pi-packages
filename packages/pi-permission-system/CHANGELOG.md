@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [40.1.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v40.0.2...pi-permission-system-v40.1.0) (2026-10-08)
+
+
+### Features
+
+* **pi-permission-system:** sudo -n true and other shell no-ops behind a wrapper resolve by their own rule ([a0889ee](https://github.com/gotgenes/pi-packages/commit/a0889ee49c3ea217bb534339c12dc6c470020429)), closes [#1039](https://github.com/gotgenes/pi-packages/issues/1039)
+
+### Documentation
+
+* **pi-permission-system:** document shell no-ops in the pure-reader core ([#1039](https://github.com/gotgenes/pi-packages/issues/1039)) ([de296e0](https://github.com/gotgenes/pi-packages/commit/de296e0306a022b19fc5a8584e7c74841a35e69f))
+
 ## [40.0.2](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v40.0.1...pi-permission-system-v40.0.2) (2026-10-06)
 
 
