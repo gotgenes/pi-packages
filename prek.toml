@@ -9,7 +9,8 @@ repo = "builtin"
 hooks = [
     { id = "trailing-whitespace" },
     { id = "end-of-file-fixer" },
-    { id = "check-added-large-files" },
+    # README media (recorded demos, logos) is the one place a large binary is intended.
+    { id = "check-added-large-files", exclude = "^packages/[^/]+/docs/assets/" },
 ]
 
 [[repos]]
