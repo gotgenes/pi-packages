@@ -1079,7 +1079,7 @@ All four of these must hold, and each is a way the floor's reason could still ap
 4. The enclosing statement provably writes no file through a redirect.
    A destination the parse cannot resolve — `> $OUT`, `> $(mktemp)` — counts against the exemption rather than for it.
 
-So `xargs grep -l foo`, `xargs wc -l`, `xargs sed -n 1p`, and `find . -name '*.ts' -exec cat {} +` stop prompting under a matching `bash` allow, while `xargs rm`, `xargs sed -i`, and `find . -exec sh -c '…' \;` still prompt.
+So `xargs grep -l foo`, `xargs wc -l`, `xargs sed -n 1p`, `find . -name '*.ts' -exec cat {} +`, and the no-op probe `sudo -n true` stop prompting under a matching `bash` allow, while `xargs rm`, `xargs sed -i`, and `find . -exec sh -c '…' \;` still prompt.
 
 Three things this does **not** change:
 
