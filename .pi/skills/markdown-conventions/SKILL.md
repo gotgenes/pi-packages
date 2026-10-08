@@ -50,7 +50,7 @@ A form feed it will not repair for you: deleting the byte alone strands the `ere
 Write the character itself in an `Edit`/`Write` body, never a `\uXXXX` token — the addendum's literal-character rule governs `newText` as much as `oldText`.
 That governs *matching* as much as writing: a rejected `oldText` on a line holding an em-dash is usually a token you emitted wrong, not a file that moved.
 On #966 ten batches failed because U+2014 left the model as a tab plus `a`, as a bare newline, or as the literal escape, while a spike matched and wrote a real em-dash in every trial — so re-emit the character before changing tactics.
-Only when it genuinely will not emit, write a placeholder and substitute it in a scripted pass — `@PH@`, then `s.replace('@PH@', '\u2014')`.
+Only when it genuinely will not emit, write a placeholder and substitute it in a scripted pass — `…`, then `s.replace('…', '\u2014')`.
 The escape there belongs to the substituting script; hand-written in an edit body it arrives over-escaped (`\\u2014`) and lands in the file as literal text (Refs #960).
 
 That literal form is gated in markdown.
@@ -58,6 +58,7 @@ Outside code spans and fenced blocks, the pre-commit hook and `pi-autoformat` de
 A bare token, or an escape for an invisible character, it reports for a hand repair.
 To quote an escape on purpose, put it in backticks; in bare prose, write `\\u2014`, which CommonMark renders as the literal and the gate leaves alone.
 The same gate covers the comments of `.ts`/`.js`/`.mjs` files, where a string literal stays exempt and a backtick quote is the escape hatch too.
+That hatch also hides a glyph you emitted wrong: an ellipsis or em-dash inside backticks (`time ( … )`) that arrives as an escape passes every gate, so after writing one in a code span, run `rg -n '\\u20[0-9a-f]{2}' <file>`.
 The split-sentence form stays a manual scan: `rumdl`'s sentence-per-line reflow rejoins the split before any gate runs, so what survives is a missing word no pattern can see.
 
 ### Code fences

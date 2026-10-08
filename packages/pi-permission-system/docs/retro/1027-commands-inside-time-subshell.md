@@ -55,4 +55,60 @@ The package suite went from 5688 to 5720 tests.
   The reviewer ran its own probes of shapes that reach the recognizer: process substitution, `for` inside, chains, background, heredoc redirect.
   It found no command riding the exemption ungated.
 
+## Stage: Final Retrospective (2026-10-08T15:49:38Z)
+
+### Session summary
+
+One trunk session ran all four stages: plan, TDD, ship, and this retro.
+`time ( … )` subshells are now enumerated and the `time` unit exempted, and a `cd` inside folds on the path side.
+The change shipped as `pi-permission-system` 40.1.1, and the residual `time` shapes were filed as [#1043] (deferred).
+
+### Observations
+
+#### What went well
+
+- Prototyping the whole design into `src/` at planning time, then reverting it, paid off exactly.
+  It predicted the two tests that flipped (`program.test.ts` floor row, metamorphic floor row) and showed that `time (echo $(rm x))` needs the subshell excluded from the hosted walk.
+  Implementation then hit no unplanned test breakage.
+- The gate's numbers came from the real review log: 10 `time (` asks and 0 `time {` asks.
+  That made the brace-group deferral an easy, grounded call rather than a guess.
+- Mutation-checking the pins that stayed green during Red worked.
+  Dropping the whole `time` emit reddened the explicit `time *` rows, which proved the never-weaker invariant is pinned, not assumed.
+
+#### What caused friction (agent side)
+
+- `instruction-violation` (self-identified) — the ellipsis in `time ( … )` was emitted wrong four times, the last while writing this entry.
+  It came out as tabs in a `command-enumeration.ts` comment, and as a literal `\u2026` escape in a `bash-path-resolver.ts` comment and in two retro bullets.
+  All four sat inside backticks, which is the unicode-escape gate's deliberate escape hatch, so no hook caught them; each was found only by a manual grep.
+  Impact: four repair edits and one `--amend`; no shipped damage.
+- `missing-context` (self-identified) — the plan's step 3 rule-candidate row was authored from expectation rather than run through the prototype that existed.
+  It assumed `sub` would be projected, but `sub` does not exist on disk, so it is not.
+  The `/plan-issue` rule "run each case the TDD Order names through the prototype" covered it.
+  Impact: one extra red-debug cycle; the row was rewritten to use the bare subshell as its oracle.
+- `missing-context` (self-identified) — a recognizer row for `time (rm x) y` was written without probing the parse.
+  The grammar wraps `time (rm x)` in an `ERROR`, so the row was false at Green, and the length check it targeted turned out to be unreachable.
+  Impact: three tool calls; the row moved to a program-level pin.
+- `other` — the planning prototype used `TSNode.id`, which the type does not declare, and ran green because Vitest does not typecheck.
+  The plan inherited the prototype's shape, so `tsc` caught it only at Green.
+  Impact: one edit.
+
+#### What caused friction (user side)
+
+- None: the three `ask_user` gates (`time` unit resolution, brace-group scope, #1043 disposition) were each answered in one round.
+
+### Diagnostic details
+
+- **Model-performance correlation** — both subagents ran on `anthropic/claude-sonnet-5-5`, read from their transcripts.
+  The `tidy-first-assessor`'s recommendation (move `commandWordNodes`) and the `pre-completion-reviewer`'s probes (twelve shapes beyond the tests) were judgment work suited to it.
+- **Feedback-loop gap analysis** — `check` ran after every Green and the full suite before each commit.
+  The one late catch (`TSNode.id`) traces to the untypechecked planning prototype, not to the TDD loop.
+
+### Changes made
+
+1. `.pi/skills/markdown-conventions/SKILL.md`: one sentence after the backtick-hatch rule saying the hatch also hides a mis-emitted glyph, with the `rg` that finds an escape inside a code span.
+2. Filed [#1044] (`scope:repo`): `invisible-characters.mjs` should reject a tab inside an inline code span, which is the tab form of this session's misses.
+   The repo has 0 such tabs today (measured), so the check needs no allowlist.
+   Flagging typographic escapes inside code spans was considered and declined, since 119 deliberate quotes exist (measured).
+
 [#1043]: https://github.com/gotgenes/pi-packages/issues/1043
+[#1044]: https://github.com/gotgenes/pi-packages/issues/1044
