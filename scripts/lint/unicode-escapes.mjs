@@ -17,7 +17,7 @@
 //
 // Usage: node scripts/lint/unicode-escapes.mjs [--fix] [paths...]
 //
-// With no paths it enumerates the tracked markdown files itself. `--fix`
+// With no paths it enumerates the tracked markdown and code files itself. `--fix`
 // decodes each escape that spells a visible character and still fails on the
 // rest.
 
@@ -501,15 +501,19 @@ function hex(codePoint) {
 }
 
 /**
- * Every tracked markdown file that exists on disk.
+ * Every tracked markdown and code file that exists on disk.
  *
  * A path staged for deletion is still tracked, so the existence filter keeps
  * the scan from throwing on it.
  *
  * @returns {string[]}
  */
-function trackedMarkdown() {
-  const listing = execFileSync("git", ["ls-files", "-z", "--", "*.md"], {
+function trackedFiles() {
+  const patterns = [
+    "*.md",
+    ...CODE_EXTENSIONS.map((extension) => `*${extension}`),
+  ];
+  const listing = execFileSync("git", ["ls-files", "-z", "--", ...patterns], {
     maxBuffer: 64 * 1024 * 1024,
   }).toString("utf8");
   return listing.split("\0").filter((path) => path !== "" && existsSync(path));
@@ -543,7 +547,7 @@ function blankOut(text) {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const { fix, paths } = parseArgs(process.argv.slice(2));
   const { lines, exitCode } = run(
-    { paths: paths.length > 0 ? paths : trackedMarkdown(), fix },
+    { paths: paths.length > 0 ? paths : trackedFiles(), fix },
     {
       readFile: readFileSync,
       writeFile: (path, text) => writeFileSync(path, text, "utf8"),
