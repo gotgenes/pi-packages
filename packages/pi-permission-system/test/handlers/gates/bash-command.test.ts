@@ -1187,6 +1187,55 @@ describe("resolveBashCommandCheck: a session grant covers only the unit it names
   });
 });
 
+describe("resolveBashCommandCheck: a wrapper running a shell no-op", () => {
+  beforeAll(async () => {
+    await warmBashParser();
+  });
+
+  const permissive: Record<string, PermissionState> = {
+    "*": "allow",
+    "sudo -n true": "allow",
+  };
+
+  describe("resolves by the no-op's own rule", () => {
+    it.each(["sudo -n true", "sudo -n :", "sudo -n false", "xargs true"])(
+      "allows %s under a permissive policy",
+      (command) => {
+        const result = decide(permissive, command);
+        expect(result.state).toBe("allow");
+        expect(result.matchedPattern).toBe("*");
+        expect(result.floorExemption).toBe("core-reader");
+        expect(result.command).toBe(command);
+      },
+    );
+
+    it("denies when the no-op's own rule denies", () => {
+      const result = decide({ "*": "allow", true: "deny" }, "sudo -n true");
+      expect(result.state).toBe("deny");
+      expect(result.matchedPattern).toBe("true");
+    });
+  });
+
+  describe("keeps the floor", () => {
+    it.each([
+      ["sudo true > /tmp/x", "a redirect writes a file"],
+      ["sudo sh -c true", "an inline shell's payload is opaque"],
+      ["sudo ./true", "a path-qualified head word is never core"],
+      ["sudo -n /bin/true", "a path-qualified head word is never core"],
+    ])("for %s (%s)", (command) => {
+      const result = decide(permissive, command);
+      expect(result.state).toBe("ask");
+      expect(result.floor).toBeDefined();
+    });
+  });
+
+  it("never weakens an explicit ask on the wrapper", () => {
+    const result = decide({ "*": "allow", "sudo *": "ask" }, "sudo -n true");
+    expect(result.state).toBe("ask");
+    expect(result.matchedPattern).toBe("sudo *");
+  });
+});
+
 function resolverOver(
   bash: Record<string, PermissionState>,
   sessionGrants: Ruleset = [],

@@ -1009,7 +1009,7 @@ A path token owned by one of them consults the `_read` surface alone:
 
 <!-- BEGIN PURE_READER_CORE -->
 
-`awk`, `basename`, `cat`, `cd`, `diff`, `dirname`, `echo`, `egrep`, `fd`, `fgrep`, `find`, `grep`, `head`, `ls`, `pwd`, `realpath`, `rg`, `sed`, `sort`, `stat`, `tail`, `wc`, `which`
+`:`, `awk`, `basename`, `cat`, `cd`, `diff`, `dirname`, `echo`, `egrep`, `false`, `fd`, `fgrep`, `find`, `grep`, `head`, `ls`, `pwd`, `realpath`, `rg`, `sed`, `sort`, `stat`, `tail`, `true`, `wc`, `which`
 
 <!-- END PURE_READER_CORE -->
 

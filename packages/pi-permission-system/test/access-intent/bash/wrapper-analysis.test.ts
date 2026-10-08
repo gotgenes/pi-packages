@@ -305,6 +305,9 @@ describe("floorExemptionOf", () => {
       "sudo grep foo /etc/hosts",
       "find . -name '*.ts' -exec wc -l {} +",
       "fd -e ts -x cat",
+      "sudo -n true",
+      "sudo -n :",
+      "xargs false",
     ])("is transparent: %s", (unit) => {
       expect(isTransparent(unit)).toBe(true);
     });
@@ -324,6 +327,9 @@ describe("floorExemptionOf", () => {
       ["xargs sort -o /tmp/x", "`-o` withdraws sort's read claim"],
       ["xargs find . -delete", "`-delete` withdraws find's read claim"],
       ["xargs fd -x rm", "`-x` withdraws fd's read claim"],
+      ["sudo ./true", "a path-qualified head word is never core"],
+      ["sudo -n /bin/true", "a path-qualified head word is never core"],
+      ["sudo sh -c true", "an inline shell's payload is never peeled"],
     ])("is not transparent: %s (%s)", (unit) => {
       expect(isTransparent(unit)).toBe(false);
     });

@@ -1989,6 +1989,18 @@ describe("BashProgram", () => {
       ]);
     });
 
+    it("carries a shell no-op's read onto its external access", async () => {
+      const program = await BashProgram.parse("true /etc/hosts", normalizer);
+      expect(
+        program.externalAccesses().map(({ path, effect }) => ({
+          path: path.value(),
+          effect,
+        })),
+      ).toEqual([
+        { path: "/etc/hosts", effect: { effect: "read", source: "core" } },
+      ]);
+    });
+
     it("carries a core word's read onto its rule candidate", async () => {
       const program = await BashProgram.parse("cat /etc/hosts", normalizer);
       expect(

@@ -156,6 +156,11 @@ function coreAdmissions(): readonly CoreAdmission[] {
         "No filesystem write: `echo` writes to stdout (a redirect destination is the syntax proof's job, not `echo`'s); `cd` reads a directory to enter it",
     },
     {
+      words: ["true", "false", ":"],
+      reason:
+        "No-ops: ignore their operands and touch no file; GNU's `--help`/`--version` print to stdout only",
+    },
+    {
       words: ["find", "fd", "sort"],
       reason:
         "Read-only until an argument says otherwise — see RETRACTION_GUARDS",

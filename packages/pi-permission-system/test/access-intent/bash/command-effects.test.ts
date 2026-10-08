@@ -39,6 +39,9 @@ const ROSTER = [
   "sort",
   "sed",
   "awk",
+  "true",
+  "false",
+  ":",
 ];
 
 /**
