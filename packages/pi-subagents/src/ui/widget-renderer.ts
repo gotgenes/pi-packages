@@ -235,7 +235,7 @@ function assembleWithinBudget(heading: string, sections: WidgetSections): string
 	for (const pair of runningLines) lines.push(...pair);
 	if (queuedLine) lines.push(queuedLine);
 
-	// Fix last connector: swap \u251C\u2500 \u2192 \u2514\u2500.
+	// Fix last connector: swap ├─ → └─.
 	if (lines.length > 1) {
 		const last = lines.length - 1;
 		lines[last] = lines[last].replace("\u251C\u2500", "\u2514\u2500");

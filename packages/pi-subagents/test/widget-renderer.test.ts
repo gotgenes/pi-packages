@@ -336,7 +336,7 @@ describe("renderWidgetLines", () => {
 		// running header (1 line) + activity (1 line)
 		expect(lines[2]).toContain("**Agent**");
 		expect(lines[3]).toContain("\u23bf");
-		// queued line (last item, uses \u2514\u2500)
+		// queued line (last item, uses └─)
 		expect(lines[4]).toContain("\u2514\u2500");
 		expect(lines[4]).toContain("1 queued");
 		// Total: 5 lines
