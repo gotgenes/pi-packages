@@ -1342,6 +1342,9 @@ Deferred by composition, with the reason each carries: [#804] (staging slice 7, 
   It lifts the repo's `rumdl` version pin, which is lint tooling, not this package's code.
 - [#1042] — filed by [#1039]'s implementation; **becomes a new step in this phase, directly after [#1027]** (operator decision, 2026-10-08).
   `sudo -e`/`--edit` (sudoedit) edits its operands as files, but the wrapper peel skips `-e` as a flag and reads the next word as the inner command, so `sudo -e cat` earns the `core-reader` exemption for a root write; it is a fail-open in the `wrapper-analysis.ts` peel [#963] and [#1027] reshape.
+- [#1043] — filed by [#1027]'s planning; deferred to a later phase (operator decision, 2026-10-08).
+  It is [#1027]'s residual: `time { …; }`, `time -p ( … )`, and the other `time` shapes the grammar misreads stay floored, so they fail closed.
+  The local review log holds no ask for any of them (measured: 0 `time {` asks in 23,641 lines), and recovering them needs a new span re-parse mechanism outside this phase's token-role budget.
 - Feature issues [#691], [#687], [#680], [#654], [#648], [#604], [#603], [#472] — out of scope for a structural phase; [#680] is narrowed further by [#880] (a declared reader needs no floor override), and [#604] by [#813].
 
 #### Deferred tidyings swept
@@ -2006,5 +2009,6 @@ Each phase's findings, step plan, dependency diagram, and health metrics are pre
 [#1037]: https://github.com/gotgenes/pi-packages/issues/1037
 [#1039]: https://github.com/gotgenes/pi-packages/issues/1039
 [#1042]: https://github.com/gotgenes/pi-packages/issues/1042
+[#1043]: https://github.com/gotgenes/pi-packages/issues/1043
 [#490]: https://github.com/gotgenes/pi-packages/issues/490
 [ADR-0002]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-subagents/docs/decisions/0002-extensions-on-a-minimal-core.md
