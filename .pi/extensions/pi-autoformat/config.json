@@ -22,7 +22,7 @@
     }
   },
   "chains": {
-    ".ts": ["invisible-characters", "biome"],
+    ".ts": ["invisible-characters", "unicode-escapes", "biome"],
     ".json": ["invisible-characters", "biome"],
     ".md": ["invisible-characters", "unicode-escapes", "rumdl"]
   }
