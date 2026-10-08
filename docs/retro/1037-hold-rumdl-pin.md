@@ -35,3 +35,54 @@ All verify criteria held: the frozen install, `pnpm run lint`, an empty `rumdl#8
 - Pre-completion reviewer: WARN.
   Its one finding was n = 1 per measurement condition, which the plan already states and justifies because rumdl is deterministic.
 - `/ship` should close #900 alongside #1037.
+
+## Stage: Final Retrospective (2026-10-08T03:44:54Z)
+
+### Session summary
+
+One process ran plan, build, ship, and retro.
+The issue's proposed bump turned into a measured decision to keep the pin: 0.2.78 joins sentences that open with `[#N]` or a lowercase word, filed upstream as rvben/rumdl#933.
+The shipped change is two config comments (`03e26233`); #1037 and #900 closed, nothing released.
+
+### Observations
+
+#### What went well
+
+- Classifying `rumdl fmt` hunks by line-count delta (more removed lines means a join, more added means a split) on a scratch `git archive` copy turned 593 findings into a decision in about three tool calls.
+  It separated the regression class (joins) from the genuine fixes (splits) without reading 369 files.
+- Searching the upstream tracker surfaced `require-sentence-capital` (rvben/rumdl#852), and measuring it, rather than offering it as an untested option, showed it trades about 56 false splits for the joins.
+- The upstream repro was re-run in an empty directory with a four-line config before filing, so #933 does not depend on this repo's `.rumdl.toml`.
+
+#### What caused friction (agent side)
+
+- `instruction-violation` (user-caught) — the first `ask_user` gate reported the issue's MD018 `magiclink` check without saying what `magiclink` does, and offered to file upstream without saying what the target repo expects of a report.
+  The operator answered both questions with questions instead of choosing an option.
+  `clarification-gates` already requires defining a gate's terms of art.
+  Impact: one extra round trip; no rework.
+- `missing-context` — the offer to file upstream did not check rvben/rumdl's issue templates or any policy on AI-written submissions; the operator had to ask.
+  Impact: one round trip, then two `gh api` reads that should have come before the gate.
+- `other` — the scratch copy carried the repo's `mise.toml`, and mise refused the untrusted config, so the first two `pnpm dlx`/`cd` probes in `/tmp/probe1037` failed until the file was deleted and the dlx binary was called by path.
+  Impact: two failed tool calls.
+- `other` (self-identified) — the build commit's body wrote a bare `#816` meaning `rvben/rumdl#816`, which would cross-link this repo's #816.
+  Impact: one amend before push.
+
+#### What caused friction (user side)
+
+- Nothing material.
+  The operator's questions in place of a choice were the right response to an under-briefed gate.
+
+### Diagnostic details
+
+- **Model-performance correlation** — planning and build ran on `claude-opus-5-5` (corpus measurement and the hold/bump judgment), ship on `claude-sonnet-5-5` (mechanical), and the `pre-completion-reviewer` subagent on `claude-sonnet-5-5`, per its transcript.
+  All appropriate for their tasks.
+  The reviewer piped its gates through `tail` (`pnpm run check 2>&1 | tail -5`), which hides exit status; it read the output text, so no verdict was affected.
+
+#### Unverified lead
+
+- `markdown-conventions` says the `pi-autoformat` pass joins a sentence onto the previous line when it opens with a lowercase token.
+  In this session's 0.2.24 repro, `release-please reads ...` after a bold `**...**` line was **not** joined.
+  The quirk may depend on the preceding line's shape; not investigated.
+
+### Changes made
+
+1. `.pi/skills/clarification-gates/SKILL.md`: under `## The option space`, an option that files on a third-party tracker now names that tracker's issue template and any AI-submission policy, read before the gate.

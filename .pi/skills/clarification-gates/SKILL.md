@@ -39,4 +39,5 @@ When every option shares a premise — the same object grown, the same represent
 When the change adopts a third-party artifact, that artifact's own decomposition — its config surface, its precedence order, its field set — is a premise like any other.
 Derive the option space from the problem, then check the contribution against it.
 Mark `recommended` on the option your own substance supports: when the evidence you presented shows a no-mechanism option meets the goal, recommending a mechanism requires naming the gap it closes.
+An option that files on a third-party tracker names that tracker's issue template and any stated policy on AI-written submissions: read both (`gh api repos/<o>/<r>/contents/.github/ISSUE_TEMPLATE`, `CONTRIBUTING.md`) before the gate.
 An option whose differentiator is a dependency's behavior is a claim about that dependency — read its compiled source before writing the option, never its type declaration or its name.
