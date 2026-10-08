@@ -21,3 +21,22 @@ The operator chose A, a data-only addition of `true`, `false`, `:` to `coreAdmis
 - The Tidy-First assessor recommended no preparatory tidyings and caught that `docs/configuration.md`'s roster list must change in the same commit as the code (doc-parity test); sorted order puts `:` first and `false` before `fd`.
 - `Co-authored-by: aisensiy` is recorded in Step 1's commit message because the report's source pointer named the missing core admission the fix adds.
 - No follow-up issues filed; no roadmap step references #1039, so it ships independently.
+
+## Stage: Implementation — TDD (2026-10-08T05:46:13Z)
+
+### Session summary
+
+Both plan steps landed: the `feat` commit admitting `true`, `false`, `:` to `coreAdmissions()` with tests in four files plus the doc roster, and the `docs` commit adding the `sudo -n true` example and the 26-word roster count.
+The `pi-permission-system` suite went from 5668 to 5688 tests (+20), all green, with check, lint, and `fallow dead-code` clean.
+
+### Observations
+
+- The plan's third killing mutation (drop the `PATH_SEPARATORS` check in `isBareCoreWord`) was vacuous: the exact-set lookup already rejects `./true` and `/bin/true`, so the guard is redundant for these inputs and every test survived.
+  The discriminating mutation for that class is basenaming the head word (`PURE_READER_CORE.has(headWord.split("/").at(-1))`), which killed all six path-qualified negatives, the four new ones and the two existing `xargs ./grep`/`xargs /usr/bin/grep` ones.
+- Red differed slightly from the plan: the doc-parity test stays green until the code changes, because it compares the doc to `PURE_READER_CORE`, not to `ROSTER`; it went red under the delete-the-group mutation as expected.
+- An extra unplanned mutation (ignore `writesViaRedirect` in `floorExemptionOf`) confirmed the `sudo true > /tmp/x` row pins the redirect refusal.
+- Pre-completion reviewer: PASS.
+  Its non-blocking observation was a pre-existing fail-open: `sudo -e` (sudoedit) operands are peeled as an inner command, so `sudo -e cat` earns `core-reader`.
+  Filed as #1042; the operator dispositioned it as a new Phase 15 step directly after #1027 (committed separately as the roadmap bookkeeping commit).
+- The base ref handed to the reviewer was not resolved with `git rev-parse` and did not exist; the reviewer fell back to the plan commit's parent.
+  Resolve the SHA before dispatch.
