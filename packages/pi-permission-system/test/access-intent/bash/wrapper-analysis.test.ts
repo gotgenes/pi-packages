@@ -870,6 +870,21 @@ describe("floorExemptionOf", () => {
     });
   });
 
+  describe("a wrapper whose command line the peel does not see", () => {
+    it.each([
+      ["watch cat x", "watch hands its command line to sh -c"],
+      ["watch -x cat x", "one refusal for every watch mode"],
+      ["watch -n 2 cat x", "an option does not change it"],
+      ["parallel cat ::: a", "parallel runs its command through a shell"],
+      ["rush cat", "rush builds command lines from a template"],
+      ["rust-parallel cat", "rust-parallel builds command lines too"],
+      ["sudo watch cat x", "behind an outer wrapper"],
+      ["timeout 5 watch cat x", "behind an execution modifier"],
+    ])("is not transparent: %s (%s)", (unit) => {
+      expect(isTransparent(unit)).toBe(false);
+    });
+  });
+
   describe("a doas layer", () => {
     it.each([
       ["doas -a cat rm x", "-a is unlisted, so it refuses"],

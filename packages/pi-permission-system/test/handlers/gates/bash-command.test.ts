@@ -1301,6 +1301,8 @@ describe("resolveBashCommandCheck: env, xargs, and doas option grammars", () => 
       ["sudo env -C /etc cat shadow", "cat reads /etc/shadow as root"],
       ["doas -a cat rm x", "OpenBSD -a takes cat as an auth style, so rm runs"],
       ["doas -C /etc/doas.conf cat x", "-C checks a config and runs nothing"],
+      ["watch cat x \\; rm y", "sh -c runs cat x, then rm y"],
+      ["parallel cat x \\; rm y ::: a", "a shell runs cat x, then rm y"],
     ])("for %s (%s)", (command) => {
       const result = decide(policy, command);
       expect(result.state).toBe("ask");

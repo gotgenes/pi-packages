@@ -163,7 +163,10 @@ export function executedUnitOf(
  * 2. Unwrapping reached the inner command without passing through an opaque
  *    payload. `sh -c '…'` carries an unparsed program whose first word says
  *    nothing about the rest of it, which is why this cannot consult
- *    {@link executedUnitOf}'s string.
+ *    {@link executedUnitOf}'s string. A wrapper that hands its whole command
+ *    line to a shell or builds it from a template
+ *    ({@link OPAQUE_COMMAND_LINE_WRAPPERS}) is that payload in another shape:
+ *    `watch cat x \; rm y` runs `rm`, so no layer may be one.
  * 3. The inner command *proves* a read — bare-basename core word, retraction
  *    guards applied, so `xargs sort -o /tmp/x` and `xargs find . -delete` are
  *    not transparent.
@@ -184,7 +187,11 @@ export function floorExemptionOf(
   // Only the peeled words matter here, so the walk is handed no source span to
   // cut from — the text slice is `executedUnitOf`'s product, not this one's.
   const unwrapped = unwrapIndirection(words, "");
-  if (unwrapped.kind === "opaque" || unwrapped.peeled.length === 0) {
+  if (
+    unwrapped.kind === "opaque" ||
+    unwrapped.peeled.length === 0 ||
+    unwrapped.peeled.some(runsOpaqueCommandLine)
+  ) {
     return undefined;
   }
 
@@ -195,6 +202,12 @@ export function floorExemptionOf(
   return onlyModifiesExecution(unwrapped.peeled, unwrapped.words)
     ? "execution-modifier"
     : undefined;
+}
+
+/** True when a peeled layer's wrapper does not run the words the peel sees. */
+function runsOpaqueCommandLine(layer: readonly CommandWord[]): boolean {
+  const name = wrapperName(layer);
+  return name !== undefined && OPAQUE_COMMAND_LINE_WRAPPERS.has(name);
 }
 
 /**
@@ -974,6 +987,21 @@ const RESERVED_WORDS: ReadonlySet<string> = new Set([
  * than the start of the inner command.
  */
 const LEADING_OPERAND_WRAPPERS = new Set(["timeout", "flock"]);
+
+/**
+ * Wrappers whose executed command line is not the words the peel sees, so a
+ * core-looking first word says nothing about what runs. `watch` (without
+ * `-x`) passes its words to `sh -c`, and GNU `parallel` runs its command
+ * through a shell; both verified, where `watch cat x \; rm y` runs `rm`.
+ * `rush` and `rust-parallel` build command lines from templates and have no
+ * local binary to verify how, so they are refused rather than admitted.
+ */
+const OPAQUE_COMMAND_LINE_WRAPPERS: ReadonlySet<string> = new Set([
+  "watch",
+  "parallel",
+  "rush",
+  "rust-parallel",
+]);
 
 /** Words ending a `find -exec` clause; they belong to `find`, not its command. */
 const EXEC_TERMINATORS = new Set([";", "+"]);

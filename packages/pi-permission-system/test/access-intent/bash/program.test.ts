@@ -1458,33 +1458,17 @@ describe("BashProgram", () => {
         ["parallel rm ::: x", "parallel rm ::: x", "rm ::: x"],
         ["doas aws s3 ls", "doas aws s3 ls", "aws s3 ls"],
         ["flock /tmp/lock aws s3 ls", "flock /tmp/lock aws s3 ls", "aws s3 ls"],
+        // A command line handed to a shell or built from a template is never
+        // exempt, however core its first word looks.
+        ["rust-parallel echo", "rust-parallel echo", "echo"],
+        ["rush echo", "rush echo", "echo"],
+        ["watch ls", "watch ls", "ls"],
       ])(
         "flags %s as an indirection wrapper",
         async (command, text, executedUnit) => {
           const program = await BashProgram.parse(command, normalizer);
           expect(program.commands()).toEqual([
             { text, wrapperKind: "indirection", executedUnit },
-          ]);
-        },
-      );
-
-      // The remaining #575 wrappers, whose realistic inner commands are core
-      // readers, so the unit also carries the floor exemption (#803).
-      it.each([
-        ["rust-parallel echo", "echo"],
-        ["rush echo", "echo"],
-        ["watch ls", "ls"],
-      ])(
-        "flags %s as an indirection wrapper running a pure reader",
-        async (command, executedUnit) => {
-          const program = await BashProgram.parse(command, normalizer);
-          expect(program.commands()).toEqual([
-            {
-              text: command,
-              wrapperKind: "indirection",
-              executedUnit,
-              floorExemption: "core-reader",
-            },
           ]);
         },
       );
