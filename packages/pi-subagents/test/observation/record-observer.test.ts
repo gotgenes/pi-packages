@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SubagentState } from "#src/lifecycle/subagent-state";
 import { subscribeSubagentObserver } from "#src/observation/record-observer";
 import { createMockSession } from "#test/helpers/mock-session";
@@ -204,5 +204,33 @@ describe("subscribeSubagentObserver", () => {
 
     session.emit({ type: "tool_execution_end", toolName: "Write" });
     expect(state.toolUses).toBe(1); // unchanged
+  });
+
+  describe("progress", () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(50_000);
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it.each([
+      { type: "tool_execution_start", toolName: "bash" },
+      { type: "tool_execution_update", toolName: "bash" },
+      { type: "tool_execution_end", toolName: "bash" },
+      { type: "message_update", assistantMessageEvent: { type: "text_delta", delta: "Hi" } },
+      { type: "message_end", message: { role: "assistant", usage: { input: 1, output: 1, cacheWrite: 0 } } },
+      { type: "turn_end" },
+    ])("stamps the time of a $type event", (event) => {
+      const session = createMockSession();
+      const state = new SubagentState({ status: "running", startedAt: 1000 });
+      subscribeSubagentObserver(session, state);
+
+      session.emit(event);
+
+      expect(state.lastProgressAt).toBe(50_000);
+    });
   });
 });

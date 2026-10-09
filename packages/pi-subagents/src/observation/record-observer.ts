@@ -18,6 +18,7 @@ export interface SubagentObserverOptions {
  * Subscribe to session events and accumulate stats on the subagent state.
  *
  * Handles:
+ * - every event → `state.markProgress()`, so a run whose events stop reads as stalled
  * - `tool_execution_start` → `state.addActiveTool(name)`
  * - `tool_execution_end` → `state.removeActiveTool(name)`, `state.incrementToolUses()`
  * - `message_start` → `state.resetResponseText()`
@@ -33,6 +34,8 @@ export function subscribeSubagentObserver(
   options?: SubagentObserverOptions,
 ): () => void {
   return session.subscribe((event) => {
+    state.markProgress();
+
     if (event.type === "tool_execution_start") {
       state.addActiveTool(event.toolName);
     }
