@@ -22,6 +22,13 @@ export interface GetResultToolManager {
 	getRecord(id: string): Subagent | undefined;
 }
 
+/** The arguments a get_subagent_result call carries. */
+export interface GetResultParams {
+	agent_id: string;
+	wait?: boolean;
+	verbose?: boolean;
+}
+
 // ---- Class ----
 
 export class GetResultTool {
@@ -32,7 +39,7 @@ export class GetResultTool {
 
 	async execute(
 		_toolCallId: string,
-		params: { agent_id: string; wait?: boolean; verbose?: boolean },
+		params: GetResultParams,
 		signal: AbortSignal,
 		_onUpdate: unknown,
 		_ctx: unknown,
@@ -166,7 +173,7 @@ export class GetResultTool {
 			}),
 			// ---- Custom rendering: a bounded, Ctrl+O-expandable retrieval row ----
 
-			renderCall(args: { agent_id: string; wait?: boolean; verbose?: boolean }, theme: Theme) {
+			renderCall(args: GetResultParams, theme: Theme) {
 				const notes = [args.wait === true ? "waiting" : "", args.verbose === true ? "verbose" : ""]
 					.filter(Boolean)
 					.join(", ");
@@ -194,7 +201,7 @@ export class GetResultTool {
 
 			execute: (
 				toolCallId: string,
-				params: { agent_id: string; wait?: boolean; verbose?: boolean },
+				params: GetResultParams,
 				signal: AbortSignal,
 				onUpdate: unknown,
 				ctx: unknown,
