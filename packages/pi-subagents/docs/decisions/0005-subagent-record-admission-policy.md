@@ -98,6 +98,9 @@ This was true of every field except `lifetimeUsage`, which was assigned by refer
   That is the intended state of a "no vacant hooks" core, not an oversight.
   **Revisit condition:** a named consumer plus a reactive channel for momentary state.
   Whoever reopens it should add the channel, not widen the snapshot — a pulled `activeTools` would be stale on arrival.
+- The policy governs `SubagentRecord`, not the `get_subagent_result` report.
+  That report is read by the model at the moment it asks, so it carries a running agent's momentary activity, turns used, and time since its last progress, the facts the widget shows the human.
+  Admitting them there widens no snapshot and changes no rule above.
 - Both halves of the policy are pinned by tests in `test/service/service-adapter.test.ts`: exact `toEqual` assertions on the admitted set, and a test that populates every declined field on the source and asserts none of them reaches the output.
   A future widening fails those tests by design; that failure is the moment the proposal meets this policy.
 - `SubagentRecord.lifetimeUsage` stays declared mutable.

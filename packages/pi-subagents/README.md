@@ -144,6 +144,11 @@ Check status and retrieve results from a background agent.
 | `agent_id` | string  | yes      | Agent ID to check             |
 | `wait`     | boolean | no       | Wait for completion           |
 | `verbose`  | boolean | no       | Include full conversation log |
+| `timeout`  | number  | no       | Seconds to bound a `wait`     |
+
+Without `timeout`, a wait lasts until the agent finishes.
+With one, the wait ends at the bound and returns the current report; the agent is not stopped, and its outcome is still delivered when it finishes.
+A report on a running agent names what it is doing, the turns it has used, and how long since it last made progress, so a parent can tell a stalled agent from a long one.
 
 The result renders as a compact three-line summary — status, stats, description, and a one-line preview.
 Press `Ctrl+O` to expand it to the full report, bounded so a long result cannot fill the terminal; the expanded view names the transcript path when it withholds anything.

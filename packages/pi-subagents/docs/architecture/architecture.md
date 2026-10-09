@@ -392,7 +392,7 @@ src/
 │   └── usage.ts                    token usage tracking
 │
 ├── observation/                    progress tracking and notification
-│   ├── record-observer.ts          session-event stats observer
+│   ├── record-observer.ts          session-event stats observer; stamps each event as the run's last progress
 │   ├── notification.ts             completion nudges and mid-run updates, in one arrival-ordered withheld queue (announce-only; withheld during the parent's agent run and flushed on agent_settled, each re-checking its gates at emit rather than replaying them from enqueue — a completion on claim and consumption, an update on the claim and on the child still running, since a terminated run's updates ride its outcome and this nudge is one of their carriers), plus workspace notices, which are announced straight through
 │   ├── outcome-delivery.ts         shared outcome rendering every result carrier composes: one status vocabulary in two presentations, body, and the addenda tail (mid-run updates, workspace notice, ask-back affordance — which names a resume only when the record says one would be accepted, and asks the parent to wait when the child has merely not settled) in one fixed order
 │   ├── renderer.ts                 notification, mid-run-update, and workspace-notice TUI components
@@ -409,7 +409,7 @@ src/
 │   ├── spawn-config.ts             pure config resolution
 │   ├── foreground-runner.ts        foreground execution loop
 │   ├── background-spawner.ts       background spawn setup + the launch message every background door (spawn, resume) returns
-│   ├── get-result-tool.ts          get_subagent_result tool; a wait a resume superseded reports the run it waited for
+│   ├── get-result-tool.ts          get_subagent_result tool; an optional timeout bounds a wait without stopping the agent; a wait a resume superseded reports the run it waited for
 │   ├── get-result-report.ts        pure get_subagent_result report formatter
 │   ├── get-result-renderer.ts      pure get_subagent_result line assembly for the collapsed and expanded TUI views
 │   ├── steer-tool.ts               steer_subagent tool
@@ -955,7 +955,7 @@ End-of-planning `src/` totals: 12,420 LOC across 73 files, 2,065 tests across 85
 
 ### Steps
 
-#### [#947] `get_subagent_result` waits with a bound and reports a running child's progress
+#### ✅ [#947] `get_subagent_result` waits with a bound and reports a running child's progress
 
 **Cause:** the discrete query a parent uses to watch a child cannot report that child's progress.
 [Decision 0005](../decisions/0005-subagent-record-admission-policy.md) keeps momentary activity (`activeTools`, `responseText`) off `SubagentRecord`, and the `get_subagent_result` report inherited that exclusion without a decision of its own, though the widget already renders the same facts to the human.
@@ -969,6 +969,10 @@ A `wait: true` is also unbounded, so a child stuck inside one tool call blocked 
 - **Outcome:** a bounded wait returns at its bound with the child still running and the progress facts in the report, and an unbounded wait behaves as it does today; pinned by the plan's tests.
 - **Commit type:** to be decided at plan time (an added optional parameter reads as `feat:`, the unbounded wait as `fix:`); `test:` for the ride-along.
 - **Impact 4 / Risk 2 / Priority 16.**
+
+Landed: `get_subagent_result` takes an optional `timeout` in seconds with no default; a bounded wait swaps only the signal `waitUntilSettled` ends on, so an expired wait releases its claim and leaves the agent running, and the report, description, and parameter text say so.
+Every report on a running agent carries a `Progress:` line (activity, turns used, time since the last session event, stamped by `record-observer` on `SubagentState.lastProgressAt`), and decision 0005 records that the report, not the snapshot, admits those facts.
+The `textOf` ride-along landed first; the `result.content[0]` row reads 0, and `GetResultDetails` stayed unchanged, so [#755]'s mapping overlap stays.
 
 Release: independent
 
@@ -1106,7 +1110,7 @@ Release: independent
 
 ```mermaid
 flowchart TD
-    S947["#947<br/>Bounded wait with progress"] -.soft.-> S1051["#1051<br/>The run owns its outcome"]
+    S947["✅ #947<br/>Bounded wait with progress"] -.soft.-> S1051["#1051<br/>The run owns its outcome"]
     S947 -.soft.-> S912["#912<br/>Ask whether resumable"]
     S1048["#1048<br/>Zone-order moves"] -.soft.-> S1049["#1049<br/>Per-run lever and wiring"]
     S1049 --> S1050["#1050<br/>One run lifecycle"]
