@@ -2,6 +2,7 @@ import {
   prefix,
   stripBashCommentLines,
 } from "#src/access-intent/bash/bash-arity";
+import { sessionCommandIndex } from "#src/access-intent/bash/wrapper-analysis";
 import {
   type CapabilityDirection,
   PATH_BEARING_TOOLS,
@@ -30,6 +31,8 @@ export interface SessionApprovalSuggestion {
  * - Arity prefix covers all tokens: trailing wildcard (`npm run build*`).
  * - Arity prefix shorter than token list: space + wildcard (`git checkout *`).
  * - Unknown command: first token + space wildcard (`mytool *`).
+ * - Recognized wrapper: wrapper words + inner arity prefix (`nohup git status *`).
+ * - Ambiguous wrapper or opaque payload: unchanged command, no added wildcard.
  */
 export function suggestBashPattern(command: string): string {
   const trimmed = command.trim();
@@ -40,7 +43,13 @@ export function suggestBashPattern(command: string): string {
   if (!stripped) return "";
   const tokens = stripped.split(/\s+/);
   if (tokens.length === 1) return stripped;
-  const meaningful = prefix(tokens);
+  const commandIndex = sessionCommandIndex(tokens);
+  if (commandIndex === null) return stripped;
+  const meaningful = [
+    ...tokens.slice(0, commandIndex),
+    ...prefix(tokens.slice(commandIndex)),
+  ];
+  if (commandIndex > 0) return `${meaningful.join(" ")} *`;
   if (meaningful.length >= tokens.length) {
     return `${stripped}*`;
   }

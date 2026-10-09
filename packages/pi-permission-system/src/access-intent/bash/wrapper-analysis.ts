@@ -35,6 +35,70 @@ export interface CommandWord extends ArgWord {
  */
 export type WrapperKind = "opaque-payload" | "indirection";
 
+type WrapperWord = Pick<CommandWord, "text">;
+
+/**
+ * Locate the ordinary command for a session prefix, keeping every wrapper word
+ * before it. Zero means an ordinary command; null declines generalization.
+ *
+ * Unlike display-side unwrapping, an unknown option must not produce a guess:
+ * its operand could be mistaken for the executable and grant any executable
+ * after it. Shell syntax and exec templates keep their whole command too.
+ */
+export function sessionCommandIndex(tokens: readonly string[]): number | null {
+  let words = tokens.map((text) => ({ text }));
+  if (classifyWrapperWords(words) === undefined) return 0;
+  if (tokens.some((token) => /['"\\$`|&;<>(){}[\]*?!~]/.test(token))) {
+    return null;
+  }
+  let index = 0;
+  for (let depth = 0; depth < MAX_UNWRAP_DEPTH; depth++) {
+    const kind = classifyWrapperWords(words);
+    if (kind === undefined) {
+      return isLiteralCommandName(words.at(0)?.text ?? "") ? index : null;
+    }
+    const name = wrapperName(words);
+    if (
+      kind === "opaque-payload" ||
+      name === undefined ||
+      EXEC_CONDITIONAL_WRAPPERS.has(name) ||
+      name === "parallel" ||
+      name === "rust-parallel" ||
+      name === "rush"
+    ) {
+      return null;
+    }
+    const start = innerCommandIndex(words);
+    if (start === -1 || start >= words.length) return null;
+    if (!sessionWrapperOptionsKnown(name, words.slice(1, start))) return null;
+    index += start;
+    words = words.slice(start);
+  }
+  return classifyWrapperWords(words) === undefined &&
+    isLiteralCommandName(words.at(0)?.text ?? "")
+    ? index
+    : null;
+}
+
+function sessionWrapperOptionsKnown(
+  name: string,
+  words: readonly WrapperWord[],
+): boolean {
+  const values = VALUE_TAKING_FLAGS.get(name) ?? EMPTY_FLAGS;
+  const flags = EXECUTION_MODIFIER_FLAGS.get(name) ?? EMPTY_FLAGS;
+  for (let index = 0; index < words.length; index++) {
+    const text = words[index].text;
+    if (text === "--") return true;
+    if (!text.startsWith("-")) continue;
+    if (values.has(text)) {
+      index++;
+    } else if (!flags.has(text) && !hasAttachedValue(text, values)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 /**
  * Classify a command unit's words as a floored wrapper, or `undefined` for an
  * ordinary command. `words[0]` is the command name; a leading
@@ -53,7 +117,7 @@ export type WrapperKind = "opaque-payload" | "indirection";
  * is not flagged.
  */
 export function classifyWrapperWords(
-  words: readonly CommandWord[],
+  words: readonly WrapperWord[],
 ): WrapperKind | undefined {
   const commandName = wrapperName(words);
   if (commandName === undefined) return undefined;
@@ -420,7 +484,7 @@ function unquote(text: string): string {
  * `-1` for any option its grammar refuses; every other wrapper is read by the
  * per-wrapper tables.
  */
-function innerCommandIndex(words: readonly CommandWord[]): number {
+function innerCommandIndex(words: readonly WrapperWord[]): number {
   const name = wrapperName(words);
   if (name === undefined) return -1;
 
@@ -1012,7 +1076,7 @@ const EXEC_TERMINATORS = new Set([";", "+"]);
 // ── Shared helpers ───────────────────────────────────────────────────────────
 
 /** The wrapper's command-name basename, or `undefined` for an empty unit. */
-function wrapperName(words: readonly CommandWord[]): string | undefined {
+function wrapperName(words: readonly WrapperWord[]): string | undefined {
   return words.length === 0 ? undefined : basename(words[0].text);
 }
 

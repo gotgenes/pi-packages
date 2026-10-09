@@ -8,6 +8,7 @@ import { pathFlavorForPlatform } from "#src/path/path-flavor";
 import { PathNormalizer } from "#src/path/path-normalizer";
 import { PermissionResolver } from "#src/policy/permission-resolver";
 import type { Ruleset } from "#src/policy/rule";
+import { suggestBashPattern } from "#src/presentation/pattern-suggest";
 import type { PermissionCheckResult, PermissionState } from "#src/types";
 
 import { bashCommandOf, makeResolver } from "#test/helpers/gate-fixtures";
@@ -1185,6 +1186,33 @@ describe("resolveBashCommandCheck: a session grant covers only the unit it names
     expect(result.state).toBe("allow");
     expect(result.source).toBe("session");
   });
+});
+
+describe("wrapper session grants", () => {
+  beforeAll(async () => {
+    await warmBashParser();
+  });
+
+  it.each(["nohup", "sudo", "env FOO=bar", "xargs"])(
+    "approves only the selected inner command behind %s",
+    (wrapper) => {
+      const command = `${wrapper} mytool first`;
+      const policy: Record<string, PermissionState> = { "*": "allow" };
+      const asking = decide(policy, command);
+      expect(asking.state).toBe("ask");
+      const pattern = suggestBashPattern(asking.command ?? "");
+      expect(pattern).toBe(`${wrapper} mytool *`);
+      const grants = [sessionRule("bash", pattern)];
+
+      const approved = decide(policy, `${wrapper} mytool second`, grants);
+      expect(approved.state).toBe("allow");
+      expect(approved.source).toBe("session");
+      expect(approved.matchedPattern).toBe(pattern);
+      const other = decide(policy, `${wrapper} other second`, grants);
+      expect(other.state).toBe("ask");
+      expect(other.source).not.toBe("session");
+    },
+  );
 });
 
 describe("resolveBashCommandCheck: a wrapper running a shell no-op", () => {

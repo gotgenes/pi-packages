@@ -72,6 +72,55 @@ describe("suggestBashPattern", () => {
   });
 });
 
+describe("wrapper session patterns", () => {
+  it.each([
+    ["nohup mytool argument", "nohup mytool *"],
+    ["nohup mytool", "nohup mytool *"],
+    ["sudo aws s3 rm s3://bucket", "sudo aws s3 rm *"],
+    ["env FOO=bar mytool argument", "env FOO=bar mytool *"],
+    ["xargs mytool argument", "xargs mytool *"],
+    ["time mytool argument", "time mytool *"],
+    ["timeout 5 mytool argument", "timeout 5 mytool *"],
+    ["nice mytool argument", "nice mytool *"],
+    ["sudo -u root nohup mytool argument", "sudo -u root nohup mytool *"],
+    ["timeout -s TERM 5 mytool argument", "timeout -s TERM 5 mytool *"],
+    ["/usr/bin/nohup mytool argument", "/usr/bin/nohup mytool *"],
+    ["nohup git status --short", "nohup git status *"],
+    ["stdbuf -o L mytool argument", "stdbuf -o L mytool *"],
+    ["setsid mytool argument", "setsid mytool *"],
+    ["watch mytool argument", "watch mytool *"],
+    ["flock /tmp/lock mytool argument", "flock /tmp/lock mytool *"],
+    ["doas mytool argument", "doas mytool *"],
+  ])("keeps the inner command in %s", (command, expected) => {
+    expect(suggestBashPattern(command)).toBe(expected);
+  });
+
+  it.each([
+    "nohup",
+    "sudo --unknown value mytool argument",
+    "sudo -u 'some user' mytool argument",
+    "timeout $D mytool argument",
+    "nohup $COMMAND argument",
+    "nohup sh -c 'mytool; other'",
+    "bash -c 'mytool; other'",
+    "find . -exec mytool {} \\; -exec other {} \\;",
+    "fd -x mytool {}",
+    "parallel mytool ::: one two",
+    "rust-parallel mytool argument",
+    "rush mytool argument",
+  ])("does not widen an ambiguous or opaque wrapper: %s", (command) => {
+    expect(suggestBashPattern(command)).toBe(command);
+  });
+
+  it("uses the same narrow scope in the session option label", () => {
+    expect(suggestSessionPattern("bash", "nohup mytool argument")).toEqual({
+      surface: "bash",
+      pattern: "nohup mytool *",
+      label: 'Yes, allow bash "nohup mytool *" for this session',
+    });
+  });
+});
+
 describe("suggestMcpPattern", () => {
   it("suggests server:* for a qualified target (colon-separated)", () => {
     expect(suggestMcpPattern("exa:search")).toBe("exa:*");

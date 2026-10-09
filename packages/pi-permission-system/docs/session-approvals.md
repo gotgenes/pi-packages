@@ -87,6 +87,13 @@ The arity table covers common CLI tools including git, npm/pnpm/yarn/bun, docker
 To add an entry, open `src/access-intent/bash/bash-arity.ts` and add a key/arity pair to the `ARITY` object.
 Put the most specific multi-word prefix first (e.g. `"npm run": 3`) before the shorter fallback (`"npm": 2`).
 
+For recognized prefix wrappers, suggestions retain the wrapper, its options and operands, and the inner command's arity prefix.
+For example, `nohup mytool argument` suggests `nohup mytool *`, not `nohup *`; `sudo aws s3 rm s3://bucket` suggests `sudo aws s3 rm *`; and `timeout 5 mytool argument` suggests `timeout 5 mytool *`.
+Nested wrappers retain each layer, so `sudo -u root nohup mytool argument` suggests `sudo -u root nohup mytool *`.
+Wrapped prefixes always use a space before the trailing wildcard, so an approval for `nohup mytool` does not also approve `nohup mytool-other`.
+Unknown wrapper options, shell quoting or expansion, inline-shell payloads, parallel command templates, and `find`/`fd` exec forms retain the whole command without adding a wildcard.
+The wrapper interpretation shares the gate's vocabulary in `src/access-intent/bash/wrapper-analysis.ts`; it does not change the gate's wrapper floors or exemptions.
+
 ## Review Log Entries
 
 The review log records session approval decisions:
