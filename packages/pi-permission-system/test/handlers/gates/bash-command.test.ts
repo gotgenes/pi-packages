@@ -1293,6 +1293,12 @@ describe("resolveBashCommandCheck: env, xargs, and doas option grammars", () => 
       ["xargs -J % cat %", "-J may put input in the utility position"],
       ["xargs -i rm cat x", "GNU -i takes no following word, so rm runs"],
       ["xargs -l rm cat x", "GNU -l takes no following word, so rm runs"],
+      ["env -P cat rm x", "rm runs, searched for in cat"],
+      ["env -Srm cat", "-S splits rm into the command"],
+      ["env -C /etc cat shadow", "cat reads /etc/shadow, not ./shadow"],
+      ["env --chdir /etc cat shadow", "cat reads /etc/shadow, not ./shadow"],
+      ["env -a cat rm x", "GNU -a takes cat as argv0, so rm runs"],
+      ["sudo env -C /etc cat shadow", "cat reads /etc/shadow as root"],
     ])("for %s (%s)", (command) => {
       const result = decide(policy, command);
       expect(result.state).toBe("ask");
@@ -1310,6 +1316,10 @@ describe("resolveBashCommandCheck: env, xargs, and doas option grammars", () => 
       "xargs -S 255 cat",
       "xargs -I {} -R 1 cat rm x",
       "xargs -d x cat",
+      "env -i cat x",
+      "env -u FOO cat x",
+      "env - cat x",
+      "env -iu FOO cat rm x",
     ])("allows %s", (command) => {
       const result = decide(policy, command);
       expect(result.state).toBe("allow");

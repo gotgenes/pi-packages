@@ -200,6 +200,16 @@ describe("inlineShellPayloadIndex", () => {
     });
   });
 
+  describe("an env layer", () => {
+    it("finds the payload past a clearing flag", () => {
+      expect(payloadIndex(`env -i bash -c 'x'`)).toBe(4);
+    });
+
+    it("answers -1 when env moves the working directory", () => {
+      expect(payloadIndex(`env -C /tmp bash -c 'x'`)).toBe(-1);
+    });
+  });
+
   describe("a payload flag with nothing after it", () => {
     // The index still names where the payload *would* be; the caller decides
     // what an out-of-range index is worth, exactly as `opaquePayload` does.
@@ -346,6 +356,34 @@ describe("executedUnitOf", () => {
       ["xargs -Z cat x", "an unlisted option refuses"],
     ])("returns null for %s (%s)", (unit) => {
       expect(executedUnit(unit)).toBeNull();
+    });
+  });
+
+  describe("an env layer", () => {
+    it.each([
+      ["env -iu FOO cat rm x", "cat rm x"],
+      ["env --un FOO cat x", "cat x"],
+      ["env - cat x", "cat x"],
+      ["env - FOO=1 cat x", "cat x"],
+    ])(
+      "names the inner command of %s by env's option grammar",
+      (unit, expected) => {
+        expect(executedUnit(unit)).toBe(expected);
+      },
+    );
+
+    it.each([
+      ["env -C /etc cat shadow", "-C moves where operands resolve"],
+      ["env -Srm cat", "-S builds the command at run time"],
+      ["env - -i cat x", "a lone dash ends the options"],
+    ])("returns null for %s (%s)", (unit) => {
+      expect(executedUnit(unit)).toBeNull();
+    });
+
+    it("names the refused env layer when an outer wrapper peels to it", () => {
+      expect(executedUnit("sudo env -C /etc cat shadow")).toBe(
+        "env -C /etc cat shadow",
+      );
     });
   });
 
@@ -741,6 +779,74 @@ describe("floorExemptionOf", () => {
       ])("is not transparent: %s (%s)", (unit) => {
         expect(isTransparent(unit)).toBe(false);
       });
+    });
+  });
+
+  describe("an env layer", () => {
+    describe("a mode in which the named command is not what runs", () => {
+      it.each([
+        ["env -C /etc cat shadow", "-C moves where operands resolve"],
+        ["env -C/etc cat shadow", "an attached -C value"],
+        ["env -iC /etc cat shadow", "a cluster carrying C"],
+        ["env --chdir /etc cat shadow", "--chdir moves where operands resolve"],
+        ["env --chdir=/etc cat shadow", "an attached --chdir value"],
+        ["env --ch /etc cat shadow", "an abbreviation of --chdir"],
+        ["env -Srm cat", "-S splits its value into the command"],
+        ["env --split-string rm cat", "--split-string splits its value"],
+        ["env -P cat rm x", "-P chooses where the command is found"],
+        ["env -P/bin cat x", "an attached -P value"],
+        ["env -a cat rm x", "-a sets the argv0 a multi-call binary reads"],
+        ["env --argv0 cat rm x", "--argv0 sets argv0"],
+        ["env --a cat rm x", "an abbreviation of --argv0"],
+        ["env -a rm cat x", "argv0 rm makes a multi-call cat run rm"],
+        ["env --argv0 rm cat x", "argv0 rm makes a multi-call cat run rm"],
+        [
+          "env --env0-from /dev/null cat x",
+          "--env0-from may set PATH from a file",
+        ],
+      ])("is not transparent: %s (%s)", (unit) => {
+        expect(isTransparent(unit)).toBe(false);
+      });
+
+      it.each([
+        ["env -Z cat x", "an unlisted option refuses"],
+        ["env --i cat x", "--ignore-environment and --ignore-signal"],
+        ["env --d cat x", "--debug and --default-signal"],
+        ["sudo env -C /etc cat shadow", "the refused layer is still a wrapper"],
+        [
+          "env - -i cat x",
+          "a lone dash ends the options, so -i is the command",
+        ],
+      ])("is not transparent: %s (%s)", (unit) => {
+        expect(isTransparent(unit)).toBe(false);
+      });
+    });
+
+    it.each([
+      ["env -i cat x", "-i clears the environment"],
+      ["env -u FOO cat x", "-u takes a name"],
+      ["env -uFOO cat x", "an attached -u value"],
+      ["env --unset FOO cat x", "--unset takes a name"],
+      ["env --un FOO cat x", "an abbreviation of --unset"],
+      ["env -iu FOO cat rm x", "the cluster's -u takes FOO"],
+      ["env FOO=1 cat x", "env passes an assignment to the command"],
+      ["env -i HOME=/h cat x", "a flag, then an assignment"],
+      ["env - cat x", "a lone dash clears the environment"],
+      ["env - FOO=1 cat x", "a lone dash, then an assignment"],
+      ["env -0 cat x", "-0 is a flag"],
+      ["env -v cat x", "-v is a flag"],
+      ["env --ignore-environment cat x", "a long flag"],
+      ["env --null cat x", "a long flag"],
+      ["env --list-signal-handling cat x", "a long flag"],
+      ["env --debug cat x", "a long flag"],
+      ["env --help cat x", "a long flag"],
+      ["env --version cat x", "a long flag"],
+      ["env --ignore-signal cat x", "an optional argument takes no word"],
+      ["env --ignore-signal=PIPE cat x", "an attached optional value"],
+      ["env --block-signal cat x", "an optional argument takes no word"],
+      ["env --default-signal cat x", "an optional argument takes no word"],
+    ])("is transparent: %s (%s)", (unit) => {
+      expect(isTransparent(unit)).toBe(true);
     });
   });
 });

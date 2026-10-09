@@ -438,7 +438,7 @@ function getoptInnerIndex(
   let index = 1;
   while (index < words.length) {
     const word = words[index].text;
-    if (word === "--") {
+    if (word === "--" || (word === "-" && grammar.loneDashEndsOptions)) {
       index++;
       break;
     }
@@ -650,7 +650,6 @@ const EXEC_CONDITIONAL_WRAPPERS = new Map<string, ReadonlySet<string>>([
  */
 const VALUE_TAKING_FLAGS = new Map<string, ReadonlySet<string>>([
   ["doas", new Set(["-u", "-C"])],
-  ["env", new Set(["-u", "-C", "--unset", "--chdir"])],
   ["timeout", new Set(["-s", "-k", "--signal", "--kill-after"])],
   ["nice", new Set(["-n", "--adjustment"])],
   ["time", new Set(["-o", "-f", "--output", "--format"])],
@@ -682,6 +681,12 @@ interface GetoptGrammar {
    * passes to the command. `xargs` and `doas` run such a word as the command.
    */
   readonly assignments: boolean;
+  /**
+   * Whether a lone `-` is an option that ends the option walk, as `env -`
+   * (clear the environment) is; otherwise it is the command, which names
+   * nothing.
+   */
+  readonly loneDashEndsOptions: boolean;
 }
 
 /**
@@ -756,6 +761,54 @@ const SUDO_GRAMMAR: GetoptGrammar = {
     ["shell", "refuse"],
   ]),
   assignments: true,
+  loneDashEndsOptions: false,
+};
+
+/**
+ * `env`'s options: the union of BSD `env` (optstring `-0C:iP:S:u:v`, no long
+ * options) and GNU coreutils 9.12 (`env --help`). No letter has different
+ * arities on the two.
+ *
+ * Each refusing option is one where the command the peel would name is not
+ * what runs as named: `-C`/`--chdir` move where its relative operands
+ * resolve, so the path surfaces would judge the wrong file; `-S`/
+ * `--split-string` split one word into several, so the command is built at
+ * run time; and `-P` (a search path), `-a`/`--argv0` (the argv0 a multi-call
+ * binary dispatches on), and `--env0-from` (an environment that may set
+ * `PATH`) choose which binary the named command is.
+ *
+ * A lone `-` clears the environment and, as GNU reads it, ends the options;
+ * BSD keeps parsing after it, so ending there only ever names less.
+ */
+const ENV_GRAMMAR: GetoptGrammar = {
+  short: new Map<string, OptionArity>([
+    ["0", "flag"],
+    ["i", "flag"],
+    ["v", "flag"],
+    ["u", "value"],
+    ["a", "refuse"],
+    ["C", "refuse"],
+    ["P", "refuse"],
+    ["S", "refuse"],
+  ]),
+  long: new Map<string, OptionArity>([
+    ["debug", "flag"],
+    ["help", "flag"],
+    ["ignore-environment", "flag"],
+    ["list-signal-handling", "flag"],
+    ["null", "flag"],
+    ["version", "flag"],
+    ["unset", "value"],
+    ["block-signal", "optional"],
+    ["default-signal", "optional"],
+    ["ignore-signal", "optional"],
+    ["argv0", "refuse"],
+    ["chdir", "refuse"],
+    ["env0-from", "refuse"],
+    ["split-string", "refuse"],
+  ]),
+  assignments: true,
+  loneDashEndsOptions: true,
 };
 
 /**
@@ -812,11 +865,13 @@ const XARGS_GRAMMAR: GetoptGrammar = {
     ["replace", "optional"],
   ]),
   assignments: false,
+  loneDashEndsOptions: false,
 };
 
 /** Wrappers whose inner command is located by a getopt grammar. */
 const GETOPT_GRAMMARS = new Map<string, GetoptGrammar>([
   ["sudo", SUDO_GRAMMAR],
+  ["env", ENV_GRAMMAR],
   ["xargs", XARGS_GRAMMAR],
 ]);
 
