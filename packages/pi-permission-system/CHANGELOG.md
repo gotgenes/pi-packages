@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [40.1.2](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v40.1.1...pi-permission-system-v40.1.2) (2026-10-09)
+
+
+### Bug Fixes
+
+* **pi-permission-system:** sudoedit and sudo's clustered or long options no longer earn the pure-reader exemption ([b94d064](https://github.com/gotgenes/pi-packages/commit/b94d064f27e3271a40b157ae311105d14aa83c1b)), closes [#1042](https://github.com/gotgenes/pi-packages/issues/1042)
+* **pi-permission-system:** sudo's shell, login, chdir, and chroot modes keep the indirection floor ([3e36c7b](https://github.com/gotgenes/pi-packages/commit/3e36c7b4090299a147d877d25ea332ad95a8bc0c)), closes [#1042](https://github.com/gotgenes/pi-packages/issues/1042)
+
+### Documentation
+
+* **pi-permission-system:** document the sudo modes that keep the indirection floor ([bd77430](https://github.com/gotgenes/pi-packages/commit/bd774308a50d817b7913713acc963c0f49c635e0))
+
 ## [40.1.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v40.1.0...pi-permission-system-v40.1.1) (2026-10-08)
 
 
