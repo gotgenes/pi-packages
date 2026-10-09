@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AgentTypeRegistry } from "#src/config/agent-types";
 import type { TurnLoopResult } from "#src/lifecycle/subagent-session";
 import { MAX_EXPANDED_LINES, PREVIEW_CHARS } from "#src/tools/get-result-renderer";
@@ -221,6 +221,16 @@ describe("GetResultTool — a wait a resume superseded", () => {
 		await execute(makeManager(new Map([["agent-1", record]])), { agent_id: "agent-1", wait: true });
 
 		expect(record.consumed).toBe(false);
+		finishResume();
+		await record.promise;
+	});
+
+	it("carries no progress line for the settled run it reports", async () => {
+		const { record, finishResume } = supersededAgent();
+
+		const result = await execute(makeManager(new Map([["agent-1", record]])), { agent_id: "agent-1", wait: true });
+
+		expect(textOf(result)).not.toContain("Progress:");
 		finishResume();
 		await record.promise;
 	});
@@ -462,6 +472,40 @@ describe("GetResultTool", () => {
 		const result = await execute(makeManager(records), { agent_id: "agent-1", verbose: true });
 		expect(textOf(result)).toContain("Full transcript available at: /tasks/agent.jsonl");
 		expect(textOf(result)).not.toContain("--- Agent Conversation ---");
+	});
+});
+
+describe("GetResultTool — progress", () => {
+	beforeEach(() => {
+		vi.useFakeTimers();
+		vi.setSystemTime(80_000);
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it("reports a running agent's activity, turns used, and time since its last progress", async () => {
+		const record = createTestSubagent({
+			status: "running",
+			completedAt: undefined,
+			startedAt: 1000,
+			lastProgressAt: 8000,
+			activeTools: ["bash"],
+			turnBudget: { used: 7, phase: "within" },
+		});
+
+		const result = await execute(makeManager(new Map([["agent-1", record]])), { agent_id: "agent-1" });
+
+		expect(textOf(result)).toContain("\nProgress: running command\u2026 | Turns: 7 | Last progress: 72.0s ago\n");
+	});
+
+	it("reports no progress for an agent that has finished", async () => {
+		const record = createTestSubagent({ activeTools: ["bash"], lastProgressAt: 8000 });
+
+		const result = await execute(makeManager(new Map([["agent-1", record]])), { agent_id: "agent-1" });
+
+		expect(textOf(result)).not.toContain("Progress:");
 	});
 });
 

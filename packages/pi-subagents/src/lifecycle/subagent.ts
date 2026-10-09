@@ -171,6 +171,7 @@ export class Subagent {
 	get compactionCount(): number { return this.state.compactionCount; }
 	get activeTools(): ReadonlyMap<string, string> { return this.state.activeTools; }
 	get responseText(): string { return this.state.responseText; }
+	get lastProgressAt(): number { return this.state.lastProgressAt; }
 	isActive(): boolean { return this.state.isActive(); }
 	isTerminalError(): boolean { return this.state.isTerminalError(); }
 	isRunning(): boolean { return this.state.isRunning(); }

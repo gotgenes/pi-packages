@@ -13,7 +13,14 @@ import { type AgentReport, formatAgentReport } from "#src/tools/get-result-repor
 import { formatLifetimeTokens, textResult } from "#src/tools/helpers";
 import type { Subagent } from "#src/types";
 import { BoundedLines } from "#src/ui/bounded-lines";
-import { formatDuration, getDisplayName, modelLabel, type Theme } from "#src/ui/display";
+import {
+	describeActivity,
+	formatDuration,
+	formatMs,
+	getDisplayName,
+	modelLabel,
+	type Theme,
+} from "#src/ui/display";
 import { GLYPHS } from "#src/ui/glyphs";
 
 // ---- Deps interfaces ----
@@ -130,6 +137,7 @@ export class GetResultTool {
 			workspaceNotice: outcome.workspaceNotice,
 			model: modelLabel(record.model),
 			resumedWhileWaiting,
+			progress: outcome.status === "running" ? progressOf(record) : undefined,
 		};
 	}
 
@@ -221,6 +229,19 @@ export class GetResultTool {
 			) => this.execute(toolCallId, params, signal, onUpdate, ctx),
 		});
 	}
+}
+
+/**
+ * What a running agent is doing and how long since its last session event: the
+ * facts the widget shows the human, so the parent can tell a stalled run from a
+ * long one.
+ */
+function progressOf(record: Subagent): AgentReport["progress"] {
+	return {
+		activity: describeActivity(record.activeTools, record.responseText),
+		turns: record.turnBudget?.used,
+		sinceLastProgress: formatMs(Date.now() - record.lastProgressAt),
+	};
 }
 
 /** The live record's current outcome fields. */
