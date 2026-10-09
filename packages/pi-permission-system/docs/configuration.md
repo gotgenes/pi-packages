@@ -1138,6 +1138,10 @@ If you run a permissive `bash` policy and want privilege elevation to prompt reg
 
 That rule matches the wrapper's own text, so it is decided before the exemption is ever consulted.
 
+`sudo`'s own options are read the way `sudo` reads them, so `sudo -nu cat rm x` runs `rm x`, not a pure reader named `cat`.
+A `sudo` mode in which the command it names is not what runs as named keeps the floor whatever that command is: `-e`/`--edit` (sudoedit edits its operands as files, as root), `-s`/`--shell` and `-i`/`--login` (a shell runs the operand), and `-D`/`--chdir` and `-R`/`--chroot` (relative operands resolve somewhere the path surfaces do not look).
+So does `-h`, whose meaning depends on what follows it, and any option `sudo`'s manual does not list; a mode that keeps the floor is approved at the prompt or under `yoloMode`.
+
 #### Which key to actually write
 
 The useful *grants* are `*_read: allow` and the bare sugar key.
