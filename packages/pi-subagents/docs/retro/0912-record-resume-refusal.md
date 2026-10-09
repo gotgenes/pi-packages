@@ -54,3 +54,54 @@ The plan's marker is `**Release:** ship independently`; no follow-ups were filed
 ### Observations
 
 The `feat:` commit is the only release vehicle; everything else is `docs:`.
+
+## Stage: Final Retrospective (2026-10-09T05:53:21Z)
+
+### Session summary
+
+The peer worktree session planned and implemented the work, landing one `feat:` commit (`SubagentRecord.resumeRefusal`, copied in `toSubagentRecord`) and three `docs:` commits (decision 0005, README, skill, roadmap, and the #1051 constraint rewording), all on Opus.
+A Sonnet sync stage handed off a branch that the root `/ship` fast-forward-merged with no divergence; CI passed, #912 closed, and `pi-subagents-v23.4.0` released.
+This completes Phase 23 Track B ([#947] → #912); Track A and Track D remain open.
+
+### Observations
+
+#### What went well
+
+- Planning measured the blast radius with a temporary spike, applying the copy line and running `service-adapter.test.ts`, before writing the plan.
+  The prediction (3 of 42 exact `toEqual` tests red) held exactly in TDD, and both planned mutations killed exactly the predicted tests.
+- The design gate put the per-row roster cost and the `unknown-agent` ambiguity of a `resumeRefusalFor(id)` query in front of the operator, and the operator settled it in a single answer.
+- The ship ran with no stops: zero unpushed root commits, `ff-ok` predicted and confirmed, and lint plus `fallow dead-code` clean on the merged tree.
+
+#### What caused friction (agent side)
+
+- `instruction-violation` (self-identified in the TDD stage note): in mutation (b), the restoring `cp /tmp/green.ts …` was batched beside the mutating `Edit`, the two raced, and the `Edit` missed.
+  `/tdd-plan` forbids batching the *save* `cp` with the mutating `Edit`, but says nothing about the restore; this is the second recorded race of this shape (see `docs/retro/0934-audit-and-prune-agent-docs.md`).
+  Impact: 3 extra tool calls, no rework.
+- `instruction-violation` (unnoticed until this retro): the sync stage appended its breadcrumb with `cat >> … <<'EOF'`, although `/sync-worktree` step 3 says to anchor an `Edit` and `markdown-conventions` routes markdown to `Write`/`Edit`.
+  This is at least the fifth sync-stage occurrence (#755, #910, #981, #1008, #912), every one in the mechanical sync stage.
+  Impact: none; `rumdl check` passed the output, as it has every time.
+- `other` (planning judgment): the plan noted that #912 shifts the baseline of #1051's "`SubagentRecord` is unchanged" constraint but judged no edit necessary; the pre-completion reviewer WARNed on it.
+  Impact: one follow-up `docs:` commit and a second reviewer dispatch.
+- `instruction-violation` (self-identified at retro): the ship's `git merge --ff-only "$BRANCH" | tail -3` piped the merge through `tail`, which masks its exit status, and `git-workflow` § Gating a commit on a check forbids exactly that.
+  The ship report also handed the operator the "last step of a phase?"
+  check instead of running the one `grep` it needed.
+  Impact: none; the merge was a fast-forward, and #912 is not Phase 23's last step.
+
+#### What caused friction (user side)
+
+- None observed; the operator's only intervention was the design-gate answer, a strategic call.
+
+### Diagnostic details
+
+- **Model-performance correlation**: planning and TDD ran on `claude-opus-5-5` (judgment-heavy: ADR argument, design gate, mutation design), and sync ran on `claude-sonnet-5-5` (mechanical).
+  All three subagents (`tidy-first-assessor` and two `pre-completion-reviewer` runs) ran on `claude-sonnet-5-5`, per their transcripts.
+  The heredoc slip again came from the Sonnet sync stage; across the five occurrences that is now a pattern in where it happens, though it still costs nothing.
+- **Feedback-loop gap analysis**: TDD ran the baseline gates, then the target test after Red, Green, and each mutation, then the full gates before review.
+  There is no gap.
+
+### Changes made
+
+1. `.pi/prompts/tdd-plan.md`: the mutation-testing bullet now also keeps the restoring `cp /tmp/green.ts <file>` in its own call, before the next mutation's `Edit`.
+2. `.pi/prompts/sync-worktree.md`: step 3 now says to append the stage entry with the `Edit` tool, never `cat >>` or a heredoc.
+
+[#947]: https://github.com/gotgenes/pi-packages/issues/947

@@ -100,6 +100,7 @@ For **each** step in the plan's "TDD Order", in order:
 
    Save the green file first (`cp <file> /tmp/green.ts`) and restore from that copy; `git checkout -- <file>` reverts to HEAD, discarding the step's own uncommitted green edit.
    Append that `cp` to the Green step's verification command (`vitest run …; cp <file> /tmp/green.ts`), never beside the mutating `Edit`: calls in one batch run concurrently, so the copy can capture the mutation.
+   The restoring `cp /tmp/green.ts <file>` gets its own call too, before the next mutation's `Edit`.
    Re-run before committing; never commit with a mutation in the tree.
    Apply the mutation with `Edit`, and confirm the file changed before reading the suite — a scripted multi-line substitution that matches nothing reads exactly like a mutation that killed nothing, and one that matches every sibling site reddens tests the mutation was never meant to touch.
    Prefer changing a compared literal over restructuring control flow: a mutation that crashes, or that the linter rejects, produces reds that are not discrimination signals.

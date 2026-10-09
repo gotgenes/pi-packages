@@ -47,7 +47,7 @@ The stage note lives in an `exclude-paths` dir, so it triggers no release — bu
 
    (Equivalently, the root can call `list_session_files({ cwd: "<this worktree path>" })` and pick the newest entry — the `sed` one-liner above is just this peer session capturing its own path inline.) This capture is optional — if the command stalls or fails, record the path as unknown and proceed; the root recovers it via `list_session_files`.
    Do not re-run the already-green pre-push gates (step 2) on a stall here.
-3. Append a stage entry (anchor the `Edit` on the file's last line — the repeated `### Observations` headers make header-anchored edits ambiguous).
+3. Append a stage entry with the `Edit` tool, never `cat >>` or a heredoc (anchor the `Edit` on the file's last line — the repeated `### Observations` headers make header-anchored edits ambiguous).
    Do not cite a branch commit SHA in this note — step 4's rebase rewrites every one, leaving a dangling citation on `main`.
    Name the commit by its subject instead.
    On a re-run — the branch was already synced and `main` moved — append a dated line to the existing entry rather than a second `## Stage: Sync (worktree)` block.
