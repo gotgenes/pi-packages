@@ -86,6 +86,11 @@ When a second or third round of probing goes into improving the same artifact ra
 Dispatch a fresh-context subagent (see the `delegation` skill) and ask it one question: is this input representative of what the real system produces?
 A session that built the fixture has already inherited the hypothesis and is the least likely reader to catch it.
 
+## A probe that escalates privilege needs a go-ahead
+
+Before running `sudo` (or any privileged or destructive binary) live as a probe, name the commands to the operator and wait for approval.
+Prefer a form that cannot execute: a usage error, `--list`, or `man`, never an operand that names a real path.
+
 ## What to write down
 
 The plan's Design Overview states how the repro was produced, not just what it showed:
