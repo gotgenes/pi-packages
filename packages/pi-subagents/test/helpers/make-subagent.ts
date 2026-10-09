@@ -44,6 +44,8 @@ export interface TestSubagentOptions {
 	/** Seed the never-started marker (the agent was stopped before it was admitted). */
 	stoppedWhileQueued?: boolean;
 	startedAt?: number;
+	/** Seed when the run last made progress; defaults to startedAt. */
+	lastProgressAt?: number;
 	completedAt?: number;
 	/** Seed the consumed-outcome timestamp (undefined = obligation open). */
 	consumedAt?: number;

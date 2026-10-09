@@ -785,3 +785,43 @@ describe("SubagentState — run updates", () => {
 		});
 	});
 });
+
+describe("SubagentState — lastProgressAt", () => {
+	it("is seeded from startedAt", () => {
+		const state = new SubagentState({ startedAt: 1000 });
+
+		expect(state.lastProgressAt).toBe(1000);
+	});
+
+	it("is seeded from an explicit value", () => {
+		const state = new SubagentState({ startedAt: 1000, lastProgressAt: 4000 });
+
+		expect(state.lastProgressAt).toBe(4000);
+	});
+
+	it("is stamped by markProgress", () => {
+		const state = new SubagentState({ startedAt: 1000 });
+
+		state.markProgress(2500);
+
+		expect(state.lastProgressAt).toBe(2500);
+	});
+
+	it("restarts at the run's start when the run begins", () => {
+		const state = new SubagentState({ status: "queued", startedAt: 1000 });
+		state.markProgress(9000);
+
+		state.markRunning(5000);
+
+		expect(state.lastProgressAt).toBe(5000);
+	});
+
+	it("restarts at the resumed run's start on resume", () => {
+		const state = new SubagentState({ status: "completed", startedAt: 1000, completedAt: 2000 });
+		state.markProgress(9000);
+
+		state.resetForResume(5000);
+
+		expect(state.lastProgressAt).toBe(5000);
+	});
+});

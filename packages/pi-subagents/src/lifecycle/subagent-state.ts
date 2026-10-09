@@ -7,7 +7,7 @@
  * methods (markRunning, markCompleted, …), accumulation methods
  * (incrementToolUses, addUsage, incrementCompactions), and live-activity
  * transition methods (setTurnBudget, addActiveTool, removeActiveTool,
- * resetResponseText, appendResponseText) that mutate them.
+ * resetResponseText, appendResponseText, markProgress) that mutate them.
  *
  * State is encapsulated behind getters; external code reads through them but
  * mutates only via the transition/accumulation methods. The value object owns
@@ -92,6 +92,8 @@ export interface SubagentStateInit {
 	/** Whether the agent was stopped before the limiter ever admitted it. */
 	stoppedWhileQueued?: boolean;
 	startedAt?: number;
+	/** When the run last made progress; defaults to startedAt. */
+	lastProgressAt?: number;
 	completedAt?: number;
 	/** Time the parent collected the outcome; undefined = obligation still open. */
 	consumedAt?: number;
@@ -205,6 +207,10 @@ export class SubagentState {
 	private _responseText: string;
 	get responseText(): string { return this._responseText; }
 
+	/** When the current run last emitted a session event; its start until it emits one. */
+	private _lastProgressAt: number;
+	get lastProgressAt(): number { return this._lastProgressAt; }
+
 	constructor(init: SubagentStateInit = {}) {
 		this._status = init.status ?? "queued";
 		this._result = init.result;
@@ -214,6 +220,7 @@ export class SubagentState {
 		this._error = init.error;
 		this._stoppedWhileQueued = init.stoppedWhileQueued ?? false;
 		this._startedAt = init.startedAt ?? Date.now();
+		this._lastProgressAt = init.lastProgressAt ?? this._startedAt;
 		this._completedAt = init.completedAt;
 		this._consumedAt = init.consumedAt;
 		this._toolUses = init.toolUses ?? 0;
@@ -288,10 +295,16 @@ export class SubagentState {
 		this._responseText += delta;
 	}
 
+	/** Record that the run made progress. Called by record-observer on every session event. */
+	markProgress(at: number = Date.now()): void {
+		this._lastProgressAt = at;
+	}
+
 	/** Transition to running state. Sets status and startedAt. */
 	markRunning(startedAt: number): void {
 		this._status = "running";
 		this._startedAt = startedAt;
+		this._lastProgressAt = startedAt;
 		this._runUpdates.length = 0;
 	}
 
@@ -417,6 +430,7 @@ export class SubagentState {
 		this._run++;
 		this._status = "running";
 		this._startedAt = startedAt;
+		this._lastProgressAt = startedAt;
 		this._completedAt = undefined;
 		this._result = undefined;
 		this._error = undefined;
