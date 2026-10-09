@@ -94,11 +94,11 @@ flowchart TB
         Subagent["Subagent<br/>(status, behavior: abort/steer/run lifecycle)"]
         ParentSnapshot["ParentSnapshot<br/>(frozen parent state)"]
         Workspace["workspace<br/>(provider seam: child cwd + teardown)"]
+        RecordObserver["record-observer<br/>(stats + live activity via events)"]
     end
 
     subgraph observation["Observation domain"]
         direction TB
-        RecordObserver["record-observer<br/>(stats + live activity via events)"]
         Notification["notification<br/>(completion nudges)"]
     end
 
@@ -334,10 +334,10 @@ Those directories are fallow boundary **zones** (`boundaries` in the repo-root `
 Each zone's `allow` list is the set of zones it imported when the zones were encoded, so the baseline reports zero violations and a **new** cross-zone edge is a finding (`boundary-violation`, severity `warn`, reported by `fallow dead-code` and `fallow audit` without failing either) and a `fallow decision-surface` `coupling-boundary` question in review.
 Run `pnpm --silent fallow guard <file>` before adding a cross-directory import to see what the file's zone may import; when the new edge is intended, extend that zone's `allow` list in the same commit and say why in the commit body.
 
-Two allowed edges run against the order those directories imply: `lifecycle/` imports `subscribeSubagentObserver` from `observation/` (`subagent.ts`), and `observation/` imports `display` and `glyphs` from `ui/` (`renderer.ts`).
-The ratchet admits them because they predate it.
-Neither should exist: `lifecycle/` is the core, `observation/` reacts to it, and `ui/` renders both.
-Each is the only reason for its edge, and [#1048] moves the two modules to the directories that order puts them in.
+The zones follow one order: `lifecycle/` is the core, `observation/` reacts to it, and `ui/` renders both.
+So `lifecycle/` imports neither `observation/` nor `ui/`, and `observation/` imports `lifecycle/` but not `ui/`.
+`ui/` imports `lifecycle/` freely and `observation/` for types only: the notification renderer reads the message contracts `observation/notification.ts` produces, which the `ui` zone admits through `allowTypeOnly`, so a value import across that edge is still reported.
+A module belongs to the zone of the object it serves, not the zone of what it touches: the record observer is the run's own metric accumulator and lives in `lifecycle/`, and the message renderers are presentation and live in `ui/`.
 
 ### Current layout
 
@@ -383,6 +383,7 @@ src/
 │   ├── subagent.ts                 owns full execution lifecycle (run, resume, abort, steer, wait-until-settled); a teardown with no result text to carry its addendum records it as a notice and announces one produced after delivery; answers why a resume would be refused (resumeRefusal, including a live run), which the resume choke point and every result carrier read rather than re-deriving; reports a resume's start as well as its end; wait-until-settled reports whether the waited run settled, has not, or was replaced by a resume (carrying what it ended with)
 │   ├── subagent-state.ts           lifecycle status + metrics + result-delivery value object (transitions, accumulators, classification predicates); delivery carries a revocable claim per carrier (each releases only its own handle), a one-way consumption latch, and a per-run update ledger that renders only what no announcement delivered; numbers its runs and keeps the outcome of the run the latest resume replaced
 │   ├── run-listeners.ts            per-run observer-unsub and signal-detach handles
+│   ├── record-observer.ts          session-event stats observer; stamps each event as the run's last progress
 │   ├── workspace-bracket.ts        child workspace prepare/dispose lifecycle; idempotent dispose, reports a torn-down workspace
 │   ├── concurrency-limiter.ts       background admission gate: schedules run thunks FIFO against the limit
 │   ├── parent-snapshot.ts          immutable spawn-time parent state, including the parent's operator-authored prompt parts composed in Pi's own order
@@ -391,11 +392,9 @@ src/
 │   ├── workspace.ts                workspace provider seam (generative extension surface)
 │   └── usage.ts                    token usage tracking
 │
-├── observation/                    progress tracking and notification
-│   ├── record-observer.ts          session-event stats observer; stamps each event as the run's last progress
+├── observation/                    reactions to the lifecycle: notification, outcome delivery, event emission
 │   ├── notification.ts             completion nudges and mid-run updates, in one arrival-ordered withheld queue (announce-only; withheld during the parent's agent run and flushed on agent_settled, each re-checking its gates at emit rather than replaying them from enqueue — a completion on claim and consumption, an update on the claim and on the child still running, since a terminated run's updates ride its outcome and this nudge is one of their carriers), plus workspace notices, which are announced straight through
 │   ├── outcome-delivery.ts         shared outcome rendering every result carrier composes: one status vocabulary in two presentations, body, and the addenda tail (mid-run updates, workspace notice, ask-back affordance — which names a resume only when the record says one would be accepted, and asks the parent to wait when the child has merely not settled) in one fixed order
-│   ├── renderer.ts                 notification, mid-run-update, and workspace-notice TUI components
 │   ├── composite-subagent-observer.ts fans manager notifications out to multiple observers; enumerates every member, so an optional one it omits is dropped silently
 │   └── subagent-events-observer.ts manager lifecycle observer (event emission + persistence + notification)
 │
@@ -418,6 +417,7 @@ src/
 ├── ui/                             user-facing presentation
 │   ├── agent-widget.ts             above-editor live status widget
 │   ├── widget-renderer.ts          pure rendering for widget
+│   ├── notification-renderer.ts    notification, mid-run-update, and workspace-notice TUI components
 │   ├── display.ts                  pure formatters and shared types
 │   ├── bounded-lines.ts            component spending exactly one clipped terminal row per line
 │   ├── labeled-rule.ts             full-width rule with embedded labels, Pi editor-border style
