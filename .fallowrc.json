@@ -64,7 +64,6 @@
         "allow": [
           "pi-subagents/config",
           "pi-subagents/core",
-          "pi-subagents/observation",
           "pi-subagents/session"
         ]
       },

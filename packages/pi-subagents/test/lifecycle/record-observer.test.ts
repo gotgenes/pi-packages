@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { subscribeSubagentObserver } from "#src/lifecycle/record-observer";
 import { SubagentState } from "#src/lifecycle/subagent-state";
-import { subscribeSubagentObserver } from "#src/observation/record-observer";
 import { createMockSession } from "#test/helpers/mock-session";
 
 function makeState() {

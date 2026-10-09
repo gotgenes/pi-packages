@@ -1,10 +1,9 @@
 /**
  * record-observer.ts — Subscribes to session events and accumulates SubagentState stats.
  *
- * Replaces the scattered callback-wrapping logic in SubagentManager's startAgent()
- * and resume() with a single direct subscription. The observer targets the
- * SubagentState value object directly, so it carries no dependency on Subagent;
- * the caller forwards itself to its own lifecycle observer via onCompact.
+ * The observer targets the SubagentState value object directly, so it carries
+ * no dependency on Subagent; the caller forwards itself to its own lifecycle
+ * observer via onCompact.
  */
 
 import type { SubagentState } from "#src/lifecycle/subagent-state";
