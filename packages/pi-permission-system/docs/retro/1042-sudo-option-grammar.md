@@ -47,6 +47,20 @@ The pre-completion reviewer returned **WARN** with no blocking finding, after re
   It predates this change and affects every wrapper; verified with a spike and filed as [#1056], dispositioned as a new Phase 15 step after [#1053] (operator decision, given reluctantly: the operator wants Phase 15 closed so the sandbox phase can start).
   Residual 2 (`sudo env -C /etc cat shadow`) is [#1053]'s; residual 3 (`sudo -l`, `--help`) is a stated Non-Goal.
 
+## Stage: Sync (worktree) (2026-10-09T04:19:15Z)
+
+### Session summary
+
+`pnpm run lint` and `pnpm fallow dead-code` pass from the worktree root.
+The plan's marker is `**Release:** ship independently`; the two `fix:` commits (sudoedit and clustered or long options; shell, login, chdir, and chroot modes) are what the release will carry, and [#1053] and [#1056] are the filed follow-ups, both dispositioned as Phase 15 steps.
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-1042--/2026-10-09T00-56-53-533Z_01a11e29-ba1c-7360-84fe-52615aa1dc12.jsonl` — read with `read_session_file({ path: "<path>" })` for message-level verification at land/retro time.
+
+### Observations
+
+- The reviewer's WARN (an unquoted computed word in a peeled layer's options) was settled before sync: filed as [#1056] and dispositioned, so nothing was left open for the root.
+- The operator wants Phase 15 closed soon so the sandbox phase can start; [#1053] and [#1056] are the two steps this issue added in front of that.
+
 [#680]: https://github.com/gotgenes/pi-packages/issues/680
 [#963]: https://github.com/gotgenes/pi-packages/issues/963
 [#971]: https://github.com/gotgenes/pi-packages/pull/971
