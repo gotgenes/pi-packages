@@ -12,6 +12,7 @@ import { makeModel } from "#test/helpers/make-model";
 import { createTestSubagent, makeStubExecution } from "#test/helpers/make-subagent";
 import { createMockSession, createSubagentSessionStub, toSubagentSession } from "#test/helpers/mock-session";
 import { STUB_CTX } from "#test/helpers/stub-ctx";
+import { textOf } from "#test/helpers/text-of";
 import { turnLoopResult } from "#test/helpers/turn-loop-result";
 
 const testRegistry = new AgentTypeRegistry(() => new Map());
@@ -195,7 +196,7 @@ describe("GetResultTool — a wait a resume superseded", () => {
 
 		const result = await execute(makeManager(new Map([["agent-1", record]])), { agent_id: "agent-1", wait: true });
 
-		const text = result.content[0].text;
+		const text = textOf(result);
 		// Duration and the agent id vary per run, so the stable lines are checked.
 		expect(text).toContain("Status: completed |");
 		expect(text).toContain("\n\nfirst result\n\n");
@@ -209,7 +210,7 @@ describe("GetResultTool — a wait a resume superseded", () => {
 
 		const result = await execute(makeManager(new Map([["agent-1", record]])), { agent_id: "agent-1", wait: true });
 
-		expect(result.content[0].text).not.toContain("Which config?");
+		expect(textOf(result)).not.toContain("Which config?");
 		finishResume();
 		await record.promise;
 	});
@@ -250,13 +251,13 @@ describe("GetResultTool", () => {
 
 	it("returns not-found message for unknown agent ID", async () => {
 		const result = await execute(makeManager(), { agent_id: "unknown" });
-		expect(result.content[0].text).toContain("Agent not found");
+		expect(textOf(result)).toContain("Agent not found");
 	});
 
 	it("returns status and result for completed agent", async () => {
 		const records = new Map([["agent-1", createTestSubagent()]]);
 		const result = await execute(makeManager(records), { agent_id: "agent-1" });
-		const text = result.content[0].text;
+		const text = textOf(result);
 		expect(text).toContain("Agent: agent-1");
 		expect(text).toContain("completed");
 		expect(text).toContain("All done.");
@@ -268,13 +269,13 @@ describe("GetResultTool", () => {
 				execution: makeStubExecution({ model: makeModel({ provider: "openai", id: "gpt-5" }) }),
 			});
 			const result = await execute(makeManager(new Map([["agent-1", record]])), { agent_id: "agent-1" });
-			expect(result.content[0].text).toContain("\nModel: openai/gpt-5\n");
+			expect(textOf(result)).toContain("\nModel: openai/gpt-5\n");
 			expect(result.details?.modelName).toBe("openai/gpt-5");
 		});
 
 		it("names no model while the agent's model is unknown", async () => {
 			const result = await execute(makeManager(new Map([["agent-1", createTestSubagent()]])), { agent_id: "agent-1" });
-			expect(result.content[0].text).not.toContain("Model:");
+			expect(textOf(result)).not.toContain("Model:");
 			expect(result.details?.modelName).toBeUndefined();
 		});
 	});
@@ -286,7 +287,7 @@ describe("GetResultTool", () => {
 
 		const result = await execute(makeManager(records), { agent_id: "agent-1" });
 
-		expect(result.content[0].text).toContain("The bug is in the retry wrapper.");
+		expect(textOf(result)).toContain("The bug is in the retry wrapper.");
 	});
 
 	describe("resume affordance", () => {
@@ -297,7 +298,7 @@ describe("GetResultTool", () => {
 
 			const result = await execute(makeManager(records), { agent_id: "agent-1" });
 
-			expect(result.content[0].text).toContain('resume: "agent-1"');
+			expect(textOf(result)).toContain('resume: "agent-1"');
 		});
 
 		it("names no resume for a child that asked before its turn ended", async () => {
@@ -318,9 +319,9 @@ describe("GetResultTool", () => {
 
 			const result = await execute(makeManager(records), { agent_id: "agent-1" });
 
-			expect(result.content[0].text).toContain("Which config?");
-			expect(result.content[0].text).toContain("cannot be resumed yet");
-			expect(result.content[0].text).not.toContain("resume:");
+			expect(textOf(result)).toContain("Which config?");
+			expect(textOf(result)).toContain("cannot be resumed yet");
+			expect(textOf(result)).not.toContain("resume:");
 		});
 
 		it("forwards the record's refusal, so a swept record names no resume", async () => {
@@ -333,24 +334,24 @@ describe("GetResultTool", () => {
 
 			const result = await execute(makeManager(records), { agent_id: "agent-1" });
 
-			expect(result.content[0].text).toContain("Which config?");
-			expect(result.content[0].text).toContain(
+			expect(textOf(result)).toContain("Which config?");
+			expect(textOf(result)).toContain(
 				"its session was released after its retention window",
 			);
-			expect(result.content[0].text).not.toContain("resume:");
+			expect(textOf(result)).not.toContain("resume:");
 		});
 	});
 
 	it("shows running message for in-progress agent", async () => {
 		const records = new Map([["agent-1", createTestSubagent({ status: "running", completedAt: undefined })]]);
 		const result = await execute(makeManager(records), { agent_id: "agent-1" });
-		expect(result.content[0].text).toContain("still running");
+		expect(textOf(result)).toContain("still running");
 	});
 
 	it("shows error for failed agent", async () => {
 		const records = new Map([["agent-1", createTestSubagent({ status: "error", error: "timeout" })]]);
 		const result = await execute(makeManager(records), { agent_id: "agent-1" });
-		expect(result.content[0].text).toContain("Error: timeout");
+		expect(textOf(result)).toContain("Error: timeout");
 	});
 
 	it("marks the record consumed for a completed agent (pull-delivery edge)", async () => {
@@ -388,7 +389,7 @@ describe("GetResultTool", () => {
 		const records = new Map([["agent-1", record]]);
 		const result = await execute(makeManager(records), { agent_id: "agent-1", wait: true });
 		// After waiting, the record is completed and result is shown
-		expect(result.content[0].text).toContain("Finished after wait.");
+		expect(textOf(result)).toContain("Finished after wait.");
 		expect(record.consumed).toBe(true);
 	});
 
@@ -414,7 +415,7 @@ describe("GetResultTool", () => {
 		openSlot();
 
 		const result = await resultPromise;
-		expect(result.content[0].text).toContain("Finished after the queue.");
+		expect(textOf(result)).toContain("Finished after the queue.");
 		expect(record.consumed).toBe(true);
 	});
 
@@ -437,7 +438,7 @@ describe("GetResultTool", () => {
 		controller.abort();
 
 		const result = await resultPromise;
-		expect(result.content[0].text).toContain("Status: running");
+		expect(textOf(result)).toContain("Status: running");
 		// The parent never collected an outcome, so the completion nudge still owes it one.
 		expect(record.consumed).toBe(false);
 	});
@@ -449,8 +450,8 @@ describe("GetResultTool", () => {
 		record.subagentSession = toSubagentSession(stub);
 		const records = new Map([["agent-1", record]]);
 		const result = await execute(makeManager(records), { agent_id: "agent-1", verbose: true });
-		expect(result.content[0].text).toContain("--- Agent Conversation ---");
-		expect(result.content[0].text).toContain("[User]: hello");
+		expect(textOf(result)).toContain("--- Agent Conversation ---");
+		expect(textOf(result)).toContain("[User]: hello");
 	});
 
 	it("points to the transcript when verbose is requested but the session was released", async () => {
@@ -459,8 +460,8 @@ describe("GetResultTool", () => {
 		await record.releaseSession();
 		const records = new Map([["agent-1", record]]);
 		const result = await execute(makeManager(records), { agent_id: "agent-1", verbose: true });
-		expect(result.content[0].text).toContain("Full transcript available at: /tasks/agent.jsonl");
-		expect(result.content[0].text).not.toContain("--- Agent Conversation ---");
+		expect(textOf(result)).toContain("Full transcript available at: /tasks/agent.jsonl");
+		expect(textOf(result)).not.toContain("--- Agent Conversation ---");
 	});
 });
 
@@ -549,7 +550,7 @@ describe("GetResultTool — TUI rendering", () => {
 			const result = await execute(makeManager(records), { agent_id: "agent-1" });
 
 			expect(result.details?.turnBudget).toEqual(turnBudget);
-			expect(result.content[0].text).toContain("Status: completed (wrapped up \u2014 after turn-budget warning) |");
+			expect(textOf(result)).toContain("Status: completed (wrapped up \u2014 after turn-budget warning) |");
 		});
 
 		it("carries a preview bounded well below the result it summarises", async () => {

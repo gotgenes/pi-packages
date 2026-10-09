@@ -6,6 +6,7 @@ import { makeModel } from "#test/helpers/make-model";
 import { createResolvedSpawnConfig } from "#test/helpers/make-spawn-config";
 import { createTestSubagent, makeStubExecution } from "#test/helpers/make-subagent";
 import { STUB_SNAPSHOT } from "#test/helpers/stub-ctx";
+import { textOf } from "#test/helpers/text-of";
 
 function makeParams(overrides: Partial<ForegroundParams> = {}): ForegroundParams {
 	return {
@@ -28,9 +29,9 @@ describe("runForeground", () => {
 	it("returns completion message with tool use count on success", async () => {
 		const { manager } = createToolDeps();
 		const result = await runForeground(manager, makeParams(), undefined, undefined);
-		expect(result.content[0].text).toContain("Agent completed");
-		expect(result.content[0].text).toContain("3 tool uses");
-		expect(result.content[0].text).toContain("All done.");
+		expect(textOf(result)).toContain("Agent completed");
+		expect(textOf(result)).toContain("3 tool uses");
+		expect(textOf(result)).toContain("All done.");
 	});
 
 	it("surfaces a declared question as answerable, naming the resume call", async () => {
@@ -48,9 +49,9 @@ describe("runForeground", () => {
 
 		const result = await runForeground(manager, makeParams(), undefined, undefined);
 
-		expect(result.content[0].text).toContain("This agent is waiting on an answer:");
-		expect(result.content[0].text).toContain("Which config?");
-		expect(result.content[0].text).toContain('resume: "agent-5"');
+		expect(textOf(result)).toContain("This agent is waiting on an answer:");
+		expect(textOf(result)).toContain("Which config?");
+		expect(textOf(result)).toContain('resume: "agent-5"');
 	});
 
 	it("reports a question a released session cannot answer, without naming a resume", async () => {
@@ -66,17 +67,17 @@ describe("runForeground", () => {
 
 		const result = await runForeground(manager, makeParams(), undefined, undefined);
 
-		expect(result.content[0].text).toContain("Which config?");
-		expect(result.content[0].text).toContain(
+		expect(textOf(result)).toContain("Which config?");
+		expect(textOf(result)).toContain(
 			"its session was released after its retention window",
 		);
-		expect(result.content[0].text).not.toContain("resume:");
+		expect(textOf(result)).not.toContain("resume:");
 	});
 
 	it("adds no affordance when the agent asked nothing", async () => {
 		const { manager } = createToolDeps();
 		const result = await runForeground(manager, makeParams(), undefined, undefined);
-		expect(result.content[0].text).not.toContain("waiting on an answer");
+		expect(textOf(result)).not.toContain("waiting on an answer");
 	});
 
 	it("names where a teardown saved the work of an agent that completed", async () => {
@@ -87,7 +88,7 @@ describe("runForeground", () => {
 
 		const result = await runForeground(manager, makeParams(), undefined, undefined);
 
-		expect(result.content[0].text).toContain("Changes saved to branch `pi-agent-5`.");
+		expect(textOf(result)).toContain("Changes saved to branch `pi-agent-5`.");
 	});
 
 	it("reports the updates the agent sent while the parent was blocked", async () => {
@@ -98,8 +99,8 @@ describe("runForeground", () => {
 
 		const result = await runForeground(manager, makeParams(), undefined, undefined);
 
-		expect(result.content[0].text).toContain("Updates this agent sent while it worked:");
-		expect(result.content[0].text).toContain("The bug is in the retry wrapper.");
+		expect(textOf(result)).toContain("Updates this agent sent while it worked:");
+		expect(textOf(result)).toContain("The bug is in the retry wrapper.");
 	});
 
 	it("reports the updates of an agent whose run then failed", async () => {
@@ -114,7 +115,7 @@ describe("runForeground", () => {
 
 		const result = await runForeground(manager, makeParams(), undefined, undefined);
 
-		expect(result.content[0].text).toContain("The premise is wrong.");
+		expect(textOf(result)).toContain("The premise is wrong.");
 	});
 
 	it("names where a teardown saved the work of an agent that failed", async () => {
@@ -129,8 +130,8 @@ describe("runForeground", () => {
 
 		const result = await runForeground(manager, makeParams(), undefined, undefined);
 
-		expect(result.content[0].text).toContain("Agent failed: turn loop exploded");
-		expect(result.content[0].text).toContain("Changes saved to branch `pi-agent-5`.");
+		expect(textOf(result)).toContain("Agent failed: turn loop exploded");
+		expect(textOf(result)).toContain("Changes saved to branch `pi-agent-5`.");
 	});
 
 	// A failed run's body carries no result, so the transcript is the only route
@@ -149,8 +150,8 @@ describe("runForeground", () => {
 
 		const result = await runForeground(manager, makeParams(), undefined, undefined);
 
-		expect(result.content[0].text).toContain("Agent failed: 429 rate limit exceeded");
-		expect(result.content[0].text).toContain(
+		expect(textOf(result)).toContain("Agent failed: 429 rate limit exceeded");
+		expect(textOf(result)).toContain(
 			"Full transcript available at: /sessions/child.jsonl",
 		);
 	});
@@ -163,7 +164,7 @@ describe("runForeground", () => {
 
 		const result = await runForeground(manager, makeParams(), undefined, undefined);
 
-		expect(result.content[0].text).not.toContain("Full transcript available at:");
+		expect(textOf(result)).not.toContain("Full transcript available at:");
 	});
 
 	it("marks the returned record consumed (foreground-return delivery edge)", async () => {
@@ -194,8 +195,8 @@ describe("runForeground", () => {
 			},
 		});
 		const result = await runForeground(deps.manager, makeParams(), undefined, undefined);
-		expect(result.content[0].text).toContain("Agent failed");
-		expect(result.content[0].text).toContain("Context window exceeded");
+		expect(textOf(result)).toContain("Agent failed");
+		expect(textOf(result)).toContain("Context window exceeded");
 	});
 
 	it("returns error text when spawnAndWait throws", async () => {
@@ -206,7 +207,7 @@ describe("runForeground", () => {
 			},
 		});
 		const result = await runForeground(deps.manager, makeParams(), undefined, undefined);
-		expect(result.content[0].text).toContain("runner crashed");
+		expect(textOf(result)).toContain("runner crashed");
 	});
 
 	it("includes fallback note when fellBack is true", async () => {
@@ -219,7 +220,7 @@ describe("runForeground", () => {
 			undefined,
 			undefined,
 		);
-		expect(result.content[0].text).toContain('Unknown agent type "unknown-type"');
+		expect(textOf(result)).toContain('Unknown agent type "unknown-type"');
 	});
 
 	it("calls onUpdate with streaming details while running", async () => {
@@ -330,7 +331,7 @@ describe("runForeground", () => {
 		it("names the agent ID under the completion header", async () => {
 			const { manager } = createToolDeps();
 			const result = await runForeground(manager, makeParams(), undefined, undefined);
-			expect(result.content[0].text).toContain("Agent ID: agent-1");
+			expect(textOf(result)).toContain("Agent ID: agent-1");
 		});
 
 		it("names the agent ID when the agent failed", async () => {
@@ -343,7 +344,7 @@ describe("runForeground", () => {
 				},
 			});
 			const result = await runForeground(deps.manager, makeParams(), undefined, undefined);
-			expect(result.content[0].text).toContain("Agent ID: agent-1");
+			expect(textOf(result)).toContain("Agent ID: agent-1");
 		});
 
 		it("keeps the spawn notes ahead of the agent ID line", async () => {
@@ -356,7 +357,7 @@ describe("runForeground", () => {
 				undefined,
 				undefined,
 			);
-			const text = result.content[0].text;
+			const text = textOf(result);
 			expect(text.startsWith('Note: Unknown agent type "unknown-type" — using general-purpose.')).toBe(true);
 			expect(text.indexOf("Agent ID: agent-1")).toBeGreaterThan(0);
 		});

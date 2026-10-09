@@ -1,14 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import { NotifyParentTool, UPDATE_MESSAGE_MAX_LENGTH } from "#src/session/notify-parent-tool";
 import { STUB_CTX } from "#test/helpers/stub-ctx";
+import { textOf } from "#test/helpers/text-of";
 
 function execute(announce: (message: string) => void, message: string) {
 	const tool = new NotifyParentTool(announce);
 	return tool.execute("tc-1", { message }, new AbortController().signal, undefined, STUB_CTX);
-}
-
-function textOf(result: { content: { type: "text"; text: string }[] }): string {
-	return result.content[0].text;
 }
 
 describe("NotifyParentTool", () => {

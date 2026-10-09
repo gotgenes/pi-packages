@@ -4,6 +4,7 @@ import type { Subagent } from "#src/types";
 import { createTestSubagent } from "#test/helpers/make-subagent";
 import { createMockSession, createSubagentSessionStub, toSubagentSession } from "#test/helpers/mock-session";
 import { STUB_CTX } from "#test/helpers/stub-ctx";
+import { textOf } from "#test/helpers/text-of";
 
 function makeManager(records: Map<string, Subagent> = new Map()): SteerToolManager {
 	return {
@@ -39,15 +40,15 @@ describe("SteerTool", () => {
 
 	it("returns not-found message for unknown agent ID without claiming cleanup", async () => {
 		const result = await execute(makeManager(), makeEvents(), { agent_id: "unknown", message: "hi" });
-		expect(result.content[0].text).toContain("Agent not found");
-		expect(result.content[0].text).not.toContain("cleaned up");
+		expect(textOf(result)).toContain("Agent not found");
+		expect(textOf(result)).not.toContain("cleaned up");
 	});
 
 	it("rejects steering a non-running agent", async () => {
 		const records = new Map([["agent-1", createTestSubagent({ status: "completed" })]]);
 		const result = await execute(makeManager(records), makeEvents(), { agent_id: "agent-1", message: "hi" });
-		expect(result.content[0].text).toContain("not running");
-		expect(result.content[0].text).toContain("completed");
+		expect(textOf(result)).toContain("not running");
+		expect(textOf(result)).toContain("completed");
 	});
 
 	it("queues steer when session is not ready", async () => {
@@ -57,7 +58,7 @@ describe("SteerTool", () => {
 		const manager = makeManager(records);
 		const events = makeEvents();
 		const result = await execute(manager, events, { agent_id: "agent-1", message: "redirect" });
-		expect(result.content[0].text).toContain("queued");
+		expect(textOf(result)).toContain("queued");
 		expect(record.pendingSteerCount).toBe(1);
 		expect(events.emit).toHaveBeenCalledWith("subagents:steered", {
 			id: "agent-1",
@@ -78,8 +79,8 @@ describe("SteerTool", () => {
 			id: "agent-1",
 			message: "change plan",
 		});
-		expect(result.content[0].text).toContain("Steering message sent");
-		expect(result.content[0].text).toContain("3 tool uses");
+		expect(textOf(result)).toContain("Steering message sent");
+		expect(textOf(result)).toContain("3 tool uses");
 	});
 
 	it("returns error message when steer fails", async () => {
@@ -89,7 +90,7 @@ describe("SteerTool", () => {
 		record.subagentSession = toSubagentSession(createSubagentSessionStub(mockSession));
 		const records = new Map([["agent-1", record]]);
 		const result = await execute(makeManager(records), makeEvents(), { agent_id: "agent-1", message: "hi" });
-		expect(result.content[0].text).toContain("Failed to steer agent");
-		expect(result.content[0].text).toContain("session closed");
+		expect(textOf(result)).toContain("Failed to steer agent");
+		expect(textOf(result)).toContain("session closed");
 	});
 });
