@@ -45,3 +45,16 @@ The pi-subagents suite stayed at 86 files and 2100 tests, as predicted.
 - `pi-autoformat` collapsed the `observation` zone's two-item `allow` array onto one line in `.fallowrc.json`; harmless.
 - The roadmap step's own Cause/Target prose (`architecture.md` lines 982 and 986) keeps the old `observation/renderer.ts` path deliberately, as a description of the step.
 - Pre-completion reviewer: PASS.
+
+## Stage: Sync (worktree) (2026-10-09T16:00:26Z)
+
+### Session summary
+
+`pnpm run lint` and `pnpm fallow dead-code` both pass on the branch, ahead of the rebase onto local `main`.
+The plan's `**Release:**` marker is `ship independently`; the commits are `refactor:` and `docs:` only, so `/ship` cuts no release for them, and no follow-up issues were filed.
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-1048--/2026-10-09T06-14-12-436Z_01a11f4c-3cd3-7338-95a9-53ad2447120d.jsonl`; read with `read_session_file({ path: "<path>" })` for message-level verification at land/retro time.
+
+### Observations
+
+- The planning-stage Tidy-First assessor said `fallow guard` failed inside its subagent; it ran fine in this session, so the failure was specific to the subagent.
