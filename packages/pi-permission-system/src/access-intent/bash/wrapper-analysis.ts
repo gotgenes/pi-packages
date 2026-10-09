@@ -415,6 +415,15 @@ function innerCommandIndex(words: readonly CommandWord[]): number {
   const execFlag = execFlagIndex(name, argTexts);
   if (execFlag !== -1) return execFlag + 2;
 
+  return tableInnerIndex(words, name);
+}
+
+/**
+ * {@link innerCommandIndex} for a wrapper described by the per-wrapper tables:
+ * its value-taking options ({@link VALUE_TAKING_FLAGS}) and whether it takes a
+ * leading operand ({@link LEADING_OPERAND_WRAPPERS}).
+ */
+function tableInnerIndex(words: readonly CommandWord[], name: string): number {
   const valueTaking = VALUE_TAKING_FLAGS.get(name) ?? EMPTY_FLAGS;
   let operandPending = LEADING_OPERAND_WRAPPERS.has(name);
   let index = 1;
