@@ -866,31 +866,42 @@ Composition (operator, 2026-10-09): Track A (runs as first-class), Track A+ ([#1
 Track C, [#1025]'s event-channel consolidation, was offered and declined.
 That came to ten steps, so [#949] folds into [#1049]: the run object is born with its lever, and a run whose signal already fired is born aborted.
 
-| Metric                                                     | Baseline (2026-10-09) | Phase 23 target   | Recompute                                                                            |
-| ---------------------------------------------------------- | --------------------- | ----------------- | ------------------------------------------------------------------------------------ |
-| Health score                                               | 78 (B)                | ≥ 78 (B)          | `pnpm fallow health --score --hotspots --targets --workspace @gotgenes/pi-subagents` |
-| `lifecycle/subagent.ts` lines                              | 833                   | ≤ 700 (estimated) | `wc -l packages/pi-subagents/src/lifecycle/subagent.ts`                              |
-| Run-kind-forked lifecycle names in `src/`                  | 16                    | 0                 | fenced block below                                                                   |
-| `resetForResume` occurrences in `src/`                     | 8                     | 0                 | fenced block below                                                                   |
-| `_superseded` in `subagent-state.ts`                       | 3                     | 0                 | `grep -c '_superseded' packages/pi-subagents/src/lifecycle/subagent-state.ts`        |
-| `_abortController` in `subagent.ts`                        | 5                     | 0                 | `grep -c '_abortController' packages/pi-subagents/src/lifecycle/subagent.ts`         |
-| `lifecycle/` files importing `observation/`                | 1                     | 0                 | `grep -rlE '#src/observation/' packages/pi-subagents/src/lifecycle`                  |
-| `observation/` files importing `ui/`                       | 1                     | 0                 | `grep -rlE '#src/ui/' packages/pi-subagents/src/observation`                         |
-| Production duplication                                     | 13 lines (1 group)    | 0                 | `pnpm fallow dupes --workspace @gotgenes/pi-subagents`                               |
-| `mock.calls[N]` reads in `test/lifecycle/subagent.test.ts` | 19                    | ≤ 7 (estimated)   | `grep -c 'mock\.calls\[' packages/pi-subagents/test/lifecycle/subagent.test.ts`      |
-| Pre-0.86 renderer mentions in `session/prompts.ts`         | 7                     | 0                 | `grep -c '0\.85' packages/pi-subagents/src/session/prompts.ts`                       |
-| Dead code                                                  | 0                     | 0                 | `pnpm fallow dead-code --workspace @gotgenes/pi-subagents`                           |
+The operator then asked whether the phase pays down enough debt.
+Measured against the earlier sweeps, the scattered items are growing rather than shrinking: `(manager as any).sweep()` reached 8 sites (Phase 22 recorded 7) and the events-observer payload triad 5 (4 when [#858] landed).
+A change-scoped Tidy-First assessment declines debt on lines its change does not touch, so the boy-scout path never reaches them.
+Each scattered item that sits in a file a step already edits is therefore named on that step as a ride-along, with its own metric row, and the remainder is named as the leading candidate for Phase 24 rather than deferred again (operator decision, 2026-10-09).
 
-The two counts that need a pipeline live here rather than in the table:
+| Metric                                                                                   | Baseline (2026-10-09) | Phase 23 target   | Recompute                                                                                                     |
+| ---------------------------------------------------------------------------------------- | --------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------- |
+| Health score                                                                             | 78 (B)                | ≥ 78 (B)          | `pnpm fallow health --score --hotspots --targets --workspace @gotgenes/pi-subagents`                          |
+| `lifecycle/subagent.ts` lines                                                            | 833                   | ≤ 700 (estimated) | `wc -l packages/pi-subagents/src/lifecycle/subagent.ts`                                                       |
+| Run-kind-forked lifecycle names in `src/`                                                | 16                    | 0                 | fenced block below                                                                                            |
+| `resetForResume` occurrences in `src/`                                                   | 8                     | 0                 | fenced block below                                                                                            |
+| `_superseded` in `subagent-state.ts`                                                     | 3                     | 0                 | `grep -c '_superseded' packages/pi-subagents/src/lifecycle/subagent-state.ts`                                 |
+| `_abortController` in `subagent.ts`                                                      | 5                     | 0                 | `grep -c '_abortController' packages/pi-subagents/src/lifecycle/subagent.ts`                                  |
+| `lifecycle/` files importing `observation/`                                              | 1                     | 0                 | `grep -rlE '#src/observation/' packages/pi-subagents/src/lifecycle`                                           |
+| `observation/` files importing `ui/`                                                     | 1                     | 0                 | `grep -rlE '#src/ui/' packages/pi-subagents/src/observation`                                                  |
+| Production duplication                                                                   | 13 lines (1 group)    | 0                 | `pnpm fallow dupes --workspace @gotgenes/pi-subagents`                                                        |
+| `mock.calls[N]` reads in `test/lifecycle/subagent.test.ts`                               | 19                    | ≤ 7 (estimated)   | `grep -c 'mock\.calls\[' packages/pi-subagents/test/lifecycle/subagent.test.ts`                               |
+| Pre-0.86 renderer mentions in `session/prompts.ts`                                       | 7                     | 0                 | `grep -c '0\.85' packages/pi-subagents/src/session/prompts.ts`                                                |
+| `result.content[0]` reads in `test/tools/`                                               | 102                   | 0                 | fenced block below                                                                                            |
+| `as any` in `test/lifecycle/subagent-manager.test.ts`                                    | 8                     | 0                 | `grep -c 'as any' packages/pi-subagents/test/lifecycle/subagent-manager.test.ts`                              |
+| Hand-written `description: record.description` payloads in `subagent-events-observer.ts` | 5                     | at most 1         | `grep -c 'description: record.description' packages/pi-subagents/src/observation/subagent-events-observer.ts` |
+| Test files defining a local `AgentConfig` factory                                        | 4                     | 0                 | `grep -rlE '^function \w+\(overrides: Partial<AgentConfig>' packages/pi-subagents/test`                       |
+| Dead code                                                                                | 0                     | 0                 | `pnpm fallow dead-code --workspace @gotgenes/pi-subagents`                                                    |
+
+The three counts that need a pipeline live here rather than in the table:
 
 ```bash
 # Run-kind-forked lifecycle names (baseline 16)
 grep -rhoE 'runResume|completeResume|failResume|resumeTurnLoop|onResumeStarted|onResumeFinished' packages/pi-subagents/src | wc -l
 # resetForResume occurrences (baseline 8)
 grep -rhoE 'resetForResume' packages/pi-subagents/src | wc -l
+# result.content[0] reads in the tool tests (baseline 102)
+grep -rho 'result\.content\[0\]' packages/pi-subagents/test/tools | wc -l
 ```
 
-The two `grep -rlE` rows count the files they print, so 0 is no output.
+The three `grep -rlE` rows count the files they print, so 0 is no output; the shared `AgentConfig` factory is `export`ed from `test/helpers/`, which the anchored pattern does not match.
 The `_superseded` row reads 0 if [#1051] dissolves `subagent-state.ts`, since the file is then gone.
 The run-kind row counts six names the phase removes; if [#1050] keeps one of them for a reason, it updates the row with that reason in the same commit.
 The `mock.calls` target assumes [#1050]'s channel-capturing helper removes the 12 channel reads and leaves the other 7 as they are.
@@ -927,8 +938,9 @@ End-of-planning `src/` totals: 12,420 LOC across 73 files, 2,065 tests across 85
 - [#660] — close approved by the 2026-09-15 triage and not yet executed; execution belongs to triage (2nd consecutive sweep).
 - PRs [#613], [#740] — closes approved by the 2026-09-15 triage and not yet executed; owned by triage.
   PR [#615] (parent-result redaction) awaits a response, also triage's; redaction for SDK-spawned children is listed as unstated rather than settled under "Scope and non-goals", and it is not this phase's cause.
-- Scout inventory (scattered) — stays on the `tidy-first` boy-scout path: `(manager as any).sweep()` private reach (8 sites, one file), `createManager()` observer defaults, `settings.ts` `sanitize()` range-check triplication, the `subagent-events-observer.ts` `{id, type, description}` payload triad (5 sites), `result.content[0].text` index access in the tool tests (102 sites across 5 files), `sendMessage.mock.calls[0][0]` in `notification.test.ts` (6 sites), a duplicated append-mode test and repeated `AgentConfig` literals in `prompts.test.ts`, `makeAgentConfig` redefined in 3 test files, and `index.ts`'s inline `createSession` lambda.
-  The `subagent-session.test.ts` items (an assistant-message literal repeated 10+ times and a third local session mock) ride [#1050], which rewrites that file's turn-loop tests.
+- Scout inventory (scattered) — the items in files a step already edits ride that step (operator decision, 2026-10-09).
+  `result.content[0].text` in the tool tests (102 sites across 5 files) rides [#947]; the events-observer `{id, type, description}` payload triad (5 sites) and the `subagent-session.test.ts` items (an assistant-message literal repeated 10+ times and a third local session mock) ride [#1050]; `(manager as any).sweep()` (8 sites) rides [#1051]; and `prompts.test.ts`'s duplicated append-mode test, with the local `AgentConfig` factories in four test files, rides [#1017].
+  The rest is named as the leading candidate for Phase 24, a craftsmanship lean phase if it still stands at that discovery, rather than re-deferred to a boy-scout path that has not reduced it: `settings.ts` `sanitize()` range-check triplication, `index.ts`'s untested inline `createSession` lambda, `sendMessage.mock.calls[0][0]` in `notification.test.ts` (6 sites), the `createManager()` observer defaults, and the five `src/` functions over 60 lines (`index.ts`'s default export, `createSubagentSession`, `toToolDefinition`, `runForeground`, and `resolveSpawnConfig`).
 
 #### Deferred tidyings swept
 
@@ -937,8 +949,9 @@ End-of-planning `src/` totals: 12,420 LOC across 73 files, 2,065 tests across 85
 - [#1015]'s `waitUntilSettled` fixture helper — rides [#1051], which rewrites those tests.
 - [#889]'s assistant-message factory in `subagent-session.test.ts` — rides [#1050].
 - [#755]'s `buildReport`/`buildGetResultDetails` mapping overlap — rides [#947] if its progress fields widen both; otherwise it stays, since the assessor judged the divergence deliberate.
-- [#1009]'s `prompts.test.ts` split and [#801]'s `AgentConfig` literals — [#1017] removes that file's pre-0.86 fixtures; the split stays deferred.
-- [#858]'s `(manager as any).sweep()` reaches and payload triad, [#798]'s `result.content[0].text` helper, [#812]'s `index.ts` inline lambdas, and [#903]'s `liveRecord()` factory — scattered, boy-scout.
+- [#801]'s `AgentConfig` literals — ride [#1017] with the shared factory; [#1009]'s `prompts.test.ts` split stays deferred, since [#1017] already removes that file's pre-0.86 fixtures.
+- [#858]'s `(manager as any).sweep()` reaches and payload triad — ride [#1051] and [#1050]; [#798]'s `result.content[0].text` helper rides [#947].
+- [#812]'s `index.ts` inline lambdas and [#903]'s `liveRecord()` factory — join the Phase 24 candidate.
 
 ### Steps
 
@@ -951,8 +964,10 @@ A `wait: true` is also unbounded, so a child stuck inside one tool call blocked 
 - **Smell:** Category C (a boundary drawn for one surface, the public snapshot, applied silently to another, the model-facing report).
 - **Target:** `src/tools/get-result-tool.ts` (the wait, and the `_onUpdate` it discards), `src/tools/get-result-report.ts`, and the tool's description; decision 0005 gains a sentence on what the report may carry if the plan admits activity facts there.
 - **Design questions the step must settle:** the bound's shape (the issue proposes an optional, model-chosen timeout with no default, mirroring `bash`), which progress facts the report carries (activity, turns used, a last-progress time, for which the transcript's mtime is one source), and the description's wording that an expired wait does not stop the child.
+- **Ride-along tidying:** a `test:` commit ahead of the change extracts a `textOf(result)` helper into `test/helpers/` and migrates the 102 `result.content[0]` reads across the five tool test files, 24 of them in `get-result-tool.test.ts`, which this step rewrites anyway.
+  The `result.content[0]` row reads 0.
 - **Outcome:** a bounded wait returns at its bound with the child still running and the progress facts in the report, and an unbounded wait behaves as it does today; pinned by the plan's tests.
-- **Commit type:** to be decided at plan time (an added optional parameter reads as `feat:`, the unbounded wait as `fix:`).
+- **Commit type:** to be decided at plan time (an added optional parameter reads as `feat:`, the unbounded wait as `fix:`); `test:` for the ride-along.
 - **Impact 4 / Risk 2 / Priority 16.**
 
 Release: independent
@@ -998,10 +1013,12 @@ A resumed run that wraps up at its turn limit while asking a question keeps its 
 - **Hard dependency:** [#1049] — the run object carries the kind the single path reads.
 - **Constraint:** the published `subagents:*` channels and their payloads do not change.
   Whether `SubagentManagerObserver`'s `onSubagentResuming`/`onSubagentResumed` collapse too is the plan's call.
+- **Ride-along tidying:** one builder for the `{ id, type, description }` payload the events observer writes by hand at 5 sites, since this step rewrites how that observer maps runs to channels; and in `subagent-session.test.ts`, an assistant-message factory for the literal repeated 10+ times, with the third local session mock folded into the shared ones.
+  The payload row reads at most 1.
 - **Outcome:** the run-kind-forked names row reads 0 and `fallow dupes` reports no production clone.
   A resumed run follows the initial run's workspace rule, pinned by the missing resume-side test, written first.
   The four terminal methods are private, the `subagent.test.ts` `mock.calls[N]` reads fall to the row's target through a channel-capturing helper, and the `describe` blocks nest by run kind.
-- **Commit type:** `fix:` for the resume's workspace rule; `refactor:` and `test:` for the rest.
+- **Commit type:** `fix:` for the resume's workspace rule; `refactor:` and `test:` for the rest, including the ride-along.
 - **Impact 5 / Risk 3 / Priority 15.**
 
 Release: independent
@@ -1031,8 +1048,10 @@ Release: independent
 - **Hard dependency:** [#1049] — the run object the outcome moves onto.
 - **Soft dependency:** [#1050], [#947] — after [#1050] the outcome moves through one path instead of two, and [#947] rewrites the same `get_subagent_result` wait this step changes.
 - **Constraint:** `SubagentRecord` is unchanged, and the delivery semantics Phase 22 settled (claims, consumption, exactly-once updates) are preserved rather than re-decided; the service tests pass unmodified.
+- **Ride-along tidying:** a public or fake-timer-driven way to run the retention sweep, replacing the 8 `as any` reaches in `subagent-manager.test.ts`; this step changes what the sweep reads (consumption moves onto the run), so those tests are rewritten anyway.
+  The `as any` row reads 0.
 - **Outcome:** the `resetForResume` and `_superseded` rows read 0, and a waiter reports the outcome of the run it waited on without a superseded slot.
-- **Commit type:** `refactor:`.
+- **Commit type:** `refactor:`; `test:` for the ride-along.
 - **Impact 4 / Risk 3 / Priority 12.**
 
 Release: independent
@@ -1075,8 +1094,10 @@ Release: independent
 
 - **Smell:** Category A (dead code the peer floor made unreachable).
 - **Target:** `src/session/prompts.ts` (the footer anchor and the 0.85 arm in `projectContextStart`), the pre-0.86 notes in `src/session/project-context.ts` and `src/lifecycle/parent-snapshot.ts`, the 0.85 fixtures in `test/session/prompts.test.ts` and `test/session/project-context.test.ts`, and the pre-0.86 sentence in `docs/configuration.md`.
+- **Ride-along tidying:** one shared `AgentConfig` factory in `test/helpers/`, replacing the local factories in `agent-types.test.ts`, `invocation-config.test.ts`, `session-config.test.ts`, and `subagent-manager.test.ts` and the repeated literals in `prompts.test.ts`, and the duplicated append-mode generic-base fallback test in `prompts.test.ts`.
+  The `AgentConfig` factory row reads 0.
 - **Outcome:** the pre-0.86 mentions row reads 0; if the plan finds an arm that still serves a `>=1.0.0` prompt, it updates the row with its reason.
-- **Commit type:** `refactor:`, with a `docs:` commit for `docs/configuration.md`.
+- **Commit type:** `refactor:`, with a `docs:` commit for `docs/configuration.md`; `test:` for the ride-along.
 - **Impact 2 / Risk 1 / Priority 10.**
 
 Release: independent
