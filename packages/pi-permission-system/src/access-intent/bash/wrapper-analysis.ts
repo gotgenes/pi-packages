@@ -402,10 +402,10 @@ function unquote(text: string): string {
  * Index of the word beginning the inner command, or `-1` when the wrapper's own
  * options run out first.
  *
- * Skips the wrapper name, environment assignments, options (consuming a
- * following value for the options in {@link VALUE_TAKING_FLAGS}), and a leading
- * operand for the wrappers that take one. An exec-conditional wrapper instead
- * starts immediately after its exec flag.
+ * An exec-conditional wrapper starts immediately after its exec flag. A wrapper
+ * with a {@link GETOPT_GRAMMARS} entry is read as getopt reads it, and answers
+ * `-1` for any option its grammar refuses; every other wrapper is read by the
+ * per-wrapper tables.
  */
 function innerCommandIndex(words: readonly CommandWord[]): number {
   const name = wrapperName(words);
@@ -415,7 +415,93 @@ function innerCommandIndex(words: readonly CommandWord[]): number {
   const execFlag = execFlagIndex(name, argTexts);
   if (execFlag !== -1) return execFlag + 2;
 
-  return tableInnerIndex(words, name);
+  const grammar = GETOPT_GRAMMARS.get(name);
+  return grammar === undefined
+    ? tableInnerIndex(words, name)
+    : getoptInnerIndex(words, grammar);
+}
+
+/**
+ * {@link innerCommandIndex} for a wrapper read as getopt_long reads it, with
+ * options permuted no further than the first non-option (sudo's `+` optstring).
+ *
+ * Options come first, then the `NAME=value` assignments the wrapper passes to
+ * the command, then the command. `-1` when an option is refused, unlisted, or
+ * an ambiguous abbreviation, or when the words run out first.
+ */
+function getoptInnerIndex(
+  words: readonly CommandWord[],
+  grammar: GetoptGrammar,
+): number {
+  let index = 1;
+  while (index < words.length) {
+    const word = words[index].text;
+    if (word === "--") {
+      index++;
+      break;
+    }
+    if (!word.startsWith("-") || word === "-") break;
+    const consumed = word.startsWith("--")
+      ? longOptionWords(word.slice(2), grammar.long)
+      : shortClusterWords(word.slice(1), grammar.short);
+    if (consumed === undefined) return -1;
+    index += consumed;
+  }
+  while (index < words.length && isEnvironmentAssignment(words[index].text)) {
+    index++;
+  }
+  return index < words.length ? index : -1;
+}
+
+/**
+ * How many words a short-option cluster spans (`-nu root` is two), or
+ * `undefined` when a letter in it is refused or unlisted.
+ *
+ * A value-taking letter ends the cluster: the rest of the cluster is its value
+ * (`-uedward`), or the following word when nothing is left (`-nu root`).
+ */
+function shortClusterWords(
+  letters: string,
+  table: ReadonlyMap<string, OptionArity>,
+): number | undefined {
+  for (let position = 0; position < letters.length; position++) {
+    const arity = table.get(letters[position]);
+    if (arity === undefined || arity === "refuse") return undefined;
+    if (arity === "value") return position + 1 < letters.length ? 1 : 2;
+  }
+  return 1;
+}
+
+/**
+ * How many words a long option spans (`--user root` is two, `--user=root`
+ * one), or `undefined` when it is refused, unlisted, or ambiguous.
+ */
+function longOptionWords(
+  body: string,
+  table: ReadonlyMap<string, OptionArity>,
+): number | undefined {
+  const equals = body.indexOf("=");
+  const name = equals === -1 ? body : body.slice(0, equals);
+  const arity = resolveLongOption(name, table);
+  if (arity === undefined || arity === "refuse") return undefined;
+  return arity === "value" && equals === -1 ? 2 : 1;
+}
+
+/**
+ * A long option's arity by its exact name, or by the one key it abbreviates.
+ *
+ * Abbreviations resolve against every key, refusing ones included, as
+ * getopt_long does: `--l` is ambiguous between `--list` and `--login`, and
+ * resolving against the admitted keys alone would read it as `--list`.
+ */
+function resolveLongOption(
+  name: string,
+  table: ReadonlyMap<string, OptionArity>,
+): OptionArity | undefined {
+  const exact = table.get(name);
+  if (exact !== undefined) return exact;
+  const matches = [...table.keys()].filter((key) => key.startsWith(name));
+  return matches.length === 1 ? table.get(matches[0]) : undefined;
 }
 
 /**
@@ -544,11 +630,15 @@ const EXEC_CONDITIONAL_WRAPPERS = new Map<string, ReadonlySet<string>>([
  * Curated per-wrapper options that consume the following word, so skipping a
  * wrapper's own arguments does not mistake an option's value for the inner
  * command. Attached forms (`-I{}`, `--user=root`) need no entry — they are one
- * word. Only the display-side extraction reads this, and a missing or wrong
- * entry yields `null` (see {@link executedUnitOf}), never a weaker gate.
+ * word.
+ *
+ * This table decides the gate, not only the display: {@link floorExemptionOf}
+ * judges the command it locates, so a missing entry can name a pure reader that
+ * is really an option's value (`xargs -J cat rm x`), and the execution-modifier
+ * clause admits value-taking options from it. A wrapper read by a
+ * {@link GETOPT_GRAMMARS} entry has no row here.
  */
 const VALUE_TAKING_FLAGS = new Map<string, ReadonlySet<string>>([
-  ["sudo", new Set(["-u", "-g", "-p", "-C", "-h", "-U", "-r", "-t"])],
   ["doas", new Set(["-u", "-C"])],
   ["env", new Set(["-u", "-C", "--unset", "--chdir"])],
   [
@@ -564,6 +654,50 @@ const VALUE_TAKING_FLAGS = new Map<string, ReadonlySet<string>>([
 ]);
 
 const EMPTY_FLAGS: ReadonlySet<string> = new Set<string>();
+
+/**
+ * How a getopt-parsed wrapper treats one of its options: a flag, an option
+ * taking a value, or a mode in which the command the peel would name is not
+ * the one that runs, which refuses the peel.
+ */
+type OptionArity = "flag" | "value" | "refuse";
+
+/**
+ * A wrapper's options as getopt_long reads them, keyed by short letter and by
+ * full long name. Anything absent refuses, so a missing row costs a prompt and
+ * never misplaces the inner command.
+ */
+interface GetoptGrammar {
+  readonly short: ReadonlyMap<string, OptionArity>;
+  readonly long: ReadonlyMap<string, OptionArity>;
+}
+
+/**
+ * `sudo`'s options, verified against `man sudo` (1.9.17p2). `-e`/`--edit` is
+ * sudoedit: it opens each operand in an editor and writes it back as root, so
+ * no operand is a command.
+ */
+const SUDO_GRAMMAR: GetoptGrammar = {
+  short: new Map<string, OptionArity>([
+    ["n", "flag"],
+    ["C", "value"],
+    ["g", "value"],
+    ["p", "value"],
+    ["U", "value"],
+    ["u", "value"],
+    ["e", "refuse"],
+  ]),
+  long: new Map<string, OptionArity>([
+    ["group", "value"],
+    ["user", "value"],
+    ["edit", "refuse"],
+  ]),
+};
+
+/** Wrappers whose inner command is located by a getopt grammar. */
+const GETOPT_GRAMMARS = new Map<string, GetoptGrammar>([
+  ["sudo", SUDO_GRAMMAR],
+]);
 
 /**
  * Wrappers that change only *how* the same visible command runs — timing, kill

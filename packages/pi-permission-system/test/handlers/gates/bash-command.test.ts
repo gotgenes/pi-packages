@@ -1236,6 +1236,45 @@ describe("resolveBashCommandCheck: a wrapper running a shell no-op", () => {
   });
 });
 
+describe("resolveBashCommandCheck: a sudo layer's own options", () => {
+  beforeAll(async () => {
+    await warmBashParser();
+  });
+
+  const policy: Record<string, PermissionState> = {
+    "*": "allow",
+    "rm *": "deny",
+  };
+
+  describe("keeps the floor", () => {
+    it.each([
+      ["sudo -e cat", "sudoedit writes the file cat as root"],
+      ["sudo --edit true", "sudoedit writes the file true as root"],
+      ["sudo -ne cat", "a cluster carrying e is sudoedit"],
+      ["sudo --ed cat", "an abbreviation of --edit is sudoedit"],
+      ["timeout 5 sudo -e cat", "sudoedit behind an outer wrapper"],
+      ["sudo -nu cat rm x", "the cluster's -u takes cat, so rm runs"],
+      ["sudo --user cat rm x", "--user takes cat, so rm runs"],
+    ])("for %s (%s)", (command) => {
+      const result = decide(policy, command);
+      expect(result.state).toBe("ask");
+      expect(result.matchedPattern).toBe("<indirection-bash-wrapper>");
+    });
+  });
+
+  describe("resolves by the pure reader it runs", () => {
+    it.each(["sudo --us root cat x", "sudo -uedward cat"])(
+      "allows %s",
+      (command) => {
+        const result = decide(policy, command);
+        expect(result.state).toBe("allow");
+        expect(result.matchedPattern).toBe("*");
+        expect(result.floorExemption).toBe("core-reader");
+      },
+    );
+  });
+});
+
 function resolverOver(
   bash: Record<string, PermissionState>,
   sessionGrants: Ruleset = [],

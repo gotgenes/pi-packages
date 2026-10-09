@@ -180,6 +180,16 @@ describe("inlineShellPayloadIndex", () => {
     });
   });
 
+  describe("a sudo layer", () => {
+    it("finds the payload past a clustered value-taking option", () => {
+      expect(payloadIndex(`sudo -nu root bash -c 'x'`)).toBe(5);
+    });
+
+    it("answers -1 when sudo edits its operands as files", () => {
+      expect(payloadIndex(`sudo -e bash -c 'x'`)).toBe(-1);
+    });
+  });
+
   describe("a payload flag with nothing after it", () => {
     // The index still names where the payload *would* be; the caller decides
     // what an out-of-range index is worth, exactly as `opaquePayload` does.
@@ -271,6 +281,35 @@ describe("executedUnitOf", () => {
       ["timeout 10 sudo -u root aws s3 rm", "aws s3 rm"],
     ])("unwraps %s to its innermost command", (unit, expected) => {
       expect(executedUnit(unit)).toBe(expected);
+    });
+  });
+
+  describe("a sudo layer", () => {
+    it.each([
+      ["sudo -nu cat rm x", "rm x"],
+      ["sudo --user cat rm x", "rm x"],
+      ["sudo --us root cat x", "cat x"],
+      ["sudo --user=root cat x", "cat x"],
+      ["sudo -uedward cat", "cat"],
+    ])(
+      "names the inner command of %s by sudo's option grammar",
+      (unit, expected) => {
+        expect(executedUnit(unit)).toBe(expected);
+      },
+    );
+
+    it.each([
+      ["sudo -e cat", "-e edits its operands as files"],
+      ["sudo --edit true", "--edit edits its operands as files"],
+      ["sudo -ne cat", "a cluster carrying e edits"],
+      ["sudo --ed cat", "an abbreviation of --edit edits"],
+      ["sudo -Z cat", "an unlisted option refuses"],
+    ])("returns null for %s (%s)", (unit) => {
+      expect(executedUnit(unit)).toBeNull();
+    });
+
+    it("names the refused sudo layer when an outer wrapper peels to it", () => {
+      expect(executedUnit("timeout 5 sudo -e cat")).toBe("sudo -e cat");
     });
   });
 
@@ -512,6 +551,29 @@ describe("floorExemptionOf", () => {
       ])("is not exempt: %s (%s)", (unit) => {
         expect(exemptionOf(unit)).toBeUndefined();
       });
+    });
+  });
+
+  describe("a sudo layer", () => {
+    it.each([
+      ["sudo -e cat", "-e edits its operands as files"],
+      ["sudo --edit true", "--edit edits its operands as files"],
+      ["sudo -ne cat", "a cluster carrying e edits"],
+      ["sudo --ed cat", "an abbreviation of --edit edits"],
+      ["sudo -Z cat", "an unlisted option refuses"],
+      ["timeout 5 sudo -e cat", "the refused layer is still a wrapper"],
+      ["sudo -nu cat rm x", "the cluster's -u takes cat as its value"],
+      ["sudo --user cat rm x", "--user takes cat as its value"],
+    ])("is not transparent: %s (%s)", (unit) => {
+      expect(isTransparent(unit)).toBe(false);
+    });
+
+    it.each([
+      ["sudo --us root cat x", "an abbreviation of --user takes root"],
+      ["sudo --user=root cat x", "an attached long value"],
+      ["sudo -uedward cat", "an attached short value ends the cluster"],
+    ])("is transparent: %s (%s)", (unit) => {
+      expect(isTransparent(unit)).toBe(true);
     });
   });
 });
