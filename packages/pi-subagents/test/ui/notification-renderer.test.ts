@@ -12,7 +12,7 @@ import {
   createUpdateRenderer,
   createWorkspaceNoticeRenderer,
   resolveStatusPresentation,
-} from "#src/observation/renderer";
+} from "#src/ui/notification-renderer";
 
 /** Minimal theme stub — satisfies RendererTheme structurally. */
 function stubTheme() {

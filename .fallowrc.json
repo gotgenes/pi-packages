@@ -69,11 +69,7 @@
       },
       {
         "from": "pi-subagents/observation",
-        "allow": [
-          "pi-subagents/core",
-          "pi-subagents/lifecycle",
-          "pi-subagents/ui"
-        ]
+        "allow": ["pi-subagents/core", "pi-subagents/lifecycle"]
       },
       {
         "from": "pi-subagents/service",
@@ -105,7 +101,8 @@
           "pi-subagents/config",
           "pi-subagents/core",
           "pi-subagents/lifecycle"
-        ]
+        ],
+        "allowTypeOnly": ["pi-subagents/observation"]
       },
       {
         "from": "pi-subagents/core",

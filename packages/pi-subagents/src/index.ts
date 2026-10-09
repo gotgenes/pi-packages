@@ -37,17 +37,11 @@ import {
   type UpdateDetails,
   type WorkspaceNoticeDetails,
 } from "#src/observation/notification";
-import {
-  createNotificationRenderer,
-  createUpdateRenderer,
-  createWorkspaceNoticeRenderer,
-} from "#src/observation/renderer";
 import { SubagentEventsObserver } from "#src/observation/subagent-events-observer";
 import { createSubagentRuntime } from "#src/runtime";
 import { publishSubagentsService, unpublishSubagentsService } from "#src/service/service";
 import { SubagentsServiceAdapter } from "#src/service/service-adapter";
 import { detectEnv } from "#src/session/env";
-
 import { resolveModel } from "#src/session/model-resolver";
 import { createExcludedPackagesStorage } from "#src/session/package-exclusions";
 import { createProjectContextLoader } from "#src/session/project-context";
@@ -59,6 +53,11 @@ import { AgentTool } from "#src/tools/agent-tool";
 import { GetResultTool } from "#src/tools/get-result-tool";
 import { SteerTool } from "#src/tools/steer-tool";
 import { AgentWidget } from "#src/ui/agent-widget";
+import {
+  createNotificationRenderer,
+  createUpdateRenderer,
+  createWorkspaceNoticeRenderer,
+} from "#src/ui/notification-renderer";
 import { SessionNavigatorHandler } from "#src/ui/session-navigator";
 import { SubagentsSettingsHandler } from "#src/ui/subagents-settings";
 
