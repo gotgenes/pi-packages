@@ -976,7 +976,7 @@ The `textOf` ride-along landed first; the `result.content[0]` row reads 0, and `
 
 Release: independent
 
-#### [#1048] Move `record-observer` into `lifecycle/` and the notification renderer into `ui/`
+#### ✅ [#1048] Move `record-observer` into `lifecycle/` and the notification renderer into `ui/`
 
 **Cause:** the zone order is unstated, and two modules were filed by what they touch rather than by who owns them.
 `record-observer.ts` is the run's own metric accumulator, with one caller and one target, both in `lifecycle/`; `observation/renderer.ts` is presentation that only the composition root imports.
@@ -987,6 +987,9 @@ Each is the sole reason for an edge that runs against `lifecycle/`, then `observ
 - **Outcome:** both zone-import rows read 0, and fallow reports no boundary violation against the narrowed allow lists.
 - **Commit type:** `refactor:`.
 - **Impact 2 / Risk 1 / Priority 10.**
+
+Landed: `record-observer.ts` lives in `lifecycle/` and the three message renderers in `ui/notification-renderer.ts`, and both zone-import rows read 0.
+The move gave `ui/` a forward edge to `observation/` for the `*Details` message contracts the renderers read, which the `ui` zone admits through `allowTypeOnly`; `fallow dead-code` reports no boundary violation, and a value import across that edge, or either backwards edge, is still reported.
 
 Release: independent
 
@@ -1115,7 +1118,7 @@ Release: independent
 flowchart TD
     S947["✅ #947<br/>Bounded wait with progress"] -.soft.-> S1051["#1051<br/>The run owns its outcome"]
     S947 -.soft.-> S912["✅ #912<br/>Ask whether resumable"]
-    S1048["#1048<br/>Zone-order moves"] -.soft.-> S1049["#1049<br/>Per-run lever and wiring"]
+    S1048["✅ #1048<br/>Zone-order moves"] -.soft.-> S1049["#1049<br/>Per-run lever and wiring"]
     S1049 --> S1050["#1050<br/>One run lifecycle"]
     S1049 --> S1051
     S1049 --> S1012["#1012<br/>Background resume widget row"]
