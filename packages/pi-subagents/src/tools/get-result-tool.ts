@@ -49,6 +49,26 @@ export class GetResultTool {
 			return textResult<GetResultDetails>(`Agent not found: "${params.agent_id}". Records are cleared at session start/switch, so it may be from a previous session.`);
 		}
 
+		const superseded = await this.collectOutcome(record, params, signal);
+
+		const verbose = params.verbose === true;
+		const outcome = superseded ? withoutQuestion(superseded) : liveOutcome(record);
+		return textResult<GetResultDetails>(
+			formatAgentReport(this.buildReport(record, outcome, verbose, superseded !== undefined)),
+			this.buildGetResultDetails(record, outcome, verbose),
+		);
+	}
+
+	/**
+	 * Settle this call's delivery obligation: wait when asked, then mark the
+	 * outcome collected or release the claim. Returns the outcome of a run a
+	 * resume replaced while this call waited on it; undefined otherwise.
+	 */
+	private async collectOutcome(
+		record: Subagent,
+		params: GetResultParams,
+		signal: AbortSignal,
+	): Promise<SettledOutcome | undefined> {
 		// Wait for completion if requested. The record owns the decision of whether
 		// it is still awaitable — a queued agent counts, because scheduleVia()
 		// captures its limiter promise at spawn. A parent interrupt ends the wait
@@ -65,7 +85,6 @@ export class GetResultTool {
 		// this call's claim. So the report carries that outcome, not the live run's.
 		// Consumption is record-wide and now belongs to the resumed run, so it is
 		// not marked here; doing so would silence a background resume's nudge.
-		let superseded: SettledOutcome | undefined;
 		if (params.wait === true) {
 			// Waiting commits this call to delivering the outcome, so claim it before
 			// the agent can settle and be announced by the nudge instead.
@@ -73,17 +92,11 @@ export class GetResultTool {
 			const wait = await record.waitUntilSettled(signal);
 			if (wait.kind === "settled") record.markConsumed();
 			else claim.release();
-			if (wait.kind === "superseded") superseded = wait.outcome;
+			if (wait.kind === "superseded") return wait.outcome;
 		} else if (!record.isActive()) {
 			record.markConsumed();
 		}
-
-		const verbose = params.verbose === true;
-		const outcome = superseded ? withoutQuestion(superseded) : liveOutcome(record);
-		return textResult<GetResultDetails>(
-			formatAgentReport(this.buildReport(record, outcome, verbose, superseded !== undefined)),
-			this.buildGetResultDetails(record, outcome, verbose),
-		);
+		return undefined;
 	}
 
 	/** The report: outcome fields from `outcome`, everything else from the live record. */
