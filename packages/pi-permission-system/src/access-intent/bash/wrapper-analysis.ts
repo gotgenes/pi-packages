@@ -423,11 +423,13 @@ function innerCommandIndex(words: readonly CommandWord[]): number {
 
 /**
  * {@link innerCommandIndex} for a wrapper read as getopt_long reads it, with
- * options permuted no further than the first non-option (sudo's `+` optstring).
+ * options permuted no further than the first non-option, as every grammar here
+ * does (a `+` optstring, or BSD getopt, which never permutes).
  *
- * Options come first, then the `NAME=value` assignments the wrapper passes to
- * the command, then the command. `-1` when an option is refused, unlisted, or
- * an ambiguous abbreviation, or when the words run out first.
+ * Options come first, then — for a wrapper that takes them — the `NAME=value`
+ * assignments it passes to the command, then the command. `-1` when an option
+ * is refused, unlisted, or an ambiguous abbreviation, or when the words run out
+ * first.
  */
 function getoptInnerIndex(
   words: readonly CommandWord[],
@@ -447,7 +449,11 @@ function getoptInnerIndex(
     if (consumed === undefined) return -1;
     index += consumed;
   }
-  while (index < words.length && isEnvironmentAssignment(words[index].text)) {
+  while (
+    grammar.assignments &&
+    index < words.length &&
+    isEnvironmentAssignment(words[index].text)
+  ) {
     index++;
   }
   return index < words.length ? index : -1;
@@ -458,7 +464,9 @@ function getoptInnerIndex(
  * `undefined` when a letter in it is refused or unlisted.
  *
  * A value-taking letter ends the cluster: the rest of the cluster is its value
- * (`-uedward`), or the following word when nothing is left (`-nu root`).
+ * (`-uedward`), or the following word when nothing is left (`-nu root`). An
+ * optional-argument letter ends it too, but its value is only ever the rest of
+ * the cluster (`-i{}`), never the following word (`-i rm cat x` runs `rm`).
  */
 function shortClusterWords(
   letters: string,
@@ -467,6 +475,7 @@ function shortClusterWords(
   for (let position = 0; position < letters.length; position++) {
     const arity = table.get(letters[position]);
     if (arity === undefined || arity === "refuse") return undefined;
+    if (arity === "optional") return 1;
     if (arity === "value") return position + 1 < letters.length ? 1 : 2;
   }
   return 1;
@@ -474,7 +483,8 @@ function shortClusterWords(
 
 /**
  * How many words a long option spans (`--user root` is two, `--user=root`
- * one), or `undefined` when it is refused, unlisted, or ambiguous.
+ * one), or `undefined` when it is refused, unlisted, or ambiguous. A flag or an
+ * optional argument (`--replace[=R]`) never takes the following word.
  */
 function longOptionWords(
   body: string,
@@ -634,17 +644,13 @@ const EXEC_CONDITIONAL_WRAPPERS = new Map<string, ReadonlySet<string>>([
  *
  * This table decides the gate, not only the display: {@link floorExemptionOf}
  * judges the command it locates, so a missing entry can name a pure reader that
- * is really an option's value (`xargs -J cat rm x`), and the execution-modifier
- * clause admits value-taking options from it. A wrapper read by a
- * {@link GETOPT_GRAMMARS} entry has no row here.
+ * is really an option's value (GNU `time --out cat rm x`, #1057), and the
+ * execution-modifier clause admits value-taking options from it. A wrapper
+ * read by a {@link GETOPT_GRAMMARS} entry has no row here.
  */
 const VALUE_TAKING_FLAGS = new Map<string, ReadonlySet<string>>([
   ["doas", new Set(["-u", "-C"])],
   ["env", new Set(["-u", "-C", "--unset", "--chdir"])],
-  [
-    "xargs",
-    new Set(["-n", "-P", "-I", "-i", "-d", "-E", "-L", "-l", "-s", "-a"]),
-  ],
   ["timeout", new Set(["-s", "-k", "--signal", "--kill-after"])],
   ["nice", new Set(["-n", "--adjustment"])],
   ["time", new Set(["-o", "-f", "--output", "--format"])],
@@ -657,10 +663,11 @@ const EMPTY_FLAGS: ReadonlySet<string> = new Set<string>();
 
 /**
  * How a getopt-parsed wrapper treats one of its options: a flag, an option
- * taking a value, or a mode in which the command the peel would name is not
+ * taking a value, an option whose value is optional and so only ever attached
+ * (getopt's `::`), or a mode in which the command the peel would name is not
  * the one that runs, which refuses the peel.
  */
-type OptionArity = "flag" | "value" | "refuse";
+type OptionArity = "flag" | "value" | "optional" | "refuse";
 
 /**
  * A wrapper's options as getopt_long reads them, keyed by short letter and by
@@ -670,6 +677,11 @@ type OptionArity = "flag" | "value" | "refuse";
 interface GetoptGrammar {
   readonly short: ReadonlyMap<string, OptionArity>;
   readonly long: ReadonlyMap<string, OptionArity>;
+  /**
+   * Whether `NAME=value` words after the options are assignments the wrapper
+   * passes to the command. `xargs` and `doas` run such a word as the command.
+   */
+  readonly assignments: boolean;
 }
 
 /**
@@ -743,11 +755,43 @@ const SUDO_GRAMMAR: GetoptGrammar = {
     ["login", "refuse"],
     ["shell", "refuse"],
   ]),
+  assignments: true,
+};
+
+/**
+ * `xargs`'s options: the union of BSD `xargs` (optstring
+ * `+0E:I:J:L:n:oP:pR:S:s:rtx`) and GNU findutils 4.9 (`xargs --help`). No
+ * letter has different arities on the two, and BSD's long names are a subset
+ * of GNU's, so an option one platform rejects only makes it run nothing.
+ *
+ * GNU's `-i`, `-l`, and `-e` take an optional value, attached only, so
+ * `xargs -i rm cat x` runs `rm`. BSD's `-J` refuses: it puts input in the
+ * utility position when the utility equals its replstr (`xargs -J % % x`).
+ */
+const XARGS_GRAMMAR: GetoptGrammar = {
+  short: new Map<string, OptionArity>([
+    ["0", "flag"],
+    ["r", "flag"],
+    ["t", "flag"],
+    ["I", "value"],
+    ["n", "value"],
+    ["P", "value"],
+    ["i", "optional"],
+    ["l", "optional"],
+    ["J", "refuse"],
+  ]),
+  long: new Map<string, OptionArity>([
+    ["null", "flag"],
+    ["max-args", "value"],
+    ["replace", "optional"],
+  ]),
+  assignments: false,
 };
 
 /** Wrappers whose inner command is located by a getopt grammar. */
 const GETOPT_GRAMMARS = new Map<string, GetoptGrammar>([
   ["sudo", SUDO_GRAMMAR],
+  ["xargs", XARGS_GRAMMAR],
 ]);
 
 /**

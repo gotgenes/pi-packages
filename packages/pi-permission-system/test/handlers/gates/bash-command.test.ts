@@ -1277,6 +1277,44 @@ describe("resolveBashCommandCheck: a sudo layer's own options", () => {
   });
 });
 
+describe("resolveBashCommandCheck: env, xargs, and doas option grammars", () => {
+  beforeAll(async () => {
+    await warmBashParser();
+  });
+
+  const policy: Record<string, PermissionState> = {
+    "*": "allow",
+    "rm *": "deny",
+  };
+
+  describe("keeps the floor", () => {
+    it.each([
+      ["xargs -J cat rm x", "-J takes cat as its replstr, so rm runs"],
+      ["xargs -J % cat %", "-J may put input in the utility position"],
+      ["xargs -i rm cat x", "GNU -i takes no following word, so rm runs"],
+      ["xargs -l rm cat x", "GNU -l takes no following word, so rm runs"],
+    ])("for %s (%s)", (command) => {
+      const result = decide(policy, command);
+      expect(result.state).toBe("ask");
+      expect(result.matchedPattern).toBe("<indirection-bash-wrapper>");
+    });
+  });
+
+  describe("resolves by the pure reader it runs", () => {
+    it.each([
+      "xargs -0r grep foo",
+      "xargs -I{} cat {}",
+      "xargs -n1 cat x",
+      "xargs --max-args 1 cat",
+    ])("allows %s", (command) => {
+      const result = decide(policy, command);
+      expect(result.state).toBe("allow");
+      expect(result.matchedPattern).toBe("*");
+      expect(result.floorExemption).toBe("core-reader");
+    });
+  });
+});
+
 function resolverOver(
   bash: Record<string, PermissionState>,
   sessionGrants: Ruleset = [],

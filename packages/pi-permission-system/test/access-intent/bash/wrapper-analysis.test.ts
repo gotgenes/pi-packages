@@ -190,6 +190,16 @@ describe("inlineShellPayloadIndex", () => {
     });
   });
 
+  describe("an xargs layer", () => {
+    it("finds the payload past an optional-argument option", () => {
+      expect(payloadIndex(`xargs -i bash -c 'x'`)).toBe(4);
+    });
+
+    it("answers -1 when -J may put input in the utility position", () => {
+      expect(payloadIndex(`xargs -J % bash -c 'x'`)).toBe(-1);
+    });
+  });
+
   describe("a payload flag with nothing after it", () => {
     // The index still names where the payload *would* be; the caller decides
     // what an out-of-range index is worth, exactly as `opaquePayload` does.
@@ -310,6 +320,32 @@ describe("executedUnitOf", () => {
 
     it("names the refused sudo layer when an outer wrapper peels to it", () => {
       expect(executedUnit("timeout 5 sudo -e cat")).toBe("sudo -e cat");
+    });
+  });
+
+  describe("an xargs layer", () => {
+    it.each([
+      ["xargs -i rm cat x", "rm cat x"],
+      ["xargs -l rm cat x", "rm cat x"],
+      ["xargs -i{} cat {}", "cat {}"],
+      ["xargs -l1 cat x", "cat x"],
+      ["xargs --replace cat x", "cat x"],
+      ["xargs --replace=% cat %", "cat %"],
+      ["xargs FOO=1 cat", "FOO=1 cat"],
+      ["xargs --max-args 1 cat", "cat"],
+    ])(
+      "names the inner command of %s by xargs's option grammar",
+      (unit, expected) => {
+        expect(executedUnit(unit)).toBe(expected);
+      },
+    );
+
+    it.each([
+      ["xargs -J cat rm x", "-J may put input in the utility position"],
+      ["xargs -J % cat %", "-J may put input in the utility position"],
+      ["xargs -Z cat x", "an unlisted option refuses"],
+    ])("returns null for %s (%s)", (unit) => {
+      expect(executedUnit(unit)).toBeNull();
     });
   });
 
@@ -572,6 +608,7 @@ describe("floorExemptionOf", () => {
       ["sudo --us root cat x", "an abbreviation of --user takes root"],
       ["sudo --user=root cat x", "an attached long value"],
       ["sudo -uedward cat", "an attached short value ends the cluster"],
+      ["sudo FOO=1 cat x", "sudo passes an assignment to the command"],
     ])("is transparent: %s (%s)", (unit) => {
       expect(isTransparent(unit)).toBe(true);
     });
@@ -619,6 +656,32 @@ describe("floorExemptionOf", () => {
       ])("is transparent: %s", (unit) => {
         expect(isTransparent(unit)).toBe(true);
       });
+    });
+  });
+
+  describe("an xargs layer", () => {
+    it.each([
+      ["xargs -J cat rm x", "-J takes cat as its replstr, so rm runs"],
+      ["xargs -J % cat %", "-J may put input in the utility position"],
+      ["xargs -Z cat x", "an unlisted option refuses"],
+      ["xargs -i rm cat x", "-i takes only an attached value, so rm runs"],
+      ["xargs -l rm cat x", "-l takes only an attached value, so rm runs"],
+      ["xargs FOO=1 cat", "xargs runs a word like FOO=1 as the command"],
+    ])("is not transparent: %s (%s)", (unit) => {
+      expect(isTransparent(unit)).toBe(false);
+    });
+
+    it.each([
+      ["xargs -i{} cat {}", "an attached optional value"],
+      ["xargs -l1 cat x", "an attached optional value"],
+      ["xargs --replace cat x", "a long optional argument takes no word"],
+      ["xargs --replace=% cat %", "an attached long optional value"],
+      ["xargs --max-args 1 cat", "--max-args takes 1 as its value"],
+      ["xargs -0r grep foo", "a cluster of flags"],
+      ["xargs -n1 cat x", "an attached short value"],
+      ["xargs -I{} cat {}", "an attached replstr"],
+    ])("is transparent: %s (%s)", (unit) => {
+      expect(isTransparent(unit)).toBe(true);
     });
   });
 });
