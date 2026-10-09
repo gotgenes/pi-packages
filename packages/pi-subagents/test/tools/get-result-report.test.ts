@@ -273,6 +273,30 @@ describe("formatAgentReport", () => {
 		});
 	});
 
+	describe("a wait that ended at its bound", () => {
+		it("says the agent was not stopped and what to do instead of waiting again, before the transcript pointer", () => {
+			const text = formatAgentReport(
+				makeReport({
+					status: "running",
+					result: undefined,
+					duration: "130.0s (running)",
+					waitExpiredAfter: 120,
+					transcriptPath: "/tasks/agent.jsonl",
+				}),
+			);
+			expect(text).toBe(
+				"Agent: agent-1\n" +
+					"Type: General | Status: running | Tool uses: 3 | Duration: 130.0s (running)\n" +
+					"Description: Investigate the bug\n\n" +
+					"Agent is still running. Use wait: true or check back later.\n\n" +
+					"This wait ended after its 120s timeout. The agent was not stopped and is still running.\n" +
+					"If its progress has not changed since your last check, waiting again will not unstick it: " +
+					"read its transcript, steer it with steer_subagent, or tell the user it appears stuck.\n\n" +
+					"Full transcript available at: /tasks/agent.jsonl",
+			);
+		});
+	});
+
 	describe("an agent resumed while the call waited", () => {
 		it("closes the outcome by saying the agent is running again, before the transcript pointer", () => {
 			const text = formatAgentReport(

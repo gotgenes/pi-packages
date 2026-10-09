@@ -3,6 +3,7 @@ import { AgentTypeRegistry } from "#src/config/agent-types";
 import type { TurnLoopResult } from "#src/lifecycle/subagent-session";
 import { MAX_EXPANDED_LINES, PREVIEW_CHARS } from "#src/tools/get-result-renderer";
 import {
+	type GetResultParams,
 	GetResultTool,
 	type GetResultToolManager,
 } from "#src/tools/get-result-tool";
@@ -28,7 +29,7 @@ function makeManager(records: Map<string, Subagent> = new Map()): GetResultToolM
 
 async function execute(
 	manager: GetResultToolManager,
-	params: { agent_id: string; wait?: boolean; verbose?: boolean },
+	params: GetResultParams,
 	signal: AbortSignal = new AbortController().signal,
 ) {
 	const tool = new GetResultTool(manager, testRegistry);
@@ -509,6 +510,128 @@ describe("GetResultTool — progress", () => {
 	});
 });
 
+describe("GetResultTool — bounded wait", () => {
+	const EXPIRY_NOTE = "This wait ended after its 120s timeout. The agent was not stopped and is still running.";
+
+	beforeEach(() => {
+		vi.useFakeTimers();
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	/** A started agent whose run settles only when the test finishes it. */
+	async function stalledAgent() {
+		const sessionStub = createSubagentSessionStub();
+		const run = Promise.withResolvers<TurnLoopResult>();
+		sessionStub.runTurnLoop.mockReturnValue(run.promise);
+		const record = createTestSubagent({
+			status: "running",
+			completedAt: undefined,
+			execution: makeStubExecution({
+				createSubagentSession: async () => toSubagentSession(sessionStub),
+			}),
+		});
+		record.start();
+		await vi.advanceTimersByTimeAsync(0);
+		const opts = sessionStub.runTurnLoop.mock.lastCall?.[1] as { signal: AbortSignal } | undefined;
+		if (!opts) throw new Error("the run never reached its turn loop");
+		return {
+			record,
+			turnLoopSignal: opts.signal,
+			finish: () => { run.resolve(turnLoopResult({ responseText: "Finished." })); },
+			manager: makeManager(new Map([["agent-1", record]])),
+		};
+	}
+
+	it("returns at the bound with the agent still running and its outcome uncollected", async () => {
+		const { record, turnLoopSignal, finish, manager } = await stalledAgent();
+
+		const resultPromise = execute(manager, { agent_id: "agent-1", wait: true, timeout: 120 });
+		await vi.advanceTimersByTimeAsync(120_000);
+		const text = textOf(await resultPromise);
+
+		expect(text).toContain(EXPIRY_NOTE);
+		expect(text).toContain("\nProgress: ");
+		expect(record.status).toBe("running");
+		expect(turnLoopSignal.aborted).toBe(false);
+		expect(record.claimed).toBe(false);
+		expect(record.consumed).toBe(false);
+		finish();
+		await record.promise;
+	});
+
+	it("keeps waiting until the bound", async () => {
+		const { record, finish, manager } = await stalledAgent();
+		let returned = false;
+
+		const resultPromise = execute(manager, { agent_id: "agent-1", wait: true, timeout: 120 }).then((result) => {
+			returned = true;
+			return result;
+		});
+		await vi.advanceTimersByTimeAsync(119_999);
+
+		expect(returned).toBe(false);
+		await vi.advanceTimersByTimeAsync(1);
+		await resultPromise;
+		finish();
+		await record.promise;
+	});
+
+	it("collects the outcome of a run that settles first, leaving no timer behind", async () => {
+		const { record, finish, manager } = await stalledAgent();
+
+		const resultPromise = execute(manager, { agent_id: "agent-1", wait: true, timeout: 120 });
+		await vi.advanceTimersByTimeAsync(10_000);
+		finish();
+		const text = textOf(await resultPromise);
+
+		expect(text).toContain("Finished.");
+		expect(text).not.toContain("This wait ended");
+		expect(record.consumed).toBe(true);
+		expect(vi.getTimerCount()).toBe(0);
+	});
+
+	it("adds no expiry note when the parent turn is interrupted", async () => {
+		const { record, finish, manager } = await stalledAgent();
+		const controller = new AbortController();
+
+		const resultPromise = execute(manager, { agent_id: "agent-1", wait: true, timeout: 120 }, controller.signal);
+		controller.abort();
+		const text = textOf(await resultPromise);
+
+		expect(text).toContain("Status: running");
+		expect(text).not.toContain("This wait ended");
+		finish();
+		await record.promise;
+	});
+
+	it("ignores the bound when the call does not wait", async () => {
+		const { record, finish, manager } = await stalledAgent();
+
+		const text = textOf(await execute(manager, { agent_id: "agent-1", timeout: 120 }));
+
+		expect(text).toContain("Status: running");
+		expect(text).not.toContain("This wait ended");
+		finish();
+		await record.promise;
+	});
+
+	it.each([0, -1, Number.NaN, 2_147_484])("rejects a timeout of %s", async (timeout) => {
+		const manager = makeManager(new Map([["agent-1", createTestSubagent()]]));
+
+		await expect(execute(manager, { agent_id: "agent-1", wait: true, timeout })).rejects.toThrow("Invalid timeout");
+	});
+
+	it("tells the model that an expired wait does not stop the agent", () => {
+		const definition = new GetResultTool(makeManager(), testRegistry).toToolDefinition();
+
+		expect(definition.description).toContain("this does not stop or abort the agent");
+		expect(definition.parameters.properties.timeout.description).toContain("An expired wait does not stop the agent");
+	});
+});
+
 describe("GetResultTool — TUI rendering", () => {
 	const theme: Theme = {
 		fg: (color: string, text: string) => `[${color}:${text}]`,
@@ -583,6 +706,15 @@ describe("GetResultTool — TUI rendering", () => {
 			const rows = renderCall({ agent_id: "agent-42" }, asSdkTheme, undefined as never).render(100);
 
 			expect(rows.join("\n")).toContain("agent-42");
+		});
+
+		it("names the bound of a bounded wait", () => {
+			const { renderCall } = new GetResultTool(makeManager(), testRegistry).toToolDefinition();
+			if (!renderCall) throw new Error("get_subagent_result registers no renderCall");
+
+			const rows = renderCall({ agent_id: "agent-42", wait: true, timeout: 120 }, asSdkTheme, undefined as never).render(100);
+
+			expect(rows.join("\n")).toContain("[muted:(waiting \u2264120s)]");
 		});
 	});
 

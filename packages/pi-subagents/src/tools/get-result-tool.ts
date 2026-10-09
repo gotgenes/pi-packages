@@ -34,7 +34,20 @@ export interface GetResultParams {
 	agent_id: string;
 	wait?: boolean;
 	verbose?: boolean;
+	/** Seconds; bounds only a `wait: true` call. Absent = wait until the agent settles. */
+	timeout?: number;
 }
+
+/** What collecting the outcome learned beyond the live record. */
+interface CollectedOutcome {
+	/** The outcome of a run a resume replaced while this call waited on it. */
+	superseded?: SettledOutcome;
+	/** The bound, in seconds, of a wait that ended at it with the agent still running. */
+	waitExpiredAfter?: number;
+}
+
+/** setTimeout's ceiling, the same one Pi's bash tool enforces. */
+const MAX_TIMEOUT_SECONDS = 2_147_483_647 / 1000;
 
 // ---- Class ----
 
@@ -51,31 +64,38 @@ export class GetResultTool {
 		_onUpdate: unknown,
 		_ctx: unknown,
 	) {
+		validateTimeout(params.timeout);
 		const record = this.manager.getRecord(params.agent_id);
 		if (!record) {
 			return textResult<GetResultDetails>(`Agent not found: "${params.agent_id}". Records are cleared at session start/switch, so it may be from a previous session.`);
 		}
 
-		const superseded = await this.collectOutcome(record, params, signal);
+		const collected = await this.collectOutcome(record, params, signal);
 
 		const verbose = params.verbose === true;
+		const { superseded } = collected;
 		const outcome = superseded ? withoutQuestion(superseded) : liveOutcome(record);
 		return textResult<GetResultDetails>(
-			formatAgentReport(this.buildReport(record, outcome, verbose, superseded !== undefined)),
+			formatAgentReport(this.buildReport(record, outcome, verbose, collected)),
 			this.buildGetResultDetails(record, outcome, verbose),
 		);
 	}
 
 	/**
 	 * Settle this call's delivery obligation: wait when asked, then mark the
-	 * outcome collected or release the claim. Returns the outcome of a run a
-	 * resume replaced while this call waited on it; undefined otherwise.
+	 * outcome collected or release the claim. Reports the outcome of a run a
+	 * resume replaced while this call waited on it, and whether the wait ended
+	 * at its bound.
+	 *
+	 * A bound only swaps the signal the wait ends on, so a wait that reaches it
+	 * takes the same path as an interrupted one: the claim is released and the
+	 * agent keeps running.
 	 */
 	private async collectOutcome(
 		record: Subagent,
 		params: GetResultParams,
 		signal: AbortSignal,
-	): Promise<SettledOutcome | undefined> {
+	): Promise<CollectedOutcome> {
 		// Wait for completion if requested. The record owns the decision of whether
 		// it is still awaitable — a queued agent counts, because scheduleVia()
 		// captures its limiter promise at spawn. A parent interrupt ends the wait
@@ -96,14 +116,20 @@ export class GetResultTool {
 			// Waiting commits this call to delivering the outcome, so claim it before
 			// the agent can settle and be announced by the nudge instead.
 			const claim = record.claim();
-			const wait = await record.waitUntilSettled(signal);
-			if (wait.kind === "settled") record.markConsumed();
-			else claim.release();
-			if (wait.kind === "superseded") return wait.outcome;
+			const bound = params.timeout === undefined ? undefined : new WaitBound(signal, params.timeout);
+			try {
+				const wait = await record.waitUntilSettled(bound?.signal ?? signal);
+				if (wait.kind === "settled") record.markConsumed();
+				else claim.release();
+				if (wait.kind === "superseded") return { superseded: wait.outcome };
+				if (wait.kind === "unsettled" && bound?.expired) return { waitExpiredAfter: params.timeout };
+			} finally {
+				bound?.dispose();
+			}
 		} else if (!record.isActive()) {
 			record.markConsumed();
 		}
-		return undefined;
+		return {};
 	}
 
 	/** The report: outcome fields from `outcome`, everything else from the live record. */
@@ -111,7 +137,7 @@ export class GetResultTool {
 		record: Subagent,
 		outcome: SettledOutcome,
 		verbose: boolean,
-		resumedWhileWaiting: boolean,
+		collected: CollectedOutcome,
 	): AgentReport {
 		return {
 			id: record.id,
@@ -136,7 +162,8 @@ export class GetResultTool {
 			resumeRefusal: record.resumeRefusal,
 			workspaceNotice: outcome.workspaceNotice,
 			model: modelLabel(record.model),
-			resumedWhileWaiting,
+			resumedWhileWaiting: collected.superseded !== undefined,
+			waitExpiredAfter: collected.waitExpiredAfter,
 			progress: outcome.status === "running" ? progressOf(record) : undefined,
 		};
 	}
@@ -174,7 +201,9 @@ export class GetResultTool {
 			promptSnippet:
 				"Check status and retrieve results from a background agent.",
 			description:
-				"Check status and retrieve results from a background agent. Use the agent ID returned by Agent with run_in_background.",
+				"Check status and retrieve results from a background agent. Use the agent ID returned by Agent with run_in_background. " +
+				"With wait: true and a timeout, the wait ends at the timeout and returns the agent's current progress; " +
+				"this does not stop or abort the agent, unlike bash's timeout.",
 			parameters: Type.Object({
 				agent_id: Type.String({
 					description: "The agent ID to check.",
@@ -191,11 +220,18 @@ export class GetResultTool {
 							"If true, include the agent's full conversation (messages + tool calls). Default: false.",
 					}),
 				),
+				timeout: Type.Optional(
+					Type.Number({
+						description:
+							"Seconds to wait when wait is true (optional, no default: wait until the agent finishes). " +
+							"An expired wait does not stop the agent; if its progress is unchanged since your last check, do not simply wait again.",
+					}),
+				),
 			}),
 			// ---- Custom rendering: a bounded, Ctrl+O-expandable retrieval row ----
 
 			renderCall(args: GetResultParams, theme: Theme) {
-				const notes = [args.wait === true ? "waiting" : "", args.verbose === true ? "verbose" : ""]
+				const notes = [waitNote(args), args.verbose === true ? "verbose" : ""]
 					.filter(Boolean)
 					.join(", ");
 				return new Text(
@@ -229,6 +265,54 @@ export class GetResultTool {
 			) => this.execute(toolCallId, params, signal, onUpdate, ctx),
 		});
 	}
+}
+
+/** Throws on a timeout setTimeout cannot honor, worded as Pi's bash tool words it. */
+function validateTimeout(timeout: number | undefined): void {
+	if (timeout === undefined) return;
+	if (!Number.isFinite(timeout) || timeout <= 0) {
+		throw new Error("Invalid timeout: must be a finite number of seconds greater than 0");
+	}
+	if (timeout > MAX_TIMEOUT_SECONDS) {
+		throw new Error(`Invalid timeout: maximum is ${MAX_TIMEOUT_SECONDS} seconds`);
+	}
+}
+
+/**
+ * Ends a wait at the parent's interrupt or at a deadline, whichever comes first,
+ * and remembers whether the deadline was the one that fired.
+ */
+class WaitBound {
+	private readonly controller = new AbortController();
+	private readonly detach = new AbortController();
+	private readonly timer: ReturnType<typeof setTimeout>;
+	private _expired = false;
+
+	constructor(parent: AbortSignal, seconds: number) {
+		this.timer = setTimeout(() => {
+			this._expired = true;
+			this.controller.abort();
+		}, seconds * 1000);
+		if (parent.aborted) this.controller.abort();
+		else parent.addEventListener("abort", () => { this.controller.abort(); }, { once: true, signal: this.detach.signal });
+	}
+
+	get signal(): AbortSignal { return this.controller.signal; }
+
+	/** Whether the deadline, rather than the parent, ended the wait. */
+	get expired(): boolean { return this._expired; }
+
+	/** Clears the deadline and the parent listener, so neither outlives the call. */
+	dispose(): void {
+		clearTimeout(this.timer);
+		this.detach.abort();
+	}
+}
+
+/** The call row's wait note: the bound when the wait has one. */
+function waitNote(args: GetResultParams): string {
+	if (args.wait !== true) return "";
+	return args.timeout === undefined ? "waiting" : `waiting \u2264${args.timeout}s`;
 }
 
 /**
