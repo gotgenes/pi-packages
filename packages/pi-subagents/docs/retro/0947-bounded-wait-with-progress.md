@@ -55,5 +55,51 @@ The plan's marker is `**Release:** ship independently`; two `feat:` commits (the
 
 - `onUpdate` streaming during a wait stays deferred with no issue filed, as the plan's Open Questions say.
 
+## Stage: Final Retrospective (2026-10-09T05:00:27Z)
+
+### Session summary
+
+The peer session planned, implemented, and synced #947 in one worktree process (planning and TDD on `claude-opus-5-5`, sync on `claude-sonnet-5-5`); the root ship fast-forward-merged 12 commits, passed CI, closed the issue, and released `pi-subagents-v23.3.0`.
+`get_subagent_result` now takes an optional `timeout` (seconds) that bounds a `wait: true` without stopping the child, and every report about a running agent carries a `Progress:` line.
+No rework commit was needed in any stage.
+
+### Observations
+
+#### What went well
+
+- The planning gate presented the verified mechanism (why the parent was blind for 74 minutes) before three open choices, and the operator accepted all three recommendations in one round.
+- Every step but the type-only `GetResultParams` extraction ran a named killing mutation and reported which tests it reddened; across steps 4–7 that was 13 mutations, each killing exactly its predicted tests.
+- `fallow dead-code` caught the `Subagent.lastProgressAt` getter as unused in step 4, so it moved to step 6 instead of landing as dead code.
+- The tidy-first assessor's two recommended refactors (`GetResultParams`, the wait-method extraction) kept the `feat:` diff for the bounded wait inside one small method.
+
+#### What caused friction (agent side)
+
+- `instruction-violation` — at ship, the close comment went to `issue_close` without re-running `git rev-parse <sha>^{commit}` and `git merge-base --is-ancestor <sha> main` on the drafted hashes; I reasoned they were safe because they came from `git log` on `main` minutes earlier.
+  Self-identified at retro.
+  Impact: none; all five hashes were landed commits, and `issue_close` itself validates resolution.
+- `instruction-violation` — the ship's final report said the roadmap last-step check was not done instead of doing it; Track B continues to [#912], so the phase is not closed.
+  Self-identified at retro.
+  Impact: none.
+- `other` — the sync stage hand-wrote a `\\u2014` escape in the stage note; it self-caught the slip, and `pi-autoformat` had already decoded it to a real em-dash.
+  Impact: two extra tool calls.
+- `other` — planning read source through `cd packages/pi-subagents; sed -n …` bash calls (about 20) rather than `Read`.
+  Impact: added friction but no rework.
+
+#### What caused friction (user side)
+
+- None observed; operator involvement was the one design gate and the stage hand-offs.
+
+### Diagnostic details
+
+- **Model-performance correlation** — planning and TDD (judgment-heavy) ran on `claude-opus-5-5`; the mechanical sync stage ran on `claude-sonnet-5-5`, a sound split.
+  Both subagents (tidy-first-assessor, pre-completion-reviewer) ran on `claude-sonnet-5-5` per their transcripts and returned specific, code-verified findings.
+  The reviewer reported acceptance criteria as SKIP with the reason "I did not fetch the issue body", although its definition gates that section on fetching it; the issue has a `## Proposal` and no acceptance-criteria section, so the verdict was right but the stated reason was not.
+- **Feedback-loop gap analysis** — verification ran incrementally: targeted `vitest` plus `pnpm run check` after every step, `fallow dead-code` at steps 2, 4, 6, and 7, and the full gates before the reviewer and again at ship.
+
+### Changes made
+
+1. Appended this Final Retrospective entry to `packages/pi-subagents/docs/retro/0947-bounded-wait-with-progress.md`; the operator declined the proposed `pre-completion-reviewer.md` acceptance-criteria line (one occurrence, correct verdict).
+
 [#755]: https://github.com/gotgenes/pi-packages/issues/755
+[#912]: https://github.com/gotgenes/pi-packages/issues/912
 [#1051]: https://github.com/gotgenes/pi-packages/issues/1051
