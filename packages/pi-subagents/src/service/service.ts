@@ -76,6 +76,13 @@ export interface SubagentRecord {
   compactionCount: number;
   /** Path to the agent's session JSONL, once the session exists. */
   outputFile?: string;
+  /**
+   * Why `resume()` would refuse this agent at snapshot time; absent when it
+   * would start a run. `still-running` clears when the run settles, and a
+   * queued agent's `no-session` clears once it starts; the other reasons are
+   * final.
+   */
+  resumeRefusal?: ResumeRefusal;
 }
 
 /** Options for resuming an agent via the service. */
@@ -143,7 +150,8 @@ export interface SubagentsService {
    * Resolves when the resumed run reaches a terminal state, carrying the
    * terminal snapshot — a caller that does not need the outcome can ignore the
    * promise. A refusal resolves promptly instead: the checks are synchronous
-   * and no turn loop is started.
+   * and no turn loop is started. A record's `resumeRefusal` answers the same
+   * question before the call.
    */
   resume(id: string, prompt: string, options?: ResumeOptions): Promise<ResumeResult>;
 

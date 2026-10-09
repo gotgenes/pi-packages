@@ -188,6 +188,7 @@ export function toSubagentRecord(record: Subagent): SubagentRecord {
   // Copy, like lifetimeUsage: the snapshot is by value.
   if (record.turnBudget !== undefined) out.turnBudget = { ...record.turnBudget };
   if (record.outputFile !== undefined) out.outputFile = record.outputFile;
+  if (record.resumeRefusal !== undefined) out.resumeRefusal = record.resumeRefusal;
 
   return out;
 }

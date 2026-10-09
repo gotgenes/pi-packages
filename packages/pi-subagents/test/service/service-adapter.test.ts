@@ -39,7 +39,19 @@ describe("toSubagentRecord", () => {
       completedAt: 2000,
       lifetimeUsage: { input: 100, output: 200, cacheWrite: 50 },
       compactionCount: 1,
+      // The fixture never ran, so it has no session to continue.
+      resumeRefusal: "no-session",
     });
+  });
+
+  it("reports session-released once the retention sweep has freed the session", async () => {
+    const agent = createTestSubagent({ sessionReady: true });
+    await agent.releaseSession();
+    expect(toSubagentRecord(agent).resumeRefusal).toBe("session-released");
+  });
+
+  it("omits resumeRefusal when a resume would start", () => {
+    expect(toSubagentRecord(createTestSubagent({ sessionReady: true }))).not.toHaveProperty("resumeRefusal");
   });
 
   it("carries a declared question so a consumer can surface it as answerable", () => {
@@ -165,6 +177,7 @@ describe("toSubagentRecord", () => {
       startedAt: 500,
       lifetimeUsage: { input: 0, output: 0, cacheWrite: 0 },
       compactionCount: 0,
+      resumeRefusal: "still-running",
     });
     expect(result).not.toHaveProperty("result");
     expect(result).not.toHaveProperty("error");
@@ -282,6 +295,19 @@ describe("SubagentsServiceAdapter — getRecord and listAgents", () => {
     // Verify serialization
     expect(list[0]).not.toHaveProperty("session");
     expect(list[1]).not.toHaveProperty("abortController");
+  });
+
+  it("gives each listed agent its own resume answer", async () => {
+    const resumable = createTestSubagent({ id: "r-1", sessionReady: true, startedAt: 2000 });
+    const released = createTestSubagent({ id: "x-1", sessionReady: true, startedAt: 1000 });
+    await released.releaseSession();
+
+    const [first, second] = createService([resumable, released]).listAgents();
+
+    expect(first.id).toBe("r-1");
+    expect(first).not.toHaveProperty("resumeRefusal");
+    expect(second.id).toBe("x-1");
+    expect(second.resumeRefusal).toBe("session-released");
   });
 });
 
@@ -626,6 +652,7 @@ describe("SubagentsServiceAdapter — resume", () => {
         completedAt: 2000,
         lifetimeUsage: { input: 100, output: 200, cacheWrite: 50 },
         compactionCount: 0,
+        resumeRefusal: "no-session",
       },
     });
   });
