@@ -24,4 +24,20 @@ The plan is two commits: a `feat:` (field, copy line, adapter tests) and a `docs
 - No follow-up issues filed.
   [#1013] may widen `ResumeRefusal` with a queued-for-resume member; it would now reach the record as well as `ResumeResult.reason`, which that plan must classify.
 
+## Stage: Implementation — TDD (2026-10-09T05:33:20Z)
+
+### Session summary
+
+Both plan steps landed: the `feat:` commit adds `resumeRefusal?: ResumeRefusal` to `SubagentRecord` and one copy line in `toSubagentRecord`, and the `docs:` commit amends decision 0005, the README contracts, the package skill, and the architecture roadmap.
+The pi-subagents suite went from 2097 to 2100 tests (3 new; 3 exact `toEqual` tests updated).
+
+### Observations
+
+- Red came up 5 failing and 1 green by construction (the omission test asserts absence); killing mutation (a), deleting the copy line, turned all 5 red, and mutation (b), the unconditional copy, turned exactly the omission and roster tests red, as the plan predicted.
+- One process slip: the mutation-(b) `Edit` was batched beside the `cp` restoring the green file, so the batch raced and the edit missed; re-applied sequentially.
+  The prompt's rule against batching the restore with the mutating `Edit` is the one that applies.
+- No deviation from the plan's Module-Level Changes; `src/persisted-record.ts` stayed untouched as predicted.
+- Pre-completion reviewer: WARN, then PASS on the delta.
+  The WARN was the #1051 roadmap step's constraint ("`SubagentRecord` is unchanged"), which the plan had flagged as a baseline shift but left unedited; fixed by `docs(pi-subagents): note resumeRefusal in the #1051 record constraint`.
+
 [#1013]: https://github.com/gotgenes/pi-packages/issues/1013
