@@ -26,5 +26,21 @@ The plan is eight steps: the roadmap's `textOf` ride-along, two tidy-first refac
 
 - `src/tools/get-result-tool.ts` — `buildReport` takes positional `verbose`/`resumedWhileWaiting` flags; an options object would help if a further flag lands.
 
+## Stage: Implementation — TDD (2026-10-09T04:23:30Z)
+
+### Session summary
+
+All eight plan steps landed as eight commits: the `textOf` ride-along, the `GetResultParams` and `collectOutcome` refactors, `SubagentState.lastProgressAt`, the `record-observer` stamp, the `Progress:` line, the bounded wait, and the docs.
+The pi-subagents suite went from 2065 to 2097 tests; every killing mutation the plan named reddened exactly the tests it predicted.
+
+### Observations
+
+- Deviation: the `Subagent.lastProgressAt` getter moved from step 4 to step 6, because `fallow dead-code` flags an unused class member and nothing read it until the report did.
+- Deviation: `buildReport` now takes a `CollectedOutcome` (`superseded?`, `waitExpiredAfter?`) instead of the positional `resumedWhileWaiting` flag, which absorbs the assessor's optional options-object tidying rather than adding a fifth positional argument.
+- Added beyond the plan: an exact-text `formatAgentReport` test for the expiry note (authored after Green, killed by a wording mutation).
+- `renderProgressLine`, `renderWaitExpired`, and `ReportProgress` stay module-private in `get-result-report.ts`; `WaitBound` and `validateTimeout` are private to `get-result-tool.ts`.
+- The architecture metric table has no current-value column, so the `result.content[0]` row was left as is; the `Landed:` note records that it reads 0.
+- Pre-completion reviewer: PASS (all four re-derived invariants code-verified).
+
 [#755]: https://github.com/gotgenes/pi-packages/issues/755
 [#1051]: https://github.com/gotgenes/pi-packages/issues/1051
