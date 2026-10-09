@@ -49,13 +49,14 @@ The report is advisory — you decide what the plan says.
 - **Rejected** items: do not fold them in.
   If one looks worth doing, it is separate-concern cleanup — do not scope-creep the plan.
   Record it in the Planning stage note under a `#### Deferred tidyings` heading, one line naming the file and the friction, so `/plan-improvements` can find it.
+- **Roadmap ride-alongs**: a roadmap step's `Ride-along tidying` field is planned scope, not assessor output — write each item into the TDD Order as its own `test:`/`refactor:` step, whatever the assessor rated it.
 
 Read a rejection's reasoning, not just its verdict — one that contradicts the design is a signal to re-examine the design, which is cheap here and expensive later.
 A contradiction that names a test the change will break is a **sequencing** constraint, not only a note: the repair belongs in the step whose commit breaks it, never a later one.
 Read a "no preparatory tidying warranted" verdict the same way: what it verified on the way past — interface fit, call-site counts, fixture assumptions — routinely confirms or refutes the design's structural claims.
 If a recommendation would **reshape** the design rather than prepare it, surface it to the operator before writing the plan instead of absorbing it silently.
 
-Do not plan tidying of code the change will not touch — that is scope creep, not Tidy First.
+Beyond the roadmap's ride-alongs, do not plan tidying of code the change will not touch — that is scope creep, not Tidy First.
 An extraction is a copy, so it carries the source's rule violations into a file that is now shared — the plan must say to re-read moved code against the governing skill before committing it.
 
 ## Step 4: Write the plan

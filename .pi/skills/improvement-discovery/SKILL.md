@@ -226,6 +226,8 @@ Priority = Impact × (6 − Risk)
 - **Independent tracks** — identify parallel tracks (e.g., "bag decomposition" vs. "complexity reduction") that can proceed without blocking each other.
 - **Max 9 steps per phase** — beyond 9, split into two phases.
 - **Test duplication gets its own step** — shared fixture extraction is a distinct concern from production code refactoring.
+- **Ride along before deferring** — a scattered finding in a file a phase step already edits is named on that step (a `Ride-along tidying` field plus a metric row); only findings in files no step touches defer.
+  The `tidy-first` assessment declines debt on lines its change does not touch, so a deferred finding in an edited file is never picked up.
 - **Group steps into release batches** — a release batch is a coherent set of steps meant to ship together (e.g. a lift-and-shift spine where intermediate steps leave the package in a transitional state).
   A step that can land and release on its own is independently releasable.
   This is the source of truth `/plan-issue` reads to recommend a release decision and `/ship` confirms — so it must be grep-able, not prose (see Output format).

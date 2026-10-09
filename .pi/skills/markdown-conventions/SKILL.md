@@ -50,7 +50,8 @@ A form feed it will not repair for you: deleting the byte alone strands the `ere
 Write the character itself in an `Edit`/`Write` body, never a `\uXXXX` token — the addendum's literal-character rule governs `newText` as much as `oldText`.
 That governs *matching* as much as writing: a rejected `oldText` on a line holding an em-dash is usually a token you emitted wrong, not a file that moved.
 On #966 ten batches failed because U+2014 left the model as a tab plus `a`, as a bare newline, or as the literal escape, while a spike matched and wrote a real em-dash in every trial — so re-emit the character before changing tactics.
-Only when it genuinely will not emit, write a placeholder and substitute it in a scripted pass — `…`, then `s.replace('…', '\u2014')`.
+Only when it genuinely will not emit, or when one `Edit`/`Write` must carry more than a handful (a roadmap's em-dash bullets and `→` tracks), write an ASCII placeholder and substitute it in a scripted pass: `@@MD@@`, then `s.replace('@@MD@@', '\u2014')`.
+One 45-character insertion arrived with every em-dash as a stray `cb` line and every `→`/`≥` as a blank line, a shape no lint script detects.
 The escape there belongs to the substituting script; hand-written in an edit body it arrives over-escaped (`\\u2014`) and lands in the file as literal text (Refs #960).
 
 That literal form is gated in markdown.
