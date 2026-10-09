@@ -42,5 +42,18 @@ The pi-subagents suite went from 2065 to 2097 tests; every killing mutation the 
 - The architecture metric table has no current-value column, so the `result.content[0]` row was left as is; the `Landed:` note records that it reads 0.
 - Pre-completion reviewer: PASS (all four re-derived invariants code-verified).
 
+## Stage: Sync (worktree) (2026-10-09T04:45:37Z)
+
+### Session summary
+
+Pre-push `pnpm run lint` and `pnpm fallow dead-code` passed on the branch before the rebase onto `main`.
+The plan's marker is `**Release:** ship independently`; two `feat:` commits (the `Progress:` line and the bounded wait) carry the release, and no follow-up issues were filed.
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-947--/2026-10-09T03-55-40-799Z_01a11ecd-697e-77c5-bd2d-d7032fd634a0.jsonl` — read with `read_session_file({ path: "<path>" })` for message-level verification at land/retro time.
+
+### Observations
+
+- `onUpdate` streaming during a wait stays deferred with no issue filed, as the plan's Open Questions say.
+
 [#755]: https://github.com/gotgenes/pi-packages/issues/755
 [#1051]: https://github.com/gotgenes/pi-packages/issues/1051
