@@ -575,5 +575,50 @@ describe("floorExemptionOf", () => {
     ])("is transparent: %s (%s)", (unit) => {
       expect(isTransparent(unit)).toBe(true);
     });
+
+    describe("a mode in which the named command is not what runs", () => {
+      it.each([
+        ["sudo -D /etc cat shadow", "-D moves where operands resolve"],
+        [
+          "sudo --chdir /etc cat shadow",
+          "--chdir moves where operands resolve",
+        ],
+        ["sudo -R /x cat y", "-R moves where operands resolve"],
+        ["sudo --chroot /x cat y", "--chroot moves where operands resolve"],
+        ["sudo -s cat x", "-s hands the operand to a shell"],
+        ["sudo --shell cat x", "--shell hands the operand to a shell"],
+        ["sudo -i cat x", "-i hands the operand to a login shell"],
+        ["sudo --lo cat x", "an abbreviation of --login"],
+        ["sudo -h host cat x", "-h is help or a host by context"],
+        ["sudo --host host cat x", "--host's arity is unsettled"],
+      ])("is not transparent: %s (%s)", (unit) => {
+        expect(isTransparent(unit)).toBe(false);
+      });
+
+      it.each([
+        ["sudo --l cat x", "--list and --login"],
+        ["sudo --pre cat x", "--preserve-env and --preserve-groups"],
+      ])("is not transparent for the ambiguous %s (%s)", (unit) => {
+        expect(isTransparent(unit)).toBe(false);
+      });
+    });
+
+    describe("a documented option that changes nothing the peel names", () => {
+      it.each([
+        "sudo -E cat x",
+        "sudo -H cat x",
+        "sudo -AbBkNPS cat x",
+        "sudo --preserve-env cat x",
+        "sudo --preserve-env=PATH cat x",
+        "sudo -T 5 cat x",
+        "sudo --command-timeout 5 cat x",
+        "sudo --close-from 3 cat x",
+        "sudo --other-user bob cat x",
+        "sudo --prompt pw cat x",
+        "sudo --non-interactive --set-home cat x",
+      ])("is transparent: %s", (unit) => {
+        expect(isTransparent(unit)).toBe(true);
+      });
+    });
   });
 });

@@ -1255,6 +1255,8 @@ describe("resolveBashCommandCheck: a sudo layer's own options", () => {
       ["timeout 5 sudo -e cat", "sudoedit behind an outer wrapper"],
       ["sudo -nu cat rm x", "the cluster's -u takes cat, so rm runs"],
       ["sudo --user cat rm x", "--user takes cat, so rm runs"],
+      ["sudo -D /etc cat shadow", "cat reads /etc/shadow, not ./shadow"],
+      ["sudo -s cat x", "a root shell runs the operand"],
     ])("for %s (%s)", (command) => {
       const result = decide(policy, command);
       expect(result.state).toBe("ask");
@@ -1263,7 +1265,7 @@ describe("resolveBashCommandCheck: a sudo layer's own options", () => {
   });
 
   describe("resolves by the pure reader it runs", () => {
-    it.each(["sudo --us root cat x", "sudo -uedward cat"])(
+    it.each(["sudo --us root cat x", "sudo -uedward cat", "sudo -E cat x"])(
       "allows %s",
       (command) => {
         const result = decide(policy, command);

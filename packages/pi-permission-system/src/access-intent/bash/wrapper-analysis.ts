@@ -673,24 +673,75 @@ interface GetoptGrammar {
 }
 
 /**
- * `sudo`'s options, verified against `man sudo` (1.9.17p2). `-e`/`--edit` is
- * sudoedit: it opens each operand in an editor and writes it back as root, so
- * no operand is a command.
+ * `sudo`'s options, verified against `man sudo` (1.9.17p2). The SELinux
+ * `-r`/`-t` (`--role`/`--type`) are absent from that page, so they are left
+ * unlisted and refuse.
+ *
+ * Each refusing mode is one where the command the peel would name is not what
+ * runs as named: `-e` (sudoedit) opens each operand in an editor and writes it
+ * back as root; `-s` and `-i` hand the operand to a shell, which still expands
+ * `$`; `-i`, `-D`, and `-R` move where its relative operands resolve, so the
+ * path surfaces would judge the wrong file; and `-h` is help alone but a remote
+ * host with a value, an arity the page does not settle.
  */
 const SUDO_GRAMMAR: GetoptGrammar = {
   short: new Map<string, OptionArity>([
+    ["A", "flag"],
+    ["B", "flag"],
+    ["b", "flag"],
+    ["E", "flag"],
+    ["H", "flag"],
+    ["K", "flag"],
+    ["k", "flag"],
+    ["l", "flag"],
+    ["N", "flag"],
     ["n", "flag"],
+    ["P", "flag"],
+    ["S", "flag"],
+    ["V", "flag"],
+    ["v", "flag"],
     ["C", "value"],
     ["g", "value"],
     ["p", "value"],
+    ["T", "value"],
     ["U", "value"],
     ["u", "value"],
+    ["D", "refuse"],
     ["e", "refuse"],
+    ["h", "refuse"],
+    ["i", "refuse"],
+    ["R", "refuse"],
+    ["s", "refuse"],
   ]),
   long: new Map<string, OptionArity>([
+    ["askpass", "flag"],
+    ["background", "flag"],
+    ["bell", "flag"],
+    ["help", "flag"],
+    ["list", "flag"],
+    ["no-update", "flag"],
+    ["non-interactive", "flag"],
+    // Its value is attached only (`--preserve-env=list`), which a flag accepts.
+    ["preserve-env", "flag"],
+    ["preserve-groups", "flag"],
+    ["remove-timestamp", "flag"],
+    ["reset-timestamp", "flag"],
+    ["set-home", "flag"],
+    ["stdin", "flag"],
+    ["validate", "flag"],
+    ["version", "flag"],
+    ["close-from", "value"],
+    ["command-timeout", "value"],
     ["group", "value"],
+    ["other-user", "value"],
+    ["prompt", "value"],
     ["user", "value"],
+    ["chdir", "refuse"],
+    ["chroot", "refuse"],
     ["edit", "refuse"],
+    ["host", "refuse"],
+    ["login", "refuse"],
+    ["shell", "refuse"],
   ]),
 };
 
