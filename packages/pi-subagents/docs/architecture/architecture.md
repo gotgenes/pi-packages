@@ -1051,7 +1051,7 @@ Release: independent
 - **Target:** `src/lifecycle/subagent-state.ts`, `src/lifecycle/subagent-run.ts`, `src/lifecycle/subagent.ts` (`waitUntilSettled` and the read-through getters), `src/lifecycle/subagent-manager.ts` (`startResume`'s claim), and `src/tools/get-result-tool.ts`.
 - **Hard dependency:** [#1049] — the run object the outcome moves onto.
 - **Soft dependency:** [#1050], [#947] — after [#1050] the outcome moves through one path instead of two, and [#947] rewrites the same `get_subagent_result` wait this step changes.
-- **Constraint:** `SubagentRecord` is unchanged, and the delivery semantics Phase 22 settled (claims, consumption, exactly-once updates) are preserved rather than re-decided; the service tests pass unmodified.
+- **Constraint:** `SubagentRecord` is unchanged (including the `resumeRefusal` field [#912] added, which keeps reading `Subagent.resumeRefusal`), and the delivery semantics Phase 22 settled (claims, consumption, exactly-once updates) are preserved rather than re-decided; the service tests pass unmodified.
 - **Ride-along tidying:** a public or fake-timer-driven way to run the retention sweep, replacing the 8 `as any` reaches in `subagent-manager.test.ts`; this step changes what the sweep reads (consumption moves onto the run), so those tests are rewritten anyway.
   The `as any` row reads 0.
 - **Outcome:** the `resetForResume` and `_superseded` rows read 0, and a waiter reports the outcome of the run it waited on without a superseded slot.
