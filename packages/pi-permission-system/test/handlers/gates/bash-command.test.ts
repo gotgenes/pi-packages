@@ -1306,6 +1306,10 @@ describe("resolveBashCommandCheck: env, xargs, and doas option grammars", () => 
       "xargs -I{} cat {}",
       "xargs -n1 cat x",
       "xargs --max-args 1 cat",
+      "xargs -R 1 cat rm x",
+      "xargs -S 255 cat",
+      "xargs -I {} -R 1 cat rm x",
+      "xargs -d x cat",
     ])("allows %s", (command) => {
       const result = decide(policy, command);
       expect(result.state).toBe("allow");

@@ -683,5 +683,64 @@ describe("floorExemptionOf", () => {
     ])("is transparent: %s (%s)", (unit) => {
       expect(isTransparent(unit)).toBe(true);
     });
+
+    describe("an option either manual lists", () => {
+      it.each([
+        ["xargs -E END cat x", "-E takes an EOF string"],
+        ["xargs -L 2 cat", "-L takes a line count"],
+        ["xargs -s 100 cat", "-s takes a size"],
+        ["xargs -P 4 cat", "-P takes a process count"],
+        ["xargs -d x cat", "GNU -d takes a delimiter"],
+        ["xargs -a f cat", "GNU -a takes a file"],
+        ["xargs --arg-file f cat", "--arg-file takes a file"],
+        ["xargs --delimiter x cat", "--delimiter takes a character"],
+        ["xargs --max-lines 2 cat", "--max-lines takes a count"],
+        ["xargs --max-procs 4 cat", "--max-procs takes a count"],
+        ["xargs --max-chars 100 cat", "--max-chars takes a size"],
+        ["xargs --process-slot-var V cat", "--process-slot-var takes a name"],
+        ["xargs --max-a 1 cat", "a unique abbreviation of --max-args"],
+        [
+          "xargs -R 1 cat rm x",
+          "BSD -R takes a count; nothing runs without -I",
+        ],
+        ["xargs -S 255 cat", "BSD -S takes a size; nothing runs without -I"],
+        ["xargs -I {} -R 1 cat rm x", "cat reads the files rm and x"],
+        ["xargs -p cat", "-p prompts before running"],
+        ["xargs -o cat", "-o reopens the terminal"],
+        ["xargs -x cat", "-x exits on an oversized line"],
+        ["xargs -tn1 cat x", "a flag then an attached value"],
+        ["xargs -eEND cat x", "an attached optional EOF string"],
+        ["xargs --eof cat x", "a long optional argument takes no word"],
+      ])("is transparent: %s (%s)", (unit) => {
+        expect(isTransparent(unit)).toBe(true);
+      });
+
+      it.each([
+        "xargs -t cat x",
+        "xargs --exit cat x",
+        "xargs --help cat x",
+        "xargs --interactive cat x",
+        "xargs --no-run-if-empty cat x",
+        "xargs --null cat x",
+        "xargs --open-tty cat x",
+        "xargs --show-limits cat x",
+        "xargs --verbose cat x",
+        "xargs --version cat x",
+      ])("names cat x past the flag in %s", (unit) => {
+        expect(isTransparent(unit)).toBe(true);
+        expect(executedUnitOf(unit, words(unit))).toBe("cat x");
+      });
+
+      it.each([
+        [
+          "xargs -e rm cat x",
+          "GNU -e takes only an attached value, so rm runs",
+        ],
+        ["xargs --ver cat", "ambiguous between --verbose and --version"],
+        ["xargs --e cat", "ambiguous between --eof and --exit"],
+      ])("is not transparent: %s (%s)", (unit) => {
+        expect(isTransparent(unit)).toBe(false);
+      });
+    });
   });
 });
