@@ -41,3 +41,16 @@ The pi-subagents suite went from 2097 to 2100 tests (3 new; 3 exact `toEqual` te
   The WARN was the #1051 roadmap step's constraint ("`SubagentRecord` is unchanged"), which the plan had flagged as a baseline shift but left unedited; fixed by `docs(pi-subagents): note resumeRefusal in the #1051 record constraint`.
 
 [#1013]: https://github.com/gotgenes/pi-packages/issues/1013
+
+## Stage: Sync (worktree) (2026-10-09T05:35:33Z)
+
+### Session summary
+
+Pre-push checks (`pnpm run lint`, `pnpm fallow dead-code`) passed; the reviewer's earlier WARN was already fixed and re-reviewed to PASS, so nothing was open at sync.
+The plan's marker is `**Release:** ship independently`; no follow-ups were filed.
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-912--/2026-10-09T05-03-10-805Z_01a11f0b-35d4-72e8-aef9-c24994c0b2c4.jsonl` — read with `read_session_file({ path: "<path>" })` for message-level verification at land/retro time.
+
+### Observations
+
+The `feat:` commit is the only release vehicle; everything else is `docs:`.
