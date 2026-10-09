@@ -29,3 +29,19 @@ Spiked the whole move in the worktree before writing the plan, measured it, and 
 
 - `src/observation/renderer.ts`: the three `create*Renderer` factories share line-assembly shape (assessor judged the divergence structural; rejected as scope creep).
 - `src/observation/renderer.ts`: pure helpers (`buildStatsParts`, `buildPreviewLines`, `resolveStatusPresentation`) live beside the factories; a split is a separate concern.
+
+## Stage: Implementation — Build (2026-10-09T15:53:56Z)
+
+### Session summary
+
+All four plan steps landed: two `refactor:` moves (each narrowing its own `.fallowrc.json` zone, the second adding the `ui` zone's `allowTypeOnly: ["pi-subagents/observation"]`), a `docs:` commit stating the zone order in `architecture.md` and the package skill, and the roadmap ✅ marks with a `Landed:` note.
+The pi-subagents suite stayed at 86 files and 2100 tests, as predicted.
+
+### Observations
+
+- No deviations from the plan.
+- Probes A, B, and C each reported exactly 1 boundary violation against the committed config, matching the planning spike.
+- Biome's `organizeImports` reorders a rewritten `#src/` import path (both `subagent.ts` and `index.ts` moved position), so each move step needed `biome check --write` before lint passed; expect this on any path-rewriting move.
+- `pi-autoformat` collapsed the `observation` zone's two-item `allow` array onto one line in `.fallowrc.json`; harmless.
+- The roadmap step's own Cause/Target prose (`architecture.md` lines 982 and 986) keeps the old `observation/renderer.ts` path deliberately, as a description of the step.
+- Pre-completion reviewer: PASS.
