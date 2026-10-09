@@ -365,7 +365,11 @@ A spawned agent is a first-class citizen of the runtime: it appears in the backg
 Both return `SubagentRecord`, a by-value snapshot: nothing in it changes after you receive it, and writing to it cannot reach the agent.
 Poll again for fresh data.
 
-The snapshot carries identity (`id`, `type`, `description`), lifecycle status (`status`, `startedAt`, `completedAt`, `result`, `error`), the resolved spawn fact `isBackground`, the current run's `turnBudget`, cumulative metrics (`toolUses`, `compactionCount`, `lifetimeUsage`), and `outputFile` — the path to the agent's session JSONL, which you can read with Pi's own `parseSessionEntries`.
+The snapshot carries identity (`id`, `type`, `description`), lifecycle status (`status`, `startedAt`, `completedAt`, `result`, `error`, `pendingQuestion`), the resolved spawn fact `isBackground`, the current run's `turnBudget`, cumulative metrics (`toolUses`, `compactionCount`, `lifetimeUsage`), and `outputFile` — the path to the agent's session JSONL, which you can read with Pi's own `parseSessionEntries`.
+
+It also carries `resumeRefusal`: absent when `resume` would start a run, otherwise the reason it would refuse with (the [`resume` contract](#resume-contract) lists them).
+Render a Resume affordance from it without calling `resume` first.
+`still-running` clears when the run settles, and a queued agent's `no-session` clears once it starts; the other reasons are final.
 
 It deliberately withholds momentary activity (the tools running right now, the partial response text) and this package's internal bookkeeping.
 A pulled snapshot of momentary state would be stale on arrival; [decision 0005](docs/decisions/0005-subagent-record-admission-policy.md) records the full policy and what would reopen it.
@@ -388,6 +392,8 @@ A resume that could not start resolves to `{ kind: "refused", reason }` instead,
 | `no-session`         | The agent never had a session to continue                       |
 | `session-released`   | Its session was released after the retention window             |
 | `workspace-disposed` | Its isolated workspace is gone, so a resume cannot re-enter it  |
+
+Every record's `resumeRefusal` field predicts this answer before the call, minus `unknown-agent`, which no record can carry.
 
 A resumed run that _fails_ is still `{ kind: "resumed" }`; the snapshot carries `status: "error"` and the message.
 Refused means nothing started.

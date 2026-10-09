@@ -39,8 +39,9 @@ A field is admitted to `SubagentRecord` when **all four** hold.
 
 1. **Serializable by value** — a JSON primitive, array, or plain object.
    Never a live object, a function, or a `Map`.
-2. **Discrete, not momentary** — identity, a resolved spawn decision, a cumulative metric, or a pointer to a durable artifact.
+2. **Discrete, not momentary** — identity, lifecycle status, a resolved spawn decision, a cumulative metric, or a pointer to a durable artifact.
    State whose value is stale the instant it is read is reactive by nature, and the discrete-query half of the split does not serve it.
+   Lifecycle status changes while the agent lives, but only at lifecycle edges (a run starting or settling, a session released, a workspace disposed), never with the agent's activity inside a run.
 3. **Meaningful outside this package** — not bookkeeping the core keeps in order to run its own sweeps.
 4. **Stable in meaning** — the package can keep producing it without re-deriving it from a display snapshot or a UI concern.
 
@@ -72,21 +73,23 @@ This was true of every field except `lifetimeUsage`, which was assigned by refer
 
 ### Dispositions
 
-| Field                                          | Disposition                          | Basis                                                            |
-| ---------------------------------------------- | ------------------------------------ | ---------------------------------------------------------------- |
-| `id`, `type`, `description`, `status`          | admitted (already present)           | identity and lifecycle status                                    |
-| `result`, `error`, `completedAt`               | admitted, optional (already present) | terminal facts, absent until the agent ends                      |
-| `toolUses`, `lifetimeUsage`, `compactionCount` | admitted (already present)           | cumulative metrics                                               |
-| `startedAt`                                    | admitted (already present)           | resolved lifecycle timestamp                                     |
-| `isBackground`                                 | admitted, required                   | resolved spawn fact, known from the choke point onward ([#724])  |
-| `turnCount`                                    | removed                              | folded into `turnBudget.used`, which counts the current run only |
-| `maxTurns`                                     | removed                              | folded into `turnBudget.maxTurns`, resolved where it is enforced |
-| `turnBudget`                                   | admitted, optional                   | the run's live turn budget; absent until its turn loop starts    |
-| `outputFile`                                   | admitted, optional                   | pointer to the child's durable session transcript                |
-| `activeTools`                                  | declined                             | rule 2 — momentary set, and a `Map` on the live record           |
-| `responseText`                                 | declined                             | rule 2 — momentary and unbounded in size                         |
-| `consumedAt`                                   | declined                             | rule 3 — result-delivery bookkeeping behind the retention sweep  |
-| `stoppedWhileQueued`                           | declined                             | rule 3 — internal marker selecting a never-started result text   |
+| Field                                          | Disposition                          | Basis                                                                     |
+| ---------------------------------------------- | ------------------------------------ | ------------------------------------------------------------------------- |
+| `id`, `type`, `description`, `status`          | admitted (already present)           | identity and lifecycle status                                             |
+| `result`, `error`, `completedAt`               | admitted, optional (already present) | terminal facts, absent until the agent ends                               |
+| `toolUses`, `lifetimeUsage`, `compactionCount` | admitted (already present)           | cumulative metrics                                                        |
+| `startedAt`                                    | admitted (already present)           | resolved lifecycle timestamp                                              |
+| `isBackground`                                 | admitted, required                   | resolved spawn fact, known from the choke point onward ([#724])           |
+| `turnCount`                                    | removed                              | folded into `turnBudget.used`, which counts the current run only          |
+| `maxTurns`                                     | removed                              | folded into `turnBudget.maxTurns`, resolved where it is enforced          |
+| `turnBudget`                                   | admitted, optional                   | the run's live turn budget; absent until its turn loop starts             |
+| `outputFile`                                   | admitted, optional                   | pointer to the child's durable session transcript                         |
+| `pendingQuestion`                              | admitted, optional                   | terminal fact: the question the run ended on, absent when none            |
+| `resumeRefusal`                                | admitted, optional                   | lifecycle status: why `resume()` would refuse; absent when it would start |
+| `activeTools`                                  | declined                             | rule 2 — momentary set, and a `Map` on the live record                    |
+| `responseText`                                 | declined                             | rule 2 — momentary and unbounded in size                                  |
+| `consumedAt`                                   | declined                             | rule 3 — result-delivery bookkeeping behind the retention sweep           |
+| `stoppedWhileQueued`                           | declined                             | rule 3 — internal marker selecting a never-started result text            |
 
 ## Consequences
 
@@ -101,6 +104,9 @@ This was true of every field except `lifetimeUsage`, which was assigned by refer
 - The policy governs `SubagentRecord`, not the `get_subagent_result` report.
   That report is read by the model at the moment it asks, so it carries a running agent's momentary activity, turns used, and time since its last progress, the facts the widget shows the human.
   Admitting them there widens no snapshot and changes no rule above.
+- `resumeRefusal` is admitted as lifecycle status ([#912]): it is a function of `status` plus two one-way latches (a released session, a disposed workspace), so it is exactly as stale as `status` and no more.
+  A consumer rendering a Resume affordance reads it per row from `listAgents()` instead of learning the refusal from the `resume()` call itself.
+  It is typed `ResumeRefusal`, not `ResumeRefusalReason`: a record exists, so `unknown-agent` is never its answer.
 - Both halves of the policy are pinned by tests in `test/service/service-adapter.test.ts`: exact `toEqual` assertions on the admitted set, and a test that populates every declined field on the source and asserts none of them reaches the output.
   A future widening fails those tests by design; that failure is the moment the proposal meets this policy.
 - `SubagentRecord.lifetimeUsage` stays declared mutable.
@@ -109,4 +115,5 @@ This was true of every field except `lifetimeUsage`, which was assigned by refer
 [#724]: https://github.com/gotgenes/pi-packages/issues/724
 [#748]: https://github.com/gotgenes/pi-packages/pull/748
 [#828]: https://github.com/gotgenes/pi-packages/issues/828
+[#912]: https://github.com/gotgenes/pi-packages/issues/912
 [#1022]: https://github.com/gotgenes/pi-packages/issues/1022

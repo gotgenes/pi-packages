@@ -1076,7 +1076,7 @@ A resume starts directly, so since [#987] a background resume runs at capacity w
 
 Release: independent
 
-#### [#912] Let a consumer ask whether an agent is resumable
+#### ✅ [#912] Let a consumer ask whether an agent is resumable
 
 **Cause:** the query surface cannot report a decision the core already makes.
 `Subagent.resumeRefusal` composes `status`, `sessionReleased`, and `workspaceDisposed`, and `SubagentRecord` carries only the first, so a consumer cannot tell a resumable agent from one the retention sweep released.
@@ -1088,6 +1088,9 @@ Release: independent
 - **Outcome:** a consumer holding an agent id can learn whether `resume` would be refused, and why, before calling it.
 - **Commit type:** `feat:`.
 - **Impact 2 / Risk 2 / Priority 8.**
+
+Landed: `SubagentRecord` gains an optional `resumeRefusal`, copied by `toSubagentRecord` from `Subagent.resumeRefusal` and absent when a resume would start, so `listAgents()` answers per row.
+Decision 0005's rule 2 now names lifecycle status, and its dispositions table admits `resumeRefusal` on that basis (with the `pendingQuestion` row it lacked).
 
 Release: independent
 
@@ -1111,7 +1114,7 @@ Release: independent
 ```mermaid
 flowchart TD
     S947["✅ #947<br/>Bounded wait with progress"] -.soft.-> S1051["#1051<br/>The run owns its outcome"]
-    S947 -.soft.-> S912["#912<br/>Ask whether resumable"]
+    S947 -.soft.-> S912["✅ #912<br/>Ask whether resumable"]
     S1048["#1048<br/>Zone-order moves"] -.soft.-> S1049["#1049<br/>Per-run lever and wiring"]
     S1049 --> S1050["#1050<br/>One run lifecycle"]
     S1049 --> S1051
