@@ -1347,6 +1347,8 @@ Deferred by composition, with the reason each carries: [#804] (staging slice 7, 
   The local review log holds no ask for any of them (measured: 0 `time {` asks in 23,641 lines), and recovering them needs a new span re-parse mechanism outside this phase's token-role budget.
 - [#1053] — filed by [#1042]'s planning; **becomes a new step in this phase, directly after [#1042]** (operator decision, 2026-10-09).
   `env` and `xargs` option tables misplace the wrapped command (`env -P cat rm x`, `xargs -J cat rm x` earn `core-reader`), and `env -C /etc cat shadow` earns it with a moved cwd; it is [#1042]'s fail-open class on the other wrappers, landing on [#1042]'s grammar dispatch.
+- [#1056] — filed by [#1042]'s implementation; **becomes a new step in this phase, directly after [#1053]** (operator decision, 2026-10-09, given with reluctance to grow a phase that should close soon for the sandbox phase).
+  An unquoted computed word in a peeled layer's options or values (`sudo -u $U cat x`, `timeout $D cat x`) splits into the command that runs while `core-reader` judges `cat`; the execution-modifier clause already refuses a non-literal layer, and the core-reader clause lacks the same guard.
 - Feature issues [#691], [#687], [#680], [#654], [#648], [#604], [#603], [#472] — out of scope for a structural phase; [#680] is narrowed further by [#880] (a declared reader needs no floor override), and [#604] by [#813].
 
 #### Deferred tidyings swept
@@ -1755,6 +1757,19 @@ Release: independent
 
 Release: independent
 
+#### [#1056] A computed word in a wrapper's options keeps the floor
+
+**Cause:** `floorExemptionOf`'s core-reader reason judges the command the peel locates, but the peel reads each layer's words by source text, so an unquoted computed word in an option, a value, a leading operand, or a `NAME=value` argument can split into the command that really runs: `sudo -u $U cat x` with `U="root rm y"` runs `rm y cat x`, and `timeout $D cat x` with `D="5 rm"` runs `rm cat x`.
+
+- **Smell:** Category C (the execution-modifier clause's literal-layer guard missing from its sibling clause).
+- **Target:** `src/access-intent/bash/wrapper-analysis.ts` — the core-reader reason refuses when a peeled layer carries a word before its inner command that the shell can split, reusing `CommandWord.computed`; the plan settles whether a double-quoted computed word, which cannot split, is admitted.
+- **Constraint:** fail-closed, and the same rule as `isAdmittedModifierLayer`'s, so the two clauses cannot disagree about a layer.
+- **Soft dependency:** [#1053], which reshapes the same peel.
+- **Outcome:** under `bash: {"*": "allow", "rm *": "deny"}`, `sudo -u $U cat x`, `env FOO=$Y cat x`, and `timeout $D cat x` ask with `<indirection-bash-wrapper>`.
+- **Commit type:** `fix:`.
+
+Release: independent
+
 #### [#880] `commandEffects` — the user declares what their own tools do
 
 **Cause:** ADR 0013 §7 gives the deterministic layer three effect sources and the package ships two; without the third, every subcommand- or option-dependent reader (`git log`, `sed -n`, `strings`) is unproven, consults both directional surfaces, and asks on `_write` for a read — the largest measured population left after the core (`git` 92 and `sed` 24 of 388 recent asks, the latter net of the read-only share [#924] moves into the core — what remains for a declaration is `sed -i` and the scripts the parser cannot classify).
@@ -1825,6 +1840,7 @@ flowchart TD
     S1033 -.soft.-> S1027["✅ #1027<br/>Commands inside time ( … )"]
     S1027 -.soft.-> S1042["✅ #1042<br/>sudo -e keeps the floor"]
     S1042 -.soft.-> S1053["#1053<br/>env and xargs option grammars"]
+    S1053 -.soft.-> S1056["#1056<br/>A computed layer word keeps the floor"]
     S963 -.soft.-> S880["#880<br/>commandEffects"]
     S880 --> S881["#881<br/>Blame reaches the ask"]
     S609 -.soft.-> S881
@@ -1849,7 +1865,7 @@ The diagram is laid out by dependency instead, so its shape and the working sequ
 - **Track A — role-carrying projection:** [#945] → [#863] → [#859] → [#957] → [#609] → [#977] → [#979] → [#985] → [#978].
   [#977] also re-enters `command-enumeration.ts` and the argument words `command-effects.ts`'s guards read, which Track B's [#924] and [#880] edit — sequence it against whichever of them is in flight rather than concurrently.
   Owns `src/access-intent/bash/token-collection.ts`, `token-classification.ts`, `bash-path-resolver.ts`, and the bash-path tests.
-- **Track B — proven and declared effects, and blame:** [#924] → [#992] → [#995] → [#963] → [#1027] → [#1042] → [#1053] → [#880] → [#881].
+- **Track B — proven and declared effects, and blame:** [#924] → [#992] → [#995] → [#963] → [#1027] → [#1042] → [#1053] → [#1056] → [#880] → [#881].
   [#924] owns `command-effects.ts` and the pure-reader core section of `docs/configuration.md`; [#963] owns `wrapper-analysis.ts` and ADR 0013 §11; [#880] owns `src/config/` and re-enters `command-effects.ts`; [#881] owns `src/presentation/` and the two bash path gates.
   [#881] touches `bash-path.ts` / `bash-external-directory.ts`; [#609]'s plan leaves both gates unchanged, but [#881]'s blame reads the candidate set [#609] widens, so sequence [#881] after [#609].
 - **Track C — the judgment lane:** [#882], a deliberation first; its code half touches `authority/delegation-envelope.ts`, `authority/permission-forwarding.ts`, and the payload core [#881] owns, so it lands after [#881].
@@ -1862,7 +1878,7 @@ The sandbox seam that Phase 15 briefly carried as a track of its own is now Phas
 
 - **Batch "declared-effects":** [#880], [#881] (ship together; tail = [#881]; release vehicle = [#880]'s `feat:` with [#881]'s `fix:` riding the same release).
   They ship together because [#881]'s blame line names the config key [#880] creates, and a prompt telling the user to declare an effect they cannot declare is worse than the prompt it replaces.
-- Independently releasable: [#945] (`fix:`), [#863] (`fix:`), [#859] (`fix:`), [#957] (`fix:`), [#609] (`fix!:` — newly prompts on a bare creating redirect under an explicit `path`/`path_write` rule, or after a non-literal `cd`), [#977] (`fix:`), [#979] (`fix:`), [#985] (`fix:`), [#978] (no release), [#924] (`fix:`), [#992] (`fix!:` — newly prompts on a computed argument that may lead with `-`), [#995] (`fix:`), [#1029] (`fix:`), [#1030] (`fix:`), [#1033] (`fix:`), [#1027] (`fix:`), [#1042] (`fix:`), [#1053] (`fix:`), [#882] (`feat:` if the checkpoint changes; a `docs:` amendment alone cuts no release).
+- Independently releasable: [#945] (`fix:`), [#863] (`fix:`), [#859] (`fix:`), [#957] (`fix:`), [#609] (`fix!:` — newly prompts on a bare creating redirect under an explicit `path`/`path_write` rule, or after a non-literal `cd`), [#977] (`fix:`), [#979] (`fix:`), [#985] (`fix:`), [#978] (no release), [#924] (`fix:`), [#992] (`fix!:` — newly prompts on a computed argument that may lead with `-`), [#995] (`fix:`), [#1029] (`fix:`), [#1030] (`fix:`), [#1033] (`fix:`), [#1027] (`fix:`), [#1042] (`fix:`), [#1053] (`fix:`), [#1056] (`fix:`), [#882] (`feat:` if the checkpoint changes; a `docs:` amendment alone cuts no release).
 
 ## Refactoring history
 
@@ -2036,5 +2052,6 @@ Each phase's findings, step plan, dependency diagram, and health metrics are pre
 [#1042]: https://github.com/gotgenes/pi-packages/issues/1042
 [#1043]: https://github.com/gotgenes/pi-packages/issues/1043
 [#1053]: https://github.com/gotgenes/pi-packages/issues/1053
+[#1056]: https://github.com/gotgenes/pi-packages/issues/1056
 [#490]: https://github.com/gotgenes/pi-packages/issues/490
 [ADR-0002]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-subagents/docs/decisions/0002-extensions-on-a-minimal-core.md
