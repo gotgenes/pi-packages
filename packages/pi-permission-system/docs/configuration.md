@@ -1074,6 +1074,7 @@ All four of these must hold, and each is a way the floor's reason could still ap
 1. The unit is an indirection wrapper.
    An `sh -c`/`eval` payload is not one — see below.
 2. The command it runs can be established without passing through an inline shell.
+   `watch` and `parallel` hand their whole command line to a shell, and `rush` and `rust-parallel` build theirs from a template, so a unit with any of the four as a layer never qualifies: `watch cat x \; rm y` runs `rm`.
 3. That command **proves** a read: a bare-basename core word with no option that withdraws the claim.
    So `xargs sort -o /tmp/x` and `xargs find . -delete` stay floored, and so does `xargs ./grep foo`.
 4. The enclosing statement provably writes no file through a redirect.
@@ -1141,6 +1142,17 @@ That rule matches the wrapper's own text, so it is decided before the exemption 
 `sudo`'s own options are read the way `sudo` reads them, so `sudo -nu cat rm x` runs `rm x`, not a pure reader named `cat`.
 A `sudo` mode in which the command it names is not what runs as named keeps the floor whatever that command is: `-e`/`--edit` (sudoedit edits its operands as files, as root), `-s`/`--shell` and `-i`/`--login` (a shell runs the operand), and `-D`/`--chdir` and `-R`/`--chroot` (relative operands resolve somewhere the path surfaces do not look).
 So does `-h`, whose meaning depends on what follows it, and any option `sudo`'s manual does not list; a mode that keeps the floor is approved at the prompt or under `yoloMode`.
+
+`env`, `xargs`, and `doas` are read the same way, from the BSD and GNU manuals for the first two and `opendoas` for the third, and any option those do not list keeps the floor too.
+So `xargs -n 1 cat` and `env -u FOO cat x` still resolve by `cat`'s rule, while these keep the floor whatever command they name:
+
+- `env -C`/`--chdir`, because relative operands resolve somewhere the path surfaces do not look (`env -C /etc cat shadow` reads `/etc/shadow`).
+- `env -S`/`--split-string`, because the command is split out of one word at run time (`env -Srm cat` runs `rm cat`).
+- `env -P`, `-a`/`--argv0`, and `--env0-from`, because each chooses which binary the named command is: a search path, the argv0 a multi-call binary dispatches on, or an environment that may set `PATH`.
+- `xargs -J`, because it puts input in the command's place when the command equals its replacement string.
+- `doas -C` (it checks a config and runs nothing), `doas -s` (it runs a shell), and OpenBSD's `doas -a`, which `opendoas` does not list.
+
+GNU `xargs -i`, `-l`, and `-e` take a value only when it is attached (`-i{}`), so `xargs -i rm cat x` runs `rm`, and `xargs` and `doas` run a `NAME=value` word as the command rather than an assignment.
 
 #### Which key to actually write
 
