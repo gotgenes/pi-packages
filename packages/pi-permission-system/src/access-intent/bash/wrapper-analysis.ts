@@ -649,7 +649,6 @@ const EXEC_CONDITIONAL_WRAPPERS = new Map<string, ReadonlySet<string>>([
  * read by a {@link GETOPT_GRAMMARS} entry has no row here.
  */
 const VALUE_TAKING_FLAGS = new Map<string, ReadonlySet<string>>([
-  ["doas", new Set(["-u", "-C"])],
   ["timeout", new Set(["-s", "-k", "--signal", "--kill-after"])],
   ["nice", new Set(["-n", "--adjustment"])],
   ["time", new Set(["-o", "-f", "--output", "--format"])],
@@ -868,11 +867,34 @@ const XARGS_GRAMMAR: GetoptGrammar = {
   loneDashEndsOptions: false,
 };
 
+/**
+ * `doas`'s options, verified against `opendoas`
+ * (`usage: doas [-Lns] [-C config] [-u user] command [args]`); it takes no
+ * long options and never permutes. OpenBSD's `-a style` is absent there, so
+ * it is left unlisted and refuses rather than admitted unverified.
+ *
+ * `-C` checks a config and runs nothing, so the command it would name never
+ * runs as named; `-s` runs a shell.
+ */
+const DOAS_GRAMMAR: GetoptGrammar = {
+  short: new Map<string, OptionArity>([
+    ["L", "flag"],
+    ["n", "flag"],
+    ["u", "value"],
+    ["C", "refuse"],
+    ["s", "refuse"],
+  ]),
+  long: new Map<string, OptionArity>(),
+  assignments: false,
+  loneDashEndsOptions: false,
+};
+
 /** Wrappers whose inner command is located by a getopt grammar. */
 const GETOPT_GRAMMARS = new Map<string, GetoptGrammar>([
   ["sudo", SUDO_GRAMMAR],
   ["env", ENV_GRAMMAR],
   ["xargs", XARGS_GRAMMAR],
+  ["doas", DOAS_GRAMMAR],
 ]);
 
 /**

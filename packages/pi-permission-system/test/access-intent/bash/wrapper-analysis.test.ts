@@ -387,6 +387,26 @@ describe("executedUnitOf", () => {
     });
   });
 
+  describe("a doas layer", () => {
+    it.each([
+      ["doas -nu root cat x", "cat x"],
+      ["doas FOO=1 cat x", "FOO=1 cat x"],
+    ])(
+      "names the inner command of %s by doas's option grammar",
+      (unit, expected) => {
+        expect(executedUnit(unit)).toBe(expected);
+      },
+    );
+
+    it.each([
+      ["doas -a cat rm x", "OpenBSD's -a is unlisted on opendoas"],
+      ["doas -C /etc/doas.conf cat x", "-C checks a config and runs nothing"],
+      ["doas -s cat x", "-s runs a shell"],
+    ])("returns null for %s (%s)", (unit) => {
+      expect(executedUnit(unit)).toBeNull();
+    });
+  });
+
   describe("nothing to add", () => {
     it("returns null for an ordinary command", () => {
       expect(executedUnit("grep foo")).toBeNull();
@@ -845,6 +865,29 @@ describe("floorExemptionOf", () => {
       ["env --ignore-signal=PIPE cat x", "an attached optional value"],
       ["env --block-signal cat x", "an optional argument takes no word"],
       ["env --default-signal cat x", "an optional argument takes no word"],
+    ])("is transparent: %s (%s)", (unit) => {
+      expect(isTransparent(unit)).toBe(true);
+    });
+  });
+
+  describe("a doas layer", () => {
+    it.each([
+      ["doas -a cat rm x", "-a is unlisted, so it refuses"],
+      ["doas -C /etc/doas.conf cat x", "-C checks a config and runs nothing"],
+      ["doas -s cat x", "-s runs a shell"],
+      ["doas --user root cat x", "doas has no long options"],
+      ["doas FOO=1 cat x", "doas runs a word like FOO=1 as the command"],
+    ])("is not transparent: %s (%s)", (unit) => {
+      expect(isTransparent(unit)).toBe(false);
+    });
+
+    it.each([
+      ["doas cat x", "no options"],
+      ["doas -u root cat x", "-u takes a user"],
+      ["doas -uroot cat x", "an attached -u value"],
+      ["doas -nu root cat x", "the cluster's -u takes root"],
+      ["doas -L cat x", "-L is a flag"],
+      ["doas -- cat x", "the end of options"],
     ])("is transparent: %s (%s)", (unit) => {
       expect(isTransparent(unit)).toBe(true);
     });

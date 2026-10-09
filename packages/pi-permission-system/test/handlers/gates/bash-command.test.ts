@@ -1299,6 +1299,8 @@ describe("resolveBashCommandCheck: env, xargs, and doas option grammars", () => 
       ["env --chdir /etc cat shadow", "cat reads /etc/shadow, not ./shadow"],
       ["env -a cat rm x", "GNU -a takes cat as argv0, so rm runs"],
       ["sudo env -C /etc cat shadow", "cat reads /etc/shadow as root"],
+      ["doas -a cat rm x", "OpenBSD -a takes cat as an auth style, so rm runs"],
+      ["doas -C /etc/doas.conf cat x", "-C checks a config and runs nothing"],
     ])("for %s (%s)", (command) => {
       const result = decide(policy, command);
       expect(result.state).toBe("ask");
@@ -1320,6 +1322,8 @@ describe("resolveBashCommandCheck: env, xargs, and doas option grammars", () => 
       "env -u FOO cat x",
       "env - cat x",
       "env -iu FOO cat rm x",
+      "doas -u root cat x",
+      "doas -nu root cat x",
     ])("allows %s", (command) => {
       const result = decide(policy, command);
       expect(result.state).toBe("allow");
