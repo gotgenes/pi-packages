@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [23.3.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v23.2.0...pi-subagents-v23.3.0) (2026-10-09)
+
+
+### Features
+
+* **pi-subagents:** report a running agent's activity, turns, and last progress in get_subagent_result ([a4756fe](https://github.com/gotgenes/pi-packages/commit/a4756fed85c07db81eb91498786308e6e8307478)), closes [#947](https://github.com/gotgenes/pi-packages/issues/947)
+* **pi-subagents:** let get_subagent_result bound its wait with a timeout ([8ba9112](https://github.com/gotgenes/pi-packages/commit/8ba9112f1996b495476c2ae82d24b3a526fd88f1)), closes [#947](https://github.com/gotgenes/pi-packages/issues/947)
+
+### Documentation
+
+* **pi-subagents:** replace upstream README media with a recorded demo ([8e889d0](https://github.com/gotgenes/pi-packages/commit/8e889d0431e569e29b2ae3269fee0e9246e19f46))
+* **pi-subagents:** document get_subagent_result's timeout and progress line ([a640452](https://github.com/gotgenes/pi-packages/commit/a6404525a55254254202264276be565b62caeefe)), closes [#947](https://github.com/gotgenes/pi-packages/issues/947)
+
 ## [23.2.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v23.1.1...pi-subagents-v23.2.0) (2026-10-06)
 
 
