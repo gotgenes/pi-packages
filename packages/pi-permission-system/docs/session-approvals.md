@@ -92,6 +92,9 @@ For example, `nohup mytool argument` suggests `nohup mytool *`, not `nohup *`; `
 Nested wrappers retain each layer, so `sudo -u root nohup mytool argument` suggests `sudo -u root nohup mytool *`.
 Wrapped prefixes always use a space before the trailing wildcard, so an approval for `nohup mytool` does not also approve `nohup mytool-other`.
 Unknown wrapper options, shell quoting or expansion, inline-shell payloads, parallel command templates, and `find`/`fd` exec forms retain the whole command without adding a wildcard.
+An `xargs -I` replacement may vary arguments of an ordinary fixed executable, so `xargs -I X mytool X first` still suggests `xargs -I X mytool *`.
+A replacement combined with a nested wrapper, or one that changes the inner arity prefix, instead keeps the whole command: `xargs -I X nohup X first` and `xargs -I X git X first` gain no appended wildcard.
+The legacy optional-argument `xargs -i` form also keeps the whole command rather than inferring an executable from dialect-dependent option arity.
 The wrapper interpretation shares the gate's vocabulary in `src/access-intent/bash/wrapper-analysis.ts`; it does not change the gate's wrapper floors or exemptions.
 
 ## Review Log Entries

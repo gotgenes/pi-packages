@@ -1215,6 +1215,32 @@ describe("wrapper session grants", () => {
   );
 });
 
+describe("replacement-template session grants", () => {
+  beforeAll(async () => {
+    await warmBashParser();
+  });
+
+  it.each([
+    "xargs -I X nohup X",
+    "xargs -IX nohup X",
+    "sudo xargs -I X nohup X",
+    "xargs -I X env X",
+    "xargs -I X git X",
+  ])("keeps the whole template for %s", (wrapper) => {
+    const command = `${wrapper} first`;
+    const policy: Record<string, PermissionState> = { "*": "allow" };
+    const asking = decide(policy, command);
+    expect(asking.state).toBe("ask");
+    const pattern = suggestBashPattern(asking.command ?? "");
+    expect(pattern).toBe(command);
+    const grants = [sessionRule("bash", pattern)];
+    expect(decide(policy, command, grants).source).toBe("session");
+    const changed = decide(policy, `${wrapper} second`, grants);
+    expect(changed.state).toBe("ask");
+    expect(changed.source).not.toBe("session");
+  });
+});
+
 describe("resolveBashCommandCheck: a wrapper running a shell no-op", () => {
   beforeAll(async () => {
     await warmBashParser();

@@ -10,6 +10,7 @@
  */
 
 import type { FloorExemption } from "#src/types";
+import { prefix } from "./bash-arity";
 import { proveCommandEffect } from "./command-effects";
 import type { ArgWord } from "./node-text";
 
@@ -71,6 +72,9 @@ export function sessionCommandIndex(tokens: readonly string[]): number | null {
     const start = innerCommandIndex(words);
     if (start === -1 || start >= words.length) return null;
     if (!sessionWrapperOptionsKnown(name, words.slice(1, start))) return null;
+    if (name === "xargs" && !sessionReplacementPrefixKnown(words, start)) {
+      return null;
+    }
     index += start;
     words = words.slice(start);
   }
@@ -78,6 +82,38 @@ export function sessionCommandIndex(tokens: readonly string[]): number | null {
     isLiteralCommandName(words.at(0)?.text ?? "")
     ? index
     : null;
+}
+
+function sessionReplacementPrefixKnown(
+  words: readonly WrapperWord[],
+  start: number,
+): boolean {
+  const values = VALUE_TAKING_FLAGS.get("xargs") ?? EMPTY_FLAGS;
+  const utility = words.slice(start);
+  for (let index = 1; index < start; index++) {
+    const text = words[index].text;
+    if (text === "--") break;
+    // Legacy -i has dialect-dependent optional arity; never infer its utility.
+    if (text.startsWith("-i")) return false;
+    const marker =
+      text === "-I"
+        ? words.at(index + 1)?.text
+        : text.startsWith("-I")
+          ? text.slice(2)
+          : undefined;
+    if (marker !== undefined) {
+      if (marker === "" || classifyWrapperWords(utility) !== undefined) {
+        return false;
+      }
+      // xargs keeps its utility fixed but rewrites its arguments, including a
+      // subcommand or a nested wrapper's executable. Only ordinary argument
+      // variation beyond the utility's arity prefix is safe to generalize.
+      const subcommand = prefix(utility.map((word) => word.text)).slice(1);
+      if (subcommand.some((word) => word.includes(marker))) return false;
+    }
+    if (values.has(text)) index++;
+  }
+  return true;
 }
 
 function sessionWrapperOptionsKnown(
