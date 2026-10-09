@@ -10,6 +10,7 @@ description: |
 Fallow is a static analysis tool for TypeScript/JavaScript installed as a root devDependency.
 It finds unused code, duplication, complexity hotspots, architecture-boundary violations, and refactoring targets, and it answers targeted questions about one file or one symbol.
 Run it via `pnpm fallow` scripts or `pnpm fallow <subcommand>` from the repo root, never `npx`.
+An `invalid boundary configuration` error with `autoDiscover path … did not resolve` means the command ran from a package directory, not that the config is broken.
 
 ## Quick reference
 

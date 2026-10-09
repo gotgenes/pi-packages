@@ -59,6 +59,8 @@ pnpm --silent fallow dead-code --trace <file>:<symbol> --quiet
 pnpm --silent fallow dead-code --type-aware --symbol-impact <file>:<symbol> --quiet
 ```
 
+Run them from the repo root on root-relative paths (`packages/<pkg>/src/…`), never after `cd packages/<pkg>`: the zones' paths are root-relative, so a package-directory run fails with `autoDiscover path … did not resolve`.
+
 `guard` names the file's architecture zone and the zones it may import.
 `inspect` gives its export, import, and importer counts, so "one more consumer" is a number rather than an impression.
 The last two answer who consumes a symbol the design renames, narrows, or removes: run **both** and trust the union, since `--symbol-impact` has been measured to miss a consumer that receives the symbol as an object-literal shorthand property while reporting high confidence.

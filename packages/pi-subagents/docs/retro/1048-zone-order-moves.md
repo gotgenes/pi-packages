@@ -58,3 +58,54 @@ The plan's `**Release:**` marker is `ship independently`; the commits are `refac
 ### Observations
 
 - The planning-stage Tidy-First assessor said `fallow guard` failed inside its subagent; it ran fine in this session, so the failure was specific to the subagent.
+
+## Stage: Final Retrospective (2026-10-09T16:09:40Z)
+
+### Session summary
+
+The root session fast-forward-merged the branch (6 commits after the plan), passed lint and `fallow dead-code` on the merged tree, and got a green CI run (`37956340722`).
+It closed #1048 with no release, since `next-version.sh` printed nothing for the `refactor:`/`docs:` range, and removed the worktree.
+Planning, build, sync, and ship together needed no operator correction; the only gate was planning's `allowTypeOnly` choice.
+
+### Observations
+
+#### What went well
+
+- Spiking before planning caught an incorrect acceptance criterion before the plan was written.
+  The issue predicted zero violations from the two `allow` narrowings; the spike measured 1, from the moved renderer's new `ui → observation` type edge.
+  That turned a would-be build-time surprise into a planning-time `ask_user` gate, which the operator answered once.
+- Planning ran the ratchet probes (A, B, C) against the spike, and build re-ran them against the committed config, with the same result each time.
+  For a config-only boundary change, a probe that must report exactly 1 violation stands in for a killing mutation, and running it at both stages showed the plan's claim held in the shipped tree.
+- Probe B independently re-derived a rule the `fallow` skill already states: `allowTypeOnly` reads the `import type` syntax, not the symbol's kind.
+  The skill rule is confirmed, not new.
+
+#### What caused friction (agent side)
+
+- `missing-context` — The Tidy-First assessor prefixed its commands with `cd packages/pi-subagents &&` and ran `fallow guard` on package-relative paths.
+  The zones' `autoDiscover` paths are root-relative, so fallow reported `autoDiscover path 'packages/pi-subagents/src' did not resolve` and `invalid boundary configuration`.
+  The planning and sync stage notes both called this "specific to the subagent's environment" rather than a wrong working directory.
+  Reproduced at retro time: `pnpm -C packages/pi-subagents exec fallow guard src/ui/notification-renderer.ts` exits 2 with the same error, and the root-relative form succeeds.
+  Impact: no rework, since the assessor fell back to reading imports and the main session ran `guard` itself, but the misdiagnosis was recorded twice as a non-finding.
+- `other` (glyph corruption) — Three non-ASCII glyphs came out wrong across two stages: the build stage heading's em-dash and a ✅, and a sync-note em-dash that arrived as the word "install".
+  All three were self-caught by re-reading the region before committing, as the `markdown-conventions` skill prescribes.
+  Impact: about 2 extra tool calls per stage; nothing reached a commit.
+- `other` — Biome's `organizeImports` re-sorted each rewritten `#src/` import, so each move step's first `pnpm run lint` failed and needed `biome check --write`.
+  Impact: one extra lint cycle per move step.
+  The lint output names the fix, so it needs no rule.
+- `other` (ship) — The ship's final report hedged on whether #1048 closed its roadmap phase ("probably was not"), even though the session had already grepped `architecture.md` and seen #1049 through #1051 still open.
+  Impact: none, but the report hedged on a fact it had already checked.
+
+#### What caused friction (user side)
+
+- None observed; the operator's single intervention (the `allowTypeOnly` choice) was strategic judgment, not oversight.
+
+### Diagnostic details
+
+- **Model-performance correlation** — Planning and build ran on `anthropic/claude-opus-5-5`; sync ran on `anthropic/claude-sonnet-5-5`; the Tidy-First assessor and pre-completion reviewer each ran on `anthropic/claude-sonnet-5-5` (from their own transcripts); ship and retro ran on `anthropic/claude-opus-5-5`.
+  No mismatch: the sync stage is mechanical, and the reviewer re-derived its own structural greps rather than accepting the plan's probe table.
+- **Feedback-loop gap analysis** — Build ran baseline `check`/`lint`/vitest before step 1, targeted vitest plus `check` plus `fallow dead-code` after each move, and the full suite at the end; no end-only verification.
+
+### Changes made
+
+1. `.pi/agents/tidy-first-assessor.md`: the fallow block now says to run from the repo root on root-relative paths, never after `cd packages/<pkg>`, and names the error a package-directory run produces.
+2. `.pi/skills/fallow/SKILL.md`: maps the `invalid boundary configuration` / `autoDiscover path` error to a package-directory working directory rather than a broken config.
