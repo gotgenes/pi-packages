@@ -1345,6 +1345,8 @@ Deferred by composition, with the reason each carries: [#804] (staging slice 7, 
 - [#1043] — filed by [#1027]'s planning; deferred to a later phase (operator decision, 2026-10-08).
   It is [#1027]'s residual: `time { …; }`, `time -p ( … )`, and the other `time` shapes the grammar misreads stay floored, so they fail closed.
   The local review log holds no ask for any of them (measured: 0 `time {` asks in 23,641 lines), and recovering them needs a new span re-parse mechanism outside this phase's token-role budget.
+- [#1053] — filed by [#1042]'s planning; **becomes a new step in this phase, directly after [#1042]** (operator decision, 2026-10-09).
+  `env` and `xargs` option tables misplace the wrapped command (`env -P cat rm x`, `xargs -J cat rm x` earn `core-reader`), and `env -C /etc cat shadow` earns it with a moved cwd; it is [#1042]'s fail-open class on the other wrappers, landing on [#1042]'s grammar dispatch.
 - Feature issues [#691], [#687], [#680], [#654], [#648], [#604], [#603], [#472] — out of scope for a structural phase; [#680] is narrowed further by [#880] (a declared reader needs no floor override), and [#604] by [#813].
 
 #### Deferred tidyings swept
@@ -1728,9 +1730,23 @@ Release: independent
 When that word is a pure-reader core word, `floorExemptionOf` answers `"core-reader"`, so `sudo -e cat` resolves by `cat`'s rule instead of the `<indirection-bash-wrapper>` floor.
 
 - **Smell:** Category C (a write the peel proves as a read).
-- **Target:** `src/access-intent/bash/wrapper-analysis.ts` — a `sudo` layer carrying `-e`, `--edit`, or a short cluster containing `e` keeps the floor, and `executedUnitOf` names no inner command for it.
-- **Constraint:** fail-closed — the peel refuses rather than models sudoedit.
-- **Outcome:** under `bash: {"*": "allow"}`, `sudo -e cat` and `sudo --edit true` ask with `<indirection-bash-wrapper>`.
+- **Target:** `src/access-intent/bash/wrapper-analysis.ts` — a getopt-faithful `sudo` grammar (clusters, attached values, long options and their abbreviations, verified against `man sudo`) finds the inner command; a layer carrying edit (`-e`/`--edit`), shell (`-s`/`-i`), or directory-moving (`-D`/`-R`) mode keeps the floor, and `executedUnitOf` names no inner command for it.
+- **Constraint:** fail-closed — the peel refuses rather than models a mode that edits files, hands the operand to a shell, or moves where relative operands resolve.
+- **Outcome:** under `bash: {"*": "allow", "rm *": "deny"}`, `sudo -e cat`, `sudo --edit true`, and `sudo -D /etc cat shadow` ask with `<indirection-bash-wrapper>`, and `sudo --user cat rm x` and `sudo -nu cat rm x` no longer resolve by `cat`'s rule.
+- **Commit type:** `fix:`.
+
+Release: independent
+
+#### [#1053] `env` and `xargs` find their wrapped command by their real option grammar
+
+**Cause:** `innerCommandIndex` consumes a value only for the options `VALUE_TAKING_FLAGS` lists, and since [#803] `floorExemptionOf` reads that peel, so a missing entry misplaces the inner command: `env -P cat rm x` and `xargs -J cat rm x` earn `core-reader` and resolve by `cat`'s rule.
+`env -C`/`--chdir` parses correctly but moves where the inner command's relative operands resolve, so `env -C /etc cat shadow` earns `core-reader` while the path surfaces judge `shadow` against the agent's cwd.
+
+- **Smell:** Category C (a command the peel names differently from the one that runs).
+- **Target:** `src/access-intent/bash/wrapper-analysis.ts` — `env` and `xargs` grammars on [#1042]'s dispatch, each verified against a real `--help`/man page; `env -C`/`--chdir` and `env -S`/`--split-string` refuse the peel; the remaining `VALUE_TAKING_FLAGS` wrappers audited.
+- **Constraint:** fail-closed — a shape that today holds the floor only because a misplaced value is not a core word (`xargs -R 1 cat rm x`) is checked before a corrected table turns it into an exemption.
+- **Soft dependency:** [#1042], whose grammar dispatch this step extends.
+- **Outcome:** under `bash: {"*": "allow", "rm *": "deny"}`, `env -P cat rm x`, `xargs -J cat rm x`, and `env -C /etc cat shadow` ask with `<indirection-bash-wrapper>`.
 - **Commit type:** `fix:`.
 
 Release: independent
@@ -1804,6 +1820,7 @@ flowchart TD
     S1030 -.soft.-> S1033["✅ #1033<br/>A session grant covers one unit"]
     S1033 -.soft.-> S1027["✅ #1027<br/>Commands inside time ( … )"]
     S1027 -.soft.-> S1042["#1042<br/>sudo -e keeps the floor"]
+    S1042 -.soft.-> S1053["#1053<br/>env and xargs option grammars"]
     S963 -.soft.-> S880["#880<br/>commandEffects"]
     S880 --> S881["#881<br/>Blame reaches the ask"]
     S609 -.soft.-> S881
@@ -1828,7 +1845,7 @@ The diagram is laid out by dependency instead, so its shape and the working sequ
 - **Track A — role-carrying projection:** [#945] → [#863] → [#859] → [#957] → [#609] → [#977] → [#979] → [#985] → [#978].
   [#977] also re-enters `command-enumeration.ts` and the argument words `command-effects.ts`'s guards read, which Track B's [#924] and [#880] edit — sequence it against whichever of them is in flight rather than concurrently.
   Owns `src/access-intent/bash/token-collection.ts`, `token-classification.ts`, `bash-path-resolver.ts`, and the bash-path tests.
-- **Track B — proven and declared effects, and blame:** [#924] → [#992] → [#995] → [#963] → [#1027] → [#1042] → [#880] → [#881].
+- **Track B — proven and declared effects, and blame:** [#924] → [#992] → [#995] → [#963] → [#1027] → [#1042] → [#1053] → [#880] → [#881].
   [#924] owns `command-effects.ts` and the pure-reader core section of `docs/configuration.md`; [#963] owns `wrapper-analysis.ts` and ADR 0013 §11; [#880] owns `src/config/` and re-enters `command-effects.ts`; [#881] owns `src/presentation/` and the two bash path gates.
   [#881] touches `bash-path.ts` / `bash-external-directory.ts`; [#609]'s plan leaves both gates unchanged, but [#881]'s blame reads the candidate set [#609] widens, so sequence [#881] after [#609].
 - **Track C — the judgment lane:** [#882], a deliberation first; its code half touches `authority/delegation-envelope.ts`, `authority/permission-forwarding.ts`, and the payload core [#881] owns, so it lands after [#881].
@@ -1841,7 +1858,7 @@ The sandbox seam that Phase 15 briefly carried as a track of its own is now Phas
 
 - **Batch "declared-effects":** [#880], [#881] (ship together; tail = [#881]; release vehicle = [#880]'s `feat:` with [#881]'s `fix:` riding the same release).
   They ship together because [#881]'s blame line names the config key [#880] creates, and a prompt telling the user to declare an effect they cannot declare is worse than the prompt it replaces.
-- Independently releasable: [#945] (`fix:`), [#863] (`fix:`), [#859] (`fix:`), [#957] (`fix:`), [#609] (`fix!:` — newly prompts on a bare creating redirect under an explicit `path`/`path_write` rule, or after a non-literal `cd`), [#977] (`fix:`), [#979] (`fix:`), [#985] (`fix:`), [#978] (no release), [#924] (`fix:`), [#992] (`fix!:` — newly prompts on a computed argument that may lead with `-`), [#995] (`fix:`), [#1029] (`fix:`), [#1030] (`fix:`), [#1033] (`fix:`), [#1027] (`fix:`), [#1042] (`fix:`), [#882] (`feat:` if the checkpoint changes; a `docs:` amendment alone cuts no release).
+- Independently releasable: [#945] (`fix:`), [#863] (`fix:`), [#859] (`fix:`), [#957] (`fix:`), [#609] (`fix!:` — newly prompts on a bare creating redirect under an explicit `path`/`path_write` rule, or after a non-literal `cd`), [#977] (`fix:`), [#979] (`fix:`), [#985] (`fix:`), [#978] (no release), [#924] (`fix:`), [#992] (`fix!:` — newly prompts on a computed argument that may lead with `-`), [#995] (`fix:`), [#1029] (`fix:`), [#1030] (`fix:`), [#1033] (`fix:`), [#1027] (`fix:`), [#1042] (`fix:`), [#1053] (`fix:`), [#882] (`feat:` if the checkpoint changes; a `docs:` amendment alone cuts no release).
 
 ## Refactoring history
 
@@ -2014,5 +2031,6 @@ Each phase's findings, step plan, dependency diagram, and health metrics are pre
 [#1039]: https://github.com/gotgenes/pi-packages/issues/1039
 [#1042]: https://github.com/gotgenes/pi-packages/issues/1042
 [#1043]: https://github.com/gotgenes/pi-packages/issues/1043
+[#1053]: https://github.com/gotgenes/pi-packages/issues/1053
 [#490]: https://github.com/gotgenes/pi-packages/issues/490
 [ADR-0002]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-subagents/docs/decisions/0002-extensions-on-a-minimal-core.md
