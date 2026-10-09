@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [23.4.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v23.3.0...pi-subagents-v23.4.0) (2026-10-09)
+
+
+### Features
+
+* **pi-subagents:** report on each agent record why a resume would be refused ([b942f96](https://github.com/gotgenes/pi-packages/commit/b942f96309a8c36e25b3abe8258b6c18fbb10e7f)), closes [#912](https://github.com/gotgenes/pi-packages/issues/912)
+
+### Documentation
+
+* **pi-subagents:** admit resumeRefusal to SubagentRecord under decision 0005 ([0b772d8](https://github.com/gotgenes/pi-packages/commit/0b772d8763741d8e6c147c4d9aa7d2b208f2331e)), closes [#912](https://github.com/gotgenes/pi-packages/issues/912)
+
 ## [23.3.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v23.2.0...pi-subagents-v23.3.0) (2026-10-09)
 
 
