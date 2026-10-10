@@ -105,3 +105,62 @@ Filed follow-ups: [#1057] (deferred to a later phase) and [#1062] (out of scope 
 
 - The pre-completion reviewer's round-1 FAIL (`--max-lines`) was fixed and its delta round returned PASS before sync, so nothing was left open for the root.
 - The two reviewer rounds and the planning audit ran live probes in `ubuntu:24.04` containers (`--rm`; `--network none` except for `apt-get`); nothing privileged ran on the host.
+
+## Stage: Final Retrospective (2026-10-10T17:19:17Z)
+
+### Session summary
+
+The root `/ship` fast-forward-merged the 14-commit worktree branch, re-ran `lint` and `fallow dead-code` on the merged tree, and pushed `cf97a349`; CI passed.
+It closed #1053 with a comment anchored on the `env` fix, flagged PR [#1054] that its walk must read `GETOPT_GRAMMARS` now that the `xargs` row of `VALUE_TAKING_FLAGS` is gone, and released `pi-permission-system-v40.1.3`.
+The worktree and branch were torn down; [#1056] is the next Phase 15 step.
+
+### Observations
+
+#### What went well
+
+- Probing in a throwaway `ubuntu:24.04` container worked well as a verification source for GNU/util-linux tool grammars on a macOS host.
+  The planning audit used it to find four bypasses the issue never listed (`env -a`, `xargs -i`/`-l`, `watch`/`parallel` command lines, `doas -a`).
+- A scripted per-row arity-flip loop (`/tmp/rowmut.mjs`: flip one `GetoptGrammar` row at a time and rerun the two test files) replaced hand-picked mutations.
+  It found rows with no killing test in each grammar.
+  It proves each row is *tested*, not that it is *right*; the reviewer's live probe covered that second half.
+- The pre-completion reviewer (Sonnet) caught a fail-open regression the implementing session (Opus) introduced and its own mutation loop could not see.
+  Its delta round then probed every `xargs` and `env` option, separate and attached, against the binaries.
+- The ship ran cleanly: the plan, retro, and sync note carried the release marker and the PR [#1054] flag, so step 2 asked nothing.
+
+#### What caused friction (agent side)
+
+- `missing-context`: planning built each `xargs`/`env` grammar row from `--help`/`man` text and probed live only the shapes in the issue.
+  GNU `--help` prints `-L, --max-lines=MAX-LINES`, but the long form takes its value attached only, so step 2 listed it as `"value"` and `xargs --max-lines rm cat x` became `core-reader` while `rm cat x` ran — a regression against the base tree.
+  Impact: a review FAIL, one `fix:` commit plus one docs commit, and a second reviewer round (23 tool calls).
+- `other`: the plan predicted that deleting the `xargs` `GETOPT_GRAMMARS` entry would kill the `-i`/`-l` tests; the fallback walk happened to read them correctly.
+  Impact: none beyond one extra mutation.
+- `other`: the `doas` tests were first inserted inside the `env` `describe` block (self-caught before commit), and one `Edit` batch was rejected after `pi-autoformat` reflowed a test row.
+  Impact: a few re-reads; no rework.
+- `instruction-violation` (self-identified): two `\u2192`/`\u2014` escapes reached authored markdown.
+  `pi-autoformat` decoded one, and the other survived inside a code span (which the gate exempts) until a manual `rg`, costing an `--amend`.
+  The `markdown-conventions` rule and gates already cover this; it recurred, but nothing new is needed.
+- `instruction-violation` (self-identified, ship): the final report said the roadmap's last-step check had not been run, rather than running it.
+  The check (one `grep` of the Phase 15 headings) shows [#1056] still open, so no `/finish-phase` was due.
+  Impact: none.
+
+#### What caused friction (user side)
+
+- During both reviewer rounds the operator got `external_directory` prompts naming `/xa.sh` and `/probe.sh`, which looked like misparses of `/tmp/…` paths.
+  They were the container-side argument of `docker run … sh /probe.sh`, judged as a host path; `/tmp/*` was already allowed, so only that word asked.
+  The second report arrived as an unexpanded `[paste #1 +13 lines]` placeholder, so the peer spent about seven tool calls reconstructing the prompt from the review log and the reviewer's transcript.
+  Opportunity: when a paste fails to expand, a one-line restatement ("it asked about `/probe.sh`") would have cut that to one call. [#1062] (show the producing word in the prompt) addresses the confusion at its source.
+
+### Diagnostic details
+
+- **Model-performance correlation** — planning and TDD ran on `claude-opus-5-5` (high thinking), sync on `claude-sonnet-5-5` (mechanical; appropriate), ship and retro on `claude-opus-5-5`.
+  All three subagents ran `claude-sonnet-5-5`: the tidy-first assessor (6 tool calls), reviewer round 1 (31), and reviewer round 2 (23).
+  The judgment-heavy review on Sonnet found the defect the Opus implementer missed, so no mismatch.
+- **Escalation-delay tracking** — no rabbit hole; the longest single-question sequence was the `/probe.sh` trace (about seven calls), which ended in a measured answer and a filed issue.
+- **Feedback-loop gap analysis** — TDD ran the targeted files after each Red and Green, `check` after each Green, and the full package suite before each commit.
+  Sync skipped `check`/`test` after its rebase because only `pi-subagents` commits had landed on `main`; CI on the shipped tip covered it.
+
+### Changes made
+
+1. `.pi/skills/package-pi-permission-system/SKILL.md`: added the rule that a `GetoptGrammar` row's arity is measured against the binary, both separate and attached, never read off `--help` (the `--max-lines` example).
+
+[#1056]: https://github.com/gotgenes/pi-packages/issues/1056

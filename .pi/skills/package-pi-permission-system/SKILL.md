@@ -331,6 +331,8 @@ The classifiers, the probe, the option-value and statement-operand walkers, and 
 
 A predicate whose `false` lets a bash word skip a guard ("cannot lead with `-`", "is one word") is derived from bash's expansion rules, not the parse tree's node shapes: a quoted `"$@"`, an indirect `"${!a}"`, and a nameref (`declare -n`) each split with nothing in their node to show it, and `~` follows the inherited `HOME`, or on bash 3.2 (Pi's macOS `/bin/bash`) one the command reassigns.
 
+A `GetoptGrammar` row's arity is measured by running the option against the binary both separate (`--opt v`) and attached (`--opt=v`, `-ov`), never read off `--help`: GNU `xargs` prints `-L, --max-lines=MAX-LINES`, but its long form takes only an attached value.
+
 When a plan or test asserts a specific bash repro string, trace the token through the classifier and path normalization first — an issue's headline repro can describe a symptom whose literal input never reaches the gate being changed, and normalization re-expands a leading `~`/`$HOME` the classifier left literal.
 
 [#261]: https://github.com/gotgenes/pi-packages/issues/261
