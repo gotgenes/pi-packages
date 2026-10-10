@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [40.1.4](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v40.1.3...pi-permission-system-v40.1.4) (2026-10-10)
+
+
+### Bug Fixes
+
+* **pi-permission-system:** scope a wrapper's session approval to its inner command ([97f805f](https://github.com/gotgenes/pi-packages/commit/97f805fc7f07be93ef0fc054310755bddabada24)), closes [#1055](https://github.com/gotgenes/pi-packages/issues/1055), closes [#1054](https://github.com/gotgenes/pi-packages/issues/1054)
+* **pi-permission-system:** keep an xargs replacement template exact in session approvals ([b4a4d06](https://github.com/gotgenes/pi-packages/commit/b4a4d0648c9cf4e873a7679e8f701925232cd5aa)), closes [#1055](https://github.com/gotgenes/pi-packages/issues/1055), closes [#1054](https://github.com/gotgenes/pi-packages/issues/1054)
+* **pi-permission-system:** keep a wrapped command exact when a word holds a non-breaking space ([f16aa96](https://github.com/gotgenes/pi-packages/commit/f16aa968dbeed76b23967838b88fff0d18e93cde)), closes [#1055](https://github.com/gotgenes/pi-packages/issues/1055), closes [#1054](https://github.com/gotgenes/pi-packages/issues/1054)
+
+### Documentation
+
+* **pi-permission-system:** describe wrapper session-approval suggestions ([a999c58](https://github.com/gotgenes/pi-packages/commit/a999c585e60c8d4d8836de744788440712c9d099)), closes [#1055](https://github.com/gotgenes/pi-packages/issues/1055), closes [#1054](https://github.com/gotgenes/pi-packages/issues/1054)
+* **pi-permission-system:** note that a bare inline-shell payload keeps its exact session pattern ([3d53393](https://github.com/gotgenes/pi-packages/commit/3d53393c9da27c74c900902d2f0ec2453df1055d)), closes [#1055](https://github.com/gotgenes/pi-packages/issues/1055), closes [#1054](https://github.com/gotgenes/pi-packages/issues/1054)
+
 ## [40.1.3](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v40.1.2...pi-permission-system-v40.1.3) (2026-10-10)
 
 
