@@ -1383,6 +1383,36 @@ describe("resolveBashCommandCheck: a wrapper's session grant", () => {
       },
     );
   });
+
+  describe("approved for an xargs replacement template", () => {
+    const command = "xargs -I X nohup X first";
+
+    function grantFromApproval(): Ruleset {
+      const asking = decide(policy, command);
+      expect(asking.state).toBe("ask");
+      return [sessionRule("bash", suggestBashPattern(asking.command ?? ""))];
+    }
+
+    it("suggests the whole command", () => {
+      expect(grantFromApproval()[0].pattern).toBe(command);
+    });
+
+    it("allows the same command from the session", () => {
+      expect(decide(policy, command, grantFromApproval()).source).toBe(
+        "session",
+      );
+    });
+
+    it("still asks when the template changes", () => {
+      const result = decide(
+        policy,
+        "xargs -I X nohup X second",
+        grantFromApproval(),
+      );
+      expect(result.state).toBe("ask");
+      expect(result.source).not.toBe("session");
+    });
+  });
 });
 
 function resolverOver(

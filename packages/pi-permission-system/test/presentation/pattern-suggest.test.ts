@@ -85,6 +85,7 @@ describe("suggestBashPattern", () => {
         ["xargs mytool argument", "xargs mytool *"],
         ["xargs -0 mytool a", "xargs -0 mytool *"],
         ["xargs -n 1 mytool a", "xargs -n 1 mytool *"],
+        ["xargs -L1 mytool a", "xargs -L1 mytool *"],
         ["timeout 5 mytool argument", "timeout 5 mytool *"],
         ["nice -n 5 mytool a", "nice -n 5 mytool *"],
         ["stdbuf -oL mytool a", "stdbuf -oL mytool *"],
@@ -112,6 +113,12 @@ describe("suggestBashPattern", () => {
         ["an unadmitted option", "nohup -- mytool a"],
         ["the peel depth", "nohup nohup nohup nohup nohup mytool a"],
         ["a reserved word", "nohup if a"],
+        ["an xargs replacement", "xargs -I X mytool X first"],
+        ["an xargs replacement", "xargs -IX nohup X a"],
+        ["an xargs replacement", "xargs -i mytool a"],
+        ["an xargs replacement", "xargs --replace mytool a"],
+        ["an xargs replacement", "xargs --rep=X mytool X"],
+        ["an xargs replacement", "xargs -0I X mytool X"],
       ])("%s: %s", (_reason, command) => {
         expect(suggestBashPattern(command)).toBe(command);
       });

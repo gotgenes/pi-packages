@@ -359,11 +359,27 @@ export function sessionCommandIndex(tokens: readonly string[]): number | null {
 function generalizesLayer(layer: readonly CommandWord[]): boolean {
   const name = wrapperName(layer);
   if (name === undefined || runsOpaqueCommandLine(layer)) return false;
+  if (name === "xargs") return !mayReplaceArguments(layer);
   if (GETOPT_GRAMMARS.has(name)) return true;
   return (
     isAdmittedModifierLayer(layer) ||
     layer.slice(1).every((word) => !word.text.startsWith("-"))
   );
+}
+
+/**
+ * True when an `xargs` layer may carry a replacement option (`-I`, `-i`,
+ * `--replace`), which lets standard input rewrite the inner command's
+ * arguments, a nested wrapper's executable included.
+ *
+ * Deliberately wider than the grammar: any short cluster holding `I` or `i`
+ * and any long option opening `--r` counts, since a false positive only keeps
+ * the whole command.
+ */
+function mayReplaceArguments(layer: readonly CommandWord[]): boolean {
+  return layer
+    .slice(1)
+    .some(({ text }) => /^-[^-]*[Ii]/.test(text) || text.startsWith("--r"));
 }
 
 /**
