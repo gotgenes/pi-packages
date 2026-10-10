@@ -111,5 +111,37 @@ Repository lint equivalents were executed explicitly, and the branch's Conventio
 The original missing issue-first discussion and planning remain historical omissions, not gaps that a backdated plan can erase.
 Future contributions should establish the issue/design discussion first and run the independent quality gate before requesting review.
 
+## Stage: Rebase and getopt adaptation (2026-10-10T04:47:13Z)
+
+### Session summary
+
+The operator requested rebasing and implementing the maintainer's [PR comment](https://github.com/gotgenes/pi-packages/pull/1054#issuecomment-6093819529).
+The branch was rebased onto upstream `main` at `d5aadf724fca7e6fb5124bc677c0ff7b41136add`; conflicts in the wrapper table comment and architecture record were resolved by preserving upstream grammar behavior and this branch's session-scope documentation.
+The original pre-rebase branch remains available locally as `backup/wrapper-session-before-getopt-rebase`.
+
+The session walk now relies on `GETOPT_GRAMMARS` for `sudo`, `env`, `xargs`, and `doas`, retaining the separate option allowlist for table-walk wrappers.
+The `xargs` replacement scan consumes options and operands through `XARGS_GRAMMAR`, handles clustered `-I`/`-i` and abbreviated `--replace`, and keeps replacement-controlled nested executables and subcommand prefixes exact.
+GNU optional arguments no longer consume the following executable word, and refused modes retain the whole command.
+This supersedes the earlier implementation's conservative blanket refusal of `-i`; the previous stage remains a historical record.
+The user documentation and architecture entry were updated to describe the current behavior.
+
+### Validation and independent review
+
+The focused presentation suite first reported 20 failures after rebase, then passed with 118 tests after adaptation.
+Temporarily disabling the replacement-prefix check made six new replacement-controlled cases fail; the implementation was restored before final validation.
+Synthetic CLI probes against the installed `/opt/homebrew/bin/gxargs` used a fixed `/usr/bin/printf` utility and confirmed attached-only optional values, clustered and abbreviated replacement options, and an `-i` token consumed as an `-E` operand.
+These are local GNU execution checks, not an interactive Pi reproduction or cross-platform verification.
+
+The implementation session and a fresh-context `pre-completion-reviewer` independently ran `pnpm run check`, `pnpm run lint`, `pnpm run test`, and `pnpm fallow dead-code`; all passed.
+The repository test run reported 6033 permission-system tests and 286 repository-script tests.
+The reviewer inspected the full rebased PR including the uncommitted adaptation, verified the issue's acceptance criteria, and returned **Overall: PASS**, with no findings.
+No Mermaid diagram changed.
+No push, upstream CI verification, merge, release, or issue closure was performed in this stage.
+
+### Observations
+
+A rebase can leave a session consumer reading a removed lookup-table row while the shared wrapper peel has already moved to a grammar.
+Both locating the inner command and recognizing replacement options must respect that grammar's operand boundaries; an option-looking operand is not itself an option.
+
 [#1054]: https://github.com/gotgenes/pi-packages/pull/1054
 [#1055]: https://github.com/gotgenes/pi-packages/issues/1055

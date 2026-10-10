@@ -94,7 +94,9 @@ Wrapped prefixes always use a space before the trailing wildcard, so an approval
 Unknown wrapper options, shell quoting or expansion, inline-shell payloads, parallel command templates, and `find`/`fd` exec forms retain the whole command without adding a wildcard.
 An `xargs -I` replacement may vary arguments of an ordinary fixed executable, so `xargs -I X mytool X first` still suggests `xargs -I X mytool *`.
 A replacement combined with a nested wrapper, or one that changes the inner arity prefix, instead keeps the whole command: `xargs -I X nohup X first` and `xargs -I X git X first` gain no appended wildcard.
-The legacy optional-argument `xargs -i` form also keeps the whole command rather than inferring an executable from dialect-dependent option arity.
+The session walk reads `sudo`, `env`, `xargs`, and `doas` through the same getopt grammars as the wrapper peel, including short-option clusters, attached values, and unambiguous long-option abbreviations.
+The optional values of GNU `xargs -i`, `-l`, and `--max-lines` never consume the following command word; `-i` and `--replace` use the same conservative replacement check as `-I`.
+Options that refuse the peel, such as `env -C`, `-S`, `-P`, or `-a`, also keep the whole session command without an appended wildcard.
 The wrapper interpretation shares the gate's vocabulary in `src/access-intent/bash/wrapper-analysis.ts`; it does not change the gate's wrapper floors or exemptions.
 
 ## Review Log Entries

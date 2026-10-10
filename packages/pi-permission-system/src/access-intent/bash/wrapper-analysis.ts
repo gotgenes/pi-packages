@@ -71,7 +71,11 @@ export function sessionCommandIndex(tokens: readonly string[]): number | null {
     }
     const start = innerCommandIndex(words);
     if (start === -1 || start >= words.length) return null;
-    if (!sessionWrapperOptionsKnown(name, words.slice(1, start))) return null;
+    if (
+      !GETOPT_GRAMMARS.has(name) &&
+      !sessionWrapperOptionsKnown(name, words.slice(1, start))
+    )
+      return null;
     if (name === "xargs" && !sessionReplacementPrefixKnown(words, start)) {
       return null;
     }
@@ -88,19 +92,15 @@ function sessionReplacementPrefixKnown(
   words: readonly WrapperWord[],
   start: number,
 ): boolean {
-  const values = VALUE_TAKING_FLAGS.get("xargs") ?? EMPTY_FLAGS;
   const utility = words.slice(start);
-  for (let index = 1; index < start; index++) {
+  for (let index = 1; index < start; ) {
     const text = words[index].text;
     if (text === "--") break;
-    // Legacy -i has dialect-dependent optional arity; never infer its utility.
-    if (text.startsWith("-i")) return false;
-    const marker =
-      text === "-I"
-        ? words.at(index + 1)?.text
-        : text.startsWith("-I")
-          ? text.slice(2)
-          : undefined;
+    const consumed = text.startsWith("--")
+      ? longOptionWords(text.slice(2), XARGS_GRAMMAR.long)
+      : shortClusterWords(text.slice(1), XARGS_GRAMMAR.short);
+    if (consumed === undefined) return false;
+    const marker = xargsReplacementMarker(text, words.at(index + 1)?.text);
     if (marker !== undefined) {
       if (marker === "" || classifyWrapperWords(utility) !== undefined) {
         return false;
@@ -111,9 +111,36 @@ function sessionReplacementPrefixKnown(
       const subcommand = prefix(utility.map((word) => word.text)).slice(1);
       if (subcommand.some((word) => word.includes(marker))) return false;
     }
-    if (values.has(text)) index++;
+    index += consumed;
   }
   return true;
+}
+
+/** Read replacement options only where the getopt grammar says an option starts. */
+function xargsReplacementMarker(
+  option: string,
+  next: string | undefined,
+): string | undefined {
+  if (option.startsWith("--")) {
+    const body = option.slice(2);
+    const equals = body.indexOf("=");
+    const name = equals === -1 ? body : body.slice(0, equals);
+    return "replace".startsWith(name) &&
+      resolveLongOption(name, XARGS_GRAMMAR.long) === "optional"
+      ? equals === -1
+        ? "{}"
+        : body.slice(equals + 1)
+      : undefined;
+  }
+  const letters = option.slice(1);
+  for (let position = 0; position < letters.length; position++) {
+    const letter = letters[position];
+    const arity = XARGS_GRAMMAR.short.get(letter);
+    if (letter === "I") return letters.slice(position + 1) || next;
+    if (letter === "i") return letters.slice(position + 1) || "{}";
+    if (arity !== "flag") break;
+  }
+  return undefined;
 }
 
 function sessionWrapperOptionsKnown(
@@ -545,7 +572,7 @@ function innerCommandIndex(words: readonly WrapperWord[]): number {
  * first.
  */
 function getoptInnerIndex(
-  words: readonly CommandWord[],
+  words: readonly WrapperWord[],
   grammar: GetoptGrammar,
 ): number {
   let index = 1;
@@ -632,7 +659,7 @@ function resolveLongOption(
  * its value-taking options ({@link VALUE_TAKING_FLAGS}) and whether it takes a
  * leading operand ({@link LEADING_OPERAND_WRAPPERS}).
  */
-function tableInnerIndex(words: readonly CommandWord[], name: string): number {
+function tableInnerIndex(words: readonly WrapperWord[], name: string): number {
   const valueTaking = VALUE_TAKING_FLAGS.get(name) ?? EMPTY_FLAGS;
   let operandPending = LEADING_OPERAND_WRAPPERS.has(name);
   let index = 1;

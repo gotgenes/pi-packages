@@ -110,7 +110,6 @@ describe("wrapper session patterns", () => {
     "xargs -I X git X first",
     "xargs -IX pnpm run X first",
     "xargs -i nohup mytool first",
-    "xargs -iX mytool X first",
     "nohup sh -c 'mytool; other'",
     "bash -c 'mytool; other'",
     "find . -exec mytool {} \\; -exec other {} \\;",
@@ -120,6 +119,54 @@ describe("wrapper session patterns", () => {
     "rush mytool argument",
   ])("does not widen an ambiguous or opaque wrapper: %s", (command) => {
     expect(suggestBashPattern(command)).toBe(command);
+  });
+
+  describe("getopt wrapper options", () => {
+    it.each([
+      ["sudo -nu root mytool first", "sudo -nu root mytool *"],
+      ["env -iu FOO mytool first", "env -iu FOO mytool *"],
+      ["env --unset=FOO mytool first", "env --unset=FOO mytool *"],
+      ["env - mytool first", "env - mytool *"],
+      ["doas -nu root mytool first", "doas -nu root mytool *"],
+      ["xargs -n 1 mytool first", "xargs -n 1 mytool *"],
+      ["xargs -l mytool first", "xargs -l mytool *"],
+      ["xargs -l2 mytool first", "xargs -l2 mytool *"],
+      ["xargs --max-lines mytool first", "xargs --max-lines mytool *"],
+      ["xargs --max-lines=2 mytool first", "xargs --max-lines=2 mytool *"],
+      ["xargs -i mytool first", "xargs -i mytool *"],
+      ["xargs -iX mytool X first", "xargs -iX mytool *"],
+      ["xargs -tIX mytool X first", "xargs -tIX mytool *"],
+      ["xargs --replace=X mytool X first", "xargs --replace=X mytool *"],
+      ["xargs --rep=X mytool X first", "xargs --rep=X mytool *"],
+      ["xargs -E -I mytool first", "xargs -E -I mytool *"],
+      ["xargs -E -i nohup mytool first", "xargs -E -i nohup mytool *"],
+    ])("locates the fixed command in %s", (command, expected) => {
+      expect(suggestBashPattern(command)).toBe(expected);
+    });
+
+    it.each([
+      "env -C /tmp mytool first",
+      "env -S mytool first",
+      "env -P /tmp mytool first",
+      "env -a alias mytool first",
+      "env --chdir=/tmp mytool first",
+      "sudo -s mytool first",
+      "doas -C /tmp/config mytool first",
+      "xargs -J X mytool first",
+      "xargs --max mytool first",
+      "xargs -tIX nohup X first",
+      "xargs -tiX git X first",
+      "xargs --replace=X nohup X first",
+      "xargs --rep=X git X first",
+      "xargs -iX git X first",
+      "xargs --replace nohup mytool first",
+      "sudo env -C /tmp mytool first",
+    ])(
+      "keeps refused or replacement-controlled commands exact: %s",
+      (command) => {
+        expect(suggestBashPattern(command)).toBe(command);
+      },
+    );
   });
 
   it("uses the same narrow scope in the session option label", () => {
