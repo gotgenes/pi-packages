@@ -245,8 +245,16 @@ function onlyModifiesExecution(
   peeled: readonly (readonly CommandWord[])[],
   inner: readonly CommandWord[],
 ): boolean {
+  return peeled.every(isAdmittedModifierLayer) && reachedLiteralCommand(inner);
+}
+
+/**
+ * True when a peel ended at an ordinary command spelled as a literal name: not
+ * a wrapper it could not see past, and not shell syntax standing where the
+ * command name should be.
+ */
+function reachedLiteralCommand(inner: readonly CommandWord[]): boolean {
   return (
-    peeled.every(isAdmittedModifierLayer) &&
     classifyWrapperWords(inner) === undefined &&
     isLiteralCommandName(inner.at(0)?.text ?? "")
   );
