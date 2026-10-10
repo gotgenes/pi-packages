@@ -45,15 +45,21 @@ export function suggestBashPattern(command: string): string {
   if (!stripped) return "";
   const tokens = stripped.split(/\s+/);
   if (tokens.length === 1) return stripped;
-  const commandIndex = sessionCommandIndex(tokens);
+  // A wrapper's words are split only where bash splits them: `\s` also splits
+  // on a non-breaking space or `\r`, which would read `rm<NBSP>-rf` as `rm`.
+  const words = stripped.split(BASH_BLANKS);
+  const commandIndex = sessionCommandIndex(words);
   if (commandIndex === null) return stripped;
-  if (commandIndex > 0) return wrappedPattern(tokens, commandIndex);
+  if (commandIndex > 0) return wrappedPattern(words, commandIndex);
   const meaningful = prefix(tokens);
   if (meaningful.length >= tokens.length) {
     return `${stripped}*`;
   }
   return `${meaningful.join(" ")} *`;
 }
+
+/** The blanks bash splits a command's words on. */
+const BASH_BLANKS = /[ \t\n]+/;
 
 /**
  * The wrapper words kept literally, then the inner command's arity prefix.
