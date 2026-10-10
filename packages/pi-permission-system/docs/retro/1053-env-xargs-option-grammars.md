@@ -89,3 +89,19 @@ The `pi-permission-system` suite went from 5779 to 5951 tests (+172).
 [#1054]: https://github.com/gotgenes/pi-packages/pull/1054
 [#1057]: https://github.com/gotgenes/pi-packages/issues/1057
 [#1062]: https://github.com/gotgenes/pi-packages/issues/1062
+
+## Stage: Sync (worktree) (2026-10-10T04:12:16Z)
+
+### Session summary
+
+`pnpm run lint` and `pnpm fallow dead-code` pass from the worktree root.
+The plan's marker is `**Release:** ship independently`; the release will carry the seven `fix:` commits (xargs in three, env, doas, the command-line wrappers, and the `--max-lines` correction).
+PR [#1054] reads `VALUE_TAKING_FLAGS.get("xargs")`, a row this change removes, so flag it on that PR at ship time.
+Filed follow-ups: [#1057] (deferred to a later phase) and [#1062] (out of scope for Phase 15).
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-1053--/2026-10-09T05-04-48-439Z_01a11f0c-b336-7205-ab49-b78f67d22a17.jsonl` — read with `read_session_file({ path: "<path>" })` for message-level verification at land/retro time.
+
+### Observations
+
+- The pre-completion reviewer's round-1 FAIL (`--max-lines`) was fixed and its delta round returned PASS before sync, so nothing was left open for the root.
+- The two reviewer rounds and the planning audit ran live probes in `ubuntu:24.04` containers (`--rm`; `--network none` except for `apt-get`); nothing privileged ran on the host.
