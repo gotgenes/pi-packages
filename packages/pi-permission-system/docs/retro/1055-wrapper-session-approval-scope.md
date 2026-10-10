@@ -79,3 +79,26 @@ A non-breaking `fix(pi-permission-system):` — a user who relied on `nohup *` s
 
   and the ship-stage close comment on PR #1054 thanks @plucury by name and links the implementing SHA(s).
   Reference the PR as `Refs #1054`, never a closing keyword.
+
+## Stage: Planning (2026-10-10T21:00:41Z)
+
+### Session summary
+
+Planned the simplified design recorded at the PR review stage: a new `sessionCommandIndex` in `wrapper-analysis.ts` that reuses the existing `unwrapIndirection` peel, plus a per-layer `generalizesLayer` predicate and a small branch in `suggestBashPattern`.
+A prototype was applied to `main`, measured (5951 tests green, `fallow audit` exit 0, about +41 lines), and reverted; the plan is in `docs/plans/1055-wrapper-session-approval-scope.md` with four steps (refactor, two `fix:`, docs).
+
+### Observations
+
+- The Decide gate was satisfied by the PR review stage's recorded operator decision, so no new `ask_user` call was made; no design ambiguity survived the prototype.
+- Mutation probing on the prototype found two redundant guards, both dropped from the design: `peeled.length === 0` (the extracted `reachedLiteralCommand` check covers a refused first layer) and an `EXEC_CONDITIONAL_WRAPPERS` row (a `find`/`fd` exec flag is an option word, so the table-walk admission row already refuses it).
+- The table-walk admission reuses `isAdmittedModifierLayer` or requires an option-free layer; this replaces the PR's `sessionWrapperOptionsKnown` second allowlist and is what keeps `timeout --sig KILL 5 mytool` from suggesting `timeout --sig KILL 5 *`.
+- Converting whitespace tokens to `CommandWord`s with `computed` set by a shell-syntax screen makes `isAdmittedModifierLayer`'s literal check honest for string input, so no type widening of the vocabulary functions is needed (the PR widened them to `Pick<CommandWord, "text">`).
+- The tidy-first assessor recommended one preparatory extraction (`reachedLiteralCommand` out of `onlyModifiesExecution`), adopted as step 1; it suggested reusing `runsOpaqueCommandLine` and a new "Session patterns" section banner before the unwrapping section, both adopted.
+- Kept the PR's always-space-before-wildcard shape (`nohup git log *`, not `nohup git log*`) as narrower than the unwrapped arity rule.
+- One `fallow audit` run exited 2 while another `fallow` invocation ran concurrently; the immediate rerun exited 0.
+  Do not run two `fallow` commands at once.
+- Sibling work: PR #971 (`xargs` floor lift for a rule pinning the inner command) composes with this change; #604 (widen session patterns) is the opposite direction and stays parked.
+
+#### Deferred tidyings
+
+- `wrapper-analysis.ts`: `mayReplaceArguments` is a textual over-approximation of `xargs` replacement options; deriving it from `XARGS_GRAMMAR` would be exact but is a design change (assessor: rejected as scope creep).
