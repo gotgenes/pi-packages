@@ -132,6 +132,26 @@ describe("describeToolGate", () => {
     expect(desc.payload.request.invokedToolName).toBe("exec_command");
   });
 
+  it("grants and labels a wrapped command by its inner command", () => {
+    const command = "nohup mytool argument";
+    const desc = describeToolGate(
+      makeTcc({ toolName: "bash", input: { command } }),
+      makeCheckResult("ask", {
+        toolName: "bash",
+        source: "bash",
+        command,
+        matchedPattern: "<indirection-bash-wrapper>",
+      }),
+      makeFormatter(),
+    );
+    expect(desc.sessionApproval?.grants).toEqual([
+      { surface: "bash", pattern: "nohup mytool *" },
+    ]);
+    expect(desc.promptDetails.sessionLabel).toBe(
+      'Yes, allow bash "nohup mytool *" for this session',
+    );
+  });
+
   it("returns mcp surface with target in decision.value for MCP tools", () => {
     const check = makeCheckResult("ask", {
       toolName: "mcp",

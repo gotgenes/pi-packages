@@ -70,6 +70,53 @@ describe("suggestBashPattern", () => {
       "rm *",
     );
   });
+
+  describe("wrapper commands", () => {
+    describe("generalizes past the wrappers to the inner command", () => {
+      it.each([
+        ["nohup mytool argument", "nohup mytool *"],
+        ["nohup mytool", "nohup mytool *"],
+        ["nohup git status --short", "nohup git status *"],
+        ["nohup ./run.sh a", "nohup ./run.sh *"],
+        ["sudo aws s3 rm s3://bucket", "sudo aws s3 rm *"],
+        ["sudo FOO=bar mytool a", "sudo FOO=bar mytool *"],
+        ["env FOO=bar mytool argument", "env FOO=bar mytool *"],
+        ["doas mytool a", "doas mytool *"],
+        ["xargs mytool argument", "xargs mytool *"],
+        ["xargs -0 mytool a", "xargs -0 mytool *"],
+        ["xargs -n 1 mytool a", "xargs -n 1 mytool *"],
+        ["timeout 5 mytool argument", "timeout 5 mytool *"],
+        ["nice -n 5 mytool a", "nice -n 5 mytool *"],
+        ["stdbuf -oL mytool a", "stdbuf -oL mytool *"],
+        ["flock /tmp/l mytool a", "flock /tmp/l mytool *"],
+        ["sudo -u root nohup mytool argument", "sudo -u root nohup mytool *"],
+      ])("%s suggests %s", (command, pattern) => {
+        expect(suggestBashPattern(command)).toBe(pattern);
+      });
+    });
+
+    describe("keeps the whole command when generalizing is unproven", () => {
+      it.each([
+        ["shell syntax", "sudo mytool $HOME"],
+        ["shell syntax", "timeout $T mytool a"],
+        ["a non-literal inner command", "nohup ~/bin/mytool a"],
+        ["an opaque payload", "sudo bash -c mytool"],
+        ["a refused peel", "sudo -s mytool"],
+        ["a refused peel", "env -C /tmp mytool a"],
+        ["an exec clause", "find . -exec mytool x +"],
+        ["an exec clause", "fd x -x mytool"],
+        ["an opaque command line", "watch mytool x"],
+        ["an opaque command line", "parallel mytool ::: a"],
+        ["an unadmitted option", "timeout --sig KILL 5 mytool a"],
+        ["an unadmitted option", "flock -w 5 /tmp/l mytool a"],
+        ["an unadmitted option", "nohup -- mytool a"],
+        ["the peel depth", "nohup nohup nohup nohup nohup mytool a"],
+        ["a reserved word", "nohup if a"],
+      ])("%s: %s", (_reason, command) => {
+        expect(suggestBashPattern(command)).toBe(command);
+      });
+    });
+  });
 });
 
 describe("suggestMcpPattern", () => {

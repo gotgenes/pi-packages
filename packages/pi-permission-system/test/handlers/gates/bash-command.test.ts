@@ -8,6 +8,7 @@ import { pathFlavorForPlatform } from "#src/path/path-flavor";
 import { PathNormalizer } from "#src/path/path-normalizer";
 import { PermissionResolver } from "#src/policy/permission-resolver";
 import type { Ruleset } from "#src/policy/rule";
+import { suggestBashPattern } from "#src/presentation/pattern-suggest";
 import type { PermissionCheckResult, PermissionState } from "#src/types";
 
 import { bashCommandOf, makeResolver } from "#test/helpers/gate-fixtures";
@@ -1336,6 +1337,51 @@ describe("resolveBashCommandCheck: env, xargs, and doas option grammars", () => 
       expect(result.matchedPattern).toBe("*");
       expect(result.floorExemption).toBe("core-reader");
     });
+  });
+});
+
+describe("resolveBashCommandCheck: a wrapper's session grant", () => {
+  beforeAll(async () => {
+    await warmBashParser();
+  });
+
+  const policy: Record<string, PermissionState> = { "*": "allow" };
+
+  describe.each([
+    "nohup",
+    "sudo",
+    "env FOO=bar",
+    "xargs",
+    "doas",
+    "sudo -u root nohup",
+  ])("approved for %s mytool first", (wrapper) => {
+    function grantFromApproval(): Ruleset {
+      const asking = decide(policy, `${wrapper} mytool first`);
+      expect(asking.state).toBe("ask");
+      return [sessionRule("bash", suggestBashPattern(asking.command ?? ""))];
+    }
+
+    it("suggests the wrapper and its inner command", () => {
+      expect(grantFromApproval()[0].pattern).toBe(`${wrapper} mytool *`);
+    });
+
+    it.each([`${wrapper} mytool second`, `${wrapper} mytool`])(
+      "allows %s from the session",
+      (command) => {
+        const result = decide(policy, command, grantFromApproval());
+        expect(result.state).toBe("allow");
+        expect(result.source).toBe("session");
+      },
+    );
+
+    it.each([`${wrapper} othertool second`, `${wrapper} mytool-other x`])(
+      "still asks for %s",
+      (command) => {
+        const result = decide(policy, command, grantFromApproval());
+        expect(result.state).toBe("ask");
+        expect(result.source).not.toBe("session");
+      },
+    );
   });
 });
 

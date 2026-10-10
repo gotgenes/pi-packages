@@ -3,10 +3,11 @@
  * what it actually runs, and whether its floor still has a reason to hold.
  *
  * Pure and word-based; the AST walk that produces the words lives in
- * `command-enumeration.ts`. The three questions live here together
- * deliberately: the shape that floors a unit to `ask`, the shape that names its
- * inner command, and the shape that exempts it must agree, and separate
- * classifiers over the same vocabulary would drift.
+ * `command-enumeration.ts`. The questions live here together deliberately:
+ * the shape that floors a unit to `ask`, the shape that names its inner
+ * command, the shape that exempts it, and how far a session approval may
+ * generalize past it must agree, and separate classifiers over the same
+ * vocabulary would drift.
  */
 
 import type { FloorExemption } from "#src/types";
@@ -315,6 +316,74 @@ function hasAttachedValue(
 /** A command name spelled literally: no quoting, expansion, or shell syntax. */
 function isLiteralCommandName(text: string): boolean {
   return LITERAL_COMMAND_NAME.test(text) && !RESERVED_WORDS.has(text);
+}
+
+// ── Session patterns ─────────────────────────────────────────────────────────
+
+/**
+ * Where the inner command starts for a session-approval pattern: `0` for an
+ * ordinary command, the count of peeled wrapper words when every layer may be
+ * generalized past, or `null` to keep the whole command.
+ *
+ * A session grant skips the wrapper floor, so the pattern built from this
+ * index is the grant's whole width: everything before the index stays literal,
+ * and only the inner command's arguments may vary. Each `null` is a shape where
+ * a pattern ending in a wildcard could name a command the human never saw —
+ * shell syntax the whitespace split cannot read, an opaque payload, a peel
+ * that stopped short, or a layer {@link generalizesLayer} refuses.
+ *
+ * The count is summed over the peeled layers rather than taken from the inner
+ * command's length, since the walk trims an exec terminator off the end.
+ */
+export function sessionCommandIndex(tokens: readonly string[]): number | null {
+  const words = literalWordsOf(tokens);
+  if (classifyWrapperWords(words) === undefined) return 0;
+  if (words.some((word) => word.computed)) return null;
+  const unwrapped = unwrapIndirection(words, "");
+  if (unwrapped.kind === "opaque") return null;
+  if (!unwrapped.peeled.every(generalizesLayer)) return null;
+  if (!reachedLiteralCommand(unwrapped.words)) return null;
+  return unwrapped.peeled.reduce((count, layer) => count + layer.length, 0);
+}
+
+/**
+ * True when a session pattern may keep a peeled layer literal and vary what
+ * follows its inner command.
+ *
+ * A getopt-read wrapper's peel already refuses an unlisted or mode-changing
+ * option. A table-read wrapper skips an unknown option as a flag, so it is
+ * admitted only by the floor exemption's own admission or with no option at
+ * all; that also refuses a `find`/`fd` exec flag, after which `find`'s own
+ * options may follow the inner command.
+ */
+function generalizesLayer(layer: readonly CommandWord[]): boolean {
+  const name = wrapperName(layer);
+  if (name === undefined || runsOpaqueCommandLine(layer)) return false;
+  if (GETOPT_GRAMMARS.has(name)) return true;
+  return (
+    isAdmittedModifierLayer(layer) ||
+    layer.slice(1).every((word) => !word.text.startsWith("-"))
+  );
+}
+
+/**
+ * A command's whitespace tokens as command words, each marked `computed` when
+ * it carries shell syntax the split cannot read: quoting, expansion, a glob,
+ * grouping, an operator, or a comment.
+ */
+function literalWordsOf(tokens: readonly string[]): CommandWord[] {
+  let offset = 0;
+  return tokens.map((text) => {
+    const word: CommandWord = {
+      text,
+      value: text,
+      computed: SHELL_SYNTAX.test(text),
+      mayLeadWithDash: text.startsWith("-"),
+      offset,
+    };
+    offset += text.length + 1;
+    return word;
+  });
 }
 
 // ── Unwrapping ───────────────────────────────────────────────────────────────
@@ -966,6 +1035,12 @@ const WRITING_OPTIONS = new Map<string, ReadonlySet<string>>([
  * name, so it could never be resolved.
  */
 const LITERAL_COMMAND_NAME = /^[A-Za-z0-9_./+@%,:][A-Za-z0-9_./+@%,:-]*$/;
+
+/**
+ * A character that makes a whitespace token something other than the literal
+ * word a program receives.
+ */
+const SHELL_SYNTAX = /['"\\$`|&;<>(){}[\]*?!~#]/;
 
 /** Bash reserved words, which open syntax rather than name a command. */
 const RESERVED_WORDS: ReadonlySet<string> = new Set([
