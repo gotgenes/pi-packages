@@ -397,6 +397,30 @@ describe("PermissionSession", () => {
         expect(ctx.ui.setStatus).not.toHaveBeenCalled();
       });
 
+      it("keeps the yolo status while a /yolo override is on and the config says off", () => {
+        const { session, yoloOverride } = createSession();
+        yoloOverride.set(true);
+        const ctx = makeCtx({ hasUI: true });
+        session.refreshConfig(ctx, true);
+        expect(ctx.ui.setStatus).toHaveBeenCalledWith(
+          PERMISSION_SYSTEM_STATUS_KEY,
+          PERMISSION_SYSTEM_YOLO_STATUS_VALUE,
+        );
+      });
+
+      it("suppresses the yolo status for a /yolo off override under a yolo config", () => {
+        const { session, yoloOverride } = createSession({
+          configStore: yoloStore(),
+        });
+        yoloOverride.set(false);
+        const ctx = makeCtx({ hasUI: true });
+        session.refreshConfig(ctx, true);
+        expect(ctx.ui.setStatus).toHaveBeenCalledWith(
+          PERMISSION_SYSTEM_STATUS_KEY,
+          undefined,
+        );
+      });
+
       it("refreshes without a ctx and syncs nothing", () => {
         const { session, configStore } = createSession();
         expect(() => {
