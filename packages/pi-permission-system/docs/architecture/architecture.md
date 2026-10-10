@@ -1355,6 +1355,8 @@ Deferred by composition, with the reason each carries: [#804] (staging slice 7, 
   A bash `external_directory` prompt names an uncovered path without the command word that produced it, so a container-side `/probe.sh` read as a mangled `/tmp/probe.sh`; it is a display improvement that changes no decision, unrelated to token roles or declared effects.
 - [#1055] — filed by a contributor alongside PR #1054; out of scope for the roadmap (operator decision, 2026-10-10).
   A wrapper's session-approval suggestion (`nohup *`) grants every executable behind the wrapper; narrowing it to the inner command is a grant-scope fix in `presentation/pattern-suggest.ts`, not a token role or declared-effect change.
+- [#1063] — filed by [#1055]'s implementation; out of scope for the roadmap (operator decision, 2026-10-10).
+  A session suggestion for an interpreter or `find` (`bash *`, `find *`) also covers its `-c` / `-exec` forms; like [#1055] it is a grant-scope fix in `presentation/pattern-suggest.ts`, not a token role or declared-effect change.
 - Feature issues [#691], [#687], [#680], [#654], [#648], [#604], [#603], [#472] — out of scope for a structural phase; [#680] is narrowed further by [#880] (a declared reader needs no floor override), and [#604] by [#813].
 
 #### Deferred tidyings swept
@@ -2067,4 +2069,5 @@ Each phase's findings, step plan, dependency diagram, and health metrics are pre
 [#1062]: https://github.com/gotgenes/pi-packages/issues/1062
 [#490]: https://github.com/gotgenes/pi-packages/issues/490
 [#1055]: https://github.com/gotgenes/pi-packages/issues/1055
+[#1063]: https://github.com/gotgenes/pi-packages/issues/1063
 [ADR-0002]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-subagents/docs/decisions/0002-extensions-on-a-minimal-core.md
