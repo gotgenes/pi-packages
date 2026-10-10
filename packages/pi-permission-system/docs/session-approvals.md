@@ -87,6 +87,31 @@ The arity table covers common CLI tools including git, npm/pnpm/yarn/bun, docker
 To add an entry, open `src/access-intent/bash/bash-arity.ts` and add a key/arity pair to the `ARITY` object.
 Put the most specific multi-word prefix first (e.g. `"npm run": 3`) before the shorter fallback (`"npm": 2`).
 
+### Wrapped commands
+
+A command behind an indirection wrapper (`sudo`, `env`, `xargs`, `nohup`, `timeout`, `nice`, and the rest of the wrapper vocabulary) is approved by its inner command, not by the wrapper.
+A session approval skips the wrapper's floor, so the suggestion keeps every wrapper word literally (options, operands, nested wrappers) and lets only the inner command's arguments vary.
+
+| Example command                      | Suggested pattern             |
+| ------------------------------------ | ----------------------------- |
+| `nohup mytool argument`              | `nohup mytool *`              |
+| `sudo aws s3 rm s3://bucket`         | `sudo aws s3 rm *`            |
+| `env FOO=bar mytool argument`        | `env FOO=bar mytool *`        |
+| `timeout 5 mytool argument`          | `timeout 5 mytool *`          |
+| `sudo -u root nohup mytool argument` | `sudo -u root nohup mytool *` |
+
+A wrapped pattern always puts a space before its wildcard, so approving `nohup mytool` covers `nohup mytool` and `nohup mytool <args>` but not `nohup mytool-other`.
+
+When the inner command cannot be established from the words alone, the suggestion is the whole command with no wildcard:
+
+- Shell syntax in any word: quoting, `$` expansion, a glob, `~`, grouping, or an operator (`sudo mytool $HOME`).
+- An inline shell payload (`sudo bash -c …`) or a wrapper that hands its command line to a shell or template (`watch`, `parallel`, `rush`, `rust-parallel`).
+- A wrapper mode in which the peeled command is not what runs (`sudo -s`, `env -C`), an option the wrapper's table does not admit (`timeout --sig KILL 5 …`, `flock -w 5 …`), or a `find`/`fd` exec clause.
+- An `xargs` replacement option (`-I`, `-i`, `--replace`), since standard input then rewrites the inner command's arguments (`xargs -I X nohup X first`).
+- Wrappers nested deeper than the gate peels.
+
+This changes only the suggested pattern; the wrapper floors and their exemptions are unchanged.
+
 ## Review Log Entries
 
 The review log records session approval decisions:
