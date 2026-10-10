@@ -1353,6 +1353,8 @@ Deferred by composition, with the reason each carries: [#804] (staging slice 7, 
   The table-walk wrappers (`time`, `timeout`, `nice`, `stdbuf`, `flock`, `setsid`) know full option names only, so GNU `time`'s abbreviated `--out`/`--form` misplace the inner command (`env time --out cat rm x` earns `core-reader` and runs `rm x`); exposure is narrow (0 review-log hits, and a bare `time` is the bash keyword), and moving them onto grammars reworks [#963]'s modifier clause, outside what this phase should still absorb.
 - [#1062] — filed by [#1053]'s implementation; out of scope for the roadmap (operator decision, 2026-10-10).
   A bash `external_directory` prompt names an uncovered path without the command word that produced it, so a container-side `/probe.sh` read as a mangled `/tmp/probe.sh`; it is a display improvement that changes no decision, unrelated to token roles or declared effects.
+- [#1055] — filed by a contributor alongside PR #1054; out of scope for the roadmap (operator decision, 2026-10-10).
+  A wrapper's session-approval suggestion (`nohup *`) grants every executable behind the wrapper; narrowing it to the inner command is a grant-scope fix in `presentation/pattern-suggest.ts`, not a token role or declared-effect change.
 - Feature issues [#691], [#687], [#680], [#654], [#648], [#604], [#603], [#472] — out of scope for a structural phase; [#680] is narrowed further by [#880] (a declared reader needs no floor override), and [#604] by [#813].
 
 #### Deferred tidyings swept
@@ -2064,4 +2066,5 @@ Each phase's findings, step plan, dependency diagram, and health metrics are pre
 [#1057]: https://github.com/gotgenes/pi-packages/issues/1057
 [#1062]: https://github.com/gotgenes/pi-packages/issues/1062
 [#490]: https://github.com/gotgenes/pi-packages/issues/490
+[#1055]: https://github.com/gotgenes/pi-packages/issues/1055
 [ADR-0002]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-subagents/docs/decisions/0002-extensions-on-a-minimal-core.md
