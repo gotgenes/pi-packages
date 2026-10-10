@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [40.1.3](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v40.1.2...pi-permission-system-v40.1.3) (2026-10-10)
+
+
+### Bug Fixes
+
+* **pi-permission-system:** xargs -J and GNU xargs -i/-l no longer earn the pure-reader exemption for the wrong command ([c28e296](https://github.com/gotgenes/pi-packages/commit/c28e29606842def673e7fc4f0b419ee70661736e)), closes [#1053](https://github.com/gotgenes/pi-packages/issues/1053)
+* **pi-permission-system:** xargs reads every option its BSD and GNU manuals list ([e8be7a8](https://github.com/gotgenes/pi-packages/commit/e8be7a8e5be43e729aebe076e75af6ce814d2102)), closes [#1053](https://github.com/gotgenes/pi-packages/issues/1053)
+* **pi-permission-system:** env's chdir, split-string, altpath, and argv0 modes keep the indirection floor ([40a1e1b](https://github.com/gotgenes/pi-packages/commit/40a1e1b6dc19cc90990288a4fce8cb10ea1468c9)), closes [#1053](https://github.com/gotgenes/pi-packages/issues/1053)
+* **pi-permission-system:** doas -a, -C, and -s keep the indirection floor ([0a1dada](https://github.com/gotgenes/pi-packages/commit/0a1dada433d6054b580dc46cbeadaf7531fb84b1)), closes [#1053](https://github.com/gotgenes/pi-packages/issues/1053)
+* **pi-permission-system:** watch and the parallelizers no longer earn the pure-reader exemption ([5e14c70](https://github.com/gotgenes/pi-packages/commit/5e14c70cb5851a43ebfa2b98f111f2dd3176893d)), closes [#1053](https://github.com/gotgenes/pi-packages/issues/1053)
+* **pi-permission-system:** GNU xargs --max-lines no longer earns the pure-reader exemption for the wrong command ([01e943a](https://github.com/gotgenes/pi-packages/commit/01e943ac1c6041491bc4086bc9213fb8a369b74b)), closes [#1053](https://github.com/gotgenes/pi-packages/issues/1053)
+
+### Documentation
+
+* **pi-permission-system:** document the env, xargs, doas, and command-line wrapper floors ([ef82c63](https://github.com/gotgenes/pi-packages/commit/ef82c6378d00ca6667135ec1e0f574ca952d2372))
+
 ## [40.1.2](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v40.1.1...pi-permission-system-v40.1.2) (2026-10-09)
 
 
