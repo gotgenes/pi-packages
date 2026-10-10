@@ -102,3 +102,24 @@ A prototype was applied to `main`, measured (5951 tests green, `fallow audit` ex
 #### Deferred tidyings
 
 - `wrapper-analysis.ts`: `mayReplaceArguments` is a textual over-approximation of `xargs` replacement options; deriving it from `XARGS_GRAMMAR` would be exact but is a design change (assessor: rejected as scope creep).
+
+## Stage: Implementation — TDD (2026-10-10T22:46:57Z)
+
+### Session summary
+
+Implemented all four planned steps (refactor `reachedLiteralCommand`; `fix:` wrapper narrowing; `fix:` `xargs` replacement kept exact; docs), plus one post-review `fix:` (bash-blank split for the wrapper walk), a docs touch-up, and the #1063 roadmap disposition.
+The permission-system suite went from 5951 to 6027 tests (+76); `check`, root `lint`, `fallow dead-code`, and `fallow audit --base origin/main` are green.
+
+### Observations
+
+- Every planned killing mutation was applied and reverted, and each killed its predicted class, with one plan error: the `computed: false` mutation killed `sudo mytool $HOME` but not `nohup ~/bin/mytool a`, because `~/bin/mytool` is the inner head and `reachedLiteralCommand` refuses it independently.
+  That row was relabelled "a non-literal inner command", and `timeout $T mytool a` (syntax in a wrapper-layer word, caught only by the screen) was added as the second shell-syntax case.
+- Committing with `git commit -F -` from a heredoc is a permission-system deny rule; write the message to a file with `Write` and `git commit -F <file>`.
+- Pre-completion review round 1: WARN.
+  JS `\s` splits on NBSP/`\r`/`\v`/`\f` where bash does not, so `nohup rm<NBSP>-rf<NBSP>x` suggested `nohup rm *`; fixed by splitting the wrapper walk's words on bash blanks (`[ \t\n]+`) only, leaving the ordinary path's `\s` split byte-identical.
+  Adding the other-whitespace class to `SHELL_SYNTAX` too was tried and measured redundant (its deletion left every test green: an NBSP left inside a word stays literal in the pattern), so it was not kept.
+  The docs gap (bare `bash -c`/`eval` now keep the exact command) was closed and pinned with `sh -c ls` / `eval mytool a` rows.
+  The pre-existing `bash *`/`find *` residual was verified (`bash script.sh` → `bash *` grants `bash -c 'rm -rf x'`, wrapped and unwrapped) and filed as #1063, dispositioned out of scope for Phase 15 by the operator.
+- Pre-completion review round 2 (delta): WARN, ready for `/ship`.
+  Reviewer warnings: the two splits in `suggestBashPattern` are a mild readability trap (deliberate, keeps ordinary suggestions unchanged); a wrapper name fused to its inner command by a non-bash blank (`nohup<NBSP>rm -rf x`) still falls to the ordinary path and suggests `nohup *`, identical to the pre-change behavior.
+  Closing it would mean using the bash-blank split for ordinary suggestions too, which changes them for exotic-whitespace inputs; left for the operator to decide.
