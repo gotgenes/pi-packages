@@ -830,8 +830,11 @@ const ENV_GRAMMAR: GetoptGrammar = {
  * of GNU's, so an option one platform rejects only makes it run nothing.
  *
  * GNU's `-i`, `-l`, and `-e` take an optional value, attached only, so
- * `xargs -i rm cat x` runs `rm`. BSD's `-J` refuses: it puts input in the
- * utility position when the utility equals its replstr (`xargs -J % % x`).
+ * `xargs -i rm cat x` runs `rm`. So does `--max-lines`, though its `--help`
+ * line reads as required and its short form `-L` does take the next word:
+ * `xargs --max-lines echo A B` runs `echo`. BSD's `-J` refuses: it puts input
+ * in the utility position when the utility equals its replstr
+ * (`xargs -J % % x`).
  */
 const XARGS_GRAMMAR: GetoptGrammar = {
   short: new Map<string, OptionArity>([
@@ -870,10 +873,10 @@ const XARGS_GRAMMAR: GetoptGrammar = {
     ["delimiter", "value"],
     ["max-args", "value"],
     ["max-chars", "value"],
-    ["max-lines", "value"],
     ["max-procs", "value"],
     ["process-slot-var", "value"],
     ["eof", "optional"],
+    ["max-lines", "optional"],
     ["replace", "optional"],
   ]),
   assignments: false,

@@ -752,7 +752,8 @@ describe("floorExemptionOf", () => {
         ["xargs -a f cat", "GNU -a takes a file"],
         ["xargs --arg-file f cat", "--arg-file takes a file"],
         ["xargs --delimiter x cat", "--delimiter takes a character"],
-        ["xargs --max-lines 2 cat", "--max-lines takes a count"],
+        ["xargs --max-lines=2 cat", "an attached --max-lines count"],
+        ["xargs --max-lines cat x", "--max-lines takes no following word"],
         ["xargs --max-procs 4 cat", "--max-procs takes a count"],
         ["xargs --max-chars 100 cat", "--max-chars takes a size"],
         ["xargs --process-slot-var V cat", "--process-slot-var takes a name"],
@@ -794,6 +795,11 @@ describe("floorExemptionOf", () => {
           "xargs -e rm cat x",
           "GNU -e takes only an attached value, so rm runs",
         ],
+        [
+          "xargs --max-lines rm cat x",
+          "GNU --max-lines takes only an attached value, so rm runs",
+        ],
+        ["xargs --max-l rm cat x", "an abbreviation of --max-lines"],
         ["xargs --ver cat", "ambiguous between --verbose and --version"],
         ["xargs --e cat", "ambiguous between --eof and --exit"],
       ])("is not transparent: %s (%s)", (unit) => {

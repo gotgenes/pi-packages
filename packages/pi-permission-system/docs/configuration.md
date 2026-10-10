@@ -1152,7 +1152,7 @@ So `xargs -n 1 cat` and `env -u FOO cat x` still resolve by `cat`'s rule, while 
 - `xargs -J`, because it puts input in the command's place when the command equals its replacement string.
 - `doas -C` (it checks a config and runs nothing), `doas -s` (it runs a shell), and OpenBSD's `doas -a`, which `opendoas` does not list.
 
-GNU `xargs -i`, `-l`, and `-e` take a value only when it is attached (`-i{}`), so `xargs -i rm cat x` runs `rm`, and `xargs` and `doas` run a `NAME=value` word as the command rather than an assignment.
+GNU `xargs -i`, `-l`, `-e`, and `--max-lines` take a value only when it is attached (`-i{}`, `--max-lines=2`), so `xargs -i rm cat x` runs `rm`, and `xargs` and `doas` run a `NAME=value` word as the command rather than an assignment.
 
 #### Which key to actually write
 
