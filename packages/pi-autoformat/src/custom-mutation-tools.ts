@@ -3,7 +3,7 @@ import type { MutationSourceHandler } from "./touched-files-queue";
 /**
  * Declarative spec for a custom mutation tool.
  *
- * Exactly one of `pathField` or `pathFields` must be provided. Validation
+ * Exactly one of `pathField`, `pathFields`, or `patchField` must be provided. Validation
  * of that constraint lives in the config loader so that schema errors
  * surface to the user with proper sourcePath attribution.
  */
@@ -16,6 +16,8 @@ export type CustomMutationToolSpec = {
    * may resolve to a string or a string array; arrays are flattened.
    */
   pathFields?: string[];
+  /** Dotted path to an OpenAI-style patch in the tool's `input` payload. */
+  patchField?: string;
 };
 
 /**
@@ -55,10 +57,14 @@ function collectFromValue(value: unknown, out: string[]): void {
  */
 export function extractPathsFromInput(
   input: unknown,
-  spec: Pick<CustomMutationToolSpec, "pathField" | "pathFields">,
+  spec: Pick<CustomMutationToolSpec, "pathField" | "pathFields" | "patchField">,
 ): string[] {
   if (typeof input !== "object" || input === null || Array.isArray(input)) {
     return [];
+  }
+
+  if (spec.patchField) {
+    return extractPathsFromPatch(resolveDottedPath(input, spec.patchField));
   }
 
   const fields: string[] = [];
@@ -75,6 +81,81 @@ export function extractPathsFromInput(
     collectFromValue(resolved, results);
   }
   return results;
+}
+
+function extractPathsFromPatch(value: unknown): string[] {
+  if (typeof value !== "string") {
+    return [];
+  }
+
+  const lines = value.trim().split(/\r?\n/);
+  if (lines[0] !== "*** Begin Patch" || lines.at(-1) !== "*** End Patch") {
+    return [];
+  }
+
+  const paths: string[] = [];
+  let operation: "add" | "delete" | "update" | undefined;
+  let moveAllowed = false;
+
+  for (const line of lines.slice(1, -1)) {
+    if (line.startsWith("*** Environment ID: ") && !operation) {
+      continue;
+    }
+    if (line.startsWith("*** Add File: ")) {
+      const path = line.slice("*** Add File: ".length);
+      if (!path) {
+        return [];
+      }
+      paths.push(path);
+      operation = "add";
+      moveAllowed = false;
+      continue;
+    }
+    if (line.startsWith("*** Delete File: ")) {
+      const path = line.slice("*** Delete File: ".length);
+      if (!path) {
+        return [];
+      }
+      paths.push(path);
+      operation = "delete";
+      moveAllowed = false;
+      continue;
+    }
+    if (line.startsWith("*** Update File: ")) {
+      const path = line.slice("*** Update File: ".length);
+      if (!path) {
+        return [];
+      }
+      paths.push(path);
+      operation = "update";
+      moveAllowed = true;
+      continue;
+    }
+    if (line.startsWith("*** Move to: ")) {
+      const path = line.slice("*** Move to: ".length);
+      if (!path || operation !== "update" || !moveAllowed) {
+        return [];
+      }
+      paths[paths.length - 1] = path;
+      moveAllowed = false;
+      continue;
+    }
+    if (line === "*** End of File" && operation === "update") {
+      moveAllowed = false;
+      continue;
+    }
+    if (
+      !operation ||
+      operation === "delete" ||
+      (operation === "add" && !line.startsWith("+")) ||
+      line.startsWith("***")
+    ) {
+      return [];
+    }
+    moveAllowed = false;
+  }
+
+  return paths;
 }
 
 /** Build a single MutationSourceHandler from a spec. */
