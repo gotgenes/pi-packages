@@ -65,7 +65,7 @@ At planning time a prototype was applied to `main` (then reverted) and measured;
 - Full package suite: 180 files, 5951 tests, all green; no existing test asserts a wrapper suggestion.
 - `pnpm --filter @gotgenes/pi-permission-system run check`: pass.
 - `pnpm fallow audit --base origin/main`: exit 0 (the complexity rows it lists are inherited: `isAdmittedModifierLayer`, `getoptInnerIndex`, `tableInnerIndex`).
-  One run exited 2 while another `fallow` invocation was running concurrently; the immediate rerun exited 0.
+  One run exited 2; the immediate rerun exited 0, and the cause was not established.
 - Size: about +35 lines in `wrapper-analysis.ts`, +6 in `pattern-suggest.ts`.
 - The case tables and round trips in steps 2–3 were run through the prototype; each listed expectation is the output it produced.
 - The step 2 killing mutations for the table-walk row and the `reachedLiteralCommand` check were applied to the final-form prototype and produced exactly the reds listed there; the missing-space mutation was measured by granting `nohup mytool*` directly (`nohup mytool-other x` resolved `allow`, `source: "session"`); the other mutations' reds are reasoned, not measured.

@@ -31,6 +31,7 @@ The `pi-autoformat` extension reformats every file an `Edit`/`Write` touches, an
 - It likewise joins a sentence onto the previous line when the sentence opens with a lowercase token (a package or command name such as `git-cliff`) — lead with a capital instead.
 - It also reads a numbered section citation (`§ *7. Verify CI*`) as a sentence end and splits it — cite the heading instead (`` the `## 7. Verify CI` section ``).
 - It also reads a leading `~` as strikethrough and rewrites a `~`-prefixed token (`(~:211)` → `(~~211)`), which `rumdl check` passes — write an approximate line reference as `line ~211`.
+- It also trims a space at the edge of a code span (`rumdl`'s MD038 fix), so a space-prefixed wildcard lands as `*`; when the space is the meaning, say it in prose ("a space and `*`").
 
 Damage this pass writes lands in the file's first commit, so git holds no clean copy; recover the authored text from the `Write` `content` / `Edit` `newText` arguments in the session transcripts under `~/.pi/agent/sessions/`.
 

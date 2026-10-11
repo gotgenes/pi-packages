@@ -95,8 +95,7 @@ A prototype was applied to `main`, measured (5951 tests green, `fallow audit` ex
 - Converting whitespace tokens to `CommandWord`s with `computed` set by a shell-syntax screen makes `isAdmittedModifierLayer`'s literal check honest for string input, so no type widening of the vocabulary functions is needed (the PR widened them to `Pick<CommandWord, "text">`).
 - The tidy-first assessor recommended one preparatory extraction (`reachedLiteralCommand` out of `onlyModifiesExecution`), adopted as step 1; it suggested reusing `runsOpaqueCommandLine` and a new "Session patterns" section banner before the unwrapping section, both adopted.
 - Kept the PR's always-space-before-wildcard shape (`nohup git log *`, not `nohup git log*`) as narrower than the unwrapped arity rule.
-- One `fallow audit` run exited 2 while another `fallow` invocation ran concurrently; the immediate rerun exited 0.
-  Do not run two `fallow` commands at once.
+- One `fallow audit` run exited 2; the immediate rerun exited 0, and the cause was not established (corrected at the final retrospective: an earlier version of this note blamed a concurrent `fallow` run that was never checked).
 - Sibling work: PR #971 (`xargs` floor lift for a rule pinning the inner command) composes with this change; #604 (widen session patterns) is the opposite direction and stays parked.
 
 #### Deferred tidyings
@@ -123,3 +122,65 @@ The permission-system suite went from 5951 to 6027 tests (+76); `check`, root `l
 - Pre-completion review round 2 (delta): WARN, ready for `/ship`.
   Reviewer warnings: the two splits in `suggestBashPattern` are a mild readability trap (deliberate, keeps ordinary suggestions unchanged); a wrapper name fused to its inner command by a non-bash blank (`nohup<NBSP>rm -rf x`) still falls to the ordinary path and suggests `nohup *`, identical to the pre-change behavior.
   Closing it would mean using the bash-blank split for ordinary suggestions too, which changes them for exotic-whitespace inputs; left for the operator to decide.
+
+## Stage: Final Retrospective (2026-10-11T01:37:35Z)
+
+### Session summary
+
+One session ran the full lifecycle: PR review of #1054 (adopt with a simplified design), planning with a measured prototype, four TDD steps plus one review-driven fix, and ship (`pi-permission-system` 40.1.4, #1055 and PR #1054 closed with credit to @plucury).
+Two pre-completion rounds returned WARN; the first found a real tokenization defect, fixed in-session, and the residual `bash *`/`find *` class was filed as #1063.
+
+### Observations
+
+#### What went well
+
+- Prototyping the design at planning time and applying killing mutations to the prototype found two redundant guards (`peeled.length === 0`, an `EXEC_CONDITIONAL_WRAPPERS` row) before the plan named them, so the TDD Order carried no vacuous mutation.
+  The same habit in TDD caught a third (adding the other-whitespace class to `SHELL_SYNTAX`) before it was committed.
+- The pre-completion dispatch's re-derivation mandate ("enumerate your own candidate wrapper commands") surfaced a defect every gate had passed: JS `\s` splits on a non-breaking space and `\r` where bash does not, so `nohup rm<NBSP>-rf<NBSP>x` suggested `nohup rm *`.
+  The mandate was written for a narrowed grant rather than a removed guard, which is the case the `pre-completion` skill names.
+- The PR review's independent `fallow audit` run explained the contributor's red CI (complexity in three new functions) that the PR body's validation list omitted, and that measurement shaped the simplification.
+
+#### What caused friction (agent side)
+
+- `other` (unverified cause recorded as fact) — the planning stage note and the plan recorded one `fallow audit` exit 2 as caused by "another `fallow` invocation running concurrently", and the note added "Do not run two `fallow` commands at once".
+  The command that exited 2 ran sequentially after a vitest run; no concurrent `fallow` was checked or present, so the cause is unknown.
+  Impact: a false operational rule sat in two committed docs until this retro; corrected below.
+  Self-identified at retro time.
+- `missing-context` — the PR review and planning both treated whitespace tokenization as settled and never asked where JS `\s` and bash disagree.
+  Impact: one `fix:` commit after review round 1 and a delta re-review (237 s).
+- `instruction-violation` (self-identified) — Unicode escapes typed into edit bodies five times (`\u2192` in a test name, `\u2500` in a planning note code span, `\u2014`/`\u2192` in the TDD notes and again in this retro entry), against `markdown-conventions`' literal-character rule.
+  Impact: about five extra check or edit calls; the escape gate and `pi-autoformat` caught or decoded each, so nothing landed wrong.
+- `other` (formatter quirk) — the plan wrote `` ` *` `` (a space-prefixed wildcard) in code spans, and `rumdl fmt`'s MD038 fix silently trimmed it to `` `*` ``, inverting the meaning of the space-before-wildcard rule.
+  A regex holding a backtick inside a single-backtick span broke the span too.
+  Impact: one extra repair pass on the plan; caught by re-reading, since `rumdl check` passes the trimmed text.
+- `instruction-violation` (self-identified) — the PR review skipped loading the `testing` skill although the PR changed tests, then lost a scratch test's `console.log` to Vitest's reporter, which that skill documents.
+  Impact: two extra calls.
+- `instruction-violation` (policy-caught) — `git commit -F -` with a heredoc hit the `pi-permission-system` deny rule; the reason string redirected to `Write` + `-F <file>` and every later commit followed it.
+  Impact: one rejected call; the rule worked as designed.
+- `rabbit-hole` (minor) — at ship, `pnpm view` kept reporting 40.1.3 after the release; a `sleep 20` retry, then a direct registry `curl`, showed 40.1.4.
+  Impact: three calls; the ship prompt's own verification (`git tag --points-at HEAD`) had already answered.
+
+#### What caused friction (user side)
+
+- Operator involvement was three `ask_user` gates, each answered with the recommended option; no correction was needed.
+- Open for the operator: a wrapper name fused to its inner command by a non-bash blank (`nohup<NBSP>rm -rf x`) still suggests `nohup *`, as before #1055.
+
+### Diagnostic details
+
+- **Model-performance correlation** — PR review, planning, and TDD ran on `claude-opus-5-5`; ship ran on `claude-sonnet-5-5`, appropriate for a scripted procedure.
+  Subagents all ran `claude-sonnet-5-5` (from their transcripts): the tidy-first assessor (103 s; recommendations accurate and adopted), pre-completion round 1 (3946 s, 332.8k tokens; found the NBSP defect), and round 2 (237 s; re-derived the fix over 909 whitespace-substitution rows).
+  Round 1's hour-long run was expensive but was the only gate that found a real defect.
+- **Feedback-loop gap analysis** — no gap: each TDD step ran its test file, `check`, and the killing mutations before committing, and the full gates ran after steps 2 and 4 and again pre-push.
+
+#### Upstream check (operator prompt)
+
+The operator recalled that our `rumdl` upstream report had been fixed. rvben/rumdl#933 closed as completed on 2026-10-09; its fix (`042d304c`) is in rumdl 0.2.79.
+Measured on 0.2.79: the #933 repro is unchanged by `fmt`, the MD038 code-span trim still happens, and `rumdl check .` reports 409 MD013 findings in 292 files (0.2.24: none), a mix of true positives, em-dash-split lines, and bold-lead-in sentences.
+The pin re-evaluation is filed as #1066.
+
+### Changes made
+
+1. `.pi/skills/markdown-conventions/SKILL.md`: a `pi-autoformat` reflow bullet saying MD038 trims a space at the edge of a code span, so a meaningful leading space is said in prose.
+2. `packages/pi-permission-system/docs/plans/1055-wrapper-session-approval-scope.md` and this file's Planning stage note: replaced the unverified "concurrent `fallow` run" cause of the exit-2 audit run with "cause not established", and dropped the invented "do not run two `fallow` commands at once" rule.
+3. Filed #1065 (fused-wrapper non-bash-blank residual); dispositioned out of scope for Phase 15 in `packages/pi-permission-system/docs/architecture/architecture.md` (separate commit).
+4. Filed #1066 (`scope:repo`: re-evaluate the `rumdl` 0.2.24 pin now that rvben/rumdl#933 is fixed in 0.2.79).
