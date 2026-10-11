@@ -1359,6 +1359,8 @@ Deferred by composition, with the reason each carries: [#804] (staging slice 7, 
   A session suggestion for an interpreter or `find` (`bash *`, `find *`) also covers its `-c` / `-exec` forms; like [#1055] it is a grant-scope fix in `presentation/pattern-suggest.ts`, not a token role or declared-effect change.
 - [#1064] — filed by an operator question about a prompted `env | rg '^PI_'`; **becomes a new step in this phase, directly after [#1056]** (operator decision, 2026-10-10).
   A bare `env` (`env`, `env -0`, `env FOO=1`) runs no command yet keeps the indirection floor, while `env cat x` earns `core-reader`; it edits the same peel as [#1053] and [#1056] and needs [#1056]'s computed-word guard so `env $X` keeps the floor, but it is the opposite failure direction (an over-prompt), so it is its own step rather than a fold-in.
+- [#1065] — filed by the [#1055] retrospective; out of scope for the roadmap (operator decision, 2026-10-11).
+  A wrapper fused to its command by a non-bash blank (`nohup<NBSP>rm`) still suggests the wrapper's whole grant; like [#1055] and [#1063] it is a grant-scope fix in `presentation/pattern-suggest.ts`, not a token role or declared-effect change.
 - Feature issues [#691], [#687], [#680], [#654], [#648], [#604], [#603], [#472] — out of scope for a structural phase; [#680] is narrowed further by [#880] (a declared reader needs no floor override), and [#604] by [#813].
 
 #### Deferred tidyings swept
@@ -2086,5 +2088,6 @@ Each phase's findings, step plan, dependency diagram, and health metrics are pre
 [#490]: https://github.com/gotgenes/pi-packages/issues/490
 [#1055]: https://github.com/gotgenes/pi-packages/issues/1055
 [#1063]: https://github.com/gotgenes/pi-packages/issues/1063
+[#1065]: https://github.com/gotgenes/pi-packages/issues/1065
 [#1064]: https://github.com/gotgenes/pi-packages/issues/1064
 [ADR-0002]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-subagents/docs/decisions/0002-extensions-on-a-minimal-core.md
