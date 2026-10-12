@@ -25,6 +25,8 @@
 
   "authorizerChain": [],
 
+  "authorizerTrust": {},
+
   "shellTools": {
     "exec_command": { "commandArgument": "cmd", "workdirArgument": "workdir" }
   },

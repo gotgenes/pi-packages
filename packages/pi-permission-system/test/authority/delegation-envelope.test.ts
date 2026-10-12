@@ -109,6 +109,67 @@ describe("encloseInDelegationEnvelope", () => {
     });
   });
 
+  describe("with operator trust (authorizerTrust)", () => {
+    const trust = {
+      link: "judge",
+      families: new Set(["external_directory"]),
+    };
+
+    it.each(["external_directory", "external_directory_read"])(
+      "keeps an allow on %s, a member of a trusted family, and records it",
+      async (surface) => {
+        const trustLog = makeAuthorizerLog();
+        const enclosed = encloseInDelegationEnvelope(
+          makeLink({ kind: "allow" }),
+          trust,
+        );
+        const details = makeDetails(surface);
+        const verdict = await enclosed(details, query, trustLog);
+        expect(verdict).toEqual({ kind: "allow" });
+        expect(trustLog.review).toHaveBeenCalledWith(
+          "authorizer_trusted_allow",
+          {
+            requestId: details.requestId,
+            link: "judge",
+            surfaceFamily: "external_directory",
+          },
+        );
+      },
+    );
+
+    it("still caps an allow on an excluded family it does not name", async () => {
+      const enclosed = encloseInDelegationEnvelope(
+        makeLink({ kind: "allow" }),
+        trust,
+      );
+      const verdict = await enclosed(makeDetails("path_read"), query, log);
+      expect(verdict).toEqual({ kind: "defer" });
+    });
+
+    it("still caps an allow when the surface is undetermined (fail-safe)", async () => {
+      const enclosed = encloseInDelegationEnvelope(
+        makeLink({ kind: "allow" }),
+        {
+          link: "judge",
+          families: new Set(["external_directory", "path"]),
+        },
+      );
+      const verdict = await enclosed(makeDetails(undefined, null), query, log);
+      expect(verdict).toEqual({ kind: "defer" });
+    });
+
+    it("records nothing for an allow on a non-excluded surface", async () => {
+      const trustLog = makeAuthorizerLog();
+      const enclosed = encloseInDelegationEnvelope(
+        makeLink({ kind: "allow" }),
+        trust,
+      );
+      const verdict = await enclosed(makeDetails("bash"), query, trustLog);
+      expect(verdict).toEqual({ kind: "allow" });
+      expect(trustLog.review).not.toHaveBeenCalled();
+    });
+  });
+
   it("prefers the gate-computed accessIntent surface over the display surface", async () => {
     // accessIntent.surface (external_directory) is authoritative even when the
     // display-surface override says otherwise.
