@@ -6,9 +6,12 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   detectDeprecatedPreviewCaps,
   detectUnusableDialogKeys,
+  isRelativePathPattern,
   loadAndMergeConfigs,
   loadUnifiedConfig,
   mergeUnifiedConfigs,
+  rebasePermissionForDir,
+  rebaseProjectConfigForDir,
   stripJsonComments,
 } from "#src/config/config-loader";
 
@@ -1113,5 +1116,247 @@ describe("detectUnusableDialogKeys", () => {
     });
     expect(notice).toContain("permissionDialogKeys.approve");
     expect(notice).toContain("permissionDialogKeys.deny");
+  });
+});
+
+// ── isRelativePathPattern ────────────────────────────────────────────────
+
+describe("isRelativePathPattern", () => {
+  it.each([["src/*"], ["src"], ["./src/*"], ["../shared/*"], ["config.json"]])(
+    "treats %s as a relative path pattern",
+    (pattern) => {
+      expect(isRelativePathPattern(pattern)).toBe(true);
+    },
+  );
+
+  it.each([
+    ["empty", ""],
+    ["bare wildcard", "*"],
+    ["wildcard-led", "*.env"],
+    ["question-led", "?.env"],
+    ["class-led", "[abc].env"],
+    ["posix absolute", "/abs/path/*"],
+    ["home tilde", "~/notes/*"],
+    ["home variable", "$HOME/notes/*"],
+    ["braced home variable", "${HOME}/notes/*"],
+  ])("does not treat %s (%s) as relative", (_label, pattern) => {
+    expect(isRelativePathPattern(pattern)).toBe(false);
+  });
+});
+
+// ── rebasePermissionForDir / rebaseProjectConfigForDir ────────────────────
+
+describe("rebasePermissionForDir", () => {
+  const projectDir = "/repo";
+
+  it("resolves relative path-surface patterns against the scope directory", () => {
+    const rebased = rebasePermissionForDir(
+      { read: { "src/*": "allow", "*": "ask" } },
+      projectDir,
+    );
+    expect(rebased).toEqual({
+      read: { [join(projectDir, "src/*")]: "allow", "*": "ask" },
+    });
+  });
+
+  it("leaves non-path surfaces alone, however relative they look", () => {
+    const permission = {
+      bash: { "rm build/*": "ask" },
+      mcp: { server_tool: "allow" },
+      skill: { "my-skill": "deny" },
+    } as const;
+    expect(rebasePermissionForDir(permission, projectDir)).toBe(permission);
+  });
+
+  it("leaves string shorthand values alone", () => {
+    const permission = { read: "allow" as const };
+    expect(rebasePermissionForDir(permission, projectDir)).toBe(permission);
+  });
+
+  it("preserves deny-with-reason objects under the rebased key", () => {
+    const rebased = rebasePermissionForDir(
+      {
+        write: {
+          "secrets/*": { action: "deny", reason: "Not here" },
+        },
+      },
+      projectDir,
+    );
+    expect(rebased).toEqual({
+      write: {
+        [join(projectDir, "secrets/*")]: {
+          action: "deny",
+          reason: "Not here",
+        },
+      },
+    });
+  });
+
+  it("returns the input when nothing is relative", () => {
+    const permission = { read: { "*.env": "deny", "*": "allow" } } as const;
+    expect(rebasePermissionForDir(permission, projectDir)).toBe(permission);
+  });
+});
+
+describe("rebaseProjectConfigForDir", () => {
+  it("rebases relative piInfrastructureReadPaths entries", () => {
+    const rebased = rebaseProjectConfigForDir(
+      { piInfrastructureReadPaths: ["vendor", "/abs", "~/.cache"] },
+      "/repo",
+    );
+    expect(rebased.piInfrastructureReadPaths).toEqual([
+      join("/repo", "vendor"),
+      "/abs",
+      "~/.cache",
+    ]);
+  });
+
+  it("returns the input when nothing is relative", () => {
+    const config = { debugLog: true };
+    expect(rebaseProjectConfigForDir(config, "/repo")).toBe(config);
+  });
+});
+
+// ── loadAndMergeConfigs ancestor chain ───────────────────────────────────
+
+describe("loadAndMergeConfigs ancestor chain", () => {
+  let tempDir: string;
+  let agentDir: string;
+  let parentDir: string;
+  let childCwd: string;
+  let extensionRoot: string;
+
+  beforeEach(() => {
+    tempDir = mkdtempSync(join(tmpdir(), "config-chain-test-"));
+    agentDir = join(tempDir, "agent");
+    parentDir = join(tempDir, "project");
+    childCwd = join(parentDir, "packages", "api");
+    extensionRoot = join(tempDir, "ext");
+  });
+
+  afterEach(() => {
+    rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  function writeConfigAt(dir: string, content: Record<string, unknown>): void {
+    const configDir = join(dir, ".pi", "extensions", "pi-permission-system");
+    mkdirSync(configDir, { recursive: true });
+    writeFileSync(join(configDir, "config.json"), JSON.stringify(content));
+  }
+
+  it("honors a parent config from a nested cwd", () => {
+    writeConfigAt(parentDir, {
+      permission: { "*": "ask", read: "allow" },
+    });
+
+    const result = loadAndMergeConfigs(agentDir, childCwd, extensionRoot);
+    expect(result.issues).toEqual([]);
+    expect(result.merged.permission).toEqual({ "*": "ask", read: "allow" });
+  });
+
+  it("gives the nearest scope the final say", () => {
+    writeConfigAt(parentDir, {
+      permission: { "*": "ask", read: "allow", bash: "deny" },
+    });
+    writeConfigAt(childCwd, {
+      permission: { read: "deny" },
+    });
+
+    const result = loadAndMergeConfigs(agentDir, childCwd, extensionRoot);
+    expect(result.merged.permission).toEqual({
+      "*": "ask",
+      read: "deny",
+      bash: "deny",
+    });
+  });
+
+  it("orders three levels top-most first", () => {
+    writeConfigAt(parentDir, { permission: { read: "allow" } });
+    writeConfigAt(join(parentDir, "packages"), {
+      permission: { write: "allow" },
+    });
+    writeConfigAt(childCwd, { permission: { read: "deny" } });
+
+    const result = loadAndMergeConfigs(agentDir, childCwd, extensionRoot);
+    expect(result.merged.permission).toEqual({
+      read: "deny",
+      write: "allow",
+    });
+  });
+
+  it("rebases an ancestor scope's relative path patterns against its own directory", () => {
+    writeConfigAt(parentDir, {
+      permission: {
+        read: { "src/*": "allow", "*": "ask", "*.env": "deny" },
+      },
+    });
+
+    const result = loadAndMergeConfigs(agentDir, childCwd, extensionRoot);
+    expect(result.merged.permission).toEqual({
+      read: {
+        [join(parentDir, "src/*")]: "allow",
+        "*": "ask",
+        "*.env": "deny",
+      },
+    });
+  });
+
+  it("leaves the nearest scope's relative patterns cwd-relative", () => {
+    writeConfigAt(childCwd, {
+      permission: { read: { "src/*": "allow" } },
+    });
+
+    const result = loadAndMergeConfigs(agentDir, childCwd, extensionRoot);
+    expect(result.merged.permission).toEqual({
+      read: { "src/*": "allow" },
+    });
+  });
+
+  it("never rebases bash command patterns", () => {
+    writeConfigAt(parentDir, {
+      permission: { bash: { "rm build/*": "ask" } },
+    });
+
+    const result = loadAndMergeConfigs(agentDir, childCwd, extensionRoot);
+    expect(result.merged.permission).toEqual({
+      bash: { "rm build/*": "ask" },
+    });
+  });
+
+  it("reports the merged ancestor chain as the project config", () => {
+    writeConfigAt(parentDir, { permission: { read: "allow" } });
+    writeConfigAt(childCwd, { permission: { write: "deny" } });
+
+    const result = loadAndMergeConfigs(agentDir, childCwd, extensionRoot);
+    expect(result.project).toEqual(result.merged);
+    expect(result.global).toEqual({});
+  });
+
+  it("skips the whole chain when includeProjectScope is false", () => {
+    writeConfigAt(parentDir, { permission: { bash: "allow" } });
+    writeConfigAt(childCwd, { permission: { read: "allow" } });
+
+    const result = loadAndMergeConfigs(agentDir, childCwd, extensionRoot, {
+      includeProjectScope: false,
+    });
+    expect(result.merged.permission).toBeUndefined();
+    expect(result.project).toEqual({});
+  });
+
+  it("honors a legacy project policy found in a parent directory", () => {
+    const legacyDir = join(parentDir, ".pi", "agent");
+    mkdirSync(legacyDir, { recursive: true });
+    writeFileSync(
+      join(legacyDir, "pi-permissions.jsonc"),
+      JSON.stringify({ permission: { read: "allow" } }),
+    );
+
+    const result = loadAndMergeConfigs(agentDir, childCwd, extensionRoot);
+    expect(result.merged.permission).toEqual({ read: "allow" });
+    expect(
+      result.issues.some((issue) =>
+        issue.includes(join(parentDir, ".pi", "agent", "pi-permissions.jsonc")),
+      ),
+    ).toBe(true);
   });
 });

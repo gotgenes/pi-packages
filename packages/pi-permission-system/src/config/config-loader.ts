@@ -1,15 +1,16 @@
 import { existsSync, readFileSync } from "node:fs";
-import { normalize } from "node:path";
+import { isAbsolute, join, normalize } from "node:path";
 import type { ZodError } from "zod";
+import { PATH_SURFACES } from "#src/access-intent/path-surfaces";
+import { hasHomePrefix } from "#src/path/expand-home";
 import { mergeFlatPermissions } from "#src/policy/permission-merge";
 import type { FlatPermissionConfig, PatternValue } from "#src/types";
 import { isDenyWithReason, isPermissionState } from "#src/types";
 import {
+  getAncestorProjectScopes,
   getGlobalConfigPath,
   getLegacyExtensionConfigPath,
   getLegacyGlobalPolicyPath,
-  getLegacyProjectPolicyPath,
-  getProjectConfigPath,
 } from "./config-paths";
 import {
   type ShellToolsConfig,
@@ -300,6 +301,94 @@ export interface MergedConfigResult {
 }
 
 /**
+ * Whether a permission pattern (or infrastructure path entry) is a relative
+ * path that a project scope owns: not absolute, not home-anchored, and not
+ * led by a wildcard (`*`, `?`, `[`), which matches anywhere by design
+ * (`*.env` must keep matching outside the scope's directory).
+ */
+export function isRelativePathPattern(pattern: string): boolean {
+  if (pattern.length === 0 || pattern === "*") return false;
+  const first = pattern[0];
+  if (first === "*" || first === "?" || first === "[") return false;
+  if (first === "/" || first === "\\") return false;
+  if (/^[A-Za-z]:[\\/]/.test(pattern)) return false;
+  if (hasHomePrefix(pattern)) return false;
+  return !isAbsolute(pattern);
+}
+
+/**
+ * Resolve an ancestor scope's relative path-surface patterns against the
+ * scope's own directory, so they keep meaning what they meant where they
+ * were written.
+ *
+ * Only patterns on path surfaces (`read`, `write`, `path`,
+ * `external_directory`, …) are rebased — `bash` command texts, `mcp`
+ * targets, and skill/tool names are matched as written regardless of which
+ * scope defined them. Non-relative patterns (absolute paths, `~`/`$HOME`,
+ * wildcard-led patterns like `*.env`) pass through untouched.
+ *
+ * Pure and non-mutating; returns the input when nothing is relative.
+ */
+export function rebasePermissionForDir(
+  permission: FlatPermissionConfig,
+  projectDir: string,
+): FlatPermissionConfig {
+  let changed = false;
+  const rebased: FlatPermissionConfig = {};
+  for (const [surface, value] of Object.entries(permission)) {
+    /* eslint-disable @typescript-eslint/no-unnecessary-condition -- defensive null/type checks; config values may differ at runtime */
+    if (
+      typeof value === "object" &&
+      value !== null &&
+      PATH_SURFACES.has(surface)
+    ) {
+      /* eslint-enable @typescript-eslint/no-unnecessary-condition */
+      const patterns: Record<string, PatternValue> = {};
+      for (const [pattern, action] of Object.entries(value)) {
+        const next = isRelativePathPattern(pattern)
+          ? join(projectDir, pattern)
+          : pattern;
+        if (next !== pattern) changed = true;
+        patterns[next] = action;
+      }
+      rebased[surface] = patterns;
+    } else {
+      rebased[surface] = value;
+    }
+  }
+  return changed ? rebased : permission;
+}
+
+/**
+ * {@link rebasePermissionForDir} for a whole unified config: path-surface
+ * permission patterns plus `piInfrastructureReadPaths` entries.
+ *
+ * Pure and non-mutating; returns the input when nothing is relative.
+ */
+export function rebaseProjectConfigForDir(
+  config: UnifiedPermissionConfig,
+  projectDir: string,
+): UnifiedPermissionConfig {
+  const permission = config.permission
+    ? rebasePermissionForDir(config.permission, projectDir)
+    : undefined;
+  const infra = config.piInfrastructureReadPaths;
+  let rebasedInfra = infra;
+  if (infra?.some((entry) => isRelativePathPattern(entry))) {
+    rebasedInfra = infra.map((entry) =>
+      isRelativePathPattern(entry) ? join(projectDir, entry) : entry,
+    );
+  }
+  if (
+    permission === config.permission &&
+    rebasedInfra === config.piInfrastructureReadPaths
+  ) {
+    return config;
+  }
+  return { ...config, permission, piInfrastructureReadPaths: rebasedInfra };
+}
+
+/**
  * Load global and project configs from the new layout, detect legacy files,
  * merge everything, and collect issues.
  *
@@ -307,18 +396,26 @@ export interface MergedConfigResult {
  * 1. Legacy global policy (if present) — lowest precedence
  * 2. Legacy extension runtime config (if present and path differs from new global)
  * 3. New global config
- * 4. Legacy project policy (if present)
- * 5. New project config — highest precedence
+ * 4. Per ancestor directory, top-most first: legacy project policy (if
+ *    present), then the new project config — the nearest directory to `cwd`
+ *    has the highest precedence
+ *
+ * A project config is read from `cwd` and every parent directory's `.pi`, so
+ * parent-level permissions apply to sessions in nested directories. Within an
+ * ancestor scope (every scope but the nearest), relative path patterns are
+ * resolved against that scope's own directory, so they keep meaning what
+ * they meant where they were written; the nearest scope keeps its legacy
+ * cwd-relative matching unchanged.
  *
  * Legacy files are detected and warned about. Their content is parsed with the
  * flat-format parser — legacy-format keys (defaultPolicy, tools, bash, etc.)
  * are not translated and contribute no permission rules.
  *
- * When `options.includeProjectScope` is `false`, the project-scope steps (4 and
- * 5) are skipped entirely — neither the legacy project policy nor the new
- * project config is read or merged. This gates project-local config on project
- * trust: an untrusted repository cannot loosen the operator's global policy
- * (#644). It defaults to `true`, preserving the trusted / caller-agnostic path.
+ * When `options.includeProjectScope` is `false`, the project-scope step (4) is
+ * skipped entirely — no ancestor project config is read or merged. This gates
+ * project-local config on project trust: an untrusted repository cannot loosen
+ * the operator's global policy (#644). It defaults to `true`, preserving the
+ * trusted / caller-agnostic path.
  */
 export function loadAndMergeConfigs(
   agentDir: string,
@@ -330,9 +427,7 @@ export function loadAndMergeConfigs(
   const allIssues: string[] = [];
 
   const newGlobalPath = getGlobalConfigPath(agentDir);
-  const newProjectPath = getProjectConfigPath(cwd);
   const legacyGlobalPolicyPath = getLegacyGlobalPolicyPath(agentDir);
-  const legacyProjectPolicyPath = getLegacyProjectPolicyPath(cwd);
   const legacyExtConfigPath = getLegacyExtensionConfigPath(extensionRoot);
 
   // Start with empty
@@ -374,26 +469,37 @@ export function loadAndMergeConfigs(
   const globalConfig = globalResult.config;
   merged = mergeUnifiedConfigs(merged, globalConfig);
 
-  // 4. Legacy project policy — skipped when the project scope is withheld.
-  if (includeProjectScope && existsSync(legacyProjectPolicyPath)) {
-    const legacy = loadUnifiedConfig(legacyProjectPolicyPath);
-    allIssues.push(
-      `Legacy project policy found at '${legacyProjectPolicyPath}'. ` +
-        `Move it to '${newProjectPath}':\n` +
-        `  mv '${legacyProjectPolicyPath}' '${newProjectPath}'`,
-    );
-    // See above: legacy-file validation issues are suppressed.
-    merged = mergeUnifiedConfigs(merged, legacy.config);
+  // 4. Ancestor project chain, top-most first — skipped when the project scope
+  // is withheld, so an untrusted project contributes nothing and `project`
+  // reports empty.
+  let projectConfig: UnifiedPermissionConfig = {};
+  if (includeProjectScope) {
+    const scopes = getAncestorProjectScopes(cwd);
+    scopes.forEach((scope, index) => {
+      const isNearest = index === scopes.length - 1;
+      const rebase = (
+        config: UnifiedPermissionConfig,
+      ): UnifiedPermissionConfig =>
+        isNearest ? config : rebaseProjectConfigForDir(config, scope.dir);
+      if (existsSync(scope.legacyPolicyPath)) {
+        const legacy = loadUnifiedConfig(scope.legacyPolicyPath);
+        allIssues.push(
+          `Legacy project policy found at '${scope.legacyPolicyPath}'. ` +
+            `Move it to '${scope.configPath}':\n` +
+            `  mv '${scope.legacyPolicyPath}' '${scope.configPath}'`,
+        );
+        // See above: legacy-file validation issues are suppressed.
+        const rebased = rebase(legacy.config);
+        projectConfig = mergeUnifiedConfigs(projectConfig, rebased);
+        merged = mergeUnifiedConfigs(merged, rebased);
+      }
+      const projectResult = loadUnifiedConfig(scope.configPath);
+      allIssues.push(...projectResult.issues);
+      const rebased = rebase(projectResult.config);
+      projectConfig = mergeUnifiedConfigs(projectConfig, rebased);
+      merged = mergeUnifiedConfigs(merged, rebased);
+    });
   }
-
-  // 5. New project config — skipped when the project scope is withheld, so an
-  // untrusted project contributes nothing and `project` reports empty.
-  const projectResult = includeProjectScope
-    ? loadUnifiedConfig(newProjectPath)
-    : { config: {}, issues: [] };
-  allIssues.push(...projectResult.issues);
-  const projectConfig = projectResult.config;
-  merged = mergeUnifiedConfigs(merged, projectConfig);
 
   const bashFallbackIssue = detectPermissiveBashFallback(merged.permission);
   if (bashFallbackIssue) allIssues.push(bashFallbackIssue);

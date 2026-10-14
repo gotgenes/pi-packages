@@ -7,8 +7,10 @@ One unified config file per scope:
 | Scope   | Path                                                                                       |
 | ------- | ------------------------------------------------------------------------------------------ |
 | Global  | `~/.pi/agent/extensions/pi-permission-system/config.json` (respects `PI_CODING_AGENT_DIR`) |
-| Project | `<cwd>/.pi/extensions/pi-permission-system/config.json`                                    |
+| Project | `<cwd>/.pi/extensions/pi-permission-system/config.json` — plus every parent directory's `.pi` |
 
+A project config is read from `<cwd>` and **every parent directory up to the filesystem root**, top-most first, so parent-level permissions apply to sessions in nested directories.
+The same chain applies to project agent frontmatter (`<dir>/.pi/agents/<agent>.md`) and the project `.pi/mcp.json` used for MCP server-name derivation.
 Project config overrides global config; per-agent frontmatter overrides both.
 
 **Project config requires project trust.**
@@ -31,9 +33,13 @@ See [migration/0644-project-trust-gating.md](migration/0644-project-trust-gating
 **Precedence order (later wins):**
 
 1. Global config file
-2. Project config file
+2. Ancestor project config files, top-most first (`/` → … → parent of `<cwd>` → `<cwd>`)
 3. Global agent frontmatter
-4. Project agent frontmatter
+4. Ancestor project agent frontmatter, top-most first
+
+Relative path patterns in an ancestor scope are resolved against that scope's own directory, so they keep meaning what they meant where they were written: with `<cwd>` at `/repo/packages/api`, a `/repo/.pi` rule for `read: { "src/*": "allow" }` applies to `/repo/src/*`, not to `/repo/packages/api/src/*`.
+The nearest scope keeps its legacy cwd-relative matching unchanged.
+Non-path patterns are never rebased: `bash` command texts, `mcp` targets, skill names, absolute paths, `~`/`$HOME` paths, and wildcard-led patterns such as `*.env` (which matches anywhere by design) apply as written no matter which scope defines them.
 
 The `permission` object uses deep-shallow merge: string-vs-string replaces; both-object shallow-merges pattern maps; string-vs-object the override wins entirely.
 Scalar fields (`debugLog`, `permissionReviewLog`, `yoloMode`, `doublePressToConfirm`, `forwardingTimeoutMs`, `promptTimeoutMs`, `promptMaxRows`, `promptFieldMaxWidth`) use simple replacement.
@@ -41,7 +47,7 @@ Scalar fields (`debugLog`, `permissionReviewLog`, `yoloMode`, `doublePressToConf
 `promptNotifications` likewise replaces the whole list, so a project `[]` turns off a global list.
 
 **Invalid higher-precedence scope fails closed.**
-If a non-global scope (project config, global agent frontmatter, or project agent frontmatter) is present but fails to load or validate, it no longer contributes an empty scope that silently inherits the lower scope's rules.
+If a non-global scope (any project config in the ancestor chain, global agent frontmatter, or any project agent frontmatter) is present but fails to load or validate, it no longer contributes an empty scope that silently inherits the lower scope's rules.
 Instead the effective policy is floored so nothing resolves more permissively than `ask`: every `allow` (including one inherited from a lower scope) is clamped to `ask`, while `deny` and `ask` are unchanged.
 So a global `bash: allow` cannot remain effective behind a project scope that was meant to deny bash but contains a typo — bash prompts until the invalid config is fixed.
 A validation warning plus a distinct fail-closed notice are emitted, and a fix + reload restores the intended policy.

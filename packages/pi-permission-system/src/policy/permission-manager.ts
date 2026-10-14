@@ -7,9 +7,8 @@ import {
 import { surfaceFamilyOf } from "#src/access-intent/path-surfaces";
 import { classifyToolKind } from "#src/access-intent/tool-kind";
 import {
+  getAncestorProjectScopes,
   getGlobalConfigPath,
-  getProjectAgentsDir,
-  getProjectConfigPath,
 } from "#src/config/config-paths";
 import {
   FilePolicyLoader,
@@ -516,19 +515,26 @@ function buildConfigRules(
  * Derive `PolicyLoaderOptions` from an agentDir + an optional cwd.
  * Setting agentsDir explicitly from agentDir removes the hidden
  * `getAgentDir()` env-read that FilePolicyLoader's default would perform.
+ *
+ * The project scopes cover `cwd` and every parent directory's `.pi`,
+ * top-most first, so parent-level permissions apply to nested sessions.
  */
 function derivePolicyLoaderOptions(
   agentDir: string,
   cwd: string | undefined | null,
 ): PolicyLoaderOptions {
+  const scopes = cwd ? getAncestorProjectScopes(cwd) : [];
   return {
     globalConfigPath: getGlobalConfigPath(agentDir),
     agentsDir: join(agentDir, "agents"),
-    projectGlobalConfigPath: cwd ? getProjectConfigPath(cwd) : undefined,
-    projectAgentsDir: cwd ? getProjectAgentsDir(cwd) : undefined,
+    projectConfigScopes: scopes.map((scope) => ({
+      dir: scope.dir,
+      configPath: scope.configPath,
+    })),
+    projectAgentsDirs: scopes.map((scope) => scope.agentsDir),
     // Pi's built-in MCP reads these two files (`extensions/mcp/config.ts`).
     globalMcpConfigPath: join(agentDir, "mcp.json"),
-    projectMcpConfigPath: cwd ? join(cwd, ".pi", "mcp.json") : undefined,
+    projectMcpConfigPaths: scopes.map((scope) => scope.mcpPath),
   };
 }
 
