@@ -6,7 +6,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { FilePolicyLoader } from "#src/config/policy-loader";
 
@@ -588,6 +588,247 @@ describe("FilePolicyLoader.getConfiguredMcpServerNames", () => {
       const second = loader.getConfiguredMcpServerNames();
       // Same reference — cache hit
       expect(second).toBe(first);
+    } finally {
+      rmSync(baseDir, { recursive: true, force: true });
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Ancestor project config chain (projectConfigScopes)
+// ---------------------------------------------------------------------------
+
+describe("FilePolicyLoader ancestor chain", () => {
+  function writeJson(path: string, content: Record<string, unknown>): void {
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, JSON.stringify(content));
+  }
+
+  function makeChainLoader(baseDir: string): {
+    loader: FilePolicyLoader;
+    parentDir: string;
+    childDir: string;
+  } {
+    const parentDir = join(baseDir, "project");
+    const childDir = join(baseDir, "project", "packages", "api");
+    const loader = new FilePolicyLoader({
+      globalConfigPath: join(baseDir, "global.json"),
+      agentsDir: join(baseDir, "agents"),
+      projectConfigScopes: [
+        {
+          dir: parentDir,
+          configPath: join(
+            parentDir,
+            ".pi",
+            "extensions",
+            "pi-permission-system",
+            "config.json",
+          ),
+        },
+        {
+          dir: childDir,
+          configPath: join(
+            childDir,
+            ".pi",
+            "extensions",
+            "pi-permission-system",
+            "config.json",
+          ),
+        },
+      ],
+      projectAgentsDirs: [
+        join(parentDir, ".pi", "agents"),
+        join(childDir, ".pi", "agents"),
+      ],
+    });
+    writeJson(join(baseDir, "global.json"), {});
+    mkdirSync(join(baseDir, "agents"), { recursive: true });
+    return { loader, parentDir, childDir };
+  }
+
+  it("merges parent and child project configs with the nearest winning", () => {
+    const baseDir = makeTempDir();
+    try {
+      const { loader, parentDir, childDir } = makeChainLoader(baseDir);
+      writeJson(
+        join(
+          parentDir,
+          ".pi",
+          "extensions",
+          "pi-permission-system",
+          "config.json",
+        ),
+        { permission: { "*": "ask", read: "allow", bash: "deny" } },
+      );
+      writeJson(
+        join(
+          childDir,
+          ".pi",
+          "extensions",
+          "pi-permission-system",
+          "config.json",
+        ),
+        { permission: { read: "deny" } },
+      );
+
+      expect(loader.loadProjectConfig()).toEqual({
+        permission: { "*": "ask", read: "deny", bash: "deny" },
+      });
+    } finally {
+      rmSync(baseDir, { recursive: true, force: true });
+    }
+  });
+
+  it("rebases an ancestor scope's relative path patterns, not the nearest's", () => {
+    const baseDir = makeTempDir();
+    try {
+      const { loader, parentDir, childDir } = makeChainLoader(baseDir);
+      writeJson(
+        join(
+          parentDir,
+          ".pi",
+          "extensions",
+          "pi-permission-system",
+          "config.json",
+        ),
+        { permission: { read: { "src/*": "allow" } } },
+      );
+      writeJson(
+        join(
+          childDir,
+          ".pi",
+          "extensions",
+          "pi-permission-system",
+          "config.json",
+        ),
+        { permission: { write: { "src/*": "deny" } } },
+      );
+
+      expect(loader.loadProjectConfig()).toEqual({
+        permission: {
+          read: { [join(parentDir, "src/*")]: "allow" },
+          write: { "src/*": "deny" },
+        },
+      });
+    } finally {
+      rmSync(baseDir, { recursive: true, force: true });
+    }
+  });
+
+  it("marks the merged scope invalid when any ancestor config is rejected", () => {
+    const baseDir = makeTempDir();
+    try {
+      const { loader, parentDir, childDir } = makeChainLoader(baseDir);
+      writeJson(
+        join(
+          parentDir,
+          ".pi",
+          "extensions",
+          "pi-permission-system",
+          "config.json",
+        ),
+        // Unrecognized key — schema rejection.
+        { debugLo: true },
+      );
+      writeJson(
+        join(
+          childDir,
+          ".pi",
+          "extensions",
+          "pi-permission-system",
+          "config.json",
+        ),
+        { permission: { read: "allow" } },
+      );
+
+      const config = loader.loadProjectConfig();
+      expect(config.invalid).toBe(true);
+      // The valid child's rules still merge; the manager floors them to ask.
+      expect(config.permission).toEqual({ read: "allow" });
+    } finally {
+      rmSync(baseDir, { recursive: true, force: true });
+    }
+  });
+
+  it("merges project agent frontmatter across the chain, nearest winning", () => {
+    const baseDir = makeTempDir();
+    try {
+      const { loader, parentDir, childDir } = makeChainLoader(baseDir);
+      mkdirSync(join(parentDir, ".pi", "agents"), { recursive: true });
+      writeFileSync(
+        join(parentDir, ".pi", "agents", "coder.md"),
+        "---\npermission:\n  read: allow\n  write: deny\n---\n# Coder\n",
+      );
+      mkdirSync(join(childDir, ".pi", "agents"), { recursive: true });
+      writeFileSync(
+        join(childDir, ".pi", "agents", "coder.md"),
+        "---\npermission:\n  write: allow\n---\n# Coder\n",
+      );
+
+      expect(loader.loadProjectAgentConfig("coder")).toEqual({
+        permission: { read: "allow", write: "allow" },
+      });
+    } finally {
+      rmSync(baseDir, { recursive: true, force: true });
+    }
+  });
+
+  it("falls back to the singular projectGlobalConfigPath without rebasing", () => {
+    const baseDir = makeTempDir();
+    try {
+      const projectConfigPath = join(baseDir, "project-config.json");
+      writeFileSync(
+        projectConfigPath,
+        JSON.stringify({ permission: { read: { "src/*": "allow" } } }),
+      );
+      const loader = new FilePolicyLoader({
+        globalConfigPath: "/nonexistent/config.json",
+        agentsDir: "/nonexistent/agents",
+        projectGlobalConfigPath: projectConfigPath,
+      });
+      expect(loader.loadProjectConfig()).toEqual({
+        permission: { read: { "src/*": "allow" } },
+      });
+    } finally {
+      rmSync(baseDir, { recursive: true, force: true });
+    }
+  });
+
+  it("reports the chain in resolved paths with the nearest as singular", () => {
+    const baseDir = makeTempDir();
+    try {
+      const { loader, parentDir, childDir } = makeChainLoader(baseDir);
+      const paths = loader.getResolvedPolicyPaths();
+      expect(paths.projectConfigPaths).toEqual([
+        join(
+          parentDir,
+          ".pi",
+          "extensions",
+          "pi-permission-system",
+          "config.json",
+        ),
+        join(
+          childDir,
+          ".pi",
+          "extensions",
+          "pi-permission-system",
+          "config.json",
+        ),
+      ]);
+      expect(paths.projectConfigPath).toBe(
+        join(
+          childDir,
+          ".pi",
+          "extensions",
+          "pi-permission-system",
+          "config.json",
+        ),
+      );
+      expect(paths.projectAgentsDirs).toEqual([
+        join(parentDir, ".pi", "agents"),
+        join(childDir, ".pi", "agents"),
+      ]);
+      expect(paths.projectAgentsDir).toBe(join(childDir, ".pi", "agents"));
     } finally {
       rmSync(baseDir, { recursive: true, force: true });
     }

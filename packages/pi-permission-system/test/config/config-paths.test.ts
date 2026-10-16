@@ -1,8 +1,10 @@
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
   DEBUG_LOG_FILENAME,
+  getAncestorDirs,
+  getAncestorProjectScopes,
   getGlobalConfigDir,
   getGlobalConfigPath,
   getGlobalLogsDir,
@@ -11,6 +13,7 @@ import {
   getLegacyProjectPolicyPath,
   getProjectAgentsDir,
   getProjectConfigPath,
+  getProjectMcpPath,
   REVIEW_LOG_FILENAME,
 } from "#src/config/config-paths";
 
@@ -78,6 +81,47 @@ describe("config-paths", () => {
       expect(REVIEW_LOG_FILENAME).toBe(
         "pi-permission-system-permission-review.jsonl",
       );
+    });
+  });
+
+  describe("ancestor project scopes", () => {
+    it("getProjectMcpPath returns .pi/mcp.json under cwd", () => {
+      expect(getProjectMcpPath(cwd)).toBe(join(cwd, ".pi", "mcp.json"));
+    });
+
+    it("getAncestorDirs runs from the filesystem root down to cwd", () => {
+      const dirs = getAncestorDirs(join("a", "b", "c"));
+      // The first entry is a filesystem root: its own parent.
+      expect(dirname(dirs[0])).toBe(dirs[0]);
+      expect(dirs[dirs.length - 1].endsWith(join("a", "b", "c"))).toBe(true);
+      // Strictly nesting: each entry is the parent of the next.
+      for (let i = 1; i < dirs.length; i++) {
+        expect(dirname(dirs[i])).toBe(dirs[i - 1]);
+      }
+    });
+
+    it("getAncestorProjectScopes lists every scope top-most first", () => {
+      const nested = join(cwd, "packages", "api");
+      const scopes = getAncestorProjectScopes(nested);
+      expect(scopes.length).toBeGreaterThan(2);
+      // The first entry is a filesystem root: its own parent.
+      expect(dirname(scopes[0].dir)).toBe(scopes[0].dir);
+      const nearest = scopes[scopes.length - 1];
+      expect(nearest.dir).toBe(nested);
+      expect(nearest.configPath).toBe(getProjectConfigPath(nested));
+      expect(nearest.agentsDir).toBe(getProjectAgentsDir(nested));
+      expect(nearest.mcpPath).toBe(getProjectMcpPath(nested));
+      expect(nearest.legacyPolicyPath).toBe(getLegacyProjectPolicyPath(nested));
+      // The scope owning `cwd` sits exactly one before the nearest entry.
+      const parent = scopes[scopes.length - 2];
+      expect(parent.dir).toBe(join(cwd, "packages"));
+      expect(parent.configPath).toBe(
+        getProjectConfigPath(join(cwd, "packages")),
+      );
+    });
+
+    it("getAncestorProjectScopes returns [] for an empty cwd", () => {
+      expect(getAncestorProjectScopes("")).toEqual([]);
     });
   });
 });
