@@ -1,10 +1,28 @@
 import { expect, test } from "vitest";
-import { DEFAULT_EXTENSION_CONFIG } from "#src/config/extension-config";
-import { getPermissionSystemStatus } from "#src/config/status";
+import {
+  PERMISSION_SYSTEM_STATUS_KEY,
+  syncYoloStatus,
+  yoloStatusValue,
+} from "#src/config/status";
+import { makeCtx } from "#test/helpers/handler-fixtures";
 
-test("Permission-system status is only exposed when yolo mode is enabled", () => {
-  expect(getPermissionSystemStatus(DEFAULT_EXTENSION_CONFIG)).toBe(undefined);
-  expect(
-    getPermissionSystemStatus({ ...DEFAULT_EXTENSION_CONFIG, yoloMode: true }),
-  ).toBe("yolo");
+test("The status value follows the effective yolo state", () => {
+  expect(yoloStatusValue(false)).toBe(undefined);
+  expect(yoloStatusValue(true)).toBe("yolo");
+});
+
+test("syncYoloStatus writes the key with the value, or clears it", () => {
+  const on = makeCtx({ hasUI: true });
+  syncYoloStatus(on, true);
+  expect(on.ui.setStatus).toHaveBeenCalledWith(
+    PERMISSION_SYSTEM_STATUS_KEY,
+    "yolo",
+  );
+
+  const off = makeCtx({ hasUI: true });
+  syncYoloStatus(off, false);
+  expect(off.ui.setStatus).toHaveBeenCalledWith(
+    PERMISSION_SYSTEM_STATUS_KEY,
+    undefined,
+  );
 });

@@ -3,9 +3,12 @@ import type { AuthorizerSelectionLifecycle } from "#src/authority/authorizer-sel
 import type { ForwardingController } from "#src/authority/forwarding-manager";
 import type { ShellToolsConfig } from "#src/config/config-schema";
 import type { SessionConfigStore } from "#src/config/config-store";
-import type { PermissionSystemExtensionConfig } from "#src/config/extension-config";
+import {
+  isYoloModeEnabled,
+  type PermissionSystemExtensionConfig,
+} from "#src/config/extension-config";
 import type { ExtensionPaths } from "#src/config/extension-paths";
-import { syncPermissionSystemStatus } from "#src/config/status";
+import { syncYoloStatus } from "#src/config/status";
 import type { SkillPromptEntry } from "#src/exposure/skill-prompt-sanitizer";
 import {
   ToolSurfaceBaseline,
@@ -26,6 +29,7 @@ import {
   getActiveAgentNameFromSystemPrompt,
 } from "./active-agent";
 import type { SessionRules } from "./session-rules";
+import type { SessionYoloOverride } from "./yolo-override";
 
 /**
  * Encapsulates all mutable session state and exposes operations instead of
@@ -40,6 +44,7 @@ import type { SessionRules } from "./session-rules";
  * - `ForwardingController` — polling lifecycle
  * - `SessionConfigStore` — owns extension config; provides refresh, log, read
  * - `AuthorizerSelectionLifecycle` — authorizer-selection lifecycle forwarded via activate/deactivate
+ * - `SessionYoloOverride` — the session's `/yolo` override over `yoloMode`
  */
 export class PermissionSession implements ToolCallGateInputs {
   private context: ExtensionContext | null = null;
@@ -56,6 +61,7 @@ export class PermissionSession implements ToolCallGateInputs {
     private readonly configStore: SessionConfigStore,
     private readonly authorizerSelection: AuthorizerSelectionLifecycle,
     private readonly flavor: PathFlavor,
+    private readonly yoloOverride: SessionYoloOverride,
   ) {
     // Placeholder until the first activate(ctx) binds the real cwd; every gate
     // evaluate runs after activate (handleToolCall activates first), so this
@@ -214,6 +220,10 @@ export class PermissionSession implements ToolCallGateInputs {
    * loads and answers, and needs no ctx to do it (#933). Both drivers
    * (`session_start` and every `before_agent_start`) call this one method, so
    * the sync has a single home rather than one copy per handler.
+   *
+   * It reports the *effective* yolo state, so a session under a `/yolo`
+   * override keeps showing `yolo` even when the config it just reloaded says
+   * otherwise — the same reader the gates answer from.
    */
   refreshConfig(
     ctx: ExtensionContext | undefined,
@@ -221,7 +231,8 @@ export class PermissionSession implements ToolCallGateInputs {
   ): void {
     this.configStore.refresh(ctx?.cwd, projectTrusted);
     if (ctx?.hasUI) {
-      syncPermissionSystemStatus(ctx, this.configStore.current());
+      const configYolo = isYoloModeEnabled(this.configStore.current());
+      syncYoloStatus(ctx, this.yoloOverride.resolve(configYolo));
     }
   }
 

@@ -20,11 +20,12 @@ import { buildResolvedConfigLogEntry } from "./config-reporter";
 import {
   DEFAULT_EXTENSION_CONFIG,
   EXTENSION_ROOT,
+  isYoloModeEnabled,
   normalizePermissionSystemConfig,
   type PermissionSystemExtensionConfig,
 } from "./extension-config";
 import type { ResolvedPolicyPaths } from "./policy-loader";
-import { syncPermissionSystemStatus } from "./status";
+import { syncYoloStatus } from "./status";
 
 /** Read-only view of the current config — for consumers that only read. */
 export interface ConfigReader {
@@ -64,6 +65,14 @@ export interface ConfigStoreDeps {
   agentDir: string;
   policyPaths: ResolvedPolicyPathProvider;
   logger: DebugReviewLogger;
+  /**
+   * The session's effective yolo state, for the status bar a save re-asserts.
+   *
+   * Optional so the store stays constructible on its own (and in tests); when
+   * absent the status bar follows the config it just wrote, which is the same
+   * answer whenever no `/yolo` override is in play.
+   */
+  isYoloActive?: () => boolean;
 }
 
 /**
@@ -191,7 +200,12 @@ export class ConfigStore
     }
 
     this.config = normalized;
-    syncPermissionSystemStatus(ctx, normalized);
+    // Re-asserted from the effective reader, not from `normalized`: a session
+    // under a `/yolo` override stays overridden across the save.
+    syncYoloStatus(
+      ctx,
+      this.deps.isYoloActive?.() ?? isYoloModeEnabled(normalized),
+    );
 
     this.deps.logger.debug("config.saved", {
       debugLog: normalized.debugLog,
@@ -225,10 +239,16 @@ export class ConfigStore
       legacyProjectPolicyDetected,
       legacyExtensionConfigDetected,
     });
+    // SAFETY: `buildResolvedConfigLogEntry` returns a JSON-serializable log
+    // entry (every value a string, boolean, or null); the logger payloads are
+    // only widened to `Record<string, unknown>` for its JSONL writer, which
+    // treats a value's type as unknown anyway.
     this.deps.logger.review(
       "config.resolved",
       entry as unknown as Record<string, unknown>,
     );
+    // SAFETY: the same entry, through the debug writer's `Record<string,
+    // unknown>` payload type; JSONL serialization erases the distinction.
     this.deps.logger.debug(
       "config.resolved",
       entry as unknown as Record<string, unknown>,

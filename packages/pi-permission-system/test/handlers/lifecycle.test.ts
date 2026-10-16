@@ -18,8 +18,7 @@ import { makeLogger, makeRealSession } from "#test/helpers/session-fixtures";
 // ── status stub ────────────────────────────────────────────────────────────
 vi.mock("#src/config/status", () => ({
   PERMISSION_SYSTEM_STATUS_KEY: "permission-system",
-  syncPermissionSystemStatus: vi.fn(),
-  getPermissionSystemStatus: vi.fn(),
+  syncYoloStatus: vi.fn(),
 }));
 
 // ── helpers ────────────────────────────────────────────────────────────────
