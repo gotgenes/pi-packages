@@ -76,6 +76,9 @@ This clamp is deny-preserving and, like `yoloMode`, applied at composition; when
   // Ordered names of registered live-authority chain links (empty = none)
   "authorizerChain": [],
 
+  // Per link, the excluded surface families its allow is not capped on (empty = none)
+  "authorizerTrust": {},
+
   // Flat permission policy
   "permission": {
     "*": "ask",                              // universal fallback
@@ -122,6 +125,7 @@ This clamp is deny-preserving and, like `yoloMode`, applied at composition; when
 | `toolTextSummaryMaxLength`  | —        | **Deprecated and ignored.** Superseded by `promptMaxRows` / `promptFieldMaxWidth`. Still accepted so an existing config is not rejected, but the value no longer applies; setting it logs a warning.                                         |
 | `piInfrastructureReadPaths` | `[]`     | Extra directories to auto-allow for reads, bypassing the `external_directory` gate. Supports `~`/`$HOME`/`${HOME}` expansion and wildcard patterns (`*`, `?`).                                                                               |
 | `authorizerChain`           | `[]`     | Ordered names of registered live-authority chain links to consult before the terminal authorizer (see [Authorizer chain](#authorizer-chain--case-by-case-decision-links)).                                                                   |
+| `authorizerTrust`           | `{}`     | Per chain link, the excluded surface families (`external_directory`, `path`) on which that link's `allow` is honored instead of capped (see [Trusting a link](#trusting-a-link-with-an-excluded-family)).                                    |
 
 Both logs write to `~/.pi/agent/extensions/pi-permission-system/logs/`.
 No debug output is printed to the terminal.
@@ -362,6 +366,27 @@ A link's `allow` on a licensed ask is honored, and the review log records `autho
 A tool's ask (`write`, `edit`, an extension tool) never carries it, and the `path` family takes no license.
 See [migration/0882-nothing-on-disk-delegation-license.md](migration/0882-nothing-on-disk-delegation-license.md).
 
+#### Trusting a link with an excluded family
+
+Some links are meant to answer asks outside your policy — for example an extension that implements a session-wide "approve everything" mode the user switches on deliberately.
+`authorizerTrust` lifts the checkpoint for one named link on the excluded families you list:
+
+```jsonc
+{
+  "authorizerChain": ["my-mode-link"],
+  "authorizerTrust": { "my-mode-link": ["external_directory", "path"] }
+}
+```
+
+The grant is exactly that narrow:
+
+- Only the named link's `allow` stands, and only on the listed families (each including its directional members, e.g. `external_directory_read`); every other link stays capped.
+- `deny` rules still deny — the chain only ever sees asks, so a trusted link cannot override one.
+- An ask whose surface cannot be determined stays capped.
+- Each grant the trust lets through is recorded as `authorizer_trusted_allow` in the review log, naming the link and the family.
+
+Like `authorizerChain`, a project config that sets `authorizerTrust` replaces the global map whole, and neither is read from an untrusted project.
+
 When a **subagent** raises the ask, the chain runs one hop up.
 The subagent forwards the request to the session serving it, and that session resolves it against its own rules and then runs *its* chain over the same evidence — so your configured links do review a subagent's asks, in the session you are watching.
 The subagent itself resolves no links (an extension cannot register one in a child session at all), and records `authorizer_chain_delegated` in the review log to say so.
@@ -375,6 +400,7 @@ These review-log records make the chain observable, all keyed by the ask's `requ
 | `authorizer_chain_unregistered_link` | a configured name had no registered link — a real misconfiguration; the ask still reaches the terminal, and the first skip of that name also warns you |
 | `authorizer_allow_licensed`          | a link's `allow` on an `external_directory` ask was honored because the ask carried the nothing-on-disk license; names the `link` and the `license`    |
 | `authorizer_link_vacant`             | a link was registered on a relaying node, which runs no chain — accepted and recorded, never consulted                                                 |
+| `authorizer_trusted_allow`           | a link's `allow` on an excluded family stood because `authorizerTrust` trusts that link with the family                                                |
 
 Extension authors: register a link from a `permissions:ready` handler via `getPermissionsService(sessionId).registerAuthorizer(name, authorize)`, taking `sessionId` from that event's payload; the callback receives the ask details and a narrow, session-scoped `PermissionQuery` (`checkPermission` / `getToolPermission`) so it can consult the deterministic engine at gate parity.
 The details' `accessIntent` carries the gate surface the rule fired on and, on a licensed bash `external_directory` ask, `delegationLicense: "nothing-on-disk"`; a link that allows only what the checkpoint will honor can read it before calling a model.

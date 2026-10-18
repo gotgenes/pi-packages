@@ -18,6 +18,7 @@ import {
   getProjectConfigPath,
 } from "./config-paths";
 import {
+  type AuthorizerTrustConfig,
   type ShellToolsConfig,
   type UnifiedPermissionConfig,
   unifiedConfigSchema,
@@ -28,7 +29,11 @@ import { type DialogKeysConfig, resolveDialogKeys } from "./dialog-keys";
 // the single source of truth) and re-exported so existing importers keep their
 // import path. All fields are optional so partial configs merge before
 // defaults are applied downstream.
-export type { ShellToolsConfig, UnifiedPermissionConfig };
+export type {
+  AuthorizerTrustConfig,
+  ShellToolsConfig,
+  UnifiedPermissionConfig,
+};
 
 export interface UnifiedConfigLoadResult {
   config: UnifiedPermissionConfig;
@@ -196,6 +201,19 @@ function formatConfigIssues(error: ZodError): string[] {
   return messages;
 }
 
+/** Set `merged[key]` to the override's value, else the base's, when either defines it. */
+function takeOverride<K extends keyof UnifiedPermissionConfig>(
+  merged: UnifiedPermissionConfig,
+  base: UnifiedPermissionConfig,
+  override: UnifiedPermissionConfig,
+  key: K,
+): void {
+  const value = override[key] ?? base[key];
+  if (value !== undefined) {
+    merged[key] = value;
+  }
+}
+
 /**
  * Merge two unified configs.
  * - `permission` is deep-shallow merged (surface-level object maps are shallow-merged).
@@ -204,6 +222,7 @@ function formatConfigIssues(error: ZodError): string[] {
  * - Array fields (piInfrastructureReadPaths) replace the base when present in
  *   the override (override-wins, same as scalars).
  * - `permissionDialogKeys` replaces the base map whole, unlike `shellTools`.
+ * - `authorizerTrust` replaces the base map whole, like `authorizerChain`.
  * - `promptNotifications` replaces the base list whole, like the arrays.
  * - `commandEffects` is not merged here: its scope is load provenance the
  *   review log reports, so `loadAndMergeConfigs` folds it per layer with the
@@ -225,10 +244,7 @@ export function mergeUnifiedConfigs(
     "yoloMode",
     "doublePressToConfirm",
   ] as const) {
-    const value = override[key] ?? base[key];
-    if (value !== undefined) {
-      merged[key] = value;
-    }
+    takeOverride(merged, base, override, key);
   }
 
   // Number scalars: override replaces base when defined
@@ -241,29 +257,25 @@ export function mergeUnifiedConfigs(
     "toolInputPreviewMaxLength",
     "toolTextSummaryMaxLength",
   ] as const) {
-    const value = override[key] ?? base[key];
-    if (value !== undefined) {
-      merged[key] = value;
-    }
+    takeOverride(merged, base, override, key);
   }
 
   // Array fields: override replaces base when defined
   for (const key of ["piInfrastructureReadPaths", "authorizerChain"] as const) {
-    const value = override[key] ?? base[key];
-    if (value !== undefined) {
-      merged[key] = value;
-    }
+    takeOverride(merged, base, override, key);
   }
+
+  // authorizerTrust: whole-object replacement, like the authorizerChain it
+  // qualifies — a scope that sets it states every link's trust, so a project
+  // can narrow a global grant rather than only add to it.
+  takeOverride(merged, base, override, "authorizerTrust");
 
   // permissionDialogKeys: whole-object replacement. A key map is validated as
   // a unit, so merging two individually valid maps could bind one character to
   // two decisions with neither file's own validation able to see it. Dropping a
   // base entry only restores a default letter, which is why this does not need
   // the shellTools rule below.
-  const dialogKeys = override.permissionDialogKeys ?? base.permissionDialogKeys;
-  if (dialogKeys !== undefined) {
-    merged.permissionDialogKeys = dialogKeys;
-  }
+  takeOverride(merged, base, override, "permissionDialogKeys");
 
   // promptNotifications: override replaces base, as the string arrays above
   // do; its own block because a union-keyed write in that loop would have to

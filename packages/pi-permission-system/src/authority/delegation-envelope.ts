@@ -24,6 +24,12 @@
  *
  * A finer secret-shaped-`path` exclusion (letting a link allow a non-secret
  * path) is deferred to the allow-capable slice that needs it (#620).
+ *
+ * The operator may lift the cap for one named link on chosen excluded families
+ * (`authorizerTrust`): an explicit, per-link grant of the authority the
+ * checkpoint otherwise withholds. It relaxes nothing else — `deny` rules never
+ * reach the chain, other links stay capped, and an ask whose surface cannot be
+ * determined is still capped.
  */
 
 import { surfaceFamilyOf } from "#src/access-intent/path-surfaces";
@@ -40,44 +46,72 @@ export const DELEGATION_EXCLUDED_SURFACES: ReadonlySet<string> = new Set([
 type DelegationLicense = "nothing-on-disk";
 
 /**
+ * The excluded surface families the operator trusts one link to `allow` on
+ * (`authorizerTrust`), with the link's configured name for the review log.
+ */
+export interface DelegationTrust {
+  link: string;
+  families: ReadonlySet<string>;
+}
+
+/**
  * Wrap the link registered as `name` so an `allow` on an excluded surface is
- * capped to `defer` unless the ask carries a license that covers it. All other
- * verdicts, and `allow`s on non-excluded surfaces, pass through unchanged.
- * `details`, the injected `query`, and the review-log `log` are forwarded
- * as-is.
+ * capped to `defer`, unless `trust` names that surface's family or the ask
+ * carries a license that covers it. All other verdicts, and `allow`s on
+ * non-excluded surfaces, pass through unchanged. `details`, the injected
+ * `query`, and the review-log `log` are forwarded as-is.
  */
 export function encloseInDelegationEnvelope(
   name: string,
   authorize: Authorizer["authorize"],
+  trust?: DelegationTrust,
 ): Authorizer["authorize"] {
   return async (details, query, log) => {
     const verdict = await authorize(details, query, log);
-    if (verdict.kind !== "allow" || !isExcludedSurface(details)) {
+    if (verdict.kind !== "allow") {
+      return verdict;
+    }
+    const family = excludedFamilyOf(details);
+    if (family === null) {
+      return verdict;
+    }
+    if (family !== undefined && trust?.families.has(family) === true) {
+      log.review("authorizer_trusted_allow", {
+        requestId: details.requestId,
+        link: trust.link,
+        surfaceFamily: family,
+      });
       return verdict;
     }
     const license = licenseFor(details);
-    if (license === null) return { kind: "defer" };
-    log.review("authorizer_allow_licensed", {
-      requestId: details.requestId,
-      link: name,
-      license,
-    });
-    return verdict;
+    if (license !== null) {
+      log.review("authorizer_allow_licensed", {
+        requestId: details.requestId,
+        link: name,
+        license,
+      });
+      return verdict;
+    }
+    return { kind: "defer" };
   };
 }
 
 /**
- * Whether the ask's surface is excluded from link grants. Reads the
+ * The excluded family the ask's surface belongs to: `null` when the surface is
+ * not excluded, `undefined` when it cannot be determined. Reads the
  * gate-authoritative `accessIntent.surface`, falling back to the display
- * `surface`. Fail-safe: an ask whose surface cannot be determined is treated as
- * excluded (more prompting, never less: ADR 0007 invariant 2).
+ * `surface`. Fail-safe: an undetermined surface is treated as excluded and no
+ * trust lifts its cap (more prompting, never less: ADR 0007 invariant 2).
  */
-function isExcludedSurface(details: PromptPermissionDetails): boolean {
+function excludedFamilyOf(
+  details: PromptPermissionDetails,
+): string | null | undefined {
   const surface = details.accessIntent?.surface ?? details.surface ?? undefined;
-  return (
-    surface === undefined ||
-    DELEGATION_EXCLUDED_SURFACES.has(surfaceFamilyOf(surface))
-  );
+  if (surface === undefined) {
+    return undefined;
+  }
+  const family = surfaceFamilyOf(surface);
+  return DELEGATION_EXCLUDED_SURFACES.has(family) ? family : null;
 }
 
 /**
