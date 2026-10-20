@@ -702,6 +702,7 @@ function validateCustomMutationToolEntry(
   let toolName: string | undefined;
   let pathField: string | undefined;
   let pathFields: string[] | undefined;
+  let patchField: string | undefined;
   let hasUnknown = false;
 
   for (const [key, entry] of Object.entries(value)) {
@@ -780,6 +781,20 @@ function validateCustomMutationToolEntry(
       continue;
     }
 
+    if (key === "patchField") {
+      if (typeof entry !== "string" || entry.length === 0) {
+        pushIssue(
+          issues,
+          `${fieldPath}.patchField`,
+          "Expected a non-empty string.",
+          sourcePath,
+        );
+        return undefined;
+      }
+      patchField = entry;
+      continue;
+    }
+
     pushIssue(issues, `${fieldPath}.${key}`, "Unknown property.", sourcePath);
     hasUnknown = true;
   }
@@ -798,13 +813,14 @@ function validateCustomMutationToolEntry(
     return undefined;
   }
 
-  const hasField = pathField !== undefined;
-  const hasFields = pathFields !== undefined;
-  if (hasField === hasFields) {
+  const settingCount = [pathField, pathFields, patchField].filter(
+    (setting) => setting !== undefined,
+  ).length;
+  if (settingCount !== 1) {
     pushIssue(
       issues,
       fieldPath,
-      "Expected exactly one of `pathField` or `pathFields`.",
+      "Expected exactly one of `pathField`, `pathFields`, or `patchField`.",
       sourcePath,
     );
     return undefined;
@@ -817,8 +833,9 @@ function validateCustomMutationToolEntry(
   if (pathFields !== undefined) {
     return { toolName, pathFields };
   }
-  // Unreachable: the exclusivity check above returns undefined when both or
-  // neither of pathField/pathFields are set.
+  if (patchField !== undefined) {
+    return { toolName, patchField };
+  }
   return undefined;
 }
 
