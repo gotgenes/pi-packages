@@ -1,14 +1,14 @@
 ---
 status: accepted
 date: 2026-07-24
-amended: 2026-10-03
+amended: 2026-10-24
 ---
 
 # 0009 — The bash path projection is a completeness contract, not a best-effort heuristic
 
 ## Status
 
-Accepted, as amended 2026-10-03.
+Accepted, as amended 2026-10-24.
 This decision states the contract the bash path projection upholds, and settles how a "the gate missed my path" report is triaged.
 It is the framing for [#645], which closes two gaps the contract names as in-scope; it composes with `docs/decisions/0003-git-bash-posix-path-semantics.md` (win32 token shapes) and `docs/decisions/0007-model-judge-authorizer-chain-adr.md` (the judge that absorbs false positives).
 
@@ -36,6 +36,21 @@ One listing the rebinding forms keeps leaking, as the two forms below show; one 
 
 Probing the scan for this amendment found two forms the residual list did not name, both verified to rebind `HOME` in `/bin/bash`, and both escaping the path projection as well: an arithmetic assignment through a run-time-built name (`n=HOME; (( $n = 5 ))`), and an arithmetic operand of `[[ … -eq … ]]` (`[[ 1 -eq HOME=7 ]]`).
 They join the residual list below on the same terms.
+
+### Amendment, 2026-10-24 — a home-prefixed `cd` target is a literal
+
+A `cd ~/x` target rendered the effective directory **unknown**, so every relative token after it was kept literal-only ([#393]) and the external gate resolved it against the session cwd — a path the shell never reaches.
+That is [#694]'s inconsistency again, this time on the `cd` surface: `expandHomePath` resolved `~` and `$HOME` in config patterns, path policy literals, and bash tokens, and the one place it did not was a `cd` target ([#1083]).
+`~`, `~/…`, and a `~/` prefix whose rest is quoted (`~/"x"`) now fold to `os.homedir()` and the rest of the target verbatim, so the base is as known as the absolute spelling of that home.
+
+This is not a widening: the token-collection rules of [#694] and [#995] already govern the spelling.
+A program that rebinds `HOME` gets no fold, its target stays unknowable, and the relative tokens after it keep the conservative cwd guess; `~user` keeps reading the password database rather than `HOME`, a quoted `~` is not a tilde-prefix at all, and bash ends the prefix at an unquoted slash, so `~"x"` is the literal word `~x` while `~\/x` quotes the slash and expands nothing.
+The rest is spelled verbatim rather than joined, because `expandHomePath`'s `join` would drop the separator a following part relies on in `~/"x"`.
+
+The fold removes a silent miss as well as a false positive: under the unknown base a `./`-prefixed token is not projected at all, so `cd ~ && cat ./notes.txt` flagged nothing for `notes.txt`, while the same command now names `<home>/notes.txt` and the surfaces decide it.
+
+Still outside, and still [#393]'s unknown base: `$HOME/x` as a `cd` target (the argument is a concatenation carrying an expansion, which `literalTextOf` declines), bare `cd`, and `cd -`.
+A quoted `~` in any *other* argument is a separate residual: token normalization expands it as a home prefix, so `cat '~/x'` is gated as `<home>/x` although bash reads a literal `~` directory.
 
 ### Amendment, 2026-09-30 — a `HOME` or `PWD` the program rebinds is not resolved
 
@@ -299,7 +314,7 @@ A path reaches the `path` and `external_directory` surfaces when it appears as:
   A `case` *pattern* is not one: it is matched against the subject string rather than naming a path.
 - A **plain `$HOME` / `${HOME}` / `$PWD` / `${PWD}` reference**, resolved at token collection before classification ([#694]), unless the program rebinds the name ([#995]).
   `$HOME/x` is therefore gated exactly as `~/x` and as the literal absolute spelling, independent of whether the target exists; `$PWD/x` is gated exactly as `./x`.
-- Any of the above resolved against the **effective working directory** after literal current-shell `cd` folding; a non-literal `cd` renders the base unknown and keeps tokens literal-only ([#393]).
+- Any of the above resolved against the **effective working directory** after literal current-shell `cd` folding, a `~` / `~/…` target included because it spells `os.homedir()` under the rebinding rule above; a non-literal `cd` renders the base unknown and keeps tokens literal-only ([#393]).
 
 These guarantees are **positional-invariant**: they hold for a command's own operands wherever that command appears.
 A command nested in a substitution is itself gated ([#306]), so its operands are projected whether the substitution sits in argument position (`diff <(cat /etc/shadow)`), in a redirect destination (`echo hi > $(cat /etc/shadow)`), in an interpolating heredoc body ([#741]), in command-name position (`$(cat /etc/shadow)`, `while $(cat /etc/shadow); do …`), or in an env-var prefix assignment (`FOO=$(cat /etc/shadow) echo hi`) ([#742]).
@@ -474,3 +489,4 @@ Cost is ~0.04 ms p95 per command, ~19% of the already-paid tree-sitter parse.
 [#977]: https://github.com/gotgenes/pi-packages/issues/977
 [#979]: https://github.com/gotgenes/pi-packages/issues/979
 [#985]: https://github.com/gotgenes/pi-packages/issues/985
+[#1083]: https://github.com/gotgenes/pi-packages/issues/1083
