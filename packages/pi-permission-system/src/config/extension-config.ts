@@ -6,6 +6,7 @@ import {
   restrictExistingPathToOwner,
 } from "#src/logging/log-file-permissions";
 import type {
+  AuthorizerTrustConfig,
   ShellToolsConfig,
   UnifiedPermissionConfig,
 } from "./config-loader";
@@ -40,6 +41,8 @@ export interface PermissionSystemExtensionConfig {
   shellTools?: ShellToolsConfig;
   /** Ordered names of registered live-authority chain links to consult before the terminal authorizer. */
   authorizerChain?: string[];
+  /** Per chain link, the excluded surface families its `allow` is not capped on. */
+  authorizerTrust?: AuthorizerTrustConfig;
 }
 
 export const DEFAULT_EXTENSION_CONFIG: PermissionSystemExtensionConfig = {
@@ -113,6 +116,9 @@ export function normalizePermissionSystemConfig(
   }
   if (raw.authorizerChain !== undefined) {
     result.authorizerChain = raw.authorizerChain;
+  }
+  if (raw.authorizerTrust !== undefined) {
+    result.authorizerTrust = raw.authorizerTrust;
   }
   return result;
 }
