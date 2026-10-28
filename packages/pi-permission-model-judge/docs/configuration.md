@@ -6,6 +6,8 @@
 - Project: `<cwd>/.pi/extensions/pi-permission-model-judge/config.json`.
 
 The project file overrides the global one field-by-field; array fields (`typoPatterns`) replace wholesale rather than merging.
+The project file is read only when Pi trusts the project, the same boundary `@gotgenes/pi-permission-system` applies to its own project scope.
+In an untrusted project the file contributes nothing, not even a validation issue, and the judge warns once per session that it skipped it, as a Pi notification when the session has a UI and on the console otherwise.
 Point your editor at the bundled [JSON Schema](../schemas/model-judge.schema.json) via `$schema` for completion and validation.
 
 ## Two config files, one link name

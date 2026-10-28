@@ -98,6 +98,7 @@ See [`config/config.example.json`](config/config.example.json) for a complete ex
 ## Configuration
 
 Config is layered — a project file (`<cwd>/.pi/extensions/pi-permission-model-judge/config.json`) overrides the global one — and validated against a [JSON Schema](schemas/model-judge.schema.json).
+The project file applies only when you trust the project: in an untrusted project it is never read, only the global config applies, and the judge warns that it skipped the file.
 
 | Field          | Type       | Default  | Description                                                                                                       |
 | -------------- | ---------- | -------- | ----------------------------------------------------------------------------------------------------------------- |
