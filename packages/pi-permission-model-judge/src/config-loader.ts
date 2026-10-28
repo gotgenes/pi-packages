@@ -32,6 +32,8 @@ export interface ConfigIssue {
 export interface LoadConfigResult {
   config: ModelJudgeConfig | undefined;
   issues: ConfigIssue[];
+  /** The project config file left unread because the project is untrusted; absent otherwise. */
+  untrustedProjectConfigPath?: string;
 }
 
 /** Global scope: `<agentDir>/extensions/<id>/config.json`. */
@@ -116,13 +118,16 @@ export function loadModelJudgeConfig(options: {
   const { cwd, agentDir, projectTrusted } = options;
   const issues: ConfigIssue[] = [];
 
+  const projectPath = getProjectConfigPath(cwd);
   const global = readLayer(getGlobalConfigPath(agentDir), issues);
-  const project = projectTrusted
-    ? readLayer(getProjectConfigPath(cwd), issues)
-    : undefined;
+  const project = projectTrusted ? readLayer(projectPath, issues) : undefined;
+  // An existence check reads nothing from the untrusted project; it only lets
+  // the caller say a config there was skipped rather than stay silent.
+  const untrustedProjectConfigPath =
+    !projectTrusted && existsSync(projectPath) ? projectPath : undefined;
 
   if (global === undefined && project === undefined) {
-    return { config: undefined, issues };
+    return { config: undefined, issues, untrustedProjectConfigPath };
   }
 
   // Shallow merge: project scalars and arrays replace global wholesale.
@@ -136,8 +141,8 @@ export function loadModelJudgeConfig(options: {
         message: issue.message,
       });
     }
-    return { config: undefined, issues };
+    return { config: undefined, issues, untrustedProjectConfigPath };
   }
 
-  return { config: parsed.data, issues };
+  return { config: parsed.data, issues, untrustedProjectConfigPath };
 }

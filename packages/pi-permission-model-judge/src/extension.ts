@@ -66,6 +66,15 @@ function reportWarning(ctx: WarningContext, message: string): void {
   console.warn(text);
 }
 
+/**
+ * Shown when an untrusted project carries a model-judge config, so the
+ * global-only scope is never silent; worded after pi-permission-system's own
+ * untrusted-project warning.
+ */
+function untrustedProjectMessage(path: string): string {
+  return `project is not trusted — skipping its model-judge config at ${path}. Only the global config applies; grant project trust to load it.`;
+}
+
 function attributed(message: string): string {
   return `[${MODEL_JUDGE_EXTENSION_ID}] ${message}`;
 }
@@ -97,6 +106,12 @@ export function createModelJudgeExtension(
     const result = loadConfig(ctx.cwd, ctx.isProjectTrusted());
     config = result.config;
     registry = ctx.modelRegistry;
+    if (result.untrustedProjectConfigPath !== undefined) {
+      reportWarning(
+        ctx,
+        untrustedProjectMessage(result.untrustedProjectConfigPath),
+      );
+    }
     for (const issue of result.issues) {
       reportWarning(
         ctx,

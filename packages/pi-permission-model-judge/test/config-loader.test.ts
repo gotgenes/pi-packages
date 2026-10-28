@@ -180,4 +180,40 @@ describe("loadModelJudgeConfig", () => {
       expect(result.issues).toEqual([]);
     });
   });
+
+  describe("the skipped project config path", () => {
+    it("names the project file when untrusted beside a valid global config", () => {
+      writeGlobal(VALID);
+      writeProject(VALID);
+      expect(load(false).untrustedProjectConfigPath).toBe(
+        getProjectConfigPath(cwd),
+      );
+    });
+
+    it("names the project file when untrusted and it is the only file", () => {
+      writeProject(VALID);
+      expect(load(false).untrustedProjectConfigPath).toBe(
+        getProjectConfigPath(cwd),
+      );
+    });
+
+    it("names the project file when untrusted beside an invalid global config", () => {
+      writeGlobal({ provider: "anthropic" });
+      writeProjectRaw("{ not valid json ");
+      expect(load(false).untrustedProjectConfigPath).toBe(
+        getProjectConfigPath(cwd),
+      );
+    });
+
+    it("is absent when untrusted and there is no project file", () => {
+      writeGlobal(VALID);
+      expect(load(false).untrustedProjectConfigPath).toBeUndefined();
+    });
+
+    it("is absent when the project is trusted", () => {
+      writeGlobal(VALID);
+      writeProject(VALID);
+      expect(load(true).untrustedProjectConfigPath).toBeUndefined();
+    });
+  });
 });

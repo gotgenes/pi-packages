@@ -463,6 +463,65 @@ describe("project trust", () => {
 
     expect(loadConfig).toHaveBeenCalledWith("/project", false);
   });
+
+  describe("the skipped project config warning", () => {
+    const SKIPPED_PATH =
+      "/p/.pi/extensions/pi-permission-model-judge/config.json";
+    const SKIPPED_WARNING =
+      "[pi-permission-model-judge] project is not trusted — skipping its model-judge config at /p/.pi/extensions/pi-permission-model-judge/config.json. Only the global config applies; grant project trust to load it.";
+
+    let warned: MockInstance<Console["warn"]>;
+
+    beforeEach(() => {
+      warned = vi.spyOn(console, "warn").mockImplementation(() => {});
+    });
+
+    it("warns on the console when the session has no UI", () => {
+      const pi = makeFakePi();
+      createModelJudgeExtension(pi.api as never, {
+        loadConfig: () => ({
+          ...CONFIG_RESULT,
+          untrustedProjectConfigPath: SKIPPED_PATH,
+        }),
+        complete: vi.fn(),
+      });
+
+      bringUpSession(pi, "/p", { trusted: false, hasUI: false });
+
+      expect(warned).toHaveBeenCalledWith(SKIPPED_WARNING);
+      expect(warned).toHaveBeenCalledTimes(1);
+    });
+
+    it("warns through a notification when the session has a UI", () => {
+      const pi = makeFakePi();
+      createModelJudgeExtension(pi.api as never, {
+        loadConfig: () => ({
+          ...CONFIG_RESULT,
+          untrustedProjectConfigPath: SKIPPED_PATH,
+        }),
+        complete: vi.fn(),
+      });
+
+      const ctx = bringUpSession(pi, "/p", { trusted: false, hasUI: true });
+
+      expect(ctx.ui.notify).toHaveBeenCalledWith(SKIPPED_WARNING, "warning");
+      expect(ctx.ui.notify).toHaveBeenCalledTimes(1);
+      expect(warned).not.toHaveBeenCalled();
+    });
+
+    it("stays silent when no project config was skipped", () => {
+      const pi = makeFakePi();
+      createModelJudgeExtension(pi.api as never, {
+        loadConfig: () => CONFIG_RESULT,
+        complete: vi.fn(),
+      });
+
+      const ctx = bringUpSession(pi, "/p", { trusted: false, hasUI: true });
+
+      expect(ctx.ui.notify).not.toHaveBeenCalled();
+      expect(warned).not.toHaveBeenCalled();
+    });
+  });
 });
 
 /**
@@ -562,6 +621,18 @@ describe("global config scope", () => {
         MODEL,
         expect.objectContaining({ systemPrompt: PROJECT_INSTRUCTIONS }),
         expect.objectContaining({ toolChoice: "any" }),
+      );
+    });
+
+    it("names the real skipped project file when the project is untrusted", () => {
+      const warned = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const pi = makeFakePi();
+      createModelJudgeExtension(pi.api as never, { complete: vi.fn() });
+
+      bringUpSession(pi, projectCwd, { trusted: false });
+
+      expect(warned).toHaveBeenCalledWith(
+        `[pi-permission-model-judge] project is not trusted — skipping its model-judge config at ${getProjectConfigPath(projectCwd)}. Only the global config applies; grant project trust to load it.`,
       );
     });
 
