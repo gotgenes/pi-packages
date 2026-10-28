@@ -1,6 +1,8 @@
 /**
  * Layered config loader: global then project `config.json`, project overriding
- * global, validated once against the zod source of truth.
+ * global, validated once against the zod source of truth. The project layer is
+ * read only when the project is trusted, so an untrusted repository cannot
+ * choose the judge's provider, model, or instructions.
  *
  * Fail-safe by construction: a malformed file is skipped with a recorded issue
  * (never fatal), and an invalid merged config yields `{ config: undefined }` so
@@ -94,6 +96,10 @@ function readLayer(
  * Load the merged, validated model-judge config from the global and project
  * scopes.
  *
+ * `projectTrusted` is required so a caller cannot fail open by omission: when it
+ * is `false`, the project file is never read or parsed, and contributes neither
+ * config nor issues.
+ *
  * Both scopes are supplied by the caller: the extension resolves `agentDir`
  * from the SDK's `getAgentDir()` (which honors `PI_CODING_AGENT_DIR`) and `cwd`
  * from the session context, so this module reads no process globals of its own.
@@ -105,12 +111,15 @@ function readLayer(
 export function loadModelJudgeConfig(options: {
   cwd: string;
   agentDir: string;
+  projectTrusted: boolean;
 }): LoadConfigResult {
-  const { cwd, agentDir } = options;
+  const { cwd, agentDir, projectTrusted } = options;
   const issues: ConfigIssue[] = [];
 
   const global = readLayer(getGlobalConfigPath(agentDir), issues);
-  const project = readLayer(getProjectConfigPath(cwd), issues);
+  const project = projectTrusted
+    ? readLayer(getProjectConfigPath(cwd), issues)
+    : undefined;
 
   if (global === undefined && project === undefined) {
     return { config: undefined, issues };

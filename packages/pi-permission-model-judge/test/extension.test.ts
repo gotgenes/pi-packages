@@ -15,7 +15,11 @@ import {
 import type { Mock, MockInstance } from "vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getGlobalConfigPath, type LoadConfigResult } from "#src/config-loader";
+import {
+  getGlobalConfigPath,
+  getProjectConfigPath,
+  type LoadConfigResult,
+} from "#src/config-loader";
 import { createModelJudgeExtension } from "#src/extension";
 import type { CompleteFn } from "#src/model-review";
 import { assistantToolCall } from "#test/fixtures/assistant-message";
@@ -427,6 +431,40 @@ describe("session_start warnings", () => {
   });
 });
 
+describe("project trust", () => {
+  it("loads the config with the project scope when the project is trusted", () => {
+    const pi = makeFakePi();
+    const loadConfig = vi.fn(
+      (_cwd: string, _projectTrusted: boolean): LoadConfigResult =>
+        CONFIG_RESULT,
+    );
+    createModelJudgeExtension(pi.api as never, {
+      loadConfig,
+      complete: vi.fn(),
+    });
+
+    bringUpSession(pi, "/project", { trusted: true });
+
+    expect(loadConfig).toHaveBeenCalledWith("/project", true);
+  });
+
+  it("loads the config without the project scope when the project is untrusted", () => {
+    const pi = makeFakePi();
+    const loadConfig = vi.fn(
+      (_cwd: string, _projectTrusted: boolean): LoadConfigResult =>
+        CONFIG_RESULT,
+    );
+    createModelJudgeExtension(pi.api as never, {
+      loadConfig,
+      complete: vi.fn(),
+    });
+
+    bringUpSession(pi, "/project", { trusted: false });
+
+    expect(loadConfig).toHaveBeenCalledWith("/project", false);
+  });
+});
+
 /**
  * The production seam: `createModelJudgeExtension` with no injected
  * `loadConfig`, so the global scope is resolved the way it is in a real
@@ -487,6 +525,60 @@ describe("global config scope", () => {
       expect.objectContaining({ systemPrompt: SCOPED_INSTRUCTIONS }),
       expect.objectContaining({ toolChoice: "any" }),
     );
+  });
+
+  describe("a project config beside the global one", () => {
+    const PROJECT_INSTRUCTIONS = "Judge paths using the project config.";
+
+    beforeEach(() => {
+      const projectConfigPath = getProjectConfigPath(projectCwd);
+      mkdirSync(dirname(projectConfigPath), { recursive: true });
+      writeFileSync(
+        projectConfigPath,
+        JSON.stringify({ instructions: PROJECT_INSTRUCTIONS }),
+      );
+    });
+
+    /** Review one matched path so `complete` reveals the loaded instructions. */
+    async function reviewMatchedPath(): Promise<void> {
+      const authorize = service.registerAuthorizer.mock
+        .calls[0]?.[1] as RegisteredAuthorizer;
+      await authorize(
+        makePromptDetails({ path: `/x/${SCOPED_PATTERN}/a.ts` }),
+        {},
+        { review: vi.fn(), debug: vi.fn() },
+      );
+    }
+
+    it("applies the project instructions when the project is trusted", async () => {
+      const pi = makeFakePi();
+      const complete: CompleteFn = vi.fn(async () => denyReply());
+      createModelJudgeExtension(pi.api as never, { complete });
+      bringUpSession(pi, projectCwd, { trusted: true });
+
+      await reviewMatchedPath();
+
+      expect(complete).toHaveBeenCalledWith(
+        MODEL,
+        expect.objectContaining({ systemPrompt: PROJECT_INSTRUCTIONS }),
+        expect.objectContaining({ toolChoice: "any" }),
+      );
+    });
+
+    it("keeps the global instructions when the project is untrusted", async () => {
+      const pi = makeFakePi();
+      const complete: CompleteFn = vi.fn(async () => denyReply());
+      createModelJudgeExtension(pi.api as never, { complete });
+      bringUpSession(pi, projectCwd, { trusted: false });
+
+      await reviewMatchedPath();
+
+      expect(complete).toHaveBeenCalledWith(
+        MODEL,
+        expect.objectContaining({ systemPrompt: SCOPED_INSTRUCTIONS }),
+        expect.objectContaining({ toolChoice: "any" }),
+      );
+    });
   });
 });
 

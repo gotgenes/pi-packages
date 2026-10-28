@@ -34,8 +34,8 @@ describe("loadModelJudgeConfig", () => {
     rmSync(root, { recursive: true, force: true });
   });
 
-  function load(): LoadConfigResult {
-    return loadModelJudgeConfig({ cwd, agentDir });
+  function load(projectTrusted = true): LoadConfigResult {
+    return loadModelJudgeConfig({ cwd, agentDir, projectTrusted });
   }
 
   function writeGlobal(value: unknown): void {
@@ -138,5 +138,46 @@ describe("loadModelJudgeConfig", () => {
     const result = load();
     expect(result.config).toBeUndefined();
     expect(result.issues.length).toBeGreaterThan(0);
+  });
+
+  describe("an untrusted project", () => {
+    it("ignores the project layer and loads the global config alone", () => {
+      writeGlobal({
+        ...VALID,
+        model: "claude-haiku",
+        typoPatterns: ["global-pattern"],
+        timeoutMs: 3000,
+      });
+      writeProject({
+        ...VALID,
+        model: "claude-sonnet",
+        typoPatterns: ["project-pattern"],
+        timeoutMs: 9000,
+      });
+      const result = load(false);
+      expect(result.issues).toEqual([]);
+      expect(result.config).toEqual({
+        provider: "anthropic",
+        model: "claude-haiku",
+        instructions: "Flag doubled path segments.",
+        typoPatterns: ["global-pattern"],
+        timeoutMs: 3000,
+      });
+    });
+
+    it("never parses the project file, so a malformed one records no issue", () => {
+      writeGlobal(VALID);
+      writeProjectRaw("{ not valid json ");
+      const result = load(false);
+      expect(result.issues).toEqual([]);
+      expect(result.config?.model).toBe("claude-haiku");
+    });
+
+    it("yields no config when only the project file exists", () => {
+      writeProject(VALID);
+      const result = load(false);
+      expect(result.config).toBeUndefined();
+      expect(result.issues).toEqual([]);
+    });
   });
 });

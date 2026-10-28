@@ -40,7 +40,7 @@ const LINK_NAME = "model-judge";
 
 /** Injectable seams; production defaults read the filesystem and call the model. */
 export interface ModelJudgeDependencies {
-  loadConfig?: (cwd: string) => LoadConfigResult;
+  loadConfig?: (cwd: string, projectTrusted: boolean) => LoadConfigResult;
   complete?: CompleteFn;
 }
 
@@ -80,7 +80,8 @@ export function createModelJudgeExtension(
   // pi-permission-system looks for the same global scope.
   const loadConfig =
     dependencies.loadConfig ??
-    ((cwd: string) => loadModelJudgeConfig({ cwd, agentDir: getAgentDir() }));
+    ((cwd: string, projectTrusted: boolean) =>
+      loadModelJudgeConfig({ cwd, agentDir: getAgentDir(), projectTrusted }));
   const complete: CompleteFn =
     dependencies.complete ??
     ((model, context, options) => realComplete(model, context, options));
@@ -91,7 +92,9 @@ export function createModelJudgeExtension(
   let warnedUnresolvedService = false;
 
   pi.on("session_start", (_event, ctx) => {
-    const result = loadConfig(ctx.cwd);
+    // Pi resolves project trust before any extension's `session_start`, so
+    // this is the final decision for the session.
+    const result = loadConfig(ctx.cwd, ctx.isProjectTrusted());
     config = result.config;
     registry = ctx.modelRegistry;
     for (const issue of result.issues) {
