@@ -106,15 +106,36 @@ type RegisteredAuthorizer = (
   log: { review: () => void; debug: () => void },
 ) => Promise<unknown>;
 
-function ctxWithRegistry(cwd = "/project"): {
+/** How a test session differs from a trusted, UI-less default. */
+interface SessionOverrides {
+  trusted?: boolean;
+  hasUI?: boolean;
+}
+
+/**
+ * The `session_start` context: trusted and UI-less unless overridden, so a
+ * test that does not care about trust or the notification sink sees the
+ * console path with the project layer in scope.
+ */
+function ctxWithRegistry(
+  cwd = "/project",
+  overrides: SessionOverrides = {},
+): {
   cwd: string;
+  hasUI: boolean;
+  isProjectTrusted: () => boolean;
+  ui: { notify: Mock<(message: string, type?: string) => void> };
   modelRegistry: {
     find: () => Model<any>;
     getApiKeyAndHeaders: () => Promise<{ ok: true; apiKey: string }>;
   };
 } {
+  const trusted = overrides.trusted ?? true;
   return {
     cwd,
+    hasUI: overrides.hasUI ?? false,
+    isProjectTrusted: () => trusted,
+    ui: { notify: vi.fn() },
     modelRegistry: {
       find: () => MODEL,
       getApiKeyAndHeaders: async () => ({ ok: true, apiKey: "sk-test" }),
@@ -147,10 +168,16 @@ function emitReady(pi: FakePi, sessionId: string | null = SESSION_ID): void {
  * Tests that exist to pin a *different* ordering spell the sequence out
  * instead of calling this.
  */
-function bringUpSession(pi: FakePi, cwd?: string): void {
+function bringUpSession(
+  pi: FakePi,
+  cwd?: string,
+  overrides?: SessionOverrides,
+): ReturnType<typeof ctxWithRegistry> {
   publishPermissionsService(SESSION_ID, service);
-  pi.lifecycle.get("session_start")?.({}, ctxWithRegistry(cwd));
+  const ctx = ctxWithRegistry(cwd, overrides);
+  pi.lifecycle.get("session_start")?.({}, ctx);
   emitReady(pi);
+  return ctx;
 }
 
 describe("createModelJudgeExtension", () => {
