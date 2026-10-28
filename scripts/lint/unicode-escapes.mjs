@@ -152,7 +152,16 @@ export function run({ paths, fix = false }, io) {
 }
 
 /** Extensions whose prose is their comments. */
-const CODE_EXTENSIONS = [".ts", ".mts", ".cts", ".js", ".mjs", ".cjs"];
+const CODE_EXTENSIONS = [
+  ".ts",
+  ".tsx",
+  ".mts",
+  ".cts",
+  ".js",
+  ".jsx",
+  ".mjs",
+  ".cjs",
+];
 
 /**
  * The mask that leaves a file's prose visible: its comments for JavaScript
