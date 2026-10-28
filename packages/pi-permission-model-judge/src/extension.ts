@@ -18,6 +18,7 @@
 import { complete as realComplete } from "@earendil-works/pi-ai/compat";
 import {
   type ExtensionAPI,
+  type ExtensionContext,
   getAgentDir,
 } from "@earendil-works/pi-coding-agent";
 import type { PermissionsReadyEvent } from "@gotgenes/pi-permission-system";
@@ -44,7 +45,29 @@ export interface ModelJudgeDependencies {
 }
 
 function warn(message: string): void {
-  console.warn(`[${MODEL_JUDGE_EXTENSION_ID}] ${message}`);
+  console.warn(attributed(message));
+}
+
+/** The session surface a `session_start` warning is delivered through. */
+type WarningContext = Pick<ExtensionContext, "hasUI" | "ui">;
+
+/**
+ * Deliver a `session_start` warning where the operator will see it: a Pi
+ * notification when the session has a UI, the console otherwise. Pi starts its
+ * TUI before `session_start` and does not capture console output, so a raw
+ * `console.warn` there lands under a live TUI.
+ */
+function reportWarning(ctx: WarningContext, message: string): void {
+  const text = attributed(message);
+  if (ctx.hasUI) {
+    ctx.ui.notify(text, "warning");
+    return;
+  }
+  console.warn(text);
+}
+
+function attributed(message: string): string {
+  return `[${MODEL_JUDGE_EXTENSION_ID}] ${message}`;
 }
 
 export function createModelJudgeExtension(
@@ -72,7 +95,8 @@ export function createModelJudgeExtension(
     config = result.config;
     registry = ctx.modelRegistry;
     for (const issue of result.issues) {
-      warn(
+      reportWarning(
+        ctx,
         `config issue at ${issue.sourcePath ?? "(merged)"} — ${issue.path}: ${issue.message}`,
       );
     }

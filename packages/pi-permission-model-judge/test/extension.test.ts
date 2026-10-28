@@ -382,6 +382,51 @@ describe("an unresolvable permission service", () => {
   });
 });
 
+describe("session_start warnings", () => {
+  const ISSUE_RESULT: LoadConfigResult = {
+    config: undefined,
+    issues: [
+      { path: "model", message: "Required", sourcePath: "/g/config.json" },
+    ],
+  };
+  const ISSUE_WARNING =
+    "[pi-permission-model-judge] config issue at /g/config.json — model: Required";
+
+  let warned: MockInstance<Console["warn"]>;
+
+  beforeEach(() => {
+    warned = vi.spyOn(console, "warn").mockImplementation(() => {});
+  });
+
+  it("reports a config issue as a warning notification when the session has a UI", () => {
+    const pi = makeFakePi();
+    createModelJudgeExtension(pi.api as never, {
+      loadConfig: () => ISSUE_RESULT,
+      complete: vi.fn(),
+    });
+
+    const ctx = bringUpSession(pi, undefined, { hasUI: true });
+
+    expect(ctx.ui.notify).toHaveBeenCalledWith(ISSUE_WARNING, "warning");
+    expect(ctx.ui.notify).toHaveBeenCalledTimes(1);
+    expect(warned).not.toHaveBeenCalled();
+  });
+
+  it("reports a config issue on the console when the session has no UI", () => {
+    const pi = makeFakePi();
+    createModelJudgeExtension(pi.api as never, {
+      loadConfig: () => ISSUE_RESULT,
+      complete: vi.fn(),
+    });
+
+    const ctx = bringUpSession(pi, undefined, { hasUI: false });
+
+    expect(warned).toHaveBeenCalledWith(ISSUE_WARNING);
+    expect(warned).toHaveBeenCalledTimes(1);
+    expect(ctx.ui.notify).not.toHaveBeenCalled();
+  });
+});
+
 /**
  * The production seam: `createModelJudgeExtension` with no injected
  * `loadConfig`, so the global scope is resolved the way it is in a real
