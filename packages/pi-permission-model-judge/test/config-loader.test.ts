@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   getGlobalConfigPath,
   getProjectConfigPath,
+  type LoadConfigResult,
   loadModelJudgeConfig,
 } from "#src/config-loader";
 
@@ -33,6 +34,10 @@ describe("loadModelJudgeConfig", () => {
     rmSync(root, { recursive: true, force: true });
   });
 
+  function load(): LoadConfigResult {
+    return loadModelJudgeConfig({ cwd, agentDir });
+  }
+
   function writeGlobal(value: unknown): void {
     const path = getGlobalConfigPath(agentDir);
     mkdirSync(join(path, ".."), { recursive: true });
@@ -52,13 +57,13 @@ describe("loadModelJudgeConfig", () => {
   }
 
   it("returns no config and no issues when neither file exists", () => {
-    const result = loadModelJudgeConfig({ cwd, agentDir });
+    const result = load();
     expect(result).toEqual({ config: undefined, issues: [] });
   });
 
   it("loads a valid global config and applies defaults", () => {
     writeGlobal(VALID);
-    const result = loadModelJudgeConfig({ cwd, agentDir });
+    const result = load();
     expect(result.issues).toEqual([]);
     expect(result.config).toEqual({
       provider: "anthropic",
@@ -81,7 +86,7 @@ describe("loadModelJudgeConfig", () => {
       model: "claude-sonnet",
       typoPatterns: ["project-pattern"],
     });
-    const result = loadModelJudgeConfig({ cwd, agentDir });
+    const result = load();
     expect(result.issues).toEqual([]);
     expect(result.config).toEqual({
       provider: "anthropic",
@@ -95,7 +100,7 @@ describe("loadModelJudgeConfig", () => {
   it("skips a malformed layer with an issue and loads the valid layer", () => {
     writeGlobal(VALID);
     writeProjectRaw("{ not valid json ");
-    const result = loadModelJudgeConfig({ cwd, agentDir });
+    const result = load();
     expect(result.config?.model).toBe("claude-haiku");
     expect(result.issues).toHaveLength(1);
     expect(result.issues[0]?.sourcePath).toBe(getProjectConfigPath(cwd));
@@ -103,7 +108,7 @@ describe("loadModelJudgeConfig", () => {
 
   it("returns no config with issues when a present config is invalid", () => {
     writeGlobal({ provider: "anthropic", model: "claude-haiku" });
-    const result = loadModelJudgeConfig({ cwd, agentDir });
+    const result = load();
     expect(result.config).toBeUndefined();
     expect(result.issues.length).toBeGreaterThan(0);
     expect(result.issues.some((i) => i.path.includes("instructions"))).toBe(
@@ -116,7 +121,7 @@ describe("loadModelJudgeConfig", () => {
       ...VALID,
       typoPatterns: Array.from({ length: 1001 }, () => ""),
     });
-    const result = loadModelJudgeConfig({ cwd, agentDir });
+    const result = load();
     expect(result).toEqual({
       config: undefined,
       issues: [
@@ -130,7 +135,7 @@ describe("loadModelJudgeConfig", () => {
 
   it("rejects an empty typoPatterns entry", () => {
     writeGlobal({ ...VALID, typoPatterns: [""] });
-    const result = loadModelJudgeConfig({ cwd, agentDir });
+    const result = load();
     expect(result.config).toBeUndefined();
     expect(result.issues.length).toBeGreaterThan(0);
   });
