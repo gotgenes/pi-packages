@@ -28,3 +28,20 @@ The plan is six steps: two `test:` preparations, a sink `fix:`, the breaking tru
 #### Deferred tidyings
 
 - `packages/pi-permission-model-judge/src/extension.ts`: `warn` and `warnUnresolvedService` remain a separate `console.warn` path from the new ctx-aware `reportWarning`; unifying needs a stored `ctx`.
+
+## Stage: Implementation — TDD (2026-10-28T18:56:30Z)
+
+### Session summary
+
+All six TDD steps landed as planned: two `test:` preparations, the notification sink `fix:`, the breaking trust-gate `fix!:`, the skip-warning `fix:`, and the `docs:` step.
+The package suite went from 72 to 90 tests (+18), and every named killing mutation turned its predicted tests red.
+
+### Observations
+
+- Step 5 deviated slightly from the plan: its third loader case uses an invalid *global* config beside a malformed project file, so it exercises the invalid-merge return site, which the plan's "malformed project" wording would not have reached (an untrusted malformed project file is never parsed, so that case lands on the success return).
+- Mutation evidence beyond the plan: dropping the `!projectTrusted` condition also killed the existing 1,000-entry `typoPatterns` bound test, because its full-shape `toEqual` sees the extra defined field; omitting the field at the invalid-merge return was a fifth mutation, killed by its own case.
+- In step 3, the `hasUI: false` test passed during Red (a pin for the existing console path); the always-notify mutation confirmed it discriminates.
+- `git commit -F -` with a heredoc is denied by the permission policy; write the message with `Write` and pass `-F <file>`.
+- One `git commit` timed out at 200 s without landing (no lock left behind); a retry with a longer timeout succeeded.
+  The root `pnpm run test` and `pnpm run lint` also needed timeouts well above 900 s in this session.
+- Pre-completion reviewer: PASS; it re-derived the security boundary (one production load site, trust read from `ctx` there, project content read only under the `projectTrusted` guard) and found no leak path.
