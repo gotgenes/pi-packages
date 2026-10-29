@@ -96,6 +96,69 @@ describe("extractPathsFromInput", () => {
       ),
     ).toEqual(["a.ts"]);
   });
+
+  it("extracts add, delete, and move destinations from a multi-file patch", () => {
+    const patch = [
+      "*** Begin Patch",
+      "*** Add File: path/add.py",
+      "+abc",
+      "+def",
+      "*** Delete File: path/delete.py",
+      "*** Update File: path/update.py",
+      "*** Move to: path/update2.py",
+      "@@ def f():",
+      "-    pass",
+      "+    return 123",
+      "*** End Patch",
+    ].join("\n");
+
+    expect(
+      extractPathsFromInput({ args: { patch } }, { patchField: "args.patch" }),
+    ).toEqual(["path/add.py", "path/delete.py", "path/update2.py"]);
+  });
+
+  it("uses the update filename when no move is declared", () => {
+    const patch =
+      "*** Begin Patch\r\n*** Update File: src/a.ts\r\n@@\r\n-old\r\n+new\r\n*** End Patch\r\n";
+    expect(extractPathsFromInput({ patch }, { patchField: "patch" })).toEqual([
+      "src/a.ts",
+    ]);
+  });
+
+  it("does not treat added content as a file header", () => {
+    const patch =
+      "*** Begin Patch\n*** Add File: doc.txt\n+*** Delete File: other.txt\n*** End Patch";
+    expect(extractPathsFromInput({ patch }, { patchField: "patch" })).toEqual([
+      "doc.txt",
+    ]);
+  });
+
+  it("accepts an environment ID before file operations", () => {
+    const patch =
+      "*** Begin Patch\n*** Environment ID: task-1\n*** Update File: src/a.ts\n@@\n-old\n+new\n*** End Patch";
+    expect(extractPathsFromInput({ patch }, { patchField: "patch" })).toEqual([
+      "src/a.ts",
+    ]);
+  });
+
+  it("ignores absent, non-string, and malformed patch values", () => {
+    expect(extractPathsFromInput({}, { patchField: "patch" })).toEqual([]);
+    expect(
+      extractPathsFromInput({ patch: 42 }, { patchField: "patch" }),
+    ).toEqual([]);
+    expect(
+      extractPathsFromInput(
+        { patch: "*** Add File: a.ts\n+x\n*** End Patch" },
+        { patchField: "patch" },
+      ),
+    ).toEqual([]);
+    expect(
+      extractPathsFromInput(
+        { patch: "*** Begin Patch\n*** Move to: b.ts\n*** End Patch" },
+        { patchField: "patch" },
+      ),
+    ).toEqual([]);
+  });
 });
 
 describe("createCustomToolHandler", () => {

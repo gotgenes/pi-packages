@@ -565,17 +565,19 @@ describe("loadAutoformatConfig", () => {
 });
 
 describe("validateUserFormatterConfig: customMutationTools", () => {
-  it("accepts entries with pathField or pathFields", () => {
+  it("accepts entries with pathField, pathFields, or patchField", () => {
     const result = validateUserFormatterConfig({
       customMutationTools: [
         { toolName: "a", pathField: "path" },
         { toolName: "b", pathFields: ["target", "args.extra"] },
+        { toolName: "c", patchField: "args.patch" },
       ],
     });
     expect(result.issues).toEqual([]);
     expect(result.config.customMutationTools).toEqual([
       { toolName: "a", pathField: "path" },
       { toolName: "b", pathFields: ["target", "args.extra"] },
+      { toolName: "c", patchField: "args.patch" },
     ]);
   });
 
@@ -618,6 +620,19 @@ describe("validateUserFormatterConfig: customMutationTools", () => {
     ]);
   });
 
+  it("rejects patchField combined with either path setting", () => {
+    const result = validateUserFormatterConfig({
+      customMutationTools: [
+        { toolName: "x", pathField: "path", patchField: "patch" },
+        { toolName: "y", pathFields: ["path"], patchField: "patch" },
+      ],
+    });
+    expect(result.issues.map((i) => i.path)).toEqual([
+      "customMutationTools[0]",
+      "customMutationTools[1]",
+    ]);
+  });
+
   it("rejects entries with neither pathField nor pathFields", () => {
     const result = validateUserFormatterConfig({
       customMutationTools: [{ toolName: "x" }],
@@ -633,12 +648,16 @@ describe("validateUserFormatterConfig: customMutationTools", () => {
         { toolName: "a", pathField: "" },
         { toolName: "b", pathFields: ["valid", ""] },
         { toolName: "c", pathFields: [42] },
+        { toolName: "d", patchField: "" },
+        { toolName: "e", patchField: 42 },
       ],
     });
     expect(result.issues.map((i) => i.path)).toEqual([
       "customMutationTools[0].pathField",
       "customMutationTools[1].pathFields[1]",
       "customMutationTools[2].pathFields[0]",
+      "customMutationTools[3].patchField",
+      "customMutationTools[4].patchField",
     ]);
   });
 

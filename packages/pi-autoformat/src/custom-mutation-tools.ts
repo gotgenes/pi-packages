@@ -3,7 +3,7 @@ import type { MutationSourceHandler } from "./touched-files-queue";
 /**
  * Declarative spec for a custom mutation tool.
  *
- * Exactly one of `pathField` or `pathFields` must be provided. Validation
+ * Exactly one of `pathField`, `pathFields`, or `patchField` must be provided. Validation
  * of that constraint lives in the config loader so that schema errors
  * surface to the user with proper sourcePath attribution.
  */
@@ -16,6 +16,8 @@ export type CustomMutationToolSpec = {
    * may resolve to a string or a string array; arrays are flattened.
    */
   pathFields?: string[];
+  /** Dotted path to an OpenAI-style patch in the tool's `input` payload. */
+  patchField?: string;
 };
 
 /**
@@ -55,10 +57,14 @@ function collectFromValue(value: unknown, out: string[]): void {
  */
 export function extractPathsFromInput(
   input: unknown,
-  spec: Pick<CustomMutationToolSpec, "pathField" | "pathFields">,
+  spec: Pick<CustomMutationToolSpec, "pathField" | "pathFields" | "patchField">,
 ): string[] {
   if (typeof input !== "object" || input === null || Array.isArray(input)) {
     return [];
+  }
+
+  if (spec.patchField) {
+    return extractPathsFromPatch(resolveDottedPath(input, spec.patchField));
   }
 
   const fields: string[] = [];
@@ -75,6 +81,89 @@ export function extractPathsFromInput(
     collectFromValue(resolved, results);
   }
   return results;
+}
+
+type PatchState = {
+  paths: string[];
+  operation?: "add" | "delete" | "update";
+  moveAllowed: boolean;
+};
+
+function extractPathsFromPatch(value: unknown): string[] {
+  if (typeof value !== "string") {
+    return [];
+  }
+
+  const lines = value.trim().split(/\r?\n/);
+  if (lines[0] !== "*** Begin Patch" || lines.at(-1) !== "*** End Patch") {
+    return [];
+  }
+
+  const state: PatchState = { paths: [], moveAllowed: false };
+  for (const line of lines.slice(1, -1)) {
+    if (!consumePatchLine(line, state)) {
+      return [];
+    }
+  }
+  return state.paths;
+}
+
+function consumePatchLine(line: string, state: PatchState): boolean {
+  if (line.startsWith("*** Environment ID: ") && !state.operation) {
+    return true;
+  }
+  const header = parsePatchOperation(line);
+  if (header) {
+    if (!header.path) {
+      return false;
+    }
+    state.paths.push(header.path);
+    state.operation = header.operation;
+    state.moveAllowed = state.operation === "update";
+    return true;
+  }
+  if (line.startsWith("*** Move to: ")) {
+    return consumePatchMove(line.slice("*** Move to: ".length), state);
+  }
+  if (line === "*** End of File" && state.operation === "update") {
+    state.moveAllowed = false;
+    return true;
+  }
+  state.moveAllowed = false;
+  return isPatchBodyLine(line, state.operation);
+}
+
+function consumePatchMove(path: string, state: PatchState): boolean {
+  if (!path || state.operation !== "update" || !state.moveAllowed) {
+    return false;
+  }
+  state.paths[state.paths.length - 1] = path;
+  state.moveAllowed = false;
+  return true;
+}
+
+function parsePatchOperation(line: string) {
+  const headers = [
+    ["*** Add File: ", "add"],
+    ["*** Delete File: ", "delete"],
+    ["*** Update File: ", "update"],
+  ] as const;
+  for (const [prefix, operation] of headers) {
+    if (line.startsWith(prefix)) {
+      return { operation, path: line.slice(prefix.length) };
+    }
+  }
+  return undefined;
+}
+
+function isPatchBodyLine(
+  line: string,
+  operation: "add" | "delete" | "update" | undefined,
+): boolean {
+  if (!operation || operation === "delete" || line.startsWith("***")) {
+    return false;
+  }
+  return operation !== "add" || line.startsWith("+");
 }
 
 /** Build a single MutationSourceHandler from a spec. */
