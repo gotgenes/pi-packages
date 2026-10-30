@@ -92,6 +92,44 @@ describe("loadModelJudgeConfig", () => {
     });
   });
 
+  it("does not read an untrusted project layer, even when it is malformed", () => {
+    writeGlobal(VALID);
+    writeProjectRaw("{ invalid json");
+    const result = loadModelJudgeConfig({
+      cwd,
+      agentDir,
+      includeProjectScope: false,
+    });
+    expect(result.issues).toEqual([]);
+    expect(result.config?.instructions).toBe(VALID.instructions);
+  });
+
+  it("ignores every project field when project scope is excluded", () => {
+    writeGlobal(VALID);
+    writeProject({
+      provider: "untrusted-provider",
+      model: "untrusted-model",
+      instructions: "untrusted instructions",
+      typoPatterns: ["untrusted"],
+      timeoutMs: 1,
+    });
+    expect(
+      loadModelJudgeConfig({ cwd, agentDir, includeProjectScope: false })
+        .config,
+    ).toEqual({ ...VALID, typoPatterns: [], timeoutMs: 5000 });
+  });
+
+  it("does not activate a project-only config until project scope is included", () => {
+    writeProject(VALID);
+    expect(
+      loadModelJudgeConfig({ cwd, agentDir, includeProjectScope: false }),
+    ).toEqual({ config: undefined, issues: [] });
+    expect(
+      loadModelJudgeConfig({ cwd, agentDir, includeProjectScope: true }).config
+        ?.instructions,
+    ).toBe(VALID.instructions);
+  });
+
   it("skips a malformed layer with an issue and loads the valid layer", () => {
     writeGlobal(VALID);
     writeProjectRaw("{ not valid json ");

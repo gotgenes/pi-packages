@@ -6,6 +6,8 @@
 - Project: `<cwd>/.pi/extensions/pi-permission-model-judge/config.json`.
 
 The project file overrides the global one field-by-field; array fields (`typoPatterns`) replace wholesale rather than merging.
+Project configuration is ignored when the project is untrusted, and the extension warns that it was skipped.
+Trust changes take effect before the next agent turn; without a valid global configuration, the model judge defers until a trusted project configuration is available.
 Point your editor at the bundled [JSON Schema](../schemas/model-judge.schema.json) via `$schema` for completion and validation.
 
 ## Two config files, one link name
