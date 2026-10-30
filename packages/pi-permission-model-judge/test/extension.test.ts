@@ -15,7 +15,11 @@ import {
 import type { Mock, MockInstance } from "vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getGlobalConfigPath, type LoadConfigResult } from "#src/config-loader";
+import {
+  getGlobalConfigPath,
+  getProjectConfigPath,
+  type LoadConfigResult,
+} from "#src/config-loader";
 import { createModelJudgeExtension } from "#src/extension";
 import type { CompleteFn } from "#src/model-review";
 import { assistantToolCall } from "#test/fixtures/assistant-message";
@@ -108,6 +112,7 @@ type RegisteredAuthorizer = (
 
 function ctxWithRegistry(cwd = "/project"): {
   cwd: string;
+  isProjectTrusted: () => boolean;
   modelRegistry: {
     find: () => Model<any>;
     getApiKeyAndHeaders: () => Promise<{ ok: true; apiKey: string }>;
@@ -115,6 +120,7 @@ function ctxWithRegistry(cwd = "/project"): {
 } {
   return {
     cwd,
+    isProjectTrusted: () => true,
     modelRegistry: {
       find: () => MODEL,
       getApiKeyAndHeaders: async () => ({ ok: true, apiKey: "sk-test" }),
@@ -415,6 +421,136 @@ describe("global config scope", () => {
       expect.objectContaining({ systemPrompt: SCOPED_INSTRUCTIONS }),
       expect.objectContaining({ toolChoice: "any" }),
     );
+  });
+
+  it("does not use project instructions when the project is untrusted", async () => {
+    const projectConfig = getProjectConfigPath(projectCwd);
+    mkdirSync(dirname(projectConfig), { recursive: true });
+    writeFileSync(
+      projectConfig,
+      JSON.stringify({
+        instructions: "Untrusted instructions",
+        typoPatterns: [SCOPED_PATTERN],
+      }),
+    );
+    const pi = makeFakePi();
+    const complete: CompleteFn = vi.fn(async () => denyReply());
+    const notify = vi.fn();
+    createModelJudgeExtension(pi.api as never, { complete });
+    publishPermissionsService(SESSION_ID, service);
+    pi.lifecycle.get("session_start")?.(
+      {},
+      {
+        ...ctxWithRegistry(projectCwd),
+        isProjectTrusted: () => false,
+        hasUI: true,
+        ui: { notify },
+      },
+    );
+    emitReady(pi);
+    const authorize = service.registerAuthorizer.mock
+      .calls[0]?.[1] as RegisteredAuthorizer;
+    await authorize(
+      makePromptDetails({ path: `/x/${SCOPED_PATTERN}/a.ts` }),
+      {},
+      { review: vi.fn(), debug: vi.fn() },
+    );
+    expect(complete).toHaveBeenCalledWith(
+      MODEL,
+      expect.objectContaining({ systemPrompt: SCOPED_INSTRUCTIONS }),
+      expect.anything(),
+    );
+    expect(notify).toHaveBeenCalledWith(
+      expect.stringContaining("not trusted"),
+      "warning",
+    );
+  });
+
+  it("drops project instructions when trust is revoked and restores them when granted", async () => {
+    const projectConfig = getProjectConfigPath(projectCwd);
+    mkdirSync(dirname(projectConfig), { recursive: true });
+    writeFileSync(
+      projectConfig,
+      JSON.stringify({
+        instructions: "Project instructions",
+        typoPatterns: [SCOPED_PATTERN],
+      }),
+    );
+    const pi = makeFakePi();
+    const complete: CompleteFn = vi.fn(async () => denyReply());
+    createModelJudgeExtension(pi.api as never, { complete });
+    bringUpSession(pi, projectCwd);
+    const authorize = service.registerAuthorizer.mock
+      .calls[0]?.[1] as RegisteredAuthorizer;
+    const review = () =>
+      authorize(
+        makePromptDetails({ path: `/x/${SCOPED_PATTERN}/a.ts` }),
+        {},
+        { review: vi.fn(), debug: vi.fn() },
+      );
+    await review();
+    expect(complete).toHaveBeenLastCalledWith(
+      MODEL,
+      expect.objectContaining({ systemPrompt: "Project instructions" }),
+      expect.anything(),
+    );
+    const ctx = {
+      ...ctxWithRegistry(projectCwd),
+      isProjectTrusted: () => false,
+      hasUI: true,
+      ui: { notify: vi.fn() },
+    };
+    pi.lifecycle.get("before_agent_start")?.({}, ctx);
+    await review();
+    expect(complete).toHaveBeenLastCalledWith(
+      MODEL,
+      expect.objectContaining({ systemPrompt: SCOPED_INSTRUCTIONS }),
+      expect.anything(),
+    );
+    pi.lifecycle.get("before_agent_start")?.(
+      {},
+      { ...ctx, isProjectTrusted: () => true },
+    );
+    await review();
+    expect(complete).toHaveBeenLastCalledWith(
+      MODEL,
+      expect.objectContaining({ systemPrompt: "Project instructions" }),
+      expect.anything(),
+    );
+    expect(service.registerAuthorizer).toHaveBeenCalledTimes(1);
+  });
+
+  it("registers a project-only judge when trust is granted and defers after revocation", async () => {
+    const agentDir = process.env.PI_CODING_AGENT_DIR ?? "";
+    rmSync(getGlobalConfigPath(agentDir));
+    const projectConfig = getProjectConfigPath(projectCwd);
+    mkdirSync(dirname(projectConfig), { recursive: true });
+    writeFileSync(projectConfig, JSON.stringify(CONFIG_RESULT.config));
+    const pi = makeFakePi();
+    const complete = vi.fn();
+    createModelJudgeExtension(pi.api as never, { complete });
+    publishPermissionsService(SESSION_ID, service);
+    const ctx = {
+      ...ctxWithRegistry(projectCwd),
+      isProjectTrusted: () => false,
+      hasUI: true,
+      ui: { notify: vi.fn() },
+    };
+    pi.lifecycle.get("session_start")?.({}, ctx);
+    emitReady(pi);
+    expect(service.registerAuthorizer).not.toHaveBeenCalled();
+    pi.lifecycle.get("before_agent_start")?.(
+      {},
+      { ...ctx, isProjectTrusted: () => true },
+    );
+    expect(service.registerAuthorizer).toHaveBeenCalledTimes(1);
+    const authorize = service.registerAuthorizer.mock
+      .calls[0]?.[1] as RegisteredAuthorizer;
+    pi.lifecycle.get("before_agent_start")?.({}, ctx);
+    await expect(
+      authorize(makePromptDetails(), {}, { review: vi.fn(), debug: vi.fn() }),
+    ).resolves.toEqual({ kind: "defer" });
+    expect(complete).not.toHaveBeenCalled();
   });
 });
 

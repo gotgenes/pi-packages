@@ -105,12 +105,16 @@ function readLayer(
 export function loadModelJudgeConfig(options: {
   cwd: string;
   agentDir: string;
+  includeProjectScope?: boolean;
 }): LoadConfigResult {
   const { cwd, agentDir } = options;
   const issues: ConfigIssue[] = [];
 
   const global = readLayer(getGlobalConfigPath(agentDir), issues);
-  const project = readLayer(getProjectConfigPath(cwd), issues);
+  const project =
+    options.includeProjectScope === false
+      ? undefined
+      : readLayer(getProjectConfigPath(cwd), issues);
 
   if (global === undefined && project === undefined) {
     return { config: undefined, issues };

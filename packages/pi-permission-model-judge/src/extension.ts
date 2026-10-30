@@ -5,8 +5,8 @@
  *
  * The ready event fires at least once per session and may repeat, and its
  * latch emission at the node's first `before_agent_start` runs after every
- * extension's `session_start` (ADR 0012 decision 3) — so the handler alone is
- * a sufficient registration site, needing only an idempotence guard. The
+ * extension's `session_start` (ADR 0012 decision 3). Trust changes refresh
+ * the config before a turn and can also trigger registration. The
  * event's `sessionId` keys the service of the node that emitted it, which is
  * the node whose chain consults this link.
  */
@@ -18,6 +18,7 @@
 import { complete as realComplete } from "@earendil-works/pi-ai/compat";
 import {
   type ExtensionAPI,
+  type ExtensionContext,
   getAgentDir,
 } from "@earendil-works/pi-coding-agent";
 import type { PermissionsReadyEvent } from "@gotgenes/pi-permission-system";
@@ -39,7 +40,7 @@ const LINK_NAME = "model-judge";
 
 /** Injectable seams; production defaults read the filesystem and call the model. */
 export interface ModelJudgeDependencies {
-  loadConfig?: (cwd: string) => LoadConfigResult;
+  loadConfig?: (cwd: string, projectTrusted: boolean) => LoadConfigResult;
   complete?: CompleteFn;
 }
 
@@ -57,7 +58,12 @@ export function createModelJudgeExtension(
   // pi-permission-system looks for the same global scope.
   const loadConfig =
     dependencies.loadConfig ??
-    ((cwd: string) => loadModelJudgeConfig({ cwd, agentDir: getAgentDir() }));
+    ((cwd: string, projectTrusted: boolean) =>
+      loadModelJudgeConfig({
+        cwd,
+        agentDir: getAgentDir(),
+        includeProjectScope: projectTrusted,
+      }));
   const complete: CompleteFn =
     dependencies.complete ??
     ((model, context, options) => realComplete(model, context, options));
@@ -66,25 +72,49 @@ export function createModelJudgeExtension(
   let registry: ModelRegistryLike | undefined;
   let dispose: (() => void) | undefined;
   let warnedUnresolvedService = false;
+  let projectTrusted: boolean | undefined;
+  let lastReadySessionId: string | null = null;
 
   pi.on("session_start", (_event, ctx) => {
-    const result = loadConfig(ctx.cwd);
+    refreshConfig(ctx);
+  });
+
+  pi.on("before_agent_start", (_event, ctx) => {
+    if (ctx.isProjectTrusted() !== projectTrusted) {
+      refreshConfig(ctx);
+      register(lastReadySessionId);
+    }
+  });
+
+  function refreshConfig(ctx: ExtensionContext): void {
+    projectTrusted = ctx.isProjectTrusted();
+    const result = loadConfig(ctx.cwd, projectTrusted);
     config = result.config;
     registry = ctx.modelRegistry;
+    if (!projectTrusted) {
+      const message =
+        "Project is not trusted; skipping project-scoped model-judge configuration.";
+      if (ctx.hasUI) ctx.ui.notify(message, "warning");
+      else warn(message);
+    }
     for (const issue of result.issues) {
       warn(
         `config issue at ${issue.sourcePath ?? "(merged)"} — ${issue.path}: ${issue.message}`,
       );
     }
-  });
+  }
 
   pi.events.on(PERMISSIONS_READY_CHANNEL, (data) => {
+    lastReadySessionId = readySessionId(data);
+    register(lastReadySessionId);
+  });
+
+  function register(sessionId: string | null): void {
     // A repeat emission must be a no-op, and a session with no config of its
     // own registers nothing: that is the operator declining the link.
     if (dispose || !config) {
       return;
     }
-    const sessionId = readySessionId(data);
     const service =
       sessionId === null ? undefined : getPermissionsService(sessionId);
     if (!service) {
@@ -97,7 +127,7 @@ export function createModelJudgeExtension(
       complete,
     });
     dispose = service.registerAuthorizer(LINK_NAME, authorize);
-  });
+  }
 
   pi.on("session_shutdown", () => {
     dispose?.();
@@ -105,6 +135,8 @@ export function createModelJudgeExtension(
     config = undefined;
     registry = undefined;
     warnedUnresolvedService = false;
+    projectTrusted = undefined;
+    lastReadySessionId = null;
   });
 
   /**
