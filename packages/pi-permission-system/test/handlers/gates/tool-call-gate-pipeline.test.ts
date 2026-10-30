@@ -62,6 +62,71 @@ describe("ToolCallGatePipeline", () => {
     realpathSync.mockImplementation((p: string) => p);
   });
 
+  it("asks separately for every unresolved command in a chain", async () => {
+    mockBashProgramParse.mockResolvedValue({
+      ...makeMockBashProgram("cd sub && npm test"),
+      commands: () => [{ text: "cd sub" }, { text: "npm test" }],
+    });
+    const resolver = makeResolver();
+    resolver.resolve.mockImplementation((intent) =>
+      intent.kind === "bash-command"
+        ? makeCheckResult({
+            state: "ask",
+            toolName: "bash",
+            source: "bash",
+            command: intent.command,
+          })
+        : makeCheckResult(),
+    );
+    const { runner } = makeGateRunner();
+    const run = vi.spyOn(runner, "run").mockResolvedValue({ action: "allow" });
+    await new ToolCallGatePipeline(resolver, makeGateInputs()).evaluate(
+      makeTcc({ toolName: "bash", input: { command: "cd sub && npm test" } }),
+      runner,
+    );
+    const toolGates = run.mock.calls
+      .map(([gate]) => gate)
+      .filter(isGateDescriptor)
+      .filter((gate) => gate.surface === "bash");
+    expect(toolGates.map((gate) => gate.payload.request.value)).toEqual([
+      "cd sub",
+      "npm test",
+    ]);
+    expect(toolGates.map((gate) => gate.sessionApproval?.grants)).toEqual([
+      [{ surface: "bash", pattern: "cd sub*" }],
+      [{ surface: "bash", pattern: "npm test*" }],
+    ]);
+  });
+
+  it("does not offer a partial session grant when the parser recovered a chain", async () => {
+    mockBashProgramParse.mockResolvedValue({
+      ...makeMockBashProgram("one && two"),
+      commands: () => [{ text: "one" }, { text: "two", salvaged: true }],
+    });
+    const resolver = makeResolver();
+    resolver.resolve.mockImplementation((intent) =>
+      intent.kind === "bash-command"
+        ? makeCheckResult({
+            state: "ask",
+            toolName: "bash",
+            source: "bash",
+            command: intent.command,
+          })
+        : makeCheckResult(),
+    );
+    const { runner } = makeGateRunner();
+    const run = vi.spyOn(runner, "run").mockResolvedValue({ action: "allow" });
+    await new ToolCallGatePipeline(resolver, makeGateInputs()).evaluate(
+      makeTcc({ toolName: "bash", input: { command: "one && two" } }),
+      runner,
+    );
+    const toolGate = run.mock.calls
+      .map(([gate]) => gate)
+      .filter(isGateDescriptor)
+      .find((gate) => gate.surface === "bash");
+    expect(toolGate?.sessionApproval).toBeUndefined();
+  });
+
   // ── non-bash tools ───────────────────────────────────────────────────────
 
   describe("evaluate — non-bash tool", () => {

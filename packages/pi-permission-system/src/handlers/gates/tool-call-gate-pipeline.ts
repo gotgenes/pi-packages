@@ -17,7 +17,7 @@ import {
   type ToolPreviewFormatterOptions,
 } from "#src/tool-input/tool-preview-formatter";
 import type { PermissionCheckResult } from "#src/types";
-import { resolveBashCommandCheck } from "./bash-command";
+import { resolveBashCommandCheck, resolveCommandUnit } from "./bash-command";
 import { describeBashExternalDirectoryGate } from "./bash-external-directory";
 import { describeBashPathGate } from "./bash-path";
 import { type GateResult, orderDenyFirst } from "./descriptor";
@@ -108,7 +108,9 @@ export class ToolCallGatePipeline {
 
     const infraScope = this.inputs.getInfrastructureReadScope();
 
-    const gateProducers: Array<() => GateResult | Promise<GateResult>> = [
+    const gateProducers: Array<
+      () => GateResult | GateResult[] | Promise<GateResult>
+    > = [
       () =>
         describeSkillReadGate(tcc, normalizer, () =>
           this.inputs.getActiveSkillEntries(),
@@ -138,15 +140,58 @@ export class ToolCallGatePipeline {
           bashProgram,
           normalizer,
         );
-        const toolDescriptor = describeToolGate(
-          tcc,
-          toolCheck,
-          formatter,
-          pathAccess,
-          shell,
-        );
-        toolDescriptor.preCheck = toolCheck;
-        return toolDescriptor;
+        const describe = (check: PermissionCheckResult) => {
+          const descriptor = describeToolGate(
+            tcc,
+            check,
+            formatter,
+            pathAccess,
+            shell,
+          );
+          descriptor.preCheck = check;
+          return descriptor;
+        };
+        if (
+          toolCheck.state === "ask" &&
+          (toolCheck.askingUnits?.length ?? 0) > 1 &&
+          bashProgram
+        ) {
+          const commands = bashProgram.commands();
+          if (
+            commands.some(
+              (command) =>
+                command.salvaged === true || command.parseUnresolved === true,
+            )
+          ) {
+            const descriptor = describe(toolCheck);
+            descriptor.sessionApproval = undefined;
+            return descriptor;
+          }
+          return commands
+            .map((command) =>
+              resolveCommandUnit(
+                command,
+                bashProgram.commandText(),
+                tcc.agentName ?? undefined,
+                this.resolver,
+              ),
+            )
+            .filter((check) => check.state === "ask")
+            .map((check) =>
+              describe({
+                ...check,
+                askingUnits: [
+                  {
+                    command: check.command ?? "",
+                    ...(check.floor === undefined
+                      ? {}
+                      : { floor: check.floor }),
+                  },
+                ],
+              }),
+            );
+        }
+        return describe(toolCheck);
       },
     ];
 
@@ -157,7 +202,8 @@ export class ToolCallGatePipeline {
     // loop below already produced every gate on any call it did not block.
     const gates: GateResult[] = [];
     for (const produce of gateProducers) {
-      gates.push(await produce());
+      const produced = await produce();
+      gates.push(...(Array.isArray(produced) ? produced : [produced]));
     }
 
     for (const gate of orderDenyFirst(gates)) {

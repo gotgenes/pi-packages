@@ -166,7 +166,7 @@ function withChainFloor(
  * where the enumerator established a reason to floor it, then tagged with the
  * facts the prompt and the session-approval suggestion read off the winner.
  */
-function resolveCommandUnit(
+export function resolveCommandUnit(
   cmd: BashCommand,
   command: string,
   agentName: string | undefined,
