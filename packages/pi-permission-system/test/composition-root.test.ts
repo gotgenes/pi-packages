@@ -233,6 +233,7 @@ function fireSessionStart(
 async function approveForwardedRequest(
   forwardingDir: string,
   parentSessionId: string,
+  excludeId?: string,
 ): Promise<ForwardedPermissionRequest> {
   const location = createPermissionForwardingLocation(
     forwardingDir,
@@ -242,8 +243,8 @@ async function approveForwardedRequest(
   while (Date.now() < deadline) {
     let files: string[] = [];
     try {
-      files = readdirSync(location.requestsDir).filter((f) =>
-        f.endsWith(".json"),
+      files = readdirSync(location.requestsDir).filter(
+        (f) => f.endsWith(".json") && f !== `${excludeId}.json`,
       );
     } catch {
       files = [];
@@ -420,8 +421,7 @@ describe("subagent registry sharing across factory instances", () => {
     });
     getServingSessionRegistry().markServing(parentSessionId);
 
-    // The parent's answer approves the whole line, so it has to see every
-    // command the child left asking, not only the winner.
+    // Each answer covers one asking unit, so both requests must be approved.
     const firePromise = childPi.fire(
       "tool_call",
       {
@@ -439,6 +439,14 @@ describe("subagent registry sharing across factory instances", () => {
     expect(request.accessIntent?.matchValues).toEqual(["ls"]);
     expect(request.accessIntent?.askingUnits).toStrictEqual([
       { command: "ls" },
+    ]);
+    const second = await approveForwardedRequest(
+      forwardingDir,
+      parentSessionId,
+      request.id,
+    );
+    expect(second.accessIntent?.matchValues).toEqual(["rm -rf /tmp/x"]);
+    expect(second.accessIntent?.askingUnits).toStrictEqual([
       { command: "rm -rf /tmp/x" },
     ]);
 
