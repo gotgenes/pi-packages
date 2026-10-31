@@ -906,11 +906,11 @@ What the bash projection resolves:
 
 - Absolute, home-relative (`~/`), parent-traversal (`../`), and separator-bearing tokens, plus redirect targets (`> out.txt`, including a file the redirect creates) and values embedded in long options (`--file=/tmp/patterns`).
 - The plain shell variables `$HOME` / `${HOME}` and `$PWD` / `${PWD}`, so `$HOME/x` is gated exactly as `~/x` and the literal absolute spelling, whether or not the target exists, as long as the command does not reassign them.
-- Relative tokens, against the working directory produced by folding literal current-shell `cd` commands.
+- Relative tokens, against the working directory produced by folding literal current-shell `cd` commands, a `~` / `~/…` target included: bash expands it from `HOME` before `cd` runs.
 - A bare token (`cat id_rsa`) when it names an existing filesystem entry.
 
 What it deliberately does not resolve: any other variable (`$CONFIG_DIR`), a command substitution (`$(cmd)`), an expansion carrying an operator (`${HOME:-/tmp}`), a variable reached through an assignment (`CURRENT="$HOME"; ls "$CURRENT"`), and `$HOME`, `$PWD`, or a leading `~` in a command that reassigns the variable anywhere (`HOME=/etc; cat "$HOME/shadow"`), including through `read`, `unset`, `eval`, or `source`.
-A non-literal `cd` (`cd "$DIR"`) makes the working directory unknown, after which relative tokens are kept literal rather than resolved against a guess.
+A non-literal `cd` (`cd "$DIR"`, `cd ~user`, bare `cd`) makes the working directory unknown, after which relative tokens are kept literal rather than resolved against a guess.
 Commands whose payload is opaque (`bash -c`, `eval`, `sudo`, `xargs`) are floored to `ask` instead of projected.
 The governing record is [ADR 0009](https://github.com/gotgenes/pi-packages/blob/main/packages/pi-permission-system/docs/decisions/0009-bash-path-projection-completeness-contract.md), which states what the projection guarantees and which gaps are accepted residuals rather than bugs.
 

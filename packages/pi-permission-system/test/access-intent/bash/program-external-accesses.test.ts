@@ -899,12 +899,93 @@ describe("BashProgram", () => {
 
       it("flags a whole-segment traversal inside a longer token after a non-literal cd", async () => {
         const program = await BashProgram.parse(
-          "cd ~/x && cat a/../../b",
+          'cd "$DIR" && cat a/../../b',
           normalizer,
         );
         expect(
           program.externalAccesses().map(({ path }) => path.value()),
-        ).toEqual([join(homedir(), "x"), "/projects/b"]);
+        ).toEqual(["/projects/b"]);
+      });
+
+      describe("a cd into the home directory", () => {
+        it("folds a `~/` target", async () => {
+          // `~` and `~/…` are static: bash expands them from HOME before cd
+          // runs, so the base is as known as an absolute target's. Resolving
+          // the token against the cwd instead names a file the shell never
+          // reaches.
+          const program = await BashProgram.parse(
+            "cd ~/work && cat ../notes.txt",
+            normalizer,
+          );
+          expect(
+            program.externalAccesses().map(({ path }) => path.value()),
+          ).toEqual([join(homedir(), "work"), join(homedir(), "notes.txt")]);
+        });
+
+        it("folds a bare `~` target", async () => {
+          const program = await BashProgram.parse(
+            "cd ~ && cat ../notes.txt",
+            normalizer,
+          );
+          expect(
+            program.externalAccesses().map(({ path }) => path.value()),
+          ).toEqual([homedir(), join(homedir(), "..", "notes.txt")]);
+        });
+
+        it("folds a `~/` prefix whose rest is quoted", async () => {
+          const program = await BashProgram.parse(
+            'cd ~/"work" && cat ../notes.txt',
+            normalizer,
+          );
+          expect(
+            program.externalAccesses().map(({ path }) => path.value()),
+          ).toEqual([join(homedir(), "work"), join(homedir(), "notes.txt")]);
+        });
+
+        it("keeps the base unknown when the program rebinds HOME", async () => {
+          // A rebound HOME makes the tilde unknowable, so the token after the
+          // cd falls back to the conservative cwd guess.
+          const program = await BashProgram.parse(
+            "HOME=/tmp cd ~/work && cat ../notes.txt",
+            normalizer,
+          );
+          expect(
+            program.externalAccesses().map(({ path }) => path.value()),
+          ).toEqual(["/projects/notes.txt"]);
+        });
+
+        it("leaves `~user` unresolved", async () => {
+          // `~user` reads the password database, not HOME.
+          const program = await BashProgram.parse(
+            "cd ~root/work && cat ../notes.txt",
+            normalizer,
+          );
+          expect(
+            program.externalAccesses().map(({ path }) => path.value()),
+          ).toEqual(["/projects/notes.txt"]);
+        });
+
+        it("leaves a tilde that runs into a quoted part literal", async () => {
+          // Bash ends the tilde-prefix only at an unquoted slash, so `~"work"`
+          // is the literal word `~work`, not the home directory.
+          const program = await BashProgram.parse(
+            'cd ~"work" && cat ../notes.txt',
+            normalizer,
+          );
+          expect(program.externalAccesses()).toHaveLength(0);
+        });
+
+        it("leaves an escaped tilde target unknown", async () => {
+          // `~\/work` quotes the slash, so bash expands nothing; the base stays
+          // unknown instead of being spelled from home.
+          const program = await BashProgram.parse(
+            "cd ~\\/work && cat ../notes.txt",
+            normalizer,
+          );
+          expect(
+            program.externalAccesses().map(({ path }) => path.value()),
+          ).toEqual(["/projects/notes.txt"]);
+        });
       });
 
       it("still resolves an absolute path normally after a non-literal cd", async () => {
