@@ -419,6 +419,51 @@ describe("run", () => {
       expect(run({ paths: ["a.ts"] }, io)).toEqual({ lines: [], exitCode: 0 });
     });
 
+    describe.each(["tsx", "jsx"])(".%s files", (extension) => {
+      const path = `a.${extension}`;
+      const code = [
+        'const s = "\\u2014";',
+        "const r = /\\u2014/;",
+        'const element = <span title="\\u2014">\\u2014</span>;',
+      ].join("\n");
+
+      it("passes escapes in strings, regexes, JSX text and attributes", () => {
+        const io = memoryIo({ [path]: Buffer.from(code, "utf8") });
+
+        expect(run({ paths: [path] }, io)).toEqual({ lines: [], exitCode: 0 });
+      });
+
+      it("reports only the escape in a comment", () => {
+        const io = memoryIo({
+          [path]: Buffer.from(`${code}\n// \\u2014\n`, "utf8"),
+        });
+
+        expect(run({ paths: [path] }, io)).toEqual({
+          lines: [
+            `${path}:4:4: literal escape \\u2014 (--fix writes U+2014 ${EM_DASH})`,
+          ],
+          exitCode: 1,
+        });
+      });
+
+      describe("with fix", () => {
+        it("decodes only the comment and leaves code untouched", () => {
+          const io = memoryIo({
+            [path]: Buffer.from(`${code}\n// \\u2014\n`, "utf8"),
+          });
+
+          expect(run({ paths: [path], fix: true }, io)).toEqual({
+            lines: [`decoded ${path}`],
+            exitCode: 0,
+          });
+          expect(io.files[path].toString("utf8")).toBe(
+            `${code}\n// ${EM_DASH}\n`,
+          );
+          expect(io.writes).toEqual([path]);
+        });
+      });
+    });
+
     it("masks each file by its own type", () => {
       const io = memoryIo({
         "a.md": Buffer.from('x "\\u2014"\n', "utf8"),
