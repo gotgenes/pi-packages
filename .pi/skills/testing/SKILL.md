@@ -124,6 +124,8 @@ A missing export throws `is not a function` at runtime but surfaces as `TS2305` 
 
 - Run a single file: `pnpm --filter @gotgenes/<pkg> exec vitest run <test-path>` — plain `pnpm vitest run` fails at the repo root (`Command "vitest" not found`).
 - Run the full suite: `pnpm --filter @gotgenes/<pkg> exec vitest run`
+- The root `pnpm run test` finishes in under a minute (measured: 39 s together with `pnpm fallow dead-code`), and root `pnpm run lint` in about 45 s.
+  A root gate that hits a long timeout has stalled, not run slowly: re-run it alone, one gate per call, and never record it as slow without a measured run.
 - Run Vitest bare — no `| tail`, `| grep`, or `>/tmp/…` redirect.
   Its non-TTY summary is already short (measured: 9 lines for `pi-permission-system`'s 4824-test suite), and a pipe replaces Vitest's exit status with the filter's, so a failing run reads as a pass.
   A failing run adds one `×` line per failing test and about 20 lines of assertion detail per failure; that detail is the signal, so narrow the run instead of the output: pass the test path, and `-t "<name>"` for one test.
