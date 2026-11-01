@@ -270,7 +270,11 @@ export function normalizePermissionForwardingSessionId(
  * belongs to which session.
  */
 export function encodeSessionIdForPath(sessionId: string): string {
-  return encodeURIComponent(sessionId);
+  const encoded = encodeURIComponent(sessionId);
+  if (encoded === "." || encoded === "..") {
+    throw new Error(`Unsafe permission forwarding session id: "${sessionId}"`);
+  }
+  return encoded;
 }
 
 export function createPermissionForwardingLocation(

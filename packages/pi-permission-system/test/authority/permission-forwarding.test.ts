@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import {
   createPermissionForwardingLocation,
+  encodeSessionIdForPath,
   isForwardedPermissionRequestForSession,
   resolvePermissionForwardingTarget,
   SUBAGENT_PARENT_SESSION_ENV_CANDIDATES,
@@ -323,3 +324,12 @@ test("Permission forwarding rejects unresolved sentinel session ids", () => {
 
   expect(target).toBe(null);
 });
+
+test.each([".", ".."])(
+  "rejects a session id that is a path traversal segment: %s",
+  (sessionId) => {
+    expect(() => encodeSessionIdForPath(sessionId)).toThrow(
+      "Unsafe permission forwarding session id",
+    );
+  },
+);
