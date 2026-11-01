@@ -25,7 +25,7 @@ The [#581] lesson applies: the deliberation is the deliverable, and the ADR reco
 
 ## Goals
 
-- Record `docs/decisions/0016-policy-channels.md`, deciding all four clusters the operator scoped in at planning: new file sources (A), write-back (B), relaxation scope (C), and a precedence floor (D).
+- Record `docs/decisions/0016-policy-channels.md`, deciding the five clusters the operator scoped in at planning: new file sources (A), write-back (B), relaxation scope (C), a precedence floor (D), and session-layer management (E, added by the operator after the first draft).
 - State the admissibility criteria a channel must meet, starting from ADR 0013 §9 and the composition rules the package already commits to.
 - Inventory the shipped channels as they behave today, including the two behaviors measured at planning (below), so the record starts from the mechanism and not from the docs.
 - Leave a disposition for every dependant: admitted, reshaped, or declined, each with the downstream issue that implements it.
@@ -42,6 +42,8 @@ The [#581] lesson applies: the deliberation is the deliverable, and the ADR reco
   PR [#983] waits jointly on [#620] and this issue, and ADR 0016 decides only the channel half: whether a per-link trust map is an admissible relaxation channel.
 - Deciding [#1095] / [#1101] (the K7 keystone: a chained command's prompt names one unit while its grant covers another).
   Grant breadth is a session-approval suggestion question; cluster D touches it only where a grant meets a deny.
+- Building the session-rule view and editing surface; that is [#1103], which implements what cluster E decides.
+  [#1103] also carries the `/permission-system:` command namespace (a hard rename, breaking, in the same major as the view), which is a command-surface change rather than a channel question, so ADR 0016 does not decide it.
 - Editing `docs/configuration.md`, `docs/session-approvals.md`, or `docs/cross-extension-api.md`; they describe current behavior and change with the implementation issues.
 
 ## Background
@@ -78,12 +80,13 @@ Both by disposable tests through the real code, since deleted (re-runnable sourc
 
 ### The dependants, by cluster
 
-| Cluster             | Items                                                                                                              | What each asks                                                                                                                                                                                                                     |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A. New file sources | PR [#675]; PR [#1073]; the load half of [#691] / PR [#692]                                                         | Pi `settings.json` under `piPermissionSystem` (global, project, per-agent); every ancestor directory's `.pi` project scope, nearest wins, relative patterns rebased; a `config.local.json` loading after the shared project file   |
-| B. Write-back       | [#691], PR [#692], [#603]; the modal's existing global write                                                       | durable approval at project or global scope, with editable pattern, typed confirmation for tracked files and global writes, JSONC preservation, and rollback on reload failure                                                     |
-| C. Relaxation scope | [#720], PR [#671], PR [#990], [#1031], [#799 comment 2][c2], PR [#983]; ADR 0013 §7's frontmatter `commandEffects` | `pi --yolo`; `PI_PERMISSION_SYSTEM_YOLO=1`; a session-only `/yolo`; yolo per subagent; a modal toggle that defaults to this session; a per-link trust map lifting the delegation cap; whether an agent channel may declare effects |
-| D. Precedence floor | [#799 comment 1][c1]; [#604]                                                                                       | a global-only, deny-only tier no later layer can override; wider session patterns (which make an overlap with a deny more likely)                                                                                                  |
+| Cluster                     | Items                                                                                                              | What each asks                                                                                                                                                                                                                     |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A. New file sources         | PR [#675]; PR [#1073]; the load half of [#691] / PR [#692]                                                         | Pi `settings.json` under `piPermissionSystem` (global, project, per-agent); every ancestor directory's `.pi` project scope, nearest wins, relative patterns rebased; a `config.local.json` loading after the shared project file   |
+| B. Write-back               | [#691], PR [#692], [#603]; the modal's existing global write                                                       | durable approval at project or global scope, with editable pattern, typed confirmation for tracked files and global writes, JSONC preservation, and rollback on reload failure                                                     |
+| C. Relaxation scope         | [#720], PR [#671], PR [#990], [#1031], [#799 comment 2][c2], PR [#983]; ADR 0013 §7's frontmatter `commandEffects` | `pi --yolo`; `PI_PERMISSION_SYSTEM_YOLO=1`; a session-only `/yolo`; yolo per subagent; a modal toggle that defaults to this session; a per-link trust map lifting the delegation cap; whether an agent channel may declare effects |
+| D. Precedence floor         | [#799 comment 1][c1]; [#604]                                                                                       | a global-only, deny-only tier no later layer can override; wider session patterns (which make an overlap with a deny more likely)                                                                                                  |
+| E. Session-layer management | [#1103] (operator-added)                                                                                           | see every rule in effect, filterable; remove a session-layer rule; modify a session-layer rule's action in any direction; edits stay in memory and never write a file                                                              |
 
 ### Platform facts the gates rest on
 
@@ -165,7 +168,24 @@ Present the measured override first (Background, measurement 2), then:
 - What test level pins it: a `PermissionManager.check` test per resolver, since a unit test on one resolver passed while the other stayed overridable.
 - Whether session-pattern widening ([#604]) is admitted, given that wider grants overlap denies more often.
 
-### Parameter 5: sequencing, classification, and dispositions (Gate F)
+### Parameter 5: cluster E, session-layer management (Gate F)
+
+Today the session layer is allow-only and append-only: `SessionRules.approve()` pushes an `allow` without de-duplicating, `clear()` runs only at `session_shutdown`, and `getComposedConfigRules` hides the layer from `/permission-system show`.
+The operator set three inputs at planning, which the gate treats as given rather than reopening:
+
+- The view shows every rule in effect (defaults, baseline, each config scope, the session layer), filterable.
+- Removal and modification act on the session layer only; config rules are shown, never edited from here, and no edit writes a file.
+- A modification may move in any direction (`allow`, `ask`, `deny`), so the session layer gains `ask` and `deny` actions.
+
+What the gate decides:
+
+- How "any direction" composes with Gate E: whether a floor, if adopted, sits above an edited session rule, or a user's explicit session edit outranks it.
+- Whether an edit toward `allow` is subject to the same constraints as a cluster C relaxation (K6, deny preservation), or is a per-rule human act outside them; the measured override says it outranks config today either way.
+- Whether a forwarded grant recorded at the serving node (ADR 0006) is shown and editable there, and whether a child's own session layer is reachable from the parent.
+- How a removal or an edit is attributed: a `RuleOrigin` or review-log record, so a changed session rule stays traceable (K5).
+- Whether principle 3 ("Session approvals are just more rules") still describes a layer that can tighten as well as loosen.
+
+### Parameter 6: sequencing, classification, and dispositions (Gate G)
 
 - Sequencing against [#639]: satisfied, since ADR 0013 is accepted; the ADR states which §9 constraint each admitted channel discharges.
 - Per admitted change: breaking on upgrade or not, and the semver call the implementation issue inherits.
@@ -173,7 +193,7 @@ Present the measured override first (Background, measurement 2), then:
 
 ## Module-Level Changes
 
-- `packages/pi-permission-system/docs/decisions/0016-policy-channels.md`: new; the ADR (`status: accepted` once settled), carrying the inventory, criteria, the four cluster decisions with rejected alternatives, consequences, and the disposition map.
+- `packages/pi-permission-system/docs/decisions/0016-policy-channels.md`: new; the ADR (`status: accepted` once settled), carrying the inventory, criteria, the five cluster decisions with rejected alternatives, consequences, and the disposition map.
 - `packages/pi-permission-system/docs/architecture/architecture.md`: the `Scope and non-goals` paragraph that says "Which channels policy may enter through remains open in issue #799" becomes a pointer to ADR 0016; any channel the ADR *declines* gains a row in the non-goals table resting on ADR 0016.
   The "Composed ruleset" diagram and § "yolo is recorded authority" are predicted unchanged, since they describe current behavior and nothing is implemented here.
 - `packages/pi-permission-system/README.md`: the "One decision is still open" paragraph under Scope and non-goals is rewritten to point to ADR 0016; a declined channel joins the charter's bullets only if the operator wants it there.
@@ -228,7 +248,7 @@ Lint: `pnpm exec rumdl check` on the ADR, the architecture doc, and the README.
 - **Deny-preserving yolo** (§ "yolo is recorded authority").
   No relaxation channel in cluster C may override a deny; a deny-overriding mode stays a separately named operation.
 - **Principle 3, "Session approvals are just more rules."**
-  Cluster D either keeps it or amends it explicitly; it is not eroded by an implementation detail.
+  Clusters D and E either keep it or amend it explicitly; it is not eroded by an implementation detail.
 - **ADR 0013 §9.**
   Every admitted channel, and every written-back rule, speaks the flat vocabulary.
 
@@ -246,8 +266,9 @@ Decisions are recorded in the ADR draft as they are made.
 4. Gate C: cluster B (write-back).
 5. Gate D: cluster C (relaxation scope), with the scope ladder drawn.
 6. Gate E: cluster D (floor), leading with the measured override.
-7. Gate F: sequencing, breaking classification per admitted change, and the disposition map.
-8. Author `docs/decisions/0016-policy-channels.md`; update the architecture-doc paragraph and non-goals rows and the README paragraph; lint all three.
+7. Gate F: cluster E (session-layer management), after Gate E because it composes with the floor answer.
+8. Gate G: sequencing, breaking classification per admitted change, and the disposition map, including what [#1103] implements.
+9. Author `docs/decisions/0016-policy-channels.md`; update the architecture-doc paragraph and non-goals rows and the README paragraph; lint all three.
    Commit: `docs(pi-permission-system): record ADR 0016, the policy channels`.
    When a gate adopts a commenter's or contributor's mechanism, credit it in the commit's final paragraph, below `Refs #799`, with the matching line (resolved at planning):
    - comment 1's floor shape: `Co-authored-by: stanley <70442355+stanleytejakusuma@users.noreply.github.com>`
@@ -260,7 +281,7 @@ Decisions are recorded in the ADR draft as they are made.
    - [#983]'s trust map: `Co-authored-by: minicx <39405619+loss-and-quick@users.noreply.github.com>`
 
    Verify with `git interpret-trailers --parse`.
-9. File the downstream implementation issues the decisions shaped, run the `roadmap-fit` skill per filed issue, write the issue numbers into the ADR's disposition map, and post a reply on each dependant naming its disposition.
+10. File the downstream implementation issues the decisions shaped, run the `roadmap-fit` skill per filed issue, write the issue numbers into the ADR's disposition map, and post a reply on each dependant naming its disposition.
    Commit: `docs(pi-permission-system): map ADR 0016 decisions to implementation issues`.
 
 ## Risks and Mitigations
@@ -272,7 +293,7 @@ Decisions are recorded in the ADR draft as they are made.
 - **A floor decision regresses an earlier invariant with a green suite.**
   Parameter 4 requires the pinning test at `PermissionManager.check`, per resolver, as an obligation on its implementation issue.
 - **Contributors whose PRs wait on this are left in the dark again.**
-  Step 9 replies on every dependant; PR [#638] was already unparked at planning.
+  Step 10 replies on every dependant; PR [#638] was already unparked at planning.
 - **Inventory drift.**
   The table is a snapshot of `0fb45d36`; step 1 re-verifies it before any gate cites it.
 
@@ -306,3 +327,4 @@ Decisions are recorded in the ADR draft as they are made.
 [#1095]: https://github.com/gotgenes/pi-packages/issues/1095
 [#1101]: https://github.com/gotgenes/pi-packages/issues/1101
 [#1102]: https://github.com/gotgenes/pi-packages/issues/1102
+[#1103]: https://github.com/gotgenes/pi-packages/issues/1103
