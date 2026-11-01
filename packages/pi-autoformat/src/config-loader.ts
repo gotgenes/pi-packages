@@ -183,75 +183,21 @@ function validateFormatterDefinition(
   }
 
   const definition: Partial<FormatterDefinition> = {};
-  let commandProvided = false;
-
   for (const [key, entry] of Object.entries(value)) {
-    if (key === "command") {
-      commandProvided = true;
-      const command = validateStringArray(
-        `${fieldPath}.command`,
+    Object.assign(
+      definition,
+      validateFormatterField(
+        key,
+        `${fieldPath}.${key}`,
         entry,
         issues,
         sourcePath,
-      );
-      if (command) {
-        const offendingIndex = command.findIndex((arg) =>
-          arg.includes("$FILE"),
-        );
-        if (offendingIndex >= 0) {
-          pushIssue(
-            issues,
-            `${fieldPath}.command`,
-            "$FILE substitution is no longer supported. Remove $FILE; file paths are appended to the command automatically. See docs/configuration.md.",
-            sourcePath,
-          );
-        } else {
-          definition.command = command;
-        }
-      }
-      continue;
-    }
-
-    if (key === "extensions") {
-      pushIssue(
-        issues,
-        `${fieldPath}.extensions`,
-        "Deprecated. Remove this field; dispatch is driven by `chains`. The value is ignored.",
-        sourcePath,
-      );
-      continue;
-    }
-
-    if (key === "environment") {
-      definition.environment = validateEnvironment(
-        `${fieldPath}.environment`,
-        entry,
-        issues,
-        sourcePath,
-      );
-      continue;
-    }
-
-    if (key === "disabled") {
-      definition.disabled = validateBooleanField(
-        `${fieldPath}.disabled`,
-        entry,
-        issues,
-        sourcePath,
-      );
-      continue;
-    }
-
-    pushIssue(
-      issues,
-      `${fieldPath}.${key}`,
-      "Unknown formatter property.",
-      sourcePath,
+      ),
     );
   }
 
   if (!definition.command) {
-    if (!commandProvided) {
+    if (!Object.hasOwn(value, "command")) {
       pushIssue(
         issues,
         `${fieldPath}.command`,
@@ -261,9 +207,72 @@ function validateFormatterDefinition(
     }
     return undefined;
   }
+  return resolveFormatterDefinition(definition, definition.command);
+}
 
+function validateFormatterField(
+  key: string,
+  fieldPath: string,
+  value: unknown,
+  issues: ConfigValidationIssue[],
+  sourcePath?: string,
+): Partial<FormatterDefinition> {
+  if (key === "command") {
+    return {
+      command: validateFormatterCommand(fieldPath, value, issues, sourcePath),
+    };
+  }
+  if (key === "extensions") {
+    pushIssue(
+      issues,
+      fieldPath,
+      "Deprecated. Remove this field; dispatch is driven by `chains`. The value is ignored.",
+      sourcePath,
+    );
+    return {};
+  }
+
+  if (key === "environment") {
+    return {
+      environment: validateEnvironment(fieldPath, value, issues, sourcePath),
+    };
+  }
+
+  if (key === "disabled") {
+    return {
+      disabled: validateBooleanField(fieldPath, value, issues, sourcePath),
+    };
+  }
+
+  pushIssue(issues, fieldPath, "Unknown formatter property.", sourcePath);
+  return {};
+}
+
+function validateFormatterCommand(
+  fieldPath: string,
+  value: unknown,
+  issues: ConfigValidationIssue[],
+  sourcePath?: string,
+): string[] | undefined {
+  const command = validateStringArray(fieldPath, value, issues, sourcePath);
+  if (command?.some((arg) => arg.includes("$FILE"))) {
+    pushIssue(
+      issues,
+      fieldPath,
+      "$FILE substitution is no longer supported. Remove $FILE; file paths are appended to the command automatically. See docs/configuration.md.",
+      sourcePath,
+    );
+    return undefined;
+  }
+  return command;
+}
+
+function resolveFormatterDefinition(
+  definition: Partial<FormatterDefinition>,
+  command: string[],
+): FormatterDefinition {
   const resolved: FormatterDefinition = {
-    command: definition.command,
+    command,
   };
   if (definition.environment !== undefined) {
     resolved.environment = definition.environment;
@@ -331,6 +340,26 @@ function validateFallbackStep(
     hasUnknown = true;
   }
 
+  const names = validateFallbackNames(
+    fieldPath,
+    fallbackValue,
+    issues,
+    sourcePath,
+    knownFormatterNames,
+  );
+  if (hasUnknown || !names) {
+    return undefined;
+  }
+  return { fallback: names };
+}
+
+function validateFallbackNames(
+  fieldPath: string,
+  fallbackValue: unknown,
+  issues: ConfigValidationIssue[],
+  sourcePath: string | undefined,
+  knownFormatterNames?: Set<string>,
+): string[] | undefined {
   if (!Array.isArray(fallbackValue) || fallbackValue.length === 0) {
     pushIssue(
       issues,
@@ -368,11 +397,11 @@ function validateFallbackStep(
     names.push(entry);
   }
 
-  if (hasUnknown || nameError) {
+  if (nameError) {
     return undefined;
   }
 
-  return { fallback: names };
+  return names;
 }
 
 function validateChainStep(
@@ -446,41 +475,59 @@ function validateChains(
       continue;
     }
 
-    if (!Array.isArray(chainValue) || chainValue.length === 0) {
-      pushIssue(
-        issues,
-        `chains.${extension}`,
-        "Expected a non-empty array of chain steps.",
-        sourcePath,
-      );
-      continue;
+    const steps = validateChainSteps(
+      `chains.${extension}`,
+      chainValue,
+      issues,
+      sourcePath,
+      knownFormatterNames,
+    );
+    if (steps) {
+      // The wildcard key is preserved verbatim; only extensions are lowercased.
+      chains[extension === "*" ? "*" : extension.toLowerCase()] = steps;
     }
+  }
+  return chains;
+}
 
-    const steps: ChainStep[] = [];
-    let stepError = false;
-    for (let index = 0; index < chainValue.length; index += 1) {
-      const step = validateChainStep(
-        `chains.${extension}[${index}]`,
-        chainValue[index],
-        issues,
-        sourcePath,
-        knownFormatterNames,
-      );
-      if (!step) {
-        stepError = true;
-        continue;
-      }
-      steps.push(step);
-    }
-
-    if (stepError) {
-      continue;
-    }
-    // The wildcard key is preserved verbatim; only extensions are lowercased.
-    chains[extension === "*" ? "*" : extension.toLowerCase()] = steps;
+function validateChainSteps(
+  fieldPath: string,
+  chainValue: unknown,
+  issues: ConfigValidationIssue[],
+  sourcePath: string | undefined,
+  knownFormatterNames: Set<string>,
+): ChainStep[] | undefined {
+  if (!Array.isArray(chainValue) || chainValue.length === 0) {
+    pushIssue(
+      issues,
+      fieldPath,
+      "Expected a non-empty array of chain steps.",
+      sourcePath,
+    );
+    return undefined;
   }
 
-  return chains;
+  const steps: ChainStep[] = [];
+  let stepError = false;
+  for (let index = 0; index < chainValue.length; index += 1) {
+    const step = validateChainStep(
+      `${fieldPath}[${index}]`,
+      chainValue[index],
+      issues,
+      sourcePath,
+      knownFormatterNames,
+    );
+    if (!step) {
+      stepError = true;
+      continue;
+    }
+    steps.push(step);
+  }
+
+  if (stepError) {
+    return undefined;
+  }
+  return steps;
 }
 
 function validateFormatScope(
@@ -591,100 +638,106 @@ function validateShellMutationDetection(
   }
   const result: Partial<ShellMutationDetectionConfig> = {};
   for (const [key, entry] of Object.entries(value)) {
-    if (key === "enabled") {
-      const enabled = validateBooleanField(
-        "shellMutationDetection.enabled",
-        entry,
-        issues,
-        sourcePath,
-      );
-      if (enabled !== undefined) {
-        result.enabled = enabled;
-      }
-      continue;
-    }
-    if (key === "argumentParsing") {
-      const argumentParsing = validateBooleanField(
-        "shellMutationDetection.argumentParsing",
-        entry,
-        issues,
-        sourcePath,
-      );
-      if (argumentParsing !== undefined) {
-        result.argumentParsing = argumentParsing;
-      }
-      continue;
-    }
-    if (key === "snapshotGlobs") {
-      if (!Array.isArray(entry)) {
-        pushIssue(
-          issues,
-          "shellMutationDetection.snapshotGlobs",
-          "Expected an array of strings.",
-          sourcePath,
-        );
-        continue;
-      }
-      const globs: string[] = [];
-      let valid = true;
-      for (let index = 0; index < entry.length; index += 1) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        const glob = entry[index];
-        if (typeof glob !== "string" || glob.length === 0) {
-          pushIssue(
-            issues,
-            `shellMutationDetection.snapshotGlobs[${index}]`,
-            "Expected a non-empty string.",
-            sourcePath,
-          );
-          valid = false;
-          break;
-        }
-        globs.push(glob);
-      }
-      if (valid) {
-        result.snapshotGlobs = globs;
-      }
-      continue;
-    }
-    if (key === "wrappers") {
-      if (!Array.isArray(entry)) {
-        pushIssue(
-          issues,
-          "shellMutationDetection.wrappers",
-          "Expected an array.",
-          sourcePath,
-        );
-        continue;
-      }
-      const wrappers: WrapperConfig[] = [];
-      let valid = true;
-      for (let index = 0; index < entry.length; index += 1) {
-        const wrapper = validateWrapper(
-          `shellMutationDetection.wrappers[${index}]`,
-          entry[index],
-          issues,
-          sourcePath,
-        );
-        if (!wrapper) {
-          valid = false;
-          break;
-        }
-        wrappers.push(wrapper);
-      }
-      if (valid) {
-        result.wrappers = wrappers;
-      }
-      continue;
-    }
-    pushIssue(
-      issues,
-      `shellMutationDetection.${key}`,
-      "Unknown property.",
-      sourcePath,
+    Object.assign(
+      result,
+      validateShellMutationField(key, entry, issues, sourcePath),
     );
   }
   return result;
+}
+
+function validateShellMutationField(
+  key: string,
+  entry: unknown,
+  issues: ConfigValidationIssue[],
+  sourcePath?: string,
+): Partial<ShellMutationDetectionConfig> {
+  if (key === "enabled" || key === "argumentParsing") {
+    const enabled = validateBooleanField(
+      `shellMutationDetection.${key}`,
+      entry,
+      issues,
+      sourcePath,
+    );
+    return enabled === undefined ? {} : { [key]: enabled };
+  }
+  if (key === "snapshotGlobs") {
+    const globs = validateSnapshotGlobs(entry, issues, sourcePath);
+    return globs ? { snapshotGlobs: globs } : {};
+  }
+  if (key === "wrappers") {
+    const wrappers = validateWrappers(entry, issues, sourcePath);
+    return wrappers ? { wrappers } : {};
+  }
+  pushIssue(
+    issues,
+    `shellMutationDetection.${key}`,
+    "Unknown property.",
+    sourcePath,
+  );
+  return {};
+}
+
+function validateSnapshotGlobs(
+  entry: unknown,
+  issues: ConfigValidationIssue[],
+  sourcePath?: string,
+): string[] | undefined {
+  if (!Array.isArray(entry)) {
+    pushIssue(
+      issues,
+      "shellMutationDetection.snapshotGlobs",
+      "Expected an array of strings.",
+      sourcePath,
+    );
+    return undefined;
+  }
+  const globs: string[] = [];
+  for (let index = 0; index < entry.length; index += 1) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const glob = entry[index];
+    if (typeof glob !== "string" || glob.length === 0) {
+      pushIssue(
+        issues,
+        `shellMutationDetection.snapshotGlobs[${index}]`,
+        "Expected a non-empty string.",
+        sourcePath,
+      );
+      return undefined;
+    }
+    globs.push(glob);
+  }
+  return globs;
+}
+
+function validateWrappers(
+  entry: unknown,
+  issues: ConfigValidationIssue[],
+  sourcePath?: string,
+): WrapperConfig[] | undefined {
+  if (!Array.isArray(entry)) {
+    pushIssue(
+      issues,
+      "shellMutationDetection.wrappers",
+      "Expected an array.",
+      sourcePath,
+    );
+    return undefined;
+  }
+  const wrappers: WrapperConfig[] = [];
+  for (let index = 0; index < entry.length; index += 1) {
+    const wrapper = validateWrapper(
+      `shellMutationDetection.wrappers[${index}]`,
+      entry[index],
+      issues,
+      sourcePath,
+    );
+    if (!wrapper) {
+      return undefined;
+    }
+    wrappers.push(wrapper);
+  }
+  return wrappers;
 }
 
 function validateCustomMutationToolEntry(
@@ -699,94 +752,139 @@ function validateCustomMutationToolEntry(
     return undefined;
   }
 
+  const parsed = validateCustomMutationToolFields(
+    fieldPath,
+    value,
+    issues,
+    sourcePath,
+    seenToolNames,
+  );
+  if (!parsed || parsed.hasUnknown) return undefined;
+  const spec = resolveCustomMutationTool(
+    fieldPath,
+    parsed.fields,
+    issues,
+    sourcePath,
+  );
+  if (spec) seenToolNames.add(spec.toolName);
+  return spec;
+}
+
+function validateCustomMutationToolFields(
+  fieldPath: string,
+  value: Record<string, unknown>,
+  issues: ConfigValidationIssue[],
+  sourcePath: string | undefined,
+  seenToolNames: Set<string>,
+) {
   let toolName: string | undefined;
-  let pathField: string | undefined;
-  let pathFields: string[] | undefined;
+  const pathSettings: Pick<
+    CustomMutationToolSpec,
+    "pathField" | "pathFields" | "patchField"
+  > = {};
   let hasUnknown = false;
 
   for (const [key, entry] of Object.entries(value)) {
-    if (key === "toolName") {
-      if (typeof entry !== "string" || entry.length === 0) {
-        pushIssue(
-          issues,
+    switch (key) {
+      case "toolName": {
+        toolName = validateCustomToolName(
           `${fieldPath}.toolName`,
-          "Expected a non-empty string.",
-          sourcePath,
-        );
-        return undefined;
-      }
-      if (BUILTIN_TOOL_NAMES.has(entry)) {
-        pushIssue(
+          entry,
           issues,
-          `${fieldPath}.toolName`,
-          `"${entry}" is a Pi built-in tool and cannot be declared as a custom mutation tool. Built-in mutating tools (write, edit) are already covered; others do not mutate files.`,
           sourcePath,
+          seenToolNames,
         );
-        return undefined;
+        if (toolName === undefined) return undefined;
+        break;
       }
-      if (seenToolNames.has(entry)) {
-        pushIssue(
-          issues,
-          `${fieldPath}.toolName`,
-          `Duplicate toolName "${entry}". Each tool may only be declared once.`,
-          sourcePath,
-        );
-        return undefined;
-      }
-      toolName = entry;
-      continue;
-    }
 
-    if (key === "pathField") {
-      if (typeof entry !== "string" || entry.length === 0) {
-        pushIssue(
+      case "pathField":
+      case "patchField": {
+        const path = validateNonEmptyString(
+          `${fieldPath}.${key}`,
+          entry,
           issues,
-          `${fieldPath}.pathField`,
-          "Expected a non-empty string.",
           sourcePath,
         );
-        return undefined;
+        if (path === undefined) return undefined;
+        pathSettings[key] = path;
+        break;
       }
-      pathField = entry;
-      continue;
-    }
 
-    if (key === "pathFields") {
-      if (!Array.isArray(entry) || entry.length === 0) {
-        pushIssue(
-          issues,
+      case "pathFields": {
+        const pathFields = validateStringArray(
           `${fieldPath}.pathFields`,
-          "Expected a non-empty array of strings.",
+          entry,
+          issues,
           sourcePath,
         );
-        return undefined;
+        if (pathFields === undefined) return undefined;
+        pathSettings.pathFields = pathFields;
+        break;
       }
-      const collected: string[] = [];
-      for (let index = 0; index < entry.length; index += 1) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        const item = entry[index];
-        if (typeof item !== "string" || item.length === 0) {
-          pushIssue(
-            issues,
-            `${fieldPath}.pathFields[${index}]`,
-            "Expected a non-empty string.",
-            sourcePath,
-          );
-          return undefined;
-        }
-        collected.push(item);
-      }
-      pathFields = collected;
-      continue;
-    }
 
-    pushIssue(issues, `${fieldPath}.${key}`, "Unknown property.", sourcePath);
-    hasUnknown = true;
+      default:
+        pushIssue(
+          issues,
+          `${fieldPath}.${key}`,
+          "Unknown property.",
+          sourcePath,
+        );
+        hasUnknown = true;
+    }
   }
 
-  if (hasUnknown) {
+  return { fields: { toolName, ...pathSettings }, hasUnknown };
+}
+
+function validateNonEmptyString(
+  fieldPath: string,
+  value: unknown,
+  issues: ConfigValidationIssue[],
+  sourcePath?: string,
+): string | undefined {
+  if (typeof value === "string" && value.length > 0) return value;
+  pushIssue(issues, fieldPath, "Expected a non-empty string.", sourcePath);
+  return undefined;
+}
+
+function validateCustomToolName(
+  fieldPath: string,
+  value: unknown,
+  issues: ConfigValidationIssue[],
+  sourcePath: string | undefined,
+  seenToolNames: Set<string>,
+): string | undefined {
+  const name = validateNonEmptyString(fieldPath, value, issues, sourcePath);
+  if (name === undefined) return undefined;
+  if (BUILTIN_TOOL_NAMES.has(name)) {
+    pushIssue(
+      issues,
+      fieldPath,
+      `"${name}" is a Pi built-in tool and cannot be declared as a custom mutation tool. Built-in mutating tools (write, edit) are already covered; others do not mutate files.`,
+      sourcePath,
+    );
     return undefined;
   }
+  if (seenToolNames.has(name)) {
+    pushIssue(
+      issues,
+      fieldPath,
+      `Duplicate toolName "${name}". Each tool may only be declared once.`,
+      sourcePath,
+    );
+    return undefined;
+  }
+  return name;
+}
+
+function resolveCustomMutationTool(
+  fieldPath: string,
+  fields: Partial<CustomMutationToolSpec>,
+  issues: ConfigValidationIssue[],
+  sourcePath?: string,
+): CustomMutationToolSpec | undefined {
+  const { toolName, pathField, pathFields, patchField } = fields;
 
   if (!toolName) {
     pushIssue(
@@ -798,27 +896,28 @@ function validateCustomMutationToolEntry(
     return undefined;
   }
 
-  const hasField = pathField !== undefined;
-  const hasFields = pathFields !== undefined;
-  if (hasField === hasFields) {
+  const settingCount = [pathField, pathFields, patchField].filter(
+    (setting) => setting !== undefined,
+  ).length;
+  if (settingCount !== 1) {
     pushIssue(
       issues,
       fieldPath,
-      "Expected exactly one of `pathField` or `pathFields`.",
+      "Expected exactly one of `pathField`, `pathFields`, or `patchField`.",
       sourcePath,
     );
     return undefined;
   }
 
-  seenToolNames.add(toolName);
   if (pathField !== undefined) {
     return { toolName, pathField };
   }
   if (pathFields !== undefined) {
     return { toolName, pathFields };
   }
-  // Unreachable: the exclusivity check above returns undefined when both or
-  // neither of pathField/pathFields are set.
+  if (patchField !== undefined) {
+    return { toolName, patchField };
+  }
   return undefined;
 }
 
@@ -874,7 +973,7 @@ function validateFormatterOutput(
   const result: Partial<FormatterOutputReportingConfig> = {};
   for (const [key, entry] of Object.entries(value)) {
     if (key === "onFailure") {
-      if (entry === "none" || entry === "stderr" || entry === "both") {
+      if (isFormatterFailureOutput(entry)) {
         result.onFailure = entry;
         continue;
       }
@@ -887,7 +986,7 @@ function validateFormatterOutput(
       continue;
     }
     if (key === "maxBytes" || key === "maxLines") {
-      if (typeof entry === "number" && Number.isInteger(entry) && entry >= 0) {
+      if (isNonNegativeInteger(entry)) {
         result[key] = entry;
         continue;
       }
@@ -911,6 +1010,16 @@ function validateFormatterOutput(
     return undefined;
   }
   return result;
+}
+
+function isNonNegativeInteger(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0;
+}
+
+function isFormatterFailureOutput(
+  value: unknown,
+): value is FormatterOutputReportingConfig["onFailure"] {
+  return value === "none" || value === "stderr" || value === "both";
 }
 
 function validateEventBusMutationChannel(
@@ -981,124 +1090,12 @@ function validateConfigObject(
   // known-formatter-name set (built-ins + this file's formatters) before
   // validating chains' formatter references.
   for (const [key, entry] of Object.entries(value)) {
-    if (key === "$schema") {
-      if (typeof entry !== "string") {
-        pushIssue(issues, "$schema", "Expected a string.", sourcePath);
-      }
-      continue;
-    }
-
-    if (key === "formatMode") {
-      pushIssue(
-        issues,
-        "formatMode",
-        "formatMode has been removed; prompt-end formatting is now the only mode.",
-        sourcePath,
-      );
-      continue;
-    }
-
-    if (key === "notifyAgent") {
-      pushIssue(
-        issues,
-        "notifyAgent",
-        "notifyAgent has been removed; the extension now notifies via steering messages at turn end.",
-        sourcePath,
-      );
-      continue;
-    }
-
-    if (key === "commandTimeoutMs") {
-      const commandTimeoutMs = validateCommandTimeoutMs(
-        entry,
-        issues,
-        sourcePath,
-      );
-      if (commandTimeoutMs !== undefined) {
-        config.commandTimeoutMs = commandTimeoutMs;
-      }
-      continue;
-    }
-
-    if (key === "hideSummariesInTui") {
-      const hideSummariesInTui = validateBooleanField(
-        "hideSummariesInTui",
-        entry,
-        issues,
-        sourcePath,
-      );
-      if (hideSummariesInTui !== undefined) {
-        config.hideSummariesInTui = hideSummariesInTui;
-      }
-      continue;
-    }
-
-    if (key === "formatters") {
-      const formatters = validateFormatters(entry, issues, sourcePath);
-      if (formatters) {
-        config.formatters = formatters;
-      }
-      continue;
-    }
-
     if (key === "chains") {
       // Defer chains until we know which formatter names are valid in this file.
       continue;
     }
 
-    if (key === "formatScope") {
-      const formatScope = validateFormatScope(entry, issues, sourcePath);
-      if (formatScope !== undefined) {
-        config.formatScope = formatScope;
-      }
-      continue;
-    }
-
-    if (key === "shellMutationDetection") {
-      const detection = validateShellMutationDetection(
-        entry,
-        issues,
-        sourcePath,
-      );
-      if (detection !== undefined) {
-        config.shellMutationDetection = detection;
-      }
-      continue;
-    }
-
-    if (key === "customMutationTools") {
-      const tools = validateCustomMutationTools(entry, issues, sourcePath);
-      if (tools !== undefined) {
-        config.customMutationTools = tools;
-      }
-      continue;
-    }
-
-    if (key === "formatterOutput") {
-      const formatterOutput = validateFormatterOutput(
-        entry,
-        issues,
-        sourcePath,
-      );
-      if (formatterOutput !== undefined) {
-        config.formatterOutput = formatterOutput;
-      }
-      continue;
-    }
-
-    if (key === "eventBusMutationChannel") {
-      const channel = validateEventBusMutationChannel(
-        entry,
-        issues,
-        sourcePath,
-      );
-      if (channel !== undefined) {
-        config.eventBusMutationChannel = channel;
-      }
-      continue;
-    }
-
-    pushIssue(issues, key, "Unknown top-level property.", sourcePath);
+    Object.assign(config, validateConfigField(key, entry, issues, sourcePath));
   }
 
   if ("chains" in value) {
@@ -1119,6 +1116,62 @@ function validateConfigObject(
   }
 
   return { config, issues };
+}
+
+function validateConfigField(
+  key: string,
+  value: unknown,
+  issues: ConfigValidationIssue[],
+  sourcePath?: string,
+): UserFormatterConfig {
+  if (key === "$schema") {
+    if (typeof value !== "string") {
+      pushIssue(issues, "$schema", "Expected a string.", sourcePath);
+    }
+    return {};
+  }
+  if (key === "formatMode") {
+    pushIssue(
+      issues,
+      key,
+      "formatMode has been removed; prompt-end formatting is now the only mode.",
+      sourcePath,
+    );
+    return {};
+  }
+  if (key === "notifyAgent") {
+    pushIssue(
+      issues,
+      key,
+      "notifyAgent has been removed; the extension now notifies via steering messages at turn end.",
+      sourcePath,
+    );
+    return {};
+  }
+  const validators = {
+    commandTimeoutMs: validateCommandTimeoutMs,
+    hideSummariesInTui: (
+      entry: unknown,
+      errors: ConfigValidationIssue[],
+      source?: string,
+    ) => validateBooleanField("hideSummariesInTui", entry, errors, source),
+    formatters: validateFormatters,
+    formatScope: validateFormatScope,
+    shellMutationDetection: validateShellMutationDetection,
+    customMutationTools: validateCustomMutationTools,
+    formatterOutput: validateFormatterOutput,
+    eventBusMutationChannel: validateEventBusMutationChannel,
+  };
+  if (!Object.hasOwn(validators, key)) {
+    pushIssue(issues, key, "Unknown top-level property.", sourcePath);
+    return {};
+  }
+  const validated = validators[key as keyof typeof validators](
+    value,
+    issues,
+    sourcePath,
+  );
+  return validated === undefined ? {} : { [key]: validated };
 }
 
 export function validateUserFormatterConfig(

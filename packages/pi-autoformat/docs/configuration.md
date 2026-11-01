@@ -138,8 +138,11 @@ Merge semantics: `snapshotGlobs` and `wrappers` arrays replace lower-precedence 
 Declare additional tool names whose results should be treated as file mutations and routed into the touched-files queue.
 Useful for project- or extension-specific tools that the agent calls directly.
 
-Each entry must specify the tool name and exactly one of `pathField` or `pathFields`, each a dotted path into the tool's `input` payload.
-A field may resolve to a string or a string array; arrays are flattened.
+Each entry must specify the tool name and exactly one of `pathField`, `pathFields`, or `patchField`, each a dotted path into the tool's `input` payload.
+Path fields may resolve to a string or a string array; arrays are flattened.
+`patchField` must resolve to an OpenAI-style patch string delimited by `*** Begin Patch` and `*** End Patch`.
+The `*** Add File:`, `*** Delete File:`, and `*** Update File:` headers supply paths.
+If an update has a `*** Move to:` header, its destination replaces the update path.
 
 Defaults to `[]`.
 
@@ -149,7 +152,8 @@ Example:
 {
   "customMutationTools": [
     { "toolName": "my-codegen", "pathField": "output" },
-    { "toolName": "refactor", "pathFields": ["src", "dest"] }
+    { "toolName": "refactor", "pathFields": ["src", "dest"] },
+    { "toolName": "apply-patch", "patchField": "args.patch" }
   ]
 }
 ```

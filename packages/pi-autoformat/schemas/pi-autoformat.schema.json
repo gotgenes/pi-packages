@@ -174,11 +174,41 @@
           "minItems": 1,
           "items": { "type": "string", "minLength": 1 },
           "description": "Multiple dotted paths into the tool's input payload. Each resolved value may be a string or string array; arrays are flattened."
+        },
+        "patchField": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Dotted path into the tool's input payload containing an OpenAI-style patch with Begin Patch, Add/Delete/Update File, and optional Move to markers."
         }
       },
       "oneOf": [
-        { "required": ["pathField"], "not": { "required": ["pathFields"] } },
-        { "required": ["pathFields"], "not": { "required": ["pathField"] } }
+        {
+          "required": ["pathField"],
+          "not": {
+            "anyOf": [
+              { "required": ["pathFields"] },
+              { "required": ["patchField"] }
+            ]
+          }
+        },
+        {
+          "required": ["pathFields"],
+          "not": {
+            "anyOf": [
+              { "required": ["pathField"] },
+              { "required": ["patchField"] }
+            ]
+          }
+        },
+        {
+          "required": ["patchField"],
+          "not": {
+            "anyOf": [
+              { "required": ["pathField"] },
+              { "required": ["pathFields"] }
+            ]
+          }
+        }
       ]
     },
     "formatterDefinition": {
