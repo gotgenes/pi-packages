@@ -29,7 +29,15 @@ The plan (`docs/plans/0799-policy-channels-adr.md`) structures `/build-plan` as 
   The plan carries this as candidate criterion K6 rather than a filed issue, since whether it is a defect depends on Gate A.
 - The `Co-authored-by:` lines for every contributor whose mechanism a gate might adopt were resolved at planning and written into Build Order step 8.
 - roadmap-fit: no open phase in pi-permission-system, so [#1102] exited at step 1.
+- After the first plan commit, the operator added a fifth cluster, session-layer management: see every rule in effect (filterable), and remove or modify session-layer rules in any direction, in memory only.
+  It became Parameter 5 / Gate F, sequenced after the floor gate because "any direction" composes with the floor answer; the build surface is filed as [#1103].
+  The operator's three inputs (view all, edit only the session layer, any direction) are recorded in the plan as givens, not gate candidates.
+- The operator then folded a `/permission-system:` command namespace into [#1103]: a hard rename with no alias, following pi-subagents' `23bf99e8`, shipping in the same major as the rules view.
+  I had questioned the premise that the rename rides a breaking change, since [#1103] as filed is additive; the operator chose to pair it with [#1103] anyway.
+  The package skill's "Preserve the `/permission-system` slash command name" rule is rewritten in that change; ADR 0016 does not decide the rename.
+- roadmap-fit: [#1103] exited at step 1 as well.
 
 [#638]: https://github.com/gotgenes/pi-packages/pull/638
 [#675]: https://github.com/gotgenes/pi-packages/pull/675
 [#1102]: https://github.com/gotgenes/pi-packages/issues/1102
+[#1103]: https://github.com/gotgenes/pi-packages/issues/1103
