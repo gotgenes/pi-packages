@@ -11,6 +11,7 @@
  * Exported for testability.
  */
 export const ARITY: Record<string, number> = {
+  cd: 2,
   // Version control
   git: 2,
   hg: 2,
