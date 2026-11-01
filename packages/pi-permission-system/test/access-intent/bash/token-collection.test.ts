@@ -742,6 +742,31 @@ describe("collectCommandTokens — generic commands", () => {
     expect(await tokensOf("ls")).toEqual([]);
   });
 
+  it("does not project git commit messages as paths", async () => {
+    expect(
+      await tokensOf(
+        'git commit --allow-empty -m "see docs/.env.local" -- docs/.env.example',
+      ),
+    ).toEqual(["docs/.env.example"]);
+  });
+
+  it("keeps git file options as path candidates", async () => {
+    expect(await tokensOf("git commit -F /tmp/message.txt")).toEqual([
+      "/tmp/message.txt",
+    ]);
+  });
+
+  it("does not project jq filters as paths", async () => {
+    expect(await tokensOf("jq '.a/.env.b' data.json")).toEqual(["data.json"]);
+  });
+
+  it("keeps jq library and input files as path candidates", async () => {
+    expect(await tokensOf("jq -L /tmp/lib .a/.env.b data.json")).toEqual([
+      "/tmp/lib",
+      "data.json",
+    ]);
+  });
+
   describe("a command hosted in a prefix position (#742)", () => {
     // `command_name` and `variable_assignment` are skipped as operands — the
     // head word is not one, and a prefix assignment's value is assigned rather

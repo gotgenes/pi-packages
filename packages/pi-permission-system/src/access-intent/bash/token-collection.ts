@@ -490,6 +490,8 @@ type PatternFlagRole =
   | "script"
   /** Supplies the pattern/script from a file (`grep -f`, `sed --file`). */
   | "script-file"
+  /** Consumes a path value without affecting positional pattern accounting. */
+  | "path-value"
   /** Consumes a value that is neither pattern nor path (`grep -A`, `rg -g`). */
   | "value"
   /**
@@ -641,6 +643,44 @@ const SD_CONFIG: PatternCommandConfig = {
 };
 
 /**
+ * `git` subcommands use ordinary positional operands, but several options
+ * consume commit messages or path-bearing files. Message text must not become
+ * a path candidate; `-F`, `--file`, `--template`, and `-C` remain file paths.
+ */
+const GIT_CONFIG: PatternCommandConfig = {
+  flags: new Map<string, PatternFlagRole>([
+    ["-m", "script"],
+    ["--message", "script"],
+    ["-F", "script-file"],
+    ["--file", "script-file"],
+    ["--template", "script-file"],
+    ["-C", "script-file"],
+  ]),
+  patternPositionals: 1,
+};
+
+/**
+ * `jq` consumes its first positional as a filter program. Library and input
+ * file options still contribute paths, while the filter itself does not.
+ */
+const JQ_CONFIG: PatternCommandConfig = {
+  flags: new Map<string, PatternFlagRole>([
+    ["-L", "path-value"],
+    ["--library-path", "path-value"],
+    ["-f", "script-file"],
+    ["--from-file", "script-file"],
+    ["--argfile", "script-file"],
+    ["--slurpfile", "script-file"],
+    ["--rawfile", "script-file"],
+    ["--argsfile", "script-file"],
+    ["--arg", "value"],
+    ["--argjson", "value"],
+    ["--slurp", "value"],
+  ]),
+  patternPositionals: 1,
+};
+
+/**
  * An interpreter takes its inline script from a flag and never from a leading
  * positional, so `patternPositionals: 0` — `node build.js /tmp/x` names two
  * real operands and no script.
@@ -768,6 +808,8 @@ const PATTERN_FIRST_COMMANDS: ReadonlyMap<string, PatternCommandConfig> =
     ["fgrep", GREP_CONFIG],
     ["rg", RG_CONFIG],
     ["sd", SD_CONFIG],
+    ["git", GIT_CONFIG],
+    ["jq", JQ_CONFIG],
   ]);
 
 /**
@@ -950,7 +992,10 @@ function collectPatternCommandTokens(
             if (suppliesScript(directive.role)) hasExplicitScript = true;
             break;
           case "inline-value":
-            if (directive.role === "script-file")
+            if (
+              directive.role === "script-file" ||
+              directive.role === "path-value"
+            )
               tokens.push({
                 token: directive.value,
                 ...operand,
@@ -1027,6 +1072,7 @@ function dischargePendingConsumption(
 ): ConsumptionDischarge {
   switch (role) {
     case "script-file":
+    case "path-value":
       return {
         consumed: true,
         token: wholeArgumentToken(argument, text, operand),
