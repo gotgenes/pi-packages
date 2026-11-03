@@ -57,6 +57,7 @@ import { PermissionServiceLifecycle } from "#src/service/service-lifecycle";
 import { PermissionSession } from "#src/session/permission-session";
 import { SessionRules } from "#src/session/session-rules";
 import { registerBuiltinToolInputFormatters } from "#src/tool-input/builtin-tool-input-formatters";
+import { prepareOperationPurpose } from "#src/tool-input/operation-purpose";
 import { ToolAccessExtractorRegistry } from "#src/tool-input/tool-access-extractor-registry";
 import { ToolInputFormatterRegistry } from "#src/tool-input/tool-input-formatter-registry";
 import {
@@ -382,14 +383,18 @@ export default function piPermissionSystemExtension(pi: ExtensionAPI): void {
     gateRunner,
   );
 
-  pi.on("session_start", (event, ctx) =>
-    lifecycle.handleSessionStart(event, ctx),
-  );
+  pi.on("session_start", (event, ctx) => {
+    prepareOperationPurpose(pi);
+    return lifecycle.handleSessionStart(event, ctx);
+  });
   pi.on("resources_discover", (event, ctx) =>
     lifecycle.handleResourcesDiscover(event, ctx),
   );
   pi.on("session_shutdown", () => lifecycle.handleSessionShutdown());
-  pi.on("before_agent_start", (event, ctx) => agentPrep.handle(event, ctx));
+  pi.on("before_agent_start", (event, ctx) => {
+    prepareOperationPurpose(pi, event);
+    return agentPrep.handle(event, ctx);
+  });
   pi.on("input", (event, ctx) => gates.handleInput(event, ctx));
   pi.on(
     "tool_call",

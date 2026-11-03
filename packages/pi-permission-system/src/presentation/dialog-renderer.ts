@@ -1,3 +1,4 @@
+import { PURPOSE_SOURCE } from "#src/tool-input/operation-purpose";
 import {
   describeBashCommandContext,
   describeDecidingPath,
@@ -250,11 +251,16 @@ function coreFacts(payload: PromptPayload): Fact[] {
  * so an elision can never show a path while dropping what it resolves to.
  */
 function evidenceFacts(payload: PromptPayload): Fact[] {
-  return payload.evidence.map((entry) => ({
-    label: entry.label,
-    text:
-      entry.detail === null ? entry.text : `${entry.text} → ${entry.detail}`,
-  }));
+  return [
+    ...payload.annotations
+      .filter((entry) => entry.source === PURPOSE_SOURCE)
+      .map((entry) => ({ label: "purpose", text: entry.text })),
+    ...payload.evidence.map((entry) => ({
+      label: entry.label,
+      text:
+        entry.detail === null ? entry.text : `${entry.text} → ${entry.detail}`,
+    })),
+  ];
 }
 
 /**

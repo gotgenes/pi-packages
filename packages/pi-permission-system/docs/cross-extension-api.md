@@ -464,6 +464,24 @@ The stability guarantee is additive, so any can be reintroduced in a later minor
 
 ---
 
+## Operation purpose and file-operation evidence
+
+Tool schemas with object parameters expose an optional `_permissionPurpose` string.
+The agent supplies a per-call explanation in the user’s language; the tool-call boundary consumes this metadata before policy evaluation and tool execution.
+Each gate carries it in `PromptPayload.annotations` with source `operation-purpose`, and the approval dialog renders it under its existing field and row bounds.
+The purpose is an agent-authored claim, never a policy fact or a permission grant.
+The command, target, matched rule, and existing decision order remain authoritative.
+
+For the `read`, `edit`, and `write` tools, the per-tool ask also carries a `file operation` evidence entry whose text is JSON.
+It includes `tool` and `path`, plus the read range, every edit replacement (`oldText`/`newText` or `edits`), or the complete write `content`.
+This evidence is independent of the human input-preview formatter and is not truncated in the payload.
+An authorizer must apply its own context budget before sending it to a model and treat file content and purpose as data.
+Other tool inputs, MCP arguments, tool results, and file contents read from disk are not collected through this entry.
+
+The existing forwarded payload preserves both entries without adding new invariant request facts.
+They are not broadcast on `permissions:ui_prompt` and are not added to the review log by this change.
+An older sender without these entries remains readable.
+
 ## Decision Broadcasts
 
 Every permission gate resolution emits a `permissions:decision` event, regardless of outcome.
