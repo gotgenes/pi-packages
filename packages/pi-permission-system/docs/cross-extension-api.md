@@ -475,7 +475,14 @@ The command, target, matched rule, and existing decision order remain authoritat
 For the `read`, `edit`, and `write` tools, the per-tool ask also carries a `file operation` evidence entry whose text is JSON.
 It includes `tool` and `path`, plus the read range, every edit replacement (`oldText`/`newText` or `edits`), or the complete write `content`.
 This evidence is independent of the human input-preview formatter and is not truncated in the payload.
-An authorizer must apply its own context budget before sending it to a model and treat file content and purpose as data.
+The JSON shapes are `{ tool: "read", path, offset?, limit? }`, `{ tool: "write", path, content }`, and `{ tool: "edit", path, oldText?, newText?, edits?: [{ oldText, newText }] }`.
+An edit carries the single replacement pair, the complete replacement array, or both when both were supplied.
+Only these argument fields are copied; extra input metadata is not included.
+These are the arguments the agent submitted, not file contents fetched from disk or a claim that the tool has already succeeded.
+An authorizer must validate the evidence shape and tool name and apply its own context budget before sending it to a model.
+A consumer may select file-operation evidence without reading or trusting the purpose annotation.
+Purpose is display metadata, is not part of the file-operation entry, and need not be supplied to a model at all.
+If a consumer selects it, it must treat it as an untrusted claim rather than user authorization.
 Other tool inputs, MCP arguments, tool results, and file contents read from disk are not collected through this entry.
 
 The existing forwarded payload preserves both entries without adding new invariant request facts.
