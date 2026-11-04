@@ -19,6 +19,7 @@ import {
   formatUnknownToolReason,
 } from "#src/presentation/permission-prompts";
 import type { PermissionSession } from "#src/session/permission-session";
+import { consumeOperationPurpose } from "#src/tool-input/operation-purpose";
 import { toRecord } from "#src/value-guards";
 
 /** Minimal subset of InputEvent used by handleInput. */
@@ -60,6 +61,7 @@ export class PermissionGateHandler {
     const agentName = this.session.resolveAgentName(ctx);
 
     const input = getEventInput(event);
+    const purpose = consumeOperationPurpose(input);
     const toolCallId =
       typeof (event as Record<string, unknown>).toolCallId === "string"
         ? ((event as Record<string, unknown>).toolCallId as string)
@@ -69,6 +71,7 @@ export class PermissionGateHandler {
       toolName,
       agentName,
       input,
+      purpose,
       toolCallId,
       cwd: ctx.cwd,
     };
