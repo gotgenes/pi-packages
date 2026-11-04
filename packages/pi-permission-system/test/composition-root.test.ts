@@ -7,7 +7,8 @@
  * service↔gate registry sharing, and `ready`-after-publish ordering.
  *
  * Every test runs the factory, which mutates three process-global
- * `Symbol.for()` slots and reads `PI_CODING_AGENT_DIR`. The shared
+ * `Symbol.for()` slots and reads `PI_CODING_AGENT_DIR` and
+ * `PI_CODING_AGENT_SESSION_DIR`. The shared
  * `beforeEach`/`afterEach` isolate the agent dir to a tmpdir and clear every
  * global slot so factory runs do not leak across tests.
  */
@@ -90,6 +91,9 @@ beforeEach(() => {
   }
   agentDir = mkdtempSync(join(tmpdir(), "pi-perm-comp-root-"));
   vi.stubEnv("PI_CODING_AGENT_DIR", agentDir);
+  // A host that relocated its session store would move the forwarding dir out
+  // of this tmpdir; tests that want that set it themselves.
+  vi.stubEnv("PI_CODING_AGENT_SESSION_DIR", undefined);
 });
 
 afterEach(() => {
@@ -737,6 +741,34 @@ describe("out-of-process forwarding liveness", () => {
 
     rmSync(childCwd, { recursive: true, force: true });
     rmSync(externalDir, { recursive: true, force: true });
+  });
+
+  it("rendezvouses under a relocated PI_CODING_AGENT_SESSION_DIR", async () => {
+    writeGlobalConfig(externalAsk);
+    const childCwd = mkdtempSync(join(tmpdir(), "pi-perm-child-cwd-"));
+    const externalDir = mkdtempSync(join(tmpdir(), "pi-perm-external-"));
+    const sessionDir = mkdtempSync(join(tmpdir(), "pi-perm-session-dir-"));
+    const forwardingDir = join(sessionDir, "permission-forwarding");
+    const parentSessionId = "parent-session-oop-relocated";
+    vi.stubEnv("PI_CODING_AGENT_SESSION_DIR", sessionDir);
+    vi.stubEnv("PI_SUBAGENT_CHILD", "1");
+    vi.stubEnv("PI_SUBAGENT_PARENT_SESSION", parentSessionId);
+    publishServingHeartbeat(forwardingDir, parentSessionId);
+
+    const firePromise = fireChildRead(childCwd, externalDir);
+    const request = await approveForwardedRequest(
+      forwardingDir,
+      parentSessionId,
+    );
+    expect(request.targetSessionId).toBe(parentSessionId);
+
+    const result = (await firePromise) as { block?: true };
+    expect(result.block).toBeUndefined();
+    expect(existsSync(join(agentDir, "sessions"))).toBe(false);
+
+    rmSync(childCwd, { recursive: true, force: true });
+    rmSync(externalDir, { recursive: true, force: true });
+    rmSync(sessionDir, { recursive: true, force: true });
   });
 
   it("forwards for a child that sets only the adapter convention's parent-session variable", async () => {
