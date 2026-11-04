@@ -163,7 +163,8 @@ The polling session publishes the session id it polls, and a child checks that i
 The announcement goes out on two channels, because a child cannot always reach the same one.
 A child running inside its parent's process reads a process-global registry.
 A stale mark left in that registry by a session that died without `session_shutdown` suppresses the fast-fail and falls back to the timeout — the safe direction for that channel.
-A child running as a separate `pi` process (the `PI_SUBAGENT_PARENT_SESSION` path) shares no memory with its parent, so it reads a heartbeat record the serving session refreshes under `<agent dir>/sessions/permission-forwarding/serving/`, holding the served session id, the serving process id, and the time it was last refreshed.
+A child running as a separate `pi` process (the `PI_SUBAGENT_PARENT_SESSION` path) shares no memory with its parent, so it reads a heartbeat record the serving session refreshes under `<sessions dir>/permission-forwarding/serving/`, holding the served session id, the serving process id, and the time it was last refreshed.
+The sessions directory is `<agent dir>/sessions`, or `PI_CODING_AGENT_SESSION_DIR` when that is set; a parent and a child must see the same value, which an inherited environment variable guarantees.
 That `serving/` directory is created on demand and never removed.
 
 For an out-of-process target, four things count as "not draining":
