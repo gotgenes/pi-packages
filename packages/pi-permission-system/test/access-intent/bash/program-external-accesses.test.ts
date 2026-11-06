@@ -982,9 +982,13 @@ describe("BashProgram", () => {
             "cd ~\\/work && cat ../notes.txt",
             normalizer,
           );
-          expect(
-            program.externalAccesses().map(({ path }) => path.value()),
-          ).toEqual(["/projects/notes.txt"]);
+          const paths = program
+            .externalAccesses()
+            .map(({ path }) => path.value());
+          // The `~\/work` token itself is reported when `$HOME/work` exists, so
+          // the test cannot pin the whole list; it pins the base.
+          expect(paths).toContain("/projects/notes.txt");
+          expect(paths).not.toContain(join(homedir(), "notes.txt"));
         });
       });
 
