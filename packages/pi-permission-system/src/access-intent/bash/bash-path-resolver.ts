@@ -1,3 +1,4 @@
+import { homedir } from "node:os";
 import type { AccessPath } from "#src/access-intent/access-path";
 import {
   mergeTokenEffects,
@@ -46,7 +47,8 @@ import {
  * of current-shell `cd` commands (`""` = `cwd`); an absolute offset (from
  * `cd /abs`) ignores `cwd` at resolution time.
  * An `unknown` base marks a non-literal `cd` target (`cd "$DIR"`, `cd $(…)`,
- * `cd -`, bare `cd`, `cd ~…`) that made the effective directory unresolvable.
+ * `cd -`, bare `cd`, `cd ~user`) that made the effective directory
+ * unresolvable.
  */
 type EffectiveBase =
   | { readonly kind: "known"; readonly offset: string }
@@ -514,7 +516,9 @@ export class BashPathResolver {
    *   (`cd /tmp`) is not deterministically resolvable and yields unknown (#533).
    * - `cd rel` (relative literal) → fold into a known base, or stay unknown if
    *   the base was already unknown.
-   * - `cd "$DIR"` / `cd $(…)` / `cd -` / bare `cd` / `cd ~…` (non-literal) →
+   * - `cd ~` / `cd ~/…` (a home prefix) → the absolute target it spells, or
+   *   unknown when the program rebinds `HOME`.
+   * - `cd "$DIR"` / `cd $(…)` / `cd -` / bare `cd` / `cd ~user` (non-literal) →
    *   unknown.
    *
    * The target's platform/MSYS interpretation is delegated to the
@@ -522,7 +526,7 @@ export class BashPathResolver {
    */
   private foldCd(commandNode: TSNode, base: EffectiveBase): EffectiveBase {
     if (extractCommandName(commandNode, this.words) !== "cd") return base;
-    const target = cdLiteralTarget(commandNode);
+    const target = cdLiteralTarget(commandNode, this.words);
     if (target === null) return UNKNOWN_BASE;
     return this.deriveBaseFromCdTarget(base, target);
   }
@@ -1028,9 +1032,16 @@ function recordExternal(
  * Resolve the literal target of a `cd` command, or `null` when the first
  * argument is not a static literal (contains an expansion or command
  * substitution) or cannot be resolved against the working directory (`cd -`,
- * `cd ~…`, bare `cd`).
+ * `cd ~user…`, bare `cd`).
+ *
+ * A `~` / `~/…` target is static: bash expands it from the inherited home
+ * before `cd` runs, so it resolves to the same base the absolute spelling of
+ * that home would, unless the program rebinds `HOME`.
  */
-function cdLiteralTarget(commandNode: TSNode): string | null {
+function cdLiteralTarget(
+  commandNode: TSNode,
+  words: WordReader,
+): string | null {
   for (let i = 0; i < commandNode.childCount; i++) {
     const child = commandNode.child(i);
     if (!child) continue;
@@ -1041,7 +1052,7 @@ function cdLiteralTarget(commandNode: TSNode): string | null {
     // Skip the `--` end-of-flags marker; the next argument is the target.
     if (child.type === "word" && child.text === "--") continue;
     if (!ARG_NODE_TYPES.has(child.type)) return null;
-    return literalTextOf(child);
+    return literalTextOf(child, words);
   }
   return null;
 }
@@ -1049,14 +1060,34 @@ function cdLiteralTarget(commandNode: TSNode): string | null {
 /**
  * The literal string value of an argument node, or `null` when it contains a
  * variable expansion / command substitution or is a non-resolvable `cd`
- * destination (`-`, `~…`).
+ * destination (`-`, `~user…`, a home a rebound `HOME` makes unknowable).
+ *
+ * `expandTilde` is off for every part of a concatenation but a leading `~/`:
+ * bash ends the tilde-prefix at an unquoted slash, so `~/"x"` is the home
+ * directory while `~"x"` is the literal word `~x`.
  */
-function literalTextOf(node: TSNode): string | null {
+function literalTextOf(
+  node: TSNode,
+  words: WordReader,
+  expandTilde = true,
+): string | null {
   switch (node.type) {
     case "word": {
       const text = node.text;
-      if (text === "-" || text.startsWith("~")) return null;
-      return text;
+      if (text === "-") return null;
+      if (!expandTilde) return text;
+      // `~` and `~/…` are the prefixes bash expands. A backslash quotes the
+      // slash (`~\/x`), so bash expands nothing and the target is not static;
+      // `~user` reads the password database rather than the inherited home.
+      if (text === "~" || text.startsWith("~/")) {
+        // Concatenated with the rest of a word (`~/"x"`), so the prefix is
+        // spelled out verbatim rather than joined: `join` would drop the
+        // separator the next part relies on.
+        return words.spellsReboundHome(text)
+          ? null
+          : `${homedir()}${text.slice(1)}`;
+      }
+      return text.startsWith("~") ? null : text;
     }
     case "raw_string": {
       const text = node.text;
@@ -1069,7 +1100,11 @@ function literalTextOf(node: TSNode): string | null {
       for (let i = 0; i < node.childCount; i++) {
         const child = node.child(i);
         if (!child) continue;
-        const part = literalTextOf(child);
+        const part = literalTextOf(
+          child,
+          words,
+          i === 0 && child.type === "word" && child.text.startsWith("~/"),
+        );
         if (part === null) return null;
         result += part;
       }
