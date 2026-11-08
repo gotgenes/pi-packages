@@ -13,6 +13,9 @@ This package is a full fork of [`MasuRii/pi-permission-system`](https://github.c
 It began as a config-layout divergence (#10) and has since diverged substantially in config format, internal architecture, and permission model.
 The `/permission-system` slash command name is the only upstream identity preserved.
 
+`packages/pi-permission-system/docs/glossary.md` defines the package's vocabulary (surface, gate, chain, link, envelope, node, prompt versus turn, …); use its terms as defined there, and link an entry by its heading anchor rather than redefining it.
+A new term of art earns an entry in the same change that introduces it.
+
 Read `docs/plans/` before making architectural changes.
 Pre-monorepo plans from the upstream fork live in `docs/plans/archive/` — issue numbers there refer to the upstream repo, not this monorepo.
 
