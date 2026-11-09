@@ -259,9 +259,10 @@ pnpm run test:watch  # Run tests in watch mode
 
 The package retains its TypeScript source and ships a generated `dist/runtime.cjs` runtime.
 The `extension.ts` entry loads that runtime natively, using Pi's own API and TUI modules rather than bundled copies.
-An absent runtime falls back to `src/index.ts`; if native loading or module evaluation fails, the loader warns and uses the same TS fallback.
+An absent runtime falls back to `src/index.ts`; a runtime older than any TS/TSX source under `src/`, a native load error, or a module-evaluation error warns and selects the same TS fallback.
 Once factory initialization starts, errors propagate without retrying because hooks may already be registered.
 Packaging builds both the runtime and the public type declarations through `prepack`, so installation needs no build hook.
+The tarball retains the runtime, but `postpack` removes the working-tree copy; `verify:public-types` also cleans it on exit, including after a failed pack.
 
 Run these commands from the repository root:
 
@@ -270,7 +271,8 @@ pnpm --filter @gotgenes/pi-permission-system run build:runtime
 PI_BIN="$(command -v pi)" pnpm --filter @gotgenes/pi-permission-system run measure:loading
 ```
 
-Rebuild after editing source, then use `/reload` or restart Pi to load the new runtime.
+After editing source, use `/reload` or restart Pi; newer sources automatically select the TS path.
+Run `build:runtime` again when you want to use or measure the native bundle.
 The measurement command compares the source entry against the manifest entry in fresh, isolated Pi CLI processes without making model requests or changing real settings.
 It records nine trials per condition after warm-up, with both warm and disabled Jiti transform caches, in `docs/architecture/loading-benchmark.json`.
 Set `PI_BIN` to select the installed Pi instead of the workspace's pinned CLI, `LOADING_TRIALS` to change the trial count (at least five), or `LOADING_REPORT` to select another report path.

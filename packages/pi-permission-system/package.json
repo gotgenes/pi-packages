@@ -33,6 +33,7 @@
     "build:types": "rollup -c rollup.dts.config.mjs",
     "build:runtime": "node scripts/build-runtime.mjs",
     "prepack": "pnpm run build:runtime && pnpm run build:types",
+    "postpack": "node -e \"require('node:fs').rmSync('dist/runtime.cjs', { force: true })\"",
     "gen:schema": "node --experimental-strip-types scripts/generate-permissions-schema.ts && biome format --write schemas/permissions.schema.json",
     "test": "vitest run",
     "test:watch": "vitest",

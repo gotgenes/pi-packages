@@ -3,14 +3,15 @@
 # exactly as an external developer would consume it — no workspace privileges,
 # no publish round-trip.
 #
-#   1. pnpm pack       — triggers prepack -> build:types -> dist/public.d.ts
+#   1. pnpm pack       — builds runtime + declarations, then removes local runtime
 #   2. self-containment guard — the emitted .d.ts carries no #src/* aliases
 #   3. install the tarball into a throwaway consumer and run tsc against it
 set -euo pipefail
 
 PKG_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WORK="$(mktemp -d)"
-trap 'rm -rf "$WORK"' EXIT
+# Also remove a runtime left by an interrupted/failed prepack.
+trap 'rm -f "$PKG_DIR/dist/runtime.cjs"; rm -rf "$WORK"' EXIT
 
 # --- 1. Pack the real tarball (prepack regenerates the declaration) --------
 pnpm --dir "$PKG_DIR" pack --pack-destination "$WORK" >/dev/null

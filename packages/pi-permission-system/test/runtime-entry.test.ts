@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => {
   const cache: Record<string, unknown> = {};
   return {
     exists: vi.fn(),
+    readdir: vi.fn(),
+    stat: vi.fn(),
     require: vi.fn(),
     createExtension: vi.fn(),
     compiledFactory: vi.fn(),
@@ -18,6 +20,8 @@ const mocks = vi.hoisted(() => {
 vi.mock("node:fs", async (importOriginal) => ({
   ...(await importOriginal<typeof import("node:fs")>()),
   existsSync: mocks.exists,
+  readdirSync: mocks.readdir,
+  statSync: mocks.stat,
 }));
 vi.mock("node:module", () => ({
   createRequire: () =>
@@ -35,6 +39,16 @@ describe("runtime entry", () => {
   beforeEach(() => {
     vi.resetModules();
     mocks.exists.mockReset().mockReturnValue(true);
+    mocks.readdir
+      .mockReset()
+      .mockReturnValue([
+        "index.ts",
+        "policy/permission-manager.ts",
+        "notes.txt",
+      ]);
+    mocks.stat.mockReset().mockImplementation((path: string) => ({
+      mtimeMs: path.endsWith("runtime.cjs") ? 200 : 100,
+    }));
     mocks.require.mockReset().mockReturnValue(mocks.createExtension);
     mocks.createExtension.mockReset().mockReturnValue(mocks.compiledFactory);
     mocks.compiledFactory.mockReset();
@@ -46,7 +60,7 @@ describe("runtime entry", () => {
     vi.restoreAllMocks();
   });
 
-  it("prefers the compiled runtime and supplies the host modules", async () => {
+  it("loads a runtime newer than its sources and supplies the host modules", async () => {
     const { default: extension } = await loadEntry();
     const pi = {} as ExtensionAPI;
     await extension(pi);
@@ -61,6 +75,43 @@ describe("runtime entry", () => {
     expect(mocks.sourceFactory).not.toHaveBeenCalled();
   });
 
+  it("uses TS when a nested source is newer than the runtime", async () => {
+    mocks.stat.mockImplementation((path: string) => ({
+      mtimeMs: path.endsWith("permission-manager.ts") ? 300 : 200,
+    }));
+    const { default: extension } = await loadEntry();
+    const pi = {} as ExtensionAPI;
+    await extension(pi);
+    expect(mocks.sourceFactory).toHaveBeenCalledExactlyOnceWith(pi);
+    expect(mocks.require).not.toHaveBeenCalled();
+    expect(mocks.readdir).toHaveBeenCalledWith(
+      expect.stringMatching(/[/\\]src[/\\]?$/),
+      { recursive: true, encoding: "utf8" },
+    );
+  });
+
+  it("loads packed JS when the source and runtime timestamps are equal", async () => {
+    mocks.stat.mockReturnValue({ mtimeMs: 100 });
+    const { default: extension } = await loadEntry();
+    const pi = {} as ExtensionAPI;
+    await extension(pi);
+    expect(mocks.compiledFactory).toHaveBeenCalledExactlyOnceWith(pi);
+    expect(mocks.sourceFactory).not.toHaveBeenCalled();
+  });
+
+  it("uses TS when source freshness cannot be checked", async () => {
+    mocks.readdir.mockImplementation(failLoad);
+    const { default: extension } = await loadEntry();
+    const pi = {} as ExtensionAPI;
+    await extension(pi);
+    expect(mocks.sourceFactory).toHaveBeenCalledExactlyOnceWith(pi);
+    expect(mocks.require).not.toHaveBeenCalled();
+    expect(console.warn).toHaveBeenCalledWith(
+      "[pi-permission-system] JS runtime could not be loaded; falling back to TypeScript.",
+      expect.any(SyntaxError),
+    );
+  });
+
   it("uses the TS source in a checkout with no built runtime", async () => {
     mocks.exists.mockReturnValue(false);
     const { default: extension } = await loadEntry();
@@ -68,6 +119,8 @@ describe("runtime entry", () => {
     await extension(pi);
     expect(mocks.sourceFactory).toHaveBeenCalledExactlyOnceWith(pi);
     expect(mocks.require).not.toHaveBeenCalled();
+    expect(mocks.readdir).not.toHaveBeenCalled();
+    expect(mocks.stat).not.toHaveBeenCalled();
   });
 
   it("does not retry the source after compiled initialization fails", async () => {

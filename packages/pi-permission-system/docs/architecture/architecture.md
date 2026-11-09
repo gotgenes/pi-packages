@@ -877,12 +877,14 @@ The runtime build (`scripts/build-runtime.mjs`) uses Rollup and TypeScript to em
 The loader supplies Pi's API and TUI modules to a fresh module closure, avoiding duplicated host modules and state sharing between independently loaded nodes.
 Session-specific state remains inside the extension factory.
 On a new entry import, the loader evicts only its own native runtime cache entry so `/reload` also picks up rebuilt code without clearing shared dependencies.
-An absent runtime falls back to the TS source; native load errors, module-evaluation errors, and invalid factory exports warn and select that same fallback before the runtime receives an `ExtensionAPI`.
+An absent runtime falls back to the TS source; a bundle older than any TS/TSX source under `src/`, unreadable source timestamps, native load errors, module-evaluation errors, and invalid factory exports warn and select that same fallback before the runtime receives an `ExtensionAPI`.
+The freshness comparison includes nested sources and accepts equal timestamps, which tarballs can normalize; extraction-created directory timestamps do not invalidate the bundle.
 Once factory initialization starts, errors propagate without fallback because retrying could duplicate partially registered hooks; a TS fallback failure also propagates rather than leaving a successfully loaded but ungated extension.
 The public `exports` entry remains the lightweight `src/service.ts` surface, separate from extension initialization.
 
 The package's `prepack` builds the runtime and public declarations; no consumer installation script or external runtime cache is required.
-A source checkout with an existing runtime must rebuild after source edits.
+The tarball contains the runtime, while `postpack` removes its working-tree copy; the public-type verification script also removes it on exit if packing fails.
+After source edits, a reload selects TS automatically when it is newer than a remaining manual build; rebuild to select the native bundle again.
 The `measure:loading` script compares the unchanged source entry with the manifest entry through actual, isolated Pi CLI processes and stores raw trials in `loading-benchmark.json`.
 The native-artifact tests separately check lifecycle registration, service publication and teardown, disabled logging, explicit denies, unknown-tool rejection, WASM-backed bash checks, YOLO ask approval, fail-closed gate exceptions, and approval isolation between concurrent instances of the same native factory.
 
