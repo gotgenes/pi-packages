@@ -15,7 +15,9 @@
   },
   "files": [
     "src",
-    "dist",
+    "dist/public.d.ts",
+    "dist/runtime.cjs",
+    "extension.ts",
     "config/config.example.json",
     "schemas/permissions.schema.json",
     "docs/*.md",
@@ -29,11 +31,13 @@
   "scripts": {
     "check": "tsc --noEmit",
     "build:types": "rollup -c rollup.dts.config.mjs",
-    "prepack": "pnpm run build:types",
+    "build:runtime": "node scripts/build-runtime.mjs",
+    "prepack": "pnpm run build:runtime && pnpm run build:types",
     "gen:schema": "node --experimental-strip-types scripts/generate-permissions-schema.ts && biome format --write schemas/permissions.schema.json",
     "test": "vitest run",
     "test:watch": "vitest",
     "verify:public-types": "bash scripts/verify-public-types.sh",
+    "measure:loading": "node scripts/measure-loading.mjs",
     "measure:core-coverage": "node scripts/measure-core-coverage.mjs",
     "measure:path-false-positives": "node scripts/measure-path-false-positives.mjs",
     "measure:statement-descent": "node scripts/measure-statement-descent.mjs",
@@ -76,7 +80,7 @@
   },
   "pi": {
     "extensions": [
-      "./src/index.ts"
+      "./extension.ts"
     ]
   },
   "peerDependencies": {
