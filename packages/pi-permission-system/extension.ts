@@ -1,6 +1,7 @@
-import { existsSync, readdirSync, statSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import * as codingAgent from "@earendil-works/pi-coding-agent";
@@ -28,19 +29,20 @@ export default async function permissionSystemExtension(
 function loadCompiledFactory(): ExtensionFactory | undefined {
   if (!existsSync(runtimePath)) return undefined;
   try {
-    const builtAt = statSync(runtimePath).mtimeMs;
-    const sourceRoot = fileURLToPath(new URL("./src/", import.meta.url));
-    // Packed files can have equal normalized timestamps. Only newer source
-    // files invalidate the bundle; extraction-created directories do not.
+    const metadata = JSON.parse(
+      readFileSync(
+        new URL("./dist/runtime.meta.json", import.meta.url),
+        "utf8",
+      ),
+    ) as { sourceHash?: unknown } | null;
+    // npm rewrites mtimes during extraction. Check content instead, including
+    // relative paths so edits, additions, removals and renames invalidate JS.
     if (
-      readdirSync(sourceRoot, { recursive: true, encoding: "utf8" }).some(
-        (source) =>
-          /\.tsx?$/.test(source) &&
-          statSync(join(sourceRoot, source)).mtimeMs > builtAt,
-      )
+      metadata?.sourceHash !==
+      sourceFingerprint(fileURLToPath(new URL("./src/", import.meta.url)))
     ) {
       console.warn(
-        "[pi-permission-system] JS runtime is older than source; falling back to TypeScript.",
+        "[pi-permission-system] JS runtime sources changed; falling back to TypeScript.",
       );
       return undefined;
     }
@@ -65,4 +67,27 @@ function loadCompiledFactory(): ExtensionFactory | undefined {
     );
     return undefined;
   }
+}
+
+function sourceFingerprint(sourceRoot: string): string {
+  const sources = readdirSync(sourceRoot, {
+    recursive: true,
+    withFileTypes: true,
+  })
+    .filter(
+      (file) => file.isFile() && /\.(?:[cm]?[jt]sx?|json)$/.test(file.name),
+    )
+    .map((file) =>
+      relative(sourceRoot, join(file.parentPath, file.name)).replaceAll(
+        "\\",
+        "/",
+      ),
+    )
+    .sort();
+  const hash = createHash("sha256");
+  for (const file of sources) {
+    const contents = readFileSync(join(sourceRoot, file));
+    hash.update(JSON.stringify([file, contents.length])).update(contents);
+  }
+  return hash.digest("hex");
 }

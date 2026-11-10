@@ -259,10 +259,11 @@ pnpm run test:watch  # Run tests in watch mode
 
 The package retains its TypeScript source and ships a generated `dist/runtime.cjs` runtime.
 The `extension.ts` entry loads that runtime natively, using Pi's own API and TUI modules rather than bundled copies.
-An absent runtime falls back to `src/index.ts`; a runtime older than any TS/TSX source under `src/`, a native load error, or a module-evaluation error warns and selects the same TS fallback.
+An absent runtime falls back to `src/index.ts`; changed source contents, missing or invalid fingerprint metadata, native load errors, and module-evaluation errors warn and select the same TS fallback.
+The loader compares source contents with the SHA-256 fingerprint in `dist/runtime.meta.json`, not file mtimes, which npm changes while installing tarballs.
 Once factory initialization starts, errors propagate without retrying because hooks may already be registered.
 Packaging builds both the runtime and the public type declarations through `prepack`, so installation needs no build hook.
-The tarball retains the runtime, but `postpack` removes the working-tree copy; `verify:public-types` also cleans it on exit, including after a failed pack.
+The tarball retains both runtime files, but `postpack` removes their working-tree copies; `verify:public-types` also cleans both on exit, including after a failed pack.
 
 Run these commands from the repository root:
 
@@ -271,7 +272,7 @@ pnpm --filter @gotgenes/pi-permission-system run build:runtime
 PI_BIN="$(command -v pi)" pnpm --filter @gotgenes/pi-permission-system run measure:loading
 ```
 
-After editing source, use `/reload` or restart Pi; newer sources automatically select the TS path.
+After editing source, use `/reload` or restart Pi; any source-content change, addition, removal, or rename automatically selects the TS path even if timestamps are preserved.
 Run `build:runtime` again when you want to use or measure the native bundle.
 The measurement command compares the source entry against the manifest entry in fresh, isolated Pi CLI processes without making model requests or changing real settings.
 It records nine trials per condition after warm-up, with both warm and disabled Jiti transform caches, in `docs/architecture/loading-benchmark.json`.

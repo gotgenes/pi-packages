@@ -10,8 +10,8 @@ set -euo pipefail
 
 PKG_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WORK="$(mktemp -d)"
-# Also remove a runtime left by an interrupted/failed prepack.
-trap 'rm -f "$PKG_DIR/dist/runtime.cjs"; rm -rf "$WORK"' EXIT
+# Also remove runtime artifacts left by an interrupted/failed prepack.
+trap 'rm -f "$PKG_DIR/dist/runtime.cjs" "$PKG_DIR/dist/runtime.meta.json"; rm -rf "$WORK"' EXIT
 
 # --- 1. Pack the real tarball (prepack regenerates the declaration) --------
 pnpm --dir "$PKG_DIR" pack --pack-destination "$WORK" >/dev/null

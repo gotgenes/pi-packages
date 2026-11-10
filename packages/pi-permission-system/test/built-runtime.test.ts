@@ -1,8 +1,11 @@
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
+  readFileSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -107,6 +110,26 @@ async function start(toolNames?: readonly string[]) {
 }
 
 describe("native runtime artifact", () => {
+  it("ships a fingerprint covering the source inputs using the loader's protocol", () => {
+    const sourceRoot = join(packageDir, "src");
+    const files = readdirSync(sourceRoot, { recursive: true, encoding: "utf8" })
+      .filter((file) => /\.(?:[cm]?[jt]sx?|json)$/.test(file))
+      .map((file) => file.replaceAll("\\", "/"))
+      .sort();
+    const hash = createHash("sha256");
+    for (const file of files) {
+      const contents = readFileSync(join(sourceRoot, file));
+      hash.update(JSON.stringify([file, contents.length])).update(contents);
+    }
+    expect(
+      JSON.parse(
+        readFileSync(join(packageDir, "dist/runtime.meta.json"), "utf8"),
+      ),
+    ).toEqual({
+      sourceHash: hash.digest("hex"),
+    });
+  });
+
   it("registers the gate lifecycle and publishes and removes the public service", async () => {
     const { instance } = await start();
     expect([...instance.handlers.keys()].toSorted()).toEqual([

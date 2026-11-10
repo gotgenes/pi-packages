@@ -1,10 +1,32 @@
-import { existsSync, mkdirSync, renameSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  renameSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, isAbsolute, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { rollup } from "rollup";
 import ts from "typescript";
 
 const packageDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const sourceRoot = resolve(packageDir, "src");
+const sources = readdirSync(sourceRoot, {
+  recursive: true,
+  withFileTypes: true,
+})
+  .filter((file) => file.isFile() && /\.(?:[cm]?[jt]sx?|json)$/.test(file.name))
+  .map((file) =>
+    relative(sourceRoot, resolve(file.parentPath, file.name)).replaceAll(
+      "\\",
+      "/",
+    ),
+  )
+  .sort();
+const sourceHash = hashSources();
 
 // Keep dependencies external, especially Pi's host-provided API/TUI objects.
 // Compile only this package's graph, without adding a runtime build dependency.
@@ -59,6 +81,19 @@ try {
   if (!chunk || output.length !== 1) {
     throw new Error("Expected one permission-system runtime chunk");
   }
+  // Check coverage of bundled inputs and compare source contents before and
+  // after compilation rather than stamping newer sources onto an older build.
+  if (
+    bundle.watchFiles.some(
+      (file) =>
+        !sources.includes(relative(sourceRoot, file).replaceAll("\\", "/")),
+    ) ||
+    hashSources() !== sourceHash
+  ) {
+    throw new Error(
+      "Runtime source inputs changed or are not covered by the fingerprint",
+    );
+  }
   // Native require caches code, not session/module state. Each entry import
   // creates its own module closure with the objects supplied by Pi's loader;
   // /reload and in-process children never inherit a previous closure's state.
@@ -73,10 +108,24 @@ ${chunk.code}
 `;
   const dist = resolve(packageDir, "dist");
   mkdirSync(dist, { recursive: true });
-  const temporary = resolve(dist, `runtime.cjs.${process.pid}.tmp`);
-  writeFileSync(temporary, code);
-  renameSync(temporary, resolve(dist, "runtime.cjs"));
+  for (const [name, contents] of [
+    ["runtime.cjs", code],
+    ["runtime.meta.json", `${JSON.stringify({ sourceHash })}\n`],
+  ]) {
+    const temporary = resolve(dist, `${name}.${process.pid}.tmp`);
+    writeFileSync(temporary, contents);
+    renameSync(temporary, resolve(dist, name));
+  }
   console.log(`Built dist/runtime.cjs (${Buffer.byteLength(code)} bytes)`);
 } finally {
   await bundle.close();
+}
+
+function hashSources() {
+  const hash = createHash("sha256");
+  for (const file of sources) {
+    const contents = readFileSync(resolve(sourceRoot, file));
+    hash.update(JSON.stringify([file, contents.length])).update(contents);
+  }
+  return hash.digest("hex");
 }
