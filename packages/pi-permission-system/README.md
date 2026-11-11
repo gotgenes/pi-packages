@@ -279,6 +279,14 @@ It records nine trials per condition after warm-up, with both warm and disabled 
 Set `PI_BIN` to select the installed Pi instead of the workspace's pinned CLI, `LOADING_TRIALS` to change the trial count (at least five), or `LOADING_REPORT` to select another report path.
 These measurements cover this extension alone, not a full multi-extension TUI startup; disabling transform caching does not clear the OS filesystem cache.
 
+The offline host regression tests exercise TUI approval across `/new` and permission forwarding between two Pi processes.
+Run them from the repository root with Python 3.11+, a POSIX terminal, Pi 1.5.0, and an installed tarball built with `pnpm pack`.
+
+```bash
+python3 packages/pi-permission-system/test/host-approval.py \
+  /path/to/installed/pi-permission-system/extension.ts --pi-bin /path/to/pi
+```
+
 ### Pre-commit hooks
 
 This project uses [prek](https://prek.j178.dev/) to run Biome, ESLint, and rumdl on staged files before each commit.
