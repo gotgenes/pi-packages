@@ -870,6 +870,26 @@ The concept and the code role take two grammatical forms of one root, each for w
 
 `Authorizer` is domain-idiomatic: AWS Lambda "authorizers" and OAuth's authorization server return allow/deny, so the term already denotes an entity that can refuse.
 
+## Runtime loading
+
+The manifest's `pi.extensions` entry is the package-root `extension.ts` loader; `src/index.ts` remains the source composition root.
+The runtime build (`scripts/build-runtime.mjs`) uses Rollup and TypeScript to emit `dist/runtime.cjs`, keeping dependencies external and preserving each source module's `import.meta.url` for WASM resolution, legacy config lookup, and infrastructure-path discovery.
+The loader supplies Pi's API and TUI modules to a fresh module closure, avoiding duplicated host modules and state sharing between independently loaded nodes.
+Session-specific state remains inside the extension factory.
+On a new entry import, the loader evicts only its own native runtime cache entry so `/reload` also picks up rebuilt code without clearing shared dependencies.
+An absent runtime falls back to the TS source; changed source contents, unreadable or invalid `dist/runtime.meta.json`, native load errors, module-evaluation errors, and invalid factory exports warn and select that same fallback before the runtime receives an `ExtensionAPI`.
+Freshness uses SHA-256 over sorted, slash-normalized paths relative to `src/` and original file bytes for TS/JS variants and JSON inputs, never extraction timestamps or installation-path heuristics.
+Each file contributes `JSON.stringify([relativePath, byteLength])` followed by its raw bytes; this unambiguous format is pinned by loader fixtures and the native-artifact metadata test.
+The build rejects bundled inputs outside that set and checks for source changes during compilation before writing the fingerprint, so unsupported new input kinds require an explicit update rather than silently escaping freshness checks.
+Once factory initialization starts, errors propagate without fallback because retrying could duplicate partially registered hooks; a TS fallback failure also propagates rather than leaving a successfully loaded but ungated extension.
+The public `exports` entry remains the lightweight `src/service.ts` surface, separate from extension initialization.
+
+The package's `prepack` builds the runtime and public declarations; no consumer installation script or external runtime cache is required.
+The tarball contains the runtime and its fingerprint metadata, while `postpack` removes both working-tree copies; the public-type verification script also removes both on exit if packing fails.
+After source-content changes, additions, removals, or renames, a reload selects TS regardless of mtimes or whether the checkout is reached through `node_modules`; rebuild to select the native bundle again.
+The `measure:loading` script compares the unchanged source entry with the manifest entry through actual, isolated Pi CLI processes and stores raw trials in `loading-benchmark.json`.
+The native-artifact tests separately check lifecycle registration, service publication and teardown, disabled logging, explicit denies, unknown-tool rejection, WASM-backed bash checks, YOLO ask approval, fail-closed gate exceptions, and approval isolation between concurrent instances of the same native factory.
+
 ## Module structure
 
 ```text

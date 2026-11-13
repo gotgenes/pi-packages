@@ -43,6 +43,18 @@ jobs:
       - name: Real-CLI acceptance tests (pi-autoformat)
         run: pnpm --filter @gotgenes/pi-autoformat run test:acceptance
 
+      - name: Real-CLI approval tests (pi-permission-system)
+        shell: bash
+        run: |
+          work="$(mktemp -d)"
+          trap 'rm -rf "$work"' EXIT
+          pnpm --filter @gotgenes/pi-permission-system pack --pack-destination "$work"
+          pnpm --dir "$work" --ignore-workspace --ignore-scripts add \
+            "$work"/*.tgz @earendil-works/pi-coding-agent@1.5.0
+          python3 packages/pi-permission-system/test/host-approval.py \
+            "$work/node_modules/@gotgenes/pi-permission-system/extension.ts" \
+            --pi-bin "$work/node_modules/.bin/pi"
+
       - name: Fallow audit
         if: github.event_name == 'pull_request'
         run: pnpm fallow audit --base origin/${{ github.base_ref }}
