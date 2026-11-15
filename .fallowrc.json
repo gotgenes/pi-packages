@@ -3,9 +3,12 @@
   "entry": [
     "packages/*/src/extension.ts",
     "packages/*/src/index.ts",
-    "packages/*/src/service.ts",
-    "scripts/**/*.mjs"
+    "packages/*/src/service.ts"
   ],
+  "supportEntry": ["scripts/**/*.mjs"],
+  "audit": {
+    "worsened": "error"
+  },
   "ignoreExportsUsedInFile": true,
   "ignoreDependencies": ["tree-sitter-bash", "@gotgenes/pi-subagents"],
   "ignorePatterns": ["**/test/fixtures/**", "**/tests/fixtures/**", ".pi/**"],
