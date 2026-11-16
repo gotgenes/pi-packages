@@ -165,7 +165,7 @@ Pi emits a `tool_call` event before the tool runs, where this package's [gates](
 ### Gate
 
 One check a tool call must pass: it names a surface and a value, resolves them against the ruleset, and acts on the [action](#action).
-A tool call passes through a fixed sequence of six gates (skill read, path, external directory, bash external directory, bash path, tool), and the first one that blocks stops it; for a shell tool, the tool gate checks each command unit.
+A tool call passes through a fixed sequence of six gates (skill read, path, external directory, bash external directory, bash path, tool), and the first block stops the call (an unconditionally denying gate is checked ahead of the rest); for a shell tool, the tool gate checks each command unit.
 A `/skill:` invocation typed by the user has its own input gate.
 
 ### Access intent

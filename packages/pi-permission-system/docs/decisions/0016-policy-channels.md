@@ -9,7 +9,7 @@ date: 2026-11-16
 
 Accepted.
 This decision settles every path by which something that changes a check's outcome reaches the package (a **channel**, see `docs/glossary.md#channel`): which channels are admissible, at what precedence, under which criteria, who may write policy back, how a relaxation is scoped, and how the session layer meets config.
-It answers the handoff in ADR 0013 §9 (`docs/decisions/0013-permission-policy-model.md`) and the agent-frontmatter question its §7 left open, without amending either.
+It answers the handoff in ADR 0013 §9 (`docs/decisions/0013-permission-policy-model.md`) and the agent-frontmatter question its §7 left open, changing neither; it amends ADR 0007 (the envelope's cap becomes liftable, §5) and ADR 0012 decision 1 (one in-process mode fact, §6), and each of those records carries a dated entry pointing here.
 It was settled interactively in [#799], in the pattern of ADR 0007, 0011, and 0012: the operator decided at each gate, and each section below records the rejected alternatives beside the decision.
 The decisions are implemented by downstream issues (§ Disposition map); nothing changes in code with this record.
 
