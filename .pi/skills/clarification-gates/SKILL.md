@@ -13,6 +13,7 @@ Load this skill before putting a decision to the operator with `ask_user`.
 
 Present the substance — concrete examples, before/after, trade-offs — in a message first, then call `ask_user` with options that reference it.
 The substance is visible assistant text emitted before the `ask_user` call — a briefing composed only in reasoning never reaches the operator.
+Emit that briefing in the same message as the `ask_user` call; a call rejected for having no visible text is re-sent with the question and its substance in full, never as a bare option list.
 An option list is a set of choices, not a briefing; context crammed into option descriptions — or into `preview` panes — gets bounced.
 In a bundled gate the substance requirement is per question, not per message — the least-supported question bounces the whole batch.
 Define a gate's terms of art before its substance — a term the operator must decode is a question they cannot answer; a protocol or format named in an option (`osc9`, SSE) is one: say what it is and who renders it.

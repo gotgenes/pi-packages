@@ -106,3 +106,53 @@ All ten plan steps completed except step 10's replies on dependant threads, defe
 [#1123]: https://github.com/gotgenes/pi-packages/issues/1123
 [#1124]: https://github.com/gotgenes/pi-packages/issues/1124
 [#1127]: https://github.com/gotgenes/pi-packages/issues/1127
+
+## Stage: Final Retrospective (2026-11-16T03:57:07Z)
+
+### Session summary
+
+One process ran the build, the ship, and this retro: seven deliberation gates settled ADR 0016, a package glossary was added mid-build, ten implementation issues ([#1118]–[#1127]) were filed, and three reviewer rounds (WARN, WARN, PASS) reconciled the earlier ADRs.
+The ship pushed twelve commits, released `pi-permission-system` 42.0.1, closed #799, and posted the sixteen dependant replies deferred from the build once the ADR link resolved on `main`.
+
+### Observations
+
+#### What went well
+
+- Disposable spikes through the real code answered gate questions with measured output rather than reasoning: the session-grant override, the erasure, per-scope versus merged-first sugar expansion, the `suggestBashPattern` table, the deny-coverage probe through `wildcardMatch`, and Pi's trust function on a temp tree.
+  The suggestion table is what turned Gate E around.
+- Operator questions phrased as questions ("Have I misunderstood?", "Do *we* offer `systemctl restart *`?", "What could we do differently?") redirected the design better than any option list did: auto-approve as a terminal, the unrestricted mode, and package P2 all came from them.
+- Deferring the dependant replies to `/ship` until the ADR link resolved, then posting all sixteen with `--body-file`, kept contributors from landing on a 404.
+
+#### What caused friction (agent side)
+
+- `instruction-violation` (tool-caught, then user-caught) — about eight `ask_user` calls were rejected for "no visible text": the briefing sat in an earlier message (before an `Edit` that recorded the previous decision), and the call went out alone.
+  Three of the fallbacks restated only the options, so the operator asked "Which table?", "What was the question?", and "I see the options but I don't see a question"; the operator's correction was to present the case and then call `ask_user`.
+  Impact: roughly eight extra round trips, three of them operator confusion.
+- `instruction-violation` (self-identified, after the fact) — `d655ddd8`'s message went through `git commit -F -` from a heredoc; `shell-traps` was not loaded until step 10.
+  The guard meant to catch it never fires: measured with `wildcardMatch`, the deny pattern `git commit*-F` matches none of `git commit -F -`, `git commit -F - -- a.md`, or `git commit -q -F - -- a.md b.md`, because it requires the command to end in `-F`; only `git commit*-F-` matches its own form.
+  Impact: none on this commit (no backticks in the body); the rule has been silently dead.
+- `premature-convergence` (user-caught) — Gate A bundled K1–K7 into one form; the operator asked to go "one at a time" with history and consequences.
+  Impact: one round trip; every later gate was one decision.
+- `missing-context` (self-caught at the operator's prompt) — Gate E was first decided without saying that the over-broad pattern is the package's own suggestion, though the plan's Background already traced it ("traced, not run").
+  Impact: Gate E reopened from Gate F; the second answer (P2) was better.
+- `missing-context` (reviewer-caught) — the decisions widened past the plan's predicted Module-Level Changes, and the earlier records were not re-checked: ADR 0007, 0012, and 0013 lacked amendment entries, the glossary's gate order came from architecture prose rather than `tool-call-gate-pipeline.ts`, and the glossary's scope entry contradicted measurement 4 once [#1108] surfaced.
+  Impact: two fix commits (`3ce02e33`, `f637e599`) and two extra reviewer dispatches (about 320 s).
+- `missing-context` (user-prompted) — the cross-scope merge-position mechanism appeared twice (spike 799c, the rejected allow-all overlay) without being generalized; [#1108] surfaced it only because the operator asked for a re-survey of issues filed during the two-week build.
+  Impact: caught before authoring; no rework.
+
+#### What caused friction (user side)
+
+- The "one decision per gate, with history" preference is stable for this operator in contested design space, and the plan already said "brief to parity"; stating it at the top of the build would have saved Gate A's bounce.
+- The glossary request arrived mid-Gate B, when the vocabulary load was already high; a glossary pass during planning would have given every gate shared terms from the start.
+
+### Diagnostic details
+
+- **Model-performance correlation** — the build and this retro ran on `claude-opus-5-5`; the ship ran on `claude-sonnet-5-5`, including drafting the sixteen public replies (three of them declines on contributor PRs), which is judgment-heavy public text the operator did not see before posting.
+  All three `pre-completion-reviewer` rounds ran on `claude-sonnet-5-5`; round 1 found real record-consistency defects, so the model fit the task.
+- **Feedback-loop gap analysis** — `rumdl` and `pnpm run lint` ran after every write, but no consistency pass re-read the glossary and earlier ADRs after a gate changed a fact they stated; the reviewer did that work at the end.
+
+### Changes made
+
+1. `.pi/extensions/pi-permission-system/config.json`: the heredoc-commit deny patterns `git commit*-F` and `git commit*-F-` became `git commit*-F -*` and `git commit*-F-*`; measured with `wildcardMatch` to match `git commit -F -`, `git commit -q -F - -- a.md b.md`, and `git commit -F-`, and not `git commit -F /tmp/msg.txt` or a `-m` commit.
+2. `.pi/skills/clarification-gates/SKILL.md`: the briefing goes in the same message as the `ask_user` call, and a call rejected for no visible text is re-sent with the question and its substance in full.
+3. `.pi/prompts/build-plan.md`: a decision record that answers, widens, or reverses an earlier ADR adds a dated Status entry to it in the same commit; before a decision record's final gate, list the issues and pull requests filed since the plan commit.

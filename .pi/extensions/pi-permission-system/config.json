@@ -11,11 +11,11 @@
         "action": "deny",
         "reason": "`-r` is `--replace`, not `--recursive`: it rewrites every match and drops the line numbers. `rg` recurses by default, so drop the `-r`. If you do mean a replacement, spell it `--replace` — this rule does not match that"
       },
-      "git commit*-F": {
+      "git commit*-F -*": {
         "action": "deny",
         "reason": "This is `git commit -F -` with a heredoc body, which trips an approval prompt the operator must clear by hand. Write the message to a file with the `Write` tool, then `git commit -F <file>` — this rule does not match that spelling"
       },
-      "git commit*-F-": {
+      "git commit*-F-*": {
         "action": "deny",
         "reason": "This is `git commit -F-` with a heredoc body, which trips an approval prompt the operator must clear by hand. Write the message to a file with the `Write` tool, then `git commit -F <file>` — this rule does not match that spelling"
       },
