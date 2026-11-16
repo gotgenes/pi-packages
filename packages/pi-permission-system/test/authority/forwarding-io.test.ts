@@ -313,14 +313,18 @@ describe("readForwardedPermissionRequest — accessIntent field", () => {
       };
     }
 
-    it("round-trips every unit the child left asking, with each one's floor", () => {
+    it("round-trips every unit the child left asking, with each one's floor and spellings", () => {
       const accessIntent: ForwardedAccessIntent = {
         surface: "bash",
         matchValues: ["ls"],
         boundaryValue: null,
         askingUnits: [
           { command: "ls" },
-          { command: "sudo rm y", floor: "<indirection-bash-wrapper>" },
+          {
+            command: "sudo ~/y",
+            spellings: ["sudo /h/y"],
+            floor: "<indirection-bash-wrapper>",
+          },
         ],
         requesterCwd: "/repo",
         principal: { sessionId: "child-session", agentName: "reviewer" },
@@ -335,6 +339,15 @@ describe("readForwardedPermissionRequest — accessIntent field", () => {
       ["a unit whose command is not a string", [{ command: 42 }]],
       ["a unit whose floor is not a string", [{ command: "ls", floor: 42 }]],
       ["a unit that is not an object", [null]],
+      [
+        "a unit whose spellings are not an array",
+        [{ command: "ls", spellings: "x" }],
+      ],
+      ["a unit whose spellings are empty", [{ command: "ls", spellings: [] }]],
+      [
+        "a unit with a spelling that is not a string",
+        [{ command: "ls", spellings: [42] }],
+      ],
     ])("drops the access intent for %s, so the ask escalates", (_, units) => {
       const parsed = writeAndRead({
         ...baseRequest(),

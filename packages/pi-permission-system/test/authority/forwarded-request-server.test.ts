@@ -662,12 +662,16 @@ describe("processInbox — child-fixed access facts on the escalated ask", () =>
       id: "req-units-facts",
       source: "tool_call",
       surface: "bash",
-      value: "ls && sudo rm y",
+      value: "ls && sudo ~/y",
       accessIntent: makeForwardedAccessIntent({
         matchValues: ["ls"],
         askingUnits: [
           { command: "ls" },
-          { command: "sudo rm y", floor: "<indirection-bash-wrapper>" },
+          {
+            command: "sudo ~/y",
+            spellings: ["sudo /h/y"],
+            floor: "<indirection-bash-wrapper>",
+          },
         ],
       }),
     });
@@ -678,7 +682,11 @@ describe("processInbox — child-fixed access facts on the escalated ask", () =>
       boundaryValue: null,
       askingUnits: [
         { command: "ls" },
-        { command: "sudo rm y", floor: "<indirection-bash-wrapper>" },
+        {
+          command: "sudo ~/y",
+          spellings: ["sudo /h/y"],
+          floor: "<indirection-bash-wrapper>",
+        },
       ],
     });
   });

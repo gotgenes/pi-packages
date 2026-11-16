@@ -59,7 +59,8 @@ export interface InboxProcessor {
  * The answer honors the floor the child raised (`intent.floor`): a serving
  * `allow` rule does not answer an ask the child's own gate floored. A bash
  * chain is judged on every unit the child left asking (`intent.askingUnits`),
- * each with its own floor, since this answer approves the whole tool call.
+ * each with its own floor and in the spellings the child fixed for it, since
+ * this answer approves the whole tool call.
  *
  * Narrow by design (ISP): the server needs one decision, not the whole
  * resolver. The composition root satisfies it with `ResolverServingPolicy`

@@ -133,8 +133,9 @@ export interface ForwardedAccessFacts {
    */
   floor?: string;
   /**
-   * Every unit of a bash chain the child left asking, each with its own floor.
-   * `matchValues` names only the chain's winner, and the serving node's answer
+   * Every unit of a bash chain the child left asking, each with its own floor
+   * and the spellings the child matched it in. `matchValues` names only the
+   * chain's winner, and the serving node's answer
    * approves the whole tool call, so it judges each of these instead. Absent
    * for a non-bash ask and for a bash ask raised without a chain (the empty
    * parse), where `matchValues` is the whole command.

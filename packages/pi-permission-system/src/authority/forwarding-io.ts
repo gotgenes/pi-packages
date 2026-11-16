@@ -201,13 +201,33 @@ function isWellFormedAskingUnits(
   );
 }
 
-/** True for one `{ command: string, floor?: string }` unit. */
+/**
+ * True for one `{ command: string, spellings?: string[], floor?: string }`
+ * unit.
+ *
+ * A present `spellings` must be a non-empty all-string list: the child omits
+ * the key when it has none, and a malformed list must never read as "no
+ * spellings", which would let a serving `deny` written against one miss.
+ */
 function isWellFormedAskingUnit(value: unknown): value is AskingBashUnit {
   if (typeof value !== "object" || value === null) return false;
-  const unit = value as { command?: unknown; floor?: unknown };
+  const unit = value as {
+    command?: unknown;
+    spellings?: unknown;
+    floor?: unknown;
+  };
   return (
     typeof unit.command === "string" &&
+    (unit.spellings === undefined || isNonEmptyStringList(unit.spellings)) &&
     (unit.floor === undefined || typeof unit.floor === "string")
+  );
+}
+
+function isNonEmptyStringList(value: unknown): value is string[] {
+  return (
+    Array.isArray(value) &&
+    value.length > 0 &&
+    value.every((entry) => typeof entry === "string")
   );
 }
 
@@ -215,6 +235,7 @@ function isWellFormedAskingUnit(value: unknown): value is AskingBashUnit {
 function copyAskingUnits(units: readonly AskingBashUnit[]): AskingBashUnit[] {
   return units.map((unit) => ({
     command: unit.command,
+    ...(unit.spellings === undefined ? {} : { spellings: [...unit.spellings] }),
     ...(unit.floor === undefined ? {} : { floor: unit.floor }),
   }));
 }

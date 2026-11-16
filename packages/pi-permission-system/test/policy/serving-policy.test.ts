@@ -1,3 +1,4 @@
+import { homedir } from "node:os";
 import { describe, expect, test } from "vitest";
 import type { ForwardedAccessIntent } from "#src/authority/permission-forwarding";
 import { PermissionResolver } from "#src/policy/permission-resolver";
@@ -304,6 +305,96 @@ describe("ResolverServingPolicy judges every unit the child left asking", () => 
     );
     expect(result.state).toBe("allow");
     expect(result.matchedPattern).toBe("ls*");
+  });
+});
+
+describe("ResolverServingPolicy matches each unit in the spellings the child fixed", () => {
+  const WRAPPER = "<indirection-bash-wrapper>";
+
+  function unitsIntent(
+    ...askingUnits: NonNullable<ForwardedAccessIntent["askingUnits"]>
+  ): ForwardedAccessIntent {
+    return makeForwardedAccessIntent({
+      surface: "bash",
+      matchValues: [askingUnits[0]?.command ?? ""],
+      askingUnits,
+    });
+  }
+
+  // A home no host has, so a match proves the spelling was used as the child
+  // fixed it rather than recomputed on this node.
+  const spelledTool = {
+    command: "~/bin/tool",
+    spellings: ["/child-home/bin/tool"],
+  };
+  const homeDeny: Record<string, PermissionState> = {
+    "*": "allow",
+    "/child-home/bin/*": "deny",
+  };
+
+  test("denies a unit a deny reaches only through its spelling", () => {
+    const result = servingPolicyOver(homeDeny).resolve(
+      unitsIntent(spelledTool),
+    );
+    expect(result.state).toBe("deny");
+    expect(result.matchedPattern).toBe("/child-home/bin/*");
+  });
+
+  test("answers the same unit as typed when the child sent no spellings", () => {
+    const result = servingPolicyOver(homeDeny).resolve(
+      unitsIntent({ command: "~/bin/tool" }),
+    );
+    expect(result.state).toBe("allow");
+    expect(result.matchedPattern).toBe("*");
+  });
+
+  test("denies a relative argument a rule names in its absolute spelling", () => {
+    const result = servingPolicyOver({
+      "*": "allow",
+      "rm /tmp/builds/*": "deny",
+    }).resolve(
+      unitsIntent({ command: "rm builds/x", spellings: ["rm /tmp/builds/x"] }),
+    );
+    expect(result.state).toBe("deny");
+    expect(result.matchedPattern).toBe("rm /tmp/builds/*");
+  });
+
+  test("approves a unit a session grant written with ~ covers", () => {
+    const sessionRules = new SessionRules();
+    sessionRules.recordSessionApproval(
+      SessionApproval.single("bash", "~/bin/tool"),
+    );
+    const result = servingPolicyOver({ "*": "ask" }, { sessionRules }).resolve(
+      unitsIntent({
+        command: "~/bin/tool",
+        spellings: [`${homedir()}/bin/tool`],
+      }),
+    );
+    expect(result.state).toBe("allow");
+    expect(result.source).toBe("session");
+  });
+
+  test("still asks on a floored unit an allow reaches through its spelling", () => {
+    const result = servingPolicyOver({
+      "*": "ask",
+      "sudo /child-home/bin/*": "allow",
+    }).resolve(
+      unitsIntent({
+        command: "sudo ~/bin/x",
+        spellings: ["sudo /child-home/bin/x"],
+        floor: WRAPPER,
+      }),
+    );
+    expect(result.state).toBe("ask");
+    expect(result.matchedPattern).toBe(WRAPPER);
+  });
+
+  test("denies a chain whose spelled unit the parent denies", () => {
+    const result = servingPolicyOver(homeDeny).resolve(
+      unitsIntent({ command: "ls" }, spelledTool),
+    );
+    expect(result.state).toBe("deny");
+    expect(result.matchedPattern).toBe("/child-home/bin/*");
   });
 });
 
