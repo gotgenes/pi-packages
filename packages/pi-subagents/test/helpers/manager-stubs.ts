@@ -33,7 +33,7 @@ export function createBlockingFactory() {
 /**
  * A factory returning a SubagentSession stub wrapping the given (or a fresh)
  * session. Returns the factory plus the stub and session so tests can configure
- * `runTurnLoop`/`resumeTurnLoop` and emit session events.
+ * `runTurnLoop` and emit session events.
  */
 export function createSessionFactory(session: MockSession = createMockSession(), outputFile?: string) {
   const stub = createSubagentSessionStub(session, outputFile);

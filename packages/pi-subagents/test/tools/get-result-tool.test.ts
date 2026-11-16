@@ -9,6 +9,7 @@ import {
 } from "#src/tools/get-result-tool";
 import type { Subagent } from "#src/types";
 import type { Theme } from "#src/ui/display";
+import { gatedScheduler } from "#test/helpers/gated-scheduler";
 import { makeModel } from "#test/helpers/make-model";
 import { createTestSubagent, makeStubExecution } from "#test/helpers/make-subagent";
 import { createMockSession, createSubagentSessionStub, toSubagentSession } from "#test/helpers/mock-session";
@@ -36,23 +37,31 @@ async function execute(
 	return tool.execute("tc-1", params, signal, undefined, STUB_CTX);
 }
 
+/**
+ * An agent waiting on a concurrency slot that opens only when the test calls
+ * `openSlot`. `result` and `completedAt` are unset, as on a real queued run:
+ * the fixture defaults would render a finished agent's output instead.
+ */
+function queuedAgent(responseText = "Done.") {
+	const sessionStub = createSubagentSessionStub();
+	sessionStub.runTurnLoop.mockResolvedValue(turnLoopResult({ responseText }));
+	const record = createTestSubagent({
+		status: "queued",
+		result: undefined,
+		completedAt: undefined,
+		execution: makeStubExecution({
+			createSubagentSession: async () => toSubagentSession(sessionStub),
+		}),
+	});
+	const { schedule, openSlot } = gatedScheduler();
+	record.scheduleVia(schedule);
+	return { record, openSlot, manager: makeManager(new Map([["agent-1", record]])) };
+}
+
 describe("GetResultTool — carrier claim", () => {
 	it("claims the outcome for the duration of a wait", async () => {
-		const sessionStub = createSubagentSessionStub();
-		sessionStub.runTurnLoop.mockResolvedValue(turnLoopResult({ responseText: "Done." }));
-		const record = createTestSubagent({
-			status: "queued",
-			completedAt: undefined,
-			execution: makeStubExecution({
-				createSubagentSession: async () => toSubagentSession(sessionStub),
-			}),
-		});
-		const { promise: slot, resolve: openSlot } = Promise.withResolvers<void>(); // eslint-disable-line @typescript-eslint/no-invalid-void-type -- Promise.withResolvers<void> is valid; rule does not allow void in generic fn call type args
-		record.scheduleVia(async (thunk) => {
-			await slot;
-			await thunk();
-		});
-		const resultPromise = execute(makeManager(new Map([["agent-1", record]])), {
+		const { record, openSlot, manager } = queuedAgent();
+		const resultPromise = execute(manager, {
 			agent_id: "agent-1",
 			wait: true,
 		});
@@ -120,9 +129,10 @@ describe("GetResultTool — carrier claim", () => {
 
 	it("leaves a claimed resume's claim in place when the wait wakes after the resume started", async () => {
 		const sessionStub = createSubagentSessionStub();
-		sessionStub.runTurnLoop.mockResolvedValue(turnLoopResult({ responseText: "first" }));
 		const resumed = Promise.withResolvers<TurnLoopResult>();
-		sessionStub.resumeTurnLoop.mockReturnValue(resumed.promise);
+		sessionStub.runTurnLoop
+			.mockResolvedValueOnce(turnLoopResult({ responseText: "first" }))
+			.mockReturnValueOnce(resumed.promise);
 		const record = createTestSubagent({
 			status: "running",
 			completedAt: undefined,
@@ -131,9 +141,9 @@ describe("GetResultTool — carrier claim", () => {
 				// A consumer that resumes the moment the run settles, before the
 				// waiter's continuation runs, as a subagents:completed handler can.
 				observer: {
-					onRunFinished: (agent) => {
-						agent.claim();
-						void agent.resume("continue");
+					onRunFinished: (agent, kind) => {
+						if (kind !== "initial") return;
+						void agent.resume("continue", { background: true, claimOutcome: true });
 					},
 				},
 			}),
@@ -166,12 +176,13 @@ describe("GetResultTool — a wait a resume superseded", () => {
 	function supersededAgent() {
 		const sessionStub = createSubagentSessionStub();
 		let ask: ((question: string) => void) | undefined;
-		sessionStub.runTurnLoop.mockImplementation(() => {
-			ask?.("Which config?");
-			return Promise.resolve(turnLoopResult({ responseText: "first result" }));
-		});
 		const resumed = Promise.withResolvers<TurnLoopResult>();
-		sessionStub.resumeTurnLoop.mockReturnValue(resumed.promise);
+		sessionStub.runTurnLoop
+			.mockImplementationOnce(() => {
+				ask?.("Which config?");
+				return Promise.resolve(turnLoopResult({ responseText: "first result" }));
+			})
+			.mockReturnValueOnce(resumed.promise);
 		const record = createTestSubagent({
 			status: "running",
 			completedAt: undefined,
@@ -181,9 +192,9 @@ describe("GetResultTool — a wait a resume superseded", () => {
 					return toSubagentSession(sessionStub);
 				},
 				observer: {
-					onRunFinished: (agent) => {
-						agent.claim();
-						void agent.resume("The project one.");
+					onRunFinished: (agent, kind) => {
+						if (kind !== "initial") return;
+						void agent.resume("The project one.", { background: true, claimOutcome: true });
 					},
 				},
 			}),
@@ -272,6 +283,71 @@ describe("GetResultTool", () => {
 		expect(text).toContain("Agent: agent-1");
 		expect(text).toContain("completed");
 		expect(text).toContain("All done.");
+	});
+
+	describe("a queued agent", () => {
+		it("says it has not started instead of reporting no output, and leaves its outcome uncollected", async () => {
+			const { record, manager } = queuedAgent();
+
+			const text = textOf(await execute(manager, { agent_id: "agent-1" }));
+
+			expect(text).toContain("Status: queued");
+			expect(text).toContain(
+				"\n\nAgent is queued and has not started; it is waiting for a concurrency slot (maxConcurrent). " +
+					"Use wait: true or check back later.",
+			);
+			expect(text).not.toContain("No output.");
+			expect(record.consumed).toBe(false);
+		});
+
+		describe("Duration stat", () => {
+			// queuedAgent() and createTestSubagent() start the run at 1000, so 6_000 is 5 s later.
+			beforeEach(() => {
+				vi.useFakeTimers();
+				vi.setSystemTime(6_000);
+			});
+
+			afterEach(() => {
+				vi.useRealTimers();
+			});
+
+			it("reports its time in the queue instead of a running duration", async () => {
+				const { manager } = queuedAgent();
+
+				const text = textOf(await execute(manager, { agent_id: "agent-1" }));
+
+				expect(text).toContain("| Duration: queued 5.0s\n");
+				expect(text).not.toContain("(running)");
+			});
+
+			it("carries its time in the queue in the TUI details", async () => {
+				const { manager } = queuedAgent();
+
+				const result = await execute(manager, { agent_id: "agent-1" });
+
+				expect(result.details?.duration).toBe("queued 5.0s");
+			});
+
+			it("keeps the time a run stopped while queued spent in the queue, frozen at the stop", async () => {
+				const { record, manager } = queuedAgent();
+				record.stopQueued();
+				vi.setSystemTime(9_000);
+
+				const result = await execute(manager, { agent_id: "agent-1" });
+
+				expect(textOf(result)).toContain("| Duration: queued 5.0s\n");
+				expect(result.details?.duration).toBe("queued 5.0s");
+			});
+
+			it("leaves a started run's duration as its running time", async () => {
+				const records = new Map([["agent-1", createTestSubagent()]]);
+
+				const result = await execute(makeManager(records), { agent_id: "agent-1" });
+
+				expect(textOf(result)).toContain("| Duration: 1.0s\n");
+				expect(result.details?.duration).toBe("1.0s");
+			});
+		});
 	});
 
 	describe("model", () => {
@@ -405,24 +481,10 @@ describe("GetResultTool", () => {
 	});
 
 	it("waits for a queued agent when wait=true", async () => {
-		const sessionStub = createSubagentSessionStub();
-		sessionStub.runTurnLoop.mockResolvedValue(turnLoopResult({ responseText: "Finished after the queue." }));
-		const record = createTestSubagent({
-			status: "queued",
-			completedAt: undefined,
-			execution: makeStubExecution({
-				createSubagentSession: async () => toSubagentSession(sessionStub),
-			}),
-		});
 		// The limiter admits the agent only after the parent has begun waiting.
-		const { promise: slot, resolve: openSlot } = Promise.withResolvers<void>(); // eslint-disable-line @typescript-eslint/no-invalid-void-type -- Promise.withResolvers<void> is valid; rule does not allow void in generic fn call type args
-		record.scheduleVia(async (thunk) => {
-			await slot;
-			await thunk();
-		});
-		const records = new Map([["agent-1", record]]);
+		const { record, openSlot, manager } = queuedAgent("Finished after the queue.");
 
-		const resultPromise = execute(makeManager(records), { agent_id: "agent-1", wait: true });
+		const resultPromise = execute(manager, { agent_id: "agent-1", wait: true });
 		openSlot();
 
 		const result = await resultPromise;
@@ -560,6 +622,26 @@ describe("GetResultTool — bounded wait", () => {
 		expect(record.consumed).toBe(false);
 		finish();
 		await record.promise;
+	});
+
+	it("returns at the bound with a queued agent still queued, saying waiting again is how to collect it", async () => {
+		// The slot never opens, so the gate holds no timer past the bound.
+		const { record, manager } = queuedAgent();
+
+		const resultPromise = execute(manager, { agent_id: "agent-1", wait: true, timeout: 120 });
+		await vi.advanceTimersByTimeAsync(120_000);
+		const text = textOf(await resultPromise);
+
+		expect(text).toContain(
+			"This wait ended after its 120s timeout. The agent was not stopped and is still queued: " +
+				"it has not started, and starts when a running agent finishes and frees a concurrency slot.\n" +
+				"Waiting again is how to collect its result",
+		);
+		expect(text).not.toContain(EXPIRY_NOTE);
+		expect(text).not.toContain("No output.");
+		expect(record.status).toBe("queued");
+		expect(record.claimed).toBe(false);
+		expect(record.consumed).toBe(false);
 	});
 
 	it("keeps waiting until the bound", async () => {

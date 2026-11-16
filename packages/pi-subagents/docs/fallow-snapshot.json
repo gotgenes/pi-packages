@@ -1,8 +1,8 @@
 {
   "snapshot_schema_version": 10,
   "version": "3.22.0",
-  "timestamp": "2026-09-22T04:15:50Z",
-  "git_sha": "24e248f7",
+  "timestamp": "2026-10-28T03:07:49Z",
+  "git_sha": "219840ea",
   "git_branch": "main",
   "shallow_clone": false,
   "vital_signs": {
@@ -12,52 +12,52 @@
     "critical_complexity_pct": 0.0,
     "p90_cyclomatic": 2,
     "duplication_pct": 0.0,
-    "hotspot_count": 0,
+    "hotspot_count": 2,
     "hotspot_top_pct_count": 2,
-    "maintainability_avg": 91.2,
+    "maintainability_avg": 91.1,
     "maintainability_low_pct": 0.0,
     "unused_dep_count": 0,
     "unused_deps_per_k_files": 0.0,
     "circular_dep_count": 0,
     "circular_deps_per_k_files": 0.0,
     "counts": {
-      "total_files": 165,
-      "total_exports": 358,
+      "total_files": 183,
+      "total_exports": 411,
       "dead_files": 0,
       "dead_exports": 0,
       "duplicated_lines": 0,
-      "total_lines": 34240,
-      "files_scored": 158,
+      "total_lines": 39871,
+      "files_scored": 176,
       "total_deps": 0
     },
     "unit_size_profile": {
-      "low_risk": 82.3,
-      "medium_risk": 9.5,
-      "high_risk": 4.7,
-      "very_high_risk": 3.5
+      "low_risk": 81.9,
+      "medium_risk": 9.8,
+      "high_risk": 4.6,
+      "very_high_risk": 3.7
     },
-    "functions_over_60_loc_per_k": 35.3,
+    "functions_over_60_loc_per_k": 37.2,
     "unit_interfacing_profile": {
-      "low_risk": 98.1,
-      "medium_risk": 1.4,
+      "low_risk": 98.0,
+      "medium_risk": 1.6,
       "high_risk": 0.4,
       "very_high_risk": 0.0
     },
     "p95_fan_in": 13,
-    "coupling_high_pct": 4.4,
-    "total_loc": 34240
+    "coupling_high_pct": 4.5,
+    "total_loc": 39871
   },
   "counts": {
-    "total_files": 165,
-    "total_exports": 358,
+    "total_files": 183,
+    "total_exports": 411,
     "dead_files": 0,
     "dead_exports": 0,
     "duplicated_lines": 0,
-    "total_lines": 34240,
-    "files_scored": 158,
+    "total_lines": 39871,
+    "files_scored": 176,
     "total_deps": 0
   },
-  "score": 77.8,
+  "score": 77.7,
   "grade": "B",
   "coverage_model": "static_estimated",
   "analysis_identity": {

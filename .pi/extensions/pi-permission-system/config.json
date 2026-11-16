@@ -3,17 +3,25 @@
   "permission": {
     "bash": {
       "pnpm add*": "ask",
+      "cd packages/*": {
+        "action": "deny",
+        "reason": "Run package-scoped work from the repo root: `pnpm --filter @gotgenes/<pkg> run|exec …` or `pnpm -C packages/<pkg> …`, and root-relative paths (`packages/<pkg>/src/…`) for grep, sed, and read. A package-directory cwd breaks fallow's root-relative zones and mixes up relative paths"
+      },
       "rg -r*": {
         "action": "deny",
         "reason": "`-r` is `--replace`, not `--recursive`: it rewrites every match and drops the line numbers. `rg` recurses by default, so drop the `-r`. If you do mean a replacement, spell it `--replace` — this rule does not match that"
       },
-      "git commit*-F": {
+      "git commit*-F -*": {
         "action": "deny",
         "reason": "This is `git commit -F -` with a heredoc body, which trips an approval prompt the operator must clear by hand. Write the message to a file with the `Write` tool, then `git commit -F <file>` — this rule does not match that spelling"
       },
-      "git commit*-F-": {
+      "git commit*-F-*": {
         "action": "deny",
         "reason": "This is `git commit -F-` with a heredoc body, which trips an approval prompt the operator must clear by hand. Write the message to a file with the `Write` tool, then `git commit -F <file>` — this rule does not match that spelling"
+      },
+      "git commit*-F /dev/stdin*": {
+        "action": "deny",
+        "reason": "This is `git commit -F /dev/stdin` with a heredoc body, which trips two approval prompts the operator must clear by hand. Write the message to a file with the `Write` tool, then `git commit -F <file>` — this rule does not match that spelling"
       }
     }
   }

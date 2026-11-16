@@ -611,7 +611,7 @@ describe("bash command gate — a parse it could not resolve fails closed", () =
         const { argumentSpellings } = new BashPathResolver(
           normalizer,
           words,
-        ).resolve(tree.rootNode);
+        ).resolve(tree.rootNode, [], command);
         return collectCommands(tree.rootNode, words, argumentSpellings);
       } finally {
         tree.delete();

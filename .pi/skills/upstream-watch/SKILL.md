@@ -68,7 +68,7 @@ git worktree add --detach /tmp/pp-upstream-<version> HEAD
 cd /tmp/pp-upstream-<version>
 pnpm install --frozen-lockfile
 pnpm --filter @gotgenes/<pkg> add -D @earendil-works/pi-coding-agent@<version>   # plus each other @earendil-works/* devDep the package pins
-cd packages/<pkg>
+cd /tmp/pp-upstream-<version>/packages/<pkg>
 ./node_modules/.bin/tsc --noEmit
 ./node_modules/.bin/vitest run
 ```

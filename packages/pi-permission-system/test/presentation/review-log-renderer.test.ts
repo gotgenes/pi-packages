@@ -112,6 +112,60 @@ describe("renderReviewLogFacts", () => {
     });
   });
 
+  describe("deciding path", () => {
+    it("records the deciding path and what established its direction", () => {
+      expect(
+        renderReviewLogFacts(
+          payload({
+            surface: "external_directory",
+            matchedPattern: "*",
+            decidingPath: {
+              path: "/outside/x",
+              effect: "unproven",
+              effectSource: "retracted",
+            },
+          }),
+        ),
+      ).toEqual({
+        surface: "external_directory",
+        matchedPattern: "*",
+        decidingPath: "/outside/x",
+        effect: "unproven",
+        effectSource: "retracted",
+      });
+    });
+
+    it("records the deciding path but never the other escaping paths", () => {
+      expect(
+        renderReviewLogFacts(
+          payload(
+            {
+              surface: "external_directory_write",
+              matchedPattern: "*",
+              decidingPath: {
+                path: "/outside/b",
+                effect: "write",
+                effectSource: "syntax",
+              },
+            },
+            {
+              evidence: [
+                { label: "external path", text: "/outside/a", detail: null },
+                { label: "external path", text: "/outside/b", detail: null },
+              ],
+            },
+          ),
+        ),
+      ).toEqual({
+        surface: "external_directory_write",
+        matchedPattern: "*",
+        decidingPath: "/outside/b",
+        effect: "write",
+        effectSource: "syntax",
+      });
+    });
+  });
+
   it("marks a local ask with no forwarding fields at all", () => {
     const facts = renderReviewLogFacts(payload({ surface: "read" }));
     expect(facts).toEqual({ surface: "read" });

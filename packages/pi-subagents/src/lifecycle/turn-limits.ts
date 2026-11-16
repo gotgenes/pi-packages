@@ -58,7 +58,7 @@ export class TurnBudgetTracker {
   private used = 0;
   private phase: TurnBudgetPhase = "within";
 
-  constructor(limits: { maxTurns?: number; wrapUpTurns: number }) {
+  constructor(limits: TurnLimits) {
     this.maxTurns = limits.maxTurns;
     this.warnAt = limits.maxTurns == null ? undefined : Math.max(0, limits.maxTurns - limits.wrapUpTurns);
   }
@@ -125,6 +125,39 @@ export const MIN_MAX_TURNS = 2;
 export function normalizeMaxTurns(n: number | undefined): number | undefined {
   if (n == null || n === 0) return undefined;
   return Math.max(MIN_MAX_TURNS, n);
+}
+
+/** The turn-limit inputs a run's caller supplies; the agent's own limit comes from its config. */
+export interface TurnLimitRequest {
+  /** Per-call max-turns override: highest precedence. */
+  maxTurns?: number;
+  /** Runtime-config fallback when neither the call nor the agent sets a limit. */
+  defaultMaxTurns?: number;
+  /** Turns left when the child is warned about its budget (`wrapUpTurns` setting). */
+  wrapUpTurns?: number;
+}
+
+/** The limits every run of one session is held to. */
+export interface TurnLimits {
+  maxTurns?: number;
+  wrapUpTurns: number;
+}
+
+/** Wrap-up turns when the run config names none; matches the setting's default. */
+const DEFAULT_WRAP_UP_TURNS = 2;
+
+/**
+ * Resolve a session's turn limits: the per-call limit, then the agent's, then
+ * the runtime default, normalized; and the requested wrap-up turns.
+ */
+export function resolveTurnLimits(
+  request: TurnLimitRequest | undefined,
+  agentMaxTurns: number | undefined,
+): TurnLimits {
+  return {
+    maxTurns: normalizeMaxTurns(request?.maxTurns ?? agentMaxTurns ?? request?.defaultMaxTurns),
+    wrapUpTurns: request?.wrapUpTurns ?? DEFAULT_WRAP_UP_TURNS,
+  };
 }
 
 /** Whether a configured limit is a real one below the minimum, which normalizeMaxTurns raises. */

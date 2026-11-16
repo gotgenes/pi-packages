@@ -54,6 +54,7 @@ The report is advisory — you decide what the plan says.
 Read a rejection's reasoning, not just its verdict — one that contradicts the design is a signal to re-examine the design, which is cheap here and expensive later.
 A contradiction that names a test the change will break is a **sequencing** constraint, not only a note: the repair belongs in the step whose commit breaks it, never a later one.
 Read a "no preparatory tidying warranted" verdict the same way: what it verified on the way past — interface fit, call-site counts, fixture assumptions — routinely confirms or refutes the design's structural claims.
+A finding that the change alters observable behavior (a transition that now lands on a different object) is a latent defect: trace its trigger to a front door before writing the plan, and type the step `fix:` or `refactor:` on the result — never leave the commit type conditional on the implementing session.
 If a recommendation would **reshape** the design rather than prepare it, surface it to the operator before writing the plan instead of absorbing it silently.
 
 Beyond the roadmap's ride-alongs, do not plan tidying of code the change will not touch — that is scope creep, not Tidy First.

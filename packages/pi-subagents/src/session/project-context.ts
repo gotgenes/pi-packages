@@ -13,18 +13,14 @@ export interface ContextFile {
 }
 
 /**
- * Render context files as the `<project_context>` section pi 0.86 and later
- * write, byte for byte.
+ * Render context files as the `<project_context>` section Pi writes, byte for
+ * byte.
  *
- * That renderer joins a lead-in sentence and each `<project_instructions>`
- * block with a blank line, inside the section wrapper's own newlines. Pi
- * through 0.85 also wrote a blank line below the opening tag and above the
- * closing one; on such a host this block differs from Pi's by those two lines
- * alone, and nothing reads a child's own block positionally. One shape is
- * rendered for every host rather than detecting which one is running.
+ * Pi's renderer joins a lead-in sentence and each `<project_instructions>`
+ * block with a blank line, inside the section wrapper's own newlines.
  *
  * `buildSystemPrompt` is not exported, so the tests pin this against a
- * hand-built copy of 0.86.1's output rather than against Pi's renderer.
+ * hand-built copy of the pinned SDK's output rather than against Pi's renderer.
  *
  * Returns undefined when there are no files, so a caller can tell "this
  * directory carries no project instructions" from "here they are".

@@ -327,6 +327,110 @@ describe("runForeground", () => {
 		expect(onUpdate).not.toHaveBeenCalled();
 	});
 
+	describe("progress stream", () => {
+		const running = createTestSubagent({
+			status: "running",
+			completedAt: undefined,
+			toolUses: 4,
+			lifetimeUsage: { input: 1000, output: 500, cacheWrite: 0 },
+			activeTools: ["read"],
+		});
+
+		/** A spawn that hands over `record` once its session exists, then waits to be resolved. */
+		function pendingSpawn(record?: Subagent) {
+			const { promise, resolve } = Promise.withResolvers<Subagent>();
+			const spawnAndWait = vi.fn(
+				(_snapshot: unknown, _type: unknown, _prompt: unknown, options: { observer?: { onSessionCreated?: (agent: Subagent) => void } }) => {
+					if (record) options.observer?.onSessionCreated?.(record);
+					return promise;
+				},
+			);
+			const deps = createToolDeps({ manager: { ...createToolDeps().manager, spawnAndWait } });
+			return { manager: deps.manager, spawnAndWait, resolve };
+		}
+
+		it("streams a first update before the agent is spawned", async () => {
+			const { manager, spawnAndWait, resolve } = pendingSpawn();
+			const onUpdate = vi.fn();
+			let updatesAtSpawn: number | undefined;
+			spawnAndWait.mockImplementationOnce(() => {
+				updatesAtSpawn = onUpdate.mock.calls.length;
+				return Promise.resolve(createTestSubagent());
+			});
+
+			await runForeground(manager, makeParams(), undefined, onUpdate);
+
+			expect(updatesAtSpawn).toBe(1);
+			expect(onUpdate).toHaveBeenNthCalledWith(1, {
+				content: [{ type: "text", text: "0 tool uses..." }],
+				details: {
+					displayName: "Agent",
+					description: "fg task",
+					subagentType: "general-purpose",
+					toolUses: 0,
+					tokens: "",
+					durationMs: 0,
+					status: "running",
+					activity: "thinking…",
+					spinnerFrame: 0,
+				},
+			});
+			resolve(createTestSubagent());
+		});
+
+		it("streams the record's tool uses, tokens, and activity once its session exists", async () => {
+			const { manager, resolve } = pendingSpawn(running);
+			const onUpdate = vi.fn();
+			const runPromise = runForeground(manager, makeParams(), undefined, onUpdate);
+
+			await vi.advanceTimersByTimeAsync(80);
+
+			expect(onUpdate).toHaveBeenLastCalledWith({
+				content: [{ type: "text", text: "4 tool uses..." }],
+				details: {
+					displayName: "Agent",
+					description: "fg task",
+					subagentType: "general-purpose",
+					toolUses: 4,
+					tokens: "1.5k token",
+					durationMs: 80,
+					status: "running",
+					activity: "reading…",
+					spinnerFrame: 1,
+				},
+			});
+			resolve(createTestSubagent());
+			await runPromise;
+		});
+
+		it("advances the spinner one frame per tick, wrapping at the last frame", async () => {
+			const { manager, resolve } = pendingSpawn(running);
+			const onUpdate = vi.fn<(update: { details: { spinnerFrame?: number } }) => void>();
+			const runPromise = runForeground(manager, makeParams(), undefined, onUpdate);
+
+			await vi.advanceTimersByTimeAsync(80 * 11);
+
+			expect(onUpdate.mock.calls.map(([update]) => update.details.spinnerFrame)).toEqual([
+				0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1,
+			]);
+			resolve(createTestSubagent());
+			await runPromise;
+		});
+
+		it("stops streaming once the agent returns", async () => {
+			const { manager, resolve } = pendingSpawn(running);
+			const onUpdate = vi.fn();
+			const runPromise = runForeground(manager, makeParams(), undefined, onUpdate);
+			resolve(createTestSubagent());
+			await runPromise;
+
+			onUpdate.mockClear();
+			await vi.advanceTimersByTimeAsync(200);
+
+			expect(onUpdate).not.toHaveBeenCalled();
+		});
+	});
+
 	describe("agent ID in the result text", () => {
 		it("names the agent ID under the completion header", async () => {
 			const { manager } = createToolDeps();

@@ -103,7 +103,7 @@ git log --oneline $BASE..HEAD
 ```
 
 Confirm each commit message follows `type(scope): description` or `type: description`.
-Valid types: `feat`, `fix`, `docs`, `test`, `refactor`, `style`, `chore`, `ci`.
+Valid types are `committed.toml`'s `allowed_types` — read it; do not work from memory.
 The `feat!:` form with a `BREAKING CHANGE:` footer is also valid.
 Report any non-conforming commit as **FAIL**.
 

@@ -16,6 +16,13 @@ export const MODEL_JUDGE_EXTENSION_ID = "pi-permission-model-judge";
 export const MODEL_JUDGE_SCHEMA_URL =
   "https://raw.githubusercontent.com/gotgenes/pi-packages/main/packages/pi-permission-model-judge/schemas/model-judge.schema.json";
 
+/**
+ * The most entries any config array accepts. zod checks `.max()` before it
+ * walks the elements, so an oversized array costs one issue rather than one per
+ * entry (CVE-2023-54404); an unbounded array has no such guard.
+ */
+const MAX_CONFIG_ARRAY_ITEMS = 1000;
+
 /** Default per-review model-call budget, in milliseconds. */
 export const DEFAULT_TIMEOUT_MS = 5000;
 
@@ -30,7 +37,10 @@ export const modelJudgeConfigSchema = z.object({
   provider: z.string().min(1),
   model: z.string().min(1),
   instructions: z.string().min(1),
-  typoPatterns: z.array(z.string().min(1)).default([]),
+  typoPatterns: z
+    .array(z.string().min(1))
+    .max(MAX_CONFIG_ARRAY_ITEMS)
+    .default([]),
   timeoutMs: z.number().int().positive().default(DEFAULT_TIMEOUT_MS),
 });
 

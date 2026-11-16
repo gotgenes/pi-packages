@@ -1,6 +1,7 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import type { AuthorizerSelectionLifecycle } from "#src/authority/authorizer-selection";
 import type { ForwardingController } from "#src/authority/forwarding-manager";
+import type { DeclaredCommandEffects } from "#src/config/command-effects-config";
 import type { ShellToolsConfig } from "#src/config/config-schema";
 import type { SessionConfigStore } from "#src/config/config-store";
 import type { PermissionSystemExtensionConfig } from "#src/config/extension-config";
@@ -269,6 +270,15 @@ export class PermissionSession implements ToolCallGateInputs {
    */
   getShellToolAliases(): ShellToolsConfig | undefined {
     return this.config.shellTools;
+  }
+
+  /**
+   * The user's `commandEffects` declarations, scope stamped, which the gate
+   * pipeline hands to `BashProgram.parse` so a declared command's operands
+   * route by their declared effect.
+   */
+  getCommandEffects(): DeclaredCommandEffects {
+    return this.configStore.declaredCommandEffects();
   }
 
   // ── Path normalization ────────────────────────────────────────────────

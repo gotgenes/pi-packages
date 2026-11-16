@@ -62,7 +62,7 @@ Background agents return an ID immediately and notify you on completion.
 
 ## UI
 
-The extension renders a persistent widget above the editor showing active background agents (foreground runs are rendered inline by the `subagent` tool's progress stream):
+The extension renders a persistent widget above the editor showing the agents whose current run is in the background (foreground runs, resumes included, are rendered inline by the `subagent` tool's progress stream):
 
 ![The agents widget: four running Explore agents, each with its model, turn count, tool uses, tokens and context use, and current activity, above a line reading 2 queued](https://raw.githubusercontent.com/gotgenes/pi-packages/main/packages/pi-subagents/docs/assets/widget.png)
 
@@ -134,6 +134,8 @@ An agent file can withhold one with [`locked`](./docs/configuration.md#locking-f
 
 A call with `resume` and `run_in_background: true` resumes the agent without waiting: it returns the agent ID at once, and you are notified when the resumed run finishes.
 Only the call's own flag does this; an agent file's `run_in_background` default does not apply to a resume.
+A background resume shows in the widget regardless of the mode the agent was spawned in, and a foreground resume streams its progress inline.
+Like a background spawn, a background resume waits for a slot when the [concurrency limit](#concurrency) is reached, and its result says it was queued.
 
 ### `get_subagent_result`
 
@@ -228,10 +230,11 @@ The widget shows a warned agent's turn count in the warning color.
 
 Background agents are subject to a configurable concurrency limit (default: 4).
 Excess agents are automatically queued and start as running agents complete.
+A background resume counts as well: at the limit it queues behind the agents already waiting, and while it waits, another resume of the same agent is refused as `resume-queued`.
 The widget shows queued agents as a collapsed count.
 It also bounds its own height to the terminal's, collapsing the agents that do not fit into a `+N more` summary, so a short pane keeps its conversation visible.
 
-Foreground agents bypass the queue — they block the parent anyway.
+Foreground agents bypass the queue — they block the parent anyway; so does a foreground resume.
 
 Stopping a still-queued agent produces the same completion notification a running agent's stop does.
 Because that agent never started, the notification says so and offers no result to collect.
@@ -266,8 +269,8 @@ Agent lifecycle events are emitted via `pi.events.emit()` so other extensions ca
 | `subagents:started`          | Agent transitions to running (including queued→running) | `id`, `type`, `description`                                                                                              |
 | `subagents:completed`        | Agent finished successfully                             | `id`, `type`, `status`, `turnBudget`, `durationMs`, `tokens` (lifetime `{ input, output, total }`), `toolUses`, `result` |
 | `subagents:failed`           | Agent errored, stopped, or aborted                      | same as completed + `error`, `status`                                                                                    |
-| `subagents:resuming`         | Resume started, from either front door                  | `id`, `type`, `description`                                                                                              |
-| `subagents:resumed`          | Resumed run reached a terminal state (completed/error)  | same as completed + `error`, `status` (`buildEventData` shape) — `status`/`error` discriminate                           |
+| `subagents:resuming`         | Resume started (a queued resume, once admitted)         | `id`, `type`, `description`                                                                                              |
+| `subagents:resumed`          | Resumed run ended (including one stopped while queued)  | same as completed + `error`, `status` (`buildEventData` shape) — `status`/`error` discriminate                           |
 | `subagents:steered`          | Steering message sent                                   | `id`, `message`                                                                                                          |
 | `subagents:compacted`        | Agent's session successfully compacted                  | `id`, `type`, `description`, `reason` (`"manual"` / `"threshold"` / `"overflow"`), `tokensBefore`, `compactionCount`     |
 | `subagents:settings_loaded`  | Persisted settings applied at extension init            | `settings` (merged global + project)                                                                                     |
@@ -365,11 +368,11 @@ A spawned agent is a first-class citizen of the runtime: it appears in the backg
 Both return `SubagentRecord`, a by-value snapshot: nothing in it changes after you receive it, and writing to it cannot reach the agent.
 Poll again for fresh data.
 
-The snapshot carries identity (`id`, `type`, `description`), lifecycle status (`status`, `startedAt`, `completedAt`, `result`, `error`, `pendingQuestion`), the resolved spawn fact `isBackground`, the current run's `turnBudget`, cumulative metrics (`toolUses`, `compactionCount`, `lifetimeUsage`), and `outputFile` — the path to the agent's session JSONL, which you can read with Pi's own `parseSessionEntries`.
+The snapshot carries identity (`id`, `type`, `description`), lifecycle status (`status`, `startedAt`, `completedAt`, `result`, `error`, `pendingQuestion`), `isBackground` (whether the current run is in the background: the spawn's mode until the first run starts, and each resume's own afterwards), the current run's `turnBudget`, cumulative metrics (`toolUses`, `compactionCount`, `lifetimeUsage`), and `outputFile` — the path to the agent's session JSONL, which you can read with Pi's own `parseSessionEntries`.
 
 It also carries `resumeRefusal`: absent when `resume` would start a run, otherwise the reason it would refuse with (the [`resume` contract](#resume-contract) lists them).
 Render a Resume affordance from it without calling `resume` first.
-`still-running` clears when the run settles, and a queued agent's `no-session` clears once it starts; the other reasons are final.
+`still-running` clears when the run settles, `resume-queued` clears when the queued resume's run settles, and a queued agent's `no-session` clears once it starts; the other reasons are final.
 
 It deliberately withholds momentary activity (the tools running right now, the partial response text) and this package's internal bookkeeping.
 A pulled snapshot of momentary state would be stale on arrival; [decision 0005](docs/decisions/0005-subagent-record-admission-policy.md) records the full policy and what would reopen it.
@@ -381,6 +384,8 @@ A new field is therefore a minor release; use a cast or a `Partial<>` for a test
 
 `resume(id, prompt, options?)` continues a settled agent's session, and is the one service call that waits: it resolves when the resumed run reaches a terminal state, carrying the terminal snapshot.
 A caller that does not need the outcome can ignore the promise.
+The resumed run is in the background, as a service spawn is by default: it shows in the widget, and the record's `isBackground` reads `true` regardless of the mode the agent was spawned in.
+Like a background spawn, it waits for a slot when the [concurrency limit](#concurrency) is reached, reading `queued` until one frees, and the promise spans that wait.
 
 It never throws and never rejects.
 A resume that could not start resolves to `{ kind: "refused", reason }` instead, promptly — the checks are synchronous and no turn loop runs:
@@ -389,6 +394,7 @@ A resume that could not start resolves to `{ kind: "refused", reason }` instead,
 | -------------------- | --------------------------------------------------------------- |
 | `unknown-agent`      | No record answers to that id (records are cleared per session)  |
 | `still-running`      | The agent has not settled; wait, or `steer` it while it runs    |
+| `resume-queued`      | A resume is waiting for a concurrency slot; wait for its run    |
 | `no-session`         | The agent never had a session to continue                       |
 | `session-released`   | Its session was released after the retention window             |
 | `workspace-disposed` | Its isolated workspace is gone, so a resume cannot re-enter it  |
@@ -403,6 +409,7 @@ Pass `claimOutcome: true` to declare that your extension is delivering it, which
 
 Pass `signal` to cancel the resumed turn loop.
 It is wired through the record's own lever, so it ends the resume exactly as `abort(id)` does — either cancel reaches the same run, and the record reads `stopped`.
+A signal that has already fired stops the resume before its first turn.
 
 ### `@gotgenes/pi-subagents/settings` — layered config loader
 

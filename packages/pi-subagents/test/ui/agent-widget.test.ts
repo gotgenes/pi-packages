@@ -343,6 +343,44 @@ describe("AgentWidget.update self-seeds finished agents", () => {
 	});
 });
 
+describe("AgentWidget — a record that runs again", () => {
+	// The fixture is mutated in place between notifications: makeWidget's
+	// listAgents() reads the same object on every update.
+	function settleRunAgain(status: "completed" | "error") {
+		const agent: { id: string; status: string; completedAt?: number } = { id: "a1", status, completedAt: 5000 };
+		const fixture = makeWidget([agent]);
+		fixture.widget.update();
+		for (let turn = 0; turn < 2; turn++) fixture.widget.onTurnStart();
+		expect(fixture.lastContent()).toBeUndefined();
+
+		agent.status = "running";
+		agent.completedAt = undefined;
+		fixture.widget.onSubagentRunStarted(createTestSubagent({ id: "a1", status: "running" }), "resume");
+		agent.status = status;
+		agent.completedAt = 9000;
+		fixture.widget.onSubagentRunFinished(createTestSubagent({ id: "a1", status }), "resume");
+		return fixture;
+	}
+
+	it("lingers a resumed run's finished row for one turn, like the first run's", () => {
+		const { widget, lastContent } = settleRunAgain("completed");
+		expect(typeof lastContent()).toBe("function");
+
+		widget.onTurnStart();
+		expect(lastContent()).toBeUndefined();
+	});
+
+	it("lingers a resumed run that errored for two turns", () => {
+		const { widget, lastContent } = settleRunAgain("error");
+		expect(typeof lastContent()).toBe("function");
+
+		widget.onTurnStart();
+		expect(typeof lastContent()).toBe("function");
+		widget.onTurnStart();
+		expect(lastContent()).toBeUndefined();
+	});
+});
+
 describe("AgentWidget — self-drives from lifecycle notifications", () => {
 	beforeEach(() => {
 		vi.useFakeTimers();
@@ -354,11 +392,11 @@ describe("AgentWidget — self-drives from lifecycle notifications", () => {
 
 	const COMPACTION: CompactionInfo = { reason: "threshold", tokensBefore: 1000 };
 
-	it("starts the update timer and renders on onSubagentStarted", () => {
+	it("starts the update timer and renders when a run starts", () => {
 		const { widget, lastContent } = makeWidget([{ id: "a1", status: "running" }]);
 		expect(vi.getTimerCount()).toBe(0);
 
-		widget.onSubagentStarted(createTestSubagent({ id: "a1", status: "running" }));
+		widget.onSubagentRunStarted(createTestSubagent({ id: "a1", status: "running" }), "initial");
 
 		expect(vi.getTimerCount()).toBe(1);
 		expect(typeof lastContent()).toBe("function");
@@ -373,19 +411,19 @@ describe("AgentWidget — self-drives from lifecycle notifications", () => {
 		expect(typeof lastContent()).toBe("function");
 	});
 
-	it("renders the finished agent on onSubagentCompleted", () => {
+	it("renders the finished agent when its run finishes", () => {
 		const { widget, lastContent } = makeWidget([{ id: "a1", status: "completed", completedAt: 5000 }]);
 
-		widget.onSubagentCompleted(createTestSubagent({ id: "a1", status: "completed" }));
+		widget.onSubagentRunFinished(createTestSubagent({ id: "a1", status: "completed" }), "initial");
 
 		expect(typeof lastContent()).toBe("function");
 	});
 
-	it("restarts the update timer on onSubagentResuming, since the agent is live again", () => {
+	it("restarts the update timer when a resumed run starts, since the agent is live again", () => {
 		const { widget, lastContent } = makeWidget([{ id: "a1", status: "running" }]);
 		expect(vi.getTimerCount()).toBe(0);
 
-		widget.onSubagentResuming(createTestSubagent({ id: "a1", status: "running" }));
+		widget.onSubagentRunStarted(createTestSubagent({ id: "a1", status: "running" }), "resume");
 
 		expect(vi.getTimerCount()).toBe(1);
 		expect(typeof lastContent()).toBe("function");
@@ -469,12 +507,12 @@ describe("AgentWidget — the animation timer tracks running agents", () => {
 	it("stops the timer when the last running agent finishes, leaving the widget registered", () => {
 		const agents = [{ id: "a1", status: "running", completedAt: undefined as number | undefined }];
 		const { widget, lastContent } = makeWidget(agents);
-		widget.onSubagentStarted(createTestSubagent({ id: "a1", status: "running" }));
+		widget.onSubagentRunStarted(createTestSubagent({ id: "a1", status: "running" }), "initial");
 		expect(vi.getTimerCount()).toBe(1);
 
 		agents[0].status = "completed";
 		agents[0].completedAt = 5000;
-		widget.onSubagentCompleted(createTestSubagent({ id: "a1", status: "completed" }));
+		widget.onSubagentRunFinished(createTestSubagent({ id: "a1", status: "completed" }), "initial");
 
 		expect(vi.getTimerCount()).toBe(0);
 		expect(typeof lastContent()).toBe("function");
@@ -486,12 +524,12 @@ describe("AgentWidget — the animation timer tracks running agents", () => {
 			{ id: "a2", status: "queued", completedAt: undefined as number | undefined },
 		];
 		const { widget, lastContent } = makeWidget(agents);
-		widget.onSubagentStarted(createTestSubagent({ id: "a1", status: "running" }));
+		widget.onSubagentRunStarted(createTestSubagent({ id: "a1", status: "running" }), "initial");
 		expect(vi.getTimerCount()).toBe(1);
 
 		agents[0].status = "completed";
 		agents[0].completedAt = 5000;
-		widget.onSubagentCompleted(createTestSubagent({ id: "a1", status: "completed" }));
+		widget.onSubagentRunFinished(createTestSubagent({ id: "a1", status: "completed" }), "initial");
 
 		expect(vi.getTimerCount()).toBe(0);
 		expect(typeof lastContent()).toBe("function");
@@ -504,7 +542,7 @@ describe("AgentWidget — the animation timer tracks running agents", () => {
 		expect(vi.getTimerCount()).toBe(0);
 
 		agents[0].status = "running";
-		widget.onSubagentStarted(createTestSubagent({ id: "a1", status: "running" }));
+		widget.onSubagentRunStarted(createTestSubagent({ id: "a1", status: "running" }), "initial");
 
 		expect(vi.getTimerCount()).toBe(1);
 	});
@@ -550,7 +588,7 @@ describe("AgentWidget — animation cadence", () => {
 		const requestRender = vi.fn();
 		const { record, widget } = arrangeRunningWidget(stubTui({ mode: "fullscreen", requestRender }));
 
-		widget.onSubagentStarted(record);
+		widget.onSubagentRunStarted(record, "initial");
 		vi.advanceTimersByTime(79);
 		expect(requestRender).not.toHaveBeenCalled();
 
@@ -567,7 +605,7 @@ describe("AgentWidget — animation cadence", () => {
 		const requestRender = vi.fn();
 		const { record, widget } = arrangeRunningWidget(stubTui({ mode: "regular", requestRender }));
 
-		widget.onSubagentStarted(record);
+		widget.onSubagentRunStarted(record, "initial");
 		vi.advanceTimersByTime(249);
 		expect(requestRender).not.toHaveBeenCalled();
 
@@ -581,7 +619,7 @@ describe("AgentWidget — animation cadence", () => {
 		const requestRender = vi.fn();
 		const { record, widget } = arrangeRunningWidget(stubTui({ mode: "regular", requestRender }));
 
-		widget.onSubagentStarted(record);
+		widget.onSubagentRunStarted(record, "initial");
 		vi.advanceTimersByTime(750);
 
 		expect(requestRender).toHaveBeenCalledTimes(3);
@@ -594,7 +632,7 @@ describe("AgentWidget — animation cadence", () => {
 		const tui = stubTui({ mode: "regular", requestRender });
 		const { record, widget } = arrangeRunningWidget(tui);
 
-		widget.onSubagentStarted(record);
+		widget.onSubagentRunStarted(record, "initial");
 		vi.advanceTimersByTime(250);
 		expect(requestRender).toHaveBeenCalledTimes(1);
 
@@ -611,7 +649,7 @@ describe("AgentWidget — animation cadence", () => {
 	it("ticks at the regular cadence before Pi hands the widget a TUI", () => {
 		const { record, widget, listAgents } = arrangeRunningWidget(undefined);
 
-		widget.onSubagentStarted(record);
+		widget.onSubagentRunStarted(record, "initial");
 		const callsAfterStart = listAgents.mock.calls.length;
 		vi.advanceTimersByTime(80);
 		expect(listAgents.mock.calls.length).toBe(callsAfterStart);
@@ -634,7 +672,7 @@ describe("AgentWidget.dispose", () => {
 
 	it("clears the update interval", () => {
 		const { widget } = makeWidget([{ id: "a1", status: "running" }]);
-		widget.onSubagentStarted(createTestSubagent({ id: "a1", status: "running" }));
+		widget.onSubagentRunStarted(createTestSubagent({ id: "a1", status: "running" }), "initial");
 		expect(vi.getTimerCount()).toBe(1);
 
 		widget.dispose();
@@ -644,7 +682,7 @@ describe("AgentWidget.dispose", () => {
 
 	it("unregisters the widget and clears the status bar", () => {
 		const { widget, setWidget, setStatus } = makeWidget([{ id: "a1", status: "running" }]);
-		widget.onSubagentStarted(createTestSubagent({ id: "a1", status: "running" }));
+		widget.onSubagentRunStarted(createTestSubagent({ id: "a1", status: "running" }), "initial");
 		expect(setStatus).toHaveBeenLastCalledWith("subagents", "1 running agent");
 
 		widget.dispose();
@@ -659,7 +697,7 @@ describe("AgentWidget.dispose", () => {
 	it("leaves a later update() inert, so a terminal transition cannot re-register it", () => {
 		const agents = [{ id: "a1", status: "running", completedAt: undefined as number | undefined }];
 		const { widget, setWidget } = makeWidget(agents);
-		widget.onSubagentStarted(createTestSubagent({ id: "a1", status: "running" }));
+		widget.onSubagentRunStarted(createTestSubagent({ id: "a1", status: "running" }), "initial");
 
 		widget.dispose();
 		const callsAfterDispose = setWidget.mock.calls.length;

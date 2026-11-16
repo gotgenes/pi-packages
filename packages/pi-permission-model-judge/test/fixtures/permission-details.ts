@@ -34,6 +34,8 @@ const EXTERNAL_DIRECTORY_PAYLOAD: PromptPayload = {
     matchedPattern: null,
     commandContext: null,
     executedUnit: null,
+    matchedSpelling: null,
+    decidingPath: null,
   },
   evidence: [],
   annotations: [],

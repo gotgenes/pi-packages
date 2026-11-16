@@ -57,7 +57,11 @@ export interface SubagentRecord {
   type: string;
   description: string;
   status: SubagentStatus;
-  /** Scheduling and announcement mode, resolved once at the manager choke point. */
+  /**
+   * Whether the agent's current run is in the background: the run in flight, or
+   * the last one to end, and the spawn's mode before the first run starts. A
+   * resume chooses its own mode, so this can change after one.
+   */
   isBackground: boolean;
   result?: string;
   /** The question the agent ended its turn with, when it declared one. */
@@ -78,9 +82,10 @@ export interface SubagentRecord {
   outputFile?: string;
   /**
    * Why `resume()` would refuse this agent at snapshot time; absent when it
-   * would start a run. `still-running` clears when the run settles, and a
-   * queued agent's `no-session` clears once it starts; the other reasons are
-   * final.
+   * would start a run. `still-running` clears when the run settles,
+   * `resume-queued` (a resume waiting for a concurrency slot) clears when that
+   * resumed run settles, and a queued agent's `no-session` clears once it
+   * starts; the other reasons are final.
    */
   resumeRefusal?: ResumeRefusal;
 }
@@ -96,7 +101,8 @@ export interface ResumeOptions {
   /**
    * Cancels the resumed turn loop. It is wired through the record's own lever,
    * so it ends the resume exactly as `abort(id)` does — the record reads
-   * `stopped`, and either cancel reaches the same run.
+   * `stopped`, and either cancel reaches the same run. A signal that has already
+   * fired stops the resume before its first turn.
    */
   signal?: AbortSignal;
 }
@@ -146,6 +152,10 @@ export interface SubagentsService {
 
   /**
    * Resume a settled agent with a new prompt, continuing its session.
+   *
+   * The resume runs in the background, so like a background spawn it waits for
+   * a concurrency slot when `maxConcurrent` background runs are live, reading
+   * `queued` until one frees.
    *
    * Resolves when the resumed run reaches a terminal state, carrying the
    * terminal snapshot — a caller that does not need the outcome can ignore the

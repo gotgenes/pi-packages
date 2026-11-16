@@ -79,7 +79,7 @@ importers:
         version: 2.5.11
       '@earendil-works/pi-coding-agent':
         specifier: 0.79.1
-        version: 0.79.1(supports-color@7.2.0)(ws@8.20.1)(zod@4.4.3)
+        version: 0.79.1(supports-color@7.2.0)(ws@8.20.1)(zod@4.6.7)
       '@types/node':
         specifier: 'catalog:'
         version: 22.19.19
@@ -100,7 +100,7 @@ importers:
         version: 2.5.11
       '@earendil-works/pi-coding-agent':
         specifier: 1.0.0
-        version: 1.0.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.4)(supports-color@7.2.0)(zod@4.4.3)
+        version: 1.0.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.4)(supports-color@7.2.0)(zod@4.6.7)
       '@earendil-works/pi-tui':
         specifier: 1.0.0
         version: 1.0.0
@@ -127,7 +127,7 @@ importers:
         version: 2.5.11
       '@earendil-works/pi-coding-agent':
         specifier: 1.0.0
-        version: 1.0.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.4)(supports-color@7.2.0)(zod@4.4.3)
+        version: 1.0.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.4)(supports-color@7.2.0)(zod@4.6.7)
       '@types/node':
         specifier: 'catalog:'
         version: 22.19.19
@@ -151,7 +151,7 @@ importers:
         version: 2.5.11
       '@earendil-works/pi-coding-agent':
         specifier: 1.0.0
-        version: 1.0.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.4)(supports-color@7.2.0)(zod@4.4.3)
+        version: 1.0.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.4)(supports-color@7.2.0)(zod@4.6.7)
       '@types/node':
         specifier: 'catalog:'
         version: 22.19.19
@@ -165,21 +165,21 @@ importers:
   packages/pi-permission-model-judge:
     dependencies:
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.7
+        version: 4.6.7
     devDependencies:
       '@biomejs/biome':
         specifier: 'catalog:'
         version: 2.5.11
       '@earendil-works/pi-ai':
-        specifier: 0.84.4
-        version: 0.84.4(supports-color@7.2.0)(ws@8.20.1)(zod@4.4.3)
+        specifier: 1.0.0
+        version: 1.0.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.4)(supports-color@7.2.0)(undici@8.10.2)(zod@4.6.7)
       '@earendil-works/pi-coding-agent':
-        specifier: 0.84.4
-        version: 0.84.4(supports-color@7.2.0)(ws@8.20.1)(zod@4.4.3)
+        specifier: 1.0.0
+        version: 1.0.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.4)(supports-color@7.2.0)(zod@4.6.7)
       '@gotgenes/pi-permission-system':
-        specifier: 27.0.0
-        version: 27.0.0(@earendil-works/pi-coding-agent@0.84.4(supports-color@7.2.0)(ws@8.20.1)(zod@4.4.3))(@earendil-works/pi-tui@1.0.0)
+        specifier: 40.3.0
+        version: 40.3.0(@earendil-works/pi-coding-agent@1.0.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.4)(supports-color@7.2.0)(zod@4.6.7))(@earendil-works/pi-tui@1.0.0)
       '@types/node':
         specifier: 'catalog:'
         version: 22.19.19
@@ -202,15 +202,15 @@ importers:
         specifier: ^0.26.9
         version: 0.26.9
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.7
+        version: 4.6.7
     devDependencies:
       '@biomejs/biome':
         specifier: 'catalog:'
         version: 2.5.11
       '@earendil-works/pi-coding-agent':
         specifier: 1.0.0
-        version: 1.0.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.4)(supports-color@7.2.0)(zod@4.4.3)
+        version: 1.0.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.4)(supports-color@7.2.0)(zod@4.6.7)
       '@earendil-works/pi-tui':
         specifier: 1.0.0
         version: 1.0.0
@@ -240,10 +240,10 @@ importers:
         version: 2.5.11
       '@earendil-works/pi-ai':
         specifier: 0.79.1
-        version: 0.79.1(supports-color@7.2.0)(ws@8.20.1)(zod@4.4.3)
+        version: 0.79.1(supports-color@7.2.0)(ws@8.20.1)(zod@4.6.7)
       '@earendil-works/pi-coding-agent':
         specifier: 0.79.1
-        version: 0.79.1(supports-color@7.2.0)(ws@8.20.1)(zod@4.4.3)
+        version: 0.79.1(supports-color@7.2.0)(ws@8.20.1)(zod@4.6.7)
       '@earendil-works/pi-tui':
         specifier: 0.79.1
         version: 0.79.1
@@ -264,10 +264,10 @@ importers:
         version: 2.5.11
       '@earendil-works/pi-ai':
         specifier: 1.0.0
-        version: 1.0.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.4)(supports-color@7.2.0)(undici@8.10.2)(zod@4.4.3)
+        version: 1.0.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.4)(supports-color@7.2.0)(undici@8.10.2)(zod@4.6.7)
       '@earendil-works/pi-coding-agent':
         specifier: 1.0.0
-        version: 1.0.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.4)(supports-color@7.2.0)(zod@4.4.3)
+        version: 1.0.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.4)(supports-color@7.2.0)(zod@4.6.7)
       '@earendil-works/pi-tui':
         specifier: 1.0.0
         version: 1.0.0
@@ -300,10 +300,10 @@ importers:
         version: 2.5.11
       '@earendil-works/pi-coding-agent':
         specifier: 0.79.1
-        version: 0.79.1(supports-color@7.2.0)(ws@8.20.1)(zod@4.4.3)
+        version: 0.79.1(supports-color@7.2.0)(ws@8.20.1)(zod@4.6.7)
       '@gotgenes/pi-subagents':
         specifier: ^16.4.0
-        version: 16.4.0(@earendil-works/pi-ai@1.0.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.4)(supports-color@7.2.0)(undici@8.10.2)(zod@4.4.3))(@earendil-works/pi-coding-agent@0.79.1(supports-color@7.2.0)(zod@4.4.3))(@earendil-works/pi-tui@0.79.1)
+        version: 16.4.0(@earendil-works/pi-ai@1.0.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.4)(supports-color@7.2.0)(undici@8.10.2)(zod@4.6.7))(@earendil-works/pi-coding-agent@0.79.1(supports-color@7.2.0)(zod@4.6.7))(@earendil-works/pi-tui@0.79.1)
       '@types/node':
         specifier: 'catalog:'
         version: 22.19.19
@@ -659,10 +659,6 @@ packages:
     resolution: {integrity: sha512-PBPjBa2YBm9jauiLtHAKaSfVJ4Dvm3/nK/bR/oHebLjwBCS2tGx3aQDX7MSGAOXi6BejlhzbB/z82BkyAyNjjQ==}
     engines: {node: '>=22.19.0'}
 
-  '@earendil-works/pi-agent-core@0.84.4':
-    resolution: {integrity: sha512-HyUnjaOXj6oN/6SNcr8A1J/ElRQA50FtIE0XUTSKAQVqmdlb9qdojOyUQwF/jULE5+yOEtGuVgi/N1RnBiNG+g==}
-    engines: {node: '>=22.19.0'}
-
   '@earendil-works/pi-agent-core@1.0.0':
     resolution: {integrity: sha512-bHFONjtEBDqiV+g1DmmtkSlfAaqHELr+XO+6I5Nah4gswwZrLJO4yZB/JjsnlI4AKWTayBLfgS6DCbeBBz9e2Q==}
     engines: {node: '>=22.19.0'}
@@ -672,19 +668,10 @@ packages:
     engines: {node: '>=22.19.0'}
     hasBin: true
 
-  '@earendil-works/pi-ai@0.84.4':
-    resolution: {integrity: sha512-AClAZxf5+c4RRu44NJPS6wyQy+Nmq+Mzyyrdvm4ZVMNuixelO02RZX4G4Aq1F145Yzp43wnM5S+hLlSI7ypfVw==}
-    engines: {node: '>=22.19.0'}
-    hasBin: true
-
   '@earendil-works/pi-ai@1.0.0':
     resolution: {integrity: sha512-3/W1vdDaVtpeMd23ElvJC12HLA5yS/BGqqcXF+0SK082dN7cbgNcCwguTBRBC258Ke8SzSvUW1B75iAf8w8IxA==}
     engines: {node: '>=22.19.0'}
     hasBin: true
-
-  '@earendil-works/pi-client@0.84.4':
-    resolution: {integrity: sha512-q398WY/3ZQHTizk7IKxApzqFV0xt4yM9LkSkwyqeLK5Bj5RwRjOWxESt26z4LgNp4O+8hqhqFPf/8fj4H5rE4A==}
-    engines: {node: '>=22.19.0'}
 
   '@earendil-works/pi-codemode@1.0.0':
     resolution: {integrity: sha512-LPpFI4+T9NzDnhBDs15izWAolaoM8xnwqdziRd6Zx8BQeoEPvzefD2vMMzSyF0rOtq34TfQqkZ0ki16f6cGdMg==}
@@ -692,11 +679,6 @@ packages:
 
   '@earendil-works/pi-coding-agent@0.79.1':
     resolution: {integrity: sha512-dLnje4U5H3/ZytJpvhjhPINeDT/yvx85e4OH/ziMQRLpPlfNP12/peY9jRQd4W11Xth2+y2xGAFwS+NeVf2ZwA==}
-    engines: {node: '>=22.19.0'}
-    hasBin: true
-
-  '@earendil-works/pi-coding-agent@0.84.4':
-    resolution: {integrity: sha512-jmOlrqUmvhh/siNWFRXjYLJzhKFIHNsAQaysRwzQPQFnPAaV/vhqHsLH/MBsIISA1Rjj7WTUFR3nJrpXoLx39w==}
     engines: {node: '>=22.19.0'}
     hasBin: true
 
@@ -709,24 +691,12 @@ packages:
     resolution: {integrity: sha512-rYra0aF5iPmJd+fsB+VBuqxWNABGJ3Iiyhg0CqIc/91ta2n7IvQmCp0Cac/YkUTNnvRsVZnjgAiBkRi6+ouWuw==}
     engines: {node: '>=22.19.0'}
 
-  '@earendil-works/pi-protocol@0.84.4':
-    resolution: {integrity: sha512-acyE9ozxkMiWiz/xyWpU0O9vwnYv0hyG889Vniv6Sg9c9zfsX+8MePnDNphBacY2Fvm1rxdsGmiVDSZl9yuDFA==}
-    engines: {node: '>=22.19.0'}
-
-  '@earendil-works/pi-telemetry@0.84.4':
-    resolution: {integrity: sha512-8e2CuxM+ht+hedQXTZmi5JVl6/xDK9RpSDL2+MbITevKYQhMZ/z6lJOTFgox3HQyGxO8mOZEtYGVeQNaD4OzqA==}
-    engines: {node: '>=22.19.0'}
-
   '@earendil-works/pi-telemetry@1.0.0':
     resolution: {integrity: sha512-WjNBj5TYIiPZFQEz2WlULcDwPLaKwIlmsKjVeYM+LJSbnSp38kWsHUJysIDGnu23IcLbKoPtywsvYfUJCeZePA==}
     engines: {node: '>=22.19.0'}
 
   '@earendil-works/pi-tui@0.79.1':
     resolution: {integrity: sha512-YvZCMfSE0YDSLNklAwMY6LC6SyEgnP0zMOoioTLNnXFNdexrCexMJdee7iDJsNcFlKt7+DVLccomuURtZS1C6g==}
-    engines: {node: '>=22.19.0'}
-
-  '@earendil-works/pi-tui@0.84.4':
-    resolution: {integrity: sha512-nPUnwDkLtupPXnZQYrCwPFcuTydCDqTY6ZbFqhsL4S4kVq0AT418kPa/6uXwtaCD+MjBNBltb7ScTYX65yeE1w==}
     engines: {node: '>=22.19.0'}
 
   '@earendil-works/pi-tui@1.0.0':
@@ -986,12 +956,12 @@ packages:
       '@modelcontextprotocol/sdk':
         optional: true
 
-  '@gotgenes/pi-permission-system@27.0.0':
-    resolution: {integrity: sha512-5WpP2z0Ohxipi2Myfg4ArchXgtMX15HbJl7b2YMK3iB2sRIm57hDXt86e0zsVX+sGOVrDLCkKtLoqMkrPS1rwQ==}
+  '@gotgenes/pi-permission-system@40.3.0':
+    resolution: {integrity: sha512-B3iAs1YOnyUdeh66P40+YEJ0G3WBFsEpJAtXv/pY0CyhpIoErCoLBNKN2Sx9+Cg3VXmGMC1h/3T7r+b0d97oVg==}
     engines: {node: '>=22'}
     peerDependencies:
-      '@earendil-works/pi-coding-agent': '>=0.79.0'
-      '@earendil-works/pi-tui': '>=0.79.0'
+      '@earendil-works/pi-coding-agent': '>=1.0.0'
+      '@earendil-works/pi-tui': '>=1.0.0'
 
   '@gotgenes/pi-subagents@16.4.0':
     resolution: {integrity: sha512-lPNaWTLWI6S6OE8OBCYOnEF2KrdBmznwuGlXMPvkDvA2wRrg+B9aOUMbfq/F6AQo94dBoDuTLN5VfoXANx76eA==}
@@ -2040,10 +2010,6 @@ packages:
   graceful-fs@4.2.11:
     resolution: {integrity: sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ==}
 
-  grok-mermaid@0.2.2:
-    resolution: {integrity: sha512-XcJEP5dDC8liHBh52mlLjU18fNvu1ckFsu0QpIG3+APZ270fsj9wxpiA6cOURmbUEuoMVgjbC2+UYgTdCqqgzA==}
-    engines: {node: '>=18'}
-
   grok-mermaid@0.2.3:
     resolution: {integrity: sha512-/4KopAbsjvuRP9MdPtlDjOHUmUVEohOX73JNcsWpzAtFxh+bq5+Dhb6gzvRieLDwIPQIR3/vy8V1NNTuz4Zsmg==}
     engines: {node: '>=18'}
@@ -2274,11 +2240,6 @@ packages:
     engines: {node: '>= 20'}
     hasBin: true
 
-  marked@18.0.5:
-    resolution: {integrity: sha512-S6GcvALHg6K4ohtu4E7x0a1AqhAjp6cV8KhLSyN9qVapnzJkusVBxZRcIU9AeYsbe6P1hKDusSbEOzGyyuce6w==}
-    engines: {node: '>= 20'}
-    hasBin: true
-
   minimatch@10.2.5:
     resolution: {integrity: sha512-MULkVLfKGYDFYejP07QOurDLLQpcjk7Fw+7jXS2R2czRQzR56yHRveU5NDJEOviH+hETZKSkIk5c+T23GjFUMg==}
     engines: {node: 18 || 20 || >=22}
@@ -2329,17 +2290,6 @@ packages:
   openai@6.26.0:
     resolution: {integrity: sha512-zd23dbWTjiJ6sSAX6s0HrCZi41JwTA1bQVs0wLQPZ2/5o2gxOJA5wh7yOAUgwYybfhDXyhwlpeQf7Mlgx8EOCA==}
     hasBin: true
-    peerDependencies:
-      ws: ^8.18.0
-      zod: ^3.25 || ^4.0
-    peerDependenciesMeta:
-      ws:
-        optional: true
-      zod:
-        optional: true
-
-  openai@6.40.0:
-    resolution: {integrity: sha512-MWtTjd/gQt4jpbji61NTgFWJLoY/PdRJ6wG9/ZDRMYNMlBKrCrSlkLI+KgHP1vR1qT6LKSAyAqIxno6lcK9JiA==}
     peerDependencies:
       ws: ^8.18.0
       zod: ^3.25 || ^4.0
@@ -2490,11 +2440,6 @@ packages:
     resolution: {integrity: sha512-BR7VvDCVHO+q2xBEWskxS6DJE1qRnb7DxzUrogb71CWoSficBxYsiAGd+Kl0mmq/MprG9yArRkyrQxTO6XjMzA==}
     hasBin: true
 
-  semver@7.8.0:
-    resolution: {integrity: sha512-AcM7dV/5ul4EekoQ29Agm5vri8JNqRyj39o0qpX6vDF2GZrtutZl5RwgD1XnZjiTAfncsJhMI48QQH3sN87YNA==}
-    engines: {node: '>=10'}
-    hasBin: true
-
   semver@7.8.5:
     resolution: {integrity: sha512-Y7/KDsb8LjooZpwaqGyulO6DQlksgCncchHGk+sZIY4SBvUocMBEFH5Ur1fI4dV+Jvl0w6cjvucaIi40puRioA==}
     engines: {node: '>=10'}
@@ -2611,10 +2556,6 @@ packages:
 
   undici@8.3.0:
     resolution: {integrity: sha512-TkUDgb6tl7KOGZ+7e8E3d2FYgUQgF6z5YypqjWmixVQSQERFcVrVg0ySADm2LVLRh5ljAaHTCR5Fmz3Q34rB7Q==}
-    engines: {node: '>=22.19.0'}
-
-  undici@8.9.0:
-    resolution: {integrity: sha512-aWZpUj7XoGonMClx4gdDRfgBjqeA+F473aDmROQQbM9n6PRfK/u1q/a0X4wMTgcHfT8H6fpbt98PFuDUwFg2YA==}
     engines: {node: '>=22.19.0'}
 
   update-browserslist-db@1.3.3:
@@ -2764,23 +2705,23 @@ packages:
     peerDependencies:
       zod: ^3.25.28 || ^4
 
-  zod@4.4.3:
-    resolution: {integrity: sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==}
+  zod@4.6.7:
+    resolution: {integrity: sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg==}
 
 snapshots:
 
-  '@anthropic-ai/sdk@0.124.0(zod@4.4.3)':
+  '@anthropic-ai/sdk@0.124.0(zod@4.6.7)':
     dependencies:
       json-schema-to-ts: 3.1.1
       standardwebhooks: 1.1.1
     optionalDependencies:
-      zod: 4.4.3
+      zod: 4.6.7
 
-  '@anthropic-ai/sdk@0.91.1(zod@4.4.3)':
+  '@anthropic-ai/sdk@0.91.1(zod@4.6.7)':
     dependencies:
       json-schema-to-ts: 3.1.1
     optionalDependencies:
-      zod: 4.4.3
+      zod: 4.6.7
 
   '@aws-crypto/crc32@5.2.0':
     dependencies:
@@ -3339,9 +3280,9 @@ snapshots:
     dependencies:
       esbuild: 0.28.2
 
-  '@earendil-works/pi-agent-core@0.79.1(supports-color@7.2.0)(ws@8.20.1)(zod@4.4.3)':
+  '@earendil-works/pi-agent-core@0.79.1(supports-color@7.2.0)(ws@8.20.1)(zod@4.6.7)':
     dependencies:
-      '@earendil-works/pi-ai': 0.79.1(supports-color@7.2.0)(ws@8.20.1)(zod@4.4.3)
+      '@earendil-works/pi-ai': 0.79.1(supports-color@7.2.0)(ws@8.20.1)(zod@4.6.7)
       ignore: 7.0.5
       typebox: 1.1.38
       yaml: 2.9.0
@@ -3353,25 +3294,9 @@ snapshots:
       - ws
       - zod
 
-  '@earendil-works/pi-agent-core@0.84.4(supports-color@7.2.0)(ws@8.20.1)(zod@4.4.3)':
+  '@earendil-works/pi-agent-core@1.0.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.4)(supports-color@7.2.0)(undici@8.10.2)(zod@4.6.7)':
     dependencies:
-      '@earendil-works/pi-ai': 0.84.4(supports-color@7.2.0)(ws@8.20.1)(zod@4.4.3)
-      '@earendil-works/pi-telemetry': 0.84.4
-      diff: 8.0.4
-      ignore: 7.0.5
-      typebox: 1.3.7
-      yaml: 2.9.0
-    transitivePeerDependencies:
-      - '@modelcontextprotocol/sdk'
-      - bufferutil
-      - supports-color
-      - utf-8-validate
-      - ws
-      - zod
-
-  '@earendil-works/pi-agent-core@1.0.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.4)(supports-color@7.2.0)(undici@8.10.2)(zod@4.4.3)':
-    dependencies:
-      '@earendil-works/pi-ai': 1.0.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.4)(supports-color@7.2.0)(undici@8.10.2)(zod@4.4.3)
+      '@earendil-works/pi-ai': 1.0.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.4)(supports-color@7.2.0)(undici@8.10.2)(zod@4.6.7)
       typebox: 1.3.27
     transitivePeerDependencies:
       - '@aws-sdk/credential-provider-node'
@@ -3386,16 +3311,16 @@ snapshots:
       - ws
       - zod
 
-  '@earendil-works/pi-ai@0.79.1(supports-color@7.2.0)(ws@8.20.1)(zod@4.4.3)':
+  '@earendil-works/pi-ai@0.79.1(supports-color@7.2.0)(ws@8.20.1)(zod@4.6.7)':
     dependencies:
-      '@anthropic-ai/sdk': 0.91.1(zod@4.4.3)
+      '@anthropic-ai/sdk': 0.91.1(zod@4.6.7)
       '@aws-sdk/client-bedrock-runtime': 3.1048.0
       '@google/genai': 1.52.0(supports-color@7.2.0)
       '@mistralai/mistralai': 2.2.1
       '@smithy/node-http-handler': 4.7.3
       http-proxy-agent: 7.0.2(supports-color@7.2.0)
       https-proxy-agent: 7.0.6(supports-color@7.2.0)
-      openai: 6.26.0(ws@8.20.1)(zod@4.4.3)
+      openai: 6.26.0(ws@8.20.1)(zod@4.6.7)
       partial-json: 0.1.7
       typebox: 1.1.38
     transitivePeerDependencies:
@@ -3406,36 +3331,16 @@ snapshots:
       - ws
       - zod
 
-  '@earendil-works/pi-ai@0.84.4(supports-color@7.2.0)(ws@8.20.1)(zod@4.4.3)':
+  '@earendil-works/pi-ai@1.0.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.4)(supports-color@7.2.0)(undici@8.10.2)(zod@4.6.7)':
     dependencies:
-      '@anthropic-ai/sdk': 0.91.1(zod@4.4.3)
-      '@aws-sdk/client-bedrock-runtime': 3.1048.0
-      '@earendil-works/pi-telemetry': 0.84.4
-      '@google/genai': 1.52.0(supports-color@7.2.0)
-      '@smithy/node-http-handler': 4.7.3
-      http-proxy-agent: 7.0.2(supports-color@7.2.0)
-      https-proxy-agent: 7.0.6(supports-color@7.2.0)
-      openai: 6.40.0(ws@8.20.1)(zod@4.4.3)
-      partial-json: 0.1.7
-      typebox: 1.3.7
-    transitivePeerDependencies:
-      - '@modelcontextprotocol/sdk'
-      - bufferutil
-      - supports-color
-      - utf-8-validate
-      - ws
-      - zod
-
-  '@earendil-works/pi-ai@1.0.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.4)(supports-color@7.2.0)(undici@8.10.2)(zod@4.4.3)':
-    dependencies:
-      '@anthropic-ai/sdk': 0.124.0(zod@4.4.3)
+      '@anthropic-ai/sdk': 0.124.0(zod@4.6.7)
       '@aws-sdk/client-bedrock-runtime': 3.1127.0
       '@earendil-works/pi-telemetry': 1.0.0
       '@google/genai': 2.21.0(supports-color@7.2.0)
       '@smithy/node-http-handler': 4.12.1
       http-proxy-agent: 9.1.0(supports-color@7.2.0)
       https-proxy-agent: 9.1.0(supports-color@7.2.0)
-      openai: 7.19.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.4)(undici@8.10.2)(zod@4.4.3)
+      openai: 7.19.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.4)(undici@8.10.2)(zod@4.6.7)
       partial-json: 0.1.7
       typebox: 1.3.27
     transitivePeerDependencies:
@@ -3451,18 +3356,14 @@ snapshots:
       - ws
       - zod
 
-  '@earendil-works/pi-client@0.84.4':
-    dependencies:
-      '@earendil-works/pi-protocol': 0.84.4
-
   '@earendil-works/pi-codemode@1.0.0':
     dependencies:
       quickjs-wasi: 3.6.2
 
-  '@earendil-works/pi-coding-agent@0.79.1(supports-color@7.2.0)(ws@8.20.1)(zod@4.4.3)':
+  '@earendil-works/pi-coding-agent@0.79.1(supports-color@7.2.0)(ws@8.20.1)(zod@4.6.7)':
     dependencies:
-      '@earendil-works/pi-agent-core': 0.79.1(supports-color@7.2.0)(ws@8.20.1)(zod@4.4.3)
-      '@earendil-works/pi-ai': 0.79.1(supports-color@7.2.0)(ws@8.20.1)(zod@4.4.3)
+      '@earendil-works/pi-agent-core': 0.79.1(supports-color@7.2.0)(ws@8.20.1)(zod@4.6.7)
+      '@earendil-works/pi-ai': 0.79.1(supports-color@7.2.0)(ws@8.20.1)(zod@4.6.7)
       '@earendil-works/pi-tui': 0.79.1
       '@silvia-odwyer/photon-node': 0.3.4
       chalk: 5.6.2
@@ -3488,43 +3389,11 @@ snapshots:
       - ws
       - zod
 
-  '@earendil-works/pi-coding-agent@0.84.4(supports-color@7.2.0)(ws@8.20.1)(zod@4.4.3)':
-    dependencies:
-      '@earendil-works/pi-agent-core': 0.84.4(supports-color@7.2.0)(ws@8.20.1)(zod@4.4.3)
-      '@earendil-works/pi-ai': 0.84.4(supports-color@7.2.0)(ws@8.20.1)(zod@4.4.3)
-      '@earendil-works/pi-client': 0.84.4
-      '@earendil-works/pi-protocol': 0.84.4
-      '@earendil-works/pi-tui': 0.84.4
-      '@silvia-odwyer/photon-node': 0.3.4
-      chalk: 5.6.2
-      cross-spawn: 7.0.6
-      diff: 8.0.4
-      grok-mermaid: 0.2.2
-      highlight.js: 10.7.3
-      hosted-git-info: 9.0.3
-      ignore: 7.0.5
-      jiti: 2.7.0
-      minimatch: 10.2.5
-      proper-lockfile: 4.1.2
-      semver: 7.8.0
-      typebox: 1.3.7
-      undici: 8.9.0
-      yaml: 2.9.0
-    optionalDependencies:
-      '@mariozechner/clipboard': 0.3.9
-    transitivePeerDependencies:
-      - '@modelcontextprotocol/sdk'
-      - bufferutil
-      - supports-color
-      - utf-8-validate
-      - ws
-      - zod
-
-  '@earendil-works/pi-coding-agent@1.0.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.4)(supports-color@7.2.0)(zod@4.4.3)':
+  '@earendil-works/pi-coding-agent@1.0.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.4)(supports-color@7.2.0)(zod@4.6.7)':
     dependencies:
       '@earendil-works/chord': 1.0.0
-      '@earendil-works/pi-agent-core': 1.0.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.4)(supports-color@7.2.0)(undici@8.10.2)(zod@4.4.3)
-      '@earendil-works/pi-ai': 1.0.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.4)(supports-color@7.2.0)(undici@8.10.2)(zod@4.4.3)
+      '@earendil-works/pi-agent-core': 1.0.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.4)(supports-color@7.2.0)(undici@8.10.2)(zod@4.6.7)
+      '@earendil-works/pi-ai': 1.0.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.4)(supports-color@7.2.0)(undici@8.10.2)(zod@4.6.7)
       '@earendil-works/pi-codemode': 1.0.0
       '@earendil-works/pi-mcp': 1.0.0
       '@earendil-works/pi-tui': 1.0.0
@@ -3560,23 +3429,12 @@ snapshots:
     dependencies:
       cross-spawn: 7.0.6
 
-  '@earendil-works/pi-protocol@0.84.4':
-    dependencies:
-      typebox: 1.3.7
-
-  '@earendil-works/pi-telemetry@0.84.4': {}
-
   '@earendil-works/pi-telemetry@1.0.0': {}
 
   '@earendil-works/pi-tui@0.79.1':
     dependencies:
       get-east-asian-width: 1.6.0
       marked: 15.0.12
-
-  '@earendil-works/pi-tui@0.84.4':
-    dependencies:
-      get-east-asian-width: 1.6.0
-      marked: 18.0.5
 
   '@earendil-works/pi-tui@1.0.0':
     dependencies:
@@ -3753,20 +3611,20 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@gotgenes/pi-permission-system@27.0.0(@earendil-works/pi-coding-agent@0.84.4(supports-color@7.2.0)(ws@8.20.1)(zod@4.4.3))(@earendil-works/pi-tui@1.0.0)':
+  '@gotgenes/pi-permission-system@40.3.0(@earendil-works/pi-coding-agent@1.0.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.4)(supports-color@7.2.0)(zod@4.6.7))(@earendil-works/pi-tui@1.0.0)':
     dependencies:
-      '@earendil-works/pi-coding-agent': 0.84.4(supports-color@7.2.0)(ws@8.20.1)(zod@4.4.3)
+      '@earendil-works/pi-coding-agent': 1.0.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.4)(supports-color@7.2.0)(zod@4.6.7)
       '@earendil-works/pi-tui': 1.0.0
       tree-sitter-bash: 0.25.1
       web-tree-sitter: 0.26.9
-      zod: 4.4.3
+      zod: 4.6.7
     transitivePeerDependencies:
       - tree-sitter
 
-  '@gotgenes/pi-subagents@16.4.0(@earendil-works/pi-ai@1.0.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.4)(supports-color@7.2.0)(undici@8.10.2)(zod@4.4.3))(@earendil-works/pi-coding-agent@0.79.1(supports-color@7.2.0)(zod@4.4.3))(@earendil-works/pi-tui@0.79.1)':
+  '@gotgenes/pi-subagents@16.4.0(@earendil-works/pi-ai@1.0.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.4)(supports-color@7.2.0)(undici@8.10.2)(zod@4.6.7))(@earendil-works/pi-coding-agent@0.79.1(supports-color@7.2.0)(zod@4.6.7))(@earendil-works/pi-tui@0.79.1)':
     dependencies:
-      '@earendil-works/pi-ai': 1.0.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.4)(supports-color@7.2.0)(undici@8.10.2)(zod@4.4.3)
-      '@earendil-works/pi-coding-agent': 0.79.1(supports-color@7.2.0)(ws@8.20.1)(zod@4.4.3)
+      '@earendil-works/pi-ai': 1.0.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.4)(supports-color@7.2.0)(undici@8.10.2)(zod@4.6.7)
+      '@earendil-works/pi-coding-agent': 0.79.1(supports-color@7.2.0)(ws@8.20.1)(zod@4.6.7)
       '@earendil-works/pi-tui': 0.79.1
       '@sinclair/typebox': 0.34.49
 
@@ -3854,8 +3712,8 @@ snapshots:
   '@mistralai/mistralai@2.2.1':
     dependencies:
       ws: 8.20.1
-      zod: 4.4.3
-      zod-to-json-schema: 3.25.2(zod@4.4.3)
+      zod: 4.6.7
+      zod-to-json-schema: 3.25.2(zod@4.6.7)
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
@@ -4677,8 +4535,6 @@ snapshots:
 
   graceful-fs@4.2.11: {}
 
-  grok-mermaid@0.2.2: {}
-
   grok-mermaid@0.2.3: {}
 
   has-flag@4.0.0: {}
@@ -4877,8 +4733,6 @@ snapshots:
 
   marked@18.0.11: {}
 
-  marked@18.0.5: {}
-
   minimatch@10.2.5:
     dependencies:
       brace-expansion: 5.0.6
@@ -4911,22 +4765,17 @@ snapshots:
 
   obug@2.1.1: {}
 
-  openai@6.26.0(ws@8.20.1)(zod@4.4.3):
+  openai@6.26.0(ws@8.20.1)(zod@4.6.7):
     optionalDependencies:
       ws: 8.20.1
-      zod: 4.4.3
+      zod: 4.6.7
 
-  openai@6.40.0(ws@8.20.1)(zod@4.4.3):
-    optionalDependencies:
-      ws: 8.20.1
-      zod: 4.4.3
-
-  openai@7.19.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.4)(undici@8.10.2)(zod@4.4.3):
+  openai@7.19.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.4)(undici@8.10.2)(zod@4.6.7):
     optionalDependencies:
       '@aws-sdk/credential-provider-node': 3.972.84
       '@smithy/signature-v4': 5.7.4
       undici: 8.10.2
-      zod: 4.4.3
+      zod: 4.6.7
 
   optionator@0.9.4:
     dependencies:
@@ -5086,8 +4935,6 @@ snapshots:
 
   semver@6.3.1: {}
 
-  semver@7.8.0: {}
-
   semver@7.8.5: {}
 
   shebang-command@2.0.0:
@@ -5196,8 +5043,6 @@ snapshots:
 
   undici@8.3.0: {}
 
-  undici@8.9.0: {}
-
   update-browserslist-db@1.3.3(browserslist@4.29.0):
     dependencies:
       browserslist: 4.29.0
@@ -5276,8 +5121,8 @@ snapshots:
 
   yocto-queue@0.1.0: {}
 
-  zod-to-json-schema@3.25.2(zod@4.4.3):
+  zod-to-json-schema@3.25.2(zod@4.6.7):
     dependencies:
-      zod: 4.4.3
+      zod: 4.6.7
 
-  zod@4.4.3: {}
+  zod@4.6.7: {}

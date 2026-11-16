@@ -18,6 +18,7 @@
 import { complete as realComplete } from "@earendil-works/pi-ai/compat";
 import {
   type ExtensionAPI,
+  type ExtensionContext,
   getAgentDir,
 } from "@earendil-works/pi-coding-agent";
 import type { PermissionsReadyEvent } from "@gotgenes/pi-permission-system";
@@ -39,12 +40,43 @@ const LINK_NAME = "model-judge";
 
 /** Injectable seams; production defaults read the filesystem and call the model. */
 export interface ModelJudgeDependencies {
-  loadConfig?: (cwd: string) => LoadConfigResult;
+  loadConfig?: (cwd: string, projectTrusted: boolean) => LoadConfigResult;
   complete?: CompleteFn;
 }
 
 function warn(message: string): void {
-  console.warn(`[${MODEL_JUDGE_EXTENSION_ID}] ${message}`);
+  console.warn(attributed(message));
+}
+
+/** The session surface a `session_start` warning is delivered through. */
+type WarningContext = Pick<ExtensionContext, "hasUI" | "ui">;
+
+/**
+ * Deliver a `session_start` warning where the operator will see it: a Pi
+ * notification when the session has a UI, the console otherwise. Pi starts its
+ * TUI before `session_start` and does not capture console output, so a raw
+ * `console.warn` there lands under a live TUI.
+ */
+function reportWarning(ctx: WarningContext, message: string): void {
+  const text = attributed(message);
+  if (ctx.hasUI) {
+    ctx.ui.notify(text, "warning");
+    return;
+  }
+  console.warn(text);
+}
+
+/**
+ * Shown when an untrusted project carries a model-judge config, so the
+ * global-only scope is never silent; worded after pi-permission-system's own
+ * untrusted-project warning.
+ */
+function untrustedProjectMessage(path: string): string {
+  return `project is not trusted — skipping its model-judge config at ${path}. Only the global config applies; grant project trust to load it.`;
+}
+
+function attributed(message: string): string {
+  return `[${MODEL_JUDGE_EXTENSION_ID}] ${message}`;
 }
 
 export function createModelJudgeExtension(
@@ -57,7 +89,8 @@ export function createModelJudgeExtension(
   // pi-permission-system looks for the same global scope.
   const loadConfig =
     dependencies.loadConfig ??
-    ((cwd: string) => loadModelJudgeConfig({ cwd, agentDir: getAgentDir() }));
+    ((cwd: string, projectTrusted: boolean) =>
+      loadModelJudgeConfig({ cwd, agentDir: getAgentDir(), projectTrusted }));
   const complete: CompleteFn =
     dependencies.complete ??
     ((model, context, options) => realComplete(model, context, options));
@@ -68,11 +101,20 @@ export function createModelJudgeExtension(
   let warnedUnresolvedService = false;
 
   pi.on("session_start", (_event, ctx) => {
-    const result = loadConfig(ctx.cwd);
+    // Pi resolves project trust before any extension's `session_start`, so
+    // this is the final decision for the session.
+    const result = loadConfig(ctx.cwd, ctx.isProjectTrusted());
     config = result.config;
     registry = ctx.modelRegistry;
+    if (result.untrustedProjectConfigPath !== undefined) {
+      reportWarning(
+        ctx,
+        untrustedProjectMessage(result.untrustedProjectConfigPath),
+      );
+    }
     for (const issue of result.issues) {
-      warn(
+      reportWarning(
+        ctx,
         `config issue at ${issue.sourcePath ?? "(merged)"} — ${issue.path}: ${issue.message}`,
       );
     }

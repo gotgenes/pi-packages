@@ -86,7 +86,7 @@ Load this skill when writing, debugging, or planning tests.
   A `win32PathFlavor` probe on `/tmp/logs/` passes pre-fix on POSIX CI — the host `sep` is `/` too; a native `c:\dir\file.ts` collapses to `./*` and goes red.
 - An equivalence test (incremental vs. freshly built, cached vs. uncached) pins self-consistency, not correctness, when both sides run the code under test.
   Assert independently — a count, a golden row — anything the equivalence cannot see.
-- When a plan names an external oracle (the parse of an equivalent spelling the change must match), sweep it combinatorially over the input's operators, not by hand-picked rows.
+- When a plan names an external oracle (the parse of an equivalent spelling the change must match, or an installed binary whose behavior a grammar or table transcribes), sweep it combinatorially over the input's operators, not by hand-picked rows.
   #979's sampled rows were all green while a 2180-case sweep found 62 divergences in three shape classes, after two reviewer FAILs.
 - Prefer a concrete test asserting current (even imperfect) behavior over `test.todo`.
   A real assertion documents the limitation and lets a future fix flip the expectation.
@@ -124,6 +124,8 @@ A missing export throws `is not a function` at runtime but surfaces as `TS2305` 
 
 - Run a single file: `pnpm --filter @gotgenes/<pkg> exec vitest run <test-path>` — plain `pnpm vitest run` fails at the repo root (`Command "vitest" not found`).
 - Run the full suite: `pnpm --filter @gotgenes/<pkg> exec vitest run`
+- The root `pnpm run test` finishes in under a minute (measured: 39 s together with `pnpm fallow dead-code`), and root `pnpm run lint` in about 45 s.
+  A root gate that hits a long timeout has stalled, not run slowly: re-run it alone, one gate per call, and never record it as slow without a measured run.
 - Run Vitest bare — no `| tail`, `| grep`, or `>/tmp/…` redirect.
   Its non-TTY summary is already short (measured: 9 lines for `pi-permission-system`'s 4824-test suite), and a pipe replaces Vitest's exit status with the filter's, so a failing run reads as a pass.
   A failing run adds one `×` line per failing test and about 20 lines of assertion detail per failure; that detail is the signal, so narrow the run instead of the output: pass the test path, and `-t "<name>"` for one test.

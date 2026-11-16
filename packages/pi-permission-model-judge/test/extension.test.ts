@@ -15,7 +15,11 @@ import {
 import type { Mock, MockInstance } from "vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getGlobalConfigPath, type LoadConfigResult } from "#src/config-loader";
+import {
+  getGlobalConfigPath,
+  getProjectConfigPath,
+  type LoadConfigResult,
+} from "#src/config-loader";
 import { createModelJudgeExtension } from "#src/extension";
 import type { CompleteFn } from "#src/model-review";
 import { assistantToolCall } from "#test/fixtures/assistant-message";
@@ -89,6 +93,9 @@ function makeService(): PermissionsService & {
   return {
     checkPermission: vi.fn(),
     getToolPermission: vi.fn(),
+    isToolFullyDenied: vi.fn(),
+    getToolAccessExtractor: vi.fn(),
+    getToolInputFormatter: vi.fn(),
     registerToolInputFormatter: vi.fn(() => () => {}),
     registerToolAccessExtractor: vi.fn(() => () => {}),
     registerAuthorizer: vi.fn(() => disposer),
@@ -103,15 +110,36 @@ type RegisteredAuthorizer = (
   log: { review: () => void; debug: () => void },
 ) => Promise<unknown>;
 
-function ctxWithRegistry(cwd = "/project"): {
+/** How a test session differs from a trusted, UI-less default. */
+interface SessionOverrides {
+  trusted?: boolean;
+  hasUI?: boolean;
+}
+
+/**
+ * The `session_start` context: trusted and UI-less unless overridden, so a
+ * test that does not care about trust or the notification sink sees the
+ * console path with the project layer in scope.
+ */
+function ctxWithRegistry(
+  cwd = "/project",
+  overrides: SessionOverrides = {},
+): {
   cwd: string;
+  hasUI: boolean;
+  isProjectTrusted: () => boolean;
+  ui: { notify: Mock<(message: string, type?: string) => void> };
   modelRegistry: {
     find: () => Model<any>;
     getApiKeyAndHeaders: () => Promise<{ ok: true; apiKey: string }>;
   };
 } {
+  const trusted = overrides.trusted ?? true;
   return {
     cwd,
+    hasUI: overrides.hasUI ?? false,
+    isProjectTrusted: () => trusted,
+    ui: { notify: vi.fn() },
     modelRegistry: {
       find: () => MODEL,
       getApiKeyAndHeaders: async () => ({ ok: true, apiKey: "sk-test" }),
@@ -144,10 +172,16 @@ function emitReady(pi: FakePi, sessionId: string | null = SESSION_ID): void {
  * Tests that exist to pin a *different* ordering spell the sequence out
  * instead of calling this.
  */
-function bringUpSession(pi: FakePi, cwd?: string): void {
+function bringUpSession(
+  pi: FakePi,
+  cwd?: string,
+  overrides?: SessionOverrides,
+): ReturnType<typeof ctxWithRegistry> {
   publishPermissionsService(SESSION_ID, service);
-  pi.lifecycle.get("session_start")?.({}, ctxWithRegistry(cwd));
+  const ctx = ctxWithRegistry(cwd, overrides);
+  pi.lifecycle.get("session_start")?.({}, ctx);
   emitReady(pi);
+  return ctx;
 }
 
 describe("createModelJudgeExtension", () => {
@@ -352,6 +386,144 @@ describe("an unresolvable permission service", () => {
   });
 });
 
+describe("session_start warnings", () => {
+  const ISSUE_RESULT: LoadConfigResult = {
+    config: undefined,
+    issues: [
+      { path: "model", message: "Required", sourcePath: "/g/config.json" },
+    ],
+  };
+  const ISSUE_WARNING =
+    "[pi-permission-model-judge] config issue at /g/config.json — model: Required";
+
+  let warned: MockInstance<Console["warn"]>;
+
+  beforeEach(() => {
+    warned = vi.spyOn(console, "warn").mockImplementation(() => {});
+  });
+
+  it("reports a config issue as a warning notification when the session has a UI", () => {
+    const pi = makeFakePi();
+    createModelJudgeExtension(pi.api as never, {
+      loadConfig: () => ISSUE_RESULT,
+      complete: vi.fn(),
+    });
+
+    const ctx = bringUpSession(pi, undefined, { hasUI: true });
+
+    expect(ctx.ui.notify).toHaveBeenCalledWith(ISSUE_WARNING, "warning");
+    expect(ctx.ui.notify).toHaveBeenCalledTimes(1);
+    expect(warned).not.toHaveBeenCalled();
+  });
+
+  it("reports a config issue on the console when the session has no UI", () => {
+    const pi = makeFakePi();
+    createModelJudgeExtension(pi.api as never, {
+      loadConfig: () => ISSUE_RESULT,
+      complete: vi.fn(),
+    });
+
+    const ctx = bringUpSession(pi, undefined, { hasUI: false });
+
+    expect(warned).toHaveBeenCalledWith(ISSUE_WARNING);
+    expect(warned).toHaveBeenCalledTimes(1);
+    expect(ctx.ui.notify).not.toHaveBeenCalled();
+  });
+});
+
+describe("project trust", () => {
+  it("loads the config with the project scope when the project is trusted", () => {
+    const pi = makeFakePi();
+    const loadConfig = vi.fn(
+      (_cwd: string, _projectTrusted: boolean): LoadConfigResult =>
+        CONFIG_RESULT,
+    );
+    createModelJudgeExtension(pi.api as never, {
+      loadConfig,
+      complete: vi.fn(),
+    });
+
+    bringUpSession(pi, "/project", { trusted: true });
+
+    expect(loadConfig).toHaveBeenCalledWith("/project", true);
+  });
+
+  it("loads the config without the project scope when the project is untrusted", () => {
+    const pi = makeFakePi();
+    const loadConfig = vi.fn(
+      (_cwd: string, _projectTrusted: boolean): LoadConfigResult =>
+        CONFIG_RESULT,
+    );
+    createModelJudgeExtension(pi.api as never, {
+      loadConfig,
+      complete: vi.fn(),
+    });
+
+    bringUpSession(pi, "/project", { trusted: false });
+
+    expect(loadConfig).toHaveBeenCalledWith("/project", false);
+  });
+
+  describe("the skipped project config warning", () => {
+    const SKIPPED_PATH =
+      "/p/.pi/extensions/pi-permission-model-judge/config.json";
+    const SKIPPED_WARNING =
+      "[pi-permission-model-judge] project is not trusted — skipping its model-judge config at /p/.pi/extensions/pi-permission-model-judge/config.json. Only the global config applies; grant project trust to load it.";
+
+    let warned: MockInstance<Console["warn"]>;
+
+    beforeEach(() => {
+      warned = vi.spyOn(console, "warn").mockImplementation(() => {});
+    });
+
+    it("warns on the console when the session has no UI", () => {
+      const pi = makeFakePi();
+      createModelJudgeExtension(pi.api as never, {
+        loadConfig: () => ({
+          ...CONFIG_RESULT,
+          untrustedProjectConfigPath: SKIPPED_PATH,
+        }),
+        complete: vi.fn(),
+      });
+
+      bringUpSession(pi, "/p", { trusted: false, hasUI: false });
+
+      expect(warned).toHaveBeenCalledWith(SKIPPED_WARNING);
+      expect(warned).toHaveBeenCalledTimes(1);
+    });
+
+    it("warns through a notification when the session has a UI", () => {
+      const pi = makeFakePi();
+      createModelJudgeExtension(pi.api as never, {
+        loadConfig: () => ({
+          ...CONFIG_RESULT,
+          untrustedProjectConfigPath: SKIPPED_PATH,
+        }),
+        complete: vi.fn(),
+      });
+
+      const ctx = bringUpSession(pi, "/p", { trusted: false, hasUI: true });
+
+      expect(ctx.ui.notify).toHaveBeenCalledWith(SKIPPED_WARNING, "warning");
+      expect(ctx.ui.notify).toHaveBeenCalledTimes(1);
+      expect(warned).not.toHaveBeenCalled();
+    });
+
+    it("stays silent when no project config was skipped", () => {
+      const pi = makeFakePi();
+      createModelJudgeExtension(pi.api as never, {
+        loadConfig: () => CONFIG_RESULT,
+        complete: vi.fn(),
+      });
+
+      const ctx = bringUpSession(pi, "/p", { trusted: false, hasUI: true });
+
+      expect(ctx.ui.notify).not.toHaveBeenCalled();
+      expect(warned).not.toHaveBeenCalled();
+    });
+  });
+});
+
 /**
  * The production seam: `createModelJudgeExtension` with no injected
  * `loadConfig`, so the global scope is resolved the way it is in a real
@@ -412,6 +584,72 @@ describe("global config scope", () => {
       expect.objectContaining({ systemPrompt: SCOPED_INSTRUCTIONS }),
       expect.objectContaining({ toolChoice: "any" }),
     );
+  });
+
+  describe("a project config beside the global one", () => {
+    const PROJECT_INSTRUCTIONS = "Judge paths using the project config.";
+
+    beforeEach(() => {
+      const projectConfigPath = getProjectConfigPath(projectCwd);
+      mkdirSync(dirname(projectConfigPath), { recursive: true });
+      writeFileSync(
+        projectConfigPath,
+        JSON.stringify({ instructions: PROJECT_INSTRUCTIONS }),
+      );
+    });
+
+    /** Review one matched path so `complete` reveals the loaded instructions. */
+    async function reviewMatchedPath(): Promise<void> {
+      const authorize = service.registerAuthorizer.mock
+        .calls[0]?.[1] as RegisteredAuthorizer;
+      await authorize(
+        makePromptDetails({ path: `/x/${SCOPED_PATTERN}/a.ts` }),
+        {},
+        { review: vi.fn(), debug: vi.fn() },
+      );
+    }
+
+    it("applies the project instructions when the project is trusted", async () => {
+      const pi = makeFakePi();
+      const complete: CompleteFn = vi.fn(async () => denyReply());
+      createModelJudgeExtension(pi.api as never, { complete });
+      bringUpSession(pi, projectCwd, { trusted: true });
+
+      await reviewMatchedPath();
+
+      expect(complete).toHaveBeenCalledWith(
+        MODEL,
+        expect.objectContaining({ systemPrompt: PROJECT_INSTRUCTIONS }),
+        expect.objectContaining({ toolChoice: "any" }),
+      );
+    });
+
+    it("names the real skipped project file when the project is untrusted", () => {
+      const warned = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const pi = makeFakePi();
+      createModelJudgeExtension(pi.api as never, { complete: vi.fn() });
+
+      bringUpSession(pi, projectCwd, { trusted: false });
+
+      expect(warned).toHaveBeenCalledWith(
+        `[pi-permission-model-judge] project is not trusted — skipping its model-judge config at ${getProjectConfigPath(projectCwd)}. Only the global config applies; grant project trust to load it.`,
+      );
+    });
+
+    it("keeps the global instructions when the project is untrusted", async () => {
+      const pi = makeFakePi();
+      const complete: CompleteFn = vi.fn(async () => denyReply());
+      createModelJudgeExtension(pi.api as never, { complete });
+      bringUpSession(pi, projectCwd, { trusted: false });
+
+      await reviewMatchedPath();
+
+      expect(complete).toHaveBeenCalledWith(
+        MODEL,
+        expect.objectContaining({ systemPrompt: SCOPED_INSTRUCTIONS }),
+        expect.objectContaining({ toolChoice: "any" }),
+      );
+    });
   });
 });
 

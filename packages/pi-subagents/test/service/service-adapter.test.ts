@@ -597,11 +597,12 @@ describe("SubagentsServiceAdapter — resume", () => {
     return new SubagentsServiceAdapter(mgr, vi.fn(), makeRuntimeStub());
   }
 
-  it("delegates to manager.resume with the caller's prompt", async () => {
+  it("delegates to manager.resume with the caller's prompt, resuming in the background", async () => {
     const mgr = createManagerStub();
     await createSvc(mgr).resume("a-1", "use the staging config");
 
     expect(mgr.resume).toHaveBeenCalledWith("a-1", "use the staging config", {
+      background: true,
       claimOutcome: undefined,
       signal: undefined,
     });
@@ -613,7 +614,7 @@ describe("SubagentsServiceAdapter — resume", () => {
 
     await createSvc(mgr).resume("a-1", "continue", { claimOutcome: true, signal });
 
-    expect(mgr.resume).toHaveBeenCalledWith("a-1", "continue", { claimOutcome: true, signal });
+    expect(mgr.resume).toHaveBeenCalledWith("a-1", "continue", { background: true, claimOutcome: true, signal });
   });
 
   it("reports a refusal verbatim, so a consumer can word its own message", async () => {

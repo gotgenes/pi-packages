@@ -134,6 +134,7 @@ describe("renderQuestionAffordance", () => {
 		it("names no resume call for any reason", () => {
 			for (const refusal of [
 				"still-running",
+				"resume-queued",
 				"no-session",
 				"session-released",
 				"workspace-disposed",
@@ -166,6 +167,12 @@ describe("renderQuestionAffordance", () => {
 				"  A or B?\n  Or C?",
 			);
 		});
+
+		it("asks the parent to wait out a resume queued for a slot, as it does a live run", () => {
+			expect(renderQuestionAffordance("agent-7", "Which config?", "resume-queued")).toBe(
+				renderQuestionAffordance("agent-7", "Which config?", "still-running"),
+			);
+		});
 	});
 
 	it("renders nothing when the child asked nothing", () => {
@@ -196,6 +203,20 @@ describe("renderOutcomeBody", () => {
 	it("points a running agent at the wait option instead of reporting an outcome", () => {
 		expect(renderOutcomeBody(makeOutcome({ status: "running" }))).toBe(
 			"Agent is still running. Use wait: true or check back later.",
+		);
+	});
+
+	it("says a queued agent has not started instead of reporting an outcome", () => {
+		expect(renderOutcomeBody(makeOutcome({ status: "queued", result: undefined }))).toBe(
+			"Agent is queued and has not started; it is waiting for a concurrency slot (maxConcurrent). " +
+				"Use wait: true or check back later.",
+		);
+	});
+
+	it("says a queued agent has not started even when its result is an empty string", () => {
+		expect(renderOutcomeBody(makeOutcome({ status: "queued", result: "" }))).toBe(
+			"Agent is queued and has not started; it is waiting for a concurrency slot (maxConcurrent). " +
+				"Use wait: true or check back later.",
 		);
 	});
 

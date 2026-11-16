@@ -7,7 +7,6 @@ import type { ParentSnapshot } from "#src/lifecycle/parent-snapshot";
 import type {
 	AgentSpawnConfig,
 	ResumeCallOptions,
-	ResumeOutcome,
 	ResumeRefusalReason,
 	ResumeStart,
 } from "#src/lifecycle/subagent-manager";
@@ -19,6 +18,7 @@ import {
 import { renderBackgroundLaunch, spawnBackground } from "#src/tools/background-spawner";
 import { runForeground } from "#src/tools/foreground-runner";
 import { buildAgentGuidelines, buildDetails, buildTypeListText, textResult } from "#src/tools/helpers";
+import { startProgressStream } from "#src/tools/progress-stream";
 import { renderAgentResult } from "#src/tools/result-renderer";
 import {
 	type ModelInfo,
@@ -36,7 +36,6 @@ import { GLYPHS } from "#src/ui/glyphs";
 export interface AgentToolManager {
 	spawn: (snapshot: ParentSnapshot, type: string, prompt: string, opts: AgentSpawnConfig) => string;
 	spawnAndWait: (snapshot: ParentSnapshot, type: string, prompt: string, opts: Omit<AgentSpawnConfig, "background">) => Promise<Subagent>;
-	resume: (id: string, prompt: string, options: ResumeCallOptions) => Promise<ResumeOutcome>;
 	startResume: (id: string, prompt: string, options: ResumeCallOptions) => ResumeStart;
 	getRecord: (id: string) => Subagent | undefined;
 }
@@ -106,7 +105,7 @@ export class AgentTool {
 			if (params.run_in_background === true) {
 				return this.resumeInBackground(id, prompt, config);
 			}
-			return this.resumeExisting(id, prompt, signal, config.presentation.detailBase);
+			return this.resumeExisting(id, prompt, signal, onUpdate, config.presentation.detailBase);
 		}
 
 		// ---- Background execution ----
@@ -128,25 +127,34 @@ export class AgentTool {
 
 	/**
 	 * Continue an existing agent's session with a new prompt, returning its
-	 * resumed outcome directly to the parent.
+	 * resumed outcome directly to the parent. The resumed run is in the
+	 * foreground, so it streams its progress inline as a foreground spawn does.
 	 */
 	private async resumeExisting(
 		id: string,
 		prompt: string,
 		signal: AbortSignal | undefined,
+		onUpdate: ((update: AgentToolResult<AgentDetails>) => void) | undefined,
 		detailBase: SpawnPresentation["detailBase"],
 	) {
 		// The manager owns whether a resume happens; this door owns only how the
 		// answer is worded. Resuming commits this call to delivering the outcome,
 		// so it claims it — nothing else announces what is already being returned.
-		const outcome = await this.manager.resume(id, prompt, {
+		const start = this.manager.startResume(id, prompt, {
+			background: false,
 			signal: signal ?? new AbortController().signal,
 			claimOutcome: true,
 		});
-		if (outcome.kind === "refused") {
-			return textResult(resumeRefusalMessage(outcome.reason, id));
+		if (start.kind === "refused") {
+			return textResult(resumeRefusalMessage(start.reason, id));
 		}
-		const record = outcome.record;
+		const record = start.record;
+		const stopStream = startProgressStream({ detailBase, onUpdate, getRecord: () => record });
+		try {
+			await record.promise;
+		} finally {
+			stopStream();
+		}
 		// Resume-return delivery edge: the resumed outcome is returned directly.
 		record.markConsumed();
 		return textResult(
@@ -160,20 +168,23 @@ export class AgentTool {
 	/**
 	 * Start an existing agent's resume and return at once; the completion notice
 	 * delivers its outcome. Nothing claims the outcome and no tool-call signal is
-	 * wired, as for a background spawn.
+	 * wired, as for a background spawn, and like one it may wait for a
+	 * concurrency slot, which the launch message reports.
 	 */
 	private resumeInBackground(id: string, prompt: string, config: ResolvedSpawnConfig) {
-		const start = this.manager.startResume(id, prompt, {});
+		const start = this.manager.startResume(id, prompt, { background: true });
 		if (start.kind === "refused") {
 			return textResult(resumeRefusalMessage(start.reason, id));
 		}
+		const queued = start.record.status === "queued";
 		return renderBackgroundLaunch({
-			headline: "Agent resumed in background.",
+			headline: queued ? "Agent resume queued in background." : "Agent resumed in background.",
 			id: start.record.id,
 			displayName: config.identity.displayName,
 			description: config.execution.description,
 			detailBase: config.presentation.detailBase,
 			outputFile: start.record.outputFile,
+			queuePosition: queued ? { maxConcurrent: this.settings.maxConcurrent } : undefined,
 		});
 	}
 
@@ -318,6 +329,11 @@ function resumeRefusalMessage(refusal: ResumeRefusalReason, id: string): string 
 			return (
 				`Agent "${id}" is still running; wait for it to finish before resuming. ` +
 				"Use steer_subagent to send it a message while it runs."
+			);
+		case "resume-queued":
+			return (
+				`Agent "${id}" already has a resume waiting for a concurrency slot; wait for that run ` +
+				"to finish before resuming it again (get_subagent_result with wait: true returns when it does)."
 			);
 		case "session-released":
 			return `Agent "${id}" had its session released after its retention window; resume is unavailable, but its result is still retrievable via get_subagent_result.`;

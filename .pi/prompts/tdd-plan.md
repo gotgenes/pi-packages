@@ -80,7 +80,6 @@ For **each** step in the plan's "TDD Order", in order:
 1. **Red.**
    Write the failing tests the step describes.
    Run only the affected test file, unpiped: `pnpm --filter @gotgenes/<pkg> exec vitest run <test-path>` and confirm failures (plain `pnpm vitest run` fails at the repo root in this workspace; a `| tail` or `| grep` replaces Vitest's exit status with the filter's).
-   Run Red in its own tool call, before the implementing `Edit`/`Write` — calls in one batch run concurrently, so a batched Red run can see green.
    When the step pins a literal pattern (regex, glob, format string), derive your own input set — the plan's examples are a floor, not the case list.
    Run the pattern over the values the repo already produces in bulk (`git tag --list`, `gh pr list`) before committing.
    When the step quotes a string the code under test **produces** (a rendered sentence, an error message), copy it from the producer or an existing assertion — a plan transcribes it from memory and drops an article.
@@ -99,10 +98,11 @@ For **each** step in the plan's "TDD Order", in order:
    - The step **relocated** an existing call or registration, so the plan's mutations cover the code it authored and not the line that merely changed sites.
 
    Save the green file first (`cp <file> /tmp/green.ts`) and restore from that copy; `git checkout -- <file>` reverts to HEAD, discarding the step's own uncommitted green edit.
-   Append that `cp` to the Green step's verification command (`vitest run …; cp <file> /tmp/green.ts`), never beside the mutating `Edit`: calls in one batch run concurrently, so the copy can capture the mutation.
-   The restoring `cp /tmp/green.ts <file>` gets its own call too, before the next mutation's `Edit`.
+   Append that `cp` to the Green step's verification command (`vitest run …; cp <file> /tmp/green.ts`).
+   Append the restoring `cp /tmp/green.ts <file>` to the mutation's run command too, so no standalone restore call is left to batch with the next `Edit`.
    Re-run before committing; never commit with a mutation in the tree.
    Apply the mutation with `Edit`, and confirm the file changed before reading the suite — a scripted multi-line substitution that matches nothing reads exactly like a mutation that killed nothing, and one that matches every sibling site reddens tests the mutation was never meant to touch.
+   A battery of mutations may run as one script instead: assert each pattern occurs exactly once, run the file per mutation, and restore the in-memory original after each.
    Prefer changing a compared literal over restructuring control flow: a mutation that crashes, or that the linter rejects, produces reds that are not discrimination signals.
    Such a mutation can also produce too *few* reds — swapping a guard's `return x` for a `throw` changes nothing observable when a downstream `catch` returns `x` too.
    Count the reds against the step's prediction: a mutation that kills fewer tests than the plan named is a finding, not a pass — the test was never written, the plan's claim was wrong, or the mutated code is dead.

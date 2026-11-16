@@ -1,8 +1,9 @@
 import type { ThemeColor } from "@earendil-works/pi-coding-agent";
-import { describe, expect, expectTypeOf, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from "vitest";
 import { AgentTypeRegistry } from "#src/config/agent-types";
 import type { AgentConfig } from "#src/types";
 import {
+  formatRunDuration,
   formatSessionTokens,
   getDisplayName,
   getPromptModeLabel,
@@ -109,5 +110,33 @@ describe("modelLabel", () => {
 
   it("is undefined while the model is unknown", () => {
     expect(modelLabel(undefined)).toBeUndefined();
+  });
+});
+
+describe("formatRunDuration", () => {
+  // Each run starts at 1000, so 6_000 is 5 s later.
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(6_000);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("renders a still-queued run's time in the queue", () => {
+    expect(formatRunDuration({ status: "queued", startedAt: 1000, completedAt: undefined, stoppedWhileQueued: false })).toBe("queued 5.0s");
+  });
+
+  it("freezes a run stopped while queued at the time it waited", () => {
+    expect(formatRunDuration({ status: "stopped", startedAt: 1000, completedAt: 4000, stoppedWhileQueued: true })).toBe("queued 3.0s");
+  });
+
+  it("renders a completed run's running time", () => {
+    expect(formatRunDuration({ status: "completed", startedAt: 1000, completedAt: 4000, stoppedWhileQueued: false })).toBe("3.0s");
+  });
+
+  it("marks a still-running run's elapsed time as running", () => {
+    expect(formatRunDuration({ status: "running", startedAt: 1000, completedAt: undefined, stoppedWhileQueued: false })).toBe("5.0s (running)");
   });
 });

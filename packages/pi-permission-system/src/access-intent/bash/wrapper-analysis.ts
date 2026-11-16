@@ -158,7 +158,7 @@ export function executedUnitOf(
  * alike. Argument-independence is the core's admission bar, so there are no
  * arguments that make `grep` write a file.
  *
- * Four things must hold for it, and each is a way the reason could still hold:
+ * Five things must hold for it, and each is a way the reason could still hold:
  *
  * 1. The unit is an indirection wrapper — an ordinary command has no floor.
  * 2. Unwrapping reached the inner command without passing through an opaque
@@ -168,22 +168,35 @@ export function executedUnitOf(
  *    line to a shell or builds it from a template
  *    ({@link OPAQUE_COMMAND_LINE_WRAPPERS}) is that payload in another shape:
  *    `watch cat x \; rm y` runs `rm`, so no layer may be one.
- * 3. The inner command *proves* a read — bare-basename core word, retraction
+ * 3. Every word a peeled layer passes its wrapper is literal: each option,
+ *    value, operand, and `NAME=value` word. The shell splits or expands a
+ *    computed one before the wrapper runs, so one of the words it becomes may
+ *    be the command that really runs — `sudo -u $U cat x` with
+ *    `U="root rm y"` runs `rm y cat x` as root.
+ * 4. The inner command *proves* a read — bare-basename core word, retraction
  *    guards applied, so `xargs sort -o /tmp/x` and `xargs find . -delete` are
  *    not transparent.
- * 4. The unit writes no file through a redirect, which the caller reads off
+ * 5. The unit writes no file through a redirect, which the caller reads off
  *    the parse tree and this module never sees.
  *
  * `"execution-modifier"`: every wrapper layer only changes *how* the visible
  * inner command runs, so the unit resolves by that command's own rule whatever
- * it does (see {@link onlyModifiesExecution}). The first two conditions above
- * hold for it too; the core-reader reason is preferred when both apply.
+ * it does (see {@link onlyModifiesExecution}). The first three conditions
+ * above hold for it too; the core-reader reason is preferred when both apply.
+ *
+ * `"no-command"`: the unit's own wrapper names no command, and its bare form
+ * runs nothing (see {@link namesNoCommand}), so there is no command to hide and
+ * the unit resolves by its own rule. It reads the outermost layer only, and it
+ * carries no redirect refusal: like the execution-modifier reason it classifies
+ * nothing, so `env > /tmp/x` is decided as `printenv > /tmp/x` is. It cannot
+ * collide with the other two, which both need an inner command.
  */
 export function floorExemptionOf(
   words: readonly CommandWord[],
   statement: { readonly writesViaRedirect: boolean },
 ): FloorExemption | undefined {
   if (classifyWrapperWords(words) !== "indirection") return undefined;
+  if (namesNoCommand(words)) return "no-command";
 
   // Only the peeled words matter here, so the walk is handed no source span to
   // cut from — the text slice is `executedUnitOf`'s product, not this one's.
@@ -191,7 +204,8 @@ export function floorExemptionOf(
   if (
     unwrapped.kind === "opaque" ||
     unwrapped.peeled.length === 0 ||
-    unwrapped.peeled.some(runsOpaqueCommandLine)
+    unwrapped.peeled.some(runsOpaqueCommandLine) ||
+    unwrapped.peeled.some(carriesComputedWord)
   ) {
     return undefined;
   }
@@ -205,10 +219,45 @@ export function floorExemptionOf(
     : undefined;
 }
 
+/**
+ * True when a wrapper unit names no command and its wrapper runs nothing so.
+ *
+ * Three things must hold, and each is a way a command could still run:
+ *
+ * 1. The wrapper's grammar says its bare form runs nothing
+ *    ({@link GetoptGrammar.bareFormRunsNothing}): bare `xargs` runs `echo`.
+ * 2. The option walk ends exactly on the last word, so every word was an
+ *    option, a value, or an assignment. A refused option is a mode the walk
+ *    cannot vouch for, and a value-taking option that runs out of words ends
+ *    past the end.
+ * 3. Every word after the wrapper name is literal: `env -u $X` with
+ *    `X="FOO rm"` runs `rm`, which is {@link carriesComputedWord}'s rule.
+ */
+function namesNoCommand(words: readonly CommandWord[]): boolean {
+  const name = wrapperName(words);
+  const grammar = name === undefined ? undefined : GETOPT_GRAMMARS.get(name);
+  return (
+    grammar?.bareFormRunsNothing === true &&
+    getoptWalkEnd(words, grammar) === words.length &&
+    !carriesComputedWord(words)
+  );
+}
+
 /** True when a peeled layer's wrapper does not run the words the peel sees. */
 function runsOpaqueCommandLine(layer: readonly CommandWord[]): boolean {
   const name = wrapperName(layer);
   return name !== undefined && OPAQUE_COMMAND_LINE_WRAPPERS.has(name);
+}
+
+/**
+ * True when the shell may rewrite a word a peeled layer passes its wrapper.
+ *
+ * The wrapper name is skipped: it is matched by its text against a fixed
+ * vocabulary, so a computed spelling never classifies as a wrapper, and the
+ * word adapter reads a `command_name` node as computed whatever it spells.
+ */
+function carriesComputedWord(layer: readonly CommandWord[]): boolean {
+  return layer.slice(1).some((word) => word.computed);
 }
 
 /**
@@ -230,9 +279,9 @@ function runsOpaqueCommandLine(layer: readonly CommandWord[]): boolean {
  * 2. Every option in every layer is on that modifier's allowlist. The real
  *    tools accept abbreviations (`timeout --sig KILL 5 rm`) the inner-command
  *    search does not know, and one of them misplaces where the command starts.
- *    Each option, value, and operand must also be literal: the shell splits
- *    `timeout $D pnpm` or expands `timeout {5,sudo} rm` into extra words before
- *    the modifier runs, and one of those may be a wrapper or the real command.
+ *    That every word is also literal is {@link floorExemptionOf}'s condition,
+ *    shared with the core-reader reason: the shell splits `timeout $D pnpm` or
+ *    expands `timeout {5,sudo} rm` into extra words before the modifier runs.
  * 3. The peel ended at an ordinary command, not a wrapper it could not see
  *    past.
  * 4. The inner head is a literal command name. The grammar has no `time`
@@ -267,6 +316,9 @@ function reachedLiteralCommand(inner: readonly CommandWord[]): boolean {
  *
  * Walks the words with the same value-taking table {@link innerCommandIndex}
  * skips by, so an admitted option's value can never be taken for the command.
+ * It reads option shapes only: each caller refuses a computed word before it
+ * gets here ({@link floorExemptionOf}'s literal-layer condition, and
+ * {@link sessionCommandIndex}'s refusal of any token with shell syntax).
  */
 function isAdmittedModifierLayer(layer: readonly CommandWord[]): boolean {
   const name = wrapperName(layer);
@@ -278,15 +330,11 @@ function isAdmittedModifierLayer(layer: readonly CommandWord[]): boolean {
   for (let index = 1; index < layer.length; index++) {
     const word = layer[index].text;
     if (isEnvironmentAssignment(word)) continue;
-    // A word the shell rewrites (`$D`, `{5,sudo}`, `*`) may become several, one
-    // of them a wrapper or the real command, so only a literal word is admitted.
-    if (layer[index].computed) return false;
     if (word === "--") continue;
     if (!word.startsWith("-")) continue;
     if (flags.has(word)) continue;
     if (valueTaking.has(word)) {
       index++;
-      if (layer[index]?.computed) return false;
       continue;
     }
     if (!hasAttachedValue(word, valueTaking)) return false;
@@ -528,16 +576,30 @@ function innerCommandIndex(words: readonly CommandWord[]): number {
 }
 
 /**
- * {@link innerCommandIndex} for a wrapper read as getopt_long reads it, with
+ * {@link innerCommandIndex} for a wrapper read as getopt_long reads it: where
+ * {@link getoptWalkEnd} stops, or `-1` when an option is refused or the words
+ * run out first.
+ */
+function getoptInnerIndex(
+  words: readonly CommandWord[],
+  grammar: GetoptGrammar,
+): number {
+  const end = getoptWalkEnd(words, grammar);
+  return end !== -1 && end < words.length ? end : -1;
+}
+
+/**
+ * Where a wrapper's own words end, read as getopt_long reads them, with
  * options permuted no further than the first non-option, as every grammar here
  * does (a `+` optstring, or BSD getopt, which never permutes).
  *
  * Options come first, then — for a wrapper that takes them — the `NAME=value`
- * assignments it passes to the command, then the command. `-1` when an option
- * is refused, unlisted, or an ambiguous abbreviation, or when the words run out
- * first.
+ * assignments it passes to the command. The answer is the index of the word
+ * after them: the command's, `words.length` when every word was the wrapper's
+ * own, or past the end when a value-taking option ran out of words. `-1` when
+ * an option is refused, unlisted, or an ambiguous abbreviation.
  */
-function getoptInnerIndex(
+function getoptWalkEnd(
   words: readonly CommandWord[],
   grammar: GetoptGrammar,
 ): number {
@@ -562,7 +624,7 @@ function getoptInnerIndex(
   ) {
     index++;
   }
-  return index < words.length ? index : -1;
+  return index;
 }
 
 /**
@@ -580,7 +642,9 @@ function shortClusterWords(
 ): number | undefined {
   for (let position = 0; position < letters.length; position++) {
     const arity = table.get(letters[position]);
-    if (arity === undefined || arity === "refuse") return undefined;
+    if (arity === undefined || arity === "refuse" || arity === "attached") {
+      return undefined;
+    }
     if (arity === "optional") return 1;
     if (arity === "value") return position + 1 < letters.length ? 1 : 2;
   }
@@ -600,6 +664,7 @@ function longOptionWords(
   const name = equals === -1 ? body : body.slice(0, equals);
   const arity = resolveLongOption(name, table);
   if (arity === undefined || arity === "refuse") return undefined;
+  if (arity === "attached" && equals === -1) return undefined;
   return arity === "value" && equals === -1 ? 2 : 1;
 }
 
@@ -732,6 +797,20 @@ const INDIRECTION_WRAPPER_NAMES = new Set([
 ]);
 
 /**
+ * Every command name whose unit the wrapper floor can apply to by name: `eval`,
+ * the shells, and the indirection wrappers.
+ *
+ * A user's `commandEffects` declaration never describes one (ADR 0013 §11): its
+ * arguments carry the command it runs, so a declared `xargs` or `sudo` would
+ * attribute, or withdraw, the inner command's operands.
+ */
+export const WRAPPER_COMMAND_NAMES: ReadonlySet<string> = new Set([
+  "eval",
+  ...SHELL_WRAPPER_NAMES,
+  ...INDIRECTION_WRAPPER_NAMES,
+]);
+
+/**
  * Search tools that invoke a command per result only when an exec flag is
  * present; a bare search runs no subcommand. Floored only when an argument
  * exactly matches one of the tool's exec flags. Extend by adding a tool with
@@ -768,10 +847,13 @@ const EMPTY_FLAGS: ReadonlySet<string> = new Set<string>();
 /**
  * How a getopt-parsed wrapper treats one of its options: a flag, an option
  * taking a value, an option whose value is optional and so only ever attached
- * (getopt's `::`), or a mode in which the command the peel would name is not
- * the one that runs, which refuses the peel.
+ * (getopt's `::`), a long option whose value is admitted only attached
+ * (`--unset=FOO`) because another implementation reads the detached form as a
+ * different command line, or a mode in which the command the peel would name
+ * is not the one that runs, which refuses the peel. A short-option table never
+ * holds `"attached"`; a cluster reads it as a refusal.
  */
-type OptionArity = "flag" | "value" | "optional" | "refuse";
+type OptionArity = "flag" | "value" | "optional" | "attached" | "refuse";
 
 /**
  * A wrapper's options as getopt_long reads them, keyed by short letter and by
@@ -792,6 +874,12 @@ interface GetoptGrammar {
    * nothing.
    */
   readonly loneDashEndsOptions: boolean;
+  /**
+   * Whether the wrapper given no command runs nothing, as `env` (which prints
+   * the environment) does. Set only where that is verified: bare `xargs` runs
+   * `echo`, so a wrapper whose bare form invokes anything must leave it unset.
+   */
+  readonly bareFormRunsNothing: boolean;
 }
 
 /**
@@ -867,12 +955,20 @@ const SUDO_GRAMMAR: GetoptGrammar = {
   ]),
   assignments: true,
   loneDashEndsOptions: false,
+  bareFormRunsNothing: false,
 };
 
 /**
  * `env`'s options: the union of BSD `env` (optstring `-0C:iP:S:u:v`, no long
  * options) and GNU coreutils 9.12 (`env --help`). No letter has different
  * arities on the two.
+ *
+ * BSD reads a long option as a cluster after its `-` option, and the two
+ * readings part only at `--unset`: BSD takes `--unset FOO cat` as `-`, then
+ * `-u nset`, and runs `FOO`, where GNU unsets `FOO` and runs `cat`. So
+ * `--unset` and its abbreviations admit a value only attached
+ * (`--unset=FOO`), which neither reads as a command. Every other long option
+ * either refuses here or is a usage error on BSD, which runs nothing.
  *
  * Each refusing option is one where the command the peel would name is not
  * what runs as named: `-C`/`--chdir` move where its relative operands
@@ -884,6 +980,9 @@ const SUDO_GRAMMAR: GetoptGrammar = {
  *
  * A lone `-` clears the environment and, as GNU reads it, ends the options;
  * BSD keeps parsing after it, so ending there only ever names less.
+ *
+ * Given no command, `env` prints the environment and runs nothing, on BSD and
+ * GNU alike; that is its bare form, read by this same grammar.
  */
 const ENV_GRAMMAR: GetoptGrammar = {
   short: new Map<string, OptionArity>([
@@ -903,7 +1002,7 @@ const ENV_GRAMMAR: GetoptGrammar = {
     ["list-signal-handling", "flag"],
     ["null", "flag"],
     ["version", "flag"],
-    ["unset", "value"],
+    ["unset", "attached"],
     ["block-signal", "optional"],
     ["default-signal", "optional"],
     ["ignore-signal", "optional"],
@@ -914,6 +1013,7 @@ const ENV_GRAMMAR: GetoptGrammar = {
   ]),
   assignments: true,
   loneDashEndsOptions: true,
+  bareFormRunsNothing: true,
 };
 
 /**
@@ -974,6 +1074,7 @@ const XARGS_GRAMMAR: GetoptGrammar = {
   ]),
   assignments: false,
   loneDashEndsOptions: false,
+  bareFormRunsNothing: false,
 };
 
 /**
@@ -996,6 +1097,7 @@ const DOAS_GRAMMAR: GetoptGrammar = {
   long: new Map<string, OptionArity>(),
   assignments: false,
   loneDashEndsOptions: false,
+  bareFormRunsNothing: false,
 };
 
 /** Wrappers whose inner command is located by a getopt grammar. */

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import type { AttributedEffect, EffectSource } from "#src/access-intent/effect";
 import {
   describeBashCommandContext,
+  describeDecidingPath,
   flaggedElementLabel,
   flaggedElements,
   valueLabel,
@@ -117,5 +119,73 @@ describe("describeBashCommandContext", () => {
 
   it("names no context for a current-shell command", () => {
     expect(describeBashCommandContext(null)).toBeUndefined();
+  });
+});
+
+describe("describeDecidingPath", () => {
+  /** A bash external-directory ask whose deciding path is `/outside/x`. */
+  function blamed(effect: AttributedEffect, effectSource: EffectSource) {
+    const base = makePromptPayload();
+    return {
+      ...base,
+      kind: "bash_external_directory" as const,
+      request: {
+        ...base.request,
+        value: "some-command /outside/x",
+        decidingPath: { path: "/outside/x", effect, effectSource },
+      },
+    };
+  }
+
+  it.each([
+    ["write", "syntax", "write (redirect destination)"],
+    ["read", "syntax", "read (redirect source)"],
+    ["read", "core", "read (pure-reader command)"],
+    ["read", "declared-global", "read (declared in global commandEffects)"],
+    ["write", "declared-project", "write (declared in project commandEffects)"],
+    [
+      "unproven",
+      "declared-project",
+      "unproven, consults both directions (declared in project commandEffects)",
+    ],
+    [
+      "unproven",
+      "retracted",
+      "unproven (an option withdrew the claim), consults both directions",
+    ],
+    [
+      "unproven",
+      "unproven",
+      "unproven, consults both directions; declare the command in commandEffects to classify it",
+    ],
+  ] as const)(
+    "explains a %s effect from %s",
+    (effect, effectSource, clause) => {
+      expect(describeDecidingPath(blamed(effect, effectSource))).toBe(
+        `/outside/x: ${clause}`,
+      );
+    },
+  );
+
+  it("leaves the path out when the value line already names it", () => {
+    const base = makePromptPayload();
+    const pathAsk = {
+      ...base,
+      kind: "path" as const,
+      request: {
+        ...base.request,
+        value: ".env",
+        decidingPath: {
+          path: ".env",
+          effect: "read" as const,
+          effectSource: "core" as const,
+        },
+      },
+    };
+    expect(describeDecidingPath(pathAsk)).toBe("read (pure-reader command)");
+  });
+
+  it("explains nothing for an ask with no deciding path", () => {
+    expect(describeDecidingPath(makePromptPayload())).toBeUndefined();
   });
 });

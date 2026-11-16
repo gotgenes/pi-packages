@@ -1,8 +1,12 @@
-import { homedir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { AccessIntent } from "#src/access-intent/access-intent";
 import { BashProgram } from "#src/access-intent/bash/program";
+import {
+  foldDeclaredCommandEffects,
+  NO_DECLARED_COMMAND_EFFECTS,
+} from "#src/config/command-effects-config";
 import { describeBashExternalDirectoryGate } from "#src/handlers/gates/bash-external-directory";
 import type {
   GateBypass,
@@ -22,10 +26,10 @@ import {
   findEvidence,
   type PromptPayload,
 } from "#src/presentation/prompt-payload";
+import { renderReviewLogFacts } from "#src/presentation/review-log-renderer";
 import { SessionRules } from "#src/session/session-rules";
 import type { PermissionCheckResult } from "#src/types";
 import { getNonEmptyString, toRecord } from "#src/value-guards";
-
 import { makeResolver } from "#test/helpers/gate-fixtures";
 import { createManagerWithConfig } from "#test/helpers/manager-harness";
 
@@ -188,11 +192,204 @@ describe("describeBashExternalDirectoryGate", () => {
     const intent = resolver.resolve.mock.calls[0][0];
     const path = intent.kind === "access-path" ? intent.path : undefined;
     expect(path).toBeDefined();
+    // `/outside` names nothing on disk, so the ask also carries the license.
     expect(result.promptDetails.accessIntent).toEqual({
       surface: "external_directory_read",
       matchValues: path?.matchValues(),
       boundaryValue: path?.boundaryValue(),
+      delegationLicense: "nothing-on-disk",
     });
+  });
+
+  describe("the nothing-on-disk delegation license (ADR 0007 §8)", () => {
+    // A distinctive top-level name, absent on any host, so the answer does not
+    // depend on whether the machine happens to have `/outside`.
+    const ABSENT_AT_ROOT = "/pi-permission-882-absent";
+
+    async function licenseOf(command: string): Promise<string | undefined> {
+      const result = (await describeGate(
+        makeTcc({ input: { command } }),
+        makeResolver(makeCheckResult("ask")),
+      )) as GateDescriptor;
+      expect(isGateDescriptor(result)).toBe(true);
+      return result.promptDetails.accessIntent?.delegationLicense;
+    }
+
+    it("licenses an undeclared tool's operand that names nothing on disk", async () => {
+      expect(
+        await licenseOf(`officecli set data.xlsx ${ABSENT_AT_ROOT}/Sheet1/B1`),
+      ).toBe("nothing-on-disk");
+    });
+
+    it("withholds it when another flagged path sits under an existing directory", async () => {
+      expect(
+        await licenseOf(
+          `officecli set ${ABSENT_AT_ROOT}/Sheet1/B1 ${join(tmpdir(), "pi-permission-882-absent", "x")}`,
+        ),
+      ).toBeUndefined();
+    });
+
+    it.each(["rm -rf /", "chmod -R 777 /", "ls /", "cat /."])(
+      "withholds it from the filesystem root itself (%s)",
+      async (command) => {
+        expect(await licenseOf(command)).toBeUndefined();
+      },
+    );
+
+    it.each([
+      ["a glob", "cat /e?c/passwd"],
+      ["a bracket glob", "cat /[e]tc/passwd"],
+      ["a star glob", "cat /*"],
+      ["a brace expansion", "cat /{etc,var}/hosts"],
+      ["a parameter expansion", "cat /$X/passwd"],
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: intentional literal — a braced shell expansion, not a template string
+      ["a quoted braced expansion", 'cat "/${X}c/passwd"'],
+      ["a command substitution", "cat /$(echo etc)/passwd"],
+      ["a backtick substitution", "cat /`echo etc`/passwd"],
+      ["a backslash escape", "cat /e\\tc/passwd"],
+    ])(
+      "withholds it from %s the shell expands to a different path (%s)",
+      async (_, command) => {
+        expect(await licenseOf(command)).toBeUndefined();
+      },
+    );
+
+    it.each([
+      ["@(", "shopt -s extglob\nrm -rf /@(etc|var)"],
+      ["+(", "shopt -s extglob\nls x /+(etc)"],
+      ["!(", "shopt -s extglob\nls x /!(zzz)"],
+      ["mid-word @(", "shopt -s extglob\nls x /e@(t)c"],
+    ])(
+      "withholds it from a command the parse could not read whole (extglob %s)",
+      async (_, command) => {
+        expect(await licenseOf(command)).toBeUndefined();
+      },
+    );
+
+    it.each([
+      ["a relative climb to the root", "cat ../../pi-permission-882-absent/x"],
+      [
+        "a relative path after a cd that fails",
+        "cd /pi-permission-882-absent; cat ../../.ssh/id_rsa",
+      ],
+      [
+        "a `..` segment, which the kernel resolves physically",
+        "cat /pi-permission-882-absent/../pi-permission-882-other/x",
+      ],
+      ["a `.` segment", "cat /pi-permission-882-absent/./x"],
+    ])(
+      "withholds it from a token not spelled as the path it names (%s)",
+      async (_, command) => {
+        expect(await licenseOf(command)).toBeUndefined();
+      },
+    );
+
+    it.each([
+      ["a split absolute path", "cat /pi-permission-882-absent/e\\\ntc/passwd"],
+      ["a split head", "cat /e\\\ntc/passwd"],
+    ])(
+      "withholds it from a command a backslash-newline joins (%s)",
+      async (_, command) => {
+        expect(await licenseOf(command)).toBeUndefined();
+      },
+    );
+
+    it.each([
+      ["a mid-word backtick", "cat /e`echo tc`/passwd"],
+      ["a quoted head before a backtick", 'cat "/e"`echo tc`"/passwd"'],
+      ["a mid-word process substitution", "cat /e<(true)tc/passwd"],
+      ["a read redirect", "cat < /e`echo tc`/passwd"],
+    ])(
+      "withholds it from a token the grammar split out of one word (%s)",
+      async (_, command) => {
+        expect(await licenseOf(command)).toBeUndefined();
+      },
+    );
+
+    it.each([
+      ["a carriage return", "cat /e\rtc/passwd"],
+      ["a form feed", "cat /pi-permission-882-e\ftc/passwd"],
+      ["a vertical tab", "cat /pi-permission-882-e\vtc/passwd"],
+    ])(
+      "withholds it from a token the grammar split where bash does not (%s)",
+      async (_, command) => {
+        // tree-sitter-bash treats these as whitespace; bash splits words only
+        // on a space, a tab, or a newline, so the word it runs is longer.
+        expect(await licenseOf(command)).toBeUndefined();
+      },
+    );
+
+    it("withholds it from a token after a backslash-escaped tab, which bash keeps in the word", async () => {
+      expect(
+        await licenseOf("cat a\\\t/pi-permission-882-absent/x"),
+      ).toBeUndefined();
+    });
+
+    it("still licenses a whole word bounded by a tab", async () => {
+      expect(
+        await licenseOf(
+          "officecli set data.xlsx\t/pi-permission-882-absent/B1",
+        ),
+      ).toBe("nothing-on-disk");
+    });
+
+    it("withholds it from a value read out of part of an argument", async () => {
+      // `--file=` and the path share one word; the token has no span of its own
+      // to bound, so it cannot be shown to stand alone.
+      expect(
+        await licenseOf("grep --file=/pi-permission-882-absent/x foo"),
+      ).toBeUndefined();
+    });
+
+    it("withholds it from a token beside a parenthesis, which is refused as a boundary", async () => {
+      // A parenthesis ends a word only around a subshell or group; the check
+      // does not tell the two apart, so it costs this whole word a prompt.
+      expect(
+        await licenseOf("(cat /pi-permission-882-absent/B1)"),
+      ).toBeUndefined();
+    });
+
+    it.each([
+      ["a trailing operator", "cat /pi-permission-882-absent/B1;"],
+      ["a pipe", "cat /pi-permission-882-absent/B1|wc -l"],
+      ["a read redirect", "cat </pi-permission-882-absent/B1"],
+    ])(
+      "still licenses a whole word bounded by an operator (%s)",
+      async (_, command) => {
+        expect(await licenseOf(command)).toBe("nothing-on-disk");
+      },
+    );
+
+    it("withholds it from a proven write", async () => {
+      expect(await licenseOf(`echo x > ${ABSENT_AT_ROOT}/f`)).toBeUndefined();
+    });
+
+    it("withholds it from a relative path a non-literal cd left unlocated", async () => {
+      // From the session cwd `/test/project` the token would resolve to
+      // `/pi-permission-882-absent/x`, but after `cd "$D"` it could land under
+      // any existing directory, so the guess licenses nothing.
+      expect(
+        await licenseOf('cd "$D" && cat ../../pi-permission-882-absent/x'),
+      ).toBeUndefined();
+    });
+
+    it.each([
+      [
+        "located first",
+        'cd "$D" && cat /pi-permission-882-absent/x ../../pi-permission-882-absent/x',
+      ],
+      [
+        "unlocated first",
+        'cd "$D" && cat ../../pi-permission-882-absent/x /pi-permission-882-absent/x',
+      ],
+    ])(
+      "keeps a merged path unlocated when any of its tokens was (%s)",
+      async (_order, command) => {
+        // Both tokens resolve to one entry; the absolute one is located, the
+        // relative one is not, and the merge must not forget either.
+        expect(await licenseOf(command)).toBeUndefined();
+      },
+    );
   });
 
   it("emits a bash_external_directory payload listing every escaping path", async () => {
@@ -409,16 +606,19 @@ describe("describeBashExternalDirectoryGate", () => {
       ]);
     });
 
-    it("records the deciding path's effect and blame source in the log", async () => {
+    it("blames the deciding path on its effect and source in the payload, not the log context", async () => {
       const result = (await describeGate(
         makeTcc({ input: { command: "cat /outside/a.ts" } }),
         makeResolver(makeCheckResult("ask")),
       )) as GateDescriptor;
 
-      expect(result.logContext).toMatchObject({
+      expect(result.payload.request.decidingPath).toEqual({
+        path: "/outside/a.ts",
         effect: "read",
         effectSource: "core",
       });
+      expect(result.logContext).not.toHaveProperty("effect");
+      expect(result.logContext).not.toHaveProperty("effectSource");
     });
 
     it("records a retraction as the blame source for a guarded word", async () => {
@@ -428,10 +628,12 @@ describe("describeBashExternalDirectoryGate", () => {
       )) as GateDescriptor;
 
       expect(result.surface).toBe("external_directory");
-      expect(result.logContext).toMatchObject({
+      expect(result.payload.request.decidingPath).toEqual({
+        path: "/outside",
         effect: "unproven",
         effectSource: "retracted",
       });
+      expect(result.logContext).not.toHaveProperty("effectSource");
     });
 
     it("records a retraction when a variable may spell the withdrawing option", async () => {
@@ -441,10 +643,52 @@ describe("describeBashExternalDirectoryGate", () => {
       )) as GateDescriptor;
 
       expect(result.surface).toBe("external_directory");
-      expect(result.logContext).toMatchObject({
+      expect(result.payload.request.decidingPath).toEqual({
+        path: "/outside",
         effect: "unproven",
         effectSource: "retracted",
       });
+      expect(result.logContext).not.toHaveProperty("effectSource");
+    });
+
+    it("records the declaring scope as the blame source for a declared reader", async () => {
+      const tcc = makeTcc({ input: { command: "git log /outside/a.ts" } });
+      const normalizer = new PathNormalizer(
+        pathFlavorForPlatform(process.platform),
+        tcc.cwd,
+      );
+      const program = await BashProgram.parse(
+        "git log /outside/a.ts",
+        normalizer,
+        {
+          commandEffects: foldDeclaredCommandEffects(
+            NO_DECLARED_COMMAND_EFFECTS,
+            { git: { subcommands: { log: "read" } } },
+            "project",
+          ),
+        },
+      );
+
+      const result = describeBashExternalDirectoryGate(
+        tcc,
+        program,
+        makeResolver(makeCheckResult("ask")),
+        normalizer,
+      ) as GateDescriptor;
+
+      expect(result.surface).toBe("external_directory_read");
+      expect(result.payload.request.decidingPath).toEqual({
+        path: "/outside/a.ts",
+        effect: "read",
+        effectSource: "declared-project",
+      });
+      // What the review log persists for every entry of this ask.
+      expect(renderReviewLogFacts(result.payload)).toMatchObject({
+        decidingPath: "/outside/a.ts",
+        effect: "read",
+        effectSource: "declared-project",
+      });
+      expect(result.logContext).not.toHaveProperty("effectSource");
     });
   });
 

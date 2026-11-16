@@ -84,6 +84,59 @@ describe("GateRunner — descriptor path", () => {
     );
   });
 
+  it.each([
+    [
+      "permission_request.blocked",
+      makeCheckResult({ state: "deny", matchedPattern: "*" }),
+    ],
+    [
+      "permission_request.session_approved",
+      makeCheckResult({ source: "session", matchedPattern: "/outside/*" }),
+    ],
+    [
+      "permission_request.auto_approved",
+      makeCheckResult({ state: "allow", origin: "yolo", matchedPattern: "*" }),
+    ],
+  ])(
+    "records the deciding path's provenance from the payload on %s",
+    async (event, resolveResult) => {
+      const { runner, deps } = makeGateRunner({ resolveResult });
+
+      await runner.run(
+        makeDescriptor({
+          surface: "external_directory_write",
+          // The gate no longer stamps the blame on its log context.
+          logContext: { command: "cat a > /outside/b" },
+          payload: makePromptPayload({
+            kind: "bash_external_directory",
+            request: {
+              ...makePromptPayload().request,
+              surface: "external_directory_write",
+              toolName: "bash",
+              value: "cat a > /outside/b",
+              matchedPattern: "*",
+              decidingPath: {
+                path: "/outside/b",
+                effect: "write",
+                effectSource: "syntax",
+              },
+            },
+          }),
+        }),
+        null,
+      );
+
+      expect(deps.reporter.writeReviewLog).toHaveBeenCalledWith(
+        event,
+        expect.objectContaining({
+          decidingPath: "/outside/b",
+          effect: "write",
+          effectSource: "syntax",
+        }),
+      );
+    },
+  );
+
   it("returns allow and emits session_approved on session hit", async () => {
     const { runner, deps } = makeGateRunner({
       resolveResult: makeCheckResult({

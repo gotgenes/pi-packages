@@ -31,6 +31,7 @@ describe("buildSkillAskPayload", () => {
       commandContext: null,
       matchedSpelling: null,
       executedUnit: null,
+      decidingPath: null,
     });
     expect(payload.evidence).toEqual([]);
   });

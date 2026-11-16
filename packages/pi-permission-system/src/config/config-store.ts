@@ -8,6 +8,12 @@ import {
 import { dirname, normalize } from "node:path";
 import type { ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import type { DebugReviewLogger } from "#src/logging/session-logger";
+import {
+  type DeclaredCommandEffects,
+  detectShadowedCommandEffects,
+  detectWrapperCommandEffects,
+  NO_DECLARED_COMMAND_EFFECTS,
+} from "./command-effects-config";
 import type { ConfigIssueSource } from "./config-issue-reporter";
 import { loadAndMergeConfigs, loadUnifiedConfig } from "./config-loader";
 import {
@@ -40,6 +46,8 @@ export interface ConfigReader {
 export interface SessionConfigStore extends ConfigReader {
   refresh(cwd: string | undefined, projectTrusted: boolean): void;
   logResolvedPaths(cwd?: string): void;
+  /** The `commandEffects` declarations the last {@link refresh} loaded, scope stamped. */
+  declaredCommandEffects(): DeclaredCommandEffects;
 }
 
 /**
@@ -64,6 +72,10 @@ export interface ConfigStoreDeps {
   agentDir: string;
   policyPaths: ResolvedPolicyPathProvider;
   logger: DebugReviewLogger;
+  /** The pure-reader core's words, which a `commandEffects` declaration cannot override. */
+  coreCommandWords: ReadonlySet<string>;
+  /** The wrapper command names, whose arguments no `commandEffects` declaration describes. */
+  wrapperCommandWords: ReadonlySet<string>;
 }
 
 /**
@@ -82,6 +94,9 @@ export class ConfigStore
 {
   private config: PermissionSystemExtensionConfig;
   private configIssues: readonly string[] = [];
+  // Held beside the runtime config rather than on it: `save()` rebuilds the
+  // config through `normalizePermissionSystemConfig`, which would drop it.
+  private declared: DeclaredCommandEffects = NO_DECLARED_COMMAND_EFFECTS;
 
   constructor(private readonly deps: ConfigStoreDeps) {
     this.config = { ...DEFAULT_EXTENSION_CONFIG };
@@ -90,6 +105,14 @@ export class ConfigStore
   /** Return the current extension config. */
   current(): PermissionSystemExtensionConfig {
     return this.config;
+  }
+
+  /**
+   * The user's `commandEffects` declarations as of the last {@link refresh},
+   * each stamped with the scope that declared it.
+   */
+  declaredCommandEffects(): DeclaredCommandEffects {
+    return this.declared;
   }
 
   /**
@@ -133,8 +156,13 @@ export class ConfigStore
     );
     const runtimeConfig = normalizePermissionSystemConfig(mergeResult.merged);
     this.config = runtimeConfig;
+    this.declared = mergeResult.declaredCommandEffects;
 
-    this.configIssues = mergeResult.issues;
+    const ignoredDeclarations = [
+      detectShadowedCommandEffects(this.declared, this.deps.coreCommandWords),
+      detectWrapperCommandEffects(this.declared, this.deps.wrapperCommandWords),
+    ].filter((issue) => issue !== undefined);
+    this.configIssues = [...mergeResult.issues, ...ignoredDeclarations];
 
     const warning =
       mergeResult.issues.length > 0 ? mergeResult.issues.join("\n") : undefined;

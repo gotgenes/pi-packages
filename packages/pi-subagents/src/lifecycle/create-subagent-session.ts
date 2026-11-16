@@ -24,6 +24,7 @@ import { debugNote } from "#src/debug";
 import type { ChildLifecyclePublisher } from "#src/lifecycle/child-lifecycle";
 import type { ParentSnapshot } from "#src/lifecycle/parent-snapshot";
 import { SubagentSession } from "#src/lifecycle/subagent-session";
+import { resolveTurnLimits, type TurnLimitRequest } from "#src/lifecycle/turn-limits";
 import { AskParentTool, type QuestionRecorder } from "#src/session/ask-parent-tool";
 import { builtinExtensionsFor } from "#src/session/builtin-extensions";
 import type { EnvInfo } from "#src/session/env";
@@ -186,6 +187,8 @@ export interface CreateSubagentSessionParams {
    * installs no update tool.
    */
   notifyParent?: UpdateAnnouncer;
+  /** The caller's turn-limit inputs, resolved with the agent's own limit into the session's. */
+  turnLimits?: TurnLimitRequest;
 }
 
 /**
@@ -302,7 +305,7 @@ export async function createSubagentSession(
     sessionId,
     sessionDir,
     agentName: type,
-    agentMaxTurns: cfg.agentMaxTurns,
+    turnLimits: resolveTurnLimits(params.turnLimits, cfg.agentMaxTurns),
     parentContext: snapshot.parentContext,
     lifecycle: deps.lifecycle,
   });

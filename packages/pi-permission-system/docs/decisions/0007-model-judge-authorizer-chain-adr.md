@@ -1,6 +1,7 @@
 ---
 status: accepted
 date: 2026-07-15
+amended: 2026-11-16
 ---
 
 # 0007 — Model-assisted permission judge as an Authorizer chain
@@ -12,6 +13,9 @@ This decision settles the design of a case-by-case model judge ([#472]); it does
 [#472] stays open, tracking the implementation, and carries this ADR.
 It supersedes the reverted ADR 0007 attempted under [#581].
 Amended 2026-08-14 with §7 (one chain per node), which settles where a subagent's ask is adjudicated ([#727]).
+Amended 2026-10-17 with §8 (the nothing-on-disk license), which lets a link `allow` one narrow class of bash `external_directory` ask that §5 excluded ([#882]).
+Amended 2026-11-16 by `docs/decisions/0016-policy-channels.md` §5, which answers the per-link question §8 left to [#620] and [#799]: the operator may lift §5's cap per link and per surface family (`authorizerTrust`), so the cap is an operator default rather than a boundary, and a judge's `allow` is a first-class outcome.
+The same record adds an auto-approve terminal beside §2's three, reached after the links, and keeps one class of ask capped regardless: an agent's edit to the policy files (ADR 0016 §9).
 
 ## Context
 
@@ -196,6 +200,76 @@ This leaves `authorizer_chain_unregistered_link` meaning what it says: a name th
 
 The rule also settles the shape of [#699]'s fix: a sibling extension should skip registering a link in a registered child rather than registering one that would never be consulted.
 
+### 8. A link may allow a bash `external_directory` ask whose paths name nothing on disk
+
+§5 excludes the whole `external_directory` family from a link's `allow`.
+ADR 0009's layering principle routes the projection's surplus to judgment instead: the deterministic layer surfaces every token that could be a path, because over-suppression is unrecoverable, and the judge absorbs the false positives.
+On `external_directory` the two records contradicted each other, because that is the surface where the false positives land and the one surface a judge could only defer back to the human.
+
+The population is the **shape-indistinguishable** token: one an absolute-path shape rule must accept and no deterministic rule can separate from a real path.
+[#797]'s spreadsheet cell reference (`officecli set data.xlsx /Sheet1/B1`) is the clean example.
+[#880]'s `commandEffects: { officecli: { effects: [] } }` withdraws a *declared* tool's operands on the ask-producing side; this section is the ask-consuming lever for the tool nobody declared.
+
+**The bound.**
+The checkpoint honors a link's `allow` on an `external_directory`-family ask when the ask carries the **nothing-on-disk license**.
+The bash external-directory gate grants it only when the command reads verbatim (the grammar parsed it without error recovery, and it holds no backslash-newline continuation), and then iff, for **every** path it left uncovered:
+
+1. the token is a whole word spelled verbatim as the absolute path it names — the grammar can split one bash word into two arguments without an error (the `/e` of ``cat /e`echo tc`/passwd``), so the token must be bounded in the source by one of bash's own word boundaries (a space, a tab, a newline, or an operator other than a parenthesis, none of them escaped by a backslash) or the source edge, never by a carriage return, form feed, or vertical tab, which tree-sitter-bash splits on and bash does not; a relative token depends on a working directory the projection only models (after a non-literal `cd` it is a display guess, and a literal `cd` that fails leaves the shell where it was), a `.` or `..` segment is collapsed lexically while the kernel resolves it through any symlinked ancestor, a glob, brace, parameter or command substitution, or escape is rewritten by the shell at run time, and a POSIX-absolute token on a win32 host stays literal (Git Bash keeps it so, per ADR 0003), so none of these licenses;
+2. the path is not the root, and walking its canonical form toward the root, the first entry `lstat` finds is the filesystem root itself — the root exists, so `rm -rf /` names something; only "no such entry" continues the walk, so an ancestor that is a file, or one the process cannot read, refuses the license;
+3. its attributed effect is not a proven `write` — a redirect destination or a declared writer is a file by syntax or by the user's word, not a token whose shape is in doubt.
+
+A command that does not read verbatim is refused outright because the projection's tokens are not the words bash runs: error recovery leaves an extglob operand (`shopt -s extglob`, then `rm -rf /@(etc|var)`) truncated as `/@`, and a backslash-newline splits `/e\<newline>tc/passwd` into a flagged `/e`, though bash reaches `/etc` in both.
+The rule is a positive spelling, not a list of exclusions, because six review rounds found the exclusions one at a time.
+
+A nonexistent path cannot be read, so the `_read` half of such an ask is vacuous.
+The `_write` half is where the conditions bite: a path whose top-level component does not exist can only come into being by creating a new entry directly under the root.
+
+**What the bound does not cover.**
+A tool ask (`write`, `edit`, an extension tool's extracted path) never carries the license: a tool's path argument is a path by the tool's identity, not by its shape, so the shape-indistinguishable class does not arise there.
+The `path` family stays excluded whatever facts the ask carries, because a `path` ask fires on a rule the operator wrote.
+An ask whose surface cannot be determined stays capped.
+
+**The accepted residual** is a command that, privileged to write at the filesystem root, creates a new top-level entry there.
+On macOS the sealed system volume refuses that even under `sudo`; on Linux it needs root.
+A `sudo` unit raises its own bash-surface floor ask, which this record never excluded from delegation, so the residual is no wider than what a link could already approve on that surface.
+The probe runs at the gate, before the command does; a unit earlier in the same command that creates the top-level directory flags that directory too, and it is itself unrooted, so the race widens the residual by nothing.
+
+**The fact and the wire.**
+The license is a child-fixed fact (`docs/decisions/0008-cross-session-access-intent.md`): the asking node's gate computes it once, it rides `ForwardedAccessFacts` as `delegationLicense: "nothing-on-disk"`, and a serving node projects it onto the ask's details without probing its own filesystem.
+It has that one home.
+The envelope already reads the gate-authoritative access facts, and the license is a security input rather than a presentation fact, so it is not copied onto the prompt payload as well.
+A version-skewed node on either side reads its absence, which is the restrictive reading: an older child sends none, and an older serving node's allowlist drops it.
+
+**The audit line.**
+Every `allow` the checkpoint honors because of the license writes `authorizer_allow_licensed` to the review log, naming the request, the link, and the license, beside the `permission_request.approved` entry whose `decidedBy` names the same link.
+The record is written where the decision to honor the verdict is taken, so the fact that licensed it is never inferred.
+
+**The evidence.**
+Measured 2026-10-17 against the maintainer's permission review log with disposable scripts.
+Of 617 bash `external_directory` asks whose entries recorded their paths (2026-05-03 to 2026-08-14), 13 had every flagged path unrooted.
+The later entries record no paths, so their commands were re-projected through `BashProgram.parse` with an assumed working directory: of 429 asks with external paths, 18 qualified.
+Every one of the 31 is a non-path token — `gh api` routes, Pi slash commands, `git log -L` ranges, commit-message prose, and regex fragments.
+The 18 recent asks' licensing paths were 18 `unproven` and one core read, which is why the bound does not ask for a proven read.
+Another 14 asks mixed an unrooted token with a real external path, and those keep prompting, because the license is granted only when every path qualifies.
+The verbatim-spelling, root, and verbatim-read conditions were added after pre-completion review found that a glob (`cat /e?c/passwd`), the root itself (`rm -rf /`), a truncated extglob (`/@(etc|var)`), a backslash-newline, a relative path after a failing `cd`, a `..` segment, and a word split by the grammar (at a mid-word backtick or process substitution, a carriage return, or a backslash-escaped tab) had licensed.
+Re-run through the shipped gate over the same recent asks (a disposable vitest harness that fed every `permission_request.waiting` bash entry on an `external_directory` surface through `BashProgram.parse` and `describeBashExternalDirectoryGate`, with the repo root as the assumed working directory), 8 of 430 carry the license (1 of the 430 had a parse error): seven tokens that name no host path (`git log -L` ranges, commit-message and `echo` prose, a container mount path) and one real edit target, `sudo -n --ed /nonexistent-dir-xyz/f`, which keeps its own bash-surface floor ask.
+
+**An operand the gate never flagged.**
+The license judges only the paths the gate flagged.
+A whole-argument operand the projection never flags does not withhold it: a computed operand that resolves inside the tree (`X=/etc; cat $X/passwd /Sheet1/B1`), a `~user/` form, a bare ANSI-C `$'/etc/passwd'`, a path glued to an option (`-f/etc/passwd`, `dd if=/etc/passwd`), `$PWD/x` after a `cd`, and a `~/x` after `HOME` is rebound.
+The gate also reads a command trimmed of its leading and trailing whitespace, so a trailing carriage return bash keeps on the last word never reaches the projection; the word it extends stays under the same absent top-level directory unless it is a single segment, which is the accepted residual of a new entry under the root.
+That is the projection's existing reach, which the human prompt shows the same way, and it is accepted rather than refused per command: refusing every command that holds a computed word would withhold the license from the shapes it exists for.
+
+**What this does not decide.**
+It does not lift the cap for a whole surface family, globally ([#684]'s flag) or per link ([#983]'s `authorizerTrust` map).
+A switch of that shape hands a model the outside-the-tree boundary wholesale, which is the reason §5 excluded the family; whether an operator may opt a named link into it is a question about who may widen policy, and it stays with [#620] and [#799].
+
+**Compatibility.**
+The guarantee that the chain owner caps every link `allow` on the `external_directory` family no longer holds unconditionally, so a configured link's `allow` on a licensed ask is honored on upgrade without a user edit.
+It ships as a breaking change with a migration note (`docs/migration/0882-nothing-on-disk-delegation-license.md`).
+No first-party link returns `allow` on the family: `pi-permission-model-judge` is deny-first by charter.
+The license is visible to any link on `details.accessIntent`, so adopting it is each link's own decision.
+
 ### Relationship to `evaluate()` and rule-driven promotion
 
 The judge sits on the ask-*consuming* side of `evaluate()`, distinct from the ask-*producing* side (rule-driven promotion, [#509]).
@@ -215,6 +289,7 @@ The two compose cleanly: a promoted token emits the same structured descriptor a
   This is a design safeguard, not a demo: the [#267] history guard warns that an inbound registration surface nobody consumes goes vacant; a first-party consumer registering `"model-judge"` on day one makes `registerAuthorizer` born consumed, and its own config file exercises the config split end to end.
   The concrete issue is filed by the next `/plan-improvements` pass when the phase is scoped.
 - No code, config, schema, or default changes in this documentation step.
+- The 2026-10-17 amendment (§8) adds the nothing-on-disk license to `ForwardedAccessFacts`, an exception to the bounded-delegation checkpoint, and the `authorizer_allow_licensed` review record; it is the first relaxation of the checkpoint, and it ships as a breaking change.
 
 ### Rejected alternatives
 
@@ -235,6 +310,13 @@ The two compose cleanly: a promoted token emits the same structured descriptor a
 - **The model applies the ruleset itself, or emits a static intent.**
   Rejected: the former couples the model to rule semantics; the latter weakens determinism.
   Tool-augmented decomposition keeps the model decoupled from rule semantics (a rule edit is honored automatically) and confines its non-determinism to decomposition.
+- **Licensing an ask whose path is merely absent** ("nothing exists at the path", considered for §8).
+  Rejected: it also admits writes into an existing directory outside the tree (`mkdir -p ~/newdir`, `cat > ~/.config/autostart/x.desktop`, `git clone "$url" ~/dev/new`), which are real effects a wrong judgment would approve.
+- **Licensing only a proven read of an absent path.**
+  Rejected: an undeclared tool's operands are `unproven` by construction (ADR 0013 §7), so the bound would relieve almost none of the population it exists for; of the 18 recent qualifying asks measured for the amendment, 18 licensing paths were `unproven`.
+- **Lifting the cap for a surface family by a switch**, globally ([#684]) or per named link ([#983]).
+  Not adopted by the amendment: it hands a model the outside-the-tree boundary wholesale, for paths that exist as much as for tokens that name nothing.
+  Whether an operator may opt a named link into that is left to [#620] and [#799].
 
 ### Accepted limitations
 
@@ -255,3 +337,10 @@ The two compose cleanly: a promoted token emits the same structured descriptor a
 [#699]: https://github.com/gotgenes/pi-packages/issues/699
 [#727]: https://github.com/gotgenes/pi-packages/issues/727
 [#909]: https://github.com/gotgenes/pi-packages/issues/909
+[#620]: https://github.com/gotgenes/pi-packages/issues/620
+[#684]: https://github.com/gotgenes/pi-packages/pull/684
+[#797]: https://github.com/gotgenes/pi-packages/issues/797
+[#799]: https://github.com/gotgenes/pi-packages/issues/799
+[#880]: https://github.com/gotgenes/pi-packages/issues/880
+[#882]: https://github.com/gotgenes/pi-packages/issues/882
+[#983]: https://github.com/gotgenes/pi-packages/pull/983

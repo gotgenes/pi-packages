@@ -1,5 +1,26 @@
 # Changelog
 
+## [5.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-model-judge-v4.0.0...pi-permission-model-judge-v5.0.0) (2026-10-31)
+
+
+### Bug Fixes
+
+* **pi-permission-model-judge:** show session-start config warnings as a Pi notification in interactive sessions ([3a6177a](https://github.com/gotgenes/pi-packages/commit/3a6177aca71109ffe5b202b069bfc60d438fec47)), closes [#1092](https://github.com/gotgenes/pi-packages/issues/1092)
+* **pi-permission-model-judge:** **breaking:** ignore an untrusted project's model-judge config ([a6c381a](https://github.com/gotgenes/pi-packages/commit/a6c381adeac3ba4fc6effa3400aecfa9d1427dfc)), closes [#1092](https://github.com/gotgenes/pi-packages/issues/1092)
+* **pi-permission-model-judge:** warn when an untrusted project's model-judge config is skipped ([cb26da5](https://github.com/gotgenes/pi-packages/commit/cb26da5f356219e4514b1895aff8a40bec36d0f5)), closes [#1092](https://github.com/gotgenes/pi-packages/issues/1092)
+
+### Documentation
+
+* **pi-permission-model-judge:** document the project-trust gate on the project config ([b6d2be5](https://github.com/gotgenes/pi-packages/commit/b6d2be5bbb59e6211093c03c9864a14791f8f6db)), closes [#1092](https://github.com/gotgenes/pi-packages/issues/1092)
+
+## [4.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-model-judge-v3.0.0...pi-permission-model-judge-v4.0.0) (2026-10-28)
+
+
+### Bug Fixes
+
+* **pi-permission-model-judge:** require zod 4.6.7, which patches CVE-2023-54404 ([c5b1b58](https://github.com/gotgenes/pi-packages/commit/c5b1b585a069f5e5b970dd8094ee5d3a88594caf)), closes [#1090](https://github.com/gotgenes/pi-packages/issues/1090)
+* **pi-permission-model-judge:** **breaking:** reject a typoPatterns list longer than 1,000 entries before walking it ([224ec9f](https://github.com/gotgenes/pi-packages/commit/224ec9f9d78df52408745f244a0e8b787a766963)), closes [#1090](https://github.com/gotgenes/pi-packages/issues/1090)
+
 ## [3.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-model-judge-v2.0.0...pi-permission-model-judge-v3.0.0) (2026-09-11)
 
 

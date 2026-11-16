@@ -7,6 +7,12 @@ import { mergeFlatPermissions } from "#src/policy/permission-merge";
 import type { FlatPermissionConfig, PatternValue } from "#src/types";
 import { isDenyWithReason, isPermissionState } from "#src/types";
 import {
+  type DeclarationScope,
+  type DeclaredCommandEffects,
+  foldDeclaredCommandEffects,
+  NO_DECLARED_COMMAND_EFFECTS,
+} from "./command-effects-config";
+import {
   getAncestorProjectScopes,
   getGlobalConfigPath,
   getLegacyExtensionConfigPath,
@@ -200,6 +206,9 @@ function formatConfigIssues(error: ZodError): string[] {
  *   the override (override-wins, same as scalars).
  * - `permissionDialogKeys` replaces the base map whole, unlike `shellTools`.
  * - `promptNotifications` replaces the base list whole, like the arrays.
+ * - `commandEffects` is not merged here: its scope is load provenance the
+ *   review log reports, so `loadAndMergeConfigs` folds it per layer with the
+ *   scope stamped (`MergedConfigResult.declaredCommandEffects`).
  */
 // Scalar knobs merged by override-replaces-base; keep in sync with
 // PermissionSystemExtensionConfig booleans (debugLog, permissionReviewLog,
@@ -297,6 +306,8 @@ export interface MergedConfigResult {
   global: UnifiedPermissionConfig;
   project: UnifiedPermissionConfig;
   merged: UnifiedPermissionConfig;
+  /** Every layer's `commandEffects`, shallow-merged by command, scope stamped. */
+  declaredCommandEffects: DeclaredCommandEffects;
   issues: string[];
 }
 
@@ -432,6 +443,17 @@ export function loadAndMergeConfigs(
 
   // Start with empty
   let merged: UnifiedPermissionConfig = {};
+  let declared = NO_DECLARED_COMMAND_EFFECTS;
+  const foldDeclared = (
+    config: UnifiedPermissionConfig,
+    scope: DeclarationScope,
+  ): void => {
+    declared = foldDeclaredCommandEffects(
+      declared,
+      config.commandEffects,
+      scope,
+    );
+  };
 
   // 1. Legacy global policy
   if (existsSync(legacyGlobalPolicyPath)) {
@@ -444,6 +466,7 @@ export function loadAndMergeConfigs(
     // Legacy files are migrated away; the move-it guidance above is the
     // actionable signal, so strict-validation issues for them are suppressed.
     merged = mergeUnifiedConfigs(merged, legacy.config);
+    foldDeclared(legacy.config, "global");
   }
 
   // 2. Legacy extension runtime config (only if different from new global path)
@@ -461,6 +484,7 @@ export function loadAndMergeConfigs(
     );
     // See above: legacy-file validation issues are suppressed.
     merged = mergeUnifiedConfigs(merged, legacy.config);
+    foldDeclared(legacy.config, "global");
   }
 
   // 3. New global config
@@ -468,10 +492,12 @@ export function loadAndMergeConfigs(
   allIssues.push(...globalResult.issues);
   const globalConfig = globalResult.config;
   merged = mergeUnifiedConfigs(merged, globalConfig);
+  foldDeclared(globalConfig, "global");
 
   // 4. Ancestor project chain, top-most first — skipped when the project scope
   // is withheld, so an untrusted project contributes nothing and `project`
-  // reports empty.
+  // reports empty. Each scope's `commandEffects` folds with the `project`
+  // scope stamp in chain order, so the nearest directory wins on collision.
   let projectConfig: UnifiedPermissionConfig = {};
   if (includeProjectScope) {
     const scopes = getAncestorProjectScopes(cwd);
@@ -492,12 +518,14 @@ export function loadAndMergeConfigs(
         const rebased = rebase(legacy.config);
         projectConfig = mergeUnifiedConfigs(projectConfig, rebased);
         merged = mergeUnifiedConfigs(merged, rebased);
+        foldDeclared(rebased, "project");
       }
       const projectResult = loadUnifiedConfig(scope.configPath);
       allIssues.push(...projectResult.issues);
       const rebased = rebase(projectResult.config);
       projectConfig = mergeUnifiedConfigs(projectConfig, rebased);
       merged = mergeUnifiedConfigs(merged, rebased);
+      foldDeclared(rebased, "project");
     });
   }
 
@@ -514,6 +542,7 @@ export function loadAndMergeConfigs(
     global: globalConfig,
     project: projectConfig,
     merged,
+    declaredCommandEffects: declared,
     issues: allIssues,
   };
 }

@@ -39,14 +39,8 @@ The deliberate, interactive final `/retro $1` runs once at the root after `/ship
 The stage note lives in an `exclude-paths` dir, so it triggers no release — but it must be committed **on this branch** so it rides the single ff-merge when root lands the work.
 
 1. Determine the retro file path (same `NNNN-<slug>` as the plan file: single-package → `packages/<PKG>/docs/retro/`; cross-package → `docs/retro/`).
-2. Capture this peer session's transcript path so the root's final `/retro` can read it with `read_session_file` (sessions live under `~/.pi/agent/sessions/`, so they survive the worktree teardown):
-
-   ```bash
-   enc="--$(pwd | sed 's#^/##; s#/#-#g')--"; ls -t ~/.pi/agent/sessions/"$enc"/*.jsonl 2>/dev/null | head -1
-   ```
-
-   (Equivalently, the root can call `list_session_files({ cwd: "<this worktree path>" })` and pick the newest entry — the `sed` one-liner above is just this peer session capturing its own path inline.) This capture is optional — if the command stalls or fails, record the path as unknown and proceed; the root recovers it via `list_session_files`.
-   Do not re-run the already-green pre-push gates (step 2) on a stall here.
+2. Capture this peer session's transcript path so the root's final `/retro` can read it with `read_session_file` (sessions live under `~/.pi/agent/sessions/`, so they survive the worktree teardown): `echo "$PI_SESSION_FILE"`.
+   If it prints nothing, record the path as unknown; the root recovers it with `list_session_files({ cwd: "<this worktree path>" })`.
 3. Append a stage entry with the `Edit` tool, never `cat >>` or a heredoc (anchor the `Edit` on the file's last line — the repeated `### Observations` headers make header-anchored edits ambiguous).
    Do not cite a branch commit SHA in this note — step 4's rebase rewrites every one, leaving a dangling citation on `main`.
    Name the commit by its subject instead.

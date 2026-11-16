@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   getGlobalConfigPath,
   getProjectConfigPath,
+  type LoadConfigResult,
   loadModelJudgeConfig,
 } from "#src/config-loader";
 
@@ -33,6 +34,10 @@ describe("loadModelJudgeConfig", () => {
     rmSync(root, { recursive: true, force: true });
   });
 
+  function load(projectTrusted = true): LoadConfigResult {
+    return loadModelJudgeConfig({ cwd, agentDir, projectTrusted });
+  }
+
   function writeGlobal(value: unknown): void {
     const path = getGlobalConfigPath(agentDir);
     mkdirSync(join(path, ".."), { recursive: true });
@@ -52,13 +57,13 @@ describe("loadModelJudgeConfig", () => {
   }
 
   it("returns no config and no issues when neither file exists", () => {
-    const result = loadModelJudgeConfig({ cwd, agentDir });
+    const result = load();
     expect(result).toEqual({ config: undefined, issues: [] });
   });
 
   it("loads a valid global config and applies defaults", () => {
     writeGlobal(VALID);
-    const result = loadModelJudgeConfig({ cwd, agentDir });
+    const result = load();
     expect(result.issues).toEqual([]);
     expect(result.config).toEqual({
       provider: "anthropic",
@@ -81,7 +86,7 @@ describe("loadModelJudgeConfig", () => {
       model: "claude-sonnet",
       typoPatterns: ["project-pattern"],
     });
-    const result = loadModelJudgeConfig({ cwd, agentDir });
+    const result = load();
     expect(result.issues).toEqual([]);
     expect(result.config).toEqual({
       provider: "anthropic",
@@ -95,7 +100,7 @@ describe("loadModelJudgeConfig", () => {
   it("skips a malformed layer with an issue and loads the valid layer", () => {
     writeGlobal(VALID);
     writeProjectRaw("{ not valid json ");
-    const result = loadModelJudgeConfig({ cwd, agentDir });
+    const result = load();
     expect(result.config?.model).toBe("claude-haiku");
     expect(result.issues).toHaveLength(1);
     expect(result.issues[0]?.sourcePath).toBe(getProjectConfigPath(cwd));
@@ -103,7 +108,7 @@ describe("loadModelJudgeConfig", () => {
 
   it("returns no config with issues when a present config is invalid", () => {
     writeGlobal({ provider: "anthropic", model: "claude-haiku" });
-    const result = loadModelJudgeConfig({ cwd, agentDir });
+    const result = load();
     expect(result.config).toBeUndefined();
     expect(result.issues.length).toBeGreaterThan(0);
     expect(result.issues.some((i) => i.path.includes("instructions"))).toBe(
@@ -111,10 +116,104 @@ describe("loadModelJudgeConfig", () => {
     );
   });
 
+  it("rejects a project file whose typoPatterns exceed 1,000 entries, with one issue", () => {
+    writeProject({
+      ...VALID,
+      typoPatterns: Array.from({ length: 1001 }, () => ""),
+    });
+    const result = load();
+    expect(result).toEqual({
+      config: undefined,
+      issues: [
+        {
+          path: "typoPatterns",
+          message: "Too big: expected array to have <=1000 items",
+        },
+      ],
+    });
+  });
+
   it("rejects an empty typoPatterns entry", () => {
     writeGlobal({ ...VALID, typoPatterns: [""] });
-    const result = loadModelJudgeConfig({ cwd, agentDir });
+    const result = load();
     expect(result.config).toBeUndefined();
     expect(result.issues.length).toBeGreaterThan(0);
+  });
+
+  describe("an untrusted project", () => {
+    it("ignores the project layer and loads the global config alone", () => {
+      writeGlobal({
+        ...VALID,
+        model: "claude-haiku",
+        typoPatterns: ["global-pattern"],
+        timeoutMs: 3000,
+      });
+      writeProject({
+        ...VALID,
+        model: "claude-sonnet",
+        typoPatterns: ["project-pattern"],
+        timeoutMs: 9000,
+      });
+      const result = load(false);
+      expect(result.issues).toEqual([]);
+      expect(result.config).toEqual({
+        provider: "anthropic",
+        model: "claude-haiku",
+        instructions: "Flag doubled path segments.",
+        typoPatterns: ["global-pattern"],
+        timeoutMs: 3000,
+      });
+    });
+
+    it("never parses the project file, so a malformed one records no issue", () => {
+      writeGlobal(VALID);
+      writeProjectRaw("{ not valid json ");
+      const result = load(false);
+      expect(result.issues).toEqual([]);
+      expect(result.config?.model).toBe("claude-haiku");
+    });
+
+    it("yields no config when only the project file exists", () => {
+      writeProject(VALID);
+      const result = load(false);
+      expect(result.config).toBeUndefined();
+      expect(result.issues).toEqual([]);
+    });
+  });
+
+  describe("the skipped project config path", () => {
+    it("names the project file when untrusted beside a valid global config", () => {
+      writeGlobal(VALID);
+      writeProject(VALID);
+      expect(load(false).untrustedProjectConfigPath).toBe(
+        getProjectConfigPath(cwd),
+      );
+    });
+
+    it("names the project file when untrusted and it is the only file", () => {
+      writeProject(VALID);
+      expect(load(false).untrustedProjectConfigPath).toBe(
+        getProjectConfigPath(cwd),
+      );
+    });
+
+    it("names the project file when untrusted beside an invalid global config", () => {
+      writeGlobal({ provider: "anthropic" });
+      writeProjectRaw("{ not valid json ");
+      expect(load(false).untrustedProjectConfigPath).toBe(
+        getProjectConfigPath(cwd),
+      );
+    });
+
+    it("is absent when untrusted and there is no project file", () => {
+      writeGlobal(VALID);
+      expect(load(false).untrustedProjectConfigPath).toBeUndefined();
+    });
+
+    it("is absent when the project is trusted", () => {
+      writeGlobal(VALID);
+      writeProject(VALID);
+      expect(load(true).untrustedProjectConfigPath).toBeUndefined();
+    });
   });
 });

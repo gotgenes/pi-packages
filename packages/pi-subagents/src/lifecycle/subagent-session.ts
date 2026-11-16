@@ -19,10 +19,10 @@ import {
 import type { ChildLifecyclePublisher } from "#src/lifecycle/child-lifecycle";
 import { emitChildSessionShutdown } from "#src/lifecycle/child-shutdown";
 import {
-  normalizeMaxTurns,
   type TurnBudget,
   type TurnBudgetAction,
   TurnBudgetTracker,
+  type TurnLimits,
   type TurnOutcome,
 } from "#src/lifecycle/turn-limits";
 import { getSessionContextPercent, type SessionStatsLike } from "#src/lifecycle/usage";
@@ -37,23 +37,10 @@ export interface TurnLoopResult {
   turnBudget: TurnBudget;
 }
 
-/** Per-call options for the initial run's turn loop. */
+/** Per-call options for one run's turn loop. */
 export interface TurnLoopOptions {
-  /** Per-call max-turns override — highest precedence. */
-  maxTurns?: number;
-  /** Runtime-config fallback when neither per-call nor per-agent limit is set. */
-  defaultMaxTurns?: number;
-  /** Turns left when the child is warned about its budget (`wrapUpTurns` setting). */
-  wrapUpTurns?: number;
   signal?: AbortSignal;
-  /** Receives the budget at the start and after every turn boundary that changes it. */
-  onTurnBudget?: (budget: TurnBudget) => void;
-}
-
-/** Per-call options for a resumed run's turn loop. */
-export interface ResumeTurnLoopOptions {
-  signal?: AbortSignal;
-  /** Receives the resumed run's budget at the start and after every turn boundary that changes it. */
+  /** Receives the run's budget at the start and after every turn boundary that changes it. */
   onTurnBudget?: (budget: TurnBudget) => void;
 }
 
@@ -66,9 +53,9 @@ export interface SubagentSessionMeta {
   /** Child session directory — carried on the completed event as transcript location. */
   sessionDir: string;
   agentName: string;
-  /** Per-agent max-turns from the resolved agent config — middle precedence. */
-  agentMaxTurns: number | undefined;
-  /** Parent context prepended to the run prompt, captured at spawn time. */
+  /** The limits every run of this session is held to, resolved at creation. */
+  turnLimits: TurnLimits;
+  /** Parent context prepended to the first run's prompt, captured at spawn time. */
   parentContext: string | undefined;
   lifecycle: ChildLifecyclePublisher;
 }
@@ -80,10 +67,10 @@ export class SubagentSession {
   private disposed = false;
 
   /**
-   * The limits the initial run resolved, kept so every resume runs under the
-   * same ceiling. Unlimited until the initial run starts.
+   * Set as the session's first run starts, settled or not: only that run
+   * carries the parent context and announces the child's completion.
    */
-  private turnLimits: { maxTurns?: number; wrapUpTurns: number } = { wrapUpTurns: DEFAULT_WRAP_UP_TURNS };
+  private hasRun = false;
 
   /**
    * How the session's last assistant turn ended, tracked for the session's
@@ -125,39 +112,62 @@ export class SubagentSession {
     return this._session.thinkingLevel;
   }
 
-  /** Drive the initial run's turn loop; emits `completed` on success. */
+  /**
+   * Drive one run's turn loop under a fresh budget at the session's limits:
+   * the initial run, or a resume, whose parent asked for more work and for
+   * which an exhausted run's remainder would be none.
+   *
+   * The session's first run prefixes the parent context captured at spawn and
+   * emits `completed` once its prompt resolves; a later run does neither.
+   */
   async runTurnLoop(prompt: string, opts: TurnLoopOptions): Promise<TurnLoopResult> {
-    const session = this._session;
-    this.turnLimits = {
-      maxTurns: normalizeMaxTurns(opts.maxTurns ?? this.meta.agentMaxTurns ?? opts.defaultMaxTurns),
-      wrapUpTurns: opts.wrapUpTurns ?? DEFAULT_WRAP_UP_TURNS,
-    };
-    const tracker = new TurnBudgetTracker(this.turnLimits);
-    const unsubTurns = this.enforceTurnBudget(tracker, opts.onTurnBudget);
-    const collector = collectResponseText(session);
-    const cleanupAbort = forwardAbortSignal(session, opts.signal);
-
-    // Prepend parent context if it was captured at spawn time.
-    const effectivePrompt = this.meta.parentContext
-      ? this.meta.parentContext + prompt
-      : prompt;
-
-    try {
-      await session.prompt(effectivePrompt);
-      failIfProviderErrored(this.turnFailure.getFailure());
+    const firstRun = !this.hasRun;
+    this.hasRun = true;
+    const tracker = new TurnBudgetTracker(this.meta.turnLimits);
+    const responseText = await this.promptForAnswer(firstRun ? this.withParentContext(prompt) : prompt, tracker, opts);
+    if (firstRun) {
       this.meta.lifecycle.completed({
         sessionDir: this.meta.sessionDir,
         agentName: this.meta.agentName,
         turnBudget: tracker.budget,
       });
+    }
+    return { responseText, turnBudget: tracker.budget };
+  }
+
+  private withParentContext(prompt: string): string {
+    return this.meta.parentContext ? this.meta.parentContext + prompt : prompt;
+  }
+
+  /**
+   * Prompt the session for one run's answer, held to the tracker's budget.
+   *
+   * A signal that already fired takes no turn and has no answer. Forwarding it
+   * would not stop the prompt: Pi's `abort()` is a no-op while no run is active,
+   * so it cannot cancel a prompt started after it. Nor does the history answer
+   * for it — on a resume, the last assistant text is the previous run's.
+   */
+  private async promptForAnswer(
+    prompt: string,
+    tracker: TurnBudgetTracker,
+    opts: TurnLoopOptions,
+  ): Promise<string> {
+    if (opts.signal?.aborted) return "";
+    const session = this._session;
+    const unsubTurns = this.enforceTurnBudget(tracker, opts.onTurnBudget);
+    const collector = collectResponseText(session);
+    const cleanupAbort = forwardAbortSignal(session, opts.signal);
+
+    try {
+      await session.prompt(prompt);
+      failIfProviderErrored(this.turnFailure.getFailure());
     } finally {
       unsubTurns();
       collector.unsubscribe();
       cleanupAbort();
     }
 
-    const responseText = collector.getText().trim() || getLastAssistantText(session);
-    return { responseText, turnBudget: tracker.budget };
+    return collector.getText().trim() || getLastAssistantText(session);
   }
 
   /**
@@ -205,32 +215,6 @@ export class SubagentSession {
       },
       { triggerTurn: false },
     );
-  }
-
-  /**
-   * Re-prompt the same session (resume); does not emit `completed`.
-   *
-   * The resumed run gets a fresh budget under the initial run's limits: the
-   * parent asked for more work, and an exhausted run's remainder would be none.
-   */
-  async resumeTurnLoop(prompt: string, opts: ResumeTurnLoopOptions): Promise<TurnLoopResult> {
-    const session = this._session;
-    const tracker = new TurnBudgetTracker(this.turnLimits);
-    const unsubTurns = this.enforceTurnBudget(tracker, opts.onTurnBudget);
-    const collector = collectResponseText(session);
-    const cleanupAbort = forwardAbortSignal(session, opts.signal);
-
-    try {
-      await session.prompt(prompt);
-      failIfProviderErrored(this.turnFailure.getFailure());
-    } finally {
-      unsubTurns();
-      collector.unsubscribe();
-      cleanupAbort();
-    }
-
-    const responseText = collector.getText().trim() || getLastAssistantText(session);
-    return { responseText, turnBudget: tracker.budget };
   }
 
   /** Deliver a steer to the live session. */
@@ -366,9 +350,6 @@ function readLastTurnFailure(session: AgentSession): string | undefined {
 
 /** The custom-message type the turn-budget warning is sent as. */
 const TURN_BUDGET_WARNING_TYPE = "subagents:turn-budget-warning";
-
-/** Wrap-up turns when the run config names none; matches the setting's default. */
-const DEFAULT_WRAP_UP_TURNS = 2;
 
 /** The warning a child reads with `remaining` turns left, this coming one included. */
 function budgetWarningText(remaining: number): string {

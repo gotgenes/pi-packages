@@ -176,7 +176,7 @@ describe("AgentWidget cadence under Pi's real renderers", () => {
 			},
 		});
 
-		widget.onSubagentStarted(record);
+		widget.onSubagentRunStarted(record, "initial");
 		let elapsed = 0;
 		while (requestRender.mock.calls.length === 0 && elapsed < 1000) {
 			vi.advanceTimersByTime(1);

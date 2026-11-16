@@ -80,10 +80,8 @@ export function buildParentSnapshot(
 
 /**
  * Compose the parent's operator-authored parts into an identity a child may
- * adopt, in the order and shape Pi's own `buildSystemPrompt` composes them
- * from 0.86: the custom prompt, then the appended prompt as an `<addendum>`
- * section. Pi through 0.85 wrote the appended prompt bare; one shape is
- * composed for every host.
+ * adopt, in the order and shape Pi's own `buildSystemPrompt` composes them:
+ * the custom prompt, then the appended prompt as an `<addendum>` section.
  *
  * The result is what Pi would assemble for a session with a custom prompt and
  * no tools, skills, or context files, so a host that re-homes it sees text

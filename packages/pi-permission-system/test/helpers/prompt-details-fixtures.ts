@@ -50,6 +50,7 @@ export function makePromptPayload(
       commandContext: null,
       matchedSpelling: null,
       executedUnit: null,
+      decidingPath: null,
     },
     evidence: [],
     annotations: [],

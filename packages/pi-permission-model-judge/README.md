@@ -98,14 +98,15 @@ See [`config/config.example.json`](config/config.example.json) for a complete ex
 ## Configuration
 
 Config is layered — a project file (`<cwd>/.pi/extensions/pi-permission-model-judge/config.json`) overrides the global one — and validated against a [JSON Schema](schemas/model-judge.schema.json).
+The project file applies only when you trust the project: in an untrusted project it is never read, only the global config applies, and the judge warns that it skipped the file.
 
-| Field          | Type       | Default  | Description                                                                                |
-| -------------- | ---------- | -------- | ------------------------------------------------------------------------------------------ |
-| `provider`     | `string`   | required | Model provider (e.g. `anthropic`), resolved against Pi's model registry.                   |
-| `model`        | `string`   | required | Model id (e.g. `claude-haiku-4-5`).                                                        |
-| `instructions` | `string`   | required | System prompt describing what a typo path is and the teaching reason to return.            |
-| `typoPatterns` | `string[]` | `[]`     | Regular expressions; only a path matching one reaches the model. Empty means never review. |
-| `timeoutMs`    | `integer`  | `5000`   | Per-review model-call budget in milliseconds; a timeout defers.                            |
+| Field          | Type       | Default  | Description                                                                                                       |
+| -------------- | ---------- | -------- | ----------------------------------------------------------------------------------------------------------------- |
+| `provider`     | `string`   | required | Model provider (e.g. `anthropic`), resolved against Pi's model registry.                                          |
+| `model`        | `string`   | required | Model id (e.g. `claude-haiku-4-5`).                                                                               |
+| `instructions` | `string`   | required | System prompt describing what a typo path is and the teaching reason to return.                                   |
+| `typoPatterns` | `string[]` | `[]`     | Regular expressions; only a path matching one reaches the model. Empty means never review. At most 1,000 entries. |
+| `timeoutMs`    | `integer`  | `5000`   | Per-review model-call budget in milliseconds; a timeout defers.                                                   |
 
 An empty or absent `typoPatterns` (or a missing config) makes the reviewer defer everything — a safe no-op.
 

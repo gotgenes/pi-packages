@@ -96,6 +96,8 @@ If the deviation is large, stop and ask.
 
 Before a decision record narrows or replaces a published contract (an event payload, a wire format, a service method), list that contract's current fields and their stability guarantees.
 A field the record never mentions is a field an implementer drops.
+When a decision record answers, widens, or reverses an earlier ADR, add a dated entry to that ADR's Status in the same commit, in the pattern it already uses.
+Before a decision record's final gate, list the package's issues and pull requests filed since the plan commit; a new report can invalidate a premise every gate assumed.
 
 ## Filing an issue mid-implementation
 

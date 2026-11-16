@@ -11,6 +11,7 @@ Accepted.
 Amended 2026-08-21 with decision 7's reclassification ([#794]): the ready latch and the locator's reclaimed spelling both ship as **major**, not the single minor this record originally classified.
 Amended 2026-08-30 ([#796]): decision 7's deferred removal is taken — the process-root slot, its reader, and the [#302] child guard are deleted in a further major.
 Amended 2026-09-01 ([#793]): decision 1 gains a third category — a **fact-shaping** registration's lookup may cross an in-process node boundary, which closes decision 6's converse hazard for in-process children without moving where any registration lands.
+Amended 2026-11-16 by `docs/decisions/0016-policy-channels.md` §6: an in-process child reads its parent's unrestricted mode through a process-global entry, one mode fact crossing decision 1's boundary; no registration or live authority moves.
 This decision settles the contract between three parties — pi-permission-system, subagent implementations, and sibling permission extensions — for a Pi process that hosts more than one session node.
 It fixes the one architectural lie the parties currently work around (a session-boundary-crossing service accessor), names the one supported adapter convention for subagent implementations, and classifies every adopted mechanism against the events stability guarantee.
 It composes with `docs/decisions/0007-model-judge-authorizer-chain-adr.md` (whose §7, one chain per node, it reaffirms unamended) and with pi-subagents [ADR-0002] (whose inverted dependency it leaves untouched).

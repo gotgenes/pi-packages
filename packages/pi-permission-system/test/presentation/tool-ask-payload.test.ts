@@ -70,6 +70,7 @@ describe("buildToolAskPayload", () => {
         commandContext: "command_substitution",
         matchedSpelling: null,
         executedUnit: null,
+        decidingPath: null,
       });
     });
 

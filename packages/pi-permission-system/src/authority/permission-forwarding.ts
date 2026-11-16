@@ -133,13 +133,22 @@ export interface ForwardedAccessFacts {
    */
   floor?: string;
   /**
-   * Every unit of a bash chain the child left asking, each with its own floor.
-   * `matchValues` names only the chain's winner, and the serving node's answer
+   * Every unit of a bash chain the child left asking, each with its own floor
+   * and the spellings the child matched it in. `matchValues` names only the
+   * chain's winner, and the serving node's answer
    * approves the whole tool call, so it judges each of these instead. Absent
    * for a non-bash ask and for a bash ask raised without a chain (the empty
    * parse), where `matchValues` is the whole command.
    */
   askingUnits?: AskingBashUnit[];
+  /**
+   * Set only by the bash external-directory gate, when every path it left
+   * uncovered names nothing on disk below the filesystem root, was located
+   * against a known working directory, and is not a proven write (ADR 0007 §8). The
+   * delegation envelope honors a link's `allow` on the `external_directory`
+   * family only when it is present; absence means unlicensed.
+   */
+  delegationLicense?: "nothing-on-disk";
 }
 
 /**

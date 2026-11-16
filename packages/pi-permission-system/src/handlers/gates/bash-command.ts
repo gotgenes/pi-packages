@@ -28,7 +28,9 @@ import type { PermissionCheckResult } from "#src/types";
  * payload (`bash -c`/`eval`, #481) or `<indirection-bash-wrapper>` for a
  * prefix/exec wrapper (`sudo`/`env`/`xargs`/`find -exec`/…, #490) — to keep it
  * from riding a permissive rule; an explicit `deny`/`ask` on the wrapper is left
- * untouched (`deny > ask > allow`).
+ * untouched (`deny > ask > allow`). A wrapper the enumerator marked exempt is
+ * decided by the command it runs instead, or by its own rule when it names no
+ * command (a bare `env`).
  *
  * A trivially-empty command (an empty, whitespace-only, or comment-only line)
  * has genuinely nothing to gate, so the whole `command` is resolved as before.
@@ -109,13 +111,28 @@ export function resolveBashCommandCheck(
     }
   }
 
-  const results = commands.map((cmd) =>
+  const units = commands.map((cmd) =>
     resolveCommandUnit(cmd, command, agentName, resolver),
   );
+  const checks = units.map((unit) => unit.check);
   const winner =
-    pickMostRestrictive(results) ??
+    pickMostRestrictive(checks) ??
     resolveOnBashSurface(command, [], agentName, resolver);
-  return withAskingUnits(withChainFloor(winner, results), results);
+  return withAskingUnits(withChainFloor(winner, checks), units);
+}
+
+/**
+ * One unit's verdict, and the spellings of the command that verdict names
+ * (`check.command`).
+ *
+ * The two travel together because a site can replace `check.command`, and the
+ * spellings describe one text only: a site that changes the command decides
+ * its spellings in the same expression, so they can never ride beside a text
+ * they do not spell.
+ */
+interface ResolvedUnit {
+  check: PermissionCheckResult;
+  spellings: readonly string[];
 }
 
 /**
@@ -123,19 +140,21 @@ export function resolveBashCommandCheck(
  *
  * The winner names one command, but a forwarded ask's answer approves the
  * whole tool call, so the serving node has to judge every unit the child could
- * not resolve, each with its own floor (#1030). A unit the child's rules or
- * the session allowed stays home.
+ * not resolve, each with its own floor (#1030) and in the spellings the child
+ * matched it in, which only the child's parse can produce (#1019). A unit the
+ * child's rules or the session allowed stays home.
  */
 function withAskingUnits(
   winner: PermissionCheckResult,
-  results: readonly PermissionCheckResult[],
+  units: readonly ResolvedUnit[],
 ): PermissionCheckResult {
   if (winner.state !== "ask") return winner;
-  const askingUnits = results
-    .filter((result) => result.state === "ask")
-    .map((result) => ({
-      command: result.command ?? "",
-      ...(result.floor === undefined ? {} : { floor: result.floor }),
+  const askingUnits = units
+    .filter(({ check }) => check.state === "ask")
+    .map(({ check, spellings }) => ({
+      command: check.command ?? "",
+      ...(spellings.length === 0 ? {} : { spellings: [...spellings] }),
+      ...(check.floor === undefined ? {} : { floor: check.floor }),
     }));
   return askingUnits.length === 0 ? winner : { ...winner, askingUnits };
 }
@@ -163,13 +182,16 @@ function withChainFloor(
  * Resolve one command unit of the chain: its own `bash`-surface rule, floored
  * where the enumerator established a reason to floor it, then tagged with the
  * facts the prompt and the session-approval suggestion read off the winner.
+ *
+ * Paired with the unit's spellings: a plain unit and a wrapper unit both keep
+ * the unit's own text as `command`, so its spellings still apply.
  */
 function resolveCommandUnit(
   cmd: BashCommand,
   command: string,
   agentName: string | undefined,
   resolver: ScopedPermissionResolver,
-): PermissionCheckResult {
+): ResolvedUnit {
   const base = resolveOnBashSurface(
     cmd.text,
     cmd.spellings ?? [],
@@ -180,10 +202,24 @@ function resolveCommandUnit(
     cmd.wrapperKind && base.state === "allow" && !isSessionGrant(base)
       ? resolveWrapperUnit(cmd, cmd.wrapperKind, base, agentName, resolver)
       : base;
-  const unparsed = floorUnparsedUnit(cmd, command, floored);
+  const unit = floorUnparsedUnit(cmd, command, {
+    check: floored,
+    spellings: cmd.spellings ?? [],
+  });
+  return { ...unit, check: tagWithUnitFacts(cmd, unit.check) };
+}
+
+/**
+ * Tag a unit's check with the facts the prompt reads off the winner: the
+ * execution context of a nested command, and the command a wrapper runs.
+ */
+function tagWithUnitFacts(
+  cmd: BashCommand,
+  check: PermissionCheckResult,
+): PermissionCheckResult {
   const contextual = cmd.context
-    ? { ...unparsed, commandContext: cmd.context }
-    : unparsed;
+    ? { ...check, commandContext: cmd.context }
+    : check;
   return cmd.executedUnit === undefined
     ? contextual
     : { ...contextual, executedUnit: cmd.executedUnit };
@@ -209,20 +245,27 @@ function resolveCommandUnit(
  * A session grant is never floored: the user approved this exact command, and
  * an `ask` carrying it would tie with a sibling unit's real ask and could
  * approve the whole chain through `GateRunner`'s session fast path (#1033).
+ *
+ * Naming the whole command drops the unit's spellings: they spell the unit's
+ * text, and no unit owns the whole command line.
  */
 function floorUnparsedUnit(
   cmd: BashCommand,
   command: string,
-  resolved: PermissionCheckResult,
-): PermissionCheckResult {
+  resolved: ResolvedUnit,
+): ResolvedUnit {
+  const { check } = resolved;
   if (
     !cmd.parseUnresolved ||
-    resolved.state !== "allow" ||
-    isSessionGrant(resolved)
+    check.state !== "allow" ||
+    isSessionGrant(check)
   ) {
     return resolved;
   }
-  return { ...floorToAsk(resolved, UNPARSED_SUBTREE_SENTINEL), command };
+  return {
+    check: { ...floorToAsk(check, UNPARSED_SUBTREE_SENTINEL), command },
+    spellings: [],
+  };
 }
 
 /**
@@ -262,7 +305,9 @@ function floorToAsk(
  * the enumerator established that the floor has no reason left to hold, in
  * which case the unit is resolved by the rules of the command it runs (ADR 0013
  * §11): its inner command is a proven pure reader (#803), or every wrapper
- * layer only modifies how that command runs (#963).
+ * layer only modifies how that command runs (#963). A wrapper that names no
+ * command and runs nothing so (`"no-command"`, a bare `env`) has no inner
+ * command to resolve, so its own rule, already in `base`, decides.
  *
  * Only an `allow` reaches here, which is what makes the exemption unable to
  * weaken anything: an explicit `deny` or `ask` on the wrapper is decided before
@@ -275,6 +320,9 @@ function resolveWrapperUnit(
   agentName: string | undefined,
   resolver: ScopedPermissionResolver,
 ): PermissionCheckResult {
+  if (cmd.floorExemption === "no-command") {
+    return { ...base, floorExemption: cmd.floorExemption };
+  }
   const inner = cmd.floorExemption && cmd.executedUnit;
   if (!inner) {
     return floorToAsk(base, WRAPPER_SENTINEL[wrapperKind]);

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { BashProgram } from "#src/access-intent/bash/program";
 import type { TerminalAuthorizer } from "#src/authority/authorizer";
 import type { PermissionPromptDecision } from "#src/authority/permission-dialog";
 import {
@@ -6,10 +7,16 @@ import {
   type PermissionPrompterDeps,
   type PromptPermissionDetails,
 } from "#src/authority/permission-prompter";
+import { describeBashExternalDirectoryGate } from "#src/handlers/gates/bash-external-directory";
+import type { GateDescriptor } from "#src/handlers/gates/descriptor";
+import { posixPathFlavor } from "#src/path/path-flavor";
+import { PathNormalizer } from "#src/path/path-normalizer";
 import {
   DECIDED_BY_ABSENT_AUTHORITY,
   DECIDED_BY_HUMAN,
 } from "#test/helpers/decision-fixtures";
+import { makeResolver, makeTcc } from "#test/helpers/gate-fixtures";
+import { makeCheckResult } from "#test/helpers/handler-fixtures";
 import {
   makePromptDetails,
   makePromptPayload,
@@ -394,6 +401,47 @@ describe("PermissionPrompter", () => {
       expect(entry).not.toHaveProperty("payload");
       expect(entry).not.toHaveProperty("message");
       expect(entry).not.toHaveProperty("evidence");
+    });
+
+    it("names a bash external-directory ask's deciding path and its provenance on every entry", async () => {
+      // The ask exactly as the gate raises it, so the entry reads what a human
+      // deciding this ask is shown rather than a hand-built payload.
+      const tcc = makeTcc({ input: { command: "cat /outside/a.ts" } });
+      const normalizer = new PathNormalizer(posixPathFlavor, tcc.cwd);
+      const gate = describeBashExternalDirectoryGate(
+        tcc,
+        await BashProgram.parse("cat /outside/a.ts", normalizer),
+        makeResolver(
+          makeCheckResult({
+            state: "ask",
+            toolName: "external_directory_read",
+            matchedPattern: "*",
+          }),
+        ),
+        normalizer,
+      ) as GateDescriptor;
+      const logger = { review: vi.fn() };
+      const prompter = new PermissionPrompter(makeDeps({ logger }));
+
+      await prompter.prompt(makeAuthorizer(), {
+        requestId: "req-blame",
+        payload: gate.payload,
+        ...gate.promptDetails,
+      });
+
+      const blame = {
+        decidingPath: "/outside/a.ts",
+        effect: "read",
+        effectSource: "core",
+      };
+      expect(logger.review).toHaveBeenCalledWith(
+        "permission_request.waiting",
+        expect.objectContaining(blame),
+      );
+      expect(logger.review).toHaveBeenCalledWith(
+        "permission_request.approved",
+        expect.objectContaining(blame),
+      );
     });
   });
 });

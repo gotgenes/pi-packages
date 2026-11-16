@@ -1,5 +1,6 @@
 import {
   describeBashCommandContext,
+  describeDecidingPath,
   flaggedElements,
   valueLabel,
 } from "./fact-vocabulary";
@@ -199,8 +200,8 @@ const ELISION_MARKER_ROWS = 1;
 
 /**
  * The invariant core (ADR 0011 §3), in reading order: who is asking, what they
- * called, what gated it, the decision-relevant value, and what will actually
- * run.
+ * called, what gated it, the decision-relevant value, why a path ask landed on
+ * its direction, and what will actually run.
  */
 function coreFacts(payload: PromptPayload): Fact[] {
   const { request } = payload;
@@ -227,6 +228,10 @@ function coreFacts(payload: PromptPayload): Fact[] {
   }
   if (request.value !== "" && request.value !== request.toolName) {
     facts.push({ label, text: request.value });
+  }
+  const why = describeDecidingPath(payload);
+  if (why !== undefined) {
+    facts.push({ label: "why", text: why });
   }
   if (request.executedUnit !== null) {
     facts.push({ label: "runs", text: request.executedUnit });

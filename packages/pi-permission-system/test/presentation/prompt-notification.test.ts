@@ -31,6 +31,7 @@ function makeRequest(
     commandContext: null,
     matchedSpelling: null,
     executedUnit: null,
+    decidingPath: null,
     ...overrides,
   };
 }

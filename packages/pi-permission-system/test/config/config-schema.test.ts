@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { describe, expect, expectTypeOf, it } from "vitest";
+import type { z } from "zod";
 import type {
   DenyWithReason as SchemaDenyWithReason,
   FlatPermissionConfig as SchemaFlatPermissionConfig,
@@ -10,6 +11,7 @@ import type {
 } from "#src/config/config-schema";
 import {
   buildPermissionsJsonSchema,
+  commandEffectsSchema,
   PERMISSIONS_SCHEMA_URL,
   unifiedConfigSchema,
 } from "#src/config/config-schema";
@@ -360,6 +362,207 @@ describe("unifiedConfigSchema", () => {
   });
 });
 
+describe("commandEffectsSchema", () => {
+  describe("accepted shapes", () => {
+    it.each([
+      [
+        "ADR 0013 \u00a77's example",
+        {
+          sed: { effects: "read", unlessOption: ["-i", "--in-place"] },
+          curl: { effects: [], unlessOption: ["-o", "-O", "--output"] },
+          git: {
+            subcommands: {
+              diff: "read",
+              log: "read",
+              remote: { subcommands: { show: "read" } },
+            },
+          },
+        },
+      ],
+      ["an empty effects array", { officecli: { effects: [] } }],
+      ["both effects", { tool: { effects: ["read", "write"] } }],
+      ["a write declaration", { tool: { effects: "write" } }],
+      [
+        "an array shorthand subcommand",
+        { git: { subcommands: { log: ["read"] } } },
+      ],
+      [
+        "a single-dash long stem",
+        { tool: { effects: "read", unlessOption: ["-exec"] } },
+      ],
+      ["an entry with only subcommands", { git: { subcommands: {} } }],
+    ])("accepts %s", (_label, value) => {
+      expect(commandEffectsSchema.safeParse(value).success).toBe(true);
+    });
+  });
+
+  describe("rejected shapes", () => {
+    it.each([
+      ["a path-qualified command key", { "/usr/bin/git": { effects: "read" } }],
+      ["a relative command key", { "./git": { effects: "read" } }],
+      ["a backslash command key", { "bin\\git": { effects: "read" } }],
+      ["a command key with whitespace", { "git log": { effects: "read" } }],
+      ["an empty command key", { "": { effects: "read" } }],
+      ["a dash-led subcommand key", { git: { subcommands: { "-C": "read" } } }],
+      ["an empty subcommand key", { git: { subcommands: { "": "read" } } }],
+      [
+        "an option stem without a dash",
+        { sed: { effects: "read", unlessOption: ["i"] } },
+      ],
+      ["a bare dash stem", { sed: { effects: "read", unlessOption: ["-"] } }],
+      [
+        "a bare double-dash stem",
+        { sed: { effects: "read", unlessOption: ["--"] } },
+      ],
+      [
+        "an option stem with a value",
+        { sed: { effects: "read", unlessOption: ["--output=x"] } },
+      ],
+      ["an unknown effect", { git: { subcommands: { log: "reed" } } }],
+      ["an unknown field", { git: { effect: "read" } }],
+      [
+        "an unknown nested field",
+        { git: { subcommands: { log: { effect: "read" } } } },
+      ],
+    ])("rejects %s", (_label, value) => {
+      expect(commandEffectsSchema.safeParse(value).success).toBe(false);
+    });
+  });
+});
+
+describe("array size bounds", () => {
+  const CAP = 1000;
+
+  /**
+   * A failed union reports one top-level `invalid_union` whose arms carry the
+   * real issues, so a count of top-level issues cannot tell a pre-walk size
+   * rejection from a per-element one. Flatten to the leaves instead, rebasing
+   * each arm's union-relative path onto the union's own.
+   */
+  function leafIssues(
+    issues: readonly z.core.$ZodIssue[],
+    prefix: PropertyKey[] = [],
+  ): { code: string; path: PropertyKey[] }[] {
+    return issues.flatMap((issue) => {
+      const path = [...prefix, ...issue.path];
+      return issue.code === "invalid_union"
+        ? issue.errors.flatMap((arm) => leafIssues(arm, path))
+        : [{ code: issue.code, path }];
+    });
+  }
+
+  const repeat = <T>(n: number, fill: T): T[] =>
+    Array.from({ length: n }, () => fill);
+
+  interface BoundCase {
+    schema: z.ZodType;
+    build: (entries: string[]) => unknown;
+    validFill: string;
+    invalidFill: string;
+    path: (string | number)[];
+  }
+
+  const cases: [string, BoundCase][] = [
+    [
+      "piInfrastructureReadPaths",
+      {
+        schema: unifiedConfigSchema,
+        build: (entries) => ({ piInfrastructureReadPaths: entries }),
+        validFill: "/p",
+        invalidFill: "",
+        path: ["piInfrastructureReadPaths"],
+      },
+    ],
+    [
+      "authorizerChain",
+      {
+        schema: unifiedConfigSchema,
+        build: (entries) => ({ authorizerChain: entries }),
+        validFill: "x",
+        invalidFill: "",
+        path: ["authorizerChain"],
+      },
+    ],
+    [
+      "promptNotifications",
+      {
+        schema: unifiedConfigSchema,
+        build: (entries) => ({ promptNotifications: entries }),
+        validFill: "bell",
+        invalidFill: "beep",
+        path: ["promptNotifications"],
+      },
+    ],
+    [
+      "a commandEffects entry's effects",
+      {
+        schema: commandEffectsSchema,
+        build: (entries) => ({ t: { effects: entries } }),
+        validFill: "read",
+        invalidFill: "x",
+        path: ["t", "effects"],
+      },
+    ],
+    [
+      "a commandEffects entry's unlessOption",
+      {
+        schema: commandEffectsSchema,
+        build: (entries) => ({ t: { effects: "read", unlessOption: entries } }),
+        validFill: "--output",
+        invalidFill: "x",
+        path: ["t", "unlessOption"],
+      },
+    ],
+    [
+      "a subcommand's shorthand effects list",
+      {
+        schema: commandEffectsSchema,
+        build: (entries) => ({ t: { subcommands: { s: entries } } }),
+        validFill: "read",
+        invalidFill: "x",
+        path: ["t", "subcommands", "s"],
+      },
+    ],
+    [
+      "a subcommand entry's effects",
+      {
+        schema: commandEffectsSchema,
+        build: (entries) => ({
+          t: { subcommands: { s: { effects: entries } } },
+        }),
+        validFill: "read",
+        invalidFill: "x",
+        path: ["t", "subcommands", "s", "effects"],
+      },
+    ],
+  ];
+
+  describe.each(cases)(
+    "%s",
+    (_label, { schema, build, validFill, invalidFill, path }) => {
+      it(`accepts ${CAP} valid entries`, () => {
+        expect(schema.safeParse(build(repeat(CAP, validFill))).success).toBe(
+          true,
+        );
+      });
+
+      it(`rejects ${CAP + 1} invalid entries with one size issue and no element issue`, () => {
+        const result = schema.safeParse(build(repeat(CAP + 1, invalidFill)));
+        expect(result.success).toBe(false);
+        const leaves = leafIssues(result.error?.issues ?? []);
+        expect(
+          leaves
+            .filter((issue) => issue.code === "too_big")
+            .map((issue) => issue.path),
+        ).toEqual([path]);
+        expect(
+          leaves.filter((issue) => typeof issue.path.at(-1) === "number"),
+        ).toEqual([]);
+      });
+    },
+  );
+});
+
 describe("inferred types match the hand-written domain types", () => {
   it("PermissionState is equivalent", () => {
     expectTypeOf<SchemaPermissionState>().toEqualTypeOf<PermissionState>();
@@ -397,10 +600,25 @@ describe("buildPermissionsJsonSchema", () => {
   it("extracts the shared sub-schemas into $defs", () => {
     const defs = schema.$defs as Record<string, unknown>;
     expect(Object.keys(defs).sort()).toEqual([
+      "commandEffectsEntry",
       "denyWithReason",
       "permissionMap",
       "permissionState",
     ]);
+  });
+
+  it("refers a nested subcommand entry back to the shared entry definition", () => {
+    const defs = schema.$defs as Record<string, Record<string, unknown>>;
+    const properties = defs.commandEffectsEntry.properties as Record<
+      string,
+      Record<string, unknown>
+    >;
+    expect(properties.subcommands.additionalProperties).toEqual({
+      anyOf: [
+        { $ref: "#/$defs/commandEffectsEntry" },
+        expect.objectContaining({ anyOf: expect.any(Array) }),
+      ],
+    });
   });
 
   it("preserves markdownDescription for editor hovers", () => {

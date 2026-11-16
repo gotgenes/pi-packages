@@ -11,6 +11,7 @@
 import { describe, expect, it } from "vitest";
 import {
   normalizeMaxTurns,
+  resolveTurnLimits,
   type TurnBudgetPhase,
   TurnBudgetTracker,
   wrappedUpAtTurnLimit,
@@ -43,6 +44,40 @@ describe("normalizeMaxTurns", () => {
 
   it("handles large values unchanged", () => {
     expect(normalizeMaxTurns(10_000)).toBe(10_000);
+  });
+});
+
+describe("resolveTurnLimits", () => {
+  describe("the ceiling", () => {
+    it("takes the per-call maxTurns over the agent's and the default", () => {
+      expect(resolveTurnLimits({ maxTurns: 3, defaultMaxTurns: 9 }, 7).maxTurns).toBe(3);
+    });
+
+    it("falls back to the agent's maxTurns when no per-call one is set", () => {
+      expect(resolveTurnLimits({ defaultMaxTurns: 9 }, 7).maxTurns).toBe(7);
+    });
+
+    it("falls back to the default when neither the call nor the agent sets one", () => {
+      expect(resolveTurnLimits({ defaultMaxTurns: 9 }, undefined).maxTurns).toBe(9);
+    });
+
+    it("is unlimited when nothing sets one", () => {
+      expect(resolveTurnLimits(undefined, undefined)).toEqual({ maxTurns: undefined, wrapUpTurns: 2 });
+    });
+
+    it("raises a ceiling below the minimum to it", () => {
+      expect(resolveTurnLimits({ maxTurns: 1 }, undefined).maxTurns).toBe(2);
+    });
+  });
+
+  describe("the wrap-up turns", () => {
+    it("takes the requested count", () => {
+      expect(resolveTurnLimits({ wrapUpTurns: 3 }, undefined).wrapUpTurns).toBe(3);
+    });
+
+    it("defaults to the setting's default of 2", () => {
+      expect(resolveTurnLimits({ maxTurns: 5 }, undefined).wrapUpTurns).toBe(2);
+    });
   });
 });
 

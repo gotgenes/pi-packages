@@ -5,6 +5,97 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [25.0.5](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v25.0.4...pi-subagents-v25.0.5) (2026-10-28)
+
+
+### Bug Fixes
+
+* **pi-subagents:** drop a forced parent prompt's whole skills section from a child's identity ([#1017](https://github.com/gotgenes/pi-packages/issues/1017)) ([8593f1d](https://github.com/gotgenes/pi-packages/commit/8593f1d8f8c9d42a249cde2830567207995a5661))
+
+### Documentation
+
+* **pi-subagents:** describe the prompt layers Pi renders today ([#1017](https://github.com/gotgenes/pi-packages/issues/1017)) ([eac8a2e](https://github.com/gotgenes/pi-packages/commit/eac8a2e39ac4ff2405079169a8e4fe460115d964))
+
+## [25.0.4](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v25.0.3...pi-subagents-v25.0.4) (2026-10-25)
+
+
+### Bug Fixes
+
+* **pi-subagents:** label a reloaded resume stopped while queued with its time in the queue ([#1086](https://github.com/gotgenes/pi-packages/issues/1086)) ([473e97d](https://github.com/gotgenes/pi-packages/commit/473e97de6f257ac00a6dc79a69941fa6656e4529)), closes [#1086](https://github.com/gotgenes/pi-packages/issues/1086)
+
+## [25.0.3](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v25.0.2...pi-subagents-v25.0.3) (2026-10-24)
+
+
+### Bug Fixes
+
+* **pi-subagents:** label a queued resume's navigator entry with its time in the queue ([ba7a5be](https://github.com/gotgenes/pi-packages/commit/ba7a5be361b175a6c8d273d966f48cc17d01d4f6)), closes [#1085](https://github.com/gotgenes/pi-packages/issues/1085)
+
+## [25.0.2](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v25.0.1...pi-subagents-v25.0.2) (2026-10-24)
+
+
+### Bug Fixes
+
+* **pi-subagents:** show a queued agent's Duration as its time in the queue ([eb0bea4](https://github.com/gotgenes/pi-packages/commit/eb0bea464b625e23024035534b58b7c585baba28)), closes [#1080](https://github.com/gotgenes/pi-packages/issues/1080)
+
+## [25.0.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v25.0.0...pi-subagents-v25.0.1) (2026-10-18)
+
+
+### Bug Fixes
+
+* **pi-subagents:** say a queued agent has not started instead of "No output." ([b07e281](https://github.com/gotgenes/pi-packages/commit/b07e2812bc60414a1bf95e50f51dd255aa846061)), closes [#1079](https://github.com/gotgenes/pi-packages/issues/1079)
+* **pi-subagents:** tell a parent whose wait expired on a queued agent that waiting again is how to collect it ([33fbc53](https://github.com/gotgenes/pi-packages/commit/33fbc534c5a943cc3d4bab3ab03794684af34e30)), closes [#1079](https://github.com/gotgenes/pi-packages/issues/1079)
+
+## [25.0.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v24.0.1...pi-subagents-v25.0.0) (2026-10-17)
+
+
+### Bug Fixes
+
+* **pi-subagents:** **breaking:** refuse a second resume while one waits for a concurrency slot ([9cd6ef6](https://github.com/gotgenes/pi-packages/commit/9cd6ef694d8241745af1fbe63d74ee68907215f8)), closes [#1013](https://github.com/gotgenes/pi-packages/issues/1013)
+* **pi-subagents:** admit a background resume through maxConcurrent ([b62c410](https://github.com/gotgenes/pi-packages/commit/b62c410498ee1526e52b0bb119f675b5e9435fe4)), closes [#1013](https://github.com/gotgenes/pi-packages/issues/1013)
+
+### Documentation
+
+* **pi-subagents:** document resume admission through maxConcurrent ([735ff66](https://github.com/gotgenes/pi-packages/commit/735ff6608222fae2a3321456a1074275bfdff083))
+
+## [24.0.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v24.0.0...pi-subagents-v24.0.1) (2026-10-17)
+
+
+### Bug Fixes
+
+* **pi-subagents:** keep a stopped run's late result off the resume that replaced it ([7307cae](https://github.com/gotgenes/pi-packages/commit/7307caeda14df5608201ad61a956d87ff8dbbd7c)), closes [#1051](https://github.com/gotgenes/pi-packages/issues/1051)
+
+## [24.0.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v23.4.2...pi-subagents-v24.0.0) (2026-10-17)
+
+
+### Features
+
+* **pi-subagents:** stream a foreground resume's progress inline ([#1012](https://github.com/gotgenes/pi-packages/issues/1012)) ([fdf1fab](https://github.com/gotgenes/pi-packages/commit/fdf1fab37df1560b570ee9f2148d185e2b42fc73))
+
+### Bug Fixes
+
+* **pi-subagents:** let a resumed run's finished widget row linger like the first run's ([#1012](https://github.com/gotgenes/pi-packages/issues/1012)) ([ccf9fc8](https://github.com/gotgenes/pi-packages/commit/ccf9fc873eb74125c38d9a88a789e4df270c330e))
+* **pi-subagents:** **breaking:** report the current run's mode, so a background resume shows a widget row ([7dafb7c](https://github.com/gotgenes/pi-packages/commit/7dafb7c2e44340b7deb3d4fca65e400611da0423)), closes [#1012](https://github.com/gotgenes/pi-packages/issues/1012)
+
+### Documentation
+
+* **pi-subagents:** describe isBackground as the current run's mode ([#1012](https://github.com/gotgenes/pi-packages/issues/1012)) ([d29d091](https://github.com/gotgenes/pi-packages/commit/d29d091854fc4425bdbf3dccead08ef8c4ed9ff0))
+* **pi-subagents:** say a background resume shows regardless of its spawn mode ([#1012](https://github.com/gotgenes/pi-packages/issues/1012)) ([f207f46](https://github.com/gotgenes/pi-packages/commit/f207f46449feca63aaf5840912951769d700a4a8))
+
+## [23.4.2](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v23.4.1...pi-subagents-v23.4.2) (2026-10-16)
+
+
+### Bug Fixes
+
+* **pi-subagents:** keep the workspace of a run that wraps up at its turn limit with a question ([083f8e8](https://github.com/gotgenes/pi-packages/commit/083f8e837451e55d2563074489fa5dc8cfefb52a)), closes [#1050](https://github.com/gotgenes/pi-packages/issues/1050)
+
+## [23.4.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v23.4.0...pi-subagents-v23.4.1) (2026-10-16)
+
+
+### Bug Fixes
+
+* **pi-subagents:** an abort that lands while a child is starting stops it before its first turn ([e9251f4](https://github.com/gotgenes/pi-packages/commit/e9251f4092872e3a1a177cfe4bb3ad4dd6d3b269)), closes [#1049](https://github.com/gotgenes/pi-packages/issues/1049)
+* **pi-subagents:** a spawn or resume whose signal already fired stops before its first turn ([18b035d](https://github.com/gotgenes/pi-packages/commit/18b035d92c4958fafc2cdbbc1c1f25c3c71909ea)), closes [#1049](https://github.com/gotgenes/pi-packages/issues/1049)
+
 ## [23.4.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v23.3.0...pi-subagents-v23.4.0) (2026-10-09)
 
 

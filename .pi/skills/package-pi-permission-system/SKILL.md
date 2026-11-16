@@ -13,6 +13,9 @@ This package is a full fork of [`MasuRii/pi-permission-system`](https://github.c
 It began as a config-layout divergence (#10) and has since diverged substantially in config format, internal architecture, and permission model.
 The `/permission-system` slash command name is the only upstream identity preserved.
 
+`packages/pi-permission-system/docs/glossary.md` defines the package's vocabulary (surface, gate, chain, link, envelope, node, prompt versus turn, …); use its terms as defined there, and link an entry by its heading anchor rather than redefining it.
+A new term of art earns an entry in the same change that introduces it.
+
 Read `docs/plans/` before making architectural changes.
 Pre-monorepo plans from the upstream fork live in `docs/plans/archive/` — issue numbers there refer to the upstream repo, not this monorepo.
 
@@ -58,11 +61,14 @@ Run `pnpm --silent fallow guard <file>` before adding a cross-directory import: 
   A bare family key is **load-time sugar**: `expandDirectionalSugar` (`src/policy/normalize.ts`), called once per scope inside `mergeScopesWithOrigins` before origin bookkeeping and the merge, rewrites it into both directional members, sugar entries first and explicit directional entries appended after, whatever the file's key order.
   The mechanism — the resolver's family fold, per-token effect proofs, per-pattern session grants, and their constraints — is ADR 0013 and `docs/architecture/architecture.md` (`normalize.ts`, `permission-resolver.ts`, `command-effects.ts`, `session-approval.ts` entries).
 - Wildcard matching must be explicit and tested — silent over-matching is a permission bypass.
+- A wrapper option grammar that unions BSD and GNU is verified by running both installed binaries over every option the grammar lists, long names included: BSD `env` has no long options and reads `--unset FOO` as `-u nset`, then runs `FOO`.
 - `*` already crosses directory boundaries; `**` is not a distinct globstar and compiles identically.
   Write `~/dev/*`, never `~/dev/**` — in config examples, ADRs, schema descriptions, and tests alike (Refs #806).
 - Prefer config patterns over new runtime mechanisms.
   Mechanism is forever; docs are reversible.
 - Treat any declared config field not read at runtime as a maintenance trap.
+- A fact that *relieves* an ask (a license, an exemption) is never read off the bash projection, which over-flags by design.
+  Require a positive condition the source proves (the token is the verbatim word bash runs, ADR 0007 §8), and list in the plan the inputs the bound must refuse before the pre-completion reviewer does.
 
 ### Single source of truth for tool policy
 
@@ -115,6 +121,7 @@ The `permission` object uses deep-shallow merge; scalar fields use simple replac
 - Keep `config-schema.ts`, example config, `docs/configuration.md`, and `README.md` aligned when the config shape changes — the schema and the config types are both derived from `config-schema.ts`, so it is the one edit point.
 - `docs/architecture/architecture.md` inline-copies the core `rule.ts` types (`Rule`, `RuleOrigin`, `Ruleset`).
   Adding or removing a field on one of these must update that listing too — a module-move check misses it, and only the pre-completion reviewer catches it otherwise.
+- `docs/cross-extension-api.md` tables every `PromptRequestFacts` field; a new field gets a row there in the same change.
 - Config **files** are validated strictly against `unifiedConfigSchema` (`config-schema.ts`) and rejected **fail-closed** on any invalid field (empty scope → universal `ask`), with a clear per-issue message.
   A rejected **non-global** scope (project / agent / project-agent) additionally floors the composed policy `allow`→`ask` (origin `fail-closed`) at composition, so a lower scope's `allow` cannot be silently inherited behind an invalid higher scope; `deny` is preserved, global is excluded, and `yoloMode` re-permits the floored `ask`.
   The loader marks such a scope `ScopeConfig.invalid` (a present-but-unloadable file; an absent file stays a plain empty scope); the manager reads the flags in `resolvePermissions` and appends a fail-closed notice to `getPolicyIssues`.
@@ -123,8 +130,10 @@ The `permission` object uses deep-shallow merge; scalar fields use simple replac
   For a soft-deprecation window, keep the field optional in the schema and ignore its value.
 - When adding an optional field to `PermissionSystemExtensionConfig`, do not include it in `DEFAULT_EXTENSION_CONFIG` with an explicit `undefined` value — tests use `deepEqual` and it breaks equality.
 - When adding a field, define it in `unifiedConfigSchema` (`config-schema.ts`, with `.meta({ description, markdownDescription })`) and regenerate the schema (`pnpm run gen:schema`); `UnifiedPermissionConfig` is inferred from it.
+  An array field chains `.max(MAX_CONFIG_ARRAY_ITEMS)`: zod checks the bound before walking the elements, so an unbounded array lets an oversized file allocate one issue per entry (CVE-2023-54404).
   Then carry it through `PermissionSystemExtensionConfig` (`extension-config.ts`) and merge it in `mergeUnifiedConfigs()` (`config-loader.ts` — a number goes in its "Number scalars" loop).
   A field on the runtime type but not the merge intermediate is silently dropped before runtime.
+  `commandEffects` is the one exception: its scope is provenance the review log reports, so `loadAndMergeConfigs` folds it per layer into `declaredCommandEffects` and `ConfigStore` holds it beside the runtime config, where `save()` cannot drop it.
   Omitting a field from `UnifiedPermissionConfig` that `normalizePermissionSystemConfig` reads is a **compile error** — `normalizePermissionSystemConfig` reads fields directly from the typed `UnifiedPermissionConfig` parameter, so `tsc` catches the gap immediately.
 - When a config example sets a policy for `write`, include the same policy for `edit` — both tools modify files and users expect them gated together.
 - `promptMaxRows` (24) and `promptFieldMaxWidth` (400) bound what an ask prompt renders; `resolveRenderBudget` (`src/presentation/dialog-renderer.ts`) owns their defaults, so neither belongs in `DEFAULT_EXTENSION_CONFIG`.

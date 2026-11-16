@@ -236,6 +236,8 @@ describe("describePathGate", () => {
     expect(result.payload.kind).toBe("path");
     expect(result.payload.request.value).toBe(".env");
     expect(result.payload.request.matchedPattern).toBe("*.env");
+    // A tool's direction is its identity, which the tool fact already states.
+    expect(result.payload.request.decidingPath).toBeNull();
   });
 
   it("descriptor decision uses surface 'path' and the file path as value", () => {

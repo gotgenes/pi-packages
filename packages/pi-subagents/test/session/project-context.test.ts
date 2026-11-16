@@ -7,11 +7,11 @@ import {
 
 describe("renderProjectContext", () => {
   describe("Pi's block format", () => {
-    // Byte-exact against pi 0.86.1's dist/core/system-prompt.js, measured by
-    // calling its buildSystemPrompt: the lead-in and each block are joined by
-    // a blank line, and the section wrapper adds no blank line inside either
-    // tag. Pi through 0.85 wrote one below the opening and above the closing.
-    it("renders one context file the way pi ≥0.86's buildSystemPrompt does", () => {
+    // Byte-exact against the pinned SDK's dist/core/system-prompt.js
+    // (`renderProjectContext` in 1.0.0): the lead-in and each block are joined
+    // by a blank line, and the section wrapper adds no blank line inside
+    // either tag.
+    it("renders one context file the way Pi's buildSystemPrompt does", () => {
       expect(
         renderProjectContext([{ path: "/repo/AGENTS.md", content: "Repo rules." }]),
       ).toBe(

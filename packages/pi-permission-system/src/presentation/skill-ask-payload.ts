@@ -44,6 +44,7 @@ function skillPayload(
       commandContext: null,
       matchedSpelling: null,
       executedUnit: null,
+      decidingPath: null,
     },
     evidence,
     annotations: [],

@@ -29,8 +29,29 @@ export function renderReviewLogFacts(
     ...present("executedUnit", request.executedUnit),
     ...present("commandContext", request.commandContext),
     ...present("invokedToolName", request.invokedToolName),
+    ...decidingPathFacts(payload),
     ...forwardingFacts(payload),
   };
+}
+
+/**
+ * The blame for a bash path ask: the path that decided it and what established
+ * its direction.
+ *
+ * Flat, under the names the bash gates once stamped on their log context, so
+ * an entry the runner writes and an entry the prompter writes read alike.
+ * `decidingPath` rather than `path`, which the writers already spend on the
+ * tool's own path column.
+ */
+function decidingPathFacts(payload: PromptPayload): Record<string, unknown> {
+  const { decidingPath } = payload.request;
+  return decidingPath === null
+    ? {}
+    : {
+        decidingPath: decidingPath.path,
+        effect: decidingPath.effect,
+        effectSource: decidingPath.effectSource,
+      };
 }
 
 /**

@@ -1,6 +1,16 @@
-import { type TokenEffect, UNPROVEN_EFFECT } from "#src/access-intent/effect";
+import {
+  RETRACTED_EFFECT,
+  type TokenEffect,
+  UNPROVEN_EFFECT,
+} from "#src/access-intent/effect";
+import type { DeclaredCommandEffects } from "#src/config/command-effects-config";
 import { awkWithdrawsReadClaim } from "./awk-invocation";
+import {
+  type OperandAttribution,
+  proveDeclaredEffect,
+} from "./declared-command-effects";
 import type { ArgWord } from "./node-text";
+import { type ClaimWithdrawal, optionGuard } from "./option-guards";
 import { sedWithdrawsReadClaim } from "./sed-invocation";
 
 // ── Public surface ─────────────────────────────────────────────────────────
@@ -31,6 +41,27 @@ export function proveCommandEffect(
   const withdrawsClaim = RETRACTION_GUARDS.get(headWord);
   if (withdrawsClaim?.(argWords)) return RETRACTED_EFFECT;
   return CORE_READ_EFFECT;
+}
+
+/**
+ * What a command's head word establishes for the operand tokens it owns, from
+ * the core first and the user's `commandEffects` declarations only when the
+ * core proves nothing (ADR 0013 §7's decreasing order of authority).
+ *
+ * A core word's answer stands whatever is declared for it, its retraction
+ * included: a declaration's guard is coarser than the core's proof, so letting
+ * it answer after a retraction would turn a deliberate withdrawal back into a
+ * read. The wrapper floor reads {@link proveCommandEffect} instead, because a
+ * declaration never lifts it (§11).
+ */
+export function attributeCommandOperands(
+  headWord: string,
+  argWords: readonly ArgWord[],
+  declared: DeclaredCommandEffects,
+): OperandAttribution {
+  const core = proveCommandEffect(headWord, argWords);
+  if (core.source !== "unproven") return { kind: "effect", effect: core };
+  return proveDeclaredEffect(declared, headWord, argWords);
 }
 
 /**
@@ -181,51 +212,6 @@ function coreAdmissions(): readonly CoreAdmission[] {
 // ── The retraction guards ──────────────────────────────────────────────────
 
 /**
- * The option forms that withdraw a guarded word's read claim.
- *
- * Matching is fail-closed over the forms ADR 0013 §7 names: a long stem
- * matches bare, with an attached `=value`, or as any prefix of itself, and a
- * short letter matches anywhere in a single-dash cluster, which covers the
- * attached-value form (`-oFILE`) too. Over-retraction costs one ask;
- * under-retraction misses a write.
- *
- * The prefix rule exists because GNU `getopt_long` accepts any unambiguous
- * abbreviation, so `sort --out=/tmp/x` reaches the same code `--output` does.
- * Matching every prefix also retracts on an abbreviation the real program
- * would reject as ambiguous — the affordable direction.
- */
-interface RetractionGuard {
-  /** Whole argument words, for options that neither cluster nor take `=`. */
-  readonly exactWords?: ReadonlySet<string>;
-  /** Long stems, matched bare (`--output`) or attached (`--output=/tmp/x`). */
-  readonly longStems?: ReadonlySet<string>;
-  /** Short letters, matched anywhere in a single-dash cluster (`-uo`). */
-  readonly shortLetters?: ReadonlySet<string>;
-}
-
-/**
- * Whether a guarded word's arguments withdraw its read claim.
- *
- * Each guarded word owns its own predicate, so a word whose proof needs more
- * than option spellings can supply one without widening the option shape.
- */
-type ClaimWithdrawal = (argWords: readonly ArgWord[]) => boolean;
-
-/**
- * A withdrawal decided by option spellings: any argument naming one.
- *
- * A computed argument's value is its unresolved source spelling, not what the
- * program receives, so it is asked only whether it may arrive beginning with
- * `-`, the shape every guarded option has.
- */
-function optionGuard(guard: RetractionGuard): ClaimWithdrawal {
-  return (argWords) =>
-    argWords.some((word) =>
-      word.computed ? word.mayLeadWithDash : retractsClaim(word.value, guard),
-    );
-}
-
-/**
  * The guarded words and what withdraws each one's claim.
  *
  * `find`, `fd`, and `sort` are guarded by option spellings, chosen because
@@ -279,12 +265,6 @@ const RETRACTION_GUARDS: ReadonlyMap<string, ClaimWithdrawal> = new Map([
 /** A core word's proven attribution. */
 const CORE_READ_EFFECT: TokenEffect = { effect: "read", source: "core" };
 
-/** A guarded word whose claim an argument withdrew (ADR 0013 §7's blame line). */
-const RETRACTED_EFFECT: TokenEffect = {
-  effect: "unproven",
-  source: "retracted",
-};
-
 /** A redirect destination the operator proves the shell reads. */
 const SYNTAX_READ_EFFECT: TokenEffect = { effect: "read", source: "syntax" };
 
@@ -299,51 +279,4 @@ function isBareCoreWord(headWord: string): boolean {
     return false;
   }
   return PURE_READER_CORE.has(headWord);
-}
-
-function retractsClaim(word: string, guard: RetractionGuard): boolean {
-  if (guard.exactWords?.has(word)) return true;
-  if (matchesLongStem(word, guard.longStems)) return true;
-  return matchesShortCluster(word, guard.shortLetters);
-}
-
-/**
- * A long option, bare, carrying its value inline, or abbreviated.
- *
- * The name is taken before the first `=`, so `--out=/tmp/x` is tested as
- * `--out` — an abbreviation of `--output` that GNU `getopt_long` resolves to
- * it. A bare `--` abbreviates nothing.
- */
-function matchesLongStem(
-  word: string,
-  stems: ReadonlySet<string> | undefined,
-): boolean {
-  if (!stems) return false;
-  const name = word.split("=")[0];
-  if (!name.startsWith("--") || name.length <= 2) return false;
-  for (const stem of stems) {
-    if (stem.startsWith(name)) return true;
-  }
-  return false;
-}
-
-/**
- * A guarded letter anywhere in a single-dash cluster.
- *
- * The scan runs past the letters into an attached value, which is what makes
- * `-oFILE` retract as surely as `-o FILE` does.
- */
-function matchesShortCluster(
-  word: string,
-  letters: ReadonlySet<string> | undefined,
-): boolean {
-  if (!letters) return false;
-  if (!word.startsWith("-") || word.startsWith("--") || word.length < 2) {
-    return false;
-  }
-  const cluster = word.slice(1);
-  for (const letter of letters) {
-    if (cluster.includes(letter)) return true;
-  }
-  return false;
 }

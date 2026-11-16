@@ -56,6 +56,10 @@ vi.mock("node:fs", () => ({
 
 import type { ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import {
+  foldDeclaredCommandEffects,
+  NO_DECLARED_COMMAND_EFFECTS,
+} from "#src/config/command-effects-config";
+import {
   ConfigStore,
   type ConfigStoreDeps,
   type ResolvedPolicyPathProvider,
@@ -110,6 +114,8 @@ function makeStore(overrides: Partial<ConfigStoreDeps> = {}): {
   const deps: ConfigStoreDeps = {
     agentDir: "/test/agent",
     policyPaths: makePolicyPathProvider(),
+    coreCommandWords: new Set(["sed"]),
+    wrapperCommandWords: new Set(["xargs"]),
     logger,
     ...overrides,
   };
@@ -121,6 +127,7 @@ function makeStore(overrides: Partial<ConfigStoreDeps> = {}): {
 describe("ConfigStore", () => {
   beforeEach(() => {
     mockLoadAndMergeConfigs.mockReset().mockReturnValue({
+      declaredCommandEffects: NO_DECLARED_COMMAND_EFFECTS,
       merged: { ...DEFAULT_EXTENSION_CONFIG },
       issues: [],
     });
@@ -156,6 +163,7 @@ describe("ConfigStore", () => {
     it("answers the issues the last load produced", () => {
       const { store } = makeStore();
       mockLoadAndMergeConfigs.mockReturnValue({
+        declaredCommandEffects: NO_DECLARED_COMMAND_EFFECTS,
         merged: { ...DEFAULT_EXTENSION_CONFIG },
         issues: ["first issue", "second issue"],
       });
@@ -166,16 +174,41 @@ describe("ConfigStore", () => {
     it("answers empty again once a reload finds the config clean", () => {
       const { store } = makeStore();
       mockLoadAndMergeConfigs.mockReturnValue({
+        declaredCommandEffects: NO_DECLARED_COMMAND_EFFECTS,
         merged: { ...DEFAULT_EXTENSION_CONFIG },
         issues: ["transient issue"],
       });
       store.refresh("/test/project", true);
       mockLoadAndMergeConfigs.mockReturnValue({
+        declaredCommandEffects: NO_DECLARED_COMMAND_EFFECTS,
         merged: { ...DEFAULT_EXTENSION_CONFIG },
         issues: [],
       });
       store.refresh("/test/project", true);
       expect(store.getConfigIssues()).toEqual([]);
+    });
+
+    it("appends a declaration the pure-reader core shadows", () => {
+      const { store } = makeStore();
+      mockLoadAndMergeConfigs.mockReturnValue({
+        declaredCommandEffects: foldDeclaredCommandEffects(
+          NO_DECLARED_COMMAND_EFFECTS,
+          {
+            sed: { effects: "read" },
+            xargs: { effects: "read" },
+            git: { effects: "read" },
+          },
+          "global",
+        ),
+        merged: { ...DEFAULT_EXTENSION_CONFIG },
+        issues: ["first issue"],
+      });
+      store.refresh("/test/project", true);
+      expect(store.getConfigIssues()).toEqual([
+        "first issue",
+        "commandEffects declares 'sed', a pure-reader core command. The core decides its effects, so the declaration is ignored; remove it.",
+        "commandEffects declares 'xargs', a wrapper. A declaration describes a command's own arguments, never the command a wrapper runs, so it is ignored; remove it.",
+      ]);
     });
   });
 
@@ -218,6 +251,7 @@ describe("ConfigStore", () => {
     it("updates current() with normalized merged result", () => {
       const { store } = makeStore();
       mockLoadAndMergeConfigs.mockReturnValue({
+        declaredCommandEffects: NO_DECLARED_COMMAND_EFFECTS,
         merged: { debugLog: true, permissionReviewLog: false, yoloMode: false },
         issues: [],
       });
@@ -241,6 +275,7 @@ describe("ConfigStore", () => {
     it("records the issues on config.loaded as one joined string", () => {
       const { store, logger } = makeStore();
       mockLoadAndMergeConfigs.mockReturnValue({
+        declaredCommandEffects: NO_DECLARED_COMMAND_EFFECTS,
         merged: { ...DEFAULT_EXTENSION_CONFIG },
         issues: ["first issue", "second issue"],
       });
@@ -272,6 +307,7 @@ describe("ConfigStore", () => {
     it("carries piInfrastructureReadPaths from merged config into current()", () => {
       const { store } = makeStore();
       mockLoadAndMergeConfigs.mockReturnValue({
+        declaredCommandEffects: NO_DECLARED_COMMAND_EFFECTS,
         merged: { piInfrastructureReadPaths: ["/extra/path"] },
         issues: [],
       });
@@ -283,6 +319,45 @@ describe("ConfigStore", () => {
   });
 
   // ── save() ─────────────────────────────────────────────────────────────
+
+  describe("declaredCommandEffects()", () => {
+    const declared = foldDeclaredCommandEffects(
+      NO_DECLARED_COMMAND_EFFECTS,
+      { git: { subcommands: { log: "read" } } },
+      "project",
+    );
+
+    it("answers none before any refresh", () => {
+      const { store } = makeStore();
+      expect(store.declaredCommandEffects()).toBe(NO_DECLARED_COMMAND_EFFECTS);
+    });
+
+    it("answers what the last refresh loaded", () => {
+      const { store } = makeStore();
+      mockLoadAndMergeConfigs.mockReturnValue({
+        declaredCommandEffects: declared,
+        merged: { ...DEFAULT_EXTENSION_CONFIG },
+        issues: [],
+      });
+      store.refresh("/test/project", true);
+      expect(store.declaredCommandEffects()).toBe(declared);
+    });
+
+    it("survives a save, which rebuilds the runtime config", () => {
+      const { store } = makeStore();
+      mockLoadAndMergeConfigs.mockReturnValue({
+        declaredCommandEffects: declared,
+        merged: { ...DEFAULT_EXTENSION_CONFIG },
+        issues: [],
+      });
+      store.refresh("/test/project", true);
+      store.save(
+        { ...DEFAULT_EXTENSION_CONFIG, debugLog: true },
+        makeCommandCtx(),
+      );
+      expect(store.declaredCommandEffects()).toBe(declared);
+    });
+  });
 
   describe("save()", () => {
     it("writes merged config to the global path", () => {

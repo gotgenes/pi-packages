@@ -19,6 +19,7 @@ function persistedRecord(overrides: Partial<PersistedSubagentRecord> = {}): Pers
 		turnBudget: undefined,
 		startedAt: 1000,
 		completedAt: 4000,
+		stoppedWhileQueued: false,
 		outputFile: "/tasks/run-1.jsonl",
 		toolUses: 7,
 		...overrides,
@@ -57,9 +58,15 @@ describe("toPersistedRecord", () => {
 			turnBudget,
 			startedAt: 1000,
 			completedAt: 2500,
+			stoppedWhileQueued: false,
 			outputFile: "/tasks/a.jsonl",
 			toolUses: 7,
 		});
+	});
+
+	it("copies stoppedWhileQueued off a run stopped while queued", () => {
+		const record = createTestSubagent({ status: "stopped", stoppedWhileQueued: true, result: undefined });
+		expect(toPersistedRecord(record).stoppedWhileQueued).toBe(true);
 	});
 });
 
@@ -71,6 +78,7 @@ describe("readPersistedRuns", () => {
 		status: "completed",
 		startedAt: 1000,
 		completedAt: 4000,
+		stoppedWhileQueued: false,
 		outputFile: "/tasks/run-1.jsonl",
 		toolUses: 7,
 	};
@@ -105,6 +113,15 @@ describe("readPersistedRuns", () => {
 		it("skips an entry written before the entry recorded toolUses", () => {
 			const { toolUses: _toolUses, outputFile: _outputFile, ...preUpgrade } = persistedRecord();
 			expect(readPersistedRuns([recordEntry(preUpgrade)])).toEqual([]);
+		});
+
+		it("reads an entry written before the entry recorded stoppedWhileQueued as not stopped while queued", () => {
+			const { stoppedWhileQueued: _stoppedWhileQueued, ...preUpgrade } = persistedRecord();
+			expect(readPersistedRuns([recordEntry(preUpgrade)])).toStrictEqual([summary]);
+		});
+
+		it.each(["yes", null, 0])("skips an entry whose stoppedWhileQueued is not a boolean (%j)", (stoppedWhileQueued) => {
+			expect(readPersistedRuns([recordEntry({ ...persistedRecord(), stoppedWhileQueued })])).toEqual([]);
 		});
 
 		it("skips an entry whose status is not a subagent status", () => {
@@ -145,6 +162,31 @@ describe("readPersistedRuns", () => {
 		});
 		expect(readPersistedRuns([recordEntry(toPersistedRecord(record))])).toStrictEqual([
 			{ ...summary, id: "round-trip", outputFile: "/tasks/round-trip.jsonl" },
+		]);
+	});
+
+	it("reads back a run stopped while queued", () => {
+		const record = createTestSubagent({
+			id: "queued-resume",
+			type: "Explore",
+			description: "map the module",
+			status: "stopped",
+			stoppedWhileQueued: true,
+			result: undefined,
+			startedAt: 1000,
+			completedAt: 4000,
+			toolUses: 7,
+			sessionReady: true,
+			outputFile: "/tasks/queued-resume.jsonl",
+		});
+		expect(readPersistedRuns([recordEntry(toPersistedRecord(record))])).toStrictEqual([
+			{
+				...summary,
+				id: "queued-resume",
+				status: "stopped",
+				stoppedWhileQueued: true,
+				outputFile: "/tasks/queued-resume.jsonl",
+			},
 		]);
 	});
 });

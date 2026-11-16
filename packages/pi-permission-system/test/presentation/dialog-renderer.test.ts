@@ -224,6 +224,73 @@ describe("renderPromptDialog", () => {
     });
   });
 
+  describe("why the direction was chosen", () => {
+    /** A bash external-directory ask whose deciding path is unproven. */
+    const unprovenEscape = makePromptPayload({
+      kind: "bash_external_directory",
+      request: requestFacts({
+        surface: "external_directory",
+        toolName: "bash",
+        value: "git log /outside/x",
+        matchedPattern: "*",
+        decidingPath: {
+          path: "/outside/x",
+          effect: "unproven",
+          effectSource: "unproven",
+        },
+      }),
+      evidence: [{ label: "external path", text: "/outside/x", detail: null }],
+    });
+
+    it("names the deciding path, its direction, and what would prove it", () => {
+      expect(renderPromptDialog(unprovenEscape, WIDE).lines).toEqual([
+        "tool          : bash",
+        "surface       : external_directory",
+        "rule          : *",
+        "command       : git log /outside/x",
+        "why           : /outside/x: unproven, consults both directions; declare the command in commandEffects to classify it",
+        "external path : /outside/x",
+      ]);
+    });
+
+    it("states only the provenance when the path line already names the path", () => {
+      expect(
+        render({
+          kind: "path",
+          request: requestFacts({
+            surface: "path_read",
+            toolName: "bash",
+            value: ".env",
+            matchedPattern: "*.env",
+            decidingPath: {
+              path: ".env",
+              effect: "read",
+              effectSource: "core",
+            },
+          }),
+        }),
+      ).toEqual([
+        "tool    : bash",
+        "surface : path_read",
+        "rule    : *.env",
+        "path    : .env",
+        "why     : read (pure-reader command)",
+      ]);
+    });
+
+    it("keeps the line when the row budget drops the evidence", () => {
+      const view = renderPromptDialog(unprovenEscape, {
+        maxRows: 3,
+        fieldMaxWidth: 400,
+        width: 200,
+      });
+      expect(view.lines).toContain(
+        "why           : /outside/x: unproven, consults both directions; declare the command in commandEffects to classify it",
+      );
+      expect(view.lines).not.toContain("external path : /outside/x");
+    });
+  });
+
   describe("evidence", () => {
     it("renders each entry under the core, sharing the label column", () => {
       expect(

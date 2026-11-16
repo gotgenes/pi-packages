@@ -100,6 +100,8 @@ describe("suggestBashPattern", () => {
       it.each([
         ["shell syntax", "sudo mytool $HOME"],
         ["shell syntax", "timeout $T mytool a"],
+        ["shell syntax", "nice -n $N mytool a"],
+        ["shell syntax", "nice FOO=$Y mytool a"],
         ["a non-literal inner command", "nohup ~/bin/mytool a"],
         ["a non-breaking space inside a word", "nohup rm\u00a0-rf\u00a0x"],
         ["a carriage return inside a word", "sudo rm\r-rf x"],

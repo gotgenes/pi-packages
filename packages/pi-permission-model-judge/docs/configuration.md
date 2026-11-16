@@ -6,6 +6,8 @@
 - Project: `<cwd>/.pi/extensions/pi-permission-model-judge/config.json`.
 
 The project file overrides the global one field-by-field; array fields (`typoPatterns`) replace wholesale rather than merging.
+The project file is read only when Pi trusts the project, the same boundary `@gotgenes/pi-permission-system` applies to its own project scope.
+In an untrusted project the file contributes nothing, not even a validation issue, and the judge warns once per session that it skipped it, as a Pi notification when the session has a UI and on the console otherwise.
 Point your editor at the bundled [JSON Schema](../schemas/model-judge.schema.json) via `$schema` for completion and validation.
 
 ## Two config files, one link name
@@ -33,13 +35,13 @@ The link decides nothing until you name it in `authorizerChain` (opt-in activati
 
 ## Fields
 
-| Field          | Type       | Default  | Description                                                                                      |
-| -------------- | ---------- | -------- | ------------------------------------------------------------------------------------------------ |
-| `provider`     | `string`   | required | Model provider, resolved against Pi's model registry (must have credentials configured in Pi).   |
-| `model`        | `string`   | required | Model id within that provider.                                                                   |
-| `instructions` | `string`   | required | The model's system prompt: describe what a typo path is and the correct-location reason to give. |
-| `typoPatterns` | `string[]` | `[]`     | Regular expressions matched against the candidate path; only a match reaches the model.          |
-| `timeoutMs`    | `integer`  | `5000`   | Per-review model-call budget in milliseconds. A timeout defers.                                  |
+| Field          | Type       | Default  | Description                                                                                                    |
+| -------------- | ---------- | -------- | -------------------------------------------------------------------------------------------------------------- |
+| `provider`     | `string`   | required | Model provider, resolved against Pi's model registry (must have credentials configured in Pi).                 |
+| `model`        | `string`   | required | Model id within that provider.                                                                                 |
+| `instructions` | `string`   | required | The model's system prompt: describe what a typo path is and the correct-location reason to give.               |
+| `typoPatterns` | `string[]` | `[]`     | Regular expressions matched against the candidate path; only a match reaches the model. At most 1,000 entries. |
+| `timeoutMs`    | `integer`  | `5000`   | Per-review model-call budget in milliseconds. A timeout defers.                                                |
 
 ### `provider` and `model`
 
@@ -61,6 +63,7 @@ The candidate path is a file tool's path argument (`read`/`edit`/`write`) or an 
 Only a path that matches at least one pattern is sent to the model — this is the cost gate that keeps the reviewer from calling the model on every ask.
 An invalid regular expression is skipped and recorded in the debug log (`model_judge.invalid_patterns`).
 An empty list (the default) matches nothing, so the reviewer defers everything.
+The list accepts at most 1,000 entries; a longer one makes the config invalid, so it does not load and the link is not registered.
 
 Two typo shapes are worth featuring, each as its own pattern:
 

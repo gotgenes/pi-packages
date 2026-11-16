@@ -645,6 +645,18 @@ describe("SessionNavigatorHandler", () => {
       expect(readFile).toHaveBeenCalledWith("/tasks/e1.jsonl");
       expect(mountedPaneFactory(ui)).toEqual(expect.any(Function));
     });
+
+    it("labels a recorded resume stopped while queued with the time it waited", async () => {
+      const stoppedWhileQueued = {
+        ...recordEntry,
+        data: { ...recordEntry.data, status: "stopped", result: undefined, stoppedWhileQueued: true },
+      };
+      const ui = makeUI(undefined);
+      await handleWith(ui, [], { sessionEntries: [stoppedWhileQueued] });
+      expect(ui.select).toHaveBeenCalledWith("Subagent sessions", [
+        "Agent (Old task) · 5 tools · stopped · queued 3.0s · session released (snapshot)",
+      ]);
+    });
   });
 
   it("notifies and skips the pane when the session file cannot be read", async () => {

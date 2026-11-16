@@ -47,6 +47,7 @@ export function buildToolAskPayload(facts: ToolAskFacts): PromptPayload {
       matchedSpelling: check.matchedSpelling ?? null,
       commandContext: check.commandContext ?? null,
       executedUnit: check.executedUnit ?? null,
+      decidingPath: null,
     },
     evidence: bash
       ? fullCommandEvidence(facts)

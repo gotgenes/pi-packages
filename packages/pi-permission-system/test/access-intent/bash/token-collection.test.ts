@@ -12,6 +12,10 @@ import {
   type PathToken,
 } from "#src/access-intent/bash/token-collection";
 import { UNPROVEN_EFFECT } from "#src/access-intent/effect";
+import {
+  foldDeclaredCommandEffects,
+  NO_DECLARED_COMMAND_EFFECTS,
+} from "#src/config/command-effects-config";
 
 /** Every command here rebinds nothing, so its words read at their startup values. */
 const words = new WordReader(ShellVariables.UNREBOUND);
@@ -27,15 +31,21 @@ const words = new WordReader(ShellVariables.UNREBOUND);
  * collectors directly.
  */
 function commandTokens(node: TSNode): string[] {
-  return tokenTextsOf(collectCommandTokens(node, words));
+  return tokenTextsOf(
+    collectCommandTokens(node, words, NO_DECLARED_COMMAND_EFFECTS),
+  );
 }
 
 function redirectTokens(node: TSNode): string[] {
-  return tokenTextsOf(collectRedirectTokens(node, words));
+  return tokenTextsOf(
+    collectRedirectTokens(node, words, NO_DECLARED_COMMAND_EFFECTS),
+  );
 }
 
 function pathCandidateTokens(node: TSNode): string[] {
-  return tokenTextsOf(collectPathCandidateTokens(node, words));
+  return tokenTextsOf(
+    collectPathCandidateTokens(node, words, NO_DECLARED_COMMAND_EFFECTS),
+  );
 }
 
 function tokenTextsOf(tokens: readonly Pick<PathToken, "token">[]): string[] {
@@ -492,7 +502,11 @@ describe("collectCommandTokens — pattern-first commands", () => {
           'node -e "$(cat /etc/shadow)"',
         );
         try {
-          expect(tokenEffectsOf(collectCommandTokens(node, words))).toEqual([
+          expect(
+            tokenEffectsOf(
+              collectCommandTokens(node, words, NO_DECLARED_COMMAND_EFFECTS),
+            ),
+          ).toEqual([
             {
               token: "/etc/shadow",
               effect: { effect: "read", source: "core" },
@@ -958,7 +972,13 @@ describe("statement operands", () => {
     const tree = parser.parse(command);
     if (!tree) throw new Error("parse returned null");
     try {
-      return tokenEffectsOf(collectPathCandidateTokens(tree.rootNode, words));
+      return tokenEffectsOf(
+        collectPathCandidateTokens(
+          tree.rootNode,
+          words,
+          NO_DECLARED_COMMAND_EFFECTS,
+        ),
+      );
     } finally {
       tree.delete();
     }
@@ -1202,7 +1222,13 @@ describe("effect attribution", () => {
     const tree = parser.parse(command);
     if (!tree) throw new Error("parse returned null");
     try {
-      return tokenEffectsOf(collectPathCandidateTokens(tree.rootNode, words));
+      return tokenEffectsOf(
+        collectPathCandidateTokens(
+          tree.rootNode,
+          words,
+          NO_DECLARED_COMMAND_EFFECTS,
+        ),
+      );
     } finally {
       tree.delete();
     }
@@ -1401,9 +1427,11 @@ describe("token role", () => {
     const tree = parser.parse(command);
     if (!tree) throw new Error("parse returned null");
     try {
-      return collectPathCandidateTokens(tree.rootNode, words).map(
-        ({ token, role }) => ({ token, role }),
-      );
+      return collectPathCandidateTokens(
+        tree.rootNode,
+        words,
+        NO_DECLARED_COMMAND_EFFECTS,
+      ).map(({ token, role }) => ({ token, role }));
     } finally {
       tree.delete();
     }
@@ -1472,12 +1500,14 @@ describe("source spans", () => {
     const tree = parser.parse(command);
     if (!tree) throw new Error("parse returned null");
     try {
-      return collectPathCandidateTokens(tree.rootNode, words).map(
-        ({ token, span }) => ({
-          token,
-          spanned: span ? command.slice(span.start, span.end) : null,
-        }),
-      );
+      return collectPathCandidateTokens(
+        tree.rootNode,
+        words,
+        NO_DECLARED_COMMAND_EFFECTS,
+      ).map(({ token, span }) => ({
+        token,
+        spanned: span ? command.slice(span.start, span.end) : null,
+      }));
     } finally {
       tree.delete();
     }
@@ -1531,5 +1561,67 @@ describe("source spans", () => {
         { token: "a/b", spanned: null },
       ]);
     });
+  });
+});
+
+describe("a declared command's operands", () => {
+  const declared = foldDeclaredCommandEffects(
+    NO_DECLARED_COMMAND_EFFECTS,
+    { officecli: { effects: [] }, node: { effects: [] } },
+    "global",
+  );
+
+  /** Each token with its role and effect, collected under `declared`. */
+  async function rolesOf(command: string) {
+    const parser = await getParser();
+    const tree = parser.parse(command);
+    if (!tree) throw new Error("parse returned null");
+    try {
+      return collectPathCandidateTokens(tree.rootNode, words, declared).map(
+        ({ token, role, effect }) => ({ token, role, effect }),
+      );
+    } finally {
+      tree.delete();
+    }
+  }
+
+  const INERT = { effect: "unproven", source: "declared-global" } as const;
+
+  it("stamps every operand of an effects: [] command inert", async () => {
+    expect(await rolesOf("officecli set --out=a/b ~/a")).toEqual([
+      { token: "set", role: "inert-operand", effect: INERT },
+      { token: "--out=a/b", role: "inert-operand", effect: INERT },
+      { token: "~/a", role: "inert-operand", effect: INERT },
+      { token: "a/b", role: "inert-operand", effect: INERT },
+    ]);
+  });
+
+  it("stamps a pattern-first command's operands inert", async () => {
+    expect(await rolesOf("node build.js ~/a")).toEqual([
+      { token: "build.js", role: "inert-operand", effect: INERT },
+      { token: "~/a", role: "inert-operand", effect: INERT },
+    ]);
+  });
+
+  it("leaves a nested command its own role", async () => {
+    expect(await rolesOf("officecli x $(cat ~/a)")).toEqual([
+      { token: "x", role: "inert-operand", effect: INERT },
+      {
+        token: "~/a",
+        role: "operand",
+        effect: { effect: "read", source: "core" },
+      },
+    ]);
+  });
+
+  it("leaves a redirect's target its own role", async () => {
+    expect(await rolesOf("officecli x > out.txt")).toEqual([
+      { token: "x", role: "inert-operand", effect: INERT },
+      {
+        token: "out.txt",
+        role: "redirect-destination",
+        effect: { effect: "write", source: "syntax" },
+      },
+    ]);
   });
 });

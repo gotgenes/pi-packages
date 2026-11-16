@@ -1,9 +1,10 @@
 /**
  * subagent-manager.ts - Tracks subagents, background execution, resume support.
  *
- * Background agents are subject to a configurable concurrency limit (default: 4).
- * Excess agents are scheduled on a ConcurrencyLimiter and auto-started as running
- * agents complete. Foreground agents bypass the limiter (they block the parent anyway).
+ * Background runs, spawned or resumed, are subject to a configurable concurrency
+ * limit (default: 4). Excess runs are scheduled on a ConcurrencyLimiter and
+ * auto-started as running ones complete. Foreground runs bypass the limiter
+ * (they block the parent anyway).
  */
 
 import { randomUUID } from "node:crypto";
@@ -13,9 +14,15 @@ import { debugLog } from "#src/debug";
 import type { ConcurrencyLimiter } from "#src/lifecycle/concurrency-limiter";
 import type { CreateSubagentSessionParams } from "#src/lifecycle/create-subagent-session";
 import type { ParentSnapshot } from "#src/lifecycle/parent-snapshot";
-import { type ResumeRefusal, Subagent, type SubagentLifecycleObserver } from "#src/lifecycle/subagent";
+import {
+  type ResumeRefusal,
+  type ResumeRunOptions,
+  type RunScheduler,
+  Subagent,
+  type SubagentLifecycleObserver,
+} from "#src/lifecycle/subagent";
+import type { RunKind } from "#src/lifecycle/subagent-run";
 import type { SubagentSession } from "#src/lifecycle/subagent-session";
-import { SubagentState } from "#src/lifecycle/subagent-state";
 import type { WorkspaceProvider } from "#src/lifecycle/workspace";
 
 import type { RunConfig } from "#src/runtime";
@@ -51,8 +58,8 @@ export type ResumeOutcome =
   | { kind: "refused"; reason: ResumeRefusalReason };
 
 /**
- * What starting a resume produced: the record now running it, or the reason
- * nothing was started.
+ * What starting a resume produced: the record now running it (or queued for a
+ * concurrency slot, which its status says), or the reason nothing was started.
  *
  * The run itself continues on the record; its `promise` settles when the
  * resumed run reaches a terminal state.
@@ -62,15 +69,7 @@ export type ResumeStart =
   | { kind: "refused"; reason: ResumeRefusalReason };
 
 /** Per-call knobs for a resume; both doors pass their own. */
-export interface ResumeCallOptions {
-  /** Cancels the resumed turn loop, through the record's own lever — so it ends like `abort(id)` does. */
-  signal?: AbortSignal;
-  /**
-   * The caller will deliver this outcome to the parent, so nothing announces
-   * it. Omitted, the resumed outcome is announced like any other completion.
-   */
-  claimOutcome?: boolean;
-}
+export type ResumeCallOptions = ResumeRunOptions;
 
 /** A spawn's resolved identity and mode — the invariants every front door shares. */
 interface ResolvedSpawn {
@@ -140,16 +139,15 @@ export function resolveRetentionWindow(
 
 /** Observer interface for agent lifecycle notifications. */
 export interface SubagentManagerObserver {
-  onSubagentStarted(record: Subagent): void;
-  onSubagentCompleted(record: Subagent): void;
   /**
-   * Fires when a resume starts, from whichever front door asked for it.
-   * Required: a consumer that tracks the widget's live set has to learn that a
-   * settled record went back to running, and the only alternative is polling.
+   * Fires when a run starts: the initial run, or a resume from whichever front
+   * door asked for it. A consumer that tracks the widget's live set has to learn
+   * that a settled record went back to running, and the only alternative is
+   * polling.
    */
-  onSubagentResuming(record: Subagent): void;
-  /** Fires when a resumed run reaches a terminal state (distinct from a fresh completion). */
-  onSubagentResumed(record: Subagent): void;
+  onSubagentRunStarted(record: Subagent, kind: RunKind): void;
+  /** Fires when a run reaches a terminal state, whatever that state is. */
+  onSubagentRunFinished(record: Subagent, kind: RunKind): void;
   /**
    * Fires when a running child sends its parent a mid-run message.
    * Optional: the widget has no use for it, and a hook nobody supplies is a
@@ -215,6 +213,8 @@ export class SubagentManager {
   private readonly observer?: SubagentManagerObserver;
   private readonly createSubagentSession: (params: CreateSubagentSessionParams) => Promise<SubagentSession>;
   private readonly limiter: ConcurrencyLimiter;
+  /** Background runs, spawned or resumed, wait for and hold a slot on the limiter. */
+  private readonly admitBackground: RunScheduler = (thunk) => this.limiter.schedule(thunk);
   private readonly baseCwd: string;
   private getRunConfig?: () => RunConfig;
   private getRetentionPolicy?: () => RetentionPolicy;
@@ -261,8 +261,8 @@ export class SubagentManager {
   /** Compose a per-agent lifecycle observer from manager and spawn-config concerns. */
   private buildObserver(options: AgentSpawnConfig): SubagentLifecycleObserver {
     return {
-      onStarted: (agent) => {
-        this.observer?.onSubagentStarted(agent);
+      onRunStarted: (agent, kind) => {
+        try { this.observer?.onSubagentRunStarted(agent, kind); } catch (err) { debugLog("onSubagentRunStarted observer", err); }
       },
       onSessionCreated: options.observer?.onSessionCreated
         ? (agent) => options.observer!.onSessionCreated!(agent)
@@ -272,14 +272,8 @@ export class SubagentManager {
       // carrier claim; suppressing the observer here would also suppress the
       // lifecycle event and the session-history record, which are facts about
       // the run rather than announcements.
-      onRunFinished: (agent) => {
-        try { this.observer?.onSubagentCompleted(agent); } catch (err) { debugLog("onSubagentCompleted observer", err); }
-      },
-      onResumeStarted: (agent) => {
-        try { this.observer?.onSubagentResuming(agent); } catch (err) { debugLog("onSubagentResuming observer", err); }
-      },
-      onResumeFinished: (agent) => {
-        try { this.observer?.onSubagentResumed(agent); } catch (err) { debugLog("onSubagentResumed observer", err); }
+      onRunFinished: (agent, kind) => {
+        try { this.observer?.onSubagentRunFinished(agent, kind); } catch (err) { debugLog("onSubagentRunFinished observer", err); }
       },
       onUpdateSent: (agent, message) => {
         this.observer?.onSubagentUpdate?.(agent, message);
@@ -364,10 +358,6 @@ export class SubagentManager {
       type,
       description: options.description,
       isBackground,
-      state: new SubagentState({
-        status: isBackground ? "queued" : "running",
-        startedAt: Date.now(),
-      }),
       execution: {
         createSubagentSession: this.createSubagentSession,
         snapshot,
@@ -393,7 +383,7 @@ export class SubagentManager {
       // Schedule on the limiter — scheduleVia captures the limiter promise
       // eagerly, so a queued agent is awaitable from spawn; guardedRun guards
       // against abort-while-queued when the slot frees.
-      record.scheduleVia((thunk) => this.limiter.schedule(thunk));
+      record.scheduleVia(this.admitBackground);
       return id;
     }
 
@@ -408,8 +398,11 @@ export class SubagentManager {
    * declines the same resumes for the same reasons; a door owns only how it
    * words the answer. Delegates to Subagent.resume(), which owns the observer
    * subscription lifecycle.
+   *
+   * Resolves when the resumed run reaches a terminal state, so a background
+   * resume's wait spans any time it spends queued for a concurrency slot.
    */
-  async resume(id: string, prompt: string, options: ResumeCallOptions = {}): Promise<ResumeOutcome> {
+  async resume(id: string, prompt: string, options: ResumeCallOptions): Promise<ResumeOutcome> {
     const start = this.startResume(id, prompt, options);
     if (start.kind === "refused") return start;
     await start.record.promise;
@@ -417,24 +410,32 @@ export class SubagentManager {
   }
 
   /**
-   * Start a resume without waiting for it: the door that returns before the
-   * resumed run ends. Refuses synchronously, for the same reasons `resume` does.
+   * Start a resume without waiting for it, handing back the record now running
+   * it, or queued for a concurrency slot when it is a background resume and the
+   * limit is reached. Refuses synchronously, for the same reasons `resume` does.
+   *
+   * A background resume is admitted through the limiter like a background
+   * spawn; a foreground one starts at once, like a foreground spawn.
    */
-  startResume(id: string, prompt: string, options: ResumeCallOptions = {}): ResumeStart {
+  startResume(id: string, prompt: string, options: ResumeCallOptions): ResumeStart {
     const agent = this.agents.get(id);
     if (!agent) return { kind: "refused", reason: "unknown-agent" };
     const refusal = agent.resumeRefusal;
     if (refusal) return { kind: "refused", reason: refusal };
-    // Before the resume starts: resetForResume runs synchronously inside
-    // resume(), so a claim taken afterwards would miss the terminal edge.
-    // Each resume's caller decides who carries this run's outcome; a claim a
-    // previous carrier left behind belongs to an outcome already delivered, and
-    // no carrier is live on a settled record.
-    if (options.claimOutcome) agent.claim();
-    else agent.releaseClaims();
+    // Each resume's caller decides who carries its outcome: the resume's run is
+    // born claimed when the caller asks, and unclaimed otherwise, whatever
+    // carriers held the runs before it.
     // Published as agent.promise, which always resolves; it rejects only for a
     // missing session, which resumeRefusal has already refused as no-session.
-    void agent.resume(prompt, options.signal);
+    void agent.resume(
+      prompt,
+      {
+        background: options.background,
+        signal: options.signal,
+        claimOutcome: options.claimOutcome,
+      },
+      options.background ? this.admitBackground : undefined,
+    );
     return { kind: "started", record: agent };
   }
 

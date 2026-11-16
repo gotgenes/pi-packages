@@ -54,14 +54,12 @@ minimumReleaseAgeExclude:
   - '@fallow-cli/win32-arm64-msvc@3.22.0'
   - '@fallow-cli/win32-x64-msvc@3.22.0'
   - fallow@3.22.0
-  - '@gotgenes/pi-permission-system@27.0.0'
-  - '@earendil-works/pi-agent-core@0.84.4 || 1.0.0'
-  - '@earendil-works/pi-ai@0.84.4 || 1.0.0'
-  - '@earendil-works/pi-client@0.84.4'
-  - '@earendil-works/pi-coding-agent@0.84.4 || 1.0.0'
-  - '@earendil-works/pi-protocol@0.84.4'
-  - '@earendil-works/pi-telemetry@0.84.4 || 1.0.0'
-  - '@earendil-works/pi-tui@0.84.4 || 1.0.0'
+  - '@gotgenes/pi-permission-system@40.3.0'
+  - '@earendil-works/pi-agent-core@1.0.0'
+  - '@earendil-works/pi-ai@1.0.0'
+  - '@earendil-works/pi-coding-agent@1.0.0'
+  - '@earendil-works/pi-telemetry@1.0.0'
+  - '@earendil-works/pi-tui@1.0.0'
   - globals@17.12.0
   - fallow-type-aware@3.22.0
   - '@earendil-works/chord@1.0.0'

@@ -1,3 +1,4 @@
+import type { DeclaredCommandEffects } from "#src/config/command-effects-config";
 import type { PathNormalizer } from "#src/path/path-normalizer";
 import {
   type BashExternalPath,
@@ -10,11 +11,26 @@ import {
   collectSalvagedCommands,
 } from "./command-enumeration";
 import { WordReader } from "./node-text";
+import { parseUnresolvedWithin } from "./parse-health";
 import { type BashReparser, getParser, getWarmBashParser } from "./parser";
 import { ShellVariables } from "./shell-variable-expansion";
 import { withSalvagedRoots } from "./unresolved-salvage";
 
 export type { BashCommand, BashExternalPath, BashPathRuleCandidate };
+
+/** What a caller may tell {@link BashProgram.parse} beyond the command text. */
+export interface BashParseOptions {
+  /**
+   * An aliased shell tool's working directory (#574), which seeds the initial
+   * effective base as if the command were prefixed with `cd <workdir>`.
+   */
+  readonly workdir?: string;
+  /**
+   * The user's `commandEffects` declarations, consulted for a command the
+   * pure-reader core proves nothing about. Absent means none.
+   */
+  readonly commandEffects?: DeclaredCommandEffects;
+}
 
 /**
  * A bash command parsed once into a born-ready representation.
@@ -32,6 +48,7 @@ export class BashProgram {
     private readonly commandUnits: readonly BashCommand[],
     private readonly resolvedExternalAccesses: readonly BashExternalPath[],
     private readonly resolvedRuleCandidates: readonly BashPathRuleCandidate[],
+    private readonly spelledVerbatim: boolean,
   ) {}
 
   /**
@@ -56,7 +73,7 @@ export class BashProgram {
   static async parse(
     command: string,
     normalizer: PathNormalizer,
-    options?: { workdir?: string },
+    options?: BashParseOptions,
   ): Promise<BashProgram> {
     return BashProgram.build(await getParser(), command, normalizer, options);
   }
@@ -71,7 +88,7 @@ export class BashProgram {
   static parseSync(
     command: string,
     normalizer: PathNormalizer,
-    options?: { workdir?: string },
+    options?: BashParseOptions,
   ): BashProgram | null {
     const parser = getWarmBashParser();
     if (!parser) return null;
@@ -83,10 +100,10 @@ export class BashProgram {
     parser: BashReparser,
     command: string,
     normalizer: PathNormalizer,
-    options?: { workdir?: string },
+    options?: BashParseOptions,
   ): BashProgram {
     const tree = parser.parse(command);
-    if (!tree) return new BashProgram(command, [], [], []);
+    if (!tree) return new BashProgram(command, [], [], [], false);
 
     try {
       return withSalvagedRoots(tree.rootNode, parser, (salvaged) => {
@@ -94,10 +111,12 @@ export class BashProgram {
           ShellVariables.scan([tree.rootNode, ...salvaged]),
         );
         const { externalAccesses, ruleCandidates, argumentSpellings } =
-          new BashPathResolver(normalizer, words, options?.workdir).resolve(
-            tree.rootNode,
-            salvaged,
-          );
+          new BashPathResolver(
+            normalizer,
+            words,
+            options?.workdir,
+            options?.commandEffects,
+          ).resolve(tree.rootNode, salvaged, command);
         return new BashProgram(
           command,
           [
@@ -106,6 +125,8 @@ export class BashProgram {
           ],
           externalAccesses,
           ruleCandidates,
+          !parseUnresolvedWithin(tree.rootNode) &&
+            !LINE_CONTINUATION.test(command),
         );
       });
     } finally {
@@ -174,4 +195,25 @@ export class BashProgram {
   pathRuleCandidates(): BashPathRuleCandidate[] {
     return [...this.resolvedRuleCandidates];
   }
+
+  /**
+   * Whether every token the slices hold is spelled as bash will read it: the
+   * grammar read the whole command without error recovery, and no
+   * backslash-newline continuation joins two lines into one word.
+   *
+   * Where either fails, a token can stand truncated (`/@(etc|var)` read as
+   * `/@`, `/e\<newline>tc` as `/e`) and the slices name paths the command does
+   * not reach. They stay usable for asking, which only ever surfaces more; a
+   * fact that would *relieve* an ask, such as the nothing-on-disk delegation
+   * license, must not be read from them.
+   */
+  readsVerbatim(): boolean {
+    return this.spelledVerbatim;
+  }
 }
+
+/**
+ * A backslash-newline, which bash removes before splitting words. Quoting is
+ * not modelled: the fact this feeds only ever withholds.
+ */
+const LINE_CONTINUATION = /\\\r?\n/;

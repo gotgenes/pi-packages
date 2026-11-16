@@ -74,6 +74,11 @@ This clamp is deny-preserving and, like `yoloMode`, applied at composition; when
     "exec_command": { "commandArgument": "cmd", "workdirArgument": "workdir" }
   },
 
+  // What your own bash commands do to the paths they are given
+  "commandEffects": {
+    "git": { "subcommands": { "log": "read", "status": "read" } }
+  },
+
   // Ordered names of registered live-authority chain links (empty = none)
   "authorizerChain": [],
 
@@ -123,6 +128,9 @@ This clamp is deny-preserving and, like `yoloMode`, applied at composition; when
 | `toolTextSummaryMaxLength`  | —        | **Deprecated and ignored.** Superseded by `promptMaxRows` / `promptFieldMaxWidth`. Still accepted so an existing config is not rejected, but the value no longer applies; setting it logs a warning.                                         |
 | `piInfrastructureReadPaths` | `[]`     | Extra directories to auto-allow for reads, bypassing the `external_directory` gate. Supports `~`/`$HOME`/`${HOME}` expansion and wildcard patterns (`*`, `?`).                                                                               |
 | `authorizerChain`           | `[]`     | Ordered names of registered live-authority chain links to consult before the terminal authorizer (see [Authorizer chain](#authorizer-chain--case-by-case-decision-links)).                                                                   |
+
+Every array field (`promptNotifications`, `piInfrastructureReadPaths`, `authorizerChain`, and a `commandEffects` entry's `effects` and `unlessOption` lists) accepts at most 1,000 entries.
+A longer list makes the file invalid, so it is rejected like any other invalid value (see [Merge Precedence](#merge-precedence) for how an invalid scope fails closed).
 
 Both logs write to `~/.pi/agent/extensions/pi-permission-system/logs/`.
 No debug output is printed to the terminal.
@@ -356,20 +364,29 @@ The excluded surface is the **gate** surface the rule fired on, not the tool nam
 This holds for an ask forwarded up from a subagent exactly as it does for a local one.
 See [migration/0635-forwarded-ask-delegation-envelope.md](migration/0635-forwarded-ask-delegation-envelope.md).
 
+One exception is granted per ask, never per family: the **nothing-on-disk license**.
+A bash command's `external_directory` ask carries it when the command reads verbatim (it parses without error recovery, so an extglob such as `@(etc|var)` does not, and holds no backslash-newline) and every path the ask flags is a whole word spelled as the absolute path it names (bounded by an unescaped space, tab, newline, or operator, no relative spelling, no `.` or `..` segment, no glob, brace, `$` expansion, command substitution, or escape), names nothing on disk below the filesystem root (the root itself does not qualify), and is not a proven write (an output redirect, or a `commandEffects` writer).
+That is the shape of a token that only looks like a path, such as the spreadsheet cell in `officecli set data.xlsx /Sheet1/B1`.
+A link's `allow` on a licensed ask is honored, and the review log records `authorizer_allow_licensed` naming the link; one flagged path that exists, or sits under an existing directory, withholds the license from the whole ask.
+A tool's ask (`write`, `edit`, an extension tool) never carries it, and the `path` family takes no license.
+See [migration/0882-nothing-on-disk-delegation-license.md](migration/0882-nothing-on-disk-delegation-license.md).
+
 When a **subagent** raises the ask, the chain runs one hop up.
 The subagent forwards the request to the session serving it, and that session resolves it against its own rules and then runs *its* chain over the same evidence — so your configured links do review a subagent's asks, in the session you are watching.
 The subagent itself resolves no links (an extension cannot register one in a child session at all), and records `authorizer_chain_delegated` in the review log to say so.
 
-Three review-log records make the chain observable, all keyed by the ask's `requestId`:
+These review-log records make the chain observable, all keyed by the ask's `requestId`:
 
 | Record                               | Meaning                                                                                                                                                |
 | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `authorizer_chain_resolved`          | the links consulted on this ask, recorded before they run — a link that defers otherwise leaves no trace                                               |
 | `authorizer_chain_delegated`         | the ask came from a relaying subagent node; the named links were deliberately not run here                                                             |
 | `authorizer_chain_unregistered_link` | a configured name had no registered link — a real misconfiguration; the ask still reaches the terminal, and the first skip of that name also warns you |
+| `authorizer_allow_licensed`          | a link's `allow` on an `external_directory` ask was honored because the ask carried the nothing-on-disk license; names the `link` and the `license`    |
 | `authorizer_link_vacant`             | a link was registered on a relaying node, which runs no chain — accepted and recorded, never consulted                                                 |
 
 Extension authors: register a link from a `permissions:ready` handler via `getPermissionsService(sessionId).registerAuthorizer(name, authorize)`, taking `sessionId` from that event's payload; the callback receives the ask details and a narrow, session-scoped `PermissionQuery` (`checkPermission` / `getToolPermission`) so it can consult the deterministic engine at gate parity.
+The details' `accessIntent` carries the gate surface the rule fired on and, on a licensed bash `external_directory` ask, `delegationLicense: "nothing-on-disk"`; a link that allows only what the checkpoint will honor can read it before calling a model.
 Registration returns a disposer, and only one link may hold a given name.
 Register in every session without branching: a session that relays its asks accepts the link and records `authorizer_link_vacant` rather than refusing it.
 For a complete working example, see [`@gotgenes/pi-permission-model-judge`](https://github.com/gotgenes/pi-packages/tree/main/packages/pi-permission-model-judge): it registers a `model-judge` link on `permissions:ready` that reviews `external_directory` asks and auto-denies mistyped paths with a corrective reason.
@@ -598,7 +615,7 @@ The bash gate fails closed: when in doubt it blocks or prompts, never silently a
 - An indirection wrapper — `sudo`, `env`, `xargs`, `time`, `nohup`, `timeout`, `nice`, `parallel`, `rust-parallel`, `rush`, `doas`, `setsid`, `stdbuf`, `watch`, `flock`, or `find`/`fd` carrying a per-result exec flag (`find` with `-exec`/`-execdir`/`-ok`/`-okdir`, `fd` with `-x`/`--exec`/`-X`/`--exec-batch`) — runs a following command that a rule on the wrapper text would otherwise never gate, so its decision is floored the same way (the synthetic `<indirection-bash-wrapper>` pattern in the review log).
   So `sudo aws s3 rm s3://bucket` prompts rather than riding an `aws *: allow`, while a bare `find . -name '*.py'` search (no exec flag) is unaffected.
   An `allow` is clamped to `ask`, and an explicit `deny` still denies.
-  The [two exceptions](#wrapper-transparency) are a wrapper running a pure-reader command, whose direction is provable however unknown its argument feed is, and a wrapper that only modifies how a command runs (`time`, `timeout`, `nice`, `stdbuf`, `setsid`), which is decided exactly as the command it runs.
+  The [three exceptions](#wrapper-transparency) are a wrapper running a pure-reader command, whose direction is provable however unknown its argument feed is; a wrapper that only modifies how a command runs (`time`, `timeout`, `nice`, `stdbuf`, `setsid`), which is decided exactly as the command it runs; and an `env` that names no command at all, which is decided by its own rule.
 
 Every synthetic `ask` above — the two parse sentinels and both wrapper floors — is auto-approved under `yoloMode: true`, which is an explicit full-permissive opt-in rather than a rule that could ride through.
 An explicit `deny` still denies under yolo, and with yolo off the floors are unaffected.
@@ -608,6 +625,8 @@ A subagent's floored ask keeps its floor when it is forwarded to the parent sess
 The parent's `allow` rule does not answer it, so `sudo rm x` from a subagent prompts in the parent even under a parent `bash: *` allow.
 The parent's `deny` still denies, and a grant for the whole parent session or the parent's `yoloMode` still approves.
 A subagent's chained command (`ls && rm -rf /tmp/x`) is judged by the parent command by command: every command the subagent's own policy left asking is forwarded with its floor, and the parent's `deny` or `ask` on any one of them decides, not only on the first.
+The parent's rules and session grants match each forwarded command in the same spellings the subagent's own rules do: the [home-expanded form](#home-directory-expansion-in-patterns) and the form with every path argument made absolute against the subagent's working directory.
+So a parent `"~/bin/tool *": "deny"` denies a subagent's `$HOME/bin/tool --now`, and a parent `"rm /tmp/builds/*": "deny"` denies `rm builds/x` from a subagent working in `/tmp`.
 
 Because of this, set an explicit `bash` policy rather than relying on a permissive top-level `*`.
 A config whose top-level `*` is `"allow"` with no `bash` `*` policy lets every bash command silently inherit `allow`; the extension emits a startup warning in that case.
@@ -1007,16 +1026,17 @@ Since rules are last-match-wins, the explicit entry always has the final say, an
 
 A tool's identity establishes its direction, and on the bash surface a redirect operator or a known read-only command word can establish it too:
 
-| Access                                                                     | Consults                  |
-| -------------------------------------------------------------------------- | ------------------------- |
-| `read`, `grep`, `find`, `ls`                                               | the `_read` surface only  |
-| `write`                                                                    | the `_write` surface only |
-| `edit`                                                                     | both, most-restrictive    |
-| An MCP tool or extension tool                                              | both, most-restrictive    |
-| A bash output redirect destination (`>`, `>>`, `>\|`, `&>`)                | the `_write` surface only |
-| A bash input redirect destination (`<`, `<<<`)                             | the `_read` surface only  |
-| An argument of a [pure-reader core](#the-pure-reader-command-core) command | the `_read` surface only  |
-| Any other bash path token                                                  | both, most-restrictive    |
+| Access                                                                               | Consults                  |
+| ------------------------------------------------------------------------------------ | ------------------------- |
+| `read`, `grep`, `find`, `ls`                                                         | the `_read` surface only  |
+| `write`                                                                              | the `_write` surface only |
+| `edit`                                                                               | both, most-restrictive    |
+| An MCP tool or extension tool                                                        | both, most-restrictive    |
+| A bash output redirect destination (`>`, `>>`, `>\|`, `&>`)                          | the `_write` surface only |
+| A bash input redirect destination (`<`, `<<<`)                                       | the `_read` surface only  |
+| An argument of a [pure-reader core](#the-pure-reader-command-core) command           | the `_read` surface only  |
+| An argument of a command you [declared](#declaring-your-own-commands-commandeffects) | what you declared         |
+| Any other bash path token                                                            | both, most-restrictive    |
 
 An access whose direction cannot be established consults **both** surfaces and takes the more restrictive answer.
 That is deliberate: an unproven access is never treated as the narrower one.
@@ -1032,6 +1052,11 @@ That is deliberate — a command nobody could parse is the last place to assume 
 Attribution is per **token**, not per command, so one invocation can do both: in `cat notes.md > /backup/notes.md`, `notes.md` is a read and `/backup/notes.md` is a write.
 A redirect operator's proof is absolute — it overrides whatever the command in front of it proved, because `> out.txt` writes `out.txt` however read-only that command is.
 When the same path is reached twice with disagreeing directions (`cat a.txt > a.txt`), the two fold to unproven, which consults both surfaces.
+
+When a bash command asks on a path surface, the prompt says why, on a `why` line naming the path that decided the ask, its direction, and what established it: a redirect, the pure-reader core, your global or project `commandEffects`, an option that withdrew the claim, or nothing at all.
+For an unproven path it adds that declaring the command in [`commandEffects`](#declaring-your-own-commands-commandeffects) would classify it.
+The review log records the same facts on every entry for that ask as `decidingPath`, `effect`, and `effectSource`.
+Only the deciding path is recorded, not every path the command referenced; an ask from a file tool (`read`, `write`, `edit`, or an MCP or extension tool) carries none of these, since the tool itself is what establishes its direction.
 
 #### The pure-reader command core
 
@@ -1086,11 +1111,95 @@ Two more shapes withdraw the claim:
 - An argument whose value only the shell decides (`"$range"`, `$f`, `$(cmd)`, `-*`, `-\i`, `{-i,-n}`), wherever it sits, because it could arrive as `-i` or as the script itself.
 - A `sed` script where GNU and BSD would read different commands: a delimiter inside a bracket expression (`s/[/]/x/`), or an `-e` after the first positional.
 
+#### Declaring your own commands: `commandEffects`
+
+The core stays small on purpose, so most of the readers you use every day (`git log`, `git diff`, `strings`) are outside it, and their path arguments consult both surfaces.
+`commandEffects` lets you say what your own commands do:
+
+```jsonc
+{
+  "commandEffects": {
+    "git": {
+      "unlessOption": ["--output"],
+      "subcommands": {
+        "log": "read",
+        "show": "read",
+        "status": "read",
+        "diff": "read",
+        "remote": { "subcommands": { "show": "read" } }
+      }
+    },
+    "officecli": { "effects": [] }
+  }
+}
+```
+
+A declaration only chooses which surface answers for the paths a command names, exactly as a core word does.
+It pays off once a read grant exists for it to reach, which is the recipe to put beside it:
+
+```jsonc
+{
+  "permission": {
+    "external_directory_read": { "*": "allow" },
+    "external_directory_write": { "*": "ask" }
+  }
+}
+```
+
+With both, `git log ~/other/repo/file` reads without a prompt, and `git push`, which nobody declared, still asks.
+
+Each key is a command's **bare basename**, and each entry has up to three fields:
+
+| Field          | Meaning                                                                                                                                          |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `effects`      | `"read"`, `"write"`, or an array of them. `[]` says the command's arguments touch no file at all.                                                |
+| `unlessOption` | Options that withdraw the declaration when they appear anywhere in the command, so its paths consult both surfaces again.                        |
+| `subcommands`  | Entries for the word that follows, keyed by that exact word. A value is a nested entry or, as a shorthand, just its `effects` (`"log": "read"`). |
+
+The `effects` and `unlessOption` arrays each accept at most 1,000 entries; a longer list rejects the whole config file.
+
+The rules are fail-closed wherever a rule had to choose:
+
+- **Undeclared is unknown.**
+  A command with no entry, a subcommand with no entry, and an entry with no `effects` all consult both surfaces.
+- **Subcommands match exactly, as the next word.**
+  `git -C ~/other log` and `git --no-pager log` are not `git log`: when an entry declares subcommands and the word in that position is an option or a computed word (`git $SUB`), the subcommand that will run cannot be told, so its paths consult both surfaces.
+- **A path-qualified command is a different program.**
+  `./git log` and `/usr/bin/git log` match no declaration.
+- **An `unlessOption` stem withdraws the declaration, and never substitutes another.**
+  It is matched the way the core's own withdrawing options are: a single letter after one dash (`-o`) anywhere in a cluster or with its value attached (`-so`, `-ofile`), a long option (`--output`) bare, with `=value`, or abbreviated (`--out`), and a longer single-dash option (`-exec`) as written or with a suffix (`-execdir`).
+  A word whose value only the shell decides withdraws it too when it may arrive beginning with `-`.
+  Stems met on the way down to a subcommand all apply to it, which is why the recipe guards `--output` on `git` itself: `git log`, `git show`, and `git diff` all accept `--output=<file>`, which writes it.
+- **`["read", "write"]` consults both surfaces**, as an unproven path does; `"write"` alone consults only `_write`, which mostly makes a prompt more honest.
+
+`effects: []` is for a tool whose arguments look like paths and are not.
+`officecli set data.xlsx /Sheet1/B1` names a cell, but `/Sheet1/B1` is shaped exactly like `/etc/passwd`, and no rule can tell them apart.
+Declaring `officecli` with no effects withdraws its arguments from `path` and `external_directory` entirely, so a `path` deny no longer reaches them either: that is the claim you are making about your own tool.
+The `bash` surface still governs the command, including a `bash` rule written against the absolute spelling of one of its arguments.
+It is the strongest claim the key can make, so make it only for a tool none of whose options reads or writes a file: `curl` looks like a candidate, but `curl -d @~/.ssh/id_rsa` reads the file it names and `curl -o` writes one.
+A redirect on the command (`officecli … > ~/out.xlsx`) and a command nested inside it (`officecli $(cat ~/list)`) keep their own directions.
+
+Three things a declaration cannot do:
+
+- **Override the core.**
+  The [pure-reader core](#the-pure-reader-command-core) answers first, including when one of its own guards withdraws a claim, so a declaration for `sed`, `sort`, `find`, or `cat` is never read.
+  The extension warns about such an entry when it loads the config.
+- **Reach through a wrapper.**
+  A declaration describes a command's own arguments: `xargs git log ~/x` keeps the [indirection-wrapper floor](#declarations-and-privilege), and `~/x` consults both surfaces there.
+  A wrapper's arguments carry the command it runs, so a declaration keyed by a wrapper itself (`xargs`, `sudo`, `env`, `time`, `timeout`, a shell, `eval`, and the rest of the floor's list) is never read either, and the extension warns about it when it loads the config.
+  That list is the floor's, not every prefix command: a declaration for `command`, `exec`, `builtin`, `busybox`, or `ionice` is read like any other and describes the arguments that follow it, which are the command it runs, so do not declare one.
+- **Come from an agent.**
+  Only the global and project config files declare effects; agent frontmatter cannot, since an agent declaring its own tools read-only would be granting itself relief.
+
+Declarations **shallow-merge by command** across global → project, as `shellTools` does: a project entry replaces a colliding command whole and never drops a global one.
+An untrusted project's declarations are not loaded.
+The review log records which file classified a path, as `effectSource: "declared-global"` or `"declared-project"`.
+
 #### Wrapper transparency
 
 The [indirection-wrapper floor](#fail-closed-behavior) exists because a wrapper hides the command that should be gated.
-Two kinds of wrapper unit have no reason to be floored: one running a [pure reader](#a-wrapper-running-a-pure-reader), and one that only [modifies how a command runs](#a-wrapper-that-only-modifies-execution).
-Each resolves by the inner command's own `bash` rules, and the review log records which reason applied as `floorExemption`.
+Three kinds of wrapper unit have no reason to be floored: one running a [pure reader](#a-wrapper-running-a-pure-reader), one that only [modifies how a command runs](#a-wrapper-that-only-modifies-execution), and one that [runs nothing](#a-wrapper-that-runs-nothing).
+The first two resolve by the inner command's own `bash` rules, the third by its own, and the review log records which reason applied as `floorExemption`.
 
 ##### A wrapper running a pure reader
 
@@ -1100,15 +1209,18 @@ The floor guards unknowability of *scope*, and scope stays the path surfaces' jo
 Such a unit is therefore **not** floored.
 It resolves by the inner command's own `bash` rules instead, and the review log records `floorExemption: "core-reader"` beside the rule that decided, so an allow the floor would once have prompted for is auditable to the reason that let it through.
 
-All four of these must hold, and each is a way the floor's reason could still apply:
+All five of these must hold, and each is a way the floor's reason could still apply:
 
 1. The unit is an indirection wrapper.
    An `sh -c`/`eval` payload is not one — see below.
 2. The command it runs can be established without passing through an inline shell.
    `watch` and `parallel` hand their whole command line to a shell, and `rush` and `rust-parallel` build theirs from a template, so a unit with any of the four as a layer never qualifies: `watch cat x \; rm y` runs `rm`.
-3. That command **proves** a read: a bare-basename core word with no option that withdraws the claim.
+3. Every word the wrapper itself takes (an option, its value, an operand, a `NAME=value` word) is written literally.
+   The shell splits or expands a computed word before the wrapper runs, so `sudo -u $U cat x` with `U="root rm y"` runs `rm y cat x`; quoting does not exempt it, since `"$@"` can vanish and a quoted variable can name an array.
+   A computed word of the command it runs is fine: `sudo -u root cat $X` still qualifies.
+4. That command **proves** a read: a bare-basename core word with no option that withdraws the claim.
    So `xargs sort -o /tmp/x` and `xargs find . -delete` stay floored, and so does `xargs ./grep foo`.
-4. The enclosing statement provably writes no file through a redirect.
+5. The enclosing statement provably writes no file through a redirect.
    A destination the parse cannot resolve — `> $OUT`, `> $(mktemp)` — counts against the exemption rather than for it.
 
 So `xargs grep -l foo`, `xargs wc -l`, `xargs sed -n 1p`, `find . -name '*.ts' -exec cat {} +`, and the no-op probe `sudo -n true` stop prompting under a matching `bash` allow, while `xargs rm`, `xargs sed -i`, and `find . -exec sh -c '…' \;` still prompt.
@@ -1121,7 +1233,7 @@ Three things this does **not** change:
   Under `bash: {"*": "allow", "grep *": "deny"}`, `xargs grep foo` is denied rather than merely prompted.
 - Path gating is untouched.
   The exemption decides the `bash` surface only, and every path token the command projects still goes through `path` and `external_directory` with the direction its command proved.
-  Clause 4 is what keeps that from being a weaker promise than it sounds: a redirect destination the parse cannot resolve (`> $OUT`, `> $(mktemp)`) is not projected onto those surfaces either, so the wrapper keeps its floor rather than relying on a gate that would not see the write.
+  Clause 5 is what keeps that from being a weaker promise than it sounds: a redirect destination the parse cannot resolve (`> $OUT`, `> $(mktemp)`) is not projected onto those surfaces either, so the wrapper keeps its floor rather than relying on a gate that would not see the write.
 
 ##### A wrapper that only modifies execution
 
@@ -1133,7 +1245,7 @@ All four of these must hold, and each keeps the decision about the command that 
 
 1. **Every** wrapper layer is one of the five.
    `time sudo rm -rf x` and `sudo time pnpm test` stay floored, as do `nohup` (it may write `nohup.out`) and `flock` (it creates its lock file).
-2. Every option on each layer is one that wrapper is known to take, spelled in full, and every option, value, and operand is written literally (an environment assignment, which the shell does not split, may be computed).
+2. Every option on each layer is one that wrapper is known to take, spelled in full, and every option, value, operand, and `NAME=value` word is written literally.
    A word the shell rewrites (`timeout $D …`, `timeout {5,sudo} …`) may become several, one of them a wrapper, so it keeps the floor.
    So `timeout --sig KILL 5 …` (an abbreviation) and `nice -5 …` stay floored, and so do `time`'s file-writing `-o`, `--output`, and `-a`.
    The admitted options are `time -p`/`-l`/`-h`/`-f`; `timeout -s`/`-k`/`-f`/`-p`/`-v` and their long forms; `nice -n`/`--adjustment`; and `stdbuf -i`/`-o`/`-e` and their long forms.
@@ -1146,10 +1258,31 @@ So under `bash: {"*": "allow", "git push *": "deny"}`, `time pnpm run lint >/tmp
 No redirect refusal applies here: the redirect destination goes through `path` and `external_directory` as it does for the bare command, and a destination the parse cannot resolve (`> $OUT`) is unprojected for both forms alike.
 When a unit qualifies for both exemptions (`time grep foo`), the review log records `core-reader`.
 
+##### A wrapper that runs nothing
+
+Given no command, `env` prints the environment and runs nothing, exactly as `printenv` does.
+There is no command for it to hide, so such a unit resolves by its own `bash` rule (`env …`, or the fallback), and the review log records `floorExemption: "no-command"`.
+So under `bash: {"*": "allow"}`, `env | rg '^PI_'`, `env -i`, `env -u FOO`, and `env FOO=1` are allowed.
+
+All three of these must hold, and each is a way a command could still run:
+
+1. The unit is `env` itself, not `env` behind another wrapper: `sudo env` and `time env` stay floored.
+   No other wrapper qualifies, since bare `xargs` runs `echo` and `sudo` and `doas` are not audited for their bare forms.
+2. Every word after `env` is an option `env` is known to take, that option's value, `--` or a lone `-`, or a `NAME=value` assignment after the options.
+   A [refused mode](#declarations-and-privilege) keeps the floor even with no command (`env -C /tmp`, `env -S 'rm x'`), and so does a quoted assignment (`env 'FOO=1'`), which reads as a command.
+   So does `env --unset FOO`: BSD `env` (the macOS one) has no long options and reads it as `-u nset`, then runs `FOO`; `env --unset=FOO` and `env -u FOO` qualify.
+3. Every one of those words is written literally.
+   `env -u $X` with `X="FOO rm"` runs `rm`, and `env $X` may name any command.
+
+No redirect refusal applies: `env > /tmp/x` is decided as `printenv > /tmp/x` is, with the destination gated by `path` and `external_directory`.
+
+If you want a bare `env` to prompt because it prints every secret in the environment, say so in the policy: `"env *": "ask"` and `"printenv *": "ask"` match the bare commands and every form with options, and a rule on the wrapper's own text is decided before the exemption is consulted.
+That rule also asks for every `env` that does run a command (`env cat x`), which is usually what such a policy wants.
+
 ##### Declarations and privilege
 
 Neither exemption is extended by configuration.
-A user `commandEffects` declaration participates in effect classification but does **not** lift the floor.
+A [`commandEffects` declaration](#declaring-your-own-commands-commandeffects) participates in effect classification but does **not** lift the floor.
 The core's argument-independence is audited here; a claim about a wrapped command is not, and a wrong claim behind a wrapper fails open.
 
 `sudo` and `doas` are ordinary wrappers to the pure-reader rule, and never execution modifiers.
@@ -1180,6 +1313,7 @@ So `xargs -n 1 cat` and `env -u FOO cat x` still resolve by `cat`'s rule, while 
 - `env -C`/`--chdir`, because relative operands resolve somewhere the path surfaces do not look (`env -C /etc cat shadow` reads `/etc/shadow`).
 - `env -S`/`--split-string`, because the command is split out of one word at run time (`env -Srm cat` runs `rm cat`).
 - `env -P`, `-a`/`--argv0`, and `--env0-from`, because each chooses which binary the named command is: a search path, the argv0 a multi-call binary dispatches on, or an environment that may set `PATH`.
+- `env --unset` with its value as a separate word, because BSD `env` reads `--unset FOO cat x` as `-u nset` and runs `FOO`, while GNU `env` unsets `FOO` and runs `cat`; `--unset=FOO` and `-u FOO` are read the same by both.
 - `xargs -J`, because it puts input in the command's place when the command equals its replacement string.
 - `doas -C` (it checks a config and runs nothing), `doas -s` (it runs a shell), and OpenBSD's `doas -a`, which `opendoas` does not list.
 

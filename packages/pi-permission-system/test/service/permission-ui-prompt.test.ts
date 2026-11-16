@@ -86,6 +86,11 @@ describe("buildUiPrompt", () => {
         commandContext: "subshell",
         matchedSpelling: null,
         executedUnit: "git push --force",
+        decidingPath: {
+          path: "/outside/x",
+          effect: "write",
+          effectSource: "syntax",
+        },
       },
       evidence: [{ label: "full command", text: "secret-ish", detail: null }],
       annotations: [{ source: "judge", text: "advisory" }],
@@ -110,6 +115,11 @@ describe("buildUiPrompt", () => {
       commandContext: "subshell",
       matchedSpelling: null,
       executedUnit: "git push --force",
+      decidingPath: {
+        path: "/outside/x",
+        effect: "write",
+        effectSource: "syntax",
+      },
     });
     // The bus is the narrowest renderer (ADR 0011 §6): no evidence reaches it.
     expect(event).not.toHaveProperty("message");

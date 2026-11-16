@@ -149,6 +149,7 @@ When a delegated or routed subagent cannot decide an `ask` where it runs — bec
 The main interactive session polls for forwarded requests, shows the confirmation prompt, writes the response, and the subagent resumes once that decision is available.
 A parent `allow`/`deny` rule governs a child's escalation directly (the serving node resolves it as recorded authority before prompting), and a "whole session" grant recorded on the parent auto-approves later forwards of the same pattern.
 For a chained bash command, the parent judges every command the child left asking, not only the first, and the most restrictive answer decides.
+The parent matches each of those commands in the spellings the child computed for it (the home-expanded form and absolute path arguments), since only the child knows its working directory and whether the command rebinds `HOME`.
 The exception is a bash ask the child raised through a [synthetic floor](configuration.md#fail-closed-behavior) (a wrapper such as `sudo` or `bash -c`, or a command the parser could not resolve): the child forwards the floor with the ask, and a parent `allow` rule escalates it to the parent's prompt instead of approving it.
 
 This keeps `ask` policies usable even when the original permission check happens inside a non-UI execution context.

@@ -36,7 +36,7 @@ Facts about this environment that no model could infer.
 
 ### Shell
 
-Two prose tripwires are now `pi-permission-system` deny rules in `.pi/extensions/pi-permission-system/config.json` (`rg -r`, `git commit -F` from a heredoc); the reason string says what to do instead.
+Three prose tripwires are now `pi-permission-system` deny rules in `.pi/extensions/pi-permission-system/config.json` (`rg -r`, `git commit -F` from a heredoc, `cd packages/<pkg>`); the reason string says what to do instead.
 
 ### Tooling
 
@@ -51,6 +51,8 @@ The `pi-autoformat` extension emits a `[pi-autoformat] Formatted N file(s)` mess
 It is informational — not a turn boundary.
 Continue the current step (e.g. Red→Green→Verify→Commit) until it is complete.
 It also reflows what you just wrote (line wrapping, quote style), so an `oldText` — or a shell/regex pattern — built from the layout you emitted can fail to match; re-read a region you just edited before matching against it again.
+It formats at `turn_end`, after every call in the batch, so a check batched with an `Edit`/`Write` always sees the unformatted file, and a same-file `Read` or `cp` runs concurrently with the edit itself.
+Never batch an edit with a call that reads, runs, copies, or diffs the same file.
 
 ### Stale prompt-template expansion
 

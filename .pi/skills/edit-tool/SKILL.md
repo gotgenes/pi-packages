@@ -25,6 +25,7 @@ If you delete such a block by line number with `sed`, re-read the region afterwa
 An `oldText` spanning any non-ASCII character (an em-dash, a box-drawing rule, an ellipsis) must be copied from a fresh `Read`, never retyped: the character can be emitted as a bare newline, and the batch then fails on text you appear to have quoted correctly (Refs #933).
 It can also land as an invisible `\x0c` form feed plus literal text (`erence2`, `erence6`), which a comment or a doc string carries past `tsc`, Biome, and the suite.
 A pre-commit hook and `pnpm run lint` now catch it, so the byte no longer reaches a commit; see the `markdown-conventions` skill for the repair and the placeholder workaround (Refs #863, #960).
+A malformed call — an `oldText` or `newText` you did not mean to write — marks a degraded-emission run: re-read the region your next successful `Edit` lands, since it can match and still drop words.
 
 ## Scripted substitutions
 
@@ -35,6 +36,7 @@ A scripted bulk edit across test files cannot tell a mock **producer** from an *
 That holds only where assertions are exact (`toEqual`/`toHaveBeenCalledWith`).
 A touched `toMatchObject`/`objectContaining` site absorbs a wrong insertion and still passes — re-read those by hand instead of counting the green run as verification.
 Run the full package suite, not the files the rename's own grep matched — a mock *producer* spells the symbol as an object key (`externalPaths:`), which a call-site grep (`\.externalPaths\(`) never sees.
+In a `node -e` substitution, write `s.split(a).join(b)`, never `s.replace(a, b)`: the replacement string interprets `$&`, `` $` ``, and `$'`, so shell prose holding `` $` `` duplicates the text before the match.
 A replacement containing backslashes is a trap even as a single-line rename — shell, perl, and the regex engine each consume an escape level.
 Use `Edit`.
 That includes repairing a literal `\uXXXX` an edit body just wrote: re-edit the region with the character typed literally, never a `perl` substitution whose pattern carries the same escape (Refs #864).

@@ -71,6 +71,14 @@ describe("renderReportBody", () => {
 		expect(body).toBe("Agent is still running. Use wait: true or check back later.");
 	});
 
+	it("says a queued agent has not started, rather than showing no output", () => {
+		const body = renderReportBody(makeReport({ status: "queued", result: undefined }));
+		expect(body).toBe(
+			"Agent is queued and has not started; it is waiting for a concurrency slot (maxConcurrent). " +
+				"Use wait: true or check back later.",
+		);
+	});
+
 	it("shows the error message for error status", () => {
 		const body = renderReportBody(makeReport({ status: "error", error: "timeout" }));
 		expect(body).toBe("Error: timeout");
@@ -293,6 +301,28 @@ describe("formatAgentReport", () => {
 					"If its progress has not changed since your last check, waiting again will not unstick it: " +
 					"read its transcript, steer it with steer_subagent, or tell the user it appears stuck.\n\n" +
 					"Full transcript available at: /tasks/agent.jsonl",
+			);
+		});
+
+		it("says a queued agent has not started and that waiting again is how to collect it", () => {
+			const text = formatAgentReport(
+				makeReport({
+					status: "queued",
+					result: undefined,
+					duration: "queued 130.0s",
+					waitExpiredAfter: 120,
+				}),
+			);
+			expect(text).toBe(
+				"Agent: agent-1\n" +
+					"Type: General | Status: queued | Tool uses: 3 | Duration: queued 130.0s\n" +
+					"Description: Investigate the bug\n\n" +
+					"Agent is queued and has not started; it is waiting for a concurrency slot (maxConcurrent). " +
+					"Use wait: true or check back later.\n\n" +
+					"This wait ended after its 120s timeout. The agent was not stopped and is still queued: " +
+					"it has not started, and starts when a running agent finishes and frees a concurrency slot.\n" +
+					"Waiting again is how to collect its result; if the running agents are not making progress, " +
+					"check on them instead.",
 			);
 		});
 	});

@@ -1,6 +1,11 @@
 import { basename } from "node:path";
 import { type TokenEffect, UNPROVEN_EFFECT } from "#src/access-intent/effect";
-import { proveCommandEffect } from "./command-effects";
+import {
+  type DeclaredCommandEffects,
+  NO_DECLARED_COMMAND_EFFECTS,
+} from "#src/config/command-effects-config";
+import { attributeCommandOperands } from "./command-effects";
+import type { OperandAttribution } from "./declared-command-effects";
 import { EXECUTION_HOST_TYPES, forEachExecutionIn } from "./nested-execution";
 import {
   ARG_NODE_TYPES,
@@ -14,6 +19,7 @@ import {
   redirectEffectForDestination,
   redirectTargetIndex,
 } from "./redirect-analysis";
+import { WRAPPER_COMMAND_NAMES } from "./wrapper-analysis";
 
 /**
  * What a collected token is, as the collector that produced it established.
@@ -25,7 +31,13 @@ export type TokenRole =
   /** An operand of unknown path-hood: shape and the existence probe decide. */
   | "operand"
   /** A redirect's own target, which the syntax proves names a file. */
-  | "redirect-destination";
+  | "redirect-destination"
+  /**
+   * An operand of a command the user declared `effects: []` for: it touches no
+   * file, so neither path projection admits it, though its spelling still
+   * reaches the `bash` surface.
+   */
+  | "inert-operand";
 
 /**
  * A collected path-candidate token paired with the effect its position proved
@@ -77,24 +89,28 @@ export interface SourceSpan {
 export function collectPathCandidateTokens(
   node: TSNode,
   words: WordReader,
+  declared: DeclaredCommandEffects,
 ): PathToken[] {
-  if (node.type === "command") return collectCommandTokens(node, words);
-  if (node.type === "file_redirect") return collectRedirectTokens(node, words);
+  if (node.type === "command")
+    return collectCommandTokens(node, words, declared);
+  if (node.type === "file_redirect")
+    return collectRedirectTokens(node, words, declared);
   if (node.type === "for_statement") {
-    return collectStatementOperandTokens(node, "after-in", words);
+    return collectStatementOperandTokens(node, "after-in", words, declared);
   }
   if (node.type === "case_statement") {
-    return collectStatementOperandTokens(node, "before-in", words);
+    return collectStatementOperandTokens(node, "before-in", words, declared);
   }
   if (EXECUTION_HOST_TYPES.has(node.type)) {
-    return collectHostedExecutionTokens(node, words);
+    return collectHostedExecutionTokens(node, words, declared);
   }
   if (SKIP_SUBTREE_TYPES.has(node.type)) return [];
 
   const tokens: PathToken[] = [];
   for (let i = 0; i < node.childCount; i++) {
     const child = node.child(i);
-    if (child) tokens.push(...collectPathCandidateTokens(child, words));
+    if (child)
+      tokens.push(...collectPathCandidateTokens(child, words, declared));
   }
   return tokens;
 }
@@ -104,28 +120,53 @@ export function collectPathCandidateTokens(
  * commands use `collectPatternCommandTokens`; all others use
  * `collectGenericCommandTokens`.
  *
- * Every token the command owns carries the effect its head word proves — the
- * pure-reader core, read through the *raw* head word so a path-qualified
- * spelling proves nothing. A nested execution collected along the way keeps
- * its own command's attribution instead.
+ * Every token the command owns carries the attribution its head word
+ * establishes: the pure-reader core first, then the user's `commandEffects`
+ * declarations, both read through the *raw* head word so a path-qualified
+ * spelling proves nothing. A declared `effects: []` stamps the command's
+ * tokens `inert-operand` instead of `operand`. A nested execution collected
+ * along the way keeps its own command's attribution.
  */
 export function collectCommandTokens(
   node: TSNode,
   words: WordReader,
+  declared: DeclaredCommandEffects,
 ): PathToken[] {
-  const effect = proveCommandEffect(
-    extractCommandWord(node, words) ?? "",
-    commandArgumentWords(node, words),
-  );
   const commandName = extractCommandName(node, words);
+  const operand = operandStampOf(
+    attributeCommandOperands(
+      extractCommandWord(node, words) ?? "",
+      commandArgumentWords(node, words),
+      // A wrapper's arguments carry the command it runs, which no declaration
+      // describes (ADR 0013 §11), so a wrapper is attributed by the core alone.
+      commandName !== undefined && WRAPPER_COMMAND_NAMES.has(commandName)
+        ? NO_DECLARED_COMMAND_EFFECTS
+        : declared,
+    ),
+  );
   const config = commandName
     ? PATTERN_FIRST_COMMANDS.get(commandName)
     : undefined;
-  if (config) return collectPatternCommandTokens(node, config, effect, words);
+  if (config) {
+    return collectPatternCommandTokens(node, config, operand, words, declared);
+  }
   return [
-    ...collectGenericCommandTokens(node, effect, words),
-    ...collectEmbeddedOptionValues(node, effect, words),
+    ...collectGenericCommandTokens(node, operand, words, declared),
+    ...collectEmbeddedOptionValues(node, operand, words),
   ];
+}
+
+/** The effect and role every operand token a command owns is stamped with. */
+interface OperandStamp {
+  readonly effect: TokenEffect;
+  readonly role: TokenRole;
+}
+
+function operandStampOf(attribution: OperandAttribution): OperandStamp {
+  return {
+    effect: attribution.effect,
+    role: attribution.kind === "inert" ? "inert-operand" : "operand",
+  };
 }
 
 /**
@@ -159,6 +200,7 @@ export function collectCommandTokens(
 export function collectRedirectTokens(
   node: TSNode,
   words: WordReader,
+  declared: DeclaredCommandEffects,
 ): PathToken[] {
   const target = redirectTargetIndex(node);
   const tokens: PathToken[] = [];
@@ -173,10 +215,10 @@ export function collectRedirectTokens(
           i === target && provesTarget(effect, child, token, words)
             ? "redirect-destination"
             : "operand";
-        tokens.push(wholeArgumentToken(child, token, effect, role));
+        tokens.push(wholeArgumentToken(child, token, { effect, role }));
       }
     }
-    tokens.push(...collectHostedExecutionTokens(child, words));
+    tokens.push(...collectHostedExecutionTokens(child, words, declared));
   }
   return tokens;
 }
@@ -217,10 +259,11 @@ function provesTarget(
 function collectHostedExecutionTokens(
   node: TSNode,
   words: WordReader,
+  declared: DeclaredCommandEffects,
 ): PathToken[] {
   const tokens: PathToken[] = [];
   forEachExecutionIn(node, (contextNode) => {
-    tokens.push(...collectPathCandidateTokens(contextNode, words));
+    tokens.push(...collectPathCandidateTokens(contextNode, words, declared));
   });
   return tokens;
 }
@@ -269,6 +312,7 @@ function collectStatementOperandTokens(
   node: TSNode,
   operandSide: OperandSide,
   words: WordReader,
+  declared: DeclaredCommandEffects,
 ): PathToken[] {
   const tokens: PathToken[] = [];
   let seenIn = false;
@@ -281,13 +325,16 @@ function collectStatementOperandTokens(
     }
     const side: OperandSide = seenIn ? "after-in" : "before-in";
     if (side !== operandSide || !ARG_NODE_TYPES.has(child.type)) {
-      tokens.push(...collectPathCandidateTokens(child, words));
+      tokens.push(...collectPathCandidateTokens(child, words, declared));
       continue;
     }
     tokens.push(
-      wholeArgumentToken(child, words.text(child), UNPROVEN_EFFECT, "operand"),
+      wholeArgumentToken(child, words.text(child), {
+        effect: UNPROVEN_EFFECT,
+        role: "operand",
+      }),
     );
-    tokens.push(...collectHostedExecutionTokens(child, words));
+    tokens.push(...collectHostedExecutionTokens(child, words, declared));
   }
   return tokens;
 }
@@ -404,7 +451,7 @@ const OPTION_VALUE_PATTERN = /^-{1,2}[^=\s]+=(.+)$/;
  */
 function collectEmbeddedOptionValues(
   node: TSNode,
-  effect: TokenEffect,
+  operand: OperandStamp,
   words: WordReader,
 ): PathToken[] {
   const values: PathToken[] = [];
@@ -416,7 +463,7 @@ function collectEmbeddedOptionValues(
 
     const value = OPTION_VALUE_PATTERN.exec(words.text(child))?.[1];
     if (value !== undefined) {
-      values.push({ token: value, effect, role: "operand" });
+      values.push({ token: value, ...operand });
     }
   }
   return values;
@@ -425,10 +472,10 @@ function collectEmbeddedOptionValues(
 /** The value embedded in a single `--opt=value` token, if it carries one. */
 function embeddedOptionValueToken(
   text: string,
-  effect: TokenEffect,
+  operand: OperandStamp,
 ): PathToken[] {
   const value = OPTION_VALUE_PATTERN.exec(text)?.[1];
-  return value === undefined ? [] : [{ token: value, effect, role: "operand" }];
+  return value === undefined ? [] : [{ token: value, ...operand }];
 }
 
 /**
@@ -797,8 +844,9 @@ function classifyPatternCommandFlag(
 function collectPatternCommandTokens(
   node: TSNode,
   config: PatternCommandConfig,
-  effect: TokenEffect,
+  operand: OperandStamp,
   words: WordReader,
+  declared: DeclaredCommandEffects,
 ): PathToken[] {
   const patternPositionals = config.patternPositionals ?? 1;
   let hasExplicitScript = false;
@@ -813,7 +861,7 @@ function collectPatternCommandTokens(
 
     if (COMMAND_PREFIX_TYPES.has(child.type)) {
       // Supplies no operand of its own, but may host one that really runs.
-      tokens.push(...collectHostedExecutionTokens(child, words));
+      tokens.push(...collectHostedExecutionTokens(child, words, declared));
       continue;
     }
 
@@ -827,7 +875,8 @@ function collectPatternCommandTokens(
     // recursions below; the quoted one parses as a `string` and would
     // otherwise stop here, whichever role the argument turns out to have
     // (#945).
-    if (isArgNode) tokens.push(...collectHostedExecutionTokens(child, words));
+    if (isArgNode)
+      tokens.push(...collectHostedExecutionTokens(child, words, declared));
 
     // Handle the argument a previous flag consumed. The consumption discharges
     // on whatever node type follows, not only on an ARG_NODE_TYPES one: a bare
@@ -841,14 +890,14 @@ function collectPatternCommandTokens(
       if (!isArgNode) {
         // Contributes no operand text of its own, but may host a nested
         // execution whose operands are candidates (#741).
-        tokens.push(...collectPathCandidateTokens(child, words));
+        tokens.push(...collectPathCandidateTokens(child, words, declared));
         continue;
       }
       const discharge = dischargePendingConsumption(
         consumption,
         child,
         text,
-        effect,
+        operand,
       );
       if (discharge.token) tokens.push(discharge.token);
       if (discharge.consumed) continue;
@@ -874,7 +923,7 @@ function collectPatternCommandTokens(
         positionalsSeen++;
       }
       // Recurse for nested commands (e.g. command_substitution).
-      tokens.push(...collectPathCandidateTokens(child, words));
+      tokens.push(...collectPathCandidateTokens(child, words, declared));
       continue;
     }
 
@@ -904,15 +953,14 @@ function collectPatternCommandTokens(
             if (directive.role === "script-file")
               tokens.push({
                 token: directive.value,
-                effect,
-                role: "operand",
+                ...operand,
               });
             if (suppliesScript(directive.role)) hasExplicitScript = true;
             break;
           case "regular-flag":
             // Unrecognized: fall back to the blind `--opt=value` split, which is
             // safe precisely because the flag's role is unknown (#645).
-            tokens.push(...embeddedOptionValueToken(text, effect));
+            tokens.push(...embeddedOptionValueToken(text, operand));
             break;
         }
         continue;
@@ -923,11 +971,11 @@ function collectPatternCommandTokens(
     if (!hasExplicitScript && positionalsSeen < patternPositionals) {
       positionalsSeen++; // Skip: this is an inline pattern/script.
     } else {
-      tokens.push(wholeArgumentToken(child, text, effect, "operand"));
+      tokens.push(wholeArgumentToken(child, text, operand));
     }
     // A quoted token that did not act as a flag above has its embedded value
     // split here instead.
-    tokens.push(...embeddedOptionValueToken(text, effect));
+    tokens.push(...embeddedOptionValueToken(text, operand));
   }
 
   return tokens;
@@ -975,13 +1023,13 @@ function dischargePendingConsumption(
   role: PatternFlagRole,
   argument: TSNode,
   text: string,
-  effect: TokenEffect,
+  operand: OperandStamp,
 ): ConsumptionDischarge {
   switch (role) {
     case "script-file":
       return {
         consumed: true,
-        token: wholeArgumentToken(argument, text, effect, "operand"),
+        token: wholeArgumentToken(argument, text, operand),
       };
     case "script":
     case "value":
@@ -999,8 +1047,9 @@ function dischargePendingConsumption(
  */
 function collectGenericCommandTokens(
   node: TSNode,
-  effect: TokenEffect,
+  operand: OperandStamp,
   words: WordReader,
+  declared: DeclaredCommandEffects,
 ): PathToken[] {
   const tokens: PathToken[] = [];
   let seenCommandName = false;
@@ -1012,7 +1061,7 @@ function collectGenericCommandTokens(
     if (COMMAND_PREFIX_TYPES.has(child.type)) {
       // Supplies no operand of its own, but may host one that really runs.
       if (child.type === "command_name") seenCommandName = true;
-      tokens.push(...collectHostedExecutionTokens(child, words));
+      tokens.push(...collectHostedExecutionTokens(child, words, declared));
       continue;
     }
 
@@ -1021,7 +1070,7 @@ function collectGenericCommandTokens(
     // sits (ADR 0009's positional invariance, #945). The unquoted spelling
     // reaches the nested command through the trailing recursion.
     if (ARG_NODE_TYPES.has(child.type))
-      tokens.push(...collectHostedExecutionTokens(child, words));
+      tokens.push(...collectHostedExecutionTokens(child, words, declared));
 
     // If there was no explicit command_name node, the first word-like
     // child is the command name itself — skip it.
@@ -1032,14 +1081,12 @@ function collectGenericCommandTokens(
 
     // Argument nodes: resolve their text and collect.
     if (ARG_NODE_TYPES.has(child.type)) {
-      tokens.push(
-        wholeArgumentToken(child, words.text(child), effect, "operand"),
-      );
+      tokens.push(wholeArgumentToken(child, words.text(child), operand));
       continue;
     }
 
     // Recurse into other children (e.g. command_substitution nested in args)
-    tokens.push(...collectPathCandidateTokens(child, words));
+    tokens.push(...collectPathCandidateTokens(child, words, declared));
   }
 
   return tokens;
@@ -1052,13 +1099,11 @@ function collectGenericCommandTokens(
 function wholeArgumentToken(
   node: TSNode,
   token: string,
-  effect: TokenEffect,
-  role: TokenRole,
+  stamp: OperandStamp,
 ): PathToken {
   return {
     token,
-    effect,
-    role,
+    ...stamp,
     span: { start: node.startIndex, end: node.endIndex },
   };
 }

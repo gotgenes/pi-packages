@@ -48,6 +48,7 @@ export type { PromptPermissionDetails } from "#src/authority/permission-prompter
 // and `PermissionUiPromptEvent`; the named exports are what a consumer needs to
 // annotate a variable of their own.
 export type {
+  DecidingPath,
   PromptAnnotation,
   PromptEvidence,
   PromptPayload,

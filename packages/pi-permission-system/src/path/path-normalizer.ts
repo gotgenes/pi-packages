@@ -283,4 +283,41 @@ export class PathNormalizer {
       return false;
     }
   }
+
+  /**
+   * True when nothing exists along an accessed path below the filesystem root:
+   * the first entry `lstat` finds, walking its canonical form toward the root,
+   * is the root itself. The nothing-on-disk delegation license is built from
+   * this answer (ADR 0007 §8).
+   *
+   * A literal-only path has no canonical form to probe, and the root itself
+   * exists, so both answer `false`.
+   * Only "no such entry" continues the walk; any other error answers `false`,
+   * so an entry the probe cannot see past never counts as absent.
+   */
+  namesNothingBelowRoot(accessPath: AccessPath): boolean {
+    const canonical = accessPath.boundaryValue();
+    if (!canonical) return false;
+    const impl = this.flavor.impl;
+    // The root itself exists, so a path that is the root names something.
+    if (impl.dirname(canonical) === canonical) return false;
+    for (
+      let current = canonical, parent = impl.dirname(current);
+      parent !== current;
+      current = parent, parent = impl.dirname(current)
+    ) {
+      if (!isAbsentEntry(current)) return false;
+    }
+    return true;
+  }
+}
+
+/** True only when `lstat` reports that no entry exists at `absolutePath`. */
+function isAbsentEntry(absolutePath: string): boolean {
+  try {
+    lstatSync(absolutePath);
+    return false;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === "ENOENT";
+  }
 }

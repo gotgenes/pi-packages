@@ -58,6 +58,7 @@ function degradedForwardedPayload(
       commandContext: null,
       matchedSpelling: null,
       executedUnit: null,
+      decidingPath: null,
     },
     // Nothing to carry: the wire no longer relays a sentence, and inventing
     // evidence the child never sent is exactly the fiction the bounded

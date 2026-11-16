@@ -202,7 +202,10 @@ export class AuthorizerSelection
         continue;
       }
       resolved.push(name);
-      links.push({ name, authorize: encloseInDelegationEnvelope(authorize) });
+      links.push({
+        name,
+        authorize: encloseInDelegationEnvelope(name, authorize),
+      });
     }
     if (resolved.length > 0) {
       this.deps.logger.review("authorizer_chain_resolved", {

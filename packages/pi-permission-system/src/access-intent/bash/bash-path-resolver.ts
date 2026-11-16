@@ -5,6 +5,10 @@ import {
   UNPROVEN_EFFECT,
 } from "#src/access-intent/effect";
 import { normalizePathPolicyLiteral } from "#src/access-intent/path-normalization";
+import {
+  type DeclaredCommandEffects,
+  NO_DECLARED_COMMAND_EFFECTS,
+} from "#src/config/command-effects-config";
 import type { PathNormalizer } from "#src/path/path-normalizer";
 import { isSafeSystemPath } from "#src/path/safe-system-paths";
 import type { ArgumentSpeller } from "./command-enumeration";
@@ -79,6 +83,17 @@ export interface BashPathRuleCandidate {
 export interface BashExternalPath {
   readonly path: AccessPath;
   readonly effect: TokenEffect;
+  /**
+   * Present when `path` is not where the command reaches, so no filesystem
+   * fact may be read from it: `unknown-base` for a token relative to a working
+   * directory the parse could not determine (after a non-literal `cd`), which
+   * is resolved against the session cwd for display and matching only, and
+   * `not-verbatim` for any other token not spelled as the absolute path it
+   * names (a relative spelling, a `.` or `..` segment, or a glob, brace,
+   * parameter or command substitution, or escape the shell rewrites at run
+   * time).
+   */
+  readonly unlocated?: Unlocated;
 }
 
 /**
@@ -134,6 +149,7 @@ export class BashPathResolver {
     private readonly normalizer: PathNormalizer,
     private readonly words: WordReader,
     private readonly workdir?: string,
+    private readonly declared: DeclaredCommandEffects = NO_DECLARED_COMMAND_EFFECTS,
   ) {}
 
   /**
@@ -167,10 +183,15 @@ export class BashPathResolver {
    * candidates, keyed by the source span of a whole-argument token. A salvaged
    * fragment's tokens carry no span, because its indices are its own re-parse's
    * and would collide with the primary tree's.
+   *
+   * `source` is the whole command the primary tree was parsed from, not the
+   * root node's text, which drops trailing whitespace a word boundary may sit
+   * on; spans index into it.
    */
   resolve(
     rootNode: TSNode,
-    salvagedRoots: readonly TSNode[] = [],
+    salvagedRoots: readonly TSNode[],
+    source: string,
   ): ResolvedBashPaths {
     const initialBase =
       this.workdir === undefined
@@ -189,7 +210,7 @@ export class BashPathResolver {
       this.projectRuleCandidates(candidates);
     return {
       externalAccesses: this.withWorkdirExternal(
-        this.projectExternalPaths(candidates),
+        this.projectExternalPaths(candidates, new SourceText(source)),
       ),
       ruleCandidates,
       argumentSpellings,
@@ -271,7 +292,11 @@ export class BashPathResolver {
         if (timed !== null) {
           return this.walkTimedSubshell(node, timed, base, out);
         }
-        tagTokens(collectCommandTokens(node, this.words), base, out);
+        tagTokens(
+          collectCommandTokens(node, this.words, this.declared),
+          base,
+          out,
+        );
         return this.foldCd(node, base);
       }
       case "pipeline":
@@ -297,7 +322,11 @@ export class BashPathResolver {
         // substitution interiors: collect every candidate in the subtree tagged
         // with the enclosing base and do not fold their internal `cd`s. (Folding
         // inside substitutions is deferred — conservative, never under-flags.)
-        tagTokens(collectPathCandidateTokens(node, this.words), base, out);
+        tagTokens(
+          collectPathCandidateTokens(node, this.words, this.declared),
+          base,
+          out,
+        );
         return base;
     }
   }
@@ -320,7 +349,11 @@ export class BashPathResolver {
       const child = command.child(i);
       if (!child?.isNamed || child.type === "command_name") continue;
       if (child.startIndex === subshell.startIndex) continue;
-      tagTokens(collectPathCandidateTokens(child, this.words), base, out);
+      tagTokens(
+        collectPathCandidateTokens(child, this.words, this.declared),
+        base,
+        out,
+      );
     }
     this.walkForCandidates(subshell, base, out);
     return base;
@@ -381,7 +414,11 @@ export class BashPathResolver {
       }
       // Downstream stage (after a `|`): subshell — collect against the folded
       // base, do not fold.
-      tagTokens(collectPathCandidateTokens(child, this.words), current, out);
+      tagTokens(
+        collectPathCandidateTokens(child, this.words, this.declared),
+        current,
+        out,
+      );
     }
     return current;
   }
@@ -411,7 +448,11 @@ export class BashPathResolver {
         if (child.type === "file_redirect") {
           // Redirect destinations are part of the piped stage; collect them
           // against the folded base without folding.
-          tagTokens(collectRedirectTokens(child, this.words), current, out);
+          tagTokens(
+            collectRedirectTokens(child, this.words, this.declared),
+            current,
+            out,
+          );
           continue;
         }
         // The inner statement is the `list`/`command` being redirected; fold its
@@ -421,7 +462,11 @@ export class BashPathResolver {
       return current;
     }
     // Bare `command` or any other shape: a true subshell first stage.
-    tagTokens(collectPathCandidateTokens(node, this.words), base, out);
+    tagTokens(
+      collectPathCandidateTokens(node, this.words, this.declared),
+      base,
+      out,
+    );
     return base;
   }
 
@@ -449,7 +494,11 @@ export class BashPathResolver {
         current = this.walkForCandidates(child, current, out);
       } else {
         // Terminal child = the real pipe stage; collect without folding.
-        tagTokens(collectPathCandidateTokens(child, this.words), current, out);
+        tagTokens(
+          collectPathCandidateTokens(child, this.words, this.declared),
+          current,
+          out,
+        );
       }
     }
     return current;
@@ -526,11 +575,14 @@ export class BashPathResolver {
    */
   private projectExternalPaths(
     candidates: readonly PathCandidate[],
+    source: SourceText,
   ): BashExternalPath[] {
     const seen = new Map<string, number>();
     const externalPaths: BashExternalPath[] = [];
 
-    for (const { token, base, effect, role } of candidates) {
+    for (const { token, base, effect, role, span } of candidates) {
+      if (withdrawnByRole(role)) continue;
+      const location = locationOfSpelling(token, span, source);
       const candidate = admittedByRole(role)
         ? token
         : classifyTokenAsPathCandidate(token);
@@ -540,7 +592,13 @@ export class BashPathResolver {
         // decision to whatever it resolves to (#645).
         const probed = this.probeBareToken(token, base);
         if (probed) {
-          this.collectIfExternal(probed.path, effect, seen, externalPaths);
+          this.collectIfExternal(
+            probed.path,
+            effect,
+            seen,
+            externalPaths,
+            location,
+          );
         }
         continue;
       }
@@ -553,7 +611,9 @@ export class BashPathResolver {
         const accessPath = this.normalizer.forPath(candidate);
         const canonical = accessPath.boundaryValue();
         if (canonical && !isSafeSystemPath(canonical)) {
-          recordExternal(accessPath, effect, canonical, seen, externalPaths);
+          recordExternal(accessPath, effect, canonical, seen, externalPaths, {
+            unlocated: "unknown-base",
+          });
         }
         continue;
       }
@@ -567,6 +627,7 @@ export class BashPathResolver {
         effect,
         seen,
         externalPaths,
+        location,
       );
     }
 
@@ -594,6 +655,7 @@ export class BashPathResolver {
     effect: TokenEffect,
     seen: Map<string, number>,
     out: BashExternalPath[],
+    location: PathLocation,
   ): void {
     const lexical = accessPath.value();
     if (!lexical) return;
@@ -602,7 +664,14 @@ export class BashPathResolver {
       ? this.normalizer.isBoundaryOutsideWorkingDirectory(canonical)
       : true;
     if (!isExternal) return;
-    recordExternal(accessPath, effect, canonical || lexical, seen, out);
+    recordExternal(
+      accessPath,
+      effect,
+      canonical || lexical,
+      seen,
+      out,
+      location,
+    );
   }
 
   /**
@@ -648,6 +717,9 @@ export class BashPathResolver {
       // spells both words rather than the first.
       const spelling = span && this.absoluteSpellingOf(token, probed.path);
       if (spelling) spellings.set(spanKey(span), spelling);
+      // Spelled for the `bash` surface, but withdrawn from the path surface
+      // ahead of the fold, so it never merges with a real attribution.
+      if (withdrawnByRole(role)) continue;
 
       const key = matchValues.join("\0");
       const index = seen.get(key);
@@ -769,6 +841,101 @@ export class BashPathResolver {
 /** A character that makes the shell expand a word against the filesystem. */
 const GLOB_CHARACTERS = /[*?[]/;
 
+/** Why a path is not where the command reaches; see {@link BashExternalPath}. */
+export type Unlocated = "unknown-base" | "not-verbatim";
+
+/** The location fact {@link recordExternal} stamps on an entry it records. */
+interface PathLocation {
+  readonly unlocated?: Unlocated;
+}
+
+/**
+ * Characters with which a token's spelling asks the shell to rewrite it at run
+ * time: glob (`*`, `?`, `[`), brace (`{`), parameter or command substitution
+ * (`$`, a backtick), and escape (`\`). Quoting can make one literal, and is
+ * not modelled: the fact this feeds only ever withholds, so over-matching a
+ * quoted character costs a prompt and nothing more.
+ */
+const SHELL_EXPANSION_CHARACTERS = /[*?[{$`\\]/;
+
+/**
+ * `not-verbatim` unless the token is spelled as the very path it names: an
+ * absolute path with no shell expansion and no `.` or `..` segment. A
+ * relative token depends on a working directory the projection only models (a
+ * `cd` that fails leaves the shell where it was), and a dot segment is
+ * collapsed lexically while the kernel resolves it through any symlinked
+ * ancestor, so neither names a path a filesystem fact may be read from.
+ *
+ * The token must also be a whole argument that stands alone in the source:
+ * the grammar can split one bash word into two arguments with no error (the
+ * `/e` of ``/e`echo tc`/passwd``), and only the whitespace or operator around
+ * a word says that bash reads it as written.
+ */
+function locationOfSpelling(
+  token: string,
+  span: SourceSpan | undefined,
+  source: SourceText,
+): PathLocation {
+  return isVerbatimAbsolute(token) && source.standsAlone(span)
+    ? {}
+    : { unlocated: "not-verbatim" };
+}
+
+function isVerbatimAbsolute(token: string): boolean {
+  if (!token.startsWith("/")) return false;
+  if (SHELL_EXPANSION_CHARACTERS.test(token)) return false;
+  return token
+    .split("/")
+    .every((segment) => segment !== "." && segment !== "..");
+}
+
+/**
+ * The command source a tree was parsed from, read by span to tell whether a
+ * token is a whole word as bash splits it.
+ */
+class SourceText {
+  constructor(private readonly text: string) {}
+
+  /**
+   * Whether `span` covers a whole word: bounded on both sides by the start or
+   * end of the source, whitespace, or an operator. No span (a token read from
+   * part of an argument, or from a salvaged region) never stands alone.
+   */
+  standsAlone(span: SourceSpan | undefined): boolean {
+    if (span === undefined) return false;
+    return this.endsWordAt(span.start - 1) && this.endsWordAt(span.end);
+  }
+
+  /**
+   * Whether the character at `index` ends a word, or the index is past the
+   * source edge. A `<` or `>` that opens a process substitution (`<(`, `>(`)
+   * continues the word, and so does a parenthesis, which ends one only around
+   * a subshell or group; reading either as a boundary would let a split word
+   * pass, so both are refused.
+   */
+  private endsWordAt(index: number): boolean {
+    if (index < 0 || index >= this.text.length) return true;
+    const character = this.text.charAt(index);
+    // An escaped boundary is part of the word: bash keeps `a\<tab>/x` whole
+    // where tree-sitter-bash splits it.
+    if (this.text.charAt(index - 1) === "\\") return false;
+    if (
+      (character === "<" || character === ">") &&
+      this.text.charAt(index + 1) === "("
+    ) {
+      return false;
+    }
+    return WORD_BOUNDARY.test(character);
+  }
+}
+
+/**
+ * Characters bash ends a word on: its blanks (space and tab), a newline, and
+ * the control and redirection operators. Not JS `\s`: tree-sitter-bash also
+ * splits on a carriage return, form feed, or vertical tab, where bash does not.
+ */
+const WORD_BOUNDARY = /[ \t\n;&|<>]/;
+
 /** The key an argument spelling is filed under: its node's source span. */
 function spanKey({ start, end }: SourceSpan): string {
   return `${start}:${end}`;
@@ -815,6 +982,14 @@ function admittedByRole(role: TokenRole): boolean {
 }
 
 /**
+ * Whether a candidate's role withdraws it from the path surfaces: an operand
+ * of a command the user declared `effects: []`, which touches no file.
+ */
+function withdrawnByRole(role: TokenRole): boolean {
+  return role === "inert-operand";
+}
+
+/**
  * Record an external access under `dedupKey`, merging into the entry already
  * there rather than adding a second one.
  *
@@ -830,17 +1005,22 @@ function recordExternal(
   dedupKey: string,
   seen: Map<string, number>,
   out: BashExternalPath[],
+  location: PathLocation,
 ): void {
   const index = seen.get(dedupKey);
   if (index === undefined) {
     seen.set(dedupKey, out.length);
-    out.push({ path: accessPath, effect });
+    out.push({ path: accessPath, effect, ...location });
     return;
   }
+  // A path any of its tokens reached from an unknown base stays unknown: the
+  // merged entry must not read as located because another token was.
   const existing = out[index];
+  const unlocated = existing.unlocated ?? location.unlocated;
   out[index] = {
     path: existing.path,
     effect: mergeTokenEffects(existing.effect, effect),
+    ...(unlocated ? { unlocated } : {}),
   };
 }
 

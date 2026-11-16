@@ -105,6 +105,9 @@ export class SubagentsServiceAdapter implements SubagentsService {
 
   async resume(id: string, prompt: string, options?: ResumeOptions): Promise<ResumeResult> {
     const outcome = await this.manager.resume(id, prompt, {
+      // Nothing in the parent's turn waits on a service resume, so it runs in
+      // the background, as a service spawn does by default.
+      background: true,
       claimOutcome: options?.claimOutcome,
       signal: options?.signal,
     });

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AgentTypeRegistry } from "#src/config/agent-types";
 import type { PersistedRunSummary } from "#src/persisted-record";
 import type { AgentSessionEvent, SessionMessage } from "#src/types";
@@ -110,6 +110,56 @@ describe("listNavigableAgents", () => {
       expect(listNavigableAgents([], registry, [persistedRun({ outputFile: undefined })])).toEqual([]);
     });
   });
+
+  describe("a run the limiter never admitted", () => {
+    // Each run is enqueued at 1000, so 4_000 is 3 s later.
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(4_000);
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    const stoppedWhileQueued = {
+      description: "Investigate the bug",
+      toolUses: 3,
+      status: "stopped",
+      stoppedWhileQueued: true,
+      startedAt: 1000,
+      completedAt: 2000,
+    } as const;
+
+    it("labels a queued resume with its time in the queue, not as running", () => {
+      const queued = makeNavigable({
+        description: "Investigate the bug",
+        toolUses: 3,
+        status: "queued",
+        startedAt: 1000,
+        completedAt: undefined,
+      });
+      const [entry] = listNavigableAgents([queued], registry, []);
+      expect(entry.label).toBe("Agent (Investigate the bug) · 3 tools · queued · queued 3.0s");
+    });
+
+    it("labels a resume stopped while queued with the time it waited, frozen at the stop", () => {
+      const [entry] = listNavigableAgents([makeNavigable(stoppedWhileQueued)], registry, []);
+      expect(entry.label).toBe("Agent (Investigate the bug) · 3 tools · stopped · queued 1.0s");
+    });
+
+    it("labels a released resume stopped while queued with the time it waited", () => {
+      const released = makeNavigable({ ...stoppedWhileQueued, isSessionReady: () => false, outputFile: "/tasks/q.jsonl" });
+      const [entry] = listNavigableAgents([released], registry, []);
+      expect(entry.label).toBe("Agent (Investigate the bug) · 3 tools · stopped · queued 1.0s · session released (snapshot)");
+    });
+
+    it("labels a persisted resume stopped while queued with the time it waited", () => {
+      const persisted = persistedRun({ status: "stopped", stoppedWhileQueued: true, startedAt: 1000, completedAt: 2000 });
+      const [entry] = listNavigableAgents([], registry, [persisted]);
+      expect(entry.label).toBe("Agent (Earlier task) · 7 tools · stopped · queued 1.0s · session released (snapshot)");
+    });
+  });
 });
 
 function persistedRun(overrides: Partial<PersistedRunSummary> = {}): PersistedRunSummary {
@@ -120,6 +170,7 @@ function persistedRun(overrides: Partial<PersistedRunSummary> = {}): PersistedRu
     status: "completed",
     startedAt: 1000,
     completedAt: 4000,
+    stoppedWhileQueued: false,
     toolUses: 7,
     outputFile: "/tasks/earlier.jsonl",
     ...overrides,

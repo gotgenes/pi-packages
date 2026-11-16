@@ -366,16 +366,19 @@ describe("describeBashPathGate", () => {
       expect(result.sessionApproval?.grants[0]?.surface).toBe("path");
     });
 
-    it("records the deciding token's effect and blame source in the log", async () => {
+    it("blames the deciding token on its effect and source in the payload, not the log context", async () => {
       const result = (await describeGate(
         makeTcc({ input: { command: "cat .env" }, cwd: "/test/project" }),
         askEverything(),
       )) as GateDescriptor;
 
-      expect(result.logContext).toMatchObject({
+      expect(result.payload.request.decidingPath).toEqual({
+        path: ".env",
         effect: "read",
         effectSource: "core",
       });
+      expect(result.logContext).not.toHaveProperty("effect");
+      expect(result.logContext).not.toHaveProperty("effectSource");
     });
 
     it("records a retraction as the blame source for a guarded word", async () => {
@@ -388,10 +391,12 @@ describe("describeBashPathGate", () => {
       )) as GateDescriptor;
 
       expect(result.surface).toBe("path");
-      expect(result.logContext).toMatchObject({
+      expect(result.payload.request.decidingPath).toEqual({
+        path: "./out.txt",
         effect: "unproven",
         effectSource: "retracted",
       });
+      expect(result.logContext).not.toHaveProperty("effectSource");
     });
 
     it("records nothing to blame when no source claimed the token", async () => {
@@ -400,10 +405,12 @@ describe("describeBashPathGate", () => {
         askEverything(),
       )) as GateDescriptor;
 
-      expect(result.logContext).toMatchObject({
+      expect(result.payload.request.decidingPath).toEqual({
+        path: ".env",
         effect: "unproven",
         effectSource: "unproven",
       });
+      expect(result.logContext).not.toHaveProperty("effectSource");
     });
 
     it("routes a redirect destination on its own proof, not the reader's", async () => {

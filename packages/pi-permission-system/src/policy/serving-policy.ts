@@ -14,8 +14,11 @@ import { mostRestrictiveOf } from "./restrictiveness";
  * A bash chain is judged unit by unit: the child names its winner in
  * `matchValues`, but this answer approves the whole tool call, so every unit the
  * child left asking (`askingUnits`) is resolved with its own floor and the most
- * restrictive answer decides (#1030). A request without units (an older child,
- * or an ask raised without a chain) is judged on its single value.
+ * restrictive answer decides (#1030). Each unit is matched in the spellings the
+ * child fixed for it (the home-expanded form, path arguments made absolute
+ * against the child's cwd), never recomputed here, since only the child's parse
+ * knows them (#1019). A request without units (an older child, or an ask raised
+ * without a chain) is judged on its single value.
  *
  * The `matchValues` are used as the child fixed them, never re-derived through
  * this session's `PathNormalizer`/cwd. The resolver's surface-family fold is
@@ -41,7 +44,9 @@ export class ResolverServingPolicy implements ServingPolicy {
    * Judge one unit the child left asking, with that unit's own floor.
    *
    * Resolved as the same `bash-command` intent the child's gate emitted for
-   * it, so a serving rule matches the unit exactly as a local one would.
+   * it, spellings included, so a serving rule matches the unit exactly as a
+   * local one would. A unit from an older child carries none and is matched as
+   * typed.
    */
   private resolveUnit(
     unit: AskingBashUnit,
@@ -51,7 +56,7 @@ export class ResolverServingPolicy implements ServingPolicy {
       kind: "bash-command",
       surface: "bash",
       command: unit.command,
-      spellings: [],
+      spellings: unit.spellings ?? [],
       agentName,
     });
     return honorChildFloor(check, unit.floor, this.isYoloEnabled());

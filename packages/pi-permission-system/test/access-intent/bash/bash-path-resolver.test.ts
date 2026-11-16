@@ -52,7 +52,7 @@ async function spellingsOf(
     const { argumentSpellings } = new BashPathResolver(
       normalizer,
       words,
-    ).resolve(tree.rootNode);
+    ).resolve(tree.rootNode, [], command);
     return spelledIn([tree.rootNode], argumentSpellings);
   } finally {
     tree.delete();
@@ -169,7 +169,7 @@ describe("BashPathResolver argument spellings", () => {
           const { argumentSpellings } = new BashPathResolver(
             posix,
             words,
-          ).resolve(tree.rootNode, salvaged);
+          ).resolve(tree.rootNode, salvaged, command);
           return spelledIn(salvaged, argumentSpellings).map(
             ([, spelling]) => spelling,
           );

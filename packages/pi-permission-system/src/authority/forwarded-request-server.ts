@@ -59,7 +59,8 @@ export interface InboxProcessor {
  * The answer honors the floor the child raised (`intent.floor`): a serving
  * `allow` rule does not answer an ask the child's own gate floored. A bash
  * chain is judged on every unit the child left asking (`intent.askingUnits`),
- * each with its own floor, since this answer approves the whole tool call.
+ * each with its own floor and in the spellings the child fixed for it, since
+ * this answer approves the whole tool call.
  *
  * Narrow by design (ISP): the server needs one decision, not the whole
  * resolver. The composition root satisfies it with `ResolverServingPolicy`
@@ -147,9 +148,9 @@ function buildForwardedAskDetails(
  * own resolution (ADR 0008 §3) and stay off the ask details. A link that needs
  * requester identity reads `details.forwarding`. `ForwardedAccessIntent`
  * extends `ForwardedAccessFacts`, so a spread would type-check while widening
- * disclosure at runtime; the explicit return type makes any future field on
- * `ForwardedAccessFacts` a compile error here until it is deliberately
- * projected or deliberately withheld.
+ * disclosure at runtime. The explicit return type catches a new *required*
+ * field on `ForwardedAccessFacts`; an optional one compiles when omitted, so
+ * each optional fact needs its own projection test.
  */
 function toAccessFacts(intent: ForwardedAccessIntent): ForwardedAccessFacts {
   return {
@@ -160,6 +161,9 @@ function toAccessFacts(intent: ForwardedAccessIntent): ForwardedAccessFacts {
     ...(intent.askingUnits === undefined
       ? {}
       : { askingUnits: intent.askingUnits }),
+    ...(intent.delegationLicense === undefined
+      ? {}
+      : { delegationLicense: intent.delegationLicense }),
   };
 }
 

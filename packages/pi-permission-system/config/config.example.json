@@ -29,6 +29,13 @@
     "exec_command": { "commandArgument": "cmd", "workdirArgument": "workdir" }
   },
 
+  "commandEffects": {
+    "git": {
+      "unlessOption": ["--output"],
+      "subcommands": { "log": "read", "status": "read", "diff": "read" }
+    }
+  },
+
   "permission": {
     "*": "ask",
     "path": {

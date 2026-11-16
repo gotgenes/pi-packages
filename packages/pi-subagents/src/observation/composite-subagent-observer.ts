@@ -1,5 +1,6 @@
 import { debugLog } from "#src/debug";
 import type { SubagentManagerObserver } from "#src/lifecycle/subagent-manager";
+import type { RunKind } from "#src/lifecycle/subagent-run";
 import type { CompactionInfo, Subagent } from "#src/types";
 
 /**
@@ -21,24 +22,16 @@ export class CompositeSubagentObserver implements SubagentManagerObserver {
     this.delegates.push(observer);
   }
 
-  onSubagentStarted(record: Subagent): void {
-    this.dispatch((o) => o.onSubagentStarted(record), "onSubagentStarted");
+  onSubagentRunStarted(record: Subagent, kind: RunKind): void {
+    this.dispatch((o) => o.onSubagentRunStarted(record, kind), "onSubagentRunStarted");
   }
 
   onSubagentCreated(record: Subagent): void {
     this.dispatch((o) => o.onSubagentCreated(record), "onSubagentCreated");
   }
 
-  onSubagentCompleted(record: Subagent): void {
-    this.dispatch((o) => o.onSubagentCompleted(record), "onSubagentCompleted");
-  }
-
-  onSubagentResuming(record: Subagent): void {
-    this.dispatch((o) => o.onSubagentResuming(record), "onSubagentResuming");
-  }
-
-  onSubagentResumed(record: Subagent): void {
-    this.dispatch((o) => o.onSubagentResumed(record), "onSubagentResumed");
+  onSubagentRunFinished(record: Subagent, kind: RunKind): void {
+    this.dispatch((o) => o.onSubagentRunFinished(record, kind), "onSubagentRunFinished");
   }
 
   onSubagentUpdate(record: Subagent, message: string): void {

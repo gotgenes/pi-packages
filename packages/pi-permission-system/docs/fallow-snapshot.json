@@ -1,8 +1,8 @@
 {
   "snapshot_schema_version": 10,
   "version": "3.22.0",
-  "timestamp": "2026-09-22T04:15:52Z",
-  "git_sha": "24e248f7",
+  "timestamp": "2026-10-17T23:05:48Z",
+  "git_sha": "e5c17658",
   "git_branch": "main",
   "shallow_clone": false,
   "vital_signs": {
@@ -11,53 +11,53 @@
     "avg_cyclomatic": 1.4,
     "critical_complexity_pct": 0.0,
     "p90_cyclomatic": 2,
-    "duplication_pct": 2.1,
+    "duplication_pct": 1.6,
     "hotspot_count": 0,
     "hotspot_top_pct_count": 4,
-    "maintainability_avg": 91.3,
+    "maintainability_avg": 91.0,
     "maintainability_low_pct": 0.0,
     "unused_dep_count": 0,
     "unused_deps_per_k_files": 0.0,
     "circular_dep_count": 0,
     "circular_deps_per_k_files": 0.0,
     "counts": {
-      "total_files": 350,
-      "total_exports": 751,
+      "total_files": 383,
+      "total_exports": 849,
       "dead_files": 0,
       "dead_exports": 0,
-      "duplicated_lines": 608,
-      "total_lines": 86160,
-      "files_scored": 342,
+      "duplicated_lines": 573,
+      "total_lines": 105013,
+      "files_scored": 375,
       "total_deps": 0
     },
     "unit_size_profile": {
-      "low_risk": 74.0,
+      "low_risk": 74.2,
       "medium_risk": 14.6,
-      "high_risk": 6.3,
-      "very_high_risk": 5.1
+      "high_risk": 6.0,
+      "very_high_risk": 5.2
     },
-    "functions_over_60_loc_per_k": 50.8,
+    "functions_over_60_loc_per_k": 52.1,
     "unit_interfacing_profile": {
-      "low_risk": 97.2,
-      "medium_risk": 2.5,
+      "low_risk": 96.9,
+      "medium_risk": 2.8,
       "high_risk": 0.3,
-      "very_high_risk": 0.0
+      "very_high_risk": 0.1
     },
     "p95_fan_in": 19,
-    "coupling_high_pct": 3.5,
-    "total_loc": 86160
+    "coupling_high_pct": 3.7,
+    "total_loc": 105013
   },
   "counts": {
-    "total_files": 350,
-    "total_exports": 751,
+    "total_files": 383,
+    "total_exports": 849,
     "dead_files": 0,
     "dead_exports": 0,
-    "duplicated_lines": 608,
-    "total_lines": 86160,
-    "files_scored": 342,
+    "duplicated_lines": 573,
+    "total_lines": 105013,
+    "files_scored": 375,
     "total_deps": 0
   },
-  "score": 78.2,
+  "score": 78.1,
   "grade": "B",
   "coverage_model": "static_estimated",
   "analysis_identity": {

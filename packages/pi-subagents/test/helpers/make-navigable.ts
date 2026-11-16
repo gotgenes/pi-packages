@@ -13,6 +13,7 @@ export function makeNavigable(overrides: Partial<NavigableSubagent> = {}): Navig
     status: "completed",
     startedAt: 1000,
     completedAt: 4000,
+    stoppedWhileQueued: false,
     toolUses: 2,
     activeTools: new Map(),
     responseText: "",

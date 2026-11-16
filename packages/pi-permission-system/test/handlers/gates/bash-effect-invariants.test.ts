@@ -21,6 +21,11 @@ vi.mock("node:os", async (importOriginal) => {
 });
 
 import { BashProgram } from "#src/access-intent/bash/program";
+import {
+  type DeclaredCommandEffects,
+  foldDeclaredCommandEffects,
+  NO_DECLARED_COMMAND_EFFECTS,
+} from "#src/config/command-effects-config";
 import { describeBashExternalDirectoryGate } from "#src/handlers/gates/bash-external-directory";
 import { describeBashPathGate } from "#src/handlers/gates/bash-path";
 import type { GateResult } from "#src/handlers/gates/descriptor";
@@ -65,9 +70,12 @@ function makeTcc(command: string): ToolCallContext {
 async function pathGate(
   command: string,
   permission: Record<string, unknown>,
+  commandEffects?: DeclaredCommandEffects,
 ): Promise<GateResult> {
   const normalizer = new PathNormalizer(posixPathFlavor, CWD);
-  const program = await BashProgram.parse(command, normalizer);
+  const program = await BashProgram.parse(command, normalizer, {
+    commandEffects,
+  });
   return describeBashPathGate(
     makeTcc(command),
     program,
@@ -80,9 +88,12 @@ async function pathGate(
 async function externalDirectoryGate(
   command: string,
   permission: Record<string, unknown>,
+  commandEffects?: DeclaredCommandEffects,
 ): Promise<GateResult> {
   const normalizer = new PathNormalizer(posixPathFlavor, CWD);
-  const program = await BashProgram.parse(command, normalizer);
+  const program = await BashProgram.parse(command, normalizer, {
+    commandEffects,
+  });
   return describeBashExternalDirectoryGate(
     makeTcc(command),
     program,
@@ -322,5 +333,66 @@ describe("the fail-closed base case reaches the bare family", () => {
     expect(isGateDescriptor(result) && result.surface).toBe(
       "external_directory",
     );
+  });
+});
+
+describe("a commandEffects declaration", () => {
+  const declare = (config: Parameters<typeof foldDeclaredCommandEffects>[1]) =>
+    foldDeclaredCommandEffects(NO_DECLARED_COMMAND_EFFECTS, config, "global");
+  const READ_ALLOW_WRITE_ASK = {
+    external_directory_read: { "*": "allow" },
+    external_directory_write: { "*": "ask" },
+  };
+
+  it("lets a declared reader resolve on the read surface alone", async () => {
+    const result = await externalDirectoryGate(
+      "git log /outside/notes.md",
+      READ_ALLOW_WRITE_ASK,
+      declare({ git: { subcommands: { log: "read" } } }),
+    );
+
+    expect(resolvedState(result)).toBe("allow");
+  });
+
+  it("leaves an undeclared reader asking on the write surface", async () => {
+    const result = await externalDirectoryGate(
+      "git log /outside/notes.md",
+      READ_ALLOW_WRITE_ASK,
+    );
+
+    expect(resolvedState(result)).toBe("ask");
+  });
+
+  describe("with effects: [] (the officecli case)", () => {
+    const OFFICECLI = declare({ officecli: { effects: [] } });
+    const command = "officecli set data.xlsx /Sheet1/B1";
+
+    it("raises no external_directory ask", async () => {
+      const result = await externalDirectoryGate(
+        command,
+        { external_directory: { "*": "ask" } },
+        OFFICECLI,
+      );
+
+      expect(result).toBeNull();
+    });
+
+    it("asks without the declaration", async () => {
+      const result = await externalDirectoryGate(command, {
+        external_directory: { "*": "ask" },
+      });
+
+      expect(resolvedState(result)).toBe("ask");
+    });
+
+    it("withdraws the operands from the path surface too", async () => {
+      const result = await pathGate(
+        command,
+        { path: { "/Sheet1/*": "deny" } },
+        OFFICECLI,
+      );
+
+      expect(result).toBeNull();
+    });
   });
 });

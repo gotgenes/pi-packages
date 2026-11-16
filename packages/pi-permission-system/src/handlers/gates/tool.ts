@@ -221,8 +221,9 @@ export function describeToolGate(
  * what was not.
  *
  * It rides the gate's `logContext` rather than the prompt payload because an
- * exempt unit's usual outcome is that no prompt happens at all — the same
- * routing `effect`/`effectSource` take on the bash path gates.
+ * exempt unit's usual outcome is that no prompt happens at all. A bash path
+ * ask's blame is the opposite case — it explains a prompt — so it is a payload
+ * fact instead.
  */
 function floorExemptionFact(
   check: PermissionCheckResult,

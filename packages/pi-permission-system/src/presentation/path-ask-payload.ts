@@ -1,4 +1,9 @@
-import type { PromptEvidence, PromptPayload } from "./prompt-payload";
+import type { TokenEffect } from "#src/access-intent/effect";
+import type {
+  DecidingPath,
+  PromptEvidence,
+  PromptPayload,
+} from "./prompt-payload";
 import { localRequester } from "./prompt-payload";
 
 /** A displayed external path paired with its resolved target, when distinct. */
@@ -30,9 +35,25 @@ interface PathAskFacts {
   surface: string;
 }
 
-/** A tool ask gated by an explicit `path`-family rule. */
-export function buildPathAskPayload(facts: PathAskFacts): PromptPayload {
-  return pathPayload("path", facts, resolvedAliasEvidence(facts.resolvedPath));
+/** The facts the `path` gate adds when a bash token, not a tool, raised it. */
+interface PathRuleAskFacts extends PathAskFacts {
+  /**
+   * What established the deciding token's direction. Absent for a tool ask,
+   * whose direction is its identity and needs no blame.
+   */
+  decidingEffect?: TokenEffect;
+}
+
+/** An ask gated by an explicit `path`-family rule. */
+export function buildPathAskPayload(facts: PathRuleAskFacts): PromptPayload {
+  return pathPayload(
+    "path",
+    facts,
+    resolvedAliasEvidence(facts.resolvedPath),
+    facts.decidingEffect === undefined
+      ? null
+      : decidingPathFact(facts.pathValue, facts.decidingEffect),
+  );
 }
 
 /** The facts the external-directory gate adds: the boundary. */
@@ -45,10 +66,15 @@ interface ExternalDirectoryAskFacts extends PathAskFacts {
 export function buildExternalDirectoryAskPayload(
   facts: ExternalDirectoryAskFacts,
 ): PromptPayload {
-  return pathPayload("external_directory", facts, [
-    ...resolvedAliasEvidence(facts.resolvedPath),
-    workingDirectoryEvidence(facts.cwd),
-  ]);
+  return pathPayload(
+    "external_directory",
+    facts,
+    [
+      ...resolvedAliasEvidence(facts.resolvedPath),
+      workingDirectoryEvidence(facts.cwd),
+    ],
+    null,
+  );
 }
 
 /** The facts the bash external-directory gate holds: one command, many paths. */
@@ -56,6 +82,11 @@ interface BashExternalDirectoryAskFacts {
   command: string;
   /** Every uncovered path the command references, with its canonical alias. */
   externalPaths: readonly ExternalPathDisclosure[];
+  /**
+   * The path the decision was made against, as its `externalPaths` entry
+   * displays it, with what established its direction.
+   */
+  decidingPath: { path: string; effect: TokenEffect };
   cwd: string;
   agentName: string | null;
   toolName: string;
@@ -84,6 +115,10 @@ export function buildBashExternalDirectoryAskPayload(
       commandContext: null,
       matchedSpelling: null,
       executedUnit: null,
+      decidingPath: decidingPathFact(
+        facts.decidingPath.path,
+        facts.decidingPath.effect,
+      ),
     },
     evidence: [
       workingDirectoryEvidence(facts.cwd),
@@ -103,6 +138,7 @@ function pathPayload(
   kind: "path" | "external_directory",
   facts: PathAskFacts,
   evidence: PromptEvidence[],
+  decidingPath: DecidingPath | null,
 ): PromptPayload {
   return {
     kind,
@@ -116,10 +152,19 @@ function pathPayload(
       commandContext: null,
       matchedSpelling: null,
       executedUnit: null,
+      decidingPath,
     },
     evidence,
     annotations: [],
   };
+}
+
+/**
+ * The blame a bash path gate stamps: the deciding path and what established
+ * its direction, flattened once so no gate spells the attribution's shape.
+ */
+function decidingPathFact(path: string, effect: TokenEffect): DecidingPath {
+  return { path, effect: effect.effect, effectSource: effect.source };
 }
 
 /**

@@ -457,6 +457,76 @@ describe("PathNormalizer", () => {
     });
   });
 
+  describe("namesNothingBelowRoot", () => {
+    // Real filesystem: the question is whether anything exists along the path.
+    // A distinctive top-level name keeps a host that happens to have `/outside`
+    // from flipping the answer.
+    const ABSENT_AT_ROOT = "/pi-permission-882-absent";
+    const tmp = createTmpFixture();
+    let root: string;
+    let normalizer: PathNormalizer;
+
+    beforeEach(() => {
+      root = tmp.dir("pi-perm-unrooted-");
+      normalizer = new PathNormalizer(posixPathFlavor, root);
+    });
+
+    afterEach(() => {
+      tmp.cleanup();
+    });
+
+    test("nothing exists along the path below the root → true", () => {
+      const path = normalizer.forPath(`${ABSENT_AT_ROOT}/Sheet1/B1`);
+      expect(normalizer.namesNothingBelowRoot(path)).toBe(true);
+    });
+
+    test("the path itself exists → false", () => {
+      const file = tmp.file(root, "present.txt");
+      expect(normalizer.namesNothingBelowRoot(normalizer.forPath(file))).toBe(
+        false,
+      );
+    });
+
+    test("an absent leaf under an existing directory → false", () => {
+      const path = normalizer.forPath(join(root, "absent", "x"));
+      expect(normalizer.namesNothingBelowRoot(path)).toBe(false);
+    });
+
+    test("a path under an existing file (ENOTDIR) → false", () => {
+      const file = tmp.file(root, "plain.txt");
+      const path = normalizer.forPath(join(file, "x"));
+      expect(normalizer.namesNothingBelowRoot(path)).toBe(false);
+    });
+
+    test.each(["/", "/.", "//", "/.."])(
+      "the filesystem root (%s) exists → false",
+      (spelling) => {
+        expect(
+          normalizer.namesNothingBelowRoot(normalizer.forPath(spelling)),
+        ).toBe(false);
+      },
+    );
+
+    test("a win32 drive root exists → false", () => {
+      const win32Normalizer = new PathNormalizer(win32PathFlavor, "C:\\proj");
+      expect(
+        win32Normalizer.namesNothingBelowRoot(win32Normalizer.forPath("C:\\")),
+      ).toBe(false);
+    });
+
+    test("a literal-only path has nothing to probe → false", () => {
+      expect(
+        normalizer.namesNothingBelowRoot(normalizer.forLiteral("Sheet1/B1")),
+      ).toBe(false);
+    });
+
+    test("a win32 POSIX-absolute bash token stays literal → false", () => {
+      const win32Normalizer = new PathNormalizer(win32PathFlavor, "C:\\proj");
+      const path = win32Normalizer.forBashToken(`${ABSENT_AT_ROOT}/Sheet1/B1`);
+      expect(win32Normalizer.namesNothingBelowRoot(path)).toBe(false);
+    });
+  });
+
   describe("approvalPatternsFor over the filesystem", () => {
     // Real filesystem: whether a path names a directory is fs state.
     const tmp = createTmpFixture();

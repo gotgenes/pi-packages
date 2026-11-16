@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import type { AgentConfigLookup } from "#src/config/agent-types";
 import type { AssemblerContext, AssemblerIO } from "#src/session/session-config";
 import type { AgentConfig } from "#src/types";
+import { makeAgentConfig } from "#test/helpers/make-agent-config";
 import { makeModel } from "#test/helpers/make-model";
 
 const mockResolveAgentConfig = vi.fn((): AgentConfig => ({
@@ -49,11 +50,6 @@ const mockIO = {
   loadProjectContext: mockLoadProjectContext,
 };
 
-/** The Explore agent config used across the model/thinking resolution tests. */
-function exploreConfig(overrides: Partial<AgentConfig> = {}): AgentConfig {
-  return { name: "Explore", description: "test", systemPrompt: "prompt", promptMode: "replace", ...overrides };
-}
-
 beforeEach(() => {
   mockResolveAgentConfig.mockClear();
   mockGetToolNamesForType.mockClear();
@@ -98,8 +94,8 @@ describe("assembleSessionConfig — default agent shape", () => {
   });
 
   it("forwards the parent's cwd alongside its system prompt", () => {
-    // The prompt builder needs the parent's cwd to redact the footer that text
-    // claims — the child's own cwd is a separate argument.
+    // The prompt builder needs the parent's cwd to find the `<cwd>` section that
+    // text carries — the child's own cwd is a separate argument.
     assembleSessionConfig(
       "Explore",
       ctx,
@@ -133,7 +129,7 @@ describe("assembleSessionConfig — model resolution", () => {
 
   it("options.model wins over config model and parent model", () => {
     const explicitModel = makeModel({ provider: "anthropic", id: "claude-opus-4" });
-    mockResolveAgentConfig.mockReturnValueOnce(exploreConfig({ model: "anthropic/claude-haiku-4" }));
+    mockResolveAgentConfig.mockReturnValueOnce(makeAgentConfig({ model: "anthropic/claude-haiku-4" }));
 
     const result = assembleSessionConfig(
       "Explore",
@@ -149,7 +145,7 @@ describe("assembleSessionConfig — model resolution", () => {
 
   it("config model string resolves via registry when available", () => {
     const resolvedModel = makeModel({ provider: "anthropic", id: "claude-opus-4" });
-    mockResolveAgentConfig.mockReturnValueOnce(exploreConfig({ model: "anthropic/claude-opus-4" }));
+    mockResolveAgentConfig.mockReturnValueOnce(makeAgentConfig({ model: "anthropic/claude-opus-4" }));
     mockRegistry.find.mockReturnValueOnce(resolvedModel);
     mockRegistry.getAvailable.mockReturnValueOnce([
       makeModel({ provider: "anthropic", id: "claude-opus-4" }),
@@ -163,7 +159,7 @@ describe("assembleSessionConfig — model resolution", () => {
 
   it("falls back to parentModel when config model string is not in registry", () => {
     const parentModel = makeModel({ provider: "anthropic", id: "claude-haiku-4" });
-    mockResolveAgentConfig.mockReturnValueOnce(exploreConfig({ model: "anthropic/unknown-model" }));
+    mockResolveAgentConfig.mockReturnValueOnce(makeAgentConfig({ model: "anthropic/unknown-model" }));
     mockRegistry.find.mockReturnValueOnce(undefined);
     mockRegistry.getAvailable.mockReturnValueOnce([]);
 
@@ -182,7 +178,7 @@ describe("assembleSessionConfig — model resolution", () => {
   it("falls back to parentModel when config model is not available (not in getAvailable)", () => {
     const parentModel = makeModel({ provider: "anthropic", id: "claude-haiku-4" });
     const foundModel = makeModel({ provider: "anthropic", id: "claude-opus-4" });
-    mockResolveAgentConfig.mockReturnValueOnce(exploreConfig({ model: "anthropic/claude-opus-4" }));
+    mockResolveAgentConfig.mockReturnValueOnce(makeAgentConfig({ model: "anthropic/claude-opus-4" }));
     // Model exists in registry but NOT in available set
     mockRegistry.find.mockReturnValueOnce(foundModel);
     mockRegistry.getAvailable.mockReturnValueOnce([]);
@@ -201,7 +197,7 @@ describe("assembleSessionConfig — model resolution", () => {
 
   it("falls back to parentModel when config model has no slash", () => {
     const parentModel = makeModel({ provider: "anthropic", id: "claude-haiku-4" });
-    mockResolveAgentConfig.mockReturnValueOnce(exploreConfig({ model: "claude-opus-4" })); // no provider/ prefix
+    mockResolveAgentConfig.mockReturnValueOnce(makeAgentConfig({ model: "claude-opus-4" })); // no provider/ prefix
 
     const result = assembleSessionConfig(
       "Explore",
@@ -260,7 +256,7 @@ describe("assembleSessionConfig — thinking level", () => {
   });
 
   it("options.thinkingLevel wins over agentConfig.thinking", () => {
-    mockResolveAgentConfig.mockReturnValueOnce(exploreConfig({ thinking: "low" }));
+    mockResolveAgentConfig.mockReturnValueOnce(makeAgentConfig({ thinking: "low" }));
 
     const result = assembleSessionConfig(
       "Explore",
@@ -275,7 +271,7 @@ describe("assembleSessionConfig — thinking level", () => {
   });
 
   it("agentConfig.thinking is used when no option is provided", () => {
-    mockResolveAgentConfig.mockReturnValueOnce(exploreConfig({ thinking: "medium" }));
+    mockResolveAgentConfig.mockReturnValueOnce(makeAgentConfig({ thinking: "medium" }));
 
     const result = assembleSessionConfig("Explore", ctx, {}, mockEnv, mockAgentLookup, mockIO);
 
@@ -322,7 +318,7 @@ describe("assembleSessionConfig — prompt inheritance", () => {
     mockRegistry.find.mockReturnValueOnce(bridgeModel);
     mockRegistry.getAvailable.mockReturnValueOnce([bridgeModel]);
     mockResolveAgentConfig.mockReturnValueOnce(
-      exploreConfig({ model: "claude-bridge/opus" }),
+      makeAgentConfig({ model: "claude-bridge/opus" }),
     );
 
     assembleSessionConfig(

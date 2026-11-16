@@ -61,6 +61,17 @@ describe("createSubagentSession — assembly", () => {
     expect(sub.session).toBe(session);
   });
 
+  it("holds the session to the agent's maxTurns over the run config's default", async () => {
+    const sub = await createSubagentSession(
+      { snapshot: STUB_SNAPSHOT, type: "Explore", turnLimits: { defaultMaxTurns: 9, wrapUpTurns: 3 } },
+      createSubagentSessionDeps({ io, exec, registry: createAgentLookup({ maxTurns: 7 }) }),
+    );
+
+    const result = await sub.runTurnLoop("go", {});
+
+    expect(result.turnBudget).toEqual({ maxTurns: 7, used: 0, phase: "within" });
+  });
+
   it("exposes the persisted session file as outputFile", async () => {
     const sub = await createSubagentSession(
       { snapshot: STUB_SNAPSHOT, type: "Explore" },

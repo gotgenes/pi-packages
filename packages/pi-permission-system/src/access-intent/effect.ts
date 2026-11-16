@@ -21,8 +21,18 @@ export type AttributedEffect = Effect | "unproven";
  * `retracted` is distinct from `unproven` on purpose: "nobody claimed anything
  * about `pnpm`" and "`find` is a core reader but `-delete` withdrew the claim"
  * are different diagnoses, and only the second names a line to read.
+ *
+ * `declared-global` and `declared-project` name the user config scope whose
+ * `commandEffects` entry classified the token, so an allow the declaration
+ * produced is auditable to the file that granted it.
  */
-export type EffectSource = "syntax" | "core" | "retracted" | "unproven";
+export type EffectSource =
+  | "syntax"
+  | "core"
+  | "declared-global"
+  | "declared-project"
+  | "retracted"
+  | "unproven";
 
 /** A path token's attributed effect, paired with what established it. */
 export interface TokenEffect {
@@ -34,6 +44,15 @@ export interface TokenEffect {
 export const UNPROVEN_EFFECT: TokenEffect = {
   effect: "unproven",
   source: "unproven",
+};
+
+/**
+ * A claim an argument withdrew: a guarded word's read, or a declaration, whose
+ * guard matched. It is ADR 0013 §7's blame line, never a substitute effect.
+ */
+export const RETRACTED_EFFECT: TokenEffect = {
+  effect: "unproven",
+  source: "retracted",
 };
 
 /**

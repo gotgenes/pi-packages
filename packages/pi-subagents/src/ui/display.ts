@@ -7,6 +7,7 @@
 
 import type { ThemeColor } from "@earendil-works/pi-coding-agent";
 import type { AgentConfigLookup } from "#src/config/agent-types";
+import type { SubagentStatus } from "#src/lifecycle/subagent-state";
 import type { TurnBudget } from "#src/lifecycle/turn-limits";
 import type { AgentInvocation, SubagentType } from "#src/types";
 import { GLYPHS } from "#src/ui/glyphs";
@@ -124,8 +125,28 @@ export function modelLabel(model: ModelIdentity | undefined): string | undefined
   return model ? formatModel(model) : undefined;
 }
 
+/** The run facts a duration reads. A run's outcome and a navigator record both satisfy it. */
+export interface RunTiming {
+  readonly status: SubagentStatus;
+  readonly startedAt: number;
+  readonly completedAt: number | undefined;
+  readonly stoppedWhileQueued: boolean;
+}
+
+/**
+ * A started run's duration; for a run the limiter never admitted, its time in
+ * the queue, so no carrier calls waiting for a slot running time. A run
+ * stopped while queued keeps the time it waited, frozen at the stop.
+ */
+export function formatRunDuration(run: RunTiming): string {
+  if (run.status === "queued" || run.stoppedWhileQueued) {
+    return `queued ${formatMs((run.completedAt ?? Date.now()) - run.startedAt)}`;
+  }
+  return formatDuration(run.startedAt, run.completedAt);
+}
+
 /** Format duration from start/completed timestamps. */
-export function formatDuration(startedAt: number, completedAt?: number): string {
+function formatDuration(startedAt: number, completedAt?: number): string {
   if (completedAt) return formatMs(completedAt - startedAt);
   return `${formatMs(Date.now() - startedAt)} (running)`;
 }

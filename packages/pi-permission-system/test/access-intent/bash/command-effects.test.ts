@@ -2,11 +2,16 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  attributeCommandOperands,
   PURE_READER_CORE,
   proveCommandEffect,
   redirectDestinationEffect,
 } from "#src/access-intent/bash/command-effects";
 import { UNPROVEN_EFFECT } from "#src/access-intent/effect";
+import {
+  foldDeclaredCommandEffects,
+  NO_DECLARED_COMMAND_EFFECTS,
+} from "#src/config/command-effects-config";
 import { computedArgWord, literalArgWords } from "#test/helpers/arg-words";
 
 const CORE_READ = { effect: "read", source: "core" } as const;
@@ -298,6 +303,62 @@ describe("proveCommandEffect", () => {
     it("does not apply fd's guard to find", () => {
       expect(prove("find", [".", "-x"])).toEqual(CORE_READ);
     });
+  });
+});
+
+describe("attributeCommandOperands", () => {
+  const declared = foldDeclaredCommandEffects(
+    NO_DECLARED_COMMAND_EFFECTS,
+    {
+      sed: { effects: "read", unlessOption: ["-i"] },
+      cat: { effects: [] },
+      find: { effects: "read" },
+      git: { subcommands: { log: "read" } },
+    },
+    "global",
+  );
+
+  describe("a core word ignores its declaration", () => {
+    it("keeps the core's read", () => {
+      expect(
+        attributeCommandOperands("cat", literalArgWords("/tmp/x"), declared),
+      ).toEqual({ kind: "effect", effect: CORE_READ });
+    });
+
+    it("keeps the core's retraction over a declaration whose guard is coarser", () => {
+      expect(
+        attributeCommandOperands(
+          "sed",
+          literalArgWords("w /tmp/out", "x"),
+          declared,
+        ),
+      ).toEqual({ kind: "effect", effect: RETRACTED });
+    });
+
+    it("keeps the core's retraction for an option the declaration does not guard", () => {
+      expect(
+        attributeCommandOperands(
+          "find",
+          literalArgWords(".", "-delete"),
+          declared,
+        ),
+      ).toEqual({ kind: "effect", effect: RETRACTED });
+    });
+  });
+
+  it("consults the declaration for a word the core does not know", () => {
+    expect(
+      attributeCommandOperands("git", literalArgWords("log", "~/x"), declared),
+    ).toEqual({
+      kind: "effect",
+      effect: { effect: "read", source: "declared-global" },
+    });
+  });
+
+  it("leaves an undeclared word outside the core unproven", () => {
+    expect(
+      attributeCommandOperands("pnpm", literalArgWords("test"), declared),
+    ).toEqual({ kind: "effect", effect: UNPROVEN_EFFECT });
   });
 });
 

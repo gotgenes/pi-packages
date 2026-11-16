@@ -202,7 +202,7 @@ export function assembleSessionConfig(
   // Thinking level: explicit option > agent config > undefined (inherit)
   const thinkingLevel = options.thinkingLevel ?? agentConfig.thinking;
 
-  // Per-agent max turns (combined with per-call maxTurns and defaultMaxTurns by SubagentSession.runTurnLoop)
+  // Per-agent max turns (combined with per-call maxTurns and defaultMaxTurns by resolveTurnLimits)
   const agentMaxTurns = agentConfig.maxTurns;
 
   return {

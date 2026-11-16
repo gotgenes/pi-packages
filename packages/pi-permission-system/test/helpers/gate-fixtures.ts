@@ -4,6 +4,10 @@
 import { vi } from "vitest";
 import type { AccessIntent } from "#src/access-intent/access-intent";
 import type { AskEscalator } from "#src/authority/authorizer-selection";
+import {
+  type DeclaredCommandEffects,
+  NO_DECLARED_COMMAND_EFFECTS,
+} from "#src/config/command-effects-config";
 import type { ShellToolsConfig } from "#src/config/config-schema";
 import type { SkillPromptEntry } from "#src/exposure/skill-prompt-sanitizer";
 import type { GateDescriptor } from "#src/handlers/gates/descriptor";
@@ -291,6 +295,7 @@ export function makeGateInputs(
     getToolPreviewLimits?: () => ToolPreviewFormatterOptions;
     getPathNormalizer?: () => PathNormalizer;
     getShellToolAliases?: () => ShellToolsConfig | undefined;
+    getCommandEffects?: () => DeclaredCommandEffects;
   } = {},
 ): ToolCallGateInputs {
   return {
@@ -321,6 +326,9 @@ export function makeGateInputs(
     getShellToolAliases:
       overrides.getShellToolAliases ??
       vi.fn<() => ShellToolsConfig | undefined>(() => undefined),
+    getCommandEffects:
+      overrides.getCommandEffects ??
+      vi.fn<() => DeclaredCommandEffects>(() => NO_DECLARED_COMMAND_EFFECTS),
   };
 }
 

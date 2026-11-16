@@ -1,5 +1,10 @@
+import type { AttributedEffect } from "#src/access-intent/effect";
 import type { BashCommandContext } from "#src/types";
-import { allEvidence, type PromptPayload } from "./prompt-payload";
+import {
+  allEvidence,
+  type DecidingPath,
+  type PromptPayload,
+} from "./prompt-payload";
 
 /**
  * The render vocabulary shared by every renderer over a {@link PromptPayload}.
@@ -78,6 +83,50 @@ function forwardedValueLabel(surface: string): string {
     default:
       return "value";
   }
+}
+
+/**
+ * Why a bash path ask landed on the direction it did, or `undefined` for an ask
+ * with no deciding path (ADR 0013 §10's blame, for the human deciding it).
+ *
+ * Names the deciding path unless the value line already does — a bash `path`
+ * ask's value *is* its deciding token — so the line states only what is new.
+ * For an unproven effect it names the key that would prove one, generically:
+ * the deciding path does not know which command produced it.
+ */
+export function describeDecidingPath(
+  payload: PromptPayload,
+): string | undefined {
+  const { decidingPath, value } = payload.request;
+  if (decidingPath === null) return undefined;
+  const clause = provenanceClause(decidingPath);
+  return decidingPath.path === value
+    ? clause
+    : `${decidingPath.path}: ${clause}`;
+}
+
+function provenanceClause({ effect, effectSource }: DecidingPath): string {
+  switch (effectSource) {
+    case "syntax":
+      return effect === "read"
+        ? "read (redirect source)"
+        : `${effectWords(effect)} (redirect destination)`;
+    case "core":
+      return `${effectWords(effect)} (pure-reader command)`;
+    case "declared-global":
+      return `${effectWords(effect)} (declared in global commandEffects)`;
+    case "declared-project":
+      return `${effectWords(effect)} (declared in project commandEffects)`;
+    case "retracted":
+      return "unproven (an option withdrew the claim), consults both directions";
+    case "unproven":
+      return `${effectWords("unproven")}; declare the command in commandEffects to classify it`;
+  }
+}
+
+/** An effect as the dialog says it: an unproven one says what that costs. */
+function effectWords(effect: AttributedEffect): string {
+  return effect === "unproven" ? "unproven, consults both directions" : effect;
 }
 
 /**

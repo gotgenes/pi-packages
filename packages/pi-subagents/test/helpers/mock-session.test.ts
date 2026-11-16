@@ -31,6 +31,14 @@ describe("createMockSession", () => {
 		expect(events).toEqual([{ type: "before" }]);
 	});
 
+	it("counts only the subscriptions still live", () => {
+		const session = createMockSession();
+		const unsubscribe = session.subscribe(() => {});
+		session.subscribe(() => {});
+		unsubscribe();
+		expect(session.listenerCount()).toBe(1);
+	});
+
 	it("subscribe is a vi.fn spy", () => {
 		const session = createMockSession();
 		const fn = vi.fn();

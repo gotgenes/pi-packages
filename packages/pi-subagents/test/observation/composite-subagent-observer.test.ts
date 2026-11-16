@@ -6,11 +6,9 @@ import { createTestSubagent } from "#test/helpers/make-subagent";
 
 function makeDelegate(): SubagentManagerObserver {
 	return {
-		onSubagentStarted: vi.fn(),
+		onSubagentRunStarted: vi.fn(),
 		onSubagentCreated: vi.fn(),
-		onSubagentCompleted: vi.fn(),
-		onSubagentResumed: vi.fn(),
-		onSubagentResuming: vi.fn(),
+		onSubagentRunFinished: vi.fn(),
 		onSubagentCompacted: vi.fn(),
 	};
 }
@@ -20,16 +18,16 @@ const NOTICE = "\n\n---\nChanges saved to branch `pi-agent-10`.";
 
 describe("CompositeSubagentObserver", () => {
 	describe("fan-out", () => {
-		it("forwards onSubagentStarted to every delegate with the record", () => {
+		it.each(["initial", "resume"] as const)("forwards onSubagentRunStarted for the %s run to every delegate", (kind) => {
 			const a = makeDelegate();
 			const b = makeDelegate();
 			const composite = new CompositeSubagentObserver([a, b]);
 			const record = createTestSubagent({ id: "agent-1" });
 
-			composite.onSubagentStarted(record);
+			composite.onSubagentRunStarted(record, kind);
 
-			expect(a.onSubagentStarted).toHaveBeenCalledExactlyOnceWith(record);
-			expect(b.onSubagentStarted).toHaveBeenCalledExactlyOnceWith(record);
+			expect(a.onSubagentRunStarted).toHaveBeenCalledExactlyOnceWith(record, kind);
+			expect(b.onSubagentRunStarted).toHaveBeenCalledExactlyOnceWith(record, kind);
 		});
 
 		it("forwards onSubagentCreated to every delegate with the record", () => {
@@ -44,40 +42,16 @@ describe("CompositeSubagentObserver", () => {
 			expect(b.onSubagentCreated).toHaveBeenCalledExactlyOnceWith(record);
 		});
 
-		it("forwards onSubagentCompleted to every delegate with the record", () => {
+		it.each(["initial", "resume"] as const)("forwards onSubagentRunFinished for the %s run to every delegate", (kind) => {
 			const a = makeDelegate();
 			const b = makeDelegate();
 			const composite = new CompositeSubagentObserver([a, b]);
 			const record = createTestSubagent({ id: "agent-3" });
 
-			composite.onSubagentCompleted(record);
+			composite.onSubagentRunFinished(record, kind);
 
-			expect(a.onSubagentCompleted).toHaveBeenCalledExactlyOnceWith(record);
-			expect(b.onSubagentCompleted).toHaveBeenCalledExactlyOnceWith(record);
-		});
-
-		it("forwards onSubagentResumed to every delegate with the record", () => {
-			const a = makeDelegate();
-			const b = makeDelegate();
-			const composite = new CompositeSubagentObserver([a, b]);
-			const record = createTestSubagent({ id: "agent-3b" });
-
-			composite.onSubagentResumed(record);
-
-			expect(a.onSubagentResumed).toHaveBeenCalledExactlyOnceWith(record);
-			expect(b.onSubagentResumed).toHaveBeenCalledExactlyOnceWith(record);
-		});
-
-		it("forwards onSubagentResuming to every delegate with the record", () => {
-			const a = makeDelegate();
-			const b = makeDelegate();
-			const composite = new CompositeSubagentObserver([a, b]);
-			const record = createTestSubagent({ id: "agent-3c" });
-
-			composite.onSubagentResuming(record);
-
-			expect(a.onSubagentResuming).toHaveBeenCalledExactlyOnceWith(record);
-			expect(b.onSubagentResuming).toHaveBeenCalledExactlyOnceWith(record);
+			expect(a.onSubagentRunFinished).toHaveBeenCalledExactlyOnceWith(record, kind);
+			expect(b.onSubagentRunFinished).toHaveBeenCalledExactlyOnceWith(record, kind);
 		});
 
 		it("forwards onSubagentCompacted to every delegate with record and info", () => {
@@ -96,15 +70,15 @@ describe("CompositeSubagentObserver", () => {
 			const calls: string[] = [];
 			const a: SubagentManagerObserver = {
 				...makeDelegate(),
-				onSubagentStarted: () => { calls.push("a"); },
+				onSubagentRunStarted: () => { calls.push("a"); },
 			};
 			const b: SubagentManagerObserver = {
 				...makeDelegate(),
-				onSubagentStarted: () => { calls.push("b"); },
+				onSubagentRunStarted: () => { calls.push("b"); },
 			};
 			const composite = new CompositeSubagentObserver([a, b]);
 
-			composite.onSubagentStarted(createTestSubagent());
+			composite.onSubagentRunStarted(createTestSubagent(), "initial");
 
 			expect(calls).toEqual(["a", "b"]);
 		});
@@ -118,9 +92,9 @@ describe("CompositeSubagentObserver", () => {
 
 			composite.add(late);
 			const record = createTestSubagent();
-			composite.onSubagentStarted(record);
+			composite.onSubagentRunStarted(record, "initial");
 
-			expect(late.onSubagentStarted).toHaveBeenCalledExactlyOnceWith(record);
+			expect(late.onSubagentRunStarted).toHaveBeenCalledExactlyOnceWith(record, "initial");
 		});
 	});
 
@@ -128,14 +102,14 @@ describe("CompositeSubagentObserver", () => {
 		it("continues to later delegates when an earlier one throws", () => {
 			const throwing: SubagentManagerObserver = {
 				...makeDelegate(),
-				onSubagentStarted: vi.fn(() => { throw new Error("boom"); }),
+				onSubagentRunStarted: vi.fn(() => { throw new Error("boom"); }),
 			};
 			const after = makeDelegate();
 			const composite = new CompositeSubagentObserver([throwing, after]);
 			const record = createTestSubagent();
 
-			expect(() => composite.onSubagentStarted(record)).not.toThrow();
-			expect(after.onSubagentStarted).toHaveBeenCalledExactlyOnceWith(record);
+			expect(() => composite.onSubagentRunStarted(record, "initial")).not.toThrow();
+			expect(after.onSubagentRunStarted).toHaveBeenCalledExactlyOnceWith(record, "initial");
 		});
 	});
 

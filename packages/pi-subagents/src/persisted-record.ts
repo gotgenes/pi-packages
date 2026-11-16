@@ -26,6 +26,8 @@ export interface PersistedSubagentRecord {
 	readonly turnBudget: TurnBudget | undefined;
 	readonly startedAt: number;
 	readonly completedAt: number | undefined;
+	/** Whether the run was stopped before the limiter admitted it. */
+	readonly stoppedWhileQueued: boolean;
 	/** The run's session JSONL, which a reader can open after the live session is gone. */
 	readonly outputFile: string | undefined;
 	readonly toolUses: number;
@@ -34,7 +36,7 @@ export interface PersistedSubagentRecord {
 /** The fields a reader validates and returns: what labels a past run and opens its transcript. */
 export type PersistedRunSummary = Pick<
 	PersistedSubagentRecord,
-	"id" | "type" | "description" | "status" | "startedAt" | "completedAt" | "toolUses" | "outputFile"
+	"id" | "type" | "description" | "status" | "startedAt" | "completedAt" | "stoppedWhileQueued" | "toolUses" | "outputFile"
 >;
 
 /** The session-entry fields the reader inspects; Pi's `SessionEntry` satisfies it. */
@@ -59,6 +61,7 @@ export function toPersistedRecord(record: PersistedSubagentRecord): PersistedSub
 		turnBudget: record.turnBudget,
 		startedAt: record.startedAt,
 		completedAt: record.completedAt,
+		stoppedWhileQueued: record.stoppedWhileQueued,
 		outputFile: record.outputFile,
 		toolUses: record.toolUses,
 	};
@@ -69,7 +72,8 @@ export function toPersistedRecord(record: PersistedSubagentRecord): PersistedSub
  *
  * A resumed run appends a second entry under the same id, so the last one wins.
  * Entries that do not validate are skipped, including those written before the
- * entry recorded `toolUses`.
+ * entry recorded `toolUses`. One written before the entry recorded
+ * `stoppedWhileQueued` reads as not stopped while queued.
  */
 export function readPersistedRuns(entries: readonly SessionEntryLike[]): PersistedRunSummary[] {
 	const runs = new Map<string, PersistedRunSummary>();
@@ -92,11 +96,23 @@ const SUBAGENT_STATUSES: ReadonlySet<string> = new Set<SubagentStatus>([
 
 function asRunSummary(data: unknown): PersistedRunSummary | undefined {
 	if (typeof data !== "object" || data === null) return undefined;
-	const { id, type, description, status, startedAt, completedAt, toolUses, outputFile } = data as Record<string, unknown>;
+	const { id, type, description, status, startedAt, completedAt, stoppedWhileQueued, toolUses, outputFile } =
+		data as Record<string, unknown>;
 	if (typeof id !== "string" || typeof type !== "string" || typeof description !== "string") return undefined;
 	if (typeof status !== "string" || !SUBAGENT_STATUSES.has(status)) return undefined;
 	if (typeof startedAt !== "number" || typeof toolUses !== "number") return undefined;
 	if (completedAt !== undefined && typeof completedAt !== "number") return undefined;
 	if (outputFile !== undefined && typeof outputFile !== "string") return undefined;
-	return { id, type, description, status: status as SubagentStatus, startedAt, completedAt, toolUses, outputFile };
+	if (stoppedWhileQueued !== undefined && typeof stoppedWhileQueued !== "boolean") return undefined;
+	return {
+		id,
+		type,
+		description,
+		status: status as SubagentStatus,
+		startedAt,
+		completedAt,
+		stoppedWhileQueued: stoppedWhileQueued ?? false,
+		toolUses,
+		outputFile,
+	};
 }

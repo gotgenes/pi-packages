@@ -1,5 +1,8 @@
 import type { AccessPath } from "#src/access-intent/access-path";
-import type { BashExternalPath } from "#src/access-intent/bash/bash-path-resolver";
+import type {
+  BashExternalPath,
+  Unlocated,
+} from "#src/access-intent/bash/bash-path-resolver";
 import type { TokenEffect } from "#src/access-intent/effect";
 import { capabilitySurfaceForEffect } from "#src/access-intent/path-surfaces";
 import type { ScopedPermissionResolver } from "#src/policy/permission-resolver";
@@ -14,6 +17,8 @@ export interface UncoveredExternalPath {
   /** What the effect was, and what established it — the review log's blame. */
   effect: TokenEffect;
   check: PermissionCheckResult;
+  /** Carried from {@link BashExternalPath.unlocated}: `path` is not where the command reaches. */
+  unlocated?: Unlocated;
 }
 
 /**
@@ -79,7 +84,7 @@ export function selectUncoveredExternalPaths(
 ): ExternalPathCoverage {
   const uncovered: UncoveredExternalPath[] = [];
   const sessionCovered: AccessPath[] = [];
-  for (const { path, effect } of accesses) {
+  for (const { path, effect, unlocated } of accesses) {
     const surface = capabilitySurfaceForEffect(
       "external_directory",
       effect.effect,
@@ -91,7 +96,13 @@ export function selectUncoveredExternalPaths(
       agentName,
     );
     if (check.state !== "allow") {
-      uncovered.push({ path, surface, effect, check });
+      uncovered.push({
+        path,
+        surface,
+        effect,
+        check,
+        ...(unlocated ? { unlocated } : {}),
+      });
     } else if (check.source === "session") {
       sessionCovered.push(path);
     }

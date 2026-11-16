@@ -672,8 +672,7 @@ describe("NotificationManager", () => {
       it("is announced again once the carrier abandons its claim", () => {
         const parent = makePiParent();
         const record = createTestSubagent({ id: "live-1", status: "running" });
-        record.claim();
-        record.releaseClaims();
+        record.claim().release();
 
         parent.manager.sendUpdate(record, "Course change.");
 

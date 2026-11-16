@@ -59,7 +59,7 @@ export interface AgentReport {
 	 * wait returned, so the agent is running again.
 	 */
 	resumedWhileWaiting?: boolean;
-	/** The bound, in seconds, of a wait that ended at it with the agent still running. */
+	/** The bound, in seconds, of a wait that ended at it with the agent still queued or running. */
 	waitExpiredAfter?: number;
 	/** What a running agent is doing and when it last moved; absent for any other status. */
 	progress?: ReportProgress;
@@ -109,7 +109,7 @@ export function formatAgentReport(report: AgentReport): string {
 			"call get_subagent_result for that run's outcome.";
 	}
 	if (report.waitExpiredAfter !== undefined) {
-		output += renderWaitExpired(report.waitExpiredAfter);
+		output += renderWaitExpired(report.waitExpiredAfter, report.status);
 	}
 	if (report.conversation) {
 		output += `\n\n--- Agent Conversation ---\n${report.conversation}`;
@@ -124,8 +124,19 @@ export function formatAgentReport(report: AgentReport): string {
  * Says the bound ended the wait, not the agent, and why waiting again on
  * unchanged progress is the wrong next move: a model that reads bash's timeout
  * as a kill would otherwise assume the agent stopped, or poll it forever.
+ *
+ * A queued agent is the exception to that advice: it has not started, so it
+ * has no progress to stall, and waiting is what eventually admits it.
  */
-function renderWaitExpired(seconds: number): string {
+function renderWaitExpired(seconds: number, status: SubagentStatus): string {
+	if (status === "queued") {
+		return (
+			`\n\nThis wait ended after its ${seconds}s timeout. The agent was not stopped and is still queued: ` +
+			"it has not started, and starts when a running agent finishes and frees a concurrency slot.\n" +
+			"Waiting again is how to collect its result; if the running agents are not making progress, " +
+			"check on them instead."
+		);
+	}
 	return (
 		`\n\nThis wait ended after its ${seconds}s timeout. The agent was not stopped and is still running.\n` +
 		"If its progress has not changed since your last check, waiting again will not unstick it: " +

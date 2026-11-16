@@ -198,6 +198,8 @@ describe("describeExternalDirectoryGate", () => {
       text: "/test/project",
       detail: null,
     });
+    // A tool's direction is its identity, which the tool fact already states.
+    expect(result.payload.request.decidingPath).toBeNull();
   });
 
   it("carries a precomputed preCheck and an empty input (matching is done by the gate)", () => {

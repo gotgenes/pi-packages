@@ -1,6 +1,6 @@
 {
   "name": "@gotgenes/pi-permission-system",
-  "version": "40.2.0",
+  "version": "42.0.2",
   "description": "Permission enforcement extension for the Pi coding agent.",
   "type": "module",
   "exports": {
@@ -97,6 +97,6 @@
   "dependencies": {
     "tree-sitter-bash": "^0.25.1",
     "web-tree-sitter": "^0.26.9",
-    "zod": "^4.4.3"
+    "zod": "^4.6.7"
   }
 }

@@ -23,6 +23,34 @@ describe("buildModelJudgeJsonSchema", () => {
   });
 });
 
+describe("array size bounds", () => {
+  const VALID = {
+    provider: "anthropic",
+    model: "claude-haiku",
+    instructions: "Flag doubled path segments.",
+  };
+  const repeat = (n: number, fill: string): string[] =>
+    Array.from({ length: n }, () => fill);
+
+  it("accepts 1000 typoPatterns", () => {
+    const result = modelJudgeConfigSchema.safeParse({
+      ...VALID,
+      typoPatterns: repeat(1000, "x"),
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects 1001 invalid typoPatterns with one size issue and no element issue", () => {
+    const result = modelJudgeConfigSchema.safeParse({
+      ...VALID,
+      typoPatterns: repeat(1001, ""),
+    });
+    expect(
+      result.error?.issues.map(({ code, path }) => ({ code, path })),
+    ).toEqual([{ code: "too_big", path: ["typoPatterns"] }]);
+  });
+});
+
 describe("config/config.example.json", () => {
   it("validates against the schema", () => {
     const example = JSON.parse(

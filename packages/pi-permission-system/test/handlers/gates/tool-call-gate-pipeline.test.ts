@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { BashExternalPath } from "#src/access-intent/bash/bash-path-resolver";
+import {
+  foldDeclaredCommandEffects,
+  NO_DECLARED_COMMAND_EFFECTS,
+} from "#src/config/command-effects-config";
 import { isGateDescriptor } from "#src/handlers/gates/descriptor";
 import { ToolCallGatePipeline } from "#src/handlers/gates/tool-call-gate-pipeline";
 import { PathNormalizer } from "#src/path/path-normalizer";
@@ -245,7 +249,7 @@ describe("ToolCallGatePipeline", () => {
       expect(mockBashProgramParse).toHaveBeenCalledWith(
         "echo hello",
         expect.any(PathNormalizer),
-        { workdir: undefined },
+        { workdir: undefined, commandEffects: NO_DECLARED_COMMAND_EFFECTS },
       );
     });
 
@@ -281,12 +285,40 @@ describe("ToolCallGatePipeline", () => {
       expect(mockBashProgramParse).toHaveBeenCalledWith(
         "cat id_rsa",
         expect.any(PathNormalizer),
-        { workdir: undefined },
+        { workdir: undefined, commandEffects: NO_DECLARED_COMMAND_EFFECTS },
       );
     });
   });
 
   // ── aliased shell tool (#574) ────────────────────────────────────────────
+
+  describe("evaluate — commandEffects declarations", () => {
+    it("hands the session's declarations to BashProgram.parse", async () => {
+      const declared = foldDeclaredCommandEffects(
+        NO_DECLARED_COMMAND_EFFECTS,
+        { git: { subcommands: { log: "read" } } },
+        "project",
+      );
+      const getCommandEffects = vi.fn(() => declared);
+      const inputs = makeGateInputs({ getCommandEffects });
+      const { runner } = makeGateRunner();
+      const pipeline = new ToolCallGatePipeline(
+        makeResolver(makeCheckResult()),
+        inputs,
+      );
+
+      await pipeline.evaluate(
+        makeTcc({ input: { command: "git log ~/x" } }),
+        runner,
+      );
+
+      expect(mockBashProgramParse).toHaveBeenCalledWith(
+        "git log ~/x",
+        expect.any(PathNormalizer),
+        { workdir: undefined, commandEffects: declared },
+      );
+    });
+  });
 
   describe("evaluate — aliased shell tool (#574)", () => {
     const execAliases = {
@@ -318,7 +350,7 @@ describe("ToolCallGatePipeline", () => {
       expect(mockBashProgramParse).toHaveBeenCalledWith(
         "npm install",
         expect.any(PathNormalizer),
-        { workdir: undefined },
+        { workdir: undefined, commandEffects: NO_DECLARED_COMMAND_EFFECTS },
       );
     });
 
@@ -341,7 +373,7 @@ describe("ToolCallGatePipeline", () => {
       expect(mockBashProgramParse).toHaveBeenCalledWith(
         "cat file",
         expect.any(PathNormalizer),
-        { workdir: "/etc" },
+        { workdir: "/etc", commandEffects: NO_DECLARED_COMMAND_EFFECTS },
       );
     });
 

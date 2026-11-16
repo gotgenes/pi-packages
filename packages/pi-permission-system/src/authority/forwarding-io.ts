@@ -127,6 +127,7 @@ function asForwardedAccessIntent(
     boundaryValue?: unknown;
     floor?: unknown;
     askingUnits?: unknown;
+    delegationLicense?: unknown;
     requesterCwd?: unknown;
     principal?: unknown;
   };
@@ -171,6 +172,11 @@ function asForwardedAccessIntent(
     ...(isWellFormedAskingUnits(candidate.askingUnits)
       ? { askingUnits: copyAskingUnits(candidate.askingUnits) }
       : {}),
+    // Unlike a malformed floor, an unrecognized license drops only itself:
+    // absence is the restrictive reading, so the intent stays usable.
+    ...(candidate.delegationLicense === "nothing-on-disk"
+      ? { delegationLicense: candidate.delegationLicense }
+      : {}),
     requesterCwd: candidate.requesterCwd,
     principal: {
       sessionId: principal.sessionId,
@@ -187,27 +193,49 @@ function asForwardedAccessIntent(
  */
 function isWellFormedAskingUnits(
   value: unknown,
-): value is readonly { command: string; floor?: string }[] {
+): value is readonly AskingBashUnit[] {
   return (
     Array.isArray(value) &&
     value.length > 0 &&
-    value.every(
-      (unit: unknown) =>
-        typeof unit === "object" &&
-        unit !== null &&
-        typeof (unit as { command?: unknown }).command === "string" &&
-        ((unit as { floor?: unknown }).floor === undefined ||
-          typeof (unit as { floor?: unknown }).floor === "string"),
-    )
+    value.every(isWellFormedAskingUnit)
+  );
+}
+
+/**
+ * True for one `{ command: string, spellings?: string[], floor?: string }`
+ * unit.
+ *
+ * A present `spellings` must be a non-empty all-string list: the child omits
+ * the key when it has none, and a malformed list must never read as "no
+ * spellings", which would let a serving `deny` written against one miss.
+ */
+function isWellFormedAskingUnit(value: unknown): value is AskingBashUnit {
+  if (typeof value !== "object" || value === null) return false;
+  const unit = value as {
+    command?: unknown;
+    spellings?: unknown;
+    floor?: unknown;
+  };
+  return (
+    typeof unit.command === "string" &&
+    (unit.spellings === undefined || isNonEmptyStringList(unit.spellings)) &&
+    (unit.floor === undefined || typeof unit.floor === "string")
+  );
+}
+
+function isNonEmptyStringList(value: unknown): value is string[] {
+  return (
+    Array.isArray(value) &&
+    value.length > 0 &&
+    value.every((entry) => typeof entry === "string")
   );
 }
 
 /** Rebuild each unit field by field, so no unread key rides through. */
-function copyAskingUnits(
-  units: readonly { command: string; floor?: string }[],
-): AskingBashUnit[] {
+function copyAskingUnits(units: readonly AskingBashUnit[]): AskingBashUnit[] {
   return units.map((unit) => ({
     command: unit.command,
+    ...(unit.spellings === undefined ? {} : { spellings: [...unit.spellings] }),
     ...(unit.floor === undefined ? {} : { floor: unit.floor }),
   }));
 }

@@ -69,6 +69,9 @@ Never silently re-defer.
 Surface these as an `ask_user` decision rather than deciding yourself; they are preference-sensitive judgments the user should own.
 Bundle them into a single call rather than one round-trip per item.
 
+While a package has no open phase, an item an archived phase deferred "to a later phase" belongs to that package's next `/plan-improvements` sweep: record the handoff once and stop carrying it in Deferred.
+Find repeat deferrals by intersecting the issue numbers in the last two triages' Deferred sections.
+
 ## Step 2: Gather the raw state
 
 Collect issues and PRs together; a backlog that ignores open PRs understates the real queue and hides the contributor-facing cost.
@@ -79,6 +82,9 @@ gh pr list --state open --limit 200 --json number,title,author,createdAt,updated
 ```
 
 Filter by the `pkg:$1` label (issues) and changed paths (PRs) when `$1` is set.
+
+Then list every open number the prior triage never names: `for n in <open numbers>; do grep -q "#$n\b" <prior triage> || echo "$n"; done`.
+Each is new since its date or was dropped by it; classify and rank a dropped item this run, and name it in "Since the last triage".
 
 For every open PR, resolve its **real** state:
 
@@ -93,6 +99,8 @@ A scope verdict is a verdict about a diff, not about a number: inherit a PR's pr
 
 Also record, for each item: the author, whether they are a third party (compare to `gh api user --jq .login`), the age since creation, and the age since the **last maintainer response**.
 Compute every age with `date`, never by hand: `echo $(( ( $(date -u +%s) - $(date -u -d <createdAt> +%s) ) / 86400 ))`.
+The issue list's `comments` field carries each comment's author and timestamp, so the last maintainer response is one expression: `jq '.[] | {number, last: ([.comments[] | select(.author.login == "<login>") | .createdAt] | max)}'`.
+For a PR, read `comments` and `reviews` from `gh pr view <N>`.
 
 ## Step 3: Establish real CI state (do not infer it)
 
@@ -209,7 +217,7 @@ A charter edit reopens the verdicts citing that package; a materially changed it
 Record each re-check as `unchanged` or as the new verdict with what changed.
 
 The verdict is a document entry, not a mutation.
-Closing an out-of-scope item, labeling it, and replying to its author all remain recommendations — see [Mutations you may perform](#mutations-you-may-perform).
+Closing an out-of-scope item, labeling it, and replying to its author all remain recommendations until the operator approves them — see [Mutations you may perform](#mutations-you-may-perform).
 
 ## Step 7: Score each item
 
@@ -258,10 +266,12 @@ Only these, and only with the stated confirmation:
   Report the audit result.
 - **Post contributor comments** (holding replies, change requests, version requests) — draft with the `github-voice` skill and confirm through `ask_user` before posting.
   A holding reply should say plainly that the item is parked and why, name the issue it is parked on, and avoid committing to a design shape the maintainer has not decided.
+- **Close approved items** — an item whose close the operator approved, in this run's `ask_user` or as recorded by a prior triage, once its reply is posted.
+  Confirm the close list in the same `ask_user` call as the other decisions, and record each close in the document.
 
-Everything else is a recommendation, including merging, closing, re-running CI, and declining a PR.
-That covers a Step 6 scope decline: it is recorded in the document as a recommended disposition, never applied as a label, a comment, or a close.
-Never merge or close from this template.
+Everything else is a recommendation, including merging, re-running CI, and any close the operator has not approved.
+That covers a Step 6 scope decline: it is recorded in the document as a recommended disposition until the operator approves the close.
+Never merge from this template.
 
 ## Output
 
@@ -319,6 +329,8 @@ The document contains:
 8. **Blocked on others** — items waiting on a contributor (rebase, version confirmation, change requests) with how long they have waited.
 9. **Deferred** — what you consciously did not rank, and why, so the next run does not silently re-derive it.
    An `out of scope` item is not deferred — it belongs to the Scope alignment section, with a disposition rather than a rationale for waiting.
+
+Before committing, recompute every count the prose states (pending closes, days waiting, items in a list) with a command over the list it counts.
 
 Then present a short summary in the session and commit:
 

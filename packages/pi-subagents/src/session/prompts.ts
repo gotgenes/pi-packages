@@ -10,7 +10,7 @@ import type { AgentPromptConfig, PromptInheritance } from "#src/types";
 export interface InheritedPrompt {
   /** The parent agent's effective system prompt. */
   systemPrompt: string;
-  /** The parent's working directory — the cwd its prompt footer names. */
+  /** The parent's working directory — the cwd its prompt's `<cwd>` section names. */
   cwd: string;
   /**
    * Which of the parent's contributions the child adopts as its identity.
@@ -164,32 +164,32 @@ const SKILLS_SECTION_HEADING =
 /** Closing tag of that catalogue. */
 const SKILLS_CATALOGUE_CLOSE = "</available_skills>";
 
-/** Opening tag of the section Pi ≥0.86 wraps the catalogue in. */
+/** Opening tag of the section Pi wraps the catalogue in. */
 const SKILLS_SECTION_OPEN = "<skills>";
 
 /** Closing tag of that section. */
 const SKILLS_SECTION_CLOSE = "</skills>";
 
-/** Opening tag of the section Pi ≥0.86 renders the working directory into. */
+/** Opening tag of the section Pi renders the working directory into. */
 const CWD_SECTION_OPEN = "<cwd>";
 
 /** Closing tag of that section. */
 const CWD_SECTION_CLOSE = "</cwd>";
 
-/** Opening tag of the section Pi ≥0.86 lists the session's tools in. */
+/** Opening tag of the section Pi lists the session's tools in. */
 const TOOLS_SECTION_OPEN = "<tools>";
 
 /** Closing tag of that section. */
 const TOOLS_SECTION_CLOSE = "</tools>";
 
-/** Opening tag of the section Pi ≥0.86 writes the session's guidelines in. */
+/** Opening tag of the section Pi writes the session's guidelines in. */
 const RULES_SECTION_OPEN = "<rules>";
 
 /** Closing tag of that section. */
 const RULES_SECTION_CLOSE = "</rules>";
 
 /**
- * Opening tags of the sections Pi ≥0.86 renders below `<rules>`, in its
+ * Opening tags of the sections Pi renders below `<rules>`, in its
  * order: `<docs>`, the `--append-system-prompt` addendum, project context,
  * the skills catalogue, and the cwd.
  */
@@ -207,44 +207,32 @@ const PROJECT_CONTEXT_OPEN = "<project_context>";
 /** Closing tag of that block. */
 const PROJECT_CONTEXT_CLOSE = "</project_context>";
 
-/**
- * The sentence Pi writes below the opening tag — two lines below it through
- * 0.85, whose block opens with a blank line, and directly below it from
- * 0.86's section renderer.
- *
- * Both offsets are accepted because the peer range (`>=0.81.0`) admits both
- * renderers. The 0.85 arm in `projectContextStart` is dead once that floor
- * moves past 0.85; drop it with the fixtures that exercise it rather than
- * carrying it forward.
- */
+/** The sentence Pi writes directly below the opening tag. */
 const PROJECT_CONTEXT_LEAD_IN = "Project-specific instructions and guidelines:";
 
 /**
  * Reduce an inherited prompt to the identity a child may adopt as its own.
  *
- * Pi's `buildSystemPrompt` ends every prompt with layers it resolves per
- * session — the `<available_skills>` catalogue, then a
- * `Current working directory:` footer, or from 0.86 the same catalogue inside
- * a `<skills>` section followed by a `<cwd>` section — and extensions append
- * further blocks after those from `before_agent_start`, rebuilt from the base
- * prompt on every turn. The child's own session rebuilds all of it against
- * the child's directory, tool set, and extensions, so an inherited copy is a
- * second, stale claim of each: a catalogue naming skills the child may not
- * have (#801), and a footer that walks a workspace-isolated child back into
- * the parent's directory (#640).
+ * Pi's `buildSystemPrompt` ends every prompt with sections it resolves per
+ * session — the `<available_skills>` catalogue inside a `<skills>` section,
+ * then a `<cwd>` section — and extensions add further sections after those
+ * from `before_agent_start`, rebuilt on every turn. The child's own session
+ * rebuilds all of it against the child's directory, tool set, and extensions,
+ * so an inherited copy is a second, stale claim of each: a catalogue naming
+ * skills the child may not have (#801), and a working directory that walks a
+ * workspace-isolated child back into the parent's (#640).
  *
  * Everything from the first such layer onward is therefore dropped. What
  * precedes it is returned byte for byte, so it stays a shared prefix with the
  * parent's prompt for hosts that reuse one over the system text (#180, #400).
  *
- * One exception sits inside that region: from 0.86 Pi renders the session's
- * tool surface as `<tools>` and `<rules>` sections just below the preamble.
+ * One exception sits inside that region: Pi renders the session's tool
+ * surface as `<tools>` and `<rules>` sections just below the preamble.
  * They are as session-resolved as the catalogue, so they are excised rather
  * than inherited (ADR 0011); the shared prefix then ends at the preamble for a
  * parent that renders them, and is unchanged for one that does not.
  *
- * A prompt carrying neither layer is not one `buildSystemPrompt` assembled, and
- * is returned unchanged.
+ * A prompt carrying no such layer is returned unchanged.
  *
  * `cutProjectContext` extends the cut one layer earlier, to the
  * `<project_context>` block, for a child whose workspace is not its parent's
@@ -265,7 +253,7 @@ function inheritedIdentity(
 }
 
 /**
- * The head with Pi ≥0.86's `<tools>` and `<rules>` sections excised, or the
+ * The head with Pi's `<tools>` and `<rules>` sections excised, or the
  * head unchanged when Pi wrote neither there.
  *
  * Both sections are rendered from the parent session's own tool set, and Pi
@@ -305,11 +293,10 @@ function laterSectionStart(head: readonly string[]): number {
 }
 
 /**
- * Which of Pi's prompt renderers anchored the session-resolved tail: the ≤0.85
- * `Current working directory:` footer, the ≥0.86 `<cwd>` section, or neither
- * (a prompt something downstream rewrote).
+ * What anchored the session-resolved tail: Pi's `<cwd>` section, or nothing
+ * (a prompt an extension replaced).
  */
-type PromptShape = "footer" | "section" | "unanchored";
+type PromptShape = "section" | "unanchored";
 
 /** Where the session-resolved tail begins, and the prompt shape that placed it. */
 interface AnchoredTail {
@@ -321,12 +308,8 @@ interface AnchoredTail {
 /**
  * Where Pi's per-session layers begin, and the prompt shape that anchored them.
  *
- * The catalogue precedes the footer, so cutting at the catalogue already
- * removes it; the footer is the anchor only for a parent session that resolved
- * no skills. Matching whole lines makes the footer match exact, so a footer
- * naming a directory that merely shares a prefix with the parent's is not
- * mistaken for it, and it mirrors the separator normalization
- * `buildSystemPrompt` applies.
+ * `cutProjectContext` moves the cut one layer earlier, to a `<project_context>`
+ * block directly above the anchored tail.
  */
 function sessionResolvedTailStart(
   lines: readonly string[],
@@ -340,48 +323,38 @@ function sessionResolvedTailStart(
 }
 
 /**
- * Where Pi's per-session layers begin across both of its prompt renderers —
- * a line index, or -1 when none is present — and which renderer's shape
- * placed them.
+ * Where Pi's per-session layers begin — a line index, or -1 when none is
+ * present — and whether the parent's `<cwd>` section anchored them.
  *
- * Through 0.85 the layers end in a `Current working directory:` footer line,
- * and the catalogue is anchored to it positionally. From 0.86 the prompt is
- * assembled from tagged sections — the cwd as a `<cwd>` section, the catalogue
- * inside a `<skills>` section — so the footer never matches and the cwd
- * section takes the anchor's place. The two shapes are told apart by which
- * cwd layer is present, never by version sniffing — which is what the name
- * records, so this reads apart from the `sessionResolvedTailStart` above it
- * that extends the cut past this anchor.
+ * Pi renders the catalogue's `<skills>` section immediately above the `<cwd>`
+ * section, so the cwd section anchors the cut, and the name records that
+ * anchor to read apart from the `sessionResolvedTailStart` above it, which
+ * extends the cut past it.
+ *
+ * A prompt with no `<cwd>` section naming the parent's directory is not the one
+ * Pi rendered: a `before_agent_start` handler returned its own text, which Pi
+ * uses as the session's forced prompt. The catalogue is then located without
+ * an anchor.
  */
 function cwdAnchoredTailStart(
   lines: readonly string[],
   parentCwd: string,
 ): AnchoredTail {
-  const footerAt = lines.lastIndexOf(
-    `Current working directory: ${toPromptPath(parentCwd)}`,
-  );
-  if (footerAt !== -1) {
-    const catalogueAt = skillsSectionStart(lines, footerAt);
-    return { at: catalogueAt === -1 ? footerAt : catalogueAt, shape: "footer" };
-  }
   const cwdAt = cwdSectionStart(lines, parentCwd);
   if (cwdAt !== -1) {
     return { at: skillsSectionWrapperStart(lines, cwdAt), shape: "section" };
   }
-  // Neither cwd layer: something downstream rewrote a 0.85-shaped prompt, and
-  // the last closing tag is the best remaining guess.
-  return { at: skillsSectionStart(lines, -1), shape: "unanchored" };
+  return { at: unanchoredCatalogueStart(lines), shape: "unanchored" };
 }
 
 /**
- * Line index of Pi ≥0.86's `<cwd>` section opening tag, or -1 when it wrote
- * none.
+ * Line index of Pi's `<cwd>` section opening tag, or -1 when it wrote none.
  *
  * Located by content, not document order: the section is accepted only when
  * the line inside it is exactly the parent's cwd and the closing tag follows,
  * so a `<cwd>` quoted elsewhere — or one naming a directory that merely
- * shares a prefix with the parent's — is not mistaken for it, the same
- * whole-line discipline the 0.85 footer anchor applies.
+ * shares a prefix with the parent's — is not mistaken for it. The comparison
+ * mirrors the separator normalization `buildSystemPrompt` applies.
  */
 function cwdSectionStart(lines: readonly string[], parentCwd: string): number {
   for (
@@ -432,8 +405,7 @@ function skillsSectionWrapperStart(
  * block immediately before whichever session-resolved layer follows, so its
  * closing tag is the last non-blank line above the already-anchored tail. The
  * opening is then the nearest one above that tag carrying Pi's lead-in
- * sentence one or two lines below it — renderer-dependent, see
- * `PROJECT_CONTEXT_LEAD_IN` — which keeps a context file quoting the opening —
+ * sentence directly below it, which keeps a context file quoting the opening —
  * later in the document than the real one — from being taken for it.
  */
 function projectContextStart(lines: readonly string[], tailAt: number): number {
@@ -445,53 +417,29 @@ function projectContextStart(lines: readonly string[], tailAt: number): number {
     openAt !== -1;
     openAt = lines.lastIndexOf(PROJECT_CONTEXT_OPEN, openAt - 1)
   ) {
-    if (
-      lines[openAt + 2] === PROJECT_CONTEXT_LEAD_IN ||
-      lines[openAt + 1] === PROJECT_CONTEXT_LEAD_IN
-    ) {
-      return openAt;
-    }
+    if (lines[openAt + 1] === PROJECT_CONTEXT_LEAD_IN) return openAt;
   }
   return -1;
 }
 
 /**
- * Line index of the skills section's heading, or -1 when the section is absent.
+ * Line index where the catalogue begins in a prompt no `<cwd>` section
+ * anchors — Pi's `<skills>` wrapper when the heading opens one, otherwise the
+ * heading — or -1 when it carries no catalogue.
  *
- * The heading is located by searching back from the catalogue's closing tag, so
- * prose quoting Pi's heading ahead of the section is not mistaken for it.
+ * With no anchor to locate Pi's own catalogue by position, the last closing
+ * tag is the best remaining guess. The heading is located by searching back
+ * from it, so prose quoting Pi's heading ahead of the catalogue is not
+ * mistaken for it. Cutting at the wrapper leaves no stray `<skills>` line in
+ * the identity, and leaves the section above it adjacent to the cut for the
+ * project-context anchor.
  */
-function skillsSectionStart(
-  lines: readonly string[],
-  footerAt: number,
-): number {
-  const catalogueEnd = catalogueCloseBefore(lines, footerAt);
-  return catalogueEnd === -1
-    ? -1
-    : lines.lastIndexOf(SKILLS_SECTION_HEADING, catalogueEnd);
-}
-
-/**
- * Line index of Pi's own catalogue closing tag, or -1 when it wrote none.
- *
- * `buildSystemPrompt` writes the cwd footer immediately after the catalogue, in
- * both of its branches and unconditionally, so the tag on the line before the
- * footer is Pi's own. Identifying it by that position rather than by document
- * order keeps a catalogue quoted elsewhere — in a project-context file, or in a
- * block an extension appended after the footer — from being taken for the
- * section, in either direction.
- *
- * Without a footer to anchor on, something downstream has rewritten Pi's
- * output; the last closing tag is the best remaining guess.
- */
-function catalogueCloseBefore(
-  lines: readonly string[],
-  footerAt: number,
-): number {
-  if (footerAt === -1) {
-    return lines.lastIndexOf(SKILLS_CATALOGUE_CLOSE);
-  }
-  return lines[footerAt - 1] === SKILLS_CATALOGUE_CLOSE ? footerAt - 1 : -1;
+function unanchoredCatalogueStart(lines: readonly string[]): number {
+  const catalogueEnd = lines.lastIndexOf(SKILLS_CATALOGUE_CLOSE);
+  if (catalogueEnd === -1) return -1;
+  const headingAt = lines.lastIndexOf(SKILLS_SECTION_HEADING, catalogueEnd);
+  if (headingAt === -1) return -1;
+  return lines[headingAt - 1] === SKILLS_SECTION_OPEN ? headingAt - 1 : headingAt;
 }
 
 /** Render a path the way `buildSystemPrompt` writes it into a prompt. */

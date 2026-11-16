@@ -33,8 +33,26 @@
  * instrument, not the gate: the gate parses with tree-sitter. A crude split
  * can only over-count units, which biases the answer **down**.
  *
+ * With `--declarations <file>`, it also scores what a `commandEffects` map
+ * relieves on top of the core. The file holds either the map itself or a
+ * config carrying it under `commandEffects`. A unit counts as relieved when
+ * its bare head word is declared, exact-word descent reaches an entry whose
+ * effects are `"read"`, `["read"]`, or `[]`, and no `unlessOption` stem met on
+ * the way down matches an argument (by the same crude spellings the core
+ * guards use here, plus a short-letter cluster and a long `=value`). It is as
+ * crude as the head-word split, and biased the same way.
+ *
+ * Measured 2026-10-16 with a recipe declaring nine read-only `git`
+ * subcommands (`log`, `show`, `status`, `rev-list`, `rev-parse`, `ls-files`,
+ * `grep`, `blame`, `diff`, with `--output` guarded on `git` itself) and
+ * `officecli: []`: the
+ * recent share rises from 172/975 (17.6%) to 186/975 (19.1%), all-time from
+ * 408/1549 to 429/1549. `git` stays the top blocker (156) because most asked
+ * `git` units are writers (`add`, `commit`, `tag`), which no declaration
+ * should relieve.
+ *
  * Usage:
- *   node scripts/measure-core-coverage.mjs [path-to-review-log.jsonl]
+ *   node scripts/measure-core-coverage.mjs [path-to-review-log.jsonl] [--declarations <file>]
  *
  * Defaults to the local review log:
  *   ~/.pi/agent/extensions/pi-permission-system/logs/pi-permission-system-permission-review.jsonl
@@ -163,13 +181,77 @@ function headWordOf(unit) {
   return "";
 }
 
-/** True when the whole ask would be attributed a read by the core. */
-function everyUnitIsCore(command) {
+/** True when every unit of the ask is relieved by `isRelieved`. */
+function everyUnitIs(command, isRelieved) {
   const units = splitUnits(command).filter(
     (unit) => !SHELL_KEYWORDS.has(headWordOf(unit)),
   );
   if (units.length === 0) return false;
-  return units.every((unit) => unitIsCore(unit));
+  return units.every((unit) => isRelieved(unit));
+}
+
+/**
+ * True when a `commandEffects` declaration relieves the unit: a read or an
+ * inert (`[]`) declaration reached by exact-word descent, with no guard met.
+ */
+function unitIsDeclared(unit, declarations) {
+  const head = headWordOf(unit);
+  if (head.includes("/") || head.includes("\\")) return false;
+  if (!Object.hasOwn(declarations, head)) return false;
+  const words = unit.split(/\s+/);
+  const args = words.slice(words.indexOf(head) + 1);
+  let entry = declarations[head];
+  const guards = [...(entry.unlessOption ?? [])];
+  for (const word of args) {
+    if (entry.subcommands === undefined) break;
+    if (word.startsWith("-") || word.includes("$")) return false;
+    if (!Object.hasOwn(entry.subcommands, word)) break;
+    const next = entry.subcommands[word];
+    entry =
+      typeof next === "string" || Array.isArray(next)
+        ? { effects: next }
+        : next;
+    guards.push(...(entry.unlessOption ?? []));
+  }
+  const effects =
+    typeof entry.effects === "string" ? [entry.effects] : entry.effects;
+  if (effects === undefined || effects.includes("write")) return false;
+  return !args.some((arg) => guards.some((stem) => matchesStem(arg, stem)));
+}
+
+/** A crude fail-closed stem match: exact, `=value`, or a short-letter cluster. */
+function matchesStem(arg, stem) {
+  if (arg === stem || arg.startsWith(`${stem}=`)) return true;
+  if (stem.startsWith("--"))
+    return (
+      stem.startsWith(arg.split("=")[0]) &&
+      arg.startsWith("--") &&
+      arg.length > 2
+    );
+  if (stem.length === 2) {
+    return (
+      arg.startsWith("-") &&
+      !arg.startsWith("--") &&
+      arg.slice(1).includes(stem[1])
+    );
+  }
+  return arg.startsWith(stem);
+}
+
+/** The `commandEffects` map in `path`, given as the map or a config holding it. */
+function readDeclarations(path) {
+  const parsed = JSON.parse(readFileSync(path, "utf-8"));
+  return parsed.commandEffects ?? parsed;
+}
+
+/** The review-log path and the optional declarations path from `argv`. */
+function parseArgs(argv) {
+  const flag = argv.indexOf("--declarations");
+  const declarationsPath = flag === -1 ? undefined : argv[flag + 1];
+  const positional = argv.filter(
+    (_arg, index) => flag === -1 || (index !== flag && index !== flag + 1),
+  );
+  return { logPath: positional[0] ?? DEFAULT_LOG, declarationsPath };
 }
 
 function unitIsCore(unit) {
@@ -184,13 +266,21 @@ function unitIsCore(unit) {
 }
 
 function main() {
-  const logPath = process.argv[2] ?? DEFAULT_LOG;
+  const { logPath, declarationsPath } = parseArgs(process.argv.slice(2));
+  const declarations = declarationsPath
+    ? readDeclarations(declarationsPath)
+    : undefined;
+  const relievedByDeclarations = (unit) =>
+    unitIsCore(unit) ||
+    (declarations !== undefined && unitIsDeclared(unit, declarations));
   const lines = readFileSync(logPath, "utf-8").split("\n");
 
   let total = 0;
   let covered = 0;
   let recentTotal = 0;
   let recentCovered = 0;
+  let declaredCovered = 0;
+  let recentDeclaredCovered = 0;
   const blockers = new Map();
 
   for (const line of lines) {
@@ -211,21 +301,24 @@ function main() {
     // than score a truncated chain (#746).
     if (command.endsWith("…")) continue;
 
-    const isCovered = everyUnitIsCore(command);
+    const isCovered = everyUnitIs(command, unitIsCore);
+    const isDeclaredCovered = everyUnitIs(command, relievedByDeclarations);
     const month = String(entry.timestamp ?? "").slice(0, 7);
     const isRecent = month >= "2026-07";
 
     total += 1;
     if (isCovered) covered += 1;
+    if (isDeclaredCovered) declaredCovered += 1;
     if (isRecent) {
       recentTotal += 1;
       if (isCovered) recentCovered += 1;
+      if (isDeclaredCovered) recentDeclaredCovered += 1;
     }
-    if (!isCovered && isRecent) {
+    if (!isDeclaredCovered && isRecent) {
       for (const unit of splitUnits(command)) {
         const head = headWordOf(unit);
         if (head === "" || SHELL_KEYWORDS.has(head)) continue;
-        if (!unitIsCore(unit)) {
+        if (!relievedByDeclarations(unit)) {
           blockers.set(head, (blockers.get(head) ?? 0) + 1);
         }
       }
@@ -241,6 +334,18 @@ function main() {
   console.log(
     `recent (2026-07 onward): ${recentCovered}/${recentTotal} (${pct(recentCovered, recentTotal)})`,
   );
+  if (declarations !== undefined) {
+    console.log("");
+    console.log(
+      `declarations: ${declarationsPath} (${Object.keys(declarations).length} commands)`,
+    );
+    console.log(
+      `core + declarations, all-time: ${declaredCovered}/${total} (${pct(declaredCovered, total)})`,
+    );
+    console.log(
+      `core + declarations, recent: ${recentDeclaredCovered}/${recentTotal} (${pct(recentDeclaredCovered, recentTotal)})`,
+    );
+  }
   console.log("");
   console.log("top blockers among recent asks:");
   for (const [word, count] of [...blockers]

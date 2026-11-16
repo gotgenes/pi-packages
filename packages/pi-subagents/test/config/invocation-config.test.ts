@@ -1,31 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { resolveAgentInvocationConfig } from "#src/config/invocation-config";
 import type { AgentConfig } from "#src/types";
+import { makeAgentConfig } from "#test/helpers/make-agent-config";
 
-function makeConfig(overrides: Partial<AgentConfig> = {}): AgentConfig {
-  return {
-    name: "Explore",
-    description: "Explore",
-    toolNames: ["read"],
-    systemPrompt: "Test agent",
-    promptMode: "replace",
-    inheritContext: false,
-    runInBackground: false,
-    ...overrides,
-  };
-}
-
-/** An agent file declaring a value for every lockable field. */
-function makeOpinionatedConfig(overrides: Partial<AgentConfig> = {}): AgentConfig {
-  return makeConfig({
-    model: "provider/config-model",
-    thinking: "high",
-    maxTurns: 42,
-    inheritContext: false,
-    runInBackground: false,
-    ...overrides,
-  });
-}
+/** What an agent file declaring a value for every lockable field sets. */
+const OPINIONATED: Partial<AgentConfig> = {
+  model: "provider/config-model",
+  thinking: "high",
+  maxTurns: 42,
+  inheritContext: false,
+  runInBackground: false,
+};
 
 /** A tool call overriding every lockable field. */
 const overridingParams = {
@@ -39,7 +24,7 @@ const overridingParams = {
 describe("resolveAgentInvocationConfig", () => {
   describe("with no lock declared", () => {
     it("prefers the caller's parameters over the agent's frontmatter", () => {
-      const resolved = resolveAgentInvocationConfig(makeOpinionatedConfig(), overridingParams);
+      const resolved = resolveAgentInvocationConfig(makeAgentConfig(OPINIONATED), overridingParams);
 
       expect(resolved.modelInput).toBe("provider/param-model");
       expect(resolved.thinking).toBe("minimal");
@@ -49,7 +34,7 @@ describe("resolveAgentInvocationConfig", () => {
     });
 
     it("falls back to the agent's frontmatter for parameters the caller omits", () => {
-      const resolved = resolveAgentInvocationConfig(makeOpinionatedConfig(), {});
+      const resolved = resolveAgentInvocationConfig(makeAgentConfig(OPINIONATED), {});
 
       expect(resolved.modelInput).toBe("provider/config-model");
       expect(resolved.thinking).toBe("high");
@@ -60,7 +45,7 @@ describe("resolveAgentInvocationConfig", () => {
 
     it("lets the caller fill booleans the agent leaves undefined", () => {
       const resolved = resolveAgentInvocationConfig(
-        makeConfig({ inheritContext: undefined, runInBackground: undefined }),
+        makeAgentConfig({ inheritContext: undefined, runInBackground: undefined }),
         { inherit_context: true, run_in_background: true },
       );
 
@@ -70,7 +55,7 @@ describe("resolveAgentInvocationConfig", () => {
 
     it("defaults booleans to false when neither side sets them", () => {
       const resolved = resolveAgentInvocationConfig(
-        makeConfig({ inheritContext: undefined, runInBackground: undefined }),
+        makeAgentConfig({ inheritContext: undefined, runInBackground: undefined }),
         {},
       );
 
@@ -87,20 +72,20 @@ describe("resolveAgentInvocationConfig", () => {
    */
   describe("with a falsy value on either side", () => {
     it("lets the caller turn an agent's turn limit off", () => {
-      const resolved = resolveAgentInvocationConfig(makeOpinionatedConfig(), { max_turns: 0 });
+      const resolved = resolveAgentInvocationConfig(makeAgentConfig(OPINIONATED), { max_turns: 0 });
 
       expect(resolved.maxTurns).toBe(0);
     });
 
     it("keeps an agent's turn limit of zero when the caller passes none", () => {
-      const resolved = resolveAgentInvocationConfig(makeConfig({ maxTurns: 0 }), {});
+      const resolved = resolveAgentInvocationConfig(makeAgentConfig({ maxTurns: 0 }), {});
 
       expect(resolved.maxTurns).toBe(0);
     });
 
     it("lets the caller switch off booleans the agent turned on", () => {
       const resolved = resolveAgentInvocationConfig(
-        makeConfig({ inheritContext: true, runInBackground: true }),
+        makeAgentConfig({ inheritContext: true, runInBackground: true }),
         { inherit_context: false, run_in_background: false },
       );
 
@@ -109,7 +94,7 @@ describe("resolveAgentInvocationConfig", () => {
     });
 
     it("lets the caller clear an agent's model with an empty string", () => {
-      const resolved = resolveAgentInvocationConfig(makeOpinionatedConfig(), { model: "" });
+      const resolved = resolveAgentInvocationConfig(makeAgentConfig(OPINIONATED), { model: "" });
 
       expect(resolved.modelInput).toBe("");
       expect(resolved.modelFromParams).toBe(true);
@@ -117,7 +102,7 @@ describe("resolveAgentInvocationConfig", () => {
 
     it("reports a discarded falsy override rather than reading it as absent", () => {
       const resolved = resolveAgentInvocationConfig(
-        makeConfig({ locked: true, maxTurns: 42, runInBackground: true }),
+        makeAgentConfig({ locked: true, maxTurns: 42, runInBackground: true }),
         { max_turns: 0, run_in_background: false },
       );
 
@@ -130,7 +115,7 @@ describe("resolveAgentInvocationConfig", () => {
   describe("with `locked: true`", () => {
     it("holds every field the agent file sets", () => {
       const resolved = resolveAgentInvocationConfig(
-        makeOpinionatedConfig({ locked: true }),
+        makeAgentConfig({ ...OPINIONATED, locked: true }),
         overridingParams,
       );
 
@@ -143,7 +128,7 @@ describe("resolveAgentInvocationConfig", () => {
 
     it("leaves a field the agent file does not set open to the caller", () => {
       const resolved = resolveAgentInvocationConfig(
-        makeConfig({ locked: true, model: undefined, thinking: undefined }),
+        makeAgentConfig({ locked: true, model: undefined, thinking: undefined }),
         overridingParams,
       );
 
@@ -155,7 +140,7 @@ describe("resolveAgentInvocationConfig", () => {
   describe("with a field list", () => {
     it("holds only the fields it names", () => {
       const resolved = resolveAgentInvocationConfig(
-        makeOpinionatedConfig({ locked: ["model", "max_turns"] }),
+        makeAgentConfig({ ...OPINIONATED, locked: ["model", "max_turns"] }),
         overridingParams,
       );
 
@@ -168,7 +153,7 @@ describe("resolveAgentInvocationConfig", () => {
 
     it("denies the caller a field the agent file never sets", () => {
       const resolved = resolveAgentInvocationConfig(
-        makeConfig({ locked: ["model", "thinking"], model: undefined, thinking: undefined }),
+        makeAgentConfig({ locked: ["model", "thinking"], model: undefined, thinking: undefined }),
         overridingParams,
       );
 
@@ -178,7 +163,7 @@ describe("resolveAgentInvocationConfig", () => {
 
     it("defaults a locked boolean the agent file never sets to false", () => {
       const resolved = resolveAgentInvocationConfig(
-        makeConfig({
+        makeAgentConfig({
           locked: ["inherit_context", "run_in_background"],
           inheritContext: undefined,
           runInBackground: undefined,
@@ -193,20 +178,20 @@ describe("resolveAgentInvocationConfig", () => {
 
   describe("discarded", () => {
     it("is empty when no lock is declared", () => {
-      const resolved = resolveAgentInvocationConfig(makeOpinionatedConfig(), overridingParams);
+      const resolved = resolveAgentInvocationConfig(makeAgentConfig(OPINIONATED), overridingParams);
 
       expect(resolved.discarded).toEqual([]);
     });
 
     it("is empty when the caller passed nothing to discard", () => {
-      const resolved = resolveAgentInvocationConfig(makeOpinionatedConfig({ locked: true }), {});
+      const resolved = resolveAgentInvocationConfig(makeAgentConfig({ ...OPINIONATED, locked: true }), {});
 
       expect(resolved.discarded).toEqual([]);
     });
 
     it("lists every locked field the caller tried to override", () => {
       const resolved = resolveAgentInvocationConfig(
-        makeOpinionatedConfig({ locked: true }),
+        makeAgentConfig({ ...OPINIONATED, locked: true }),
         overridingParams,
       );
 
@@ -221,7 +206,7 @@ describe("resolveAgentInvocationConfig", () => {
 
     it("lists only the fields the lock names", () => {
       const resolved = resolveAgentInvocationConfig(
-        makeOpinionatedConfig({ locked: ["model", "max_turns"] }),
+        makeAgentConfig({ ...OPINIONATED, locked: ["model", "max_turns"] }),
         overridingParams,
       );
 
@@ -230,7 +215,7 @@ describe("resolveAgentInvocationConfig", () => {
 
     it("lists a bare lock the caller tried to fill", () => {
       const resolved = resolveAgentInvocationConfig(
-        makeConfig({ locked: ["model"], model: undefined }),
+        makeAgentConfig({ locked: ["model"], model: undefined }),
         overridingParams,
       );
 
@@ -239,7 +224,7 @@ describe("resolveAgentInvocationConfig", () => {
 
     it("omits a field whose caller value matched the agent's own", () => {
       const resolved = resolveAgentInvocationConfig(
-        makeOpinionatedConfig({ locked: true }),
+        makeAgentConfig({ ...OPINIONATED, locked: true }),
         { ...overridingParams, model: "provider/config-model" },
       );
 
@@ -255,20 +240,20 @@ describe("resolveAgentInvocationConfig", () => {
    */
   describe("modelFromParams", () => {
     it("is true when the caller's model won", () => {
-      const resolved = resolveAgentInvocationConfig(makeOpinionatedConfig(), overridingParams);
+      const resolved = resolveAgentInvocationConfig(makeAgentConfig(OPINIONATED), overridingParams);
 
       expect(resolved.modelFromParams).toBe(true);
     });
 
     it("is false when the caller passed no model", () => {
-      const resolved = resolveAgentInvocationConfig(makeOpinionatedConfig(), {});
+      const resolved = resolveAgentInvocationConfig(makeAgentConfig(OPINIONATED), {});
 
       expect(resolved.modelFromParams).toBe(false);
     });
 
     it("is false when a lock discarded the caller's model", () => {
       const resolved = resolveAgentInvocationConfig(
-        makeOpinionatedConfig({ locked: ["model"] }),
+        makeAgentConfig({ ...OPINIONATED, locked: ["model"] }),
         overridingParams,
       );
 
@@ -276,7 +261,7 @@ describe("resolveAgentInvocationConfig", () => {
     });
 
     it("is false when neither side named a model", () => {
-      const resolved = resolveAgentInvocationConfig(makeConfig(), {});
+      const resolved = resolveAgentInvocationConfig(makeAgentConfig(), {});
 
       expect(resolved.modelFromParams).toBe(false);
     });
