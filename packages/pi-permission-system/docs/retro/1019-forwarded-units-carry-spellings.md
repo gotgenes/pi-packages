@@ -46,6 +46,55 @@ The `pi-permission-system` suite went from 6428 to 6443 tests (+15); every named
 - Pre-completion reviewer: PASS (re-derived the four mandated invariants: no spelling beside a foreign `command`, the floor still clamps a spelling-matched `allow`, a malformed `spellings` escalates, and the child's local decisions are unchanged).
   Note for `/ship`: PR [#1097] exports `resolveCommandUnit`, whose return type is now `ResolvedUnit`.
 
+## Stage: Final Retrospective (2026-11-16T05:56:18Z)
+
+### Session summary
+
+One session ran planning, TDD, ship, and retro for #1019 on `main`: the parent now matches each forwarded bash unit in the spellings the subagent fixed for it, shipped as `pi-permission-system-v42.0.2`.
+The five-step plan landed as written apart from one test-prediction deviation, the pre-completion reviewer passed it on first dispatch, and planning filed [#1128] for a real local fail-open found along the way.
+
+### Observations
+
+#### What went well
+
+- The live review-log sweep re-scoped the issue before design: the issue was framed around `~`, but 0 of 202 forwarded bash asks had a home-prefixed unit while 90 carried an absolute-argument spelling ([#910]), so the plan's tests and docs lead with `rm builds/x`, not only `~/bin/tool`.
+- The tidy-first assessor's "nuance" note (an exempt wrapper's verdict comes from its inner command) prompted a 1-call spike that measured `time rm builds/x` slipping past `rm /tmp/builds/*: deny` locally; that became [#1128].
+  An assessor's side remark became a measured defect instead of a plan caveat.
+- The pre-completion dispatch carried a re-derivation mandate with four named invariants; the reviewer enumerated every `command`-setting site itself rather than echoing the tests, and returned PASS with evidence per invariant.
+
+#### What caused friction (agent side)
+
+- `instruction-violation` (user-caught) — the first design gate bundled three questions, but Q1 (the pairing) carried a prose comparison of A/B/C with no per-site table or code sketch, and recommended A on diff size.
+  `clarification-gates` already says to place each option at the point of the flow it changes, and the follow-up answer did exactly that (a site table plus each option's code at `floorUnparsedUnit`).
+  The operator answered Q2/Q3, asked for a deeper Q1 explanation, and stated a standing preference for explicit designs; C was then chosen.
+  Impact: one extra gate round; no rework.
+- `other` — two scripted mutations in TDD Step 4 were checked with `git diff --stat`, which during an uncommitted Green also shows the step's own edits, so it could not show whether the mutation applied.
+  M3 (`copyAskingUnits` drops `spellings`) matched nothing because `pi-autoformat` had collapsed the spread onto one line, and read as "0 reds" until a `grep` showed the reformatted line.
+  Impact: 2 extra calls; a near-miss on recording a surviving mutation as a coverage gap.
+- `missing-context` — the plan predicted the `forwarded-request-server.test.ts` projection test as a pin (green before the fix), but `escalateForwardedAsk` writes the request to disk and reads it back through `asForwardedAccessIntent`, so it went red.
+  Impact: none beyond a deviation note in the `fix:` commit body; the test is stronger than planned.
+- `instruction-violation` (self-identified) — a planning `grep` ran after `cd packages/pi-permission-system`, which the `pi-permission-system` deny rule refused.
+  Impact: 1 call; the deny rule worked as intended.
+- `rabbit-hole` (short) — the log-corpus join first used a `jq --rawfile` index that matched nothing, then the wrong event's keys, before an `awk` join on `requestId` worked.
+  Impact: 3 extra calls.
+
+#### What caused friction (user side)
+
+- The operator's preference for explicit designs over smaller implicit ones is durable and not inferable; recorded nowhere before this session, it surfaced only as a bounce on the gate.
+  Recording it where a design recommendation is formed saves that round on later gates.
+
+### Diagnostic details
+
+- **Model-performance correlation** — planning and TDD ran on `anthropic/claude-opus-5-5`; ship ran on `anthropic/claude-sonnet-5-5` (mechanical, appropriate).
+  Both subagents (`tidy-first-assessor`, `pre-completion-reviewer`) ran on `anthropic/claude-sonnet-5-5` per their transcripts and produced judgment-quality reports (the assessor's wrapper-exempt nuance, the reviewer's site enumeration); no mismatch.
+- **Feedback-loop gap analysis** — `check` ran after every step that changed a shared type (Steps 1–4), the affected test files after every Red and Green, and the full package suite before the `fix:` commit; no gap.
+
+### Changes made
+
+1. `.pi/skills/code-design/SKILL.md` — added § State the invariant at the site that owns it: prefer the design that states an invariant where the value is set over one a reader must infer, and recommend it in a design gate unless it widens a shared type.
+
+Proposed and declined by the operator: replacing the `testing` skill's `git diff --stat` mutation check with a diff against the saved green copy.
+
 [#910]: https://github.com/gotgenes/pi-packages/issues/910
 [#963]: https://github.com/gotgenes/pi-packages/issues/963
 [#981]: https://github.com/gotgenes/pi-packages/issues/981

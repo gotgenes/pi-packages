@@ -156,6 +156,11 @@ must return "not safe" for the same input.
 Reusing the first as the second turns every unrecognized shape into a silent pass.
 Name the two apart — `provesX` versus `mayX` — so each call site reads its own burden.
 
+### State the invariant at the site that owns it
+
+When a design's correctness rests on an invariant a reader must infer (two lists staying index-aligned, an equality that happens to hold), prefer the design that states it where the value is set, even at a larger diff.
+Recommend the explicit option in a design gate unless it widens a shared type.
+
 ### Decision provenance
 
 When a system decides on the user's behalf, record what decided and on what basis — not only the outcome.
