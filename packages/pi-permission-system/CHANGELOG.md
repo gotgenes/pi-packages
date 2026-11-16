@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [42.0.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v42.0.0...pi-permission-system-v42.0.1) (2026-11-16)
+
+
+### Documentation
+
+* **pi-permission-system:** add a package glossary ([cd313f5](https://github.com/gotgenes/pi-packages/commit/cd313f512aa465d1af00607b01ce7c915d88a81d)), closes [#799](https://github.com/gotgenes/pi-packages/issues/799)
+* **pi-permission-system:** record ADR 0016, the policy channels ([d655ddd](https://github.com/gotgenes/pi-packages/commit/d655ddd80b94018edbc71396776da1024c3535a5)), closes [#799](https://github.com/gotgenes/pi-packages/issues/799)
+* **pi-permission-system:** reconcile earlier records and the glossary with ADR 0016 ([3ce02e3](https://github.com/gotgenes/pi-packages/commit/3ce02e33e45a4724d39836704d3085913b4d35f7)), closes [#799](https://github.com/gotgenes/pi-packages/issues/799)
+* **pi-permission-system:** order and name the ADR 0016 amendment entries ([f637e59](https://github.com/gotgenes/pi-packages/commit/f637e599d4e8596bee65d163a555ed13424816de)), closes [#799](https://github.com/gotgenes/pi-packages/issues/799)
+
 ## [42.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v41.0.0...pi-permission-system-v42.0.0) (2026-10-28)
 
 
