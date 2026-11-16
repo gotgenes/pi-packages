@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [42.0.2](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v42.0.1...pi-permission-system-v42.0.2) (2026-11-16)
+
+
+### Bug Fixes
+
+* **pi-permission-system:** a subagent's forwarded bash command is matched in its spellings on the parent ([a3c7d54](https://github.com/gotgenes/pi-packages/commit/a3c7d54181c2d34a6b2ba042acd07499c0bfb4e4)), closes [#1019](https://github.com/gotgenes/pi-packages/issues/1019)
+
+### Documentation
+
+* **pi-permission-system:** document that forwarded bash commands are matched in their spellings ([83c52e2](https://github.com/gotgenes/pi-packages/commit/83c52e2e8ec1d419501c1fbcc6a6241e3563668a)), closes [#1019](https://github.com/gotgenes/pi-packages/issues/1019)
+
 ## [42.0.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v42.0.0...pi-permission-system-v42.0.1) (2026-11-16)
 
 
