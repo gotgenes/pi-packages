@@ -83,6 +83,7 @@ Every channel, shipped or proposed, is held to seven criteria; a channel that fa
   The inputs named here are the `--auto-approve` and `--unrestricted` launch flags (§5, §6) and the `{runtimeDir}` and `{uid}` placeholders (§3).
   Each is logged as its own source.
   Live authority (the human, a judge) is outside K1.
+  ADR 0009's closed `HOME`/`PWD` set governs the bash path projection and is untouched, as is ADR 0003's refusal to read host state to interpret a bash path: the placeholders expand config pattern keys only.
 - **K2 One vocabulary, delivered per scope.**
   ADR 0013 §9 verbatim, plus: a channel delivers its content one scope at a time, before any cross-scope merge (measurement 5).
 - **K3 Strict and fail-closed.**
@@ -194,6 +195,7 @@ A separate, named mode that allows everything, denies included, while the packag
 - It is loud (a status indicator, its own `decidedBy` source), and hidden tools return.
 - The command takes a scope, own, spawned, or both, defaulting to both.
   In-process subagents inherit it live through a process-global registry entry, the pattern `SubagentSessionRegistry` already uses.
+  That read crosses a node boundary, which ADR 0012 decision 1 otherwise reserves; this record admits it for this one mode fact, and it moves no registration and no live authority.
   Out-of-process subagents, provisionally, inherit it through `--unrestricted` at spawn, via an optional clause in the subagent adapter convention backed by a service query; an implementation that does not adopt the clause leaves its children restricted.
 - It is documented as meant for use inside an isolation boundary (ADR 0013 §8).
 - The zero-mechanism alternative is documented too: launching Pi without this extension (`pi -ne -e <each other extension>`).
@@ -244,7 +246,7 @@ It stays closed because no request asks for it and it is real mechanism; it reop
 ## Consequences
 
 - Design principle 3 becomes "Session approvals are just more rules: no separate matching engine; they rank below every config `deny`."
-- Design principle 8's "a future 'Always' writes config" is realized, into `*.local.json`.
+- The "future 'Always' writes config" that `docs/architecture/architecture.md` § "Authority lives in three places" anticipates is realized, into `*.local.json`.
 - `docs/architecture/architecture.md` § "yolo is recorded authority" is rewritten by the auto-approve issue: auto-approve is a terminal, and unrestricted is the separately named deny-overriding operation that section anticipated.
 - The envelope's cap is an operator default, not a boundary: `authorizerTrust` lifts it, and only §9's protected writes stay capped regardless.
 - The glossary gains auto-approve, unrestricted, the local files, and suspension as each lands.
@@ -255,7 +257,8 @@ Residuals, accepted and documented:
 - A project-agent subagent session that never resolves project trust loads no project files ([#1104]); the session's creator sets its trust, and this package only observes it.
 - The deny-aware probe misses a wildcard-led deny; §7's precedence still holds for it.
 - Self-protection does not see interpreter writes.
-- A judge reads agent-authored text (the command, and any purpose annotation such as [#1105] proposes), so a judge with a lifted cap is as strong as its resistance to injection; ADR 0007 §6 names the residual.
+- A judge reads agent-authored text (the command, and any purpose annotation such as [#1105] proposes), so a judge with a lifted cap is as strong as its resistance to injection.
+  ADR 0007 §6 names decomposition fidelity as its residual; injection through agent-authored text is the same class, named here.
 - Out-of-process unrestricted inheritance is provisional, and an already-running child stays unrestricted after the parent turns the mode off.
 
 Breaking on upgrade, each in its implementing issue (§ Disposition map):
@@ -295,6 +298,7 @@ Breaking on upgrade, each in its implementing issue (§ Disposition map):
   - an agent-frontmatter `autoApprove` key.
 - **Unrestricted:** clearing rules on disk (spreads to every session, and the universal fallback still asks); an allow-all config overlay (a file spreads to every session and sits within the agent's reach); a record on disk for out-of-process children (a deny-overriding fact in an agent-writable tree).
 - **`authorizerTrust`:** global scopes only; declining the lift.
+  ADR 0007 §8 declined a per-link lift as handing the outside-the-tree boundary over wholesale; this record accepts that as the operator's choice, with the operator's `deny` rules as the boundary for what a trusted link may approve.
 - **Session vs config deny:**
   - no change;
   - [comment 1][c1]'s dedicated global-only `floor` key (protects only the rules sorted into it; a new tier; can be added on request);

@@ -93,13 +93,15 @@ It is reported on the `permissions:decision` event and in the review log, so a s
 ### Scope
 
 A config source with a fixed precedence position: `global` (the global config file), `project` (the project config file), `agent` (global agent frontmatter), and `project-agent` (project agent frontmatter), in that order.
-A later scope overrides an earlier one pattern by pattern.
+A later scope overrides an earlier one on an identical pattern, and a pattern only the later scope defines is placed after the earlier scope's.
+A pattern both define keeps the earlier scope's position, so a later catch-all does not override an earlier scope's specific patterns ([ADR 0016](decisions/0016-policy-channels.md) measurement 4, changing in [#1108]).
 The two project scopes load only for a trusted project; see [project trust](#project-trust).
 
 ### Channel
 
 Any path by which something that changes a check's outcome reaches the package: a scope's file, agent frontmatter, the session layer, or a runtime knob such as `yoloMode`.
 Which channels are admissible, and at what precedence, is decided in [ADR 0016](decisions/0016-policy-channels.md).
+The authority model's "three channels" for reaching live authority, and its statement that yolo "is not a channel", use the word in that narrower sense.
 
 ### Relax and tighten
 
@@ -107,7 +109,7 @@ A change relaxes policy when it can move an outcome toward `allow` (`deny` or `a
 
 ### Last-match-wins
 
-Within one surface, the last matching rule in the [ruleset](#ruleset) decides, so a later layer or scope overrides an earlier one.
+Within one surface, the last matching rule in the [ruleset](#ruleset) decides, so a later layer overrides an earlier one; for scopes, see [scope](#scope).
 
 ### Most-restrictive-wins
 
@@ -163,7 +165,8 @@ Pi emits a `tool_call` event before the tool runs, where this package's [gates](
 ### Gate
 
 One check a tool call must pass: it names a surface and a value, resolves them against the ruleset, and acts on the [action](#action).
-A tool call passes through a fixed sequence of six gates (tool, path, external directory, bash command, bash path, bash external directory), and the first one that blocks stops it; skills have their own input and read gates.
+A tool call passes through a fixed sequence of six gates (skill read, path, external directory, bash external directory, bash path, tool), and the first one that blocks stops it; for a shell tool, the tool gate checks each command unit.
+A `/skill:` invocation typed by the user has its own input gate.
 
 ### Access intent
 
@@ -276,3 +279,5 @@ Pi's installable unit (`pi install npm:…`, `git:…`, or a local path), bundli
 An extension that integrates with this package through its published service (`getPermissionsService(sessionId)`, with `registerAuthorizer`, `registerToolAccessExtractor`, and the query methods) or its `permissions:*` events, such as `@gotgenes/pi-permission-model-judge`.
 The dependency points toward this package, never away from it.
 See [docs/cross-extension-api.md](cross-extension-api.md).
+
+[#1108]: https://github.com/gotgenes/pi-packages/issues/1108

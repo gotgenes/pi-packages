@@ -1,7 +1,7 @@
 ---
 status: accepted
 date: 2026-08-22
-amended: 2026-09-15
+amended: 2026-11-16
 ---
 
 # 0013 — The permission policy model: capability as an axis
@@ -254,6 +254,12 @@ For the same reason a declaration keyed by a wrapper itself (an indirection wrap
 
 **Provenance names the scope.**
 The blame source is `declared-global` or `declared-project`, the scope of the file whose entry won the shallow merge; a declaration's withdrawn claim is `retracted`, as a core guard's is.
+
+### Amendment, 2026-11-16 — the channel set is decided
+
+The handoffs to [#799] in this record (the status above, §7's agent-frontmatter channel, and §9) are answered by `docs/decisions/0016-policy-channels.md`.
+It adopts §9 verbatim as criterion K2, adding that a channel delivers its content per scope, and keeps agent frontmatter closed to `commandEffects` (its §10).
+Nothing in this record changes.
 
 ## Context
 

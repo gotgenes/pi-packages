@@ -1,7 +1,7 @@
 ---
 status: accepted
 date: 2026-07-15
-amended: 2026-10-17
+amended: 2026-11-16
 ---
 
 # 0007 — Model-assisted permission judge as an Authorizer chain
@@ -14,6 +14,8 @@ This decision settles the design of a case-by-case model judge ([#472]); it does
 It supersedes the reverted ADR 0007 attempted under [#581].
 Amended 2026-08-14 with §7 (one chain per node), which settles where a subagent's ask is adjudicated ([#727]).
 Amended 2026-10-17 with §8 (the nothing-on-disk license), which lets a link `allow` one narrow class of bash `external_directory` ask that §5 excluded ([#882]).
+Amended 2026-11-16 by `docs/decisions/0016-policy-channels.md` §5, which answers the per-link question §8 left to [#620] and [#799]: the operator may lift §5's cap per link and per surface family (`authorizerTrust`), so the cap is an operator default rather than a boundary, and a judge's `allow` is a first-class outcome.
+The same record adds an auto-approve terminal beside §2's three, reached after the links, and keeps one class of ask capped regardless: an agent's edit to the policy files (ADR 0016 §9).
 
 ## Context
 

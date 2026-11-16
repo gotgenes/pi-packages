@@ -8,6 +8,7 @@ date: 2026-08-20
 ## Status
 
 Accepted.
+Amended 2026-11-16 by `docs/decisions/0016-policy-channels.md` §6: an in-process child reads its parent's unrestricted mode through a process-global entry, one mode fact crossing decision 1's boundary; no registration or live authority moves.
 Amended 2026-08-21 with decision 7's reclassification ([#794]): the ready latch and the locator's reclaimed spelling both ship as **major**, not the single minor this record originally classified.
 Amended 2026-08-30 ([#796]): decision 7's deferred removal is taken — the process-root slot, its reader, and the [#302] child guard are deleted in a further major.
 Amended 2026-09-01 ([#793]): decision 1 gains a third category — a **fact-shaping** registration's lookup may cross an in-process node boundary, which closes decision 6's converse hazard for in-process children without moving where any registration lands.
