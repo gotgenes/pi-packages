@@ -619,6 +619,8 @@ A subagent's floored ask keeps its floor when it is forwarded to the parent sess
 The parent's `allow` rule does not answer it, so `sudo rm x` from a subagent prompts in the parent even under a parent `bash: *` allow.
 The parent's `deny` still denies, and a grant for the whole parent session or the parent's `yoloMode` still approves.
 A subagent's chained command (`ls && rm -rf /tmp/x`) is judged by the parent command by command: every command the subagent's own policy left asking is forwarded with its floor, and the parent's `deny` or `ask` on any one of them decides, not only on the first.
+The parent's rules and session grants match each forwarded command in the same spellings the subagent's own rules do: the [home-expanded form](#home-directory-expansion-in-patterns) and the form with every path argument made absolute against the subagent's working directory.
+So a parent `"~/bin/tool *": "deny"` denies a subagent's `$HOME/bin/tool --now`, and a parent `"rm /tmp/builds/*": "deny"` denies `rm builds/x` from a subagent working in `/tmp`.
 
 Because of this, set an explicit `bash` policy rather than relying on a permissive top-level `*`.
 A config whose top-level `*` is `"allow"` with no `bash` `*` policy lets every bash command silently inherit `allow`; the extension emits a startup warning in that case.
