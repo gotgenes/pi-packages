@@ -22,7 +22,7 @@ import {
   symlinkSync,
   writeFileSync,
 } from "node:fs";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 
 import {
@@ -440,6 +440,51 @@ describe("subagent registry sharing across factory instances", () => {
     expect(request.accessIntent?.askingUnits).toStrictEqual([
       { command: "ls" },
       { command: "rm -rf /tmp/x" },
+    ]);
+
+    await firePromise;
+    rmSync(childCwd, { recursive: true, force: true });
+  });
+
+  it("forwards each asking unit with the spellings the child matched it in", async () => {
+    writeGlobalConfig({ permission: { "*": "allow", bash: { "*": "ask" } } });
+
+    const childCwd = mkdtempSync(join(tmpdir(), "pi-perm-child-cwd-"));
+    const forwardingDir = join(agentDir, "sessions", "permission-forwarding");
+    const parentSessionId = "parent-session-spellings";
+    const childSessionId = "child-session-spellings";
+
+    const parentBus = createEventBus();
+    const childBus = createEventBus();
+    piPermissionSystemExtension(
+      makeFakePi({ events: parentBus }) as unknown as ExtensionAPI,
+    );
+    const childPi = makeFakePi({ events: childBus, toolNames: ["bash"] });
+    piPermissionSystemExtension(childPi as unknown as ExtensionAPI);
+    parentBus.emit(SUBAGENT_CHILD_SESSION_CREATED, {
+      sessionId: childSessionId,
+      parentSessionId,
+    });
+    getServingSessionRegistry().markServing(parentSessionId);
+
+    // Only the child's parse knows `~` still names the home directory, so the
+    // parent has to be handed the spelling rather than recompute it.
+    const firePromise = childPi.fire(
+      "tool_call",
+      {
+        toolName: "bash",
+        toolCallId: "child-spelled-bash",
+        input: { command: "~/bin/tool" },
+      },
+      makeChildCtx(childCwd, childSessionId),
+    );
+
+    const request = await approveForwardedRequest(
+      forwardingDir,
+      parentSessionId,
+    );
+    expect(request.accessIntent?.askingUnits).toStrictEqual([
+      { command: "~/bin/tool", spellings: [`${homedir()}/bin/tool`] },
     ]);
 
     await firePromise;

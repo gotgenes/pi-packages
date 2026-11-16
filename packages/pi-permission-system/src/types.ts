@@ -121,10 +121,19 @@ export interface PermissionCheckResult {
 
 /**
  * One unit of a bash chain the gate left asking, as the serving node of a
- * forwarded ask needs it: the unit as typed, and the floor that raised it.
+ * forwarded ask needs it: the unit as typed, the other spellings it was matched
+ * in, and the floor that raised it.
  */
 export interface AskingBashUnit {
   command: string;
+  /**
+   * The other spellings of `command` the child's shell runs identically, as
+   * the child's program analysis produced them: home-expanded, and with path
+   * arguments made absolute against the child's working directory. Child-fixed:
+   * the serving node matches them as given and never recomputes them. Absent
+   * when there are none.
+   */
+  spellings?: readonly string[];
   floor?: string;
 }
 

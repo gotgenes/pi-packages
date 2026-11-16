@@ -1110,6 +1110,62 @@ describe("resolveBashCommandCheck: the units a chain leaves asking", () => {
     });
   });
 
+  describe("each unit carries the spellings of the command it names", () => {
+    const home = homedir();
+    const cwd = process.cwd();
+
+    it("a unit typed with a home prefix", () => {
+      const result = decide({ "*": "ask" }, "~/bin/x");
+      expect(result.askingUnits).toStrictEqual([
+        { command: "~/bin/x", spellings: [`${home}/bin/x`] },
+      ]);
+    });
+
+    it("only the spelled unit of a chain", () => {
+      const result = decide({ "*": "ask" }, "ls && ~/bin/x");
+      expect(result.askingUnits).toStrictEqual([
+        { command: "ls" },
+        { command: "~/bin/x", spellings: [`${home}/bin/x`] },
+      ]);
+    });
+
+    it("a floored wrapper, beside its floor", () => {
+      const result = decide({ "*": "allow" }, "sudo ~/bin/x");
+      expect(result.askingUnits).toStrictEqual([
+        {
+          command: "sudo ~/bin/x",
+          spellings: [`sudo ${home}/bin/x`],
+          floor: "<indirection-bash-wrapper>",
+        },
+      ]);
+    });
+
+    it("an exempt wrapper, by its own text", () => {
+      const result = decide(
+        { "*": "allow", "rm *": "ask" },
+        "time rm builds/x",
+      );
+      expect(result.askingUnits).toStrictEqual([
+        {
+          command: "time rm builds/x",
+          spellings: [`time rm ${cwd}/builds/x`],
+        },
+      ]);
+    });
+
+    it("none on an unresolved subtree, which names the whole command", () => {
+      const result = resolveBashCommandCheck(
+        "~/bin/x (",
+        [{ text: "~/bin/x", spellings: ["/h/bin/x"], parseUnresolved: true }],
+        undefined,
+        resolverOver({ "*": "allow" }),
+      );
+      expect(result.askingUnits).toStrictEqual([
+        { command: "~/bin/x (", floor: "<unparsed-bash-subtree>" },
+      ]);
+    });
+  });
+
   describe("no units listed", () => {
     it("a deny winner, even beside a floored unit", () => {
       const result = decide(

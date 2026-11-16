@@ -430,11 +430,15 @@ describe("describeToolGate", () => {
       command: "ls",
       askingUnits: [
         { command: "ls" },
-        { command: "sudo rm y", floor: "<indirection-bash-wrapper>" },
+        {
+          command: "sudo ~/y",
+          spellings: ["sudo /h/y"],
+          floor: "<indirection-bash-wrapper>",
+        },
       ],
     });
     const desc = describeToolGate(
-      makeTcc({ toolName: "bash", input: { command: "ls && sudo rm y" } }),
+      makeTcc({ toolName: "bash", input: { command: "ls && sudo ~/y" } }),
       check,
       makeFormatter(),
     );
@@ -444,7 +448,11 @@ describe("describeToolGate", () => {
       boundaryValue: null,
       askingUnits: [
         { command: "ls" },
-        { command: "sudo rm y", floor: "<indirection-bash-wrapper>" },
+        {
+          command: "sudo ~/y",
+          spellings: ["sudo /h/y"],
+          floor: "<indirection-bash-wrapper>",
+        },
       ],
     });
   });
