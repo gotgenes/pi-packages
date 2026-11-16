@@ -193,25 +193,26 @@ function asForwardedAccessIntent(
  */
 function isWellFormedAskingUnits(
   value: unknown,
-): value is readonly { command: string; floor?: string }[] {
+): value is readonly AskingBashUnit[] {
   return (
     Array.isArray(value) &&
     value.length > 0 &&
-    value.every(
-      (unit: unknown) =>
-        typeof unit === "object" &&
-        unit !== null &&
-        typeof (unit as { command?: unknown }).command === "string" &&
-        ((unit as { floor?: unknown }).floor === undefined ||
-          typeof (unit as { floor?: unknown }).floor === "string"),
-    )
+    value.every(isWellFormedAskingUnit)
+  );
+}
+
+/** True for one `{ command: string, floor?: string }` unit. */
+function isWellFormedAskingUnit(value: unknown): value is AskingBashUnit {
+  if (typeof value !== "object" || value === null) return false;
+  const unit = value as { command?: unknown; floor?: unknown };
+  return (
+    typeof unit.command === "string" &&
+    (unit.floor === undefined || typeof unit.floor === "string")
   );
 }
 
 /** Rebuild each unit field by field, so no unread key rides through. */
-function copyAskingUnits(
-  units: readonly { command: string; floor?: string }[],
-): AskingBashUnit[] {
+function copyAskingUnits(units: readonly AskingBashUnit[]): AskingBashUnit[] {
   return units.map((unit) => ({
     command: unit.command,
     ...(unit.floor === undefined ? {} : { floor: unit.floor }),
