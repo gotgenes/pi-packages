@@ -308,27 +308,27 @@ Breaking on upgrade, each in its implementing issue (§ Disposition map):
 
 ## Disposition map
 
-| Dependant          | Disposition                                                                                                     | Implemented by |
-| ------------------ | --------------------------------------------------------------------------------------------------------------- | -------------- |
-| [comment 1][c1]    | config denies outrank the session layer; deny-aware suggestions (§7)                                            | I3             |
-| [comment 2][c2]    | relaxation in the session, auto-approve a terminal (§5); per-channel attribution (K5); uniform propagation (K7) | I1, I7, I8     |
-| PR [#675]          | declined (§3)                                                                                                   | —              |
-| PR [#1073]         | declined; extension-point shapes offered (§3)                                                                   | —              |
-| [#691] / PR [#692] | admitted, reshaped: `*.local.json` targets, integrity contract, re-prompt on failure (§4)                       | I5, I6         |
-| [#603]             | subsumed by [#691]                                                                                              | I5, I6         |
-| [#604]             | editable session pattern (§7)                                                                                   | I6             |
-| [#720]             | `--auto-approve` launch flag (§5)                                                                               | I1             |
-| PR [#671]          | declined: an environment variable reaches every child process (§5)                                              | —              |
-| PR [#990]          | admitted as the in-session command, renamed (§5)                                                                | I1             |
-| [#1031]            | auto-approve at the serving node, scoped by requester (§5)                                                      | I1             |
-| PR [#983]          | admitted as proposed (§5)                                                                                       | PR [#983]      |
-| [#1103]            | rules view, plus deny suspension and the issued-grants list (§8)                                                | [#1103]        |
-| [#1102]            | measured against the write-integrity contract (§4)                                                              | [#1102]        |
-| [#1108]            | later scope's patterns placed after (§2)                                                                        | [#1108]        |
-| [#1110]            | `{runtimeDir}`, `{uid}`, `{cwd}` placeholders (§3)                                                              | [#1110]        |
-| ADR 0013 §7        | frontmatter `commandEffects` stays closed (§10)                                                                 | —              |
+| Dependant          | Disposition                                                                                                     | Implemented by            |
+| ------------------ | --------------------------------------------------------------------------------------------------------------- | ------------------------- |
+| [comment 1][c1]    | config denies outrank the session layer; deny-aware suggestions (§7)                                            | [#1120]                   |
+| [comment 2][c2]    | relaxation in the session, auto-approve a terminal (§5); per-channel attribution (K5); uniform propagation (K7) | [#1118], [#1124], [#1125] |
+| PR [#675]          | declined (§3)                                                                                                   | —                         |
+| PR [#1073]         | declined; extension-point shapes offered (§3)                                                                   | —                         |
+| [#691] / PR [#692] | admitted, reshaped: `*.local.json` targets, integrity contract, re-prompt on failure (§4)                       | [#1122], [#1123]          |
+| [#603]             | subsumed by [#691]                                                                                              | [#1122], [#1123]          |
+| [#604]             | editable session pattern (§7)                                                                                   | [#1123]                   |
+| [#720]             | `--auto-approve` launch flag (§5)                                                                               | [#1118]                   |
+| PR [#671]          | declined: an environment variable reaches every child process (§5)                                              | —                         |
+| PR [#990]          | admitted as the in-session command, renamed (§5)                                                                | [#1118]                   |
+| [#1031]            | auto-approve at the serving node, scoped by requester (§5)                                                      | [#1118]                   |
+| PR [#983]          | admitted as proposed (§5)                                                                                       | PR [#983]                 |
+| [#1103]            | rules view, plus deny suspension and the issued-grants list (§8)                                                | [#1103]                   |
+| [#1102]            | measured against the write-integrity contract (§4)                                                              | [#1102]                   |
+| [#1108]            | later scope's patterns placed after (§2)                                                                        | [#1108]                   |
+| [#1110]            | `{runtimeDir}`, `{uid}`, `{cwd}` placeholders (§3)                                                              | [#1110]                   |
+| ADR 0013 §7        | frontmatter `commandEffects` stays closed (§10)                                                                 | —                         |
 
-Further implementation issues with no dependant: unrestricted (§6, I2), self-protection (§9, I4), legacy files no longer read (§3, I9), strict frontmatter `permission:` block (K3, I10).
+Further implementation issues with no dependant: unrestricted (§6, [#1119]), self-protection (§9, [#1121]), legacy files no longer read (§3, [#1126]), strict frontmatter `permission:` block (K3, [#1127]).
 
 [c1]: https://github.com/gotgenes/pi-packages/issues/799#issuecomment-5441061055
 [c2]: https://github.com/gotgenes/pi-packages/issues/799#issuecomment-5843171122
@@ -353,3 +353,13 @@ Further implementation issues with no dependant: unrestricted (§6, I2), self-pr
 [#1108]: https://github.com/gotgenes/pi-packages/issues/1108
 [#1110]: https://github.com/gotgenes/pi-packages/issues/1110
 [#1115]: https://github.com/gotgenes/pi-packages/issues/1115
+[#1118]: https://github.com/gotgenes/pi-packages/issues/1118
+[#1119]: https://github.com/gotgenes/pi-packages/issues/1119
+[#1120]: https://github.com/gotgenes/pi-packages/issues/1120
+[#1121]: https://github.com/gotgenes/pi-packages/issues/1121
+[#1122]: https://github.com/gotgenes/pi-packages/issues/1122
+[#1123]: https://github.com/gotgenes/pi-packages/issues/1123
+[#1124]: https://github.com/gotgenes/pi-packages/issues/1124
+[#1125]: https://github.com/gotgenes/pi-packages/issues/1125
+[#1126]: https://github.com/gotgenes/pi-packages/issues/1126
+[#1127]: https://github.com/gotgenes/pi-packages/issues/1127
