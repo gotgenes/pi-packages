@@ -212,9 +212,9 @@ Hardening the gates against bypass, fail-closed corrections (breaking ones inclu
 
 The [architecture doc](https://github.com/gotgenes/pi-packages/blob/main/packages/pi-permission-system/docs/architecture/architecture.md#scope-and-non-goals) carries the full inventory, with the decision record behind each entry.
 
-**One decision is still open.**
-How policy may _enter_ the system — which channels are admissible, and with what precedence — is being worked out in [issue #799](https://github.com/gotgenes/pi-packages/issues/799).
-Several requested widenings are parked on it rather than declined, durable persistence of an approval among them.
+**How policy enters is decided.**
+Which channels are admissible, at what precedence, and who may write policy back is settled in [ADR 0016](https://github.com/gotgenes/pi-packages/blob/main/packages/pi-permission-system/docs/decisions/0016-policy-channels.md).
+It admits durable approvals into machine-local `config.local.json` files, makes auto-approve a step after any judge rather than a bypass of it, and declines Pi's `settings.json` and ancestor-directory configs as policy sources; each change ships in its own release.
 The companion question — whether a capability model replaces the actor-keyed surface list — is settled: [ADR 0013](https://github.com/gotgenes/pi-packages/blob/main/packages/pi-permission-system/docs/decisions/0013-permission-policy-model.md) adds read/write as an axis beside the existing keys, so a policy can permit reading a path without also permitting writes to it.
 
 **Where adjacent requests belong.**

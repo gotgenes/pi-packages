@@ -99,7 +99,7 @@ The two project scopes load only for a trusted project; see [project trust](#pro
 ### Channel
 
 Any path by which something that changes a check's outcome reaches the package: a scope's file, agent frontmatter, the session layer, or a runtime knob such as `yoloMode`.
-Which channels are admissible, at what precedence, is decided in issue [#799].
+Which channels are admissible, and at what precedence, is decided in [ADR 0016](decisions/0016-policy-channels.md).
 
 ### Relax and tighten
 
@@ -276,5 +276,3 @@ Pi's installable unit (`pi install npm:…`, `git:…`, or a local path), bundli
 An extension that integrates with this package through its published service (`getPermissionsService(sessionId)`, with `registerAuthorizer`, `registerToolAccessExtractor`, and the query methods) or its `permissions:*` events, such as `@gotgenes/pi-permission-model-judge`.
 The dependency points toward this package, never away from it.
 See [docs/cross-extension-api.md](cross-extension-api.md).
-
-[#799]: https://github.com/gotgenes/pi-packages/issues/799
