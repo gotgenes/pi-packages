@@ -182,10 +182,20 @@ function resolveCommandUnit(
     cmd.wrapperKind && base.state === "allow" && !isSessionGrant(base)
       ? resolveWrapperUnit(cmd, cmd.wrapperKind, base, agentName, resolver)
       : base;
-  const unparsed = floorUnparsedUnit(cmd, command, floored);
+  return tagWithUnitFacts(cmd, floorUnparsedUnit(cmd, command, floored));
+}
+
+/**
+ * Tag a unit's check with the facts the prompt reads off the winner: the
+ * execution context of a nested command, and the command a wrapper runs.
+ */
+function tagWithUnitFacts(
+  cmd: BashCommand,
+  check: PermissionCheckResult,
+): PermissionCheckResult {
   const contextual = cmd.context
-    ? { ...unparsed, commandContext: cmd.context }
-    : unparsed;
+    ? { ...check, commandContext: cmd.context }
+    : check;
   return cmd.executedUnit === undefined
     ? contextual
     : { ...contextual, executedUnit: cmd.executedUnit };
