@@ -114,16 +114,27 @@ export interface ForwardedScopeLabels {
 /**
  * What an approval's grants cover, as one phrase.
  *
- * A single target names its pattern; several name their count, because only
- * the external-directory gate aggregates an ask over many paths and there is
- * no pattern that describes them all. Targets, not grants: a directory's
- * two-grant approval and two paths sharing one glob each count once
- * ({@link grantTargets}). Requires at least one grant — an approval
- * with none is never offered as a session option.
+ * A single target names its pattern. Several paths name their count, because
+ * an external-directory ask can aggregate many and no pattern describes them
+ * all; targets, not grants, so a directory's two-grant approval and two paths
+ * sharing one glob each count once ({@link grantTargets}). Several grants off
+ * the path families (a bash chain's one pattern per asking unit) are listed,
+ * since each pattern is what the grant records. Requires at least one grant —
+ * an approval with none is never offered as a session option.
  */
 export function describeGrantTarget(grants: readonly ApprovalGrant[]): string {
+  if (!grants.every(isPathFamilyGrant)) {
+    return [...new Set(grants.map((grant) => grant.pattern))]
+      .map((pattern) => `"${pattern}"`)
+      .join(", ");
+  }
   const targets = grantTargets(grants);
   return targets.length === 1 ? `"${targets[0]}"` : `${targets.length} paths`;
+}
+
+/** Whether a grant names a `path` or `external_directory` family surface. */
+function isPathFamilyGrant(grant: ApprovalGrant): boolean {
+  return surfaceFamilyMembers(surfaceFamilyOf(grant.surface)) !== null;
 }
 
 /** The two session-option labels for an ask whose grants prove one direction. */
@@ -164,11 +175,7 @@ export function buildDirectionalSessionLabels(
 export function buildPathAccessSessionLabel(
   grants: readonly ApprovalGrant[],
 ): string | null {
-  const allPathFamily =
-    grants.length > 0 &&
-    grants.every(
-      (grant) => surfaceFamilyMembers(surfaceFamilyOf(grant.surface)) !== null,
-    );
+  const allPathFamily = grants.length > 0 && grants.every(isPathFamilyGrant);
   return allPathFamily
     ? `Yes, allow access to ${describeGrantTarget(grants)} for this session`
     : null;

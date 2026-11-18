@@ -342,6 +342,15 @@ describe("describeGrantTarget", () => {
     ).toBe('"/outside/a/*"');
   });
 
+  it("lists every pattern of several bash grants rather than counting paths", () => {
+    expect(
+      describeGrantTarget([
+        { surface: "bash", pattern: "cd sub*" },
+        { surface: "bash", pattern: "npm test*" },
+      ]),
+    ).toBe('"cd sub*", "npm test*"');
+  });
+
   it("names a directory approval by its contents glob", () => {
     expect(
       describeGrantTarget([
@@ -409,6 +418,17 @@ describe("buildForwardedScopeLabels", () => {
       ]).servingSessionLabel,
     ).toBe(
       "The whole session — allow external_directory 2 paths for parent and all subagents",
+    );
+  });
+
+  it("names every pattern of a bash chain's grants", () => {
+    expect(
+      buildForwardedScopeLabels("Explore", [
+        { surface: "bash", pattern: "cd sub*" },
+        { surface: "bash", pattern: "npm test*" },
+      ]).servingSessionLabel,
+    ).toBe(
+      'The whole session — allow bash "cd sub*", "npm test*" for parent and all subagents',
     );
   });
 
