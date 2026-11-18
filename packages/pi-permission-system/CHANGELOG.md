@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [42.0.3](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v42.0.2...pi-permission-system-v42.0.3) (2026-11-18)
+
+
+### Bug Fixes
+
+* **pi-permission-system:** a path rule matches the on-disk spelling of a case or Unicode variant macOS opens as the same file ([ee9c904](https://github.com/gotgenes/pi-packages/commit/ee9c9044f934ecca70b5e736e8989b3ee88b20a9)), closes [#1016](https://github.com/gotgenes/pi-packages/issues/1016)
+
+### Documentation
+
+* **pi-permission-system:** say a path rule also matches the on-disk spelling ([8d8290a](https://github.com/gotgenes/pi-packages/commit/8d8290a2cf599fac018944694a26f74010ec6f98)), closes [#1016](https://github.com/gotgenes/pi-packages/issues/1016)
+
 ## [42.0.2](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v42.0.1...pi-permission-system-v42.0.2) (2026-11-16)
 
 
