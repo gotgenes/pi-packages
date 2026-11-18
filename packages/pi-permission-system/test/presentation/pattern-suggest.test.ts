@@ -61,6 +61,16 @@ describe("suggestBashPattern", () => {
     );
   });
 
+  describe("cd", () => {
+    it("keeps the directory in the pattern instead of every cd", () => {
+      expect(suggestBashPattern("cd sub")).toBe("cd sub*");
+    });
+
+    it("keeps the exact command for a bare cd", () => {
+      expect(suggestBashPattern("cd")).toBe("cd");
+    });
+  });
+
   it("returns empty for comment-only input", () => {
     expect(suggestBashPattern("# just a comment")).toBe("");
   });

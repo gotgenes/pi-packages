@@ -81,6 +81,7 @@ Unknown commands default to arity 1 (first word only).
 | `npm install lodash`  | `npm` → 2            | `npm install *`       |
 | `docker compose up`   | `docker compose` → 3 | `docker compose up *` |
 | `rm -rf node_modules` | `rm` → 1             | `rm *`                |
+| `cd sub`              | `cd` → 2             | `cd sub*`             |
 | `mytool --verbose`    | (unknown) → 1        | `mytool *`            |
 
 The arity table covers common CLI tools including git, npm/pnpm/yarn/bun, docker, cargo, go, kubectl, gh, and others.

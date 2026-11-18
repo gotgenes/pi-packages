@@ -11,6 +11,9 @@
  * Exported for testability.
  */
 export const ARITY: Record<string, number> = {
+  // Shell builtins: a `cd` grant names its directory, not every `cd`.
+  cd: 2,
+
   // Version control
   git: 2,
   hg: 2,

@@ -29,6 +29,10 @@ describe("ARITY dictionary", () => {
   it("maps 'docker' to arity 2 (fallback)", () => {
     expect(ARITY.docker).toBe(2);
   });
+
+  it("maps 'cd' to arity 2, so its directory is part of the prefix", () => {
+    expect(ARITY.cd).toBe(2);
+  });
 });
 
 describe("prefix", () => {
