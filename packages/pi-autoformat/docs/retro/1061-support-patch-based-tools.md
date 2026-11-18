@@ -147,3 +147,21 @@ Both runs produced this model-written patch, an organic fixture for the plan's t
 
 The operator's agents run Claude, and an evaluation of adopting a patch tool locally found it not worth it for Anthropic models: `pi-permission-system`'s `PATH_BEARING_TOOLS` (`src/access-intent/path-surfaces.ts`) excludes `apply_patch`, so path rules would not see patched files.
 That is out of scope for #1061 but is the gap to file if GPT-driven agents ever adopt a patch tool here.
+
+## Stage: Planning (2026-11-18T06:33:18Z)
+
+### Session summary
+
+Wrote `packages/pi-autoformat/docs/plans/1061-support-patch-based-tools.md`: three steps (patch-path extraction as `refactor:`, loader + schema acceptance as `feat:`, `docs/configuration.md` as `docs:`), each carrying the `Co-authored-by: Michael Mior` trailer.
+The PR Review stage had already settled direction, so the Decide gate was satisfied without a new `ask_user`.
+
+### Observations
+
+- The open question from the PR review is now measured: a minimal spike of the planned design on a scratch worktree passed `pnpm fallow audit --base origin/main` (exit 0); `validateCustomMutationToolEntry` grows from 22/39 to 26/46 cyclomatic/cognitive but counts as an inherited finding, and the new scan is not flagged.
+  The PR's wide config-loader restructuring is therefore not needed.
+  The 2026-10-18 triage recorded the PR's first head red on CRAP 148.4 for its stateful `extractPathsFromPatch`; the stateless scan avoids that.
+- Every edge-case row in the plan, and the four killing mutations in step 1, were run through the spike; each mutation killed exactly its named case.
+- Lines are deliberately not trimmed before header matching, so a context line quoting a header cannot match; the cost is missing headers a tool emits indented (residual in Risks).
+- The schema's existing `not` clauses are redundant under `oneOf`; the plan collapses it to three required-only branches.
+- The Tidy-First assessor recommended no preparatory commits; it rated a shared non-empty-string helper optional (two call sites, eight similar sites elsewhere invite scope creep) and noted the existing both/neither tests assert only issue paths, so step 2 asserts the new exclusivity message explicitly.
+- `pi-autoformat` reflow trims a meaningful leading space inside a code span; the plan states it in prose instead.
