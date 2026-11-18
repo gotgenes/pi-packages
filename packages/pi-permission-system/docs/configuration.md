@@ -438,7 +438,7 @@ Ordering follows the same last-match-wins rule as every other lookup: an excepti
 For path-bearing tools (`read`, `write`, `edit`, `find`, `grep`, `ls`), an object value maps file-path patterns to actions.
 Patterns are matched against `input.path` using the same last-match-wins wildcard semantics as bash command patterns.
 When Pi's current working directory is known, a relative path input is matched with both its original relative form and its cwd-normalized absolute form, so an absolute allowlist rule and a legacy relative rule can both apply to the same file.
-Per-tool path patterns also match the canonical (symlink-resolved) form, at parity with the `path` surface, so a per-tool deny on a sensitive spelling cannot be evaded through a symlink alias (see Symlinked paths below).
+Per-tool path patterns also match the canonical (symlink-resolved and, on POSIX, on-disk-spelled) form, at parity with the `path` surface, so a per-tool deny on a sensitive spelling cannot be evaded through a symlink alias (see Symlinked paths below).
 `*` matches zero or more of any character **including** path separators — `src/*` matches both `src/foo.ts` and `src/deep/nested/foo.ts`.
 There is no single-segment vs. multi-segment distinction; `**` is not a supported token and behaves identically to `*`.
 
@@ -771,7 +771,7 @@ Extension and MCP path tools are gated by default — no registration needed —
 The path gate runs before the external-directory and tool gates.
 If it denies, the command is blocked without reaching subsequent gates — no wasted prompts.
 
-Path patterns match both the path **as the agent references it** and its canonical (symlink-resolved) form, so a deny on a sensitive spelling cannot be evaded through a symlink alias (see Symlinked paths below).
+Path patterns match both the path **as the agent references it** and its canonical (symlink-resolved and, on POSIX, on-disk-spelled) form, so a deny on a sensitive spelling cannot be evaded through a symlink alias (see Symlinked paths below).
 
 For Pi's built-in file tools (`read`, `write`, `edit`, `ls`, `find`, `grep`), the path the agent references is the file the tool opens, not the literal argument.
 Pi resolves that argument itself before touching the disk: it decodes a `file://` URL, turns Unicode spaces into ordinary spaces, translates a Git Bash, Cygwin, or WSL drive path (`/c/…`, `/cygdrive/c/…`, `/mnt/c/…`) on Windows, and for `read` alone falls back to the macOS screenshot (`\u202FPM`), NFD, and curly-quote (`’`) spellings of a name that does not exist.
@@ -937,6 +937,10 @@ This matters on macOS, where `/tmp` is a symlink to `/private/tmp`: a rule keyed
 The same dual-form matching protects the `path` surface and the per-tool file patterns: a `path` (or `read`/`write`/`edit`/`grep`/`find`/`ls`) deny on `~/.ssh/*` or `*.env` also catches a symlink whose resolved target matches the pattern, so a sensitive file cannot be reached through an aliasing symlink.
 For `external_directory`, the decision of whether a path is outside the working directory always uses the resolved form, so the gate still fires for every outside-CWD access; only which allow/deny/ask pattern matches considers both forms.
 
+On macOS and Linux the resolved form is also the spelling the filesystem stores.
+On a case-insensitive, normalization-insensitive volume (APFS, the macOS default), `secret.md` opens `Secret.md` and an NFC-spelled `café.txt` opens an NFD-stored name, so a rule keyed on the on-disk spelling (`~/notes/Secret.md`) matches each such variant, and a case variant of a path inside the working directory counts as inside it.
+Key a path rule on the spelling `ls` shows: a rule in any other spelling matches only that spelling, typed exactly, so a deny on `~/notes/secret.md` misses `SECRET.MD`.
+
 #### Pi Infrastructure Read Auto-Allow
 
 Read-only tools (`read`, `find`, `grep`, `ls`) targeting Pi infrastructure paths are automatically allowed without triggering the gate, even when `external_directory` is `ask` or a catch-all `deny`.
@@ -961,7 +965,7 @@ Write tools (`write`, `edit`) to infrastructure paths are **not** auto-allowed a
 On Windows, path matching for `external_directory`, `path`, and the path-bearing tools is case-insensitive and tolerant of either separator (`\` or `/`), matching the case-insensitive filesystem.
 The separator folding applies to the rule pattern **and** to the value it is matched against, so either side may be written with either separator.
 A mixed-case allow override such as `~/AppData/Roaming/npm/node_modules/@earendil-works/pi-coding-agent/*` therefore matches a lowercased, backslash-normalized path value, and a forward-slash rule such as `"/dev/null"` matches a value that is also spelled with forward slashes.
-POSIX matching remains case-sensitive and does not fold separators.
+POSIX matching remains case-sensitive and does not fold separators; a case variant of an existing file is matched through its on-disk spelling instead (see Symlinked paths above).
 
 #### Git Bash / MSYS paths on Windows
 

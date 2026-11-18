@@ -62,7 +62,7 @@ It is expanded at load time, separately for each [scope](#scope) and before scop
 
 ### Path
 
-The `path` family governs a file path wherever it is, matched against both its typed spelling and its symlink-resolved one.
+The `path` family governs a file path wherever it is, matched against both its typed spelling and its resolved one (symlinks followed and, on POSIX, the spelling the filesystem stores).
 Its idiomatic use is carving denials such as `~/.ssh/*`; granting access outside the working directory is the job of [external directory](#external-directory).
 
 ### External directory

@@ -124,7 +124,7 @@ interface PermissionsService {
 
 Returns `PermissionCheckResult` with fields `state`, `matchedPattern`, `source`, `origin`, etc.
 
-For a path-shaped surface (`path`, `external_directory`, or a path-bearing tool — `read`/`write`/`edit`/`grep`/`find`/`ls`), the supplied `value` is matched against both the path as given and its canonical (symlink-resolved) form, at parity with the gates — so a query for a symlinked path matches a rule on its real target.
+For a path-shaped surface (`path`, `external_directory`, or a path-bearing tool — `read`/`write`/`edit`/`grep`/`find`/`ls`), the supplied `value` is matched against both the path as given and its canonical (symlink-resolved and, on POSIX, on-disk-spelled) form, at parity with the gates — so a query for a symlinked path matches a rule on its real target.
 
 For the `bash` surface, a `value` containing a chained or nested command (joined by `&&`, `||`, `;`, `|`, `&`, or newlines, or nested in a command substitution/subshell) is decomposed into its command-pattern units and resolved most-restrictive (`deny` > `ask` > `allow`), at parity with the enforcement gate — so `cd /repo && npm install x` returns the decision of the `npm install x` unit, not the leading `cd`.
 A previously chained command that returned `allow` (riding an allowed leading command) may therefore now return `deny`/`ask`.
