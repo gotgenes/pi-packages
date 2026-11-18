@@ -71,3 +71,65 @@ The package suite went from 6443 to 6459 tests: 15 in the new `filesystem-alias-
     `README.md:78` is directly followed by the new on-disk sentence.
 - Deviation from the plan: one extra docs commit for the two architecture entries.
   The plan's Risks section is wrong about the `excludedDirs` direction; #1130 records the correction.
+
+## Stage: Final Retrospective (2026-11-18T04:09:18Z)
+
+### Session summary
+
+One process ran all four stages on `main`: plan, TDD (3 steps plus 1 extra docs commit), ship, and this retro.
+The change shipped as `pi-permission-system` 42.0.3 with CI green.
+One follow-up was filed: #1130, the infra-read exclusion compared lexically against a canonical path.
+
+### Observations
+
+#### What went well
+
+- The planning spike drove the real gates (`describePathGate`, `describeBashPathGate`, `describeExternalDirectoryGate`) twice, on `main` and with the native swap.
+  That produced a before/after table the operator's scope gate and the plan's Goals were built from, and the acceptance tests later reproduced every row.
+- The tidy-first assessor found a failure mode the planning spike had masked.
+  The 8 `importActual`-spread mocks do not throw on `.native`; they silently bypass the spy for the real function.
+  The spike's `?? realpathSync` fallback had kept those mocks in control, so its green full suite said nothing about them.
+  Re-measuring with the direct call (27 failures in 10 files) gave the plan its accurate number.
+- Step 1's preparatory commit was verified before landing, by applying the step-2 swap temporarily and running the 11 mocked files green.
+  A test-only tidying otherwise has no killing mutation to prove it does its job.
+- The residual characterization pins were mutation-checked (a lowercase+NFC basename fold turned both red), so the two always-green tests are known to discriminate.
+- The pre-completion dispatch carried a re-derivation mandate ("enumerate the consumers of `boundaryValue()` yourself, and the fail direction of each").
+  That mandate is what surfaced the `excludedDirs` fail-toward-allow case.
+
+#### What caused friction (agent side)
+
+- `instruction-violation` — the first scope `ask_user` offered "NFC/NFD aliases" without defining NFC/NFD, against `clarification-gates`' "define a gate's terms of art before its substance".
+  User-caught: the operator answered with "What does NFC NFD mean?"
+  and then "Show me scope options again".
+  Impact: two extra round trips; no rework.
+- `missing-context` — the plan's Risks section said an infra-read spelling mismatch fails toward an ask.
+  It treated `isPiInfrastructureRead` as one comparison, but the function makes two that fail in opposite directions: the allow-list roots and the `excludedDirs` exclusion.
+  Reviewer-caught.
+  Impact: a wrong claim in a committed plan, follow-up #1130, and a delta review round.
+- `instruction-violation` — the plan's doc list grepped `symlink-resolved` in `README.md` and `docs/*.md` but not `docs/architecture/`.
+  Two module-tree entries (`path-normalization.ts`, `access-path.ts`) kept describing the canonical form as "symlink-resolved + win32-lowercased".
+  The `plan-issue` rule for reworded mechanisms names `.pi/skills/package-*/SKILL.md` and `test/` comments but not the package's `docs/` tree, so following it literally would still have missed them.
+  Reviewer-caught.
+  Impact: one extra `docs(pi-permission-system)` commit and a delta review.
+- `instruction-violation` — a planning-spike call ran `vitest run … >/dev/null` with a `-t` filter, against `testing`'s "run Vitest bare".
+  It hung until the 180 s tool timeout.
+  The bare re-run took under a second; the cause of the hang was not established.
+  Self-identified.
+  Impact: 180 s lost; no rework.
+
+#### What caused friction (user side)
+
+- None of note.
+  The operator's one-word bounce ("What does NFC NFD mean?") was the cheapest possible redirect for an undefined term.
+
+### Diagnostic details
+
+- **Model-performance correlation** — planning, TDD, and retro ran on `claude-opus-5-5`; ship ran on `claude-sonnet-5-5`, appropriate for its mechanical steps.
+  All three subagents (tidy-first assessor, pre-completion reviewer, delta reviewer) ran on `claude-sonnet-5-5` per their transcripts.
+  The full reviewer's consumer re-derivation was judgment-heavy and correct, so no mismatch.
+- **Feedback-loop gap analysis** — `check` ran after each `src` step and the full suite before each commit, so there was no end-only verification.
+
+### Changes made
+
+1. `.pi/prompts/plan-issue.md` (Module-Level Changes): the reworded-mechanism grep now names the whole `packages/<PKG>/docs/` tree and the descriptive phrase (e.g. `symlink-resolved`), not only the package skill and `test/` comments.
+2. `.pi/prompts/plan-issue.md` (Design Overview): when a change alters a value consumers compare against, list each comparison per consumer with its mismatch fail direction (an exclusion fails toward allow, an allow-list toward ask).
