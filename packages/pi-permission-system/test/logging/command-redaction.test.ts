@@ -393,6 +393,16 @@ describe("maskCommandFields", () => {
     });
   });
 
+  it("masks every other asking unit of a bash chain", () => {
+    expect(
+      maskCommandFields({
+        otherAskingUnits: ["API_KEY=sk-abc curl https://x", "npm test"],
+      }),
+    ).toEqual({
+      otherAskingUnits: [`API_KEY=${MASK} curl https://x`, "npm test"],
+    });
+  });
+
   it("reaches a command nested inside another record", () => {
     expect(
       maskCommandFields({

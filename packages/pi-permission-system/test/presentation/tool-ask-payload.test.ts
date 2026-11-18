@@ -146,6 +146,56 @@ describe("buildToolAskPayload", () => {
     });
   });
 
+  describe("a bash chain's other asking units", () => {
+    test("names every asking unit beyond the value", () => {
+      const payload = buildPayload({
+        check: toolResult("bash", {
+          command: "cd sub",
+          askingUnits: [{ command: "cd sub" }, { command: "npm test" }],
+        }),
+        surface: "bash",
+      });
+
+      expect(payload.request.otherAskingUnits).toEqual(["npm test"]);
+    });
+
+    test("removes only the first unit the value names, so a repeated unit stays listed", () => {
+      const payload = buildPayload({
+        check: toolResult("bash", {
+          command: "echo a",
+          askingUnits: [{ command: "echo a" }, { command: "echo a" }],
+        }),
+        surface: "bash",
+      });
+
+      expect(payload.request.otherAskingUnits).toEqual(["echo a"]);
+    });
+
+    test("leaves the fact out when the value is the only asking unit", () => {
+      const payload = buildPayload({
+        check: toolResult("bash", {
+          command: "rm -rf foo",
+          matchedPattern: "rm *",
+          askingUnits: [{ command: "rm -rf foo" }],
+        }),
+        surface: "bash",
+      });
+
+      expect(payload.request).toStrictEqual({
+        requester: { agentName: null, forwarded: false, sessionId: null },
+        surface: "bash",
+        toolName: "bash",
+        invokedToolName: null,
+        value: "rm -rf foo",
+        matchedPattern: "rm *",
+        matchedSpelling: null,
+        commandContext: null,
+        executedUnit: null,
+        decidingPath: null,
+      });
+    });
+  });
+
   describe("the bash evidence", () => {
     test("names the agent when one is known", () => {
       expect(

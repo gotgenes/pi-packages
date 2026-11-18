@@ -29,6 +29,7 @@ export function renderReviewLogFacts(
     ...present("executedUnit", request.executedUnit),
     ...present("commandContext", request.commandContext),
     ...present("invokedToolName", request.invokedToolName),
+    ...present("otherAskingUnits", request.otherAskingUnits ?? null),
     ...decidingPathFacts(payload),
     ...forwardingFacts(payload),
   };

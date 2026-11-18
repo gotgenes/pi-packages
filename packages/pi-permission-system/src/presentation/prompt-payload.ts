@@ -87,6 +87,13 @@ export interface PromptRequestFacts {
    * direction comes from its identity, which the `tool` fact already states.
    */
   readonly decidingPath: DecidingPath | null;
+  /**
+   * For a bash chain, every other unit the gate left asking, in chain order:
+   * the commands this ask's answer also covers, which its session option also
+   * grants. Absent when {@link value} is the only one, so every other ask keeps
+   * its exact shape.
+   */
+  readonly otherAskingUnits?: readonly string[];
 }
 
 /**
@@ -227,10 +234,17 @@ function asPromptRequestFacts(value: unknown): PromptRequestFacts | undefined {
     candidate.decidingPath === undefined
       ? { value: null }
       : asNullableDecidingPath(candidate.decidingPath);
+  // Absent from a request a node built before the fact existed, and from any
+  // ask whose value is its only asking unit.
+  const otherAskingUnits =
+    candidate.otherAskingUnits === undefined
+      ? { value: undefined }
+      : asStringList(candidate.otherAskingUnits);
   if (
     !requester ||
     commandContext === undefined ||
     decidingPath === undefined ||
+    otherAskingUnits === undefined ||
     typeof candidate.surface !== "string" ||
     typeof candidate.value !== "string" ||
     !isNullableString(candidate.toolName) ||
@@ -253,7 +267,21 @@ function asPromptRequestFacts(value: unknown): PromptRequestFacts | undefined {
     commandContext: commandContext.value,
     executedUnit: candidate.executedUnit,
     decidingPath: decidingPath.value,
+    ...(otherAskingUnits.value === undefined
+      ? {}
+      : { otherAskingUnits: otherAskingUnits.value }),
   };
+}
+
+/** Boxed like {@link asNullableMember}: an absent list is not the malformed `undefined`. */
+function asStringList(
+  value: unknown,
+): { value: readonly string[] | undefined } | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const entries: unknown[] = value;
+  return entries.every((entry) => typeof entry === "string")
+    ? { value: [...entries] }
+    : undefined;
 }
 
 /** Boxed like {@link asNullableMember}: a valid `null` is not the malformed `undefined`. */

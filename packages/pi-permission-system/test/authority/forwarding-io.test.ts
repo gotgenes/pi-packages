@@ -593,6 +593,44 @@ describe("readForwardedPermissionRequest — payload field", () => {
     expect(parsed?.payload?.request.matchedSpelling).toBeNull();
   });
 
+  it("round-trips a bash chain's other asking units", () => {
+    const payload = makePromptPayload();
+    const chain = {
+      ...payload,
+      request: { ...payload.request, otherAskingUnits: ["npm test"] },
+    };
+    const parsed = writeAndRead({ ...baseRequest(), payload: chain });
+    expect(parsed?.payload?.request.otherAskingUnits).toEqual(["npm test"]);
+  });
+
+  it("reads request facts without other asking units as having none (version skew)", () => {
+    const parsed = writeAndRead({
+      ...baseRequest(),
+      payload: makePromptPayload(),
+    });
+    expect(parsed?.payload).toBeDefined();
+    expect(parsed?.payload?.request).not.toHaveProperty("otherAskingUnits");
+  });
+
+  it.each([
+    ["a non-array", "npm test"],
+    ["a non-string entry", ["npm test", 42]],
+    ["a null", null],
+  ])(
+    "drops a payload whose other asking units are %s",
+    (_label, otherAskingUnits) => {
+      const payload = makePromptPayload();
+      const parsed = writeAndRead({
+        ...baseRequest(),
+        payload: {
+          ...payload,
+          request: { ...payload.request, otherAskingUnits },
+        },
+      });
+      expect(parsed?.payload).toBeUndefined();
+    },
+  );
+
   it("reads a request with no payload as undefined (version skew)", () => {
     const parsed = writeAndRead(baseRequest());
     expect(parsed?.payload).toBeUndefined();

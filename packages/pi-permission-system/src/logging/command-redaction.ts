@@ -43,6 +43,7 @@ export const COMMAND_BEARING_LOG_KEYS: ReadonlySet<string> = new Set([
   "command",
   "executedUnit",
   "matchedSpelling",
+  "otherAskingUnits",
 ]);
 
 /** A range of the command to replace, and what to put in its place. */

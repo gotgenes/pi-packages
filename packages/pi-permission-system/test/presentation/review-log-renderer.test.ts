@@ -43,6 +43,22 @@ describe("renderReviewLogFacts", () => {
     });
   });
 
+  it("records a bash chain's other asking units", () => {
+    expect(
+      renderReviewLogFacts(
+        payload({
+          surface: "bash",
+          matchedPattern: "*",
+          otherAskingUnits: ["npm test"],
+        }),
+      ),
+    ).toEqual({
+      surface: "bash",
+      matchedPattern: "*",
+      otherAskingUnits: ["npm test"],
+    });
+  });
+
   it("records the spelling the rule matched, when not the command as typed", () => {
     expect(
       renderReviewLogFacts(
