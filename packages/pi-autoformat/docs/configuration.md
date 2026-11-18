@@ -138,8 +138,16 @@ Merge semantics: `snapshotGlobs` and `wrappers` arrays replace lower-precedence 
 Declare additional tool names whose results should be treated as file mutations and routed into the touched-files queue.
 Useful for project- or extension-specific tools that the agent calls directly.
 
-Each entry must specify the tool name and exactly one of `pathField` or `pathFields`, each a dotted path into the tool's `input` payload.
-A field may resolve to a string or a string array; arrays are flattened.
+Each entry must specify the tool name and exactly one of `pathField`, `pathFields`, or `patchField`, each a dotted path into the tool's `input` payload.
+A `pathField` or `pathFields` value may resolve to a string or a string array; arrays are flattened.
+
+`patchField` is for patch-based tools such as `apply_patch`, whose input is a single Codex-style patch (`*** Begin Patch` … `*** End Patch`) rather than a filename.
+The files under `*** Add File:` and `*** Update File:` headers are formatted, and a `*** Move to:` line replaces the path of the update it follows.
+Paths named by `*** Delete File:` are skipped, since nothing is left to format.
+The field holding the patch differs between tools (commonly `input` or `patch`), so check the tool's parameter schema.
+
+Only successful tool results are recorded.
+A tool that reports an error, including a patch tool reporting a partly applied patch, contributes no files.
 
 Defaults to `[]`.
 
@@ -149,7 +157,8 @@ Example:
 {
   "customMutationTools": [
     { "toolName": "my-codegen", "pathField": "output" },
-    { "toolName": "refactor", "pathFields": ["src", "dest"] }
+    { "toolName": "refactor", "pathFields": ["src", "dest"] },
+    { "toolName": "apply_patch", "patchField": "input" }
   ]
 }
 ```
