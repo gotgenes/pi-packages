@@ -1,4 +1,5 @@
 import type { AuthorizerLog, PermissionQuery } from "#src/service";
+import { narrowAsk } from "./ask-narrowing";
 import type {
   AuthorizerVerdict,
   NamedAuthorizer,
@@ -27,6 +28,11 @@ import type { PromptPermissionDetails } from "./permission-prompter";
  * zero links the composed chain **is** the terminal instance (identity), so
  * behavior is byte-identical to the pre-chain spine — the empty-links case that
  * ships until a link registers.
+ *
+ * A link's `allow_units` narrows the ask the rest of the chain sees (ADR 0007
+ * §9). When the terminal answers a narrowed ask for the session, the decision
+ * names the narrowed grants, since the recorder otherwise grants the gate's
+ * suggestion for the whole ask.
  */
 export function composeAuthorizerChain(
   links: readonly NamedAuthorizer[],
@@ -42,14 +48,42 @@ export function composeAuthorizerChain(
       let current = details;
       for (const link of links) {
         const verdict = await link.authorize(current, query, log);
-        const step = stepFromVerdict(link.name, verdict, current);
+        const step = stepFromVerdict(link.name, verdict, current, log);
         if (step.kind === "decided") {
           return step.decision;
         }
         current = step.details;
       }
-      return terminal.authorize(current);
+      const decision = await terminal.authorize(current);
+      return current === details
+        ? decision
+        : withNarrowedGrants(decision, current);
     },
+  };
+}
+
+/**
+ * Name, on a session-scoped answer to a narrowed ask, the grants that answer
+ * covers: the narrowed ask's own, or none when it offers none. Never left
+ * absent, because absence means the gate's suggestion for the whole ask.
+ */
+function withNarrowedGrants(
+  decision: PermissionPromptDecision,
+  narrowed: PromptPermissionDetails,
+): PermissionPromptDecision {
+  if (
+    decision.state !== "approved_for_session" &&
+    decision.state !== "approved_for_serving_session"
+  ) {
+    return decision;
+  }
+  return {
+    ...decision,
+    // A terminal that already names narrowed grants answered an ask narrowed
+    // further down its own path (a relay whose serving node narrowed it), so
+    // its list is the narrower one and is kept.
+    narrowedGrants:
+      decision.narrowedGrants ?? narrowed.sessionApproval?.grants ?? [],
   };
 }
 
@@ -73,19 +107,13 @@ function stepFromVerdict(
   name: string,
   verdict: AuthorizerVerdict,
   details: PromptPermissionDetails,
+  log: AuthorizerLog,
 ): ChainStep {
   switch (verdict.kind) {
     case "allow":
-      // A link grant is non-persistent (state `approved`, never
-      // `approved_for_session`), per ADR 0007's off-by-default envelope.
-      return {
-        kind: "decided",
-        decision: {
-          approved: true,
-          state: "approved",
-          decidedBy: decidedByLink(name, "allow", null),
-        },
-      };
+      return { kind: "decided", decision: linkAllowed(name) };
+    case "allow_units":
+      return stepFromPartialAllow(name, verdict.units, details, log);
     case "deny":
       return {
         kind: "decided",
@@ -101,6 +129,57 @@ function stepFromVerdict(
   // know (a newer kind, or a malformed value) reaches here at run time; it
   // decides nothing, which is the fail-safe reading (ADR 0007 invariant 2).
   return { kind: "continue", details };
+}
+
+/**
+ * A link's allow of the whole call.
+ *
+ * A link grant is non-persistent (state `approved`, never
+ * `approved_for_session`), per ADR 0007's off-by-default envelope.
+ */
+function linkAllowed(name: string): PermissionPromptDecision {
+  return {
+    approved: true,
+    state: "approved",
+    decidedBy: decidedByLink(name, "allow", null),
+  };
+}
+
+/**
+ * The step a partial allow takes: allow the call once no unit is left, continue
+ * with the narrowed ask otherwise, and defer when it named no asking unit.
+ *
+ * Every narrowing is recorded where it is taken, since the decision for the
+ * call names only whoever decided the last of it.
+ */
+function stepFromPartialAllow(
+  name: string,
+  units: readonly string[],
+  details: PromptPermissionDetails,
+  log: AuthorizerLog,
+): ChainStep {
+  const narrowed = narrowAsk(details, namedUnits(units));
+  if (narrowed.kind === "unchanged") return { kind: "continue", details };
+  log.review("authorizer_units_allowed", {
+    requestId: details.requestId,
+    link: name,
+    allowedUnits: narrowed.allowedUnits,
+    remainingUnits: narrowed.kind === "settled" ? [] : narrowed.remainingUnits,
+  });
+  return narrowed.kind === "settled"
+    ? { kind: "decided", decision: linkAllowed(name) }
+    : { kind: "continue", details: narrowed.details };
+}
+
+/**
+ * The unit names a link sent, keeping only strings: a link is another
+ * extension's code, and a malformed list must name nothing rather than be
+ * read character by character.
+ */
+function namedUnits(units: unknown): string[] {
+  return Array.isArray(units)
+    ? units.filter((unit): unit is string => typeof unit === "string")
+    : [];
 }
 
 function decidedByLink(

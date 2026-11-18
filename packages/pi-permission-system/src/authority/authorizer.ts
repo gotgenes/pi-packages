@@ -23,11 +23,18 @@ import type { SubagentSessionRegistry } from "./subagent-registry";
  * A non-terminal chain link's ruling on an `ask`: decide (`allow`/`deny`) or
  * pass the ask on to the next link (`defer`). A `deny` carries an optional
  * teaching `reason` the invoking model sees, so it can self-correct.
+ *
+ * `allow_units` decides part of a bash chain's ask: the named asking units
+ * (by their `details.accessIntent.askingUnits[].command` text) are allowed, and
+ * the ask continues to the next link, and in the end the terminal, narrowed to
+ * the units still asking. Naming every asking unit allows the call; naming
+ * none of them defers (ADR 0007 §9).
  */
 export type AuthorizerVerdict =
   | { kind: "allow" }
   | { kind: "deny"; reason?: string }
-  | { kind: "defer" };
+  | { kind: "defer" }
+  | { kind: "allow_units"; units: readonly string[] };
 
 /**
  * A non-terminal link in the live-authority chain: reviews an `ask` and may

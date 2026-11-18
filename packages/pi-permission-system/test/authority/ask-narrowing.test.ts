@@ -45,6 +45,23 @@ describe("narrowAsk", () => {
       });
     });
 
+    it("is unchanged when the asking units ride an ask on another surface", () => {
+      const details = askFor([assignment, commit]);
+      const forged = {
+        ...details,
+        accessIntent: {
+          surface: "external_directory",
+          matchValues: ["/Sheet1/B1"],
+          boundaryValue: "/Sheet1/B1",
+          askingUnits: [assignment, commit],
+          delegationLicense: "nothing-on-disk" as const,
+        },
+      };
+      expect(narrowAsk(forged, [assignment.command])).toStrictEqual({
+        kind: "unchanged",
+      });
+    });
+
     it("is unchanged when no unit is named", () => {
       expect(narrowAsk(askFor([assignment, commit]), [])).toStrictEqual({
         kind: "unchanged",
@@ -131,6 +148,18 @@ describe("narrowAsk", () => {
       expect(narrowed.details).not.toHaveProperty("sessionApproval");
       expect(narrowed.details).not.toHaveProperty("sessionLabel");
       expect(narrowed.details.payload.request.value).toBe("# note");
+    });
+  });
+
+  describe("an ask that offered no session grant", () => {
+    it("gains none when it is narrowed", () => {
+      const { sessionApproval: _offered, ...details } = askFor(
+        [assignment, commit],
+        { forwarded: true },
+      );
+      const narrowed = narrowAsk(details, [assignment.command]);
+      if (narrowed.kind !== "narrowed") throw new Error(narrowed.kind);
+      expect(narrowed.details).not.toHaveProperty("sessionApproval");
     });
   });
 

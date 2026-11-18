@@ -93,6 +93,37 @@ describe("encloseInDelegationEnvelope", () => {
     });
   });
 
+  describe("caps a partial allow exactly as it caps an allow", () => {
+    const partial: AuthorizerVerdict = {
+      kind: "allow_units",
+      units: ["rm -rf /tmp/x"],
+    };
+
+    it.each(["path", "external_directory_write"])(
+      "downgrades a partial allow on %s to defer",
+      async (surface) => {
+        const enclosed = encloseInDelegationEnvelope(
+          "judge",
+          makeLink(partial),
+        );
+        const verdict = await enclosed(makeDetails(surface), query, log);
+        expect(verdict).toEqual({ kind: "defer" });
+      },
+    );
+
+    it("downgrades a partial allow when the surface is undetermined", async () => {
+      const enclosed = encloseInDelegationEnvelope("judge", makeLink(partial));
+      const verdict = await enclosed(makeDetails(undefined, null), query, log);
+      expect(verdict).toEqual({ kind: "defer" });
+    });
+
+    it("keeps a partial allow on the bash surface", async () => {
+      const enclosed = encloseInDelegationEnvelope("judge", makeLink(partial));
+      const verdict = await enclosed(makeDetails("bash"), query, log);
+      expect(verdict).toEqual(partial);
+    });
+  });
+
   describe("passes verdicts through unchanged", () => {
     it("keeps an allow on a non-excluded surface (bash)", async () => {
       const enclosed = encloseInDelegationEnvelope(

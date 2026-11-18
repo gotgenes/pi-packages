@@ -403,6 +403,18 @@ describe("maskCommandFields", () => {
     });
   });
 
+  it("masks the units a link allowed and the units it left asking", () => {
+    expect(
+      maskCommandFields({
+        allowedUnits: ["API_KEY=sk-abc"],
+        remainingUnits: ["TOKEN=sk-def deploy"],
+      }),
+    ).toEqual({
+      allowedUnits: [`API_KEY=${MASK}`],
+      remainingUnits: [`TOKEN=${MASK} deploy`],
+    });
+  });
+
   it("reaches a command nested inside another record", () => {
     expect(
       maskCommandFields({

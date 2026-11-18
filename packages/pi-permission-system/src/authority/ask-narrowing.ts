@@ -38,7 +38,11 @@ export function narrowAsk(
   details: PromptPermissionDetails,
   units: readonly string[],
 ): NarrowedAsk {
-  const asking = details.accessIntent?.askingUnits ?? [];
+  // Asking units describe a bash chain, and only on the bash surface do they
+  // name what the ask is about; a malformed or forged request that carries
+  // them on another surface is not narrowed.
+  if (details.accessIntent?.surface !== "bash") return { kind: "unchanged" };
+  const asking = details.accessIntent.askingUnits ?? [];
   const named = new Set(units);
   const allowed = asking.filter((unit) => named.has(unit.command));
   if (allowed.length === 0) return { kind: "unchanged" };
@@ -60,7 +64,7 @@ function narrowedDetails(
   remaining: readonly AskingBashUnit[],
 ): PromptPermissionDetails {
   const {
-    sessionApproval: _sessionApproval,
+    sessionApproval: offeredApproval,
     sessionLabel,
     command,
     value,
@@ -70,7 +74,10 @@ function narrowedDetails(
   const suggestion = suggestBashChainSessionPatterns(
     remaining.map((unit) => unit.command),
   );
-  const grantable = suggestion.patterns.length > 0;
+  // Narrowing only ever shrinks the session option: an ask that offered none
+  // gains none.
+  const grantable =
+    offeredApproval !== undefined && suggestion.patterns.length > 0;
   return {
     ...rest,
     payload: narrowBashAskPayload(details.payload, remaining),

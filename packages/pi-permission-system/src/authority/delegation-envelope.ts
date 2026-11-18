@@ -27,7 +27,7 @@
  */
 
 import { surfaceFamilyOf } from "#src/access-intent/path-surfaces";
-import type { Authorizer } from "./authorizer";
+import type { Authorizer, AuthorizerVerdict } from "./authorizer";
 import type { PromptPermissionDetails } from "./permission-prompter";
 
 /** Surface families on which a link may never grant an `allow` unlicensed. */
@@ -52,7 +52,7 @@ export function encloseInDelegationEnvelope(
 ): Authorizer["authorize"] {
   return async (details, query, log) => {
     const verdict = await authorize(details, query, log);
-    if (verdict.kind !== "allow" || !isExcludedSurface(details)) {
+    if (!isGrant(verdict) || !isExcludedSurface(details)) {
       return verdict;
     }
     const license = licenseFor(details);
@@ -64,6 +64,14 @@ export function encloseInDelegationEnvelope(
     });
     return verdict;
   };
+}
+
+/**
+ * Whether a verdict grants anything: a whole `allow`, or a partial
+ * `allow_units`, which the checkpoint caps alike (ADR 0007 §9).
+ */
+function isGrant(verdict: AuthorizerVerdict): boolean {
+  return verdict.kind === "allow" || verdict.kind === "allow_units";
 }
 
 /**
