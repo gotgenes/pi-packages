@@ -312,6 +312,34 @@ export function suggestPathSessionPattern(
 }
 
 /**
+ * Build the suggestion for a bash chain whose units each still ask: one pattern
+ * per unit, so approving the chain for the session covers what the prompt named
+ * and nothing else.
+ *
+ * Patterns two units share are recorded once, before the label is built, so a
+ * chain whose units all suggest one pattern reads exactly as a single unit's
+ * option does. A unit that suggests nothing (a comment-only line) is dropped.
+ * Not routed through {@link grantTargets}, whose directory fold is path
+ * semantics.
+ */
+export function suggestBashChainSessionPatterns(
+  commands: readonly string[],
+): SessionPatternsSuggestion {
+  const patterns = [
+    ...new Set(
+      commands
+        .map((command) => suggestBashPattern(command))
+        .filter((pattern) => pattern !== ""),
+    ),
+  ];
+  return {
+    surface: "bash",
+    patterns,
+    label: buildLabel(patterns.join('", "'), "bash"),
+  };
+}
+
+/**
  * Build the suggestion for a pattern the caller already holds verbatim, such
  * as a Pi MCP tool's full name on the `mcp` surface: no wildcard is derived.
  */

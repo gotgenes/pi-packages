@@ -3,6 +3,7 @@ import {
   buildDirectionalSessionLabels,
   buildForwardedScopeLabels,
   describeGrantTarget,
+  suggestBashChainSessionPatterns,
   suggestBashPattern,
   suggestMcpPattern,
   suggestPathSessionPattern,
@@ -281,6 +282,34 @@ describe("suggestPathSessionPattern", () => {
       surface: "read",
       patterns: ["c:\\projects\\app\\src\\*"],
       label: 'Yes, allow read "c:\\projects\\app\\src\\*" for this session',
+    });
+  });
+});
+
+describe("suggestBashChainSessionPatterns", () => {
+  it("records one pattern per asking unit and names them all", () => {
+    expect(suggestBashChainSessionPatterns(["cd sub", "npm test"])).toEqual({
+      surface: "bash",
+      patterns: ["cd sub*", "npm test*"],
+      label: 'Yes, allow bash "cd sub*", "npm test*" for this session',
+    });
+  });
+
+  it("records a pattern two units share once, under the single-unit label", () => {
+    expect(suggestBashChainSessionPatterns(["echo a", "echo b"])).toEqual({
+      surface: "bash",
+      patterns: ["echo *"],
+      label: suggestSessionPattern("bash", "echo a").label,
+    });
+  });
+
+  it("drops a unit that suggests no pattern", () => {
+    expect(
+      suggestBashChainSessionPatterns(["# just a comment", "npm test"]),
+    ).toEqual({
+      surface: "bash",
+      patterns: ["npm test*"],
+      label: 'Yes, allow bash "npm test*" for this session',
     });
   });
 });
