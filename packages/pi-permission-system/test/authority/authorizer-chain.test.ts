@@ -224,4 +224,29 @@ describe("composeAuthorizerChain", () => {
     });
     expect(terminal.authorize).toHaveBeenCalledOnce();
   });
+
+  it("reads a verdict it does not recognize as a defer", async () => {
+    // A link is another extension's code: a newer verdict kind, or a
+    // malformed one, must fall through to the terminal rather than decide.
+    const terminal = makeTerminal();
+    const unknown = makeLink({
+      kind: "approve",
+    } as unknown as AuthorizerVerdict);
+    const details = makeDetails();
+
+    const composed = composeAuthorizerChain(
+      [unknown],
+      terminal,
+      makeQuery(),
+      log,
+    );
+    const decision = await composed.authorize(details);
+
+    expect(decision).toEqual({
+      approved: true,
+      state: "approved",
+      decidedBy: DECIDED_BY_HUMAN,
+    });
+    expect(terminal.authorize).toHaveBeenCalledWith(details);
+  });
 });

@@ -9,6 +9,7 @@ import {
   createDeniedPermissionDecision,
   type PermissionPromptDecision,
 } from "./permission-dialog";
+import type { PromptPermissionDetails } from "./permission-prompter";
 
 /**
  * Compose the live-authority chain (ADR 0007): try each non-terminal `link`
@@ -38,47 +39,68 @@ export function composeAuthorizerChain(
   }
   return {
     async authorize(details) {
+      let current = details;
       for (const link of links) {
-        const verdict = await link.authorize(details, query, log);
-        const decision = decideFromVerdict(link.name, verdict);
-        if (decision) {
-          return decision;
+        const verdict = await link.authorize(current, query, log);
+        const step = stepFromVerdict(link.name, verdict, current);
+        if (step.kind === "decided") {
+          return step.decision;
         }
-        // `defer` — try the next link.
+        current = step.details;
       }
-      return terminal.authorize(details);
+      return terminal.authorize(current);
     },
   };
 }
 
 /**
- * Map a link's decisive verdict to a decision; `defer` yields `null`.
+ * What one link's verdict does to the chain: decide the ask, or continue to
+ * the next link with the ask it leaves.
+ */
+type ChainStep =
+  | { kind: "decided"; decision: PermissionPromptDecision }
+  | { kind: "continue"; details: PromptPermissionDetails };
+
+/**
+ * Map a link's verdict to the chain's next step: a decisive verdict decides,
+ * and `defer` continues with the same ask.
  *
  * The deciding link is named on the decision, not merely counted among the
  * consulted set the selection already records: a link ahead of it that
  * deferred decided nothing and must not be credited (#726).
  */
-function decideFromVerdict(
+function stepFromVerdict(
   name: string,
   verdict: AuthorizerVerdict,
-): PermissionPromptDecision | null {
+  details: PromptPermissionDetails,
+): ChainStep {
   switch (verdict.kind) {
     case "allow":
       // A link grant is non-persistent (state `approved`, never
       // `approved_for_session`), per ADR 0007's off-by-default envelope.
       return {
-        approved: true,
-        state: "approved",
-        decidedBy: decidedByLink(name, "allow", null),
+        kind: "decided",
+        decision: {
+          approved: true,
+          state: "approved",
+          decidedBy: decidedByLink(name, "allow", null),
+        },
       };
     case "deny":
       return {
-        ...createDeniedPermissionDecision(verdict.reason),
-        decidedBy: decidedByLink(name, "deny", verdict.reason ?? null),
+        kind: "decided",
+        decision: {
+          ...createDeniedPermissionDecision(verdict.reason),
+          decidedBy: decidedByLink(name, "deny", verdict.reason ?? null),
+        },
       };
     case "defer":
-      return null;
+      return { kind: "continue", details };
   }
+  // A link is another extension's code, so a verdict this version does not
+  // know (a newer kind, or a malformed value) reaches here at run time; it
+  // decides nothing, which is the fail-safe reading (ADR 0007 invariant 2).
+  return { kind: "continue", details };
 }
 
 function decidedByLink(
