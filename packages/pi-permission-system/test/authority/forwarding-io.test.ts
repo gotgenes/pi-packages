@@ -829,6 +829,64 @@ describe("readForwardedPermissionResponse — sessionGrantWidth field", () => {
   });
 });
 
+describe("readForwardedPermissionResponse — narrowedGrants field", () => {
+  let root: string;
+
+  afterEach(() => {
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  function writeAndRead(raw: unknown) {
+    root = mkdtempSync(join(tmpdir(), "io-narrowed-grants-"));
+    const filePath = join(root, "res.json");
+    writeJsonFileAtomic(null, filePath, raw);
+    return readForwardedPermissionResponse(null, filePath);
+  }
+
+  function baseResponse() {
+    return {
+      approved: true,
+      state: "approved_for_session",
+      responderSessionId: "parent-session",
+      respondedAt: 1000,
+    };
+  }
+
+  it("round-trips the grants a narrowed answer covers", () => {
+    const narrowedGrants = [{ surface: "bash", pattern: "git commit *" }];
+    expect(
+      writeAndRead({ ...baseResponse(), narrowedGrants })?.narrowedGrants,
+    ).toStrictEqual(narrowedGrants);
+  });
+
+  it("round-trips an empty list, which grants nothing", () => {
+    expect(
+      writeAndRead({ ...baseResponse(), narrowedGrants: [] })?.narrowedGrants,
+    ).toStrictEqual([]);
+  });
+
+  it.each([
+    ["not an array", "git commit *"],
+    ["a grant that is not an object", [null]],
+    ["a grant with no surface", [{ pattern: "git commit *" }]],
+    [
+      "a grant whose pattern is not a string",
+      [{ surface: "bash", pattern: 1 }],
+    ],
+  ])("reads a malformed list (%s) as granting nothing", (_, narrowedGrants) => {
+    const parsed = writeAndRead({ ...baseResponse(), narrowedGrants });
+
+    // Dropping the list would fall back to the gate's own, wider suggestion,
+    // so a list that cannot be read grants nothing instead.
+    expect(parsed?.approved).toBe(true);
+    expect(parsed?.narrowedGrants).toStrictEqual([]);
+  });
+
+  it("leaves the field absent for a responder that narrowed nothing", () => {
+    expect(writeAndRead(baseResponse())).not.toHaveProperty("narrowedGrants");
+  });
+});
+
 // ── tryRemoveDirectoryIfEmpty ──────────────────────────────────────────────
 
 describe("tryRemoveDirectoryIfEmpty", () => {

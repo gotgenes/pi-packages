@@ -359,8 +359,10 @@ export class ForwardedRequestServer implements InboxProcessor {
     if (decision.state !== "approved_for_serving_session") {
       return decision;
     }
-    if (request.sessionApproval) {
-      const { grants } = request.sessionApproval;
+    // An answer to an ask a link narrowed names its own grants: the human was
+    // shown those, not the child's suggestion for the whole ask.
+    const grants = decision.narrowedGrants ?? request.sessionApproval?.grants;
+    if (grants !== undefined && grants.length > 0) {
       const approval = SessionApproval.forGrants(grants).atWidth(
         decision.sessionGrantWidth ?? "proven",
       );
@@ -417,8 +419,12 @@ export class ForwardedRequestServer implements InboxProcessor {
         // this session, not merely that this session answered (#726).
         decidedBy: decision.decidedBy,
         // The child records a subagent-scoped grant itself, so the width the
-        // human chose has to reach it (#813).
+        // human chose has to reach it (#813), and so do the grants of an ask
+        // a link narrowed here, or the child records its own wider suggestion.
         sessionGrantWidth: decision.sessionGrantWidth,
+        ...(decision.narrowedGrants === undefined
+          ? {}
+          : { narrowedGrants: decision.narrowedGrants }),
       } satisfies ForwardedPermissionResponse);
     } catch (error) {
       logPermissionForwardingError(

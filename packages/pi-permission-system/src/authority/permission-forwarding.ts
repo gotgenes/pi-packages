@@ -237,6 +237,16 @@ export type ForwardedPermissionResponse = {
    * both landing on `"proven"`, the least-privilege width.
    */
   sessionGrantWidth?: SessionGrantWidth;
+  /**
+   * The grants a subagent-scoped answer covers when a link at the responding
+   * session narrowed the ask, so the child records what its human was shown
+   * rather than its own suggestion for the whole ask.
+   *
+   * Absent when nothing was narrowed. An older requester's allowlist rebuild
+   * drops it and records its own, wider suggestion: the accepted skew residual
+   * (ADR 0007 §9).
+   */
+  narrowedGrants?: readonly ApprovalGrant[];
 };
 
 export type PermissionForwardingLocation = {

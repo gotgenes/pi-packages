@@ -1222,6 +1222,100 @@ describe("processInbox — grant-scope selection", () => {
       state: "approved_for_session",
     });
   });
+
+  describe("an answer to an ask a link narrowed", () => {
+    const childGrants = [
+      { surface: "bash", pattern: 'F="a *' },
+      { surface: "bash", pattern: "git commit *" },
+    ];
+    const narrowedGrants = [{ surface: "bash", pattern: "git commit *" }];
+
+    function serverAnswering(
+      id: string,
+      decision: Partial<PermissionPromptDecision>,
+    ) {
+      const dir = createForwardingTempDir("parent-session");
+      temp = dir;
+      dir.writeRequest({
+        id,
+        source: "tool_call",
+        surface: "bash",
+        value: 'F="a b"',
+        accessIntent: makeForwardedAccessIntent({ matchValues: ['F="a b"'] }),
+        sessionApproval: { grants: childGrants },
+      });
+      const recorder = new SessionRules();
+      const logger = { review: vi.fn(), debug: vi.fn() };
+      const server = new ForwardedRequestServer(
+        makeServerDeps({
+          forwardingDir: dir.forwardingDir,
+          logger,
+          policy: { resolve: vi.fn(() => makeCheckResult({ state: "ask" })) },
+          escalator: {
+            escalate: vi.fn().mockResolvedValue({
+              approved: true,
+              decidedBy: DECIDED_BY_HUMAN,
+              ...decision,
+            }),
+          },
+          recorder,
+        }),
+      );
+      const sessionPatterns = () =>
+        recorder.getRuleset().map(({ surface, pattern }) => [surface, pattern]);
+      return { dir, server, logger, sessionPatterns };
+    }
+
+    test("records only the narrowed grants for the whole session, and sends none to the child", async () => {
+      const { dir, server, sessionPatterns } = serverAnswering("req-narrowed", {
+        state: "approved_for_serving_session",
+        narrowedGrants,
+      });
+
+      await server.processInbox(
+        makeForwarderContext({ hasUI: true, sessionId: "parent-session" }),
+      );
+
+      expect(sessionPatterns()).toEqual([["bash", "git commit *"]]);
+      expect(readResponse(dir, "req-narrowed")).not.toHaveProperty(
+        "narrowedGrants",
+      );
+    });
+
+    test("records nothing, and claims nothing, when the narrowed answer covers no grant", async () => {
+      const { server, logger, sessionPatterns } = serverAnswering(
+        "req-narrowed-empty",
+        { state: "approved_for_serving_session", narrowedGrants: [] },
+      );
+
+      await server.processInbox(
+        makeForwarderContext({ hasUI: true, sessionId: "parent-session" }),
+      );
+
+      expect(sessionPatterns()).toEqual([]);
+      expect(logger.review).not.toHaveBeenCalledWith(
+        "forwarded_permission.session_recorded",
+        expect.anything(),
+      );
+    });
+
+    test("carries the narrowed grants to the child for a subagent-scoped grant", async () => {
+      const { dir, server, sessionPatterns } = serverAnswering(
+        "req-narrowed-child",
+        { state: "approved_for_session", narrowedGrants },
+      );
+
+      await server.processInbox(
+        makeForwarderContext({ hasUI: true, sessionId: "parent-session" }),
+      );
+
+      expect(sessionPatterns()).toEqual([]);
+      expect(readResponse(dir, "req-narrowed-child")).toMatchObject({
+        state: "approved_for_session",
+        narrowedGrants,
+      });
+    });
+  });
 });
 
 describe("processInbox — one-hop canary", () => {

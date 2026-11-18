@@ -166,6 +166,23 @@ describe("ParentAuthorizer provenance relay", () => {
     }
   });
 
+  test("relays the grants a narrowed answer covers, so the child records only those", async () => {
+    const temp = createForwardingTempDir("parent-session");
+    const narrowedGrants = [{ surface: "bash", pattern: "git commit *" }];
+    try {
+      await expect(
+        exchangeWith(temp, {
+          approved: true,
+          state: "approved_for_session",
+          narrowedGrants,
+          responderSessionId: "parent-session",
+        }),
+      ).resolves.toMatchObject({ narrowedGrants });
+    } finally {
+      temp.cleanup();
+    }
+  });
+
   test("discards a malformed decider rather than relaying a corrupt one", async () => {
     const temp = createForwardingTempDir("parent-session");
     try {
