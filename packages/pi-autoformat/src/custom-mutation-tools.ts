@@ -3,7 +3,7 @@ import type { MutationSourceHandler } from "./touched-files-queue";
 /**
  * Declarative spec for a custom mutation tool.
  *
- * Exactly one of `pathField` or `pathFields` must be provided. Validation
+ * Exactly one of `pathField`, `pathFields`, or `patchField` must be provided. Validation
  * of that constraint lives in the config loader so that schema errors
  * surface to the user with proper sourcePath attribution.
  */
@@ -16,6 +16,12 @@ export type CustomMutationToolSpec = {
    * may resolve to a string or a string array; arrays are flattened.
    */
   pathFields?: string[];
+  /**
+   * Dotted path to a Codex-style patch string in the tool's `input` payload.
+   * The files the patch adds, updates, or moves to are extracted; deleted
+   * files are skipped because nothing is left to format.
+   */
+  patchField?: string;
 };
 
 /**
@@ -55,7 +61,7 @@ function collectFromValue(value: unknown, out: string[]): void {
  */
 export function extractPathsFromInput(
   input: unknown,
-  spec: Pick<CustomMutationToolSpec, "pathField" | "pathFields">,
+  spec: Pick<CustomMutationToolSpec, "pathField" | "pathFields" | "patchField">,
 ): string[] {
   if (typeof input !== "object" || input === null || Array.isArray(input)) {
     return [];
@@ -74,7 +80,37 @@ export function extractPathsFromInput(
     const resolved = resolveDottedPath(input, dottedPath);
     collectFromValue(resolved, results);
   }
+  if (spec.patchField) {
+    results.push(
+      ...extractPathsFromPatch(resolveDottedPath(input, spec.patchField)),
+    );
+  }
   return results;
+}
+
+const PATCH_FILE_HEADERS = ["*** Add File: ", "*** Update File: "];
+const PATCH_MOVE_HEADER = "*** Move to: ";
+
+/**
+ * Scan a Codex-style patch for the files it leaves behind. Only successful
+ * tool results reach this, so the tool has already accepted the patch; a
+ * header scan is enough. Lines are matched untrimmed because hunk content
+ * lines always start with `+`, `-`, or a space, so quoted headers never match.
+ */
+function extractPathsFromPatch(patch: unknown): string[] {
+  if (typeof patch !== "string") {
+    return [];
+  }
+  const paths: string[] = [];
+  for (const line of patch.split(/\r?\n/)) {
+    const header = PATCH_FILE_HEADERS.find((prefix) => line.startsWith(prefix));
+    if (header) {
+      paths.push(line.slice(header.length).trim());
+    } else if (line.startsWith(PATCH_MOVE_HEADER) && paths.length > 0) {
+      paths[paths.length - 1] = line.slice(PATCH_MOVE_HEADER.length).trim();
+    }
+  }
+  return paths;
 }
 
 /** Build a single MutationSourceHandler from a spec. */

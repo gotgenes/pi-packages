@@ -8,6 +8,40 @@ import {
   parseTouchedPayload,
 } from "#src/custom-mutation-tools";
 
+// A real patch written by a GPT model through an `apply_patch` tool:
+// update, add, delete, and update-with-move in one call.
+const MODEL_WRITTEN_PATCH = [
+  "*** Begin Patch",
+  "*** Update File: src/greet.ts",
+  "@@",
+  " export function greet(name: string): string {",
+  '-  return "Hello, " + name;',
+  "+  return `Hello, ${name}`;",
+  " }",
+  "*** Add File: src/farewell.ts",
+  "+export function farewell(name: string): string {",
+  "+  return `Goodbye, ${name}`;",
+  "+}",
+  "*** Delete File: src/legacy.ts",
+  "*** Update File: src/util.ts",
+  "*** Move to: src/lib/util.ts",
+  "@@",
+  " export function add(a: number, b: number): number {",
+  "   return a + b;",
+  " }",
+  "+",
+  "+export function subtract(a: number, b: number): number {",
+  "+  return a - b;",
+  "+}",
+  "*** End Patch",
+].join("\n");
+
+const MODEL_WRITTEN_PATCH_PATHS = [
+  "src/greet.ts",
+  "src/farewell.ts",
+  "src/lib/util.ts",
+];
+
 describe("extractPathsFromInput", () => {
   it("returns the value at a top-level string field", () => {
     expect(
@@ -96,6 +130,85 @@ describe("extractPathsFromInput", () => {
       ),
     ).toEqual(["a.ts"]);
   });
+
+  describe("patchField", () => {
+    const spec = { patchField: "input" };
+
+    it("returns added, updated, and moved-to paths, skipping deleted files", () => {
+      expect(
+        extractPathsFromInput({ input: MODEL_WRITTEN_PATCH }, spec),
+      ).toEqual(MODEL_WRITTEN_PATCH_PATHS);
+    });
+
+    it("handles CRLF line endings", () => {
+      const patch = MODEL_WRITTEN_PATCH.replaceAll("\n", "\r\n");
+      expect(extractPathsFromInput({ input: patch }, spec)).toEqual(
+        MODEL_WRITTEN_PATCH_PATHS,
+      );
+    });
+
+    it("returns nothing for a patch that only deletes files", () => {
+      const patch = "*** Begin Patch\n*** Delete File: gone.ts\n*** End Patch";
+      expect(extractPathsFromInput({ input: patch }, spec)).toEqual([]);
+    });
+
+    it("ignores a context line that quotes a header", () => {
+      const patch = [
+        "*** Begin Patch",
+        "*** Update File: a.ts",
+        "@@",
+        " *** Add File: fake.ts",
+        "-old",
+        "+new",
+        "*** End Patch",
+      ].join("\n");
+      expect(extractPathsFromInput({ input: patch }, spec)).toEqual(["a.ts"]);
+    });
+
+    it("ignores an added line that quotes a header", () => {
+      const patch = [
+        "*** Begin Patch",
+        "*** Add File: doc.md",
+        "+*** Update File: fake.ts",
+        "*** End Patch",
+      ].join("\n");
+      expect(extractPathsFromInput({ input: patch }, spec)).toEqual(["doc.md"]);
+    });
+
+    it("trims trailing whitespace from a header path", () => {
+      const patch =
+        "*** Begin Patch\n*** Update File: a.ts  \n@@\n-old\n+new\n*** End Patch";
+      expect(extractPathsFromInput({ input: patch }, spec)).toEqual(["a.ts"]);
+    });
+
+    it("reads headers inside a heredoc-wrapped patch", () => {
+      const patch = [
+        "apply_patch <<'EOF'",
+        "*** Begin Patch",
+        "*** Update File: b.ts",
+        "@@",
+        "-old",
+        "+new",
+        "*** End Patch",
+        "EOF",
+      ].join("\n");
+      expect(extractPathsFromInput({ input: patch }, spec)).toEqual(["b.ts"]);
+    });
+
+    it("returns nothing when the patch field is absent or not a string", () => {
+      expect(extractPathsFromInput({}, spec)).toEqual([]);
+      expect(extractPathsFromInput({ input: 42 }, spec)).toEqual([]);
+    });
+
+    it("appends patch paths after pathField paths", () => {
+      expect(
+        extractPathsFromInput(
+          { path: "first.ts", input: MODEL_WRITTEN_PATCH },
+          { pathField: "path", patchField: "input" },
+        ),
+      ).toEqual(["first.ts", ...MODEL_WRITTEN_PATCH_PATHS]);
+    });
+  });
 });
 
 describe("createCustomToolHandler", () => {
@@ -128,6 +241,17 @@ describe("createCustomToolHandler", () => {
     });
 
     expect(handler("mcp_files_write", { other: "x" }, "")).toEqual([]);
+  });
+
+  it("returns the files a patch changes when the spec uses patchField", () => {
+    const handler = createCustomToolHandler({
+      toolName: "apply_patch",
+      patchField: "input",
+    });
+
+    expect(handler("apply_patch", { input: MODEL_WRITTEN_PATCH }, "")).toEqual(
+      MODEL_WRITTEN_PATCH_PATHS,
+    );
   });
 });
 
