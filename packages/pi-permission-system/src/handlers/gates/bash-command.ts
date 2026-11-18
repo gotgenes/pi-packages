@@ -154,6 +154,9 @@ function withAskingUnits(
     .map(({ check, spellings }) => ({
       command: check.command ?? "",
       ...(spellings.length === 0 ? {} : { spellings: [...spellings] }),
+      ...(check.matchedPattern === undefined
+        ? {}
+        : { matchedPattern: check.matchedPattern }),
       ...(check.floor === undefined ? {} : { floor: check.floor }),
     }));
   return askingUnits.length === 0 ? winner : { ...winner, askingUnits };

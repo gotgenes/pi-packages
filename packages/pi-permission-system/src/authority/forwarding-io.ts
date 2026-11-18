@@ -214,11 +214,14 @@ function isWellFormedAskingUnit(value: unknown): value is AskingBashUnit {
   const unit = value as {
     command?: unknown;
     spellings?: unknown;
+    matchedPattern?: unknown;
     floor?: unknown;
   };
   return (
     typeof unit.command === "string" &&
     (unit.spellings === undefined || isNonEmptyStringList(unit.spellings)) &&
+    (unit.matchedPattern === undefined ||
+      typeof unit.matchedPattern === "string") &&
     (unit.floor === undefined || typeof unit.floor === "string")
   );
 }
@@ -236,6 +239,9 @@ function copyAskingUnits(units: readonly AskingBashUnit[]): AskingBashUnit[] {
   return units.map((unit) => ({
     command: unit.command,
     ...(unit.spellings === undefined ? {} : { spellings: [...unit.spellings] }),
+    ...(unit.matchedPattern === undefined
+      ? {}
+      : { matchedPattern: unit.matchedPattern }),
     ...(unit.floor === undefined ? {} : { floor: unit.floor }),
   }));
 }

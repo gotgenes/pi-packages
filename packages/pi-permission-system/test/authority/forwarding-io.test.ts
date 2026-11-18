@@ -313,16 +313,17 @@ describe("readForwardedPermissionRequest — accessIntent field", () => {
       };
     }
 
-    it("round-trips every unit the child left asking, with each one's floor and spellings", () => {
+    it("round-trips every unit the child left asking, with each one's rule, floor, and spellings", () => {
       const accessIntent: ForwardedAccessIntent = {
         surface: "bash",
         matchValues: ["ls"],
         boundaryValue: null,
         askingUnits: [
-          { command: "ls" },
+          { command: "ls", matchedPattern: "*" },
           {
             command: "sudo ~/y",
             spellings: ["sudo /h/y"],
+            matchedPattern: "<indirection-bash-wrapper>",
             floor: "<indirection-bash-wrapper>",
           },
         ],
@@ -338,6 +339,10 @@ describe("readForwardedPermissionRequest — accessIntent field", () => {
       ["an empty list", []],
       ["a unit whose command is not a string", [{ command: 42 }]],
       ["a unit whose floor is not a string", [{ command: "ls", floor: 42 }]],
+      [
+        "a unit whose matched rule is not a string",
+        [{ command: "ls", matchedPattern: 42 }],
+      ],
       ["a unit that is not an object", [null]],
       [
         "a unit whose spellings are not an array",

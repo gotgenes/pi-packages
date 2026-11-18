@@ -438,8 +438,8 @@ describe("subagent registry sharing across factory instances", () => {
     );
     expect(request.accessIntent?.matchValues).toEqual(["ls"]);
     expect(request.accessIntent?.askingUnits).toStrictEqual([
-      { command: "ls" },
-      { command: "rm -rf /tmp/x" },
+      { command: "ls", matchedPattern: "*" },
+      { command: "rm -rf /tmp/x", matchedPattern: "*" },
     ]);
 
     await firePromise;
@@ -484,7 +484,11 @@ describe("subagent registry sharing across factory instances", () => {
       parentSessionId,
     );
     expect(request.accessIntent?.askingUnits).toStrictEqual([
-      { command: "~/bin/tool", spellings: [`${homedir()}/bin/tool`] },
+      {
+        command: "~/bin/tool",
+        spellings: [`${homedir()}/bin/tool`],
+        matchedPattern: "*",
+      },
     ]);
 
     await firePromise;

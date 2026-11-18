@@ -1062,8 +1062,8 @@ describe("resolveBashCommandCheck: the units a chain leaves asking", () => {
     it("lists each rule-asking unit in chain order", () => {
       const result = decide({ "*": "ask" }, "ls && rm -rf /tmp/x");
       expect(result.askingUnits).toStrictEqual([
-        { command: "ls" },
-        { command: "rm -rf /tmp/x" },
+        { command: "ls", matchedPattern: "*" },
+        { command: "rm -rf /tmp/x", matchedPattern: "*" },
       ]);
     });
 
@@ -1072,7 +1072,9 @@ describe("resolveBashCommandCheck: the units a chain leaves asking", () => {
         { "*": "ask", "ls*": "allow" },
         "ls && rm -rf /tmp/x",
       );
-      expect(result.askingUnits).toStrictEqual([{ command: "rm -rf /tmp/x" }]);
+      expect(result.askingUnits).toStrictEqual([
+        { command: "rm -rf /tmp/x", matchedPattern: "*" },
+      ]);
     });
 
     it("names each unit's own floor", () => {
@@ -1081,8 +1083,12 @@ describe("resolveBashCommandCheck: the units a chain leaves asking", () => {
         "git push origin main && sudo rm y",
       );
       expect(result.askingUnits).toStrictEqual([
-        { command: "git push origin main" },
-        { command: "sudo rm y", floor: "<indirection-bash-wrapper>" },
+        { command: "git push origin main", matchedPattern: "git push *" },
+        {
+          command: "sudo rm y",
+          matchedPattern: "<indirection-bash-wrapper>",
+          floor: "<indirection-bash-wrapper>",
+        },
       ]);
     });
 
@@ -1093,7 +1099,7 @@ describe("resolveBashCommandCheck: the units a chain leaves asking", () => {
         [sessionRule("bash", "sudo rm y")],
       );
       expect(result.askingUnits).toStrictEqual([
-        { command: "git push origin main" },
+        { command: "git push origin main", matchedPattern: "git push *" },
       ]);
     });
 
@@ -1105,7 +1111,11 @@ describe("resolveBashCommandCheck: the units a chain leaves asking", () => {
         resolverOver({ "*": "allow" }),
       );
       expect(result.askingUnits).toStrictEqual([
-        { command: "rm x (", floor: "<unparsed-bash-subtree>" },
+        {
+          command: "rm x (",
+          matchedPattern: "<unparsed-bash-subtree>",
+          floor: "<unparsed-bash-subtree>",
+        },
       ]);
     });
   });
@@ -1117,15 +1127,23 @@ describe("resolveBashCommandCheck: the units a chain leaves asking", () => {
     it("a unit typed with a home prefix", () => {
       const result = decide({ "*": "ask" }, "~/bin/x");
       expect(result.askingUnits).toStrictEqual([
-        { command: "~/bin/x", spellings: [`${home}/bin/x`] },
+        {
+          command: "~/bin/x",
+          spellings: [`${home}/bin/x`],
+          matchedPattern: "*",
+        },
       ]);
     });
 
     it("only the spelled unit of a chain", () => {
       const result = decide({ "*": "ask" }, "ls && ~/bin/x");
       expect(result.askingUnits).toStrictEqual([
-        { command: "ls" },
-        { command: "~/bin/x", spellings: [`${home}/bin/x`] },
+        { command: "ls", matchedPattern: "*" },
+        {
+          command: "~/bin/x",
+          spellings: [`${home}/bin/x`],
+          matchedPattern: "*",
+        },
       ]);
     });
 
@@ -1135,6 +1153,7 @@ describe("resolveBashCommandCheck: the units a chain leaves asking", () => {
         {
           command: "sudo ~/bin/x",
           spellings: [`sudo ${home}/bin/x`],
+          matchedPattern: "<indirection-bash-wrapper>",
           floor: "<indirection-bash-wrapper>",
         },
       ]);
@@ -1149,6 +1168,7 @@ describe("resolveBashCommandCheck: the units a chain leaves asking", () => {
         {
           command: "time rm builds/x",
           spellings: [`time rm ${cwd}/builds/x`],
+          matchedPattern: "rm *",
         },
       ]);
     });
@@ -1161,7 +1181,11 @@ describe("resolveBashCommandCheck: the units a chain leaves asking", () => {
         resolverOver({ "*": "allow" }),
       );
       expect(result.askingUnits).toStrictEqual([
-        { command: "~/bin/x (", floor: "<unparsed-bash-subtree>" },
+        {
+          command: "~/bin/x (",
+          matchedPattern: "<unparsed-bash-subtree>",
+          floor: "<unparsed-bash-subtree>",
+        },
       ]);
     });
   });
