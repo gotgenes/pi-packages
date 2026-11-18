@@ -16,10 +16,12 @@ const MODEL_WRITTEN_PATCH = [
   "@@",
   " export function greet(name: string): string {",
   '-  return "Hello, " + name;',
+  // biome-ignore lint/suspicious/noTemplateCurlyInString: patch text quoting TypeScript source
   "+  return `Hello, ${name}`;",
   " }",
   "*** Add File: src/farewell.ts",
   "+export function farewell(name: string): string {",
+  // biome-ignore lint/suspicious/noTemplateCurlyInString: patch text quoting TypeScript source
   "+  return `Goodbye, ${name}`;",
   "+}",
   "*** Delete File: src/legacy.ts",
