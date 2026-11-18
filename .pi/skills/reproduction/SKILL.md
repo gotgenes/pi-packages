@@ -62,6 +62,11 @@ In a monorepo a probe also answers only for the package it ran in: `packages/*/b
 Before generalizing a probe to `packages/*`, re-run it under a package with no local override — #966's plan recorded "Biome ignores this path" from a package whose own config disables the formatter.
 State which side of the extension each row of the results table was measured on.
 
+## Probing a third-party Pi tool
+
+Run the package under test beside the third-party extension and nothing else, logging what the hook receives: `pi -p --no-session --no-extensions -e <capture-ext> -e packages/<pkg> -e <extracted tarball> --tools read,<tool> --model <id>` in a temp repo.
+Run `pi --list-models` before telling the operator a probe needs an account or model family; it lists every provider this machine can reach.
+
 ## A stochastic or cached source needs trials and a defeated cache
 
 An LLM call, a provider-side classifier, an on-disk index, and a timing measurement are all sources where one observation is not a result.

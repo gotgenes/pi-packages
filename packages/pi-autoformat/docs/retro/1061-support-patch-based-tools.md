@@ -189,3 +189,58 @@ Pre-completion reviewer: WARN.
   Every case needs a patch the Codex grammar rejects, so a tool enforcing it reports an error and the result is never recorded; this extends the plan's accepted move residual and was left unfixed.
   The reviewer's suggested fix, if wanted, is to apply a move only when the previous line was an `*** Update File:` header.
 - The `style:` fixup commit carries no `Co-authored-by:` trailer; it touches only the captured fixture, not the contributor's design.
+
+## Stage: Final Retrospective (2026-11-18T07:00:02Z)
+
+### Session summary
+
+One process ran PR review, planning, TDD, ship, and retro for #1061: PR #1072 was triaged to adopt-with-simplified-design, the plan landed three steps (`refactor:`, `feat:`, `docs:`) plus a `style:` fixup, and `pi-autoformat` 5.2.0 shipped with #1061 and PR #1072 closed.
+The design's two departures from the PR (skip deleted paths, header scan instead of grammar validation) both came from evidence gathered in the session, and the deleted-path defect was confirmed end to end against two real `apply_patch` packages before the plan existed.
+
+### Observations
+
+#### What went well
+
+- Real-tool probes became design input and test data.
+  A capture extension logged `tool_result` inputs while `pi -p --no-session --no-extensions -e <capture> -e <pi-autoformat> -e <patch package> --tools read,apply_patch --model radius/gpt-6-luna` ran in a temp repo whose formatter was a recorder that fails on missing files.
+  It reproduced the PR's deleted-path defect, measured its cost (3 and 5 follow-up `read` calls by the model), captured the model-written patch that became the unit-test fixture, and at ship time confirmed the fix end to end (exactly three files, no follow-up reads).
+- Uncertainty handed forward as a measurement, not a claim: the PR review recorded "likely only `validateCustomMutationToolEntry`" for the complexity gate as unverified, and planning measured it on a scratch-worktree spike (`fallow audit` exit 0, 22/39 → 26/46, inherited), which removed the PR's 300-line `config-loader.ts` restructuring from scope.
+- Every edge-case row and killing mutation was run through the planning spike, so the TDD stage's mutation battery (`/tmp/mutate.mjs`, single-match assertion per pattern) reproduced the plan's predictions exactly.
+- The `git-workflow` skill's warning-count rule caught two `noTemplateCurlyInString` warnings that `pnpm run lint` exit 0 hid.
+
+#### What caused friction (agent side)
+
+- `instruction-violation` — Ship stage, on `anthropic/claude-sonnet-5-5`: three consecutive `ask_user` calls were rejected for having no visible text, each re-sent bare, before falling back to a plain-text question.
+  The `clarification-gates` skill (loaded earlier in the same process) says a rejected call is re-sent with its substance in full.
+  Self-identified after the third rejection.
+  Impact: three wasted calls; the plain-text gate then worked.
+- `instruction-violation` — PR Review gate: the parser-strictness question carried a one-line option each and no briefing of its own, so the operator answered "Please provide more information".
+  User-caught.
+  Impact: one extra round trip; the follow-up briefing produced a clean decision.
+- `missing-context` — Asked implicitly whether the operator had model access for a live test ("You don't need a Codex plan…") without first running `pi --list-models`, which lists `radius/gpt-*` models.
+  The operator supplied it.
+  Impact: one round trip.
+- `instruction-violation` — A PR-branch spike test printed its result with `console.log` under Vitest's default reporter, which hides it (`testing` skill), and the `grep` filter showed nothing.
+  Self-identified.
+  Impact: two extra tool calls, rewritten as an assertion.
+- `other` — The refactor commit used `git commit -q -F - <<'EOF'`, the spelling `AGENTS.md` names as a `pi-permission-system` deny rule.
+  The review log shows no event at all for it (commit at 06:39:04Z): the rule did not fire, and no approval prompt fired either.
+  This is #941 (a heredoc absorbs the `-` operand, so the command enumerates as `git commit -F`), still open.
+  Impact: none on this issue; the tripwire is silently inert for its own target spelling.
+
+#### What caused friction (user side)
+
+- The operator's mid-probe pivot ("would a dedicated patch tool help my agents?") and the late disclosure of Radius GPT access both redirected work productively; surfacing model access when the live test was first raised would have saved one round trip.
+- Four `/tmp` probe commands needed operator approval dialogs (`external_directory`); mechanical oversight the probes could avoid by running under a repo-ignored scratch directory.
+
+### Diagnostic details
+
+- **Model-performance correlation** — PR review, planning, and TDD ran on `anthropic/claude-opus-5-5`; the ship stage switched to `anthropic/claude-sonnet-5-5` and produced the only repeated-error sequence (the three bare `ask_user` calls), then the operator switched back to Opus for the live run.
+  Both subagents (`tidy-first-assessor`, `pre-completion-reviewer`) ran on `anthropic/claude-sonnet-5-5`, which fit: the reviewer's own-input enumeration found the `Move to:` overwrite cases the plan had not tested.
+- **Feedback-loop gap analysis** — Verification ran incrementally: per-step Vitest plus `pnpm run check`, mutation battery before each commit, `fallow audit` before the `feat:` commit; root `lint` ran only at the end, which is where the warning-level Biome finding surfaced and forced a separate `style:` commit instead of folding into step 1.
+
+### Changes made
+
+1. `.pi/skills/reproduction/SKILL.md` — new `## Probing a third-party Pi tool` section: the isolated `pi -p --no-extensions` probe shape, and run `pi --list-models` before claiming a probe needs an account or model family.
+2. Commented on #941 (issuecomment-6971579752): the `git commit*-F -*` deny rule did not fire for this session's heredoc commit, and no approval prompt fired either, so the rule's rationale may be gone (one observation).
+3. Declined: filing a follow-up for the `*** Move to:` overwrite warning; it stays an accepted residual recorded in the TDD stage.
