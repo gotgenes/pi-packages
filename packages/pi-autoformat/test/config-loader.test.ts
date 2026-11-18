@@ -565,17 +565,56 @@ describe("loadAutoformatConfig", () => {
 });
 
 describe("validateUserFormatterConfig: customMutationTools", () => {
-  it("accepts entries with pathField or pathFields", () => {
+  it("accepts entries with pathField, pathFields, or patchField", () => {
     const result = validateUserFormatterConfig({
       customMutationTools: [
         { toolName: "a", pathField: "path" },
         { toolName: "b", pathFields: ["target", "args.extra"] },
+        { toolName: "apply_patch", patchField: "input" },
       ],
     });
     expect(result.issues).toEqual([]);
     expect(result.config.customMutationTools).toEqual([
       { toolName: "a", pathField: "path" },
       { toolName: "b", pathFields: ["target", "args.extra"] },
+      { toolName: "apply_patch", patchField: "input" },
+    ]);
+  });
+
+  it("rejects patchField combined with pathField or pathFields", () => {
+    const result = validateUserFormatterConfig({
+      customMutationTools: [
+        { toolName: "x", pathField: "path", patchField: "input" },
+        { toolName: "y", pathFields: ["path"], patchField: "input" },
+      ],
+    });
+    const message =
+      "Expected exactly one of `pathField`, `pathFields`, or `patchField`.";
+    expect(result.issues).toEqual([
+      { path: "customMutationTools[0]", message, sourcePath: undefined },
+      { path: "customMutationTools[1]", message, sourcePath: undefined },
+    ]);
+  });
+
+  it("rejects an empty or non-string patchField", () => {
+    const result = validateUserFormatterConfig({
+      customMutationTools: [
+        { toolName: "a", patchField: "" },
+        { toolName: "b", patchField: 42 },
+      ],
+    });
+    const message = "Expected a non-empty string.";
+    expect(result.issues).toEqual([
+      {
+        path: "customMutationTools[0].patchField",
+        message,
+        sourcePath: undefined,
+      },
+      {
+        path: "customMutationTools[1].patchField",
+        message,
+        sourcePath: undefined,
+      },
     ]);
   });
 

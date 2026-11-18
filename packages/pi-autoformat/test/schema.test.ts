@@ -22,6 +22,10 @@ type SchemaShape = {
     };
     chainStep?: unknown;
     formatterOutputReportingConfig?: FormatterOutputSchema;
+    customMutationToolSpec?: {
+      properties?: Record<string, { type?: string; minLength?: number }>;
+      oneOf?: unknown[];
+    };
   };
   additionalProperties?: boolean;
   properties?: {
@@ -116,6 +120,25 @@ describe("pi-autoformat.schema.json", () => {
       expect(fallback?.minItems).toBe(1);
       expect(fallback?.items?.type).toBe("string");
       expect(fallback?.items?.minLength).toBe(1);
+    });
+  });
+
+  describe("customMutationToolSpec", () => {
+    it("declares patchField as a non-empty string", () => {
+      const patchField =
+        schema.$defs?.customMutationToolSpec?.properties?.patchField;
+      // objectContaining: the description is prose, not part of the contract.
+      expect(patchField).toEqual(
+        expect.objectContaining({ type: "string", minLength: 1 }),
+      );
+    });
+
+    it("requires exactly one of pathField, pathFields, or patchField", () => {
+      expect(schema.$defs?.customMutationToolSpec?.oneOf).toEqual([
+        { required: ["pathField"] },
+        { required: ["pathFields"] },
+        { required: ["patchField"] },
+      ]);
     });
   });
 

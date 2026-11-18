@@ -65,7 +65,7 @@
     },
     "customMutationTools": {
       "type": "array",
-      "description": "Declare non-built-in tools that mutate files. Each entry maps a tool name to the field(s) on the tool's input payload that contain the touched path(s). Use for extension- or MCP-provided tools (e.g. mcp_files_write). Built-in tool names (write, edit, bash, read, grep, find, ls) are rejected.",
+      "description": "Declare non-built-in tools that mutate files. Each entry maps a tool name to the field(s) on the tool's input payload that contain the touched path(s), or to the field holding a Codex-style patch (patchField). Use for extension- or MCP-provided tools (e.g. mcp_files_write, apply_patch). Built-in tool names (write, edit, bash, read, grep, find, ls) are rejected.",
       "items": { "$ref": "#/$defs/customMutationToolSpec" }
     },
     "eventBusMutationChannel": {
@@ -174,11 +174,17 @@
           "minItems": 1,
           "items": { "type": "string", "minLength": 1 },
           "description": "Multiple dotted paths into the tool's input payload. Each resolved value may be a string or string array; arrays are flattened."
+        },
+        "patchField": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Dotted path into the tool's input payload holding a Codex-style patch (*** Begin Patch ... *** End Patch). Files under Add File and Update File headers are formatted; a Move to destination replaces its update path; deleted files are skipped."
         }
       },
       "oneOf": [
-        { "required": ["pathField"], "not": { "required": ["pathFields"] } },
-        { "required": ["pathFields"], "not": { "required": ["pathField"] } }
+        { "required": ["pathField"] },
+        { "required": ["pathFields"] },
+        { "required": ["patchField"] }
       ]
     },
     "formatterDefinition": {
