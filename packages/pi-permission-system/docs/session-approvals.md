@@ -68,6 +68,22 @@ A path that does not exist yet, or a bash token whose base directory is unknown,
 
 When a path ask proves no read/write direction (an extension tool, or `edit`), the session option names its scope as `Yes, allow access to "<pattern>" for this session`.
 
+### Chained commands
+
+Each command of a chain (`&&`, `||`, `;`, `|`, a substitution) is checked on its own, and a deny on any one blocks the call before anything is asked.
+When several commands still ask, one prompt names them all: the first as `command`, and each other as an `also asks` line.
+Its session option records one pattern per asking command, so the same chain runs without a prompt next time:
+
+```text
+command      : cd sub
+also asks    : npm test
+full command : cd sub && npm test
+(s) Yes, allow bash "cd sub*", "npm test*" for this session
+```
+
+Commands that suggest the same pattern record it once, and a command the policy or an earlier grant already allows is not asked about or granted again.
+A forwarded chain's whole-session scope names the same patterns.
+
 ## Bash Arity Table
 
 Bash pattern suggestions use a curated arity dictionary (`src/access-intent/bash/bash-arity.ts`) to determine how many tokens define the "human-understandable subcommand."

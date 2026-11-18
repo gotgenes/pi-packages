@@ -168,6 +168,11 @@ One check a tool call must pass: it names a surface and a value, resolves them a
 A tool call passes through a fixed sequence of six gates (skill read, path, external directory, bash external directory, bash path, tool), and the first block stops the call (an unconditionally denying gate is checked ahead of the rest); for a shell tool, the tool gate checks each command unit.
 A `/skill:` invocation typed by the user has its own input gate.
 
+### Asking unit
+
+A command unit of a bash chain whose own rule, or a floor, resolved `ask`.
+A chain's prompt names its first asking unit as the value and every other one beside it, its session option records one pattern per asking unit, and a forwarded ask carries them all so the serving node judges each.
+
 ### Access intent
 
 The description of what a call accesses (a tool's input, a bash command unit, a set of paths), built without consulting policy and handed by a gate to the resolver.

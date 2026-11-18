@@ -1,6 +1,7 @@
 ---
 status: accepted
 date: 2026-08-14
+amended: 2026-11-18
 ---
 
 # 0011 — The prompt-presentation contract: a complete payload and a bounded render
@@ -10,6 +11,7 @@ date: 2026-08-14
 Accepted.
 This decision states what a permission ask prompt must show, what a renderer may elide, and what bounds its size, so a proposal to change the prompt is judged against a written contract rather than re-argued per pull request.
 It composes with `docs/decisions/0007-model-judge-authorizer-chain-adr.md` (who decides) and `docs/decisions/0010-permission-log-secret-exposure.md` (what the logs persist); it decides presentation only, never policy.
+Amended 2026-11-18 under §3: a bash chain's decision-relevant value is every unit still asking ([#1095]).
 
 ## Context
 
@@ -130,6 +132,12 @@ It is named for what it holds — the permission request's own facts, matching t
 
 Point 5 promotes [#713] from an enhancement to a conformance requirement.
 The Codex `&&` report is the evidence: a prompt that names a wrapper without naming what it runs has not shown the user the action they are approving.
+
+#### Amendment (2026-11-18, [#1095]): a bash chain's value is every asking unit
+
+Point 4 read "the command" as one command, so a chain whose units each asked named only the first and showed the rest as `full command` evidence a budget may drop.
+An answer to that ask approves the whole tool call, and its session option grants every asking unit, so each one is decision-relevant.
+The request group therefore carries the units beyond `value` as `otherAskingUnits`, and every renderer that shows the core shows them; the facts about the matched rule, the executed unit, and the nested context stay the first unit's.
 
 ### 4. Elision rules
 
@@ -310,6 +318,7 @@ The table below names what each existing item becomes under the contract, not th
 [#656]: https://github.com/gotgenes/pi-packages/pull/656
 [#710]: https://github.com/gotgenes/pi-packages/issues/710
 [#713]: https://github.com/gotgenes/pi-packages/issues/713
+[#1095]: https://github.com/gotgenes/pi-packages/issues/1095
 [#716]: https://github.com/gotgenes/pi-packages/pull/716
 [#772]: https://github.com/gotgenes/pi-packages/issues/772
 [#844]: https://github.com/gotgenes/pi-packages/issues/844
