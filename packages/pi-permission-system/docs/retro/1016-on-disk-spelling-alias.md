@@ -133,3 +133,4 @@ One follow-up was filed: #1130, the infra-read exclusion compared lexically agai
 
 1. `.pi/prompts/plan-issue.md` (Module-Level Changes): the reworded-mechanism grep now names the whole `packages/<PKG>/docs/` tree and the descriptive phrase (e.g. `symlink-resolved`), not only the package skill and `test/` comments.
 2. `.pi/prompts/plan-issue.md` (Design Overview): when a change alters a value consumers compare against, list each comparison per consumer with its mismatch fail direction (an exclusion fails toward allow, an allow-list toward ask).
+3. Commented on #1130 linking it to #1018: the same canonical-versus-lexical comparison in `isPiInfrastructureRead`, with #1018 the allow-list side (fails closed) and #1130 the exclusion side (fails open), sharing one fix site.
