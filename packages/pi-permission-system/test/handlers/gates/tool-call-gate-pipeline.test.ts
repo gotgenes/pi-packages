@@ -31,9 +31,11 @@ vi.mock("#src/access-intent/bash/program", () => ({
 
 // Mock node:fs so realpathSync (used by canonicalizePath) is controllable for
 // the per-tool symlink-resolution test. Default implementation is identity.
-const realpathSync = vi.hoisted(() =>
-  vi.fn<(path: string) => string>((p) => p),
-);
+const realpathSync = vi.hoisted(() => {
+  const fn = vi.fn<(path: string) => string>((p) => p);
+  // `native` is the same spy, so the POSIX canonicalizer is controlled too.
+  return Object.assign(fn, { native: fn });
+});
 vi.mock("node:fs", async () => {
   const actual = await vi.importActual<typeof import("node:fs")>("node:fs");
   return {

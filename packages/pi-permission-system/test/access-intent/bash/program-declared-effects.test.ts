@@ -4,9 +4,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Identity realpath, as in the sibling program suites, so no path here depends
 // on what exists on the host.
-const realpathSync = vi.hoisted(() =>
-  vi.fn<(path: string) => string>((p) => p),
-);
+const realpathSync = vi.hoisted(() => {
+  const fn = vi.fn<(path: string) => string>((p) => p);
+  // `native` is the same spy, so the POSIX canonicalizer is controlled too.
+  return Object.assign(fn, { native: fn });
+});
 vi.mock("node:fs", async () => {
   const actual = await vi.importActual<typeof import("node:fs")>("node:fs");
   return {
