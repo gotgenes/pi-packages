@@ -8,6 +8,7 @@ import {
 import {
   type SessionApprovalSuggestion,
   type SessionPatternsSuggestion,
+  suggestBashChainSessionPatterns,
   suggestExactSessionPattern,
   suggestPathSessionPattern,
   suggestSessionPattern,
@@ -106,12 +107,22 @@ function optionFromPatterns(
   };
 }
 
-/** The session option for a gate whose value is not a path. */
+/**
+ * The session option for a gate whose value is not a path.
+ *
+ * A bash chain with several units still asking grants one pattern per unit:
+ * the answer covers every one of them, so the grant has to as well, rather
+ * than only the unit the prompt's value names.
+ */
 function valueSessionOption(
   toolName: string,
   gateSurface: string,
   check: PermissionCheckResult,
 ): SessionOption {
+  const askingCommands = check.askingUnits?.map((unit) => unit.command) ?? [];
+  if (gateSurface === "bash" && askingCommands.length > 1) {
+    return optionFromPatterns(suggestBashChainSessionPatterns(askingCommands));
+  }
   const suggestion = suggestValueSessionPattern(toolName, gateSurface, check);
   return {
     approval: SessionApproval.single(suggestion.surface, suggestion.pattern),

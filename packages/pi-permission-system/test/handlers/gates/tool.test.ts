@@ -488,6 +488,67 @@ describe("describeToolGate", () => {
     expect(desc.logContext.command).toBe("ls");
   });
 
+  describe("a bash chain's session option", () => {
+    function chainCheck(commands: string[]): PermissionCheckResult {
+      return makeCheckResult("ask", {
+        toolName: "bash",
+        source: "bash",
+        command: commands[0],
+        askingUnits: commands.map((command) => ({ command })),
+      });
+    }
+
+    it("grants one pattern per asking unit and names them all", () => {
+      const desc = describeToolGate(
+        makeTcc({ toolName: "bash", input: { command: "cd sub && npm test" } }),
+        chainCheck(["cd sub", "npm test"]),
+        makeFormatter(),
+      );
+      expect(desc.sessionApproval?.grants).toStrictEqual([
+        { surface: "bash", pattern: "cd sub*" },
+        { surface: "bash", pattern: "npm test*" },
+      ]);
+      expect(desc.promptDetails.sessionLabel).toBe(
+        'Yes, allow bash "cd sub*", "npm test*" for this session',
+      );
+    });
+
+    it("grants the single unit exactly as before when it is the only one asking", () => {
+      const desc = describeToolGate(
+        makeTcc({ toolName: "bash", input: { command: "ls && npm test" } }),
+        chainCheck(["npm test"]),
+        makeFormatter(),
+      );
+      expect(desc.sessionApproval?.grants).toStrictEqual([
+        { surface: "bash", pattern: "npm test*" },
+      ]);
+      expect(desc.promptDetails.sessionLabel).toBe(
+        'Yes, allow bash "npm test*" for this session',
+      );
+    });
+
+    it("grants every asking unit of an aliased shell tool's chain", () => {
+      const shell: ShellInvocation = {
+        command: "cd sub && npm test",
+        workdir: undefined,
+      };
+      const desc = describeToolGate(
+        makeTcc({
+          toolName: "exec_command",
+          input: { cmd: "cd sub && npm test" },
+        }),
+        chainCheck(["cd sub", "npm test"]),
+        makeFormatter(),
+        undefined,
+        shell,
+      );
+      expect(desc.sessionApproval?.grants).toStrictEqual([
+        { surface: "bash", pattern: "cd sub*" },
+        { surface: "bash", pattern: "npm test*" },
+      ]);
+    });
+  });
+
   describe("wrapper floor exemption in the review log (#803)", () => {
     function bashGate(check: PermissionCheckResult) {
       return describeToolGate(

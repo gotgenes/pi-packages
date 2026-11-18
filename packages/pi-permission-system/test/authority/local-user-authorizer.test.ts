@@ -447,6 +447,41 @@ describe("LocalUserAuthorizer", () => {
       );
     });
 
+    it("names every pattern of a forwarded bash chain's grants in the scope label", async () => {
+      const { deps, decisionFn } = makeDeps();
+      const authorizer = new LocalUserAuthorizer(deps);
+
+      await authorizer.authorize(
+        makeDetails({
+          toolName: "bash",
+          command: "cd sub",
+          forwarding: {
+            requesterAgentName: "Explore",
+            requesterSessionId: "child-session",
+          },
+          sessionApproval: {
+            grants: [
+              { surface: "bash", pattern: "cd sub*" },
+              { surface: "bash", pattern: "npm test*" },
+            ],
+          },
+        }),
+      );
+
+      expect(decisionFn).toHaveBeenCalledWith(
+        expect.anything(),
+        "Permission Required (Subagent)",
+        expect.anything(),
+        {
+          sessionScope: {
+            subagentLabel: "This subagent ('Explore') only",
+            servingSessionLabel:
+              'The whole session — allow bash "cd sub*", "npm test*" for parent and all subagents',
+          },
+        },
+      );
+    });
+
     it("offers no sessionScope for a forwarded ask without a suggestion", async () => {
       const { deps, decisionFn } = makeDeps();
       const authorizer = new LocalUserAuthorizer(deps);
