@@ -37,3 +37,34 @@ I filed #1131 for the serving-node analogue.
   Declined because the change adds about 5 lines there.
 - `src/authority/forwarding-io.ts`: an asking unit's fields are listed three times (the cast type, the guard, and `copyAskingUnits`).
   Declined because a table-driven version would be the wrong abstraction for an explicit allowlist.
+
+## Stage: Implementation — TDD (2026-11-18T07:31:25Z)
+
+### Session summary
+
+I implemented all 10 TDD steps: 7 `refactor:` steps, 1 `test:` fixture, 1 `feat:`, and 1 `docs:`.
+The new `allow_units` verdict narrows a bash chain's ask, and `narrowedGrants` carries the narrowed session grant back to the local runner, the serving node, and a forwarded child.
+The `pi-permission-system` suite grew from 6488 to 6550 tests, and every killing mutation the plan named turned its tests red.
+
+### Observations
+
+- `makeBashChainPromptDetails`, built from the real `describeToolGate`, became the oracle for `narrowAsk`.
+  A narrowed ask must equal the gate's ask with the settled units absent, so every step 5 test is one `toStrictEqual` against the fixture rather than a hand-written expectation.
+- Step 6 deviation: the old `decideFromVerdict` read an unknown verdict kind as `defer` only implicitly, by falling off the switch.
+  A step object had to state that fallback, so the step added a test pinning it, since this is the version-skew property the plan's "distinct kind" decision rests on.
+  Biome's `noUselessSwitchCase` then moved the fallback from a `default:` arm to a statement after the switch.
+- `fallow dead-code` found an import cycle: `prompt-details-fixtures.ts` imported `makeTcc` from `gate-fixtures.ts`, which already imports it back.
+  The fixture now builds the tool-call context inline.
+  That fix and the lint fix were autosquashed into their steps, since nothing was pushed.
+- The plan listed `docs/cross-extension-api.md` for the verdict list, but that bullet lives in `docs/architecture/architecture.md`, so `cross-extension-api.md` is unchanged.
+  The `package-pi-permission-system` skill also named the three-verdict range, and was updated although the plan did not list it.
+- The first integration attempt failed for two reasons, neither of them a code defect:
+  - the test link's assignment regex (`\S*`) rejected `F="a/b.txt c/d.txt"`, which contains a space;
+  - the serving context had no `sessionManager`, so `LocalUserAuthorizer`'s `describeSession` threw before the dialog.
+- Pre-completion reviewer:
+  - Round 1 was WARN, with three non-blocking hardenings, all folded into the feat commit with discriminating tests:
+    - `narrowAsk` narrows only a `bash`-surface ask;
+    - a narrowed ask offers a session grant only if the original did;
+    - `withNarrowedGrants` keeps a terminal's own `narrowedGrants`.
+  - Round 2 (delta) was WARN, about prose only: ADR 0007 §9 now states those three behaviors.
+    The plan was left as a planning-time snapshot.
