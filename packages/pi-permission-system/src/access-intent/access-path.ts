@@ -45,7 +45,9 @@ export class AccessPath {
    * Pattern-match values for the `external_directory` surface: the lexical
    * alias union plus the canonical alias, so a config pattern on either the
    * typed form (`/tmp/*`) or the symlink-resolved form (`/private/tmp/*`)
-   * matches (#418).
+   * matches (#418). On POSIX the canonical alias is also the spelling the
+   * filesystem stores, so a pattern on `Upper.txt` matches a typed `upper.txt`
+   * that APFS opens as that file.
    *
    * Collapses to the lexical aliases when the canonical equals one of them
    * (e.g. when the path is not a symlink).
@@ -57,7 +59,8 @@ export class AccessPath {
   }
 
   /**
-   * Canonical (symlink-resolved, win32-lowercased) form, for the outside-CWD
+   * Canonical (symlink-resolved, on-disk-spelled on POSIX, win32-lowercased)
+   * form, for the outside-CWD
    * boundary decision and Pi infrastructure-read containment checks.
    *
    * Returns `""` when the path could not be resolved (empty input).

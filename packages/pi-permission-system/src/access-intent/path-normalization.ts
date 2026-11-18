@@ -6,7 +6,8 @@ import type { PathFlavor } from "#src/path/path-flavor";
  * Representation derivation backing {@link AccessPath}: turn an accessed path
  * into the lexical / canonical / policy-value forms the resolver matches
  * against rules. Pure (no filesystem access except `canonicalizePath`'s
- * best-effort symlink resolution); the platform's path semantics arrive as an
+ * best-effort resolution of symlinks and the on-disk spelling); the platform's
+ * path semantics arrive as an
  * injected {@link PathFlavor}, never read ambiently.
  */
 export function normalizePathForComparison(
@@ -110,9 +111,10 @@ export function cwdRelativePolicyValues(
 }
 
 /**
- * Like {@link normalizePathForComparison} but also resolves symlinks via
- * `realpathSync` (best-effort). Use this for containment decisions where the
- * OS-followed path matters, not for pattern matching.
+ * Like {@link normalizePathForComparison} but also resolves symlinks and, on
+ * POSIX, the spelling the filesystem stores, via `canonicalizePath`
+ * (best-effort). Use this for containment decisions where the OS-followed path
+ * matters, not for pattern matching.
  */
 export function canonicalNormalizePathForComparison(
   pathValue: string,

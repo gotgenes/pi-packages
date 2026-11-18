@@ -1,3 +1,4 @@
+import { realpathSync } from "node:fs";
 import type { PlatformPath } from "node:path";
 import { posix as posixPath, win32 as winPath } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -81,6 +82,15 @@ export interface PathFlavor {
    * cannot express (a POSIX URL naming a host).
    */
   fileUrlToPath(url: string): string;
+  /**
+   * Resolve symlinks in an existing absolute path. On POSIX this is the native
+   * `realpath(3)`, which on macOS also returns the spelling the filesystem
+   * stores (its case and Unicode normalization), so a case or NFC variant that
+   * APFS opens as the same file resolves to one spelling; on win32 it is Node's
+   * JS `realpathSync`, whose case the win32 {@link fold} already erases.
+   * Throws like `fs.realpathSync` (`ENOENT`, `ENOTDIR`, `EACCES`, `ELOOP`).
+   */
+  realpath(absolutePath: string): string;
 }
 
 class PlatformPathFlavor implements PathFlavor {
@@ -108,6 +118,12 @@ class PlatformPathFlavor implements PathFlavor {
 
   fileUrlToPath(url: string): string {
     return fileURLToPath(url, { windows: this.windows });
+  }
+
+  realpath(absolutePath: string): string {
+    return this.windows
+      ? realpathSync(absolutePath)
+      : realpathSync.native(absolutePath);
   }
 
   comparable(pathValue: string, base: string): string {

@@ -1,12 +1,12 @@
-import { realpathSync } from "node:fs";
-
 import type { PathFlavor } from "./path-flavor";
 
 /**
- * Resolve symlinks in an absolute path, best-effort.
+ * Resolve an absolute path to the spelling the filesystem reaches, best-effort:
+ * symlinks followed and, on POSIX, each existing component in the case and
+ * Unicode normalization the filesystem stores (via {@link PathFlavor.realpath}).
  *
- * Splits the path into components and tries `realpathSync` from the full path
- * down to `/`, re-appending the non-existent tail to the first ancestor that
+ * Splits the path into components and resolves from the full path down to
+ * `/`, re-appending the non-existent tail (as typed) to the first ancestor that
  * resolves. Returns the input unchanged when no ancestor resolves (unreachable
  * in practice since `/` always exists) or when a non-ENOENT/ENOTDIR error is
  * encountered (e.g. `EACCES`, `ELOOP`), so callers fall back to lexical
@@ -25,7 +25,7 @@ export function canonicalizePath(
   for (let i = parts.length; i >= 0; i--) {
     const candidate = root + parts.slice(0, i).join(impl.sep);
     try {
-      const real = realpathSync(candidate);
+      const real = flavor.realpath(candidate);
       const tail = parts.slice(i);
       return tail.length === 0 ? real : impl.join(real, ...tail);
     } catch (error) {
