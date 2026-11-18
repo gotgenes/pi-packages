@@ -263,6 +263,66 @@ describe("applyPermissionGate", () => {
       });
     });
 
+    describe("a decision whose ask a link narrowed", () => {
+      const narrowedGrants = [{ surface: "bash", pattern: "git commit *" }];
+
+      it("reports the grants the narrowed answer covers", async () => {
+        const params = makeParams({
+          state: "ask",
+          promptForApproval: vi.fn().mockResolvedValue({
+            approved: true,
+            state: "approved_for_session",
+            narrowedGrants,
+            decidedBy: DECIDED_BY_HUMAN,
+          } satisfies PermissionPromptDecision),
+          canGrantForSession: true,
+        });
+        const result = await applyPermissionGate(params);
+        expect(result).toStrictEqual({
+          action: "allow",
+          decidedBy: DECIDED_BY_HUMAN,
+          sessionGrant: { width: "proven", grants: narrowedGrants },
+        });
+      });
+
+      it("reports an empty list as empty, not as the gate's own suggestion", async () => {
+        const params = makeParams({
+          state: "ask",
+          promptForApproval: vi.fn().mockResolvedValue({
+            approved: true,
+            state: "approved_for_session",
+            narrowedGrants: [],
+            decidedBy: DECIDED_BY_HUMAN,
+          } satisfies PermissionPromptDecision),
+          canGrantForSession: true,
+        });
+        const result = await applyPermissionGate(params);
+        expect(result).toStrictEqual({
+          action: "allow",
+          decidedBy: DECIDED_BY_HUMAN,
+          sessionGrant: { width: "proven", grants: [] },
+        });
+      });
+
+      it("names no grants when the answer carries none", async () => {
+        const params = makeParams({
+          state: "ask",
+          promptForApproval: vi.fn().mockResolvedValue({
+            approved: true,
+            state: "approved_for_session",
+            decidedBy: DECIDED_BY_HUMAN,
+          } satisfies PermissionPromptDecision),
+          canGrantForSession: true,
+        });
+        const result = await applyPermissionGate(params);
+        expect(result).toStrictEqual({
+          action: "allow",
+          decidedBy: DECIDED_BY_HUMAN,
+          sessionGrant: { width: "proven" },
+        });
+      });
+    });
+
     it("reports no session grant when the decision is approved (once)", async () => {
       const decision: PermissionPromptDecision = {
         approved: true,

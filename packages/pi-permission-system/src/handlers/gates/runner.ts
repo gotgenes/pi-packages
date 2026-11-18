@@ -11,6 +11,7 @@ import {
   renderRefusal,
 } from "#src/presentation/agent-renderer";
 import { renderReviewLogFacts } from "#src/presentation/review-log-renderer";
+import { SessionApproval } from "#src/session/session-approval";
 import type { SessionApprovalRecorder } from "#src/session/session-approval-recorder";
 import type {
   DecisionEventFacts,
@@ -240,11 +241,15 @@ export class GateRunner {
     );
 
     // 6. Record session approval — tell the store; it owns the per-pattern loop
-    // A present grant already implies gateResult.action === "allow".
-    if (sessionGrant && descriptor.sessionApproval) {
-      this.recorder.recordSessionApproval(
-        descriptor.sessionApproval.atWidth(sessionGrant.width),
-      );
+    // A present grant already implies gateResult.action === "allow". An answer
+    // to an ask a link narrowed names its own grants: the human was shown
+    // those, not the descriptor's suggestion for the whole ask.
+    const approval =
+      sessionGrant?.grants === undefined
+        ? descriptor.sessionApproval
+        : SessionApproval.forGrants(sessionGrant.grants);
+    if (sessionGrant && approval?.isRecordable) {
+      this.recorder.recordSessionApproval(approval.atWidth(sessionGrant.width));
     }
 
     if (gateResult.action === "block") {

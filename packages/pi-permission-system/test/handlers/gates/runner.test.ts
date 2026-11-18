@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
+import type { PermissionPromptDecision } from "#src/authority/permission-dialog";
 import type { GateBypass } from "#src/handlers/gates/descriptor";
 import { EXTENSION_TAG } from "#src/presentation/agent-renderer";
 import type { PermissionDecisionEvent } from "#src/service/permission-events";
@@ -412,6 +413,54 @@ describe("GateRunner — descriptor path", () => {
     expect(deps.recordSessionApproval).toHaveBeenCalledWith(
       SessionApproval.single("external_directory_write", "/outside/a/*"),
     );
+  });
+
+  describe("an answer to an ask a link narrowed", () => {
+    const gateApproval = SessionApproval.forPatterns("bash", [
+      'F="a *',
+      "git commit *",
+    ]);
+
+    function runnerAnswering(decision: Partial<PermissionPromptDecision>) {
+      return makeGateRunner({
+        resolveResult: makeCheckResult({ state: "ask", matchedPattern: "*" }),
+        escalate: vi.fn().mockResolvedValue({
+          approved: true,
+          state: "approved_for_session",
+          decidedBy: DECIDED_BY_HUMAN,
+          ...decision,
+        }),
+      });
+    }
+
+    it("records only the grants the narrowed answer covers", async () => {
+      const { runner, deps } = runnerAnswering({
+        narrowedGrants: [{ surface: "bash", pattern: "git commit *" }],
+      });
+      await runner.run(makeDescriptor({ sessionApproval: gateApproval }), null);
+      expect(deps.recordSessionApproval).toHaveBeenCalledExactlyOnceWith(
+        SessionApproval.single("bash", "git commit *"),
+      );
+    });
+
+    it("records the narrowed grants at the width the answer names", async () => {
+      const { runner, deps } = runnerAnswering({
+        sessionGrantWidth: "family",
+        narrowedGrants: [
+          { surface: "external_directory_write", pattern: "/outside/a/*" },
+        ],
+      });
+      await runner.run(makeDescriptor({ sessionApproval: gateApproval }), null);
+      expect(deps.recordSessionApproval).toHaveBeenCalledExactlyOnceWith(
+        SessionApproval.single("external_directory", "/outside/a/*"),
+      );
+    });
+
+    it("records nothing when the narrowed answer covers no grant", async () => {
+      const { runner, deps } = runnerAnswering({ narrowedGrants: [] });
+      await runner.run(makeDescriptor({ sessionApproval: gateApproval }), null);
+      expect(deps.recordSessionApproval).not.toHaveBeenCalled();
+    });
   });
 
   it("calls recordSessionApproval once with the full SessionApproval when sessionApproval has multiple patterns", async () => {

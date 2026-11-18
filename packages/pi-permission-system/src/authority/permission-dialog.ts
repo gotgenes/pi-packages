@@ -1,4 +1,7 @@
-import type { SessionGrantWidth } from "#src/session/approval-grant";
+import type {
+  ApprovalGrant,
+  SessionGrantWidth,
+} from "#src/session/approval-grant";
 import type { DecisionSource } from "./decision-source";
 
 export type PermissionDecisionState =
@@ -35,6 +38,15 @@ export type PermissionPromptDecision = {
    * direction the gate named, which is what every producer chose before #813.
    */
   sessionGrantWidth?: SessionGrantWidth;
+  /**
+   * The grants a session-scoped answer covers when an authorizer link narrowed
+   * the ask before it was answered, so the recorder grants what the human was
+   * shown rather than the gate's suggestion for the whole ask.
+   *
+   * Absent means the gate's own suggestion; empty means nothing. The two must
+   * never be conflated: absence falls back to the wider grant.
+   */
+  narrowedGrants?: readonly ApprovalGrant[];
   /**
    * What decided this request, stamped by the site that decided it.
    *

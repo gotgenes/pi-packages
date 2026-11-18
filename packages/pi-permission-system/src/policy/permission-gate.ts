@@ -1,6 +1,9 @@
 import type { DecisionSource } from "#src/authority/decision-source";
 import type { PermissionPromptDecision } from "#src/authority/permission-dialog";
-import type { SessionGrantWidth } from "#src/session/approval-grant";
+import type {
+  ApprovalGrant,
+  SessionGrantWidth,
+} from "#src/session/approval-grant";
 
 /**
  * Result of applying the permission gate.
@@ -21,8 +24,14 @@ export type PermissionGateResult =
        * One field rather than a `forSession` flag beside a width: the width is
        * meaningless without the grant, and two optional fields could represent
        * a width for a grant that never happened.
+       *
+       * `grants` is present when an authorizer link narrowed the ask, naming
+       * what the narrowed answer covers in place of the caller's suggestion.
        */
-      sessionGrant?: { width: SessionGrantWidth };
+      sessionGrant?: {
+        width: SessionGrantWidth;
+        grants?: readonly ApprovalGrant[];
+      };
     }
   | { action: "block"; decidedBy: DecisionSource; reason: string };
 
@@ -123,8 +132,13 @@ export async function applyPermissionGate(
       return {
         action: "allow",
         decidedBy,
-        // Absent means the width every producer chose before #813.
-        sessionGrant: { width: decision.sessionGrantWidth ?? "proven" },
+        sessionGrant: {
+          // Absent means the width every producer chose before #813.
+          width: decision.sessionGrantWidth ?? "proven",
+          ...(decision.narrowedGrants === undefined
+            ? {}
+            : { grants: decision.narrowedGrants }),
+        },
       };
     }
     return { action: "allow", decidedBy };
