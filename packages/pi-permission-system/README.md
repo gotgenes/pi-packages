@@ -204,7 +204,7 @@ Hardening the gates against bypass, fail-closed corrections (breaking ones inclu
   A redactor that guesses invites treating the log as safe to share.
 - _Model judgment in the core._
   This package makes no LLM call and holds no model config; model-assisted judging attaches as a chain link over the authorizer seam instead.
-  A link decides nothing until you name it in `authorizerChain`, and its `allow` on an excluded surface is downgraded to `defer` unless the ask carries the nothing-on-disk license.
+  A link decides nothing until you name it in `authorizerChain`, and its `allow` (or its partial allow of a bash chain) on an excluded surface is downgraded to `defer` unless the ask carries the nothing-on-disk license.
 - _Supporting a non-Pi host._
   Built and validated against Pi's extension API and no other: a fork that loads Pi extensions — [Oh My Pi](https://github.com/can1357/oh-my-pi) among them — diverges in payload shape, tool vocabulary, and approval authority, on its own release schedule.
   Input that violates a contract this package already reads is hardened against anyway, because defensive normalization is correct whoever sent it.

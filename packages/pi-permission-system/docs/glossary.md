@@ -19,7 +19,7 @@ The [review log](#review-log) records it with `decidedBy`, naming what decided: 
 
 ### Verdict
 
-What an [authorizer link](#link) returns for an `ask`: `allow`, `deny`, or [`defer`](#defer).
+What an [authorizer link](#link) returns for an `ask`: `allow`, `deny`, [`defer`](#defer), or `allow_units`, which allows some [asking units](#asking-unit) of a bash chain and passes the ask on narrowed to the rest.
 A [terminal](#terminal) returns only `allow` or `deny`.
 See [ADR 0007](decisions/0007-model-judge-authorizer-chain-adr.md) decisions 1 and 2.
 
@@ -172,6 +172,7 @@ A `/skill:` invocation typed by the user has its own input gate.
 
 A command unit of a bash chain whose own rule, or a floor, resolved `ask`.
 A chain's prompt names its first asking unit as the value and every other one beside it, its session option records one pattern per asking unit, and a forwarded ask carries them all so the serving node judges each.
+A link's `allow_units` [verdict](#verdict) settles some of them, and the prompt and its session option then cover only the rest.
 
 ### Access intent
 

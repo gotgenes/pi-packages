@@ -1,7 +1,7 @@
 ---
 status: accepted
 date: 2026-07-15
-amended: 2026-11-16
+amended: 2026-11-18
 ---
 
 # 0007 — Model-assisted permission judge as an Authorizer chain
@@ -16,6 +16,7 @@ Amended 2026-08-14 with §7 (one chain per node), which settles where a subagent
 Amended 2026-10-17 with §8 (the nothing-on-disk license), which lets a link `allow` one narrow class of bash `external_directory` ask that §5 excluded ([#882]).
 Amended 2026-11-16 by `docs/decisions/0016-policy-channels.md` §5, which answers the per-link question §8 left to [#620] and [#799]: the operator may lift §5's cap per link and per surface family (`authorizerTrust`), so the cap is an operator default rather than a boundary, and a judge's `allow` is a first-class outcome.
 The same record adds an auto-approve terminal beside §2's three, reached after the links, and keeps one class of ask capped regardless: an agent's edit to the policy files (ADR 0016 §9).
+Amended 2026-11-18 with §9 (a partial allow), which lets a link decide some asking units of a bash chain and leave the rest to the chain ([#1101]).
 
 ## Context
 
@@ -270,6 +271,44 @@ It ships as a breaking change with a migration note (`docs/migration/0882-nothin
 No first-party link returns `allow` on the family: `pi-permission-model-judge` is deny-first by charter.
 The license is visible to any link on `details.accessIntent`, so adopting it is each link's own decision.
 
+### 9. A link may allow part of a bash chain
+
+An ask over a bash chain covers every unit still asking, and §1's verdicts rule on the whole ask.
+A link that accepts one unit (a plain assignment) and not another (`git commit`) could only defer, so the human was shown the accepted unit as the prompt's value and offered a session grant for it.
+
+**The verdict.**
+A fourth member, `{ kind: "allow_units"; units: readonly string[] }`, names asking units by their command text (`details.accessIntent.askingUnits[].command`).
+Text rather than position: it is what a link reads, and identical text is an identical command, so naming `echo a` settles both units of `echo a; echo a`.
+A name the ask does not list is ignored, so a link can never settle a unit the ask never asked about, and a list that is not an array of strings names nothing.
+
+It is a distinct kind rather than `allow` with a `units` field because of version skew: a chain that predates it reads an unknown kind as `defer`, which is §4's fail-safe reading, where it would read `allow` plus `units` as an allow of the whole call.
+There is no partial `deny`; the call runs as one, so a link that rejects one unit denies the call with §1's `deny`.
+
+**Narrowing.**
+The chain removes the named units and continues with the ask the gate would have raised had they never asked: the first unit left is the value, with its own matched rule, and the `also asks` lines, the session patterns, the session label, and the access facts (`askingUnits`, `matchValues`, `floor`) cover only the units left.
+The new value's wrapper, substitution context, and matched spelling are known only for the gate's winner, so a narrowed ask whose value changed shows its command and rule without them.
+The next link, and in the end the terminal, sees the narrowed ask.
+Only an ask on the `bash` surface is narrowed, and a narrowed ask offers a session grant only if the original offered one: narrowing only ever shrinks what the human is asked to grant.
+Naming every unit left allows the call, attributed to the link that settled the last unit and non-persistent like any link grant; naming none of them defers.
+Each narrowing writes `authorizer_units_allowed` (`requestId`, `link`, `allowedUnits`, `remainingUnits`), with both lists masked as command-bearing fields, because the decision for the call names only whoever decided the rest.
+The gate-level records of the ask (the `permission_request.*` entries and the decision event) keep naming the gate's winner.
+
+**The envelope.**
+§5's checkpoint caps `allow_units` exactly as `allow`.
+An excluded-surface ask never carries asking units, so a partial allow there would defer anyway.
+
+**The grant.**
+The gate's session suggestion covers every asking unit, and it is what the runner, a serving node's whole-session scope, and a forwarded child each record.
+So a session answer to a narrowed ask carries the narrowed grants (`narrowedGrants`) back to whichever records it, on the forwarding response for a child's own scope.
+Absence means "the gate's suggestion", which is the wider grant, so a narrowed answer that covers no pattern carries an empty list, and a malformed list on the wire reads as empty.
+A terminal answer that already names narrowed grants keeps them: they are the narrower list, from a serving node that narrowed the ask further along its path.
+
+**The accepted residual** is version skew in one direction: a child that predates the field drops it from a newer serving node's response, and a child-scope session grant on a narrowed forwarded ask then records the child's whole suggestion, including the patterns of units the link accepted.
+It needs a newer serving node, an older child, a narrowing link, and the child scope together, and the extra patterns name units the operator's own link accepts.
+
+**What this does not decide.**
+A serving node's own rules can also leave part of a forwarded chain decided; narrowing by recorded authority rather than a link's judgment is [#1131].
+
 ### Relationship to `evaluate()` and rule-driven promotion
 
 The judge sits on the ask-*consuming* side of `evaluate()`, distinct from the ask-*producing* side (rule-driven promotion, [#509]).
@@ -290,6 +329,7 @@ The two compose cleanly: a promoted token emits the same structured descriptor a
   The concrete issue is filed by the next `/plan-improvements` pass when the phase is scoped.
 - No code, config, schema, or default changes in this documentation step.
 - The 2026-10-17 amendment (§8) adds the nothing-on-disk license to `ForwardedAccessFacts`, an exception to the bounded-delegation checkpoint, and the `authorizer_allow_licensed` review record; it is the first relaxation of the checkpoint, and it ships as a breaking change.
+- The 2026-11-18 amendment (§9) adds the `allow_units` verdict, the `authorizer_units_allowed` review record, each asking unit's matched rule on the wire, and `narrowedGrants` on the decision and the forwarding response; nothing changes until a link returns it, so it is not breaking.
 
 ### Rejected alternatives
 
@@ -344,3 +384,5 @@ The two compose cleanly: a promoted token emits the same structured descriptor a
 [#880]: https://github.com/gotgenes/pi-packages/issues/880
 [#882]: https://github.com/gotgenes/pi-packages/issues/882
 [#983]: https://github.com/gotgenes/pi-packages/pull/983
+[#1101]: https://github.com/gotgenes/pi-packages/issues/1101
+[#1131]: https://github.com/gotgenes/pi-packages/issues/1131

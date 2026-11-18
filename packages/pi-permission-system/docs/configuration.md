@@ -378,9 +378,12 @@ These review-log records make the chain observable, all keyed by the ask's `requ
 | `authorizer_chain_unregistered_link` | a configured name had no registered link — a real misconfiguration; the ask still reaches the terminal, and the first skip of that name also warns you |
 | `authorizer_allow_licensed`          | a link's `allow` on an `external_directory` ask was honored because the ask carried the nothing-on-disk license; names the `link` and the `license`    |
 | `authorizer_link_vacant`             | a link was registered on a relaying node, which runs no chain — accepted and recorded, never consulted                                                 |
+| `authorizer_units_allowed`           | a link allowed part of a bash chain (`allow_units`); names the `link`, the `allowedUnits`, and the `remainingUnits` the ask continued with             |
 
 Extension authors: register a link from a `permissions:ready` handler via `getPermissionsService(sessionId).registerAuthorizer(name, authorize)`, taking `sessionId` from that event's payload; the callback receives the ask details and a narrow, session-scoped `PermissionQuery` (`checkPermission` / `getToolPermission`) so it can consult the deterministic engine at gate parity.
 The details' `accessIntent` carries the gate surface the rule fired on and, on a licensed bash `external_directory` ask, `delegationLicense: "nothing-on-disk"`; a link that allows only what the checkpoint will honor can read it before calling a model.
+The callback returns `{ kind: "allow" }`, `{ kind: "deny", reason? }`, `{ kind: "defer" }`, or, for a bash chain, `{ kind: "allow_units", units }`: it names the asking units it accepts by their `accessIntent.askingUnits[].command` text, and the ask continues to the next link and the prompt with only the rest, so the prompt and its session option name what is still undecided.
+Naming every asking unit allows the call; naming none defers.
 Registration returns a disposer, and only one link may hold a given name.
 Register in every session without branching: a session that relays its asks accepts the link and records `authorizer_link_vacant` rather than refusing it.
 For a complete working example, see [`@gotgenes/pi-permission-model-judge`](https://github.com/gotgenes/pi-packages/tree/main/packages/pi-permission-model-judge): it registers a `model-judge` link on `permissions:ready` that reviews `external_directory` asks and auto-denies mistyped paths with a corrective reason.

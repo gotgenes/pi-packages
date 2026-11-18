@@ -84,6 +84,9 @@ full command : cd sub && npm test
 Commands that suggest the same pattern record it once, and a command the policy or an earlier grant already allows is not asked about or granted again.
 A forwarded chain's whole-session scope names the same patterns.
 
+An [authorizer link](configuration.md#authorizer-chain--case-by-case-decision-links) can settle some commands of a chain itself (`allow_units`).
+The prompt then names only the commands still undecided, and its session option grants only their patterns.
+
 ## Bash Arity Table
 
 Bash pattern suggestions use a curated arity dictionary (`src/access-intent/bash/bash-arity.ts`) to determine how many tokens define the "human-understandable subcommand."
