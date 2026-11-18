@@ -78,18 +78,30 @@ function askValue(
 /**
  * Every other unit of a bash chain the gate left asking, beside the one the
  * value names: the answer covers them all, so the ask has to name them all.
- *
- * Only the first unit matching the value is removed, so a repeated command
- * (`echo a; echo a`) is still listed once. Absent when the value is the only
- * asking unit.
  */
 function otherAskingUnitsFact(
   check: PermissionCheckResult,
   bash: boolean,
 ): { otherAskingUnits?: string[] } {
   if (!bash || check.askingUnits === undefined) return {};
-  const commands = check.askingUnits.map((unit) => unit.command);
-  const valueIndex = commands.indexOf(check.command ?? "");
+  return otherAskingUnits(
+    check.askingUnits.map((unit) => unit.command),
+    check.command ?? "",
+  );
+}
+
+/**
+ * The asking commands beside the one `value` names.
+ *
+ * Only the first command matching the value is removed, so a repeated command
+ * (`echo a; echo a`) is still listed once. Absent when the value is the only
+ * asking unit.
+ */
+function otherAskingUnits(
+  commands: readonly string[],
+  value: string,
+): { otherAskingUnits?: string[] } {
+  const valueIndex = commands.indexOf(value);
   const others = commands.filter((_command, index) => index !== valueIndex);
   return others.length === 0 ? {} : { otherAskingUnits: others };
 }
