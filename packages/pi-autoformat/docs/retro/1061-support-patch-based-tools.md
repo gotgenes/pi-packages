@@ -165,3 +165,27 @@ The PR Review stage had already settled direction, so the Decide gate was satisf
 - The schema's existing `not` clauses are redundant under `oneOf`; the plan collapses it to three required-only branches.
 - The Tidy-First assessor recommended no preparatory commits; it rated a shared non-empty-string helper optional (two call sites, eight similar sites elsewhere invite scope creep) and noted the existing both/neither tests assert only issue paths, so step 2 asserts the new exclusivity message explicitly.
 - `pi-autoformat` reflow trims a meaningful leading space inside a code span; the plan states it in prose instead.
+
+## Stage: Implementation — TDD (2026-11-18T06:46:49Z)
+
+### Session summary
+
+Implemented all three plan steps: patch-path extraction (`refactor(pi-autoformat): extract file paths from Codex-style patch input`), loader and schema acceptance (`feat(pi-autoformat): format files changed by patch-based tools via customMutationTools patchField`), and `docs/configuration.md`, plus one `style:` fixup. pi-autoformat tests went from 307 to 321; every gate (`check`, root `lint`, `test`, `fallow dead-code`, `fallow audit --base origin/main`) is green.
+
+### Observations
+
+- Two new tests stayed green during Red and were tightened or checked by mutation: the empty/non-string `patchField` test passed pre-feature because today's "Unknown property." issue lands on the same `.patchField` path, so it now asserts the full issue including "Expected a non-empty string."; the delete-only case is killed by the delete-header mutation.
+- All planned mutations killed their predicted tests; an extra substring-match mutation (`line.includes(prefix)`) was added to pin the added-line-quotes-a-header case, which no planned mutation covered.
+  The count-only-path-keys mutation also kills the acceptance test (a `patchField`-only entry counts zero settings), one more than the plan named.
+- `fallow audit` measured as at planning: `validateCustomMutationToolEntry` 26 cyclomatic / 46 cognitive, inherited, exit 0.
+- Deviation: the model-written fixture quotes TypeScript template literals, which Biome's `noTemplateCurlyInString` reports at warning level (exit 0, so only a warning count caught it); fixed with two reasoned `biome-ignore` comments in a separate `style:` commit, since the latest feat commit was no longer `HEAD`.
+- The docs name the `patch` field variant in prose and show only `input` in the JSON example.
+
+#### Reviewer warnings
+
+Pre-completion reviewer: WARN.
+
+- A `*** Move to:` line overwrites the last queued path regardless of what precedes it, so grammar-invalid sequences (`Update a.ts` / `Delete c.ts` / `Move to: d.ts`, or two consecutive moves) lose or replace a path; no test pins them.
+  Every case needs a patch the Codex grammar rejects, so a tool enforcing it reports an error and the result is never recorded; this extends the plan's accepted move residual and was left unfixed.
+  The reviewer's suggested fix, if wanted, is to apply a move only when the previous line was an `*** Update File:` header.
+- The `style:` fixup commit carries no `Co-authored-by:` trailer; it touches only the captured fixture, not the contributor's design.
