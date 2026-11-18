@@ -1,5 +1,16 @@
 # Changelog
 
+## [5.2.0](https://github.com/gotgenes/pi-packages/compare/pi-autoformat-v5.1.11...pi-autoformat-v5.2.0) (2026-11-18)
+
+
+### Features
+
+* **pi-autoformat:** format files changed by patch-based tools via customMutationTools patchField ([cd6afbf](https://github.com/gotgenes/pi-packages/commit/cd6afbf5809a614e0454479a5d27852323945307)), closes [#1061](https://github.com/gotgenes/pi-packages/issues/1061)
+
+### Documentation
+
+* **pi-autoformat:** document patchField for patch-based tools ([9b5e5aa](https://github.com/gotgenes/pi-packages/commit/9b5e5aad59a733b9b46d2f80f7b7e8dc8281e4b6)), closes [#1061](https://github.com/gotgenes/pi-packages/issues/1061)
+
 ## [5.1.11](https://github.com/gotgenes/pi-packages/compare/pi-autoformat-v5.1.10...pi-autoformat-v5.1.11) (2026-10-02)
 
 
