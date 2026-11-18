@@ -68,3 +68,17 @@ The `pi-permission-system` suite grew from 6488 to 6550 tests, and every killing
     - `withNarrowedGrants` keeps a terminal's own `narrowedGrants`.
   - Round 2 (delta) was WARN, about prose only: ADR 0007 §9 now states those three behaviors.
     The plan was left as a planning-time snapshot.
+
+## Stage: Sync (worktree) (2026-11-18T16:52:18Z)
+
+### Session summary
+
+Root `pnpm run lint` and `pnpm fallow dead-code` both pass on the branch, and neither reviewer WARN left an operator decision open.
+The plan's marker is `**Release:** ship independently`, so root's `/ship` names `pi-permission-system` on its own.
+The follow-up #1131 (serving-node narrowing) is filed and linked from the plan and ADR 0007 §9.
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-1101--/2026-11-18T06-26-36-074Z_01a1ed55-f5a9-7089-98d0-0bb29f4f450a.jsonl` — read with `read_session_file({ path: "<path>" })` for message-level verification at land/retro time.
+
+### Observations
+
+The feat commit carries the `Co-authored-by:` trailer for Raymond Neilson, who proposed `allow_units` on #1095; confirm it survives the ff-merge with `git interpret-trailers --parse` before the close comment names him.
