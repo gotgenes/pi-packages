@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [42.1.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v42.0.3...pi-permission-system-v42.1.0) (2026-11-18)
+
+
+### Features
+
+* **pi-permission-system:** the prompt payload names every other unit of a chain still asking ([9f488e2](https://github.com/gotgenes/pi-packages/commit/9f488e201126f88ff309e3f374f01ee8174c764c)), closes [#1095](https://github.com/gotgenes/pi-packages/issues/1095)
+
+### Bug Fixes
+
+* **pi-permission-system:** a cd session option names its directory instead of every cd ([eacad97](https://github.com/gotgenes/pi-packages/commit/eacad973e39edcaace49a5de763fd363a1e2995a)), closes [#1095](https://github.com/gotgenes/pi-packages/issues/1095)
+* **pi-permission-system:** a chain's session option grants every unit the prompt asked about ([c7c3f67](https://github.com/gotgenes/pi-packages/commit/c7c3f6773cc3d6d33544add87c1745c8f047ba26)), closes [#1095](https://github.com/gotgenes/pi-packages/issues/1095)
+* **pi-permission-system:** the permission dialog names every unit of a chain still asking ([b6c34ff](https://github.com/gotgenes/pi-packages/commit/b6c34ff1225c0cc4b67bc3ce17b79299ca0a4ae2)), closes [#1095](https://github.com/gotgenes/pi-packages/issues/1095)
+
+### Documentation
+
+* **pi-permission-system:** document chained-command prompts and session grants ([a074404](https://github.com/gotgenes/pi-packages/commit/a0744047d94e6969f93643402d076ae2540c1422)), closes [#1095](https://github.com/gotgenes/pi-packages/issues/1095)
+
 ## [42.0.3](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v42.0.2...pi-permission-system-v42.0.3) (2026-11-18)
 
 
