@@ -7,6 +7,7 @@ import {
 } from "#src/access-intent/tool-kind";
 import {
   type SessionApprovalSuggestion,
+  type SessionPatternsSuggestion,
   suggestExactSessionPattern,
   suggestPathSessionPattern,
   suggestSessionPattern,
@@ -87,7 +88,15 @@ function pathSessionOption(
   gateSurface: string,
   approvalPatterns: readonly string[],
 ): SessionOption {
-  const suggestion = suggestPathSessionPattern(gateSurface, approvalPatterns);
+  return optionFromPatterns(
+    suggestPathSessionPattern(gateSurface, approvalPatterns),
+  );
+}
+
+/** The session option recording every pattern a suggestion names. */
+function optionFromPatterns(
+  suggestion: SessionPatternsSuggestion,
+): SessionOption {
   return {
     approval: SessionApproval.forPatterns(
       suggestion.surface,

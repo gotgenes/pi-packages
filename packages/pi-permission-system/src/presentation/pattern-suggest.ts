@@ -275,8 +275,11 @@ export function suggestSessionPattern(
   return { surface, pattern, label: buildLabel(pattern, surface) };
 }
 
-/** The suggestion for a path surface: every pattern to record, one label. */
-export interface PathSessionSuggestion {
+/**
+ * A session suggestion that records several patterns under one label: a path
+ * surface's directory pair, or one pattern per asking unit of a bash chain.
+ */
+export interface SessionPatternsSuggestion {
   /** The permission surface this approval applies to. */
   surface: string;
   /** The wildcard patterns to store as session rules. */
@@ -297,7 +300,7 @@ export interface PathSessionSuggestion {
 export function suggestPathSessionPattern(
   surface: string,
   approvalPatterns: readonly string[],
-): PathSessionSuggestion {
+): SessionPatternsSuggestion {
   const targets = grantTargets(
     approvalPatterns.map((pattern) => ({ surface, pattern })),
   );
