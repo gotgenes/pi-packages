@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [42.2.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v42.1.0...pi-permission-system-v42.2.0) (2026-11-18)
+
+
+### Features
+
+* **pi-permission-system:** an authorizer link can allow part of a bash chain and leave the rest to the prompt ([f0d8cc4](https://github.com/gotgenes/pi-packages/commit/f0d8cc4662261d8da9809f112032379fefcc3b68)), closes [#1101](https://github.com/gotgenes/pi-packages/issues/1101)
+
+### Documentation
+
+* **pi-permission-system:** document a link's partial allow over a bash chain ([2018fa8](https://github.com/gotgenes/pi-packages/commit/2018fa8951ad4e093d32fa1f2144d43b820fe4aa))
+
 ## [42.1.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v42.0.3...pi-permission-system-v42.1.0) (2026-11-18)
 
 
