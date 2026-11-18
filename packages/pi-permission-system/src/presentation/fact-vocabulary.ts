@@ -23,13 +23,15 @@ import {
  * The decision-relevant value for every shape but one: a bash ask that escaped
  * the working directory flags the paths it referenced, not the command that
  * referenced them — the command is the context, and the paths are what the
- * operator is ruling on.
+ * operator is ruling on. A bash chain also flags every other unit still
+ * asking, since the answer covers each of them.
  */
 export function flaggedElements(payload: PromptPayload): readonly string[] {
   if (payload.kind === "bash_external_directory") {
     return allEvidence(payload, "external path").map((entry) => entry.text);
   }
-  return payload.request.value === "" ? [] : [payload.request.value];
+  const { value, otherAskingUnits = [] } = payload.request;
+  return [...(value === "" ? [] : [value]), ...otherAskingUnits];
 }
 
 /**

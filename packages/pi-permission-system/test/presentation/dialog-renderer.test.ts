@@ -224,6 +224,66 @@ describe("renderPromptDialog", () => {
     });
   });
 
+  describe("a bash chain's other asking units", () => {
+    /** A chain ask whose value is the first asking unit. */
+    function chainAsk(otherAskingUnits: string[], fullCommand: string) {
+      return makePromptPayload({
+        kind: "bash",
+        request: requestFacts({
+          surface: "bash",
+          toolName: "bash",
+          value: "cd sub",
+          matchedPattern: "*",
+          otherAskingUnits,
+        }),
+        evidence: [{ label: "full command", text: fullCommand, detail: null }],
+      });
+    }
+
+    it("names each one after the command line", () => {
+      expect(
+        renderPromptDialog(chainAsk(["npm test"], "cd sub && npm test"), WIDE)
+          .lines,
+      ).toEqual([
+        "tool         : bash",
+        "rule         : *",
+        "command      : cd sub",
+        "also asks    : npm test",
+        "full command : cd sub && npm test",
+      ]);
+    });
+
+    it("paints each one in the full command", () => {
+      const mark = (text: string) => `[${text}]`;
+      expect(
+        renderPromptDialog(
+          chainAsk(["npm test"], "cd sub && npm test"),
+          WIDE,
+          mark,
+        ).lines.at(-1),
+      ).toBe("full command : [cd sub] && [npm test]");
+    });
+
+    it("keeps every one when the row budget drops the evidence", () => {
+      const view = renderPromptDialog(
+        chainAsk(
+          ["npm test", "npm run lint"],
+          "cd sub && npm test && npm run lint",
+        ),
+        { maxRows: 1, fieldMaxWidth: 200, width: 200 },
+      );
+
+      expect(view.lines).toEqual([
+        "tool         : bash",
+        "rule         : *",
+        "command      : cd sub",
+        "also asks    : npm test",
+        "also asks    : npm run lint",
+      ]);
+      expect(view.elided).toBe(true);
+    });
+  });
+
   describe("why the direction was chosen", () => {
     /** A bash external-directory ask whose deciding path is unproven. */
     const unprovenEscape = makePromptPayload({

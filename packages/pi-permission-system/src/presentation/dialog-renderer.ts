@@ -229,6 +229,11 @@ function coreFacts(payload: PromptPayload): Fact[] {
   if (request.value !== "" && request.value !== request.toolName) {
     facts.push({ label, text: request.value });
   }
+  // The answer covers every unit of a chain still asking, so each is core:
+  // a budget that dropped one would hide part of what is being approved.
+  for (const unit of request.otherAskingUnits ?? []) {
+    facts.push({ label: "also asks", text: unit });
+  }
   const why = describeDecidingPath(payload);
   if (why !== undefined) {
     facts.push({ label: "why", text: why });

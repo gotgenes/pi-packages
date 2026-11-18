@@ -46,6 +46,16 @@ describe("flaggedElements", () => {
     ]);
   });
 
+  it("flags every asking unit of a bash chain", () => {
+    const base = payloadOf("bash", "cd sub");
+    expect(
+      flaggedElements({
+        ...base,
+        request: { ...base.request, otherAskingUnits: ["npm test"] },
+      }),
+    ).toEqual(["cd sub", "npm test"]);
+  });
+
   it("flags the escaping paths rather than the command for a bash external-directory ask", () => {
     expect(
       flaggedElements(
