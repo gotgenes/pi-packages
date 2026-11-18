@@ -74,3 +74,76 @@ Attribution: every implementation and docs commit ends with the trailer below (f
 ```text
 Co-authored-by: Michael Mior <michael@onechronos.com>
 ```
+
+### Real-world verification
+
+After the decision, two one-time end-to-end runs exercised the PR branch (`9c3c9183`) against real third-party patch tools; no automated acceptance test is wanted.
+
+#### Patch tools in the ecosystem
+
+Pi registers no `apply_patch` itself.
+These npm packages do, ranked by last-month downloads from `api.npmjs.org`; the field name was read from each published tarball.
+
+| Package                                 | Downloads/month | Patch field                                                         |
+| --------------------------------------- | --------------- | ------------------------------------------------------------------- |
+| `@howaboua/pi-codex-conversion`         | 30908           | `input` (`prepareArguments` folds `patch`/`patchText` into `input`) |
+| `@maxiaochao/pi-toolkit` (`codex-edit`) | 13634           | `patch`                                                             |
+| `pi-openai-codex-compat`                | 3589            | `patch`                                                             |
+| `@d3ara1n/pi-apply-patch`               | 2863            | `input`                                                             |
+| `pi-apply-patch`                        | 221             | `input`                                                             |
+
+The field name varies, which supports a configurable `patchField` over a hardcoded handler; the docs example should show both `input` and `patch`.
+None of the four inspected packages emit on `autoformat:touched`.
+`@howaboua/pi-codex-conversion` returns `isError: true` on a `partial_failure`, so pi-autoformat skips a partly applied patch; document that limit.
+
+#### Method
+
+- Each run used a fresh temp git repo with `src/greet.ts`, `src/legacy.ts`, and `src/util.ts`, and a project pi-autoformat config chaining `.ts` to a recorder formatter that logs its arguments and exits 1 when a file is missing, as a real formatter does.
+- Invocation: `pi -p --no-session --no-extensions -e <capture> -e <PR pi-autoformat> -e <patch package> --tools read,apply_patch --model radius/gpt-6-luna` (Pi 1.5.2), so only the PR copy of pi-autoformat and the patch package sat between the model and the files.
+- A capture extension logged every `tool_result` input exactly as pi-autoformat receives it.
+- The prompt directed one `apply_patch` call that updates `src/greet.ts`, adds `src/farewell.ts`, deletes `src/legacy.ts`, and moves `src/util.ts` to `src/lib/util.ts` with an edit.
+- `@howaboua/pi-codex-conversion` needed a project `.pi/pi-codex-conversion.json` with `scope.allProviders: "extras"` and `tools.applyPatchOnly: true` (plus `--approve`), because its default scope only activates for Codex-like models and the `radius` provider does not match.
+- n = 1 per package, one model, directed prompt; this confirms the mechanism, not a rate.
+
+#### Results
+
+| Run | Package                         | `tool_result` input key | Paths handed to the formatter                         | Outcome                                                          |
+| --- | ------------------------------- | ----------------------- | ----------------------------------------------------- | ---------------------------------------------------------------- |
+| 1   | `@d3ara1n/pi-apply-patch@0.9.0` | `input`                 | `greet.ts`, `farewell.ts`, `legacy.ts`, `lib/util.ts` | `legacy.ts` missing, whole batch reported as a formatter failure |
+| 2   | `@howaboua/pi-codex-conversion` | `input`                 | `greet.ts`, `farewell.ts`, `legacy.ts`, `lib/util.ts` | Same failure                                                     |
+
+- Both runs confirm the deleted-path defect end to end: one missing path fails the single formatter invocation for the whole batch, so the files that did change are reported as failed too.
+- The failure also cost model turns: after the warning the model issued 3 more `read` calls in run 1 and 5 in run 2 to investigate.
+- The move destination (`src/lib/util.ts`) was resolved correctly, and the move source never reached the formatter.
+- The agreed header scan, without deleted paths, yields `src/greet.ts`, `src/farewell.ts`, `src/lib/util.ts` for this patch, which is the correct set.
+
+Both runs produced this model-written patch, an organic fixture for the plan's tests:
+
+```text
+*** Begin Patch
+*** Update File: src/greet.ts
+@@
+ export function greet(name: string): string {
+-  return "Hello, " + name;
++  return `Hello, ${name}`;
+ }
+*** Add File: src/farewell.ts
++export function farewell(name: string): string {
++  return `Goodbye, ${name}`;
++}
+*** Delete File: src/legacy.ts
+*** Update File: src/util.ts
+*** Move to: src/lib/util.ts
+@@
+ export function add(a: number, b: number): number {
+   return a + b;
+ }
++
++export function subtract(a: number, b: number): number {
++  return a - b;
++}
+*** End Patch
+```
+
+The operator's agents run Claude, and an evaluation of adopting a patch tool locally found it not worth it for Anthropic models: `pi-permission-system`'s `PATH_BEARING_TOOLS` (`src/access-intent/path-surfaces.ts`) excludes `apply_patch`, so path rules would not see patched files.
+That is out of scope for #1061 but is the gap to file if GPT-driven agents ever adopt a patch tool here.
