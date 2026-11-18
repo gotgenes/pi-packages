@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import { findEvidence } from "#src/presentation/prompt-payload";
 import {
   buildToolAskPayload,
+  narrowBashAskPayload,
   type ToolAskFacts,
 } from "#src/presentation/tool-ask-payload";
 import type { ToolInputFormatterLookup } from "#src/tool-input/tool-input-formatter-registry";
@@ -379,6 +380,113 @@ describe("buildToolAskPayload", () => {
         buildPayload({ check: toolResult("task"), input: { path: "/src" } })
           .evidence,
       ).toEqual([]);
+    });
+  });
+});
+
+describe("narrowBashAskPayload", () => {
+  /** A three-unit chain whose winner is a wrapper run in a substitution. */
+  function chainPayload() {
+    return buildPayload({
+      check: toolResult("bash", {
+        command: "sudo rm x",
+        matchedPattern: "<indirection-bash-wrapper>",
+        matchedSpelling: "sudo rm /abs/x",
+        executedUnit: "rm x",
+        commandContext: "command_substitution",
+        askingUnits: [
+          {
+            command: "sudo rm x",
+            matchedPattern: "<indirection-bash-wrapper>",
+          },
+          { command: "git commit -m y", matchedPattern: "git commit *" },
+          { command: "npm test", matchedPattern: "*" },
+        ],
+      }),
+      surface: "bash",
+      input: { command: "echo $(sudo rm x) && git commit -m y && npm test" },
+    });
+  }
+
+  describe("when the value is still the first asking unit", () => {
+    test("keeps every fact of the value and lists only the units left", () => {
+      const payload = chainPayload();
+
+      const narrowed = narrowBashAskPayload(payload, [
+        { command: "sudo rm x", matchedPattern: "<indirection-bash-wrapper>" },
+        { command: "npm test", matchedPattern: "*" },
+      ]);
+
+      expect(narrowed).toStrictEqual({
+        ...payload,
+        request: { ...payload.request, otherAskingUnits: ["npm test"] },
+      });
+    });
+  });
+
+  describe("when the value's unit is no longer asking", () => {
+    test("names the next unit with its own rule and drops the value's other facts", () => {
+      const payload = chainPayload();
+
+      const narrowed = narrowBashAskPayload(payload, [
+        { command: "git commit -m y", matchedPattern: "git commit *" },
+        { command: "npm test", matchedPattern: "*" },
+      ]);
+
+      expect(narrowed).toStrictEqual({
+        ...payload,
+        request: {
+          ...payload.request,
+          value: "git commit -m y",
+          matchedPattern: "git commit *",
+          matchedSpelling: null,
+          executedUnit: null,
+          commandContext: null,
+          otherAskingUnits: ["npm test"],
+        },
+      });
+    });
+
+    test("leaves the other-units fact out when one unit is left", () => {
+      const payload = chainPayload();
+
+      const narrowed = narrowBashAskPayload(payload, [
+        { command: "npm test", matchedPattern: "*" },
+      ]);
+
+      const { otherAskingUnits: _dropped, ...request } = payload.request;
+      expect(narrowed).toStrictEqual({
+        ...payload,
+        request: {
+          ...request,
+          value: "npm test",
+          matchedPattern: "*",
+          matchedSpelling: null,
+          executedUnit: null,
+          commandContext: null,
+        },
+      });
+    });
+
+    test("names no rule for a unit that carries none", () => {
+      const narrowed = narrowBashAskPayload(chainPayload(), [
+        { command: "npm test" },
+      ]);
+
+      expect(narrowed.request.matchedPattern).toBeNull();
+    });
+
+    test("keeps the full-command evidence, so the units left stay highlighted in it", () => {
+      const payload = chainPayload();
+
+      const narrowed = narrowBashAskPayload(payload, [
+        { command: "npm test", matchedPattern: "*" },
+      ]);
+
+      expect(narrowed.evidence).toStrictEqual(payload.evidence);
+      expect(findEvidence(narrowed, "full command")?.text).toBe(
+        "echo $(sudo rm x) && git commit -m y && npm test",
+      );
     });
   });
 });
