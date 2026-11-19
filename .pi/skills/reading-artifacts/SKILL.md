@@ -33,6 +33,7 @@ Enumerate them from the registry (`pnpm view <pkg> versions`), not from git tags
 
 Pull-request status is an **inverted** signal here, because the repo reimplements adopted third-party changes through its own TDD cycle rather than merging them.
 Read the close comment, never the close status.
+Read who closed it too: a PR its own author closed with no maintainer comment was withdrawn, not adopted.
 An **open** PR is not a decline either: read its thread for what it is waiting on.
 To survey activity on a topic, include pull requests: `gh issue list` never returns them, and `gh search issues` does only with `--include-prs`.
 

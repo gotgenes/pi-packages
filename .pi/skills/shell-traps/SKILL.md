@@ -17,6 +17,8 @@ Unquoted, bash expands it against the cwd first and silently substitutes any mat
 Search the tree with `rg` or `git grep`, not `grep -r .` — `grep` ignores `.gitignore` and walks `.rumdl_cache/`, whose one-line JSON entries overflow the 50KB output limit.
 Each `bash` call runs in a fresh shell — a variable set in one call is unset in the next.
 Chain producer and consumer in one call, or re-derive the value.
+On this machine `grep` is BSD and `date` is GNU coreutils: `grep -P` fails with a usage dump, and `date -u -d <iso>` works.
+Use `rg` for a Perl-class pattern, and run `<tool> --version` before assuming either flavor.
 Pass file tool paths repo-relative (`packages/<pkg>/src/x.ts`), not hand-built absolute ones — a mistyped absolute path trips the `external_directory` gate instead of failing fast.
 
 ## Bodies with backticks
