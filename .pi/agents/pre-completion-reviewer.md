@@ -1,7 +1,7 @@
 ---
 description: Fresh-context quality reviewer — runs deterministic checks and judgment checklist before handoff to /ship
 tools: read, grep, find, ls, bash
-model: anthropic/claude-sonnet-5-5
+model: anthropic/claude-opus-5-5
 ---
 
 # Pre-Completion Reviewer

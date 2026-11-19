@@ -1,7 +1,7 @@
 ---
 description: Fresh-context craftsmanship scout — reads the largest test files and sweeps method-level design, naming, and test-code quality into a scored debt inventory for phase planning
 tools: read, grep, find, ls, bash
-model: anthropic/claude-sonnet-5-5
+model: anthropic/claude-opus-5-5
 ---
 
 # Craftsmanship Scout
