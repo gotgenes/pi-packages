@@ -235,6 +235,11 @@ Per-surface catch-alls (e.g. `bash: { "*": "allow" }`) are expressed as regular 
 `synthesizeBaseline()` conditionally emits MCP metadata auto-allow rules.
 
 `composeRuleset()` concatenates: defaults + baseline + config rules.
+
+The config band is not yet the per-scope concatenation the diagram shows.
+The scopes' permission objects are merged first (`mergeScopesWithOrigins`) and normalized once, so a pattern that a later scope redefines keeps the position the earlier scope gave it, and the band follows the merged object's key order instead of scope order.
+Issue [#1108] makes the band a concatenation in scope order.
+
 Session rules are concatenated after config rules so `evaluate()` handles them via last-match-wins - no separate per-branch pre-check.
 
 ### Default synthesis
@@ -1118,6 +1123,530 @@ This supersedes the earlier convention that a domain directory grows only in the
 That rule was recorded as a Phase 8 non-goal and re-applied through Phase 14, and it is the reason the layout lapsed: issue-by-issue work only ever moves the files issues happen to touch, so cold modules accumulate at the root indefinitely.
 Writing the target layout down is what replaces it — a module's home is now answerable without re-deriving it, and the same-directory import convention is lint-enforced for this package so the two cannot drift silently ([#837]).
 
+## Improvement roadmap — Phase 16: Policy channels
+
+### Findings (planned 2026-11-19)
+
+The declared candidate is the implementation of [ADR-0016](../decisions/0016-policy-channels.md): fourteen issues ([#1102], [#1103], [#1108], [#1110], [#1118], [#1119], [#1120], [#1121], [#1122], [#1123], [#1124], [#1125], [#1126], [#1127]) that the 2026-11-19 backlog triage sequenced as a phase by operator decision, ahead of the sandbox record Phase 15's history had assigned to this number.
+Three other carriers named a candidate, and all four went to the operator in the first composition gate: the sandbox record ([#892] with [#802], Phase 15's history), one MCP call identity ([#1014], the phase handoff in [#1001]'s retro), and one structured command description ([#804], the phase handoff in [#963]'s retro).
+The operator confirmed ADR 0016.
+
+The cause is that **a channel is spelled, not modelled**.
+ADR 0016 decides everything about a policy source per channel (its slot, its trust gate, its strictness, its propagation, its attribution, its writer), and the code has no object to hang any of that on.
+The four config scopes are four positional methods on `PolicyLoader`, a four-entry tuple and three separate `invalid` checks in `PermissionManager.resolvePermissions`, four hand-joined file stamps in `getCacheStamp`, eight fields on `ResolvedPolicyPaths`, and four `RuleOrigin` literals.
+Scope order is not composed at all: `mergeScopesWithOrigins` merges the scopes' raw permission objects before normalization and recovers each rule's scope afterwards through a parallel origin map, so a key a later scope redefines keeps the position the earlier scope gave it ([#1108]).
+The global `config.json` has three readers (`ConfigStore.save`, `FilePolicyLoader.loadGlobalConfig`, `loadAndMergeConfigs`) on two refresh cadences ([#1028]), which is why a knob save can erase the file ([#1102]) and why knobs propagate later than rules ([#1125]).
+Every "per channel" decision in the record therefore lands on a hand-enumerated list of sites, and three of the issues change that list: [#1108] reorders it, [#1122] adds two entries, and [#1127] changes how one kind of entry is validated.
+
+The `## Composed ruleset` section above described the config band as a per-scope concatenation, which is the target [#1108] reaches and not what ships; it is corrected in the commit that adds this roadmap so the next planner does not read the target as the baseline.
+The authority model names recorded authority as one of three places authority lives and does not yet name its channels; writing that subsection is a deliverable of [#1134].
+
+A second symptom is recorded and not scheduled as its own step.
+Provenance is spread over three fields (`Rule.layer`, `Rule.origin`, `PermissionCheckResult.source`), and "did the session layer decide this" is re-asked as `check.source === "session"` at 6 sites in 5 modules.
+Issue [#1124] adds the channel detail as a fourth, additive field because the published `origin` values must not change (ADR 0016 K5), and [#1120] gives the session layer its one precedence rule; whether the six comparisons collapse onto a predicate is re-read at phase close.
+
+Corroboration (fallow, 2026-11-19): health 78 (B) with a trend of -0.5 against the Phase 15 snapshot, dead code 0, duplication 1.5% in 14 clone groups, 3 of them wholly under `src/`.
+The complexity flags sit in the hypothesis's own files and are cited as symptoms: `mergeUnifiedConfigs` (cyclomatic 22), `mergeScopesWithOrigins` (cognitive 29), and `normalizeFlatPermissionValue` (cognitive 22).
+With real Istanbul coverage fed in, `src/config/config-modal.ts` is the one config-area file in the ten highest-risk files (risk 30.0).
+The hotspot list is still led by the bash projection and its tests; `src/config/` plus the manager, scope-merge, and session-rules modules took 38 commits in six months, so this phase heats an area that is cold today, which is the argument for tidying it first.
+The repeated-discriminator sweep found the `source === "session"` family above; the rest are validation-edge `typeof` guards and per-node AST dispatch, idiomatic.
+
+The craftsmanship scout **refuted all fourteen** fallow large-function flags on test files (each a nested tree of behavior-named tests) and re-adjudicated `runDescriptor` and `collectPatternCommandTokens`, where the prior verdicts hold.
+It found four concentrated clusters, all in the area this phase edits.
+`test/policy/permission-manager-unified.test.ts` (4,174 lines, 232 tests) is two trees around 50 flat top-level tests, with session-rule cases in five places, 145 `try`/`finally` cleanup blocks, and 76 constructions through a factory that takes only a permission map; that is [#1133].
+The config write path is tested against a module-mocked `node:fs` and a hand-written store fake, which hides a probable live defect: `ConfigStore.save()` writes three knobs and never `doublePressToConfirm`, so the modal's toggle reverts at the next `before_agent_start` (traced in source, not run); that rides [#1102].
+The four-scope hard-coding is [#1134], and the merge-logic debt dissolves in the steps that delete it ([#1108], [#1126], [#1127]).
+
+Feasibility probes against the pinned Pi 1.0.0: `registerFlag` and `getFlag` exist on `ExtensionAPI`, and the loader fills a flag's value after the extension factory has run, so [#1118] and [#1119] read their flags at `session_start` and not in the factory body; `pi-tui` exports `Input`, which [#1123]'s editable pattern needs; `jsonc-parser` 3.3.1 is published for the comment-preserving write in [#1102].
+No sibling package registers a flag yet, so the first use is a design question on [#1118].
+
+Directory check: skipped — `src/` holds five root files and every module this phase touches has a home in the directory vocabulary.
+The write contract lands in `config/`, the auto-approve terminal in `authority/`, and the rules view's home is a design question on [#1103].
+
+Trajectory: the maximum step priority was 20 in Phases 12 through 15 and is 20 here ([#1102]).
+No decline, so the regular improvement rotation continues.
+
+The phase opens with twenty steps against the nine-step ceiling, by operator decision at the composition gate.
+The ceiling exists to stop discovery manufacturing scope, and this scope is a decided record's implementation list: every step releases on its own, seven are breaking and each ships in its own release, and the tracks let the two demand clusters ([#1118]; [#1122] with [#1123]) start without waiting on each other.
+The alternative put to the operator was a split by layer (recorded authority first, live authority and the session layer second), which would have made [#1118] and [#1123] wait for a second planning sweep.
+
+Phase 15 closed with two metric rows short of their targets, and each gets a disposition here.
+Production clone groups in `src/` (3 against a target of at most 2) are **accepted** and carried as a floor of 3: two of the groups sit in `access-intent/bash/`, which no step in this phase opens, and the third is a six-line latch shared by `config-issue-reporter.ts` and `policy-issue-reporter.ts`, where an extraction would be the wrong abstraction.
+Non-path tokens flagged per month (unmeasured at close) is **superseded**: re-run on 2026-11-19, `measure-path-false-positives.mjs` still reads no row after 2026-08, so the instrument is what failed, and its repair belongs to the phase that reopens the bash projection.
+
+#### Open-issue sweep dispositions
+
+- [#1102], [#1103], [#1108], [#1110], [#1118], [#1119], [#1120], [#1121], [#1122], [#1123], [#1124], [#1125], [#1126], [#1127] — adopted as steps: ADR 0016's fourteen implementation issues.
+- [#1133] and [#1134] — filed by this session; adopted as steps.
+  They are the two preparatory steps the scout's concentrated clusters and the cause call for, ahead of [#1108], [#1120], and [#1122].
+- [#1028] — adopted as a step (2nd consecutive sweep, scheduled).
+  It already names the I/O half of this phase's cause, so it is adopted under its own number instead of being re-derived.
+- [#1115] with [#1052] — adopted as one step (operator decision; [#1052] at its 2nd consecutive sweep, scheduled).
+  PR [#1107] is the reference implementation for where the forwarding directory lives and closes with [#1115]; [#1052]'s question of how often the heartbeat is written folds into the same step because both edit the one heartbeat path.
+- [#1067] with [#1068] and [#1069] — adopted as one step (operator decision; 2nd consecutive sweep each, scheduled).
+  The maintainer's 2026-10-18 reply on [#1067] confirmed all three in source and treats them as one fix, and ADR 0016 §9 traces a second way into the same tree.
+- [#780] — adopted as a `docs:` step (operator decision; 3rd consecutive sweep, scheduled).
+- [#868] — scheduled as a ride-along on [#1118], the first step that edits `config-schema.ts` (operator decision; 3rd consecutive sweep).
+- [#603], [#604], [#691], [#720], [#1031] — requester threads, not steps.
+  Issues [#691], [#603], and [#604] close when [#1122] and [#1123] ship, and [#720] and [#1031] when [#1118] ships; PRs [#692] and [#990] stay open as reference implementations until then, per the repo's reimplement-through-TDD practice.
+- PR [#983] — out of scope for the roadmap; a review, not a step.
+  ADR 0016 §5 admits `authorizerTrust` as proposed, and [#1121] names a cap that it cannot lift, so the review is best finished before [#1121] is planned.
+- PRs [#671], [#675], [#1073] — declined by ADR 0016 (§5 and §3); the triage carries their closes and the reply owed on [#1073].
+- [#620] — deferred with recorded rationale (explicit operator decision; **5th consecutive sweep**, not a silent re-defer).
+  ADR 0016 §5 changes its charter twice over: `authorizerTrust` lifts the envelope cap its second half wanted refined, and [#1118] puts every ask in front of a link that yolo used to hide; it is re-evaluated once both have landed.
+  Issue [#698] folds into it when it is scheduled, and [#706] now travels with the wrapper group below.
+- [#926], [#680], [#706], PR [#971], [#1129], [#1043], [#1057] — out of scope for the roadmap (operator decision): the wrapper group is decided outside the phase by its own `/plan-issue` on [#926].
+  Issue [#926] is at its 2nd consecutive sweep, as are [#1043] and [#1057]; [#680] holds the most reactions of any open item (7, per the 2026-11-19 triage), which is why it stops waiting on [#804].
+  The group lives in `access-intent/bash/` and shares no file with this phase, so it can run in a parallel lane.
+- [#892], [#802], [#891], [#822], [#968], [#686] — deferred to the phase after this one, the sandbox record (operator decision in the 2026-11-19 triage).
+  Phase 15 recorded them for Phase 16; ADR 0016's implementation now goes ahead.
+  Issue [#822] is at its 4th consecutive sweep and the others at their 2nd; the rationale is unchanged (a sandbox subsumes static glob and brace expansion, and the record decides the launcher's manifest shape), and [#686] is owed a reply regardless.
+- [#804] and [#952] — deferred to the phase after the sandbox record, the config-shape group ([#804] at its 4th consecutive sweep, [#952] at its 2nd).
+  Both mirror the `commandEffects` shape, and the wrapper group no longer waits on them.
+- [#1014], [#946], [#984], [#1002] — deferred to a later phase (2nd consecutive sweep each): one MCP call identity answers all four, and none of it shares this phase's channel cause.
+- [#1128] — out of scope for the roadmap; first in the triage lane once this roadmap is committed (rank 2).
+  A floor-exempt wrapper's inner command is matched without its spellings, a `bash` deny bypass in `handlers/gates/bash-command.ts` that no step here touches.
+- [#1083] with PR [#1084], [#1020], [#1096], [#1116], [#1063], [#1065], [#1131], [#1018], [#1130], [#956], [#1082] — out of scope for the roadmap; worked from the triage lane at the ranks the 2026-11-19 run gave them.
+  Issues [#1020], [#1063], [#1065], [#1018], and [#956] are at their 2nd consecutive sweep; each is a defect in the bash projection, the path layer, or the forwarding wire, and none is a channel.
+- [#1070] — out of scope for the roadmap (2nd consecutive sweep): the reporter has not answered the measured reply, and its design question belongs with the sandbox record.
+- [#722], [#925], [#874], [#976], [#941], [#1062] — out of scope for the roadmap; latent, flake, or cosmetic items the triage ranks 21 and 22.
+  Issue [#722] is at its 4th consecutive sweep, [#874] at its 3rd, and the rest at their 2nd; none has outside demand, and the next triage run owns whether each stays open.
+- [#654], [#648], [#1105], PR [#1106] — out of scope for the roadmap: the annotation seam ADR 0011 §8 admitted and nobody has built.
+  It needs an issue of its own before PR [#1106] can be answered on the merits.
+- [#1091], [#1081], [#1094], [#1117] with PR [#638], [#1113] with PR [#1114], [#736] with PR [#749], [#936], [#991], [#1074], [#856] — out of scope for a structural phase; each is a feature request or a reply the triage carries.
+  Issue [#856]'s parser half is served by [#1102], whose comment-preserving write adopts a JSONC parser; the `config.jsonc` filename is a channel ADR 0016's set does not include.
+  Issues [#736] and [#856] are at their 3rd consecutive sweep and [#936], [#991], and [#1074] at their 2nd.
+- [#1104] — out of scope: the label is contextual.
+  The body asks that a project-agent child session resolve project trust the way its parent does, and ADR 0016 records that the session's creator sets its trust, so the work is `pi-subagents`'.
+
+#### Deferred tidyings swept
+
+Every recorded deferral since Phase 15 sits in a file no step of this phase edits, so each stays deferred: the collector-object reshaping of `token-collection.ts` the operator asked this sweep to consider ([#995]'s retro) and the structured command description ([#963]'s retro) both belong with [#804], the `GetoptGrammar` consolidation with [#1057], `runner.ts`'s `runDescriptor` split stays whole on the scout's re-adjudication, and the `node:fs` mock spreads, the `makeCheckResult` duplicates, and `forwarding-io.ts`'s asking-unit field lists stay scattered.
+The scout's own scattered findings ride the steps that edit their files and are named there: the `composition-root.test.ts` cast helper and [#868] on [#1118], the untested `project-agent` fail-closed branch on [#1134], and the config write-path test debt on [#1102].
+
+### Health metrics
+
+| Metric                                                          | Baseline (2026-11-19) | Phase 16 target |
+| --------------------------------------------------------------- | --------------------- | --------------- |
+| Scope-specific load methods in `policy-loader.ts`               | 8                     | 0               |
+| `mergeScopesWithOrigins` references in `permission-manager.ts`  | 2                     | 0               |
+| Lines naming `loadUnifiedConfig(` in `src/`                     | 9                     | ≤ 4             |
+| Legacy-file merges in `config-loader.ts`                        | 3                     | 0               |
+| `rewriteAsksToYolo` references in `permission-manager.ts`       | 2                     | 0               |
+| `resolveYoloGrant` references in `runner.ts`                    | 2                     | 0               |
+| `normalizeFlatPermissionValue` references in `policy-loader.ts` | 2                     | 0               |
+| `config.local.json` in `config-paths.ts`                        | 0                     | ≥ 1             |
+| `registerFlag` in `src/index.ts`                                | 0                     | ≥ 2             |
+| Namespaced command registrations in `config-modal.ts`           | 0                     | ≥ 2             |
+| Whole-module `node:fs` mock in `config-store.test.ts`           | 1                     | 0               |
+| Flat top-level tests in `test/policy/`                          | 50                    | 0               |
+| `try` blocks in `test/policy/`                                  | 152                   | ≤ 80            |
+| fallow health score                                             | 78 (B)                | ≥ 78            |
+| Production clone groups in `src/`                               | 3                     | ≤ 3             |
+| Dead exports                                                    | 0                     | 0               |
+
+Recompute commands (run from the repo root):
+
+- Scope-specific load methods: `grep -cE '^\s+load(Global|Project|Agent|ProjectAgent)Config\(' packages/pi-permission-system/src/config/policy-loader.ts`
+- Origin-map merge: `grep -c 'mergeScopesWithOrigins' packages/pi-permission-system/src/policy/permission-manager.ts`
+- Legacy-file merges: `grep -c 'mergeUnifiedConfigs(merged, legacy.config)' packages/pi-permission-system/src/config/config-loader.ts`
+- Yolo rewrite: `grep -c 'rewriteAsksToYolo' packages/pi-permission-system/src/policy/permission-manager.ts`
+- Yolo gate grant: `grep -c 'resolveYoloGrant' packages/pi-permission-system/src/handlers/gates/runner.ts`
+- Tolerant frontmatter parse: `grep -c 'normalizeFlatPermissionValue' packages/pi-permission-system/src/config/policy-loader.ts`
+- Local config path: `grep -c 'config.local.json' packages/pi-permission-system/src/config/config-paths.ts`
+- Launch flags: `grep -c 'registerFlag' packages/pi-permission-system/src/index.ts`
+- Namespaced commands: `grep -c 'registerCommand("permission-system:' packages/pi-permission-system/src/config/config-modal.ts`
+- Whole-module `node:fs` mock: `grep -c 'vi.mock("node:fs"' packages/pi-permission-system/test/config/config-store.test.ts`
+- Health, clone groups, dead exports: `pnpm fallow health --score --hotspots --targets --workspace @gotgenes/pi-permission-system` / `pnpm fallow dupes --workspace @gotgenes/pi-permission-system` (count the groups whose every path is under `src/`) / `pnpm fallow dead-code --workspace @gotgenes/pi-permission-system`
+- Health vital signs as of the last phase close: `docs/fallow-snapshot.json`, read by `fallow health --trend`
+
+Three counts need a pipeline, so they live here and not in the table:
+
+```bash
+grep -rn 'loadUnifiedConfig(' packages/pi-permission-system/src | wc -l
+grep -rhE '^test\(' packages/pi-permission-system/test/policy | wc -l
+grep -rhE '^\s+try \{' packages/pi-permission-system/test/policy | wc -l
+```
+
+Four rows grep for a name or a place the phase has not created when it opens: `config.local.json` in `config-paths.ts` ([#1122]), `registerFlag` in `src/index.ts` ([#1118], [#1119]), the `permission-system:` command prefix in `config-modal.ts` ([#1103]), and the absence of `normalizeFlatPermissionValue` from `policy-loader.ts` ([#1127]).
+The step that creates each must either land it where the row looks or update the row in the same commit, or the delivered-against-predicted check at phase close reads a miss that is only a rename.
+The fallow health score is carried as a floor: it is blind to the type-level and ordering wins a cause-driven phase produces.
+
+### Steps
+
+#### [#1133] Split the unified manager test by concern
+
+**Cause:** one test file holds every concern of `PermissionManager` (scope precedence, session rules, surface and MCP resolution, path surfaces, config paths), two-thirds of it through a filesystem it does not need, so each step of this phase would land its cases in whichever of five places already holds something similar.
+Fallow's large-function flag did not fire on it; the scout's read did.
+
+- **Smell:** Category G (concern fusion, a 1,430-line flat block of 50 top-level tests, stale method-named describes) and Category D (filesystem harness where an in-memory one serves).
+- **Target:** `test/policy/permission-manager-unified.test.ts`, split into one file per concern under `test/policy/`; `test/helpers/manager-harness.ts` only where a moved test changes factory.
+- **Constraint:** lift and shift, one commit per destination file, and no file under `src/` changes.
+  The tests that read a real file stay on the filesystem harness: `getResolvedPolicyPaths`, `PI_CODING_AGENT_DIR`, agent-frontmatter parsing, and `configureForCwd`.
+- **Outcome:** no flat top-level `test(` remains in `test/policy/`, the `try` blocks there fall from 152 to at most 80, and the same behaviors are asserted before and after.
+- **Commit type:** `test:`.
+- **Impact 4 / Risk 2 / Priority 16.**
+
+Release: independent
+
+#### [#1102] A knob save never erases what it did not set
+
+**Cause:** the modal's writer re-serializes the file from its *validated* contents, and a rejected file validates to `{}`, so the one shipped write-back channel has no contract about the bytes it does not own.
+ADR 0016 §4 states that contract for every extension write, and this step is where it first exists in code.
+
+- **Smell:** Category C (a writer that reads through the loader's fail-closed view) and Category D (the write path is tested only against a mocked `node:fs`).
+- **Target:** `src/config/config-store.ts` (`save`), a write-contract module in `src/config/`, `src/config/config-modal.ts`; `test/config/config-store.test.ts` and `test/config/config-modal.test.ts`.
+- **Design question the step must settle:** how much of ADR 0016 §4's seven-point contract lands here and how much with [#1123].
+  Refusing an invalid file, the comment-preserving edit, and validating the result are this issue's acceptance; the symlink refusal, the restore on a failed reload, and the replacement display may wait for the writer that needs them.
+- **Ride-along tidying:** the write path's tests move onto a real temporary directory (the model is `test/config/config-pipeline.test.ts`), the 130-line fused modal test splits by behavior, the four hand-copied `registerCommand` captures become one helper, and the knob list that five functions and `save()` each enumerate becomes one table.
+  That table is what makes the `doublePressToConfirm` toggle persist, which `save()` omits today.
+- **Outcome:** a save over a file that fails to parse or validate is refused with a notice naming the file and writes nothing; a save over a valid JSONC file keeps its comments, formatting, and unrelated keys; all four modal toggles survive a refresh; `config-store.test.ts` no longer mocks `node:fs` whole.
+- **Commit type:** `fix:`.
+- **Impact 5 / Risk 2 / Priority 20.**
+
+Release: independent
+
+#### [#1134] The config scopes are one ordered list
+
+**Cause:** a channel has no representation, so its order, its fail-closed behavior, its cache stamp, and its reported path are each spelled at a separate site that names all four scopes.
+This is the phase's spine: once the scopes are a list, a reorder, an addition, and a per-entry validation rule are each one edit.
+
+- **Smell:** Category C (a hand-enumerated variant set: `PolicyLoader` is one method per scope, and the `project-agent` scope alone is named 28 times across 5 `src/` files) and Category D (a fake loader that must grow a method per scope).
+- **Target:** `src/config/policy-loader.ts` (`PolicyLoader`, `FilePolicyLoader`, `ResolvedPolicyPaths`), `src/policy/permission-manager.ts` (`resolvePermissions`, `derivePolicyLoaderOptions`), `src/config/config-reporter.ts`; `test/helpers/manager-harness.ts`.
+- **Soft dependency:** [#1133].
+  The harness change reaches fewer scattered call sites once the test file is split.
+- **Constraint:** behavior-preserving.
+  The composed ruleset, every origin, and both policy notices are the same before and after; the order change is [#1108]'s.
+- **Ride-along tidying:** a table test covers the fail-closed floor for every non-global scope, `project-agent` included, which has no manager-level test today; the explicit-path constructor mode only tests use moves into the harness.
+- **Design note:** this step also writes the authority model's missing subsection, naming a channel as the unit recorded authority is composed from and recording ADR 0016's slots as the resolved direction.
+- **Outcome:** `PolicyLoader` exposes no scope-specific load method (8 declarations to 0), `resolvePermissions` names no scope, and adding a scope is an entry in one list plus its `RuleOrigin` literal.
+- **Commit type:** `refactor:`.
+- **Impact 4 / Risk 2 / Priority 16.**
+
+Release: independent
+
+#### [#1108] A later scope's patterns are placed after an earlier scope's
+
+**Cause:** cross-scope precedence is a side effect of merging raw objects, not a composition of ordered rulesets, so a later scope's catch-all sits wherever the earlier scope first put that key and loses to the earlier scope's specific patterns under last-match-wins.
+The fallow signal is `mergeScopesWithOrigins` (cognitive 29), which re-implements `mergeFlatPermissions`' both-objects predicate beside a call to it.
+
+- **Smell:** Category C (precedence decided by key-insertion order; connascence of algorithm between `scope-merge.ts` and `permission-merge.ts`).
+- **Target:** `src/policy/scope-merge.ts`, `src/policy/permission-manager.ts` (`resolvePermissions`, `buildConfigRules`), `src/policy/normalize.ts`; `docs/configuration.md` (Merge Precedence), the `## Composed ruleset` section above.
+- **Hard dependency:** [#1134].
+  Composing per-scope rulesets in slot order needs the scopes as an ordered list.
+- **Design question the step must settle:** what a later scope's universal `"*"` means against an earlier scope's surface rules, and whether `config-loader.ts`'s use of `mergeFlatPermissions` for the runtime-config view still has a caller once the manager stops using it.
+- **Outcome:** an agent's `bash: { "*": "deny" }` denies `git status` under a global `"git *": "allow"`; each rule carries its scope from normalization, so the parallel origin map and `mergeScopesWithOrigins` are deleted; one `PermissionManager.check` test per resolver pins the order.
+- **Commit type:** `fix!:` — a restated catch-all now overrides an earlier scope's specific patterns.
+- **Impact 5 / Risk 3 / Priority 15.**
+
+Release: independent
+
+#### [#1067] The forwarding wire validates what it reads (with [#1068], [#1069])
+
+**Cause:** the forwarding tree is a trust boundary read with unchecked casts: a request's `id` and a session id are used as path segments after a `typeof` check, and `readForwardedPermissionRequest` passes unvalidated fields into domain types.
+ADR 0016 §9 traces the same weakness on the response side, which [#1121] protects from the gate; this step closes the reader.
+
+- **Smell:** Category C (a wire boundary without a schema; the same asking-unit field list written three times).
+- **Target:** `src/authority/forwarding-io.ts` (`readForwardedPermissionRequest`, `asForwardedAccessIntent`), `src/authority/permission-forwarding.ts` (`encodeSessionIdForPath`, `createPermissionForwardingLocation`), `src/authority/forwarded-request-server.ts` (the response path), `src/handlers/permission-gate-handler.ts` (the `toolCallId` read).
+- **Constraint:** ADR 0008 §4 keeps the wire tolerant of a skewed peer, so a schema here rejects an unsafe value and must not turn an older peer's missing optional field into a hard deny.
+- **Outcome:** a request whose `id` is not a safe identifier is dropped and logged, a session id cannot resolve outside `sessions/`, and the response path is checked for containment before the write.
+- **Commit type:** `fix:`.
+- **Impact 4 / Risk 2 / Priority 16.**
+
+Release: independent
+
+#### [#1115] The forwarding directory follows a relocated session store (with [#1052])
+
+**Cause:** the forwarding directory is derived from the agent directory alone, so an operator who moves Pi's session store still gets a per-second heartbeat rewrite inside the directory they moved sessions out of.
+Issue [#1052] is the same path's cost: the heartbeat is written whether or not any forwarding child is waiting.
+
+- **Smell:** Category C (a location derived from the wrong root; a liveness signal produced unconditionally).
+- **Target:** `src/config/extension-paths.ts` (`computeExtensionPaths`), `src/index.ts`, `src/authority/forwarding-liveness.ts`, `src/authority/forwarding-manager.ts`; `docs/subagent-integration.md`.
+- **Constraint:** parent and child rendezvous in this directory, so its location may depend only on something both are guaranteed to share; PR [#1107] reads the inherited `PI_CODING_AGENT_SESSION_DIR` for that reason.
+- **Design question the step must settle:** which of [#1052]'s two remedies (announce on demand, or a slower refresh with a scaled staleness window) the liveness judge can take without lengthening the roughly two-second abandon window.
+- **Outcome:** with `PI_CODING_AGENT_SESSION_DIR` set, the forwarding tree lives under it; an idle serving session with no child waiting no longer costs a heartbeat write every second.
+- **Commit type:** `fix:`.
+- **Impact 3 / Risk 2 / Priority 12.**
+
+Release: independent
+
+#### [#1118] Auto-approve is a terminal reached after the chain
+
+**Cause:** yolo is modelled as recorded authority, rewriting every `ask` to `allow` at composition and again at the gate, so it acts before the authorizer chain and no link ever sees an ask under it.
+The authority spine already has the slot it belongs in: a terminal selected per session, the mirror of `DenyingAuthorizer`.
+
+- **Smell:** Category C (one decision made at two sites, `rewriteAsksToYolo` and `resolveYoloGrant`; a runtime mode stored in a file every session reads).
+- **Target:** `src/authority/` (a new terminal, `authorizer-selection.ts`), `src/policy/rule.ts` and `permission-manager.ts` (the rewrite and `isYoloEnabled`), `src/handlers/gates/helpers.ts` and `runner.ts` (`resolveYoloGrant` and its call), `src/config/` (the `yoloMode` key, the modal toggle, the status bar), `src/index.ts` (`registerFlag`, the session command); the `### yolo is recorded authority` section above.
+- **Design questions the step must settle:** where the flag is read given the loader fills it after the factory runs; how the serving node's command scopes auto-approve to its own asks, forwarded asks, or one requesting agent; and whether the `"yolo"` origin's replacement is a new `RuleOrigin` or lives only on `decidedBy`, since a terminal's grant is not a rule.
+- **Ride-along tidying:** issue [#868] (the `authorizerChain` element's description, in `config-schema.ts`, which this step edits to retire `yoloMode`), and a `bootExtension` helper in `test/helpers/make-fake-pi.ts` holding the cast `composition-root.test.ts` repeats 79 times.
+- **Outcome:** a link named in `authorizerChain` receives asks under auto-approve; an ask every link defers is allowed, never prompted, and attributed to its setter; a config `yoloMode` key is detected and warned as no longer read; `rewriteAsksToYolo` and `resolveYoloGrant` are gone.
+- **Commit type:** `feat!:` — the `yoloMode` key is removed, the published `"yolo"` origin is renamed, and links now see asks under it.
+- **Impact 5 / Risk 3 / Priority 15.**
+
+Release: independent
+
+#### [#1126] The legacy config files are no longer read
+
+**Cause:** three retired file locations are still merged into the runtime knobs and `commandEffects` with their validation issues suppressed, so a channel the docs call migrated away still changes behavior, silently.
+
+- **Smell:** Category A (a dead subsystem kept alive by a migration notice).
+- **Target:** `src/config/config-loader.ts` (`loadAndMergeConfigs`, `mergeUnifiedConfigs`), `src/config/config-store.ts` (`logResolvedPaths`), `src/config/config-paths.ts`; `docs/migration/legacy-to-flat.md`.
+- **Ride-along tidying:** `mergeUnifiedConfigs` hand-writes the same override pick five times and its JSDoc is detached by a comment block; with three of five layers gone, the pick becomes one helper.
+- **Outcome:** none of the three files contributes a value; each, when present, raises one notice saying it is no longer read and where to move it; `loadAndMergeConfigs` merges two layers.
+- **Commit type:** `feat!:` — whatever a stale legacy file set stops applying.
+- **Impact 3 / Risk 2 / Priority 12.**
+
+Release: independent
+
+#### [#1028] Each config file is read once
+
+**Cause:** the extension settings and the permission policy are derived from the same file by two loaders that never share a result, on different refresh cadences, so the two views of one file can disagree.
+
+- **Smell:** Category A (dual reading of one source) and Category C (two cadences for one file).
+- **Target:** `src/config/config-store.ts`, `src/config/policy-loader.ts`, `src/config/config-loader.ts` (`loadUnifiedConfig`, `loadAndMergeConfigs`).
+- **Soft dependency:** [#1126].
+  With the legacy layers gone, both loaders read exactly the same two files, which is what makes one read expressible.
+- **Constraint:** `ConfigStore.refresh` takes no `ExtensionContext` and must keep that property, and the manager must stay string-based (ADR 0002).
+- **Outcome:** each `config.json` is parsed and validated once per change, the settings view and the policy view derive from that one result, and the lines naming `loadUnifiedConfig(` in `src/` fall from 9 to at most 4.
+- **Commit type:** `refactor:`.
+- **Impact 4 / Risk 3 / Priority 12.**
+
+Release: independent
+
+#### [#1125] Knobs and `commandEffects` take effect at the next tool call
+
+**Cause:** rules propagate from a per-check file stamp and knobs from a per-prompt refresh, so one edit to one file takes effect at two different moments (ADR 0016 K7).
+
+- **Smell:** Category C (two propagation cadences for one channel).
+- **Target:** `src/config/config-store.ts` (`refresh`), `src/handlers/session-turn-prep.ts`, `src/session/permission-session.ts` (`refreshConfig`).
+- **Hard dependency:** [#1028].
+  One read is what gives the knobs the stamp the rules already use.
+- **Outcome:** an edit to a knob or a `commandEffects` declaration is in effect at the next tool call, in both directions, and the status bar follows it.
+- **Commit type:** `fix:`.
+- **Impact 3 / Risk 2 / Priority 12.**
+
+Release: independent
+
+#### [#1122] A machine-local `config.local.json` at the global and project scopes
+
+**Cause:** there is no channel for personal policy that should not be committed, and no file an extension write may target without machine-editing an authored one (ADR 0016 §2 through §4).
+
+- **Smell:** Category C (a missing channel; every write today lands in an authored file).
+- **Target:** `src/config/config-paths.ts`, `src/config/policy-loader.ts` (two entries in the scope list), `src/policy/rule.ts` (`RuleOrigin`), `src/config/config-store.ts` (knob writes move to the global local file), `src/config/config-schema.ts`; `docs/configuration.md`, `config/config.example.json`.
+- **Hard dependency:** [#1108], [#1102].
+  The slots mean nothing until scopes compose in order, and the knob writes move through the write contract.
+- **Soft dependency:** [#1028].
+  Landed after it, two files join one reader instead of two.
+- **Design question the step must settle:** whether the two local files add `RuleOrigin` literals or ride the additive channel field [#1124] introduces, given ADR 0016 K5 freezes the published values and says nothing on adding one.
+- **Outcome:** both files load after their scope's `config.json`, each as its own scope with per-scope sugar expansion and strict validation; an invalid project-local file floors like the project file; both join the per-check stamp; no `config.json` is machine-written.
+- **Commit type:** `feat:`.
+- **Impact 5 / Risk 3 / Priority 15.**
+
+Release: independent
+
+#### [#1124] Each decision is attributed to the channel that produced it
+
+**Cause:** `origin` names a scope and nothing finer, so the review log cannot say which file, which setter of a runtime mode, or which kind of session rule decided (ADR 0016 K5).
+
+- **Smell:** Category C (provenance spread over `layer`, `origin`, and `source`, none of which names a channel).
+- **Target:** `src/authority/decision-source.ts`, `src/policy/rule.ts`, `src/service/permission-events.ts`, `src/logging/`; `docs/cross-extension-api.md`.
+- **Soft dependency:** [#1122].
+  Landed after it, the local files are attributed from the start, and the steps behind it ([#1123], [#1103], [#1119]) add their own detail as they land.
+- **Constraint:** additive only; no published `origin` value changes.
+- **Outcome:** a review-log record and a `permissions:decision` event name the file a rule came from, and a session rule says whether a prompt, a forwarded grant, or a human edit created it.
+- **Commit type:** `feat:`.
+- **Impact 3 / Risk 2 / Priority 12.**
+
+Release: independent
+
+#### [#1120] A config deny outranks the session layer
+
+**Cause:** the session layer is appended after every config rule, so principle 3's "session approvals are just more rules" lets an over-broad session `allow` beat a config `deny`, and the over-broad pattern is the package's own suggestion.
+
+- **Smell:** Category C (precedence by concatenation order where the record wants a rule; a suggestion built without reading the denies it would cover).
+- **Target:** `src/policy/permission-manager.ts` (`check`), `src/presentation/pattern-suggest.ts`, `src/authority/` (the dialog's default option); design principle 3 above.
+- **Soft dependency:** [#1133].
+  The session-rule tests are in five places until the split.
+- **Constraint:** pinned by a `PermissionManager.check` test per resolver (`evaluate` and `evaluateAnyValue`), because a prototype passed on one while the other stayed overridable.
+  A trusted project may still loosen a global deny (ADR 0001).
+- **Outcome:** a config `deny` is final against any session rule; a suggestion that would cover a config deny names it and defaults to the exact command.
+- **Commit type:** `fix!:` — a session `allow` that overrode a config `deny` no longer does.
+- **Impact 5 / Risk 3 / Priority 15.**
+
+Release: independent
+
+#### [#1123] An approval or a denial can be saved from the prompt
+
+**Cause:** a human's ruling cannot outlive the session, so principle 8's "persistence determines lifetime" has only two of its three lifetimes.
+
+- **Smell:** Category C (the third lifetime of a ruling has no writer).
+- **Target:** `src/authority/` (the prompt component and its decision), `src/config/` (the write contract's remaining points), `src/presentation/`, `src/logging/`; `docs/configuration.md`.
+- **Hard dependency:** [#1122].
+  The local files are the only place a save may write.
+- **Soft dependency:** [#1120].
+  A pattern saved to disk outlives the session, so the deny-aware suggestion should exist before a broad one can be persisted.
+- **Constraint:** only a human at this node's own prompt may persist; a forwarded ask, a link's verdict, and an auto-approval stay live-only (ADR 0016 §4).
+- **Outcome:** a local ask offers a project save (trusted projects only) and a global save for `allow` and `deny`, with an editable pattern, a summary of the exact rule and file, a notice afterwards, and a re-shown prompt when the save fails; every save is review-logged.
+- **Commit type:** `feat:`.
+- **Impact 4 / Risk 3 / Priority 12.**
+
+Release: independent
+
+#### [#1127] An agent's frontmatter `permission:` block is validated strictly
+
+**Cause:** a classifier is used as a guard: `normalizeFlatPermissionValue` answers "what is this entry" and drops what it does not recognize, so a typo in a deny's action silently removes the deny (ADR 0016 K3).
+
+- **Smell:** Category C (shared predicate, different burden of proof; a fail-open parse on a channel that can only tighten by being read).
+- **Target:** `src/config/policy-loader.ts`, `src/config/config-loader.ts` (`normalizeFlatPermissionValue`), `src/config/config-schema.ts` (the `permission` object's schema, reused).
+- **Soft dependency:** [#1134].
+  Marking an agent scope invalid is one flag on a list entry once the scopes are a list.
+- **Outcome:** a malformed block marks the agent scope invalid, floors the composed policy `allow` to `ask`, and is reported per issue; the rest of the frontmatter document stays tolerant; `normalizeFlatPermissionValue` has no caller in `policy-loader.ts`.
+- **Commit type:** `fix!:` — a malformed block now floors where it used to drop entries silently.
+- **Impact 4 / Risk 2 / Priority 16.**
+
+Release: independent
+
+#### [#1119] An unrestricted mode that allows everything and stays engaged
+
+**Cause:** the deny-overriding operation the authority model anticipates has no name of its own, so "yolo" is asked to mean it; ADR 0016 §6 names it and keeps it out of every file.
+
+- **Smell:** Category C (a missing, separately named mode).
+- **Target:** `src/policy/permission-manager.ts` (a final rule after the session layer), `src/handlers/gates/` (the grant for synthesized asks), `src/authority/` (a process-global mode entry, on the `SubagentSessionRegistry` pattern), `src/config/status.ts`, `src/index.ts`; `docs/subagent-integration.md`.
+- **Hard dependency:** [#1118].
+  It reuses the flag and session-command plumbing, and its gate-level grant sits where `resolveYoloGrant` is removed.
+- **Design question the step must settle:** the out-of-process clause is provisional in the record, so the plan decides whether it ships here or waits for an adopter of the subagent adapter convention.
+- **Outcome:** `--unrestricted` or the session command allows everything, denies included, with a status indicator and its own `decidedBy` source; tools hidden by a deny return; in-process subagents inherit it live.
+- **Commit type:** `feat:`.
+- **Impact 3 / Risk 3 / Priority 9.**
+
+Release: independent
+
+#### [#1121] Only a human approves an agent's edit to the policy files or the forwarding tree
+
+**Cause:** the channels that relax policy sit inside the agent's reach: a `write` allow covers the project config and the agent directories unprompted, and the forwarding tree accepts any well-formed response file (ADR 0016 K6 and §9).
+
+- **Smell:** Category C (a boundary the gate does not know it has).
+- **Target:** `src/handlers/gates/` (an ask synthesized after resolution, as the wrapper floor is), `src/authority/delegation-envelope.ts` (a cap no trust lifts), `src/access-intent/bash/` (a `pi --auto-approve` or `--unrestricted` launch), `src/config/extension-paths.ts` (the protected path set).
+- **Hard dependency:** [#1118], [#1122].
+  It protects the local files and must name the auto-approve flag and terminal it refuses.
+- **Soft dependency:** [#1119], [#1115].
+  The unrestricted flag and the forwarding tree's resolved location are both read here, and each can be added after if it lands later.
+- **Design question the step must settle:** whether a "for this session" answer covers later edits to the same file.
+- **Outcome:** a write to any policy file, either agent directory, or the forwarding tree asks whatever the catch-all rules say; a link may deny it and may not allow it; the auto-approve terminal does not answer it; with no human reachable it is denied.
+- **Commit type:** `feat!:` — new prompts on agent edits to policy files and on relaxed `pi` launches.
+- **Impact 4 / Risk 3 / Priority 12.**
+
+Release: independent
+
+#### [#1103] A rules view, session-layer editing, and a command namespace
+
+**Cause:** the session layer is write-only: it can gain an `allow` and be cleared at shutdown, and nothing shows it, removes from it, or lets it hold an `ask` or a `deny` (ADR 0016 §8).
+
+- **Smell:** Category C (an anemic store: `SessionRules` has `approve` and `clear` and no way to read or change one rule).
+- **Target:** `src/session/session-rules.ts`, `src/config/config-modal.ts` (the command registrations), a rules-view module whose home the plan names, `src/policy/permission-manager.ts` (`getComposedConfigRules`); the package skill's command-name rule.
+- **Hard dependency:** [#1120].
+  The view's one config action, suspending a specific deny, is defined against the rule that a config deny outranks the session layer.
+- **Soft dependency:** [#1124].
+  The view shows each rule's channel.
+- **Outcome:** `/permission-system:rules` lists every rule in effect in evaluation order, filterable; a session rule can be removed or changed to any action, in memory; a config deny can be suspended for the session; every edit is review-logged with its before and after; bare `/permission-system` is no longer registered.
+- **Commit type:** `feat!:` — the command is renamed with no alias.
+- **Impact 3 / Risk 3 / Priority 9.**
+
+Release: independent
+
+#### [#1110] Named placeholders in pattern keys
+
+**Cause:** a pattern key can name the home directory and nothing else that differs per machine or session, so a shared global config cannot name the runtime directory or the working directory (ADR 0016 §3).
+
+- **Smell:** Category C (the pattern language has one ambient input, the home directory, where the record admits four).
+- **Target:** `src/policy/wildcard-matcher.ts`, `src/path/expand-home.ts`, `src/config/config-schema.ts`; `docs/configuration.md`.
+- **Constraint:** the placeholders expand config pattern keys only, at match time; an unresolvable one matches nothing, never its literal text; the bash projection's `HOME` and `PWD` set is untouched (ADR 0009).
+- **Outcome:** `{runtimeDir}`, `{uid}`, and `{cwd}` expand in a pattern key, each logged as its own source.
+- **Commit type:** `feat:`.
+- **Impact 2 / Risk 2 / Priority 8.**
+
+Release: independent
+
+#### [#780] The conservative-defaults and outbound-bridge boundaries are decision records
+
+**Cause:** two boundaries the README charter asserts rest on a closed-issue comment and on an analogy, so each new request re-argues them.
+
+- **Smell:** Category E (a boundary with no durable record).
+- **Target:** two new records under `docs/decisions/`; the `## Scope and non-goals` table above, whose two rows marked as resting on an operator position gain a record.
+- **Outcome:** each boundary has an accepted record with its rejected alternatives, and the scope table cites it.
+- **Commit type:** `docs:`.
+- **Impact 2 / Risk 1 / Priority 10.**
+
+Release: independent
+
+### Step dependency diagram
+
+```mermaid
+flowchart TD
+    S1133["#1133<br/>Split the unified manager test"]
+    S1102["#1102<br/>A knob save never erases"]
+    S1134["#1134<br/>Scopes as one ordered list"]
+    S1108["#1108<br/>Later scope placed after"]
+    S1067["#1067<br/>Forwarding wire validates"]
+    S1115["#1115<br/>Forwarding directory location"]
+    S1118["#1118<br/>Auto-approve terminal"]
+    S1126["#1126<br/>Legacy files not read"]
+    S1028["#1028<br/>Each config file read once"]
+    S1125["#1125<br/>Knobs at the next tool call"]
+    S1122["#1122<br/>config.local.json"]
+    S1124["#1124<br/>Channel attribution"]
+    S1120["#1120<br/>Config deny outranks session"]
+    S1123["#1123<br/>Save from the prompt"]
+    S1127["#1127<br/>Strict frontmatter block"]
+    S1119["#1119<br/>Unrestricted mode"]
+    S1121["#1121<br/>Self-protection"]
+    S1103["#1103<br/>Rules view and namespace"]
+    S1110["#1110<br/>Pattern placeholders"]
+    S780["#780<br/>Two boundary records"]
+
+    S1134 --> S1108
+    S1108 --> S1122
+    S1102 --> S1122
+    S1028 --> S1125
+    S1122 --> S1123
+    S1118 --> S1119
+    S1118 --> S1121
+    S1122 --> S1121
+    S1120 --> S1103
+
+    S1133 -.soft.-> S1134
+    S1133 -.soft.-> S1120
+    S1126 -.soft.-> S1028
+    S1028 -.soft.-> S1122
+    S1122 -.soft.-> S1124
+    S1120 -.soft.-> S1123
+    S1134 -.soft.-> S1127
+    S1119 -.soft.-> S1121
+    S1115 -.soft.-> S1121
+    S1124 -.soft.-> S1103
+```
+
+### Parallel tracks
+
+- **Track A — scope order and strictness:** [#1133] → [#1134] → [#1108], then [#1127].
+  Owns `src/policy/scope-merge.ts`, the scope list in `src/config/policy-loader.ts`, and `test/policy/`.
+- **Track B — one read, one write:** [#1102], and [#1126] → [#1028] → [#1125], converging on [#1122] → [#1124] → [#1123].
+  Owns `src/config/config-store.ts`, `config-loader.ts`, and `config-modal.ts`; it meets Track A at [#1122], which needs [#1108] landed.
+- **Track C — live relaxation and self-protection:** [#1118] → [#1119] → [#1121].
+  Owns `src/authority/authorizer-selection.ts` and the gate runner's fast paths; [#1118] also edits `config-modal.ts` and `config-store.ts`, so sequence it against whichever Track B step is in flight and never beside one.
+- **Track D — the session layer:** [#1120] → [#1103].
+  Owns `src/session/session-rules.ts` and `src/presentation/pattern-suggest.ts`; [#1120] edits `PermissionManager.check`, which [#1108] and [#1119] also touch.
+- **Track E — the forwarding tree:** [#1067], [#1115].
+  Owns `src/authority/forwarding-io.ts`, `permission-forwarding.ts`, and `forwarding-liveness.ts`; disjoint from every other track's files, so it can run in a parallel worktree at any point.
+- **Track F — independent:** [#1110], [#780].
+
+### Release batches
+
+There is no batch: every step releases on its own, and the README commits each breaking change to its own release.
+The `fix:`, `feat:`, and breaking steps are the release vehicles; `test:` and `refactor:` are hidden changelog types that cut no release, and [#780]'s records sit under `docs/decisions/`, outside the package's release scope.
+
+- Independently releasable: [#1133] (no release), [#1102] (`fix:`), [#1134] (no release), [#1108] (`fix!:`), [#1067] (`fix:`), [#1115] (`fix:`), [#1118] (`feat!:`), [#1126] (`feat!:`), [#1028] (no release), [#1125] (`fix:`), [#1122] (`feat:`), [#1124] (`feat:`), [#1120] (`fix!:`), [#1123] (`feat:`), [#1127] (`fix!:`), [#1119] (`feat:`), [#1121] (`feat!:`), [#1103] (`feat!:`), [#1110] (`feat:`), [#780] (no release).
+
 ## Refactoring history
 
 The architecture above is the product of fifteen completed improvement phases.
@@ -1142,3 +1671,124 @@ Each phase's findings, step plan, dependency diagram, and health metrics are pre
 | 15    | Token roles and declared effects                     | [phase-15-token-roles-declared-effects.md](history/phase-15-token-roles-declared-effects.md)                               |
 
 [ADR-0002]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-subagents/docs/decisions/0002-extensions-on-a-minimal-core.md
+[#261]: https://github.com/gotgenes/pi-packages/issues/261
+[#267]: https://github.com/gotgenes/pi-packages/issues/267
+[#296]: https://github.com/gotgenes/pi-packages/issues/296
+[#298]: https://github.com/gotgenes/pi-packages/issues/298
+[#302]: https://github.com/gotgenes/pi-packages/issues/302
+[#385]: https://github.com/gotgenes/pi-packages/issues/385
+[#393]: https://github.com/gotgenes/pi-packages/pull/393
+[#418]: https://github.com/gotgenes/pi-packages/issues/418
+[#476]: https://github.com/gotgenes/pi-packages/issues/476
+[#478]: https://github.com/gotgenes/pi-packages/issues/478
+[#502]: https://github.com/gotgenes/pi-packages/issues/502
+[#509]: https://github.com/gotgenes/pi-packages/issues/509
+[#529]: https://github.com/gotgenes/pi-packages/issues/529
+[#530]: https://github.com/gotgenes/pi-packages/issues/530
+[#531]: https://github.com/gotgenes/pi-packages/issues/531
+[#555]: https://github.com/gotgenes/pi-packages/issues/555
+[#603]: https://github.com/gotgenes/pi-packages/issues/603
+[#604]: https://github.com/gotgenes/pi-packages/issues/604
+[#620]: https://github.com/gotgenes/pi-packages/issues/620
+[#638]: https://github.com/gotgenes/pi-packages/pull/638
+[#645]: https://github.com/gotgenes/pi-packages/issues/645
+[#648]: https://github.com/gotgenes/pi-packages/issues/648
+[#654]: https://github.com/gotgenes/pi-packages/issues/654
+[#671]: https://github.com/gotgenes/pi-packages/pull/671
+[#675]: https://github.com/gotgenes/pi-packages/pull/675
+[#680]: https://github.com/gotgenes/pi-packages/issues/680
+[#686]: https://github.com/gotgenes/pi-packages/issues/686
+[#691]: https://github.com/gotgenes/pi-packages/issues/691
+[#692]: https://github.com/gotgenes/pi-packages/pull/692
+[#698]: https://github.com/gotgenes/pi-packages/issues/698
+[#706]: https://github.com/gotgenes/pi-packages/issues/706
+[#710]: https://github.com/gotgenes/pi-packages/issues/710
+[#720]: https://github.com/gotgenes/pi-packages/issues/720
+[#722]: https://github.com/gotgenes/pi-packages/issues/722
+[#736]: https://github.com/gotgenes/pi-packages/issues/736
+[#749]: https://github.com/gotgenes/pi-packages/pull/749
+[#780]: https://github.com/gotgenes/pi-packages/issues/780
+[#802]: https://github.com/gotgenes/pi-packages/issues/802
+[#804]: https://github.com/gotgenes/pi-packages/issues/804
+[#815]: https://github.com/gotgenes/pi-packages/issues/815
+[#822]: https://github.com/gotgenes/pi-packages/issues/822
+[#837]: https://github.com/gotgenes/pi-packages/issues/837
+[#856]: https://github.com/gotgenes/pi-packages/issues/856
+[#868]: https://github.com/gotgenes/pi-packages/issues/868
+[#873]: https://github.com/gotgenes/pi-packages/issues/873
+[#874]: https://github.com/gotgenes/pi-packages/issues/874
+[#891]: https://github.com/gotgenes/pi-packages/issues/891
+[#892]: https://github.com/gotgenes/pi-packages/issues/892
+[#909]: https://github.com/gotgenes/pi-packages/issues/909
+[#925]: https://github.com/gotgenes/pi-packages/issues/925
+[#926]: https://github.com/gotgenes/pi-packages/issues/926
+[#936]: https://github.com/gotgenes/pi-packages/issues/936
+[#941]: https://github.com/gotgenes/pi-packages/issues/941
+[#946]: https://github.com/gotgenes/pi-packages/issues/946
+[#952]: https://github.com/gotgenes/pi-packages/issues/952
+[#956]: https://github.com/gotgenes/pi-packages/issues/956
+[#963]: https://github.com/gotgenes/pi-packages/issues/963
+[#965]: https://github.com/gotgenes/pi-packages/issues/965
+[#968]: https://github.com/gotgenes/pi-packages/issues/968
+[#971]: https://github.com/gotgenes/pi-packages/pull/971
+[#976]: https://github.com/gotgenes/pi-packages/issues/976
+[#983]: https://github.com/gotgenes/pi-packages/pull/983
+[#984]: https://github.com/gotgenes/pi-packages/issues/984
+[#990]: https://github.com/gotgenes/pi-packages/pull/990
+[#991]: https://github.com/gotgenes/pi-packages/issues/991
+[#995]: https://github.com/gotgenes/pi-packages/issues/995
+[#1001]: https://github.com/gotgenes/pi-packages/issues/1001
+[#1002]: https://github.com/gotgenes/pi-packages/issues/1002
+[#1014]: https://github.com/gotgenes/pi-packages/issues/1014
+[#1018]: https://github.com/gotgenes/pi-packages/issues/1018
+[#1020]: https://github.com/gotgenes/pi-packages/issues/1020
+[#1028]: https://github.com/gotgenes/pi-packages/issues/1028
+[#1031]: https://github.com/gotgenes/pi-packages/issues/1031
+[#1043]: https://github.com/gotgenes/pi-packages/issues/1043
+[#1052]: https://github.com/gotgenes/pi-packages/issues/1052
+[#1057]: https://github.com/gotgenes/pi-packages/issues/1057
+[#1062]: https://github.com/gotgenes/pi-packages/issues/1062
+[#1063]: https://github.com/gotgenes/pi-packages/issues/1063
+[#1065]: https://github.com/gotgenes/pi-packages/issues/1065
+[#1067]: https://github.com/gotgenes/pi-packages/issues/1067
+[#1068]: https://github.com/gotgenes/pi-packages/issues/1068
+[#1069]: https://github.com/gotgenes/pi-packages/issues/1069
+[#1070]: https://github.com/gotgenes/pi-packages/issues/1070
+[#1073]: https://github.com/gotgenes/pi-packages/pull/1073
+[#1074]: https://github.com/gotgenes/pi-packages/issues/1074
+[#1081]: https://github.com/gotgenes/pi-packages/issues/1081
+[#1082]: https://github.com/gotgenes/pi-packages/issues/1082
+[#1083]: https://github.com/gotgenes/pi-packages/issues/1083
+[#1084]: https://github.com/gotgenes/pi-packages/pull/1084
+[#1091]: https://github.com/gotgenes/pi-packages/issues/1091
+[#1094]: https://github.com/gotgenes/pi-packages/issues/1094
+[#1096]: https://github.com/gotgenes/pi-packages/issues/1096
+[#1102]: https://github.com/gotgenes/pi-packages/issues/1102
+[#1103]: https://github.com/gotgenes/pi-packages/issues/1103
+[#1104]: https://github.com/gotgenes/pi-packages/issues/1104
+[#1105]: https://github.com/gotgenes/pi-packages/issues/1105
+[#1106]: https://github.com/gotgenes/pi-packages/pull/1106
+[#1107]: https://github.com/gotgenes/pi-packages/pull/1107
+[#1108]: https://github.com/gotgenes/pi-packages/issues/1108
+[#1110]: https://github.com/gotgenes/pi-packages/issues/1110
+[#1113]: https://github.com/gotgenes/pi-packages/issues/1113
+[#1114]: https://github.com/gotgenes/pi-packages/pull/1114
+[#1115]: https://github.com/gotgenes/pi-packages/issues/1115
+[#1116]: https://github.com/gotgenes/pi-packages/issues/1116
+[#1117]: https://github.com/gotgenes/pi-packages/issues/1117
+[#1118]: https://github.com/gotgenes/pi-packages/issues/1118
+[#1119]: https://github.com/gotgenes/pi-packages/issues/1119
+[#1120]: https://github.com/gotgenes/pi-packages/issues/1120
+[#1121]: https://github.com/gotgenes/pi-packages/issues/1121
+[#1122]: https://github.com/gotgenes/pi-packages/issues/1122
+[#1123]: https://github.com/gotgenes/pi-packages/issues/1123
+[#1124]: https://github.com/gotgenes/pi-packages/issues/1124
+[#1125]: https://github.com/gotgenes/pi-packages/issues/1125
+[#1126]: https://github.com/gotgenes/pi-packages/issues/1126
+[#1127]: https://github.com/gotgenes/pi-packages/issues/1127
+[#1128]: https://github.com/gotgenes/pi-packages/issues/1128
+[#1129]: https://github.com/gotgenes/pi-packages/issues/1129
+[#1130]: https://github.com/gotgenes/pi-packages/issues/1130
+[#1131]: https://github.com/gotgenes/pi-packages/issues/1131
+[#1133]: https://github.com/gotgenes/pi-packages/issues/1133
+[#1134]: https://github.com/gotgenes/pi-packages/issues/1134
