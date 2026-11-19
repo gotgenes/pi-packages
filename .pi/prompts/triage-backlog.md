@@ -77,8 +77,8 @@ Find repeat deferrals by intersecting the issue numbers in the last two triages'
 Collect issues and PRs together; a backlog that ignores open PRs understates the real queue and hides the contributor-facing cost.
 
 ```bash
-gh issue list --state open --limit 200 --json number,title,author,labels,createdAt,comments
-gh pr list --state open --limit 200 --json number,title,author,createdAt,updatedAt,isDraft
+gh issue list --state open --limit 200 --json number,title,author,labels,createdAt,comments,reactionGroups
+gh pr list --state open --limit 200 --json number,title,author,createdAt,updatedAt,isDraft,comments,reviews,reactionGroups
 ```
 
 Filter by the `pkg:$1` label (issues) and changed paths (PRs) when `$1` is set.
@@ -100,7 +100,20 @@ A scope verdict is a verdict about a diff, not about a number: inherit a PR's pr
 Also record, for each item: the author, whether they are a third party (compare to `gh api user --jq .login`), the age since creation, and the age since the **last maintainer response**.
 Compute every age with `date`, never by hand: `echo $(( ( $(date -u +%s) - $(date -u -d <createdAt> +%s) ) / 86400 ))`.
 The issue list's `comments` field carries each comment's author and timestamp, so the last maintainer response is one expression: `jq '.[] | {number, last: ([.comments[] | select(.author.login == "<login>") | .createdAt] | max)}'`.
-For a PR, read `comments` and `reviews` from `gh pr view <N>`.
+The PR list's `comments` and `reviews` fields carry the same for a PR.
+
+### Demand signals
+
+Record three more facts per item; apart from the author's own words, they are the only evidence of who wants it.
+
+1. **Reactions**: the positive ones in `reactionGroups` (`THUMBS_UP`, `HEART`, `HOORAY`, `ROCKET`).
+2. **Outside participants**: distinct commenters and reviewers other than the author, the maintainer, and bots.
+3. **Author standing**: credited (a merged PR or a `Co-authored-by` trailer on `main`), returning (items here at least seven days apart), or on a first visit.
+   Count trailers, not merged PRs alone: this repo reimplements adopted work, so most adopted contributors have nothing merged.
+   The history comes from `gh issue list --state all --limit 2000 --json author,createdAt` and its `gh pr list` twin; the credits come from `git log --format='%(trailers:key=Co-authored-by,valueonly)'`.
+
+A reaction or outside comment dated after the prior triage is fresh demand on an old item; say so where it moves a rank.
+The `reactionGroups` field carries counts only; `gh api repos/gotgenes/pi-packages/issues/<N>/reactions` lists who reacted and when.
 
 ## Step 3: Establish real CI state (do not infer it)
 
@@ -231,6 +244,11 @@ Score on four axes; keep them separate rather than collapsing them into one numb
    Include the repo's own throughput here; a flake that taxes every implementation session is real cost.
 4. **Response cost** — how long an outside contributor has been waiting, and how much of their effort is already sunk.
 
+**Demand is a tiebreaker inside a severity band, not a fifth axis.**
+It orders two items of like severity and never lifts an enhancement over a bug or a security fix.
+It also audits a rationale: "no external demand" is a measured claim, so check an item's reactions and outside participants before recommending or executing a close that rests on it.
+An author with several open items and no reply on any, or one who withdrew a PR unanswered, raises the response cost of everything of theirs still open.
+
 Hold **merit** and **urgency of response** apart, and label which one is driving a rank.
 A PR whose design you intend to decline can still be the most urgent thing to *answer*.
 Say "this is ranked high to respond, not to merge" in the rationale when that is the case, so the list is not misread as an endorsement.
@@ -239,7 +257,7 @@ Say "this is ranked high to respond, not to merge" in the rationale when that is
 
 Before ordering, look for convergence: several open items that are all really asking one unanswered question.
 
-Signals: multiple issues requesting variations of the same capability; several PRs implementing overlapping designs; issue bodies citing each other or citing a deferral in the source; a third party implementing a slice of an issue you already own.
+Signals: multiple issues requesting variations of the same capability; several PRs implementing overlapping designs; issue bodies citing each other or citing a deferral in the source; a third party implementing a slice of an issue you already own; distinct users reacting to one old thread or adding use cases to it.
 
 When you find one, name the **keystone** — the decision that answers the cluster — and promote it above its dependants even if it is an architecture or ADR issue that would otherwise live in a `/plan-improvements` phase.
 List its dependants explicitly by number.
@@ -293,7 +311,9 @@ The document contains:
 
 1. **Since the last triage** — from the Step 1 artifacts: what closed, what landed, what changed rank, and the disposition of every item the prior run deferred.
    Skip on the first run.
-2. **Scope alignment** — the Step 6 verdicts, so the next run inherits them instead of re-deriving them.
+2. **Demand signals**: what the Step 2 demand data showed, kept to what moved a rank, reversed a recorded rationale, or exposed a cluster of unanswered authors.
+   Define the `Demand` column's notation here.
+3. **Scope alignment** — the Step 6 verdicts, so the next run inherits them instead of re-deriving them.
    One row per item classified this run, each with its package, verdict, and the non-goal or reason it rests on:
 
    | Item | Package      | Verdict      | Basis                                                              |
@@ -301,18 +321,20 @@ The document contains:
    | #740 | pi-subagents | out of scope | Non-goal: *A global run-mode default* — run mode is per-invocation |
 
    Follow it with the recommended disposition for each `out of scope` item (close as not-planned citing the non-goal, or redirect), and a **Carried forward** subsection recording the verdicts inherited from the prior run, the head SHA each PR verdict was taken against, and the outcome of any re-check.
-3. **The prioritized table** — the deliverable, carrying only `aligned`, `adjacent`, and `no charter` items:
+4. **The prioritized table** — the deliverable, carrying only `aligned`, `adjacent`, and `no charter` items:
 
-   | Rank | Item | Package(s)           | Kind         | Severity | Why now                              |
-   | ---- | ---- | -------------------- | ------------ | -------- | ------------------------------------ |
-   | 1    | #639 | pi-permission-system | issue (ours) | keystone | Decides #671, #684, #680, #603, #604 |
+   | Rank | Item | Package(s)           | Kind         | Severity | Demand  | Why now                              |
+   | ---- | ---- | -------------------- | ------------ | -------- | ------- | ------------------------------------ |
+   | 1    | #639 | pi-permission-system | issue (ours) | keystone | 8r 4p C | Decides #671, #684, #680, #603, #604 |
 
    Use `#N` bare (they auto-link on GitHub), mark third-party items, and keep `Why now` to one sentence.
+   `Demand` reads `<r>r <p>p <flag>`: positive reactions, distinct outside participants, and the standing of the row's strongest third-party author (`C` credited, `R` returning, `1` first visit, `-` for a row of our own issues).
+   A row grouping several items sums the reactions and counts each participant once; a keystone row includes its dependants.
    The `Package(s)` column lets the reader pick items that can run in parallel: work on different packages parallelizes, work on the same package does not.
    Name every package an item touches (the issue's `pkg:` labels, or the PR's changed `packages/<pkg>/` paths), comma-separated, without the `@gotgenes/` scope; write `repo` for a `scope:repo` item.
    A row grouping several items lists the union of their packages.
    For an `adjacent` item, name the owning package or extension point there.
-4. **Next item per package** — the prioritized table regrouped into parallel lanes, one row per package with at least one ranked item:
+5. **Next item per package** — the prioritized table regrouped into parallel lanes, one row per package with at least one ranked item:
 
    | Package              | Next          | Then        | Command               |
    | -------------------- | ------------- | ----------- | --------------------- |
@@ -323,11 +345,11 @@ The document contains:
    Skip items waiting on someone else (see Blocked on others) and items whose disposition is only a reply or a close — a lane is work a session can start.
    An item spanning several packages occupies every lane it names: list it in each and say so (`#722 (21, also pi-subagents)`), because running it blocks all of them.
    Order the rows by their `Next` item's global rank, and use `repo` as the lane for `scope:repo` items.
-5. **Keystones** — each keystone with its dependants listed by number.
-6. **Findings that changed a rank** — the verification results from Steps 4 and 5: stale greens, defects already fixed, flakes masking real failures, green-but-misaligned PRs.
-7. **CI and security audit** — the Step 3 audit outcome, and which runs were approved.
-8. **Blocked on others** — items waiting on a contributor (rebase, version confirmation, change requests) with how long they have waited.
-9. **Deferred** — what you consciously did not rank, and why, so the next run does not silently re-derive it.
+6. **Keystones** — each keystone with its dependants listed by number.
+7. **Findings that changed a rank** — the verification results from Steps 4 and 5: stale greens, defects already fixed, flakes masking real failures, green-but-misaligned PRs.
+8. **CI and security audit** — the Step 3 audit outcome, and which runs were approved.
+9. **Blocked on others** — items waiting on a contributor (rebase, version confirmation, change requests) with how long they have waited.
+10. **Deferred** — what you consciously did not rank, and why, so the next run does not silently re-derive it.
    An `out of scope` item is not deferred — it belongs to the Scope alignment section, with a disposition rather than a rationale for waiting.
 
 Before committing, recompute every count the prose states (pending closes, days waiting, items in a list) with a command over the list it counts.
