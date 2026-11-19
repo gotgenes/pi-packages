@@ -40,6 +40,8 @@ Call `set_session_name` with `Backlog triage — <YYYY-MM-DD>` (append `(<pkg>)`
 - `markdown-conventions` — for the output document.
 - `package-<PKG>` — for each package with items in scope; load the one for `$1` when filtered.
 - `reading-artifacts` — before citing a plan, ADR, PR status, or third-party report in a verdict.
+- `clarification-gates` — before the `ask_user` gate.
+- `git-workflow` and `shell-traps` — before the commit, any `gh` mutation, and any pipeline or loop.
 
 ## Step 1: Read the prior triage and decision artifacts
 
@@ -49,7 +51,7 @@ Ranking without the prior record re-derives settled decisions, silently re-defer
 Read, in this order:
 
 1. **The most recent prior triage** — `ls -1 docs/triage/*.md | tail -3`, then read the newest.
-   Carry forward five things specifically: its **Deferred** list, its **Keystones**, its **Blocked on others** entries, its **Scope alignment** verdicts, and the ranks it assigned.
+   Carry forward five things specifically: its **Deferred** list, its **Keystones**, its **Waiting on us** and **Waiting on others** entries (one **Blocked on others** section in older documents), its **Scope alignment** verdicts, and the ranks it assigned.
    You are accountable for what it deferred; see the repeat-deferral rule below.
    A recorded scope verdict is settled and carries forward untouched unless the package's charter or the item itself changed since that triage's date — see Step 6.
 2. **PR-review triage notes** — `docs/retro/` and `packages/*/docs/retro/`, whose `## Stage: PR Review` entries record the direction already chosen for a PR (adopt as-is, adopt with simplified design, decline, or await reporter).
@@ -59,6 +61,8 @@ Read, in this order:
 4. **Existing plans** — `docs/plans/` and `packages/*/docs/plans/`.
    An issue with a committed plan is already planned; note its `**Release:**` marker and rank the execution, not the planning.
 5. **What closed since the last triage** — issues and PRs closed after the prior triage's date, including PRs closed **unmerged**, which usually means the capability was adopted and reimplemented rather than rejected.
+   Check who closed each one: `gh api repos/gotgenes/pi-packages/issues/<N>/events --jq '[.[] | select(.event=="closed") | .actor.login] | last'`.
+   A PR its own author closed with no maintainer comment was withdrawn, and the issue it fixed is unowned again.
 
 This material feeds the "Since the last triage" section of the output and constrains the ranking that follows.
 
@@ -108,6 +112,7 @@ Record three more facts per item; apart from the author's own words, they are th
 
 1. **Reactions**: the positive ones in `reactionGroups` (`THUMBS_UP`, `HEART`, `HOORAY`, `ROCKET`).
 2. **Outside participants**: distinct commenters and reviewers other than the author, the maintainer, and bots.
+   Filter bots (`copilot-pull-request-reviewer`, any `[bot]` login) before a count reaches a table or an `ask_user` briefing.
 3. **Author standing**: credited (a merged PR or a `Co-authored-by` trailer on `main`), returning (items here at least seven days apart), or on a first visit.
    Count trailers, not merged PRs alone: this repo reimplements adopted work, so most adopted contributors have nothing merged.
    The history comes from `gh issue list --state all --limit 2000 --json author,createdAt` and its `gh pr list` twin; the credits come from `git log --format='%(trailers:key=Co-authored-by,valueonly)'`.
@@ -205,6 +210,7 @@ Five rules keep the gate honest:
 
 1. **Cite the non-goal; never paraphrase a boundary into existence.**
    An `out of scope` verdict quotes the bullet it rests on.
+   A decision record the charter cites counts as the charter where it names the item or its mechanism; quote the record and say the verdict rests on it.
    If no bullet covers the item, the verdict is `aligned`, `adjacent`, or a question for the user — never `out of scope`.
    Do not invent a charter to justify a decline.
 2. **An item labeled for several packages is out of scope only if every named charter excludes it.**
@@ -284,8 +290,12 @@ Only these, and only with the stated confirmation:
   Report the audit result.
 - **Post contributor comments** (holding replies, change requests, version requests) — draft with the `github-voice` skill and confirm through `ask_user` before posting.
   A holding reply should say plainly that the item is parked and why, name the issue it is parked on, and avoid committing to a design shape the maintainer has not decided.
+  Each run drafts replies for the five longest-waiting or highest-ranked **Waiting on us** items and confirms them in the same `ask_user` call as the closes.
+  Record a declined draft with the operator's reason, or as declined without one.
 - **Close approved items** — an item whose close the operator approved, in this run's `ask_user` or as recorded by a prior triage, once its reply is posted.
   Confirm the close list in the same `ask_user` call as the other decisions, and record each close in the document.
+- **File an issue the triage found** — a gap no open issue tracks, such as a missing disclosure channel or an admitted seam nobody built.
+  Draft it with `github-voice`, confirm it in the same `ask_user` call, load `roadmap-fit` at the filing point, and record it in the document.
 
 Everything else is a recommendation, including merging, re-running CI, and any close the operator has not approved.
 That covers a Step 6 scope decline: it is recorded in the document as a recommended disposition until the operator approves the close.
@@ -342,17 +352,21 @@ The document contains:
    | pi-subagents         | #1008 (8)     | #987 (9)    | `/plan-issue #1008`   |
 
    `Next` is the lane's highest-ranked actionable item, with its global rank in parentheses; `Then` is the one after it.
-   Skip items waiting on someone else (see Blocked on others) and items whose disposition is only a reply or a close — a lane is work a session can start.
+   Skip items waiting on someone else (see Waiting on others) and items whose disposition is only a reply or a close — a lane is work a session can start.
    An item spanning several packages occupies every lane it names: list it in each and say so (`#722 (21, also pi-subagents)`), because running it blocks all of them.
    Order the rows by their `Next` item's global rank, and use `repo` as the lane for `scope:repo` items.
 6. **Keystones** — each keystone with its dependants listed by number.
 7. **Findings that changed a rank** — the verification results from Steps 4 and 5: stale greens, defects already fixed, flakes masking real failures, green-but-misaligned PRs.
 8. **CI and security audit** — the Step 3 audit outcome, and which runs were approved.
-9. **Blocked on others** — items waiting on a contributor (rebase, version confirmation, change requests) with how long they have waited.
-10. **Deferred** — what you consciously did not rank, and why, so the next run does not silently re-derive it.
+9. **Waiting on us**: every item that owes a maintainer action, split into never answered and follow-up owed, each with its days waiting.
+   Produce the never-answered list with one expression over the Step 2 data, not by hand.
+10. **Waiting on others** — items waiting on a contributor (rebase, version confirmation, change requests) with how long they have waited.
+11. **Deferred** — what you consciously did not rank, and why, so the next run does not silently re-derive it.
    An `out of scope` item is not deferred — it belongs to the Scope alignment section, with a disposition rather than a rationale for waiting.
 
 Before committing, recompute every count the prose states (pending closes, days waiting, items in a list) with a command over the list it counts.
+A number in an `ask_user` briefing is held to the same rule.
+Confirm every open number appears in the document, a range counting for the numbers inside it: `for n in <open numbers>; do grep -qE "#$n\b" <document> || echo "$n"; done`.
 
 Then present a short summary in the session and commit:
 
