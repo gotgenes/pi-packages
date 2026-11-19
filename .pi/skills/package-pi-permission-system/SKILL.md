@@ -68,7 +68,8 @@ Run `pnpm --silent fallow guard <file>` before adding a cross-directory import: 
   Mechanism is forever; docs are reversible.
 - Treat any declared config field not read at runtime as a maintenance trap.
 - A fact that *relieves* an ask (a license, an exemption) is never read off the bash projection, which over-flags by design.
-  Require a positive condition the source proves (the token is the verbatim word bash runs, ADR 0007 §8), and list in the plan the inputs the bound must refuse before the pre-completion reviewer does.
+  Require a positive condition the source proves (the token is the verbatim word bash runs, ADR 0007 §8).
+- A change that relieves or narrows an ask (a license, an exemption, a link's partial allow) lists in its plan the inputs it must refuse before the pre-completion reviewer does: a surface it does not cover, an option the original ask never offered, a value already narrower.
 
 ### Single source of truth for tool policy
 

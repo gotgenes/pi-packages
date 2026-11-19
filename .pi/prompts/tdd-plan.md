@@ -87,6 +87,7 @@ For **each** step in the plan's "TDD Order", in order:
    Implement the minimum code to make those tests pass.
    Re-run the same file and confirm green.
    When the step adds or changes a shared type/interface (or a loop/consumer over one), run `pnpm run check` before committing — Vitest does not typecheck, and a type error caught only at end-of-cycle forces a commit reorder.
+   When the step adds a module or an import between modules, also run `pnpm fallow dead-code` from the root — an import cycle caught only at end-of-cycle forces a history rewrite.
 3. **Verify the pins.**
    Apply the killing mutation the plan named for this step, confirm the step's new tests go red, then revert it.
    Fixing a vacuous test costs nothing here and costs an amended commit later, which is why this sits before the commit rather than in the end-of-cycle review.
