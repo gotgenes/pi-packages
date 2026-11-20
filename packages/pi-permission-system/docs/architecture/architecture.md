@@ -1274,16 +1274,17 @@ The fallow health score is carried as a floor: it is blind to the type-level and
 
 ### Steps
 
-#### [#1133] Split the unified manager test by concern
+#### ✅ [#1133] Group the manager test by concern
 
 **Cause:** one test file holds every concern of `PermissionManager` (scope precedence, session rules, surface and MCP resolution, path surfaces, config paths), two-thirds of it through a filesystem it does not need, so each step of this phase would land its cases in whichever of five places already holds something similar.
 Fallow's large-function flag did not fire on it; the scout's read did.
 
 - **Smell:** Category G (concern fusion, a 1,430-line flat block of 50 top-level tests, stale method-named describes) and Category D (filesystem harness where an in-memory one serves).
-- **Target:** `test/policy/permission-manager-unified.test.ts`, split into one file per concern under `test/policy/`; `test/helpers/manager-harness.ts` only where a moved test changes factory.
-- **Constraint:** lift and shift, one commit per destination file, and no file under `src/` changes.
+- **Target:** `test/policy/permission-manager-unified.test.ts`, renamed `permission-manager.test.ts` after its module and grouped by concern under one `describe("PermissionManager")`, with `permission-manager-fail-closed.test.ts` and `permission-manager-yolo.test.ts` folded in; `test/helpers/manager-harness.ts` only where a moved test changes factory.
+- **Constraint:** lift and shift, one commit per concern block, and no file under `src/` changes.
   The tests that read a real file stay on the filesystem harness: `getResolvedPolicyPaths`, `PI_CODING_AGENT_DIR`, agent-frontmatter parsing, and `configureForCwd`.
 - **Outcome:** no flat top-level `test(` remains in `test/policy/`, the `try` blocks there fall from 152 to at most 80, and the same behaviors are asserted before and after.
+  Landed: `test(pi-permission-system): run permission-map-only manager tests in memory`, `drop manager tests another test already asserts`, and one `group the manager's … tests` or `fold the … tests into the manager tree` commit per concern; flat top-level tests read 0 and `try` blocks 36, and the three files' 252 tests are 229 in one, after removing 23 a kept test already asserted.
 - **Commit type:** `test:`.
 - **Impact 4 / Risk 2 / Priority 16.**
 
@@ -1583,7 +1584,7 @@ Release: independent
 
 ```mermaid
 flowchart TD
-    S1133["#1133<br/>Split the unified manager test"]
+    S1133["✅ #1133<br/>Group the manager test by concern"]
     S1102["#1102<br/>A knob save never erases"]
     S1134["#1134<br/>Scopes as one ordered list"]
     S1108["#1108<br/>Later scope placed after"]
