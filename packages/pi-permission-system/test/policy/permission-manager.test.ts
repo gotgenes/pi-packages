@@ -195,121 +195,6 @@ function checkPath(
 }
 
 // ---------------------------------------------------------------------------
-// Step 5: session rules concatenated — wins over config/default
-// ---------------------------------------------------------------------------
-
-describe("checkPermission — session rules", () => {
-  it("session rule wins over the universal default (external_directory)", () => {
-    const manager = createMissingConfigManager();
-    const sessionRules: Ruleset = [
-      sessionRule("external_directory_read", "/other/project"),
-    ];
-    const result = checkPath(
-      manager,
-      "/other/project",
-      {},
-      "external_directory_read",
-      undefined,
-      sessionRules,
-    );
-    expect(result.state).toBe("allow");
-    expect(result.source).toBe("session");
-    expect(result.matchedPattern).toBe("/other/project");
-  });
-
-  it("session rule wins over the universal default (skill)", () => {
-    const manager = createMissingConfigManager();
-    const sessionRules: Ruleset = [sessionRule("skill", "librarian")];
-    const result = checkTool(
-      manager,
-      "skill",
-      { name: "librarian" },
-      undefined,
-      sessionRules,
-    );
-    expect(result.state).toBe("allow");
-    expect(result.source).toBe("session");
-    expect(result.matchedPattern).toBe("librarian");
-  });
-
-  it("session rule wins over the universal default (bash)", () => {
-    const manager = createMissingConfigManager();
-    const sessionRules: Ruleset = [sessionRule("bash", "git status")];
-    const result = checkTool(
-      manager,
-      "bash",
-      { command: "git status" },
-      undefined,
-      sessionRules,
-    );
-    expect(result.state).toBe("allow");
-    expect(result.source).toBe("session");
-    expect(result.matchedPattern).toBe("git status");
-  });
-
-  it("session rule wins over the universal default (tool — read)", () => {
-    const manager = createMissingConfigManager();
-    const sessionRules: Ruleset = [sessionRule("read", "*")];
-    const result = checkTool(manager, "read", {}, undefined, sessionRules);
-    expect(result.state).toBe("allow");
-    expect(result.source).toBe("session");
-  });
-
-  it("session rule wins over the universal default (mcp)", () => {
-    const manager = createMissingConfigManager();
-    const sessionRules: Ruleset = [sessionRule("mcp", "mcp_status")];
-    const result = checkTool(manager, "mcp", {}, undefined, sessionRules);
-    expect(result.state).toBe("allow");
-    expect(result.source).toBe("session");
-  });
-
-  it("no session rules — falls through to default (ask)", () => {
-    const manager = createMissingConfigManager();
-    const result = checkTool(manager, "read", {}, undefined, []);
-    expect(result.state).toBe("ask");
-    expect(result.source).not.toBe("session");
-  });
-
-  it("session rule with narrower pattern does not block a broader command not in session", () => {
-    const manager = createMissingConfigManager();
-    // Only "git status" is session-approved; "git push" should fall through to default.
-    const sessionRules: Ruleset = [sessionRule("bash", "git status")];
-    const result = checkTool(
-      manager,
-      "bash",
-      { command: "git push origin main" },
-      undefined,
-      sessionRules,
-    );
-    expect(result.state).toBe("ask");
-    expect(result.source).not.toBe("session");
-  });
-
-  it("session wildcard pattern matches multiple commands", () => {
-    const manager = createMissingConfigManager();
-    const sessionRules: Ruleset = [sessionRule("bash", "git *")];
-    const push = checkTool(
-      manager,
-      "bash",
-      { command: "git push origin main" },
-      undefined,
-      sessionRules,
-    );
-    const status = checkTool(
-      manager,
-      "bash",
-      { command: "git status" },
-      undefined,
-      sessionRules,
-    );
-    expect(push.state).toBe("allow");
-    expect(push.source).toBe("session");
-    expect(status.state).toBe("allow");
-    expect(status.source).toBe("session");
-  });
-});
-
-// ---------------------------------------------------------------------------
 // Step 6: source field and matchedPattern for all five surfaces
 // ---------------------------------------------------------------------------
 
@@ -544,22 +429,6 @@ describe("checkPermission — source derivation and matchedPattern", () => {
       expect(result.source).toBe("tool");
     });
   });
-
-  describe("matchedPattern for session rules across surfaces", () => {
-    it("matchedPattern is the session rule pattern for a session match (bash)", () => {
-      const manager = createMissingConfigManager();
-      const sessionRules: Ruleset = [sessionRule("bash", "git *")];
-      const result = checkTool(
-        manager,
-        "bash",
-        { command: "git status" },
-        undefined,
-        sessionRules,
-      );
-      expect(result.matchedPattern).toBe("git *");
-      expect(result.source).toBe("session");
-    });
-  });
 });
 
 // ---------------------------------------------------------------------------
@@ -648,21 +517,6 @@ describe("checkPermission — home path expansion in external_directory rules", 
 });
 
 // ---------------------------------------------------------------------------
-// Rule origin provenance
-// ---------------------------------------------------------------------------
-
-describe("checkPermission — rule origin provenance", () => {
-  it("session rule: origin is 'session'", () => {
-    const manager = createMissingConfigManager();
-    const sessionRules: Ruleset = [sessionRule("read", "*")];
-    const result = checkTool(manager, "read", {}, undefined, sessionRules);
-    expect(result.state).toBe("allow");
-    expect(result.source).toBe("session");
-    expect(result.origin).toBe("session");
-  });
-});
-
-// ---------------------------------------------------------------------------
 // In-memory PolicyLoader stub tests — no filesystem required
 // ---------------------------------------------------------------------------
 
@@ -675,42 +529,6 @@ describe("PermissionManager with in-memory PolicyLoader", () => {
       const result = checkTool(manager, "my_custom_tool", {});
       expect(result.state).toBe("ask");
       expect(result.source).toBe("default");
-    });
-  });
-
-  describe("session rule composition", () => {
-    it("session rule wins over config", () => {
-      const manager = createInMemoryManager({
-        global: { permission: { "*": "deny" } },
-      });
-      const sessionRules: Ruleset = [sessionRule("read", "*")];
-      const result = checkTool(manager, "read", {}, undefined, sessionRules);
-      expect(result.state).toBe("allow");
-      expect(result.source).toBe("session");
-    });
-
-    it("session rule does not bleed across surfaces", () => {
-      const manager = createInMemoryManager({
-        global: { permission: { "*": "ask" } },
-      });
-      const sessionRules: Ruleset = [sessionRule("bash", "git *")];
-      const bashResult = checkTool(
-        manager,
-        "bash",
-        { command: "git status" },
-        undefined,
-        sessionRules,
-      );
-      expect(bashResult.state).toBe("allow");
-
-      const readResult = checkTool(
-        manager,
-        "read",
-        {},
-        undefined,
-        sessionRules,
-      );
-      expect(readResult.state).toBe("ask");
     });
   });
 
@@ -878,27 +696,6 @@ describe("checkPermission — per-tool path patterns", () => {
     expect(result.state).toBe("deny");
   });
 
-  it("session rule for specific path overrides config deny", () => {
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          read: { "*": "allow", "*.env": "deny" },
-        },
-      },
-    });
-    const sessionRules: Ruleset = [sessionRule("read", ".env")];
-    const result = checkPath(
-      manager,
-      ".env",
-      {},
-      "read",
-      undefined,
-      sessionRules,
-    );
-    expect(result.state).toBe("allow");
-    expect(result.source).toBe("session");
-  });
-
   it("falls back to '*' when input.path is missing", () => {
     const manager = createInMemoryManager({
       global: {
@@ -983,27 +780,6 @@ describe("cross-cutting path surface", () => {
     });
     const toolState = manager.getToolPermission("path_read");
     expect(toolState).toBe("allow");
-  });
-
-  it("session approval on path surface overrides config deny", () => {
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          path: { "*": "allow", "*.env": "deny" },
-        },
-      },
-    });
-    const sessionRules: Ruleset = [sessionRule("path_read", "/project/.env")];
-    const result = checkPath(
-      manager,
-      "/project/.env",
-      {},
-      "path_read",
-      undefined,
-      sessionRules,
-    );
-    expect(result.state).toBe("allow");
-    expect(result.source).toBe("session");
   });
 
   it("configs without path key behave identically (no path gate fires)", () => {
@@ -1959,211 +1735,6 @@ test("PermissionManager reads config from PI_CODING_AGENT_DIR when set", () => {
     }
     rmSync(baseDir, { recursive: true, force: true });
   }
-});
-
-// ---------------------------------------------------------------------------
-// Session-aware checkPermission() — moved from catch-all (#342)
-// ---------------------------------------------------------------------------
-
-test("checkPermission returns source 'session' when session rules cover the external_directory path", () => {
-  const manager = createInMemoryManager({
-    global: {
-      permission: { "*": "allow" },
-    },
-  });
-  const sessionRules = [
-    sessionRule("external_directory_read", "/other/project/*"),
-  ];
-
-  const result = checkPath(
-    manager,
-    "/other/project/src/foo.ts",
-    {},
-    "external_directory_read",
-    undefined,
-    sessionRules,
-  );
-  expect(result.state).toBe("allow");
-  expect(result.source).toBe("session");
-  expect(result.matchedPattern).toBe("/other/project/*");
-});
-
-test("checkPermission falls back to config policy when session rules do not cover the path", () => {
-  const manager = createInMemoryManager({
-    global: {
-      permission: { "*": "allow", external_directory: "deny" },
-    },
-  });
-  const sessionRules = [
-    sessionRule("external_directory_read", "/other/project/*"),
-  ];
-
-  const result = checkTool(
-    manager,
-    "external_directory_read",
-    { path: "/completely/different/path.ts" },
-    undefined,
-    sessionRules,
-  );
-  expect(result.state).toBe("deny");
-  expect(result.source).toBe("special");
-});
-
-test("checkPermission with empty session rules is identical to call without sessionRules arg", () => {
-  const manager = createInMemoryManager({
-    global: {
-      permission: { "*": "allow", external_directory: "deny" },
-    },
-  });
-  const withEmpty = checkPath(
-    manager,
-    "/other/project/foo.ts",
-    {},
-    "external_directory_read",
-    undefined,
-    [],
-  );
-  const withoutArg = checkPath(
-    manager,
-    "/other/project/foo.ts",
-    {},
-    "external_directory_read",
-  );
-  const expected: PermissionCheckResult = {
-    toolName: "external_directory_read",
-    state: "deny",
-    matchedPattern: "*",
-    source: "special",
-    origin: "global",
-  };
-  expect(withEmpty).toEqual(expected);
-  expect(withoutArg).toEqual(expected);
-});
-
-test("session rules for one surface do not affect checks on other surfaces", () => {
-  const manager = createInMemoryManager({ global: { permission: {} } });
-  const sessionRules = [
-    sessionRule("external_directory_read", "/other/project/*"),
-  ];
-
-  const bashResult = checkTool(
-    manager,
-    "bash",
-    { command: "git status" },
-    undefined,
-    sessionRules,
-  );
-  expect(bashResult.state).toBe("ask");
-  expect(bashResult.source).toBe("bash");
-
-  const mcpResult = checkTool(
-    manager,
-    "mcp",
-    { tool: "exa:search" },
-    undefined,
-    sessionRules,
-  );
-  expect(mcpResult.state).toBe("ask");
-  expect(mcpResult.source).toBe("default");
-});
-
-test("session rules override config deny for external_directory", () => {
-  const manager = createInMemoryManager({
-    global: {
-      permission: { "*": "allow", external_directory: "deny" },
-    },
-  });
-  const sessionRules = [
-    sessionRule("external_directory_read", "/other/project/*"),
-  ];
-
-  const result = checkPath(
-    manager,
-    "/other/project/src/foo.ts",
-    {},
-    "external_directory_read",
-    undefined,
-    sessionRules,
-  );
-  expect(result.state).toBe("allow");
-  expect(result.source).toBe("session");
-});
-
-test("checkPermission returns source 'session' for bash when session rules match", () => {
-  const manager = createInMemoryManager({ global: { permission: {} } });
-  const sessionRules = [sessionRule("bash", "git *")];
-
-  const result = checkTool(
-    manager,
-    "bash",
-    { command: "git status --short" },
-    undefined,
-    sessionRules,
-  );
-  expect(result.state).toBe("allow");
-  expect(result.source).toBe("session");
-  expect(result.matchedPattern).toBe("git *");
-});
-
-test("checkPermission returns source 'session' for bash when session rule is exact match", () => {
-  const manager = createInMemoryManager({ global: { permission: {} } });
-  const sessionRules = [sessionRule("bash", "ls")];
-
-  const result = checkTool(
-    manager,
-    "bash",
-    { command: "ls" },
-    undefined,
-    sessionRules,
-  );
-  expect(result.state).toBe("allow");
-  expect(result.source).toBe("session");
-});
-
-test("checkPermission falls back to config for bash when session rules do not match the command", () => {
-  const manager = createInMemoryManager({
-    global: { permission: { bash: "deny" } },
-  });
-  const sessionRules = [sessionRule("bash", "git *")];
-
-  const result = checkTool(
-    manager,
-    "bash",
-    { command: "npm run build" },
-    undefined,
-    sessionRules,
-  );
-  expect(result.state).toBe("deny");
-  expect(result.source).toBe("bash");
-});
-
-test("checkPermission returns source 'session' for mcp when session rules match the target", () => {
-  const manager = createInMemoryManager({ global: { permission: {} } });
-  const sessionRules = [sessionRule("mcp", "exa:*")];
-
-  const result = checkTool(
-    manager,
-    "mcp",
-    { tool: "exa:search" },
-    undefined,
-    sessionRules,
-  );
-  expect(result.state).toBe("allow");
-  expect(result.source).toBe("session");
-});
-
-test("bash session rules do not bleed into mcp checks", () => {
-  const manager = createInMemoryManager({ global: { permission: {} } });
-  const sessionRules = [sessionRule("bash", "git *")];
-
-  const result = checkTool(
-    manager,
-    "mcp",
-    { tool: "exa:search" },
-    undefined,
-    sessionRules,
-  );
-  expect(result.source).not.toBe("session");
 });
 
 // ---------------------------------------------------------------------------
@@ -3914,6 +3485,427 @@ permission:
         });
         expect(result.state).toBe("deny");
         expect(result.origin).not.toBe("yolo");
+      });
+    });
+  });
+
+  describe("session rules", () => {
+    describe("over the default", () => {
+      it("session rule wins over the universal default (external_directory)", () => {
+        const manager = createMissingConfigManager();
+        const sessionRules: Ruleset = [
+          sessionRule("external_directory_read", "/other/project"),
+        ];
+        const result = checkPath(
+          manager,
+          "/other/project",
+          {},
+          "external_directory_read",
+          undefined,
+          sessionRules,
+        );
+        expect(result.state).toBe("allow");
+        expect(result.source).toBe("session");
+        expect(result.matchedPattern).toBe("/other/project");
+      });
+
+      it("session rule wins over the universal default (skill)", () => {
+        const manager = createMissingConfigManager();
+        const sessionRules: Ruleset = [sessionRule("skill", "librarian")];
+        const result = checkTool(
+          manager,
+          "skill",
+          { name: "librarian" },
+          undefined,
+          sessionRules,
+        );
+        expect(result.state).toBe("allow");
+        expect(result.source).toBe("session");
+        expect(result.matchedPattern).toBe("librarian");
+      });
+
+      it("session rule wins over the universal default (bash)", () => {
+        const manager = createMissingConfigManager();
+        const sessionRules: Ruleset = [sessionRule("bash", "git status")];
+        const result = checkTool(
+          manager,
+          "bash",
+          { command: "git status" },
+          undefined,
+          sessionRules,
+        );
+        expect(result.state).toBe("allow");
+        expect(result.source).toBe("session");
+        expect(result.matchedPattern).toBe("git status");
+      });
+
+      it("session rule wins over the universal default (tool — read)", () => {
+        const manager = createMissingConfigManager();
+        const sessionRules: Ruleset = [sessionRule("read", "*")];
+        const result = checkTool(manager, "read", {}, undefined, sessionRules);
+        expect(result.state).toBe("allow");
+        expect(result.source).toBe("session");
+      });
+
+      it("session rule wins over the universal default (mcp)", () => {
+        const manager = createMissingConfigManager();
+        const sessionRules: Ruleset = [sessionRule("mcp", "mcp_status")];
+        const result = checkTool(manager, "mcp", {}, undefined, sessionRules);
+        expect(result.state).toBe("allow");
+        expect(result.source).toBe("session");
+      });
+
+      it("no session rules — falls through to default (ask)", () => {
+        const manager = createMissingConfigManager();
+        const result = checkTool(manager, "read", {}, undefined, []);
+        expect(result.state).toBe("ask");
+        expect(result.source).not.toBe("session");
+      });
+
+      it("session rule with narrower pattern does not block a broader command not in session", () => {
+        const manager = createMissingConfigManager();
+        // Only "git status" is session-approved; "git push" should fall through to default.
+        const sessionRules: Ruleset = [sessionRule("bash", "git status")];
+        const result = checkTool(
+          manager,
+          "bash",
+          { command: "git push origin main" },
+          undefined,
+          sessionRules,
+        );
+        expect(result.state).toBe("ask");
+        expect(result.source).not.toBe("session");
+      });
+
+      it("session wildcard pattern matches multiple commands", () => {
+        const manager = createMissingConfigManager();
+        const sessionRules: Ruleset = [sessionRule("bash", "git *")];
+        const push = checkTool(
+          manager,
+          "bash",
+          { command: "git push origin main" },
+          undefined,
+          sessionRules,
+        );
+        const status = checkTool(
+          manager,
+          "bash",
+          { command: "git status" },
+          undefined,
+          sessionRules,
+        );
+        expect(push.state).toBe("allow");
+        expect(push.source).toBe("session");
+        expect(status.state).toBe("allow");
+        expect(status.source).toBe("session");
+      });
+
+      it("returns source 'session' for bash when session rules match", () => {
+        const manager = createInMemoryManager({ global: { permission: {} } });
+        const sessionRules = [sessionRule("bash", "git *")];
+
+        const result = checkTool(
+          manager,
+          "bash",
+          { command: "git status --short" },
+          undefined,
+          sessionRules,
+        );
+        expect(result.state).toBe("allow");
+        expect(result.source).toBe("session");
+        expect(result.matchedPattern).toBe("git *");
+      });
+
+      it("returns source 'session' for bash when session rule is exact match", () => {
+        const manager = createInMemoryManager({ global: { permission: {} } });
+        const sessionRules = [sessionRule("bash", "ls")];
+
+        const result = checkTool(
+          manager,
+          "bash",
+          { command: "ls" },
+          undefined,
+          sessionRules,
+        );
+        expect(result.state).toBe("allow");
+        expect(result.source).toBe("session");
+      });
+
+      it("returns source 'session' for mcp when session rules match the target", () => {
+        const manager = createInMemoryManager({ global: { permission: {} } });
+        const sessionRules = [sessionRule("mcp", "exa:*")];
+
+        const result = checkTool(
+          manager,
+          "mcp",
+          { tool: "exa:search" },
+          undefined,
+          sessionRules,
+        );
+        expect(result.state).toBe("allow");
+        expect(result.source).toBe("session");
+      });
+    });
+
+    describe("over a config rule", () => {
+      it("session rule wins over config", () => {
+        const manager = createInMemoryManager({
+          global: { permission: { "*": "deny" } },
+        });
+        const sessionRules: Ruleset = [sessionRule("read", "*")];
+        const result = checkTool(manager, "read", {}, undefined, sessionRules);
+        expect(result.state).toBe("allow");
+        expect(result.source).toBe("session");
+      });
+
+      it("returns source 'session' when session rules cover the external_directory path", () => {
+        const manager = createInMemoryManager({
+          global: {
+            permission: { "*": "allow" },
+          },
+        });
+        const sessionRules = [
+          sessionRule("external_directory_read", "/other/project/*"),
+        ];
+
+        const result = checkPath(
+          manager,
+          "/other/project/src/foo.ts",
+          {},
+          "external_directory_read",
+          undefined,
+          sessionRules,
+        );
+        expect(result.state).toBe("allow");
+        expect(result.source).toBe("session");
+        expect(result.matchedPattern).toBe("/other/project/*");
+      });
+
+      it("falls back to config policy when session rules do not cover the path", () => {
+        const manager = createInMemoryManager({
+          global: {
+            permission: { "*": "allow", external_directory: "deny" },
+          },
+        });
+        const sessionRules = [
+          sessionRule("external_directory_read", "/other/project/*"),
+        ];
+
+        const result = checkTool(
+          manager,
+          "external_directory_read",
+          { path: "/completely/different/path.ts" },
+          undefined,
+          sessionRules,
+        );
+        expect(result.state).toBe("deny");
+        expect(result.source).toBe("special");
+      });
+
+      it("session rules override config deny for external_directory", () => {
+        const manager = createInMemoryManager({
+          global: {
+            permission: { "*": "allow", external_directory: "deny" },
+          },
+        });
+        const sessionRules = [
+          sessionRule("external_directory_read", "/other/project/*"),
+        ];
+
+        const result = checkPath(
+          manager,
+          "/other/project/src/foo.ts",
+          {},
+          "external_directory_read",
+          undefined,
+          sessionRules,
+        );
+        expect(result.state).toBe("allow");
+        expect(result.source).toBe("session");
+      });
+
+      it("falls back to config for bash when session rules do not match the command", () => {
+        const manager = createInMemoryManager({
+          global: { permission: { bash: "deny" } },
+        });
+        const sessionRules = [sessionRule("bash", "git *")];
+
+        const result = checkTool(
+          manager,
+          "bash",
+          { command: "npm run build" },
+          undefined,
+          sessionRules,
+        );
+        expect(result.state).toBe("deny");
+        expect(result.source).toBe("bash");
+      });
+
+      it("treats an empty session ruleset like none", () => {
+        const manager = createInMemoryManager({
+          global: {
+            permission: { "*": "allow", external_directory: "deny" },
+          },
+        });
+        const withEmpty = checkPath(
+          manager,
+          "/other/project/foo.ts",
+          {},
+          "external_directory_read",
+          undefined,
+          [],
+        );
+        const withoutArg = checkPath(
+          manager,
+          "/other/project/foo.ts",
+          {},
+          "external_directory_read",
+        );
+        const expected: PermissionCheckResult = {
+          toolName: "external_directory_read",
+          state: "deny",
+          matchedPattern: "*",
+          source: "special",
+          origin: "global",
+        };
+        expect(withEmpty).toEqual(expected);
+        expect(withoutArg).toEqual(expected);
+      });
+
+      it("session rule for specific path overrides config deny", () => {
+        const manager = createInMemoryManager({
+          global: {
+            permission: {
+              read: { "*": "allow", "*.env": "deny" },
+            },
+          },
+        });
+        const sessionRules: Ruleset = [sessionRule("read", ".env")];
+        const result = checkPath(
+          manager,
+          ".env",
+          {},
+          "read",
+          undefined,
+          sessionRules,
+        );
+        expect(result.state).toBe("allow");
+        expect(result.source).toBe("session");
+      });
+
+      it("session approval on path surface overrides config deny", () => {
+        const manager = createInMemoryManager({
+          global: {
+            permission: {
+              path: { "*": "allow", "*.env": "deny" },
+            },
+          },
+        });
+        const sessionRules: Ruleset = [
+          sessionRule("path_read", "/project/.env"),
+        ];
+        const result = checkPath(
+          manager,
+          "/project/.env",
+          {},
+          "path_read",
+          undefined,
+          sessionRules,
+        );
+        expect(result.state).toBe("allow");
+        expect(result.source).toBe("session");
+      });
+    });
+
+    describe("surface isolation", () => {
+      it("session rule does not bleed across surfaces", () => {
+        const manager = createInMemoryManager({
+          global: { permission: { "*": "ask" } },
+        });
+        const sessionRules: Ruleset = [sessionRule("bash", "git *")];
+        const bashResult = checkTool(
+          manager,
+          "bash",
+          { command: "git status" },
+          undefined,
+          sessionRules,
+        );
+        expect(bashResult.state).toBe("allow");
+
+        const readResult = checkTool(
+          manager,
+          "read",
+          {},
+          undefined,
+          sessionRules,
+        );
+        expect(readResult.state).toBe("ask");
+      });
+
+      it("session rules for one surface do not affect checks on other surfaces", () => {
+        const manager = createInMemoryManager({ global: { permission: {} } });
+        const sessionRules = [
+          sessionRule("external_directory_read", "/other/project/*"),
+        ];
+
+        const bashResult = checkTool(
+          manager,
+          "bash",
+          { command: "git status" },
+          undefined,
+          sessionRules,
+        );
+        expect(bashResult.state).toBe("ask");
+        expect(bashResult.source).toBe("bash");
+
+        const mcpResult = checkTool(
+          manager,
+          "mcp",
+          { tool: "exa:search" },
+          undefined,
+          sessionRules,
+        );
+        expect(mcpResult.state).toBe("ask");
+        expect(mcpResult.source).toBe("default");
+      });
+
+      it("bash session rules do not bleed into mcp checks", () => {
+        const manager = createInMemoryManager({ global: { permission: {} } });
+        const sessionRules = [sessionRule("bash", "git *")];
+
+        const result = checkTool(
+          manager,
+          "mcp",
+          { tool: "exa:search" },
+          undefined,
+          sessionRules,
+        );
+        expect(result.source).not.toBe("session");
+      });
+    });
+
+    describe("attribution", () => {
+      it("matchedPattern is the session rule pattern for a session match (bash)", () => {
+        const manager = createMissingConfigManager();
+        const sessionRules: Ruleset = [sessionRule("bash", "git *")];
+        const result = checkTool(
+          manager,
+          "bash",
+          { command: "git status" },
+          undefined,
+          sessionRules,
+        );
+        expect(result.matchedPattern).toBe("git *");
+        expect(result.source).toBe("session");
+      });
+
+      it("session rule: origin is 'session'", () => {
+        const manager = createMissingConfigManager();
+        const sessionRules: Ruleset = [sessionRule("read", "*")];
+        const result = checkTool(manager, "read", {}, undefined, sessionRules);
+        expect(result.state).toBe("allow");
+        expect(result.source).toBe("session");
+        expect(result.origin).toBe("session");
       });
     });
   });
