@@ -1,0 +1,311 @@
+{
+  "measuredAt": "2026-11-09T12:40:45.585Z",
+  "node": "v26.13.0",
+  "pi": "1.5.0",
+  "packageVersion": "42.0.0",
+  "runtimeSha256": "b73874d6073d9169e23bef19b1b1cb6fb88e79f2c5cb49ff329fa2dc95575095",
+  "trials": 9,
+  "entries": {
+    "source": "/Users/choh/orca/projects/pi-packages/packages/pi-permission-system/src/index.ts",
+    "compiled": "/Users/choh/orca/projects/pi-packages/packages/pi-permission-system/extension.ts"
+  },
+  "notes": [
+    "Actual Pi CLI in fresh processes, only this extension, offline RPC with stdin EOF; no model requests.",
+    "Disposable agent directory; YOLO on and both logs off; real settings/install untouched.",
+    "One warm-up per condition/cache mode, then alternating source/compiled order on each pair.",
+    "JITI_FS_CACHE=0 disables transform caching, not the OS filesystem cache.",
+    "CLI wall time includes startup, session lifecycle and shutdown; extension time is Pi's import + factory instrumentation."
+  ],
+  "modes": {
+    "warmTransformCache": {
+      "warmup": {
+        "source": {
+          "importMs": 80,
+          "factoryMs": 110,
+          "extensionMs": 190,
+          "cliMs": 371.54875
+        },
+        "compiled": {
+          "importMs": 82,
+          "factoryMs": 108,
+          "extensionMs": 190,
+          "cliMs": 371.695416
+        }
+      },
+      "samples": {
+        "source": [
+          {
+            "importMs": 83,
+            "factoryMs": 110,
+            "extensionMs": 193,
+            "cliMs": 373.2822920000001
+          },
+          {
+            "importMs": 66,
+            "factoryMs": 106,
+            "extensionMs": 172,
+            "cliMs": 341.6690410000001
+          },
+          {
+            "importMs": 66,
+            "factoryMs": 104,
+            "extensionMs": 170,
+            "cliMs": 341.00412499999993
+          },
+          {
+            "importMs": 74,
+            "factoryMs": 109,
+            "extensionMs": 183,
+            "cliMs": 353.25816699999996
+          },
+          {
+            "importMs": 75,
+            "factoryMs": 104,
+            "extensionMs": 179,
+            "cliMs": 351.009
+          },
+          {
+            "importMs": 73,
+            "factoryMs": 105,
+            "extensionMs": 178,
+            "cliMs": 359.5007079999996
+          },
+          {
+            "importMs": 66,
+            "factoryMs": 102,
+            "extensionMs": 168,
+            "cliMs": 338.692
+          },
+          {
+            "importMs": 70,
+            "factoryMs": 103,
+            "extensionMs": 173,
+            "cliMs": 351.1924170000002
+          },
+          {
+            "importMs": 68,
+            "factoryMs": 102,
+            "extensionMs": 170,
+            "cliMs": 340.2481250000001
+          }
+        ],
+        "compiled": [
+          {
+            "importMs": 22,
+            "factoryMs": 105,
+            "extensionMs": 127,
+            "cliMs": 303.21016699999996
+          },
+          {
+            "importMs": 22,
+            "factoryMs": 103,
+            "extensionMs": 125,
+            "cliMs": 298.91049999999996
+          },
+          {
+            "importMs": 22,
+            "factoryMs": 104,
+            "extensionMs": 126,
+            "cliMs": 295.673667
+          },
+          {
+            "importMs": 22,
+            "factoryMs": 105,
+            "extensionMs": 127,
+            "cliMs": 296.9206250000002
+          },
+          {
+            "importMs": 22,
+            "factoryMs": 106,
+            "extensionMs": 128,
+            "cliMs": 297.41079100000024
+          },
+          {
+            "importMs": 23,
+            "factoryMs": 109,
+            "extensionMs": 132,
+            "cliMs": 312.25637500000084
+          },
+          {
+            "importMs": 23,
+            "factoryMs": 102,
+            "extensionMs": 125,
+            "cliMs": 294.33279199999924
+          },
+          {
+            "importMs": 25,
+            "factoryMs": 106,
+            "extensionMs": 131,
+            "cliMs": 301.923667
+          },
+          {
+            "importMs": 24,
+            "factoryMs": 106,
+            "extensionMs": 130,
+            "cliMs": 300.9730410000002
+          }
+        ]
+      },
+      "medians": {
+        "source": {
+          "importMs": 70,
+          "factoryMs": 104,
+          "extensionMs": 173,
+          "cliMs": 351.009
+        },
+        "compiled": {
+          "importMs": 22,
+          "factoryMs": 105,
+          "extensionMs": 127,
+          "cliMs": 298.91049999999996
+        }
+      },
+      "extensionReductionPercent": 26.589595375722542
+    },
+    "disabledTransformCache": {
+      "warmup": {
+        "source": {
+          "importMs": 526,
+          "factoryMs": 109,
+          "extensionMs": 635,
+          "cliMs": 812.567583
+        },
+        "compiled": {
+          "importMs": 72,
+          "factoryMs": 112,
+          "extensionMs": 184,
+          "cliMs": 365.5547919999999
+        }
+      },
+      "samples": {
+        "source": [
+          {
+            "importMs": 539,
+            "factoryMs": 111,
+            "extensionMs": 650,
+            "cliMs": 836.5938750000005
+          },
+          {
+            "importMs": 504,
+            "factoryMs": 105,
+            "extensionMs": 609,
+            "cliMs": 795.5495840000003
+          },
+          {
+            "importMs": 503,
+            "factoryMs": 103,
+            "extensionMs": 606,
+            "cliMs": 783.1408330000013
+          },
+          {
+            "importMs": 519,
+            "factoryMs": 110,
+            "extensionMs": 629,
+            "cliMs": 813.046542
+          },
+          {
+            "importMs": 515,
+            "factoryMs": 106,
+            "extensionMs": 621,
+            "cliMs": 811.9199169999993
+          },
+          {
+            "importMs": 510,
+            "factoryMs": 105,
+            "extensionMs": 615,
+            "cliMs": 789.7802499999998
+          },
+          {
+            "importMs": 513,
+            "factoryMs": 111,
+            "extensionMs": 624,
+            "cliMs": 802.4322499999998
+          },
+          {
+            "importMs": 603,
+            "factoryMs": 111,
+            "extensionMs": 714,
+            "cliMs": 899.208208
+          },
+          {
+            "importMs": 550,
+            "factoryMs": 110,
+            "extensionMs": 660,
+            "cliMs": 845.0352079999975
+          }
+        ],
+        "compiled": [
+          {
+            "importMs": 69,
+            "factoryMs": 108,
+            "extensionMs": 177,
+            "cliMs": 358.83416600000055
+          },
+          {
+            "importMs": 69,
+            "factoryMs": 112,
+            "extensionMs": 181,
+            "cliMs": 365.4272919999985
+          },
+          {
+            "importMs": 69,
+            "factoryMs": 113,
+            "extensionMs": 182,
+            "cliMs": 358.17525000000023
+          },
+          {
+            "importMs": 70,
+            "factoryMs": 113,
+            "extensionMs": 183,
+            "cliMs": 365.4130409999998
+          },
+          {
+            "importMs": 72,
+            "factoryMs": 105,
+            "extensionMs": 177,
+            "cliMs": 373.21866600000067
+          },
+          {
+            "importMs": 68,
+            "factoryMs": 105,
+            "extensionMs": 173,
+            "cliMs": 348.4724580000002
+          },
+          {
+            "importMs": 69,
+            "factoryMs": 108,
+            "extensionMs": 177,
+            "cliMs": 354.66908299999886
+          },
+          {
+            "importMs": 71,
+            "factoryMs": 113,
+            "extensionMs": 184,
+            "cliMs": 365.0372500000012
+          },
+          {
+            "importMs": 69,
+            "factoryMs": 105,
+            "extensionMs": 174,
+            "cliMs": 350.82674999999654
+          }
+        ]
+      },
+      "medians": {
+        "source": {
+          "importMs": 515,
+          "factoryMs": 110,
+          "extensionMs": 624,
+          "cliMs": 811.9199169999993
+        },
+        "compiled": {
+          "importMs": 69,
+          "factoryMs": 108,
+          "extensionMs": 177,
+          "cliMs": 358.83416600000055
+        }
+      },
+      "extensionReductionPercent": 71.63461538461539
+    }
+  }
+}
