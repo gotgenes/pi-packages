@@ -854,59 +854,6 @@ describe("PermissionManager — configureForCwd and agentDir option", () => {
 // PermissionManager surface resolution — moved from catch-all (#342)
 // ---------------------------------------------------------------------------
 
-test("MCP wildcard matching uses the registered mcp tool", () => {
-  const manager = createInMemoryManager({
-    global: {
-      permission: {
-        "*": "ask",
-        mcp: { "*": "deny", "research_*": "ask", "research_query-*": "allow" },
-      },
-    },
-  });
-  const queryDocs = checkTool(manager, "mcp", {
-    tool: "research:query-docs",
-  });
-  expect(queryDocs.state).toBe("allow");
-  expect(queryDocs.source).toBe("mcp");
-  expect(queryDocs.matchedPattern).toBe("research_query-*");
-  expect(queryDocs.target).toBe("research_query-docs");
-
-  const resolve2 = checkTool(manager, "mcp", {
-    tool: "research:resolve-context",
-  });
-  expect(resolve2.state).toBe("ask");
-  expect(resolve2.matchedPattern).toBe("research_*");
-  expect(resolve2.target).toBe("research_resolve-context");
-
-  const unknown = checkTool(manager, "mcp", {
-    tool: "search:provider",
-  });
-  expect(unknown.state).toBe("deny");
-  expect(unknown.matchedPattern).toBe("*");
-  expect(unknown.target).toBe("search_provider");
-});
-
-test("MCP proxy tool infers server-prefixed aliases from configured server names", () => {
-  const manager = createInMemoryManager(
-    {
-      global: {
-        permission: {
-          "*": "ask",
-          mcp: { "exa_*": "deny", exa_get_code_context_exa: "allow" },
-        },
-      },
-    },
-    ["exa"],
-  );
-  const result = checkTool(manager, "mcp", {
-    tool: "get_code_context_exa",
-  });
-  expect(result.state).toBe("allow");
-  expect(result.source).toBe("mcp");
-  expect(result.matchedPattern).toBe("exa_get_code_context_exa");
-  expect(result.target).toBe("exa_get_code_context_exa");
-});
-
 test("MCP server names in settings.json are not used — only mcp.json is consulted", () => {
   const baseDir = mkdtempSync(join(tmpdir(), "pi-permission-system-test-"));
   const globalConfigPath = join(baseDir, "pi-permissions.jsonc");
@@ -944,136 +891,6 @@ test("MCP server names in settings.json are not used — only mcp.json is consul
     expect(result.state).toBe("ask");
   } finally {
     rmSync(baseDir, { recursive: true, force: true });
-  }
-});
-
-test("MCP describe mode normalizes qualified tool names without duplicating server prefixes", () => {
-  const manager = createInMemoryManager(
-    {
-      global: {
-        permission: {
-          "*": "ask",
-          mcp: { "exa_*": "deny", exa_web_search_exa: "allow" },
-        },
-      },
-    },
-    ["exa"],
-  );
-  const result = checkTool(manager, "mcp", {
-    describe: "exa:web_search_exa",
-    server: "exa",
-  });
-  expect(result.state).toBe("allow");
-  expect(result.source).toBe("mcp");
-  expect(result.matchedPattern).toBe("exa_web_search_exa");
-  expect(result.target).toBe("exa_web_search_exa");
-});
-
-test("mcp catch-all acts as fallback for unmatched MCP targets", () => {
-  const { manager, cleanup } = createManager(
-    {
-      permission: { "*": "ask" },
-    },
-    {
-      reviewer: `---
-name: reviewer
-permission:
-  mcp: allow
----
-`,
-    },
-  );
-
-  try {
-    const result = checkTool(
-      manager,
-      "mcp",
-      { tool: "exa:web_search_exa" },
-      "reviewer",
-    );
-    expect(result.state).toBe("allow");
-    expect(result.source).toBe("mcp");
-    expect(result.target).toBe("exa_web_search_exa");
-  } finally {
-    cleanup();
-  }
-});
-
-test("specific MCP rules override mcp catch-all", () => {
-  const { manager, cleanup } = createManager(
-    {
-      permission: { "*": "ask" },
-    },
-    {
-      reviewer: `---
-name: reviewer
-permission:
-  mcp:
-    "*": allow
-    exa_web_search_exa: deny
----
-`,
-    },
-    { mcpServerNames: ["exa"] },
-  );
-
-  try {
-    const result = checkTool(
-      manager,
-      "mcp",
-      { tool: "web_search_exa" },
-      "reviewer",
-    );
-    expect(result.state).toBe("deny");
-    expect(result.source).toBe("mcp");
-    expect(result.matchedPattern).toBe("exa_web_search_exa");
-    expect(result.target).toBe("exa_web_search_exa");
-  } finally {
-    cleanup();
-  }
-});
-
-test("specific MCP rules still win when mcp catch-all is deny", () => {
-  const { manager, cleanup } = createManager(
-    {
-      permission: { "*": "ask" },
-    },
-    {
-      reviewer: `---
-name: reviewer
-permission:
-  mcp:
-    "*": deny
-    exa_web_search_exa: allow
----
-`,
-    },
-    { mcpServerNames: ["exa"] },
-  );
-
-  try {
-    const allowed = checkTool(
-      manager,
-      "mcp",
-      { tool: "web_search_exa" },
-      "reviewer",
-    );
-    expect(allowed.state).toBe("allow");
-    expect(allowed.source).toBe("mcp");
-    expect(allowed.matchedPattern).toBe("exa_web_search_exa");
-    expect(allowed.target).toBe("exa_web_search_exa");
-
-    const fallback = checkTool(
-      manager,
-      "mcp",
-      { tool: "other_exa" },
-      "reviewer",
-    );
-    expect(fallback.state).toBe("deny");
-    expect(fallback.source).toBe("mcp");
-    expect(fallback.target).toBe("exa_other_exa");
-  } finally {
-    cleanup();
   }
 });
 
@@ -1399,377 +1216,6 @@ describe("check — path-values intent", () => {
     expect(result.toolName).toBe("path_read");
     expect(result.state).toBe("allow");
     expect(result.matchedPattern).toBe("*");
-  });
-});
-
-// ---------------------------------------------------------------------------
-// #928: the mcp surface honors last-match-wins across its candidate list.
-//
-// Every surface but `mcp` produces a single candidate, so `mcp` is the only
-// place where "which candidate" and "which rule" can disagree. Before #928 the
-// first candidate matching any config rule ended the search, which let a
-// catch-all written *above* a specific rule mask it -- the opposite of the
-// last-match-wins contract README.md publishes for this surface.
-// ---------------------------------------------------------------------------
-
-describe("mcp surface — last-match-wins across candidates", () => {
-  describe("the configuration.md example", () => {
-    // docs/configuration.md publishes this exact config under `### `mcp` Surface`.
-    const documentedConfig: FlatPermissionConfig = {
-      mcp: {
-        "*": "ask",
-        mcp_status: "allow",
-        mcp_list: "allow",
-        "myServer:*": "ask",
-        dangerousServer: "deny",
-      },
-    };
-    const servers = ["myServer", "dangerousServer"];
-
-    it("grants the documented mcp_list allow for a server listing", () => {
-      const manager = createInMemoryManager(
-        { global: { permission: documentedConfig } },
-        servers,
-      );
-      const result = checkTool(manager, "mcp", { server: "myServer" });
-      expect(result.state).toBe("allow");
-      expect(result.matchedPattern).toBe("mcp_list");
-    });
-
-    it("enforces the documented dangerousServer deny for an explicit server", () => {
-      const manager = createInMemoryManager(
-        { global: { permission: documentedConfig } },
-        servers,
-      );
-      const result = checkTool(manager, "mcp", {
-        tool: "wipe",
-        server: "dangerousServer",
-      });
-      expect(result.state).toBe("deny");
-      expect(result.matchedPattern).toBe("dangerousServer");
-    });
-  });
-
-  describe("a catch-all above a specific rule no longer masks it", () => {
-    it("allows a discovery operation named after the catch-all", () => {
-      // The shape reported in #687: the wildcard matches the tool-name
-      // candidate before the `mcp_describe` candidate is ever reached.
-      const manager = createInMemoryManager(
-        {
-          global: {
-            permission: { mcp: { "*": "ask", mcp_describe: "allow" } },
-          },
-        },
-        ["github"],
-      );
-      const result = checkTool(manager, "mcp", {
-        describe: "github_list_issues",
-      });
-      expect(result.state).toBe("allow");
-      expect(result.matchedPattern).toBe("mcp_describe");
-    });
-
-    it.each([
-      ["a suffix-named tool", { tool: "search_code_github" }],
-      ["a qualified tool name", { tool: "github:search_code" }],
-      [
-        "an explicit server argument",
-        { tool: "search_code", server: "github" },
-      ],
-    ])("denies the named server for %s", (_label, input) => {
-      const manager = createInMemoryManager(
-        { global: { permission: { mcp: { "*": "allow", github: "deny" } } } },
-        ["github"],
-      );
-      const result = checkTool(manager, "mcp", input);
-      expect(result.state).toBe("deny");
-      expect(result.matchedPattern).toBe("github");
-    });
-  });
-
-  describe("rule position decides, not rule specificity", () => {
-    // The control for the block above: `evaluateAnyValue` privileges where a
-    // rule sits in the config, not how specific its pattern is. A catch-all
-    // written last still wins, which is what last-match-wins means.
-    it.each([
-      ["a suffix-named tool", { tool: "search_code_github" }],
-      ["a qualified tool name", { tool: "github:search_code" }],
-      [
-        "an explicit server argument",
-        { tool: "search_code", server: "github" },
-      ],
-    ])(
-      "lets a trailing catch-all override the server rule for %s",
-      (_label, input) => {
-        const manager = createInMemoryManager(
-          { global: { permission: { mcp: { github: "deny", "*": "ask" } } } },
-          ["github"],
-        );
-        const result = checkTool(manager, "mcp", input);
-        expect(result.state).toBe("ask");
-        expect(result.matchedPattern).toBe("*");
-      },
-    );
-  });
-
-  describe("session grants", () => {
-    it("honors a session grant matching a later candidate than the config rule", () => {
-      const manager = createInMemoryManager(
-        { global: { permission: { mcp: { exa_search: "deny" } } } },
-        ["exa"],
-      );
-      const result = checkTool(
-        manager,
-        "mcp",
-        { tool: "exa_search" },
-        undefined,
-        [sessionRule("mcp", "mcp_call")],
-      );
-      expect(result.state).toBe("allow");
-      expect(result.source).toBe("session");
-    });
-  });
-
-  describe("baseline discovery auto-allow", () => {
-    // `synthesizeBaseline` emits allow rules for the five `mcp_*` metadata
-    // targets whenever any explicit mcp allow rule exists. Those rules sit
-    // *before* the config layer, so a config rule matching any candidate
-    // outranks them -- the attribution this pins.
-    it("attributes a describe to the server rule once a candidate names it", () => {
-      // Prefix derivation (#928) gives this call a `github` candidate, so the
-      // config rule outranks the baseline. The decision is the same `allow`
-      // the baseline already produced; only the attribution moved, and the
-      // more specific reason is the better one to show.
-      const manager = createInMemoryManager(
-        { global: { permission: { mcp: { github: "allow" } } } },
-        ["github"],
-      );
-      const result = checkTool(manager, "mcp", {
-        describe: "github_search_code",
-      });
-      expect(result.state).toBe("allow");
-      expect(result.matchedPattern).toBe("github");
-    });
-
-    it("still auto-allows a discovery operation no config rule can name", () => {
-      // The baseline's own constituency: a granted server plus a describe of a
-      // tool belonging to some *other*, unconfigured server. Nothing in the
-      // config matches any candidate, so the baseline decides and reports no
-      // `matchedPattern` -- only a config or session rule does.
-      const manager = createInMemoryManager(
-        { global: { permission: { mcp: { github: "allow" } } } },
-        ["github"],
-      );
-      const result = checkTool(manager, "mcp", {
-        describe: "unconfigured_server_tool",
-      });
-      expect(result.state).toBe("allow");
-      expect(result.matchedPattern).toBeUndefined();
-      expect(result.target).toBe("mcp_describe");
-    });
-  });
-});
-
-describe("Pi MCP tools (mcp__<server>__<tool>) resolve on the mcp surface", () => {
-  const toolName = "mcp__danger_srv__wipe";
-  const wipe = (manager: PermissionManager): PermissionCheckResult =>
-    checkTool(manager, toolName, { target: "prod" });
-
-  function resolveWith(
-    permission: FlatPermissionConfig,
-    servers: readonly string[] = ["danger-srv"],
-  ): PermissionCheckResult {
-    const manager = createInMemoryManager({ global: { permission } }, servers);
-    return wipe(manager);
-  }
-
-  it.each<[string, Record<string, PermissionState>, string]>([
-    ["the configured spelling", { "danger-srv": "deny" }, "danger-srv"],
-    ["Pi's spelling", { danger_srv: "deny" }, "danger_srv"],
-    [
-      "a server-qualified tool",
-      { "danger-srv:wipe": "deny" },
-      "danger-srv:wipe",
-    ],
-    [
-      "the full Pi name",
-      { "mcp__danger_srv__*": "deny" },
-      "mcp__danger_srv__wipe",
-    ],
-  ])("denies on an mcp rule naming %s", (_label, rules, target) => {
-    const result = resolveWith({
-      "*": "allow",
-      mcp: { "*": "allow", ...rules },
-    });
-    expect(result.state).toBe("deny");
-    expect(result.source).toBe("mcp");
-    expect(result.target).toBe(target);
-    expect(result.toolName).toBe(toolName);
-  });
-
-  it("applies an mcp catch-all over the universal fallback", () => {
-    const result = resolveWith({ "*": "ask", mcp: "allow" });
-    expect(result.state).toBe("allow");
-    expect(result.source).toBe("mcp");
-  });
-
-  it("falls back to the universal default when no mcp rule matches", () => {
-    const result = resolveWith({ "*": "ask" });
-    expect(result.state).toBe("ask");
-    expect(result.source).toBe("default");
-    expect(result.target).toBe("danger-srv_wipe");
-  });
-
-  it("derives Pi's spelling for a server no mcp.json names", () => {
-    const result = resolveWith(
-      { "*": "allow", mcp: { danger_srv: "deny" } },
-      [],
-    );
-    expect(result.state).toBe("deny");
-  });
-});
-
-describe("a top-level mcp__ key keeps applying to the Pi MCP tool it names", () => {
-  const toolName = "mcp__danger_srv__wipe";
-  const portNotice =
-    'Top-level permission keys naming Pi MCP tools are applied as "mcp" rules: "mcp__danger_srv__wipe". ' +
-    'Move them under "mcp" — see https://github.com/gotgenes/pi-packages/blob/main/packages/pi-permission-system/docs/migration/1001-pi-mcp-tools-on-mcp-surface.md';
-
-  function withManager<T>(
-    permission: FlatPermissionConfig,
-    use: (manager: PermissionManager) => T,
-  ): T {
-    const manager = createInMemoryManager({ global: { permission } }, [
-      "danger-srv",
-    ]);
-    return use(manager);
-  }
-
-  it.each<[string, FlatPermissionConfig]>([
-    ["before", { "*": "allow", [toolName]: "deny", mcp: { "*": "allow" } }],
-    ["after", { "*": "allow", mcp: { "*": "allow" }, [toolName]: "deny" }],
-  ])(
-    "denies when the key is written %s the mcp catch-all",
-    (_order, config) => {
-      withManager(config, (manager) => {
-        const result = checkTool(manager, toolName, { target: "prod" });
-        expect(result.state).toBe("deny");
-        expect(result.matchedPattern).toBe(toolName);
-        expect(result.source).toBe("mcp");
-      });
-    },
-  );
-
-  it("applies a wildcard key to every tool it names", () => {
-    withManager({ "*": "allow", "mcp__danger_srv__*": "deny" }, (manager) => {
-      expect(checkTool(manager, toolName, {}).state).toBe("deny");
-      expect(checkTool(manager, "mcp__other__x", {}).state).toBe("allow");
-    });
-  });
-
-  it("does not let a relocated allow open the proxy's discovery targets", () => {
-    withManager({ "*": "ask", [toolName]: "allow" }, (manager) => {
-      expect(checkTool(manager, toolName, {}).state).toBe("allow");
-      expect(checkTool(manager, "mcp", {}).state).toBe("ask");
-    });
-  });
-
-  it("asks the operator to port the key", () => {
-    withManager({ "*": "allow", [toolName]: "deny" }, (manager) => {
-      expect(manager.getPolicyIssues()).toEqual([portNotice]);
-    });
-  });
-
-  it.each<[string, FlatPermissionConfig]>([
-    ["an exact key", { "*": "allow", mcp__foo: "deny" }],
-    ["a wildcard key", { "*": "allow", "mcp__*": "deny" }],
-  ])(
-    "still denies a non-Pi tool named mcp__foo through %s",
-    (_label, config) => {
-      withManager(config, (manager) => {
-        expect(checkTool(manager, "mcp__foo", {}).state).toBe("deny");
-        expect(manager.isToolFullyDenied("mcp__foo")).toBe(true);
-      });
-    },
-  );
-
-  it("raises no notice for a key that can name no Pi MCP tool", () => {
-    withManager({ "*": "allow", mcp__foo: "deny" }, (manager) => {
-      expect(manager.getPolicyIssues()).toEqual([]);
-    });
-  });
-
-  it("raises no notice when no such key exists", () => {
-    withManager({ "*": "allow", mcp: { "danger-srv": "deny" } }, (manager) => {
-      expect(manager.getPolicyIssues()).toEqual([]);
-    });
-  });
-});
-
-describe("tool exposure for a Pi MCP tool follows its mcp rules", () => {
-  function withManager<T>(
-    permission: FlatPermissionConfig,
-    use: (manager: PermissionManager) => T,
-  ): T {
-    const manager = createInMemoryManager({ global: { permission } }, [
-      "danger-srv",
-    ]);
-    return use(manager);
-  }
-
-  it("withholds a tool whose server an mcp rule denies, and only that server's", () => {
-    withManager({ "*": "allow", mcp: { "danger-srv": "deny" } }, (manager) => {
-      expect(manager.isToolFullyDenied("mcp__danger_srv__wipe")).toBe(true);
-      expect(manager.getToolPermission("mcp__danger_srv__wipe")).toBe("deny");
-      expect(manager.isToolFullyDenied("mcp__other__x")).toBe(false);
-      expect(manager.getToolPermission("mcp__other__x")).toBe("allow");
-    });
-  });
-
-  it("withholds a tool a relocated top-level key denies", () => {
-    withManager({ "*": "allow", "mcp__danger_srv__*": "deny" }, (manager) => {
-      expect(manager.isToolFullyDenied("mcp__danger_srv__wipe")).toBe(true);
-    });
-  });
-
-  it("keeps a tool an exception after an mcp deny catch-all allows", () => {
-    withManager(
-      { "*": "allow", mcp: { "*": "deny", "danger-srv": "allow" } },
-      (manager) => {
-        expect(manager.isToolFullyDenied("mcp__danger_srv__wipe")).toBe(false);
-        expect(manager.isToolFullyDenied("mcp__other__x")).toBe(true);
-      },
-    );
-  });
-});
-
-describe("a forwarded mcp request resolves its own target", () => {
-  const config: FlatPermissionConfig = {
-    "*": "ask",
-    mcp: { github: "allow", danger: "deny" },
-  };
-
-  function serve(values: string[]): PermissionCheckResult {
-    const manager = createInMemoryManager({ global: { permission: config } }, [
-      "github",
-      "danger",
-    ]);
-    return manager.check(
-      buildResolvedIntentFromMatchValues("mcp", values, "Explore"),
-    );
-  }
-
-  it("denies a target on a denied server rather than allowing the status probe", () => {
-    const result = serve(["danger"]);
-    expect(result.state).toBe("deny");
-    expect(result.target).toBe("danger");
-    expect(result.matchedPattern).toBe("danger");
-  });
-
-  it("asks for a target no rule names rather than allowing the status probe", () => {
-    const result = serve(["danger_wipe"]);
-    expect(result.state).toBe("ask");
-    expect(result.target).toBe("danger_wipe");
   });
 });
 
@@ -3940,6 +3386,589 @@ permission:
         } finally {
           cleanup();
         }
+      });
+    });
+  });
+
+  describe("mcp", () => {
+    describe("target resolution", () => {
+      it("MCP wildcard matching uses the registered mcp tool", () => {
+        const manager = createInMemoryManager({
+          global: {
+            permission: {
+              "*": "ask",
+              mcp: {
+                "*": "deny",
+                "research_*": "ask",
+                "research_query-*": "allow",
+              },
+            },
+          },
+        });
+        const queryDocs = checkTool(manager, "mcp", {
+          tool: "research:query-docs",
+        });
+        expect(queryDocs.state).toBe("allow");
+        expect(queryDocs.source).toBe("mcp");
+        expect(queryDocs.matchedPattern).toBe("research_query-*");
+        expect(queryDocs.target).toBe("research_query-docs");
+
+        const resolve2 = checkTool(manager, "mcp", {
+          tool: "research:resolve-context",
+        });
+        expect(resolve2.state).toBe("ask");
+        expect(resolve2.matchedPattern).toBe("research_*");
+        expect(resolve2.target).toBe("research_resolve-context");
+
+        const unknown = checkTool(manager, "mcp", {
+          tool: "search:provider",
+        });
+        expect(unknown.state).toBe("deny");
+        expect(unknown.matchedPattern).toBe("*");
+        expect(unknown.target).toBe("search_provider");
+      });
+
+      it("MCP proxy tool infers server-prefixed aliases from configured server names", () => {
+        const manager = createInMemoryManager(
+          {
+            global: {
+              permission: {
+                "*": "ask",
+                mcp: { "exa_*": "deny", exa_get_code_context_exa: "allow" },
+              },
+            },
+          },
+          ["exa"],
+        );
+        const result = checkTool(manager, "mcp", {
+          tool: "get_code_context_exa",
+        });
+        expect(result.state).toBe("allow");
+        expect(result.source).toBe("mcp");
+        expect(result.matchedPattern).toBe("exa_get_code_context_exa");
+        expect(result.target).toBe("exa_get_code_context_exa");
+      });
+
+      it("MCP describe mode normalizes qualified tool names without duplicating server prefixes", () => {
+        const manager = createInMemoryManager(
+          {
+            global: {
+              permission: {
+                "*": "ask",
+                mcp: { "exa_*": "deny", exa_web_search_exa: "allow" },
+              },
+            },
+          },
+          ["exa"],
+        );
+        const result = checkTool(manager, "mcp", {
+          describe: "exa:web_search_exa",
+          server: "exa",
+        });
+        expect(result.state).toBe("allow");
+        expect(result.source).toBe("mcp");
+        expect(result.matchedPattern).toBe("exa_web_search_exa");
+        expect(result.target).toBe("exa_web_search_exa");
+      });
+
+      it("mcp catch-all acts as fallback for unmatched MCP targets", () => {
+        const { manager, cleanup } = createManager(
+          {
+            permission: { "*": "ask" },
+          },
+          {
+            reviewer: `---
+name: reviewer
+permission:
+  mcp: allow
+---
+`,
+          },
+        );
+
+        try {
+          const result = checkTool(
+            manager,
+            "mcp",
+            { tool: "exa:web_search_exa" },
+            "reviewer",
+          );
+          expect(result.state).toBe("allow");
+          expect(result.source).toBe("mcp");
+          expect(result.target).toBe("exa_web_search_exa");
+        } finally {
+          cleanup();
+        }
+      });
+
+      it("specific MCP rules override mcp catch-all", () => {
+        const { manager, cleanup } = createManager(
+          {
+            permission: { "*": "ask" },
+          },
+          {
+            reviewer: `---
+name: reviewer
+permission:
+  mcp:
+    "*": allow
+    exa_web_search_exa: deny
+---
+`,
+          },
+          { mcpServerNames: ["exa"] },
+        );
+
+        try {
+          const result = checkTool(
+            manager,
+            "mcp",
+            { tool: "web_search_exa" },
+            "reviewer",
+          );
+          expect(result.state).toBe("deny");
+          expect(result.source).toBe("mcp");
+          expect(result.matchedPattern).toBe("exa_web_search_exa");
+          expect(result.target).toBe("exa_web_search_exa");
+        } finally {
+          cleanup();
+        }
+      });
+
+      it("specific MCP rules still win when mcp catch-all is deny", () => {
+        const { manager, cleanup } = createManager(
+          {
+            permission: { "*": "ask" },
+          },
+          {
+            reviewer: `---
+name: reviewer
+permission:
+  mcp:
+    "*": deny
+    exa_web_search_exa: allow
+---
+`,
+          },
+          { mcpServerNames: ["exa"] },
+        );
+
+        try {
+          const allowed = checkTool(
+            manager,
+            "mcp",
+            { tool: "web_search_exa" },
+            "reviewer",
+          );
+          expect(allowed.state).toBe("allow");
+          expect(allowed.source).toBe("mcp");
+          expect(allowed.matchedPattern).toBe("exa_web_search_exa");
+          expect(allowed.target).toBe("exa_web_search_exa");
+
+          const fallback = checkTool(
+            manager,
+            "mcp",
+            { tool: "other_exa" },
+            "reviewer",
+          );
+          expect(fallback.state).toBe("deny");
+          expect(fallback.source).toBe("mcp");
+          expect(fallback.target).toBe("exa_other_exa");
+        } finally {
+          cleanup();
+        }
+      });
+    });
+
+    describe("last-match-wins across candidates", () => {
+      // Every surface but `mcp` produces a single candidate, so `mcp` is the only
+      // place where "which candidate" and "which rule" can disagree. A catch-all
+      // written above a specific rule must not mask it: README.md publishes
+      // last-match-wins for this surface.
+      describe("the configuration.md example", () => {
+        // docs/configuration.md publishes this exact config under `### `mcp` Surface`.
+        const documentedConfig: FlatPermissionConfig = {
+          mcp: {
+            "*": "ask",
+            mcp_status: "allow",
+            mcp_list: "allow",
+            "myServer:*": "ask",
+            dangerousServer: "deny",
+          },
+        };
+        const servers = ["myServer", "dangerousServer"];
+
+        it("grants the documented mcp_list allow for a server listing", () => {
+          const manager = createInMemoryManager(
+            { global: { permission: documentedConfig } },
+            servers,
+          );
+          const result = checkTool(manager, "mcp", { server: "myServer" });
+          expect(result.state).toBe("allow");
+          expect(result.matchedPattern).toBe("mcp_list");
+        });
+
+        it("enforces the documented dangerousServer deny for an explicit server", () => {
+          const manager = createInMemoryManager(
+            { global: { permission: documentedConfig } },
+            servers,
+          );
+          const result = checkTool(manager, "mcp", {
+            tool: "wipe",
+            server: "dangerousServer",
+          });
+          expect(result.state).toBe("deny");
+          expect(result.matchedPattern).toBe("dangerousServer");
+        });
+      });
+
+      describe("a catch-all above a specific rule no longer masks it", () => {
+        it("allows a discovery operation named after the catch-all", () => {
+          // The shape reported in #687: the wildcard matches the tool-name
+          // candidate before the `mcp_describe` candidate is ever reached.
+          const manager = createInMemoryManager(
+            {
+              global: {
+                permission: { mcp: { "*": "ask", mcp_describe: "allow" } },
+              },
+            },
+            ["github"],
+          );
+          const result = checkTool(manager, "mcp", {
+            describe: "github_list_issues",
+          });
+          expect(result.state).toBe("allow");
+          expect(result.matchedPattern).toBe("mcp_describe");
+        });
+
+        it.each([
+          ["a suffix-named tool", { tool: "search_code_github" }],
+          ["a qualified tool name", { tool: "github:search_code" }],
+          [
+            "an explicit server argument",
+            { tool: "search_code", server: "github" },
+          ],
+        ])("denies the named server for %s", (_label, input) => {
+          const manager = createInMemoryManager(
+            {
+              global: { permission: { mcp: { "*": "allow", github: "deny" } } },
+            },
+            ["github"],
+          );
+          const result = checkTool(manager, "mcp", input);
+          expect(result.state).toBe("deny");
+          expect(result.matchedPattern).toBe("github");
+        });
+      });
+
+      describe("rule position decides, not rule specificity", () => {
+        // The control for the block above: `evaluateAnyValue` privileges where a
+        // rule sits in the config, not how specific its pattern is. A catch-all
+        // written last still wins, which is what last-match-wins means.
+        it.each([
+          ["a suffix-named tool", { tool: "search_code_github" }],
+          ["a qualified tool name", { tool: "github:search_code" }],
+          [
+            "an explicit server argument",
+            { tool: "search_code", server: "github" },
+          ],
+        ])(
+          "lets a trailing catch-all override the server rule for %s",
+          (_label, input) => {
+            const manager = createInMemoryManager(
+              {
+                global: { permission: { mcp: { github: "deny", "*": "ask" } } },
+              },
+              ["github"],
+            );
+            const result = checkTool(manager, "mcp", input);
+            expect(result.state).toBe("ask");
+            expect(result.matchedPattern).toBe("*");
+          },
+        );
+      });
+
+      describe("session grants", () => {
+        it("honors a session grant matching a later candidate than the config rule", () => {
+          const manager = createInMemoryManager(
+            { global: { permission: { mcp: { exa_search: "deny" } } } },
+            ["exa"],
+          );
+          const result = checkTool(
+            manager,
+            "mcp",
+            { tool: "exa_search" },
+            undefined,
+            [sessionRule("mcp", "mcp_call")],
+          );
+          expect(result.state).toBe("allow");
+          expect(result.source).toBe("session");
+        });
+      });
+
+      describe("baseline discovery auto-allow", () => {
+        // `synthesizeBaseline` emits allow rules for the five `mcp_*` metadata
+        // targets whenever any explicit mcp allow rule exists. Those rules sit
+        // *before* the config layer, so a config rule matching any candidate
+        // outranks them -- the attribution this pins.
+        it("attributes a describe to the server rule once a candidate names it", () => {
+          // Prefix derivation (#928) gives this call a `github` candidate, so the
+          // config rule outranks the baseline. The decision is the same `allow`
+          // the baseline already produced; only the attribution moved, and the
+          // more specific reason is the better one to show.
+          const manager = createInMemoryManager(
+            { global: { permission: { mcp: { github: "allow" } } } },
+            ["github"],
+          );
+          const result = checkTool(manager, "mcp", {
+            describe: "github_search_code",
+          });
+          expect(result.state).toBe("allow");
+          expect(result.matchedPattern).toBe("github");
+        });
+
+        it("still auto-allows a discovery operation no config rule can name", () => {
+          // The baseline's own constituency: a granted server plus a describe of a
+          // tool belonging to some *other*, unconfigured server. Nothing in the
+          // config matches any candidate, so the baseline decides and reports no
+          // `matchedPattern` -- only a config or session rule does.
+          const manager = createInMemoryManager(
+            { global: { permission: { mcp: { github: "allow" } } } },
+            ["github"],
+          );
+          const result = checkTool(manager, "mcp", {
+            describe: "unconfigured_server_tool",
+          });
+          expect(result.state).toBe("allow");
+          expect(result.matchedPattern).toBeUndefined();
+          expect(result.target).toBe("mcp_describe");
+        });
+      });
+    });
+
+    describe("Pi MCP tools", () => {
+      function withManager<T>(
+        permission: FlatPermissionConfig,
+        use: (manager: PermissionManager) => T,
+      ): T {
+        const manager = createInMemoryManager({ global: { permission } }, [
+          "danger-srv",
+        ]);
+        return use(manager);
+      }
+
+      describe("mcp__<server>__<tool> resolves on the mcp surface", () => {
+        const toolName = "mcp__danger_srv__wipe";
+        const wipe = (manager: PermissionManager): PermissionCheckResult =>
+          checkTool(manager, toolName, { target: "prod" });
+
+        function resolveWith(
+          permission: FlatPermissionConfig,
+          servers: readonly string[] = ["danger-srv"],
+        ): PermissionCheckResult {
+          const manager = createInMemoryManager(
+            { global: { permission } },
+            servers,
+          );
+          return wipe(manager);
+        }
+
+        it.each<[string, Record<string, PermissionState>, string]>([
+          ["the configured spelling", { "danger-srv": "deny" }, "danger-srv"],
+          ["Pi's spelling", { danger_srv: "deny" }, "danger_srv"],
+          [
+            "a server-qualified tool",
+            { "danger-srv:wipe": "deny" },
+            "danger-srv:wipe",
+          ],
+          [
+            "the full Pi name",
+            { "mcp__danger_srv__*": "deny" },
+            "mcp__danger_srv__wipe",
+          ],
+        ])("denies on an mcp rule naming %s", (_label, rules, target) => {
+          const result = resolveWith({
+            "*": "allow",
+            mcp: { "*": "allow", ...rules },
+          });
+          expect(result.state).toBe("deny");
+          expect(result.source).toBe("mcp");
+          expect(result.target).toBe(target);
+          expect(result.toolName).toBe(toolName);
+        });
+
+        it("applies an mcp catch-all over the universal fallback", () => {
+          const result = resolveWith({ "*": "ask", mcp: "allow" });
+          expect(result.state).toBe("allow");
+          expect(result.source).toBe("mcp");
+        });
+
+        it("falls back to the universal default when no mcp rule matches", () => {
+          const result = resolveWith({ "*": "ask" });
+          expect(result.state).toBe("ask");
+          expect(result.source).toBe("default");
+          expect(result.target).toBe("danger-srv_wipe");
+        });
+
+        it("derives Pi's spelling for a server no mcp.json names", () => {
+          const result = resolveWith(
+            { "*": "allow", mcp: { danger_srv: "deny" } },
+            [],
+          );
+          expect(result.state).toBe("deny");
+        });
+      });
+
+      describe("a top-level mcp__ key keeps applying to the Pi MCP tool it names", () => {
+        const toolName = "mcp__danger_srv__wipe";
+        const portNotice =
+          'Top-level permission keys naming Pi MCP tools are applied as "mcp" rules: "mcp__danger_srv__wipe". ' +
+          'Move them under "mcp" — see https://github.com/gotgenes/pi-packages/blob/main/packages/pi-permission-system/docs/migration/1001-pi-mcp-tools-on-mcp-surface.md';
+
+        it.each<[string, FlatPermissionConfig]>([
+          [
+            "before",
+            { "*": "allow", [toolName]: "deny", mcp: { "*": "allow" } },
+          ],
+          [
+            "after",
+            { "*": "allow", mcp: { "*": "allow" }, [toolName]: "deny" },
+          ],
+        ])(
+          "denies when the key is written %s the mcp catch-all",
+          (_order, config) => {
+            withManager(config, (manager) => {
+              const result = checkTool(manager, toolName, { target: "prod" });
+              expect(result.state).toBe("deny");
+              expect(result.matchedPattern).toBe(toolName);
+              expect(result.source).toBe("mcp");
+            });
+          },
+        );
+
+        it("applies a wildcard key to every tool it names", () => {
+          withManager(
+            { "*": "allow", "mcp__danger_srv__*": "deny" },
+            (manager) => {
+              expect(checkTool(manager, toolName, {}).state).toBe("deny");
+              expect(checkTool(manager, "mcp__other__x", {}).state).toBe(
+                "allow",
+              );
+            },
+          );
+        });
+
+        it("does not let a relocated allow open the proxy's discovery targets", () => {
+          withManager({ "*": "ask", [toolName]: "allow" }, (manager) => {
+            expect(checkTool(manager, toolName, {}).state).toBe("allow");
+            expect(checkTool(manager, "mcp", {}).state).toBe("ask");
+          });
+        });
+
+        it("asks the operator to port the key", () => {
+          withManager({ "*": "allow", [toolName]: "deny" }, (manager) => {
+            expect(manager.getPolicyIssues()).toEqual([portNotice]);
+          });
+        });
+
+        it.each<[string, FlatPermissionConfig]>([
+          ["an exact key", { "*": "allow", mcp__foo: "deny" }],
+          ["a wildcard key", { "*": "allow", "mcp__*": "deny" }],
+        ])(
+          "still denies a non-Pi tool named mcp__foo through %s",
+          (_label, config) => {
+            withManager(config, (manager) => {
+              expect(checkTool(manager, "mcp__foo", {}).state).toBe("deny");
+              expect(manager.isToolFullyDenied("mcp__foo")).toBe(true);
+            });
+          },
+        );
+
+        it("raises no notice for a key that can name no Pi MCP tool", () => {
+          withManager({ "*": "allow", mcp__foo: "deny" }, (manager) => {
+            expect(manager.getPolicyIssues()).toEqual([]);
+          });
+        });
+
+        it("raises no notice when no such key exists", () => {
+          withManager(
+            { "*": "allow", mcp: { "danger-srv": "deny" } },
+            (manager) => {
+              expect(manager.getPolicyIssues()).toEqual([]);
+            },
+          );
+        });
+      });
+
+      describe("tool exposure follows the mcp rules", () => {
+        it("withholds a tool whose server an mcp rule denies, and only that server's", () => {
+          withManager(
+            { "*": "allow", mcp: { "danger-srv": "deny" } },
+            (manager) => {
+              expect(manager.isToolFullyDenied("mcp__danger_srv__wipe")).toBe(
+                true,
+              );
+              expect(manager.getToolPermission("mcp__danger_srv__wipe")).toBe(
+                "deny",
+              );
+              expect(manager.isToolFullyDenied("mcp__other__x")).toBe(false);
+              expect(manager.getToolPermission("mcp__other__x")).toBe("allow");
+            },
+          );
+        });
+
+        it("withholds a tool a relocated top-level key denies", () => {
+          withManager(
+            { "*": "allow", "mcp__danger_srv__*": "deny" },
+            (manager) => {
+              expect(manager.isToolFullyDenied("mcp__danger_srv__wipe")).toBe(
+                true,
+              );
+            },
+          );
+        });
+
+        it("keeps a tool an exception after an mcp deny catch-all allows", () => {
+          withManager(
+            { "*": "allow", mcp: { "*": "deny", "danger-srv": "allow" } },
+            (manager) => {
+              expect(manager.isToolFullyDenied("mcp__danger_srv__wipe")).toBe(
+                false,
+              );
+              expect(manager.isToolFullyDenied("mcp__other__x")).toBe(true);
+            },
+          );
+        });
+      });
+    });
+
+    describe("a forwarded request", () => {
+      const config: FlatPermissionConfig = {
+        "*": "ask",
+        mcp: { github: "allow", danger: "deny" },
+      };
+
+      function serve(values: string[]): PermissionCheckResult {
+        const manager = createInMemoryManager(
+          { global: { permission: config } },
+          ["github", "danger"],
+        );
+        return manager.check(
+          buildResolvedIntentFromMatchValues("mcp", values, "Explore"),
+        );
+      }
+
+      it("denies a target on a denied server rather than allowing the status probe", () => {
+        const result = serve(["danger"]);
+        expect(result.state).toBe("deny");
+        expect(result.target).toBe("danger");
+        expect(result.matchedPattern).toBe("danger");
+      });
+
+      it("asks for a target no rule names rather than allowing the status probe", () => {
+        const result = serve(["danger_wipe"]);
+        expect(result.state).toBe("ask");
+        expect(result.target).toBe("danger_wipe");
       });
     });
   });
