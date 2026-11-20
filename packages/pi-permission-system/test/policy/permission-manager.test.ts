@@ -1,8 +1,6 @@
 /**
- * Integration tests verifying the unified checkPermission() path.
- *
- * Step 5: session rules concatenated into the composed ruleset.
- * Step 6: all five surfaces produce identical decisions to the old branching code.
+ * Integration tests for `PermissionManager`: real policy composition and
+ * evaluation over an in-memory or a file-backed `PolicyLoader`.
  */
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
@@ -23,6 +21,11 @@ import {
   type ScopedPermissionManager,
 } from "#src/policy/permission-manager";
 import type { Ruleset } from "#src/policy/rule";
+import type {
+  PermissionCheckResult,
+  PermissionState,
+  ScopeConfig,
+} from "#src/types";
 import {
   createAgentDirHarness,
   createInMemoryManager,
@@ -834,12 +837,6 @@ describe("checkPermission — rule origin provenance", () => {
 // ---------------------------------------------------------------------------
 // In-memory PolicyLoader stub tests — no filesystem required
 // ---------------------------------------------------------------------------
-
-import type {
-  PermissionCheckResult,
-  PermissionState,
-  ScopeConfig,
-} from "#src/types";
 
 describe("PermissionManager with in-memory PolicyLoader", () => {
   describe("universal fallback", () => {
