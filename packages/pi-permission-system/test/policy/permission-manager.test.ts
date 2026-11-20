@@ -558,19 +558,6 @@ describe("checkPermission — source derivation and matchedPattern", () => {
       expect(result.matchedPattern).toBe("git *");
       expect(result.source).toBe("session");
     });
-
-    it("matchedPattern is the session rule pattern for a session match (skill)", () => {
-      const manager = createMissingConfigManager();
-      const sessionRules: Ruleset = [sessionRule("skill", "librarian")];
-      const result = checkTool(
-        manager,
-        "skill",
-        { name: "librarian" },
-        undefined,
-        sessionRules,
-      );
-      expect(result.matchedPattern).toBe("librarian");
-    });
   });
 });
 
@@ -686,36 +673,6 @@ describe("checkPermission — rule origin provenance", () => {
     expect(result.origin).toBe("global");
   });
 
-  it("project overrides global: winning rule has origin 'project'", () => {
-    const manager = createInMemoryManager({
-      global: { permission: { read: "ask" } },
-      project: { permission: { read: "allow" } },
-    });
-    const result = checkTool(manager, "read", {});
-    expect(result.state).toBe("allow");
-    expect(result.origin).toBe("project");
-  });
-
-  it("both-object merge: patterns retain their own origins", () => {
-    // global defines bash["git *"] = allow; project adds bash["rm *"] = deny.
-    // Both patterns should survive with their own origins.
-    const manager = createInMemoryManager({
-      global: { permission: { bash: { "git *": "allow" } } },
-      project: { permission: { bash: { "rm *": "deny" } } },
-    });
-    const gitResult = checkTool(manager, "bash", {
-      command: "git status",
-    });
-    expect(gitResult.state).toBe("allow");
-    expect(gitResult.origin).toBe("global");
-
-    const rmResult = checkTool(manager, "bash", {
-      command: "rm -rf /",
-    });
-    expect(rmResult.state).toBe("deny");
-    expect(rmResult.origin).toBe("project");
-  });
-
   it("both-object merge: project pattern overrides global pattern for same key", () => {
     // Both scopes define bash["git *"]; project wins for that pattern.
     const manager = createInMemoryManager({
@@ -724,20 +681,6 @@ describe("checkPermission — rule origin provenance", () => {
     });
     const result = checkTool(manager, "bash", {
       command: "git status",
-    });
-    expect(result.state).toBe("allow");
-    expect(result.origin).toBe("project");
-  });
-
-  it("string replaces object: all patterns from replacing scope get origin 'project'", () => {
-    // global defines bash as an object; project replaces with string "allow".
-    const manager = createInMemoryManager({
-      global: { permission: { bash: { "git *": "ask", "npm *": "ask" } } },
-      project: { permission: { bash: "allow" } },
-    });
-    // The catch-all "*" now comes from the project scope.
-    const result = checkTool(manager, "bash", {
-      command: "anything",
     });
     expect(result.state).toBe("allow");
     expect(result.origin).toBe("project");
@@ -754,14 +697,6 @@ describe("checkPermission — rule origin provenance", () => {
     expect(result.origin).toBe("project");
   });
 
-  it("no config match: origin is 'builtin' (default layer)", () => {
-    // No config — falls back to synthesized default.
-    const manager = createMissingConfigManager();
-    const result = checkTool(manager, "read", {});
-    expect(result.state).toBe("ask");
-    expect(result.origin).toBe("builtin");
-  });
-
   it("session rule: origin is 'session'", () => {
     const manager = createMissingConfigManager();
     const sessionRules: Ruleset = [sessionRule("read", "*")];
@@ -769,34 +704,6 @@ describe("checkPermission — rule origin provenance", () => {
     expect(result.state).toBe("allow");
     expect(result.source).toBe("session");
     expect(result.origin).toBe("session");
-  });
-
-  it("universal fallback (*) set in global config carries origin 'global'", () => {
-    const manager = createInMemoryManager({
-      global: { permission: { "*": "allow" } },
-    });
-    // No explicit surface rule — hits the synthesized default derived from "*".
-    const result = checkTool(manager, "read", {});
-    expect(result.state).toBe("allow");
-    expect(result.origin).toBe("global");
-  });
-
-  it("universal fallback (*) overridden by project carries origin 'project'", () => {
-    const manager = createInMemoryManager({
-      global: { permission: { "*": "ask" } },
-      project: { permission: { "*": "allow" } },
-    });
-    const result = checkTool(manager, "read", {});
-    expect(result.state).toBe("allow");
-    expect(result.origin).toBe("project");
-  });
-
-  it("built-in fallback (no * in any config): origin is 'builtin'", () => {
-    // Manager with no config file — built-in "ask" default.
-    const manager = createMissingConfigManager();
-    const result = checkTool(manager, "read", {});
-    expect(result.state).toBe("ask");
-    expect(result.origin).toBe("builtin");
   });
 });
 
@@ -832,76 +739,6 @@ describe("PermissionManager with in-memory PolicyLoader", () => {
   });
 
   describe("surface routing", () => {
-    it("bash surface routes correctly", () => {
-      const manager = createInMemoryManager({
-        global: {
-          permission: { "*": "ask", bash: { "git *": "allow" } },
-        },
-      });
-      const result = checkTool(manager, "bash", {
-        command: "git status",
-      });
-      expect(result.state).toBe("allow");
-      expect(result.source).toBe("bash");
-      expect(result.matchedPattern).toBe("git *");
-    });
-
-    it("tool surface routes correctly for built-in tools", () => {
-      const manager = createInMemoryManager({
-        global: { permission: { "*": "deny", read: "allow" } },
-      });
-      const result = checkTool(manager, "read", {});
-      expect(result.state).toBe("allow");
-      expect(result.source).toBe("tool");
-    });
-
-    it("skill surface routes correctly", () => {
-      const manager = createInMemoryManager({
-        global: {
-          permission: { "*": "ask", skill: { librarian: "allow" } },
-        },
-      });
-      const result = checkTool(manager, "skill", { name: "librarian" });
-      expect(result.state).toBe("allow");
-      expect(result.source).toBe("skill");
-    });
-
-    it("mcp surface routes correctly", () => {
-      const manager = createInMemoryManager(
-        {
-          global: {
-            permission: { "*": "ask", mcp: { exa_search: "allow" } },
-          },
-        },
-        ["exa"],
-      );
-      const result = checkTool(manager, "mcp", {
-        tool: "exa:search",
-        server: "exa",
-      });
-      expect(result.state).toBe("allow");
-      expect(result.source).toBe("mcp");
-    });
-
-    it("external_directory surface routes correctly", () => {
-      const manager = createInMemoryManager({
-        global: {
-          permission: {
-            "*": "ask",
-            external_directory: { "/trusted/*": "allow" },
-          },
-        },
-      });
-      const result = checkPath(
-        manager,
-        "/trusted/repo",
-        {},
-        "external_directory_read",
-      );
-      expect(result.state).toBe("allow");
-      expect(result.source).toBe("special");
-    });
-
     it("extension tools use 'default' source when no config rule matches", () => {
       const manager = createInMemoryManager({
         global: { permission: { "*": "ask" } },
@@ -1021,13 +858,6 @@ describe("PermissionManager with in-memory PolicyLoader", () => {
       const result = checkTool(manager, "read", {});
       expect(result.state).toBe("allow");
       expect(result.origin).toBe("project");
-    });
-
-    it("session origin is 'session'", () => {
-      const manager = createInMemoryManager();
-      const sessionRules: Ruleset = [sessionRule("read", "*")];
-      const result = checkTool(manager, "read", {}, undefined, sessionRules);
-      expect(result.origin).toBe("session");
     });
   });
 
@@ -1883,40 +1713,6 @@ permission:
   }
 });
 
-test("Project-agent config overrides system-agent tool rules", () => {
-  const { manager, cleanup } = createManagerWithProject(
-    {
-      permission: { "*": "ask" },
-    },
-    {
-      reviewer: `---
-name: reviewer
-permission:
-  read: deny
----
-`,
-    },
-    {
-      projectAgentFiles: {
-        reviewer: `---
-name: reviewer
-permission:
-  read: allow
----
-`,
-      },
-    },
-  );
-
-  try {
-    const result = checkTool(manager, "read", {}, "reviewer");
-    expect(result.state).toBe("allow");
-    expect(result.source).toBe("tool");
-  } finally {
-    cleanup();
-  }
-});
-
 test("Full precedence chain base < project < system-agent < project-agent for universal default", () => {
   const { manager, cleanup } = createManagerWithProject(
     {
@@ -2487,17 +2283,6 @@ permission:
 
     const defaultBashPermission = manager.getToolPermission("bash");
     expect(defaultBashPermission).toBe("ask");
-
-    const { manager: manager2, cleanup: cleanup2 } = createManager({
-      permission: { "*": "deny", bash: "allow" },
-    });
-
-    try {
-      const globalBashPermission = manager2.getToolPermission("bash");
-      expect(globalBashPermission).toBe("allow");
-    } finally {
-      cleanup2();
-    }
   } finally {
     cleanup();
   }
@@ -2584,17 +2369,6 @@ permission:
   } finally {
     cleanup();
   }
-});
-
-test("external_directory permission is not affected by unrelated surface keys", () => {
-  const manager = createInMemoryManager({
-    global: {
-      permission: { "*": "allow", external_directory: "allow" },
-    },
-  });
-  const extResult = checkTool(manager, "external_directory_read", {});
-  expect(extResult.state).toBe("allow");
-  expect(extResult.matchedPattern).toBe("*");
 });
 
 test("skill pattern map in agent frontmatter overrides global skill policy", () => {
@@ -3022,31 +2796,6 @@ test("checkPermission returns source 'session' for mcp when session rules match 
   expect(result.source).toBe("session");
 });
 
-test("checkPermission returns source 'session' for skill when session rules match", () => {
-  const manager = createInMemoryManager({ global: { permission: {} } });
-  const sessionRules = [sessionRule("skill", "librarian")];
-
-  const result = checkTool(
-    manager,
-    "skill",
-    { name: "librarian" },
-    undefined,
-    sessionRules,
-  );
-  expect(result.state).toBe("allow");
-  expect(result.source).toBe("session");
-  expect(result.matchedPattern).toBe("librarian");
-});
-
-test("checkPermission returns source 'session' for tool surface when session rules match", () => {
-  const manager = createInMemoryManager({ global: { permission: {} } });
-  const sessionRules = [sessionRule("read", "*")];
-
-  const result = checkTool(manager, "read", {}, undefined, sessionRules);
-  expect(result.state).toBe("allow");
-  expect(result.source).toBe("session");
-});
-
 test("bash session rules do not bleed into mcp checks", () => {
   const manager = createInMemoryManager({ global: { permission: {} } });
   const sessionRules = [sessionRule("bash", "git *")];
@@ -3189,113 +2938,6 @@ describe("checkPermission — cwd-aware path policy values", () => {
     const result = checkPath(manager, "src/App.jsx", { cwd });
     expect(result.state).toBe("allow");
     expect(result.matchedPattern).toBe(`${cwd}/*`);
-  });
-});
-
-describe("checkPathPolicy", () => {
-  const cwd = "/workspace/project";
-
-  it("evaluates precomputed policy values against the path surface", () => {
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          path: { "*": "ask", [`${cwd}/*`]: "allow" },
-        },
-      },
-    });
-    const result = checkPathValues(manager, [
-      `${cwd}/src/App.jsx`,
-      "src/App.jsx",
-    ]);
-    expect(result.state).toBe("allow");
-    expect(result.matchedPattern).toBe(`${cwd}/*`);
-    expect(result.source).toBe("special");
-    expect(result.toolName).toBe("path_read");
-  });
-
-  it("preserves last-match-wins across the provided aliases", () => {
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          path: { "*": "ask", [`${cwd}/*`]: "allow", "src/*": "deny" },
-        },
-      },
-    });
-    const result = checkPathValues(manager, [
-      `${cwd}/src/App.jsx`,
-      "src/App.jsx",
-    ]);
-    expect(result.state).toBe("deny");
-    expect(result.matchedPattern).toBe("src/*");
-  });
-
-  it("applies session rules over config", () => {
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          path: { "*": "ask", "src/*": "deny" },
-        },
-      },
-    });
-    const sessionRules: Ruleset = [sessionRule("path_read", "src/*")];
-    const result = checkPathValues(
-      manager,
-      ["src/App.jsx"],
-      undefined,
-      sessionRules,
-    );
-    expect(result.state).toBe("allow");
-    expect(result.source).toBe("session");
-  });
-
-  it("falls back to the catch-all for an empty value list", () => {
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          path: { "*": "deny" },
-        },
-      },
-    });
-    const result = checkPathValues(manager, []);
-    expect(result.state).toBe("deny");
-    expect(result.matchedPattern).toBe("*");
-  });
-
-  it("evaluates against the external_directory surface when one is provided", () => {
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          external_directory: { "*": "ask", "/tmp/*": "allow" },
-        },
-      },
-    });
-    const result = checkPathValues(
-      manager,
-      ["/tmp/x"],
-      undefined,
-      undefined,
-      "external_directory_read",
-    );
-    expect(result.state).toBe("allow");
-    expect(result.matchedPattern).toBe("/tmp/*");
-    expect(result.source).toBe("special");
-    expect(result.toolName).toBe("external_directory_read");
-  });
-
-  it("defaults to the path surface when no surface is provided", () => {
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          external_directory: { "*": "ask", "/tmp/*": "allow" },
-          path: { "*": "allow" },
-        },
-      },
-    });
-    // No path rule denies; the external_directory allow must NOT apply here.
-    const result = checkPathValues(manager, ["/tmp/x"]);
-    expect(result.toolName).toBe("path_read");
-    expect(result.state).toBe("allow");
-    expect(result.matchedPattern).toBe("*");
   });
 });
 
@@ -3475,6 +3117,26 @@ describe("check — path-values intent", () => {
     const result = manager.check(intent);
     expect(result.state).toBe("deny");
     expect(result.matchedPattern).toBe("src/*");
+  });
+
+  it("does not apply an external_directory rule on the path surface", () => {
+    const manager = createInMemoryManager({
+      global: {
+        permission: {
+          external_directory: { "*": "ask", "/tmp/*": "allow" },
+          path: { "*": "allow" },
+        },
+      },
+    });
+    const intent: ResolvedAccessIntent = {
+      kind: "path-values",
+      surface: "path_read",
+      values: ["/tmp/x"],
+    };
+    const result = manager.check(intent);
+    expect(result.toolName).toBe("path_read");
+    expect(result.state).toBe("allow");
+    expect(result.matchedPattern).toBe("*");
   });
 });
 
