@@ -50,9 +50,12 @@ export function buildToolAskPayload(facts: ToolAskFacts): PromptPayload {
       decidingPath: null,
       ...otherAskingUnitsFact(check, bash),
     },
-    evidence: bash
-      ? fullCommandEvidence(facts)
-      : inputPreviewEvidence(facts, isProxyMcpCheck(check)),
+    evidence: [
+      ...(bash
+        ? fullCommandEvidence(facts)
+        : inputPreviewEvidence(facts, isProxyMcpCheck(check))),
+      ...fileOperationEvidence(facts),
+    ],
     annotations: [],
   };
 }
@@ -174,4 +177,31 @@ function inputPreviewEvidence(
     facts.input,
   );
   return preview ? [{ label: "input", text: preview, detail: null }] : [];
+}
+
+function fileOperationEvidence(facts: ToolAskFacts): PromptEvidence[] {
+  const tool = facts.check.toolName;
+  if (tool !== "read" && tool !== "edit" && tool !== "write") return [];
+  const input = toRecord(facts.input);
+  const operation = {
+    tool,
+    path: input.path,
+    ...(tool === "read" ? { offset: input.offset, limit: input.limit } : {}),
+    ...(tool === "write" ? { content: input.content } : {}),
+    ...(tool === "edit"
+      ? {
+          oldText: input.oldText,
+          newText: input.newText,
+          edits: Array.isArray(input.edits)
+            ? input.edits.map((entry) => {
+                const edit = toRecord(entry);
+                return { oldText: edit.oldText, newText: edit.newText };
+              })
+            : undefined,
+        }
+      : {}),
+  };
+  return [
+    { label: "file operation", text: JSON.stringify(operation), detail: null },
+  ];
 }

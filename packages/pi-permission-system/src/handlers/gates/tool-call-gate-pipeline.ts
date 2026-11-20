@@ -10,6 +10,7 @@ import type { SkillPromptEntry } from "#src/exposure/skill-prompt-sanitizer";
 import type { PathNormalizer } from "#src/path/path-normalizer";
 import type { InfrastructureReadScope } from "#src/path/pi-infrastructure-read";
 import type { ScopedPermissionResolver } from "#src/policy/permission-resolver";
+import { PURPOSE_SOURCE } from "#src/tool-input/operation-purpose";
 import type { ToolAccessExtractorLookup } from "#src/tool-input/tool-access-extractor-registry";
 import type { ToolInputFormatterLookup } from "#src/tool-input/tool-input-formatter-registry";
 import {
@@ -20,7 +21,11 @@ import type { PermissionCheckResult } from "#src/types";
 import { resolveBashCommandCheck } from "./bash-command";
 import { describeBashExternalDirectoryGate } from "./bash-external-directory";
 import { describeBashPathGate } from "./bash-path";
-import { type GateResult, orderDenyFirst } from "./descriptor";
+import {
+  type GateResult,
+  isGateDescriptor,
+  orderDenyFirst,
+} from "./descriptor";
 import { describeExternalDirectoryGate } from "./external-directory";
 import { describePathGate } from "./path";
 import type { GateRunner } from "./runner";
@@ -157,7 +162,17 @@ export class ToolCallGatePipeline {
     // loop below already produced every gate on any call it did not block.
     const gates: GateResult[] = [];
     for (const produce of gateProducers) {
-      gates.push(await produce());
+      const gate = await produce();
+      if (tcc.purpose && isGateDescriptor(gate)) {
+        gate.payload = {
+          ...gate.payload,
+          annotations: [
+            ...gate.payload.annotations,
+            { source: PURPOSE_SOURCE, text: tcc.purpose },
+          ],
+        };
+      }
+      gates.push(gate);
     }
 
     for (const gate of orderDenyFirst(gates)) {
