@@ -651,52 +651,6 @@ describe("checkPermission — home path expansion in external_directory rules", 
 // ---------------------------------------------------------------------------
 
 describe("checkPermission — rule origin provenance", () => {
-  it("single-scope global: config rule has origin 'global'", () => {
-    const manager = createInMemoryManager({
-      global: { permission: { read: "allow" } },
-    });
-    const result = checkTool(manager, "read", {});
-    expect(result.state).toBe("allow");
-    expect(result.origin).toBe("global");
-  });
-
-  it("single-scope global with pattern map: origin is 'global'", () => {
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          bash: { "git *": "allow" },
-        },
-      },
-    });
-    const result = checkTool(manager, "bash", { command: "git status" });
-    expect(result.state).toBe("allow");
-    expect(result.origin).toBe("global");
-  });
-
-  it("both-object merge: project pattern overrides global pattern for same key", () => {
-    // Both scopes define bash["git *"]; project wins for that pattern.
-    const manager = createInMemoryManager({
-      global: { permission: { bash: { "git *": "ask" } } },
-      project: { permission: { bash: { "git *": "allow" } } },
-    });
-    const result = checkTool(manager, "bash", {
-      command: "git status",
-    });
-    expect(result.state).toBe("allow");
-    expect(result.origin).toBe("project");
-  });
-
-  it("object replaces string: all patterns from replacing scope get origin 'project'", () => {
-    // global defines read as a string "ask"; project replaces with object.
-    const manager = createInMemoryManager({
-      global: { permission: { read: "ask" } },
-      project: { permission: { read: { "*": "allow" } } },
-    });
-    const result = checkTool(manager, "read", {});
-    expect(result.state).toBe("allow");
-    expect(result.origin).toBe("project");
-  });
-
   it("session rule: origin is 'session'", () => {
     const manager = createMissingConfigManager();
     const sessionRules: Ruleset = [sessionRule("read", "*")];
@@ -712,32 +666,6 @@ describe("checkPermission — rule origin provenance", () => {
 // ---------------------------------------------------------------------------
 
 describe("PermissionManager with in-memory PolicyLoader", () => {
-  describe("universal fallback", () => {
-    it("defaults to ask when no config is provided", () => {
-      const manager = createInMemoryManager();
-      const result = checkTool(manager, "read", {});
-      expect(result.state).toBe("ask");
-      expect(result.origin).toBe("builtin");
-    });
-
-    it("respects permission['*'] = 'allow' from global config", () => {
-      const manager = createInMemoryManager({
-        global: { permission: { "*": "allow" } },
-      });
-      const result = checkTool(manager, "read", {});
-      expect(result.state).toBe("allow");
-      expect(result.origin).toBe("global");
-    });
-
-    it("respects permission['*'] = 'deny' from global config", () => {
-      const manager = createInMemoryManager({
-        global: { permission: { "*": "deny" } },
-      });
-      const result = checkTool(manager, "write", {});
-      expect(result.state).toBe("deny");
-    });
-  });
-
   describe("surface routing", () => {
     it("extension tools use 'default' source when no config rule matches", () => {
       const manager = createInMemoryManager({
@@ -746,70 +674,6 @@ describe("PermissionManager with in-memory PolicyLoader", () => {
       const result = checkTool(manager, "my_custom_tool", {});
       expect(result.state).toBe("ask");
       expect(result.source).toBe("default");
-    });
-  });
-
-  describe("multi-scope merge", () => {
-    it("project overrides global", () => {
-      const manager = createInMemoryManager({
-        global: { permission: { read: "ask" } },
-        project: { permission: { read: "allow" } },
-      });
-      const result = checkTool(manager, "read", {});
-      expect(result.state).toBe("allow");
-      expect(result.origin).toBe("project");
-    });
-
-    it("agent overrides project", () => {
-      const manager = createInMemoryManager({
-        global: { permission: { read: "ask" } },
-        project: { permission: { read: "allow" } },
-        agent: { coder: { permission: { read: "deny" } } },
-      });
-      const result = checkTool(manager, "read", {}, "coder");
-      expect(result.state).toBe("deny");
-      expect(result.origin).toBe("agent");
-    });
-
-    it("project-agent overrides agent", () => {
-      const manager = createInMemoryManager({
-        global: { permission: { read: "deny" } },
-        agent: { coder: { permission: { read: "deny" } } },
-        projectAgent: { coder: { permission: { read: "allow" } } },
-      });
-      const result = checkTool(manager, "read", {}, "coder");
-      expect(result.state).toBe("allow");
-      expect(result.origin).toBe("project-agent");
-    });
-
-    it("deep-shallow merge preserves patterns from different scopes", () => {
-      const manager = createInMemoryManager({
-        global: { permission: { bash: { "git *": "allow" } } },
-        project: { permission: { bash: { "rm *": "deny" } } },
-      });
-      const gitResult = checkTool(manager, "bash", {
-        command: "git status",
-      });
-      expect(gitResult.state).toBe("allow");
-      expect(gitResult.origin).toBe("global");
-
-      const rmResult = checkTool(manager, "bash", {
-        command: "rm -rf /",
-      });
-      expect(rmResult.state).toBe("deny");
-      expect(rmResult.origin).toBe("project");
-    });
-
-    it("string replaces object in override scope", () => {
-      const manager = createInMemoryManager({
-        global: {
-          permission: { bash: { "git *": "ask", "npm *": "ask" } },
-        },
-        project: { permission: { bash: "allow" } },
-      });
-      const result = checkTool(manager, "bash", { command: "anything" });
-      expect(result.state).toBe("allow");
-      expect(result.origin).toBe("project");
     });
   });
 
@@ -846,18 +710,6 @@ describe("PermissionManager with in-memory PolicyLoader", () => {
         sessionRules,
       );
       expect(readResult.state).toBe("ask");
-    });
-  });
-
-  describe("origin tracking", () => {
-    it("universal fallback from project carries origin 'project'", () => {
-      const manager = createInMemoryManager({
-        global: { permission: { "*": "ask" } },
-        project: { permission: { "*": "allow" } },
-      });
-      const result = checkTool(manager, "read", {});
-      expect(result.state).toBe("allow");
-      expect(result.origin).toBe("project");
     });
   });
 
@@ -942,21 +794,6 @@ describe("PermissionManager with in-memory PolicyLoader", () => {
       });
       expect(manager.isToolFullyDenied(" bash ")).toBe(true);
       expect(manager.isToolFullyDenied("bash", "reviewer")).toBe(false);
-    });
-  });
-
-  describe("getComposedConfigRules", () => {
-    it("returns only config-layer rules", () => {
-      const manager = createInMemoryManager({
-        global: {
-          permission: { "*": "ask", bash: { "git *": "allow" } },
-        },
-      });
-      const rules = manager.getComposedConfigRules();
-      expect(rules.every((r) => r.layer === "config")).toBe(true);
-      expect(
-        rules.some((r) => r.surface === "bash" && r.pattern === "git *"),
-      ).toBe(true);
     });
   });
 });
@@ -1640,157 +1477,6 @@ describe("PermissionManager — configureForCwd and agentDir option", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Project-level and per-agent config scope — moved from catch-all (#342)
-// ---------------------------------------------------------------------------
-
-test("Project-level config overrides base bash patterns", () => {
-  const manager = createInMemoryManager({
-    global: {
-      permission: {
-        "*": "allow",
-        bash: { "*": "ask", "rm -rf *": "deny" },
-      },
-    },
-    project: {
-      permission: { bash: { "rm -rf build": "allow" } },
-    },
-  });
-
-  const allowed = checkTool(manager, "bash", {
-    command: "rm -rf build",
-  });
-  expect(allowed.state).toBe("allow");
-  expect(allowed.matchedPattern).toBe("rm -rf build");
-
-  const denied = checkTool(manager, "bash", {
-    command: "rm -rf node_modules",
-  });
-  expect(denied.state).toBe("deny");
-  expect(denied.matchedPattern).toBe("rm -rf *");
-});
-
-test("System-agent config overrides project-level bash patterns", () => {
-  const { manager, cleanup } = createManagerWithProject(
-    {
-      permission: { "*": "allow", bash: "ask" },
-    },
-    {
-      reviewer: `---
-name: reviewer
-permission:
-  bash:
-    "git log *": allow
----
-`,
-    },
-    {
-      projectConfig: {
-        permission: { bash: { "git *": "deny" } },
-      },
-    },
-  );
-
-  try {
-    const allowed = checkTool(
-      manager,
-      "bash",
-      { command: "git log --oneline" },
-      "reviewer",
-    );
-    expect(allowed.state).toBe("allow");
-    expect(allowed.matchedPattern).toBe("git log *");
-
-    const denied = checkTool(
-      manager,
-      "bash",
-      { command: "git status" },
-      "reviewer",
-    );
-    expect(denied.state).toBe("deny");
-    expect(denied.matchedPattern).toBe("git *");
-  } finally {
-    cleanup();
-  }
-});
-
-test("Full precedence chain base < project < system-agent < project-agent for universal default", () => {
-  const { manager, cleanup } = createManagerWithProject(
-    {
-      permission: { "*": "deny" },
-    },
-    {
-      reviewer: `---
-name: reviewer
-permission:
-  "*": ask
----
-`,
-    },
-    {
-      projectConfig: {
-        permission: { "*": "allow" },
-      },
-      projectAgentFiles: {
-        reviewer: `---
-name: reviewer
-permission:
-  "*": deny
----
-`,
-      },
-    },
-  );
-
-  try {
-    const reviewerResult = checkTool(
-      manager,
-      "custom_extension_tool",
-      {},
-      "reviewer",
-    );
-    expect(reviewerResult.state).toBe("deny");
-    expect(reviewerResult.source).toBe("default");
-
-    const globalResult = checkTool(manager, "custom_extension_tool", {});
-    expect(globalResult.state).toBe("allow");
-    expect(globalResult.source).toBe("default");
-  } finally {
-    cleanup();
-  }
-});
-
-test("Project-agent applies even without a matching system-agent file", () => {
-  const { manager, cleanup } = createManagerWithProject(
-    {
-      permission: { "*": "allow" },
-    },
-    {},
-    {
-      projectAgentFiles: {
-        reviewer: `---
-name: reviewer
-permission:
-  read: deny
----
-`,
-      },
-    },
-  );
-
-  try {
-    const agentResult = checkTool(manager, "read", {}, "reviewer");
-    expect(agentResult.state).toBe("deny");
-    expect(agentResult.source).toBe("tool");
-
-    const globalResult = checkTool(manager, "read", {});
-    expect(globalResult.state).toBe("allow");
-    expect(globalResult.source).toBe("tool");
-  } finally {
-    cleanup();
-  }
-});
-
-// ---------------------------------------------------------------------------
 // PermissionManager surface resolution — moved from catch-all (#342)
 // ---------------------------------------------------------------------------
 
@@ -2143,106 +1829,6 @@ permission:
   }
 });
 
-test("mcp catch-all in agent frontmatter overrides global default", () => {
-  const { manager, cleanup } = createManager(
-    {
-      permission: { "*": "deny" },
-    },
-    {
-      reviewer: `---
-name: reviewer
-permission:
-  mcp: allow
----
-`,
-    },
-  );
-
-  try {
-    const readResult = checkTool(manager, "read", {}, "reviewer");
-    expect(readResult.state).toBe("deny");
-    expect(readResult.source).toBe("tool");
-
-    const mcpResult = checkTool(
-      manager,
-      "mcp",
-      { tool: "exa:web_search_exa" },
-      "reviewer",
-    );
-    expect(mcpResult.state).toBe("allow");
-    expect(mcpResult.source).toBe("mcp");
-  } finally {
-    cleanup();
-  }
-});
-
-test("Agent frontmatter canonical tools resolve correctly", () => {
-  const { manager, cleanup } = createManager(
-    {
-      permission: { "*": "deny" },
-    },
-    {
-      reviewer: `---
-name: reviewer
-permission:
-  find: allow
-  ls: deny
----
-`,
-    },
-  );
-
-  try {
-    const findResult = checkTool(manager, "find", {}, "reviewer");
-    expect(findResult.state).toBe("allow");
-    expect(findResult.source).toBe("tool");
-
-    const lsResult = checkTool(manager, "ls", {}, "reviewer");
-    expect(lsResult.state).toBe("deny");
-    expect(lsResult.source).toBe("tool");
-  } finally {
-    cleanup();
-  }
-});
-
-test("All surface names work in agent frontmatter flat permission format", () => {
-  const { manager, cleanup } = createManager(
-    {
-      permission: { "*": "deny" },
-    },
-    {
-      reviewer: `---
-name: reviewer
-permission:
-  find: allow
-  task: allow
-  mcp: allow
----
-`,
-    },
-  );
-
-  try {
-    const findResult = checkTool(manager, "find", {}, "reviewer");
-    expect(findResult.state).toBe("allow");
-    expect(findResult.source).toBe("tool");
-
-    const taskResult = checkTool(manager, "task", {}, "reviewer");
-    expect(taskResult.state).toBe("allow");
-    expect(taskResult.source).toBe("tool");
-
-    const mcpResult = checkTool(
-      manager,
-      "mcp",
-      { tool: "exa:web_search_exa" },
-      "reviewer",
-    );
-    expect(mcpResult.state).toBe("allow");
-  } finally {
-    cleanup();
-  }
-});
-
 test("task uses exact-name tool permissions like any registered extension tool", () => {
   const manager = createInMemoryManager({
     global: {
@@ -2339,218 +1925,6 @@ test("external_directory permission can be explicitly allowed", () => {
   expect(result.matchedPattern).toBe("*");
 });
 
-test("external_directory permission respects per-agent override", () => {
-  const { manager, cleanup } = createManager(
-    {
-      permission: { "*": "allow", external_directory: "deny" },
-    },
-    {
-      trusted: `---
-name: trusted
-permission:
-  external_directory: allow
----
-`,
-    },
-  );
-
-  try {
-    const globalResult = checkTool(manager, "external_directory_read", {});
-    expect(globalResult.state).toBe("deny");
-
-    const agentResult = checkTool(
-      manager,
-      "external_directory_read",
-      {},
-      "trusted",
-    );
-    expect(agentResult.state).toBe("allow");
-    expect(agentResult.source).toBe("special");
-  } finally {
-    cleanup();
-  }
-});
-
-test("skill pattern map in agent frontmatter overrides global skill policy", () => {
-  const { manager, cleanup } = createManager(
-    {
-      permission: { "*": "deny", skill: "deny" },
-    },
-    {
-      reviewer: `---
-name: reviewer
-permission:
-  skill:
-    "*": ask
-    "pi-*": allow
----
-`,
-    },
-  );
-
-  try {
-    const allowed = checkTool(
-      manager,
-      "skill",
-      { name: "pi-code-review" },
-      "reviewer",
-    );
-    expect(allowed.state).toBe("allow");
-    expect(allowed.matchedPattern).toBe("pi-*");
-    expect(allowed.source).toBe("skill");
-
-    const asked = checkTool(
-      manager,
-      "skill",
-      { name: "other-skill" },
-      "reviewer",
-    );
-    expect(asked.state).toBe("ask");
-    expect(asked.matchedPattern).toBe("*");
-
-    const denied = checkTool(manager, "skill", { name: "pi-code-review" });
-    expect(denied.state).toBe("deny");
-    expect(denied.source).toBe("skill");
-  } finally {
-    cleanup();
-  }
-});
-
-test("external_directory pattern map in agent frontmatter overrides global policy", () => {
-  const { manager, cleanup } = createManager(
-    {
-      permission: { "*": "allow", external_directory: "deny" },
-    },
-    {
-      trusted: `---
-name: trusted
-permission:
-  external_directory:
-    "*": deny
-    "~/Downloads/*": allow
----
-`,
-    },
-  );
-
-  try {
-    const allowed = checkPath(
-      manager,
-      `${homedir()}/Downloads/file.txt`,
-      {},
-      "external_directory_read",
-      "trusted",
-    );
-    expect(allowed.state).toBe("allow");
-    expect(allowed.matchedPattern).toBe("~/Downloads/*");
-    expect(allowed.source).toBe("special");
-
-    const denied = checkPath(
-      manager,
-      `${homedir()}/Documents/secret.txt`,
-      {},
-      "external_directory_read",
-      "trusted",
-    );
-    expect(denied.state).toBe("deny");
-    expect(denied.matchedPattern).toBe("*");
-
-    const globalDenied = checkTool(manager, "external_directory_read", {});
-    expect(globalDenied.state).toBe("deny");
-    expect(globalDenied.source).toBe("special");
-  } finally {
-    cleanup();
-  }
-});
-
-test("project-agent frontmatter skill rules override global-agent frontmatter skill rules", () => {
-  const { manager, cleanup } = createManagerWithProject(
-    {
-      permission: { "*": "deny" },
-    },
-    {
-      analyst: `---
-name: analyst
-permission:
-  skill:
-    "*": ask
----
-`,
-    },
-    {
-      projectAgentFiles: {
-        analyst: `---
-name: analyst
-permission:
-  skill:
-    "pi-*": allow
-    "*": deny
----
-`,
-      },
-    },
-  );
-
-  try {
-    const allowed = checkTool(
-      manager,
-      "skill",
-      { name: "pi-code-review" },
-      "analyst",
-    );
-    expect(allowed.state).toBe("allow");
-    expect(allowed.matchedPattern).toBe("pi-*");
-
-    const denied = checkTool(
-      manager,
-      "skill",
-      { name: "other-skill" },
-      "analyst",
-    );
-    expect(denied.state).toBe("deny");
-    expect(denied.matchedPattern).toBe("*");
-  } finally {
-    cleanup();
-  }
-});
-
-test("project-agent frontmatter external_directory rules override global-agent frontmatter rules", () => {
-  const { manager, cleanup } = createManagerWithProject(
-    {
-      permission: { "*": "allow", external_directory: "deny" },
-    },
-    {
-      analyst: `---
-name: analyst
-permission:
-  external_directory: ask
----
-`,
-    },
-    {
-      projectAgentFiles: {
-        analyst: `---
-name: analyst
-permission:
-  external_directory: allow
----
-`,
-      },
-    },
-  );
-
-  try {
-    const result = checkTool(manager, "external_directory_read", {}, "analyst");
-    expect(result.state).toBe("allow");
-    expect(result.source).toBe("special");
-
-    const globalResult = checkTool(manager, "external_directory_read", {});
-    expect(globalResult.state).toBe("deny");
-  } finally {
-    cleanup();
-  }
-});
-
 // ---------------------------------------------------------------------------
 // PI_CODING_AGENT_DIR support — moved from catch-all (#342)
 // ---------------------------------------------------------------------------
@@ -2584,25 +1958,6 @@ test("PermissionManager reads config from PI_CODING_AGENT_DIR when set", () => {
     }
     rmSync(baseDir, { recursive: true, force: true });
   }
-});
-
-// ---------------------------------------------------------------------------
-// getPolicyIssues — moved from catch-all (#342)
-// ---------------------------------------------------------------------------
-
-test("PermissionManager.getPolicyIssues returns empty array for clean config", () => {
-  const config: ScopeConfig = {
-    permission: { "*": "ask", external_directory: "ask" },
-  };
-  const manager = createInMemoryManager({ global: config });
-  const issues = manager.getPolicyIssues();
-  expect(issues.length).toBe(0);
-});
-
-test("PermissionManager.getPolicyIssues returns empty array for empty config", () => {
-  const manager = createInMemoryManager({ global: {} });
-  const issues = manager.getPolicyIssues();
-  expect(issues.length).toBe(0);
 });
 
 // ---------------------------------------------------------------------------
@@ -3634,6 +2989,670 @@ describe("check — a bash command evaluated with its spellings", () => {
       const result = checkPathValues(manager, ["/repo/src/x", "src/x"]);
       expect(result.state).toBe("deny");
       expect("matchedSpelling" in result).toBe(false);
+    });
+  });
+});
+
+describe("PermissionManager", () => {
+  describe("scope composition", () => {
+    describe("universal fallback", () => {
+      it("defaults to ask when no config is provided", () => {
+        const manager = createInMemoryManager();
+        const result = checkTool(manager, "read", {});
+        expect(result.state).toBe("ask");
+        expect(result.origin).toBe("builtin");
+      });
+
+      it("respects permission['*'] = 'allow' from global config", () => {
+        const manager = createInMemoryManager({
+          global: { permission: { "*": "allow" } },
+        });
+        const result = checkTool(manager, "read", {});
+        expect(result.state).toBe("allow");
+        expect(result.origin).toBe("global");
+      });
+
+      it("respects permission['*'] = 'deny' from global config", () => {
+        const manager = createInMemoryManager({
+          global: { permission: { "*": "deny" } },
+        });
+        const result = checkTool(manager, "write", {});
+        expect(result.state).toBe("deny");
+      });
+    });
+
+    describe("precedence between scopes", () => {
+      it("project overrides global", () => {
+        const manager = createInMemoryManager({
+          global: { permission: { read: "ask" } },
+          project: { permission: { read: "allow" } },
+        });
+        const result = checkTool(manager, "read", {});
+        expect(result.state).toBe("allow");
+        expect(result.origin).toBe("project");
+      });
+
+      it("agent overrides project", () => {
+        const manager = createInMemoryManager({
+          global: { permission: { read: "ask" } },
+          project: { permission: { read: "allow" } },
+          agent: { coder: { permission: { read: "deny" } } },
+        });
+        const result = checkTool(manager, "read", {}, "coder");
+        expect(result.state).toBe("deny");
+        expect(result.origin).toBe("agent");
+      });
+
+      it("project-agent overrides agent", () => {
+        const manager = createInMemoryManager({
+          global: { permission: { read: "deny" } },
+          agent: { coder: { permission: { read: "deny" } } },
+          projectAgent: { coder: { permission: { read: "allow" } } },
+        });
+        const result = checkTool(manager, "read", {}, "coder");
+        expect(result.state).toBe("allow");
+        expect(result.origin).toBe("project-agent");
+      });
+
+      it("deep-shallow merge preserves patterns from different scopes", () => {
+        const manager = createInMemoryManager({
+          global: { permission: { bash: { "git *": "allow" } } },
+          project: { permission: { bash: { "rm *": "deny" } } },
+        });
+        const gitResult = checkTool(manager, "bash", {
+          command: "git status",
+        });
+        expect(gitResult.state).toBe("allow");
+        expect(gitResult.origin).toBe("global");
+
+        const rmResult = checkTool(manager, "bash", {
+          command: "rm -rf /",
+        });
+        expect(rmResult.state).toBe("deny");
+        expect(rmResult.origin).toBe("project");
+      });
+
+      it("string replaces object in override scope", () => {
+        const manager = createInMemoryManager({
+          global: {
+            permission: { bash: { "git *": "ask", "npm *": "ask" } },
+          },
+          project: { permission: { bash: "allow" } },
+        });
+        const result = checkTool(manager, "bash", { command: "anything" });
+        expect(result.state).toBe("allow");
+        expect(result.origin).toBe("project");
+      });
+
+      it("Project-level config overrides base bash patterns", () => {
+        const manager = createInMemoryManager({
+          global: {
+            permission: {
+              "*": "allow",
+              bash: { "*": "ask", "rm -rf *": "deny" },
+            },
+          },
+          project: {
+            permission: { bash: { "rm -rf build": "allow" } },
+          },
+        });
+
+        const allowed = checkTool(manager, "bash", {
+          command: "rm -rf build",
+        });
+        expect(allowed.state).toBe("allow");
+        expect(allowed.matchedPattern).toBe("rm -rf build");
+
+        const denied = checkTool(manager, "bash", {
+          command: "rm -rf node_modules",
+        });
+        expect(denied.state).toBe("deny");
+        expect(denied.matchedPattern).toBe("rm -rf *");
+      });
+    });
+
+    describe("rule origin", () => {
+      it("single-scope global: config rule has origin 'global'", () => {
+        const manager = createInMemoryManager({
+          global: { permission: { read: "allow" } },
+        });
+        const result = checkTool(manager, "read", {});
+        expect(result.state).toBe("allow");
+        expect(result.origin).toBe("global");
+      });
+
+      it("single-scope global with pattern map: origin is 'global'", () => {
+        const manager = createInMemoryManager({
+          global: {
+            permission: {
+              bash: { "git *": "allow" },
+            },
+          },
+        });
+        const result = checkTool(manager, "bash", { command: "git status" });
+        expect(result.state).toBe("allow");
+        expect(result.origin).toBe("global");
+      });
+
+      it("both-object merge: project pattern overrides global pattern for same key", () => {
+        // Both scopes define bash["git *"]; project wins for that pattern.
+        const manager = createInMemoryManager({
+          global: { permission: { bash: { "git *": "ask" } } },
+          project: { permission: { bash: { "git *": "allow" } } },
+        });
+        const result = checkTool(manager, "bash", {
+          command: "git status",
+        });
+        expect(result.state).toBe("allow");
+        expect(result.origin).toBe("project");
+      });
+
+      it("object replaces string: all patterns from replacing scope get origin 'project'", () => {
+        // global defines read as a string "ask"; project replaces with object.
+        const manager = createInMemoryManager({
+          global: { permission: { read: "ask" } },
+          project: { permission: { read: { "*": "allow" } } },
+        });
+        const result = checkTool(manager, "read", {});
+        expect(result.state).toBe("allow");
+        expect(result.origin).toBe("project");
+      });
+
+      it("universal fallback from project carries origin 'project'", () => {
+        const manager = createInMemoryManager({
+          global: { permission: { "*": "ask" } },
+          project: { permission: { "*": "allow" } },
+        });
+        const result = checkTool(manager, "read", {});
+        expect(result.state).toBe("allow");
+        expect(result.origin).toBe("project");
+      });
+    });
+
+    describe("agent frontmatter", () => {
+      it("System-agent config overrides project-level bash patterns", () => {
+        const { manager, cleanup } = createManagerWithProject(
+          {
+            permission: { "*": "allow", bash: "ask" },
+          },
+          {
+            reviewer: `---
+name: reviewer
+permission:
+  bash:
+    "git log *": allow
+---
+`,
+          },
+          {
+            projectConfig: {
+              permission: { bash: { "git *": "deny" } },
+            },
+          },
+        );
+
+        try {
+          const allowed = checkTool(
+            manager,
+            "bash",
+            { command: "git log --oneline" },
+            "reviewer",
+          );
+          expect(allowed.state).toBe("allow");
+          expect(allowed.matchedPattern).toBe("git log *");
+
+          const denied = checkTool(
+            manager,
+            "bash",
+            { command: "git status" },
+            "reviewer",
+          );
+          expect(denied.state).toBe("deny");
+          expect(denied.matchedPattern).toBe("git *");
+        } finally {
+          cleanup();
+        }
+      });
+
+      it("Full precedence chain base < project < system-agent < project-agent for universal default", () => {
+        const { manager, cleanup } = createManagerWithProject(
+          {
+            permission: { "*": "deny" },
+          },
+          {
+            reviewer: `---
+name: reviewer
+permission:
+  "*": ask
+---
+`,
+          },
+          {
+            projectConfig: {
+              permission: { "*": "allow" },
+            },
+            projectAgentFiles: {
+              reviewer: `---
+name: reviewer
+permission:
+  "*": deny
+---
+`,
+            },
+          },
+        );
+
+        try {
+          const reviewerResult = checkTool(
+            manager,
+            "custom_extension_tool",
+            {},
+            "reviewer",
+          );
+          expect(reviewerResult.state).toBe("deny");
+          expect(reviewerResult.source).toBe("default");
+
+          const globalResult = checkTool(manager, "custom_extension_tool", {});
+          expect(globalResult.state).toBe("allow");
+          expect(globalResult.source).toBe("default");
+        } finally {
+          cleanup();
+        }
+      });
+
+      it("Project-agent applies even without a matching system-agent file", () => {
+        const { manager, cleanup } = createManagerWithProject(
+          {
+            permission: { "*": "allow" },
+          },
+          {},
+          {
+            projectAgentFiles: {
+              reviewer: `---
+name: reviewer
+permission:
+  read: deny
+---
+`,
+            },
+          },
+        );
+
+        try {
+          const agentResult = checkTool(manager, "read", {}, "reviewer");
+          expect(agentResult.state).toBe("deny");
+          expect(agentResult.source).toBe("tool");
+
+          const globalResult = checkTool(manager, "read", {});
+          expect(globalResult.state).toBe("allow");
+          expect(globalResult.source).toBe("tool");
+        } finally {
+          cleanup();
+        }
+      });
+
+      it("Agent frontmatter canonical tools resolve correctly", () => {
+        const { manager, cleanup } = createManager(
+          {
+            permission: { "*": "deny" },
+          },
+          {
+            reviewer: `---
+name: reviewer
+permission:
+  find: allow
+  ls: deny
+---
+`,
+          },
+        );
+
+        try {
+          const findResult = checkTool(manager, "find", {}, "reviewer");
+          expect(findResult.state).toBe("allow");
+          expect(findResult.source).toBe("tool");
+
+          const lsResult = checkTool(manager, "ls", {}, "reviewer");
+          expect(lsResult.state).toBe("deny");
+          expect(lsResult.source).toBe("tool");
+        } finally {
+          cleanup();
+        }
+      });
+
+      it("All surface names work in agent frontmatter flat permission format", () => {
+        const { manager, cleanup } = createManager(
+          {
+            permission: { "*": "deny" },
+          },
+          {
+            reviewer: `---
+name: reviewer
+permission:
+  find: allow
+  task: allow
+  mcp: allow
+---
+`,
+          },
+        );
+
+        try {
+          const findResult = checkTool(manager, "find", {}, "reviewer");
+          expect(findResult.state).toBe("allow");
+          expect(findResult.source).toBe("tool");
+
+          const taskResult = checkTool(manager, "task", {}, "reviewer");
+          expect(taskResult.state).toBe("allow");
+          expect(taskResult.source).toBe("tool");
+
+          const mcpResult = checkTool(
+            manager,
+            "mcp",
+            { tool: "exa:web_search_exa" },
+            "reviewer",
+          );
+          expect(mcpResult.state).toBe("allow");
+        } finally {
+          cleanup();
+        }
+      });
+
+      it("mcp catch-all in agent frontmatter overrides global default", () => {
+        const { manager, cleanup } = createManager(
+          {
+            permission: { "*": "deny" },
+          },
+          {
+            reviewer: `---
+name: reviewer
+permission:
+  mcp: allow
+---
+`,
+          },
+        );
+
+        try {
+          const readResult = checkTool(manager, "read", {}, "reviewer");
+          expect(readResult.state).toBe("deny");
+          expect(readResult.source).toBe("tool");
+
+          const mcpResult = checkTool(
+            manager,
+            "mcp",
+            { tool: "exa:web_search_exa" },
+            "reviewer",
+          );
+          expect(mcpResult.state).toBe("allow");
+          expect(mcpResult.source).toBe("mcp");
+        } finally {
+          cleanup();
+        }
+      });
+
+      it("external_directory permission respects per-agent override", () => {
+        const { manager, cleanup } = createManager(
+          {
+            permission: { "*": "allow", external_directory: "deny" },
+          },
+          {
+            trusted: `---
+name: trusted
+permission:
+  external_directory: allow
+---
+`,
+          },
+        );
+
+        try {
+          const globalResult = checkTool(
+            manager,
+            "external_directory_read",
+            {},
+          );
+          expect(globalResult.state).toBe("deny");
+
+          const agentResult = checkTool(
+            manager,
+            "external_directory_read",
+            {},
+            "trusted",
+          );
+          expect(agentResult.state).toBe("allow");
+          expect(agentResult.source).toBe("special");
+        } finally {
+          cleanup();
+        }
+      });
+
+      it("skill pattern map in agent frontmatter overrides global skill policy", () => {
+        const { manager, cleanup } = createManager(
+          {
+            permission: { "*": "deny", skill: "deny" },
+          },
+          {
+            reviewer: `---
+name: reviewer
+permission:
+  skill:
+    "*": ask
+    "pi-*": allow
+---
+`,
+          },
+        );
+
+        try {
+          const allowed = checkTool(
+            manager,
+            "skill",
+            { name: "pi-code-review" },
+            "reviewer",
+          );
+          expect(allowed.state).toBe("allow");
+          expect(allowed.matchedPattern).toBe("pi-*");
+          expect(allowed.source).toBe("skill");
+
+          const asked = checkTool(
+            manager,
+            "skill",
+            { name: "other-skill" },
+            "reviewer",
+          );
+          expect(asked.state).toBe("ask");
+          expect(asked.matchedPattern).toBe("*");
+
+          const denied = checkTool(manager, "skill", {
+            name: "pi-code-review",
+          });
+          expect(denied.state).toBe("deny");
+          expect(denied.source).toBe("skill");
+        } finally {
+          cleanup();
+        }
+      });
+
+      it("external_directory pattern map in agent frontmatter overrides global policy", () => {
+        const { manager, cleanup } = createManager(
+          {
+            permission: { "*": "allow", external_directory: "deny" },
+          },
+          {
+            trusted: `---
+name: trusted
+permission:
+  external_directory:
+    "*": deny
+    "~/Downloads/*": allow
+---
+`,
+          },
+        );
+
+        try {
+          const allowed = checkPath(
+            manager,
+            `${homedir()}/Downloads/file.txt`,
+            {},
+            "external_directory_read",
+            "trusted",
+          );
+          expect(allowed.state).toBe("allow");
+          expect(allowed.matchedPattern).toBe("~/Downloads/*");
+          expect(allowed.source).toBe("special");
+
+          const denied = checkPath(
+            manager,
+            `${homedir()}/Documents/secret.txt`,
+            {},
+            "external_directory_read",
+            "trusted",
+          );
+          expect(denied.state).toBe("deny");
+          expect(denied.matchedPattern).toBe("*");
+
+          const globalDenied = checkTool(
+            manager,
+            "external_directory_read",
+            {},
+          );
+          expect(globalDenied.state).toBe("deny");
+          expect(globalDenied.source).toBe("special");
+        } finally {
+          cleanup();
+        }
+      });
+
+      it("project-agent frontmatter skill rules override global-agent frontmatter skill rules", () => {
+        const { manager, cleanup } = createManagerWithProject(
+          {
+            permission: { "*": "deny" },
+          },
+          {
+            analyst: `---
+name: analyst
+permission:
+  skill:
+    "*": ask
+---
+`,
+          },
+          {
+            projectAgentFiles: {
+              analyst: `---
+name: analyst
+permission:
+  skill:
+    "pi-*": allow
+    "*": deny
+---
+`,
+            },
+          },
+        );
+
+        try {
+          const allowed = checkTool(
+            manager,
+            "skill",
+            { name: "pi-code-review" },
+            "analyst",
+          );
+          expect(allowed.state).toBe("allow");
+          expect(allowed.matchedPattern).toBe("pi-*");
+
+          const denied = checkTool(
+            manager,
+            "skill",
+            { name: "other-skill" },
+            "analyst",
+          );
+          expect(denied.state).toBe("deny");
+          expect(denied.matchedPattern).toBe("*");
+        } finally {
+          cleanup();
+        }
+      });
+
+      it("project-agent frontmatter external_directory rules override global-agent frontmatter rules", () => {
+        const { manager, cleanup } = createManagerWithProject(
+          {
+            permission: { "*": "allow", external_directory: "deny" },
+          },
+          {
+            analyst: `---
+name: analyst
+permission:
+  external_directory: ask
+---
+`,
+          },
+          {
+            projectAgentFiles: {
+              analyst: `---
+name: analyst
+permission:
+  external_directory: allow
+---
+`,
+            },
+          },
+        );
+
+        try {
+          const result = checkTool(
+            manager,
+            "external_directory_read",
+            {},
+            "analyst",
+          );
+          expect(result.state).toBe("allow");
+          expect(result.source).toBe("special");
+
+          const globalResult = checkTool(
+            manager,
+            "external_directory_read",
+            {},
+          );
+          expect(globalResult.state).toBe("deny");
+        } finally {
+          cleanup();
+        }
+      });
+    });
+
+    describe("composed config rules", () => {
+      it("returns only config-layer rules", () => {
+        const manager = createInMemoryManager({
+          global: {
+            permission: { "*": "ask", bash: { "git *": "allow" } },
+          },
+        });
+        const rules = manager.getComposedConfigRules();
+        expect(rules.every((r) => r.layer === "config")).toBe(true);
+        expect(
+          rules.some((r) => r.surface === "bash" && r.pattern === "git *"),
+        ).toBe(true);
+      });
+    });
+
+    describe("policy issues", () => {
+      it("is empty for a clean config", () => {
+        const config: ScopeConfig = {
+          permission: { "*": "ask", external_directory: "ask" },
+        };
+        const manager = createInMemoryManager({ global: config });
+        const issues = manager.getPolicyIssues();
+        expect(issues.length).toBe(0);
+      });
+
+      it("is empty for an empty config", () => {
+        const manager = createInMemoryManager({ global: {} });
+        const issues = manager.getPolicyIssues();
+        expect(issues.length).toBe(0);
+      });
     });
   });
 });
