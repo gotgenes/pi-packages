@@ -203,26 +203,6 @@ export function createManagerWithProject(
 }
 
 /**
- * Manager backed by a global permission map plus an optional project map.
- * Delegates to createManagerWithProject; returns the manager and its cleanup.
- */
-export function createManagerWithScopes(
-  globalPermission: Record<string, unknown>,
-  projectPermission?: Record<string, unknown>,
-): { manager: PermissionManager; cleanup: () => void } {
-  return createManagerWithProject(
-    { permission: globalPermission } as ScopeConfig,
-    {},
-    {
-      projectConfig:
-        projectPermission === undefined
-          ? undefined
-          : ({ permission: projectPermission } as ScopeConfig),
-    },
-  );
-}
-
-/**
  * Build a temp agentDir with a global config and an optional cwd with a
  * project config. Returns the paths and a cleanup function.
  */
