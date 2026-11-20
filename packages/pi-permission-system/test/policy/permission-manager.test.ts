@@ -38,112 +38,6 @@ import {
   sessionRule,
 } from "#test/helpers/manager-harness";
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-describe("PermissionManager — injected platform (#510)", () => {
-  const winAllow: Ruleset = [
-    sessionRule("external_directory_read", "C:\\Users\\Foo\\pi\\*"),
-  ];
-
-  it("win32 manager folds case for path-surface matching", () => {
-    const manager = new PermissionManager({
-      globalConfigPath: "/nonexistent/config.json",
-      agentsDir: "/nonexistent/agents",
-      flavor: win32PathFlavor,
-    });
-    const result = manager.check(
-      {
-        kind: "path-values",
-        surface: "external_directory_read",
-        values: ["c:\\users\\foo\\pi\\docs\\readme.md"],
-      },
-      winAllow,
-    );
-    expect(result.state).toBe("allow");
-  });
-
-  it("posix manager keeps path-surface matching case-sensitive", () => {
-    const manager = new PermissionManager({
-      globalConfigPath: "/nonexistent/config.json",
-      agentsDir: "/nonexistent/agents",
-      flavor: posixPathFlavor,
-    });
-    const result = manager.check(
-      {
-        kind: "path-values",
-        surface: "external_directory_read",
-        values: ["c:\\users\\foo\\pi\\docs\\readme.md"],
-      },
-      winAllow,
-    );
-    expect(result.state).not.toBe("allow");
-  });
-
-  it("win32: a /tmp* allow rule suppresses a Git Bash /tmp path (#533)", async () => {
-    // End to end: parse `ls /tmp` under win32, take the token's match values,
-    // and confirm a natural `/tmp*` external_directory allow rule matches them.
-    // The win32 matcher folds separators on both the rule and the value (#653),
-    // so the as-typed literal resolves without a backslash match alias.
-    const program = await BashProgram.parse(
-      "ls /tmp",
-      new PathNormalizer(win32PathFlavor, "C:/projects/app"),
-    );
-    const values = program.externalAccesses()[0].path.matchValues();
-    const manager = new PermissionManager({
-      globalConfigPath: "/nonexistent/config.json",
-      agentsDir: "/nonexistent/agents",
-      flavor: win32PathFlavor,
-    });
-
-    const allowed = manager.check(
-      { kind: "path-values", surface: "external_directory_read", values },
-      [sessionRule("external_directory_read", "/tmp*")],
-    );
-    expect(allowed.state).toBe("allow");
-
-    const noRule = manager.check(
-      { kind: "path-values", surface: "external_directory_read", values },
-      [],
-    );
-    expect(noRule.state).not.toBe("allow");
-  });
-
-  it("win32: a /dev/null path allow rule suppresses the Git Bash device prompt (#653)", async () => {
-    // The reported repro: `echo hi > /dev/null` reaches the `path` surface with
-    // the device spelled as typed, so a rule written the same way must win over
-    // a preceding universal ask.
-    const program = await BashProgram.parse(
-      "echo hi > /dev/null",
-      new PathNormalizer(win32PathFlavor, "C:\\projects\\app"),
-    );
-    const values = program.pathRuleCandidates()[0].path.matchValues();
-    expect(values).toEqual(["/dev/null"]);
-
-    const manager = new PermissionManager({
-      globalConfigPath: "/nonexistent/config.json",
-      agentsDir: "/nonexistent/agents",
-      flavor: win32PathFlavor,
-    });
-
-    const allowed = manager.check(
-      { kind: "path-values", surface: "path_read", values },
-      [
-        sessionRule("path_read", "*", "ask"),
-        sessionRule("path_read", "/dev/null"),
-      ],
-    );
-    expect(allowed.state).toBe("allow");
-
-    const askedWithoutRule = manager.check(
-      { kind: "path-values", surface: "path_read", values },
-      [sessionRule("path_read", "*", "ask")],
-    );
-    expect(askedWithoutRule.state).toBe("ask");
-  });
-});
-
 // Adapters that build an AccessIntent and call the unified `check` entry point,
 // so these tests exercise the single resolution path (#478) without a
 // production-class wrapper used only by tests.
@@ -193,472 +87,6 @@ function checkPath(
     surface,
   );
 }
-
-// ---------------------------------------------------------------------------
-// Home directory expansion in external_directory patterns
-// ---------------------------------------------------------------------------
-
-describe("checkPermission — home path expansion in external_directory rules", () => {
-  it("~/glob pattern allows a path under the real home directory", () => {
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          "*": "ask",
-          external_directory: { "~/trusted/*": "allow" },
-        },
-      },
-    });
-    const result = checkPath(
-      manager,
-      join(homedir(), "trusted/repo"),
-      {},
-      "external_directory_read",
-    );
-    expect(result.state).toBe("allow");
-    expect(result.source).toBe("special");
-    expect(result.matchedPattern).toBe("~/trusted/*");
-  });
-
-  it("$HOME/glob pattern allows a path under the real home directory", () => {
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          "*": "ask",
-          external_directory: { "$HOME/trusted/*": "allow" },
-        },
-      },
-    });
-    const result = checkPath(
-      manager,
-      join(homedir(), "trusted/repo"),
-      {},
-      "external_directory_read",
-    );
-    expect(result.state).toBe("allow");
-    expect(result.source).toBe("special");
-    expect(result.matchedPattern).toBe("$HOME/trusted/*");
-  });
-
-  it("~/glob deny rule blocks a path under home", () => {
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          "*": "allow",
-          external_directory: { "~/private/*": "deny" },
-        },
-      },
-    });
-    const result = checkPath(
-      manager,
-      join(homedir(), "private/secrets.txt"),
-      {},
-      "external_directory_read",
-    );
-    expect(result.state).toBe("deny");
-    expect(result.matchedPattern).toBe("~/private/*");
-  });
-
-  it("~/glob pattern does not match a path outside home", () => {
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          "*": "ask",
-          external_directory: { "~/trusted/*": "allow" },
-        },
-      },
-    });
-    const result = checkPath(
-      manager,
-      "/tmp/not-home/file",
-      {},
-      "external_directory_read",
-    );
-    // Falls back to the "*": "ask" default — no allow from the ~/trusted/* rule.
-    expect(result.state).toBe("ask");
-    expect(result.matchedPattern).toBeUndefined();
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Per-tool path patterns (#147)
-// ---------------------------------------------------------------------------
-
-describe("checkPermission — per-tool path patterns", () => {
-  it("denies read of .env when path pattern matches", () => {
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          read: { "*": "allow", "*.env": "deny" },
-        },
-      },
-    });
-    const result = checkPath(manager, ".env", {}, "read");
-    expect(result.state).toBe("deny");
-    expect(result.matchedPattern).toBe("*.env");
-  });
-
-  it("allows read of non-.env file when .env is denied", () => {
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          read: { "*": "allow", "*.env": "deny" },
-        },
-      },
-    });
-    const result = checkPath(manager, "src/main.ts", {}, "read");
-    expect(result.state).toBe("allow");
-  });
-
-  it("allows write to src/ when only src/ is allowed", () => {
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          write: { "*": "deny", "src/*": "allow" },
-        },
-      },
-    });
-    const result = checkPath(manager, "src/main.ts", {}, "write");
-    expect(result.state).toBe("allow");
-    expect(result.matchedPattern).toBe("src/*");
-  });
-
-  it("denies write outside src/ when only src/ is allowed", () => {
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          write: { "*": "deny", "src/*": "allow" },
-        },
-      },
-    });
-    const result = checkPath(manager, "vendor/lib.ts", {}, "write");
-    expect(result.state).toBe("deny");
-  });
-
-  it("backward compat: 'read': 'allow' allows read of any path", () => {
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          read: "allow",
-        },
-      },
-    });
-    const result = checkPath(manager, ".env", {}, "read");
-    expect(result.state).toBe("allow");
-  });
-
-  it("backward compat: 'read': 'deny' denies read of any path", () => {
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          read: "deny",
-        },
-      },
-    });
-    const result = checkPath(manager, "src/main.ts", {}, "read");
-    expect(result.state).toBe("deny");
-  });
-
-  it("falls back to '*' when input.path is missing", () => {
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          read: { "*": "allow", "*.env": "deny" },
-        },
-      },
-    });
-    const result = checkTool(manager, "read", {});
-    expect(result.state).toBe("allow");
-  });
-
-  it("getToolPermission still returns surface-level state (not path-specific)", () => {
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          read: { "*": "allow", "*.env": "deny" },
-        },
-      },
-    });
-    const toolState = manager.getToolPermission("read");
-    expect(toolState).toBe("allow");
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Cross-cutting path surface (#148)
-// ---------------------------------------------------------------------------
-
-describe("cross-cutting path surface", () => {
-  it("denies .env via the path surface", () => {
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          path: { "*": "allow", "*.env": "deny" },
-          read: "allow",
-        },
-      },
-    });
-    const result = checkPath(manager, ".env");
-    expect(result.state).toBe("deny");
-    expect(result.matchedPattern).toBe("*.env");
-  });
-
-  it("allows non-matching paths via the path surface", () => {
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          path: { "*": "allow", "*.env": "deny" },
-          read: "allow",
-        },
-      },
-    });
-    const result = checkPath(manager, "README.md");
-    expect(result.state).toBe("allow");
-  });
-
-  it("path surface does not interfere with per-tool rules", () => {
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          path: { "*": "allow" },
-          read: { "*": "allow", "*.secret": "deny" },
-        },
-      },
-    });
-    // path surface allows, per-tool denies
-    const readResult = checkPath(manager, "data.secret", {}, "read");
-    expect(readResult.state).toBe("deny");
-    // path surface also allows
-    const pathResult = checkPath(manager, "data.secret");
-    expect(pathResult.state).toBe("allow");
-  });
-
-  it("getToolPermission('path') returns catch-all action", () => {
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          path: { "*": "allow", "*.env": "deny" },
-        },
-      },
-    });
-    const toolState = manager.getToolPermission("path_read");
-    expect(toolState).toBe("allow");
-  });
-
-  it("configs without path key behave identically (no path gate fires)", () => {
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          read: "allow",
-        },
-      },
-    });
-    // path surface falls through to universal default
-    const result = checkPath(manager, ".env");
-    expect(result.state).toBe("ask");
-  });
-
-  it("universal default produces undefined matchedPattern for gate skip (#58)", () => {
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          "*": "ask",
-          read: "allow",
-          find: "allow",
-        },
-      },
-    });
-    // No explicit "path" key → matchedPattern must be undefined so the
-    // path gate skips (describePathGate returns null).
-    const result = checkPath(manager, "src/main.ts");
-    expect(result.state).toBe("ask");
-    expect(result.matchedPattern).toBeUndefined();
-
-    // Meanwhile the tool-level check should allow read.
-    const readResult = checkPath(manager, "src/main.ts", {}, "read");
-    expect(readResult.state).toBe("allow");
-    expect(readResult.matchedPattern).toBe("*");
-  });
-
-  // ── Last-match-wins ordering ────────────────────────────────────────────
-
-  it("last-match-wins: catch-all after deny overrides the deny", () => {
-    // Classic misconfiguration: deny is before allow, so allow wins.
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          path: { "*.env": "deny", "*": "allow" },
-        },
-      },
-    });
-    const result = checkPath(manager, ".env");
-    // "*" is last and matches .env → allow (the deny is shadowed)
-    expect(result.state).toBe("allow");
-  });
-
-  it("last-match-wins: deny after catch-all blocks the path", () => {
-    // Correct ordering: catch-all first, specific deny after.
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          path: { "*": "allow", "*.env": "deny" },
-        },
-      },
-    });
-    const result = checkPath(manager, ".env");
-    expect(result.state).toBe("deny");
-  });
-
-  // ── .env.example override recipe ────────────────────────────────────────
-
-  it(".env.example override: denies .env and .env.local, allows .env.example", () => {
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          path: {
-            "*": "allow",
-            "*.env": "deny",
-            "*.env.*": "deny",
-            "*.env.example": "allow",
-          },
-        },
-      },
-    });
-    expect(checkPath(manager, ".env").state).toBe("deny");
-    expect(checkPath(manager, ".env.local").state).toBe("deny");
-    expect(checkPath(manager, ".env.production").state).toBe("deny");
-    expect(checkPath(manager, "src/.env").state).toBe("deny");
-    expect(checkPath(manager, ".env.example").state).toBe("allow");
-    expect(checkPath(manager, "README.md").state).toBe("allow");
-  });
-
-  // ── Universal fallback interaction ──────────────────────────────────────
-
-  it("universal '*': 'allow' with no path key makes the path gate transparent", () => {
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          "*": "allow",
-        },
-      },
-    });
-    const result = checkPath(manager, ".env");
-    expect(result.state).toBe("allow");
-  });
-
-  it("universal '*': 'deny' with no path key denies via path surface too", () => {
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          "*": "deny",
-        },
-      },
-    });
-    const result = checkPath(manager, ".env");
-    expect(result.state).toBe("deny");
-  });
-
-  // ── Composition: path allows, per-tool denies ──────────────────────
-
-  it("per-tool deny still blocks even when path surface allows", () => {
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          path: { "*": "allow" },
-          read: "deny",
-        },
-      },
-    });
-    // path gate passes (allow), but tool gate denies
-    const pathResult = checkPath(manager, "secret.txt");
-    expect(pathResult.state).toBe("allow");
-    const readResult = checkPath(manager, "secret.txt", {}, "read");
-    expect(readResult.state).toBe("deny");
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Home-expansion in path values (issue #350)
-// ---------------------------------------------------------------------------
-
-describe("cross-cutting path surface — home-expanded values", () => {
-  it("~/... path value is denied by a ~/* rule (reported footgun)", () => {
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          path: { "*": "allow", "~/.ssh/*": "deny" },
-        },
-      },
-    });
-    const result = checkPath(manager, "~/.ssh/config");
-    expect(result.state).toBe("deny");
-    expect(result.matchedPattern).toBe("~/.ssh/*");
-  });
-
-  it("$HOME/... path value is denied by a ~/* rule", () => {
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          path: { "*": "allow", "~/.ssh/*": "deny" },
-        },
-      },
-    });
-    const result = checkPath(manager, `${homedir()}/.ssh/config`);
-    expect(result.state).toBe("deny");
-    expect(result.matchedPattern).toBe("~/.ssh/*");
-  });
-
-  it("$HOME/... path value matches a $HOME/* pattern rule", () => {
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          path: { "*": "allow", "$HOME/.ssh/*": "deny" },
-        },
-      },
-    });
-    const result = checkPath(manager, "$HOME/.ssh/config");
-    expect(result.state).toBe("deny");
-    expect(result.matchedPattern).toBe("$HOME/.ssh/*");
-  });
-
-  it("already-absolute home path is still denied by ~/* rule", () => {
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          path: { "*": "allow", "~/.ssh/*": "deny" },
-        },
-      },
-    });
-    const result = checkPath(manager, `${homedir()}/.ssh/config`);
-    expect(result.state).toBe("deny");
-  });
-
-  it("non-home value is unchanged — .env still matches *.env", () => {
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          path: { "*": "allow", "*.env": "deny" },
-        },
-      },
-    });
-    const result = checkPath(manager, ".env");
-    expect(result.state).toBe("deny");
-    expect(result.matchedPattern).toBe("*.env");
-  });
-
-  it("per-tool read surface denies ~/... path with a ~/* rule", () => {
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          "*": "allow",
-          read: { "*": "allow", "~/.ssh/*": "deny" },
-        },
-      },
-    });
-    const result = checkPath(manager, "~/.ssh/config", {}, "read");
-    expect(result.state).toBe("deny");
-    expect(result.matchedPattern).toBe("~/.ssh/*");
-  });
-});
 
 // ---------------------------------------------------------------------------
 // configureForCwd and agentDir construction
@@ -895,42 +323,6 @@ test("MCP server names in settings.json are not used — only mcp.json is consul
 });
 
 // ---------------------------------------------------------------------------
-// external_directory config resolution and pattern maps — moved from catch-all (#342)
-// ---------------------------------------------------------------------------
-
-test("external_directory permission falls back to universal default when not explicitly configured", () => {
-  const manager = createInMemoryManager({ global: { permission: {} } });
-  const result = checkTool(manager, "external_directory_read", {});
-  expect(result.state).toBe("ask");
-  expect(result.source).toBe("special");
-  expect(result.matchedPattern).toBe(undefined);
-});
-
-test("external_directory permission respects explicit deny", () => {
-  const manager = createInMemoryManager({
-    global: {
-      permission: { "*": "allow", external_directory: "deny" },
-    },
-  });
-  const result = checkTool(manager, "external_directory_read", {});
-  expect(result.state).toBe("deny");
-  expect(result.source).toBe("special");
-  expect(result.matchedPattern).toBe("*");
-});
-
-test("external_directory permission can be explicitly allowed", () => {
-  const manager = createInMemoryManager({
-    global: {
-      permission: { "*": "allow", external_directory: "allow" },
-    },
-  });
-  const result = checkTool(manager, "external_directory_read", {});
-  expect(result.state).toBe("allow");
-  expect(result.source).toBe("special");
-  expect(result.matchedPattern).toBe("*");
-});
-
-// ---------------------------------------------------------------------------
 // PI_CODING_AGENT_DIR support — moved from catch-all (#342)
 // ---------------------------------------------------------------------------
 
@@ -1029,194 +421,6 @@ test("getResolvedPolicyPaths returns false for missing files and null for absent
   } finally {
     rmSync(tempDir, { recursive: true, force: true });
   }
-});
-
-describe("checkPermission — cwd-aware path policy values", () => {
-  const cwd = "/workspace/project";
-
-  it("matches a relative read input against an absolute allowlist", () => {
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          read: { "*": "ask", [`${cwd}/*`]: "allow" },
-        },
-      },
-    });
-    manager.configureForCwd(cwd);
-    const result = checkPath(manager, "src/App.jsx", { cwd }, "read");
-    expect(result.state).toBe("allow");
-    expect(result.matchedPattern).toBe(`${cwd}/*`);
-  });
-
-  it("keeps legacy relative path rules working after configureForCwd", () => {
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          read: { "*": "allow", "src/*": "deny" },
-        },
-      },
-    });
-    manager.configureForCwd(cwd);
-    const result = checkPath(manager, "src/App.jsx", { cwd }, "read");
-    expect(result.state).toBe("deny");
-    expect(result.matchedPattern).toBe("src/*");
-  });
-
-  it("preserves last-match-wins across absolute and relative aliases", () => {
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          read: {
-            "*": "ask",
-            [`${cwd}/*`]: "allow",
-            "src/*": "deny",
-          },
-        },
-      },
-    });
-    manager.configureForCwd(cwd);
-    const result = checkPath(manager, "src/App.jsx", { cwd }, "read");
-    // The later "src/*" deny wins over the earlier absolute allow.
-    expect(result.state).toBe("deny");
-    expect(result.matchedPattern).toBe("src/*");
-  });
-
-  it("matches the cross-cutting path surface against absolute allowlists", () => {
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          path: { "*": "ask", [`${cwd}/*`]: "allow" },
-        },
-      },
-    });
-    manager.configureForCwd(cwd);
-    const result = checkPath(manager, "src/App.jsx", { cwd });
-    expect(result.state).toBe("allow");
-    expect(result.matchedPattern).toBe(`${cwd}/*`);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// check(intent) — unified entry point (Step 1 of #478)
-// ---------------------------------------------------------------------------
-
-describe("check — path-values intent", () => {
-  const cwd = "/workspace/project";
-
-  it("evaluates precomputed policy values against the path surface", () => {
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          path: { "*": "ask", [`${cwd}/*`]: "allow" },
-        },
-      },
-    });
-    const intent: ResolvedAccessIntent = {
-      kind: "path-values",
-      surface: "path_read",
-      values: [`${cwd}/src/App.jsx`, "src/App.jsx"],
-    };
-    const result = manager.check(intent);
-    expect(result.state).toBe("allow");
-    expect(result.matchedPattern).toBe(`${cwd}/*`);
-    expect(result.source).toBe("special");
-    expect(result.toolName).toBe("path_read");
-  });
-
-  it("evaluates against the external_directory surface", () => {
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          external_directory: { "*": "ask", "/tmp/*": "allow" },
-        },
-      },
-    });
-    const intent: ResolvedAccessIntent = {
-      kind: "path-values",
-      surface: "external_directory_read",
-      values: ["/tmp/x"],
-    };
-    const result = manager.check(intent);
-    expect(result.state).toBe("allow");
-    expect(result.matchedPattern).toBe("/tmp/*");
-    expect(result.source).toBe("special");
-    expect(result.toolName).toBe("external_directory_read");
-  });
-
-  it("falls back to the catch-all for an empty value list", () => {
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          path: { "*": "deny" },
-        },
-      },
-    });
-    const intent: ResolvedAccessIntent = {
-      kind: "path-values",
-      surface: "path_read",
-      values: [],
-    };
-    const result = manager.check(intent);
-    expect(result.state).toBe("deny");
-    expect(result.matchedPattern).toBe("*");
-  });
-
-  it("applies session rules via the path-values intent", () => {
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          path: { "*": "ask", "src/*": "deny" },
-        },
-      },
-    });
-    const sessionRules: Ruleset = [sessionRule("path_read", "src/*")];
-    const intent: ResolvedAccessIntent = {
-      kind: "path-values",
-      surface: "path_read",
-      values: ["src/App.jsx"],
-    };
-    const result = manager.check(intent, sessionRules);
-    expect(result.state).toBe("allow");
-    expect(result.source).toBe("session");
-  });
-
-  it("last-match-wins across the provided aliases", () => {
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          path: { "*": "ask", [`${cwd}/*`]: "allow", "src/*": "deny" },
-        },
-      },
-    });
-    const intent: ResolvedAccessIntent = {
-      kind: "path-values",
-      surface: "path_read",
-      values: [`${cwd}/src/App.jsx`, "src/App.jsx"],
-    };
-    const result = manager.check(intent);
-    expect(result.state).toBe("deny");
-    expect(result.matchedPattern).toBe("src/*");
-  });
-
-  it("does not apply an external_directory rule on the path surface", () => {
-    const manager = createInMemoryManager({
-      global: {
-        permission: {
-          external_directory: { "*": "ask", "/tmp/*": "allow" },
-          path: { "*": "allow" },
-        },
-      },
-    });
-    const intent: ResolvedAccessIntent = {
-      kind: "path-values",
-      surface: "path_read",
-      values: ["/tmp/x"],
-    };
-    const result = manager.check(intent);
-    expect(result.toolName).toBe("path_read");
-    expect(result.state).toBe("allow");
-    expect(result.matchedPattern).toBe("*");
-  });
 });
 
 describe("PermissionManager", () => {
@@ -2632,46 +1836,6 @@ permission:
           expect(result.source).toBe("special");
           expect(result.matchedPattern).toBe("/trusted/*");
         });
-
-        it("expands a bare path rule onto both directional surfaces at load", () => {
-          const manager = createInMemoryManager({
-            global: {
-              permission: {
-                "*": "ask",
-                path: { "/secret/*": "deny" },
-              },
-            },
-          });
-          for (const surface of ["path_read", "path_write"]) {
-            const result = checkPath(manager, "/secret/x", {}, surface);
-            expect(result.state).toBe("deny");
-            expect(result.matchedPattern).toBe("/secret/*");
-          }
-          // Nothing survives on the bare surface — the fold is the read path.
-          expect(
-            checkPath(manager, "/secret/x", {}, "path").matchedPattern,
-          ).toBe(undefined);
-        });
-
-        it("appends an explicit directional rule after the sugar-derived ones", () => {
-          const manager = createInMemoryManager({
-            global: {
-              permission: {
-                "*": "ask",
-                external_directory: { "*": "ask" },
-                external_directory_read: { "/dev-root/*": "allow" },
-              },
-            },
-          });
-          expect(
-            checkPath(manager, "/dev-root/x", {}, "external_directory_read")
-              .state,
-          ).toBe("allow");
-          expect(
-            checkPath(manager, "/dev-root/x", {}, "external_directory_write")
-              .state,
-          ).toBe("ask");
-        });
       });
 
       describe("skill surface", () => {
@@ -3969,6 +3133,822 @@ permission:
         const result = serve(["danger_wipe"]);
         expect(result.state).toBe("ask");
         expect(result.target).toBe("danger_wipe");
+      });
+    });
+  });
+
+  describe("paths", () => {
+    describe("injected path flavor", () => {
+      const winAllow: Ruleset = [
+        sessionRule("external_directory_read", "C:\\Users\\Foo\\pi\\*"),
+      ];
+
+      it("win32 manager folds case for path-surface matching", () => {
+        const manager = new PermissionManager({
+          globalConfigPath: "/nonexistent/config.json",
+          agentsDir: "/nonexistent/agents",
+          flavor: win32PathFlavor,
+        });
+        const result = manager.check(
+          {
+            kind: "path-values",
+            surface: "external_directory_read",
+            values: ["c:\\users\\foo\\pi\\docs\\readme.md"],
+          },
+          winAllow,
+        );
+        expect(result.state).toBe("allow");
+      });
+
+      it("posix manager keeps path-surface matching case-sensitive", () => {
+        const manager = new PermissionManager({
+          globalConfigPath: "/nonexistent/config.json",
+          agentsDir: "/nonexistent/agents",
+          flavor: posixPathFlavor,
+        });
+        const result = manager.check(
+          {
+            kind: "path-values",
+            surface: "external_directory_read",
+            values: ["c:\\users\\foo\\pi\\docs\\readme.md"],
+          },
+          winAllow,
+        );
+        expect(result.state).not.toBe("allow");
+      });
+
+      it("win32: a /tmp* allow rule suppresses a Git Bash /tmp path", async () => {
+        // End to end: parse `ls /tmp` under win32, take the token's match values,
+        // and confirm a natural `/tmp*` external_directory allow rule matches them.
+        // The win32 matcher folds separators on both the rule and the value (#653),
+        // so the as-typed literal resolves without a backslash match alias.
+        const program = await BashProgram.parse(
+          "ls /tmp",
+          new PathNormalizer(win32PathFlavor, "C:/projects/app"),
+        );
+        const values = program.externalAccesses()[0].path.matchValues();
+        const manager = new PermissionManager({
+          globalConfigPath: "/nonexistent/config.json",
+          agentsDir: "/nonexistent/agents",
+          flavor: win32PathFlavor,
+        });
+
+        const allowed = manager.check(
+          { kind: "path-values", surface: "external_directory_read", values },
+          [sessionRule("external_directory_read", "/tmp*")],
+        );
+        expect(allowed.state).toBe("allow");
+
+        const noRule = manager.check(
+          { kind: "path-values", surface: "external_directory_read", values },
+          [],
+        );
+        expect(noRule.state).not.toBe("allow");
+      });
+
+      it("win32: a /dev/null path allow rule suppresses the Git Bash device prompt", async () => {
+        // The reported repro: `echo hi > /dev/null` reaches the `path` surface with
+        // the device spelled as typed, so a rule written the same way must win over
+        // a preceding universal ask.
+        const program = await BashProgram.parse(
+          "echo hi > /dev/null",
+          new PathNormalizer(win32PathFlavor, "C:\\projects\\app"),
+        );
+        const values = program.pathRuleCandidates()[0].path.matchValues();
+        expect(values).toEqual(["/dev/null"]);
+
+        const manager = new PermissionManager({
+          globalConfigPath: "/nonexistent/config.json",
+          agentsDir: "/nonexistent/agents",
+          flavor: win32PathFlavor,
+        });
+
+        const allowed = manager.check(
+          { kind: "path-values", surface: "path_read", values },
+          [
+            sessionRule("path_read", "*", "ask"),
+            sessionRule("path_read", "/dev/null"),
+          ],
+        );
+        expect(allowed.state).toBe("allow");
+
+        const askedWithoutRule = manager.check(
+          { kind: "path-values", surface: "path_read", values },
+          [sessionRule("path_read", "*", "ask")],
+        );
+        expect(askedWithoutRule.state).toBe("ask");
+      });
+    });
+
+    describe("directional sugar", () => {
+      it("expands a bare path rule onto both directional surfaces at load", () => {
+        const manager = createInMemoryManager({
+          global: {
+            permission: {
+              "*": "ask",
+              path: { "/secret/*": "deny" },
+            },
+          },
+        });
+        for (const surface of ["path_read", "path_write"]) {
+          const result = checkPath(manager, "/secret/x", {}, surface);
+          expect(result.state).toBe("deny");
+          expect(result.matchedPattern).toBe("/secret/*");
+        }
+        // Nothing survives on the bare surface — the fold is the read path.
+        expect(checkPath(manager, "/secret/x", {}, "path").matchedPattern).toBe(
+          undefined,
+        );
+      });
+
+      it("appends an explicit directional rule after the sugar-derived ones", () => {
+        const manager = createInMemoryManager({
+          global: {
+            permission: {
+              "*": "ask",
+              external_directory: { "*": "ask" },
+              external_directory_read: { "/dev-root/*": "allow" },
+            },
+          },
+        });
+        expect(
+          checkPath(manager, "/dev-root/x", {}, "external_directory_read")
+            .state,
+        ).toBe("allow");
+        expect(
+          checkPath(manager, "/dev-root/x", {}, "external_directory_write")
+            .state,
+        ).toBe("ask");
+      });
+    });
+
+    describe("per-tool path patterns", () => {
+      it("denies read of .env when path pattern matches", () => {
+        const manager = createInMemoryManager({
+          global: {
+            permission: {
+              read: { "*": "allow", "*.env": "deny" },
+            },
+          },
+        });
+        const result = checkPath(manager, ".env", {}, "read");
+        expect(result.state).toBe("deny");
+        expect(result.matchedPattern).toBe("*.env");
+      });
+
+      it("allows read of non-.env file when .env is denied", () => {
+        const manager = createInMemoryManager({
+          global: {
+            permission: {
+              read: { "*": "allow", "*.env": "deny" },
+            },
+          },
+        });
+        const result = checkPath(manager, "src/main.ts", {}, "read");
+        expect(result.state).toBe("allow");
+      });
+
+      it("allows write to src/ when only src/ is allowed", () => {
+        const manager = createInMemoryManager({
+          global: {
+            permission: {
+              write: { "*": "deny", "src/*": "allow" },
+            },
+          },
+        });
+        const result = checkPath(manager, "src/main.ts", {}, "write");
+        expect(result.state).toBe("allow");
+        expect(result.matchedPattern).toBe("src/*");
+      });
+
+      it("denies write outside src/ when only src/ is allowed", () => {
+        const manager = createInMemoryManager({
+          global: {
+            permission: {
+              write: { "*": "deny", "src/*": "allow" },
+            },
+          },
+        });
+        const result = checkPath(manager, "vendor/lib.ts", {}, "write");
+        expect(result.state).toBe("deny");
+      });
+
+      it("backward compat: 'read': 'allow' allows read of any path", () => {
+        const manager = createInMemoryManager({
+          global: {
+            permission: {
+              read: "allow",
+            },
+          },
+        });
+        const result = checkPath(manager, ".env", {}, "read");
+        expect(result.state).toBe("allow");
+      });
+
+      it("backward compat: 'read': 'deny' denies read of any path", () => {
+        const manager = createInMemoryManager({
+          global: {
+            permission: {
+              read: "deny",
+            },
+          },
+        });
+        const result = checkPath(manager, "src/main.ts", {}, "read");
+        expect(result.state).toBe("deny");
+      });
+
+      it("falls back to '*' when input.path is missing", () => {
+        const manager = createInMemoryManager({
+          global: {
+            permission: {
+              read: { "*": "allow", "*.env": "deny" },
+            },
+          },
+        });
+        const result = checkTool(manager, "read", {});
+        expect(result.state).toBe("allow");
+      });
+
+      it("getToolPermission still returns surface-level state (not path-specific)", () => {
+        const manager = createInMemoryManager({
+          global: {
+            permission: {
+              read: { "*": "allow", "*.env": "deny" },
+            },
+          },
+        });
+        const toolState = manager.getToolPermission("read");
+        expect(toolState).toBe("allow");
+      });
+    });
+
+    describe("path surface", () => {
+      it("denies .env via the path surface", () => {
+        const manager = createInMemoryManager({
+          global: {
+            permission: {
+              path: { "*": "allow", "*.env": "deny" },
+              read: "allow",
+            },
+          },
+        });
+        const result = checkPath(manager, ".env");
+        expect(result.state).toBe("deny");
+        expect(result.matchedPattern).toBe("*.env");
+      });
+
+      it("allows non-matching paths via the path surface", () => {
+        const manager = createInMemoryManager({
+          global: {
+            permission: {
+              path: { "*": "allow", "*.env": "deny" },
+              read: "allow",
+            },
+          },
+        });
+        const result = checkPath(manager, "README.md");
+        expect(result.state).toBe("allow");
+      });
+
+      it("path surface does not interfere with per-tool rules", () => {
+        const manager = createInMemoryManager({
+          global: {
+            permission: {
+              path: { "*": "allow" },
+              read: { "*": "allow", "*.secret": "deny" },
+            },
+          },
+        });
+        // path surface allows, per-tool denies
+        const readResult = checkPath(manager, "data.secret", {}, "read");
+        expect(readResult.state).toBe("deny");
+        // path surface also allows
+        const pathResult = checkPath(manager, "data.secret");
+        expect(pathResult.state).toBe("allow");
+      });
+
+      it("getToolPermission('path') returns catch-all action", () => {
+        const manager = createInMemoryManager({
+          global: {
+            permission: {
+              path: { "*": "allow", "*.env": "deny" },
+            },
+          },
+        });
+        const toolState = manager.getToolPermission("path_read");
+        expect(toolState).toBe("allow");
+      });
+
+      it("configs without path key behave identically (no path gate fires)", () => {
+        const manager = createInMemoryManager({
+          global: {
+            permission: {
+              read: "allow",
+            },
+          },
+        });
+        // path surface falls through to universal default
+        const result = checkPath(manager, ".env");
+        expect(result.state).toBe("ask");
+      });
+
+      it("universal default produces undefined matchedPattern for gate skip", () => {
+        const manager = createInMemoryManager({
+          global: {
+            permission: {
+              "*": "ask",
+              read: "allow",
+              find: "allow",
+            },
+          },
+        });
+        // No explicit "path" key → matchedPattern must be undefined so the
+        // path gate skips (describePathGate returns null).
+        const result = checkPath(manager, "src/main.ts");
+        expect(result.state).toBe("ask");
+        expect(result.matchedPattern).toBeUndefined();
+
+        // Meanwhile the tool-level check should allow read.
+        const readResult = checkPath(manager, "src/main.ts", {}, "read");
+        expect(readResult.state).toBe("allow");
+        expect(readResult.matchedPattern).toBe("*");
+      });
+
+      // ── Last-match-wins ordering ────────────────────────────────────────────
+
+      it("last-match-wins: catch-all after deny overrides the deny", () => {
+        // Classic misconfiguration: deny is before allow, so allow wins.
+        const manager = createInMemoryManager({
+          global: {
+            permission: {
+              path: { "*.env": "deny", "*": "allow" },
+            },
+          },
+        });
+        const result = checkPath(manager, ".env");
+        // "*" is last and matches .env → allow (the deny is shadowed)
+        expect(result.state).toBe("allow");
+      });
+
+      it("last-match-wins: deny after catch-all blocks the path", () => {
+        // Correct ordering: catch-all first, specific deny after.
+        const manager = createInMemoryManager({
+          global: {
+            permission: {
+              path: { "*": "allow", "*.env": "deny" },
+            },
+          },
+        });
+        const result = checkPath(manager, ".env");
+        expect(result.state).toBe("deny");
+      });
+
+      // ── .env.example override recipe ────────────────────────────────────────
+
+      it(".env.example override: denies .env and .env.local, allows .env.example", () => {
+        const manager = createInMemoryManager({
+          global: {
+            permission: {
+              path: {
+                "*": "allow",
+                "*.env": "deny",
+                "*.env.*": "deny",
+                "*.env.example": "allow",
+              },
+            },
+          },
+        });
+        expect(checkPath(manager, ".env").state).toBe("deny");
+        expect(checkPath(manager, ".env.local").state).toBe("deny");
+        expect(checkPath(manager, ".env.production").state).toBe("deny");
+        expect(checkPath(manager, "src/.env").state).toBe("deny");
+        expect(checkPath(manager, ".env.example").state).toBe("allow");
+        expect(checkPath(manager, "README.md").state).toBe("allow");
+      });
+
+      // ── Universal fallback interaction ──────────────────────────────────────
+
+      it("universal '*': 'allow' with no path key makes the path gate transparent", () => {
+        const manager = createInMemoryManager({
+          global: {
+            permission: {
+              "*": "allow",
+            },
+          },
+        });
+        const result = checkPath(manager, ".env");
+        expect(result.state).toBe("allow");
+      });
+
+      it("universal '*': 'deny' with no path key denies via path surface too", () => {
+        const manager = createInMemoryManager({
+          global: {
+            permission: {
+              "*": "deny",
+            },
+          },
+        });
+        const result = checkPath(manager, ".env");
+        expect(result.state).toBe("deny");
+      });
+
+      // ── Composition: path allows, per-tool denies ──────────────────────
+
+      it("per-tool deny still blocks even when path surface allows", () => {
+        const manager = createInMemoryManager({
+          global: {
+            permission: {
+              path: { "*": "allow" },
+              read: "deny",
+            },
+          },
+        });
+        // path gate passes (allow), but tool gate denies
+        const pathResult = checkPath(manager, "secret.txt");
+        expect(pathResult.state).toBe("allow");
+        const readResult = checkPath(manager, "secret.txt", {}, "read");
+        expect(readResult.state).toBe("deny");
+      });
+    });
+
+    describe("home expansion", () => {
+      describe("in path values", () => {
+        it("~/... path value is denied by a ~/* rule (reported footgun)", () => {
+          const manager = createInMemoryManager({
+            global: {
+              permission: {
+                path: { "*": "allow", "~/.ssh/*": "deny" },
+              },
+            },
+          });
+          const result = checkPath(manager, "~/.ssh/config");
+          expect(result.state).toBe("deny");
+          expect(result.matchedPattern).toBe("~/.ssh/*");
+        });
+
+        it("$HOME/... path value is denied by a ~/* rule", () => {
+          const manager = createInMemoryManager({
+            global: {
+              permission: {
+                path: { "*": "allow", "~/.ssh/*": "deny" },
+              },
+            },
+          });
+          const result = checkPath(manager, `${homedir()}/.ssh/config`);
+          expect(result.state).toBe("deny");
+          expect(result.matchedPattern).toBe("~/.ssh/*");
+        });
+
+        it("$HOME/... path value matches a $HOME/* pattern rule", () => {
+          const manager = createInMemoryManager({
+            global: {
+              permission: {
+                path: { "*": "allow", "$HOME/.ssh/*": "deny" },
+              },
+            },
+          });
+          const result = checkPath(manager, "$HOME/.ssh/config");
+          expect(result.state).toBe("deny");
+          expect(result.matchedPattern).toBe("$HOME/.ssh/*");
+        });
+
+        it("already-absolute home path is still denied by ~/* rule", () => {
+          const manager = createInMemoryManager({
+            global: {
+              permission: {
+                path: { "*": "allow", "~/.ssh/*": "deny" },
+              },
+            },
+          });
+          const result = checkPath(manager, `${homedir()}/.ssh/config`);
+          expect(result.state).toBe("deny");
+        });
+
+        it("non-home value is unchanged — .env still matches *.env", () => {
+          const manager = createInMemoryManager({
+            global: {
+              permission: {
+                path: { "*": "allow", "*.env": "deny" },
+              },
+            },
+          });
+          const result = checkPath(manager, ".env");
+          expect(result.state).toBe("deny");
+          expect(result.matchedPattern).toBe("*.env");
+        });
+
+        it("per-tool read surface denies ~/... path with a ~/* rule", () => {
+          const manager = createInMemoryManager({
+            global: {
+              permission: {
+                "*": "allow",
+                read: { "*": "allow", "~/.ssh/*": "deny" },
+              },
+            },
+          });
+          const result = checkPath(manager, "~/.ssh/config", {}, "read");
+          expect(result.state).toBe("deny");
+          expect(result.matchedPattern).toBe("~/.ssh/*");
+        });
+      });
+
+      describe("in external_directory rules", () => {
+        it("~/glob pattern allows a path under the real home directory", () => {
+          const manager = createInMemoryManager({
+            global: {
+              permission: {
+                "*": "ask",
+                external_directory: { "~/trusted/*": "allow" },
+              },
+            },
+          });
+          const result = checkPath(
+            manager,
+            join(homedir(), "trusted/repo"),
+            {},
+            "external_directory_read",
+          );
+          expect(result.state).toBe("allow");
+          expect(result.source).toBe("special");
+          expect(result.matchedPattern).toBe("~/trusted/*");
+        });
+
+        it("$HOME/glob pattern allows a path under the real home directory", () => {
+          const manager = createInMemoryManager({
+            global: {
+              permission: {
+                "*": "ask",
+                external_directory: { "$HOME/trusted/*": "allow" },
+              },
+            },
+          });
+          const result = checkPath(
+            manager,
+            join(homedir(), "trusted/repo"),
+            {},
+            "external_directory_read",
+          );
+          expect(result.state).toBe("allow");
+          expect(result.source).toBe("special");
+          expect(result.matchedPattern).toBe("$HOME/trusted/*");
+        });
+
+        it("~/glob deny rule blocks a path under home", () => {
+          const manager = createInMemoryManager({
+            global: {
+              permission: {
+                "*": "allow",
+                external_directory: { "~/private/*": "deny" },
+              },
+            },
+          });
+          const result = checkPath(
+            manager,
+            join(homedir(), "private/secrets.txt"),
+            {},
+            "external_directory_read",
+          );
+          expect(result.state).toBe("deny");
+          expect(result.matchedPattern).toBe("~/private/*");
+        });
+
+        it("~/glob pattern does not match a path outside home", () => {
+          const manager = createInMemoryManager({
+            global: {
+              permission: {
+                "*": "ask",
+                external_directory: { "~/trusted/*": "allow" },
+              },
+            },
+          });
+          const result = checkPath(
+            manager,
+            "/tmp/not-home/file",
+            {},
+            "external_directory_read",
+          );
+          // Falls back to the "*": "ask" default — no allow from the ~/trusted/* rule.
+          expect(result.state).toBe("ask");
+          expect(result.matchedPattern).toBeUndefined();
+        });
+      });
+    });
+
+    describe("external_directory config", () => {
+      it("external_directory permission falls back to universal default when not explicitly configured", () => {
+        const manager = createInMemoryManager({ global: { permission: {} } });
+        const result = checkTool(manager, "external_directory_read", {});
+        expect(result.state).toBe("ask");
+        expect(result.source).toBe("special");
+        expect(result.matchedPattern).toBe(undefined);
+      });
+
+      it("external_directory permission respects explicit deny", () => {
+        const manager = createInMemoryManager({
+          global: {
+            permission: { "*": "allow", external_directory: "deny" },
+          },
+        });
+        const result = checkTool(manager, "external_directory_read", {});
+        expect(result.state).toBe("deny");
+        expect(result.source).toBe("special");
+        expect(result.matchedPattern).toBe("*");
+      });
+
+      it("external_directory permission can be explicitly allowed", () => {
+        const manager = createInMemoryManager({
+          global: {
+            permission: { "*": "allow", external_directory: "allow" },
+          },
+        });
+        const result = checkTool(manager, "external_directory_read", {});
+        expect(result.state).toBe("allow");
+        expect(result.source).toBe("special");
+        expect(result.matchedPattern).toBe("*");
+      });
+    });
+
+    describe("cwd-aware path values", () => {
+      const cwd = "/workspace/project";
+
+      it("matches a relative read input against an absolute allowlist", () => {
+        const manager = createInMemoryManager({
+          global: {
+            permission: {
+              read: { "*": "ask", [`${cwd}/*`]: "allow" },
+            },
+          },
+        });
+        manager.configureForCwd(cwd);
+        const result = checkPath(manager, "src/App.jsx", { cwd }, "read");
+        expect(result.state).toBe("allow");
+        expect(result.matchedPattern).toBe(`${cwd}/*`);
+      });
+
+      it("keeps legacy relative path rules working after configureForCwd", () => {
+        const manager = createInMemoryManager({
+          global: {
+            permission: {
+              read: { "*": "allow", "src/*": "deny" },
+            },
+          },
+        });
+        manager.configureForCwd(cwd);
+        const result = checkPath(manager, "src/App.jsx", { cwd }, "read");
+        expect(result.state).toBe("deny");
+        expect(result.matchedPattern).toBe("src/*");
+      });
+
+      it("preserves last-match-wins across absolute and relative aliases", () => {
+        const manager = createInMemoryManager({
+          global: {
+            permission: {
+              read: {
+                "*": "ask",
+                [`${cwd}/*`]: "allow",
+                "src/*": "deny",
+              },
+            },
+          },
+        });
+        manager.configureForCwd(cwd);
+        const result = checkPath(manager, "src/App.jsx", { cwd }, "read");
+        // The later "src/*" deny wins over the earlier absolute allow.
+        expect(result.state).toBe("deny");
+        expect(result.matchedPattern).toBe("src/*");
+      });
+
+      it("matches the cross-cutting path surface against absolute allowlists", () => {
+        const manager = createInMemoryManager({
+          global: {
+            permission: {
+              path: { "*": "ask", [`${cwd}/*`]: "allow" },
+            },
+          },
+        });
+        manager.configureForCwd(cwd);
+        const result = checkPath(manager, "src/App.jsx", { cwd });
+        expect(result.state).toBe("allow");
+        expect(result.matchedPattern).toBe(`${cwd}/*`);
+      });
+    });
+
+    describe("a path-values intent", () => {
+      const cwd = "/workspace/project";
+
+      it("evaluates precomputed policy values against the path surface", () => {
+        const manager = createInMemoryManager({
+          global: {
+            permission: {
+              path: { "*": "ask", [`${cwd}/*`]: "allow" },
+            },
+          },
+        });
+        const intent: ResolvedAccessIntent = {
+          kind: "path-values",
+          surface: "path_read",
+          values: [`${cwd}/src/App.jsx`, "src/App.jsx"],
+        };
+        const result = manager.check(intent);
+        expect(result.state).toBe("allow");
+        expect(result.matchedPattern).toBe(`${cwd}/*`);
+        expect(result.source).toBe("special");
+        expect(result.toolName).toBe("path_read");
+      });
+
+      it("evaluates against the external_directory surface", () => {
+        const manager = createInMemoryManager({
+          global: {
+            permission: {
+              external_directory: { "*": "ask", "/tmp/*": "allow" },
+            },
+          },
+        });
+        const intent: ResolvedAccessIntent = {
+          kind: "path-values",
+          surface: "external_directory_read",
+          values: ["/tmp/x"],
+        };
+        const result = manager.check(intent);
+        expect(result.state).toBe("allow");
+        expect(result.matchedPattern).toBe("/tmp/*");
+        expect(result.source).toBe("special");
+        expect(result.toolName).toBe("external_directory_read");
+      });
+
+      it("falls back to the catch-all for an empty value list", () => {
+        const manager = createInMemoryManager({
+          global: {
+            permission: {
+              path: { "*": "deny" },
+            },
+          },
+        });
+        const intent: ResolvedAccessIntent = {
+          kind: "path-values",
+          surface: "path_read",
+          values: [],
+        };
+        const result = manager.check(intent);
+        expect(result.state).toBe("deny");
+        expect(result.matchedPattern).toBe("*");
+      });
+
+      it("applies session rules via the path-values intent", () => {
+        const manager = createInMemoryManager({
+          global: {
+            permission: {
+              path: { "*": "ask", "src/*": "deny" },
+            },
+          },
+        });
+        const sessionRules: Ruleset = [sessionRule("path_read", "src/*")];
+        const intent: ResolvedAccessIntent = {
+          kind: "path-values",
+          surface: "path_read",
+          values: ["src/App.jsx"],
+        };
+        const result = manager.check(intent, sessionRules);
+        expect(result.state).toBe("allow");
+        expect(result.source).toBe("session");
+      });
+
+      it("last-match-wins across the provided aliases", () => {
+        const manager = createInMemoryManager({
+          global: {
+            permission: {
+              path: { "*": "ask", [`${cwd}/*`]: "allow", "src/*": "deny" },
+            },
+          },
+        });
+        const intent: ResolvedAccessIntent = {
+          kind: "path-values",
+          surface: "path_read",
+          values: [`${cwd}/src/App.jsx`, "src/App.jsx"],
+        };
+        const result = manager.check(intent);
+        expect(result.state).toBe("deny");
+        expect(result.matchedPattern).toBe("src/*");
+      });
+
+      it("does not apply an external_directory rule on the path surface", () => {
+        const manager = createInMemoryManager({
+          global: {
+            permission: {
+              external_directory: { "*": "ask", "/tmp/*": "allow" },
+              path: { "*": "allow" },
+            },
+          },
+        });
+        const intent: ResolvedAccessIntent = {
+          kind: "path-values",
+          surface: "path_read",
+          values: ["/tmp/x"],
+        };
+        const result = manager.check(intent);
+        expect(result.toolName).toBe("path_read");
+        expect(result.state).toBe("allow");
+        expect(result.matchedPattern).toBe("*");
       });
     });
   });
