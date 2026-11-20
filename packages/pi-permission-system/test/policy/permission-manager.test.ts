@@ -3623,6 +3623,104 @@ permission:
       });
     });
 
+    describe("an invalid non-global scope fails closed", () => {
+      // When a non-global config scope (project, agent, or project-agent) is invalid,
+      // the composed policy is floored so nothing resolves more permissively than
+      // `ask` (`allow` → `ask`, tagged `origin: "fail-closed"`). An invalid global
+      // scope never triggers the clamp; a hard `deny` survives.
+      const bashCheck = {
+        kind: "tool" as const,
+        surface: "bash",
+        input: { command: "echo hi" },
+      };
+
+      it("floors a lower-scope allow to ask when a project scope is invalid", () => {
+        const manager = createInMemoryManager({
+          global: { permission: { bash: "allow" } },
+          project: { invalid: true },
+        });
+        const result = manager.check(bashCheck);
+        expect(result.state).toBe("ask");
+        expect(result.origin).toBe("fail-closed");
+      });
+
+      it("preserves a lower-scope deny when a project scope is invalid", () => {
+        const manager = createInMemoryManager({
+          global: { permission: { bash: "deny" } },
+          project: { invalid: true },
+        });
+        const result = manager.check(bashCheck);
+        expect(result.state).toBe("deny");
+        expect(result.origin).not.toBe("fail-closed");
+      });
+
+      it("floors when an agent scope is invalid", () => {
+        const manager = createInMemoryManager({
+          global: { permission: { bash: "allow" } },
+          agent: { coder: { invalid: true } },
+        });
+        const result = manager.check({ ...bashCheck, agentName: "coder" });
+        expect(result.state).toBe("ask");
+        expect(result.origin).toBe("fail-closed");
+      });
+
+      it("does not floor when the invalid flag is on the global scope", () => {
+        // Global is the lowest precedence — nothing more permissive is inherited,
+        // so its invalid flag is ignored by the clamp.
+        const manager = createInMemoryManager({
+          global: { permission: { bash: "allow" }, invalid: true },
+        });
+        const result = manager.check(bashCheck);
+        expect(result.state).toBe("allow");
+        expect(result.origin).not.toBe("fail-closed");
+      });
+
+      it("does not floor when all scopes are valid", () => {
+        const manager = createInMemoryManager({
+          global: { permission: { bash: "allow" } },
+          project: { permission: { read: "allow" } },
+        });
+        const result = manager.check(bashCheck);
+        expect(result.state).toBe("allow");
+        expect(result.origin).not.toBe("fail-closed");
+      });
+
+      it("floors getToolPermission too (display parity)", () => {
+        const manager = createInMemoryManager({
+          global: { permission: { bash: "allow" } },
+          project: { invalid: true },
+        });
+        expect(manager.getToolPermission("bash")).toBe("ask");
+      });
+
+      it("keeps a floored tool exposed — the clamp makes allows ask, never deny", () => {
+        const manager = createInMemoryManager({
+          global: { permission: { bash: "allow" } },
+          project: { invalid: true },
+        });
+        expect(manager.isToolFullyDenied("bash")).toBe(false);
+      });
+
+      it("appends a fail-closed notice to config issues naming the invalid scope", () => {
+        const manager = createInMemoryManager({
+          global: { permission: { bash: "allow" } },
+          project: { invalid: true },
+        });
+        expect(manager.getPolicyIssues()).toEqual([
+          "Invalid project configuration detected — failing closed: 'allow' rules " +
+            "are clamped to 'ask' for this session until the configuration is corrected.",
+        ]);
+      });
+
+      it("emits no fail-closed notice when all scopes are valid", () => {
+        const manager = createInMemoryManager({
+          global: { permission: { bash: "allow" } },
+          project: { permission: { read: "allow" } },
+        });
+        expect(manager.getPolicyIssues()).toEqual([]);
+      });
+    });
+
     describe("composed config rules", () => {
       it("returns only config-layer rules", () => {
         const manager = createInMemoryManager({
@@ -3652,6 +3750,42 @@ permission:
         const manager = createInMemoryManager({ global: {} });
         const issues = manager.getPolicyIssues();
         expect(issues.length).toBe(0);
+      });
+
+      describe("over a rejected config file", () => {
+        // A rejected config file's own schema errors are `ConfigStore`'s to report: it
+        // loads the same file through the same `loadUnifiedConfig`. The policy side
+        // answers only what composing policy reveals, so the operator hears each fact
+        // once.
+        const unknownKey = { bogusKey: 1 } as unknown as ScopeConfig;
+
+        it("answers only the fail-closed notice for a rejected project file", () => {
+          const { manager, cleanup } = createManagerWithProject(
+            { permission: { bash: "allow" } },
+            {},
+            { projectConfig: { permission: { read: "allow" }, ...unknownKey } },
+          );
+          try {
+            expect(manager.getPolicyIssues()).toEqual([
+              "Invalid project configuration detected — failing closed: 'allow' rules " +
+                "are clamped to 'ask' for this session until the configuration is corrected.",
+            ]);
+          } finally {
+            cleanup();
+          }
+        });
+
+        it("answers nothing for a rejected global file, which is never clamped", () => {
+          const { manager, cleanup } = createManagerWithProject({
+            permission: { bash: "allow" },
+            ...unknownKey,
+          });
+          try {
+            expect(manager.getPolicyIssues()).toEqual([]);
+          } finally {
+            cleanup();
+          }
+        });
       });
     });
   });
