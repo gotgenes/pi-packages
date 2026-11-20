@@ -35,3 +35,29 @@ The plan is 12 commits: rename, in-place conversion to `createInMemoryManager`, 
 - `test/policy/permission-manager.test.ts`: `checkPath`'s six positional parameters (68 call sites).
 - `test/helpers/manager-harness.ts`: `createMissingConfigManager` duplicates `createInMemoryManager()` in effect.
 - `test/exposure/skill-prompt-sanitizer.test.ts`: `asChecker` adapts the manager to `SkillPermissionChecker` beside the check adapters.
+
+## Stage: Implementation — TDD (2026-11-20T04:38:12Z)
+
+### Session summary
+
+All 12 plan steps landed as separate commits: rename, in-memory conversion, duplicate removal, two folds, five concern groupings, and docs.
+`test/policy/permission-manager.test.ts` now holds every `PermissionManager` test under one `describe("PermissionManager")`.
+The package suite went from 6550 to 6527 tests (the 23 planned removals); the three files' 252 tests are 229 in one.
+
+### Observations
+
+- Measured outcomes matched the plan's predictions: flat top-level tests 50 → 0, `try` blocks in `test/policy/` 152 → 36, and fallow health unchanged at 77.6 with `unit_size` 10.0.
+- The file is 3,957 lines against the plan's estimate of about 3,700: Biome rewraps more lines at the deeper indentation.
+- The moves ran through a throwaway Python block-mover keyed on exact titles (each asserted unique), with `biome format` after each step.
+  Verification at each step was the leaf-title census diff plus a trimmed-line multiset diff against the previous step, which separates content changes from reflow.
+- Two engine bugs surfaced and were caught before commit.
+  First, indenting a moved block also indented YAML inside multi-line template literals, which broke 11 agent-frontmatter tests; the engine became template-literal aware.
+  Second, a `// ── Deny-with-reason ──` section comment was separated from its first test by a blank line, so it stayed behind and was removed by hand.
+- Killing mutations: the in-memory `loadGlobalConfig` returning `{}` killed 134 tests; `loadProjectConfig` returning `{}` killed 4, including both named; forcing the path-values surface killed the rewritten test; disabling the fail-closed clamp killed 5; ignoring `isYoloEnabled` killed 3.
+- Small deviations from the plan:
+  - `documentedConfig` in the MCP example also needed a `FlatPermissionConfig` annotation.
+  - The three MCP `it.each` tables got typed rows.
+  - Two Pi MCP sub-describes were retitled so they no longer repeat their parent's "Pi MCP tools" prefix (describe titles only; no leaf title changed).
+- Pre-completion reviewer: WARN.
+  The finding: the removed flat test `Project-agent config overrides system-agent tool rules` is not a strict superset match for its kept counterpart.
+  The plan documented that, and the issue asks for the removal; frontmatter precedence stays pinned by `Full precedence chain…` and `Project-agent applies even without a matching system-agent file`.
