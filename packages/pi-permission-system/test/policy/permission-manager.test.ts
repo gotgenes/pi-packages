@@ -30,6 +30,7 @@ import type {
 import {
   createAgentDirHarness,
   createInMemoryManager,
+  createInMemoryPolicyLoader,
   createManager,
   createManagerWithConfig,
   createManagerWithProject,
@@ -3786,6 +3787,133 @@ permission:
             cleanup();
           }
         });
+      });
+    });
+  });
+
+  describe("yolo", () => {
+    // yolo is recorded authority: when the injected reader reports true, `check()`
+    // rewrites every matched `ask` to `allow` tagged `origin: "yolo"`. Display
+    // surfaces (`getComposedConfigRules`, `getToolPermission`) stay yolo-free.
+    function makeYoloManager(
+      global: Record<string, unknown>,
+      isYoloEnabled: () => boolean,
+      project?: ScopeConfig,
+    ): PermissionManager {
+      return new PermissionManager({
+        policyLoader: createInMemoryPolicyLoader({
+          global: { permission: global } as ScopeConfig,
+          project,
+        }),
+        isYoloEnabled,
+      });
+    }
+
+    describe("rewrites asks", () => {
+      it("rewrites a would-be-ask tool check to allow with origin 'yolo'", () => {
+        const manager = makeYoloManager({ bash: "ask" }, () => true);
+        const result = manager.check({
+          kind: "tool",
+          surface: "bash",
+          input: { command: "rm -rf /tmp/x" },
+        });
+        expect(result.state).toBe("allow");
+        expect(result.origin).toBe("yolo");
+      });
+
+      it("rewrites the synthesized universal-default ask to allow with origin 'yolo'", () => {
+        // No rule for the surface; falls through to the universal "*" default (ask).
+        const manager = makeYoloManager({}, () => true);
+        const result = manager.check({
+          kind: "tool",
+          surface: "someExtensionTool",
+          input: {},
+        });
+        expect(result.state).toBe("allow");
+        expect(result.origin).toBe("yolo");
+      });
+
+      it("preserves explicit deny under yolo (hard denies survive)", () => {
+        const manager = makeYoloManager({ bash: "deny" }, () => true);
+        const result = manager.check({
+          kind: "tool",
+          surface: "bash",
+          input: { command: "rm -rf /" },
+        });
+        expect(result.state).toBe("deny");
+        expect(result.origin).not.toBe("yolo");
+      });
+
+      it("passes an explicit allow through unchanged (not tagged yolo)", () => {
+        const manager = makeYoloManager({ read: "allow" }, () => true);
+        const result = manager.check({
+          kind: "tool",
+          surface: "read",
+          input: { path: "/tmp/x" },
+        });
+        expect(result.state).toBe("allow");
+        expect(result.origin).not.toBe("yolo");
+      });
+
+      it("does not rewrite when yolo is disabled (state stays ask)", () => {
+        const manager = makeYoloManager({ bash: "ask" }, () => false);
+        const result = manager.check({
+          kind: "tool",
+          surface: "bash",
+          input: { command: "rm -rf /tmp/x" },
+        });
+        expect(result.state).toBe("ask");
+        expect(result.origin).not.toBe("yolo");
+      });
+
+      it("leaves display surfaces yolo-free even when yolo is enabled", () => {
+        const manager = makeYoloManager({ bash: "ask" }, () => true);
+
+        // getComposedConfigRules shows the configured action, not the rewrite.
+        const bashRule = manager
+          .getComposedConfigRules()
+          .find((r) => r.surface === "bash");
+        expect(bashRule?.action).toBe("ask");
+        expect(bashRule?.origin).not.toBe("yolo");
+
+        // getToolPermission reports the configured surface state.
+        expect(manager.getToolPermission("bash")).toBe("ask");
+      });
+
+      it("does not re-expose a denied tool — the rewrite touches asks, never denies", () => {
+        const manager = makeYoloManager({ bash: "deny" }, () => true);
+        expect(manager.isToolFullyDenied("bash")).toBe(true);
+      });
+    });
+
+    describe("under a fail-closed scope", () => {
+      it("yolo re-permits a fail-closed floored allow (allow→ask→allow)", () => {
+        // Invalid project scope floors global's `allow` to `ask` at composition;
+        // yolo then rewrites the `ask` back to `allow`. yolo is an explicit
+        // full-permissive opt-in, so yolo users are unaffected by the clamp.
+        const manager = makeYoloManager({ bash: "allow" }, () => true, {
+          invalid: true,
+        });
+        const result = manager.check({
+          kind: "tool",
+          surface: "bash",
+          input: { command: "echo hi" },
+        });
+        expect(result.state).toBe("allow");
+        expect(result.origin).toBe("yolo");
+      });
+
+      it("preserves a hard deny under yolo even with an invalid scope", () => {
+        const manager = makeYoloManager({ bash: "deny" }, () => true, {
+          invalid: true,
+        });
+        const result = manager.check({
+          kind: "tool",
+          surface: "bash",
+          input: { command: "rm -rf /" },
+        });
+        expect(result.state).toBe("deny");
+        expect(result.origin).not.toBe("yolo");
       });
     });
   });
