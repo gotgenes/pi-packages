@@ -466,19 +466,21 @@ The `/subagents:sessions` navigator reads messages via `Subagent.agentMessages` 
 It also reads the parent session's `subagents:record` entries (`persisted-record.ts`), so runs the manager no longer holds, such as those from before a `/reload`, open from their transcript file.
 
 The same entries make those runs resumable.
-`SubagentManager.startResume` falls back to its `ChildHistory` for an id it holds no record for, and rebuilds the record from the last run recorded under that id, with the transcript and the identity its header records as its `execution.transcript`.
-The restore refuses, without a record, a child whose transcript names another parent (`unknown-agent`), whose agent type is no longer defined or is disabled (`agent-type-unavailable`), or whose run recorded a provider workspace, which the earlier manager's teardown disposed (`workspace-disposed`).
-An entry written before runs recorded `providerWorkspace` is restored only when its transcript names the parent's directory and no workspace provider is registered.
-The rebuilt record keeps the turn ceiling its last run recorded (`turnBudget.maxTurns`, or unlimited when that budget named none); a run that recorded no budget gets what a fresh spawn of its type would.
+Each entry takes the outcome from the run that ended and, from the agent as it is when the entry is written, what identifies and continues its transcript: the child's Pi `sessionId`, the `transcriptLeafId` its transcript last held, `providerWorkspace`, and the cumulative `toolUses`, `lifetimeUsage`, and `compactionCount`.
+`SubagentManager.startResume` falls back to its `ChildHistory` for an id it holds no record for, reads the child's last run and the latest turn budget any of its runs recorded (`readRestorableRun`), and rebuilds the record from them, with the transcript, its header, and its leaf as its `execution.transcript`.
+The restore refuses, without a record, a child whose transcript names another parent (`unknown-agent`); one whose transcript is missing, names a session other than the recorded one, or was recorded before entries carried that identity (`no-session`); one whose agent type, re-read from disk, is no longer defined or is disabled (`agent-type-unavailable`); and one whose run recorded a provider workspace, which the earlier manager's teardown disposed (`workspace-disposed`).
+The rebuilt record keeps the latest recorded turn ceiling (`turnBudget.maxTurns`, or unlimited when that budget named none); with no budget recorded at all it gets what a fresh spawn of its type would.
 
 The rebuilt record's first resume reopens the transcript through `createSubagentSession({ transcript })` rather than requiring a live session.
-The factory checks the transcript twice before any SDK session exists, so a file removed, truncated, or replaced since the restore fails that resume instead of running it on a blank or unrelated session.
+The factory checks the transcript before any SDK session exists, so a file removed, cut back, or replaced since the restore fails that resume instead of running it on a blank, partial, or unrelated conversation.
 First it reads the file's header without writing (`readTranscriptHeader`), because Pi's `SessionManager.open` writes to some files it opens: it initialises an empty file with a new header and rewrites an older-format session as it migrates it.
-Only a file whose header still names the recorded session id, parent, and cwd is opened; the opened session manager must then name them too and hold a conversation.
+Only a file whose header still names the recorded session id, parent, and cwd is opened; the opened session manager must then name them too, its branch must still contain the recorded leaf, and its conversation must hold a prompt and a reply.
 Nothing awaits between the read and the open, so no code in this process can change the file in between.
-The reopened session runs in the directory its transcript recorded, on the model its branch selects by Pi's own rule (a virtual model's `model_change` holds over the physical replies routed under it), at the thinking level Pi restores.
-The type is checked again as the transcript reopens, since a queued resume may reopen it after the registry reloaded.
-One reopening is in flight per record: a resume started while a stopped resume's reopening is pending waits for it and continues the session it produces, and a session that arrives after the record was torn down is disposed on arrival rather than adopted.
+The reopened session runs in the directory its transcript recorded, at the thinking level Pi restores, and on the model its branch selects by Pi's own rule (a virtual model's `model_change` holds over the physical replies routed under it).
+A selection, or a latest `model_change` route, that the parent's registry no longer has refuses the transcript rather than sending it to a fallback model.
+The agent definition is read afresh after the factory's last await before assembly (`SubagentSessionDeps.currentAgentConfig`), and assembly uses exactly that definition, so a type deleted or disabled while a queued resume waited is refused rather than resolved to `general-purpose`.
+The run that reopens the transcript holds the record until it reaches its turn loop or ends, so `resumeRefusal` reads `still-running` meanwhile even once that run is stopped: only one reopening is in flight.
+A session that arrives after the record was torn down is disposed on arrival rather than adopted.
 
 ## Cross-extension architecture
 

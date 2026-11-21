@@ -138,13 +138,13 @@ A background resume shows in the widget regardless of the mode the agent was spa
 Like a background spawn, a background resume waits for a slot when the [concurrency limit](#concurrency) is reached, and its result says it was queued.
 
 A settled agent stays resumable after a `/reload`, and after restarting Pi and reopening the same parent session.
-The parent session records each finished run, so a `resume` naming an agent from before the reload continues that agent's own transcript under its original ID, as the agent type it was, in the directory it ran in, on the model its transcript selected, and under the turn limit it ran with.
+The parent session records each finished run, so a `resume` naming an agent from before the reload continues that agent's own transcript under its original ID, as the agent type it was, in the directory it ran in, on the model its transcript selected, under the turn limit it ran with, and with its tool, token, and compaction counts carried on.
 A fork can resume children it spawned itself, but neither the `subagent` tool nor `SubagentsService.resume` can resume children inherited from the source parent.
 Reopen the original parent to continue those children.
-An agent whose agent type has since been deleted or disabled is not resumable, rather than running under another definition.
+An agent whose agent type has since been deleted or disabled is not resumable, rather than running under another definition; the definition is re-read from disk on every such resume, through either front door.
 An agent that ran in a workspace a workspace provider prepared is not resumable this way, because its workspace was removed when the previous session ended.
-A run recorded before this provenance was tracked is resumable only when it ran in the parent's directory and no workspace provider is registered.
-If the transcript has been removed, emptied, or replaced by the time the resume reopens it, including while the resume waited for a concurrency slot, the resume fails with an error and leaves the file as it found it, instead of continuing an empty or unrelated conversation.
+An agent recorded by a version of this package that did not yet record its transcript's identity is not resumable this way; its transcript is still viewable in `/subagents:sessions`.
+The resume fails with an error before the model receives anything, leaving the file as it found it, when the transcript at the recorded path is no longer the agent's whole conversation (removed, emptied, cut back, or replaced by another session, including while the resume waited for a concurrency slot), or when the model its transcript selected is no longer available: its conversation is never sent to another model instead.
 Another process writing the transcript at the same moment the resume opens it is not supported.
 
 ### `get_subagent_result`
@@ -400,6 +400,7 @@ The snapshot carries identity (`id`, `type`, `description`), lifecycle status (`
 It also carries `resumeRefusal`: absent when `resume` would start a run, otherwise the reason it would refuse with (the [`resume` contract](#resume-contract) lists them).
 Render a Resume affordance from it without calling `resume` first.
 `still-running` clears when the run settles, `resume-queued` clears when the queued resume's run settles, and a queued agent's `no-session` clears once it starts; the other reasons are final.
+A restored agent's run that was stopped while its transcript reopened still reads `still-running`, though its `status` is already `stopped`, until that reopening settles and the run's terminal event fires.
 
 It deliberately withholds momentary activity (the tools running right now, the partial response text) and this package's internal bookkeeping.
 A pulled snapshot of momentary state would be stale on arrival; [decision 0005](docs/decisions/0005-subagent-record-admission-policy.md) records the full policy and what would reopen it.
@@ -422,7 +423,7 @@ A resume that could not start resolves to `{ kind: "refused", reason }` instead,
 | `unknown-agent`          | No record or recorded run in this parent session has that id   |
 | `still-running`          | The agent has not settled; wait, or `steer` it while it runs   |
 | `resume-queued`          | A resume is waiting for a concurrency slot; wait for its run   |
-| `no-session`             | The agent has no session or saved transcript to continue       |
+| `no-session`             | The agent has no session, or saved transcript proven its own   |
 | `session-released`       | Its session was released after the retention window            |
 | `workspace-disposed`     | Its isolated workspace is gone, so a resume cannot re-enter it |
 | `agent-type-unavailable` | Its agent type is no longer defined, or is disabled            |
