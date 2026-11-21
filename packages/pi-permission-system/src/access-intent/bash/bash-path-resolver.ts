@@ -1058,6 +1058,69 @@ function cdLiteralTarget(
 }
 
 /**
+ * The literal text of one word, with bash's tilde expansion applied when
+ * `expandTilde` allows it.
+ */
+function literalWordText(
+  text: string,
+  words: WordReader,
+  expandTilde: boolean,
+): string | null {
+  if (text === "-") return null;
+  if (!expandTilde) return text;
+  // `~` and `~/…` are the prefixes bash expands. A backslash quotes the slash
+  // (`~\/x`), so bash expands nothing and the target is not static; `~user`
+  // reads the password database rather than the inherited home.
+  if (text === "~" || text.startsWith("~/")) {
+    // Concatenated with the rest of a word (`~/"x"`), so the prefix is spelled
+    // out verbatim rather than joined: `join` would drop the separator the next
+    // part relies on.
+    return words.spellsReboundHome(text)
+      ? null
+      : `${homedir()}${text.slice(1)}`;
+  }
+  return text.startsWith("~") ? null : text;
+}
+
+/** A single-quoted string's content; a lone quote is left as written. */
+function unquotedRawText(text: string): string {
+  const quoted = text.length >= 2 && text.startsWith("'") && text.endsWith("'");
+  return quoted ? text.slice(1, -1) : text;
+}
+
+/**
+ * A double-quoted string's content, or `null` when anything but literal text
+ * sits inside it.
+ */
+function literalStringText(node: TSNode): string | null {
+  let result = "";
+  for (let i = 0; i < node.childCount; i++) {
+    const child = node.child(i);
+    if (!child || child.type === '"') continue;
+    if (child.type !== "string_content") return null;
+    result += child.text;
+  }
+  return result;
+}
+
+/** A concatenation's literal value, or `null` when any part is not literal. */
+function literalConcatenationText(
+  node: TSNode,
+  words: WordReader,
+): string | null {
+  let result = "";
+  for (let i = 0; i < node.childCount; i++) {
+    const child = node.child(i);
+    if (!child) continue;
+    const leadsWithTilde = child.type === "word" && child.text.startsWith("~/");
+    const part = literalTextOf(child, words, i === 0 && leadsWithTilde);
+    if (part === null) return null;
+    result += part;
+  }
+  return result;
+}
+
+/**
  * The literal string value of an argument node, or `null` when it contains a
  * variable expansion / command substitution or is a non-resolvable `cd`
  * destination (`-`, `~user…`, a home a rebound `HOME` makes unknowable).
@@ -1072,55 +1135,14 @@ function literalTextOf(
   expandTilde = true,
 ): string | null {
   switch (node.type) {
-    case "word": {
-      const text = node.text;
-      if (text === "-") return null;
-      if (!expandTilde) return text;
-      // `~` and `~/…` are the prefixes bash expands. A backslash quotes the
-      // slash (`~\/x`), so bash expands nothing and the target is not static;
-      // `~user` reads the password database rather than the inherited home.
-      if (text === "~" || text.startsWith("~/")) {
-        // Concatenated with the rest of a word (`~/"x"`), so the prefix is
-        // spelled out verbatim rather than joined: `join` would drop the
-        // separator the next part relies on.
-        return words.spellsReboundHome(text)
-          ? null
-          : `${homedir()}${text.slice(1)}`;
-      }
-      return text.startsWith("~") ? null : text;
-    }
-    case "raw_string": {
-      const text = node.text;
-      return text.length >= 2 && text.startsWith("'") && text.endsWith("'")
-        ? text.slice(1, -1)
-        : text;
-    }
-    case "concatenation": {
-      let result = "";
-      for (let i = 0; i < node.childCount; i++) {
-        const child = node.child(i);
-        if (!child) continue;
-        const part = literalTextOf(
-          child,
-          words,
-          i === 0 && child.type === "word" && child.text.startsWith("~/"),
-        );
-        if (part === null) return null;
-        result += part;
-      }
-      return result;
-    }
-    case "string": {
-      let result = "";
-      for (let i = 0; i < node.childCount; i++) {
-        const child = node.child(i);
-        if (!child) continue;
-        if (child.type === '"') continue;
-        if (child.type !== "string_content") return null;
-        result += child.text;
-      }
-      return result;
-    }
+    case "word":
+      return literalWordText(node.text, words, expandTilde);
+    case "raw_string":
+      return unquotedRawText(node.text);
+    case "concatenation":
+      return literalConcatenationText(node, words);
+    case "string":
+      return literalStringText(node);
     default:
       return null;
   }
