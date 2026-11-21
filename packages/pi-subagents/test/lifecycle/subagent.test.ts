@@ -250,6 +250,30 @@ function createResumableAgent(overrides?: {
 	return { agent, session, stub };
 }
 
+const EARLIER_TRANSCRIPT = "/sessions/tasks/earlier-child.jsonl";
+
+/**
+ * A settled agent restored from its transcript: what a manager rebuilds for a
+ * child an earlier manager ran. It has no session until a resume reopens one.
+ */
+function createRestoredAgent(overrides?: { observer?: SubagentLifecycleObserver; createSubagentSession?: SessionFactory }) {
+	const created = createFactory();
+	const agent = makeSubagent({
+		id: "restored-1",
+		type: "Explore",
+		description: "restored test",
+		isBackground: false,
+		status: "completed",
+		completedAt: 2000,
+		execution: makeStubExecution({
+			createSubagentSession: overrides?.createSubagentSession ?? created.factory,
+			observer: overrides?.observer ?? {},
+			transcript: EARLIER_TRANSCRIPT,
+		}),
+	});
+	return { agent, ...created };
+}
+
 describe("Subagent", () => {
 	describe("construction", () => {
 		it("sets required fields from init", () => {
@@ -2506,6 +2530,118 @@ describe("Subagent", () => {
 			const { agent } = await run({ responseText: "Done.", observer: { onRunFinished } });
 			expect(onRunFinished).toHaveBeenLastCalledWith(agent, agent.latestRun);
 			expect(agent.latestRun.kind).toBe(kind);
+		});
+	});
+
+	describe("a restored agent", () => {
+		describe("before a resume", () => {
+			it("is resumable without a live session", () => {
+				const { agent } = createRestoredAgent();
+				expect(agent.isSessionReady()).toBe(false);
+				expect(agent.resumeRefusal).toBeUndefined();
+			});
+
+			it("reports the transcript it will continue as its output file", () => {
+				expect(createRestoredAgent().agent.outputFile).toBe(EARLIER_TRANSCRIPT);
+			});
+		});
+
+		describe("its first resume", () => {
+			it("reopens the transcript as the agent's own session", async () => {
+				const { agent, factory } = createRestoredAgent();
+				await agent.resume("continue", { background: false });
+				expect(factory).toHaveBeenCalledExactlyOnceWith(
+					expect.objectContaining({ type: "Explore", snapshot: STUB_SNAPSHOT, transcript: EARLIER_TRANSCRIPT }),
+				);
+				expect(agent.isSessionReady()).toBe(true);
+			});
+
+			it("continues the reopened session with the resume's prompt", async () => {
+				const { agent, stub } = createRestoredAgent();
+				stub.runTurnLoop.mockResolvedValue(turnLoopResult({ responseText: "picked up where I left off" }));
+				await agent.resume("continue", { background: false });
+				expect(stub.runTurnLoop).toHaveBeenCalledExactlyOnceWith("continue", expect.any(Object));
+				expect(agent.status).toBe("completed");
+				expect(agent.result).toBe("picked up where I left off");
+			});
+
+			it("installs the ask-back channel, so a question reaches the resume's run", async () => {
+				const { agent, stub, ask } = createRestoredAgent();
+				stub.runTurnLoop.mockImplementation(() => {
+					ask("Which branch?");
+					return Promise.resolve(turnLoopResult({ responseText: "Need a branch." }));
+				});
+				await agent.resume("continue", { background: false });
+				expect(agent.pendingQuestion).toBe("Which branch?");
+			});
+
+			it("tells the observer the session exists before the resume finishes", async () => {
+				const onSessionCreated = vi.fn();
+				const onRunFinished = vi.fn();
+				const { agent } = createRestoredAgent({ observer: { onSessionCreated, onRunFinished } });
+				await agent.resume("continue", { background: false });
+				expect(onSessionCreated).toHaveBeenCalledExactlyOnceWith(agent);
+				expect(onSessionCreated.mock.invocationCallOrder[0]).toBeLessThan(onRunFinished.mock.invocationCallOrder[0]);
+			});
+		});
+
+		describe("a later resume", () => {
+			it("runs on the session the first one reopened", async () => {
+				const { agent, factory, stub } = createRestoredAgent();
+				await agent.resume("continue", { background: false });
+				await agent.resume("and then", { background: false });
+				expect(factory).toHaveBeenCalledOnce();
+				expect(stub.runTurnLoop).toHaveBeenLastCalledWith("and then", expect.any(Object));
+			});
+		});
+
+		describe("a transcript that will not reopen", () => {
+			const failing = () => vi.fn(async (_params: CreateSubagentSessionParams): Promise<SubagentSession> => {
+				throw new Error("transcript unreadable");
+			});
+
+			it("fails the resume's run with the reason", async () => {
+				const { agent } = createRestoredAgent({ createSubagentSession: failing() });
+				await agent.resume("continue", { background: false });
+				expect(agent.status).toBe("error");
+				expect(agent.error).toBe("transcript unreadable");
+			});
+
+			it("reports the failure once, as the resume's", async () => {
+				const onRunFinished = vi.fn();
+				const { agent } = createRestoredAgent({ createSubagentSession: failing(), observer: { onRunFinished } });
+				await agent.resume("continue", { background: false });
+				expect(onRunFinished).toHaveBeenCalledExactlyOnceWith(agent, agent.latestRun);
+				expect(agent.latestRun.kind).toBe("resume");
+			});
+
+			it("leaves the agent resumable, so a later resume can try again", async () => {
+				const { agent } = createRestoredAgent({ createSubagentSession: failing() });
+				await agent.resume("continue", { background: false });
+				expect(agent.resumeRefusal).toBeUndefined();
+			});
+		});
+
+		describe("stopped while its transcript reopens", () => {
+			it("ends stopped, taking no turn", async () => {
+				const { promise: opened, resolve: open } = Promise.withResolvers<SubagentSession>();
+				const stub = createSubagentSessionStub();
+				// The real loop takes no turn on a spent lever and returns at once.
+				let abortedAtEntry: boolean | undefined;
+				stub.runTurnLoop.mockImplementation((_prompt: string, { signal }: { signal?: AbortSignal }) => {
+					abortedAtEntry = signal?.aborted;
+					return Promise.resolve(turnLoopResult({ responseText: "" }));
+				});
+				const { agent } = createRestoredAgent({ createSubagentSession: () => opened });
+				const resumed = agent.resume("continue", { background: false });
+
+				expect(agent.abort()).toBe(true);
+				open(toSubagentSession(stub));
+				await resumed;
+
+				expect(agent.status).toBe("stopped");
+				expect(abortedAtEntry).toBe(true);
+			});
 		});
 	});
 });
