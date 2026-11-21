@@ -185,6 +185,13 @@ export default function (pi: ExtensionAPI) {
     // Read per child rather than once: an MCP server connects in the
     // background, so its tools register after this extension loads.
     listParentToolNames: () => pi.getAllTools().map((tool) => tool.name),
+    // Re-read from disk, as the subagent tool does on every call: a child
+    // continued from its transcript may be reopened by any front door, after
+    // its agent file was edited, disabled, or deleted.
+    currentAgentConfig: (type) => {
+      registry.reload();
+      return registry.findEnabledConfig(type);
+    },
   };
 
   // ConcurrencyLimiter: schedules background run thunks FIFO against the limit.

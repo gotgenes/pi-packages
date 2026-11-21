@@ -13,7 +13,7 @@ export interface MockSession {
 	listenerCount(): number;
 	dispose: Mock<() => void>;
 	steer: Mock<(...args: unknown[]) => Promise<unknown>>;
-	sessionManager: { getSessionFile: Mock<() => unknown> };
+	sessionManager: { getSessionFile: Mock<() => unknown>; getLeafId: Mock<() => string | null> };
 	getToolDefinition: Mock<(name: string) => unknown>;
 	hasExtensionHandlers: Mock<(eventType: string) => boolean>;
 	extensionRunner: { emit: Mock<(event: unknown) => Promise<unknown>> };
@@ -57,10 +57,14 @@ export function toAgentSession(session: MockSession): AgentSession {
 export function createSubagentSessionStub(
 	session: MockSession = createMockSession(),
 	outputFile?: string,
+	transcript: { sessionId?: string; leafId?: string } = {},
 ) {
 	return {
 		session,
 		outputFile,
+		/** The transcript's session id and last entry, as a real session reports them; absent unless given. */
+		sessionId: transcript.sessionId,
+		leafId: transcript.leafId,
 		runTurnLoop: vi.fn().mockResolvedValue(turnLoopResult({ responseText: "done" })),
 		steer: vi.fn((message: string): Promise<void> => session.steer(message) as Promise<void>),
 		dispose: vi.fn((): Promise<void> => {
@@ -122,7 +126,7 @@ export function createMockSession(overrides: Record<string, unknown> = {}): Mock
 		listenerCount: () => subscribers.size,
 		dispose: vi.fn(),
 		steer: vi.fn().mockResolvedValue(undefined),
-		sessionManager: { getSessionFile: vi.fn() },
+		sessionManager: { getSessionFile: vi.fn(), getLeafId: vi.fn((): string | null => null) },
 		getToolDefinition: vi.fn((_name: string): unknown => undefined),
 		// Extension-runner seam read by emitChildSessionShutdown on disposal (#709).
 		// Defaults to "this child has shutdown handlers" so every teardown path

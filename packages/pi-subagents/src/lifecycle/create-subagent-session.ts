@@ -20,7 +20,7 @@ import {
   type SettingsManager,
   type ToolDefinition,
 } from "@earendil-works/pi-coding-agent";
-import type { AgentConfigLookup } from "#src/config/agent-types";
+import { type AgentConfigLookup, capabilityToolNames } from "#src/config/agent-types";
 import { debugNote } from "#src/debug";
 import type { ChildLifecyclePublisher } from "#src/lifecycle/child-lifecycle";
 import type { ParentSnapshot } from "#src/lifecycle/parent-snapshot";
@@ -32,10 +32,11 @@ import type { EnvInfo } from "#src/session/env";
 import { expandMcpToolPatterns } from "#src/session/mcp-tool-patterns";
 import type { ModelRegistry } from "#src/session/model-resolver";
 import { NotifyParentTool, type UpdateAnnouncer } from "#src/session/notify-parent-tool";
-import { type BranchEntryLike, branchModelSelection } from "#src/session/recorded-model";
+import { type BranchEntryLike, branchModelSelection, latestModelChange } from "#src/session/recorded-model";
 import { type AssemblerIO, assembleSessionConfig } from "#src/session/session-config";
 import type { ChildTranscriptHeader } from "#src/session/transcript-header";
 import type {
+  AgentConfig,
   ParentSessionInfo,
   PromptInheritance,
   ShellExec,
@@ -68,26 +69,29 @@ export interface SessionManagerLike {
 
 /**
  * A session manager reopened on an existing child transcript. It also answers
- * whose session it holds, whether it holds a conversation, and which model its
- * branch selects, so the factory can check it continues the child it was asked
- * to before anything runs on it.
+ * whose session it holds, which entries and conversation it holds, and which
+ * model its branch selects, so the factory can check it continues the child it
+ * was asked to before anything runs on it.
  */
 export interface ReopenedSessionManagerLike extends SessionManagerLike {
   getHeader(): { id: string; cwd: string; parentSession?: string } | null;
-  getBranch(): readonly BranchEntryLike[];
-  buildSessionContext(): { messages: readonly unknown[] };
+  getBranch(): readonly (BranchEntryLike & { readonly id: string })[];
+  buildSessionContext(): { messages: readonly { readonly role: string }[] };
 }
 
 /**
- * A settled child's transcript to continue, and the identity it was recorded
- * under when the resume was accepted. The factory refuses to continue a file
- * that no longer carries that identity or holds no conversation: Pi opens a
- * missing path as a new, empty session, and a file replaced since would run
- * the resume on someone else's conversation.
+ * A settled child's transcript to continue: the identity it was recorded under
+ * (the session id its runs recorded, checked against its header when the
+ * resume was accepted) and the last entry its last run left in it. The factory
+ * refuses to continue a file that no longer carries that identity, no longer
+ * holds that entry, or holds no conversation: Pi opens a missing path as a new,
+ * empty session, and a file replaced or cut short since would run the resume
+ * on someone else's conversation, or on part of the child's own.
  */
 export interface ContinuedTranscript {
   file: string;
   header: ChildTranscriptHeader;
+  leafId: string;
 }
 
 /** Options passed to EnvironmentIO/SessionFactoryIO methods. */
@@ -200,6 +204,13 @@ export interface SubagentSessionDeps {
    * created. An agent's `mcp__<server>__*` tool patterns expand against them.
    */
   listParentToolNames: () => readonly string[];
+  /**
+   * The definition a continued child runs under: the agent type's config read
+   * afresh from its source, or undefined when the type is no longer defined or
+   * is disabled. Never a fallback, so a child is not restored with capabilities
+   * its own type never granted.
+   */
+  currentAgentConfig: (type: SubagentType) => AgentConfig | undefined;
 }
 
 /** Per-spawn parameters — the fields that vary per child session. */
@@ -273,7 +284,9 @@ export async function createSubagentSession(
   const effectiveCwd = cwd ?? snapshot.cwd;
   const env = await deps.io.detectEnv(deps.exec, effectiveCwd);
 
-  // Assemble session configuration (synchronous, no SDK objects).
+  // Assemble session configuration (synchronous, no SDK objects). A continued
+  // child's definition is read here, after the last await before assembly, so
+  // the definition checked is the one assembled.
   const cfg = assembleSessionConfig(
     type,
     {
@@ -290,7 +303,7 @@ export async function createSubagentSession(
       thinkingLevel: params.thinkingLevel,
     },
     env,
-    deps.registry,
+    reopened ? continuedAgentLookup(deps, type) : deps.registry,
     deps.io.assemblerIO,
   );
 
@@ -418,10 +431,31 @@ function reopenTranscript(io: SessionFactoryIO, transcript: ContinuedTranscript)
   }
   const reopened = io.openSessionManager(transcript.file);
   if (!holdsChild(reopened.getHeader() ?? undefined, transcript.header)) throw notThisChild(transcript);
-  if (reopened.buildSessionContext().messages.length === 0) {
+  if (!reopened.getBranch().some((entry) => entry.id === transcript.leafId)) {
+    throw new Error(`Transcript ${transcript.file} no longer holds the conversation its last run left; it was not restored.`);
+  }
+  if (!holdsConversation(reopened.buildSessionContext().messages)) {
     throw new Error(`Transcript ${transcript.file} holds no conversation to continue; it was not restored.`);
   }
   return reopened;
+}
+
+/** Whether a reopened transcript holds an exchange: a prompt the child was given and a reply it made. */
+function holdsConversation(messages: readonly { readonly role: string }[]): boolean {
+  return messages.some((message) => message.role === "user") && messages.some((message) => message.role === "assistant");
+}
+
+/**
+ * The agent definition a continued child is assembled under, read afresh and
+ * pinned, so assembly cannot fall back to another type's: the transcript is
+ * refused when its type is no longer defined or is disabled.
+ */
+function continuedAgentLookup(deps: SubagentSessionDeps, type: SubagentType): AgentConfigLookup {
+  const config = deps.currentAgentConfig(type);
+  if (!config) {
+    throw new Error(`Agent type "${type}" is no longer defined or is disabled; the child was not restored.`);
+  }
+  return { resolveAgentConfig: () => config, getToolNamesForType: () => capabilityToolNames(config) };
 }
 
 /** Whether a transcript header names the child session recorded when its resume was accepted. */
@@ -437,13 +471,23 @@ function notThisChild(transcript: ContinuedTranscript): Error {
 }
 
 /**
- * The model a reopened transcript's branch selects, when the parent's registry
- * still knows it; undefined lets the agent's own model resolution decide.
+ * The model a reopened transcript's branch selects. The transcript is refused
+ * when it selects none, or one the parent's registry no longer knows, and when
+ * the route its latest `model_change` chose is gone: that may have been a
+ * virtual model, which Pi would then pass over for the physical model that
+ * answered under it. Any other model would receive a conversation the child
+ * had on its own, on a route nobody chose for it.
  */
-function recordedModel(
-  sessionManager: ReopenedSessionManagerLike,
-  registry: ModelRegistry,
-): Model<any> | undefined {
-  const selected = branchModelSelection(sessionManager.getBranch(), registry);
-  return selected ? registry.find(selected.provider, selected.modelId) : undefined;
+function recordedModel(sessionManager: ReopenedSessionManagerLike, registry: ModelRegistry): Model<any> {
+  const branch = sessionManager.getBranch();
+  const selected = branchModelSelection(branch, registry);
+  const model = selected && registry.find(selected.provider, selected.modelId);
+  const route = latestModelChange(branch);
+  const goneRoute = route && !registry.find(route.provider, route.modelId) ? route : undefined;
+  if (!model || goneRoute) {
+    const missing = goneRoute ?? selected;
+    const named = missing ? `"${missing.provider}/${missing.modelId}"` : "no model";
+    throw new Error(`The child's transcript selects ${named}, which is not available; the child was not restored.`);
+  }
+  return model;
 }

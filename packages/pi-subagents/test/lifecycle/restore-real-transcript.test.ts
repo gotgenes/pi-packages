@@ -111,6 +111,9 @@ describe("restoring a settled child from its real transcript", () => {
     rmSync(root, { recursive: true, force: true });
   });
 
+  /** The agent definitions every manager and factory here reads: the built-ins. */
+  const agentTypes = new AgentTypeRegistry(() => new Map());
+
   /** The session-assembly deps the composition root builds, on the real SDK. */
   function realDeps(): SubagentSessionDeps {
     return {
@@ -134,10 +137,14 @@ describe("restoring a settled child from its real transcript", () => {
         assemblerIO: { buildAgentPrompt, loadProjectContext: () => undefined },
       },
       exec: () => Promise.resolve({ stdout: "", stderr: "", code: 0, killed: false }),
-      registry: new AgentTypeRegistry(() => new Map()),
+      registry: agentTypes,
       lifecycle: createChildLifecyclePublisher(() => {}),
       resolvePromptInheritance: () => "full",
       listParentToolNames: () => [],
+      currentAgentConfig: (type) => {
+        agentTypes.reload();
+        return agentTypes.findEnabledConfig(type);
+      },
     };
   }
 
@@ -151,53 +158,86 @@ describe("restoring a settled child from its real transcript", () => {
     };
   }
 
-  function createManager(history?: ChildHistory, maxConcurrent = 4): SubagentManager {
+  /**
+   * A manager over the real SDK. Given `record`, it appends each finished run
+   * there as the extension's events observer does.
+   */
+  function createManager(history?: ChildHistory, maxConcurrent = 4, record?: SessionManager): SubagentManager {
     const deps = realDeps();
     const manager = new SubagentManager({
       createSubagentSession: (params) => createSubagentSession(params, deps),
       limiter: new ConcurrencyLimiter(() => maxConcurrent),
       baseCwd: project,
-      registry: new AgentTypeRegistry(() => new Map()),
+      registry: agentTypes,
       history,
+      observer: record && {
+        onSubagentRunStarted: () => {},
+        onSubagentRunFinished: (finished, run) => { record.appendCustomEntry(SUBAGENT_RECORD_ENTRY, toPersistedRecord(finished, run)); },
+        onSubagentCompacted: () => {},
+        onSubagentCreated: () => {},
+      },
     });
     managers.push(manager);
     return manager;
   }
 
   /**
-   * Run a child to completion under one manager, record its run in a real parent
-   * session file as the extension does, then tear that manager down: what a
-   * `/reload` or a restart leaves on disk.
+   * Run a child per code word to completion under one manager, each recording
+   * its run in one real parent session file as the extension does, then tear
+   * that manager down: what a `/reload` or a restart leaves on disk.
    */
-  async function runChildThenRestart() {
+  async function runChildrenThenRestart(codeWords: string[]) {
     const parent = SessionManager.create(project, join(root, "sessions"));
     parent.appendMessage({ role: "user", content: "Delegate this", timestamp: 1 });
     const parentSession = { parentSessionFile: parent.getSessionFile()!, parentSessionId: parent.getSessionId() };
 
-    const earlier = createManager();
-    const child = await earlier.spawnAndWait(snapshot(), "Explore", `Remember this: the code word is ${CODE_WORD}.`, {
-      description: "Hold a code word",
-      model: registry.find("faux", "scripted"),
-      maxTurns: 3,
-      parentSession,
-    });
-    parent.appendCustomEntry(SUBAGENT_RECORD_ENTRY, toPersistedRecord(child, child.latestRun));
+    const earlier = createManager(undefined, 4, parent);
+    const children = [];
+    for (const word of codeWords) {
+      const child = await earlier.spawnAndWait(snapshot(), "Explore", `Remember this: the code word is ${word}.`, {
+        description: "Hold a code word",
+        model: registry.find("faux", "scripted"),
+        maxTurns: 3,
+        parentSession,
+      });
+      children.push({ id: child.id, transcript: child.outputFile!, lifetimeUsage: { ...child.lifetimeUsage } });
+    }
     await earlier.dispose();
-    return { id: child.id, transcript: child.outputFile!, parentFile: parent.getSessionFile()! };
+    return { children, parentFile: parent.getSessionFile()! };
   }
 
-  /** A fresh manager over the parent session reopened from disk. */
-  function restartedManager(parentFile: string, maxConcurrent?: number): SubagentManager {
+  /** One child, run and recorded as `runChildrenThenRestart` does. */
+  async function runChildThenRestart() {
+    const { children: [child], parentFile } = await runChildrenThenRestart([CODE_WORD]);
+    return { ...child, parentFile };
+  }
+
+  /**
+   * A fresh manager over the parent session reopened from disk, on a parent
+   * snapshot from `parentSnapshot`. Given `recording`, it records each finished
+   * run in that parent file, for a later restart to read.
+   */
+  function restartedManager(
+    parentFile: string,
+    maxConcurrent?: number,
+    options: { recording?: boolean; parentSnapshot?: () => ParentSnapshot } = {},
+  ): SubagentManager {
     const parent = SessionManager.open(parentFile);
     return createManager(
       {
         entries: () => parent.getEntries(),
-        snapshot,
+        snapshot: options.parentSnapshot ?? snapshot,
         parentSession: () => ({ parentSessionFile: parentFile, parentSessionId: parent.getSessionId() }),
         transcriptHeader: readTranscriptHeader,
       },
       maxConcurrent,
+      options.recording ? parent : undefined,
     );
+  }
+
+  /** Whether the model was ever asked to answer a recall. */
+  function recallReachedTheModel(): boolean {
+    return requests.some((said) => said.at(-1) === RECALL);
   }
 
   it("continues the child's own conversation under its original id", async () => {
@@ -242,6 +282,111 @@ describe("restoring a settled child from its real transcript", () => {
 
     if (outcome.kind !== "resumed") throw new Error(`resume refused: ${outcome.reason}`);
     expect(outcome.record.turnBudget).toEqual({ maxTurns: 3, used: 1, phase: "within" });
+  });
+
+  it("keeps the turn limit across a restart whose resume was stopped before it started", async () => {
+    const { id, parentFile } = await runChildThenRestart();
+    const between = restartedManager(parentFile, 1, { recording: true });
+    between.spawn(snapshot(), "Explore", OCCUPY, {
+      description: "Hold the slot",
+      model: registry.find("faux", "scripted"),
+      background: { kind: "explicit", isBackground: true },
+    });
+    await vi.waitFor(() => { expect(requests.at(-1)).toEqual([OCCUPY]); });
+    const queued = between.startResume(id, RECALL, { background: true });
+    if (queued.kind !== "started") throw new Error(`resume refused: ${queued.reason}`);
+    expect(between.abort(id)).toBe(true);
+    expect(queued.record.stoppedWhileQueued).toBe(true);
+    releaseOccupant();
+    await between.waitForAll();
+    await between.dispose();
+
+    const outcome = await restartedManager(parentFile).resume(id, RECALL, { background: false });
+
+    if (outcome.kind !== "resumed") throw new Error(`resume refused: ${outcome.reason}`);
+    expect(outcome.record.result).toBe(`The code word was ${CODE_WORD}.`);
+    expect(outcome.record.turnBudget).toEqual({ maxTurns: 3, used: 1, phase: "within" });
+  });
+
+  it("adds the resumed run's usage to what the child used before the restart", async () => {
+    const { id, transcript, parentFile, lifetimeUsage: before } = await runChildThenRestart();
+    expect(before.input + before.output).toBeGreaterThan(0);
+
+    const outcome = await restartedManager(parentFile).resume(id, RECALL, { background: false });
+
+    if (outcome.kind !== "resumed") throw new Error(`resume refused: ${outcome.reason}`);
+    const resumedReply = SessionManager.open(transcript).buildSessionContext().messages.at(-1);
+    if (resumedReply?.role !== "assistant") throw new Error("the resumed run left no reply");
+    const { input, output, cacheWrite } = resumedReply.usage;
+    expect(outcome.record.lifetimeUsage).toEqual({
+      input: before.input + input,
+      output: before.output + output,
+      cacheWrite: before.cacheWrite + cacheWrite,
+    });
+  });
+
+  it("refuses a sibling's transcript put at the child's path, leaving it untouched and running nothing", async () => {
+    const { children: [child, sibling], parentFile } = await runChildrenThenRestart([CODE_WORD, "TANGERINE"]);
+    copyFileSync(sibling.transcript, child.transcript);
+    const siblingBytes = readFileSync(child.transcript);
+    // The sibling's header is a genuine one: the same parent, and the same directory.
+    expect(readTranscriptHeader(child.transcript)?.parentSession).toBe(readTranscriptHeader(sibling.transcript)?.parentSession);
+
+    const outcome = await restartedManager(parentFile).resume(child.id, RECALL, { background: false });
+
+    expect(outcome).toEqual({ kind: "refused", reason: "no-session" });
+    expect(recallReachedTheModel()).toBe(false);
+    expect(readFileSync(child.transcript)).toEqual(siblingBytes);
+  });
+
+  it("refuses a transcript cut short of the child's last exchange, running nothing", async () => {
+    const parent = SessionManager.create(project, join(root, "sessions"));
+    parent.appendMessage({ role: "user", content: "Delegate this", timestamp: 1 });
+    const earlier = createManager(undefined, 4, parent);
+    const child = await earlier.spawnAndWait(snapshot(), "Explore", `Remember this: the code word is ${CODE_WORD}.`, {
+      description: "Hold a code word",
+      model: registry.find("faux", "scripted"),
+      parentSession: { parentSessionFile: parent.getSessionFile()!, parentSessionId: parent.getSessionId() },
+    });
+    const firstExchange = readFileSync(child.outputFile!, "utf8");
+    await earlier.resume(child.id, "Also remember this: the second code word is TANGERINE.", { background: false });
+    await earlier.dispose();
+    // Back to the first exchange: a genuine prefix of the child's own transcript.
+    writeFileSync(child.outputFile!, firstExchange);
+
+    const outcome = await restartedManager(parent.getSessionFile()!).resume(child.id, RECALL, { background: false });
+
+    if (outcome.kind !== "resumed") throw new Error(`resume refused: ${outcome.reason}`);
+    expect(outcome.record.status).toBe("error");
+    expect(outcome.record.error).toBe(
+      `Transcript ${child.outputFile} no longer holds the conversation its last run left; it was not restored.`,
+    );
+    expect(recallReachedTheModel()).toBe(false);
+    expect(readFileSync(child.outputFile!, "utf8")).toBe(firstExchange);
+  });
+
+  it("refuses a child whose recorded model the parent no longer has, sending its conversation nowhere else", async () => {
+    const { id, transcript, parentFile } = await runChildThenRestart();
+    const bytes = readFileSync(transcript);
+    const withoutScripted = () => ({
+      ...snapshot(),
+      modelRegistry: {
+        find: (provider: string, modelId: string) => (modelId === "scripted" ? undefined : registry.find(provider, modelId)),
+        getAll: () => registry.getAll().filter((model) => model.id !== "scripted"),
+      },
+    });
+
+    const outcome = await restartedManager(parentFile, undefined, { parentSnapshot: withoutScripted }).resume(id, RECALL, {
+      background: false,
+    });
+
+    if (outcome.kind !== "resumed") throw new Error(`resume refused: ${outcome.reason}`);
+    expect(outcome.record.status).toBe("error");
+    expect(outcome.record.error).toBe(
+      'The child\'s transcript selects "faux/scripted", which is not available; the child was not restored.',
+    );
+    expect(requestedModels).toEqual(["scripted"]);
+    expect(readFileSync(transcript)).toEqual(bytes);
   });
 
   describe("a transcript changed while its resume waits for a concurrency slot", () => {
@@ -299,6 +444,24 @@ describe("restoring a settled child from its real transcript", () => {
       expect(record.error).toBe(`Transcript ${transcript} no longer holds this child's session; it was not restored.`);
       expect(resumeReachedTheModel()).toBe(false);
       expect(existsSync(transcript)).toBe(false);
+    });
+
+    it("fails the resume, leaving the file untouched, when it was cut back to the entries before its conversation", async () => {
+      const { record, transcript, left } = await resumeAcrossQueueGap((file) => {
+        const lines = readFileSync(file, "utf8").split("\n");
+        const firstPrompt = lines.findIndex((line) => line.includes('"role":"user"'));
+        writeFileSync(file, `${lines.slice(0, firstPrompt).join("\n")}\n`);
+      });
+      // Pi's header, its model and thinking-level entries, and the system prompt it recorded survive.
+      expect(left?.toString("utf8")).toContain('"role":"system"');
+      expect(left?.toString("utf8")).not.toContain('"role":"user"');
+
+      expect(record.status).toBe("error");
+      expect(record.error).toBe(
+        `Transcript ${transcript} no longer holds the conversation its last run left; it was not restored.`,
+      );
+      expect(resumeReachedTheModel()).toBe(false);
+      expect(readFileSync(transcript)).toEqual(left);
     });
 
     it("fails the resume, leaving the file empty, when it was truncated to 0 bytes", async () => {

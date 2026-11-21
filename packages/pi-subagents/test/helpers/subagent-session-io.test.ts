@@ -1,6 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
+import { branchModelSelection } from "#src/session/recorded-model";
 import type { AgentConfig } from "#src/types";
-import { createAgentLookup, createFactorySession, createSubagentSessionIO, EARLIER_TRANSCRIPT } from "./subagent-session-io";
+import {
+	createAgentLookup,
+	createFactorySession,
+	createSubagentSessionIO,
+	EARLIER_MODEL,
+	EARLIER_SNAPSHOT,
+	EARLIER_TRANSCRIPT,
+} from "./subagent-session-io";
 
 describe("createSubagentSessionIO", () => {
 	it("returns a stub with all EnvironmentIO methods", () => {
@@ -41,14 +49,19 @@ describe("createSubagentSessionIO", () => {
 		expect(io.getAgentDir()).toBe("/mock/agent-dir");
 	});
 
-	it("openSessionManager reopens EARLIER_TRANSCRIPT: its identity, a conversation, and no model selection", () => {
+	it("openSessionManager reopens EARLIER_TRANSCRIPT: its identity, an exchange, and a branch ending on its leaf that selects EARLIER_MODEL", () => {
 		const io = createSubagentSessionIO();
 		const reopened = io.openSessionManager(EARLIER_TRANSCRIPT.file);
 		expect(reopened.getSessionFile()).toBe(EARLIER_TRANSCRIPT.file);
 		expect(reopened.getSessionId()).toBe(EARLIER_TRANSCRIPT.header.id);
 		expect(reopened.getHeader()).toEqual(EARLIER_TRANSCRIPT.header);
-		expect(reopened.buildSessionContext().messages).toHaveLength(1);
-		expect(reopened.getBranch()).toEqual([]);
+		expect(reopened.buildSessionContext().messages.map((message) => message.role)).toEqual(["user", "assistant"]);
+		const branch = reopened.getBranch();
+		expect(branch.at(-1)?.id).toBe(EARLIER_TRANSCRIPT.leafId);
+		expect(branchModelSelection(branch, EARLIER_SNAPSHOT.modelRegistry)).toEqual({
+			provider: EARLIER_MODEL.provider,
+			modelId: EARLIER_MODEL.id,
+		});
 	});
 
 	it("createSessionManager returns a stub with newSession and getSessionFile", () => {

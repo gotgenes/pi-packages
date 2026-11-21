@@ -596,18 +596,23 @@ describe("composition root: a settled child across a reload", () => {
     return { ...makeSessionStartCtx(makeParentRegistry().registry, makeRecordingUI()), sessionManager: parent };
   }
 
+  /** The entry the child's run leaves last in its transcript, which its record names. */
+  const CHILD_LEAF = "child-last-entry";
+
   /**
    * Persist a completed run into the parent and shut down its extension instance.
    * `workspace` registers a provider that prepares the child a directory first.
+   * The child's session reports the id its transcript's header names.
    */
   async function runChildThenReload(
     parent: SessionManager,
     transcript: string,
     options: { type?: string; workspace?: string } = {},
   ): Promise<string> {
+    const sessionId = JSON.parse(readFileSync(transcript, "utf8").split("\n")[0]).id as string;
     vi.mocked(createSubagentSession).mockClear();
     vi.mocked(createSubagentSession).mockResolvedValue(
-      toSubagentSession(createSubagentSessionStub(createMockSession(), transcript)),
+      toSubagentSession(createSubagentSessionStub(createMockSession(), transcript, { sessionId, leafId: CHILD_LEAF })),
     );
     const { pi, tools, fire } = makePi();
     vi.mocked(pi.appendEntry).mockImplementation((customType: string, data: unknown) => {
@@ -662,7 +667,7 @@ describe("composition root: a settled child across a reload", () => {
     const result = await resumeAfterReload(SessionManager.open(parent.getSessionFile()!), id);
 
     expect(createSubagentSession).toHaveBeenCalledExactlyOnceWith(
-      expect.objectContaining({ type: "general-purpose", transcript: { file: transcript, header } }),
+      expect.objectContaining({ type: "general-purpose", transcript: { file: transcript, header, leafId: CHILD_LEAF } }),
       expect.anything(),
     );
     expect(result.content[0].text).toBe(`Agent ID: ${id}\n\nPicked up where I left off.`);
@@ -744,6 +749,25 @@ describe("composition root: a settled child across a reload", () => {
           "resume is unavailable because it would run under a definition it never had. " +
           "Spawn a new agent of an available type instead.",
       );
+      expect(await getSubagentsService()!.resume(id, "continue")).toEqual({
+        kind: "refused",
+        reason: "agent-type-unavailable",
+      });
+      expect(createSubagentSession).not.toHaveBeenCalled();
+    });
+
+    it("refuses it through the service alone, though no subagent call has re-read the definitions since", async () => {
+      const parent = createParent();
+      const transcript = join(tasksDir, "reviewer.jsonl");
+      writeFileSync(transcript, `${JSON.stringify({ type: "session", id: "reviewer-session", parentSession: parent.getSessionId(), cwd: "/tmp" })}\n`);
+      const id = await runChildThenReload(parent, transcript, { type: "reviewer" });
+      vi.mocked(createSubagentSession).mockClear();
+      const { pi, fire } = makePi();
+      subagentsExtension(pi);
+      await fire("session_start", {}, contextFor(parent));
+      // Disabled after this instance loaded its definitions.
+      writeReviewer("enabled: false\n");
+
       expect(await getSubagentsService()!.resume(id, "continue")).toEqual({
         kind: "refused",
         reason: "agent-type-unavailable",

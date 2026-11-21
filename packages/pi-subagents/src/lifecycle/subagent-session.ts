@@ -111,6 +111,16 @@ export class SubagentSession {
     return this.meta.outputFile;
   }
 
+  /** The child's Pi session id, which its transcript's header names. */
+  get sessionId(): string {
+    return this.meta.sessionId;
+  }
+
+  /** The id of the last entry the child's transcript holds, or undefined while it holds none. */
+  get leafId(): string | undefined {
+    return this._session.sessionManager.getLeafId() ?? undefined;
+  }
+
   /** The model the child is running now — a failover or `/model` switch shows here. */
   get model(): Model<any> | undefined {
     return this._session.model;

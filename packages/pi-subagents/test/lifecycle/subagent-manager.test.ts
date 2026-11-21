@@ -9,7 +9,12 @@ import type { SubagentSession, TurnLoopResult } from "#src/lifecycle/subagent-se
 import { resolveTurnLimits } from "#src/lifecycle/turn-limits";
 import type { WorkspaceProvider } from "#src/lifecycle/workspace";
 import { NotificationManager } from "#src/observation/notification";
-import { type PersistedSubagentRecord, type SessionEntryLike, SUBAGENT_RECORD_ENTRY } from "#src/persisted-record";
+import {
+  type PersistedSubagentRecord,
+  type SessionEntryLike,
+  SUBAGENT_RECORD_ENTRY,
+  toPersistedRecord,
+} from "#src/persisted-record";
 import type { RunConfig } from "#src/runtime";
 import { GetResultTool } from "#src/tools/get-result-tool";
 import type { AgentConfig, Subagent } from "#src/types";
@@ -149,6 +154,8 @@ function seedForegroundNotificationScenario() {
 const EARLIER_TRANSCRIPT = "/sessions/parent/tasks/earlier-child.jsonl";
 /** What the earlier child's transcript header records: its session, its parent, and the parent's directory. */
 const EARLIER_HEADER = { id: "earlier-child-session", cwd: STUB_SNAPSHOT.cwd, parentSession: "parent-id" };
+/** What a restored record continues: the transcript, the header that identifies it, and the entry its last run left. */
+const EARLIER_CONTINUATION = { file: EARLIER_TRANSCRIPT, header: EARLIER_HEADER, leafId: "earlier-last-entry" };
 
 /** The `subagents:record` entry an earlier manager appended when its child settled. */
 function recordEntry(overrides: Partial<PersistedSubagentRecord> = {}) {
@@ -165,15 +172,26 @@ function recordEntry(overrides: Partial<PersistedSubagentRecord> = {}) {
     stoppedWhileQueued: false,
     outputFile: EARLIER_TRANSCRIPT,
     toolUses: 4,
+    lifetimeUsage: { input: 300, output: 120, cacheWrite: 10 },
+    compactionCount: 1,
+    sessionId: EARLIER_HEADER.id,
+    transcriptLeafId: EARLIER_CONTINUATION.leafId,
     providerWorkspace: false,
     ...overrides,
   };
   return { type: "custom", customType: SUBAGENT_RECORD_ENTRY, data };
 }
 
-/** The entry a manager wrote before runs recorded their workspace provenance. */
-function legacyRecordEntry() {
-  const { providerWorkspace: _providerWorkspace, ...data } = recordEntry().data;
+/** The entry a manager wrote before runs recorded what identifies their transcript. */
+function preIdentityRecordEntry() {
+  const {
+    sessionId: _sessionId,
+    transcriptLeafId: _transcriptLeafId,
+    providerWorkspace: _providerWorkspace,
+    lifetimeUsage: _lifetimeUsage,
+    compactionCount: _compactionCount,
+    ...data
+  } = recordEntry().data;
   return { type: "custom", customType: SUBAGENT_RECORD_ENTRY, data };
 }
 
@@ -2022,7 +2040,7 @@ describe("SubagentManager", () => {
           expect.objectContaining({
             type: "Explore",
             snapshot: STUB_SNAPSHOT,
-            transcript: { file: EARLIER_TRANSCRIPT, header: EARLIER_HEADER },
+            transcript: EARLIER_CONTINUATION,
             parentSession: { parentSessionFile: "/sessions/parent.jsonl", parentSessionId: "parent-id" },
           }),
         );
@@ -2049,6 +2067,21 @@ describe("SubagentManager", () => {
         expect(manager.getRecord("earlier-1")!.toolUses).toBe(4);
       });
 
+      it("adds the resumed run's usage and compactions to those the earlier runs reached", async () => {
+        const { factory, stub, session } = createSessionFactory();
+        stub.runTurnLoop.mockImplementation(async () => {
+          emitResumeUsageAndCompaction(session);
+          return turnLoopResult({ responseText: "second" });
+        });
+        ({ manager } = createManager({ createSubagentSession: factory, history: historyWith() }));
+
+        await manager.resume("earlier-1", "continue", { background: false });
+
+        const record = manager.getRecord("earlier-1")!;
+        expect(record.lifetimeUsage).toEqual({ input: 370, output: 150, cacheWrite: 15 });
+        expect(record.compactionCount).toBe(2);
+      });
+
       it("restores from the last run recorded under the id", async () => {
         const { factory } = createSessionFactory();
         ({ manager } = createManager({
@@ -2062,7 +2095,7 @@ describe("SubagentManager", () => {
         await manager.resume("earlier-1", "continue", { background: false });
 
         expect(factory).toHaveBeenCalledWith(
-          expect.objectContaining({ transcript: { file: EARLIER_TRANSCRIPT, header: EARLIER_HEADER } }),
+          expect.objectContaining({ transcript: EARLIER_CONTINUATION }),
         );
       });
 
@@ -2160,6 +2193,47 @@ describe("SubagentManager", () => {
         });
       });
 
+      describe("a transcript nothing shows is still the child's", () => {
+        it("refuses another session of the same parent put at the recorded path, opening nothing", async () => {
+          const { factory } = createSessionFactory();
+          ({ manager } = createManager({
+            createSubagentSession: factory,
+            history: historyWith(undefined, { transcriptHeader: () => ({ ...EARLIER_HEADER, id: "sibling-session" }) }),
+          }));
+
+          expect(await manager.resume("earlier-1", "continue", { background: false })).toEqual({
+            kind: "refused",
+            reason: "no-session",
+          });
+          expect(manager.getRecord("earlier-1")).toBeUndefined();
+          expect(factory).not.toHaveBeenCalled();
+        });
+
+        it("refuses a child recorded before runs recorded their transcript's identity, though it ran in the parent's directory", async () => {
+          const { factory } = createSessionFactory();
+          ({ manager } = createManager({ createSubagentSession: factory, history: historyWith([preIdentityRecordEntry()]) }));
+
+          expect(await manager.resume("earlier-1", "continue", { background: false })).toEqual({
+            kind: "refused",
+            reason: "no-session",
+          });
+          expect(factory).not.toHaveBeenCalled();
+        });
+
+        it("answers a fork unknown-agent for an inherited child recorded before that, as for any child it does not own", async () => {
+          ({ manager } = createManager({
+            history: historyWith([preIdentityRecordEntry()], {
+              transcriptHeader: () => ({ ...EARLIER_HEADER, parentSession: "original-parent" }),
+            }),
+          }));
+
+          expect(await manager.resume("earlier-1", "continue", { background: false })).toEqual({
+            kind: "refused",
+            reason: "unknown-agent",
+          });
+        });
+      });
+
       it("registers no record and opens no session for a refused restore", async () => {
         const { factory } = createSessionFactory();
         ({ manager } = createManager({
@@ -2224,34 +2298,22 @@ describe("SubagentManager", () => {
         });
       });
 
-      it("fails the resume, opening nothing, when the type goes away before its queued reopening", async () => {
+      it("re-reads the agent definitions before deciding, though nothing else reloaded them", async () => {
         const agents = new Map([["Reviewer", makeAgentConfig({ name: "Reviewer", toolNames: ["read"] })]]);
         const registry = new AgentTypeRegistry(() => agents);
         const { factory } = createSessionFactory();
-        const occupant = createSubagentSessionStub();
-        const { promise: occupantDone, resolve: finishOccupant } = Promise.withResolvers<TurnLoopResult>();
-        occupant.runTurnLoop.mockReturnValue(occupantDone);
-        const spawnFactory = vi.fn((params: CreateSubagentSessionParams) =>
-          params.transcript ? factory(params) : Promise.resolve(toSubagentSession(occupant)),
-        );
         ({ manager } = createManager({
-          createSubagentSession: spawnFactory,
-          getMaxConcurrent: () => 1,
+          createSubagentSession: factory,
           registry,
           history: historyWith([recordEntry({ type: "Reviewer" })]),
         }));
-        spawnBg(manager, "occupies the only slot");
-        const start = manager.startResume("earlier-1", "continue", { background: true });
-        expect(start.kind).toBe("started");
+        // Disabled at its source; no subagent tool call has reloaded the registry since.
+        agents.set("Reviewer", makeAgentConfig({ name: "Reviewer", toolNames: ["read"], enabled: false }));
 
-        agents.clear();
-        registry.reload();
-        finishOccupant(turnLoopResult());
-        await manager.getRecord("earlier-1")!.promise;
-
-        const record = manager.getRecord("earlier-1")!;
-        expect(record.status).toBe("error");
-        expect(record.error).toBe('Agent type "Reviewer" is no longer defined or is disabled; the child was not restored.');
+        expect(await manager.resume("earlier-1", "continue", { background: true })).toEqual({
+          kind: "refused",
+          reason: "agent-type-unavailable",
+        });
         expect(factory).not.toHaveBeenCalled();
       });
     });
@@ -2279,6 +2341,22 @@ describe("SubagentManager", () => {
         expect(params.turnLimits).toEqual({ maxTurns: requested, defaultMaxTurns: 50, wrapUpTurns: 2 });
         expect(resolveTurnLimits(params.turnLimits, AGENT_MAX_TURNS).maxTurns).toBe(effective);
       });
+
+      it("keeps the ceiling an earlier run recorded past a later resume stopped before its turn loop", async () => {
+        const { factory } = createSessionFactory();
+        ({ manager } = createManager({
+          createSubagentSession: factory,
+          registry: registryWith("Reviewer", { maxTurns: AGENT_MAX_TURNS, toolNames: ["read"] }),
+          history: historyWith([
+            recordEntry({ type: "Reviewer", turnBudget: { maxTurns: 3, used: 2, phase: "within" } }),
+            recordEntry({ type: "Reviewer", turnBudget: undefined, status: "stopped", stoppedWhileQueued: true }),
+          ]),
+        }));
+
+        await manager.resume("earlier-1", "continue", { background: false });
+
+        expect(factory.mock.calls[0][0].turnLimits?.maxTurns).toBe(3);
+      });
     });
 
     describe("its workspace", () => {
@@ -2289,7 +2367,7 @@ describe("SubagentManager", () => {
 
         await manager.resume("earlier-1", "continue", { background: false });
 
-        expect(factory).toHaveBeenCalledWith(expect.objectContaining({ transcript: { file: EARLIER_TRANSCRIPT, header } }));
+        expect(factory).toHaveBeenCalledWith(expect.objectContaining({ transcript: { ...EARLIER_CONTINUATION, header } }));
       });
 
       it("refuses a child a provider's workspace held at the parent's own directory", async () => {
@@ -2300,79 +2378,112 @@ describe("SubagentManager", () => {
           reason: "workspace-disposed",
         });
       });
-
-      describe("recorded before runs recorded it", () => {
-        it("restores a child that ran in the parent's directory with no provider registered", async () => {
-          ({ manager } = createManager({ history: historyWith([legacyRecordEntry()]) }));
-
-          expect(await manager.resume("earlier-1", "continue", { background: false })).toEqual({
-            kind: "resumed",
-            record: manager.getRecord("earlier-1"),
-          });
-        });
-
-        it("refuses a child whose transcript names another directory", async () => {
-          ({ manager } = createManager({
-            history: historyWith([legacyRecordEntry()], { transcriptHeader: () => ({ ...EARLIER_HEADER, cwd: "/ws/earlier-1" }) }),
-          }));
-
-          expect(await manager.resume("earlier-1", "continue", { background: false })).toEqual({
-            kind: "refused",
-            reason: "workspace-disposed",
-          });
-        });
-
-        it("refuses a child at the parent's directory while a provider is registered that could have prepared it", async () => {
-          ({ manager } = createManager({ history: historyWith([legacyRecordEntry()]) }));
-          manager.registerWorkspaceProvider(makeWorkspaceProvider(makeWorkspace(STUB_SNAPSHOT.cwd)));
-
-          expect(await manager.resume("earlier-1", "continue", { background: false })).toEqual({
-            kind: "refused",
-            reason: "workspace-disposed",
-          });
-        });
-      });
     });
 
     describe("interrupted while its transcript reopens", () => {
-      /** A manager whose restored child's reopening waits until the test lets it finish. */
-      function pendingReopen() {
-        const { promise: opened, resolve } = Promise.withResolvers<SubagentSession>();
+      /** What the manager's observer saw of the record as each run finished: what the event, entry, and nudge read. */
+      let finished: { kind: RunKind; status: string; entry: PersistedSubagentRecord }[];
+
+      /**
+       * A manager whose restored child's reopenings each wait until the test
+       * settles them, in order, and whose observer records each finished run.
+       */
+      function pendingReopens() {
+        finished = [];
+        const reopenings: PromiseWithResolvers<SubagentSession>[] = [];
         const stub = createSubagentSessionStub();
         stub.runTurnLoop.mockResolvedValue(turnLoopResult({ responseText: "Answered the retry." }));
-        const factory = vi.fn((_params: CreateSubagentSessionParams): Promise<SubagentSession> => opened);
-        ({ manager } = createManager({ createSubagentSession: factory, history: historyWith() }));
-        return { stub, factory, open: () => { resolve(toSubagentSession(stub)); } };
+        const factory = vi.fn((_params: CreateSubagentSessionParams): Promise<SubagentSession> => {
+          const reopening = Promise.withResolvers<SubagentSession>();
+          reopenings.push(reopening);
+          return reopening.promise;
+        });
+        ({ manager } = createManager({
+          createSubagentSession: factory,
+          history: historyWith(),
+          observer: {
+            onSubagentRunFinished: (record, run) => {
+              finished.push({ kind: run.kind, status: run.status, entry: toPersistedRecord(record, run) });
+            },
+          },
+        }));
+        return {
+          stub,
+          factory,
+          open: (index: number) => { reopenings[index].resolve(toSubagentSession(stub)); },
+          fail: (index: number) => { reopenings[index].reject(new Error("The transcript could not be opened just now.")); },
+        };
       }
 
-      it("lets a stopped resume be retried, continuing the one session its reopening produces", async () => {
-        const { stub, factory, open } = pendingReopen();
-        manager.startResume("earlier-1", "continue", { background: false });
+      /** Start a resume of the restored child, failing the test if it is refused. */
+      function startedResume(prompt: string) {
+        const start = manager.startResume("earlier-1", prompt, { background: false });
+        if (start.kind !== "started") throw new Error(`resume refused: ${start.reason}`);
+        return start.record;
+      }
+
+      it("refuses a retry until the stopped run has ended, then ends that run stopped, taking no turn", async () => {
+        const { stub, factory, open } = pendingReopens();
+        const record = startedResume("continue");
         expect(manager.abort("earlier-1")).toBe(true);
 
-        const retry = manager.startResume("earlier-1", "try again", { background: false });
-        open();
-        await manager.getRecord("earlier-1")!.promise;
+        expect(record.resumeRefusal).toBe("still-running");
+        expect(manager.startResume("earlier-1", "try again", { background: false })).toEqual({
+          kind: "refused",
+          reason: "still-running",
+        });
+        open(0);
+        await record.promise;
 
-        expect(retry.kind).toBe("started");
+        expect(stub.runTurnLoop).not.toHaveBeenCalled();
+        expect(finished).toEqual([{ kind: "resume", status: "stopped", entry: expect.objectContaining({ status: "stopped" }) }]);
+        expect(record.resumeRefusal).toBeUndefined();
+
+        await manager.resume("earlier-1", "try again", { background: false });
+
         expect(factory).toHaveBeenCalledOnce();
         expect(stub.runTurnLoop).toHaveBeenCalledExactlyOnceWith("try again", expect.any(Object));
-        expect(manager.getRecord("earlier-1")!.result).toBe("Answered the retry.");
+        expect(finished.map(({ status }) => status)).toEqual(["stopped", "completed"]);
+        expect(record.result).toBe("Answered the retry.");
       });
 
-      it("disposes the session a reopening produces after the manager is torn down", async () => {
-        const { stub, open } = pendingReopen();
-        const start = manager.startResume("earlier-1", "continue", { background: false });
-        if (start.kind !== "started") throw new Error("resume refused");
+      it("starts exactly one further reopening after repeated stops and retries while a reopening fails", async () => {
+        const { factory, open, fail } = pendingReopens();
+        const record = startedResume("continue");
+        expect(manager.abort("earlier-1")).toBe(true);
+        for (const prompt of ["retry one", "retry two"]) {
+          expect(manager.startResume("earlier-1", prompt, { background: false }).kind).toBe("refused");
+          expect(manager.abort("earlier-1")).toBe(false);
+        }
+
+        fail(0);
+        await record.promise;
+        expect(finished.map(({ status }) => status)).toEqual(["stopped"]);
+
+        const retry = manager.resume("earlier-1", "retry three", { background: false });
+        expect(manager.startResume("earlier-1", "retry four", { background: false }).kind).toBe("refused");
+        open(1);
+        await retry;
+
+        expect(factory).toHaveBeenCalledTimes(2);
+        expect(finished.map(({ status }) => status)).toEqual(["stopped", "completed"]);
+        expect(record.result).toBe("Answered the retry.");
+      });
+
+      it("disposes the session a reopening produces after the manager is torn down, ending the run once", async () => {
+        const { stub, open } = pendingReopens();
+        const record = startedResume("continue");
         manager.abortAll();
+        expect(manager.startResume("earlier-1", "try again", { background: false }).kind).toBe("refused");
 
         await manager.dispose();
-        open();
-        await start.record.promise;
+        open(0);
+        await record.promise;
 
         expect(stub.dispose).toHaveBeenCalledOnce();
-        expect(start.record.isSessionReady()).toBe(false);
+        expect(record.isSessionReady()).toBe(false);
         expect(stub.runTurnLoop).not.toHaveBeenCalled();
+        expect(finished.map(({ status }) => status)).toEqual(["stopped"]);
       });
     });
   });

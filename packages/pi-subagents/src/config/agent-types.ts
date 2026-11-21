@@ -98,7 +98,17 @@ export class AgentTypeRegistry implements AgentConfigLookup {
    * the two cannot disagree about which config a type names.
    */
   getToolNamesForType(type: string): string[] {
-    return this.resolveAgentConfig(type).toolNames ?? [...BUILTIN_TOOL_NAMES];
+    return capabilityToolNames(this.resolveAgentConfig(type));
+  }
+
+  /**
+   * The config a type names, only while it is defined and enabled: undefined
+   * otherwise, never the general-purpose fallback `resolveAgentConfig` gives.
+   */
+  findEnabledConfig(type: string): AgentConfig | undefined {
+    const key = this.resolveKey(type);
+    const config = key ? this.agents.get(key) : undefined;
+    return config?.enabled === false ? undefined : config;
   }
 
   /** Resolve agent config with guaranteed non-null return. Falls back: unknown → general-purpose → absolute fallback. */
@@ -129,6 +139,11 @@ export class AgentTypeRegistry implements AgentConfigLookup {
     }
     return undefined;
   }
+}
+
+/** The capability tool names a config grants: its `tools:` list, or the built-ins when it declares none. */
+export function capabilityToolNames(config: AgentConfig): string[] {
+  return config.toolNames ?? [...BUILTIN_TOOL_NAMES];
 }
 
 /** All known built-in tool names. */

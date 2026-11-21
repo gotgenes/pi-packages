@@ -2741,38 +2741,70 @@ describe("Subagent", () => {
 				expect(agent.subagentSession?.session).toBe(toSubagentSession(stub).session);
 			});
 
-			it("has a retry wait for that reopening and continue its session, opening no second one", async () => {
-				const { agent, stub, factory, open } = pendingReopen();
-				const first = agent.resume("continue", { background: false });
+			it("is not resumable until the stopped run has ended, reading still running", async () => {
+				const { agent, open } = pendingReopen();
+				const resumed = agent.resume("continue", { background: false });
 				agent.abort();
 
-				const retry = agent.resume("try again", { background: false });
+				expect(agent.status).toBe("stopped");
+				expect(agent.resumeRefusal).toBe("still-running");
 				open();
-				await Promise.all([first, retry]);
+				await resumed;
 
-				expect(factory).toHaveBeenCalledOnce();
-				expect(stub.runTurnLoop).toHaveBeenCalledExactlyOnceWith("try again", expect.any(Object));
-				expect(agent.status).toBe("completed");
-				expect(agent.result).toBe("Answered the retry.");
+				expect(agent.resumeRefusal).toBeUndefined();
 			});
 
-			it("has a retry reopen the transcript itself when the stopped reopening failed", async () => {
+			it("reports the stopped run's end while it is still the agent's run", async () => {
+				const seen: string[] = [];
+				const { promise: opened, resolve: open } = Promise.withResolvers<SubagentSession>();
+				const { agent } = createRestoredAgent({
+					createSubagentSession: () => opened,
+					observer: { onRunFinished: (finished) => { seen.push(`${finished.status}:${String(finished.resumeRefusal)}`); } },
+				});
+				const resumed = agent.resume("continue", { background: false });
+				agent.abort();
+				open(toSubagentSession(createSubagentSessionStub()));
+				await resumed;
+
+				// Resumable from the notification on, as after any other run's end.
+				expect(seen).toEqual(["stopped:undefined"]);
+			});
+
+			it("ends stopped when the reopening then fails, and a later resume reopens the transcript afresh", async () => {
 				const { promise: failed, reject } = Promise.withResolvers<SubagentSession>();
 				const stub = createSubagentSessionStub();
 				stub.runTurnLoop.mockResolvedValue(turnLoopResult({ responseText: "Answered the retry." }));
 				const factory = vi.fn((_params: CreateSubagentSessionParams): Promise<SubagentSession> =>
 					factory.mock.calls.length === 1 ? failed : Promise.resolve(toSubagentSession(stub)),
 				);
-				const { agent } = createRestoredAgent({ createSubagentSession: factory });
+				const onRunFinished = vi.fn((finished: Subagent) => finished.status);
+				const { agent } = createRestoredAgent({ createSubagentSession: factory, observer: { onRunFinished } });
 				const first = agent.resume("continue", { background: false });
 				agent.abort();
-
-				const retry = agent.resume("try again", { background: false });
 				reject(new Error("transcript unreadable"));
-				await Promise.all([first, retry]);
+				await first;
+
+				expect(agent.status).toBe("stopped");
+				expect(onRunFinished.mock.results.map((result) => result.value)).toEqual(["stopped"]);
+
+				await agent.resume("try again", { background: false });
 
 				expect(factory).toHaveBeenCalledTimes(2);
+				expect(stub.runTurnLoop).toHaveBeenCalledExactlyOnceWith("try again", expect.any(Object));
 				expect(agent.result).toBe("Answered the retry.");
+			});
+		});
+
+		describe("cancelled before its resume starts", () => {
+			it("reopens nothing and ends stopped", async () => {
+				const { agent, factory } = createRestoredAgent();
+				const signal = AbortSignal.abort();
+
+				await agent.resume("continue", { background: false, signal });
+
+				expect(factory).not.toHaveBeenCalled();
+				expect(agent.status).toBe("stopped");
+				expect(agent.resumeRefusal).toBeUndefined();
 			});
 		});
 
@@ -2790,25 +2822,6 @@ describe("Subagent", () => {
 				expect(stub.dispose).toHaveBeenCalledOnce();
 				expect(agent.isSessionReady()).toBe(false);
 				expect(stub.runTurnLoop).not.toHaveBeenCalled();
-				expect(agent.status).toBe("stopped");
-			});
-
-			it("has a retry started before the teardown open nothing of its own", async () => {
-				const { promise: opened, resolve: open } = Promise.withResolvers<SubagentSession>();
-				const stub = createSubagentSessionStub();
-				const factory = vi.fn((_params: CreateSubagentSessionParams): Promise<SubagentSession> => opened);
-				const { agent } = createRestoredAgent({ createSubagentSession: factory });
-				const first = agent.resume("continue", { background: false });
-				agent.abort();
-				const retry = agent.resume("try again", { background: false });
-
-				await agent.disposeSession();
-				open(toSubagentSession(stub));
-				await Promise.all([first, retry]);
-
-				expect(factory).toHaveBeenCalledOnce();
-				expect(stub.dispose).toHaveBeenCalledOnce();
-				expect(agent.isSessionReady()).toBe(false);
 				expect(agent.status).toBe("stopped");
 			});
 		});

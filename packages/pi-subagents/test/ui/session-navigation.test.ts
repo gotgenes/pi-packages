@@ -173,8 +173,6 @@ function persistedRun(overrides: Partial<PersistedRunSummary> = {}): PersistedRu
     stoppedWhileQueued: false,
     toolUses: 7,
     outputFile: "/tasks/earlier.jsonl",
-    turnBudget: undefined,
-    providerWorkspace: false,
     ...overrides,
   };
 }

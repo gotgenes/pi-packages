@@ -57,6 +57,11 @@ export function branchModelSelection(
   return undefined;
 }
 
+/** The model the branch's latest `model_change` selected: the route the child last chose, if it chose one. */
+export function latestModelChange(branch: readonly BranchEntryLike[]): ModelSelection | undefined {
+  return lastModelChange(branch, branch.length);
+}
+
 function lastModelChange(branch: readonly BranchEntryLike[], before: number): ModelSelection | undefined {
   for (let i = before - 1; i >= 0; i--) {
     const change = asModelChange(branch[i]);

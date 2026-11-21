@@ -23,12 +23,18 @@ import {
   Subagent,
   type SubagentLifecycleObserver,
 } from "#src/lifecycle/subagent";
-import type { RunKind, RunOutcome } from "#src/lifecycle/subagent-run";
+import type { RunKind, RunOutcome, RunOutcomeInit } from "#src/lifecycle/subagent-run";
 import type { SubagentSession } from "#src/lifecycle/subagent-session";
 import { isActiveStatus, SubagentState } from "#src/lifecycle/subagent-state";
 import type { TurnBudget } from "#src/lifecycle/turn-limits";
 import type { WorkspaceProvider } from "#src/lifecycle/workspace";
-import { type PersistedRunSummary, readPersistedRuns, type SessionEntryLike } from "#src/persisted-record";
+import {
+  type ChildRestoreRecord,
+  type PersistedRunSummary,
+  type RestorableRun,
+  readRestorableRun,
+  type SessionEntryLike,
+} from "#src/persisted-record";
 import type { RunConfig } from "#src/runtime";
 import type { ChildTranscriptHeader } from "#src/session/transcript-header";
 import type { AgentConfig, CompactionInfo, ParentSessionInfo, SubagentType, ThinkingLevel } from "#src/types";
@@ -41,6 +47,8 @@ export interface SpawnTypeResolver {
   resolveType(name: string): string | undefined;
   isValidType(type: string): boolean;
   resolveAgentConfig(type: string): AgentConfig;
+  /** Re-read the agent definitions from their source, as a restore does before it decides on a type. */
+  reload(): void;
 }
 
 /**
@@ -189,7 +197,7 @@ export interface ChildHistory {
   snapshot(): ParentSnapshot | undefined;
   /** The current parent session's identity, which a reopened child reports to lifecycle consumers. */
   parentSession(): ParentSessionInfo;
-  /** The spawning parent and working directory a child transcript records, or undefined when it cannot be read. */
+  /** The session id, spawning parent, and working directory a child transcript records, or undefined when it cannot be read. */
   transcriptHeader(transcript: string): ChildTranscriptHeader | undefined;
 }
 
@@ -472,43 +480,27 @@ export class SubagentManager {
   }
 
   /**
-   * Rebuild the record of a settled child this manager never ran, from the last
-   * run its parent session recorded, so a resume continues the child's own
-   * transcript under its original id. Registered only once it is resumable.
+   * Rebuild the record of a settled child this manager never ran, from what its
+   * parent session recorded, so a resume continues the child's own transcript
+   * under its original id. Registered only once it is resumable.
    *
    * The child is restored as the agent type it ran as, held to the turn limit
-   * it ran under; one whose type is gone or disabled is refused rather than run
-   * under another definition. A child that ran in a provider workspace is not
-   * restored: an earlier manager's teardown disposed every workspace it held.
+   * it ran under, with the metrics it had accumulated. One whose type is gone
+   * or disabled is refused rather than run under another definition, and one
+   * that ran in a provider workspace is not restored: an earlier manager's
+   * teardown disposed every workspace it held.
    */
   private restore(id: string): Subagent | ResumeRefusalReason {
-    const history = this.history;
-    const run = history && readPersistedRuns(history.entries()).find((r) => r.id === id);
-    if (!history || !run) return "unknown-agent";
-    const snapshot = history.snapshot();
-    if (!snapshot) return "unknown-agent";
-    if (run.outputFile === undefined) return "no-session";
-    const header = history.transcriptHeader(run.outputFile);
-    if (header === undefined) return "no-session";
-    const parentSession = history.parentSession();
-    // Forks inherit run entries, not ownership of the transcripts they name.
-    if (header.parentSession !== parentSession.parentSessionId) return "unknown-agent";
-    const type = this.restorableType(run.type);
-    if (type === undefined) return "agent-type-unavailable";
-    if (!this.workspaceSurvives(run, header.cwd, snapshot.cwd)) return "workspace-disposed";
-
+    const source = this.findRestorable(id);
+    if (typeof source === "string") return source;
+    const { run, header, snapshot, parentSession } = source;
     const record = new Subagent({
       id,
-      type,
-      description: run.description,
+      type: source.type,
+      description: run.summary.description,
       isBackground: false,
       execution: {
-        // Checked again as the transcript reopens: the registry reloads on every
-        // subagent call, and a queued resume may reopen it long after this.
-        createSubagentSession: (params) =>
-          this.restorableType(type) === undefined
-            ? Promise.reject(new Error(`Agent type "${type}" is no longer defined or is disabled; the child was not restored.`))
-            : this.createSubagentSession(params),
+        createSubagentSession: this.createSubagentSession,
         snapshot,
         prompt: "",
         baseCwd: this.baseCwd,
@@ -517,39 +509,49 @@ export class SubagentManager {
         getWorkspaceProvider: () => this._workspaceProvider,
         maxTurns: restoredMaxTurns(run.turnBudget),
         parentSession,
-        transcript: { file: run.outputFile, header },
+        transcript: { file: run.outputFile, header, leafId: run.transcriptLeafId },
       },
-      state: new SubagentState({ toolUses: run.toolUses }),
-      // The earlier run's outcome was delivered by the manager that ran it, and
-      // a run it recorded as still going was cut off when that manager went.
-      outcome: {
-        status: isActiveStatus(run.status) ? "stopped" : run.status,
-        stoppedWhileQueued: run.stoppedWhileQueued,
-        startedAt: run.startedAt,
-        completedAt: run.completedAt,
-        consumedAt: run.completedAt ?? run.startedAt,
-      },
+      state: new SubagentState({
+        toolUses: run.summary.toolUses,
+        lifetimeUsage: run.lifetimeUsage,
+        compactionCount: run.compactionCount,
+      }),
+      outcome: restoredOutcome(run.summary),
     });
     this.agents.set(id, record);
     return record;
   }
 
-  /** The canonical name of an agent type a child may still run as, or undefined when it is gone or disabled. */
-  private restorableType(type: string): SubagentType | undefined {
-    const canonical = this.registry.resolveType(type);
-    return canonical !== undefined && this.registry.isValidType(canonical) ? canonical : undefined;
+  /**
+   * What a restore continues the child `id` from, or why it is refused: an id
+   * the current parent session never recorded, or a fork's inherited child, is
+   * `unknown-agent`; a run with no transcript that is provably still the
+   * child's is `no-session`; then the agent type and the workspace decide.
+   */
+  private findRestorable(id: string): RestoreSource | ResumeRefusalReason {
+    const history = this.history;
+    const snapshot = history?.snapshot();
+    if (!history || !snapshot) return "unknown-agent";
+    const recorded = readRestorableRun(history.entries(), id);
+    if (recorded.kind === "unrecorded") return "unknown-agent";
+    const parentSession = history.parentSession();
+    const transcript = provenTranscript(recorded, history, parentSession.parentSessionId);
+    if (typeof transcript === "string") return transcript;
+    const type = this.restorableType(transcript.run.summary.type);
+    if (type === undefined) return "agent-type-unavailable";
+    if (transcript.run.providerWorkspace) return "workspace-disposed";
+    return { ...transcript, type, snapshot, parentSession };
   }
 
   /**
-   * Whether the directory a settled child ran in is still the one it was. A
-   * run that recorded its provenance answers directly. One recorded before
-   * provenance was (`providerWorkspace` unknown) is trusted only where nothing
-   * suggests a provider: its transcript names the parent's own directory, and
-   * no provider is registered that could have prepared it.
+   * The canonical name of an agent type a child may still run as, read afresh
+   * from its source, or undefined when it is gone or disabled. Every front door
+   * gets the same answer, whether or not anything else reloaded the registry.
    */
-  private workspaceSurvives(run: PersistedRunSummary, childCwd: string, parentCwd: string): boolean {
-    if (run.providerWorkspace !== undefined) return !run.providerWorkspace;
-    return childCwd === parentCwd && this._workspaceProvider === undefined;
+  private restorableType(type: string): SubagentType | undefined {
+    this.registry.reload();
+    const canonical = this.registry.resolveType(type);
+    return canonical !== undefined && this.registry.isValidType(canonical) ? canonical : undefined;
   }
 
   getRecord(id: string): Subagent | undefined {
@@ -681,11 +683,57 @@ export class SubagentManager {
   }
 }
 
+/** A settled child a restore continues, and what it is continued against. */
+interface RestoreSource {
+  run: RestorableRun;
+  header: ChildTranscriptHeader;
+  type: SubagentType;
+  snapshot: ParentSnapshot;
+  parentSession: ParentSessionInfo;
+}
+
 /**
- * The turn limit a restored child runs under: the ceiling its last run
+ * The child's recorded run with the transcript header that proves its file is
+ * still the child's own, or why the transcript cannot be continued. A file
+ * naming another parent is a fork's inherited child (`unknown-agent`): forks
+ * inherit run entries, not ownership of the transcripts they name. A file that
+ * is missing, unreadable, or another session (a sibling's put in its place),
+ * and a run recorded before the session id was, are `no-session`: nothing shows
+ * the file is the child's.
+ */
+function provenTranscript(
+  recorded: Exclude<ChildRestoreRecord, { kind: "unrecorded" }>,
+  history: ChildHistory,
+  parentSessionId: string | undefined,
+): Pick<RestoreSource, "run" | "header"> | ResumeRefusalReason {
+  const file = recorded.kind === "restorable" ? recorded.run.outputFile : recorded.outputFile;
+  const header = file === undefined ? undefined : history.transcriptHeader(file);
+  if (header && header.parentSession !== parentSessionId) return "unknown-agent";
+  if (recorded.kind !== "restorable" || header?.id !== recorded.run.sessionId) return "no-session";
+  return { run: recorded.run, header };
+}
+
+/**
+ * The outcome a restored record starts from: its last run's, which the manager
+ * that ran it delivered. An entry describes the run that ended, so its status
+ * is terminal; one that reads active anyway is taken as stopped, so the
+ * restored record starts settled whatever the entry claims.
+ */
+function restoredOutcome(run: PersistedRunSummary): RunOutcomeInit {
+  return {
+    status: isActiveStatus(run.status) ? "stopped" : run.status,
+    stoppedWhileQueued: run.stoppedWhileQueued,
+    startedAt: run.startedAt,
+    completedAt: run.completedAt,
+    consumedAt: run.completedAt ?? run.startedAt,
+  };
+}
+
+/**
+ * The turn limit a restored child runs under: the ceiling its runs last
  * recorded, or 0 — unlimited, over the agent's own and the run default — when
- * that run recorded none. A run that never reached its turn loop recorded no
- * budget at all; such a child gets what a fresh spawn of its type would.
+ * that budget named none. When no run of it ever reached its turn loop there is
+ * no budget at all, and the child gets what a fresh spawn of its type would.
  */
 function restoredMaxTurns(budget: TurnBudget | undefined): number | undefined {
   if (budget === undefined) return undefined;
