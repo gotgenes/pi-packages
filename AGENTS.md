@@ -116,8 +116,9 @@ Use `scripts/issue-context.sh <N>` to gather all available context for an issue 
 This file is loaded into every session; a skill's body is loaded only when read.
 Before adding a passage here, answer three questions in order:
 
-1. Could a current model act correctly without it?
+1. Would a current model do what the operator wants without it?
    If yes, it belongs nowhere.
+   A stated operator choice among defensible alternatives passes however familiar its subject: a model knows every option, not which one was picked.
 2. Is it needed before any workflow step has run, or is it an environment fact no model could infer?
    If neither, it belongs in the body of the topic skill whose trigger it fires at.
    Every rule has a loader now; a missing destination is a reason to create one, not to keep the rule here.
