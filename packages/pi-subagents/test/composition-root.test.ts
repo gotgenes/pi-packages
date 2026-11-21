@@ -152,6 +152,7 @@ function makeSessionStartCtx(
   parentRegistry: unknown,
   ui: ReturnType<typeof makeRecordingUI>,
   hasUI = false,
+  entries: unknown[] = [],
 ) {
   return {
     hasUI,
@@ -163,6 +164,7 @@ function makeSessionStartCtx(
       getSessionId: vi.fn(() => "session-1"),
       getSessionFile: vi.fn(() => "/sessions/parent.jsonl"),
       getBranch: vi.fn(() => []),
+      getEntries: vi.fn(() => entries),
     },
     getSystemPrompt: vi.fn(() => "parent prompt"),
   } as any;
@@ -568,5 +570,93 @@ describe("composition root: stopped record at shutdown", () => {
       "subagents:record",
       expect.objectContaining({ id, status: "stopped", stoppedWhileQueued: false }),
     );
+  });
+});
+
+describe("composition root: a settled child across a reload", () => {
+  let tasksDir: string;
+
+  beforeEach(() => {
+    tasksDir = mkdtempSync(join(tmpdir(), "pi-root-restore-"));
+  });
+
+  afterEach(() => {
+    rmSync(tasksDir, { recursive: true, force: true });
+  });
+
+  /**
+   * Run a child to completion in one extension instance, recording into
+   * `entries` what that instance appends to the parent session, then shut the
+   * instance down as `/reload` does. Returns the child's id.
+   */
+  async function runChildThenReload(entries: unknown[], transcript: string): Promise<string> {
+    vi.mocked(createSubagentSession).mockClear();
+    vi.mocked(createSubagentSession).mockResolvedValue(
+      toSubagentSession(createSubagentSessionStub(createMockSession(), transcript)),
+    );
+    const { pi, tools, fire } = makePi();
+    vi.mocked(pi.appendEntry).mockImplementation((customType: string, data: unknown) => {
+      entries.push({ type: "custom", customType, data });
+    });
+    subagentsExtension(pi);
+    await fire("session_start", {}, makeSessionStartCtx(makeParentRegistry().registry, makeRecordingUI(), false, entries));
+    const result = await tools.get("subagent").execute(
+      "tool-call-1",
+      { prompt: "Map the configs", description: "configs", subagent_type: "general-purpose" },
+      undefined,
+      undefined,
+    );
+    await fire("session_shutdown", {});
+    const id = /Agent ID: (\S+)/.exec(result.content[0].text)?.[1];
+    if (!id) throw new Error(`no agent id in: ${result.content[0].text}`);
+    return id;
+  }
+
+  /** Start a fresh extension instance on the same parent session and resume `id` from it. */
+  async function resumeAfterReload(entries: unknown[], id: string) {
+    vi.mocked(createSubagentSession).mockClear();
+    const resumed = createSubagentSessionStub(createMockSession());
+    resumed.runTurnLoop.mockResolvedValue({
+      responseText: "Picked up where I left off.",
+      turnBudget: { used: 1, phase: "within" },
+    });
+    vi.mocked(createSubagentSession).mockResolvedValue(toSubagentSession(resumed));
+    const { pi, tools, fire } = makePi();
+    subagentsExtension(pi);
+    await fire("session_start", {}, makeSessionStartCtx(makeParentRegistry().registry, makeRecordingUI(), false, entries));
+    return tools.get("subagent").execute(
+      "tool-call-2",
+      { prompt: "Now the fallback", description: "configs", subagent_type: "general-purpose", resume: id },
+      undefined,
+      undefined,
+    );
+  }
+
+  it("resumes it under its original id, continuing its transcript", async () => {
+    const transcript = join(tasksDir, "child.jsonl");
+    // The child ran in the parent's own directory, as the session context's cwd says.
+    writeFileSync(transcript, `${JSON.stringify({ type: "session", id: "child-session", cwd: "/tmp" })}\n`);
+    const entries: unknown[] = [];
+    const id = await runChildThenReload(entries, transcript);
+
+    const result = await resumeAfterReload(entries, id);
+
+    expect(createSubagentSession).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ type: "general-purpose", transcript }),
+      expect.anything(),
+    );
+    expect(result.content[0].text).toBe(`Agent ID: ${id}\n\nPicked up where I left off.`);
+  });
+
+  it("refuses a child whose transcript records another directory, opening nothing", async () => {
+    const transcript = join(tasksDir, "child.jsonl");
+    writeFileSync(transcript, `${JSON.stringify({ type: "session", id: "child-session", cwd: "/ws/child" })}\n`);
+    const entries: unknown[] = [];
+    const id = await runChildThenReload(entries, transcript);
+
+    const result = await resumeAfterReload(entries, id);
+
+    expect(createSubagentSession).not.toHaveBeenCalled();
+    expect(result.content[0].text).toMatch(/isolated workspace that no longer exists/);
   });
 });

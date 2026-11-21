@@ -386,7 +386,8 @@ src/
 │   ├── model-resolver.ts           fuzzy model name resolution
 │   ├── package-exclusions.ts       child settings view that disables excluded packages' extensions
 │   ├── provider-inheritance.ts     replays the parent's runtime-registered providers onto the child's own runtime, so the child inherits them without sharing the parent's mutable pool
-│   └── session-dir.ts              session directory derivation
+│   ├── session-dir.ts              session directory derivation
+│   └── transcript-cwd.ts           reads the directory a child transcript's header records
 │
 ├── lifecycle/                      agent execution and state tracking
 │   ├── subagent-manager.ts         collection manager + observer wiring + session-retention sweep (consumption-aware; an unanswered question holds the safety cap); the resume choke point, refusing from the record's own predicate and reporting a discriminated outcome, so every front door declines the same resumes; a door that returns before the resumed run ends starts one synchronously, and each resume's caller decides whether its outcome is claimed; admits a background resume through the limiter like a background spawn, while a foreground one starts at once
@@ -462,6 +463,11 @@ It runs if and only if a subagent is running, since a finished agent's line carr
 The widget's rendered height is also bounded by the terminal's row count rather than a fixed ceiling: Pi's regular-mode differential renderer clears the screen and the scrollback whenever the first changed line sits above the previous viewport top, and the widget's spinner is that line on every tick, so a widget taller than the rows beneath it turns every tick into a destructive repaint ([#864]).
 The `/subagents:sessions` navigator reads messages via `Subagent.agentMessages` and subscribes to updates via `Subagent.subscribeToUpdates()` — no direct `AgentSession` reference (#277).
 It also reads the parent session's `subagents:record` entries (`persisted-record.ts`), so runs the manager no longer holds, such as those from before a `/reload`, open from their transcript file.
+
+The same entries make those runs resumable.
+`SubagentManager.startResume` falls back to its `ChildHistory` for an id it holds no record for, and rebuilds the record from the last run recorded under that id, with the transcript as its `execution.transcript`.
+The rebuilt record's first resume reopens the transcript through `createSubagentSession({ transcript })` rather than requiring a live session, and the reopened session keeps the model and thinking level the transcript recorded.
+A transcript whose header names a directory other than the parent's ran in a provider workspace, which the earlier manager's teardown disposed, so it is refused as `workspace-disposed` without a record.
 
 ## Cross-extension architecture
 

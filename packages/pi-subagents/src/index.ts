@@ -48,6 +48,7 @@ import { createProjectContextLoader } from "#src/session/project-context";
 import { buildAgentPrompt } from "#src/session/prompts";
 import { inheritRegisteredProviders } from "#src/session/provider-inheritance";
 import { deriveSubagentSessionDir } from "#src/session/session-dir";
+import { readTranscriptCwd } from "#src/session/transcript-cwd";
 import { SettingsManager } from "#src/settings";
 import { AgentTool } from "#src/tools/agent-tool";
 import { GetResultTool } from "#src/tools/get-result-tool";
@@ -197,6 +198,14 @@ export default function (pi: ExtensionAPI) {
     getRunConfig: () => settings,
     getRetentionPolicy: () => settings,
     registry,
+    // A resume of a child this manager never ran (an earlier one did, before a
+    // /reload or a restart) finds it in the parent session's own records.
+    history: {
+      entries: () => runtime.getSessionEntries(),
+      snapshot: () => runtime.snapshotIfInSession(),
+      parentSession: () => runtime.getSessionInfo(),
+      transcriptCwd: readTranscriptCwd,
+    },
   });
 
   // Typed service published via Symbol.for() for cross-extension access.

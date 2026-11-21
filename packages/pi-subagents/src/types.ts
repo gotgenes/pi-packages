@@ -6,6 +6,7 @@ import type { Model } from "@earendil-works/pi-ai";
 import type { AgentSessionEvent, SessionContext as SdkSessionContext } from "@earendil-works/pi-coding-agent";
 import type { LockDeclaration } from "#src/config/invocation-config";
 import type { SubagentThinkingLevel } from "#src/config/thinking-level";
+import type { SessionEntryLike } from "#src/persisted-record";
 import type { ModelRegistry } from "#src/session/model-resolver";
 
 
@@ -114,6 +115,8 @@ export interface SessionContext {
     getSessionFile(): string | undefined;
     getSessionId(): string;
     getBranch(): unknown[];
+    /** Every entry in the session file, across branches. */
+    getEntries(): readonly SessionEntryLike[];
   };
 }
 

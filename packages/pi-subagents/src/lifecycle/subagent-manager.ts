@@ -25,8 +25,9 @@ import {
 } from "#src/lifecycle/subagent";
 import type { RunKind, RunOutcome } from "#src/lifecycle/subagent-run";
 import type { SubagentSession } from "#src/lifecycle/subagent-session";
+import { SubagentState, type SubagentStatus } from "#src/lifecycle/subagent-state";
 import type { WorkspaceProvider } from "#src/lifecycle/workspace";
-
+import { readPersistedRuns, type SessionEntryLike } from "#src/persisted-record";
 import type { RunConfig } from "#src/runtime";
 import type { AgentConfig, CompactionInfo, ParentSessionInfo, SubagentType, ThinkingLevel } from "#src/types";
 
@@ -88,6 +89,14 @@ export interface RetentionPolicy {
   readonly consumedSessionRetentionMinutes: number;
   readonly unconsumedSessionRetentionMinutes: number;
 }
+
+/** The statuses a run can be restored in; any other was cut off mid-run. */
+const SETTLED_STATUSES: ReadonlySet<SubagentStatus> = new Set<SubagentStatus>([
+  "completed",
+  "aborted",
+  "stopped",
+  "error",
+]);
 
 const DEFAULT_RETENTION_POLICY: RetentionPolicy = {
   consumedSessionRetentionMinutes: 10,
@@ -171,6 +180,23 @@ export interface SubagentManagerObserver {
   onSubagentCreated(record: Subagent): void;
 }
 
+/**
+ * Where the manager looks for a settled child of the current parent session
+ * that it holds no record for: one an earlier manager ran, before a `/reload`
+ * or a restart replaced it. Read at the moment of a resume, never cached, so it
+ * always answers for whichever parent session is current.
+ */
+export interface ChildHistory {
+  /** The parent session's entries, which hold a `subagents:record` per finished run. */
+  entries(): readonly SessionEntryLike[];
+  /** The parent as it is now, which a reopened child is assembled against; undefined outside a session. */
+  snapshot(): ParentSnapshot | undefined;
+  /** The current parent session's identity, which a reopened child reports to lifecycle consumers. */
+  parentSession(): ParentSessionInfo;
+  /** The working directory a child transcript records, or undefined when it cannot be read. */
+  transcriptCwd(transcript: string): string | undefined;
+}
+
 export interface SubagentManagerOptions {
   /** Assembly factory that produces a born-complete SubagentSession per spawn. */
   createSubagentSession: (params: CreateSubagentSessionParams) => Promise<SubagentSession>;
@@ -184,6 +210,8 @@ export interface SubagentManagerOptions {
   observer?: SubagentManagerObserver;
   /** Agent registry, consulted to canonicalize a spawn's type and resolve its config. */
   registry: SpawnTypeResolver;
+  /** Where a resume finds a settled child an earlier manager ran; none restores nothing. */
+  history?: ChildHistory;
 }
 
 export interface AgentSpawnConfig {
@@ -224,6 +252,7 @@ export class SubagentManager {
   private getRunConfig?: () => RunConfig;
   private getRetentionPolicy?: () => RetentionPolicy;
   private readonly registry: SpawnTypeResolver;
+  private readonly history?: ChildHistory;
   private _workspaceProvider?: WorkspaceProvider;
 
   /** The registered workspace provider, or undefined when none is registered. */
@@ -239,6 +268,7 @@ export class SubagentManager {
     this.getRunConfig = options.getRunConfig;
     this.getRetentionPolicy = options.getRetentionPolicy;
     this.registry = options.registry;
+    this.history = options.history;
     // Periodically release the heavy session of terminal agents past their
     // retention window. The lightweight record (with its result) is kept for the
     // session lifetime, so get_subagent_result never misses in-session.
@@ -264,7 +294,7 @@ export class SubagentManager {
   }
 
   /** Compose a per-agent lifecycle observer from manager and spawn-config concerns. */
-  private buildObserver(options: AgentSpawnConfig): SubagentLifecycleObserver {
+  private buildObserver(options: Pick<AgentSpawnConfig, "observer">): SubagentLifecycleObserver {
     return {
       onRunStarted: (agent, kind) => {
         try { this.observer?.onSubagentRunStarted(agent, kind); } catch (err) { debugLog("onSubagentRunStarted observer", err); }
@@ -424,8 +454,8 @@ export class SubagentManager {
    * spawn; a foreground one starts at once, like a foreground spawn.
    */
   startResume(id: string, prompt: string, options: ResumeCallOptions): ResumeStart {
-    const agent = this.agents.get(id);
-    if (!agent) return { kind: "refused", reason: "unknown-agent" };
+    const agent = this.agents.get(id) ?? this.restore(id);
+    if (typeof agent === "string") return { kind: "refused", reason: agent };
     const refusal = agent.resumeRefusal;
     if (refusal) return { kind: "refused", reason: refusal };
     // Each resume's caller decides who carries its outcome: the resume's run is
@@ -443,6 +473,57 @@ export class SubagentManager {
       options.background ? this.admitBackground : undefined,
     );
     return { kind: "started", record: agent };
+  }
+
+  /**
+   * Rebuild the record of a settled child this manager never ran, from the last
+   * run its parent session recorded, so a resume continues the child's own
+   * transcript under its original id. Registered only once it is resumable.
+   *
+   * A child that ran in a provider workspace is not restored: an earlier
+   * manager's teardown disposed every workspace it held. Such a child is the one
+   * whose transcript records a directory other than the parent's own.
+   */
+  private restore(id: string): Subagent | ResumeRefusalReason {
+    const history = this.history;
+    const run = history && readPersistedRuns(history.entries()).find((r) => r.id === id);
+    if (!history || !run) return "unknown-agent";
+    const snapshot = history.snapshot();
+    if (!snapshot) return "unknown-agent";
+    if (run.outputFile === undefined) return "no-session";
+    const cwd = history.transcriptCwd(run.outputFile);
+    if (cwd === undefined) return "no-session";
+    if (cwd !== snapshot.cwd) return "workspace-disposed";
+
+    const record = new Subagent({
+      id,
+      type: run.type,
+      description: run.description,
+      isBackground: false,
+      execution: {
+        createSubagentSession: this.createSubagentSession,
+        snapshot,
+        prompt: "",
+        baseCwd: this.baseCwd,
+        observer: this.buildObserver({}),
+        getRunConfig: this.getRunConfig,
+        getWorkspaceProvider: () => this._workspaceProvider,
+        parentSession: history.parentSession(),
+        transcript: run.outputFile,
+      },
+      state: new SubagentState({ toolUses: run.toolUses }),
+      // The earlier run's outcome was delivered by the manager that ran it, and
+      // a run it recorded as still going was cut off when that manager went.
+      outcome: {
+        status: SETTLED_STATUSES.has(run.status) ? run.status : "stopped",
+        stoppedWhileQueued: run.stoppedWhileQueued,
+        startedAt: run.startedAt,
+        completedAt: run.completedAt,
+        consumedAt: run.completedAt ?? run.startedAt,
+      },
+    });
+    this.agents.set(id, record);
+    return record;
   }
 
   getRecord(id: string): Subagent | undefined {

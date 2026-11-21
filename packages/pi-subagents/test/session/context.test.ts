@@ -12,6 +12,7 @@ function makeCtx(entries: unknown[]): SessionContext {
       getSessionFile: () => undefined,
       getSessionId: () => "test",
       getBranch: () => entries,
+      getEntries: () => [],
     },
   };
 }

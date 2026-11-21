@@ -137,6 +137,10 @@ Only the call's own flag does this; an agent file's `run_in_background` default 
 A background resume shows in the widget regardless of the mode the agent was spawned in, and a foreground resume streams its progress inline.
 Like a background spawn, a background resume waits for a slot when the [concurrency limit](#concurrency) is reached, and its result says it was queued.
 
+A settled agent stays resumable after a `/reload`, and after restarting Pi and reopening the same parent session.
+The parent session records each finished run, so a `resume` naming an agent from before the reload continues that agent's own transcript under its original ID, as the agent type it was, on the model its transcript last recorded.
+An agent that ran in an isolated workspace is not resumable this way, because its workspace was removed when the previous session ended.
+
 ### `get_subagent_result`
 
 Check status and retrieve results from a background agent.
@@ -409,14 +413,15 @@ A resume that could not start resolves to `{ kind: "refused", reason }` instead,
 
 | `reason`             | Meaning                                                         |
 | -------------------- | --------------------------------------------------------------- |
-| `unknown-agent`      | No record answers to that id (records are cleared per session)  |
+| `unknown-agent`      | No record or recorded run in this parent session has that id    |
 | `still-running`      | The agent has not settled; wait, or `steer` it while it runs    |
 | `resume-queued`      | A resume is waiting for a concurrency slot; wait for its run    |
-| `no-session`         | The agent never had a session to continue                       |
+| `no-session`         | The agent has no session or saved transcript to continue        |
 | `session-released`   | Its session was released after the retention window             |
 | `workspace-disposed` | Its isolated workspace is gone, so a resume cannot re-enter it  |
 
 Every record's `resumeRefusal` field predicts this answer before the call, minus `unknown-agent`, which no record can carry.
+An agent from before a `/reload` or a restart has no record until a resume restores it, so only the call answers for it.
 
 A resumed run that _fails_ is still `{ kind: "resumed" }`; the snapshot carries `status: "error"` and the message.
 Refused means nothing started.

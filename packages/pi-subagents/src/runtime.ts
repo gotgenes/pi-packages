@@ -11,6 +11,7 @@ import {
   type ParentPromptOptions,
   type ParentSnapshot,
 } from "#src/lifecycle/parent-snapshot";
+import type { SessionEntryLike } from "#src/persisted-record";
 import type { ModelInfo } from "#src/tools/spawn-config";
 import type { SessionContext } from "#src/types";
 
@@ -80,6 +81,19 @@ export class SubagentRuntime {
       parentModel: this.currentCtx?.model,
       modelRegistry: this.currentCtx?.modelRegistry,
     };
+  }
+
+  /** The current parent session's entries, or none outside a session. */
+  getSessionEntries(): readonly SessionEntryLike[] {
+    return this.currentCtx?.sessionManager.getEntries() ?? [];
+  }
+
+  /**
+   * A fresh-context snapshot of the parent as it is now, or undefined outside
+   * a session: what a child reopened from its transcript is assembled against.
+   */
+  snapshotIfInSession(): ParentSnapshot | undefined {
+    return this.currentCtx ? this.buildSnapshot(false) : undefined;
   }
 
   /** Extract session identity from the current session context. */
