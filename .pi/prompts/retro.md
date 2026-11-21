@@ -65,25 +65,29 @@ The `## Stage: Sync (worktree)` breadcrumb — spelled `## Stage: Ship (worktree
 If only the peer worktree's cwd is known (no recorded path), use `list_session_files({ cwd: "<worktree path>" })` to find its newest session file first.
 
 Be specific: cite file paths, commit subjects, and concrete tool sequences.
-Categorize each friction point with one label:
+Label each friction point by what would have prevented it, with one label:
 
-- `premature-convergence` — picked the first viable approach without exploring alternatives
-- `missing-context` — didn't check existing code, docs, conventions, or upstream specs
-- `wrong-abstraction` — operated at the wrong level (mechanical when strategy was needed, or vice versa)
-- `scope-drift` — went beyond what was asked or missed the actual ask
-- `rabbit-hole` — chased symptoms instead of questioning assumptions
-- `instruction-violation` — had clear instructions in `AGENTS.md` or the prompt but didn't follow them
-- `other` — describe
+- `fact`: the agent lacked a fact about this environment or codebase that no model could infer
+- `preference`: the operator wanted one of several defensible options, and nothing written said which
+- `slip`: a mechanical error in emitting a tool call, an edit, or a command
+- `rule-ignored`: a rule that covered the moment was in this session's context and was not followed
+- `rule-unloaded`: a rule that covered the moment sits in a skill the session never read
+- `judgment`: a defensible call that turned out worse, which no written rule would have changed
+- `other`: describe
+
+Before choosing among `fact`, `rule-ignored`, and `rule-unloaded`, search `AGENTS.md`, `.pi/skills`, and the invoked template for a rule covering the moment.
 
 For each friction point describe the **concrete impact**: time wasted, rework caused, follow-up commits needed, or "added friction but no rework."
 
-Note whether each `instruction-violation` was **self-identified** (you caught it mid-session) or **user-caught** (the user pointed it out).
-Self-identified failures usually indicate a salience tweak; user-caught failures may indicate the rule needs to be more prominent.
+Note whether each friction point was **self-identified** (you caught it mid-session) or **operator-caught** (the operator pointed it out).
 
-### Bidirectional feedback
+### What the operator steered
 
-Look for moments where the user could have shared context earlier, intervened with a redirecting question instead of a correction, or where their involvement was mechanical oversight rather than strategic judgment.
-Frame as opportunity, not criticism.
+List every message where the operator redirected or corrected the agent, or chose against its recommendation at a gate, and quote the steering words verbatim.
+Tag each one by what it was: `steer:rule` when it pointed at a written rule, `steer:fact` when it supplied a fact, and `steer:choice` when it picked among defensible options.
+For a `steer:choice`, record whether the operator's own words made it general ("always", "I prefer") or left its reach unstated.
+Do not ask about its reach in the moment; the operator often cannot say from one case.
+Then list the earlier ones with `rg -n 'steer:choice' docs/retro packages/*/docs/retro` and name any that states the same choice.
 
 ### Novel wins only
 
@@ -105,9 +109,9 @@ Skip a lens entirely when it finds nothing notable.
    `[session] → <name>` lines mark the stage boundaries to attribute each run of turns to.
    `pi-session-tools` is this repo's own tooling for exactly this — use `read_session`/`read_session_file`, not `jq` over `$PI_SESSION_FILE`, and never `PI_MODEL`/`PI_PROVIDER`, which report only the session's *current* model and invent an attribution when extrapolated across stages.
    A subagent's turns live in its own transcript, which `list_subagent_sessions({ path })` finds for a given session file and `read_session_file({ path })` renders — attribute a subagent's model from that transcript rather than from its agent definition, which records the model it was configured with and not the one that ran.
-2. **Escalation-delay tracking** — for each `rabbit-hole` friction point, count how many consecutive tool calls the agent spent on the same error or approach before resolving or changing strategy.
+2. **Escalation-delay tracking** — for each stretch where the agent pursued one error or approach, count how many consecutive tool calls it spent before resolving or changing strategy.
    Flag sequences longer than 5 consecutive tool calls on the same error as "should have dispatched an Explore or Plan subagent" or "should have asked the user."
-3. **Unused-tool detection** — for each `rabbit-hole` or `missing-context` friction point, check whether a subagent type or tool was available that could have helped but was never dispatched.
+3. **Unused-tool detection** — for each such stretch, and each `fact` friction point, check whether a subagent type or tool was available that could have helped but was never dispatched.
    Examples: an Explore agent for codebase understanding, `colgrep` for semantic search, `web_search` for library docs.
 4. **Feedback-loop gap analysis** — check which verification tools the agent ran (`pnpm run check`, `pnpm run test`, `pnpm run lint`) and when in the session they were invoked.
    Flag cases where verification ran only at the end rather than incrementally after each change.
@@ -137,14 +141,14 @@ issue_title: "<exact title from `gh issue view N`>"
 
 - ...
 
-#### What caused friction (agent side)
+#### What caused friction
 
 - `<label>` — <description>.
   Impact: <concrete impact>.
 
-#### What caused friction (user side)
+#### What the operator steered
 
-- ...
+- `steer:<rule|fact|choice>`: "<verbatim words>", after <what the agent had proposed>.
 ```
 
 If the file already exists with prior stage entries, **append** the new entry — do not overwrite existing content.
@@ -155,12 +159,26 @@ Wrap all code identifiers, filenames, route paths, CLI names, and any text conta
 
 ## Step 4 — Present highlights and proposals (before asking)
 
+A retro records every finding and proposes a change for only some of them.
+A retro that proposes nothing is complete.
+
+| Label           | What it may propose                                                    | When                                                                                                |
+| --------------- | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `fact`          | the fact, in the skill whose trigger it fires at                       | once it is verified against the real surface                                                        |
+| `preference`    | the choice in one line, with a short reason                            | when the operator's words made it general, or when an earlier retro records the same `steer:choice` |
+| `slip`          | a mechanism: a deny rule, a lint check, a tool fix                     | when an earlier retro records the same slip                                                         |
+| `rule-ignored`  | a mechanism that enforces the rule, or the rule's deletion             | at once; never a louder or longer rule                                                              |
+| `rule-unloaded` | a trigger fix in the skill's `description` or the template's load list | at once                                                                                             |
+| `judgment`      | a rule                                                                 | only when an earlier retro records the same call                                                    |
+
+Cite the earlier retro by path wherever the table asks for one.
+
 Surface the synthesis as regular message text **before** invoking `ask-user`.
 The message must include:
 
 1. **Cross-session highlights** — 2–4 short paragraphs synthesizing dominant friction patterns and any wins worth promoting.
    Not a copy of the retro file — the bridge between observations and proposals.
-2. **Per-proposal context** — for each proposed change: the concrete pain (with tool-call counts or specific examples), why the proposed location is the right home, and the proposed content as a fenced block.
+2. **Per-proposal context** — for each proposed change: the finding's label, the evidence that meets its bar, the concrete pain (with tool-call counts or specific examples), why the proposed location is the right home, and the proposed content as a fenced block.
 3. **What you considered but did not propose** — name candidate changes you rejected and why.
 
 Candidate change locations:
@@ -171,7 +189,8 @@ Candidate change locations:
 
 ## Step 5 — Ask before editing
 
-Use the `ask-user` skill once to confirm which proposals to implement.
+Use the `ask-user` skill once to confirm which proposals to implement; skip it when there are none.
+A `steer:choice` that an earlier retro also records is its own question in that gate: is it general, or particular to these cases?
 The question itself stays a single sentence; the context belongs in the message above.
 
 ## Step 6 — Implement approved changes (with scope discipline)
