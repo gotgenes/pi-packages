@@ -30,6 +30,18 @@ These are the operator's choices among defensible alternatives.
 - A directory's `index.ts` is its public API, kept to what other directories use.
   Other directories import through it, and the rest of the directory is implementation detail.
 
+### Design direction
+
+- Fail loudly: when configuration or state is wrong, report it instead of dropping, clamping, or repairing it silently.
+- Prefer the explicit design: a structured result the caller consumes over a convention in free text or an effect nobody reads.
+- Treat a cast as a sign the design needs another interface or a smaller dependency, in production code and tests alike.
+- When a linter flags code, fix the design it points at; suppress only a finding you have verified as a false positive, or one of the linter conflicts this skill documents.
+- Keep a package's core small and coherent, and expose an extension seam other packages hook into instead of building a secondary capability in.
+- Inherited features, config, and output get no protection: clarity outranks keeping them.
+- Propose the clearer design even when it breaks compatibility, and settle migration second; the operator decides whether to take the break.
+- Follow Pi's own conventions, and adopt its newer SDK mechanisms when they exist.
+- Raise the Pi version floor when that simplifies the code, instead of supporting an older version.
+
 ### Existing code and precedent
 
 Existing code shows the rules in force when it was written, and in a package that has been through improvement phases it is deliberate.

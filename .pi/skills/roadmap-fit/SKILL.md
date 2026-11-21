@@ -13,6 +13,11 @@ By phase close it is too late to fold anything in, and a phase-born issue the ro
 Filing without scope-creeping stays the correct local move.
 This skill carries the issue back up to the roadmap; it never pulls the work into the step under way.
 
+## Before filing
+
+Search for an existing issue or pull request first, open or closed, on this tracker or the upstream one: `gh issue list --state all --search "<terms>"`.
+Add to an existing one instead of filing a duplicate.
+
 ## Step 1: Resolve the package and detect an open phase
 
 Take the package from the new issue's `pkg:*` label.

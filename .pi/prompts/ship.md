@@ -198,6 +198,7 @@ The comment should include:
 - One sentence on user-visible behavior change, worded from the feat/fix commit bodies and the TDD stage note — name the entry point as the code spells it (grep it), never from memory.
 - A note flagging any breaking change (matches `feat!:` commits).
 - If the change unblocks or partially addresses other issues, mention them.
+- When someone other than the operator reported the issue, tell them what was confirmed, what was done, and what remains limited or unconfirmed.
 - Credit by `@login` the issue's author or any commenter who measured the defect or supplied the shipped design — read `gh issue view $1 --json author,comments` first, and skip the operator's own login (`gh api user --jq .login`); the commits carry a `Co-authored-by:` only if planning recorded one.
 - Do not cite a released version — step 10 dispatches the release after this comment, so a version here is a prediction.
   When the release was deferred (mid-batch), say the fix is on `main` and releases with the batch.

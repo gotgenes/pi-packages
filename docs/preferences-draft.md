@@ -27,6 +27,15 @@ Change both together.
 | An object is constructed complete and ready to use, with no getters, setters, or late wiring.                                                                  | `code-design` |
 | Things are named for what they mean in the domain, in plain words, and an ambiguous name is renamed instead of documented.                                     | `code-design` |
 | When code is awkward, the first question is which collaborator is missing, before extracting a helper or splitting a file.                                     | `code-design` |
+| Fail loudly: wrong configuration or state is reported, not dropped, clamped, or repaired silently.                                                             | `code-design` |
+| The explicit design is preferred: a structured result the caller consumes.                                                                                     | `code-design` |
+| A cast is a sign the design needs another interface or a smaller dependency.                                                                                   | `code-design` |
+| A lint finding is fixed at the design it points at, and suppressed only as a verified false positive.                                                          | `code-design` |
+| A package keeps a small core and exposes an extension seam instead of building a secondary capability in.                                                      | `code-design` |
+| Inherited features, config, and output get no protection.                                                                                                      | `code-design` |
+| The clearer design is proposed even when it breaks compatibility, migration is settled second, and the operator decides.                                       | `code-design` |
+| Pi's conventions are followed and its newer SDK mechanisms adopted.                                                                                            | `code-design` |
+| The Pi version floor is raised when that simplifies the code.                                                                                                  | `code-design` |
 
 ### Testing
 
@@ -69,6 +78,8 @@ Change both together.
 | A dependency or tool version that a change touches moves to the latest published one.                                                                                      | `code-design`                  |
 | Recent evidence weighs more than old.                                                                                                                                      | `reading-artifacts`            |
 | A small, related adjacent fix is folded into the change as its own commit, and one that would widen the change a lot is filed.                                             | `tdd-plan.md`, `build-plan.md` |
+| An existing issue or pull request is searched for before a new issue is filed.                                                                                             | `roadmap-fit`                  |
+| A reporter is told what was confirmed, what was done, and what remains limited.                                                                                            | `ship.md`                      |
 
 ## Not placed yet
 
@@ -103,28 +114,11 @@ Change both together.
 A pass over the operator's messages and gate answers from 2026-05-15 to 2026-11-21 read 2,590 entries and extracted 1,151 choices.
 Of those, 775 fall into 142 recurring preferences, and the rest are one-off product or scheduling decisions.
 Measured against `AGENTS.md`, the skills, the prompt templates, and the agent definitions as they stood before this draft, 56 of the 142 were stated, 53 partly stated, and 33 not found.
-Session counts below exclude the interview itself.
-Nothing here is a preference until the operator confirms it.
+The operator went through the results on 2026-11-21, and what was accepted is in the tables above.
 
-Ten of the 33 that were not found, chosen as the least tied to one package's product decisions, were put to the operator on 2026-11-21.
-Three were added to the tables above, three were already covered by lines there, and four were dropped.
-Two more were settled along with the disagreements recorded above, and two of the rest were added afterwards.
-The remaining 19 have not been reviewed.
-Four of the 16 partly stated candidates were accepted the same day and moved to the tables above, and the table below lists the other 12.
+- Of the 33 not found, 14 were reviewed: five were added, three were already covered by other lines, two were settled where earlier steers and the interview disagreed, and four were dropped.
+  The other 19 have not been reviewed, and most are product decisions for one package or appeared in one or two sessions.
+- Of the 53 partly stated, 21 were reviewed: the 16 that recurred in the most sessions were all added, one was covered by principle 6, and four were settled as disagreements.
+  The other 32 have not been reviewed.
 
-### Recurring and only partly in the docs
-
-| Candidate                                                                                             | Sessions | What the docs lack                                              |
-| ----------------------------------------------------------------------------------------------------- | -------- | --------------------------------------------------------------- |
-| Follow Pi's conventions and adopt its newer SDK mechanisms.                                           | 10       | the docs say to read Pi's source, not to prefer its conventions |
-| Keep a package's core small and leave extras to downstream packages.                                  | 9        | the general rule                                                |
-| Raise the Pi version floor when that simplifies the code.                                             | 9        | the preference for raising it                                   |
-| Take a breaking change when it gives a clearer design, and handle migration second.                   | 8        | `AGENTS.md` leans the other way                                 |
-| Fail loudly, and never drop or repair silently.                                                       | 8        | the general rule                                                |
-| Treat a cast as a design smell.                                                                       | 7        | production casts                                                |
-| Search for an existing issue before filing one.                                                       | 7        | a check at filing time                                          |
-| Tell reporters what was confirmed, what was done, and what is limited.                                | 7        | the docs cover credit only                                      |
-| Expose an extension seam instead of building a capability in.                                         | 7        | anything beyond event notification                              |
-| Prefer explicit designs: structured results that callers consume.                                     | 6        | structured results                                              |
-| Fix the design a lint finding points at instead of suppressing it.                                    | 6        | several documented workarounds suppress                         |
-| Inherited features and config get no protection.                                                      | 6        | the principle                                                   |
+The clustered results, with the operator's quoted words, were kept out of the repository.
