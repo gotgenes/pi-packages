@@ -387,7 +387,8 @@ src/
 │   ├── package-exclusions.ts       child settings view that disables excluded packages' extensions
 │   ├── provider-inheritance.ts     replays the parent's runtime-registered providers onto the child's own runtime, so the child inherits them without sharing the parent's mutable pool
 │   ├── session-dir.ts              session directory derivation
-│   └── transcript-header.ts           reads the spawning parent and cwd from the child transcript
+│   ├── transcript-header.ts        reads the session id, spawning parent, and cwd from the child transcript
+│   └── recorded-model.ts           the model a reopened child transcript's branch selects, by Pi's own rule
 │
 ├── lifecycle/                      agent execution and state tracking
 │   ├── subagent-manager.ts         collection manager + observer wiring + session-retention sweep (consumption-aware; an unanswered question holds the safety cap); the resume choke point, refusing from the record's own predicate and reporting a discriminated outcome, so every front door declines the same resumes; a door that returns before the resumed run ends starts one synchronously, and each resume's caller decides whether its outcome is claimed; admits a background resume through the limiter like a background spawn, while a foreground one starts at once
@@ -465,9 +466,16 @@ The `/subagents:sessions` navigator reads messages via `Subagent.agentMessages` 
 It also reads the parent session's `subagents:record` entries (`persisted-record.ts`), so runs the manager no longer holds, such as those from before a `/reload`, open from their transcript file.
 
 The same entries make those runs resumable.
-`SubagentManager.startResume` falls back to its `ChildHistory` for an id it holds no record for, and rebuilds the record from the last run recorded under that id, with the transcript as its `execution.transcript`.
-The rebuilt record's first resume reopens the transcript through `createSubagentSession({ transcript })` rather than requiring a live session, and the reopened session keeps the model and thinking level the transcript recorded.
-A transcript whose header names a directory other than the parent's ran in a provider workspace, which the earlier manager's teardown disposed, so it is refused as `workspace-disposed` without a record.
+`SubagentManager.startResume` falls back to its `ChildHistory` for an id it holds no record for, and rebuilds the record from the last run recorded under that id, with the transcript and the identity its header records as its `execution.transcript`.
+The restore refuses, without a record, a child whose transcript names another parent (`unknown-agent`), whose agent type is no longer defined or is disabled (`agent-type-unavailable`), or whose run recorded a provider workspace, which the earlier manager's teardown disposed (`workspace-disposed`).
+An entry written before runs recorded `providerWorkspace` is restored only when its transcript names the parent's directory and no workspace provider is registered.
+The rebuilt record keeps the turn ceiling its last run recorded (`turnBudget.maxTurns`, or unlimited when that budget named none); a run that recorded no budget gets what a fresh spawn of its type would.
+
+The rebuilt record's first resume reopens the transcript through `createSubagentSession({ transcript })` rather than requiring a live session.
+The factory checks the reopened file still carries the recorded session id, parent, and cwd, and holds a conversation, before any SDK session exists, so a file removed or replaced since the restore fails that resume instead of running it on a blank or unrelated session.
+The reopened session runs in the directory its transcript recorded, on the model its branch selects by Pi's own rule (a virtual model's `model_change` holds over the physical replies routed under it), at the thinking level Pi restores.
+The type is checked again as the transcript reopens, since a queued resume may reopen it after the registry reloaded.
+One reopening is in flight per record: a resume started while a stopped resume's reopening is pending waits for it and continues the session it produces, and a session that arrives after the record was torn down is disposed on arrival rather than adopted.
 
 ## Cross-extension architecture
 
