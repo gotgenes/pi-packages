@@ -6,7 +6,7 @@ description: Land the work (trunk or worktree branch), verify CI, close the issu
 # Ship the implementation
 
 Argument: `$1` is the issue number that was just implemented, or the number of an adopted third-party PR.
-When it is empty, derive the number from the newest plan commit (`git log --format='%s' --grep='^docs: \(re-\)\?plan ' -1` → the trailing `(#N)`), name the issue you derived, and confirm it in step 0 — lane detection reads it.
+When it is empty, derive the number from the newest plan commit (`git log --format='%s' --grep='^docs\(([^)]*)\)\?: \(re-\)\?plan ' -1` → the trailing `(#N)`), name the issue you derived, and confirm it in step 0 — lane detection reads it.
 
 `/ship` runs at the **root** checkout on `main` in both of its lanes:
 
@@ -157,7 +157,7 @@ It prints the tag that would be cut, or nothing at all when the package has no r
 First check whether the range touched any `packages/` file, deriving `PLAN` in the same call — a fresh shell carries no earlier step's variables, and an empty `PLAN` makes `git diff` fail on `^..HEAD` while the pipeline reads as "no packages touched":
 
 ```bash
-PLAN=$(git log --format='%H' --grep="docs: \(re-\)\?plan .*(#$1)" -1)
+PLAN=$(git log --format='%H' --grep="docs\(([^)]*)\)\?: \(re-\)\?plan .*(#$1)" -1)
 test -n "$PLAN" && git diff --name-only "$PLAN"^..HEAD | grep '^packages/'
 ```
 
@@ -177,7 +177,7 @@ Build the close comment from this issue's own commits, anchored on the plan comm
 Each package releases on its own cadence, so a tag range spans every sibling issue that landed since.
 
 ```bash
-PLAN=$(git log --format='%H' --grep="docs: \(re-\)\?plan .*(#$1)" -1)
+PLAN=$(git log --format='%H' --grep="docs\(([^)]*)\)\?: \(re-\)\?plan .*(#$1)" -1)
 git log --format='%H %s' "$PLAN"^..HEAD
 ```
 
@@ -235,7 +235,7 @@ Skip this step entirely if step 8 recorded a defer/batch decision — the releas
 1. Derive candidate packages from the paths the range touched, not from commit types (re-derive `PLAN` — a fresh shell does not carry step 9's):
 
    ```bash
-   PLAN=$(git log --format='%H' --grep="docs: \(re-\)\?plan .*(#$1)" -1)
+   PLAN=$(git log --format='%H' --grep="docs\(([^)]*)\)\?: \(re-\)\?plan .*(#$1)" -1)
    git diff --name-only "$PLAN"^..HEAD | sed -n 's#^packages/\([^/]*\)/.*#\1#p' | sort -u
    ```
 

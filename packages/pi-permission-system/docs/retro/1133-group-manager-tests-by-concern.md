@@ -61,3 +61,58 @@ The package suite went from 6550 to 6527 tests (the 23 planned removals); the th
 - Pre-completion reviewer: WARN.
   The finding: the removed flat test `Project-agent config overrides system-agent tool rules` is not a strict superset match for its kept counterpart.
   The plan documented that, and the issue asks for the removal; frontmatter precedence stays pinned by `Full precedence chain…` and `Project-agent applies even without a matching system-agent file`.
+
+## Stage: Final Retrospective (2026-11-21T04:09:46Z)
+
+### Session summary
+
+One session ran planning, TDD, ship, and retro for #1133.
+The 4,174-line `permission-manager-unified.test.ts` and its two sibling files became one `permission-manager.test.ts` grouped by concern under `describe("PermissionManager")`, in 12 commits with no `src/` change and no release.
+Every measured prediction landed (0 flat tests, 36 `try` blocks, 229 tests, health 77.6), and the issue closed on green CI.
+
+### Observations
+
+#### What went well
+
+- A routing-log spike made the plan's numbers exact before any code moved.
+  A throwaway copy of the test file logged every factory call with its test name and the config's schema verdict; that predicted the in-memory conversion green (232/232), found the one schema-rejected config, and predicted the `try` count of 36 that landed.
+- Two cheap instruments made each of 8 move commits verifiable without reading 4,000 lines of diff: a `vitest list --json` leaf-title census diffed per step, and a trimmed-line multiset diff that separates content changes from Biome reflow.
+  Neither caught a defect here (the test run and a grep did); they confirmed each move changed only what the step named.
+- Converting and deduplicating in place before any move (the Tidy-First assessor's recommendation) turned every later commit into a pure relocation, which kept the census diffs down to the step's own retitles.
+
+#### What caused friction (agent side)
+
+- `premature-convergence` — every layout option I put to the operator (six files, five files, a subdirectory, flat names) shared the issue's premise that the fix is more files.
+  The clarification-gates rule on shared premises and the testing skill's "nest by the unit, then the scenario" were both loaded; neither fired.
+  User-caught over three exchanges ("the prefix indicates a subdirectory or none", "are these tests of a class called `PermissionManager`?", "one class is a sign for `describe` blocks").
+  Impact: three extra gate rounds, the first gate's answer reversed, and the operator had to ask whether the earlier decision was being undone.
+- `instruction-violation` — the plan commit used `docs(pi-permission-system): plan …` where `/plan-issue` prescribes `docs: plan …`.
+  `/ship`'s derivation grep then matched #1101's plan commit, and the `PLAN` anchor resolved empty at step 8.
+  Self-identified at ship time.
+  Impact: no wrong action (the issue number came from context), but an argument-less `/ship` would have targeted the wrong issue.
+  Four of 616 plan commits in history carry a scope.
+- `other` — the throwaway block-mover re-indented lines inside multi-line template literals, which shifted the agent-frontmatter YAML and broke 11 tests.
+  Caught by the step's test run; the engine was made template-literal aware and the step re-run (about 3 tool calls).
+  A blank line also separated a `// ── Deny-with-reason ──` section comment from its first test, so it stayed behind; the line-multiset diff did not flag it, and a grep did.
+- `other` — the first layout `ask_user` was rejected for having no visible text, though a briefing had been written; re-sent with the substance in full.
+  Impact: one extra call.
+
+#### What caused friction (user side)
+
+- The operator's redirect arrived as a series of questions, which surfaced my confusion clearly but took three rounds.
+  Stating the conclusion ("one class: use `describe` blocks in one file") in the first reply would have saved two; the questions were the right move when the premise itself was in doubt.
+
+### Diagnostic details
+
+- **Model-performance correlation** — planning and TDD ran on `anthropic/claude-opus-5-5` (168 turns); the last two TDD turns and the whole ship ran on `anthropic/claude-sonnet-5-5` (10 turns), appropriate for mechanical work.
+  Both subagents ran on `anthropic/claude-opus-5-5`, matching their definitions.
+  The pre-completion reviewer took 2,889 s and 268.7k tokens, because the dispatch asked it to re-derive title-level parity across 240 tests by AST; the cost bought an independent check of the issue's only acceptance criterion.
+- **Feedback-loop gap analysis** — every TDD step ran the file, `pnpm run check`, Biome, and ESLint before commit, and the full package suite ran after the one shared-helper change (step 2); no gap.
+
+### Changes made
+
+1. `.pi/prompts/ship.md`: the four plan-commit greps accept an optional scope (`docs\(([^)]*)\)\?: \(re-\)\?plan`), so a scoped `docs(<pkg>): plan` commit no longer makes an argument-less `/ship` derive another issue or anchor on an empty `PLAN`.
+   Measured: the pattern matches all 616 plan commits and resolves both #1133's scoped and #1101's unscoped commit.
+2. `.pi/skills/clarification-gates/SKILL.md`: the shared-premise rule gains one example naming an issue's prescribed shape (a file split) as a premise.
+
+The edit-tool sentence on re-indenting inside template literals was proposed and declined.
