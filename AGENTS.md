@@ -31,6 +31,8 @@ When a situation has no rule, apply the principle.
    When planning, look past the issue to the design it sits in, and name the architectural target.
    Then land small, reversible changes toward it; when the target is bigger than the issue, put the enabling work in its own issue ahead of this one.
    Preserve intentional behavior unless there is a clear reason to change it; ask before removing functionality or changing defaults.
+7. **Pressure-test before you build.**
+   Push on a proposal, the operator's as much as your own: say what would break it and what survives scrutiny, and disagree when the evidence does.
 
 ## Environment
 

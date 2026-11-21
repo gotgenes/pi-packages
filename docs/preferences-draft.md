@@ -24,6 +24,7 @@ Change both together.
 | A class when the code commands a dependency that has its own state and behavior, and a function when no participant owns the state and every input is a value. | `code-design` |
 | Factory functions that return closures are generally avoided.                                                                                                  | `code-design` |
 | A directory's `index.ts` is its public API, other directories import through it, and the rest of the directory is implementation detail.                       | `code-design` |
+| An object is constructed complete and ready to use, with no getters, setters, or late wiring.                                                                  | `code-design` |
 
 ### Testing
 
@@ -60,6 +61,8 @@ Change both together.
 | Local commits are tidied before pushing, a pushed commit is left alone, and a tidy that would rewrite many SHA citations is skipped.                                       | `git-workflow`           |
 | In `/sync-worktree` the agent resolves a rebase conflict itself, in docs, tests, config, and source, re-runs the checks, and reports what collided and how it resolved it. | `sync-worktree.md`       |
 | `/sync-worktree` runs on Opus, because resolving a source conflict needs the judgment.                                                                                     | `sync-worktree.md`       |
+| Pressure-test a proposal before building on it, the operator's as much as the agent's own.                                                                                 | `AGENTS.md`, principle 7 |
+| Decisions go to the operator one at a time when each needs its own context.                                                                                                | `clarification-gates`    |
 
 ## Not placed yet
 
@@ -97,20 +100,9 @@ Measured against `AGENTS.md`, the skills, the prompt templates, and the agent de
 Session counts below exclude the interview itself.
 Nothing here is a preference until the operator confirms it.
 
-### Recurring and not in the docs
-
-| Candidate                                                                                                 | Sessions |
-| --------------------------------------------------------------------------------------------------------- | -------- |
-| Packages share one configuration: compiler, lint, markdown, package fields, test layout.                  | 9        |
-| Push back on the operator's choices and the agent's own, and pressure-test a proposal before trusting it. | 8        |
-| Construct an object complete and ready, with no getters, setters, or late wiring.                         | 6        |
-| Do not rely on the prompt-template extension's own mechanisms.                                            | 5        |
-| Keep digging one more layer before committing to a plan.                                                  | 4        |
-| Prefer stricter automated checks, because they give fast feedback.                                        | 4        |
-| Keep GitHub issues in step with the plan when the plan changes.                                           | 4        |
-| Go through findings and decisions one at a time.                                                          | 3        |
-| When a bad pattern is named, fix every occurrence.                                                        | 3        |
-| Keep or retire a process tool on evidence.                                                                | 3        |
+Ten of the 33 that were not found, chosen as the least tied to one package's product decisions, were put to the operator on 2026-11-21.
+Three were added to the tables above, three were already covered by lines there, and four were dropped.
+Two more were settled along with the disagreements recorded above, and the remaining 21 have not been reviewed.
 
 ### Recurring and only partly in the docs
 

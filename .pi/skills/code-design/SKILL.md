@@ -23,6 +23,7 @@ These are the operator's choices among defensible alternatives.
   A conclusion only one caller needs stays with that caller until a second caller needs the same one.
 - A record that other code inspects and decides about is a smell.
 - Write a class when the code commands a dependency that has its own state and behavior, and a function when no participant owns the state and every input is a value.
+- Construct an object complete and ready to use, with its collaborators passed in; no getters, setters, or late wiring.
 - Avoid a factory function that returns closures.
 - A directory's `index.ts` is its public API, kept to what other directories use.
   Other directories import through it, and the rest of the directory is implementation detail.

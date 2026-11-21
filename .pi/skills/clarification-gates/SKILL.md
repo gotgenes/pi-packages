@@ -21,6 +21,9 @@ When a gate offers mechanisms for fixing a hazard, first name which component or
 When the options act at different points of one flow, draw the flow with each option placed at the point it changes — a mechanism comparison in prose gets bounced for the diagram.
 Hold each option's `description` to one line — a second line is substance, and substance goes in the message above.
 
+Put decisions to the operator one at a time when each needs its own context.
+Bundle only choices that need no explanation.
+
 ## When the operator answers with a question
 
 A question in place of a selection means the gate was premature — the options assumed context the operator does not hold: a mechanism, a prior decision, a hypothesis in play.
