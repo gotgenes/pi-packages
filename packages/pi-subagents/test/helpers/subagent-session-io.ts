@@ -1,6 +1,8 @@
 import { vi } from "vitest";
 import type { AgentConfigLookup } from "#src/config/agent-types";
 import type { ChildLifecyclePublisher } from "#src/lifecycle/child-lifecycle";
+import type { ContinuedTranscript, ReopenedSessionManagerLike } from "#src/lifecycle/create-subagent-session";
+import type { BranchEntryLike } from "#src/session/recorded-model";
 import type { AssemblerIO } from "#src/session/session-config";
 import type { AgentConfig, PromptInheritance, ShellExec } from "#src/types";
 import { createMockSession } from "#test/helpers/mock-session";
@@ -41,16 +43,9 @@ export function createSubagentSessionIO() {
 			getSessionFile: vi.fn().mockReturnValue("/sessions/child.jsonl"),
 			getSessionId: vi.fn().mockReturnValue("child-session-id"),
 		}),
-		// A reopened transcript: the child that ran before this manager, recorded
-		// with no model of its own unless a test arms buildSessionContext.
-		openSessionManager: vi.fn().mockReturnValue({
-			newSession: vi.fn(),
-			getSessionFile: vi.fn().mockReturnValue("/sessions/tasks/earlier-child.jsonl"),
-			getSessionId: vi.fn().mockReturnValue("earlier-child-session-id"),
-			buildSessionContext: vi.fn(
-				(): { model: { provider: string; modelId: string } | null } => ({ model: null }),
-			),
-		}),
+		// A reopened transcript: EARLIER_TRANSCRIPT's child, whose branch selects
+		// no model of its own unless a test arms getBranch.
+		openSessionManager: vi.fn((_transcript: string) => createReopenedSessionManager()),
 		createSettingsManager: vi.fn().mockReturnValue({}),
 		// Identity by default: no package exclusions, so children inherit everything.
 		createLoaderSettingsManager: vi.fn().mockImplementation((parent: unknown) => parent),
@@ -128,6 +123,35 @@ export function createChildLifecycleMock() {
 		bound: vi.fn<ChildLifecyclePublisher["bound"]>(),
 		completed: vi.fn<ChildLifecyclePublisher["completed"]>(),
 		disposed: vi.fn<ChildLifecyclePublisher["disposed"]>(),
+	};
+}
+
+/**
+ * The settled child a factory test continues: its transcript and the identity
+ * it was recorded under, which `createReopenedSessionManager()` reopens by default.
+ */
+export const EARLIER_TRANSCRIPT: ContinuedTranscript = {
+	file: "/sessions/tasks/earlier-child.jsonl",
+	header: { id: "earlier-child-session-id", cwd: "/work/earlier", parentSession: "parent-id" },
+};
+
+/**
+ * A session manager reopened on EARLIER_TRANSCRIPT: the identity it was
+ * recorded under, one message of conversation, and a branch that selects no
+ * model. Each method is a typed stub, so a test can arm or inspect it and the
+ * whole stays checked against ReopenedSessionManagerLike where it is used.
+ */
+export function createReopenedSessionManager() {
+	const { header } = EARLIER_TRANSCRIPT;
+	return {
+		newSession: vi.fn<ReopenedSessionManagerLike["newSession"]>(),
+		getSessionFile: vi.fn((): string | undefined => EARLIER_TRANSCRIPT.file),
+		getSessionId: vi.fn((): string => header.id),
+		getHeader: vi.fn((): ReturnType<ReopenedSessionManagerLike["getHeader"]> => ({ ...header })),
+		getBranch: vi.fn((): readonly BranchEntryLike[] => []),
+		buildSessionContext: vi.fn((): { messages: readonly unknown[] } => ({
+			messages: [{ role: "user", content: "Map the configs" }],
+		})),
 	};
 }
 

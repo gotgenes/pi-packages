@@ -31,13 +31,22 @@ export interface PersistedSubagentRecord {
 	/** The run's session JSONL, which a reader can open after the live session is gone. */
 	readonly outputFile: string | undefined;
 	readonly toolUses: number;
+	/** Whether a `WorkspaceProvider` prepared the directory the child ran in, rather than the child running where its parent does. */
+	readonly providerWorkspace: boolean;
 }
 
-/** The fields a reader validates and returns: what labels a past run and opens its transcript. */
+/**
+ * The fields a reader validates and returns: what labels a past run, opens its
+ * transcript, and decides whether a later manager may continue it.
+ *
+ * `turnBudget` and `providerWorkspace` read `undefined` when the entry does not
+ * say: `turnBudget` is absent for a run that never reached its turn loop, and
+ * `providerWorkspace` for an entry written before it was recorded.
+ */
 export type PersistedRunSummary = Pick<
 	PersistedSubagentRecord,
-	"id" | "type" | "description" | "status" | "startedAt" | "completedAt" | "stoppedWhileQueued" | "toolUses" | "outputFile"
->;
+	"id" | "type" | "description" | "status" | "startedAt" | "completedAt" | "stoppedWhileQueued" | "toolUses" | "outputFile" | "turnBudget"
+> & { readonly providerWorkspace: boolean | undefined };
 
 /** The session-entry fields the reader inspects; Pi's `SessionEntry` satisfies it. */
 export interface SessionEntryLike {
@@ -46,8 +55,15 @@ export interface SessionEntryLike {
 	readonly data?: unknown;
 }
 
-/** What the entry takes from the agent: who it is, where its transcript is, and its cross-run tool count. */
-type PersistedIdentity = Pick<PersistedSubagentRecord, "id" | "type" | "description" | "outputFile" | "toolUses">;
+/**
+ * What the entry takes from the agent: who it is, where its transcript is, its
+ * cross-run tool count, and whether a provider prepared the directory all its
+ * runs share.
+ */
+type PersistedIdentity = Pick<
+	PersistedSubagentRecord,
+	"id" | "type" | "description" | "outputFile" | "toolUses" | "providerWorkspace"
+>;
 
 /** What the entry takes from the run that ended. */
 type PersistedOutcome = Pick<
@@ -75,6 +91,7 @@ export function toPersistedRecord(identity: PersistedIdentity, outcome: Persiste
 		stoppedWhileQueued: outcome.stoppedWhileQueued,
 		outputFile: identity.outputFile,
 		toolUses: identity.toolUses,
+		providerWorkspace: identity.providerWorkspace,
 	};
 }
 
@@ -84,7 +101,9 @@ export function toPersistedRecord(identity: PersistedIdentity, outcome: Persiste
  * A resumed run appends a second entry under the same id, so the last one wins.
  * Entries that do not validate are skipped, including those written before the
  * entry recorded `toolUses`. One written before the entry recorded
- * `stoppedWhileQueued` reads as not stopped while queued.
+ * `stoppedWhileQueued` reads as not stopped while queued. A turn budget or
+ * workspace provenance that does not validate reads as unknown rather than
+ * hiding the run.
  */
 export function readPersistedRuns(entries: readonly SessionEntryLike[]): PersistedRunSummary[] {
 	const runs = new Map<string, PersistedRunSummary>();
@@ -107,8 +126,19 @@ const SUBAGENT_STATUSES: ReadonlySet<string> = new Set<SubagentStatus>([
 
 function asRunSummary(data: unknown): PersistedRunSummary | undefined {
 	if (typeof data !== "object" || data === null) return undefined;
-	const { id, type, description, status, startedAt, completedAt, stoppedWhileQueued, toolUses, outputFile } =
-		data as Record<string, unknown>;
+	const {
+		id,
+		type,
+		description,
+		status,
+		startedAt,
+		completedAt,
+		stoppedWhileQueued,
+		toolUses,
+		outputFile,
+		turnBudget,
+		providerWorkspace,
+	} = data as Record<string, unknown>;
 	if (typeof id !== "string" || typeof type !== "string" || typeof description !== "string") return undefined;
 	if (typeof status !== "string" || !SUBAGENT_STATUSES.has(status)) return undefined;
 	if (typeof startedAt !== "number" || typeof toolUses !== "number") return undefined;
@@ -125,5 +155,19 @@ function asRunSummary(data: unknown): PersistedRunSummary | undefined {
 		stoppedWhileQueued: stoppedWhileQueued ?? false,
 		toolUses,
 		outputFile,
+		turnBudget: asTurnBudget(turnBudget),
+		providerWorkspace: typeof providerWorkspace === "boolean" ? providerWorkspace : undefined,
 	};
+}
+
+const TURN_BUDGET_PHASES: ReadonlySet<string> = new Set<TurnBudget["phase"]>(["within", "warned", "exhausted"]);
+
+/** A recorded turn budget, or undefined when there is none or it does not validate. */
+function asTurnBudget(data: unknown): TurnBudget | undefined {
+	if (typeof data !== "object" || data === null) return undefined;
+	const { maxTurns, used, phase } = data as Record<string, unknown>;
+	if (typeof used !== "number" || typeof phase !== "string" || !TURN_BUDGET_PHASES.has(phase)) return undefined;
+	if (maxTurns === undefined) return { used, phase: phase as TurnBudget["phase"] };
+	if (typeof maxTurns !== "number") return undefined;
+	return { maxTurns, used, phase: phase as TurnBudget["phase"] };
 }

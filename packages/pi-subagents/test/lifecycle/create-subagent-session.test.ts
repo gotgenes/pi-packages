@@ -5,14 +5,17 @@ import type {
 } from "#src/lifecycle/create-subagent-session";
 import { createSubagentSession } from "#src/lifecycle/create-subagent-session";
 import { SubagentSession } from "#src/lifecycle/subagent-session";
+import type { BranchEntryLike } from "#src/session/recorded-model";
 import { makeModel } from "#test/helpers/make-model";
 import { STUB_CTX, STUB_SNAPSHOT } from "#test/helpers/stub-ctx";
 import {
   createAgentLookup,
   createChildLifecycleMock,
   createFactorySession,
+  createReopenedSessionManager,
   createSubagentSessionDeps,
   createSubagentSessionIO,
+  EARLIER_TRANSCRIPT,
 } from "#test/helpers/subagent-session-io";
 
 /**
@@ -551,11 +554,16 @@ describe("createSubagentSession — MCP tool patterns", () => {
 });
 
 describe("createSubagentSession — continuing an earlier transcript", () => {
-  const TRANSCRIPT = "/sessions/tasks/earlier-child.jsonl";
+  const TRANSCRIPT = EARLIER_TRANSCRIPT;
 
   /** The session manager the factory reopened the transcript with. */
   function reopened() {
     return io.openSessionManager.mock.results[0]?.value;
+  }
+
+  /** Arm the next reopening to hand back a session manager with these overrides. */
+  function reopensAs(overrides: Partial<ReturnType<typeof createReopenedSessionManager>>) {
+    io.openSessionManager.mockReturnValueOnce({ ...createReopenedSessionManager(), ...overrides });
   }
 
   it("reopens the transcript rather than starting a new session", async () => {
@@ -563,7 +571,7 @@ describe("createSubagentSession — continuing an earlier transcript", () => {
 
     await createSubagentSession({ snapshot: STUB_SNAPSHOT, type: "Explore", transcript: TRANSCRIPT }, defaultDeps());
 
-    expect(io.openSessionManager).toHaveBeenCalledWith(TRANSCRIPT);
+    expect(io.openSessionManager).toHaveBeenCalledWith(TRANSCRIPT.file);
     expect(io.createSessionManager).not.toHaveBeenCalled();
     expect(reopened().newSession).not.toHaveBeenCalled();
     expect(io.createSession).toHaveBeenCalledWith(expect.objectContaining({ sessionManager: reopened() }));
@@ -577,7 +585,16 @@ describe("createSubagentSession — continuing an earlier transcript", () => {
       defaultDeps(),
     );
 
-    expect(sub.outputFile).toBe(TRANSCRIPT);
+    expect(sub.outputFile).toBe(TRANSCRIPT.file);
+  });
+
+  it("runs in the directory the transcript recorded, not the parent's", async () => {
+    arrangeFactory();
+
+    await createSubagentSession({ snapshot: STUB_SNAPSHOT, type: "Explore", transcript: TRANSCRIPT }, defaultDeps());
+
+    expect(io.detectEnv).toHaveBeenCalledWith(exec, "/work/earlier");
+    expect(io.createSession).toHaveBeenCalledWith(expect.objectContaining({ cwd: "/work/earlier" }));
   });
 
   it("announces the child under the session id the transcript already carries", async () => {
@@ -600,45 +617,94 @@ describe("createSubagentSession — continuing an earlier transcript", () => {
     });
   });
 
-  it("runs on the model the transcript recorded, over the agent's default", async () => {
-    arrangeFactory();
-    const recorded = makeModel({ provider: "openai", id: "gpt-recorded" });
-    const find = vi.fn((provider: string, modelId: string) =>
-      provider === "openai" && modelId === "gpt-recorded" ? recorded : undefined,
-    );
-    io.openSessionManager.mockReturnValueOnce({
-      ...io.openSessionManager(),
-      buildSessionContext: () => ({ model: { provider: "openai", modelId: "gpt-recorded" } }),
+  describe("a transcript that no longer holds the child", () => {
+    it.each([
+      ["a new session in its place (the file was missing)", { id: "fresh-session-id", cwd: "/work/earlier", parentSession: undefined }],
+      ["another session's id", { id: "someone-else", cwd: "/work/earlier", parentSession: "parent-id" }],
+      ["another parent", { id: "earlier-child-session-id", cwd: "/work/earlier", parentSession: "other-parent" }],
+      ["another directory", { id: "earlier-child-session-id", cwd: "/work/elsewhere", parentSession: "parent-id" }],
+    ])("refuses %s before any session exists", async (_label, header) => {
+      arrangeFactory();
+      reopensAs({ getHeader: vi.fn(() => header) });
+
+      await expect(
+        createSubagentSession({ snapshot: STUB_SNAPSHOT, type: "Explore", transcript: TRANSCRIPT }, defaultDeps()),
+      ).rejects.toThrow(`Transcript ${TRANSCRIPT.file} no longer holds this child's session; it was not restored.`);
+      expect(io.createSession).not.toHaveBeenCalled();
     });
-    io.openSessionManager.mockClear();
 
-    await createSubagentSession(
-      {
-        snapshot: { ...STUB_SNAPSHOT, model: makeModel({ id: "parent-model" }), modelRegistry: { find, getAll: () => [] } },
-        type: "Explore",
-        transcript: TRANSCRIPT,
-      },
-      defaultDeps(),
-    );
+    it("refuses a file with no header at all", async () => {
+      arrangeFactory();
+      reopensAs({ getHeader: vi.fn(() => null) });
 
-    expect(io.createSession).toHaveBeenCalledWith(expect.objectContaining({ model: recorded }));
+      await expect(
+        createSubagentSession({ snapshot: STUB_SNAPSHOT, type: "Explore", transcript: TRANSCRIPT }, defaultDeps()),
+      ).rejects.toThrow("no longer holds this child's session");
+      expect(io.createSession).not.toHaveBeenCalled();
+    });
+
+    it("refuses a transcript with no conversation to continue", async () => {
+      arrangeFactory();
+      reopensAs({ buildSessionContext: vi.fn(() => ({ messages: [] })) });
+
+      await expect(
+        createSubagentSession({ snapshot: STUB_SNAPSHOT, type: "Explore", transcript: TRANSCRIPT }, defaultDeps()),
+      ).rejects.toThrow(`Transcript ${TRANSCRIPT.file} holds no conversation to continue; it was not restored.`);
+      expect(io.createSession).not.toHaveBeenCalled();
+    });
   });
 
-  it("falls back to the agent's model when the recorded one is no longer known", async () => {
-    arrangeFactory();
+  describe("the model it continues on", () => {
+    const physical = makeModel({ provider: "openai", id: "gpt-recorded" });
+    const router = makeModel({ provider: "router", id: "auto", api: "pi-virtual" });
     const parentModel = makeModel({ id: "parent-model" });
-    io.openSessionManager.mockReturnValueOnce({
-      ...io.openSessionManager(),
-      buildSessionContext: () => ({ model: { provider: "gone", modelId: "retired" } }),
+    const registry = {
+      find: (provider: string, modelId: string) =>
+        [physical, router].find((model) => model.provider === provider && model.id === modelId),
+      getAll: () => [physical, router],
+    };
+
+    /** Continue a transcript whose branch holds `branch`, against `registry`. */
+    async function continueWithBranch(branch: BranchEntryLike[]) {
+      arrangeFactory();
+      reopensAs({ getBranch: vi.fn(() => branch) });
+      await createSubagentSession(
+        { snapshot: { ...STUB_SNAPSHOT, model: parentModel, modelRegistry: registry }, type: "Explore", transcript: TRANSCRIPT },
+        defaultDeps(),
+      );
+    }
+
+    const reply = (provider: string, model: string, api = "openai-responses") => ({
+      type: "message",
+      message: { role: "assistant", provider, model, api },
     });
-    io.openSessionManager.mockClear();
 
-    await createSubagentSession(
-      { snapshot: { ...STUB_SNAPSHOT, model: parentModel }, type: "Explore", transcript: TRANSCRIPT },
-      defaultDeps(),
-    );
+    it("runs on the model of the last physical reply, over the agent's default", async () => {
+      await continueWithBranch([{ type: "message", message: { role: "user" } }, reply("openai", "gpt-recorded")]);
 
-    expect(io.createSession).toHaveBeenCalledWith(expect.objectContaining({ model: parentModel }));
+      expect(io.createSession).toHaveBeenCalledWith(expect.objectContaining({ model: physical }));
+    });
+
+    it("keeps a virtual model selected, though a physical model answered under it", async () => {
+      await continueWithBranch([
+        { type: "model_change", provider: "router", modelId: "auto" },
+        reply("openai", "gpt-recorded"),
+      ]);
+
+      expect(io.createSession).toHaveBeenCalledWith(expect.objectContaining({ model: router }));
+    });
+
+    it("runs on a model selected after the last reply", async () => {
+      await continueWithBranch([reply("router", "auto", "pi-virtual"), { type: "model_change", provider: "openai", modelId: "gpt-recorded" }]);
+
+      expect(io.createSession).toHaveBeenCalledWith(expect.objectContaining({ model: physical }));
+    });
+
+    it("falls back to the agent's model when the recorded one is no longer known", async () => {
+      await continueWithBranch([reply("gone", "retired")]);
+
+      expect(io.createSession).toHaveBeenCalledWith(expect.objectContaining({ model: parentModel }));
+    });
   });
 
   it("leaves the thinking level to the transcript, over the agent's declared one", async () => {

@@ -14,7 +14,7 @@ import { createTestSubagent, makeStubExecution } from "#test/helpers/make-subage
 import { makeWorkspace, makeWorkspaceProvider } from "#test/helpers/make-workspace";
 import { createMockSession, createSubagentSessionStub, emitResumeUsageAndCompaction, toAgentSession, toSubagentSession } from "#test/helpers/mock-session";
 import { STUB_SNAPSHOT } from "#test/helpers/stub-ctx";
-import { createChildLifecycleMock } from "#test/helpers/subagent-session-io";
+import { createChildLifecycleMock, EARLIER_TRANSCRIPT } from "#test/helpers/subagent-session-io";
 import { turnLoopResult } from "#test/helpers/turn-loop-result";
 
 const WARNED: TurnBudget = { maxTurns: 5, used: 3, phase: "warned" };
@@ -249,8 +249,6 @@ function createResumableAgent(overrides?: {
 	agent.subagentSession = toSubagentSession(stub);
 	return { agent, session, stub };
 }
-
-const EARLIER_TRANSCRIPT = "/sessions/tasks/earlier-child.jsonl";
 
 /**
  * A settled agent restored from its transcript: what a manager rebuilds for a
@@ -641,6 +639,60 @@ describe("Subagent", () => {
 			const record = makeSubagent();
 			await expect(record.disposeSession()).resolves.toBeUndefined();
 		});
+
+		describe("while the run's session is still being created", () => {
+			/** An agent whose run is waiting on the factory, which the test resolves. */
+			function creatingAgent(workspaceProvider?: WorkspaceProvider) {
+				const { promise: created, resolve } = Promise.withResolvers<SubagentSession>();
+				const stub = createSubagentSessionStub();
+				const onRunFinished = vi.fn();
+				const agent = createRunnableAgent({
+					createSubagentSession: () => created,
+					observer: { onRunFinished },
+					workspaceProvider,
+				});
+				return { agent, stub, onRunFinished, create: () => { resolve(toSubagentSession(stub)); } };
+			}
+
+			it("disposes the session the factory hands back afterwards, rather than adopting it", async () => {
+				const { agent, stub, create } = creatingAgent();
+				const running = agent.run();
+
+				await agent.disposeSession();
+				create();
+				await running;
+
+				expect(stub.dispose).toHaveBeenCalledOnce();
+				expect(agent.isSessionReady()).toBe(false);
+				expect(stub.runTurnLoop).not.toHaveBeenCalled();
+			});
+
+			it("ends the run stopped, notified once", async () => {
+				const { agent, create, onRunFinished } = creatingAgent();
+				const running = agent.run();
+
+				await agent.disposeSession();
+				create();
+				await running;
+
+				expect(agent.status).toBe("stopped");
+				expect(onRunFinished).toHaveBeenCalledExactlyOnceWith(agent, agent.latestRun);
+				expect(agent.latestRun.kind).toBe("initial");
+			});
+
+			it("tears down the workspace the run prepared", async () => {
+				const workspace = makeWorkspace("/ws/dir");
+				const { agent, create } = creatingAgent(makeWorkspaceProvider(workspace));
+				const running = agent.run();
+				await vi.waitFor(() => { expect(agent.providerWorkspace).toBe(true); });
+
+				await agent.disposeSession();
+				create();
+				await running;
+
+				expect(workspace.dispose).toHaveBeenCalledExactlyOnceWith({ status: "stopped", description: "run test" });
+			});
+		});
 	});
 
 	describe("releaseSession", () => {
@@ -777,6 +829,37 @@ describe("Subagent", () => {
 				expect(record.model).toBeUndefined();
 				expect(record.thinkingLevel).toBeUndefined();
 			});
+		});
+	});
+
+	describe("providerWorkspace", () => {
+		it("is false before the agent has run", () => {
+			expect(createRunnableAgent({ workspaceProvider: makeWorkspaceProvider(makeWorkspace("/ws/dir")) }).providerWorkspace).toBe(false);
+		});
+
+		it("is true once a provider prepared the agent's workspace, and stays so after its teardown", async () => {
+			const agent = createRunnableAgent({ workspaceProvider: makeWorkspaceProvider(makeWorkspace("/ws/dir")) });
+			await agent.run();
+			expect(agent.workspaceDisposed).toBe(true);
+			expect(agent.providerWorkspace).toBe(true);
+		});
+
+		it("is true for a workspace at the parent's own directory, which the provider still brackets", async () => {
+			const agent = createRunnableAgent({ workspaceProvider: makeWorkspaceProvider(makeWorkspace(STUB_SNAPSHOT.cwd)) });
+			await agent.run();
+			expect(agent.providerWorkspace).toBe(true);
+		});
+
+		it("stays false when the provider declined to supply a workspace", async () => {
+			const agent = createRunnableAgent({ workspaceProvider: makeWorkspaceProvider(undefined) });
+			await agent.run();
+			expect(agent.providerWorkspace).toBe(false);
+		});
+
+		it("stays false for an agent that ran with no provider registered", async () => {
+			const agent = createRunnableAgent();
+			await agent.run();
+			expect(agent.providerWorkspace).toBe(false);
 		});
 	});
 
@@ -2542,7 +2625,7 @@ describe("Subagent", () => {
 			});
 
 			it("reports the transcript it will continue as its output file", () => {
-				expect(createRestoredAgent().agent.outputFile).toBe(EARLIER_TRANSCRIPT);
+				expect(createRestoredAgent().agent.outputFile).toBe(EARLIER_TRANSCRIPT.file);
 			});
 		});
 
@@ -2623,24 +2706,110 @@ describe("Subagent", () => {
 		});
 
 		describe("stopped while its transcript reopens", () => {
-			it("ends stopped, taking no turn", async () => {
+			/** A restored agent whose reopening waits until the test opens it; counts factory calls. */
+			function pendingReopen() {
 				const { promise: opened, resolve: open } = Promise.withResolvers<SubagentSession>();
 				const stub = createSubagentSessionStub();
-				// The real loop takes no turn on a spent lever and returns at once.
-				let abortedAtEntry: boolean | undefined;
-				stub.runTurnLoop.mockImplementation((_prompt: string, { signal }: { signal?: AbortSignal }) => {
-					abortedAtEntry = signal?.aborted;
-					return Promise.resolve(turnLoopResult({ responseText: "" }));
-				});
-				const { agent } = createRestoredAgent({ createSubagentSession: () => opened });
+				stub.runTurnLoop.mockResolvedValue(turnLoopResult({ responseText: "Answered the retry." }));
+				const factory = vi.fn((_params: CreateSubagentSessionParams): Promise<SubagentSession> => opened);
+				const onRunFinished = vi.fn();
+				const { agent } = createRestoredAgent({ createSubagentSession: factory, observer: { onRunFinished } });
+				return { agent, stub, factory, onRunFinished, open: () => { open(toSubagentSession(stub)); } };
+			}
+
+			it("ends stopped once the reopening settles, taking no turn", async () => {
+				const { agent, stub, open, onRunFinished } = pendingReopen();
 				const resumed = agent.resume("continue", { background: false });
 
 				expect(agent.abort()).toBe(true);
-				open(toSubagentSession(stub));
+				open();
 				await resumed;
 
 				expect(agent.status).toBe("stopped");
-				expect(abortedAtEntry).toBe(true);
+				expect(stub.runTurnLoop).not.toHaveBeenCalled();
+				expect(onRunFinished).toHaveBeenCalledExactlyOnceWith(agent, agent.latestRun);
+				expect(agent.latestRun.kind).toBe("resume");
+			});
+
+			it("keeps the reopened session as the agent's, for the next resume", async () => {
+				const { agent, stub, open } = pendingReopen();
+				const resumed = agent.resume("continue", { background: false });
+				agent.abort();
+				open();
+				await resumed;
+
+				expect(agent.subagentSession?.session).toBe(toSubagentSession(stub).session);
+			});
+
+			it("has a retry wait for that reopening and continue its session, opening no second one", async () => {
+				const { agent, stub, factory, open } = pendingReopen();
+				const first = agent.resume("continue", { background: false });
+				agent.abort();
+
+				const retry = agent.resume("try again", { background: false });
+				open();
+				await Promise.all([first, retry]);
+
+				expect(factory).toHaveBeenCalledOnce();
+				expect(stub.runTurnLoop).toHaveBeenCalledExactlyOnceWith("try again", expect.any(Object));
+				expect(agent.status).toBe("completed");
+				expect(agent.result).toBe("Answered the retry.");
+			});
+
+			it("has a retry reopen the transcript itself when the stopped reopening failed", async () => {
+				const { promise: failed, reject } = Promise.withResolvers<SubagentSession>();
+				const stub = createSubagentSessionStub();
+				stub.runTurnLoop.mockResolvedValue(turnLoopResult({ responseText: "Answered the retry." }));
+				const factory = vi.fn((_params: CreateSubagentSessionParams): Promise<SubagentSession> =>
+					factory.mock.calls.length === 1 ? failed : Promise.resolve(toSubagentSession(stub)),
+				);
+				const { agent } = createRestoredAgent({ createSubagentSession: factory });
+				const first = agent.resume("continue", { background: false });
+				agent.abort();
+
+				const retry = agent.resume("try again", { background: false });
+				reject(new Error("transcript unreadable"));
+				await Promise.all([first, retry]);
+
+				expect(factory).toHaveBeenCalledTimes(2);
+				expect(agent.result).toBe("Answered the retry.");
+			});
+		});
+
+		describe("torn down while its transcript reopens", () => {
+			it("disposes the late session instead of adopting it, and ends the run stopped", async () => {
+				const { promise: opened, resolve: open } = Promise.withResolvers<SubagentSession>();
+				const stub = createSubagentSessionStub();
+				const { agent } = createRestoredAgent({ createSubagentSession: () => opened });
+				const resumed = agent.resume("continue", { background: false });
+
+				await agent.disposeSession();
+				open(toSubagentSession(stub));
+				await resumed;
+
+				expect(stub.dispose).toHaveBeenCalledOnce();
+				expect(agent.isSessionReady()).toBe(false);
+				expect(stub.runTurnLoop).not.toHaveBeenCalled();
+				expect(agent.status).toBe("stopped");
+			});
+
+			it("has a retry started before the teardown open nothing of its own", async () => {
+				const { promise: opened, resolve: open } = Promise.withResolvers<SubagentSession>();
+				const stub = createSubagentSessionStub();
+				const factory = vi.fn((_params: CreateSubagentSessionParams): Promise<SubagentSession> => opened);
+				const { agent } = createRestoredAgent({ createSubagentSession: factory });
+				const first = agent.resume("continue", { background: false });
+				agent.abort();
+				const retry = agent.resume("try again", { background: false });
+
+				await agent.disposeSession();
+				open(toSubagentSession(stub));
+				await Promise.all([first, retry]);
+
+				expect(factory).toHaveBeenCalledOnce();
+				expect(stub.dispose).toHaveBeenCalledOnce();
+				expect(agent.isSessionReady()).toBe(false);
+				expect(agent.status).toBe("stopped");
 			});
 		});
 	});

@@ -148,6 +148,7 @@ describe("SubagentEventsObserver", () => {
 					stoppedWhileQueued: false,
 					outputFile: undefined,
 					toolUses: 3,
+					providerWorkspace: false,
 				});
 			});
 		});
@@ -208,6 +209,7 @@ describe("SubagentEventsObserver", () => {
 					stoppedWhileQueued: false,
 					outputFile: undefined,
 					toolUses: 3,
+					providerWorkspace: false,
 				});
 			});
 		});
@@ -271,6 +273,7 @@ describe("SubagentEventsObserver", () => {
 					stoppedWhileQueued: false,
 					outputFile: undefined,
 					toolUses: 3,
+					providerWorkspace: false,
 				});
 			});
 		});

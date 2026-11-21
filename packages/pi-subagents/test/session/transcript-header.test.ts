@@ -24,7 +24,7 @@ function transcript(content: string): string {
 
 describe("readTranscriptHeader", () => {
 	describe("a transcript Pi wrote", () => {
-		it("reads the spawning parent and working directory", () => {
+		it("reads the session's id, spawning parent, and working directory", () => {
 			const sessionManager = SessionManager.create("/work/project", dir);
 			sessionManager.newSession({ parentSession: "parent-id" });
 			sessionManager.appendMessage({ role: "user", content: "hi", timestamp: 1 });
@@ -46,7 +46,11 @@ describe("readTranscriptHeader", () => {
 				timestamp: 2,
 			});
 
-			expect(readTranscriptHeader(sessionManager.getSessionFile()!)).toEqual({ cwd: "/work/project", parentSession: "parent-id" });
+			expect(readTranscriptHeader(sessionManager.getSessionFile()!)).toEqual({
+				id: sessionManager.getSessionId(),
+				cwd: "/work/project",
+				parentSession: "parent-id",
+			});
 		});
 	});
 
@@ -56,11 +60,11 @@ describe("readTranscriptHeader", () => {
 				`${JSON.stringify({ type: "session", id: "s", cwd: "/work/a", parentSession: "parent-id" })}\n${JSON.stringify({ type: "message" })}\n`,
 			);
 
-			expect(readTranscriptHeader(path)).toEqual({ cwd: "/work/a", parentSession: "parent-id" });
+			expect(readTranscriptHeader(path)).toEqual({ id: "s", cwd: "/work/a", parentSession: "parent-id" });
 		});
 
 		it("reads a header with no trailing newline", () => {
-			expect(readTranscriptHeader(transcript(JSON.stringify({ type: "session", cwd: "/work/b", parentSession: "parent-id" })))).toEqual({ cwd: "/work/b", parentSession: "parent-id" });
+			expect(readTranscriptHeader(transcript(JSON.stringify({ type: "session", id: "s", cwd: "/work/b", parentSession: "parent-id" })))).toEqual({ id: "s", cwd: "/work/b", parentSession: "parent-id" });
 		});
 	});
 
@@ -82,11 +86,15 @@ describe("readTranscriptHeader", () => {
 		});
 
 		it("answers undefined for a header with no spawning parent", () => {
-			expect(readTranscriptHeader(transcript(JSON.stringify({ type: "session", cwd: "/work/a" })))).toBeUndefined();
+			expect(readTranscriptHeader(transcript(JSON.stringify({ type: "session", id: "s", cwd: "/work/a" })))).toBeUndefined();
 		});
 
 		it("answers undefined for a header that names no cwd", () => {
-			expect(readTranscriptHeader(transcript(`${JSON.stringify({ type: "session", parentSession: "parent-id", cwd: "" })}\n`))).toBeUndefined();
+			expect(readTranscriptHeader(transcript(`${JSON.stringify({ type: "session", id: "s", parentSession: "parent-id", cwd: "" })}\n`))).toBeUndefined();
+		});
+
+		it("answers undefined for a header that names no session id", () => {
+			expect(readTranscriptHeader(transcript(`${JSON.stringify({ type: "session", cwd: "/work/a", parentSession: "parent-id" })}\n`))).toBeUndefined();
 		});
 	});
 });

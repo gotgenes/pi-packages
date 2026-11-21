@@ -25,9 +25,10 @@ import {
 } from "#src/lifecycle/subagent";
 import type { RunKind, RunOutcome } from "#src/lifecycle/subagent-run";
 import type { SubagentSession } from "#src/lifecycle/subagent-session";
-import { SubagentState, type SubagentStatus } from "#src/lifecycle/subagent-state";
+import { isActiveStatus, SubagentState } from "#src/lifecycle/subagent-state";
+import type { TurnBudget } from "#src/lifecycle/turn-limits";
 import type { WorkspaceProvider } from "#src/lifecycle/workspace";
-import { readPersistedRuns, type SessionEntryLike } from "#src/persisted-record";
+import { type PersistedRunSummary, readPersistedRuns, type SessionEntryLike } from "#src/persisted-record";
 import type { RunConfig } from "#src/runtime";
 import type { ChildTranscriptHeader } from "#src/session/transcript-header";
 import type { AgentConfig, CompactionInfo, ParentSessionInfo, SubagentType, ThinkingLevel } from "#src/types";
@@ -45,10 +46,12 @@ export interface SpawnTypeResolver {
 /**
  * Why a resume was refused, across every front door.
  *
- * Widens the record's own vocabulary by the one refusal that is not a fact
- * about a record: an id no record answers to.
+ * Widens the record's own vocabulary by the refusals that are not facts about a
+ * record: an id no record answers to, and a settled child an earlier manager
+ * ran whose agent type is no longer defined, or is disabled, so restoring it
+ * would run it under a definition it never had.
  */
-export type ResumeRefusalReason = ResumeRefusal | "unknown-agent";
+export type ResumeRefusalReason = ResumeRefusal | "unknown-agent" | "agent-type-unavailable";
 
 /**
  * What a resume attempt produced: the record whose run was restarted, or the
@@ -90,14 +93,6 @@ export interface RetentionPolicy {
   readonly consumedSessionRetentionMinutes: number;
   readonly unconsumedSessionRetentionMinutes: number;
 }
-
-/** The statuses a run can be restored in; any other was cut off mid-run. */
-const SETTLED_STATUSES: ReadonlySet<SubagentStatus> = new Set<SubagentStatus>([
-  "completed",
-  "aborted",
-  "stopped",
-  "error",
-]);
 
 const DEFAULT_RETENTION_POLICY: RetentionPolicy = {
   consumedSessionRetentionMinutes: 10,
@@ -481,9 +476,10 @@ export class SubagentManager {
    * run its parent session recorded, so a resume continues the child's own
    * transcript under its original id. Registered only once it is resumable.
    *
-   * A child that ran in a provider workspace is not restored: an earlier
-   * manager's teardown disposed every workspace it held. Such a child is the one
-   * whose transcript records a directory other than the parent's own.
+   * The child is restored as the agent type it ran as, held to the turn limit
+   * it ran under; one whose type is gone or disabled is refused rather than run
+   * under another definition. A child that ran in a provider workspace is not
+   * restored: an earlier manager's teardown disposed every workspace it held.
    */
   private restore(id: string): Subagent | ResumeRefusalReason {
     const history = this.history;
@@ -497,29 +493,37 @@ export class SubagentManager {
     const parentSession = history.parentSession();
     // Forks inherit run entries, not ownership of the transcripts they name.
     if (header.parentSession !== parentSession.parentSessionId) return "unknown-agent";
-    if (header.cwd !== snapshot.cwd) return "workspace-disposed";
+    const type = this.restorableType(run.type);
+    if (type === undefined) return "agent-type-unavailable";
+    if (!this.workspaceSurvives(run, header.cwd, snapshot.cwd)) return "workspace-disposed";
 
     const record = new Subagent({
       id,
-      type: run.type,
+      type,
       description: run.description,
       isBackground: false,
       execution: {
-        createSubagentSession: this.createSubagentSession,
+        // Checked again as the transcript reopens: the registry reloads on every
+        // subagent call, and a queued resume may reopen it long after this.
+        createSubagentSession: (params) =>
+          this.restorableType(type) === undefined
+            ? Promise.reject(new Error(`Agent type "${type}" is no longer defined or is disabled; the child was not restored.`))
+            : this.createSubagentSession(params),
         snapshot,
         prompt: "",
         baseCwd: this.baseCwd,
         observer: this.buildObserver({}),
         getRunConfig: this.getRunConfig,
         getWorkspaceProvider: () => this._workspaceProvider,
+        maxTurns: restoredMaxTurns(run.turnBudget),
         parentSession,
-        transcript: run.outputFile,
+        transcript: { file: run.outputFile, header },
       },
       state: new SubagentState({ toolUses: run.toolUses }),
       // The earlier run's outcome was delivered by the manager that ran it, and
       // a run it recorded as still going was cut off when that manager went.
       outcome: {
-        status: SETTLED_STATUSES.has(run.status) ? run.status : "stopped",
+        status: isActiveStatus(run.status) ? "stopped" : run.status,
         stoppedWhileQueued: run.stoppedWhileQueued,
         startedAt: run.startedAt,
         completedAt: run.completedAt,
@@ -528,6 +532,24 @@ export class SubagentManager {
     });
     this.agents.set(id, record);
     return record;
+  }
+
+  /** The canonical name of an agent type a child may still run as, or undefined when it is gone or disabled. */
+  private restorableType(type: string): SubagentType | undefined {
+    const canonical = this.registry.resolveType(type);
+    return canonical !== undefined && this.registry.isValidType(canonical) ? canonical : undefined;
+  }
+
+  /**
+   * Whether the directory a settled child ran in is still the one it was. A
+   * run that recorded its provenance answers directly. One recorded before
+   * provenance was (`providerWorkspace` unknown) is trusted only where nothing
+   * suggests a provider: its transcript names the parent's own directory, and
+   * no provider is registered that could have prepared it.
+   */
+  private workspaceSurvives(run: PersistedRunSummary, childCwd: string, parentCwd: string): boolean {
+    if (run.providerWorkspace !== undefined) return !run.providerWorkspace;
+    return childCwd === parentCwd && this._workspaceProvider === undefined;
   }
 
   getRecord(id: string): Subagent | undefined {
@@ -657,4 +679,15 @@ export class SubagentManager {
     this.agents.clear();
     await Promise.allSettled(teardowns);
   }
+}
+
+/**
+ * The turn limit a restored child runs under: the ceiling its last run
+ * recorded, or 0 — unlimited, over the agent's own and the run default — when
+ * that run recorded none. A run that never reached its turn loop recorded no
+ * budget at all; such a child gets what a fresh spawn of its type would.
+ */
+function restoredMaxTurns(budget: TurnBudget | undefined): number | undefined {
+  if (budget === undefined) return undefined;
+  return budget.maxTurns ?? 0;
 }

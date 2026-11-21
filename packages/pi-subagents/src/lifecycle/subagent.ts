@@ -10,7 +10,7 @@
 import type { Model } from "@earendil-works/pi-ai";
 import type { AgentSessionEvent, ToolDefinition } from "@earendil-works/pi-coding-agent";
 import { debugLog } from "#src/debug";
-import type { CreateSubagentSessionParams } from "#src/lifecycle/create-subagent-session";
+import type { ContinuedTranscript, CreateSubagentSessionParams } from "#src/lifecycle/create-subagent-session";
 import type { ParentSnapshot } from "#src/lifecycle/parent-snapshot";
 import { subscribeSubagentObserver } from "#src/lifecycle/record-observer";
 import { type CarrierClaim, type RunKind, type RunOutcome, type RunOutcomeInit, SubagentRun } from "#src/lifecycle/subagent-run";
@@ -113,7 +113,7 @@ export interface SubagentExecution {
 	 * `/reload` or a restart. Such a record starts with no session; its first
 	 * resume reopens this transcript instead of requiring a live one.
 	 */
-	transcript?: string;
+	transcript?: ContinuedTranscript;
 }
 
 /**
@@ -235,6 +235,19 @@ export class Subagent {
 	private _releasedModel?: Model<any>;
 	private _releasedThinkingLevel?: ThinkingLevel;
 	private _sessionReleased = false;
+	/**
+	 * Set once disposeSession() has torn the agent down. A session the factory
+	 * hands back after that is disposed on arrival rather than adopted: nothing
+	 * would ever dispose it otherwise.
+	 */
+	private _disposed = false;
+	/**
+	 * A restored agent's transcript reopening, while it is in flight. A resume
+	 * started meanwhile (a retry after the reopening run was stopped) waits for
+	 * it and continues the session it produces, so one transcript never gets
+	 * two sessions writing to it.
+	 */
+	private reopening?: Promise<SubagentSession | undefined>;
 	/** True once releaseSession() has freed a live session (distinct from never having had one). */
 	get sessionReleased(): boolean { return this._sessionReleased; }
 
@@ -246,6 +259,14 @@ export class Subagent {
 	 */
 	get workspaceDisposed(): boolean { return this.workspaceBracket.wasDisposed(); }
 
+	/**
+	 * Whether a workspace provider prepared the directory this agent's session
+	 * runs in. Recorded with each run, because a later manager cannot restore a
+	 * child whose workspace the earlier one tore down, even one that reused the
+	 * parent's directory.
+	 */
+	get providerWorkspace(): boolean { return this.workspaceBracket.hadWorkspace(); }
+
 	// Steer buffer — messages queued before the session is ready
 	private _pendingSteers: string[] = [];
 	/** Number of steer messages waiting to be delivered. */
@@ -256,7 +277,7 @@ export class Subagent {
 	 * Falls back to the path captured at releaseSession() once the live session is gone.
 	 */
 	get outputFile(): string | undefined {
-		return this.subagentSession?.outputFile ?? this._releasedOutputFile ?? this.execution.transcript;
+		return this.subagentSession?.outputFile ?? this._releasedOutputFile ?? this.execution.transcript?.file;
 	}
 
 	/**
@@ -436,11 +457,12 @@ export class Subagent {
 	 */
 	private async openSession(
 		run: SubagentRun,
-		where: { cwd?: string; transcript?: string },
+		where: { cwd?: string; transcript?: ContinuedTranscript },
 	): Promise<SubagentSession | undefined> {
 		const runConfig = this.execution.getRunConfig?.();
+		let session: SubagentSession;
 		try {
-			this.subagentSession = await this.execution.createSubagentSession({
+			session = await this.execution.createSubagentSession({
 				snapshot: this.execution.snapshot,
 				type: this.type,
 				cwd: where.cwd,
@@ -466,9 +488,41 @@ export class Subagent {
 			return undefined;
 		}
 
+		// Torn down while the factory worked: the agent's teardown found no session
+		// to dispose, so this one is disposed here, and the run ends without it.
+		if (this._disposed) {
+			await disposeQuietly(session, "child session created after teardown");
+			this.endWithoutTurn(run);
+			return undefined;
+		}
+
+		this.subagentSession = session;
 		this.flushPendingSteers();
 		this.execution.observer?.onSessionCreated?.(this);
-		return this.subagentSession;
+		return session;
+	}
+
+	/**
+	 * The session a restored agent's resume runs on: the one a reopening still in
+	 * flight produces, or else the transcript reopened for this run. Resolves
+	 * undefined once a failed reopening has failed `run`, or a teardown has ended
+	 * it.
+	 */
+	private async continueSession(run: SubagentRun, transcript: ContinuedTranscript): Promise<SubagentSession | undefined> {
+		if (this.reopening) await this.reopening;
+		if (this.subagentSession) return this.subagentSession;
+		// Any earlier reopening failed or was discarded; a torn-down agent opens nothing.
+		if (this._disposed) {
+			this.endWithoutTurn(run);
+			return undefined;
+		}
+		const reopening = this.openSession(run, { transcript });
+		this.reopening = reopening;
+		try {
+			return await reopening;
+		} finally {
+			if (this.reopening === reopening) this.reopening = undefined;
+		}
 	}
 
 	/**
@@ -639,7 +693,9 @@ export class Subagent {
 	 * Synchronous up to the turn loop when the session is live, so the record
 	 * reads running, and the started notification has fired, by the time this
 	 * returns its promise. A restored agent's transcript is reopened first, after
-	 * the run has started, so a stop that lands meanwhile still ends this run.
+	 * the run has started, so a stop that lands meanwhile still ends this run:
+	 * it ends there, taking no turn, and leaves the session to the agent for the
+	 * next resume.
 	 */
 	private async startResumedRun(
 		run: SubagentRun,
@@ -652,9 +708,25 @@ export class Subagent {
 		// so the resume ends like one aborted mid-run.
 		if (run.aborted) this.abort();
 		this.execution.observer?.onRunStarted?.(this, run.kind);
-		// No live session means a restored agent, whose transcript resume() checked.
-		const live = session ?? await this.openSession(run, { transcript: this.execution.transcript });
-		if (live) await this.runOnSession(run, live, prompt);
+		if (session) {
+			await this.runOnSession(run, session, prompt);
+			return;
+		}
+		// No live session means a restored agent: resume() refused any other.
+		const transcript = this.execution.transcript;
+		if (!transcript) {
+			this.fail(run, new Error("Subagent not configured for resume — missing session"));
+			return;
+		}
+		const live = await this.continueSession(run, transcript);
+		if (!live) return;
+		// Stopped while the transcript reopened: the session is the agent's now,
+		// for the next resume, but this run takes no turn on it.
+		if (run.aborted) {
+			this.endWithoutTurn(run);
+			return;
+		}
+		await this.runOnSession(run, live, prompt);
 	}
 
 	/**
@@ -776,6 +848,7 @@ export class Subagent {
 	 * swallowed so the caller's remaining cleanup still runs.
 	 */
 	async disposeSession(): Promise<void> {
+		this._disposed = true;
 		this.disposeHeldWorkspace();
 		await disposeQuietly(this.subagentSession, "child session dispose");
 	}
@@ -809,6 +882,22 @@ export class Subagent {
 	private endBeforeStart(run: SubagentRun): void {
 		this.abort();
 		run.release();
+		this.execution.observer?.onRunFinished?.(this, run);
+	}
+
+	/**
+	 * End `run` before it takes a turn, stopping it if nothing has yet, then tear
+	 * down any workspace it prepared and notify like every other terminal
+	 * transition. Unlike endBeforeStart() it touches only `run`, which a later
+	 * resume may already have replaced.
+	 */
+	private endWithoutTurn(run: SubagentRun): void {
+		if (run.isRunning()) {
+			run.abort();
+			run.markStopped();
+		}
+		run.release();
+		this.disposeWorkspaceQuietly(run, run.status);
 		this.execution.observer?.onRunFinished?.(this, run);
 	}
 

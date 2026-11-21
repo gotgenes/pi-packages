@@ -157,6 +157,22 @@ describe("AgentTool — resume path", () => {
 			);
 		});
 
+		it("names an agent type gone or disabled since the child ran, and points at a new spawn", async () => {
+			const deps = createToolDeps();
+			mockResumeRefusal(deps, "agent-type-unavailable");
+			const result = await execute(deps, {
+				prompt: "continue",
+				description: "resume",
+				subagent_type: "general-purpose",
+				resume: "agent-1",
+			});
+			expect(textOf(result)).toBe(
+				'Agent "agent-1" ran as an agent type that is no longer defined or is disabled; ' +
+					"resume is unavailable because it would run under a definition it never had. " +
+					"Spawn a new agent of an available type instead.",
+			);
+		});
+
 		it("tells the parent to wait out a run that has not finished", async () => {
 			const deps = createToolDeps();
 			mockResumeRefusal(deps, "still-running");

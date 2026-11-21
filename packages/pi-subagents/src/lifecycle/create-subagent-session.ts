@@ -32,7 +32,9 @@ import type { EnvInfo } from "#src/session/env";
 import { expandMcpToolPatterns } from "#src/session/mcp-tool-patterns";
 import type { ModelRegistry } from "#src/session/model-resolver";
 import { NotifyParentTool, type UpdateAnnouncer } from "#src/session/notify-parent-tool";
+import { type BranchEntryLike, branchModelSelection } from "#src/session/recorded-model";
 import { type AssemblerIO, assembleSessionConfig } from "#src/session/session-config";
+import type { ChildTranscriptHeader } from "#src/session/transcript-header";
 import type {
   ParentSessionInfo,
   PromptInheritance,
@@ -66,10 +68,26 @@ export interface SessionManagerLike {
 
 /**
  * A session manager reopened on an existing child transcript. It also answers
- * which model the transcript last recorded, so the continued child runs on it.
+ * whose session it holds, whether it holds a conversation, and which model its
+ * branch selects, so the factory can check it continues the child it was asked
+ * to before anything runs on it.
  */
 export interface ReopenedSessionManagerLike extends SessionManagerLike {
-  buildSessionContext(): { model: { provider: string; modelId: string } | null };
+  getHeader(): { id: string; cwd: string; parentSession?: string } | null;
+  getBranch(): readonly BranchEntryLike[];
+  buildSessionContext(): { messages: readonly unknown[] };
+}
+
+/**
+ * A settled child's transcript to continue, and the identity it was recorded
+ * under when the resume was accepted. The factory refuses to continue a file
+ * that no longer carries that identity or holds no conversation: Pi opens a
+ * missing path as a new, empty session, and a file replaced since would run
+ * the resume on someone else's conversation.
+ */
+export interface ContinuedTranscript {
+  file: string;
+  header: ChildTranscriptHeader;
 }
 
 /** Options passed to EnvironmentIO/SessionFactoryIO methods. */
@@ -203,10 +221,10 @@ export interface CreateSubagentSessionParams {
   /**
    * An earlier child transcript to continue instead of starting a new one: the
    * child an earlier manager ran, before a `/reload` or a restart. The session
-   * is reopened on it, keeps the model and thinking level it recorded, and its
-   * first run here is a resume.
+   * is reopened on it, runs in the directory it recorded, keeps the model and
+   * thinking level it selected, and its first run here is a resume.
    */
-  transcript?: string;
+  transcript?: ContinuedTranscript;
 }
 
 /**
@@ -236,13 +254,17 @@ export async function createSubagentSession(
   const parentSessionId = params.parentSession?.parentSessionId;
   deps.lifecycle.spawning({ agentName: type, parentSessionId });
 
-  // Resolve working directory upfront - needed for detectEnv before assembly.
-  const effectiveCwd = params.cwd ?? snapshot.cwd;
-  const env = await deps.io.detectEnv(deps.exec, effectiveCwd);
+  // A continued transcript is opened, and checked, before anything else: the
+  // model its branch selects decides the child's model, and with it the prompt
+  // strategy, and nothing may run on a file that no longer holds this child.
+  const reopened = params.transcript && reopenTranscript(deps.io, params.transcript);
 
-  // A continued transcript is opened before assembly, because the model it
-  // recorded decides the child's model, and with it the prompt strategy.
-  const reopened = params.transcript === undefined ? undefined : deps.io.openSessionManager(params.transcript);
+  // Resolve working directory upfront - needed for detectEnv before assembly.
+  // A continued child runs where its transcript says it ran, as it would had
+  // its session stayed live.
+  const cwd = params.cwd ?? params.transcript?.header.cwd;
+  const effectiveCwd = cwd ?? snapshot.cwd;
+  const env = await deps.io.detectEnv(deps.exec, effectiveCwd);
 
   // Assemble session configuration (synchronous, no SDK objects).
   const cfg = assembleSessionConfig(
@@ -256,7 +278,7 @@ export async function createSubagentSession(
       resolvePromptInheritance: deps.resolvePromptInheritance,
     },
     {
-      cwd: params.cwd,
+      cwd,
       model: params.model ?? (reopened && recordedModel(reopened, snapshot.modelRegistry)),
       thinkingLevel: params.thinkingLevel,
     },
@@ -305,7 +327,7 @@ export async function createSubagentSession(
   // A continued transcript stays where it is, beside its siblings.
   const sessionDir = params.transcript === undefined
     ? deps.io.deriveSessionDir(params.parentSession?.parentSessionFile, cfg.effectiveCwd)
-    : dirname(params.transcript);
+    : dirname(params.transcript.file);
   let sessionManager: SessionManagerLike;
   if (reopened) {
     sessionManager = reopened;
@@ -370,13 +392,37 @@ export async function createSubagentSession(
 }
 
 /**
- * The model a reopened transcript last recorded, when the parent's registry
+ * Reopen a settled child's transcript, refusing one that no longer holds the
+ * child the resume was accepted for. Throws before any SDK session exists, so
+ * a refused transcript gets no turn and no entry.
+ */
+function reopenTranscript(io: SessionFactoryIO, transcript: ContinuedTranscript): ReopenedSessionManagerLike {
+  const reopened = io.openSessionManager(transcript.file);
+  const header = reopened.getHeader();
+  const expected = transcript.header;
+  if (
+    header?.id !== expected.id ||
+    header.parentSession !== expected.parentSession ||
+    header.cwd !== expected.cwd
+  ) {
+    throw new Error(
+      `Transcript ${transcript.file} no longer holds this child's session; it was not restored.`,
+    );
+  }
+  if (reopened.buildSessionContext().messages.length === 0) {
+    throw new Error(`Transcript ${transcript.file} holds no conversation to continue; it was not restored.`);
+  }
+  return reopened;
+}
+
+/**
+ * The model a reopened transcript's branch selects, when the parent's registry
  * still knows it; undefined lets the agent's own model resolution decide.
  */
 function recordedModel(
   sessionManager: ReopenedSessionManagerLike,
   registry: ModelRegistry,
 ): Model<any> | undefined {
-  const recorded = sessionManager.buildSessionContext().model;
-  return recorded ? registry.find(recorded.provider, recorded.modelId) : undefined;
+  const selected = branchModelSelection(sessionManager.getBranch(), registry);
+  return selected ? registry.find(selected.provider, selected.modelId) : undefined;
 }

@@ -340,6 +340,12 @@ function resumeRefusalMessage(refusal: ResumeRefusalReason, id: string): string 
 			return `Agent "${id}" had its session released after its retention window; resume is unavailable, but its result is still retrievable via get_subagent_result.`;
 		case "no-session":
 			return `Agent "${id}" has no active session to resume.`;
+		case "agent-type-unavailable":
+			return (
+				`Agent "${id}" ran as an agent type that is no longer defined or is disabled; ` +
+				"resume is unavailable because it would run under a definition it never had. " +
+				"Spawn a new agent of an available type instead."
+			);
 		case "workspace-disposed":
 			return (
 				`Agent "${id}" ran in an isolated workspace that no longer ` +

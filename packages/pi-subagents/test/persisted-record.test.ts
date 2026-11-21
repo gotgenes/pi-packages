@@ -22,6 +22,7 @@ function persistedRecord(overrides: Partial<PersistedSubagentRecord> = {}): Pers
 		stoppedWhileQueued: false,
 		outputFile: "/tasks/run-1.jsonl",
 		toolUses: 7,
+		providerWorkspace: false,
 		...overrides,
 	};
 }
@@ -61,6 +62,7 @@ describe("toPersistedRecord", () => {
 			stoppedWhileQueued: false,
 			outputFile: "/tasks/a.jsonl",
 			toolUses: 7,
+			providerWorkspace: false,
 		});
 	});
 
@@ -88,6 +90,7 @@ describe("toPersistedRecord", () => {
 			stoppedWhileQueued: false,
 			outputFile: "/tasks/a.jsonl",
 			toolUses: 7,
+			providerWorkspace: false,
 		});
 	});
 
@@ -108,6 +111,8 @@ describe("readPersistedRuns", () => {
 		stoppedWhileQueued: false,
 		outputFile: "/tasks/run-1.jsonl",
 		toolUses: 7,
+		turnBudget: undefined,
+		providerWorkspace: false,
 	};
 
 	it("returns nothing for no entries", () => {
@@ -157,6 +162,42 @@ describe("readPersistedRuns", () => {
 
 		it("skips an entry with no data", () => {
 			expect(readPersistedRuns([recordEntry(undefined)])).toEqual([]);
+		});
+
+		it("reads the turn budget a run recorded", () => {
+			const turnBudget = { maxTurns: 3, used: 3, phase: "exhausted" } as const;
+			expect(readPersistedRuns([recordEntry(persistedRecord({ turnBudget }))])).toStrictEqual([{ ...summary, turnBudget }]);
+		});
+
+		it("reads an unlimited run's budget, which names no ceiling", () => {
+			const turnBudget = { used: 9, phase: "within" } as const;
+			expect(readPersistedRuns([recordEntry(persistedRecord({ turnBudget }))])).toStrictEqual([{ ...summary, turnBudget }]);
+		});
+
+		it.each([
+			["a ceiling that is not a number", { maxTurns: "3", used: 1, phase: "within" }],
+			["no use count", { maxTurns: 3, phase: "within" }],
+			["an unknown phase", { maxTurns: 3, used: 1, phase: "bogus" }],
+			["not an object", 3],
+		])("reads a turn budget with %s as unknown, keeping the run", (_label, turnBudget) => {
+			expect(readPersistedRuns([recordEntry({ ...persistedRecord(), turnBudget })])).toStrictEqual([summary]);
+		});
+
+		it("reads that a provider prepared the run's workspace", () => {
+			expect(readPersistedRuns([recordEntry(persistedRecord({ providerWorkspace: true }))])).toStrictEqual([
+				{ ...summary, providerWorkspace: true },
+			]);
+		});
+
+		it("reads an entry written before the entry recorded providerWorkspace as not saying", () => {
+			const { providerWorkspace: _providerWorkspace, ...preUpgrade } = persistedRecord();
+			expect(readPersistedRuns([recordEntry(preUpgrade)])).toStrictEqual([{ ...summary, providerWorkspace: undefined }]);
+		});
+
+		it("reads a providerWorkspace that is not a boolean as not saying, keeping the run", () => {
+			expect(readPersistedRuns([recordEntry({ ...persistedRecord(), providerWorkspace: "yes" })])).toStrictEqual([
+				{ ...summary, providerWorkspace: undefined },
+			]);
 		});
 
 		it("keeps a run that recorded no transcript", () => {
