@@ -52,7 +52,7 @@ Question 2 asks where a passage belongs, and its answer depends on how the file 
 | Agent definition | each dispatch, as the child's system prompt (appended to the parent's, so the child sees `AGENTS.md` and can load skills) | the child needs it and does not get it from `AGENTS.md`, the dispatch prompt, or a skill the body tells it to load                                  | as for templates                                                                           |
 
 Invocation cost changes no verdict — a passage a current model does not need is waste wherever it is paid.
-It changes where you look first: walk the `workflow` corpus in `invocation-volume.csv` order.
+It changes where you look first: walk the skills and the `workflow` corpus in `invocation-volume.csv` order.
 
 One duplication shape is **not** a duplicate: a reviewer agent's check that mirrors an instruction a template gives the implementer.
 That is a second actor verifying the first, which is the reviewer's purpose; a verdict of duplication needs the two passages to address the same actor.
@@ -74,13 +74,16 @@ For `docs` (or `all`):
 node scripts/agent-docs/always-loaded.mjs | tee "$D/always-loaded-before.txt"
 ```
 
-For `workflow` (or `all`), fix the window's end at today so the before and after runs count the same invocations:
+For every corpus, fix the window's end at today so the before and after runs count the same invocations:
 
 ```bash
 UNTIL=$(date -u +%F)
 node scripts/agent-docs/invocation-volume.mjs --until "$UNTIL" > "$D/invocation-volume.csv"
 node scripts/agent-docs/invocation-volume.mjs --until "$UNTIL" --total | tee "$D/invocation-volume-before.txt"
 ```
+
+The `--total` line carries one field per kind, and a run records only its corpus's kinds: `skills=` for `docs`, `templates=` and `agents=` for `workflow`, all three for `all`.
+Its headline number is the sum of those kinds, which is the line's own `total=` only for `all`.
 
 `doc-growth.csv` reproduces from git at any later date; `model-usage.csv` and `invocation-volume.csv` read a machine-local, prunable session store and are committed precisely because they cannot be re-derived.
 The `always-loaded` and `invocation-volume` lines are the numbers this audit is measured against: write them into the inventory header in Step 3 as the **before**.
@@ -94,8 +97,8 @@ A carried-forward `offload` row is re-verdicted this run: `offload → <dest>` a
 
 ## Step 2: Classify
 
-For `docs`, walk `AGENTS.md` section by section, then each `.pi/skills/*/SKILL.md`.
-For `workflow`, walk each template, then each agent definition, in `invocation-volume.csv` order.
+For `docs`, walk `AGENTS.md` section by section, then each skill file in `invocation-volume.csv` order (its `skill` rows).
+For `workflow`, walk each template, then each agent definition, in `invocation-volume.csv` order (its `template` and `agent` rows).
 A passage is a sentence or a tightly bound group of sentences making one claim; in these files a sentence is a line.
 
 Give every passage exactly one verdict:
@@ -146,7 +149,7 @@ corpus: <docs|workflow|all>
 
 Always loaded before: <total> words (AGENTS.md <n> + skill descriptions <n> + agent descriptions <n>).
 Always loaded after: _filled in Step 6_.
-Invocation volume before: <total> words (templates <n> + agents <n>, <since> to <until>).
+Invocation volume before: <sum> words (skills <n> + templates <n> + agents <n>, <since> to <until>).
 Invocation volume after: _filled in Step 6_.
 
 ## Summary
@@ -229,7 +232,7 @@ A destination that does not exist is a design choice for a separate change; the 
    node scripts/agent-docs/invocation-volume.mjs --until "$UNTIL" --total | tee "$D/invocation-volume-after.txt"
    ```
 
-   Run the line for each corpus this audit covered.
+   Run the `always-loaded` line only when the audit covered `docs`.
 3. Confirm every applied row landed: for each `delete`, `grep -c '<passage>'` on its file returns 0; for each `compress`, the rule's distinctive phrase is still present and the incident's is not; for each applied `offload`, the distinctive phrase is absent from the source and present in the destination.
 4. When the run applied any `offload` row, verify the **corpus** as well — a per-row grep cannot see a line dropped rather than mis-moved:
 
