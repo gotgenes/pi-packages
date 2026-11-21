@@ -28,6 +28,7 @@ Where they disagree with existing tests they win, and the `code-design` skill's 
 - By default, write the values that matter to a test in the test, as literals, and do not hide inputs or expected outputs behind a builder's defaults.
   Shared builders are for wiring collaborators.
   A fixture that is intricate to assemble is a design signal first, so look for the value or the smaller role before adding a builder.
+- Before shipping a behavior change, try it once for real, in a fresh Pi session or against the real tool; a green suite alone is not the check.
 
 ## Vitest mock patterns
 

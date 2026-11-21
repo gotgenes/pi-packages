@@ -25,6 +25,8 @@ Change both together.
 | Factory functions that return closures are generally avoided.                                                                                                  | `code-design` |
 | A directory's `index.ts` is its public API, other directories import through it, and the rest of the directory is implementation detail.                       | `code-design` |
 | An object is constructed complete and ready to use, with no getters, setters, or late wiring.                                                                  | `code-design` |
+| Things are named for what they mean in the domain, in plain words, and an ambiguous name is renamed instead of documented.                                     | `code-design` |
+| When code is awkward, the first question is which collaborator is missing, before extracting a helper or splitting a file.                                     | `code-design` |
 
 ### Testing
 
@@ -38,6 +40,7 @@ Change both together.
 | A collaborator that turns out only to compute an answer becomes a pure function.                                                    | `testing` |
 | Values that matter to a test are written in the test as literals, and shared builders are for wiring collaborators.                 | `testing` |
 | A fixture that is intricate to assemble is a design signal before it is a reason for a builder.                                     | `testing` |
+| A behavior change is tried once for real before it ships.                                                                           | `testing` |
 
 ### Existing code
 
@@ -54,17 +57,18 @@ Change both together.
 
 ### Process
 
-| Preference                                                                                                                                                                 | Lives in                 |
-| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
-| Think wide and land small: systems thinking while planning, and controlled, measured, incremental change when landing.                                                     | `AGENTS.md`, principle 6 |
-| When the architectural target is bigger than the issue, the enabling work becomes its own issue ahead of this one.                                                         | `AGENTS.md`, principle 6 |
-| Local commits are tidied before pushing, a pushed commit is left alone, and a tidy that would rewrite many SHA citations is skipped.                                       | `git-workflow`           |
-| In `/sync-worktree` the agent resolves a rebase conflict itself, in docs, tests, config, and source, re-runs the checks, and reports what collided and how it resolved it. | `sync-worktree.md`       |
-| `/sync-worktree` runs on Opus, because resolving a source conflict needs the judgment.                                                                                     | `sync-worktree.md`       |
-| Pressure-test a proposal before building on it, the operator's as much as the agent's own.                                                                                 | `AGENTS.md`, principle 7 |
-| Decisions go to the operator one at a time when each needs its own context.                                                                                                | `clarification-gates`    |
-| A dependency or tool version that a change touches moves to the latest published one.                                                                                      | `code-design`            |
-| Recent evidence weighs more than old.                                                                                                                                      | `reading-artifacts`      |
+| Preference                                                                                                                                                                 | Lives in                       |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| Think wide and land small: systems thinking while planning, and controlled, measured, incremental change when landing.                                                     | `AGENTS.md`, principle 6       |
+| When the architectural target is bigger than the issue, the enabling work becomes its own issue ahead of this one.                                                         | `AGENTS.md`, principle 6       |
+| Local commits are tidied before pushing, a pushed commit is left alone, and a tidy that would rewrite many SHA citations is skipped.                                       | `git-workflow`                 |
+| In `/sync-worktree` the agent resolves a rebase conflict itself, in docs, tests, config, and source, re-runs the checks, and reports what collided and how it resolved it. | `sync-worktree.md`             |
+| `/sync-worktree` runs on Opus, because resolving a source conflict needs the judgment.                                                                                     | `sync-worktree.md`             |
+| Pressure-test a proposal before building on it, the operator's as much as the agent's own.                                                                                 | `AGENTS.md`, principle 7       |
+| Decisions go to the operator one at a time when each needs its own context.                                                                                                | `clarification-gates`          |
+| A dependency or tool version that a change touches moves to the latest published one.                                                                                      | `code-design`                  |
+| Recent evidence weighs more than old.                                                                                                                                      | `reading-artifacts`            |
+| A small, related adjacent fix is folded into the change as its own commit, and one that would widen the change a lot is filed.                                             | `tdd-plan.md`, `build-plan.md` |
 
 ## Not placed yet
 
@@ -106,15 +110,12 @@ Ten of the 33 that were not found, chosen as the least tied to one package's pro
 Three were added to the tables above, three were already covered by lines there, and four were dropped.
 Two more were settled along with the disagreements recorded above, and two of the rest were added afterwards.
 The remaining 19 have not been reviewed.
+Four of the 16 partly stated candidates were accepted the same day and moved to the tables above, and the table below lists the other 12.
 
 ### Recurring and only partly in the docs
 
 | Candidate                                                                                             | Sessions | What the docs lack                                              |
 | ----------------------------------------------------------------------------------------------------- | -------- | --------------------------------------------------------------- |
-| Fold a small adjacent fix into the change, and file it only when it widens the scope a lot.           | 21       | the docs state only the filing half                             |
-| When code is awkward, ask which collaborator is missing before extracting helpers or splitting files. | 12       | it is a checklist item, not a first question                    |
-| Try the behavior live before shipping.                                                                | 11       | it is not the default                                           |
-| Name things in plain domain words, and rename an ambiguous name instead of documenting it.            | 11       | domain vocabulary, and renaming over documenting                |
 | Follow Pi's conventions and adopt its newer SDK mechanisms.                                           | 10       | the docs say to read Pi's source, not to prefer its conventions |
 | Keep a package's core small and leave extras to downstream packages.                                  | 9        | the general rule                                                |
 | Raise the Pi version floor when that simplifies the code.                                             | 9        | the preference for raising it                                   |

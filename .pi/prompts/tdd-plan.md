@@ -126,8 +126,8 @@ If a plan's quantitative target (LOC, clone count, complexity) does not fall out
 
 ## Filing an issue mid-implementation
 
-When a step surfaces work outside the plan's scope, file it and keep going — do not scope-creep the step.
-Then load the `roadmap-fit` skill and follow it: an issue spun off while its package has an open improvement phase gets a recorded disposition at filing time, not at phase close, which is too late to fold anything in.
+When a step surfaces adjacent work, fold it in as its own commit when it is related and small, and file it when it would widen the change a lot.
+After filing, load the `roadmap-fit` skill and follow it: an issue spun off while its package has an open improvement phase gets a recorded disposition at filing time, not at phase close, which is too late to fold anything in.
 The skill exits at its first step when no phase is open, and recording a disposition never authorizes implementing the work now.
 
 ## After the last TDD step

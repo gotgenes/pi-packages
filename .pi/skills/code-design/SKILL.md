@@ -14,6 +14,7 @@ Load this skill when implementing, refactoring, or reviewing TypeScript code.
 These are the operator's choices among defensible alternatives.
 
 - The schools are _Clean Code_, _Working Effectively with Legacy Code_, _Extreme Programming Explained_, and Gary Bernhardt's functional core, imperative shell.
+- Name things for what they mean in the domain, in plain, conventional words, and rename an ambiguous name instead of documenting the ambiguity.
 - Keep I/O and sequencing in a thin shell that receives its dependencies, and keep decisions free of I/O.
 - The object that holds the state a decision depends on is the receiver, and the per-call context is the argument.
 - Tell a collaborator what to do; do not ask it for data and decide on its behalf.
@@ -22,6 +23,7 @@ These are the operator's choices among defensible alternatives.
   A translation into another module's terms lives with that module, as a function that takes the value.
   A conclusion only one caller needs stays with that caller until a second caller needs the same one.
 - A record that other code inspects and decides about is a smell.
+- When code is awkward, ask which collaborator is missing before extracting a helper, splitting a file, or passing a bag of context.
 - Write a class when the code commands a dependency that has its own state and behavior, and a function when no participant owns the state and every input is a value.
 - Construct an object complete and ready to use, with its collaborators passed in; no getters, setters, or late wiring.
 - Avoid a factory function that returns closures.
