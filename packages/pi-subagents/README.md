@@ -144,7 +144,8 @@ Reopen the original parent to continue those children.
 An agent whose agent type has since been deleted or disabled is not resumable, rather than running under another definition.
 An agent that ran in a workspace a workspace provider prepared is not resumable this way, because its workspace was removed when the previous session ended.
 A run recorded before this provenance was tracked is resumable only when it ran in the parent's directory and no workspace provider is registered.
-If the transcript has been removed or replaced by the time the resume reopens it, the resume fails with an error instead of continuing an empty or unrelated conversation.
+If the transcript has been removed, emptied, or replaced by the time the resume reopens it, including while the resume waited for a concurrency slot, the resume fails with an error and leaves the file as it found it, instead of continuing an empty or unrelated conversation.
+Another process writing the transcript at the same moment the resume opens it is not supported.
 
 ### `get_subagent_result`
 

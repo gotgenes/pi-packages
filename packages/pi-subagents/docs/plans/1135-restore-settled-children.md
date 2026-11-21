@@ -34,6 +34,7 @@ They are the source, read when a resume names an ID the manager holds no record 
 1. **Session assembly continues a transcript.**
    `createSubagentSession` takes an optional `transcript`.
    With one, it reopens that file (`SessionManager.open` at the composition root) instead of creating a session, and refuses it before any SDK session exists unless it still carries the session id, parent, and cwd recorded when the resume was accepted, and holds a conversation: Pi opens a missing path as a new, empty session.
+   The header is read without writing immediately before the open, and a file that does not match is never opened, because Pi initialises an empty file it opens and rewrites an older-format session it loads; the opened session manager is checked again after.
    It assembles the child in the directory the transcript records, against the model the transcript's branch selects by Pi's own rule (`recorded-model.ts`, mirroring Pi's unexported `getBranchSelection`) when the parent's registry still knows it, and leaves the thinking level unset so Pi restores the recorded one.
    `SubagentSession` is told the transcript is continued, so its first run here neither prefixes parent context nor emits the child-lifecycle `completed` event.
 2. **A record can start from a transcript.**
@@ -62,5 +63,11 @@ They are the source, read when a resume names an ID the manager holds no record 
 
 - A per-call `model` or `thinking` override from the original spawn is not recorded separately; a restored child runs on its transcript's model selection and thinking level, which carry those choices.
 - A run that never reached its turn loop recorded no turn budget, so its restored child gets the agent's current turn limit.
-- The identity check narrows, but cannot close, the window between reading a transcript and Pi opening it: another process can still change the file in between.
+- Concurrency assumptions for a transcript between the resume's acceptance and its first turn:
+  - **The queued window is covered.**
+    However long a resume waits for a concurrency slot, the transcript is checked read-only at the moment it is opened, so a removal, a truncation to 0 bytes, or a replacement made while it waited fails the resume with its bytes unchanged and no model turn (`restore-real-transcript.test.ts`).
+  - **A simultaneous external writer is not supported.**
+    The read-only check and Pi's open are consecutive synchronous calls; another process that writes the file between them, or while the reopened child is running and appending to it, is outside what the restore defends against.
+  - A file that does match is the child's own transcript, and Pi may still repair or migrate it as it opens it (a missing final newline, an older session format), as it would on any reopen.
+  - Identity is the header's session id, parent, and cwd; a file forged with the same header is not told apart.
 - The parent snapshot is taken at resume time, so the child's system prompt reflects the parent and agent definition as they are now.

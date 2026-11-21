@@ -151,6 +151,13 @@ export interface SessionFactoryIO {
   createSessionManager: (cwd: string, sessionDir: string) => SessionManagerLike;
   /** Reopen an existing child transcript, whose header already records its cwd and parent. */
   openSessionManager: (transcript: string) => ReopenedSessionManagerLike;
+  /**
+   * Read, without writing, the identity a transcript's header records; undefined
+   * when the file is missing, empty, or does not start with a usable header.
+   * Consulted before `openSessionManager`, because Pi writes to some files as it
+   * opens them.
+   */
+  readTranscriptHeader: (transcript: string) => ChildTranscriptHeader | undefined;
   createSettingsManager: (cwd: string, agentDir: string) => SettingsManager;
   /**
    * Settings view the child's resource loader resolves packages from.
@@ -395,24 +402,38 @@ export async function createSubagentSession(
  * Reopen a settled child's transcript, refusing one that no longer holds the
  * child the resume was accepted for. Throws before any SDK session exists, so
  * a refused transcript gets no turn and no entry.
+ *
+ * The file is checked twice. First read-only, right before it is opened: Pi
+ * initialises an empty file it opens with a new header, and rewrites a session
+ * in an older format as it loads it, so a file that is not this child's must
+ * never reach the open. Then the session manager actually opened is checked,
+ * since that, not the file read a moment earlier, is what the child continues.
+ * Nothing awaits between the two, so nothing in this process can change the
+ * file in between; another process writing to it at that instant is not
+ * supported.
  */
 function reopenTranscript(io: SessionFactoryIO, transcript: ContinuedTranscript): ReopenedSessionManagerLike {
-  const reopened = io.openSessionManager(transcript.file);
-  const header = reopened.getHeader();
-  const expected = transcript.header;
-  if (
-    header?.id !== expected.id ||
-    header.parentSession !== expected.parentSession ||
-    header.cwd !== expected.cwd
-  ) {
-    throw new Error(
-      `Transcript ${transcript.file} no longer holds this child's session; it was not restored.`,
-    );
+  if (!holdsChild(io.readTranscriptHeader(transcript.file), transcript.header)) {
+    throw notThisChild(transcript);
   }
+  const reopened = io.openSessionManager(transcript.file);
+  if (!holdsChild(reopened.getHeader() ?? undefined, transcript.header)) throw notThisChild(transcript);
   if (reopened.buildSessionContext().messages.length === 0) {
     throw new Error(`Transcript ${transcript.file} holds no conversation to continue; it was not restored.`);
   }
   return reopened;
+}
+
+/** Whether a transcript header names the child session recorded when its resume was accepted. */
+function holdsChild(
+  header: { id: string; cwd: string; parentSession?: string } | undefined,
+  expected: ChildTranscriptHeader,
+): boolean {
+  return header?.id === expected.id && header.parentSession === expected.parentSession && header.cwd === expected.cwd;
+}
+
+function notThisChild(transcript: ContinuedTranscript): Error {
+  return new Error(`Transcript ${transcript.file} no longer holds this child's session; it was not restored.`);
 }
 
 /**

@@ -472,7 +472,10 @@ An entry written before runs recorded `providerWorkspace` is restored only when 
 The rebuilt record keeps the turn ceiling its last run recorded (`turnBudget.maxTurns`, or unlimited when that budget named none); a run that recorded no budget gets what a fresh spawn of its type would.
 
 The rebuilt record's first resume reopens the transcript through `createSubagentSession({ transcript })` rather than requiring a live session.
-The factory checks the reopened file still carries the recorded session id, parent, and cwd, and holds a conversation, before any SDK session exists, so a file removed or replaced since the restore fails that resume instead of running it on a blank or unrelated session.
+The factory checks the transcript twice before any SDK session exists, so a file removed, truncated, or replaced since the restore fails that resume instead of running it on a blank or unrelated session.
+First it reads the file's header without writing (`readTranscriptHeader`), because Pi's `SessionManager.open` writes to some files it opens: it initialises an empty file with a new header and rewrites an older-format session as it migrates it.
+Only a file whose header still names the recorded session id, parent, and cwd is opened; the opened session manager must then name them too and hold a conversation.
+Nothing awaits between the read and the open, so no code in this process can change the file in between.
 The reopened session runs in the directory its transcript recorded, on the model its branch selects by Pi's own rule (a virtual model's `model_change` holds over the physical replies routed under it), at the thinking level Pi restores.
 The type is checked again as the transcript reopens, since a queued resume may reopen it after the registry reloaded.
 One reopening is in flight per record: a resume started while a stopped resume's reopening is pending waits for it and continues the session it produces, and a session that arrives after the record was torn down is disposed on arrival rather than adopted.

@@ -617,7 +617,34 @@ describe("createSubagentSession — continuing an earlier transcript", () => {
     });
   });
 
-  describe("a transcript that no longer holds the child", () => {
+  describe("a transcript checked read-only before it is opened", () => {
+    it("reads the file's header before opening it", async () => {
+      arrangeFactory();
+
+      await createSubagentSession({ snapshot: STUB_SNAPSHOT, type: "Explore", transcript: TRANSCRIPT }, defaultDeps());
+
+      expect(io.readTranscriptHeader).toHaveBeenCalledExactlyOnceWith(TRANSCRIPT.file);
+      expect(io.readTranscriptHeader.mock.invocationCallOrder[0]).toBeLessThan(io.openSessionManager.mock.invocationCallOrder[0]);
+    });
+
+    it.each([
+      ["no usable header (missing, empty, or not a session)", undefined],
+      ["another session's id", { ...EARLIER_TRANSCRIPT.header, id: "someone-else" }],
+      ["another parent", { ...EARLIER_TRANSCRIPT.header, parentSession: "other-parent" }],
+      ["another directory", { ...EARLIER_TRANSCRIPT.header, cwd: "/work/elsewhere" }],
+    ])("refuses a file with %s without opening it", async (_label, header) => {
+      arrangeFactory();
+      io.readTranscriptHeader.mockReturnValueOnce(header);
+
+      await expect(
+        createSubagentSession({ snapshot: STUB_SNAPSHOT, type: "Explore", transcript: TRANSCRIPT }, defaultDeps()),
+      ).rejects.toThrow(`Transcript ${TRANSCRIPT.file} no longer holds this child's session; it was not restored.`);
+      expect(io.openSessionManager).not.toHaveBeenCalled();
+      expect(io.createSession).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("a transcript that no longer holds the child once opened", () => {
     it.each([
       ["a new session in its place (the file was missing)", { id: "fresh-session-id", cwd: "/work/earlier", parentSession: undefined }],
       ["another session's id", { id: "someone-else", cwd: "/work/earlier", parentSession: "parent-id" }],

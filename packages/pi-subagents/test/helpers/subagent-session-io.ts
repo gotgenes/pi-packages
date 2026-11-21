@@ -4,6 +4,7 @@ import type { ChildLifecyclePublisher } from "#src/lifecycle/child-lifecycle";
 import type { ContinuedTranscript, ReopenedSessionManagerLike } from "#src/lifecycle/create-subagent-session";
 import type { BranchEntryLike } from "#src/session/recorded-model";
 import type { AssemblerIO } from "#src/session/session-config";
+import type { ChildTranscriptHeader } from "#src/session/transcript-header";
 import type { AgentConfig, PromptInheritance, ShellExec } from "#src/types";
 import { createMockSession } from "#test/helpers/mock-session";
 
@@ -46,6 +47,8 @@ export function createSubagentSessionIO() {
 		// A reopened transcript: EARLIER_TRANSCRIPT's child, whose branch selects
 		// no model of its own unless a test arms getBranch.
 		openSessionManager: vi.fn((_transcript: string) => createReopenedSessionManager()),
+		// What EARLIER_TRANSCRIPT's file says before it is opened: the same child.
+		readTranscriptHeader: vi.fn((_transcript: string): ChildTranscriptHeader | undefined => ({ ...EARLIER_TRANSCRIPT.header })),
 		createSettingsManager: vi.fn().mockReturnValue({}),
 		// Identity by default: no package exclusions, so children inherit everything.
 		createLoaderSettingsManager: vi.fn().mockImplementation((parent: unknown) => parent),
