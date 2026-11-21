@@ -32,7 +32,7 @@ catalog:
   # <pkg> exec vitest run --coverage`, so no package manifest references it.
   "@vitest/coverage-istanbul": "^4.1.11"
   "@types/node": "^22.15.3"
-  fallow: "^3.22.0"
+  fallow: "^3.42.0"
   rollup: "^4.63.1"
   "rollup-plugin-dts": "^6.5.1"
 
