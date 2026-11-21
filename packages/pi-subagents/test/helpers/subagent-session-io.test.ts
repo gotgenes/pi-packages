@@ -55,9 +55,11 @@ describe("createSubagentSessionIO", () => {
 		expect(reopened.getSessionFile()).toBe(EARLIER_TRANSCRIPT.file);
 		expect(reopened.getSessionId()).toBe(EARLIER_TRANSCRIPT.header.id);
 		expect(reopened.getHeader()).toEqual(EARLIER_TRANSCRIPT.header);
-		expect(reopened.buildSessionContext().messages.map((message) => message.role)).toEqual(["user", "assistant"]);
+		const entries = reopened.getEntries();
+		expect(entries.map((entry) => entry.message?.role)).toEqual(["user", "assistant"]);
+		expect(entries.map((entry) => entry.parentId)).toEqual([null, entries[0].id]);
+		expect(reopened.getLeafId()).toBe(EARLIER_TRANSCRIPT.leafId);
 		const branch = reopened.getBranch();
-		expect(branch.at(-1)?.id).toBe(EARLIER_TRANSCRIPT.leafId);
 		expect(branchModelSelection(branch, EARLIER_SNAPSHOT.modelRegistry)).toEqual({
 			provider: EARLIER_MODEL.provider,
 			modelId: EARLIER_MODEL.id,

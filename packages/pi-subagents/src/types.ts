@@ -89,6 +89,8 @@ export interface AgentConfig extends AgentIdentity, AgentPromptConfig {
   enabled?: boolean;
   /** Where this agent was loaded from */
   source?: "default" | "project" | "global";
+  /** The file a project or global definition was read from; absent for an embedded default. */
+  filePath?: string;
 }
 
 export interface AgentInvocation {

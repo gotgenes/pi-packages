@@ -342,7 +342,7 @@ function resumeRefusalMessage(refusal: ResumeRefusalReason, id: string): string 
 			return `Agent "${id}" has no active session to resume.`;
 		case "agent-type-unavailable":
 			return (
-				`Agent "${id}" ran as an agent type that is no longer defined or is disabled; ` +
+				`Agent "${id}" ran as an agent type that is no longer defined, is disabled, or is now defined elsewhere; ` +
 				"resume is unavailable because it would run under a definition it never had. " +
 				"Spawn a new agent of an available type instead."
 			);

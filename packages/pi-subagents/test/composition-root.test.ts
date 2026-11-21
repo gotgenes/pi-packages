@@ -577,13 +577,19 @@ describe("composition root: stopped record at shutdown", () => {
 
 describe("composition root: a settled child across a reload", () => {
   let tasksDir: string;
+  /** The global agent directory, empty unless a test defines agents there, so the host's own agents stay out. */
+  let agentDir: string;
 
   beforeEach(() => {
     tasksDir = mkdtempSync(join(tmpdir(), "pi-root-restore-"));
+    agentDir = mkdtempSync(join(tmpdir(), "pi-root-restore-agent-"));
+    vi.stubEnv("PI_CODING_AGENT_DIR", agentDir);
   });
 
   afterEach(() => {
+    vi.unstubAllEnvs();
     rmSync(tasksDir, { recursive: true, force: true });
+    rmSync(agentDir, { recursive: true, force: true });
   });
 
   function createParent() {
@@ -602,17 +608,20 @@ describe("composition root: a settled child across a reload", () => {
   /**
    * Persist a completed run into the parent and shut down its extension instance.
    * `workspace` registers a provider that prepares the child a directory first.
-   * The child's session reports the id its transcript's header names.
+   * The child's session reports the id its transcript's header names, and the
+   * definition the factory would have assembled it under: `definition`, or the
+   * built-in one.
    */
   async function runChildThenReload(
     parent: SessionManager,
     transcript: string,
-    options: { type?: string; workspace?: string } = {},
+    options: { type?: string; workspace?: string; definition?: string } = {},
   ): Promise<string> {
     const sessionId = JSON.parse(readFileSync(transcript, "utf8").split("\n")[0]).id as string;
+    const agentDefinition = options.definition ?? "builtin";
     vi.mocked(createSubagentSession).mockClear();
     vi.mocked(createSubagentSession).mockResolvedValue(
-      toSubagentSession(createSubagentSessionStub(createMockSession(), transcript, { sessionId, leafId: CHILD_LEAF })),
+      toSubagentSession(createSubagentSessionStub(createMockSession(), transcript, { sessionId, leafId: CHILD_LEAF, agentDefinition })),
     );
     const { pi, tools, fire } = makePi();
     vi.mocked(pi.appendEntry).mockImplementation((customType: string, data: unknown) => {
@@ -667,7 +676,7 @@ describe("composition root: a settled child across a reload", () => {
     const result = await resumeAfterReload(SessionManager.open(parent.getSessionFile()!), id);
 
     expect(createSubagentSession).toHaveBeenCalledExactlyOnceWith(
-      expect.objectContaining({ type: "general-purpose", transcript: { file: transcript, header, leafId: CHILD_LEAF } }),
+      expect.objectContaining({ type: "general-purpose", transcript: { file: transcript, header, leafId: CHILD_LEAF, agentDefinition: "builtin" } }),
       expect.anything(),
     );
     expect(result.content[0].text).toBe(`Agent ID: ${id}\n\nPicked up where I left off.`);
@@ -726,11 +735,46 @@ describe("composition root: a settled child across a reload", () => {
 
     /** A read-only custom agent, with any extra frontmatter lines. */
     function writeReviewer(frontmatter: string) {
-      writeFileSync(
-        join(projectDir, ".pi", "agents", "reviewer.md"),
-        `---\ndescription: Reviews without editing\ntools: read\n${frontmatter}---\n\nReview only.`,
-      );
+      writeFileSync(reviewerFile(), `---\ndescription: Reviews without editing\ntools: read\n${frontmatter}---\n\nReview only.`);
     }
+
+    /** The project file the reviewer agent is defined in, which a run under it records. */
+    function reviewerFile() {
+      return join(projectDir, ".pi", "agents", "reviewer.md");
+    }
+
+    /** Resume `id` through the tool and the service, expecting both to refuse it as agent-type-unavailable, opening nothing. */
+    async function expectRefusedThroughBothDoors(parent: SessionManager, id: string, type: string) {
+      const result = await resumeAfterReload(parent, id, type);
+      expect(result.content[0].text).toMatch(/ran as an agent type that is no longer defined, is disabled, or is now defined elsewhere/);
+      expect(await getSubagentsService()!.resume(id, "continue")).toEqual({ kind: "refused", reason: "agent-type-unavailable" });
+      expect(createSubagentSession).not.toHaveBeenCalled();
+    }
+
+    it("refuses it once deleting its read-only project file uncovers the built-in of the same name", async () => {
+      const explore = join(projectDir, ".pi", "agents", "Explore.md");
+      writeFileSync(explore, "---\ndescription: Explores by reading\ntools: read\n---\n\nRead only.");
+      const parent = createParent();
+      const transcript = join(tasksDir, "explore.jsonl");
+      writeFileSync(transcript, `${JSON.stringify({ type: "session", id: "explore-session", parentSession: parent.getSessionId(), cwd: "/tmp" })}\n`);
+      const id = await runChildThenReload(parent, transcript, { type: "Explore", definition: explore });
+      // The built-in Explore, which grants bash, now answers to the name.
+      rmSync(explore);
+
+      await expectRefusedThroughBothDoors(parent, id, "Explore");
+    });
+
+    it("refuses it once deleting its project file uncovers a global file of the same name", async () => {
+      mkdirSync(join(agentDir, "agents"));
+      writeFileSync(join(agentDir, "agents", "reviewer.md"), "---\ndescription: Reviews and fixes\ntools: read, bash, edit\n---\n\nFix it.");
+      const parent = createParent();
+      const transcript = join(tasksDir, "reviewer.jsonl");
+      writeFileSync(transcript, `${JSON.stringify({ type: "session", id: "reviewer-session", parentSession: parent.getSessionId(), cwd: "/tmp" })}\n`);
+      const id = await runChildThenReload(parent, transcript, { type: "reviewer", definition: reviewerFile() });
+      rmSync(reviewerFile());
+
+      await expectRefusedThroughBothDoors(parent, id, "reviewer");
+    });
 
     it.each([
       ["deleted", () => { rmSync(join(projectDir, ".pi", "agents", "reviewer.md")); }],
@@ -739,13 +783,13 @@ describe("composition root: a settled child across a reload", () => {
       const parent = createParent();
       const transcript = join(tasksDir, "reviewer.jsonl");
       writeFileSync(transcript, `${JSON.stringify({ type: "session", id: "reviewer-session", parentSession: parent.getSessionId(), cwd: "/tmp" })}\n`);
-      const id = await runChildThenReload(parent, transcript, { type: "reviewer" });
+      const id = await runChildThenReload(parent, transcript, { type: "reviewer", definition: reviewerFile() });
       change();
 
       const result = await resumeAfterReload(parent, id);
 
       expect(result.content[0].text).toBe(
-        `Agent "${id}" ran as an agent type that is no longer defined or is disabled; ` +
+        `Agent "${id}" ran as an agent type that is no longer defined, is disabled, or is now defined elsewhere; ` +
           "resume is unavailable because it would run under a definition it never had. " +
           "Spawn a new agent of an available type instead.",
       );
@@ -760,7 +804,7 @@ describe("composition root: a settled child across a reload", () => {
       const parent = createParent();
       const transcript = join(tasksDir, "reviewer.jsonl");
       writeFileSync(transcript, `${JSON.stringify({ type: "session", id: "reviewer-session", parentSession: parent.getSessionId(), cwd: "/tmp" })}\n`);
-      const id = await runChildThenReload(parent, transcript, { type: "reviewer" });
+      const id = await runChildThenReload(parent, transcript, { type: "reviewer", definition: reviewerFile() });
       vi.mocked(createSubagentSession).mockClear();
       const { pi, fire } = makePi();
       subagentsExtension(pi);
@@ -779,7 +823,7 @@ describe("composition root: a settled child across a reload", () => {
       const parent = createParent();
       const transcript = join(tasksDir, "reviewer.jsonl");
       writeFileSync(transcript, `${JSON.stringify({ type: "session", id: "reviewer-session", parentSession: parent.getSessionId(), cwd: "/tmp" })}\n`);
-      const id = await runChildThenReload(parent, transcript, { type: "reviewer" });
+      const id = await runChildThenReload(parent, transcript, { type: "reviewer", definition: reviewerFile() });
 
       const result = await resumeAfterReload(parent, id);
 

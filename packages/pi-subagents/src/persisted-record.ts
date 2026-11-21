@@ -40,6 +40,8 @@ export interface PersistedSubagentRecord {
 	readonly sessionId: string | undefined;
 	/** The last entry the child's transcript held when the run ended, which a reopened transcript must still contain. */
 	readonly transcriptLeafId: string | undefined;
+	/** Which definition of its agent type the child ran under (`definitionOf`): a file path, or `builtin`. */
+	readonly agentDefinition: string | undefined;
 	/** Whether a `WorkspaceProvider` prepared the directory the child ran in, rather than the child running where its parent does. */
 	readonly providerWorkspace: boolean;
 }
@@ -60,6 +62,7 @@ export interface RestorableRun {
 	readonly outputFile: string;
 	readonly sessionId: string;
 	readonly transcriptLeafId: string;
+	readonly agentDefinition: string;
 	readonly providerWorkspace: boolean;
 	readonly lifetimeUsage: LifetimeUsage;
 	readonly compactionCount: number;
@@ -91,9 +94,10 @@ export interface SessionEntryLike {
 
 /**
  * What the entry takes from the agent: who it is, the transcript all its runs
- * share and what identifies it, its cross-run metrics, and whether a provider
- * prepared its directory. Read when the entry is written, so the latest entry
- * under an id carries the agent's latest.
+ * share and what identifies it, the definition its session was assembled
+ * under, its cross-run metrics, and whether a provider prepared its directory.
+ * Read when the entry is written, so the latest entry under an id carries the
+ * agent's latest.
  */
 type PersistedIdentity = Pick<
 	PersistedSubagentRecord,
@@ -106,6 +110,7 @@ type PersistedIdentity = Pick<
 	| "compactionCount"
 	| "sessionId"
 	| "transcriptLeafId"
+	| "agentDefinition"
 	| "providerWorkspace"
 >;
 
@@ -140,6 +145,7 @@ export function toPersistedRecord(identity: PersistedIdentity, outcome: Persiste
 		compactionCount: identity.compactionCount,
 		sessionId: identity.sessionId,
 		transcriptLeafId: identity.transcriptLeafId,
+		agentDefinition: identity.agentDefinition,
 		providerWorkspace: identity.providerWorkspace,
 	};
 }
@@ -225,16 +231,16 @@ function asRunSummary(data: unknown): PersistedRunSummary | undefined {
 
 type Provenance = Pick<
 	RestorableRun,
-	"sessionId" | "transcriptLeafId" | "providerWorkspace" | "lifetimeUsage" | "compactionCount"
+	"sessionId" | "transcriptLeafId" | "agentDefinition" | "providerWorkspace" | "lifetimeUsage" | "compactionCount"
 >;
 
 /** What an entry records to identify and continue its transcript, or undefined when any of it is missing. */
 function asProvenance(data: Record<string, unknown>): Provenance | undefined {
-	const { sessionId, transcriptLeafId, providerWorkspace, lifetimeUsage, compactionCount } = data;
+	const { sessionId, transcriptLeafId, agentDefinition, providerWorkspace, lifetimeUsage, compactionCount } = data;
 	const usage = asLifetimeUsage(lifetimeUsage);
-	if (!isNonEmpty(sessionId) || !isNonEmpty(transcriptLeafId)) return undefined;
+	if (!isNonEmpty(sessionId) || !isNonEmpty(transcriptLeafId) || !isNonEmpty(agentDefinition)) return undefined;
 	if (typeof providerWorkspace !== "boolean" || typeof compactionCount !== "number" || !usage) return undefined;
-	return { sessionId, transcriptLeafId, providerWorkspace, lifetimeUsage: usage, compactionCount };
+	return { sessionId, transcriptLeafId, agentDefinition, providerWorkspace, lifetimeUsage: usage, compactionCount };
 }
 
 function asLifetimeUsage(data: unknown): LifetimeUsage | undefined {

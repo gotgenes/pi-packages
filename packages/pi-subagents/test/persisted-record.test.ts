@@ -27,6 +27,7 @@ function persistedRecord(overrides: Partial<PersistedSubagentRecord> = {}): Pers
 		compactionCount: 1,
 		sessionId: "child-session-1",
 		transcriptLeafId: "leaf-1",
+		agentDefinition: "/project/.pi/agents/Explore.md",
 		providerWorkspace: false,
 		...overrides,
 	};
@@ -74,6 +75,7 @@ describe("toPersistedRecord", () => {
 			// The stub session reports neither; a real one names its session and its last entry.
 			sessionId: undefined,
 			transcriptLeafId: undefined,
+			agentDefinition: undefined,
 			providerWorkspace: false,
 		});
 	});
@@ -106,6 +108,7 @@ describe("toPersistedRecord", () => {
 			compactionCount: record.compactionCount,
 			sessionId: record.sessionId,
 			transcriptLeafId: record.transcriptLeafId,
+			agentDefinition: record.agentDefinition,
 			providerWorkspace: false,
 		});
 	});
@@ -258,6 +261,7 @@ describe("readRestorableRun", () => {
 				outputFile: "/tasks/run-1.jsonl",
 				sessionId: "child-session-1",
 				transcriptLeafId: "leaf-1",
+				agentDefinition: "/project/.pi/agents/Explore.md",
 				providerWorkspace: false,
 				lifetimeUsage: { input: 100, output: 40, cacheWrite: 5 },
 				compactionCount: 1,
@@ -349,6 +353,7 @@ describe("readRestorableRun", () => {
 		it.each([
 			["the session id", "sessionId"],
 			["the last transcript entry", "transcriptLeafId"],
+			["the agent definition", "agentDefinition"],
 			["the workspace provenance", "providerWorkspace"],
 			["the lifetime usage", "lifetimeUsage"],
 			["the compaction count", "compactionCount"],

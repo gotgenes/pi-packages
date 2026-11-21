@@ -11,6 +11,7 @@ import type { BranchEntryLike } from "#src/session/recorded-model";
 import { makeModel } from "#test/helpers/make-model";
 import { STUB_CTX, STUB_SNAPSHOT } from "#test/helpers/stub-ctx";
 import {
+  chainEntries,
   createAgentLookup,
   createChildLifecycleMock,
   createFactorySession,
@@ -18,8 +19,10 @@ import {
   createSubagentSessionDeps,
   createSubagentSessionIO,
   DEFAULT_AGENT_CONFIG,
+  EARLIER_MODEL,
   EARLIER_SNAPSHOT,
   EARLIER_TRANSCRIPT,
+  type ReopenedEntry,
 } from "#test/helpers/subagent-session-io";
 
 /**
@@ -676,36 +679,94 @@ describe("createSubagentSession — continuing an earlier transcript", () => {
       expect(io.createSession).not.toHaveBeenCalled();
     });
 
-    it.each([
-      ["nothing at all", []],
-      ["only the system prompt Pi recorded", [{ role: "system" }]],
-      ["a prompt the child never answered", [{ role: "system" }, { role: "user" }]],
-    ])("refuses a transcript holding %s, which is no conversation to continue", async (_label, messages) => {
+  });
+
+  describe("a transcript whose raw history does not hold the child's whole conversation", () => {
+    const prompt = { type: "message", id: "earlier-prompt", message: { role: "user" } };
+    const reply = { type: "message", id: TRANSCRIPT.leafId, message: { role: "assistant", provider: EARLIER_MODEL.provider, model: EARLIER_MODEL.id } };
+
+    /** Continue EARLIER_TRANSCRIPT reopened holding `entries`, expecting the refusal `message` before any session exists. */
+    async function expectRefused(entries: ReopenedEntry[], message: string) {
       arrangeFactory();
-      reopensAs({ buildSessionContext: vi.fn(() => ({ messages })) });
+      const reopenedWith = createReopenedSessionManager(entries);
+      io.openSessionManager.mockReturnValueOnce(reopenedWith);
 
       await expect(
         createSubagentSession({ snapshot: SNAPSHOT, type: "Explore", transcript: TRANSCRIPT }, defaultDeps()),
-      ).rejects.toThrow(`Transcript ${TRANSCRIPT.file} holds no conversation to continue; it was not restored.`);
+      ).rejects.toThrow(message);
       expect(io.createSession).not.toHaveBeenCalled();
+      // Pi's own walk never ran on it: it stops silently at a missing parent and never returns from a loop.
+      expect(reopenedWith.getBranch).not.toHaveBeenCalled();
+    }
+
+    const cutShort = `Transcript ${TRANSCRIPT.file} no longer holds the conversation its last run left; it was not restored.`;
+    const noConversation = `Transcript ${TRANSCRIPT.file} holds no conversation to continue; it was not restored.`;
+
+    it.each([
+      ["only the system prompt Pi recorded", [{ type: "message", message: { role: "system" } }]],
+      ["a prompt the child never answered", [{ type: "message", message: { role: "system" } }, { type: "message", message: { role: "user" } }]],
+    ])("refuses a branch to the recorded leaf holding %s", async (_label, before) => {
+      const leaf = { type: "custom", id: TRANSCRIPT.leafId };
+      await expectRefused(chainEntries([...before, leaf]), noConversation);
     });
 
     it("refuses a transcript cut short of the entry the child's last run left", async () => {
-      arrangeFactory();
-      reopensAs({ getBranch: vi.fn(() => [{ type: "message", id: "earlier-prompt", message: { role: "user" } }]) });
+      await expectRefused(chainEntries([prompt]), cutShort);
+    });
 
-      await expect(
-        createSubagentSession({ snapshot: SNAPSHOT, type: "Explore", transcript: TRANSCRIPT }, defaultDeps()),
-      ).rejects.toThrow(
-        `Transcript ${TRANSCRIPT.file} no longer holds the conversation its last run left; it was not restored.`,
-      );
-      expect(io.createSession).not.toHaveBeenCalled();
+    it("refuses a tail cut off from its root by a missing entry, though it keeps the leaf, a prompt, and a reply", async () => {
+      const [, kept, , ...tail] = chainEntries([
+        { type: "message", message: { role: "user" } },
+        { type: "message", message: { role: "assistant" } },
+        { type: "message", message: { role: "user" } },
+        { type: "message", message: { role: "user" } },
+        reply,
+      ]);
+      // entry-0 (the root) and entry-2 are gone; what is left names parents the file no longer holds.
+      await expectRefused([kept, ...tail], cutShort);
+    });
+
+    it("refuses a branch whose first entry is not a root", async () => {
+      const [first, second] = chainEntries([prompt, reply]);
+      await expectRefused([{ ...first, parentId: "never-written" }, second], cutShort);
+    });
+
+    it("refuses a branch that loops back on itself, instead of walking it forever", async () => {
+      const [first, second] = chainEntries([prompt, reply]);
+      await expectRefused([{ ...first, parentId: second.id }, second], cutShort);
+    });
+
+    it("refuses a branch Pi would continue that does not pass through the recorded leaf", async () => {
+      // A second line of entries off the root, appended after the child's own: Pi continues from its last entry.
+      const [root, leaf] = chainEntries([prompt, reply]);
+      const elsewhere = { type: "message", id: "elsewhere", parentId: root.id, message: { role: "assistant" } };
+      await expectRefused([root, leaf, elsewhere], cutShort);
+    });
+
+    it("refuses a transcript with no entries at all", async () => {
+      await expectRefused([], cutShort);
     });
 
     it("continues a transcript that holds that entry with more after it", async () => {
       arrangeFactory();
-      const later = { type: "custom", id: "appended-after-the-record" };
-      reopensAs({ getBranch: vi.fn(() => [...createReopenedSessionManager().getBranch(), later]) });
+      io.openSessionManager.mockReturnValueOnce(
+        createReopenedSessionManager(chainEntries([prompt, reply, { type: "custom", id: "appended-after-the-record" }])),
+      );
+
+      await createSubagentSession({ snapshot: SNAPSHOT, type: "Explore", transcript: TRANSCRIPT }, defaultDeps());
+
+      expect(io.createSession).toHaveBeenCalledOnce();
+    });
+
+    it("continues a compacted transcript whose raw history still holds the prompt and reply", async () => {
+      arrangeFactory();
+      // Pi projects this as the summary and what it kept: the prompt is in the raw history only.
+      const compacted = chainEntries([
+        prompt,
+        { type: "message", message: { role: "assistant", provider: EARLIER_MODEL.provider, model: EARLIER_MODEL.id } },
+        { type: "compaction", id: TRANSCRIPT.leafId },
+      ]);
+      io.openSessionManager.mockReturnValueOnce(createReopenedSessionManager(compacted));
 
       await createSubagentSession({ snapshot: SNAPSHOT, type: "Explore", transcript: TRANSCRIPT }, defaultDeps());
 
@@ -723,11 +784,18 @@ describe("createSubagentSession — continuing an earlier transcript", () => {
       getAll: () => [physical, router],
     };
 
-    /** Continue a transcript whose branch holds `branch`, ending on the entry its last run left, against `registry`. */
+    /**
+     * Continue a transcript whose branch is the child's prompt, then `branch`,
+     * ending on the entry its last run left, against `registry`.
+     */
     function continueWithBranch(branch: BranchEntryLike[]) {
       arrangeFactory();
-      const withIds = branch.map((entry, i) => ({ ...entry, id: i === branch.length - 1 ? TRANSCRIPT.leafId : `entry-${i}` }));
-      reopensAs({ getBranch: vi.fn(() => withIds) });
+      const last = branch.length - 1;
+      const entries = chainEntries([
+        { type: "message", message: { role: "user" } },
+        ...branch.map((entry, i) => (i === last ? { ...entry, id: TRANSCRIPT.leafId } : entry)),
+      ]);
+      io.openSessionManager.mockReturnValueOnce(createReopenedSessionManager(entries));
       return createSubagentSession(
         { snapshot: { ...SNAPSHOT, model: parentModel, modelRegistry: registry }, type: "Explore", transcript: TRANSCRIPT },
         defaultDeps(),
@@ -740,7 +808,7 @@ describe("createSubagentSession — continuing an earlier transcript", () => {
     });
 
     it("runs on the model of the last physical reply, over the agent's default", async () => {
-      await continueWithBranch([{ type: "message", message: { role: "user" } }, reply("openai", "gpt-recorded")]);
+      await continueWithBranch([reply("openai", "gpt-recorded")]);
 
       expect(io.createSession).toHaveBeenCalledWith(expect.objectContaining({ model: physical }));
     });
@@ -755,7 +823,7 @@ describe("createSubagentSession — continuing an earlier transcript", () => {
     });
 
     it("runs on a model selected after the last reply", async () => {
-      await continueWithBranch([reply("router", "auto", "pi-virtual"), { type: "model_change", provider: "openai", modelId: "gpt-recorded" }]);
+      await continueWithBranch([reply("openai", "gpt-recorded"), { type: "model_change", provider: "openai", modelId: "gpt-recorded" }]);
 
       expect(io.createSession).toHaveBeenCalledWith(expect.objectContaining({ model: physical }));
     });
@@ -776,7 +844,7 @@ describe("createSubagentSession — continuing an earlier transcript", () => {
     });
 
     it("refuses a transcript that selects no model at all", async () => {
-      await expect(continueWithBranch([{ type: "message", message: { role: "user" } }])).rejects.toThrow(
+      await expect(continueWithBranch([{ type: "message", message: { role: "assistant" } }])).rejects.toThrow(
         "The child's transcript selects no model, which is not available; the child was not restored.",
       );
       expect(io.createSession).not.toHaveBeenCalled();
@@ -785,7 +853,14 @@ describe("createSubagentSession — continuing an earlier transcript", () => {
     it("runs on a model the caller chose, without needing the recorded one", async () => {
       arrangeFactory();
       const chosen = makeModel({ id: "chosen" });
-      reopensAs({ getBranch: vi.fn(() => [{ type: "message", id: TRANSCRIPT.leafId, message: { role: "assistant", provider: "gone", model: "retired" } }]) });
+      io.openSessionManager.mockReturnValueOnce(
+        createReopenedSessionManager(
+          chainEntries([
+            { type: "message", message: { role: "user" } },
+            { type: "message", id: TRANSCRIPT.leafId, message: { role: "assistant", provider: "gone", model: "retired" } },
+          ]),
+        ),
+      );
 
       await createSubagentSession({ snapshot: SNAPSHOT, type: "Explore", transcript: TRANSCRIPT, model: chosen }, defaultDeps());
 
@@ -843,8 +918,53 @@ describe("createSubagentSession — continuing an earlier transcript", () => {
           { snapshot: SNAPSHOT, type: "Reviewer", transcript: TRANSCRIPT },
           createSubagentSessionDeps({ io, exec, registry: mockAgentLookup, currentAgentConfig: () => undefined }),
         ),
-      ).rejects.toThrow('Agent type "Reviewer" is no longer defined or is disabled; the child was not restored.');
+      ).rejects.toThrow(
+        'Agent type "Reviewer" is no longer defined as the child ran under it, or is disabled; the child was not restored.',
+      );
       expect(io.createSession).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ["a built-in uncovered by deleting the project file", "builtin"],
+      ["a global file uncovered by deleting the project file", "/home/user/.pi/agent/agents/Reviewer.md"],
+      ["another project's file of the same name", "/elsewhere/.pi/agents/Reviewer.md"],
+    ])("refuses a type now supplied by %s, which would grant other tools", async (_label, filePath) => {
+      arrangeFactory();
+      const ranUnder = { ...TRANSCRIPT, agentDefinition: "/project/.pi/agents/Reviewer.md" };
+      const now = { ...DEFAULT_AGENT_CONFIG, name: "Reviewer", toolNames: ["read", "bash", "edit"], ...(filePath === "builtin" ? {} : { filePath }) };
+
+      await expect(
+        createSubagentSession(
+          { snapshot: SNAPSHOT, type: "Reviewer", transcript: ranUnder },
+          createSubagentSessionDeps({ io, exec, registry: mockAgentLookup, currentAgentConfig: () => now }),
+        ),
+      ).rejects.toThrow('Agent type "Reviewer" is no longer defined as the child ran under it, or is disabled');
+      expect(io.createSession).not.toHaveBeenCalled();
+    });
+
+    it("records the definition a new session was assembled under, for a later restore to require", async () => {
+      arrangeFactory();
+      const filePath = "/project/.pi/agents/Explore.md";
+
+      const sub = await createSubagentSession(
+        { snapshot: STUB_SNAPSHOT, type: "Explore" },
+        createSubagentSessionDeps({ io, exec, registry: createAgentLookup({ filePath }) }),
+      );
+
+      expect(sub.agentDefinition).toBe(filePath);
+    });
+
+    it("continues under the same definition file, read as it is now", async () => {
+      arrangeFactory();
+      const filePath = "/project/.pi/agents/Reviewer.md";
+      const now = { ...DEFAULT_AGENT_CONFIG, name: "Reviewer", toolNames: ["read"], filePath };
+
+      await createSubagentSession(
+        { snapshot: SNAPSHOT, type: "Reviewer", transcript: { ...TRANSCRIPT, agentDefinition: filePath } },
+        createSubagentSessionDeps({ io, exec, registry: mockAgentLookup, currentAgentConfig: () => now }),
+      );
+
+      expect(io.createSession).toHaveBeenCalledWith(expect.objectContaining({ tools: ["read"] }));
     });
 
     it("refuses a type removed while the environment is detected, the last wait before assembly", async () => {
@@ -869,7 +989,7 @@ describe("createSubagentSession — continuing an earlier transcript", () => {
       definitions.clear();
       environment.resolve({ isGitRepo: false, branch: "", platform: "linux" });
 
-      await expect(creating).rejects.toThrow('Agent type "Reviewer" is no longer defined or is disabled');
+      await expect(creating).rejects.toThrow('Agent type "Reviewer" is no longer defined as the child ran under it');
       expect(io.createSession).not.toHaveBeenCalled();
     });
   });

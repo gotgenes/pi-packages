@@ -53,6 +53,8 @@ export interface SubagentSessionMeta {
   /** Child session directory — carried on the completed event as transcript location. */
   sessionDir: string;
   agentName: string;
+  /** Which definition of the agent type the session was assembled under (`definitionOf`); absent from older stubs. */
+  agentDefinition?: string;
   /** The limits every run of this session is held to, resolved at creation. */
   turnLimits: TurnLimits;
   /** Parent context prepended to the first run's prompt, captured at spawn time. */
@@ -114,6 +116,11 @@ export class SubagentSession {
   /** The child's Pi session id, which its transcript's header names. */
   get sessionId(): string {
     return this.meta.sessionId;
+  }
+
+  /** Which definition of its agent type the session was assembled under. */
+  get agentDefinition(): string | undefined {
+    return this.meta.agentDefinition;
   }
 
   /** The id of the last entry the child's transcript holds, or undefined while it holds none. */

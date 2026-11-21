@@ -141,6 +141,16 @@ export class AgentTypeRegistry implements AgentConfigLookup {
   }
 }
 
+/**
+ * Which definition a config is: the file it was read from, or `builtin` for an
+ * embedded default. A name can be supplied by more than one definition (a
+ * project file over a global one over a built-in), so a child is continued only
+ * under the very definition it ran under, never one a deletion uncovered.
+ */
+export function definitionOf(config: AgentConfig): string {
+  return config.filePath ?? "builtin";
+}
+
 /** The capability tool names a config grants: its `tools:` list, or the built-ins when it declares none. */
 export function capabilityToolNames(config: AgentConfig): string[] {
   return config.toolNames ?? [...BUILTIN_TOOL_NAMES];

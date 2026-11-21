@@ -301,6 +301,17 @@ export class Subagent {
 	}
 
 	/**
+	 * Which definition of its agent type the agent's session was assembled
+	 * under, resolved like `sessionId`: a later manager continues the agent only
+	 * under that same definition.
+	 */
+	// Read structurally, by toPersistedRecord(), with the rest of each run's entry.
+	// fallow-ignore-next-line unused-class-member
+	get agentDefinition(): string | undefined {
+		return this.subagentSession?.agentDefinition ?? this.execution.transcript?.agentDefinition;
+	}
+
+	/**
 	 * The model this agent runs: the live session's (so a mid-run switch shows),
 	 * then the one captured at releaseSession(), then the spawn override.
 	 * Undefined for an inherited model until the session exists.

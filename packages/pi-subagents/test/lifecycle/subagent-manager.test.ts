@@ -155,7 +155,13 @@ const EARLIER_TRANSCRIPT = "/sessions/parent/tasks/earlier-child.jsonl";
 /** What the earlier child's transcript header records: its session, its parent, and the parent's directory. */
 const EARLIER_HEADER = { id: "earlier-child-session", cwd: STUB_SNAPSHOT.cwd, parentSession: "parent-id" };
 /** What a restored record continues: the transcript, the header that identifies it, and the entry its last run left. */
-const EARLIER_CONTINUATION = { file: EARLIER_TRANSCRIPT, header: EARLIER_HEADER, leafId: "earlier-last-entry" };
+const EARLIER_CONTINUATION = {
+  file: EARLIER_TRANSCRIPT,
+  header: EARLIER_HEADER,
+  leafId: "earlier-last-entry",
+  // Every definition these tests register is built in or built in memory, so names no file.
+  agentDefinition: "builtin",
+};
 
 /** The `subagents:record` entry an earlier manager appended when its child settled. */
 function recordEntry(overrides: Partial<PersistedSubagentRecord> = {}) {
@@ -176,6 +182,7 @@ function recordEntry(overrides: Partial<PersistedSubagentRecord> = {}) {
     compactionCount: 1,
     sessionId: EARLIER_HEADER.id,
     transcriptLeafId: EARLIER_CONTINUATION.leafId,
+    agentDefinition: EARLIER_CONTINUATION.agentDefinition,
     providerWorkspace: false,
     ...overrides,
   };
@@ -187,6 +194,7 @@ function preIdentityRecordEntry() {
   const {
     sessionId: _sessionId,
     transcriptLeafId: _transcriptLeafId,
+    agentDefinition: _agentDefinition,
     providerWorkspace: _providerWorkspace,
     lifetimeUsage: _lifetimeUsage,
     compactionCount: _compactionCount,
@@ -2295,6 +2303,50 @@ describe("SubagentManager", () => {
         expect(await manager.resume("earlier-1", "continue", { background: false })).toEqual({
           kind: "refused",
           reason: "unknown-agent",
+        });
+      });
+
+      describe("now supplied by another definition than the one it ran under", () => {
+        const PROJECT_EXPLORE = "/project/.pi/agents/Explore.md";
+
+        /** A manager whose registry defines Explore as `definitions` say, over a child that ran under the project file. */
+        function managerWith(definitions: Map<string, AgentConfig>) {
+          const { factory } = createSessionFactory();
+          ({ manager } = createManager({
+            createSubagentSession: factory,
+            registry: new AgentTypeRegistry(() => definitions),
+            history: historyWith([recordEntry({ type: "Explore", agentDefinition: PROJECT_EXPLORE })]),
+          }));
+          return factory;
+        }
+
+        it.each([
+          ["the built-in, once the project file is deleted", new Map<string, AgentConfig>()],
+          [
+            "a global file, once the project file is deleted",
+            new Map([["Explore", makeAgentConfig({ name: "Explore", toolNames: ["read", "bash"], filePath: "/home/user/.pi/agent/agents/Explore.md" })]]),
+          ],
+        ])("refuses a child whose type is now %s, opening nothing", async (_label, definitions) => {
+          const factory = managerWith(definitions);
+
+          expect(await manager.resume("earlier-1", "continue", { background: false })).toEqual({
+            kind: "refused",
+            reason: "agent-type-unavailable",
+          });
+          expect(manager.getRecord("earlier-1")).toBeUndefined();
+          expect(factory).not.toHaveBeenCalled();
+        });
+
+        it("restores a child whose type is still read from the file it ran under", async () => {
+          const factory = managerWith(
+            new Map([["Explore", makeAgentConfig({ name: "Explore", toolNames: ["read"], filePath: PROJECT_EXPLORE })]]),
+          );
+
+          await manager.resume("earlier-1", "continue", { background: false });
+
+          expect(factory).toHaveBeenCalledWith(
+            expect.objectContaining({ transcript: expect.objectContaining({ agentDefinition: PROJECT_EXPLORE }) }),
+          );
         });
       });
 

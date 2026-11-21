@@ -1,7 +1,11 @@
 import { vi } from "vitest";
 import type { AgentConfigLookup } from "#src/config/agent-types";
 import type { ChildLifecyclePublisher } from "#src/lifecycle/child-lifecycle";
-import type { ContinuedTranscript, ReopenedSessionManagerLike } from "#src/lifecycle/create-subagent-session";
+import type {
+	ContinuedTranscript,
+	ReopenedSessionManagerLike,
+	TranscriptEntryLike,
+} from "#src/lifecycle/create-subagent-session";
 import type { ParentSnapshot } from "#src/lifecycle/parent-snapshot";
 import type { BranchEntryLike } from "#src/session/recorded-model";
 import type { AssemblerIO } from "#src/session/session-config";
@@ -144,6 +148,8 @@ export const EARLIER_TRANSCRIPT: ContinuedTranscript = {
 	file: "/sessions/tasks/earlier-child.jsonl",
 	header: { id: "earlier-child-session-id", cwd: "/work/earlier", parentSession: "parent-id" },
 	leafId: "earlier-reply",
+	// DEFAULT_AGENT_CONFIG, which the default currentAgentConfig answers with, names no file.
+	agentDefinition: "builtin",
 };
 
 /** The model EARLIER_TRANSCRIPT's child last replied on; `EARLIER_SNAPSHOT`'s registry knows it. */
@@ -159,34 +165,53 @@ export const EARLIER_SNAPSHOT: ParentSnapshot = {
 	},
 };
 
-/** EARLIER_TRANSCRIPT's branch: the child's prompt, then its reply on EARLIER_MODEL, the entry its last run left last. */
-const EARLIER_BRANCH = [
+/** A raw transcript entry as a reopened session manager stub holds it. */
+export type ReopenedEntry = TranscriptEntryLike & BranchEntryLike;
+
+/**
+ * Entries chained in the order given, each the parent of the next and the
+ * first a root: an intact linear transcript. Ids default to `entry-<index>`.
+ */
+export function chainEntries(entries: readonly (Omit<ReopenedEntry, "id" | "parentId"> & { id?: string })[]): ReopenedEntry[] {
+	const chained: ReopenedEntry[] = [];
+	for (const [index, entry] of entries.entries()) {
+		chained.push({ ...entry, id: entry.id ?? `entry-${index}`, parentId: chained.at(-1)?.id ?? null });
+	}
+	return chained;
+}
+
+/**
+ * EARLIER_TRANSCRIPT's entries: the child's prompt, then its reply on
+ * EARLIER_MODEL, the entry its last run left last.
+ */
+const EARLIER_ENTRIES = chainEntries([
 	{ type: "message", id: "earlier-prompt", message: { role: "user" } },
 	{
 		type: "message",
 		id: EARLIER_TRANSCRIPT.leafId,
 		message: { role: "assistant", provider: EARLIER_MODEL.provider, model: EARLIER_MODEL.id, api: "openai-responses" },
 	},
-] as const satisfies readonly (BranchEntryLike & { id: string })[];
+]);
 
 /**
  * A session manager reopened on EARLIER_TRANSCRIPT: the identity it was
- * recorded under, its prompt and reply, and a branch that ends on the entry its
- * last run left and selects EARLIER_MODEL. Each method is a typed stub, so a
- * test can arm or inspect it and the whole stays checked against
- * ReopenedSessionManagerLike where it is used.
+ * recorded under, and `entries` (by default its prompt and its reply, which
+ * selects EARLIER_MODEL), continued from the last of them. The branch stub
+ * returns the entries as they are, standing in for Pi's walk of an intact
+ * linear chain. Each method is a typed stub, so a test can arm or inspect it
+ * and the whole stays checked against ReopenedSessionManagerLike where it is
+ * used.
  */
-export function createReopenedSessionManager() {
+export function createReopenedSessionManager(entries: readonly ReopenedEntry[] = EARLIER_ENTRIES) {
 	const { header } = EARLIER_TRANSCRIPT;
 	return {
 		newSession: vi.fn<ReopenedSessionManagerLike["newSession"]>(),
 		getSessionFile: vi.fn((): string | undefined => EARLIER_TRANSCRIPT.file),
 		getSessionId: vi.fn((): string => header.id),
 		getHeader: vi.fn((): ReturnType<ReopenedSessionManagerLike["getHeader"]> => ({ ...header })),
-		getBranch: vi.fn((): ReturnType<ReopenedSessionManagerLike["getBranch"]> => EARLIER_BRANCH),
-		buildSessionContext: vi.fn((): ReturnType<ReopenedSessionManagerLike["buildSessionContext"]> => ({
-			messages: [{ role: "user" }, { role: "assistant" }],
-		})),
+		getEntries: vi.fn((): readonly ReopenedEntry[] => entries),
+		getLeafId: vi.fn((): string | null => entries.at(-1)?.id ?? null),
+		getBranch: vi.fn((): readonly ReopenedEntry[] => entries),
 	};
 }
 

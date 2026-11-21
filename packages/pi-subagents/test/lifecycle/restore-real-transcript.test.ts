@@ -28,6 +28,7 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AgentTypeRegistry } from "#src/config/agent-types";
+import { loadCustomAgents } from "#src/config/custom-agents";
 import { createChildLifecyclePublisher } from "#src/lifecycle/child-lifecycle";
 import { ConcurrencyLimiter } from "#src/lifecycle/concurrency-limiter";
 import { createSubagentSession, type SubagentSessionDeps } from "#src/lifecycle/create-subagent-session";
@@ -75,6 +76,8 @@ describe("restoring a settled child from its real transcript", () => {
   let requestedModels: string[];
   /** The user messages each request carried, in order. */
   let requests: string[][];
+  /** The tool allowlist each child session was created with, in order. */
+  let allowlists: string[][];
   /** Lets the slot-holding child answer, freeing its slot. */
   let releaseOccupant: () => void;
   const managers: SubagentManager[] = [];
@@ -87,6 +90,10 @@ describe("restoring a settled child from its real transcript", () => {
     mkdirSync(agentDir);
     requestedModels = [];
     requests = [];
+    allowlists = [];
+    // The host's own global agents stay out: this directory defines none unless a test writes one.
+    vi.stubEnv("PI_CODING_AGENT_DIR", agentDir);
+    agentTypes.reload();
     const occupied = Promise.withResolvers<void>(); // eslint-disable-line @typescript-eslint/no-invalid-void-type -- Promise.withResolvers<void> is valid; rule does not allow void in generic fn call type args
     releaseOccupant = () => { occupied.resolve(); };
     faux = fauxProvider({ provider: "faux", models: [{ id: "scripted" }, { id: "parent-default" }] });
@@ -108,11 +115,15 @@ describe("restoring a settled child from its real transcript", () => {
 
   afterEach(async () => {
     await Promise.all(managers.splice(0).map((manager) => manager.dispose()));
+    vi.unstubAllEnvs();
     rmSync(root, { recursive: true, force: true });
   });
 
-  /** The agent definitions every manager and factory here reads: the built-ins. */
-  const agentTypes = new AgentTypeRegistry(() => new Map());
+  /**
+   * The agent definitions every manager and factory here reads: the built-ins,
+   * then the project's `.pi/agents/` and the test's own global agent directory.
+   */
+  const agentTypes = new AgentTypeRegistry(() => (project ? loadCustomAgents(project) : new Map()));
 
   /** The session-assembly deps the composition root builds, on the real SDK. */
   function realDeps(): SubagentSessionDeps {
@@ -127,13 +138,15 @@ describe("restoring a settled child from its real transcript", () => {
         readTranscriptHeader,
         createSettingsManager: (cwd, dir) => SettingsManager.create(cwd, dir),
         createLoaderSettingsManager: (parent) => parent,
-        createSession: ({ sessionManager, resourceLoader, modelRegistry: _modelRegistry, ...rest }) =>
-          createAgentSession({
+        createSession: ({ sessionManager, resourceLoader, modelRegistry: _modelRegistry, ...rest }) => {
+          allowlists.push(rest.tools);
+          return createAgentSession({
             ...rest,
             sessionManager: sessionManager as SessionManager,
             resourceLoader: resourceLoader as ResourceLoader,
             modelRuntime: runtime,
-          }),
+          });
+        },
         assemblerIO: { buildAgentPrompt, loadProjectContext: () => undefined },
       },
       exec: () => Promise.resolve({ stdout: "", stderr: "", code: 0, killed: false }),
@@ -387,6 +400,74 @@ describe("restoring a settled child from its real transcript", () => {
     );
     expect(requestedModels).toEqual(["scripted"]);
     expect(readFileSync(transcript)).toEqual(bytes);
+  });
+
+  it("refuses a child whose read-only project definition was deleted, uncovering the built-in that grants bash", async () => {
+    const definition = join(project, ".pi", "agents", "Explore.md");
+    mkdirSync(join(project, ".pi", "agents"), { recursive: true });
+    writeFileSync(definition, "---\ndescription: Explores by reading\ntools: read\n---\n\nRead only.\n");
+    agentTypes.reload();
+    const { id, transcript, parentFile } = await runChildThenRestart();
+    expect(allowlists).toEqual([["read", "ask_parent", "notify_parent"]]);
+    const bytes = readFileSync(transcript);
+    rmSync(definition);
+
+    const outcome = await restartedManager(parentFile).resume(id, RECALL, { background: false });
+
+    expect(outcome).toEqual({ kind: "refused", reason: "agent-type-unavailable" });
+    expect(allowlists).toHaveLength(1);
+    expect(recallReachedTheModel()).toBe(false);
+    expect(readFileSync(transcript)).toEqual(bytes);
+  });
+
+  it("refuses a transcript with an entry lost from the middle, though its header, leaf, and later exchange remain", async () => {
+    const { id, transcript, parentFile } = await runChildThenRestart();
+    const between = restartedManager(parentFile, 4, { recording: true });
+    await between.resume(id, "Here is a second message.", { background: false });
+    await between.dispose();
+    const lines = readFileSync(transcript, "utf8").trimEnd().split("\n");
+    // The first reply: the second exchange still follows it, now naming a parent the file does not hold.
+    lines.splice(lines.findIndex((line) => line.includes('"role":"assistant"')), 1);
+    const damaged = `${lines.join("\n")}\n`;
+    writeFileSync(transcript, damaged);
+    const askedBefore = requests.length;
+
+    const outcome = await restartedManager(parentFile).resume(id, RECALL, { background: false });
+
+    if (outcome.kind !== "resumed") throw new Error(`resume refused: ${outcome.reason}`);
+    expect(outcome.record.status).toBe("error");
+    expect(outcome.record.error).toBe(
+      `Transcript ${transcript} no longer holds the conversation its last run left; it was not restored.`,
+    );
+    expect(requests).toHaveLength(askedBefore);
+    expect(readFileSync(transcript, "utf8")).toBe(damaged);
+  });
+
+  it("continues a compacted child from its summary, though Pi's projection of it holds no prompt", async () => {
+    const { id, transcript, parentFile } = await runChildThenRestart();
+    // A split-turn compaction as Pi persists one: the prompt is summarised, the reply kept.
+    const child = SessionManager.open(transcript);
+    const reply = child.getBranch().find((entry) => entry.type === "message" && entry.message.role === "assistant");
+    if (!reply) throw new Error("the child left no reply");
+    child.appendCompaction(`The user said the code word is ${CODE_WORD}.`, reply.id, 200_000);
+    expect(SessionManager.open(transcript).buildSessionContext().messages.map((message) => message.role)).toEqual([
+      "system",
+      "compactionSummary",
+      "assistant",
+    ]);
+    // The child's run recorded the transcript as it stood after the compaction.
+    const parent = SessionManager.open(parentFile);
+    const recorded = parent.getEntries().findLast((entry) => entry.type === "custom" && entry.customType === SUBAGENT_RECORD_ENTRY);
+    if (recorded?.type !== "custom") throw new Error("no record of the child");
+    parent.appendCustomEntry(SUBAGENT_RECORD_ENTRY, { ...(recorded.data as object), transcriptLeafId: child.getLeafId() });
+
+    const outcome = await restartedManager(parentFile).resume(id, RECALL, { background: false });
+
+    if (outcome.kind !== "resumed") throw new Error(`resume refused: ${outcome.reason}`);
+    expect(outcome.record.status).toBe("completed");
+    expect(outcome.record.result).toBe(`The code word was ${CODE_WORD}.`);
+    // It answered from the summary: the original prompt was compacted away.
+    expect(requests.at(-1)).not.toContain(`Remember this: the code word is ${CODE_WORD}.`);
   });
 
   describe("a transcript changed while its resume waits for a concurrency slot", () => {

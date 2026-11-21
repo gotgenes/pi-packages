@@ -57,14 +57,15 @@ export function toAgentSession(session: MockSession): AgentSession {
 export function createSubagentSessionStub(
 	session: MockSession = createMockSession(),
 	outputFile?: string,
-	transcript: { sessionId?: string; leafId?: string } = {},
+	transcript: { sessionId?: string; leafId?: string; agentDefinition?: string } = {},
 ) {
 	return {
 		session,
 		outputFile,
-		/** The transcript's session id and last entry, as a real session reports them; absent unless given. */
+		/** The transcript's session id and last entry, and the agent definition, as a real session reports them; absent unless given. */
 		sessionId: transcript.sessionId,
 		leafId: transcript.leafId,
+		agentDefinition: transcript.agentDefinition,
 		runTurnLoop: vi.fn().mockResolvedValue(turnLoopResult({ responseText: "done" })),
 		steer: vi.fn((message: string): Promise<void> => session.steer(message) as Promise<void>),
 		dispose: vi.fn((): Promise<void> => {

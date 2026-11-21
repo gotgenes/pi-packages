@@ -20,7 +20,7 @@ import {
   type SettingsManager,
   type ToolDefinition,
 } from "@earendil-works/pi-coding-agent";
-import { type AgentConfigLookup, capabilityToolNames } from "#src/config/agent-types";
+import { type AgentConfigLookup, capabilityToolNames, definitionOf } from "#src/config/agent-types";
 import { debugNote } from "#src/debug";
 import type { ChildLifecyclePublisher } from "#src/lifecycle/child-lifecycle";
 import type { ParentSnapshot } from "#src/lifecycle/parent-snapshot";
@@ -67,16 +67,28 @@ export interface SessionManagerLike {
   getSessionId(): string;
 }
 
+/** The fields of a raw transcript entry the factory reads to check its ancestry. */
+export interface TranscriptEntryLike {
+  readonly type: string;
+  readonly id: string;
+  /** The entry this one follows; null only for the root. */
+  readonly parentId: string | null;
+  readonly message?: { readonly role: string };
+}
+
 /**
  * A session manager reopened on an existing child transcript. It also answers
- * whose session it holds, which entries and conversation it holds, and which
- * model its branch selects, so the factory can check it continues the child it
- * was asked to before anything runs on it.
+ * whose session it holds, which entries it holds and where it would continue,
+ * and which model its branch selects, so the factory can check it continues
+ * the child it was asked to before anything runs on it.
  */
 export interface ReopenedSessionManagerLike extends SessionManagerLike {
   getHeader(): { id: string; cwd: string; parentSession?: string } | null;
-  getBranch(): readonly (BranchEntryLike & { readonly id: string })[];
-  buildSessionContext(): { messages: readonly { readonly role: string }[] };
+  /** Every entry the file holds, in file order, as read: no ancestry is walked. */
+  getEntries(): readonly TranscriptEntryLike[];
+  /** The entry Pi continues from. */
+  getLeafId(): string | null;
+  getBranch(): readonly BranchEntryLike[];
 }
 
 /**
@@ -92,6 +104,8 @@ export interface ContinuedTranscript {
   file: string;
   header: ChildTranscriptHeader;
   leafId: string;
+  /** The definition of its agent type the child ran under (`definitionOf`); no other may continue it. */
+  agentDefinition: string;
 }
 
 /** Options passed to EnvironmentIO/SessionFactoryIO methods. */
@@ -303,7 +317,7 @@ export async function createSubagentSession(
       thinkingLevel: params.thinkingLevel,
     },
     env,
-    reopened ? continuedAgentLookup(deps, type) : deps.registry,
+    params.transcript ? continuedAgentLookup(deps, type, params.transcript.agentDefinition) : deps.registry,
     deps.io.assemblerIO,
   );
 
@@ -379,6 +393,7 @@ export async function createSubagentSession(
     sessionId,
     sessionDir,
     agentName: type,
+    agentDefinition: cfg.agentDefinition,
     turnLimits: resolveTurnLimits(params.turnLimits, cfg.agentMaxTurns),
     parentContext: snapshot.parentContext,
     continued: reopened !== undefined,
@@ -431,29 +446,61 @@ function reopenTranscript(io: SessionFactoryIO, transcript: ContinuedTranscript)
   }
   const reopened = io.openSessionManager(transcript.file);
   if (!holdsChild(reopened.getHeader() ?? undefined, transcript.header)) throw notThisChild(transcript);
-  if (!reopened.getBranch().some((entry) => entry.id === transcript.leafId)) {
+  const branch = rootedBranch(reopened.getEntries(), reopened.getLeafId());
+  if (!branch?.some((entry) => entry.id === transcript.leafId)) {
     throw new Error(`Transcript ${transcript.file} no longer holds the conversation its last run left; it was not restored.`);
   }
-  if (!holdsConversation(reopened.buildSessionContext().messages)) {
+  if (!holdsConversation(branch)) {
     throw new Error(`Transcript ${transcript.file} holds no conversation to continue; it was not restored.`);
   }
   return reopened;
 }
 
-/** Whether a reopened transcript holds an exchange: a prompt the child was given and a reply it made. */
-function holdsConversation(messages: readonly { readonly role: string }[]): boolean {
-  return messages.some((message) => message.role === "user") && messages.some((message) => message.role === "assistant");
+/**
+ * The raw entries from the transcript's leaf back to its root, or undefined
+ * unless every link holds: each parent is an entry the file holds, and the
+ * chain ends at a root (`parentId: null`) without looping. Read from the raw
+ * entries because Pi's own walk stops silently at a missing parent, treating
+ * a tail cut off from its start as the whole conversation, and never returns
+ * from a loop; Pi walks the branch only once this has held.
+ */
+function rootedBranch(entries: readonly TranscriptEntryLike[], leafId: string | null): TranscriptEntryLike[] | undefined {
+  const byId = new Map(entries.map((entry) => [entry.id, entry]));
+  const branch: TranscriptEntryLike[] = [];
+  let entry = leafId === null ? undefined : byId.get(leafId);
+  // A chain longer than the distinct entries it can visit has looped.
+  while (entry && branch.length < byId.size) {
+    branch.push(entry);
+    if (entry.parentId === null) return branch;
+    entry = byId.get(entry.parentId);
+  }
+  return undefined;
+}
+
+/**
+ * Whether a transcript's branch holds an exchange: a prompt the child was given
+ * and a reply it made. Read from the raw entries, which a compaction keeps:
+ * Pi's projection of a compacted branch replaces the earlier prompt with its
+ * summary, so it may show no user message at all.
+ */
+function holdsConversation(branch: readonly TranscriptEntryLike[]): boolean {
+  const roles = new Set(branch.flatMap((entry) => (entry.type === "message" && entry.message ? [entry.message.role] : [])));
+  return roles.has("user") && roles.has("assistant");
 }
 
 /**
  * The agent definition a continued child is assembled under, read afresh and
- * pinned, so assembly cannot fall back to another type's: the transcript is
- * refused when its type is no longer defined or is disabled.
+ * pinned, so assembly cannot fall back to another type's. The transcript is
+ * refused when its type is no longer defined, is disabled, or is now supplied
+ * by another definition than the one the child ran under: deleting a project
+ * file can uncover a global or built-in one of the same name, with other tools.
  */
-function continuedAgentLookup(deps: SubagentSessionDeps, type: SubagentType): AgentConfigLookup {
+function continuedAgentLookup(deps: SubagentSessionDeps, type: SubagentType, definition: string): AgentConfigLookup {
   const config = deps.currentAgentConfig(type);
-  if (!config) {
-    throw new Error(`Agent type "${type}" is no longer defined or is disabled; the child was not restored.`);
+  if (!config || definitionOf(config) !== definition) {
+    throw new Error(
+      `Agent type "${type}" is no longer defined as the child ran under it, or is disabled; the child was not restored.`,
+    );
   }
   return { resolveAgentConfig: () => config, getToolNamesForType: () => capabilityToolNames(config) };
 }

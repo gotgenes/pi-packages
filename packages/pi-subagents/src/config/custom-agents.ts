@@ -70,6 +70,7 @@ function loadFromDir(dir: string, agents: Map<string, AgentConfig>, source: "pro
       locked: lockDeclaration(fm.locked, name),
       enabled: fm.enabled !== false,  // default true; explicitly false disables
       source,
+      filePath: join(dir, file),
     });
   }
 }

@@ -11,6 +11,7 @@
 
 import { randomUUID } from "node:crypto";
 import type { Model } from "@earendil-works/pi-ai";
+import { definitionOf } from "#src/config/agent-types";
 import { type BackgroundRequest, resolveBackgroundMode } from "#src/config/invocation-config";
 import { debugLog } from "#src/debug";
 import type { ConcurrencyLimiter } from "#src/lifecycle/concurrency-limiter";
@@ -47,6 +48,8 @@ export interface SpawnTypeResolver {
   resolveType(name: string): string | undefined;
   isValidType(type: string): boolean;
   resolveAgentConfig(type: string): AgentConfig;
+  /** The config a type names while it is defined and enabled, never a fallback. */
+  findEnabledConfig(type: string): AgentConfig | undefined;
   /** Re-read the agent definitions from their source, as a restore does before it decides on a type. */
   reload(): void;
 }
@@ -509,7 +512,7 @@ export class SubagentManager {
         getWorkspaceProvider: () => this._workspaceProvider,
         maxTurns: restoredMaxTurns(run.turnBudget),
         parentSession,
-        transcript: { file: run.outputFile, header, leafId: run.transcriptLeafId },
+        transcript: { file: run.outputFile, header, leafId: run.transcriptLeafId, agentDefinition: run.agentDefinition },
       },
       state: new SubagentState({
         toolUses: run.summary.toolUses,
@@ -537,7 +540,7 @@ export class SubagentManager {
     const parentSession = history.parentSession();
     const transcript = provenTranscript(recorded, history, parentSession.parentSessionId);
     if (typeof transcript === "string") return transcript;
-    const type = this.restorableType(transcript.run.summary.type);
+    const type = this.restorableType(transcript.run.summary.type, transcript.run.agentDefinition);
     if (type === undefined) return "agent-type-unavailable";
     if (transcript.run.providerWorkspace) return "workspace-disposed";
     return { ...transcript, type, snapshot, parentSession };
@@ -545,13 +548,16 @@ export class SubagentManager {
 
   /**
    * The canonical name of an agent type a child may still run as, read afresh
-   * from its source, or undefined when it is gone or disabled. Every front door
-   * gets the same answer, whether or not anything else reloaded the registry.
+   * from its source, or undefined when it is gone, disabled, or now supplied by
+   * another definition than the one the child ran under (`definition`). Every
+   * front door gets the same answer, whether or not anything else reloaded the
+   * registry.
    */
-  private restorableType(type: string): SubagentType | undefined {
+  private restorableType(type: string, definition: string): SubagentType | undefined {
     this.registry.reload();
     const canonical = this.registry.resolveType(type);
-    return canonical !== undefined && this.registry.isValidType(canonical) ? canonical : undefined;
+    const config = canonical === undefined ? undefined : this.registry.findEnabledConfig(canonical);
+    return config && definitionOf(config) === definition ? canonical : undefined;
   }
 
   getRecord(id: string): Subagent | undefined {
