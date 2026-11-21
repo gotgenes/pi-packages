@@ -9,6 +9,25 @@ description: |
 
 Load this skill when implementing, refactoring, or reviewing TypeScript code.
 
+## Chosen practices
+
+These are the operator's choices among defensible alternatives, and they outrank what the surrounding code does.
+
+- The schools are _Clean Code_, _Working Effectively with Legacy Code_, _Extreme Programming Explained_, and Gary Bernhardt's functional core, imperative shell.
+- Decisions live in pure functions over values, and I/O and sequencing live in a thin shell that receives its dependencies.
+- Tell a collaborator what to do; do not ask it for data and decide on its behalf.
+- Write a class when the code commands a dependency that has its own state and behavior, and a function when everything is a value and nothing is commanded.
+- Avoid a factory function that returns closures.
+
+### Existing code is not precedent
+
+Much of this codebase does not follow these practices yet, so a neighboring pattern is not evidence of what is wanted.
+When a practice and the surrounding code disagree, follow the practice.
+Convert code the change touches as part of the change, not as scope creep.
+Pin its behavior with a characterization test first, and land the conversion as its own `refactor:` or `test:` commits ahead of the behavior change.
+A touched file and its own test file are the limit of what you convert without asking.
+A conversion that reaches further, such as a call site in another file, is welcome, but name it to the operator and wait for an answer.
+
 ## Self-Documenting Code
 
 Code should be its own primary documentation.
@@ -185,7 +204,6 @@ When the removal undoes a series of commits, `git revert` them rather than hand-
 - Within a package, import sibling modules via the `#src/` / `#test/` path aliases, not relative paths (`../src/...`) — eslint enforces this and will rewrite violations.
 - Keep modules focused and composable (one concern per file).
 - Prefer explicit configuration over hidden behavior.
-- Business logic should be pure functions wherever possible — keep IO at the edges.
 - Do not read `process.env`, `process.cwd()`, or `process.platform` inside library/utility functions — accept the value as a parameter.
   Reading `process.*` inside a function hides a dependency on global state and forces tests to stub or reset modules.
 

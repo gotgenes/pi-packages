@@ -9,6 +9,25 @@ description: |
 
 Load this skill when writing, debugging, or planning tests.
 
+## Chosen practices
+
+These are the operator's choices among defensible alternatives, and they outrank what the surrounding tests do.
+
+- Nearly every test is a unit test, and acceptance tests are a thin cap.
+- Work outside-in.
+  Start at the outermost behavior the change affects and let that test say what the next layer in must provide.
+  Go back out when an inner discovery revises an outer interface.
+- A collaborator that acts (reports, prompts, records) is a role.
+  Mock the interface you wish it had, and assert what it was told.
+- A thing that is data (a decision, a log record, a pattern) is a value.
+  Compute it with a pure function and assert on the result; never mock it.
+- Put per-branch detail in value tests.
+  A role gets only the interaction tests that prove delivery, not one per branch.
+- A collaborator that turns out only to compute an answer becomes a pure function, not a role.
+- By default, write the values that matter to a test in the test, as literals, and do not hide inputs or expected outputs behind a builder's defaults.
+  Shared builders are for wiring collaborators.
+  A fixture that is intricate to assemble is a design signal first, so look for the value or the smaller role before adding a builder.
+
 ## Vitest mock patterns
 
 ### vi.mock and hoisting
