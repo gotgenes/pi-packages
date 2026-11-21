@@ -142,9 +142,12 @@ The parent session records each finished run, so a `resume` naming an agent from
 A fork can resume children it spawned itself, but neither the `subagent` tool nor `SubagentsService.resume` can resume children inherited from the source parent.
 Reopen the original parent to continue those children.
 An agent whose agent type has since been deleted or disabled is not resumable, rather than running under another definition; the definition is re-read from disk on every such resume, through either front door.
+Neither is one whose type name is now supplied by a different definition than the one it ran under, such as the built-in or global agent a deleted project `.pi/agents/<name>.md` was overriding: the same name may grant other tools.
+Edits to the very file it ran under apply, as they would to a new spawn.
 An agent that ran in a workspace a workspace provider prepared is not resumable this way, because its workspace was removed when the previous session ended.
 An agent recorded by a version of this package that did not yet record its transcript's identity is not resumable this way; its transcript is still viewable in `/subagents:sessions`.
-The resume fails with an error before the model receives anything, leaving the file as it found it, when the transcript at the recorded path is no longer the agent's whole conversation (removed, emptied, cut back, or replaced by another session, including while the resume waited for a concurrency slot), or when the model its transcript selected is no longer available: its conversation is never sent to another model instead.
+The resume fails with an error before the model receives anything, leaving the file as it found it, when the transcript at the recorded path is no longer the agent's whole conversation (removed, emptied, cut back, missing an entry from its middle, or replaced by another session, including while the resume waited for a concurrency slot), or when the model its transcript selected is no longer available: its conversation is never sent to another model instead.
+A compacted transcript resumes from its summary, as Pi would continue it.
 Another process writing the transcript at the same moment the resume opens it is not supported.
 
 ### `get_subagent_result`
@@ -426,7 +429,7 @@ A resume that could not start resolves to `{ kind: "refused", reason }` instead,
 | `no-session`             | The agent has no session, or saved transcript proven its own   |
 | `session-released`       | Its session was released after the retention window            |
 | `workspace-disposed`     | Its isolated workspace is gone, so a resume cannot re-enter it |
-| `agent-type-unavailable` | Its agent type is no longer defined, or is disabled            |
+| `agent-type-unavailable` | Its agent type is gone, disabled, or now defined elsewhere     |
 
 Every record's `resumeRefusal` field predicts this answer before the call, minus `unknown-agent` and `agent-type-unavailable`, which no record can carry.
 An agent from before a `/reload` or a restart has no record until a resume restores it, so only the call answers for it.

@@ -474,11 +474,15 @@ The rebuilt record keeps the latest recorded turn ceiling (`turnBudget.maxTurns`
 The rebuilt record's first resume reopens the transcript through `createSubagentSession({ transcript })` rather than requiring a live session.
 The factory checks the transcript before any SDK session exists, so a file removed, cut back, or replaced since the restore fails that resume instead of running it on a blank, partial, or unrelated conversation.
 First it reads the file's header without writing (`readTranscriptHeader`), because Pi's `SessionManager.open` writes to some files it opens: it initialises an empty file with a new header and rewrites an older-format session as it migrates it.
-Only a file whose header still names the recorded session id, parent, and cwd is opened; the opened session manager must then name them too, its branch must still contain the recorded leaf, and its conversation must hold a prompt and a reply.
+Only a file whose header still names the recorded session id, parent, and cwd is opened; the opened session manager must then name them too.
+Its raw entries are then walked from the leaf Pi would continue from, before Pi walks them itself: every parent must be an entry the file holds, the chain must end at a root without looping, and it must pass through the recorded leaf and hold a prompt and a reply.
+Pi's own walk stops silently at a missing parent, so a tail cut off by an entry lost from the middle would otherwise pass for the whole conversation, and it never returns from a loop.
+The raw entries, not Pi's projection, decide whether a conversation is there: a compaction replaces the earlier prompt with its summary in the projection, but keeps the entries.
 Nothing awaits between the read and the open, so no code in this process can change the file in between.
 The reopened session runs in the directory its transcript recorded, at the thinking level Pi restores, and on the model its branch selects by Pi's own rule (a virtual model's `model_change` holds over the physical replies routed under it).
 A selection, or a latest `model_change` route, that the parent's registry no longer has refuses the transcript rather than sending it to a fallback model.
 The agent definition is read afresh after the factory's last await before assembly (`SubagentSessionDeps.currentAgentConfig`), and assembly uses exactly that definition, so a type deleted or disabled while a queued resume waited is refused rather than resolved to `general-purpose`.
+Each entry records which definition the child's session was assembled under (`agentDefinition`: the file a project or global agent was read from, or `builtin`), and both the manager and the factory require the type to still be supplied by that definition: deleting a project file that overrode a global or built-in agent of the same name uncovers a definition with other tools, which is refused as `agent-type-unavailable`.
 The run that reopens the transcript holds the record until it reaches its turn loop or ends, so `resumeRefusal` reads `still-running` meanwhile even once that run is stopped: only one reopening is in flight.
 A session that arrives after the record was torn down is disposed on arrival rather than adopted.
 

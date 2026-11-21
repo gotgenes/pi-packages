@@ -37,7 +37,7 @@ They are the source, read when a resume names an ID the manager holds no record 
 
 1. **Each run records what identifies and continues its transcript.**
    An entry takes its outcome from the run that ended and the rest from the agent as it is when the entry is written.
-   Besides `toolUses`, an entry now records the cumulative `lifetimeUsage` and `compactionCount`, the child's Pi `sessionId`, the `transcriptLeafId` (the last entry its transcript held when the run ended), and `providerWorkspace` (whether a workspace provider prepared its directory).
+   Besides `toolUses`, an entry now records the cumulative `lifetimeUsage` and `compactionCount`, the child's Pi `sessionId`, the `transcriptLeafId` (the last entry its transcript held when the run ended), the `agentDefinition` it was assembled under (the agent file's path, or `builtin`), and `providerWorkspace` (whether a workspace provider prepared its directory).
    `readRestorableRun` returns the last valid entry under an ID with those fields, and the latest turn budget any of the child's entries recorded, so a later run that never reached its turn loop does not hide an earlier ceiling.
    An entry without them is `unprovable`.
 
@@ -46,11 +46,14 @@ They are the source, read when a resume names an ID the manager holds no record 
    With one, it reopens that file (`SessionManager.open` at the composition root) instead of creating a session, and throws before any SDK session exists unless the file still is the child's conversation:
    - The header is read without writing immediately before the open, and a file whose session id, parent, or cwd differs is never opened, because Pi initialises an empty file it opens and rewrites an older-format session it loads.
      The opened session manager must name them too.
-   - The branch must still contain the recorded leaf entry, so a file cut back to an earlier point, including to the entries before its conversation, is refused.
-   - The conversation must hold a prompt and a reply, not only the system prompt Pi records.
+   - The raw entries are walked from the leaf Pi would continue from, before Pi walks them: every parent must be an entry the file holds, the chain must end at a root (`parentId: null`) without looping, and it must pass through the recorded leaf.
+     A file cut back to an earlier point, or missing an entry from its middle, is refused; Pi's own walk would stop silently at the missing parent and continue the tail as if it were the whole conversation, and would never return from a loop.
+   - That raw branch must hold a prompt and a reply, not only the system prompt Pi records.
+     Pi's projection is not used for this: a compaction replaces the earlier prompt with its summary there, while the raw branch keeps it.
    - The child runs on the model its branch selects by Pi's own rule (`recorded-model.ts`, mirroring Pi's unexported `getBranchSelection`).
      The transcript is refused when that model, or the route its latest `model_change` chose, is no longer in the parent's registry, so the conversation never reaches a fallback model.
    - The agent type's definition is read afresh (`SubagentSessionDeps.currentAgentConfig`, which reloads the registry) after the last await before assembly, and assembly uses exactly that definition; a type that is gone or disabled is refused rather than resolved to `general-purpose`.
+     It must also be the definition the child ran under (`agentDefinition`, below): a project file deleted from over a global or built-in agent of the same name uncovers one with other tools.
    - The thinking level is left unset so Pi restores the recorded one.
 
    `SubagentSession` is told the transcript is continued, so its first run here neither prefixes parent context nor emits the child-lifecycle `completed` event.
@@ -79,7 +82,8 @@ They are the source, read when a resume names an ID the manager holds no record 
 - Unit tests cover each layer: `test/lifecycle/create-subagent-session.test.ts`, `test/lifecycle/subagent.test.ts`, `test/lifecycle/subagent-manager.test.ts`, `test/session/transcript-header.test.ts`, `test/session/recorded-model.test.ts` (which sweeps every branch of up to four entries against Pi's own selection), `test/persisted-record.test.ts`, and `test/runtime.test.ts`.
 - `test/lifecycle/restore-real-transcript.test.ts` runs children on Pi's real `AgentSession` with a deterministic faux model, records them in a real parent session file, and resumes them from a fresh manager.
   It covers the resumed child answering from its reopened conversation, on the model it selected, under the turn limit it ran with (also across a restart whose resume was stopped in the queue), with cumulative usage.
-  It also covers refusals with no model request and no change to the file: a sibling's transcript at the path, a transcript cut back to an earlier exchange, a recorded model the parent no longer has, and a transcript removed, emptied, cut back to its pre-conversation entries, or replaced while the resume waited for a slot.
+  It covers a compacted child continuing from its summary although Pi's projection of it holds no prompt.
+  It also covers refusals with no model request and no change to the file: a deleted read-only project definition uncovering the built-in one (the session allowlist never gains `bash`), a sibling's transcript at the path, a transcript cut back to an earlier exchange or missing an entry from its middle, a recorded model the parent no longer has, and a transcript removed, emptied, cut back to its pre-conversation entries, or replaced while the resume waited for a slot.
 - `test/composition-root.test.ts` runs a child to completion in one extension instance, shuts it down as `/reload` does, and resumes the child from a fresh instance over the same session entries, including a service-only resume after the agent file was disabled on disk.
 - Live, against Pi with this extension loaded by `-e`: a child resumed after a restart reopened on the same session file, and after `/reload` in the TUI, recalled a code word given only in its first run, appending to its original transcript; a background resume after `/reload` delivered its completion notice.
   That check predates the identity and route requirements above.
@@ -89,7 +93,7 @@ They are the source, read when a resume names an ID the manager holds no record 
 - A per-call `model` or `thinking` override from the original spawn is not recorded separately; a restored child runs on its transcript's model selection and thinking level, which carry those choices.
 - A child none of whose runs reached its turn loop recorded no turn budget, so its restored child gets the agent's current turn limit.
 - **Children recorded by a version that predates these fields are not restorable.**
-  Their entries carry no `sessionId`, `transcriptLeafId`, `providerWorkspace`, or cumulative usage, so nothing shows that the file at the recorded path is still the child's conversation, or what it cost.
+  Their entries lack one or more of `sessionId`, `transcriptLeafId`, `agentDefinition`, `providerWorkspace`, and cumulative usage, so nothing shows that the file at the recorded path is still the child's conversation, or what it cost.
   Such a resume is refused as `no-session`, even for a child that ran in the parent's directory; a fork's inherited one is still `unknown-agent`.
   Its transcript stays viewable in `/subagents:sessions`.
 - Concurrency assumptions for a transcript between the resume's acceptance and its first turn:
@@ -98,7 +102,8 @@ They are the source, read when a resume names an ID the manager holds no record 
   - **A simultaneous external writer is not supported.**
     The read-only check and Pi's open are consecutive synchronous calls; another process that writes the file between them, or while the reopened child is running and appending to it, is outside what the restore defends against.
   - A file that does match is the child's own transcript, and Pi may still repair or migrate it as it opens it (a missing final newline, an older session format), as it would on any reopen.
-  - Identity is the recorded session id, the header's parent and cwd, and the presence of the recorded leaf entry; a file forged to carry all of them is not told apart.
+  - Identity is the recorded session id, the header's parent and cwd, and an intact raw chain from root through the recorded leaf; a file forged to carry all of them is not told apart.
+- A definition is identified by its file path, not its contents: an edit to the very file a child ran under applies to its restore, as it does to a new spawn, including one that grants more tools.
 - The parent snapshot is taken at resume time, so the child's system prompt reflects the parent and agent definition as they are now.
 
 [#1013]: https://github.com/gotgenes/pi-packages/issues/1013
