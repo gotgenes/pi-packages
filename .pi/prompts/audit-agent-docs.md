@@ -131,6 +131,10 @@ These shapes deserve a stated rule rather than case-by-case judgment:
   Mark it `keep (revisit)` with the rationale "whole-step removal needs renumbering"; that is a separate change.
 - **Frontmatter, an H1, and an argument placeholder** (`$1`, `$@`) are never edited.
   The H1 is `invocation-volume.mjs`'s match key.
+- **An explanation of a practice the skill already names.**
+  A `## Chosen practices` section states the operator's choices and the schools they come from.
+  A passage that explains what one of those practices is fails question 1, and one that restates a choice the section makes is a duplicate; both are `delete`.
+  A line that states a choice neither the section nor the schools settle is `keep`.
 
 `package-pi-permission-system` is a third of the skill corpus, and `plan-issue.md` and `pre-completion-reviewer.md` lead the workflow corpus.
 Walk them like the rest, and give each its own summary line in the inventory so its share of the cuts is visible.
