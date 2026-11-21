@@ -53,6 +53,67 @@ Change both together.
 
 ## Candidates from session transcripts
 
-Pending.
-A pass over the operator's past messages is looking for steers the interview did not cover.
-Nothing from it is a preference until the operator confirms it.
+A pass over the operator's messages and gate answers from 2026-05-15 to 2026-11-21 read 2,590 entries and extracted 1,151 choices.
+Of those, 775 fall into 142 recurring preferences, and the rest are one-off product or scheduling decisions.
+Measured against `AGENTS.md`, the skills, the prompt templates, and the agent definitions, 56 of the 142 are stated, 53 are partly stated, and 33 are not found.
+Session counts below exclude the interview itself.
+Nothing here is a preference until the operator confirms it.
+
+### Recurring and not in the docs
+
+| Candidate                                                                                                         | Sessions |
+| ----------------------------------------------------------------------------------------------------------------- | -------- |
+| Packages share one configuration: compiler, lint, markdown, package fields, test layout.                          | 9        |
+| Push back on the operator's choices and the agent's own, and pressure-test a proposal before trusting it.         | 8        |
+| Construct an object complete and ready, with no getters, setters, or late wiring.                                 | 6        |
+| Planning is not bound by an issue's scope or by earlier decisions, and the architectural target is defined first. | 6        |
+| Do not rely on the prompt-template extension's own mechanisms.                                                    | 5        |
+| Keep digging one more layer before committing to a plan.                                                          | 4        |
+| Prefer stricter automated checks, because they give fast feedback.                                                | 4        |
+| Keep GitHub issues in step with the plan when the plan changes.                                                   | 4        |
+| Go through findings and decisions one at a time.                                                                  | 3        |
+| When a bad pattern is named, fix every occurrence.                                                                | 3        |
+| Keep or retire a process tool on evidence.                                                                        | 3        |
+| Make new commits and do not amend.                                                                                | 2        |
+
+### Recurring and only partly in the docs
+
+| Candidate                                                                                             | Sessions | What the docs lack                                              |
+| ----------------------------------------------------------------------------------------------------- | -------- | --------------------------------------------------------------- |
+| Make the change easy first, at the scale of issues as well as commits.                                | 30       | filing the enabling work as its own issue and pausing this one  |
+| Fold a small adjacent fix into the change, and file it only when it widens the scope a lot.           | 21       | the docs state only the filing half                             |
+| When code is awkward, ask which collaborator is missing before extracting helpers or splitting files. | 12       | it is a checklist item, not a first question                    |
+| Try the behavior live before shipping.                                                                | 11       | it is not the default                                           |
+| Name things in plain domain words, and rename an ambiguous name instead of documenting it.            | 11       | domain vocabulary, and renaming over documenting                |
+| Follow Pi's conventions and adopt its newer SDK mechanisms.                                           | 10       | the docs say to read Pi's source, not to prefer its conventions |
+| Keep a package's core small and leave extras to downstream packages.                                  | 9        | the general rule                                                |
+| Raise the Pi version floor when that simplifies the code.                                             | 9        | the preference for raising it                                   |
+| Take a breaking change when it gives a clearer design, and handle migration second.                   | 8        | `AGENTS.md` leans the other way                                 |
+| Fail loudly, and never drop or repair silently.                                                       | 8        | the general rule                                                |
+| Treat a cast as a design smell.                                                                       | 7        | production casts                                                |
+| Search for an existing issue before filing one.                                                       | 7        | a check at filing time                                          |
+| Tell reporters what was confirmed, what was done, and what is limited.                                | 7        | the docs cover credit only                                      |
+| Expose an extension seam instead of building a capability in.                                         | 7        | anything beyond event notification                              |
+| Prefer explicit designs: structured results that callers consume.                                     | 6        | structured results                                              |
+| Fix the design a lint finding points at instead of suppressing it.                                    | 6        | several documented workarounds suppress                         |
+| Inherited features and config get no protection.                                                      | 6        | the principle                                                   |
+
+### Disagreements to settle
+
+- **Stateful classes or values.**
+  Between late May and mid July the operator asked for classes that hold state and are told what to do, and ranked value objects below them.
+  The interview puts decisions in pure functions over values.
+  Both agree a stateful dependency is a class; they differ on whether data should carry behavior.
+- **Sibling packages as the model.**
+  Earlier steers treat an established sibling package as the pattern to follow, and `plan-issue.md` still tells agents to follow sibling conventions.
+  The interview says existing code is not precedent.
+- **Scope.**
+  Earlier steers say planning is not bound by an issue's scope.
+  `AGENTS.md` says to keep scope tight, and the interview sets a limit on what an agent converts unasked.
+  One reading that reconciles them is that planning scope is open and implementation autonomy is bounded.
+- **Amending commits.**
+  The operator has said to stop amending, and `tdd-plan.md` tells the agent to amend an unpushed commit in three places.
+- **Resolving conflicts.**
+  The operator gave standing permission to resolve rebase conflicts in four sessions in September, and `sync-worktree.md` says not to auto-resolve.
+- **Barrel files.**
+  The operator wants a module's barrel used as its public API, and the `improvement-discovery` skill lists removing barrels as a remedy.
