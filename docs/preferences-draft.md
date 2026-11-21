@@ -63,6 +63,8 @@ Change both together.
 | `/sync-worktree` runs on Opus, because resolving a source conflict needs the judgment.                                                                                     | `sync-worktree.md`       |
 | Pressure-test a proposal before building on it, the operator's as much as the agent's own.                                                                                 | `AGENTS.md`, principle 7 |
 | Decisions go to the operator one at a time when each needs its own context.                                                                                                | `clarification-gates`    |
+| A dependency or tool version that a change touches moves to the latest published one.                                                                                      | `code-design`            |
+| Recent evidence weighs more than old.                                                                                                                                      | `reading-artifacts`      |
 
 ## Not placed yet
 
@@ -102,7 +104,8 @@ Nothing here is a preference until the operator confirms it.
 
 Ten of the 33 that were not found, chosen as the least tied to one package's product decisions, were put to the operator on 2026-11-21.
 Three were added to the tables above, three were already covered by lines there, and four were dropped.
-Two more were settled along with the disagreements recorded above, and the remaining 21 have not been reviewed.
+Two more were settled along with the disagreements recorded above, and two of the rest were added afterwards.
+The remaining 19 have not been reviewed.
 
 ### Recurring and only partly in the docs
 

@@ -11,6 +11,8 @@ Load this skill before turning one of this repo's records into a citation.
 
 When mining history for a **durable** claim — a scope charter, a triage verdict, an ADR, a README boundary — this repo's artifacts answer narrower questions than they appear to.
 
+Weight recent evidence more heavily than old: a newer measurement, steer, or decision outranks an older one it contradicts.
+
 ## Plans
 
 A plan's `## Non-Goals` is scoped to that change, not to the package.

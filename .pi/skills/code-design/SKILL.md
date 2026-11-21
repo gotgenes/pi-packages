@@ -273,6 +273,7 @@ Cast each return's `details` `as <Union>` so the full union flows into the gener
   Use `pnpm run`, `pnpm exec`, and `pnpm add` — never `npm` or `npx`.
 - When you change a `package.json` dependency, run `pnpm install` and commit the updated `pnpm-lock.yaml` in the same commit — CI installs with `--frozen-lockfile`.
   Bumping to a freshly-published version may also add a `minimumReleaseAgeExclude` entry to `pnpm-workspace.yaml`; stage that too.
+- When you touch a dependency or a tool's version, move it to the latest published one, read from `pnpm view <pkg> version`.
 - pnpm settings (`catalog`, `allowBuilds`, `linkWorkspacePackages`) live in `pnpm-workspace.yaml`, not `.npmrc` — pnpm 11 reads them there.
 - The tsconfig target is ES2024 (`noEmit: true`).
   ES2023 APIs (`findLast`, `findLastIndex`, `toReversed`, `toSorted`, `toSpliced`, `with`) and ES2024 APIs (`Promise.withResolvers`, `Object.groupBy`, `Map.groupBy`, `Array.fromAsync`) are available and preferred.
