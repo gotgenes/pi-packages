@@ -1,5 +1,5 @@
 ---
-model: anthropic/claude-sonnet-5-5
+model: anthropic/claude-opus-5-5
 description: Peer-session sync — run pre-push checks and rebase a worktree branch onto main, then hand off to the root session
 ---
 
@@ -67,12 +67,13 @@ The stage note lives in an `exclude-paths` dir, so it triggers no release — bu
 1. `git fetch origin`.
 2. Rebase onto the ref `/ship` will merge into — **local** `main`, which the shared `.git` makes visible: `git rebase main`.
    If `git rev-list --count main..origin/main` is non-zero, local `main` is behind the remote; stop and report, since the root must `git pull` before this rebase has the right target.
-3. On a conflict: run `git rebase --abort`, then stop and report the conflicting files.
-   Name what actually collided — `git log --oneline HEAD..main` for the commits, and the conflicting hunks — not a cause inferred from the file's recent history.
-   Do not auto-resolve — the operator decides.
-   One exception: when both sides *only add* distinct lines — `[#N]:` link definitions, or bullets in a roadmap's `#### Open-issue sweep dispositions` list — and no line was edited on both sides, keep every line (definitions ascending by number, bullets with `main`'s first) and continue with `GIT_EDITOR=true git rebase --continue`.
-   That collision has one correct resolution and needs no operator decision.
-   Any other conflict — including one where a definition's URL differs — still aborts and stops.
+3. On a conflict, attempt the resolution yourself, in docs, tests, config, and source alike.
+   Read what actually collided first: `git log --oneline HEAD..main` for the commits, and the conflicting hunks, not a cause inferred from the file's recent history.
+   Keep both sides' intent, then continue with `GIT_EDITOR=true git rebase --continue`.
+   When both sides only add distinct lines, such as `[#N]:` link definitions or bullets in a roadmap's `#### Open-issue sweep dispositions` list, keep every line, with definitions ascending by number and `main`'s bullets first.
+   After resolving anything outside markdown, re-run the checks in the `## 2. Pre-push checks` section, since they ran before the rebase.
+   Report each conflict to the operator: the files, the commits that collided, and how you resolved it.
+   Run `git rebase --abort` and stop only when no resolution keeps both sides' intent, or when the re-run checks fail.
 4. Verify the merge will succeed: `git merge-base --is-ancestor main HEAD`.
    This, not the `origin/main` comparison, is what predicts the ff-merge.
 5. Confirm no stage note in the retro file cites a SHA the rebase just rewrote:
@@ -101,5 +102,5 @@ Report:
 
 - Never touch `main` from a worktree (no checkout, no merge, no push to `main`).
 - Never force-push.
-- If the rebase conflicts, stop — do not resolve automatically, except the add-only link-definition and sweep-bullet cases in step 3.
+- Abort a conflicted rebase only when no resolution keeps both sides' intent, or when the re-run checks fail.
 - Do not close the issue or dispatch a release here; that is the root half's job (`/ship`).
