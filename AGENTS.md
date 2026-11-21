@@ -27,8 +27,10 @@ When a situation has no rule, apply the principle.
    Timestamps, counts, SHAs, versions, issue numbers — run the command, then write what it printed.
 5. **Mechanism is forever; docs are reversible.**
    Prefer a config pattern or a documented recommendation over a new runtime mechanism.
-6. **Keep scope tight.**
-   Prefer small, reversible changes; preserve intentional behavior unless there is a clear reason to change it; ask before removing functionality or changing defaults.
+6. **Think wide, land small.**
+   When planning, look past the issue to the design it sits in, and name the architectural target.
+   Then land small, reversible changes toward it; when the target is bigger than the issue, put the enabling work in its own issue ahead of this one.
+   Preserve intentional behavior unless there is a clear reason to change it; ask before removing functionality or changing defaults.
 
 ## Environment
 

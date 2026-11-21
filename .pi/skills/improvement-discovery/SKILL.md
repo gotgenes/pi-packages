@@ -170,7 +170,7 @@ They are ordered from most impactful (structural) to least (cosmetic).
 | -------------------------- | ------------------------------------------- | ----------------------------------------------------------- |
 | Flat directory (20+ files) | `ls src/` shows undifferentiated list       | Group into domain subdirectories                            |
 | `deps.` prefix noise       | Every access in function body is `deps.foo` | Destructure in signature or dissolve small bags (≤4 fields) |
-| Barrel re-export sprawl    | `index.ts` re-exports everything            | Remove barrel; use direct imports                           |
+| Barrel re-export sprawl    | `index.ts` re-exports everything            | Trim it to what other directories import                    |
 | Unclear module boundaries  | Same concept lives in 3 files               | Co-locate; single responsibility                            |
 
 ### Category F: Cross-package responsibility overlap

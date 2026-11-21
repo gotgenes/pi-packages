@@ -11,7 +11,8 @@ Load this skill when writing, debugging, or planning tests.
 
 ## Chosen practices
 
-These are the operator's choices among defensible alternatives, and they outrank what the surrounding tests do.
+These are the operator's choices among defensible alternatives.
+Where they disagree with existing tests they win, and the `code-design` skill's section on existing code says how far a conversion goes.
 
 - Nearly every test is a unit test, and acceptance tests are a thin cap.
 - Work outside-in.

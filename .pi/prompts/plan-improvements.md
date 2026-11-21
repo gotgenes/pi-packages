@@ -136,7 +136,7 @@ Watch for a module that will not sit still in any obvious group — that usually
 When a regrouping opportunity exists, prefer to **introduce or grow a domain directory in a phase that is already rewriting or extracting those files** (tidy-first), so the touched modules reach their final home the first time instead of being moved twice.
 Do **not** propose a big-bang move of the whole tree — it is unreviewable and collides with every in-flight branch.
 The `#src/*` / `#test/*` import aliases keep moves mechanical (a move rewrites only the importing `#src/<file>` sites, with no `../../` fragility, and `tsc` + eslint catch every miss).
-A domain directory may expose a lean `index.ts` barrel as its cross-domain API, but only at genuine seams — this repo treats barrel re-export sprawl as a smell and fallow flags any export with no importer.
+A domain directory exposes a lean `index.ts` barrel as its public API, holding only what other directories import — this repo treats barrel re-export sprawl as a smell and fallow flags any export with no importer.
 
 Reorg scope is preference-sensitive (churn vs. coherence), so when the opportunity is larger than the files the phase already touches, use `ask_user` to decide how much to fold in.
 When the full reorg exceeds the current phase, record a **forward-looking directory sketch** (the target domain directories + these principles) in the architecture doc and seed only the first domain now.

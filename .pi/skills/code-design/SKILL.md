@@ -11,22 +11,34 @@ Load this skill when implementing, refactoring, or reviewing TypeScript code.
 
 ## Chosen practices
 
-These are the operator's choices among defensible alternatives, and they outrank what the surrounding code does.
+These are the operator's choices among defensible alternatives.
 
 - The schools are _Clean Code_, _Working Effectively with Legacy Code_, _Extreme Programming Explained_, and Gary Bernhardt's functional core, imperative shell.
-- Decisions live in pure functions over values, and I/O and sequencing live in a thin shell that receives its dependencies.
+- Keep I/O and sequencing in a thin shell that receives its dependencies, and keep decisions free of I/O.
+- The object that holds the state a decision depends on is the receiver, and the per-call context is the argument.
 - Tell a collaborator what to do; do not ask it for data and decide on its behalf.
-- Write a class when the code commands a dependency that has its own state and behavior, and a function when everything is a value and nothing is commanded.
+- A value keeps its facts readable and never acts.
+  It owns a conclusion only when that conclusion is about the value itself, in its own terms, and means the same to every caller.
+  A translation into another module's terms lives with that module, as a function that takes the value.
+  A conclusion only one caller needs stays with that caller until a second caller needs the same one.
+- A record that other code inspects and decides about is a smell.
+- Write a class when the code commands a dependency that has its own state and behavior, and a function when no participant owns the state and every input is a value.
 - Avoid a factory function that returns closures.
+- A directory's `index.ts` is its public API, kept to what other directories use.
+  Other directories import through it, and the rest of the directory is implementation detail.
 
-### Existing code is not precedent
+### Existing code and precedent
 
-Much of this codebase does not follow these practices yet, so a neighboring pattern is not evidence of what is wanted.
-When a practice and the surrounding code disagree, follow the practice.
+Existing code shows the rules in force when it was written, and in a package that has been through improvement phases it is deliberate.
+For a convention, follow the established sibling package.
+A convention is a choice where any answer would do if everyone gave the same one, such as a message format, a command prefix, a doc layout, or a config value.
+Where these practices are silent, existing code is the precedent, and the most recently improved code counts most.
+Where a practice disagrees with the code, follow the practice.
 Convert code the change touches as part of the change, not as scope creep.
 Pin its behavior with a characterization test first, and land the conversion as its own `refactor:` or `test:` commits ahead of the behavior change.
 A touched file and its own test file are the limit of what you convert without asking.
 A conversion that reaches further, such as a call site in another file, is welcome, but name it to the operator and wait for an answer.
+Aligning code the change does not touch is improvement-phase work.
 
 ## Self-Documenting Code
 

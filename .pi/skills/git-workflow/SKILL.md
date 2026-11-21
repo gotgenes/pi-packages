@@ -70,6 +70,9 @@ Verify with `git interpret-trailers --parse`.
 
 ## Rebase, reset, amend, and revert
 
+Tidy local commits before pushing, and leave a pushed commit alone.
+Skip a tidy that would mean rewriting many SHA citations.
+
 Avoid `git rebase -i` in this environment — `$EDITOR` opens an interactive editor that aborts non-interactively.
 Reorder or fix unpushed commits with `git reset` + re-commit, or set `GIT_SEQUENCE_EDITOR`/`EDITOR=true`.
 `git rebase --continue` opens the *commit-message* editor through `GIT_EDITOR`, which `GIT_SEQUENCE_EDITOR` does not cover — set `GIT_EDITOR=true` for it.
