@@ -3,12 +3,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { SessionManager } from "@earendil-works/pi-coding-agent";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { readTranscriptCwd } from "#src/session/transcript-cwd";
+import { readTranscriptHeader } from "#src/session/transcript-header";
 
 let dir: string;
 
 beforeEach(() => {
-	dir = mkdtempSync(join(tmpdir(), "transcript-cwd-"));
+	dir = mkdtempSync(join(tmpdir(), "transcript-header-"));
 });
 
 afterEach(() => {
@@ -22,10 +22,11 @@ function transcript(content: string): string {
 	return path;
 }
 
-describe("readTranscriptCwd", () => {
+describe("readTranscriptHeader", () => {
 	describe("a transcript Pi wrote", () => {
-		it("reads the directory the session ran in", () => {
+		it("reads the spawning parent and working directory", () => {
 			const sessionManager = SessionManager.create("/work/project", dir);
+			sessionManager.newSession({ parentSession: "parent-id" });
 			sessionManager.appendMessage({ role: "user", content: "hi", timestamp: 1 });
 			sessionManager.appendMessage({
 				role: "assistant",
@@ -45,43 +46,47 @@ describe("readTranscriptCwd", () => {
 				timestamp: 2,
 			});
 
-			expect(readTranscriptCwd(sessionManager.getSessionFile()!)).toBe("/work/project");
+			expect(readTranscriptHeader(sessionManager.getSessionFile()!)).toEqual({ cwd: "/work/project", parentSession: "parent-id" });
 		});
 	});
 
 	describe("a header line", () => {
 		it("reads the cwd it names, ignoring the entries after it", () => {
 			const path = transcript(
-				`${JSON.stringify({ type: "session", id: "s", cwd: "/work/a" })}\n${JSON.stringify({ type: "message" })}\n`,
+				`${JSON.stringify({ type: "session", id: "s", cwd: "/work/a", parentSession: "parent-id" })}\n${JSON.stringify({ type: "message" })}\n`,
 			);
 
-			expect(readTranscriptCwd(path)).toBe("/work/a");
+			expect(readTranscriptHeader(path)).toEqual({ cwd: "/work/a", parentSession: "parent-id" });
 		});
 
 		it("reads a header with no trailing newline", () => {
-			expect(readTranscriptCwd(transcript(JSON.stringify({ type: "session", cwd: "/work/b" })))).toBe("/work/b");
+			expect(readTranscriptHeader(transcript(JSON.stringify({ type: "session", cwd: "/work/b", parentSession: "parent-id" })))).toEqual({ cwd: "/work/b", parentSession: "parent-id" });
 		});
 	});
 
-	describe("no cwd to read", () => {
+	describe("no usable header", () => {
 		it("answers undefined for a missing file", () => {
-			expect(readTranscriptCwd(join(dir, "absent.jsonl"))).toBeUndefined();
+			expect(readTranscriptHeader(join(dir, "absent.jsonl"))).toBeUndefined();
 		});
 
 		it("answers undefined for an empty file", () => {
-			expect(readTranscriptCwd(transcript(""))).toBeUndefined();
+			expect(readTranscriptHeader(transcript(""))).toBeUndefined();
 		});
 
 		it("answers undefined when the first line is not JSON", () => {
-			expect(readTranscriptCwd(transcript("not json\n"))).toBeUndefined();
+			expect(readTranscriptHeader(transcript("not json\n"))).toBeUndefined();
 		});
 
 		it("answers undefined when the first line is not a session header", () => {
-			expect(readTranscriptCwd(transcript(`${JSON.stringify({ type: "message", cwd: "/work/c" })}\n`))).toBeUndefined();
+			expect(readTranscriptHeader(transcript(`${JSON.stringify({ type: "message", cwd: "/work/c", parentSession: "parent-id" })}\n`))).toBeUndefined();
+		});
+
+		it("answers undefined for a header with no spawning parent", () => {
+			expect(readTranscriptHeader(transcript(JSON.stringify({ type: "session", cwd: "/work/a" })))).toBeUndefined();
 		});
 
 		it("answers undefined for a header that names no cwd", () => {
-			expect(readTranscriptCwd(transcript(`${JSON.stringify({ type: "session", cwd: "" })}\n`))).toBeUndefined();
+			expect(readTranscriptHeader(transcript(`${JSON.stringify({ type: "session", parentSession: "parent-id", cwd: "" })}\n`))).toBeUndefined();
 		});
 	});
 });

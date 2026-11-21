@@ -18,6 +18,8 @@ The child's transcript is still on disk and `/subagents:sessions` still lists it
 
 ## Non-Goals
 
+- Resuming a source parent's children from a fork.
+  A fork can resume only children it spawned itself.
 - Keeping an in-flight run alive across shutdown (#1111).
 - Restoring a child that ran in a provider workspace: the earlier manager's teardown disposed every workspace it held.
 - Rebuilding records eagerly at `session_start`, or answering `get_subagent_result` for a child before it is resumed.
@@ -37,19 +39,19 @@ They are the source, read when a resume names an ID the manager holds no record 
    It has no session, yet `resumeRefusal` accepts it, and its first resume opens the session through the factory after the run has started, so a stop that lands meanwhile still ends that run.
    A transcript that fails to reopen fails that resume's run and leaves the record resumable.
 3. **The manager restores on resume.**
-   `SubagentManagerOptions.history` (`ChildHistory`) supplies the parent session's entries, a fresh-context parent snapshot, the parent session's identity, and a reader for a transcript header's cwd.
+   `SubagentManagerOptions.history` (`ChildHistory`) supplies the parent session's entries, a fresh-context parent snapshot, the parent session's identity, and a reader for a transcript header's cwd and spawning parent ID.
    `startResume` falls back to it for an unknown ID, takes the last run recorded under that ID, and registers a rebuilt record only when it is resumable.
    A run with no transcript, or one whose header cannot be read, is refused as `no-session`.
+   An inherited record whose transcript names a different parent is refused as `unknown-agent`, before any run starts.
    A transcript whose header names a directory other than the parent's ran in a provider workspace, so it is refused as `workspace-disposed`.
 
 ## Verification
 
-- Unit tests cover each layer: `test/lifecycle/create-subagent-session.test.ts`, `test/lifecycle/subagent.test.ts`, `test/lifecycle/subagent-manager.test.ts`, `test/session/transcript-cwd.test.ts`, and `test/runtime.test.ts`.
+- Unit tests cover each layer: `test/lifecycle/create-subagent-session.test.ts`, `test/lifecycle/subagent.test.ts`, `test/lifecycle/subagent-manager.test.ts`, `test/session/transcript-header.test.ts`, and `test/runtime.test.ts`.
 - `test/composition-root.test.ts` runs a child to completion in one extension instance, shuts it down as `/reload` does, and resumes the child from a fresh instance over the same session entries.
 - Live, against Pi with this extension loaded by `-e`: a child resumed after a restart reopened on the same session file, and after `/reload` in the TUI, recalled a code word given only in its first run, appending to its original transcript; a background resume after `/reload` delivered its completion notice.
 
 ## Limitations
 
 - A per-call `max_turns`, `model`, or `thinking` override from the original spawn is not recorded, so a restored child runs under the agent's own turn limit, its transcript's model, and its transcript's thinking level.
-- A forked parent session carries its source's entries, so resuming a child from both would append both conversations to one transcript.
 - The parent snapshot is taken at resume time, so the child's system prompt reflects the parent and agent definition as they are now.

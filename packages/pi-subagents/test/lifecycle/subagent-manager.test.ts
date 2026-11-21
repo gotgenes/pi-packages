@@ -179,7 +179,7 @@ function historyWith(
     entries: () => entries,
     snapshot: () => STUB_SNAPSHOT,
     parentSession: () => ({ parentSessionFile: "/sessions/parent.jsonl", parentSessionId: "parent-id" }),
-    transcriptCwd: () => STUB_SNAPSHOT.cwd,
+    transcriptHeader: () => ({ cwd: STUB_SNAPSHOT.cwd, parentSession: "parent-id" }),
     ...overrides,
   };
 }
@@ -2131,7 +2131,7 @@ describe("SubagentManager", () => {
       });
 
       it("reports a transcript that can no longer be read", async () => {
-        ({ manager } = createManager({ history: historyWith(undefined, { transcriptCwd: () => undefined }) }));
+        ({ manager } = createManager({ history: historyWith(undefined, { transcriptHeader: () => undefined }) }));
 
         expect(await manager.resume("earlier-1", "continue", { background: false })).toEqual({
           kind: "refused",
@@ -2140,7 +2140,7 @@ describe("SubagentManager", () => {
       });
 
       it("reports a child that ran in a workspace, which went with the manager that held it", async () => {
-        ({ manager } = createManager({ history: historyWith(undefined, { transcriptCwd: () => "/ws/earlier-1" }) }));
+        ({ manager } = createManager({ history: historyWith(undefined, { transcriptHeader: () => ({ cwd: "/ws/earlier-1", parentSession: "parent-id" }) }) }));
 
         expect(await manager.resume("earlier-1", "continue", { background: false })).toEqual({
           kind: "refused",
@@ -2152,7 +2152,7 @@ describe("SubagentManager", () => {
         const { factory } = createSessionFactory();
         ({ manager } = createManager({
           createSubagentSession: factory,
-          history: historyWith(undefined, { transcriptCwd: () => "/ws/earlier-1" }),
+          history: historyWith(undefined, { transcriptHeader: () => ({ cwd: "/ws/earlier-1", parentSession: "parent-id" }) }),
         }));
 
         await manager.resume("earlier-1", "continue", { background: false });

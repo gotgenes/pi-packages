@@ -48,7 +48,7 @@ import { createProjectContextLoader } from "#src/session/project-context";
 import { buildAgentPrompt } from "#src/session/prompts";
 import { inheritRegisteredProviders } from "#src/session/provider-inheritance";
 import { deriveSubagentSessionDir } from "#src/session/session-dir";
-import { readTranscriptCwd } from "#src/session/transcript-cwd";
+import { readTranscriptHeader } from "#src/session/transcript-header";
 import { SettingsManager } from "#src/settings";
 import { AgentTool } from "#src/tools/agent-tool";
 import { GetResultTool } from "#src/tools/get-result-tool";
@@ -204,7 +204,7 @@ export default function (pi: ExtensionAPI) {
       entries: () => runtime.getSessionEntries(),
       snapshot: () => runtime.snapshotIfInSession(),
       parentSession: () => runtime.getSessionInfo(),
-      transcriptCwd: readTranscriptCwd,
+      transcriptHeader: readTranscriptHeader,
     },
   });
 

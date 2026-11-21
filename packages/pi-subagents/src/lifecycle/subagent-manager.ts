@@ -29,6 +29,7 @@ import { SubagentState, type SubagentStatus } from "#src/lifecycle/subagent-stat
 import type { WorkspaceProvider } from "#src/lifecycle/workspace";
 import { readPersistedRuns, type SessionEntryLike } from "#src/persisted-record";
 import type { RunConfig } from "#src/runtime";
+import type { ChildTranscriptHeader } from "#src/session/transcript-header";
 import type { AgentConfig, CompactionInfo, ParentSessionInfo, SubagentType, ThinkingLevel } from "#src/types";
 
 /**
@@ -193,8 +194,8 @@ export interface ChildHistory {
   snapshot(): ParentSnapshot | undefined;
   /** The current parent session's identity, which a reopened child reports to lifecycle consumers. */
   parentSession(): ParentSessionInfo;
-  /** The working directory a child transcript records, or undefined when it cannot be read. */
-  transcriptCwd(transcript: string): string | undefined;
+  /** The spawning parent and working directory a child transcript records, or undefined when it cannot be read. */
+  transcriptHeader(transcript: string): ChildTranscriptHeader | undefined;
 }
 
 export interface SubagentManagerOptions {
@@ -491,9 +492,12 @@ export class SubagentManager {
     const snapshot = history.snapshot();
     if (!snapshot) return "unknown-agent";
     if (run.outputFile === undefined) return "no-session";
-    const cwd = history.transcriptCwd(run.outputFile);
-    if (cwd === undefined) return "no-session";
-    if (cwd !== snapshot.cwd) return "workspace-disposed";
+    const header = history.transcriptHeader(run.outputFile);
+    if (header === undefined) return "no-session";
+    const parentSession = history.parentSession();
+    // Forks inherit run entries, not ownership of the transcripts they name.
+    if (header.parentSession !== parentSession.parentSessionId) return "unknown-agent";
+    if (header.cwd !== snapshot.cwd) return "workspace-disposed";
 
     const record = new Subagent({
       id,
@@ -508,7 +512,7 @@ export class SubagentManager {
         observer: this.buildObserver({}),
         getRunConfig: this.getRunConfig,
         getWorkspaceProvider: () => this._workspaceProvider,
-        parentSession: history.parentSession(),
+        parentSession,
         transcript: run.outputFile,
       },
       state: new SubagentState({ toolUses: run.toolUses }),

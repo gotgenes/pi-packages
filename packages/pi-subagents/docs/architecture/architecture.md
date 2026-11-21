@@ -387,7 +387,7 @@ src/
 │   ├── package-exclusions.ts       child settings view that disables excluded packages' extensions
 │   ├── provider-inheritance.ts     replays the parent's runtime-registered providers onto the child's own runtime, so the child inherits them without sharing the parent's mutable pool
 │   ├── session-dir.ts              session directory derivation
-│   └── transcript-cwd.ts           reads the directory a child transcript's header records
+│   └── transcript-header.ts           reads the spawning parent and cwd from the child transcript
 │
 ├── lifecycle/                      agent execution and state tracking
 │   ├── subagent-manager.ts         collection manager + observer wiring + session-retention sweep (consumption-aware; an unanswered question holds the safety cap); the resume choke point, refusing from the record's own predicate and reporting a discriminated outcome, so every front door declines the same resumes; a door that returns before the resumed run ends starts one synchronously, and each resume's caller decides whether its outcome is claimed; admits a background resume through the limiter like a background spawn, while a foreground one starts at once

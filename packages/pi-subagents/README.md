@@ -139,6 +139,8 @@ Like a background spawn, a background resume waits for a slot when the [concurre
 
 A settled agent stays resumable after a `/reload`, and after restarting Pi and reopening the same parent session.
 The parent session records each finished run, so a `resume` naming an agent from before the reload continues that agent's own transcript under its original ID, as the agent type it was, on the model its transcript last recorded.
+A fork can resume children it spawned itself, but neither the `subagent` tool nor `SubagentsService.resume` can resume children inherited from the source parent.
+Reopen the original parent to continue those children.
 An agent that ran in an isolated workspace is not resumable this way, because its workspace was removed when the previous session ended.
 
 ### `get_subagent_result`
