@@ -57,6 +57,12 @@ export interface SubagentSessionMeta {
   turnLimits: TurnLimits;
   /** Parent context prepended to the first run's prompt, captured at spawn time. */
   parentContext: string | undefined;
+  /**
+   * Whether the session continues a transcript an earlier session wrote. Its
+   * first run here is then a resume: the transcript already holds the parent
+   * context, and that earlier session announced the completion.
+   */
+  continued?: boolean;
   lifecycle: ChildLifecyclePublisher;
 }
 
@@ -68,9 +74,11 @@ export class SubagentSession {
 
   /**
    * Set as the session's first run starts, settled or not: only that run
-   * carries the parent context and announces the child's completion.
+   * carries the parent context and announces the child's completion. A
+   * continued transcript is born with it set, its first run having been an
+   * earlier session's.
    */
-  private hasRun = false;
+  private hasRun: boolean;
 
   /**
    * How the session's last assistant turn ended, tracked for the session's
@@ -88,6 +96,7 @@ export class SubagentSession {
     private readonly meta: SubagentSessionMeta,
   ) {
     this.turnFailure = collectTurnFailure(_session);
+    this.hasRun = meta.continued ?? false;
   }
 
   /**

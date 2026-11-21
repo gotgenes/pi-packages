@@ -120,6 +120,7 @@ export default function (pi: ExtensionAPI) {
       createResourceLoader: (opts) => new DefaultResourceLoader(opts),
       deriveSessionDir: deriveSubagentSessionDir,
       createSessionManager: (cwd, dir) => SessionManager.create(cwd, dir),
+      openSessionManager: (transcript) => SessionManager.open(transcript),
       createSettingsManager: (cwd, dir) => SdkSettingsManager.create(cwd, dir),
       // The exclusion policy is resolved here, at the composition root, so the
       // assembly factory stays free of it and gets a ready-made settings view.

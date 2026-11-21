@@ -12,6 +12,7 @@
  * createSession), so threading the provider through here would be a relay smell.
  */
 
+import { dirname } from "node:path";
 import type { Model } from "@earendil-works/pi-ai";
 import {
   type AgentSession,
@@ -61,6 +62,14 @@ export interface SessionManagerLike {
   newSession(opts: { parentSession?: string }): void;
   getSessionFile(): string | undefined;
   getSessionId(): string;
+}
+
+/**
+ * A session manager reopened on an existing child transcript. It also answers
+ * which model the transcript last recorded, so the continued child runs on it.
+ */
+export interface ReopenedSessionManagerLike extends SessionManagerLike {
+  buildSessionContext(): { model: { provider: string; modelId: string } | null };
 }
 
 /** Options passed to EnvironmentIO/SessionFactoryIO methods. */
@@ -122,6 +131,8 @@ export interface EnvironmentIO {
 export interface SessionFactoryIO {
   createResourceLoader: (opts: ResourceLoaderOptions) => ResourceLoaderLike;
   createSessionManager: (cwd: string, sessionDir: string) => SessionManagerLike;
+  /** Reopen an existing child transcript, whose header already records its cwd and parent. */
+  openSessionManager: (transcript: string) => ReopenedSessionManagerLike;
   createSettingsManager: (cwd: string, agentDir: string) => SettingsManager;
   /**
    * Settings view the child's resource loader resolves packages from.
@@ -189,6 +200,13 @@ export interface CreateSubagentSessionParams {
   notifyParent?: UpdateAnnouncer;
   /** The caller's turn-limit inputs, resolved with the agent's own limit into the session's. */
   turnLimits?: TurnLimitRequest;
+  /**
+   * An earlier child transcript to continue instead of starting a new one: the
+   * child an earlier manager ran, before a `/reload` or a restart. The session
+   * is reopened on it, keeps the model and thinking level it recorded, and its
+   * first run here is a resume.
+   */
+  transcript?: string;
 }
 
 /**
@@ -222,6 +240,10 @@ export async function createSubagentSession(
   const effectiveCwd = params.cwd ?? snapshot.cwd;
   const env = await deps.io.detectEnv(deps.exec, effectiveCwd);
 
+  // A continued transcript is opened before assembly, because the model it
+  // recorded decides the child's model, and with it the prompt strategy.
+  const reopened = params.transcript === undefined ? undefined : deps.io.openSessionManager(params.transcript);
+
   // Assemble session configuration (synchronous, no SDK objects).
   const cfg = assembleSessionConfig(
     type,
@@ -235,7 +257,7 @@ export async function createSubagentSession(
     },
     {
       cwd: params.cwd,
-      model: params.model,
+      model: params.model ?? (reopened && recordedModel(reopened, snapshot.modelRegistry)),
       thinkingLevel: params.thinkingLevel,
     },
     env,
@@ -280,9 +302,17 @@ export async function createSubagentSession(
   // Create a persisted SessionManager so transcripts are written in Pi's
   // official JSONL format. Falls back to a temp directory when the parent
   // session is not persisted (e.g. headless/API mode).
-  const sessionDir = deps.io.deriveSessionDir(params.parentSession?.parentSessionFile, cfg.effectiveCwd);
-  const sessionManager = deps.io.createSessionManager(cfg.effectiveCwd, sessionDir);
-  sessionManager.newSession({ parentSession: params.parentSession?.parentSessionId });
+  // A continued transcript stays where it is, beside its siblings.
+  const sessionDir = params.transcript === undefined
+    ? deps.io.deriveSessionDir(params.parentSession?.parentSessionFile, cfg.effectiveCwd)
+    : dirname(params.transcript);
+  let sessionManager: SessionManagerLike;
+  if (reopened) {
+    sessionManager = reopened;
+  } else {
+    sessionManager = deps.io.createSessionManager(cfg.effectiveCwd, sessionDir);
+    sessionManager.newSession({ parentSession: params.parentSession?.parentSessionId });
+  }
   const sessionId = sessionManager.getSessionId();
 
   const childTools = buildChildTools(params);
@@ -297,7 +327,9 @@ export async function createSubagentSession(
     customTools: childTools,
     excludeTools: EXCLUDED_TOOL_NAMES,
     resourceLoader: loader,
-    thinkingLevel: cfg.thinkingLevel,
+    // Left unset for a continued transcript unless the caller chose one, so Pi
+    // restores the level the child last ran at.
+    thinkingLevel: reopened ? params.thinkingLevel : cfg.thinkingLevel,
   });
 
   const subagentSession = new SubagentSession(session, {
@@ -307,6 +339,7 @@ export async function createSubagentSession(
     agentName: type,
     turnLimits: resolveTurnLimits(params.turnLimits, cfg.agentMaxTurns),
     parentContext: snapshot.parentContext,
+    continued: reopened !== undefined,
     lifecycle: deps.lifecycle,
   });
 
@@ -334,4 +367,16 @@ export async function createSubagentSession(
   deps.lifecycle.bound({ sessionId, parentSessionId });
 
   return subagentSession;
+}
+
+/**
+ * The model a reopened transcript last recorded, when the parent's registry
+ * still knows it; undefined lets the agent's own model resolution decide.
+ */
+function recordedModel(
+  sessionManager: ReopenedSessionManagerLike,
+  registry: ModelRegistry,
+): Model<any> | undefined {
+  const recorded = sessionManager.buildSessionContext().model;
+  return recorded ? registry.find(recorded.provider, recorded.modelId) : undefined;
 }

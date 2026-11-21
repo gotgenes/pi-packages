@@ -5,6 +5,7 @@ import type {
 } from "#src/lifecycle/create-subagent-session";
 import { createSubagentSession } from "#src/lifecycle/create-subagent-session";
 import { SubagentSession } from "#src/lifecycle/subagent-session";
+import { makeModel } from "#test/helpers/make-model";
 import { STUB_CTX, STUB_SNAPSHOT } from "#test/helpers/stub-ctx";
 import {
   createAgentLookup,
@@ -546,5 +547,122 @@ describe("createSubagentSession — MCP tool patterns", () => {
 
     expect(io.createSession).toHaveBeenCalledWith(expect.objectContaining({ tools: ["read"] }));
     expect(loadedBuiltinNames()).toEqual([]);
+  });
+});
+
+describe("createSubagentSession — continuing an earlier transcript", () => {
+  const TRANSCRIPT = "/sessions/tasks/earlier-child.jsonl";
+
+  /** The session manager the factory reopened the transcript with. */
+  function reopened() {
+    return io.openSessionManager.mock.results[0]?.value;
+  }
+
+  it("reopens the transcript rather than starting a new session", async () => {
+    arrangeFactory();
+
+    await createSubagentSession({ snapshot: STUB_SNAPSHOT, type: "Explore", transcript: TRANSCRIPT }, defaultDeps());
+
+    expect(io.openSessionManager).toHaveBeenCalledWith(TRANSCRIPT);
+    expect(io.createSessionManager).not.toHaveBeenCalled();
+    expect(reopened().newSession).not.toHaveBeenCalled();
+    expect(io.createSession).toHaveBeenCalledWith(expect.objectContaining({ sessionManager: reopened() }));
+  });
+
+  it("keeps writing to the transcript it continues", async () => {
+    arrangeFactory();
+
+    const sub = await createSubagentSession(
+      { snapshot: STUB_SNAPSHOT, type: "Explore", transcript: TRANSCRIPT },
+      defaultDeps(),
+    );
+
+    expect(sub.outputFile).toBe(TRANSCRIPT);
+  });
+
+  it("announces the child under the session id the transcript already carries", async () => {
+    arrangeFactory();
+    const lifecycle = createChildLifecycleMock();
+
+    await createSubagentSession(
+      {
+        snapshot: STUB_SNAPSHOT,
+        type: "Explore",
+        transcript: TRANSCRIPT,
+        parentSession: { parentSessionId: "parent-id" },
+      },
+      createSubagentSessionDeps({ io, exec, registry: mockAgentLookup, lifecycle }),
+    );
+
+    expect(lifecycle.sessionCreated).toHaveBeenCalledWith({
+      sessionId: "earlier-child-session-id",
+      parentSessionId: "parent-id",
+    });
+  });
+
+  it("runs on the model the transcript recorded, over the agent's default", async () => {
+    arrangeFactory();
+    const recorded = makeModel({ provider: "openai", id: "gpt-recorded" });
+    const find = vi.fn((provider: string, modelId: string) =>
+      provider === "openai" && modelId === "gpt-recorded" ? recorded : undefined,
+    );
+    io.openSessionManager.mockReturnValueOnce({
+      ...io.openSessionManager(),
+      buildSessionContext: () => ({ model: { provider: "openai", modelId: "gpt-recorded" } }),
+    });
+    io.openSessionManager.mockClear();
+
+    await createSubagentSession(
+      {
+        snapshot: { ...STUB_SNAPSHOT, model: makeModel({ id: "parent-model" }), modelRegistry: { find, getAll: () => [] } },
+        type: "Explore",
+        transcript: TRANSCRIPT,
+      },
+      defaultDeps(),
+    );
+
+    expect(io.createSession).toHaveBeenCalledWith(expect.objectContaining({ model: recorded }));
+  });
+
+  it("falls back to the agent's model when the recorded one is no longer known", async () => {
+    arrangeFactory();
+    const parentModel = makeModel({ id: "parent-model" });
+    io.openSessionManager.mockReturnValueOnce({
+      ...io.openSessionManager(),
+      buildSessionContext: () => ({ model: { provider: "gone", modelId: "retired" } }),
+    });
+    io.openSessionManager.mockClear();
+
+    await createSubagentSession(
+      { snapshot: { ...STUB_SNAPSHOT, model: parentModel }, type: "Explore", transcript: TRANSCRIPT },
+      defaultDeps(),
+    );
+
+    expect(io.createSession).toHaveBeenCalledWith(expect.objectContaining({ model: parentModel }));
+  });
+
+  it("leaves the thinking level to the transcript, over the agent's declared one", async () => {
+    arrangeFactory();
+
+    await createSubagentSession(
+      { snapshot: STUB_SNAPSHOT, type: "Explore", transcript: TRANSCRIPT },
+      createSubagentSessionDeps({ io, exec, registry: createAgentLookup({ thinking: "high" }) }),
+    );
+
+    expect(io.createSession).toHaveBeenCalledWith(expect.objectContaining({ thinkingLevel: undefined }));
+  });
+
+  it("treats its first run here as a resume: no parent-context prefix, no completed event", async () => {
+    const session = arrangeFactory();
+    const lifecycle = createChildLifecycleMock();
+
+    const sub = await createSubagentSession(
+      { snapshot: { ...STUB_SNAPSHOT, parentContext: "CTX\n" }, type: "Explore", transcript: TRANSCRIPT },
+      createSubagentSessionDeps({ io, exec, registry: mockAgentLookup, lifecycle }),
+    );
+    await sub.runTurnLoop("Continue", {});
+
+    expect(session.prompt).toHaveBeenCalledWith("Continue");
+    expect(lifecycle.completed).not.toHaveBeenCalled();
   });
 });
