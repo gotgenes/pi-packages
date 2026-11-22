@@ -1,11 +1,13 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { getAgentDir } from "@earendil-works/pi-coding-agent";
-import type { ScopeConfig } from "#src/types";
+import { mergeFlatPermissions } from "#src/policy/permission-merge";
+import type { FlatPermissionConfig, ScopeConfig } from "#src/types";
 import { toRecord } from "#src/value-guards";
 import {
   loadUnifiedConfig,
   normalizeFlatPermissionValue,
+  rebasePermissionForDir,
   stripJsonComments,
 } from "./config-loader";
 import { getGlobalConfigPath } from "./config-paths";
@@ -69,10 +71,14 @@ export interface ResolvedPolicyPaths {
   globalConfigExists: boolean;
   projectConfigPath: string | null;
   projectConfigExists: boolean;
+  /** Every ancestor project config path, top-most first (`[]` when none). */
+  projectConfigPaths?: readonly string[];
   agentsDir: string;
   agentsDirExists: boolean;
   projectAgentsDir: string | null;
   projectAgentsDirExists: boolean;
+  /** Every ancestor project agents dir, top-most first (`[]` when none). */
+  projectAgentsDirs?: readonly string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -125,11 +131,33 @@ type FileCacheEntry<TValue> = {
 // PermissionManager constructor.
 // ---------------------------------------------------------------------------
 
+/**
+ * One project scope in the ancestor chain: the config file plus the directory
+ * that owns it. `dir` rebases the scope's relative path patterns (see
+ * `rebasePermissionForDir`); `null` keeps the legacy no-rebase behavior for
+ * a lone path with no known owner.
+ */
+export interface ProjectConfigScope {
+  dir: string | null;
+  configPath: string;
+}
+
 export interface PolicyLoaderOptions {
   globalConfigPath?: string;
   agentsDir?: string;
   projectGlobalConfigPath?: string;
   projectAgentsDir?: string;
+  /**
+   * Ancestor project config scopes, top-most first. When non-empty it fully
+   * describes the project chain (including `cwd` itself) and
+   * `projectGlobalConfigPath` is ignored.
+   */
+  projectConfigScopes?: readonly ProjectConfigScope[];
+  /**
+   * Ancestor project agents dirs, top-most first. When non-empty it fully
+   * describes the project-agents chain and `projectAgentsDir` is ignored.
+   */
+  projectAgentsDirs?: readonly string[];
   globalMcpConfigPath?: string;
   /**
    * The project's `.pi/mcp.json`, read beside the global file the way Pi's
@@ -137,6 +165,12 @@ export interface PolicyLoaderOptions {
    * it from a cwd, and an untrusted project's cwd is withheld.
    */
   projectMcpConfigPath?: string;
+  /**
+   * Ancestor project `.pi/mcp.json` paths, top-most first. When non-empty it
+   * fully describes the project MCP chain and `projectMcpConfigPath` is
+   * ignored.
+   */
+  projectMcpConfigPaths?: readonly string[];
   mcpServerNames?: readonly string[];
 }
 
@@ -151,10 +185,10 @@ export interface PolicyLoaderOptions {
 export class FilePolicyLoader implements PolicyLoader {
   private readonly globalConfigPath: string;
   private readonly agentsDir: string;
-  private readonly projectGlobalConfigPath: string | null;
-  private readonly projectAgentsDir: string | null;
+  private readonly projectConfigScopes: readonly ProjectConfigScope[];
+  private readonly projectAgentsDirs: readonly string[];
   private readonly globalMcpConfigPath: string;
-  private readonly projectMcpConfigPath: string | null;
+  private readonly projectMcpConfigPaths: readonly string[];
   private readonly configuredMcpServerNamesOverride: readonly string[] | null;
 
   private globalConfigCache: FileCacheEntry<ScopeConfig> | null = null;
@@ -175,11 +209,26 @@ export class FilePolicyLoader implements PolicyLoader {
     this.globalConfigPath =
       options.globalConfigPath ?? defaultGlobalConfigPath();
     this.agentsDir = options.agentsDir ?? defaultAgentsDir();
-    this.projectGlobalConfigPath = options.projectGlobalConfigPath ?? null;
-    this.projectAgentsDir = options.projectAgentsDir ?? null;
+    this.projectConfigScopes =
+      options.projectConfigScopes && options.projectConfigScopes.length > 0
+        ? options.projectConfigScopes
+        : options.projectGlobalConfigPath
+          ? [{ dir: null, configPath: options.projectGlobalConfigPath }]
+          : [];
+    this.projectAgentsDirs =
+      options.projectAgentsDirs && options.projectAgentsDirs.length > 0
+        ? options.projectAgentsDirs
+        : options.projectAgentsDir
+          ? [options.projectAgentsDir]
+          : [];
     this.globalMcpConfigPath =
       options.globalMcpConfigPath ?? defaultGlobalMcpConfigPath();
-    this.projectMcpConfigPath = options.projectMcpConfigPath ?? null;
+    this.projectMcpConfigPaths =
+      options.projectMcpConfigPaths && options.projectMcpConfigPaths.length > 0
+        ? options.projectMcpConfigPaths
+        : options.projectMcpConfigPath
+          ? [options.projectMcpConfigPath]
+          : [];
     this.configuredMcpServerNamesOverride = options.mcpServerNames
       ? [
           ...new Set(
@@ -214,22 +263,49 @@ export class FilePolicyLoader implements PolicyLoader {
   }
 
   loadProjectConfig(): ScopeConfig {
-    if (!this.projectGlobalConfigPath) {
+    if (this.projectConfigScopes.length === 0) {
       return {};
     }
 
-    const stamp = getFileStamp(this.projectGlobalConfigPath);
+    const stamp = this.projectConfigScopes
+      .map((scope) => `${scope.configPath}:${getFileStamp(scope.configPath)}`)
+      .join("|");
     if (this.projectGlobalConfigCache?.stamp === stamp) {
       return this.projectGlobalConfigCache.value;
     }
 
-    const { config, issues } = loadUnifiedConfig(this.projectGlobalConfigPath);
+    // Merge the ancestor chain top-most first so the nearest scope wins.
+    // Every scope but the nearest keeps its relative path patterns resolved
+    // against its own directory (see `rebasePermissionForDir`); the nearest
+    // scope keeps its legacy cwd-relative matching unchanged.
+    let permission: FlatPermissionConfig | undefined;
+    let invalid = false;
+    // A `for...of` (not `forEach`): assignments to `invalid` inside the body
+    // must stay visible to the read below for the fail-closed flag to type.
+    for (const [index, scope] of this.projectConfigScopes.entries()) {
+      const { config, issues } = loadUnifiedConfig(scope.configPath);
+      // A present-but-rejected file yields issues (parse error or schema
+      // rejection); an absent file yields none. Fail closed on the former —
+      // any rejected scope in the chain clamps the merged result (#646).
+      if (issues.length > 0) invalid = true;
+      let scopePermission = config.permission;
+      if (
+        scopePermission &&
+        scope.dir !== null &&
+        index < this.projectConfigScopes.length - 1
+      ) {
+        scopePermission = rebasePermissionForDir(scopePermission, scope.dir);
+      }
+      if (scopePermission) {
+        permission = permission
+          ? mergeFlatPermissions(permission, scopePermission)
+          : { ...scopePermission };
+      }
+    }
 
-    // A present-but-rejected file yields issues (parse error or schema
-    // rejection); an absent file yields none. Fail closed on the former.
     const value: ScopeConfig = {
-      permission: config.permission,
-      ...(issues.length > 0 ? { invalid: true } : {}),
+      permission,
+      ...(invalid ? { invalid: true } : {}),
     };
 
     this.projectGlobalConfigCache = { stamp, value };
@@ -247,7 +323,10 @@ export class FilePolicyLoader implements PolicyLoader {
 
     const filePath = join(dir, `${agentName}.md`);
     const stamp = getFileStamp(filePath);
-    const cached = cache.get(agentName);
+    // Keyed by directory: several project agents dirs share this cache when
+    // the ancestor chain is merged in `loadProjectAgentConfig`.
+    const cacheKey = `${dir}::${agentName}`;
+    const cached = cache.get(cacheKey);
     if (cached?.stamp === stamp) {
       return cached.value;
     }
@@ -256,7 +335,7 @@ export class FilePolicyLoader implements PolicyLoader {
     // only a present-but-unreadable file fails closed.
     if (stamp === "missing") {
       const value: ScopeConfig = {};
-      cache.set(agentName, { stamp, value });
+      cache.set(cacheKey, { stamp, value });
       return value;
     }
 
@@ -282,7 +361,7 @@ export class FilePolicyLoader implements PolicyLoader {
       value = { invalid: true };
     }
 
-    cache.set(agentName, { stamp, value });
+    cache.set(cacheKey, { stamp, value });
     return value;
   }
 
@@ -295,11 +374,31 @@ export class FilePolicyLoader implements PolicyLoader {
   }
 
   loadProjectAgentConfig(agentName?: string): ScopeConfig {
-    return this.loadScopeConfigFrom(
-      this.projectAgentsDir,
-      this.projectAgentConfigCache,
-      agentName,
-    );
+    if (!agentName) {
+      return {};
+    }
+    // Merge the ancestor chain top-most first so the nearest scope wins.
+    // Frontmatter patterns match as written (cwd-relative, as today) — only
+    // config-file scopes rebase relative paths against their own directory.
+    let permission: FlatPermissionConfig | undefined;
+    let invalid = false;
+    for (const dir of this.projectAgentsDirs) {
+      const scope = this.loadScopeConfigFrom(
+        dir,
+        this.projectAgentConfigCache,
+        agentName,
+      );
+      if (scope.invalid === true) invalid = true;
+      if (scope.permission) {
+        permission = permission
+          ? mergeFlatPermissions(permission, scope.permission)
+          : { ...scope.permission };
+      }
+    }
+    if (permission === undefined && !invalid) {
+      return {};
+    }
+    return { permission, ...(invalid ? { invalid: true } : {}) };
   }
 
   // ── MCP server names ─────────────────────────────────────────────────
@@ -309,9 +408,7 @@ export class FilePolicyLoader implements PolicyLoader {
       return this.configuredMcpServerNamesOverride;
     }
 
-    const paths = this.projectMcpConfigPath
-      ? [this.globalMcpConfigPath, this.projectMcpConfigPath]
-      : [this.globalMcpConfigPath];
+    const paths = [this.globalMcpConfigPath, ...this.projectMcpConfigPaths];
     const stamp = paths
       .map((path) => `${path}:${getFileStamp(path)}`)
       .join("|");
@@ -330,12 +427,17 @@ export class FilePolicyLoader implements PolicyLoader {
     const agentStamp = agentName
       ? getFileStamp(join(this.agentsDir, `${agentName}.md`))
       : "missing";
-    const projectStamp = this.projectGlobalConfigPath
-      ? getFileStamp(this.projectGlobalConfigPath)
-      : "none";
+    const projectStamp =
+      this.projectConfigScopes.length > 0
+        ? this.projectConfigScopes
+            .map((scope) => getFileStamp(scope.configPath))
+            .join(",")
+        : "none";
     const projectAgentStamp =
-      this.projectAgentsDir && agentName
-        ? getFileStamp(join(this.projectAgentsDir, `${agentName}.md`))
+      this.projectAgentsDirs.length > 0 && agentName
+        ? this.projectAgentsDirs
+            .map((dir) => getFileStamp(join(dir, `${agentName}.md`)))
+            .join(",")
         : "none";
 
     return `${getFileStamp(this.globalConfigPath)}|${projectStamp}|${agentStamp}|${projectAgentStamp}`;
@@ -344,19 +446,32 @@ export class FilePolicyLoader implements PolicyLoader {
   // ── Resolved paths ────────────────────────────────────────────────────
 
   getResolvedPolicyPaths(): ResolvedPolicyPaths {
+    const projectConfigPaths = this.projectConfigScopes.map(
+      (scope) => scope.configPath,
+    );
+    // The nearest scope is the one an operator edits; the chain carries the
+    // ancestors it inherits from.
+    const nearestProjectConfigPath =
+      projectConfigPaths.length > 0
+        ? projectConfigPaths[projectConfigPaths.length - 1]
+        : null;
+    const nearestProjectAgentsDir =
+      this.projectAgentsDirs.length > 0
+        ? this.projectAgentsDirs[this.projectAgentsDirs.length - 1]
+        : null;
     return {
       globalConfigPath: this.globalConfigPath,
       globalConfigExists: existsSync(this.globalConfigPath),
-      projectConfigPath: this.projectGlobalConfigPath,
-      projectConfigExists: this.projectGlobalConfigPath
-        ? existsSync(this.projectGlobalConfigPath)
-        : false,
+      projectConfigPath: nearestProjectConfigPath,
+      projectConfigExists: projectConfigPaths.some((path) => existsSync(path)),
+      projectConfigPaths,
       agentsDir: this.agentsDir,
       agentsDirExists: existsSync(this.agentsDir),
-      projectAgentsDir: this.projectAgentsDir,
-      projectAgentsDirExists: this.projectAgentsDir
-        ? existsSync(this.projectAgentsDir)
-        : false,
+      projectAgentsDir: nearestProjectAgentsDir,
+      projectAgentsDirExists: this.projectAgentsDirs.some((dir) =>
+        existsSync(dir),
+      ),
+      projectAgentsDirs: [...this.projectAgentsDirs],
     };
   }
 }
