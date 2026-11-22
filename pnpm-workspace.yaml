@@ -26,12 +26,12 @@ catalog:
   # Keep prek.toml's rumdl-pre-commit rev in lockstep with this pin.
   "rumdl": "0.2.24"
   "typescript": "^6.0.3"
-  "vitest": "^4.1.11"
+  "vitest": "^5.1.1"
   # Istanbul coverage for `fallow health --coverage`, the format the fallow
   # skill's command produces (fallow also reads raw V8 coverage since 3.29.0;
   # switching is #1138). Root-only: a coverage run is `pnpm --filter
   # <pkg> exec vitest run --coverage`, so no package manifest references it.
-  "@vitest/coverage-istanbul": "^4.1.11"
+  "@vitest/coverage-istanbul": "^5.1.1"
   "@types/node": "^22.15.3"
   fallow: "^3.46.0"
   fallow-type-aware: "^3.46.0"

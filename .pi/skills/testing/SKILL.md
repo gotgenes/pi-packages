@@ -32,9 +32,9 @@ Where they disagree with existing tests they win, and the `code-design` skill's 
 
 ### vi.mock and hoisting
 
-- When using `vi.mock()`, extract each `vi.fn()` stub to a module-scope variable and reset it in `beforeEach` — `vi.restoreAllMocks()` only operates on `vi.spyOn()` spies, not on `vi.fn()` instances.
-  Use `.mockReset()` when the stub has no default implementation.
-  Use `.mockClear()` when the `vi.mock()` factory provides a default implementation that tests must preserve.
+- When using `vi.mock()`, extract each `vi.fn()` stub to a module-scope variable — `vi.restoreAllMocks()` only operates on `vi.spyOn()` spies, not on `vi.fn()` instances.
+  Vitest 5 clears every mock's call history before each test by default, so a `.mockClear()` in `beforeEach` is redundant.
+  Clearing keeps implementations, so call `.mockReset()` in `beforeEach` when a test sets a per-test implementation (`mockReturnValue`, `mockImplementation`) that must not leak into the next test.
 - When a `vi.mock()` factory references a module-scope `vi.fn()` stub, wrap the stub declaration in `vi.hoisted()` — Vitest hoists `vi.mock()` above normal declarations, so unhoisted variables are `undefined` when the factory runs.
 - When mocking a class constructor with `vi.mock()`, use `vi.fn()` with no implementation — not `vi.fn(() => ({}))`.
   Arrow-function implementations are not constructable; `new MockClass()` throws `"is not a constructor"`.
@@ -147,6 +147,7 @@ A missing export throws `is not a function` at runtime but surfaces as `TS2305` 
 - Run Vitest bare — no `| tail`, `| grep`, or `>/tmp/…` redirect.
   Its non-TTY summary is already short (measured: 9 lines for `pi-permission-system`'s 4824-test suite), and a pipe replaces Vitest's exit status with the filter's, so a failing run reads as a pass.
   A failing run adds one `×` line per failing test and about 20 lines of assertion detail per failure; that detail is the signal, so narrow the run instead of the output: pass the test path, and `-t "<name>"` for one test.
+  Vitest 5 joins a nested name with `>` (`-t "<describe> > <test>"`); a space-joined name matches nothing and skips every test.
 - Pair a run with the typecheck using `&&`: `pnpm --filter @gotgenes/<pkg> exec vitest run <test-path> && pnpm --filter @gotgenes/<pkg> run check` keeps both exit statuses and skips `check` when a test fails.
 - When a fix changes shared helper functions, run the full suite before committing — not just the directly affected test file.
 - A disposable spike test's `console.log` is hidden by Vitest's default reporter; run it with `--reporter=verbose` (measured: `--silent=false` alone does **not** surface it, and `--reporter=basic` was removed in Vitest 4).
