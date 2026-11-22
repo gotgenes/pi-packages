@@ -66,6 +66,7 @@
     "@earendil-works/pi-coding-agent": "0.79.1",
     "@gotgenes/pi-subagents": "^16.4.0",
     "@types/node": "catalog:",
+    "@typescript/native": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }

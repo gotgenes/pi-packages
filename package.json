@@ -29,6 +29,7 @@
     "fallow-type-aware": "catalog:",
     "globals": "catalog:",
     "rumdl": "catalog:",
+    "typescript": "catalog:",
     "typescript-eslint": "catalog:",
     "vitest": "catalog:"
   }

@@ -67,6 +67,7 @@
     "@biomejs/biome": "catalog:",
     "@earendil-works/pi-coding-agent": "0.79.1",
     "@types/node": "catalog:",
+    "@typescript/native": "catalog:",
     "rumdl": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"

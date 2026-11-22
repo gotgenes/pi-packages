@@ -25,7 +25,13 @@ catalog:
   # Upstream: https://github.com/rvben/rumdl/issues/933
   # Keep prek.toml's rumdl-pre-commit rev in lockstep with this pin.
   "rumdl": "0.2.24"
-  "typescript": "^6.0.3"
+  # TypeScript 7 runs side by side with TypeScript 6, the setup the TS 7.0
+  # release documents. TS 7 ships no compiler API, and typescript-eslint and
+  # rollup-plugin-dts `require("typescript")` for one, so the name `typescript`
+  # stays on TS 6 while `@typescript/native` provides TS 7's `tsc` binary
+  # (TS 6's binary is `tsc6`, so they do not collide).
+  "typescript": "npm:@typescript/typescript6@^6.0.2"
+  "@typescript/native": "npm:typescript@^7.0.2"
   "vitest": "^5.1.1"
   # Istanbul coverage for `fallow health --coverage`, the format the fallow
   # skill's command produces (fallow also reads raw V8 coverage since 3.29.0;

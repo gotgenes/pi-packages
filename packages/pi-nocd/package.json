@@ -50,6 +50,7 @@
     "@biomejs/biome": "catalog:",
     "@earendil-works/pi-coding-agent": "1.0.0",
     "@types/node": "catalog:",
+    "@typescript/native": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   },
