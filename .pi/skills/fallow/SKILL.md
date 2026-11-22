@@ -80,11 +80,13 @@ Severity is `warn`: `fallow dead-code` and `fallow audit` print the violation an
 ## The type-aware companion
 
 `fallow-type-aware` (a TypeScript semantic backend) is installed; check it with `fallow type-aware status`.
-It is **opt-in per invocation** via `--type-aware`, and it costs time: `dead-code --type-aware` measured 16 s against 2 s syntactic on this repo.
+It is **opt-in per invocation** via `--type-aware`.
+On 3.46 it refines only the candidate findings the syntactic pass produced, so a clean `dead-code --type-aware` costs what the syntactic run does (measured: about 1 s each with `--no-cache`).
+It also adds a `private-type-leak` warning class (exported signatures that reference a same-file private type), which the syntactic run does not report; this repo carries 48 of them, untriaged.
 Without the flag, fallow's analysis is structural — it reads the module graph and the syntax, not the type checker.
 
 - `--type-coupling` (on `health`) reports project-local public-signature type coupling, an ISP/DIP lead: a file that "depends on 5, used by 1" is a dependency-bag candidate.
-  It reports `no-coupling-found (Unavailable)` unless you also pass `--type-aware-project packages/<PKG>/tsconfig.json`.
+  It refuses to run without `--type-aware`, and reports `no-coupling-found (Unavailable)` unless you also pass `--type-aware-project packages/<PKG>/tsconfig.json`.
 - `--symbol-impact` (on `dead-code`) computes exact-symbol consumers, affected files, and targeted tests.
 
 ### Proving "nothing else calls this"
@@ -96,9 +98,9 @@ pnpm --silent fallow dead-code --trace <file>:<symbol> --quiet
 pnpm --silent fallow dead-code --type-aware --symbol-impact <file>:<symbol> --quiet
 ```
 
-`--symbol-impact` has a measured false negative on 3.22.0: for `session/prompts.ts:buildAgentPrompt` it reported `consumers-found (complete, confidence: high)` listing only the test, missing `src/index.ts`, which imports the symbol and passes it as an **object-literal shorthand property**.
-Syntactic `--trace` lists both.
-Upstream has no fix through 3.28.0, so a high-confidence `--symbol-impact` result is not on its own a licence to delete.
+`--symbol-impact` used to miss consumers that pass the symbol as an **object-literal shorthand property**: on 3.22.0 it reported only the test for `session/prompts.ts:buildAgentPrompt`, missing `src/index.ts`.
+On 3.46.0 it lists both (measured).
+Keep running `--trace` beside it: the two read different evidence, and a consumer shape neither has been checked against can still fall between them.
 
 ## Health snapshots and trends
 
@@ -131,7 +133,8 @@ pnpm --silent fallow health --coverage /tmp/cov-<PKG>/coverage-final.json \
   --score --hotspots --targets --workspace @gotgenes/<PKG> 2>&1 || true
 ```
 
-Istanbul format is required (not v8/c8 native); `@vitest/coverage-istanbul` is a root devDependency, so no package manifest needs one.
+`--coverage` accepts an Istanbul `coverage-final.json` or raw V8 coverage (since 3.29.0); this repo uses Istanbul, and whether to switch is #1138.
+`@vitest/coverage-istanbul` is a root devDependency, so no package manifest needs one.
 For pi-autoformat add `--project unit` — its acceptance project spawns the real `pi` CLI.
 
 `health --coverage-gaps` is a separate, static question: which runtime files and exports no test dependency path reaches.
@@ -153,7 +156,8 @@ The `pre-completion-reviewer` runs the first of these over the range it reviews;
 Config lives at `.fallowrc.json` in the repo root.
 Entry points for `pi.extensions` are declared manually since fallow does not know that convention.
 Rules use `"error"` (fail CI), `"warn"` (report only), or `"off"` (skip).
-Some rules default to `off` and are inert even at `warn` on 3.22.0 — `coverage-gaps` is one, so use the `--coverage-gaps` flag rather than the rule.
+Some rules default to `off`; `coverage-gaps` is one.
+On 3.46 setting it to `warn` makes every `health` run print the section `health --coverage-gaps` prints, so prefer the flag when you want the answer once.
 
 ## Suppressing findings
 

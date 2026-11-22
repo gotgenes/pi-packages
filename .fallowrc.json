@@ -1,11 +1,13 @@
 {
   "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+  "minimumVersion": "3.46.0",
   "entry": [
     "packages/*/src/extension.ts",
     "packages/*/src/index.ts",
-    "packages/*/src/service.ts",
-    "scripts/**/*.mjs"
+    "packages/*/src/service.ts"
   ],
+  "supportEntry": ["scripts/**/*.mjs"],
+  "ignoreBinaries": ["prek"],
   "ignoreExportsUsedInFile": true,
   "ignoreDependencies": ["tree-sitter-bash", "@gotgenes/pi-subagents"],
   "ignorePatterns": ["**/test/fixtures/**", "**/tests/fixtures/**", ".pi/**"],
@@ -151,7 +153,8 @@
       },
       {
         "from": "pi-permission-system/exposure",
-        "allow": ["pi-permission-system/core", "pi-permission-system/path"]
+        "allow": ["pi-permission-system/core", "pi-permission-system/path"],
+        "allowTypeOnly": ["pi-permission-system/config"]
       },
       {
         "from": "pi-permission-system/handlers",
@@ -224,7 +227,8 @@
           "pi-permission-system/presentation",
           "pi-permission-system/session",
           "pi-permission-system/tool-input"
-        ]
+        ],
+        "allowTypeOnly": ["pi-permission-system/config"]
       },
       {
         "from": "pi-permission-system/session",

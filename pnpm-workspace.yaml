@@ -27,12 +27,14 @@ catalog:
   "rumdl": "0.2.24"
   "typescript": "^6.0.3"
   "vitest": "^4.1.11"
-  # Istanbul coverage for `fallow health --coverage`, which needs Istanbul
-  # format (not v8/c8 native). Root-only: a coverage run is `pnpm --filter
+  # Istanbul coverage for `fallow health --coverage`, the format the fallow
+  # skill's command produces (fallow also reads raw V8 coverage since 3.29.0;
+  # switching is #1138). Root-only: a coverage run is `pnpm --filter
   # <pkg> exec vitest run --coverage`, so no package manifest references it.
   "@vitest/coverage-istanbul": "^4.1.11"
   "@types/node": "^22.15.3"
-  fallow: "^3.22.0"
+  fallow: "^3.46.0"
+  fallow-type-aware: "^3.46.0"
   rollup: "^4.68.8"
   "rollup-plugin-dts": "^6.5.1"
 
@@ -45,22 +47,12 @@ allowBuilds:
   tree-sitter-bash: true
 
 minimumReleaseAgeExclude:
-  - '@fallow-cli/darwin-arm64@3.22.0'
-  - '@fallow-cli/darwin-x64@3.22.0'
-  - '@fallow-cli/linux-arm64-gnu@3.22.0'
-  - '@fallow-cli/linux-arm64-musl@3.22.0'
-  - '@fallow-cli/linux-x64-gnu@3.22.0'
-  - '@fallow-cli/linux-x64-musl@3.22.0'
-  - '@fallow-cli/win32-arm64-msvc@3.22.0'
-  - '@fallow-cli/win32-x64-msvc@3.22.0'
-  - fallow@3.22.0
   - '@gotgenes/pi-permission-system@40.3.0'
   - '@earendil-works/pi-agent-core@1.0.0'
   - '@earendil-works/pi-ai@1.0.0'
   - '@earendil-works/pi-coding-agent@1.0.0'
   - '@earendil-works/pi-telemetry@1.0.0'
   - '@earendil-works/pi-tui@1.0.0'
-  - fallow-type-aware@3.22.0
   - '@earendil-works/chord@1.0.0'
   - '@earendil-works/pi-codemode@1.0.0'
   - '@earendil-works/pi-mcp@1.0.0'
@@ -91,6 +83,16 @@ minimumReleaseAgeExclude:
   - '@rollup/rollup-win32-x64-gnu@4.68.8'
   - '@rollup/rollup-win32-x64-msvc@4.68.8'
   - rollup@4.68.8
+  - '@fallow-cli/darwin-arm64@3.46.0'
+  - '@fallow-cli/darwin-x64@3.46.0'
+  - '@fallow-cli/linux-arm64-gnu@3.46.0'
+  - '@fallow-cli/linux-arm64-musl@3.46.0'
+  - '@fallow-cli/linux-x64-gnu@3.46.0'
+  - '@fallow-cli/linux-x64-musl@3.46.0'
+  - '@fallow-cli/win32-arm64-msvc@3.46.0'
+  - '@fallow-cli/win32-x64-msvc@3.46.0'
+  - fallow-type-aware@3.46.0
+  - fallow@3.46.0
 
 # A freshly-published first-party sibling (e.g. a same-day @gotgenes/* release a
 # dependent package bumps to) cannot be unblocked via minimumReleaseAgeExclude:

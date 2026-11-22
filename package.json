@@ -26,6 +26,7 @@
     "@vitest/coverage-istanbul": "catalog:",
     "eslint": "catalog:",
     "fallow": "catalog:",
+    "fallow-type-aware": "catalog:",
     "globals": "catalog:",
     "rumdl": "catalog:",
     "typescript-eslint": "catalog:",
