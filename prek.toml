@@ -39,7 +39,7 @@ hooks = [
 # malformed `type!(scope):` form (Refs #452, #457). Config: committed.toml.
 [[repos]]
 repo = "https://github.com/crate-ci/committed"
-rev = "v1.1.11"
+rev = "v1.1.12"
 hooks = [
     { id = "committed" },
 ]

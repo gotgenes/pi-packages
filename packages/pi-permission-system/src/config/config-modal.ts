@@ -59,7 +59,6 @@ function toOnOff(value: boolean): string {
 }
 
 function formatRulesSummary(rules: Ruleset): string {
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- origin may be absent despite its type
   const configRules = rules.filter((r) => r.layer === "config" && r.origin);
   if (configRules.length === 0) return "";
   const formatted = configRules
