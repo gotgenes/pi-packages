@@ -59,7 +59,7 @@ Pre-completion reviewer returned WARN (one cosmetic finding), fixed before finis
   No large-file rewrite needed a lift-and-shift; the whole file fit one atomic commit.
 - **Composition-root round-trip anchors held unchanged, as predicted.**
   Both `forwarded grant-scope selection round-trip` tests (real `ParentAuthorizer` stamping `accessIntent`, real `ForwardedRequestServer` resolving it, `demo` surface with no per-agent rules) passed without any edit — confirming agent-scoped resolution is a true superset of the agent-neutral serving it replaced.
-- **Pre-completion reviewer: WARN, one finding** — a stale doc comment on `ForwardedRequestServerDeps.policy` (`"Recorded-authority resolution for \`(surface, value)\` requests."`) that survived the `ServingPolicy` interface rename.
+- **Pre-completion reviewer: WARN, one finding** — a stale doc comment on `ForwardedRequestServerDeps.policy` (`` "Recorded-authority resolution for `(surface, value)` requests." ``) that survived the `ServingPolicy` interface rename.
   Fixed in a trivial follow-up `docs:` commit (not amended into the feat commit, since the feat commit was already several commits back and AGENTS.md discourages non-interactive rebase for reordering).
   Reviewer explicitly verified the implementation matched the plan's two operator-confirmed deviations from the issue body (retire-outright over dual-path; `feat:` over `feat!:`) rather than flagging them as drift.
 - **Reviewer note (non-issue):** the same pre-existing pi-autoformat acceptance-test flake noted in the #596 retro recurred (`pnpm run test` root pass, 2 RPC timeouts, unrelated package, standalone re-run green both before and after this session's changes).

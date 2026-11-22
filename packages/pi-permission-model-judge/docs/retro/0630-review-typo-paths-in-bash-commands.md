@@ -26,7 +26,7 @@ Filed the plan at `packages/pi-permission-model-judge/docs/plans/0630-review-typ
 - **Single-path #626 trail preserved.**
   First-match-wins records exactly one matched alias as `path` + `matchedPattern`, so the decision-trail record shape is unchanged — a listed invariant-at-risk pinned by the existing `records the decision` test.
 - **Predecessors closed.**
-  #625 (auth), #626 (observability), #628 (structured verdict) are all merged/closed; #630 completes the dogfood sequence.
+  Issues #625 (auth), #626 (observability), #628 (structured verdict) are all merged/closed; #630 completes the dogfood sequence.
 
 ## Stage: Implementation — TDD (2026-07-22T01:48:00Z)
 

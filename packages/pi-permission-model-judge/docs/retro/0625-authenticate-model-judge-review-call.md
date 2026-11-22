@@ -93,7 +93,7 @@ Triggered the judge via a `read` on a doubled-package typo path; the new `model_
   SDK feasibility confirmed: Anthropic provider honors `toolChoice`; `convertTools` reads only `parameters.properties`/`required` (plain JSON-Schema, no `typebox`); `toolChoice: "any"` avoids the OAuth `toClaudeCodeName` name-rewrite mismatch.
 - This is also a clean validation of #626: the auth fix's success **and** the next defect both showed up in one log line, instead of an SDK spelunk.
 - Ship decision: **#625 ships now, batched with #626 in this release** (both committed on `main`, unpushed).
-  #628 is future work for a later release.
+  Issue #628 is future work for a later release.
 
 ## Stage: Final Retrospective (2026-07-21T23:43:38Z)
 
@@ -112,7 +112,7 @@ Verification also surfaced a distinct downstream defect (`parse-failed`), filed 
   That trail then confirmed #625 (`modelCalled: true`, no `auth-failed`) **and** surfaced the next defect (#628, `parse-failed`) in a single log line — the exact SDK spelunk #626 was meant to eliminate, avoided on its first live use.
   The general lesson: a fix to a silent-failure path is not "verified" until there is a way to observe the path; build the observation before declaring the fix done.
 - **`/ship-issue` step 4b handled a genuinely tricky release state cleanly.**
-  #625's `fix:` commits had already been released in v1.0.2 (a release cut during #626's development), yet the issue was still open.
+  Issue #625's `fix:` commits had already been released in v1.0.2 (a release cut during #626's development), yet the issue was still open.
   The package-scoped tag anchoring (`pi-permission-model-judge-v*`) plus the stacked-release check detected "already released," closed #625 against its real version (v1.0.2), and separately closed #626 as stacked work — no fabricated version, no double-release.
 
 #### What caused friction (agent side)

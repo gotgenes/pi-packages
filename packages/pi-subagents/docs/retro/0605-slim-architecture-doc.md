@@ -62,7 +62,7 @@ Execution quality was high: incremental `rumdl` after every content step, a mark
 #### What went well
 
 1. **A prior retro's prompt change paid off directly.**
-   #601's retro added a `plan-issue.md` rule — when a step renames a heading/anchor/named concept, widen the skill grep to the whole `.pi/skills/` tree.
+   Issue #601's retro added a `plan-issue.md` rule — when a step renames a heading/anchor/named concept, widen the skill grep to the whole `.pi/skills/` tree.
    In #605 planning that rule fired: the broad `.pi/skills/` + whole-`docs/` grep (session turns 11, 14, 15) caught all four `#target-architecture` touch points (in-file link, `phase-16` history, `client-server-opportunities.md`, and `package-pi-subagents/SKILL.md:77`), and the reviewer confirmed 0 stale fragments.
    A compounding-improvement win — the anchor-rename blast radius was fully mapped at plan time, so the build hit no surprises.
 2. **Marker-keyed `python3` splice validated a second time.**

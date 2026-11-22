@@ -304,6 +304,7 @@ No barrel (`src/index.ts`) export changes — the formatter is an internal colla
    - `src/handlers/permission-gate-handler.ts`: import `ToolPreviewFormatter` and
      the three constants; construct the formatter inside `handleToolCall` with
      default values; pass it to the tool gate producer thunk.
+
    All existing handler and gate tests remain green.
    Commit: `refactor: thread ToolPreviewFormatter through gate descriptor chain`
 

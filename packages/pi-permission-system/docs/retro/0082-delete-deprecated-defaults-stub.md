@@ -21,7 +21,7 @@ Execution was fast and clean; the only friction was a markdown formatting mistak
 
 #### What caused friction (agent side)
 
-1. `instruction-violation` — In the plan's Background section, wrote `#66 replaced the \`defaultPolicy\` concept...` with `#66` at the start of a line.
+1. `instruction-violation` — In the plan's Background section, wrote a sentence opening `` #66 replaced the `defaultPolicy` concept `` with `#66` at the start of a line.
    The `#` prefix is parsed by markdownlint as a Markdown heading, triggering three errors (MD022 blanks-around-headings, MD025 single-title/single-h1, MD026 trailing-punctuation-in-heading).
    The pre-commit hook caught it; the autoformatter ran but could not fix it automatically.
    Manual repair: changed to `Issue #66 replaced...`.

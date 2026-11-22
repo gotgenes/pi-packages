@@ -285,7 +285,7 @@ Predicted unchanged, and the claim each rests on:
    Killing mutations: (a) have `liveSource` capture `sessionModel` once at construction → kills the call-time test; (b) make `fileSnapshotSource` return `model: undefined` → kills the file test; (c) build the snapshot entry's heading with `description: ""` → kills the snapshot heading test.
    `refactor:` because the pane does not read either yet.
 6. **`feat(pi-subagents): show the subagent's name, model, and thinking level in the session viewer's rules`** Adds `TranscriptTheme`, `formatModel`/`ModelIdentity` in `display.ts`, `TranscriptPaneOptions.heading`, the two `labeledRule` rows, and the handler's `entry.heading` pass-through; updates the stale padding comment and the module doc comment.
-   `session-navigator.test.ts`: `ansiTheme()` gains `getThinkingBorderColor: vi.fn((level) => (s) => \`{${level}}${s}\`)`.
+   `session-navigator.test.ts`: `ansiTheme()` gains `` getThinkingBorderColor: vi.fn((level) => (s) => `{${level}}${s}`) ``.
    New `describe("header rule")`: carries name, mode tag, description, `anthropic/claude-sonnet-5`, `• high`; `• thinking off` wording; drops the description, then the model, as width shrinks.
    New `describe("rule colour")`: both rules are painted for the source's thinking level; after `sessionModel()` changes the next render repaints with the new level; an unknown level paints `off`.
    New `describe("footer rule")`: position and hints at 80; hints dropped, position kept, at 40.

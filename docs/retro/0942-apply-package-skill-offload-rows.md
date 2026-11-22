@@ -21,7 +21,7 @@ No follow-up issues filed — the one candidate defect the survey reported did n
   This is the finding that reshaped the job from "move 8,406 words" into "delete most of them and confirm the destination already says it".
 - **Operator decisions at the gate**: per-row disposition rather than verbatim-append-everywhere; all mechanism prose routes to `architecture.md` and no ADR is amended; Debugging steps 5–6 go to a new `docs/architecture/investigating-a-report.md` rather than being split across six retro files; rows 4–5 go to `docs/subagent-integration.md` and the resulting patch release of `pi-permission-system` is accepted.
 - **The verification instrument had to change shape.**
-  #937's moved-line check asserts every removed line appears at a destination.
+  Issue #937's moved-line check asserts every removed line appears at a destination.
   Here the dominant disposition is *delete*, so the probe's output is an input to a three-way classification (already-stated / residue / deliberate drop) rather than a pass-fail.
   Dry-run against #937's `b649d3ea`: 56 removed lines, zero missing.
 - **A subagent contradiction did not survive verification.**

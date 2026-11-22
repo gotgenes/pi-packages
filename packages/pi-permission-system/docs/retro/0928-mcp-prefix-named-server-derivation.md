@@ -247,7 +247,7 @@ The ship stage also uncovered an expired PAT in the release pipeline that turned
   A throwaway worktree running a 12-config × 11-input matrix through the real `PermissionManager` moved the primary defect from the derivation gap to the matcher underneath it, and produced the single most useful number in the whole issue: **37 of 132 matrix rows change, 0 of 4413 existing tests move**.
   That one pairing is what justified treating the green suite as a coverage gap rather than as safety, and it made every later "name the killing mutation" step non-negotiable rather than ceremonial.
 - **Reading a sibling issue nobody cited changed the design's framing.**
-  #687 was not referenced by #928, by PR #929, or by the triage entry, but its stated problem 1 is the same masking defect in the reporter's own words — and it proposes a whole new config schema partly to route around it.
+  Issue #687 was not referenced by #928, by PR #929, or by the triage entry, but its stated problem 1 is the same masking defect in the reporter's own words — and it proposes a whole new config schema partly to route around it.
   Finding it before planning meant the plan could dissolve that motivation rather than ship a fix that silently obsoleted an open proposal.
 - **The `MUTANT_evaluateFirst` technique.**
   Step 2's killing mutation was "restore the deleted evaluator", which no literal swap can express.

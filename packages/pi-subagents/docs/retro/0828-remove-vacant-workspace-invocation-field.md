@@ -105,7 +105,7 @@ One operator correction across the whole issue, and it exposed a real prompt def
 #### What went well
 
 - **The #843 model pin worked on its first real exercise.**
-  #843 landed the `model: anthropic/claude-sonnet-5` frontmatter on `sync-worktree.md` and `ship-worktree.md` in commit `36952029`, immediately before this issue's plan commit `f85aba1e`.
+  Issue #843 landed the `model: anthropic/claude-sonnet-5` frontmatter on `sync-worktree.md` and `ship-worktree.md` in commit `36952029`, immediately before this issue's plan commit `f85aba1e`.
   This issue is the first to run under it, and the split held exactly as designed: planning and TDD on `anthropic/claude-opus-5` (judgment-heavy), sync and ship on `anthropic/claude-sonnet-5` (procedural).
   Nothing in either sonnet stage needed escalation.
 - **Two of the issue body's own claims were refuted by measurement, and the second one became the design.**

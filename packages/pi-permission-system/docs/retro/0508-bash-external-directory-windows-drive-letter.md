@@ -43,8 +43,12 @@ Refreshed the #508 plan from its abstract "injected flavor" wording to the concr
 
 ### Observations
 
-- **#510 deferred the `isRelativeCandidate` conversion**, exactly the contingency the original plan flagged. `foldCd` already delegates to `this.normalizer.isAbsolute`, but the module-level free function `isRelativeCandidate` (`bash-path-resolver.ts`, two call sites: `projectExternalPaths`, `buildRuleCandidatePath`) still hand-rolls `!startsWith("/") && !startsWith("~")`. #508 folds in converting it to a private method delegating to `this.normalizer.isAbsolute` — load-bearing, since the projection's relative/unknown decision (not just `foldCd`) gates the over-flag.
-- **Testability is clean as predicted.** `BashProgram.parse(command, normalizer)` and `extractExternalPathsFromBashCommand(command, normalizer)` take a `PathNormalizer`; `bash-external-directory.test.ts` already builds `new PathNormalizer(process.platform, cwd)`. #508's Windows assertions construct `new PathNormalizer("win32", cwd)` — no `vi.mock("node:path")`.
+- **#510 deferred the `isRelativeCandidate` conversion**, exactly the contingency the original plan flagged.
+  `foldCd` already delegates to `this.normalizer.isAbsolute`, but the module-level free function `isRelativeCandidate` (`bash-path-resolver.ts`, two call sites: `projectExternalPaths`, `buildRuleCandidatePath`) still hand-rolls `!startsWith("/") && !startsWith("~")`.
+  Issue #508 folds in converting it to a private method delegating to `this.normalizer.isAbsolute` — load-bearing, since the projection's relative/unknown decision (not just `foldCd`) gates the over-flag.
+- **Testability is clean as predicted.**
+  `BashProgram.parse(command, normalizer)` and `extractExternalPathsFromBashCommand(command, normalizer)` take a `PathNormalizer`; `bash-external-directory.test.ts` already builds `new PathNormalizer(process.platform, cwd)`.
+  Issue #508's Windows assertions construct `new PathNormalizer("win32", cwd)` — no `vi.mock("node:path")`.
 - **#508 now reduces to two production edits + docs**: drive-shape recognition in both classifiers (`token-classification.ts`, unchanged by #510) and the `isRelativeCandidate` conversion (`bash-path-resolver.ts`).
   Single `fix:` commit + `docs:` commit.
 - Next step: `/tdd-plan`.

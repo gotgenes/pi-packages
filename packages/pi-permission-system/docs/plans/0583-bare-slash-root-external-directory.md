@@ -143,7 +143,7 @@ The whole change is one logical subtraction (one predicate branch) that flips bo
   It is a fail-safe tightening (over-prompt, never under-gate), which the package explicitly prefers (least privilege; #509 accepts an analogous fail-safe false positive).
   It is a `fix:`, not `fix!:`, matching how #481 and #490 (both added new prompts) were classified — no config default changes, and the gate's documented `ask` contract is merely honored where a token previously escaped it.
 - **Risk: reintroducing the original #68 spurious prompt.**
-  #68 fixed `echo //` prompting.
+  Issue #68 fixed `echo //` prompting.
   **Mitigation:** that "spurious" prompt was never spurious under the command-agnostic model — it is the same class as `echo /etc` prompting.
   The current tree-sitter parser feeds real argument tokens (not `path.normalize` output), so no manufactured `/` is involved; the flip is deliberate and covered by the rewritten tests.
 

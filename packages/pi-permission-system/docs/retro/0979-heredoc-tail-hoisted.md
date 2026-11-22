@@ -23,7 +23,7 @@ After the plan, the operator asked what relief an unparseable command could get,
 - **Census over 8919 review-log commands:** 587 heredocs, 6 clean tails (5 `/tmp` redirect writes, 1 `&& git log`), 0 word or pipe tails.
   The operator's global config allows `/tmp/*` writes, so no real command newly prompts.
 - **View contract widened.**
-  #977's contract requires non-overlapping siblings, but a heredoc's body is written after the rest of its line, so a truncated heredoc overlaps the siblings after it.
+  Issue #977's contract requires non-overlapping siblings, but a heredoc's body is written after the rest of its line, so a truncated heredoc overlaps the siblings after it.
   The plan scopes the widening to a heredoc-bearing sibling and adds two contract items (containment, leaves preserved), each with a killing mutation.
 - **#941 is untouched:** the `-` in `git commit -F - <<'EOF'` is in no node of the grammar's tree, and a heredoc with no tail is never rewritten.
 - The Tidy-First assessor reported a `foldPipelineFirstStage` gap for a non-`file_redirect` sibling; reading the code, a `herestring_redirect` or `heredoc_redirect` takes the same host-only route there as in `walkCurrentShellSequence`, so it is not a gap and nothing was filed.

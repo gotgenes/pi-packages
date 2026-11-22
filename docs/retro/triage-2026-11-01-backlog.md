@@ -22,8 +22,8 @@ Applied labels to six issues, approved three fork CI runs after the escalation a
   The 2026-10-18 run had omitted #797 from every table, though #880 had already shipped its fix in 40.3.0, so its reporter had waited 57 days for an answer that existed.
   Nothing in the template asks for this check.
 - **A third party's repro harness turned a stalled "verify" item into a measured answer in six calls.**
-  #1096's body carries a fake-Pi driver for the `tool_call` gate; pointed at #1070's question, it showed the gate covers every `cp`/`tee` destination except a nonexistent bare one, which ADR 0009 already lists as an accepted residual.
-  #1070 had sat at "verify" for 14 days waiting on the reporter.
+  Issue #1096's body carries a fake-Pi driver for the `tool_call` gate; pointed at #1070's question, it showed the gate covers every `cp`/`tee` destination except a nonexistent bare one, which ADR 0009 already lists as an accepted residual.
+  Issue #1070 had sat at "verify" for 14 days waiting on the reporter.
 - **The prior retro's scaling problem did not recur.**
   `gh issue list --json comments` already returns each comment's author and timestamp, so the last-maintainer-response age for all 50 third-party issues came from one `jq` expression; only PRs needed a per-item `gh pr view --json comments,reviews` loop (19 calls in one tool call).
   The `scripts/triage-pr-state.sh` follow-up the 2026-09-18 retro made conditional on a repeat is therefore not warranted.

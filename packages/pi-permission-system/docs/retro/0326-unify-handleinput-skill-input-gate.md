@@ -27,7 +27,7 @@ This planning session then produced the numbered plan for #326, the first pivot 
   Not asserted by any input test; surfaced only in the review log.
   Flagged in the issue and the plan.
 - **Scope boundaries held.**
-  #326 does **not** change the handler constructor or drop the `as unknown as PermissionSession` casts (that is #325), and does **not** tighten the `PermissionSession` API or touch `handleToolCall` (that is #327).
+  Issue #326 does **not** change the handler constructor or drop the `as unknown as PermissionSession` casts (that is #325), and does **not** tighten the `PermissionSession` API or touch `handleToolCall` (that is #327).
   The concrete-session mocks stay.
 - **TDD shape.**
   Two commits: (1) additive `skill_input` denial context + formatter tests; (2) factory + `handleInput` rewrite + consumer-test updates folded together so the new `describeSkillInputGate` has a `src` consumer immediately (no dead-code window for fallow).

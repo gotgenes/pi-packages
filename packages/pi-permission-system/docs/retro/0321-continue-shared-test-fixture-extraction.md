@@ -47,6 +47,7 @@ Pre-completion reviewer returned PASS.
   A follow-up issue should be filed per the plan’s Open Questions.
 - No stale imports or `GateDescriptor`/`makeCheckPermission`/`makeDenialContextDescriptor` leaks found at any step.
 - **Reviewer verdict**: PASS — all deterministic checks green, new helpers documented in `SKILL.md`, architecture roadmap updated.
+
 [#314]: https://github.com/gotgenes/pi-packages/issues/314
 [#317]: https://github.com/gotgenes/pi-packages/issues/317
 [#320]: https://github.com/gotgenes/pi-packages/issues/320

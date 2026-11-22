@@ -41,7 +41,7 @@ No permission surfaces, policy semantics, schema, or runtime behavior are modifi
 ### Dependencies
 
 - **#10** (config consolidation) — this change should land with or just before #10.
-  #10 is still open / unimplemented.
+  Issue #10 is still open / unimplemented.
 - **#20** (document or delete event channel) — still open.
   This plan keeps the event channel name in the "preserve" list.
   If #20 deletes the channel, a follow-up edit removes that bullet.

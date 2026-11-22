@@ -32,9 +32,9 @@ Secondary gap: `buildTypeListText` emits the bare `Default agents:` header even 
 - `agent-tool.ts` change builds an `agentSpecificGuidelines` array gated by `registry.isValidType("Explore")` etc., filtered by a type guard.
   Works, but hardcodes the three agent names as magic-string literals **parallel to the `default-agents` config** — a second source of truth.
   Operator chose to **source the guideline copy from the agent config** (e.g. a `toolGuideline` field on the built-in `AgentConfig`) so descriptions and guidelines share one home and the registry drives both.
-- **Test defect to fix:** the new `agent-tool.test.ts` case asserts `not.toContain(\`- ${name} :\`)` — with a **space before the colon**.
+- **Test defect to fix:** the new `agent-tool.test.ts` case asserts `` not.toContain(`- ${name} :`) `` — with a **space before the colon**.
   The real type-list format is `- Explore:` (no space, see `helpers.ts:82,87`), so that assertion passes vacuously regardless of the fix.
-  The meaningful assertion (`not.toContain(\`- Use ${name} for \`)`) is fine; drop or correct the tautological one.
+  The meaningful assertion (`` not.toContain(`- Use ${name} for `) ``) is fine; drop or correct the tautological one.
 - Minor: double space after `&&` in the gated expressions (Biome would normalize).
 
 **Behavior — non-breaking.**

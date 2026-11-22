@@ -16,7 +16,7 @@ Plan raises the default to 30 s, adds an env-parameterized `resolveRpcTimeoutMs`
 ### Observations
 
 - Issue #67 already touched this surface but explicitly deferred the harness `timeoutMs` change ("Non-Goals: Changing `runRpcSession`'s internal `timeoutMs` default") — #618 is that deferred decision.
-  #67's "Vitest budget must exceed harness budget" invariant lived only in plan prose; this plan makes it structural (budget = harness + margin) and pins it with a unit assertion.
+  Issue #67's "Vitest budget must exceed harness budget" invariant lived only in plan prose; this plan makes it structural (budget = harness + margin) and pins it with a unit assertion.
 - Two files spawn the real CLI (`acceptance.test.ts`, `acceptance-event-bus.test.ts`) — matching the "2 flakes" in the #596/#597 retros.
   `fallback-acceptance.test.ts` is named "acceptance" but does not spawn the CLI, so it is out of scope.
 - Rejected directions: retry-once (B) adds control flow and doubles worst-case failure time; in-package serialization (C) cannot fix cross-package contention since `pnpm -r` runs each package's vitest as its own process.

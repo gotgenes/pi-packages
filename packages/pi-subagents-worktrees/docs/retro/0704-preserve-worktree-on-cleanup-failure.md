@@ -94,7 +94,7 @@ Filed [#714] for the one deferral the plan concretely names.
 ### Observations
 
 - **This repository is itself affected.**
-  The `committed` `commit-msg` hook rejects the rescue commit's `pi-agent: <description>` subject — `Disallowed type \`pi-agent\`` — so every subagent that runs in a worktree here and produces changes currently loses that work.
+  The `committed` `commit-msg` hook rejects the rescue commit's `pi-agent: <description>` subject — `` Disallowed type `pi-agent` `` — so every subagent that runs in a worktree here and produces changes currently loses that work.
   This turned out to be a stronger motivating example than the reporter's formatter-hook scenario, and it also confirms the retry must use `--no-verify` rather than something narrower, since `--no-verify` is what skips `commit-msg` as well as `pre-commit`.
 - **Not breaking, and this was worth verifying rather than assuming.**
   `WorktreeCleanupResult` looked like a public type, but the package's `exports` map is `{ ".": "./src/index.ts" }`, `index.ts` exports only the default extension function, and no file outside the package references `cleanupWorktree`, `WorktreeCleanupResult`, or `WorktreeInfo`.

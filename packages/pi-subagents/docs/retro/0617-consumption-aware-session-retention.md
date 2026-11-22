@@ -67,7 +67,7 @@ The operator repeatedly pushed on the design — first on the *why* of cleanup, 
 - **Consumption-as-domain-state synthesis connected three independent smells.**
   The shadow `consumed` `Set` in `NotificationManager`, the `EvictedSubagent` side table, and the architecture doc's already-named "homeless `notification.resultConsumed` field" (Phase 17 motivation prose) were cross-referenced into one fix — the design was promoting state the codebase had already diagnosed as misplaced.
 - **The third-party `ask-user` gate did its job.**
-  #617 was filed by `dzervas`; the gate surfaced the consumption-aware-vs-timer-only decision cleanly, and the operator engaged at the design level rather than rubber-stamping the issue's literal asks (longer window, insta-cleanup).
+  Issue #617 was filed by `dzervas`; the gate surfaced the consumption-aware-vs-timer-only decision cleanly, and the operator engaged at the design level rather than rubber-stamping the issue's literal asks (longer window, insta-cleanup).
 
 #### What caused friction (agent side)
 

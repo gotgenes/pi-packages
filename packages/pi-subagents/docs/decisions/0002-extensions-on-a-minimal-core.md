@@ -90,7 +90,7 @@ Permissions depend only on the core's events; workspaces depend only on the core
 ## Consequences
 
 - The "agent collaborator architecture" Phase 16 (give `Agent` a worktree collaborator + a session factory) is abandoned.
-  #256 is superseded (worktree was placed in the wrong layer); #257 is parked (it polished a subsystem slated for eviction).
+  Issue #256 is superseded (worktree was placed in the wrong layer); #257 is parked (it polished a subsystem slated for eviction).
 - A new package `@gotgenes/pi-subagents-worktrees` is introduced; the core spawn API drops `isolation` and `isolated`.
 - `permission-bridge.ts` is removed; `@gotgenes/pi-permission-system` migrates from a published-service lookup to lifecycle-event subscription, which requires the core to emit an awaited, ordered `session-created` event before `bindExtensions()`.
   Confirming Pi's event model supports awaited pre-bind emission is the first investigation of the reclaimed phase.

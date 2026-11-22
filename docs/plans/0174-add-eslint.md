@@ -225,6 +225,7 @@ Steps are ordered to maintain a green build at each commit.
    - Custom inline `no-parent-relative-imports` rule with auto-fix
    - Test file overrides relaxing `no-unsafe-*` rules
    - Ignores for `dist/`, `node_modules/`, `coverage/`, `.pi/`
+
    Run `pnpm exec eslint .` and fix any violations (likely targeted `eslint-disable` comments for Pi SDK boundary `any` in `pi-subagents/src/`).
    Commit: `feat: add eslint config with type-aware rules and import enforcement`.
 

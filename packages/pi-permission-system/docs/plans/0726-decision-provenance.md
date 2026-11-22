@@ -91,7 +91,7 @@ That dispatcher is where the human's *surface* is known — the pure reducer bel
   A nested `decidedBy` is therefore width-capped and key-name redacted with no new work — and no new write path may bypass `writeLine`.
 - **Fail-closed at the wire boundary.**
   `decidedBy` arrives off disk in a response file, so its reader is a tolerant `asX`-style guard beside its type (the `asPromptPayload` precedent), and it must be depth-bounded: a recursive guard over untrusted JSON is a stack-overflow surface.
-  #752 set this precedent when it validated an adopted request id before letting it name a file.
+  Issue #752 set this precedent when it validated an adopted request id before letting it name a file.
 - **Additive wire fields are version-skew tolerant** (ADR 0011 §9): an older parent sends no `decidedBy`, and the child records `decision: null` inside the forwarded variant rather than rejecting the response.
 - **Required beats conventional.**
   Step 1's landed note records the lesson: `PromptPermissionDetails.payload` is required, "making 'every ask carries a complete payload' a compile-time guarantee rather than a convention."

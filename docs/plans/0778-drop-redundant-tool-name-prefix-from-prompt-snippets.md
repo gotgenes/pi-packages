@@ -50,8 +50,7 @@ The system prompt's agent-facing prose changes, which is exactly the defect bein
 
 ### Verified rendering (why the prefix is redundant)
 
-- `../pi/packages/coding-agent/src/core/system-prompt.ts:83` — `visibleTools.map((name) => \`- ${name}: ${toolSnippets!
-  [name]}\`)`.
+- `../pi/packages/coding-agent/src/core/system-prompt.ts:83` — `` visibleTools.map((name) => `- ${name}: ${toolSnippets![name]}`) ``.
   The same string is present in the compiled `dist/` of both installed SDK versions in this workspace, `@earendil-works/pi-coding-agent@0.79.1` and `@0.80.5`.
 - The second render path, `../pi/packages/coding-agent/src/server/create-harness.ts:57-77`, builds `toolSnippets` keyed by `tool.name` and delegates to the same `buildSystemPrompt`.
   There is no code path that renders a snippet without its tool name.

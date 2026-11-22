@@ -115,7 +115,7 @@ The audit cut invocation volume 1,737,783 → 1,660,076 words (−4.5%) with 142
   A 0.8 s throwaway transcript scan showed templates and agents cost about 3.5× the post-#937 `AGENTS.md`, so the operator declined a per-class cost clause on evidence rather than argument.
   The same scan became `invocation-volume.mjs`, whose counts landed within 1 of the throwaway's.
 - **The fresh-session split held.**
-  #934's TDD retro recorded a summary that pointed at `/ship` with the prune unstarted.
+  Issue #934's TDD retro recorded a summary that pointed at `/ship` with the prune unstarted.
   This time the plan, the TDD summary, and the stage note all named the fresh-session audit as the next step, and it ran before `/ship`.
 - **The template's structural guards worked on first use.**
   The audit session ran the H1 diff, the loaded-skills `comm`, and the step cross-reference grep; all passed after 172 applied rows, and 8 whole-step candidates were parked as `keep (revisit)` instead of renumbering prose.
