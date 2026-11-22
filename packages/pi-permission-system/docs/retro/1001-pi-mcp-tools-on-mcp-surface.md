@@ -22,8 +22,7 @@ Filed #1014 for the MCP permission model as a whole and dispositioned it against
 - Top-level `mcp__…` keys: the operator chose relocation plus a notice to port, with a migration guide; rule stated: "we must always fail loudly".
 - Dropping proxy support was considered and declined: pi-mcp-adapter had 483,466 downloads in the week ending 2026-09-30 versus 16,634 for this package (npm API, measured), and adapter 5.0.0 disables Pi's built-in MCP, so its users depend only on proxy semantics.
   Dropping it would silently turn a per-server `mcp` deny into the `mcp` catch-all and lose `arguments.path` gating.
-- Earendil's "You Said No MCP!"
-  post (2026-09-29) frames built-in MCP as a deliberate core commitment that will keep evolving, not as provisional; the stable contract is the tool name, which is also the codemode identifier.
+- Earendil's "You Said No MCP!" post (2026-09-29) frames built-in MCP as a deliberate core commitment that will keep evolving, not as provisional; the stable contract is the tool name, which is also the codemode identifier.
 - Spike finding (measured via `createManagerWithConfig`): a forwarded `mcp` request with `matchValues: ["danger"]` resolves `allow` through the synthesized baseline `mcp_status` despite `danger: deny`, because `buildInputForSurface("mcp", v)` returns `{}`.
   It is pre-existing for proxied calls; this plan folds the fix in (step 8) because routing Pi tools onto `mcp` would extend it to them.
 - Tidy-First assessor: accepted the `buildConfigRules` extraction; took the optional route on `path-values` (doc comment, no rename) because ADR 0002's title and ADR 0008 pin the name; declined sharing `pushMcpToolPermissionTargets`, because its `startsWith(server_)` shortcut must not apply to Pi names.

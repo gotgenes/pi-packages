@@ -145,8 +145,7 @@ If an extension calls `pi.sendMessage()` at `turn_end` (while streaming), the me
 After `turn_end`, the loop checks `getSteeringMessages()` and picks up the message.
 The agent sees it before its next LLM call.
 
-If the agent's last turn had no tool calls (a text-only "Done!"
-turn), the inner loop exits because `hasMoreToolCalls` is false.
+If the agent's last turn had no tool calls (a text-only "Done!" turn), the inner loop exits because `hasMoreToolCalls` is false.
 But if a steering message was injected at `turn_end`, `pendingMessages.length > 0` keeps the loop going for one more turn.
 
 ## `tool_call` event input structure

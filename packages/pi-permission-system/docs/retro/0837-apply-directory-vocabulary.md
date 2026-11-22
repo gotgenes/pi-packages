@@ -71,7 +71,8 @@ Write it there after [#870] lands, before Phase 22 closes.
 
 ### Session summary
 
-Executed all 14 plan steps as 15 commits: three preparatory (import conformance, the new lint rule, `vi.mock` specifier normalization), ten move commits, one documentation commit, and one correcting a figure the pre-completion reviewer caught. 59 of 64 `src/` root modules and 65 of 71 `test/` root files moved into ten destinations, leaving the five entry points and package-wide leaves the plan predicted.
+Executed all 14 plan steps as 15 commits: three preparatory (import conformance, the new lint rule, `vi.mock` specifier normalization), ten move commits, one documentation commit, and one correcting a figure the pre-completion reviewer caught.
+59 of 64 `src/` root modules and 65 of 71 `test/` root files moved into ten destinations, leaving the five entry points and package-wide leaves the plan predicted.
 Test count held at 157 files / 4117 tests at every commit — the invariant that separates a moved test from a silently uncollected one.
 Pre-completion reviewer: **WARN** (no blocking findings).
 

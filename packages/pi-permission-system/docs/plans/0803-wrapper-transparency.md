@@ -297,13 +297,16 @@ Both are Tell-Don't-Ask over data records the caller owns, with no reach-through
 
 ### Design-review notes
 
-- **Dependency width.** `BashCommand` goes 4 → 5 optional-heavy fields; `resolveBashCommandCheck` reads all five, so the interface stays narrower than its consumer. `PermissionCheckResult` goes 10 → 11, following `executedUnit`'s precedent for a bash-only fact carried on a general result.
+- **Dependency width.**
+  `BashCommand` goes 4 → 5 optional-heavy fields; `resolveBashCommandCheck` reads all five, so the interface stays narrower than its consumer.
+  `PermissionCheckResult` goes 10 → 11, following `executedUnit`'s precedent for a bash-only fact carried on a general result.
 - **Parameter relay.**
   `writesViaRedirect` relays one layer through `collectCommandsInto` → `makeCommandUnit`, the same shape `context` already has.
   If a third statement-scoped fact appears later, the two should bundle into a `UnitScope` record; two does not yet earn it.
 - **Repeated discriminators.**
   The `redirect-analysis.ts` extraction exists precisely to avoid a second redirect-operator table; without it the enumerator and the token collector would each own one, and they must agree.
-- **ISP.** `isTransparentWrapper` takes `readonly CommandWord[]` — the same narrow type `classifyWrapperWords` takes — plus one statement-scoped fact that is genuinely not derivable from the words.
+- **ISP.**
+  `isTransparentWrapper` takes `readonly CommandWord[]` — the same narrow type `classifyWrapperWords` takes — plus one statement-scoped fact that is genuinely not derivable from the words.
 
 ## Module-Level Changes
 

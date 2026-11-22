@@ -24,8 +24,7 @@ It runs parallel with Step 7 ([#340]); both feed Step 8 ([#341]).
 ## Goals
 
 - Add `src/prompting-gateway.ts`: a `PromptingGateway` collaborator that owns the stored context and exposes a single context-bound prompting pair, `canConfirm()` / `prompt(details)`.
-- Move the "can we prompt?"
-  policy (UI / subagent / yolo) into the gateway so the `index.ts` `canRequestPermissionConfirmation` closure disappears (index closures 11 → 10).
+- Move the "can we prompt?" policy (UI / subagent / yolo) into the gateway so the `index.ts` `canRequestPermissionConfirmation` closure disappears (index closures 11 → 10).
 - `GateRunner` receives the gateway for the prompting role; `PermissionSession` no longer plays `GatePrompter`.
 - Collapse the `canPrompt`/`canConfirm` and `prompt`/`promptPermission` twins into the single context-bound pair on the gateway.
 - Rename the `GatePrompter` prompting method `promptPermission` → `prompt` to match the collapsed pair.
@@ -67,8 +66,7 @@ Constraints from `AGENTS.md` and the package skill that apply:
 
 ### The gateway
 
-`PromptingGateway` owns the stored context and absorbs both the prompting action and the "can we prompt?"
-policy.
+`PromptingGateway` owns the stored context and absorbs both the prompting action and the "can we prompt?" policy.
 Absorbing the policy is what lets the `index.ts` `canRequestPermissionConfirmation` closure disappear: the gateway computes the decision from its own deps rather than receiving a pre-bound closure.
 
 ```typescript
@@ -194,7 +192,8 @@ Production:
 - `src/prompting-gateway.ts` (new) — `PromptingGateway`, `PromptingGatewayDeps`, `PromptingGatewayLifecycle`.
 - `src/gate-prompter.ts` — rename the method `promptPermission` → `prompt` on `GatePrompter`.
 - `src/handlers/gates/runner.ts` — `this.prompter.promptPermission(...)` → `this.prompter.prompt(...)`.
-- `src/permission-session.ts` — remove `implements GatePrompter`; delete `canPrompt`, `prompt`, `canConfirm`, `promptPermission`; delete `PermissionSessionRuntimeDeps` and the `runtimeDeps` field; add a `gateway: PromptingGatewayLifecycle` constructor parameter and forward it in `activate`/`deactivate`; drop the now-unused imports (`GatePrompter`, `PermissionPrompterApi`, `PromptPermissionDetails`, `PermissionPromptDecision`). `ExtensionContext` stays (still used by `activate`, `getRuntimeContext`, `resolveAgentName`).
+- `src/permission-session.ts` — remove `implements GatePrompter`; delete `canPrompt`, `prompt`, `canConfirm`, `promptPermission`; delete `PermissionSessionRuntimeDeps` and the `runtimeDeps` field; add a `gateway: PromptingGatewayLifecycle` constructor parameter and forward it in `activate`/`deactivate`; drop the now-unused imports (`GatePrompter`, `PermissionPrompterApi`, `PromptPermissionDetails`, `PermissionPromptDecision`).
+  `ExtensionContext` stays (still used by `activate`, `getRuntimeContext`, `resolveAgentName`).
 - `src/index.ts` — construct `PromptingGateway`; pass it to `PermissionSession` and as `GateRunner`'s third argument; delete the `canRequestPermissionConfirmation` closure; drop the `isSubagentExecutionContext` and `canResolveAskPermissionRequest` imports.
 
 Tests:

@@ -88,7 +88,8 @@ Step 14's `Outcome:` line counted `ERROR`-node *presence*, not units a floor on 
 
 ### Why the grammar fails here
 
-`tree-sitter-bash` 0.25.1 cannot parse a heredoc redirect combined with `2>&1` **and** a pipe, though each pairing alone is fine (ADR 0013's 2026-08-29 amendment). 0.25.1 is npm's latest, so there is no upgrade lever.
+`tree-sitter-bash` 0.25.1 cannot parse a heredoc redirect combined with `2>&1` **and** a pipe, though each pairing alone is fine (ADR 0013's 2026-08-29 amendment).
+0.25.1 is npm's latest, so there is no upgrade lever.
 The upstream tracker carries an open cluster in this family — [tree-sitter/tree-sitter-bash#334](https://github.com/tree-sitter/tree-sitter-bash/issues/334), [#232](https://github.com/tree-sitter/tree-sitter-bash/issues/232) — but no issue for this exact combination.
 
 ### The `hasError` boundary
@@ -267,7 +268,8 @@ Predicted post-change value: **2** (the constant and its use).
 - **Tests that become redundant.**
   None.
   The `#742` block still pins "emitted whole, never descended"; it gains a field and loses no assertion.
-- **Tests that must stay as-is.** `test/access-intent/bash/redirect-analysis.test.ts` — the new predicate must not change `parseUnresolvedAt`'s answers or its callers'.
+- **Tests that must stay as-is.**
+  `test/access-intent/bash/redirect-analysis.test.ts` — the new predicate must not change `parseUnresolvedAt`'s answers or its callers'.
 - **Parser/matcher input domain.**
   The change reads a parse property rather than parsing, but its *coverage* is a claim about the walk, so the input domain is real inputs rather than the ones I can picture.
   TDD step 4 runs the invariant over a table drawn from the corpus shapes measured this session: the two real errored commands, the four malformed families (`echo 'unbalanced`, `if true; then echo hi`, `for f in a b; do echo $f`, `{ echo hi`), the two [#814] shapes (`cat <> rw.txt`, `cat $(( > out.txt`), and a clean control set.

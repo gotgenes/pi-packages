@@ -321,8 +321,10 @@ The document contains:
 
 1. **Since the last triage** — from the Step 1 artifacts: what closed, what landed, what changed rank, and the disposition of every item the prior run deferred.
    Skip on the first run.
+
 2. **Demand signals**: what the Step 2 demand data showed, kept to what moved a rank, reversed a recorded rationale, or exposed a cluster of unanswered authors.
    Define the `Demand` column's notation here.
+
 3. **Scope alignment** — the Step 6 verdicts, so the next run inherits them instead of re-deriving them.
    One row per item classified this run, each with its package, verdict, and the non-goal or reason it rests on:
 
@@ -331,6 +333,7 @@ The document contains:
    | #740 | pi-subagents | out of scope | Non-goal: *A global run-mode default* — run mode is per-invocation |
 
    Follow it with the recommended disposition for each `out of scope` item (close as not-planned citing the non-goal, or redirect), and a **Carried forward** subsection recording the verdicts inherited from the prior run, the head SHA each PR verdict was taken against, and the outcome of any re-check.
+
 4. **The prioritized table** — the deliverable, carrying only `aligned`, `adjacent`, and `no charter` items:
 
    | Rank | Item | Package(s)           | Kind         | Severity | Demand  | Why now                              |
@@ -344,6 +347,7 @@ The document contains:
    Name every package an item touches (the issue's `pkg:` labels, or the PR's changed `packages/<pkg>/` paths), comma-separated, without the `@gotgenes/` scope; write `repo` for a `scope:repo` item.
    A row grouping several items lists the union of their packages.
    For an `adjacent` item, name the owning package or extension point there.
+
 5. **Next item per package** — the prioritized table regrouped into parallel lanes, one row per package with at least one ranked item:
 
    | Package              | Next          | Then        | Command               |
@@ -355,12 +359,18 @@ The document contains:
    Skip items waiting on someone else (see Waiting on others) and items whose disposition is only a reply or a close — a lane is work a session can start.
    An item spanning several packages occupies every lane it names: list it in each and say so (`#722 (21, also pi-subagents)`), because running it blocks all of them.
    Order the rows by their `Next` item's global rank, and use `repo` as the lane for `scope:repo` items.
+
 6. **Keystones** — each keystone with its dependants listed by number.
+
 7. **Findings that changed a rank** — the verification results from Steps 4 and 5: stale greens, defects already fixed, flakes masking real failures, green-but-misaligned PRs.
+
 8. **CI and security audit** — the Step 3 audit outcome, and which runs were approved.
+
 9. **Waiting on us**: every item that owes a maintainer action, split into never answered and follow-up owed, each with its days waiting.
    Produce the never-answered list with one expression over the Step 2 data, not by hand.
+
 10. **Waiting on others** — items waiting on a contributor (rebase, version confirmation, change requests) with how long they have waited.
+
 11. **Deferred** — what you consciously did not rank, and why, so the next run does not silently re-derive it.
    An `out of scope` item is not deferred — it belongs to the Scope alignment section, with a disposition rather than a rationale for waiting.
 

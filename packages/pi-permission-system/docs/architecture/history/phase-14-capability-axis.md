@@ -34,7 +34,8 @@ No decline, so the regular improvement rotation continues.
 
 ### Open-issue sweep dispositions
 
-- [#837] — filed by the [#724] retrospective (a `pi-subagents` issue); adopted as Step 13 by operator decision. 62 of 147 `src` files sit at the package root while the directories most of them belong in already exist, and past phases reorganized inconsistently because no target layout was ever written down.
+- [#837] — filed by the [#724] retrospective (a `pi-subagents` issue); adopted as Step 13 by operator decision.
+  62 of 147 `src` files sit at the package root while the directories most of them belong in already exist, and past phases reorganized inconsistently because no target layout was ever written down.
   Folded in here rather than deferred because the phase already carries disruptive work; the move itself is non-breaking, since `service.ts` is the only path-reachable export and nothing imports a deep path.
 - [#806] and [#807] — filed for Steps 1 and 2, the two staging slices with no pre-existing issue.
 - [#808] — filed by Step 1's planning; adopted as Step 9.
@@ -147,8 +148,7 @@ No decline, so the regular improvement rotation continues.
 
 Recompute commands (run from the repo root):
 
-- Directional family vocabulary: `grep -cE 'DIRECTIONAL_FAMILIES|CAPABILITY_SUFFIXES|surfaceFamilyOf|surfaceFamilyMembers|capabilitySurfaceForTool' packages/pi-permission-system/src/access-intent/path-surfaces.ts`
-  (Step 1 derives the four names from a family set and a suffix list rather than spelling them out, so each appears exactly once in the codebase and a literal-name count reads zero by design.)
+- Directional family vocabulary: `grep -cE 'DIRECTIONAL_FAMILIES|CAPABILITY_SUFFIXES|surfaceFamilyOf|surfaceFamilyMembers|capabilitySurfaceForTool' packages/pi-permission-system/src/access-intent/path-surfaces.ts` (Step 1 derives the four names from a family set and a suffix list rather than spelling them out, so each appears exactly once in the codebase and a literal-name count reads zero by design.)
 - Directional schema keys: `grep -cE 'path_read|path_write' packages/pi-permission-system/src/config/config-schema.ts`
 - Sugar expansion: `grep -c 'expandDirectionalSugar' packages/pi-permission-system/src/policy/normalize.ts`
 - Family exclusion: `grep -c 'surfaceFamily' packages/pi-permission-system/src/authority/delegation-envelope.ts`
@@ -160,10 +160,8 @@ Recompute commands (run from the repo root):
 - Absent-child alarm: `grep -rn 'child_node_absent' packages/pi-permission-system/src --include="*.ts" | wc -l`
 - Named surface properties: `grep -c 'surfaceProperty' packages/pi-permission-system/src/config/config-schema.ts`
 - Split-provider tests: `grep -rl 'split-provider' packages/pi-permission-system/test | wc -l`
-- Statement-operand collection: `grep -cE 'for_statement|case_statement' packages/pi-permission-system/src/access-intent/bash/token-collection.ts`
-  (Added with Step 16, which the phase did not carry when it opened; the baseline was verified 0 at the step's planning time.)
-- Per-pattern approval surfaces: `grep -c 'ApprovalGrant' packages/pi-permission-system/src/session/session-approval.ts`
-  (Step 10 named the pair type `ApprovalGrant` rather than the roadmap's predicted `ApprovalPattern`, which names a `{surface, pattern}` object after one of its two fields; the row moves with the name, per the clause below.)
+- Statement-operand collection: `grep -cE 'for_statement|case_statement' packages/pi-permission-system/src/access-intent/bash/token-collection.ts` (Added with Step 16, which the phase did not carry when it opened; the baseline was verified 0 at the step's planning time.)
+- Per-pattern approval surfaces: `grep -c 'ApprovalGrant' packages/pi-permission-system/src/session/session-approval.ts` (Step 10 named the pair type `ApprovalGrant` rather than the roadmap's predicted `ApprovalPattern`, which names a `{surface, pattern}` object after one of its two fields; the row moves with the name, per the clause below.)
 - Health/duplication/dead exports: `pnpm fallow health --score --workspace @gotgenes/pi-permission-system` / `pnpm fallow dupes --workspace @gotgenes/pi-permission-system` / `pnpm fallow dead-code --workspace @gotgenes/pi-permission-system`
 
 Eight rows greped for a name the phase had not created when it opened — `expandDirectionalSugar`, `surfaceFamily`, `command-effects.ts`, `isTransparentWrapper`, `authorizer_allowed`/`authorizer_denied`, `child_node_absent`, the `split-provider` test phrase, and `surfaceProperty`.
@@ -250,9 +248,7 @@ Release: batch "capability-axis"
 
 ### ✅ Step 4: Enumerate commands in every catch-all node type ([#742])
 
-**Cause:** the command enumerator answers "is this node a command?"
-and "can this node host one?"
-correctly for redirects and heredocs since [#741], but its catch-all branch still emits any other named statement whole without descending — so a command inside an `if` body, a `declaration_command`, a `test_command`, or an `unset_command` is matched against the bash rules only as part of the enclosing string, and an `rm *` deny never fires.
+**Cause:** the command enumerator answers "is this node a command?" and "can this node host one?" correctly for redirects and heredocs since [#741], but its catch-all branch still emits any other named statement whole without descending — so a command inside an `if` body, a `declaration_command`, a `test_command`, or an `unset_command` is matched against the bash rules only as part of the enclosing string, and an `rm *` deny never fires.
 This is the last member of the [#306] / [#741] nested-command bypass family, and ADR 0013 §10 recasts it as a combinator clause ("any unhandled node type: fail closed") rather than a patch.
 
 - **Smell:** Category C (a boundary flaw with a user-visible bypass).
@@ -527,7 +523,8 @@ Past phases reorganized periodically but inconsistently and then lapsed, because
 
 Release: independent
 
-Landed: 64 root files, not the 62 the heading counts — `restrictiveness.ts` and `approval-grant.ts` arrived after the issue was filed, which is the drift the step exists to stop. 59 moved into ten destinations, leaving the five entry points and package-wide leaves the `Outcome:` line predicted, with `test/` mirrored in the same commits.
+Landed: 64 root files, not the 62 the heading counts — `restrictiveness.ts` and `approval-grant.ts` arrived after the issue was filed, which is the drift the step exists to stop.
+59 moved into ten destinations, leaving the five entry points and package-wide leaves the `Outcome:` line predicted, with `test/` mirrored in the same commits.
 
 The `Constraint:` line was right that `tsc` verifies the specifier rewrite exhaustively, and wrong that this makes the move mechanical.
 Three classes of reference are invisible to it, and each was found by a probe rather than by a gate.

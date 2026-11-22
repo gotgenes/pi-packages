@@ -27,7 +27,8 @@ The file only governs extension runtime settings (`debugLog`, `permissionReviewL
 
 ### Relevant modules
 
-- `src/extension-config.ts` — `normalizePermissionSystemConfig` strips everything except the three known keys. `loadPermissionSystemConfig` returns a `PermissionSystemConfigLoadResult` with an optional `warning` string.
+- `src/extension-config.ts` — `normalizePermissionSystemConfig` strips everything except the three known keys.
+  `loadPermissionSystemConfig` returns a `PermissionSystemConfigLoadResult` with an optional `warning` string.
 - `src/types.ts` — `AgentPermissions` / `GlobalPermissionConfig` define the permission-rule shape.
 - `src/logging.ts` — `PermissionSystemLogger.review()` writes to the review log.
 

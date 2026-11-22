@@ -70,8 +70,7 @@ The recompute grep (`toolName === "(bash|mcp)"|source === "mcp"`) currently retu
 
 ### One shared MCP-ness predicate, target-presence separated
 
-Add a single predicate to `tool-kind.ts` that answers "does this resolved check concern an MCP call?"
-— nothing more.
+Add a single predicate to `tool-kind.ts` that answers "does this resolved check concern an MCP call?" — nothing more.
 Whether a target string is available to *display* is a separate concern that stays at the call sites that need it (SRP):
 
 ```typescript

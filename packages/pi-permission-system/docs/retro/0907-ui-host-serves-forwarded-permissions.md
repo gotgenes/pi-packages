@@ -141,7 +141,8 @@ The retrospective then found two factual defects in the contributor-facing text 
 
 - The user supplied PR [#911] at planning turn 13 — ahead of the agent's own `gh pr list --state open` sweep, which ran later in the same context-gathering pass.
   That intervention was well-timed and cheap, and it arrived as context rather than correction.
-- The same message named a real tooling gap that is still unrecorded: *"we need to pr-review #911, but I don't have that set up for a worktree flow yet."* `/pr-review` has no worktree lane, so a third-party PR arriving mid-worktree-issue has no defined home.
+- The same message named a real tooling gap that is still unrecorded: *"we need to pr-review #911, but I don't have that set up for a worktree flow yet."*
+  `/pr-review` has no worktree lane, so a third-party PR arriving mid-worktree-issue has no defined home.
   The planning session absorbed [#911] as a design input through an `ask_user` gate instead, which worked well enough that the gap left no trace in any artifact — it survives only in the transcript and in this note.
 
 ### Diagnostic details

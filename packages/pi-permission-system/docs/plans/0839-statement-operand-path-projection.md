@@ -85,8 +85,7 @@ The asymmetry is sharpest against the substitution case, which already works: `f
 
 ### The command surface already answered the sibling question
 
-[#742] taught the enumerator a third question — "is this a *statement*, so descending an enclosing compound reaches it?"
-— because a blanket descent of a compound statement's named children emitted `for` word-list entries and `case` subjects as bash **command** units, naming a package as the offending command in a prompt.
+[#742] taught the enumerator a third question — "is this a *statement*, so descending an enclosing compound reaches it?" — because a blanket descent of a compound statement's named children emitted `for` word-list entries and `case` subjects as bash **command** units, naming a package as the offending command in a prompt.
 The `STATEMENT_TYPES` filter in `command-enumeration.ts` is what excludes them there.
 
 The inverse is tempting and wrong: the non-statement children of a compound are *not* the path operands.

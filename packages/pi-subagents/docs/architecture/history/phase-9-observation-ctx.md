@@ -85,7 +85,8 @@ Impact: eliminated the hoisted `vi.mock("@earendil-works/pi-tui")` from `convers
 
 Extracted pure rendering functions (`renderWidgetLines`, `renderFinishedLine`, `renderRunningLines`) from `AgentWidget` into `ui/widget-renderer.ts`.
 The widget is now a thin lifecycle/polling wrapper (198 lines, down from 374) that delegates to pure render functions.
-Rendering functions receive data (agent list, activity map, registry) and return formatted strings - testable without widget lifecycle. 23 new unit tests cover all status variants, overflow, tree connectors, and empty states.
+Rendering functions receive data (agent list, activity map, registry) and return formatted strings - testable without widget lifecycle.
+23 new unit tests cover all status variants, overflow, tree connectors, and empty states.
 
 ## Step dependencies
 

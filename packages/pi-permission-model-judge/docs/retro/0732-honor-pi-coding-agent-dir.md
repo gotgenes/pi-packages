@@ -104,8 +104,7 @@ The ship phase coincided with a live GitHub incident that broke the release auto
 - The "hold everything" decision was reversed roughly ten minutes later, and the incident had not cleared: the post-tag failure the hold was meant to avoid then happened anyway.
   Framed as opportunity, the two genuinely distinct options were a substantially longer wait or accepting the recovery cost up front; a short pause was not a third option.
   Worth noting the caution was still correct — the risk flagged before merging is precisely the one that materialized.
-- The question "How is this normally done, though?"
-  was a well-placed redirect.
+- The question "How is this normally done, though?" was a well-placed redirect.
   It moved the recovery from reconstruction-from-memory to reading `.github/workflows/ci.yml:95–126`, which produced a faithful reproduction: the same `jq` mutation and the same `chore: advance release-please last-release-sha baseline [skip ci]` message the bot uses.
 
 ### Diagnostic details

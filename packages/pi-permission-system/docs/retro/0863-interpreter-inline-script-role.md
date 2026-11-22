@@ -124,8 +124,7 @@ This retrospective spans four stages across two sessions: planning, the strategi
 #### What went well
 
 - **The strategic-review turn is the most valuable thing in this issue, and it was produced by measurement rather than argument.**
-  The operator's "are we going down a path of greatly diminishing returns?"
-  opened it; what closed it was execution. nono's per-command cost, its rollback behavior, and its denial-reporting scope were each run rather than read about, on macOS and in a Docker Linux container, and Codex's design was read from a sparse clone of `openai/codex` rather than from its blog post.
+  The operator's "are we going down a path of greatly diminishing returns?" opened it; what closed it was execution. nono's per-command cost, its rollback behavior, and its denial-reporting scope were each run rather than read about, on macOS and in a Docker Linux container, and Codex's design was read from a sparse clone of `openai/codex` rather than from its blog post.
   The `AGENTS.md` rule that a third-party report's claim about the *other* side is the one to check generalized here to a claim about our own side.
 - **The `exec` isolation is a model diagnostic.**
   `nono run -- cat X` reports a denial, `nono run -- bash -c 'cat X'` reports none, and `nono run -- bash -c 'exec cat X'` reports again.

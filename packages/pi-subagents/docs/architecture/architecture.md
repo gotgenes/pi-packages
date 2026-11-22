@@ -810,7 +810,8 @@ The 10+-field dependency bags flagged in prior phases (`ResolvedSpawnConfig`, `A
 
 Functions with cyclomatic complexity ≥ 21 (critical threshold):
 
-No functions remain above the critical threshold. 4 functions sit at HIGH severity: 2 in `src/` (`settings.ts`'s `sanitize`, cyclomatic 19, and `persisted-record.ts`'s `asRunSummary`, cyclomatic 17) and 2 test helpers (`subagent-manager.test.ts`'s `createManager` and `subagent.test.ts`'s `createRunnableAgent`); 11 sit at moderate.
+No functions remain above the critical threshold.
+4 functions sit at HIGH severity: 2 in `src/` (`settings.ts`'s `sanitize`, cyclomatic 19, and `persisted-record.ts`'s `asRunSummary`, cyclomatic 17) and 2 test helpers (`subagent-manager.test.ts`'s `createManager` and `subagent.test.ts`'s `createRunnableAgent`); 11 sit at moderate.
 
 ### Churn hotspots
 

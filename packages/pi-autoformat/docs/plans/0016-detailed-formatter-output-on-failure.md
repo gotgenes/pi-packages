@@ -235,8 +235,7 @@ The trimming/formatting logic lives in a new pure helper module so it is straigh
 
 ## Open Questions
 
-- Should the success path eventually expose a "verbose summary" (formatter stdout for successful runs) for debugging "did this formatter actually do anything?"
-  cases?
+- Should the success path eventually expose a "verbose summary" (formatter stdout for successful runs) for debugging "did this formatter actually do anything?" cases?
   Defer; not what the issue asks for.
 - Should we add a separate `onSuccess` knob mirroring `onFailure`?
   Defer until requested; current scope keeps the surface narrow.

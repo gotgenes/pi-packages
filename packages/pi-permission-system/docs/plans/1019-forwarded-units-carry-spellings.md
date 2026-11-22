@@ -56,6 +56,7 @@ Since [#1030] the wire carries a per-unit object, so the spellings belong on eac
 
 - `resolveBashCommandCheck` (`src/handlers/gates/bash-command.ts`) maps each `BashCommand` to a `PermissionCheckResult` through `resolveCommandUnit`, picks the winner with `pickMostRestrictive`, and then applies `withChainFloor` and `withAskingUnits`.
   `withAskingUnits` builds each asking unit from the result alone, as `{ command: result.command ?? "", floor? }`; the unit's `cmd.spellings` are no longer in reach.
+
 - `resolveCommandUnit` resolves `cmd.text` with `cmd.spellings ?? []` through `resolveOnBashSurface`, so the result's `command` is the typed text (`normalizeBashCommand` keeps `resultExtras.command` as typed).
   Then three sites can rewrite the result:
 
@@ -67,11 +68,16 @@ Since [#1030] the wire carries a per-unit object, so the spellings belong on eac
   | `floorUnparsedUnit`                | the whole command line      | no: no unit owns it                                          |
 
 - `AskingBashUnit` (`src/types.ts`) is `{ command: string; floor?: string }`; `ForwardedAccessFacts.askingUnits` (`src/authority/permission-forwarding.ts`) types the wire with it.
+
 - `describeToolGate`'s `askingUnitsFact` (`src/handlers/gates/tool.ts`) copies the array shallowly, and `toAccessFacts` (`src/authority/forwarded-request-server.ts`) passes `intent.askingUnits` by reference, so a new field on the unit objects reaches the wire and the escalated ask without either file changing.
+
 - `asForwardedAccessIntent` (`src/authority/forwarding-io.ts`) is the allowlist reader: `isWellFormedAskingUnits` checks each unit's `command` and `floor` inline, and `copyAskingUnits` rebuilds each unit field by field, so today a `spellings` key is silently dropped on read.
   That is also why an older serving node, reading a newer child's request, keeps today's behavior.
+
 - `ResolverServingPolicy.resolveUnit` (`src/policy/serving-policy.ts`) resolves `{ kind: "bash-command", surface: "bash", command: unit.command, spellings: [], agentName }`, then `honorChildFloor`.
+
 - No new import edge: `serving-policy.ts` and `forwarding-io.ts` already import `AskingBashUnit` from `#src/types`, and `bash-command.ts` gains only a module-private interface.
+
 - An open third-party PR ([#1097]) exports `resolveCommandUnit`; this plan changes its return type, so the two collide only at merge.
 
 ### Reproduction

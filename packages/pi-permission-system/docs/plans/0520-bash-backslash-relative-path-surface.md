@@ -62,8 +62,7 @@ So the backslash-as-separator decision must be answered by the normalizer, not r
 
 ### Decision model
 
-The classifier stays the single home of path-shape recognition, but the one platform-sensitive shape — "is a backslash a path separator here?"
-— is decided by `PathNormalizer` and passed in as a small option, mirroring how `wildcard-matcher.ts` / `rule.ts` already thread a `windowsSeparators` boolean.
+The classifier stays the single home of path-shape recognition, but the one platform-sensitive shape — "is a backslash a path separator here?" — is decided by `PathNormalizer` and passed in as a small option, mirroring how `wildcard-matcher.ts` / `rule.ts` already thread a `windowsSeparators` boolean.
 
 1. **Which separator shapes count** (shape) — `classifyTokenAsRuleCandidate` gains an optional `{ windowsSeparators?: boolean }` option.
    When `windowsSeparators` is true, a token containing `\` is accepted as path-shaped, exactly as `includes("/")` accepts a forward-slash token.

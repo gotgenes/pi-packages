@@ -169,13 +169,17 @@ Planning spike for the pi-subagents pin (measured): a test asserting that `secti
      - writes `sections.working_directory` equal to `buildWorkingDirectoryPrompt(ctx.cwd)`;
      - returns `undefined`;
      - leaves a section already present (`mcp_servers: "…"`) unchanged (`toEqual` on the whole `sections` object).
+
    - Red: in `working-directory-prompt.test.ts`, replace the heading test with an exact `toBe` on the full sentence for `/srv/project`; delete the `ensureWorkingDirectoryPrompt` suite.
+
    - Green: the Handler and Block designs above; delete the removed symbols; rewrite both module docstrings; peerDependency → `>=1.0.0`.
+
    - Killing mutations:
      - restore `return { systemPrompt: … }` in the handler → the `undefined`-return test goes red;
      - delete the assignment → the section test goes red;
      - replace `sections` wholesale (`event.systemPromptOptions.sections = { [WORKING_DIRECTORY_SECTION]: … }`) → the preserve-existing test goes red;
      - prepend `"# Working Directory\n\n"` in the builder → the exact-sentence test goes red.
+
    - Commit footer:
 
      ```text

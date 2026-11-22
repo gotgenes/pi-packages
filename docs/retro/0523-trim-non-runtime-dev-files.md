@@ -73,8 +73,7 @@ No release was cut — every commit is a `build:` (hidden changelog type) or tou
 
 - During planning, the initial `ask-user` offered two mechanisms (convert to allowlists vs. extend denylists) for the four no-allowlist packages.
   The user redirected with a **question** rather than a correction — "What did we do for 484?
-  Didn't we do both `files` and `.npmignore`?"
-  — which prompted a git-history check (`3282369a`, `3e1bf9c6`) that clarified #484 established a per-package split, not a single mechanism.
+  Didn't we do both `files` and `.npmignore`?" — which prompted a git-history check (`3282369a`, `3e1bf9c6`) that clarified #484 established a per-package split, not a single mechanism.
   That context reframed the decision from "how to trim the four" to "do we keep the split or standardize all 8," and the operator chose the cleaner standardize-on-allowlists outcome.
   The lesson: a clarifying question that sends the agent back to primary sources (commit history) produced a better plan than either originally-offered option.
 

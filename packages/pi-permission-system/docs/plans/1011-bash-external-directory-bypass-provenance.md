@@ -165,8 +165,7 @@ Predicted unchanged (blast radius checked):
      - delete `if (sessionCovered.length === 0) return null;` → every `null` test goes red (bypass returned).
      - build `externalPaths` from `externalAccesses` instead of `sessionCovered` → the mixed test goes red.
    - Run the full package suite (shared selector), then `check`.
-   - Commit body ends with `Refs #1011`, then a final trailer paragraph:
-     `Co-authored-by: Aleksander Kruszelnicki <10740345+alkrusz@users.noreply.github.com>` (the reporter supplied the diagnosis and the "stamp `session_approval` only when a session-layer rule matched" mechanism the session branch adopts).
+   - Commit body ends with `Refs #1011`, then a final trailer paragraph: `Co-authored-by: Aleksander Kruszelnicki <10740345+alkrusz@users.noreply.github.com>` (the reporter supplied the diagnosis and the "stamp `session_approval` only when a session-layer rule matched" mechanism the session branch adopts).
 3. **`docs(pi-permission-system): say what external_directory does when the key is absent`** `docs/configuration.md` paragraph, and the two `docs/architecture/architecture.md` module-tree entries.
    Verify with `pnpm exec rumdl check` on both files.
 

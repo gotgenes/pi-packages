@@ -57,8 +57,7 @@ The composition-root forward-reference cycle existed *because* the logger needed
 
 4. **Encapsulate agent-start cache keys in a `CacheKeyGate` class** ([#365]) ✓ complete
    - Target: `src/permission-session.ts` (replaced the four anemic methods — `shouldUpdateActiveTools` / `commitActiveToolsCacheKey` / `shouldUpdatePromptState` / `commitPromptStateCacheKey` — and their two `string | null` fields with two `CacheKeyGate` instances); `src/handlers/before-agent-start.ts` (collapsed the two ask-then-tell pairs into `gate.runIfChanged(key, effect)`); `src/before-agent-start-cache.ts` (removed the dead-in-production `shouldApplyCachedAgentStartState` and folded its comparison into `CacheKeyGate`).
-   - Smell: Category C (anemic domain / ask-then-tell — the handler asked "should I update?"
-     then told "commit") plus Category A (a redundant export kept alive only by its own test, which is why `fallow`'s 0%-dead-exports missed it).
+   - Smell: Category C (anemic domain / ask-then-tell — the handler asked "should I update?" then told "commit") plus Category A (a redundant export kept alive only by its own test, which is why `fallow`'s 0%-dead-exports missed it).
    - Outcome: a `CacheKeyGate` class owning a previous key and exposing `runIfChanged(nextKey, effect)`; `PermissionSession`'s four cache methods became two owned sub-objects; the handler's ask-then-tell pairs became single tells; one source of truth for the key comparison; the test-only-alive free function is gone.
 
 ### Track C — narrow-interface decoupling for testability (independent)

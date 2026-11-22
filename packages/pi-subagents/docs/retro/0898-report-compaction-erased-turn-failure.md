@@ -205,8 +205,7 @@ The substance is entirely in the first two stages; the sync and ship halves ran 
 
 #### What caused friction (user side)
 
-- The operator's "should the latest Pi source be checked first?"
-  at the design gate was the highest-leverage intervention of the whole issue, and it arrived as a redirecting question rather than a correction.
+- The operator's "should the latest Pi source be checked first?" at the design gate was the highest-leverage intervention of the whole issue, and it arrived as a redirecting question rather than a correction.
   The session was ready to gate on the pinned `0.84.4` alone.
   The check confirmed all four load-bearing mechanisms are byte-identical at `0.85.1` and that `earendil-works/pi` carries no open issue on the strip — which is what makes "no upstream fix is coming" a verified claim instead of an assumption.
   Opportunity: this is a standing question for any design resting on a dependency's internals, so it belongs in the planning prompt rather than in the operator's head.

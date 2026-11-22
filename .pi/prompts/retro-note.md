@@ -19,7 +19,9 @@ Otherwise, all arguments (`$@`) are the note — infer the issue number from rec
 ## Step 2 — Locate or create the retro file
 
 1. Search for an existing retro file: `packages/*/docs/retro/NNNN-*.md` and `docs/retro/NNNN-*.md` (NNNN is the issue number, zero-padded to 4 digits).
+
 2. If found, use it.
+
 3. If not found, determine the target directory from the issue's `pkg:*` label or the most recent plan file.
    Create the file with YAML frontmatter:
 

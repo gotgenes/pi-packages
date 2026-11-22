@@ -73,7 +73,8 @@ Every accepted change since inception has deepened one tool's reliability rather
 
 - **Project-management surface (boards, milestones, status columns, DoD preflight, dev-server control)** — issue #17 reviewed the prior-art toolkit it was porting from and drew the line: "The repone tools also include issue, board, milestone, retro, dev server, and DoD-preflight tools.
   Most of those are repo-specific (hardcoded project board IDs, status columns, production URLs).
-  The CI tools and the `gh`/`ghJson` helpers are the portable parts." `issue_close` was specified as "Wraps `gh issue close` with comment; deterministic, no board integration needed."
+  The CI tools and the `gh`/`ghJson` helpers are the portable parts."
+  `issue_close` was specified as "Wraps `gh issue close` with comment; deterministic, no board integration needed."
 
 - **Hardcoding this repository's identity or workflow names** — issue #17 § Open questions rejects the prior art's hardcoded `ORG`/`REPO`: "The Pi tools should auto-detect from `gh repo view --json owner,name` or parse the git remote," and the workflow "parameter should accept a workflow name."
   Both landed: `detectRepo()` in `packages/pi-github-tools/src/lib/github.ts`, and `workflow` is a required parameter on all three CI tools (`packages/pi-github-tools/README.md`).

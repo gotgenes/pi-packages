@@ -148,12 +148,16 @@ Predicted unchanged:
 1. **Admit `true`, `false`, `:` to the pure-reader core.**
    - Red: add the three words to `ROSTER` in `command-effects.test.ts`; add the wrapper-analysis positives/negatives; add the `bash-command.test.ts` describe ("a wrapper running a shell no-op") with the table's rows through `decide`; add the `program.test.ts` attribution case.
      The parity tests, the positives, the issue-repro row, the `true: deny` row, and the attribution case go red; the negatives and the `sudo *: ask` / redirect / opaque rows pass as invariant pins.
+
    - Green: add the admission group to `coreAdmissions()` and the three words to the `PURE_READER_CORE` list in `docs/configuration.md` (sorted as in Design Overview).
+
    - Killing mutations:
      - Delete the new admission group → the roster pin, the doc parity, the wrapper-analysis positives, the gate's allow/deny rows, and the attribution case go red.
      - Drop only `":"` from the group → `sudo -n :` (wrapper-analysis and gate) and the roster pin go red, proving `:` is covered on its own.
      - In `isBareCoreWord`, drop the `PATH_SEPARATORS` check → `sudo ./true` and `sudo -n /bin/true` go red (the negatives are pins against this class).
+
    - Verify: `pnpm --filter @gotgenes/pi-permission-system exec vitest run && pnpm --filter @gotgenes/pi-permission-system run check`.
+
    - Commit:
 
      ```text

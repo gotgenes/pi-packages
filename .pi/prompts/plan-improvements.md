@@ -255,6 +255,7 @@ Before stopping, persist planning observations for cross-session continuity — 
 1. Write `packages/$1/docs/retro/phase-N-<slug>.md` (create `packages/$1/docs/retro/` if needed), using the phase number N and slug from Step 1.
    Derive the slug from the phase title so `/finish-phase` reuses it for `history/phase-N-<slug>.md` — the two files should share a slug and stay greppable as a pair.
    This is distinct from the `history/phase-N-<slug>.md` archive `/finish-phase` owns — do not touch that.
+
 2. If the file does not exist, create it with this frontmatter (a phase-scoped variant — `package`/`phase` keys, not the issue-keyed schema):
 
    ```markdown

@@ -92,8 +92,10 @@ export function resolveInvocationModel(
 ```
 
 - `ModelEntry` is removed — `getAll()` now returns `Model<any>[]`, so the `as ModelEntry[]` cast disappears and the scoring loop reads `Model<any>` directly.
+
 - The fuzzy-scoring loop is extracted into a private, in-file helper `findBestFuzzyMatch(models: Model<any>[], query: string): Model<any> | undefined` (placed below `resolveModel` per the stepdown rule).
   This drops `resolveModel` below the complexity threshold; the helper stays private (not exported) — it is covered transitively by the existing `resolveModel` tests, and exporting it would trip fallow `unused-exports`.
+
 - `resolveInvocationModel` accepts `registry: ModelRegistry | undefined` (matching the honest type of `ModelInfo.modelRegistry`) and gains one guard after the no-`modelInput` short-circuit:
 
   ```typescript
@@ -106,6 +108,7 @@ export function resolveInvocationModel(
   This makes the function total.
   The guarded path is unreachable in practice (a live session always has a registry when a model override is requested); previously it would have thrown a `TypeError` on `registry.getAll`.
   Converting an unreachable crash into a typed error result is internal hardening, not a user-facing behavior change — hence `refactor:`, not `fix:`.
+
 - The file-level `eslint-disable` header is removed: `no-redundant-type-constituents` was for `any | string` (now `Model<any> | string`, a genuine union); `no-unsafe-assignment` was for the untyped registry reads (now typed).
 
 ### Typed model boundary in `spawn-config.ts` + `runtime.ts`

@@ -60,8 +60,7 @@ Clean execution overall — three minor self-caught slips, one of which (a fabri
 
 #### What went well
 
-- **Mid-stream scope expansion handled with discipline** — when the user asked "is there a broader improvement?"
-  after the pre-completion reviewer had already passed, the response separated the right-sized consolidation from gold-plating (explicitly rejected table/registry dispatch citing the `code-design` skill), used `ask_user` for the scope decision, ran the refactor as its own red→green TDD cycle, and re-dispatched the `pre-completion-reviewer` because the refactor carried a behavior change.
+- **Mid-stream scope expansion handled with discipline** — when the user asked "is there a broader improvement?" after the pre-completion reviewer had already passed, the response separated the right-sized consolidation from gold-plating (explicitly rejected table/registry dispatch citing the `code-design` skill), used `ask_user` for the scope decision, ran the refactor as its own red→green TDD cycle, and re-dispatched the `pre-completion-reviewer` because the refactor carried a behavior change.
   This is the intended way to absorb a late design request without abandoning workflow rigor.
 - **Root-cause analysis validated by the red phase** — the plan predicted exactly which integration cases were already passing; the TDD red run confirmed precisely 3 of 6 home-expansion cases red (raw `~/…`, raw `$HOME/…`, per-tool `~/…`), matching the asymmetry diagnosis.
 - **Incremental verification caught a bug at the cheapest point** — the `join` import slip surfaced immediately from the per-file `vitest` run after the green edit, not at the end-of-step full suite.

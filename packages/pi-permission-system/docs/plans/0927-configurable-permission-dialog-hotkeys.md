@@ -397,8 +397,7 @@ That single wording change is the complete default-path diff, and the component 
    Tests: a loader case asserting a config with a reserved binding produces an issue and still loads its policy unchanged — which is the whole point of the tolerant choice.
    Killing mutation: return `undefined` unconditionally; the loader case goes red.
 
-7. **`docs(pi-permission-system): document permissionDialogKeys`**
-   `docs/configuration.md` (table row, scalar-replacement sentence, the dialog section with the IME rationale and the reserved keys, the reworded "a letter hotkey arms" sentence), `README.md` line 68, `config/config.example.json` with the defaults, and the `config/` module-tree entry for `dialog-keys.ts` in `docs/architecture/architecture.md`.
+7. **`docs(pi-permission-system): document permissionDialogKeys`** `docs/configuration.md` (table row, scalar-replacement sentence, the dialog section with the IME rationale and the reserved keys, the reworded "a letter hotkey arms" sentence), `README.md` line 68, `config/config.example.json` with the defaults, and the `config/` module-tree entry for `dialog-keys.ts` in `docs/architecture/architecture.md`.
 
 ## Risks and Mitigations
 

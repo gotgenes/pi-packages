@@ -151,7 +151,8 @@ Four semantics are settled here:
    A consumer whose own `session_start` ran after ours still gets a post-everything emission in the new generation.
 3. **At least once, even without `activate`.**
    The flag starts `false`, so a node that somehow reaches `before_agent_start` without a `session_start` still announces.
-4. **The service resolves at both emissions.** `activate` publishes before emitting, and the latch fires strictly later, so the payload's own `sessionId` is a live key whenever a handler runs.
+4. **The service resolves at both emissions.**
+   `activate` publishes before emitting, and the latch fires strictly later, so the payload's own `sessionId` is a live key whenever a handler runs.
 
 ### 3. Consumer call site
 

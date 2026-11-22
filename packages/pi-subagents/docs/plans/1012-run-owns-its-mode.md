@@ -264,6 +264,7 @@ Predicted unchanged, with the claim each rests on:
    Covers, under fake timers: the first `onUpdate` fires before `spawnAndWait` is called; the text is `"N tool uses..."`; `details.status` is `"running"`; `tokens` and `activity` come from the record; `spinnerFrame` advances by one per 80 ms tick; `durationMs` is measured from the stream's start; no `onUpdate` fires after a successful return.
    Killing mutations: delete the initial `streamUpdate()` call (kills the first-update test); change the text to `` `${toolUses} tools...` `` (kills the text test); delete the success-path `clearInterval(spinnerInterval)` (kills the no-update-after-return test); drop `spinnerFrame++` (kills the frame test).
    Commit: `test(pi-subagents): pin the foreground progress stream before extracting it`.
+
 2. **Extract the stream.**
    Prepares step 7's friction: the foreground resume needs the identical stream, which it would otherwise copy.
    Add `src/tools/progress-stream.ts` (`startProgressStream`), have `runForeground` call it with the stop in a `finally`, and add `test/tools/progress-stream.test.ts`.
@@ -271,6 +272,7 @@ Predicted unchanged, with the claim each rests on:
    Re-read the moved code against the `code-design` skill before committing; an extraction carries its source's habits into a shared file.
    Killing mutations (new unit tests): make `stop` a no-op (kills the stop test); read `toolUses` as `0` instead of from `getRecord()` (kills the record-field test).
    Commit: `refactor(pi-subagents): extract the foreground progress stream`.
+
 3. **Route the foreground tool resume through `startResume`.**
    Prepares step 7's friction: the stream needs the record before the run ends.
    `resumeExisting` calls `startResume(id, prompt, { signal, claimOutcome: true })` and awaits `start.record.promise`; `resume` leaves `AgentToolManager` (`SubagentManagerLike` keeps it, so `SubagentManager.resume` is not dead).
@@ -279,16 +281,19 @@ Predicted unchanged, with the claim each rests on:
    Add one test with a pending `record.promise` (`Promise.withResolvers`) proving the door's result does not resolve until the run does.
    Killing mutations: delete `await start.record.promise` (kills the pending-promise test); drop `claimOutcome: true` (kills the foreground argument assertion).
    Commit: `refactor(pi-subagents): start a foreground resume through startResume`.
+
 4. **`Subagent.resume` takes an options object.**
    Prepares step 6's friction: a required mode added to `resume(prompt, signal?)` would be a positional boolean at about 35 call sites.
    `resume(prompt, { signal })`; `startResume` passes `{ signal: options.signal }`; migrate the three signal-passing tests in `subagent.test.ts`; calls without a signal pass `{}`.
    Killing mutation: have `resume` ignore `options.signal` (kills the three fired-signal and caller-signal tests).
    Commit: `refactor(pi-subagents): pass a resume's signal in an options object`.
+
 5. **A run that starts resets its record's linger age.**
    Test surface: `test/ui/agent-widget.test.ts`, in a new `describe("a record that runs again")` using `makeWidget`'s mutable fixture: settle, `onTurnStart` (cleared), mutate to `running` and call `onSubagentRunStarted(…, "resume")`, mutate to `completed` with a new `completedAt` and call `onSubagentRunFinished` (registered), then `onTurnStart` (cleared after one turn).
    Add the error-status sibling (lingers two turns).
    Killing mutation: delete `this.finishedTurnAge.delete(record.id)` (kills both; the registered-after-finish assertion reads `undefined`).
    Commit: `fix(pi-subagents): let a resumed run's finished widget row linger like the first run's`.
+
 6. **A run owns its mode.**
    Source: `SubagentRun.inBackground`; `Subagent.spawnedInBackground` and the `isBackground` getter; `run()`/`continueSession` build runs with their mode; `ResumeRunOptions.background`; required `ResumeCallOptions.background` without `= {}` defaults; `startResume` forwards it; the tool's background door passes `true` and its foreground door `false`; the service adapter passes `true`; doc comments in `service.ts` and `agent-widget.ts`.
    Mechanical test edits, all in this commit (the type change breaks them together): `subagent-run.test.ts` (15 constructor sites), `subagent.test.ts` (every `agent.resume(`), `subagent-manager.test.ts` (25 calls), `get-result-tool.test.ts` (2), `make-deps.test.ts`, and the exact option assertions in `service-adapter.test.ts`.
@@ -318,6 +323,7 @@ Predicted unchanged, with the claim each rests on:
    Tests in `agent-tool.test.ts` under fake timers, with a pending `record.promise`: `onUpdate` fires with `details.status: "running"` and the record's tool uses while the resume runs; no `onUpdate` fires after the result returns (advance the timers past it); a refused resume calls `onUpdate` zero times.
    Killing mutations: skip the `startProgressStream` call (kills the running-update test); call `stop` only on the success path's happy line rather than in `finally`, and make the run reject (kills the no-update-after-return test on that path); start the stream before the refusal check (kills the refusal test).
    Commit: `feat(pi-subagents): stream a foreground resume's progress inline`.
+
 8. **Docs.**
    ADR 0005: the `isBackground` row becomes "admitted, required: the current run's mode, the spawn's before the first run", with a Consequences sentence that the meaning changed with #1012 because a resume chooses its own mode, and the roster consequence reads as the current run's mode.
    README, at the four places listed under Module-Level Changes.

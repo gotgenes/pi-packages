@@ -55,8 +55,7 @@ Four facts constrain every candidate below, each re-verified against source at b
 
 Process shape changes the symptom, not the question.
 An in-process child (registry-detected) resolves the parent's service and throws; an own-process child (env-detected) publishes its own service, and a link registration succeeds into a registry nothing reads.
-Both node shapes answer "should this node host a consulted link?"
-identically: no, because both relay.
+Both node shapes answer "should this node host a consulted link?" identically: no, because both relay.
 Any fix keyed on "am I a registered in-process child" is process-specific by construction and leaves the silent case silently wrong.
 
 ### Objectives
@@ -286,7 +285,8 @@ Decision 6 names the converse hazard and states the contract cannot prevent it.
 Checked against pi-subagents' actual exclusion semantics, the hazard is narrower than that reads and it *is* preventable for an in-process child.
 
 Excluding a package keeps the tools it registers out of children too, so exclusion normally removes a tool and its extractor together and weakens nothing.
-A gap needs a **split** between providers: package A registers tool `deploy` whose path lives under `input.target`, package B registers the extractor for it, and the operator excludes only B. The child then holds `deploy` with its path undeclared, its `path` / `external_directory` gates never run for that call, and the parent gates its own calls correctly — so the weakening is visible nowhere.
+A gap needs a **split** between providers: package A registers tool `deploy` whose path lives under `input.target`, package B registers the extractor for it, and the operator excludes only B.
+The child then holds `deploy` with its path undeclared, its `path` / `external_directory` gates never run for that call, and the parent gates its own calls correctly — so the weakening is visible nowhere.
 
 Decision 1 splits registrations into recorded authority and live authority.
 It is silent on a third category, because that category was assumed complete in every node: **fact-shaping** registrations — extractors and formatters — which turn a call's raw input into a fact about it.

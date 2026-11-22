@@ -30,8 +30,7 @@ After confirming direction with the operator, wrote a docs-only plan to make the
 
 ### Session summary
 
-Executed all three docs-only build steps from the plan, one commit each: `configuration.md` (cache-dir recipe, "which surface?"
-clarification, single-`*` note, most-restrictive-wins reaffirmation), `README.md` (clear `external_directory` surface description + pattern-map example), and `config/config.example.json` + `schemas/permissions.schema.json` (inline `~/.cargo/registry/*` allow example, aligned across both).
+Executed all three docs-only build steps from the plan, one commit each: `configuration.md` (cache-dir recipe, "which surface?" clarification, single-`*` note, most-restrictive-wins reaffirmation), `README.md` (clear `external_directory` surface description + pattern-map example), and `config/config.example.json` + `schemas/permissions.schema.json` (inline `~/.cargo/registry/*` allow example, aligned across both).
 No `src/` or `test/` files were touched, so the test/typecheck suites were not required; the package lint passes and both JSON files parse.
 
 ### Observations
@@ -81,7 +80,8 @@ The session ran clean end to end (plan → build → ship → release `pi-permis
 - **Model-performance correlation** — one subagent dispatch (`pre-completion-reviewer`) ran on `anthropic/claude-sonnet-4-6` for judgment-heavy doc/consistency review; appropriate, no mismatch.
 - **Escalation-delay tracking** — no `rabbit-hole`; the longest stuck sequence was the two rejected `Edit` calls, resolved on the third attempt (under the 5-call threshold).
 - **Unused-tool detection** — none; `grep`/`Read` covered the planning context, and no `missing-context` point would have been closed by an unused agent or tool (the gap was an undocumented invariant, not unsearched code).
-- **Feedback-loop gap analysis** — `lint` ran after every build step and JSON parsing after the schema edit; no deferred-verification gap. `check`/`test` were correctly skipped (no `src/`/`test/` changes).
+- **Feedback-loop gap analysis** — `lint` ran after every build step and JSON parsing after the schema edit; no deferred-verification gap.
+  `check`/`test` were correctly skipped (no `src/`/`test/` changes).
 
 ### Changes made
 

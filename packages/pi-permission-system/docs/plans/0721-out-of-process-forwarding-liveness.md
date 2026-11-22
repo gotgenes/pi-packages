@@ -94,7 +94,8 @@ They differ in granularity, and the code constrains the choice more than the iss
 
 A **claim artifact** (`claims/<requestId>.json`, written on pickup) would catch one failure a heartbeat cannot: a serving loop that runs but never picks a particular request up — [#722]'s undiagnosed shape.
 But `processInbox` drains its inbox **serially**, awaiting each escalation: while a human deliberates on request A, request B sits in the same directory unclaimed for minutes.
-A naive claim would falsely abandon B. Claiming the whole scanned batch up front fixes that, but then the artifact means "the loop saw you," not "I am working on you" — and it still adds a third per-request file needing cleanup on both sides, inside the same `requests/`/`responses/` tree whose removal ordering already produced the [#398] ENOENT write loop.
+A naive claim would falsely abandon B.
+Claiming the whole scanned batch up front fixes that, but then the artifact means "the loop saw you," not "I am working on you" — and it still adds a third per-request file needing cleanup on both sides, inside the same `requests/`/`responses/` tree whose removal ordering already produced the [#398] ENOENT write loop.
 
 A **serving heartbeat** is one record per serving session, answers exactly the question the in-process registry answers, and therefore lets one judgement rule cover both target kinds.
 It detects the four shapes that matter here: a parent that exited cleanly (record withdrawn), one that was killed (recorded pid no longer alive), one alive but no longer polling (record unrefreshed), and one that never served at all (no record).

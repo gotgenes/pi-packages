@@ -18,8 +18,7 @@ Decomposed the architecture rework into three sequential issues, created the two
 - The decisive evidence: `getSessionRuleset()` has no independent use — at all five call sites (the runner and every `describe*` gate plus `resolveBashCommandCheck`) its result feeds straight into the next `checkPermission(...)` call.
   So `checkPermission` + `getSessionRuleset` are one operation split into a primitive plus a relay; the fix is a single `PermissionResolver.resolve(surface, input, agentName)`.
 - The genuinely missing object is a `DecisionReporter` owning `writeReviewLog` (currently a Law-of-Demeter reach-through to `session.logger.review`) + `emitDecision` (event bus).
-  This is where the "does the session own the event bus?"
-  question resolves: the reporter owns it, the session never does.
+  This is where the "does the session own the event bus?" question resolves: the reporter owns it, the session never does.
 - Issue decomposition (user-directed): #319 = `PermissionResolver` + full relay removal across all gates; #322 = `DecisionReporter` extraction (depends on #319); #323 = `GateRunner` class replacing `GateRunnerDeps`, adding the `GatePrompter` role (depends on #319 and #322).
   User chose a flat sequence with cross-links over an umbrella epic.
 - Key behavior-preservation note for implementation: `SessionRules.getRuleset()` returns a fresh array copy per call, so folding it into `resolve()` re-snapshots per call instead of once per gate.

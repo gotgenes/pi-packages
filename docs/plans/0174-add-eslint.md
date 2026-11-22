@@ -10,7 +10,8 @@ issue_title: "Add ESLint for type-aware lint rules and import path enforcement"
 Biome handles formatting and basic lint well, but it cannot enforce two categories of rules that cost tokens and review cycles:
 
 1. Import path enforcement — nothing prevents `from "../X"` relative imports when `#src/` aliases exist.
-Issue #164 burned significant effort on manual import path fixups that a lint rule would have caught instantly. 46 cross-directory relative imports remain in `src/` directories across three packages.
+   Issue #164 burned significant effort on manual import path fixups that a lint rule would have caught instantly.
+   46 cross-directory relative imports remain in `src/` directories across three packages.
 
 2. Type-aware lint rules — Biome has no type synthesizer, so it cannot enforce rules like `no-unsafe-argument`, `no-floating-promises`, or `no-misused-promises`.
 The "avoid `any`" standard in AGENTS.md has no tooling enforcement.
@@ -56,7 +57,8 @@ Plus 5 in `pi-subagents/test/`.
 
 ### `any` usage in source
 
-~20 `: any` and ~7 `as any` in `src/` files, concentrated in `pi-subagents` (Pi SDK boundary types lacking proper exports). ~27 `any` usages in `test/` files (mock construction for untyped Pi SDK interfaces).
+~20 `: any` and ~7 `as any` in `src/` files, concentrated in `pi-subagents` (Pi SDK boundary types lacking proper exports).
+~27 `any` usages in `test/` files (mock construction for untyped Pi SDK interfaces).
 
 ### RepOne reference configs
 

@@ -45,7 +45,8 @@ The package suite went from 4584 to 4590 tests (+6: two unit tests in `token-cla
 
 ### Observations
 
-- **Red matched the plan exactly.** 4 tests failed at Red (the two in-segment unit tests and the two `program.test.ts` range tests), and the three invariant pins (the `a/../../b` control, the `v1..v2` symlink, and the whole-segment positives) passed as predicted.
+- **Red matched the plan exactly.**
+  4 tests failed at Red (the two in-segment unit tests and the two `program.test.ts` range tests), and the three invariant pins (the `a/../../b` control, the `v1..v2` symlink, and the whole-segment positives) passed as predicted.
 - **All five named mutations were killed.**
   In-segment: 4 reds.
   Rule call site only: 2 reds, with the strict tests green.

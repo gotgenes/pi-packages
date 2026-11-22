@@ -159,6 +159,7 @@ Landing first, this step changes the baseline that constraint is measured agains
    - (a) Delete the copy line in `toSubagentRecord`: the `session-released`, roster, and three updated `toEqual` tests go red.
    - (b) Make the copy unconditional (`out.resumeRefusal = record.resumeRefusal;`): the omission test goes red (`not.toHaveProperty`), and so does the roster test's resumable row.
    Commit: `feat(pi-subagents): report on each agent record why a resume would be refused`.
+
 2. **Docs: admission, contract, and roadmap.**
    Decision 0005: rule 2 names lifecycle status, a `resumeRefusal` row (`admitted, optional`; basis: lifecycle status, derived from `status` plus two one-way latches; absent when resumable), and the ride-along `pendingQuestion` row.
    README: the `getRecord` / `listAgents` field list gains `pendingQuestion` and `resumeRefusal`, and the `resume` contract gains a sentence that each record's `resumeRefusal` predicts the refusal before the call.

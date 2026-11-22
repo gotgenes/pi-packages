@@ -95,8 +95,7 @@ It produced the conditional host non-goal (`b9d645c`, shipped in `v33.0.4`), dec
 #### What caused friction (user side)
 
 - None that cost rework.
-  The two redirects ("have you checked PRs or closed issues?"
-  and "what would need to be true?") were strategic questions, not corrections, and each improved the outcome; the first could only have been avoided on the agent side.
+  The two redirects ("have you checked PRs or closed issues?" and "what would need to be true?") were strategic questions, not corrections, and each improved the outcome; the first could only have been avoided on the agent side.
 
 ### Changes made
 

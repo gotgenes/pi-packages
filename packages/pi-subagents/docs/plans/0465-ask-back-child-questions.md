@@ -285,7 +285,8 @@ Leaving a foreground record claimed is also what the nudge requires, since an in
 
 ### Changed — production
 
-- `src/lifecycle/subagent-manager.ts` — delete `if (agent.isBackground)` from `onRunFinished` and `onResumeFinished` in `buildObserver()`. `onSubagentCreated`'s guard is untouched.
+- `src/lifecycle/subagent-manager.ts` — delete `if (agent.isBackground)` from `onRunFinished` and `onResumeFinished` in `buildObserver()`.
+  `onSubagentCreated`'s guard is untouched.
 - `src/lifecycle/subagent-state.ts` — add the revocable claim beside `_consumedAt`; add `_pendingQuestion` with its accessor; clear both in `resetForResume()`.
 - `src/lifecycle/subagent.ts` — expose `claim`/`release`/`claimed` and `pendingQuestion`; parse the marker in `completeRun()` before `markCompleted(finalResult)`, so the stored `result` is already stripped.
 - `src/observation/notification.ts` — `sendCompletion` gains the claim gate; `formatTaskNotification` sources its status label and body from `outcome-delivery.ts` and appends the affordance; `getStatusLabel` is removed (its callers move to `renderStatusLabel`).

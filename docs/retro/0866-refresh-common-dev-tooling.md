@@ -33,8 +33,7 @@ Filed [#867] for the TypeScript 7 blocker and commented our corpus numbers on th
 #### What caused friction (agent side)
 
 - `missing-context` — did not check rumdl's issue tracker before bisecting.
-  The operator asked "Have you already searched rumdl's issues to see if complaints have been filed for these regressions?"
-  and the answer was no. One `gh issue list --repo rvben/rumdl --search` found [rvben/rumdl#811](https://github.com/rvben/rumdl/issues/811), open since 2026-08-12, carrying the same mechanism (a bold lead-in ending `.**` followed by a line opening with a code span) and the same 0.2.44/0.2.45 bisect boundary I had just spent fifteen probes deriving.
+  The operator asked "Have you already searched rumdl's issues to see if complaints have been filed for these regressions?" and the answer was no. One `gh issue list --repo rvben/rumdl --search` found [rvben/rumdl#811](https://github.com/rvben/rumdl/issues/811), open since 2026-08-12, carrying the same mechanism (a bold lead-in ending `.**` followed by a line opening with a code span) and the same 0.2.44/0.2.45 bisect boundary I had just spent fifteen probes deriving.
   User-caught.
   Impact: the bisect was still needed to pick 0.2.24 for our corpus, but knowing the mechanism first would have made it a targeted confirmation instead of a from-scratch hunt, and would have removed the standing doubt about whether the fault was in our `.rumdl.toml`.
 
@@ -73,9 +72,7 @@ Filed [#867] for the TypeScript 7 blocker and commented our corpus numbers on th
 
 #### What caused friction (user side)
 
-- Both of the session's highest-value interventions arrived as redirecting questions rather than corrections — "are we not pinned to Node v22?"
-  and "have you already searched rumdl's issues?"
-  — and both were right.
+- Both of the session's highest-value interventions arrived as redirecting questions rather than corrections — "are we not pinned to Node v22?" and "have you already searched rumdl's issues?" — and both were right.
   That is the cheap shape, but it also means two pieces of durable project knowledge lived only in the operator's head: that this repo's Node floor is set by pi's `engines.node`, and that a third-party tool regression is worth checking upstream before investigating.
   Both are candidates for `AGENTS.md` so the next session does not need the operator present to get them right.
 

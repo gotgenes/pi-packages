@@ -78,7 +78,8 @@ AST facts (verified during planning with disposable `web-tree-sitter` probes):
 ### What actually changes
 
 Because the strict classifier only admits absolute, `~/`, and `..`-relative tokens, and absolute / `~/` tokens are independent of the working directory, the effective base affects exactly one class of candidate: **`..`-containing relative paths**.
-The entire feature is "resolve `..`-relative external-directory candidates against the effective directory in force where they appear, and flag them conservatively when that directory is unknown." `pathTokens()` never resolves against a base, so it is provably unaffected.
+The entire feature is "resolve `..`-relative external-directory candidates against the effective directory in force where they appear, and flag them conservatively when that directory is unknown."
+`pathTokens()` never resolves against a base, so it is provably unaffected.
 
 ### Per-candidate effective base
 

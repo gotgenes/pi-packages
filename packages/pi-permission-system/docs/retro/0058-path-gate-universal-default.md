@@ -18,8 +18,7 @@ Released as `pi-permission-system@5.18.2`.
 #### What went well
 
 - `missing-context` **recovery was fast once redirected.**
-  The user's "is that a red herring?"
-  intervention cut short a Windows path-resolution rabbit hole.
+  The user's "is that a red herring?" intervention cut short a Windows path-resolution rabbit hole.
   Once redirected to the config interaction, tracing through `describePathGate` → `checkPermission` → `evaluate` → universal default rule took only one read cycle to pinpoint.
   The `matchedPattern === undefined` discriminator was identified from reading `PermissionManager.checkPermission()` once — the `rule.layer` → `matchedPattern` mapping is clean.
 

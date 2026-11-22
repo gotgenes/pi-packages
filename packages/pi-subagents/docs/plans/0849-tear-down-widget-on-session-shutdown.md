@@ -62,7 +62,8 @@ Before [#827], the widget captured its `UICtx` only on `tool_execution_start`.
 That closed the unreachable-`clearWidget()` path, and its retro records the residual precisely: "The incidental timer-leak fix is real but partial.
 `AgentWidget.dispose()` still has no call site, which is #849 / Phase 22 Step 9."
 
-The roadmap's Step 6 landed note states the wiring precedent this change follows: "the capture is a push at `session_start`, wired from the composition root as its own registration — Pi fans an event out to every handler an extension registers for it, so the widget's concern did not have to share a lambda with the session-lifecycle one." `index.ts` today has two `session_start` registrations and two `turn_start` registrations for exactly that reason.
+The roadmap's Step 6 landed note states the wiring precedent this change follows: "the capture is a push at `session_start`, wired from the composition root as its own registration — Pi fans an event out to every handler an extension registers for it, so the widget's concern did not have to share a lambda with the session-lifecycle one."
+`index.ts` today has two `session_start` registrations and two `turn_start` registrations for exactly that reason.
 
 ### Why the leak is masked today, and where it still bites
 
@@ -115,7 +116,8 @@ Diverged from, with reasons:
    It calls `disposeWidget()` at position 2, before `abortAll()`.
    The spike above measures that as undone whenever an agent is running or queued at shutdown.
    Its own tests cannot see this: the lifecycle test mocks `disposeWidget` as a bare `vi.fn()`, and the widget test never fires a post-`dispose()` transition.
-3. **Defaulted no-op dependency.** `private readonly disposeWidget: () => void = () => {}` makes an unwired composition root silently no-op — the same defect class this issue is about, reintroduced as a default value.
+3. **Defaulted no-op dependency.**
+   `private readonly disposeWidget: () => void = () => {}` makes an unwired composition root silently no-op — the same defect class this issue is about, reintroduced as a default value.
 4. **Stale base.**
    It is written against pre-[#827] `index.ts` (its diff context still reads "Grab UI context from first tool execution"), so it predates `WidgetEventsHandler` existing.
 5. **No `uiCtx` clear**, so the re-registration hazard stays structurally open.

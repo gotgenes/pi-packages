@@ -63,7 +63,8 @@ Clean execution overall, with one prompt-guidance gap surfaced during the releas
   The claim was false; the conclusion (no skill update needed) happened to be right.
   Impact: reviewer-caught WARN, one-line correction in the build-retro commit, no rework to the README.
   Caught by an existing safety net (the reviewer), so a salience tweak is not warranted — recorded as a reminder to verify file-content claims before writing them into plan/retro notes.
-- `other` (prompt-guidance gap, not an agent error) — the release-please PR #471 had a CI `check` job that actually ran, contradicting the `/ship-issue` step 6 assumption that release PRs "typically have no CI runs." `release_pr_merge` correctly refused with `merge_state: UNSTABLE` while `statusCheckRollup` showed `check IN_PROGRESS` (a non-empty rollup).
+- `other` (prompt-guidance gap, not an agent error) — the release-please PR #471 had a CI `check` job that actually ran, contradicting the `/ship-issue` step 6 assumption that release PRs "typically have no CI runs."
+  `release_pr_merge` correctly refused with `merge_state: UNSTABLE` while `statusCheckRollup` showed `check IN_PROGRESS` (a non-empty rollup).
   This is neither the prompt's "empty rollup → merge anyway" case nor its "genuinely blocked → stop" case.
   Impact: handled correctly by polling until the check passed (four `sleep` cycles) then retrying `release_pr_merge`, but the prompt offered no explicit guidance for the in-progress-check case — a future agent could misread `UNSTABLE` + non-empty rollup as blocked (stop) or merge prematurely via `gh pr merge --rebase` while the check runs.
 

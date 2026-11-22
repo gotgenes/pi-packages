@@ -14,8 +14,7 @@ Produced `docs/plans/0382-windows-external-directory-case-insensitive.md` with a
 
 ### Observations
 
-- The user steered the design with two questions ("is there a builtin node path library?"
-  / "how does pi handle this itself?").
+- The user steered the design with two questions ("is there a builtin node path library?" / "how does pi handle this itself?").
   Confirmed `path.win32.relative` folds case natively, and Pi's own idiom (`getCwdRelativePath`, `getPiDocsClassification` in `packages/coding-agent/src/utils/paths.ts` and `core/tools/read.ts`) is `relative()` + `..`/absolute check with no manual lowercasing — adopted as the containment approach.
 - `path.matchesGlob` was rejected: its `*` does not cross separators and it is case-sensitive even on `win32`, so it would change the established `*`→`.*` semantics without fixing the case bug.
 - Two `ask_user` calls settled scope: (1) comparison fix **plus** pi-API auto-detect, (2) adopt `path.relative` broadly; a follow-up picked `getPackageDir()` (whole Pi install dir) over docs-only paths.
@@ -71,8 +70,7 @@ The one dominant friction was a planning-stage `missing-context` gap that the us
 #### What caused friction (agent side)
 
 - `missing-context` — during planning I converged on a hand-rolled case-folding fix (lowercase both sides / case-insensitive regex) without first checking whether Node's `path` module had a containment primitive or how the upstream host `@earendil-works/pi-coding-agent` solves the same problem.
-  The user's two questions ("is there a builtin node path library?"
-  / "how does pi handle this itself?") supplied exactly the missing checks, which redirected the design to `path.win32.relative` (native case-folding) and `getPackageDir()` (robust auto-detect).
+  The user's two questions ("is there a builtin node path library?" / "how does pi handle this itself?") supplied exactly the missing checks, which redirected the design to `path.win32.relative` (native case-folding) and `getPackageDir()` (robust auto-detect).
   Self-identified: no (user-caught, via redirecting questions).
   Impact: no rework — caught in planning before the plan was written — but without the redirect the plan would have shipped more complex hand-rolled containment instead of the cleaner builtin-based design.
 - `other` (plan dependency-ordering miss) — the plan listed the infra-read folding step before the `wildcard-matcher` options step it depended on.

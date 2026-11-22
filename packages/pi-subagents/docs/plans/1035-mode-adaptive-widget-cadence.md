@@ -192,18 +192,22 @@ Predicted unchanged, with the claim each rests on:
    - No killing mutation: test-only refactor with no new assertion.
 3. **perf(pi-subagents): animate the agents widget at 80 ms in fullscreen mode**
    - Change: the constants, `animationIntervalMs`, `TuiSurface.mode`, and the doc comment (measured per-frame costs for both modes, why regular stays at 250 ms, that `tui` is Pi's renderer-following proxy).
+
    - Tests in `agent-widget.test.ts`, replacing the 250 ms test:
      - `"asks Pi for a render every 80 ms in fullscreen mode"` — stub `mode: "fullscreen"`; nothing at 79 ms, one at 80, two at 160.
      - `"asks Pi for a render every 250 ms in regular mode"` — nothing at 249, one at 250.
      - `"follows a switch to fullscreen on the next tick"` — start regular, advance 250 (one render), set `tui.mode = "fullscreen"`, advance 80 (two renders).
      - `"ticks at the regular cadence before Pi hands the widget a TUI"` — `setWidget` never invokes the factory; count `manager.listAgents` calls: none extra at 80 ms, one tick at 250 ms.
+
    - Tests in `widget-viewport.test.ts`, new `describe("AgentWidget cadence under Pi's real renderers")` with fake timers: mount on `new TuiAltScreen(fakeTerminal(100, 40), false, …)` and on `new TuiMainScreen(…)`, spy `requestRender`, assert the first tick at 80 ms and 250 ms respectively.
+
    - Killing mutations, one per equivalence class:
      - Fullscreen: make `animationIntervalMs` return `REGULAR_ANIMATION_MS` unconditionally — kills both fullscreen tests and the switch test.
      - Regular/unknown: change the predicate to `mode !== "regular" ? FULLSCREEN_ANIMATION_MS : REGULAR_ANIMATION_MS` — kills the never-invoked-factory test only (an `undefined` mode now ticks at 80).
      - Real mode values: change the predicate's literal to `"alt-screen"` — kills the stub fullscreen tests and the real `TuiAltScreen` test.
      - First-arm ordering: move `this.setTimerRunning(...)` back above the registration block in `update()` — the fullscreen stub test's first render arrives at 250, not 80.
      - Per-tick re-read: hoist the interval into a field computed once on first arm — kills the switch test.
+
    - Commit body records the measurement table's two duty-cycle rows and that regular mode keeps 250 ms by design, then the trailer:
 
      ```text

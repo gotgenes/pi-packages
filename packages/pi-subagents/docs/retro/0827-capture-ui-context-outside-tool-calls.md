@@ -16,8 +16,7 @@ Filed [#849] for the widget's missing `session_shutdown` teardown and recorded i
 ### Observations
 
 - **The tool-call gate protects nothing.**
-  The issue's central open question — "is the tool-call gate protecting something specific about *when* a `UICtx` is safe to capture?"
-  — resolves to no. `phase-18-reconsider-ui.md` Step 4 records [#423]'s invariant as "no inbound calls from core **spawn tools**", which is about `foreground-runner.ts`/`background-spawner.ts`, not about `tool_execution_start` as a capture site.
+  The issue's central open question — "is the tool-call gate protecting something specific about *when* a `UICtx` is safe to capture?" — resolves to no. `phase-18-reconsider-ui.md` Step 4 records [#423]'s invariant as "no inbound calls from core **spawn tools**", which is about `foreground-runner.ts`/`background-spawner.ts`, not about `tool_execution_start` as a capture site.
   `ToolStartHandler` predates that work (`c293e41e`); it is where a `ctx` happened to be in hand.
   Reading the close comment / history file rather than the ADR's summary sentence is what settled it.
 

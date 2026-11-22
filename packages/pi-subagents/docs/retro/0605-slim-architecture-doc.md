@@ -68,7 +68,8 @@ Execution quality was high: incremental `rumdl` after every content step, a mark
 2. **Marker-keyed `python3` splice validated a second time.**
    For the 127-line (`Session encapsulation debt` + `Proposed bag decompositions`) and follow-on removals, an in-place `s.index()` splice (turns 38, 40) avoided a fragile multi-KB `Edit` `oldText`, then a `rumdl` + bijection check verified loss-free removal.
    Same technique #601's retro recorded; this run used a leaner in-place variant.
-3. **No feedback-loop gap.** `rumdl` ran after every content step (turns 34, 40–41, 45, 49), a custom bidirectional ref/def bijection check ran before declaring the sweep clean (turn 50), and full `pnpm run lint` + `fallow dead-code` ran at build-end and ship pre-push.
+3. **No feedback-loop gap.**
+   `rumdl` ran after every content step (turns 34, 40–41, 45, 49), a custom bidirectional ref/def bijection check ran before declaring the sweep clean (turn 50), and full `pnpm run lint` + `fallow dead-code` ran at build-end and ship pre-push.
 
 #### What caused friction (agent side)
 

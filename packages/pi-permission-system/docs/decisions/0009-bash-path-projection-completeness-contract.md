@@ -276,10 +276,8 @@ The projection resolves *unknown* with the filesystem rather than with the rules
 > A promoted candidate is then gated by explicit `path`/`external_directory` rules, or by resolving outside the working tree — never by the universal fallback.
 
 Candidacy and decision are separate concerns with separate sources.
-Candidacy asks "is this a file?"
-and the filesystem answers authoritatively.
-Decision asks "may it be touched?"
-and the composed ruleset answers.
+Candidacy asks "is this a file?" and the filesystem answers authoritatively.
+Decision asks "may it be touched?" and the composed ruleset answers.
 The classifier therefore needs no knowledge of policy, and policy needs no knowledge of token spelling.
 
 The universal-fallback exclusion is what keeps this from becoming a prompt firehose, and it needs no new mechanism: `describeBashPathGate` already treats a check whose `matchedPattern` is `undefined` — only the synthesized universal default matched — as unrestricted ([#58]), and `permission-manager.ts` sets `matchedPattern` only for `config`/`session`-layer rules.
@@ -317,8 +315,10 @@ These are **accepted residuals**, not open bugs:
 - **Nonexistent bare write targets** (`touch newfile`, `mv a newfile`) — the probe cannot see a file that does not exist yet.
   A redirect target is not part of this residual: it is guaranteed by its role above, including one the command creates.
   A word the grammar places after a redirect's target (`cmd 2>/dev/null newfile`) is the command's operand and is covered here, not by the role ([#977]).
+
 - **Glued short-option values of a flag no table lists** (`tar -f/tmp/x`) — distinguishing a glued value from a cluster of boolean flags (`-rf`) requires per-command option knowledge.
   A pattern-first command's own listed flags are the bounded exception ([#823]): there the table already names the flag, so `grep -f/tmp/patterns` is read as getopt reads it.
+
 - **A pattern-first flag spelling the table does not name** — an unlisted argument-consuming flag (`rg --pre CMD`), a GNU long-option abbreviation (`grep --reg=x`), a cluster whose argument-taking short flag is not first (`grep -ie pattern`, and for an interpreter `perl -pe 's|a|b|'`), and a token whose flag is quoted *whole* (`grep '-e' pattern f.txt`).
   Each of these spends the pattern positional on the wrong token, or leaves a consumed value unclaimed, which **over-surfaces** — the last operand still reaches the surfaces — so all of them sit on the recoverable side of the layering principle below.
   Widening flag detection to quoted tokens *wholesale* is deliberately declined: it would reclassify a quoted leading-`-` *pattern* as a flag and drop the operand instead, trading a recoverable failure for an unrecoverable one.
@@ -326,10 +326,12 @@ These are **accepted residuals**, not open bugs:
   The distinction is load-bearing rather than stylistic: admitting *every* `-`-leading token of any node type reads ADR's own `sd '-old' '-new' file.txt` example as `-o` then `-n`, spends no positional for the second, and drops `file.txt` (`["file.txt"]` under the adopted rule, `[]` under the wider one).
   The interpreter cluster instance resolves the same way as `grep -ie`: the glued rule reads `text.slice(0, 2)`, so `perl -pe` is looked up as `-p`, and listing `-p` would consume the following word on the separated spelling too and drop a real operand.
   Measured after the 2026-09-20 amendment, 9 of the corpus's 188 `perl` command nodes still surface their script this way.
+
 - **An interpreter's inline script, as a payload** — once a `script`-role flag swallows it the program text reaches neither path surface, so a path written *inside* the script is invisible to them (2026-09-20 amendment).
   This is the same opacity a shell payload has, and nothing actionable is lost relative to the behavior it replaces: the token previously projected was the whole program, which was not an `external_directory` candidate and matched no `path` rule but the universal fallback.
   The command **enumerator** is unaffected, so `bash:` rules still govern the invocation and a substitution inside the script still enumerates as its own unit and projects its own operands.
   Whether the payload should additionally floor to `ask`, as `bash -c` does, is deferred to [#886].
+
 - **An optional-argument flag's separated spelling.**
   BSD `sed -i bak` accepts a separate non-empty suffix that the `suffix` role declines, so the suffix spends the pattern positional and the script over-surfaces as a candidate.
   The file operand survives, so this one sits on the recoverable side.
@@ -349,18 +351,23 @@ These are **accepted residuals**, not open bugs:
 
   So the rule's test is not "does this tool document the long form" but "does this tool's parser take a separate argument for it", and a shared table row asserts that of every command that inherits it — including every implementation a *name* may resolve to.
   Where no single answer holds, the table is allowed to decline the question rather than guess, which is the option the first two instances of this defect did not have.
+
 - **Glob-filter option values** (`--include=`, `--exclude=`, `--exclude-dir=`) — their values are split like any unrecognized option's and reach the surfaces on their own shape, so `grep --exclude-dir=node_modules` contributes a `node_modules` candidate.
   This over-surfaces and is left alone rather than given table entries ([#823]); an unmatched candidate is unrestricted by the universal-fallback exclusion above.
+
 - **Computed paths** other than the plain `HOME`/`PWD` references above — a reference to a `HOME`/`PWD` the program rebinds, any other `$VAR`, a command substitution (`$(cmd)`), an operator-bearing expansion (`${HOME:-/tmp}`, `${#HOME}`), and a variable reached through an assignment (`CURRENT="$HOME"; ls "$CURRENT"`).
   The residual here is the **value the substitution evaluates to** — the filename `> $(cmd)` ultimately writes to is not knowable without running `cmd`.
   It is **not** the nested command's own literal operands, which the positional-invariance guarantee above covers.
   Reading this bullet as sanctioning the latter is what let [#741] persist.
   Where a computed value affects the working directory, the unknown-base machinery already degrades conservatively.
   Two ways to close the assignment case were considered and declined during [#694], measured over 2767 deduplicated real bash commands from the permission review log: same-program literal-assignment dataflow, which reaches **45 (1.6%)** of commands but adds stateful dataflow to the AST walk; and flooring any command carrying an unresolved-expansion path operand to `ask`, which would newly prompt on **194 (7.0%)** — the prompt-firehose outcome this ADR rejects for the bare-token case below.
+
 - **Glob expansion** — a glob-bearing token is gated by its literal text, never by the set of paths the shell will expand it into.
   The containment boundary still sees it, because the literal resolves against the effective working directory; an **explicit rule pattern** does not, because it is matched against the token's spelling — `path: {".env": "deny"}` does not match the token `[.]env` ([#822]).
+
 - **Per-command argument semantics** — which positional argument of `grep`/`git`/`kubectl` is a file.
   `PATTERN_FIRST_COMMANDS` encodes a deliberately small exception for pattern-first commands; generalizing it means shipping and maintaining an option table per tool.
+
 - **A relative or bare operand inside a region the parse could not resolve** — the salvaged fragment carries no record of the `cd` in force where it sat, so it is walked under the unknown base and only its absolute and `~` tokens project ([#875]).
   A region whose own re-parse also fails projects nothing at all, and the command surface's floor prompts for it naming the whole command line.
 

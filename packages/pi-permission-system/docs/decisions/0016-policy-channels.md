@@ -122,16 +122,21 @@ Runtime relaxations are not slots: auto-approve is a terminal (§5) and unrestri
 
 - **Project `config.local.json` is admitted at slot 2.5**, hand-authorable, for personal project policy that should not be committed.
   At 2.5 a personal `allow` overrides shared project policy and not an agent definition's restrictions.
+
 - **Pi's `settings.json` is declined** ([#675]).
   Reading this extension's policy from Pi's settings crosses Pi's boundary and defeats this package's schema; it also fails K2, K3, K5, and K7 (platform facts).
+
 - **Ancestor-directory `.pi` configs are declined** ([#1073]); the project is Pi's project, the cwd's `.pi`.
   Measurement 6 shows the cwd's trust would load an untrusted repository's root config from a subdirectory (K4), and `ExtensionAPI` exposes no per-ancestor trust.
   Revisit if Pi resolves ancestor `.pi` resources itself.
+
 - **The legacy files are no longer read.**
   Their detection stays, and the warning becomes "`<path>` is no longer read; move it to `<new path>`".
   No permission rule lives in them, so no deny is lost.
+
 - **Pattern keys gain three named placeholders** ([#1110]): `{runtimeDir}`, `{uid}`, `{cwd}`, expanded at match time like `~`; an unresolvable placeholder matches nothing.
   Arbitrary environment variables in patterns, a `config.js`/`config.ts` file, and an `addRules()` service method are declined (K1, and the constraints below).
+
 - **A downstream policy-source extension point is open.**
   Two shapes go to the [#1073] author: a path provider (`resolve(cwd) → string[]`, files this package reads, validates, protects, and stamps) and a content provider (rule maps); the lean is toward paths.
   Four constraints bind any version and are decided here:

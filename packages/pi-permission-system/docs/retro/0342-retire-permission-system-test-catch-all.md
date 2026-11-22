@@ -34,7 +34,8 @@ Confirmed all prerequisites are met — Step 8 ([#341]) is closed, so the collab
 
 ### Session summary
 
-Executed all 9 migration steps from the plan. 76 tests redistributed across 12 destination files; 10 redundant end-to-end async tests dropped.
+Executed all 9 migration steps from the plan.
+76 tests redistributed across 12 destination files; 10 redundant end-to-end async tests dropped.
 The 2,785-line `permission-system.test.ts` catch-all was deleted; the suite is now fully co-located at 90 test files, 1813 tests.
 
 ### Observations

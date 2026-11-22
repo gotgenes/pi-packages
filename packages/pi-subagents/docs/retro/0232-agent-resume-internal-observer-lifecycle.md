@@ -20,7 +20,8 @@ Confirmed the prerequisite #229 is closed and `Agent` already holds `_runner`, `
 - Observer routing equivalence verified: old code wired `onCompact` → `AgentManagerObserver.onAgentCompacted`; new code routes through the per-agent `AgentLifecycleObserver.onCompacted`, which `buildObserver()` forwards to `onAgentCompacted`.
   Net routing identical.
 - Abort semantics intentionally preserved — `signal` flows straight to `runner.resume({ signal })`, not through the agent's `abortController` (resume differs from `run()` here; flagged as a Non-Goal to avoid accidental behavior change).
-- Removing the `subscribeAgentObserver` import from `agent-manager.ts` must land in the same commit as the body rewrite (type checker flags the unused import). `grep` confirmed `agent.ts` remains the importer and `record-observer.ts` keeps the export live.
+- Removing the `subscribeAgentObserver` import from `agent-manager.ts` must land in the same commit as the body rewrite (type checker flags the unused import).
+  `grep` confirmed `agent.ts` remains the importer and `record-observer.ts` keeps the export live.
 - Discovered the `architecture.md` class diagram is stale from #229 (missing `Agent.run()`, stale `setupWorktree`/`completeRun`/`setOnRunFinished` signatures, old `resume(id, snapshot, exec)`).
   Scoped only a light touch (resume-related entries + Step 6 ✅); full diagram refresh deferred as a follow-up.
 - Lift-and-shift TDD order: step 1 introduces `Agent.resume()` alongside the old manager logic; step 2 collapses the manager method and removes the import together.
@@ -57,14 +58,14 @@ The dominant friction was capturing the `pre-completion-reviewer`'s verdict: for
 #### What went well
 
 - **User-prompted latent-bug discovery, fixed TDD-style.**
-  The user's question "did we introduce a bug in a prior issue?"
-  led to finding the `Agent.run()` abort-signal listener leak (regression from #229: `wireSignal()` ran before `setupWorktree()`, and the worktree-failure catch returned without `releaseListeners()`).
+  The user's question "did we introduce a bug in a prior issue?" led to finding the `Agent.run()` abort-signal listener leak (regression from #229: `wireSignal()` ran before `setupWorktree()`, and the worktree-failure catch returned without `releaseListeners()`).
   Fixed red→green: failing test `"releases the parent-signal listener when worktree setup fails"` first, then a one-line `releaseListeners()` addition.
   The `fix:` commit body attributes the regression to #229 so release-please categorizes it correctly.
 - **Lift-and-shift plan executed without backtracking.**
   Step 1 introduced `Agent.resume()` alongside the old manager logic; step 2 collapsed the manager method and removed the `subscribeAgentObserver` import together (type checker would reject splitting them).
   Every commit stayed green.
-- **Incremental verification.** `pnpm run check` + targeted `vitest run` after each TDD step; full suite, lint, and `pnpm fallow dead-code` (from repo root) after the last step.
+- **Incremental verification.**
+  `pnpm run check` + targeted `vitest run` after each TDD step; full suite, lint, and `pnpm fallow dead-code` (from repo root) after the last step.
 
 #### What caused friction (agent side)
 

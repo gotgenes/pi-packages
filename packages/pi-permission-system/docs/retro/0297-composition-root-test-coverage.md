@@ -73,8 +73,7 @@ The work delivered the `makeFakePi()` composition-root harness, six wiring tests
 #### What caused friction (user side)
 
 - None.
-  User involvement was strategic and minimal: two `ask_user` decisions during planning (consolidation scope, and characterize-vs-fix for target 6) set the direction for the whole session, and the "did we find any bugs?"
-  check between ship and retro confirmed the #302 hand-off landed.
+  User involvement was strategic and minimal: two `ask_user` decisions during planning (consolidation scope, and characterize-vs-fix for target 6) set the direction for the whole session, and the "did we find any bugs?" check between ship and retro confirmed the #302 hand-off landed.
 
 ### Diagnostic details
 

@@ -42,8 +42,7 @@ The upstream [`colgrep/src/install/SKILL.md`](https://github.com/lightonai/next-
 
 1. Rule 1 says "Default to colgrep for any code search" — must be reframed as "prefer colgrep for intent-based search and exploration."
 2. Rule 9 says "Agents should use colgrep" referring to spawning Claude Code subagents — not relevant to Pi.
-3. "Need Help?"
-   section references `colgrep --help` — fine to keep.
+3. "Need Help?" section references `colgrep --help` — fine to keep.
 4. The upstream uses `Search / Grep / Glob` naming (Claude Code's tool names) — must map to Pi's `grep` and `find` tools.
 5. The flags `-k`/`--results` naming: our tool registration uses `limit` as the parameter name mapping to `-k`.
    The skill should reference both the CLI flag and the tool parameter.

@@ -55,8 +55,7 @@ Released as `pi-session-tools-v1.0.0` (major bump due to breaking output format 
 - **Model routing** — Planning ran on `claude-opus-4-6`, TDD on `claude-sonnet-4-6`, shipping on `deepseek-v4-flash`, retro on `claude-opus-4-6`.
   The shipping phase (mechanical: pull, lint, push, CI, close, merge) completed cleanly on the most cost-efficient model with zero friction.
 - **Pre-completion reviewer catch** — The reviewer flagged the `README.md` documentation gap for `read_session`/`read_parent_session`, leading to the `docs: document read_session and read_parent_session transcript format in README (#251)` commit before shipping.
-- **User doc audit prompt** — The user's question “We updated our docs, and skills, correct?”
-  triggered a thorough audit of all markdown references to the changed tools, confirming only `README.md` and `.pi/prompts/retro.md` (line 90, unchanged usage hint) referenced them.
+- **User doc audit prompt** — The user's question “We updated our docs, and skills, correct?” triggered a thorough audit of all markdown references to the changed tools, confirming only `README.md` and `.pi/prompts/retro.md` (line 90, unchanged usage hint) referenced them.
 
 #### What caused friction (agent side)
 

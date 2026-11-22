@@ -58,12 +58,17 @@ Pre-completion reviewer: PASS.
   `pi-permission-system`'s charter carries a **One decision is still open** paragraph naming #639 and the widenings parked on it — a structure no other package's charter has, and one the gate's text never mentioned.
   Rule 1 ("cite the non-goal") would have prevented an outright decline anyway, but nothing told the reader what verdict *does* apply, so `adjacent` was a plausible wrong answer.
   Fixed with two sentences: an item landing on an open decision is `aligned` and parked, and the run must say which decision it waits on.
+
 - The renumbering ripple was as small as planned.
   Every surviving cross-reference (Step 1, Step 3, "Steps 4 and 5") sits above the insertion point, and `git diff` on the renamed Step 7 shows only its heading line changed.
+
 - Budgets held: Step 6 is 51 lines against a 55-line budget, and the file is 309 lines against 315.
   The third commit's two sentences consumed most of the remaining headroom, which is a fair sign the budget was set at about the right size rather than generously.
+
 - The Output section's `Scope alignment` entry deliberately specifies a **Carried forward** subsection alongside the verdict table, so the inheritance rule has a place to land in the document rather than living only in the step's prose.
+
 - No deviation from the plan beyond the anticipated one: Build Order step 3 explicitly told the implementation to fix gate wording (never a charter) on a mismatch, and that is what happened.
+
 - Reviewer verdict: PASS with no warnings.
   Deterministic checks (`check`, `lint`, `test`, `fallow dead-code`) all pass; code-design, test-artifact, Mermaid, and cross-step-invariant lenses were skipped as inapplicable to a prompt-template change.
 

@@ -30,8 +30,7 @@ Released as `pi-colgrep-v1.3.0`.
 
 #### What caused friction (user side)
 
-- The user linked to earendil-works/pi#4879 mid-session, which reframed the `promptGuidelines` conversation from "is our text clear?"
-  to "does each bullet self-identify its tool in the flattened system prompt?"
+- The user linked to earendil-works/pi#4879 mid-session, which reframed the `promptGuidelines` conversation from "is our text clear?" to "does each bullet self-identify its tool in the flattened system prompt?"
   This was the right moment to raise it — after the skill shipped but before the issue closed.
   No friction; this was a valuable intervention.
 

@@ -17,8 +17,7 @@ It is not part of any batch — Steps 3–6 are each independently releasable �
 The bash enforcement gate decomposes a chained or nested command and evaluates each sub-command, so `cd /repo && npm install x` denies on the `npm *` rule (most-restrictive wins).
 The synchronous advisory path — `LocalPermissionsService.checkPermission("bash", …)` (`src/permissions-service.ts`) — instead matches bash as a single whole string: `buildAccessIntentForSurface` emits one `{ kind: "tool", surface: "bash", input: { command } }` intent, so the whole string matches the leading `cd *` and returns `allow`.
 
-So the same question — "would this bash command be allowed?"
-— gets two different answers depending on which door you ask at.
+So the same question — "would this bash command be allowed?" — gets two different answers depending on which door you ask at.
 This is not an enforcement gap (the gate is already decomposed and consistent after #306); it is an *advisory* consistency gap.
 Other extensions and pre-flight checks querying the published `PermissionsService` get a lower-fidelity answer than the gate will actually enforce.
 
@@ -241,7 +240,8 @@ Docs (in the implementation doc-update commit):
   - add `sync-commands.ts` under the `access-intent/bash/` tree and `bash-advisory-check.ts` under the flat `src/` listing;
   - mark **Step 4 ✅** on its heading (~938) and its Mermaid node (~978).
 
-Grep sweep performed (removed/added symbol references): no symbols are removed or renamed — all changes are additive plus one service branch. `checkPermission` and `resolveBashCommandCheck` are referenced in `docs/architecture/architecture.md` and `docs/cross-extension-api.md` (both listed above); no `.pi/skills/package-*/SKILL.md` prose describes the advisory-whole-string behavior as a named mechanism to reword.
+Grep sweep performed (removed/added symbol references): no symbols are removed or renamed — all changes are additive plus one service branch.
+`checkPermission` and `resolveBashCommandCheck` are referenced in `docs/architecture/architecture.md` and `docs/cross-extension-api.md` (both listed above); no `.pi/skills/package-*/SKILL.md` prose describes the advisory-whole-string behavior as a named mechanism to reword.
 
 ## Test Impact Analysis
 
@@ -251,7 +251,8 @@ This is an additive change (plus one service branch), not an extraction, so the 
    - `sync-commands.test.ts` — cold (`getWarmBashParser()` null → `parseBashCommandsSync` returns `null`); warm (`await warmBashParser()` → chained command yields multiple `BashCommand[]` units, comment-only yields trivially-empty).
    - `bash-advisory-check.test.ts` — warm chained command → most-restrictive `deny` wins; cold → single whole-string `tool` resolve; opaque wrapper floored to `ask`; unparseable non-empty warm → `<unparseable-bash-command>`.
    These directly test the seam that was previously untestable (there was no sync parse).
-2. **Existing tests that become redundant:** none removed. `permissions-service.test.ts`'s bash assertion changes from "asserts a whole-string tool intent" to "asserts delegation to `resolveBashAdvisoryCheck`" — the decomposition behavior itself is covered at the lower `bash-advisory-check` layer, so the service test narrows to delegation only.
+2. **Existing tests that become redundant:** none removed.
+   `permissions-service.test.ts`'s bash assertion changes from "asserts a whole-string tool intent" to "asserts delegation to `resolveBashAdvisoryCheck`" — the decomposition behavior itself is covered at the lower `bash-advisory-check` layer, so the service test narrows to delegation only.
 3. **Tests that must stay as-is:** `bash-command.test.ts` / `bash-command-metamorphic.test.ts` (they pin `resolveBashCommandCheck`, now shared by both callers); `command-enumeration` tests; the gate-pipeline bash tests (enforcement path unchanged).
 
 ## Invariants at risk

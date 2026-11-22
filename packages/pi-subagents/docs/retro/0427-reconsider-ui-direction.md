@@ -17,11 +17,7 @@ The plan writes `docs/decisions/0004-reconsider-ui-direction.md` plus an archite
 
 - **Decision-only ADR → `/build-plan`, not `/tdd-plan`.**
   The operator chose to record decisions and defer all code to Phase 19, so the plan has a docs-only Build Order, no test cycles.
-- **Per-component decisions recorded:**
-  (A) foreground widget shrinks to background-agents-only;
-  (B) conversation viewer replaced by native session navigation (remove the bespoke `ConversationViewer`);
-  (C) `/agents` menu dissolved — **remove** both agent-management surfaces outright (creation wizard and agent-types config editor; managing definitions belongs in an editor/IDE or a Pi agent, not the menu), re-home running-agent visibility onto the widget + session navigation, extract settings to a focused `/subagents:settings` command;
-  (D) distribution = keep surviving UI in-core (substitutable, _not_ extracted to `@gotgenes/pi-subagents-ui`).
+- **Per-component decisions recorded:** (A) foreground widget shrinks to background-agents-only; (B) conversation viewer replaced by native session navigation (remove the bespoke `ConversationViewer`); (C) `/agents` menu dissolved — **remove** both agent-management surfaces outright (creation wizard and agent-types config editor; managing definitions belongs in an editor/IDE or a Pi agent, not the menu), re-home running-agent visibility onto the widget + session navigation, extract settings to a focused `/subagents:settings` command; (D) distribution = keep surviving UI in-core (substitutable, _not_ extracted to `@gotgenes/pi-subagents-ui`).
 - **Key SDK finding — `switchSession`.**
   `@earendil-works/pi-coding-agent@0.79.1` exposes `ExtensionActions.switchSession(sessionPath, { withSession })`.
   It is a _full active-session takeover_ (fires `session_before_switch`/`session_shutdown`, invalidates the current context), and the switched-to session is interactive (`ReplacedSessionContext.sendUserMessage`).

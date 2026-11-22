@@ -59,14 +59,17 @@ Filed as [#828] (semver-major, own plan) rather than folded in.
 
 #### Decisions taken
 
-- **Choke point over shared resolver.** `SubagentManager` gains a narrow `SpawnTypeResolver` (not the existing `AgentConfigLookup`, whose slice differs) so a future fourth door cannot diverge. `architecture.md:245` already claims the `SubagentManager --> AgentTypeRegistry` edge, which `aa8b2da6` removed in #231 — the change makes the diagram true rather than adding an edge.
+- **Choke point over shared resolver.**
+  `SubagentManager` gains a narrow `SpawnTypeResolver` (not the existing `AgentConfigLookup`, whose slice differs) so a future fourth door cannot diverge.
+  `architecture.md:245` already claims the `SubagentManager --> AgentTypeRegistry` edge, which `aa8b2da6` removed in #231 — the change makes the diagram true rather than adding an edge.
 - **`Subagent.isBackground` over populating `invocation`.**
   `invocation` is documented as a UI-display snapshot; the widget was asking it a lifecycle question.
   The manager already computes the answer five times and stores it nowhere.
 - **`BackgroundRequest` two-variant union.**
   Each door states whether its answer is a commitment or a fallback.
   Preserves both current precedences exactly, so the tool door is byte-identical, and it is the mechanism [#829] needs to flip the policy later.
-- **Not breaking.** `SubagentsService`, `SpawnOptions`, and `SubagentRecord` keep their shapes; the SDK door gains one throw alongside two it already has.
+- **Not breaking.**
+  `SubagentsService`, `SpawnOptions`, and `SubagentRecord` keep their shapes; the SDK door gains one throw alongside two it already has.
 
 #### Rejected alternatives
 
@@ -138,8 +141,7 @@ It was caught not by review but by its **twin**: a sibling asserting `"queued"` 
 The fix was to discriminate on `onSubagentCreated`, which fires for background agents alone.
 
 A second defect surfaced during the describe-nesting restructure: a test occupied one manager's limiter slot while asserting about a *second* manager, whose limiter was unrelated.
-A purely organizational prompt produced a correctness find, because reorganizing forces the question "where does this belong?"
-rather than "does it pass?".
+A purely organizational prompt produced a correctness find, because reorganizing forces the question "where does this belong?" rather than "does it pass?".
 
 #### The operator paused implementation to convert both into process
 
@@ -226,8 +228,7 @@ The dominant theme across all three stages is that **verification of the verific
 
 - The describe-nesting correction was high-leverage and well-timed — it arrived while the tests were still uncommitted, and the follow-up **"Or maybe they are related"** was the richer half of the signal, since it reframed organization as upstream of correctness rather than as tidiness.
   Opportunity: leading with the organizing principle ("nest by unit, then scenario") rather than the local symptom ("don't repeat a prefix") would have let me fix my blocks and the surrounding 17 in one pass, instead of my-blocks-first and a whole-file restructure two steps later.
-- The question **"How can we set aside time and effort to take similar actions?"**
-  was a budgeting question, and only half of it is answered.
+- The question **"How can we set aside time and effort to take similar actions?"** was a budgeting question, and only half of it is answered.
   Enforcement now exists (a Verify step in the cycle, a per-step killing mutation in plans, a scout lens), but nothing budgets the *test re-reading* that found the two-manager defect.
   The standing per-phase audit option was offered and declined, so this is recorded as an open question rather than a proposal.
 

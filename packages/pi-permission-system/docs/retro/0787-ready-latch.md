@@ -88,8 +88,7 @@ The defining moment was not in implementation but in the planning gate, where an
   Impact: one extra `ask_user` round; without it the plan would have committed a five-dependency, three-responsibility handler.
   The correction produced the session's cleanest commit (`694898b9`), so the cost was one round-trip and the gain was structural.
 - `missing-context` — the breaking-vs-non-breaking classification never reached the gate.
-  ADR 0012 decision 7 had settled it (minor, with a release-note callout), so I treated it as closed and planned to state it only in the plan's Goals; the operator had to ask "Is idempotency requirement a breaking change?"
-  as a gate note.
+  ADR 0012 decision 7 had settled it (minor, with a release-note callout), so I treated it as closed and planned to state it only in the plan's Goals; the operator had to ask "Is idempotency requirement a breaking change?" as a gate note.
   The `/plan-issue` template lists breaking-vs-non-breaking as a gate-worthy ambiguity, but a *settled* classification and an *unasked* one look identical from the operator's side.
   Impact: one extra question in the second gate; no rework, and answering it surfaced the strongest supporting evidence (the hazard already existed on `/reload`), which then went into the plan and the commit body.
 - `instruction-violation` (self-identified) — ran `rg -rn "before_agent_start" …`, where `-r` is `--replace`; every match came back rewritten to the literal `n` (`pi.on("n", …)`) with line numbers dropped.

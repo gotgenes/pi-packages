@@ -176,9 +176,12 @@ The result is broader coverage (paths detected in any command, not just a curate
 ### Key Translation Steps
 
 1. **Replace `"permission": "allow"`** (top-level string) with `"permission": { "*": "allow" }`.
+
 2. **Split `edit`** into separate `write` and `edit` entries if you need different policies for create vs. modify.
    If not, set both to the same action.
+
 3. **Rename search surfaces**: `glob` → `find`, `list` → `ls`.
+
 4. **Add `.env` rules manually** if you relied on OpenCode's built-in protection.
    The `path` surface is the recommended approach — it covers all tools and bash in one rule:
 
@@ -211,4 +214,5 @@ The result is broader coverage (paths detected in any command, not just a curate
     ```
 
 5. **Remove OpenCode-only surfaces** (`lsp`, `question`, `webfetch`, `websearch`, `todowrite`, `doom_loop`) — they have no effect in this extension.
+
 6. **Add `mcp` rules** if you use MCP servers — OpenCode has no equivalent, so this is new configuration.

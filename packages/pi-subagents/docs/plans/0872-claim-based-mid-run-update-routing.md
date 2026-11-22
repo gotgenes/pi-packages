@@ -214,8 +214,10 @@ private canSendUpdates(runConfig: RunConfig | undefined): boolean {
 - **A completion nudge after a released claim.**
   The updates were already delivered by the report that released the claim, and the nudge carries the outcome, not the updates.
   No duplication.
-- **A spawn that throws.** `spawnAndWait` can throw only from `resolveSpawn`/`create`, before the child exists, so there is no run to have produced updates.
-- **A run that errors.** `renderOutcomeBody` returns only `Error: …`, so the updates are the one place the child's mid-run findings survive — a gain over today, where a foreground child cannot report them at all.
+- **A spawn that throws.**
+  `spawnAndWait` can throw only from `resolveSpawn`/`create`, before the child exists, so there is no run to have produced updates.
+- **A run that errors.**
+  `renderOutcomeBody` returns only `Error: …`, so the updates are the one place the child's mid-run findings survive — a gain over today, where a foreground child cannot report them at all.
 
 ## Module-Level Changes
 

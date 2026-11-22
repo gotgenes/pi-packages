@@ -47,8 +47,7 @@ Filed [#751] for the `select`/`input` fallback's complete-view capability, which
 
 ### Addendum — request-id observability (same session)
 
-An operator question after the plan commit — "should every request have an ID when it gets created?"
-— opened a gap the phase sweep had missed, and reshaped part of this plan.
+An operator question after the plan commit — "should every request have an ID when it gets created?" — opened a gap the phase sweep had missed, and reshaped part of this plan.
 
 - **Traced and measured before answering.**
   There is no permission request id: three conventions (borrowed `toolCallId` at `runner.ts:162`, minted `skill-input-…` at `skill-input-gate-pipeline.ts:86`, a third minted at `approval-escalator.ts:253` that discards the one it was handed), and the id attaches inside `promptForApproval`, so no non-prompting resolution carries one.

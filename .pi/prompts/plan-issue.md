@@ -174,12 +174,17 @@ Then an H1 title (e.g., `# <short descriptive title>`) — required by markdownl
   - `**Release:** mid-batch — defer (batch "<name>"); confirm at ship time`
 
   Use the value derived in Gather context step 8, then add a sentence of rationale (which batch, why independent).
+
 - **Problem Statement** — quote the issue's framing in your own words.
+
 - **Goals** — bullet list, scoped to this change.
+
 - **Non-Goals** — explicitly defer anything tangential (sibling issues, follow-ups).
   A Non-Goal resting on a path being unreachable is a claim about the *current* bound — when the change moves that bound (a budget, a limit, a threshold), re-derive the reachability before writing it.
+
 - **Background** — relevant existing modules/functions and how they relate.
   Flag any constraint from AGENTS.md that applies.
+
 - **Design Overview** — decision model, data shapes, separation of concerns, edge cases.
   An edge case the Design Overview states as behavior (not as out of scope) gets a test in some TDD step — name the step.
   Include code-fenced TS types when shape changes.
@@ -196,6 +201,7 @@ Then an H1 title (e.g., `# <short descriptive title>`) — required by markdownl
   When the design replaces the evidence a guard reads (a scan swapped for a subscription, polling for an event), enumerate both directions: what the new source sees that the old missed, **and** what the old source saw that the new one misses.
   A universal claim about the new source ("every path emits X") is the one to verify before it justifies dropping a fallback.
   When the change alters a value consumers compare against, list each comparison per consumer with the direction a mismatch fails — an exclusion or deny-list fails toward allow where an allow-list fails toward ask.
+
 - **Module-Level Changes** — file-by-file list of what's added, changed, or removed.
   When a step removes or renames an export, grep all `src/` and `test/` files — plus `.pi/skills/package-*/SKILL.md` and `packages/<PKG>/docs/architecture/` (which name internal symbols in narrative prose, not only tree listings) — for every removed symbol before finalizing the file list.
   When the removed export is a public or cross-extension API surface (a `package.json` `exports` re-export, an event channel, a `Symbol.for()` accessor), also grep the whole `packages/<PKG>/docs/` tree — user guides and top-level docs reference a public mechanism by name, not just `docs/architecture/`.
@@ -220,6 +226,7 @@ Then an H1 title (e.g., `# <short descriptive title>`) — required by markdownl
   When a step adds an **optional** field to an object a `src/` function *produces*, grep `test/` for exact-equality assertions on it (`toEqual`, `toHaveBeenCalledWith`) — optionality satisfies `tsc` and does not satisfy an exact assertion, so a "no construction site breaks" prediction misses them.
   When the design predicts a file will **not** change despite being in the blast radius, list it with that prediction and the claim it rests on.
   A predicted-unchanged file is a falsifiable claim; an omitted one is invisible.
+
 - **Test Impact Analysis** — for extraction and refactoring issues: (1) what new unit tests does the extraction enable that were previously impossible or impractical?
   (2) what existing tests become redundant with the new lower-level tests, and can they be simplified or removed?
   (3) which existing tests must stay as-is because they genuinely exercise the layer being extracted?
@@ -228,6 +235,7 @@ Then an H1 title (e.g., `# <short descriptive title>`) — required by markdownl
   Run the candidate over every real sample available, and include this repo's own authoring conventions among the shapes it must survive, such as `markdown-conventions`' four-backtick fence.
   When a prototype exists, run each case and killing mutation the TDD Order names through it, and record the outcome it produced rather than the one you expect.
   When the change's goal is a token's **absence** from output, apply that predicate to every literal the plan specifies, and assert it across the whole variant set rather than one example.
+
 - **Invariants at risk** — when the change touches a surface a prior phase step already refactored, list that step's documented invariants (the architecture roadmap's `Outcome:`/`Landed:` bullets) and name the test that pins each — add a test if the invariant lives only in prose.
   Open each test you name — a file that mocks the layer under test pins nothing about it.
   A later step must not regress an earlier step's outcome with a green suite.
@@ -236,6 +244,7 @@ Then an H1 title (e.g., `# <short descriptive title>`) — required by markdownl
   An invariant discharged by "no input of this shape exists" is unproven — a corpus bounds observed frequency, not reachability, so enumerate the mechanism's inputs instead.
   When the plan removes the mechanism an existing test's comment credits, spike the removal and run that test at planning time — that the test stays green is a measurement, not an argument.
   Name the constituency each invariant serves and confirm it still holds for them — an invariant can be dead for one consumer and load-bearing for another, and a design that improves the loudest one regresses the original.
+
 - **TDD Order** — numbered red→green→verify→commit cycles.
   Each item names the test surface, what's covered, and the suggested commit message (`test:`, `feat:`, `feat!:`, `fix:`, `docs:`).
   Open each test file a step names — one that mocks the layer under change pins nothing about it.
@@ -255,8 +264,10 @@ Then an H1 title (e.g., `# <short descriptive title>`) — required by markdownl
   Never plan a single step that requires rewriting an entire large test file at once.
   When a step removes an export (not just renames it), every importing module and its tests break at the type level in that commit — fold the extraction, all consumer updates, and all consumer-test updates into one step regardless of call-site count.
   When a step removes fields from an interface and a downstream file constructs an object literal satisfying that interface, include the call-site update in the same step — TypeScript's excess property checking rejects the stale fields immediately.
+
 - **Risks and Mitigations** — concrete risks and how the plan addresses each.
   When a risk asserts what happens if a mechanism is **absent**, spike its removal — a spike that exercises the mechanism present verifies the happy path, not the risk.
+
 - **Open Questions** — defer-until-needed items.
 
 ## File follow-up issues
@@ -291,6 +302,7 @@ Before stopping, persist planning observations for cross-session continuity:
 1. Determine the retro file path: same location logic as the plan file (single-package → `packages/<PKG>/docs/retro/NNNN-<slug>.md`; cross-package → `docs/retro/NNNN-<slug>.md`).
    Use the same slug as the plan file, unless `## Check for prior session context` found an existing retro file for this issue — append to that one.
    Create the directory if needed.
+
 2. If the retro file does not exist, create it with YAML frontmatter:
 
    ```yaml
@@ -301,6 +313,7 @@ Before stopping, persist planning observations for cross-session continuity:
    ```
 
    Followed by `# Retro: #N — <issue title>`.
+
 3. Append a stage entry:
 
    ```markdown
@@ -317,6 +330,7 @@ Before stopping, persist planning observations for cross-session continuity:
    ```
 
    When the operator decides during this session that an improvement phase should open before this issue's implementation, record the candidate cause and the sequencing call under a `#### Phase handoff` subsection there too — `/plan-improvements` greps this exact heading in its Step 1, and a handoff recorded under an ad-hoc heading surfaces only by luck.
+
 4. Commit: `git add <retro-file> && git commit -m "docs(retro): add planning stage notes for issue #N"`.
 
 Wrap code identifiers, filenames, and text containing underscores in backticks in the retro file.

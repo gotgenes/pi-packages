@@ -113,8 +113,7 @@ The friction worth carrying forward is concentrated in two places: `/ship`'s lan
   Impact: ~6 extra tool calls and one rejected commit; the right move was to hand-write the merged form after the *first* re-merge.
 - `other` — **A hook-rejected commit was invisible because its output was piped through `tail -3`.**
   `git commit -F /tmp/cm.txt 2>&1 | tail -3` showed three passing hook lines and no `[main <sha>]` line; the rejection was above the window.
-  Impact: one wasted "did it commit?"
-  round trip via `git log --oneline -2`.
+  Impact: one wasted "did it commit?" round trip via `git log --oneline -2`.
   `AGENTS.md` warns against piping a *gate* through `tail`; piping the commit itself hides the rejection the same way.
 - `instruction-violation` (self-identified, twice) — **`PLAN` was set in one `bash` call and read in the next.**
   Both ship-stage occurrences failed with `fatal: bad revision '^..HEAD'`.

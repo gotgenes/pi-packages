@@ -103,9 +103,12 @@ export function sessionCommandIndex(tokens: readonly string[]): number | null {
 - `literalWordsOf(tokens)` builds `CommandWord`s from the whitespace tokens: `value` is the text, `computed` is whether the token contains shell syntax (`` ['"\\$`|&;<>(){}[\]*?!~#] ``), `mayLeadWithDash` is `text.startsWith("-")` (exact for an uncomputed word), and offsets run over a single-space join.
   Marking a token `computed` is what makes `isAdmittedModifierLayer`'s literal check honest for string input, and any computed word declines generalization outright.
   The screen applies only to wrapper commands; an ordinary command never reaches it.
+
 - `reachedLiteralCommand(inner)` is the predicate `onlyModifiesExecution` already ends with (`classifyWrapperWords(inner) === undefined && isLiteralCommandName(inner.at(0)?.text ?? "")`), extracted first (step 1) so the two consumers share it.
   It also covers a refused first layer: an empty `peeled` leaves `unwrapped.words` equal to the wrapper itself, which classifies as a wrapper, so no separate `peeled.length === 0` guard is needed (planning-time reasoning: `sudo -s mytool` would otherwise return `0` and fall to the `sudo *` arity path, which step 2's case table pins).
+
 - The index is the sum of peeled layer lengths, not `words.length - unwrapped.words.length`, because `unwrapIndirection` trims an exec terminator off the inner command.
+
 - `generalizesLayer(layer)`:
 
   | Layer                                                                                                           | Generalizes when                                                      |
@@ -117,8 +120,10 @@ export function sessionCommandIndex(tokens: readonly string[]): number | null {
 
   The table-walk row reuses the floor exemption's admission rather than adding the PR's second allowlist (`sessionWrapperOptionsKnown`); `tableInnerIndex` treats an unknown option as a flag, so `timeout --sig KILL 5 mytool` would otherwise suggest `timeout --sig KILL 5 *`.
   The same row refuses a `find`/`fd` exec layer, whose exec flag is an option word; that matters because `find`'s own options may follow the inner command (`find . -exec mytool x + -delete`).
+
 - `mayReplaceArguments(layer)` (step 3): any layer word matching `/^-[^-]*[Ii]/` or starting with `--r`.
   It is a deliberate over-approximation of `-I`, `-i`, `--replace` and their clusters/abbreviations (`-0I`, `--rep=X`): a false positive (`-L1i` style values) only costs an exact-command suggestion.
+
 - A wrapped prefix always ends in a space and `*`, even when the inner arity prefix covers every token (`nohup git log` → `nohup git log *`, `sudo ls` → `sudo ls *`).
   This is the PR's choice and is narrower than the unwrapped `git log*` (no `git logx`); the matcher treats a trailing space-and-`*` as optional, which keeps the bare command covered.
 

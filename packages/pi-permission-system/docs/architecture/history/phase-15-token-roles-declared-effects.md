@@ -324,13 +324,19 @@ The issue reported one of the four positions; the scope was widened to the class
 ADR 0009 calls positional invariance "a guarantee, not a residual", so this is inside the contract rather than a residual of it.
 
 - **Smell:** Category C (two walkers omit a pairing `collectRedirectTokens` and `collectStatementOperandTokens` already perform).
+
 - **Target:** `src/access-intent/bash/token-collection.ts` — one guarded `collectHostedExecutionTokens(child)` call per walker, each at the single point dominating every argument-node exit of its loop; `test/access-intent/bash/token-collection.test.ts` and `test/access-intent/bash/program.test.ts` for the unit and end-to-end surfaces.
+
 - **Constraint:** the argument's own text keeps whatever role its walker already gave it — a spent pattern positional stays unprojected, a `script-file` value stays projected — so this adds the *nested command's* operands and removes nothing.
   The search reads executions, not text: a single-quoted argument runs nothing and contributes nothing.
+
 - **Outcome:** all four positions project the nested command's operands, which keep their own command's effect attribution; the guarantee holds wherever ADR 0009 claims it.
+
 - **Commit type:** `fix:`.
+
 - **Impact 3 / Risk 1 / Priority 15.**
-  Measured against 7653 corpus commands: 13 commands (0.17%) gain an `external_directory` candidate and 14 gain a `path` candidate, 0 lose one on either surface, and **0** gain a prompt shape they did not already have — every affected command already carried an `external_directory` candidate, so the gain is an evidence line on an ask that was already firing. 11 of the 15 gained strict tokens name real paths; 4 are git revision ranges, which is [#859]'s class.
+  Measured against 7653 corpus commands: 13 commands (0.17%) gain an `external_directory` candidate and 14 gain a `path` candidate, 0 lose one on either surface, and **0** gain a prompt shape they did not already have — every affected command already carried an `external_directory` candidate, so the gain is an evidence line on an ask that was already firing.
+  11 of the 15 gained strict tokens name real paths; 4 are git revision ranges, which is [#859]'s class.
 
   Landed: `fix(pi-permission-system): project the operands of a command hosted in a quoted argument` and its generic-command sibling, with a `tokensOf` test-helper tidy ahead of them and an `externalAccesses` pin behind them.
 
@@ -342,12 +348,17 @@ Release: independent
 The `script` role already exists in `PATTERN_FIRST_COMMANDS` (that is how `sed -e` and `awk -f` are read since [#823]); these commands are simply absent from the table.
 
 - **Smell:** Category C (a vocabulary that exists for this role is not consulted for these commands).
+
 - **Target:** `src/access-intent/bash/token-collection.ts` — `PATTERN_FIRST_COMMANDS` entries for `node` and `bun` (`-e`/`--eval`, `-p`/`--print`, one config object each because they are separate parsers), `python`/`python3` (`-c`), `perl` (`-e`/`-E`), `ruby` (`-e`), each with zero pattern positionals so a script *file* operand (`node build.js /tmp/x`) stays an operand; the flag is listed as consuming only where it consumes in every implementation the name reaches, per [#823]'s rule.
+
 - **Constraint:** the script's own contents are not projected — an interpreter payload is band C, exactly as `bash -c` is, and the token being dropped was the whole program text rather than any path inside it, so nothing the gates could act on is lost.
   This is recorded as an ADR 0009 accepted residual alongside the opaque-payload one it mirrors.
+
 - **Outcome:** `node -e "// comment\nconsole.log(1)"` reaches the bash surface with no `external_directory` ask; measured over the review-log corpus, the interpreter command nodes contributing a non-path-shaped `path` candidate fall to the two recorded residuals.
   Not `measure-path-false-positives.mjs`'s monthly column, which counts asks that actually fired and so depends on the operator's policy: it has no 2026-09 row at all, having recorded zero bash `external_directory` asks that month.
+
 - **Commit type:** `fix:`.
+
 - **Impact 3 / Risk 1 / Priority 15.**
 
   Landed: `fix(pi-permission-system): stop projecting an interpreter's inline script as a path`, with the ADR 0009 amendment behind it.
@@ -361,9 +372,13 @@ Release: independent
 **Cause:** `classifyTokenAsPathCandidate` and `classifyTokenAsRuleCandidate` test `token.includes("..")`, a substring rule, so a git revision range (`HEAD..origin/main`, `a...b`) is a parent-traversal candidate, and under an unknown base ([#393]'s conservatism after `cd ~/x`) it is flagged external.
 
 - **Smell:** Category C (an over-broad shape rule; the classifier is right that shape decides, and wrong about the shape).
+
 - **Target:** `src/access-intent/bash/token-classification.ts` — `..` qualifies when the token is exactly `..`, starts with `../`, ends with `/..`, or contains `/../`; everything else falls through to `classifyBareTokenCandidate` and the [#645] existence probe, so a real file named `a..b` is still caught when it exists.
+
 - **Outcome:** `cd ~/x && git log HEAD..origin/main` raises no `external_directory` ask; the two substring tests read 0.
+
 - **Commit type:** `fix:`.
+
 - **Impact 2 / Risk 1 / Priority 10.**
 
   Landed: `refactor(pi-permission-system): route both classifiers' .. test through one predicate` and `fix(pi-permission-system): stop reading a git revision range as a parent-directory path`, with the reporter's predicate adopted for both classifiers; the two substring tests read 0.
@@ -399,16 +414,22 @@ Release: independent
 ADR 0013 measured the drop and ADR 0009 lists redirect targets among the projection's guarantees, so this is inside the contract, not a residual.
 
 - **Smell:** Category C (decided once at collection, re-decided at projection; the `COMMAND_PREFIX_TYPES` clone at three sites is the same fact fallow can see).
+
 - **Target:** `src/access-intent/bash/token-collection.ts` — `PathToken` gains a `role` (`redirect-destination` | `operand`, and the `script` value [#863]'s table entries become if the plan folds them in), stamped where the effect is; `src/access-intent/bash/bash-path-resolver.ts` — `projectRuleCandidates` and `projectExternalPaths` admit a `redirect-destination` token without the shape gate or the existence probe, resolving it against the effective base like any operand (an unknown base still flags conservatively, per [#393]); `docs/decisions/0009-bash-path-projection-completeness-contract.md` — the wording ADR 0013 flagged.
   Tidy-first prep, reassigned at planning (operator decision, 2026-09-24): the `COMMAND_PREFIX_TYPES` re-spellings sit in functions this step does not edit and move to [#977], which edits `commandArgumentWords`; the `bash-path-extractor.test.ts` dedup rested on a facade no production code calls, so this step adds no case there and the question becomes [#978].
   The one prep this step keeps routes `token-collection.test.ts`'s effect assertions through a role-agnostic projection, so a required `role` changes only the assertions about it.
+
 - **Constraint:** the role decides candidacy only; the direction still comes from the effect, and an unresolvable redirect ([#814]) still proves nothing and projects nothing.
   A descriptor duplication (`2>&1`) collects no token at all and is unaffected.
+
 - **Breaking change:** a bare creating redirect newly reaches `path_write` and, under an unknown base, `external_directory_write`.
   An unconfigured install does not prompt on `echo hi > out.txt` in the working directory, because an unmatched `path` promotion stays unrestricted; it prompts only after a non-literal `cd`.
   The migration note must not recommend `path_write: {"*": "allow"}`: explicit directional entries append after the expanded sugar, so that line would out-rank a `path` deny on writes (measured: `.env` under `path: {"*.env": "deny"}` resolves `allow`).
+
 - **Outcome:** `cat x > newfile` under `path_write: {"*": "ask"}` prompts; `PathToken` carries a role; only a redirect's first destination is admitted by role (the rest are [#977]).
+
 - **Commit type:** `fix!:`.
+
 - **Impact 4 / Risk 2 / Priority 16.**
 
   Landed: `test(pi-permission-system): assert collected token effects through a projection`, `refactor(pi-permission-system): name the child a redirect reads or writes`, `refactor(pi-permission-system): detect an argument whose value is computed at run time`, `refactor(pi-permission-system): record a redirect target's role on its collected token`, and `fix(pi-permission-system)!: check a redirect's target against path rules even when the file does not exist yet`.
@@ -423,10 +444,14 @@ Release: independent
 Three consumers read the misparse: command enumeration drops the trailing words with the redirect, the effect proof's retraction guards never see them, and the path collector attributes them the redirect operator's effect.
 
 - **Smell:** Category C (a token's role — argument, not destination — lost before any consumer reads it).
+
 - **Target:** decided by the plan; the likely seam normalizes the redirected statement once so `command-enumeration.ts`, `command-effects.ts`'s guards via `token-collection.ts`, and `collectRedirectTokens` read one argument list, reusing [#609]'s redirect-target helper in `redirect-analysis.ts`.
   Tidy-first prep, reassigned from [#609]: export `COMMAND_PREFIX_TYPES` and replace its three literal re-spellings (`commandArgumentWords`, `collectEmbeddedOptionValues`, `cdLiteralTarget`), the first of which this step edits.
+
 - **Constraint:** only the first destination is the redirect's target; `redirectMayWriteFile`'s refusal must stay fail-closed for whatever the plan cannot place.
+
 - **Outcome:** `git 2>/dev/null push --force` is denied by `git push *`; `find ~/x 2>/dev/null -delete` retracts the read; `grep pat 2>/dev/null ~/x/f.txt` attributes `~/x/f.txt` grep's read.
+
 - **Commit type:** `fix:`.
 
   Landed: `refactor(pi-permission-system): name the command-prefix child types once`, `refactor(pi-permission-system): expose the grammar's own parse beside the corrected one`, `fix(pi-permission-system): gate a command whose redirect comes before or inside its words`, `fix(pi-permission-system): resolve paths after a cd whose redirect precedes its target`, `refactor(pi-permission-system): name where a redirect's trailing words begin`, `refactor(pi-permission-system): build a parse view that hands a redirect's trailing words back to their command`, `refactor(pi-permission-system): ask whether a parse resolved from its own module`, and `fix(pi-permission-system): check the words after a mid-command redirect against the command's own rules`.
@@ -441,11 +466,17 @@ Release: independent
 A command, argument, or redirect written after `<<EOF` therefore reaches no bash rule and no path gate.
 
 - **Smell:** Category C (the tail's role, a statement or an argument or a redirect, is lost at parse).
+
 - **Target:** decided by the plan; the likely seam extends [#977]'s parser-boundary correction to hoist the heredoc tail into the places its heredoc-free spelling reaches.
+
 - **Constraint:** [#941]'s pinned unit text (`git commit -F - <<'EOF'` enumerates as `git commit -F`) is kept or deliberately revisited, since a project deny rule is spelled against it.
+
 - **Soft dependency:** [#977], whose parser-boundary correction the likely seam extends.
+
 - **Outcome:** `cat <<EOF | rm -rf /tmp/x` is denied by `rm *`; `cat <<EOF > /tmp/o` projects `/tmp/o` as a `write`.
+
 - **Commit type:** `fix:`.
+
 - **Impact 3 / Risk 2 / Priority 12.**
 
   Landed: `refactor(pi-permission-system): move the parse-view primitives into their own module`, `test(pi-permission-system): share the parse-tree helpers and pin a corrected tree's containment and leaves`, `fix(pi-permission-system): check the words after a heredoc against the command's own rules`, `refactor(pi-permission-system): build a parse view that moves a heredoc's tail to where its heredoc-free spelling sits`, and `fix(pi-permission-system): gate the commands and redirects written after a heredoc`.
@@ -461,11 +492,17 @@ Release: independent
 Every unit under the statement is floored to `ask`, so an explicit `deny` on the command after the heredoc never fires, and approving the prompt runs it.
 
 - **Smell:** Category C (the tail's role is lost at parse, here because the parse fails rather than mis-hangs).
+
 - **Target:** decided by the plan; the likely seam is the [#875] salvage re-parsing what follows the heredoc start on its line, keeping the salvage's rule that a re-parse which still errs is dropped.
+
 - **Soft dependency:** [#979], whose heredoc-tail correction a recovered tree would pass through like any other.
+
 - **Constraint:** the floor stays for whatever remains unresolved; recovery may only add units.
+
 - **Outcome:** `cat <<EOF ; rm -rf x` is denied by `rm *`; `cat <<EOF arg > /tmp/o` projects `/tmp/o` as a `write`.
+
 - **Commit type:** `fix:`.
+
 - **Impact 2 / Risk 2 / Priority 8.**
 
   Landed: `refactor(pi-permission-system): iterate the salvage's candidate texts rather than its nodes`, `test(pi-permission-system): state the salvage's anti-invention property over words`, `refactor(pi-permission-system): derive the heredoc-free spelling of a line the grammar could not parse`, and `fix(pi-permission-system): deny a command written after a heredoc the grammar cannot parse`.
@@ -479,9 +516,13 @@ Release: independent
 **Cause:** `extractExternalPathsFromBashCommand` (`src/handlers/gates/bash-path-extractor.ts`) has no production caller (both bash path gates read `BashProgram` directly), so its 1300-line test file re-tests `BashProgram` through a seam nothing uses; that file is the concentrated test-design cluster the craftsmanship scout found.
 
 - **Smell:** Category A (dead code kept alive by its own tests) over Category G (a test file at the wrong layer).
+
 - **Target:** retire the facade and its test file after moving any case with no equivalent in `program.test.ts` or `token-collection.test.ts`, or keep it as a documented seam and narrow the test to the facade's own mapping; the plan decides.
+
 - **Soft dependency:** [#985], which lands directly after [#979], the step this one now follows.
+
 - **Outcome:** no test file re-tests `BashProgram` through an unused facade; the `bash-path-extractor.ts` module-tree entry matches the decision.
+
 - **Commit type:** `test:`/`refactor:` (no release).
 
   Landed: `test(pi-permission-system): give BashProgram.externalAccesses its own test file`, `test(pi-permission-system): pin the shell-syntax external-access cases on BashProgram`, `test(pi-permission-system): pin the pattern-first command external-access cases on BashProgram`, `test(pi-permission-system): pin the cd-prefix and win32 external-access cases on BashProgram`, and `refactor(pi-permission-system): retire the unused bash external-path facade`.
@@ -497,12 +538,17 @@ It prompts under the very `external_directory_read: {"*": "allow"}` recipe [#800
 `sed` is 24 of the 388 recent asks this phase measured, second only to `git`.
 
 - **Smell:** Category C (a presumption-with-withdrawal pattern the core already implements for `find`, `fd`, and `sort` is not applied to the two commands whose exclusion costs the most).
+
 - **Target:** `src/access-intent/bash/command-effects.ts` — `sed` and `awk` join the core as presumed readers whose claim a specific argument withdraws: `-i`/`--in-place` and a `w`/`W` command in the script for `sed`; `-i inplace` and a `print >` / `>>` / `|` redirect in the program text for `awk`; `docs/configuration.md` — the § pure-reader core table and the sentence documenting the exclusion.
+
 - **Constraint:** fail closed on ambiguity, exactly as an unclassified command does today — a script read from `-f scriptfile`, a program text from a variable, or a `w` match the parser cannot place keeps consulting both surfaces.
   The bare-basename rule stands: `./sed` and `/bin/sed` prove nothing.
   `awk`'s program-text case is soundly harder than `sed`'s flag case, and the issue accepts a partial landing — `sed` alone, with `awk` restricted to its flag-based withdrawal — as real relief.
+
 - **Outcome:** under `external_directory_read: {"*": "allow"}` with `_write` at `ask`, `sed -n '1,80p' ~/other/file` is silent while `sed -i 's/a/b/' ~/other/file` still prompts; the core table names `sed` and `awk`.
+
 - **Commit type:** `fix:`.
+
 - **Impact 4 / Risk 2 / Priority 16.**
 
   Landed: `refactor(pi-permission-system): give each guarded core word a withdrawal predicate`, `test(pi-permission-system): call proveCommandEffect through one test helper`, `fix(pi-permission-system): a quoted withdrawing option keeps a wrapped find, fd, or sort floored`, `fix(pi-permission-system): sed that only prints resolves on the read surface`, `fix(pi-permission-system): sed substitutions and regex addresses resolve on the read surface`, and `fix(pi-permission-system): awk that only reads its input resolves on the read surface`.
@@ -517,9 +563,13 @@ Release: independent
 **Cause:** the `find`/`fd`/`sort` retraction guards match option spellings against literal argument text, so a word only the shell decides (`$A`, `"$O"`, `$(…)`) can spell `-delete` or `-o` unseen, and the operand resolves on `_read` alone.
 
 - **Smell:** Category C (the guard reads a fact — the word's text — that is not the fact the program receives).
+
 - **Target:** `src/access-intent/bash/command-effects.ts` — the option guards retract on any `ArgWord` whose `computed` is set, the rule [#924] applies to `sed` and `awk`; `docs/configuration.md` — the § pure-reader core table's withdrawal rule.
+
 - **Soft dependency:** [#924], which threads `ArgWord { value, computed }` into `proveCommandEffect`.
+
 - **Outcome:** `A=-delete; find ~/other $A` consults both surfaces; `find . -name '*.ts'` still proves a read.
+
 - **Commit type:** `fix!:` — it newly prompts on a computed argument that may lead with `-`.
 
   Landed: `test(pi-permission-system): build literal argument words through one helper`, `fix(pi-permission-system): a digit argument no longer withdraws sed's or awk's read claim`, `refactor(pi-permission-system): carry whether an argument may lead with a dash`, `fix(pi-permission-system)!: a computed argument that may spell an option withdraws find's, fd's, and sort's read claim`, and three pre-completion-review fixes for words that split inside double quotes (`"x$@"`, an indirect `"x${!a}"`, and any quoted variable, which may be a nameref).
@@ -534,9 +584,13 @@ Release: independent
 **Cause:** `resolvePlainVariableExpansion` resolves a plain `$HOME` to `os.homedir()` and `$PWD` to the base marker whatever the program assigned first, so `HOME=/etc; cat "$HOME/shadow"` projects `~/shadow` and `HOME=-delete; find "$HOME"` proves a core read.
 
 - **Smell:** Category C (the projection reads a fact, the startup value, that is not the value the shell expands).
+
 - **Target:** `src/access-intent/bash/shell-variable-expansion.ts` and its callers: a reference the program may have reassigned is not resolvable, so it reads as computed; ADR 0009's vocabulary note follows.
+
 - **Soft dependency:** [#992], whose guard rule reads `ArgWord.computed` and so inherits the fix.
+
 - **Outcome:** `HOME=/etc; cat "$HOME/shadow"` no longer projects a path under the home directory, and `HOME=-delete; find "$HOME"` withdraws `find`'s read claim.
+
 - **Commit type:** `fix:`.
 
   Landed: `refactor(pi-permission-system): hold the resolvable shell variables in a value`, `refactor(pi-permission-system): read path tokens through the program's word reader`, `refactor(pi-permission-system): enumerate command units through the program's word reader`, `test(pi-permission-system): read words through WordReader in the node-text tests`, `fix(pi-permission-system): a reassigned $HOME or $PWD is no longer resolved to its startup value`, `fix(pi-permission-system): a name read, printf -v, nameref, eval, or source counts as reassigning $HOME`, `fix(pi-permission-system): ~ is no longer read as the home directory after the command reassigns HOME`, `fix(pi-permission-system): ~ may spell an option when the inherited HOME begins with a dash`, and `fix(pi-permission-system): a quoted export, let, trap, or quoted eval counts as reassigning $HOME`.
@@ -554,15 +608,21 @@ The floor's reason — a wrapper hides the command that should be gated — is f
 ADR 0013 §11 keys transparency on the *inner command* (a pure-reader-core head word), so `time pnpm run lint` asks under `<indirection-bash-wrapper>` while `pnpm run lint` resolves by its own rules; `resolveWrapperUnit` already computes the inherited verdict when `floorExemption` holds, so only the admission bar is missing.
 
 - **Smell:** Category C (an exemption the gate already implements is admitted by one proof — argument-independence — when a second, per-wrapper proof would license it just as soundly).
+
 - **Target:** `src/access-intent/bash/wrapper-analysis.ts` — an `execution-modifier` reason beside `core-reader`, admitting a unit whose every peeled layer is a modifier (`time`, `timeout`, `nice`, `stdbuf`, `setsid`) under a per-modifier option allowlist, ending at a literal command name; `test/access-intent/bash/wrapper-analysis.test.ts` and the `bash-command.ts` gate tests; ADR 0013 §11 gains the wrapper-keyed clause; the `wrapper-analysis.ts` entry here and the `<indirection-bash-wrapper>` paragraph in `docs/configuration.md` follow.
+
 - **Constraint:** package-audited per wrapper, never user-declared — the clause does not widen what [#880] keeps outside the floor.
   A nested first-class wrapper (`time sudo …`) keeps its floor, because the clause requires every peeled layer to be a modifier (the peel itself looks through `sudo`).
   `/usr/bin/time`'s `-o`/`--output`/`-a`/`--append` write a file, so their presence refuses the exemption; `nohup` (a tty-conditional `nohup.out`) and `flock` (creates its lock-file operand) stay floored.
   The `writesViaRedirect` refusal exists because §11's exemption *classifies* the unit as read; this clause inherits the inner verdict instead, and a redirect destination is projected onto the path surfaces independently of the floor, so the refusal does not apply to it.
   The metamorphic pin (`time ${cmd}` never loosens the verdict) keeps holding, since the unit's verdict becomes exactly the unwrapped command's.
+
 - **Soft dependency:** [#924], which opens the `command-effects.ts` sequence this step sits inside.
+
 - **Outcome:** `time pnpm run lint >/tmp/lintout.txt 2>&1` resolves as `pnpm run lint` does, redirect gated by the path surfaces as for the unwrapped command; `time sudo rm -rf x` and `timeout 5 bash -c '…'` still floor.
+
 - **Commit type:** `feat:`.
+
 - **Impact 3 / Risk 2 / Priority 12.**
 
   Landed: `refactor(pi-permission-system): answer why a wrapper's floor is lifted, not whether`, `refactor(pi-permission-system): record each peeled wrapper layer in the unwrap result`, `feat(pi-permission-system): time, timeout, nice, stdbuf, and setsid resolve by the command they run`, `feat(pi-permission-system): time -p and timeout -v keep the execution-modifier exemption`, `docs(pi-permission-system): measure the execution-modifier exemption`, and `docs(pi-permission-system): measure the literal-word rule on execution modifiers`.
@@ -578,9 +638,13 @@ Release: independent
 The wrapper floor (`<indirection-bash-wrapper>`, `<opaque-bash-wrapper>`, `<unparsed-bash-subtree>`) is computed only in the child's parse, so it never crosses the wire, and a serving node holding `bash: *` auto-approves the ask the floor raised.
 
 - **Smell:** Category C (a decision the child fixed is re-derived by a node that cannot see its reason).
+
 - **Target:** `src/handlers/gates/tool.ts`, `src/authority/forwarded-request-server.ts`, and the forwarded-request wire shape (ADR 0008's child-fixed facts).
+
 - **Constraint:** a serving-node `deny` still auto-denies; only an `allow` the floor overrode must escalate instead of approving.
+
 - **Outcome:** a subagent's `sudo rm x` under a parent `bash: *` allow reaches the parent's `Authorizer` instead of logging `forwarded_permission.auto_approved` (`time rm x`, the reported shape, no longer floors since [#963]).
+
 - **Commit type:** `fix:`.
 
   Landed: `refactor(pi-permission-system): raise every bash floor through one helper`, `refactor(pi-permission-system): record which floor raised a bash ask`, `refactor(pi-permission-system): carry a bash ask's floor onto the forwarded request`, and `fix(pi-permission-system): a subagent's floored bash ask prompts on the parent instead of riding its allow rule`.
@@ -595,10 +659,15 @@ Release: independent
 The serving node resolves it alone and its answer approves the whole tool call, so `ls && rm -rf /tmp/x` under a child `*: ask` and a parent `ls*: allow` runs `rm` without the parent's policy judging it.
 
 - **Smell:** Category C (a node approves a fact set narrower than the action it authorizes).
+
 - **Target:** the forwarded access facts (ADR 0008 §2), `src/handlers/gates/bash-command.ts`, `src/handlers/gates/tool.ts`, and the serving policy [#1029] introduces; the plan settles the per-unit wire shape, which [#1019]'s spellings would ride too.
+
 - **Constraint:** the serving node judges each forwarded unit most-restrictive, with [#1029]'s floor honored per unit; a version-skewed request keeps today's single-value resolution.
+
 - **Soft dependency:** [#1029], whose floor fact this step generalizes from the chain to each unit.
+
 - **Outcome:** `ls && rm -rf /tmp/x` forwarded under a parent `ls*: allow` reaches the parent's `Authorizer` instead of logging `forwarded_permission.auto_approved`.
+
 - **Commit type:** `fix:`.
 
   Landed: `refactor(pi-permission-system): name the serving policy's single-value resolution`, `refactor(pi-permission-system): record every unit a bash chain leaves asking`, `refactor(pi-permission-system): carry a bash chain's asking units onto the forwarded request`, and `fix(pi-permission-system): a subagent's forwarded bash line is judged command by command on the parent`.
@@ -611,10 +680,15 @@ Release: independent
 **Cause:** a wrapper unit's floor spreads its resolved check, so a session-granted `sudo rm y` comes back `ask` with `source: "session"`; `pickMostRestrictive` is first-wins on ties, so it beats a later rule-raised `ask`, and `GateRunner` tests the source before the state and approves the whole tool call.
 
 - **Smell:** Category C (a grant for one unit is read as a grant for the chain).
+
 - **Target:** `src/handlers/gates/bash-command.ts` (the wrapper and unparsed-subtree floors that clamp a session grant into an `ask`).
+
 - **Constraint:** a session grant still approves the unit it names, and a chain whose only asking units are session-granted still takes the fast path.
+
 - **Soft dependency:** [#1030], which excludes session-granted units from the forwarded set on the premise this step makes true.
+
 - **Outcome:** `sudo rm y && git push origin main` under `{"*": "allow", "git push *": "ask"}` and a session grant for `sudo rm y` prompts for `git push origin main`.
+
 - **Commit type:** `fix:`.
 
   Landed: `fix(pi-permission-system): a session grant on one bash unit no longer approves the chain's other asking units` and `refactor(pi-permission-system): take the session fast path only for a session allow`.
@@ -629,10 +703,15 @@ Release: independent
 The enumerator emits one unit for the whole line and never descends the subshell, so a `deny` on a command inside it is unreachable; the wrapper floor is what keeps the shape fail-closed, and [#963]'s literal-head guard deliberately leaves it there.
 
 - **Smell:** Category C (a command the program runs that no unit names, held closed by a floor rather than gated on its own rules).
+
 - **Target:** `src/access-intent/bash/command-enumeration.ts` — descend a `subshell` argument of a `time` command as a bare `( … )` statement is descended; the plan settles what the `time` unit itself resolves to and whether the brace-group shape is recoverable; `BashPathResolver` checked for the same gap.
+
 - **Constraint:** fail-closed until proven otherwise — a shape whose inner structure is not recovered keeps the floor.
+
 - **Soft dependency:** [#963], whose literal-head guard this step relaxes for the shape it learns to read.
+
 - **Outcome:** `time (pnpm run lint >/tmp/l.log 2>&1)` resolves by `pnpm run lint`'s own rule; `time (rm -rf /tmp/x)` reaches an `rm *` deny.
+
 - **Commit type:** `fix:`.
 
   Landed: `fix(pi-permission-system): commands inside time ( … ) are gated on their own rules` and `fix(pi-permission-system): a cd inside time ( … ) resolves the paths after it in that subshell`, after `refactor(pi-permission-system): share the command word filter from nested-execution.ts`.
@@ -647,9 +726,13 @@ Release: independent
 When that word is a pure-reader core word, `floorExemptionOf` answers `"core-reader"`, so `sudo -e cat` resolves by `cat`'s rule instead of the `<indirection-bash-wrapper>` floor.
 
 - **Smell:** Category C (a write the peel proves as a read).
+
 - **Target:** `src/access-intent/bash/wrapper-analysis.ts` — a getopt-faithful `sudo` grammar (clusters, attached values, long options and their abbreviations, verified against `man sudo`) finds the inner command; a layer carrying edit (`-e`/`--edit`), shell (`-s`/`-i`), or directory-moving (`-D`/`-R`) mode keeps the floor, and `executedUnitOf` names no inner command for it.
+
 - **Constraint:** fail-closed — the peel refuses rather than models a mode that edits files, hands the operand to a shell, or moves where relative operands resolve.
+
 - **Outcome:** under `bash: {"*": "allow", "rm *": "deny"}`, `sudo -e cat`, `sudo --edit true`, and `sudo -D /etc cat shadow` ask with `<indirection-bash-wrapper>`, and `sudo --user cat rm x` and `sudo -nu cat rm x` no longer resolve by `cat`'s rule.
+
 - **Commit type:** `fix:`.
 
   Landed: `fix(pi-permission-system): sudoedit and sudo's clustered or long options no longer earn the pure-reader exemption` and `fix(pi-permission-system): sudo's shell, login, chdir, and chroot modes keep the indirection floor`, after `refactor(pi-permission-system): extract the wrapper option walk from innerCommandIndex`.
@@ -664,10 +747,15 @@ Release: independent
 `env -C`/`--chdir` parses correctly but moves where the inner command's relative operands resolve, so `env -C /etc cat shadow` earns `core-reader` while the path surfaces judge `shadow` against the agent's cwd.
 
 - **Smell:** Category C (a command the peel names differently from the one that runs).
+
 - **Target:** `src/access-intent/bash/wrapper-analysis.ts` — `env`, `xargs`, and `doas` grammars on [#1042]'s dispatch, each verified against a real `--help`/man page; `env -C`/`--chdir`, `-S`/`--split-string`, `-P`, `-a`/`--argv0`, and `--env0-from`, `xargs -J`, and `doas -C`/`-s` refuse the peel; `watch`, `parallel`, `rush`, and `rust-parallel` never earn `core-reader`; the remaining `VALUE_TAKING_FLAGS` wrappers audited, their residual filed as [#1057].
+
 - **Constraint:** fail-closed — a shape that today holds the floor only because a misplaced value is not a core word (`xargs -R 1 cat rm x`) is checked before a corrected table turns it into an exemption.
+
 - **Soft dependency:** [#1042], whose grammar dispatch this step extends.
+
 - **Outcome:** under `bash: {"*": "allow", "rm *": "deny"}`, `env -P cat rm x`, `xargs -J cat rm x`, `env -C /etc cat shadow`, `env -a cat rm x`, `xargs -i rm cat x`, `doas -a cat rm x`, and `watch cat x \; rm y` ask with `<indirection-bash-wrapper>`.
+
 - **Commit type:** `fix:`.
 
   Landed: `fix(pi-permission-system): xargs -J and GNU xargs -i/-l no longer earn the pure-reader exemption for the wrong command`, `fix(pi-permission-system): xargs reads every option its BSD and GNU manuals list`, `fix(pi-permission-system): env's chdir, split-string, altpath, and argv0 modes keep the indirection floor`, `fix(pi-permission-system): doas -a, -C, and -s keep the indirection floor`, `fix(pi-permission-system): watch and the parallelizers no longer earn the pure-reader exemption`, and `fix(pi-permission-system): GNU xargs --max-lines no longer earns the pure-reader exemption for the wrong command`.
@@ -681,10 +769,15 @@ Release: independent
 **Cause:** `floorExemptionOf`'s core-reader reason judges the command the peel locates, but the peel reads each layer's words by source text, so an unquoted computed word in an option, a value, a leading operand, or a `NAME=value` argument can split into the command that really runs: `sudo -u $U cat x` with `U="root rm y"` runs `rm y cat x`, and `timeout $D cat x` with `D="5 rm"` runs `rm cat x`.
 
 - **Smell:** Category C (the execution-modifier clause's literal-layer guard missing from its sibling clause).
+
 - **Target:** `src/access-intent/bash/wrapper-analysis.ts` — the core-reader reason refuses when a peeled layer carries a word before its inner command that the shell can split, reusing `CommandWord.computed`; the plan settles whether a double-quoted computed word is admitted (it is not: a quoted parameter expansion may split through a nameref or vanish as `"$@"`).
+
 - **Constraint:** fail-closed, and the same rule as `isAdmittedModifierLayer`'s, so the two clauses cannot disagree about a layer.
+
 - **Soft dependency:** [#1053], which reshapes the same peel.
+
 - **Outcome:** under `bash: {"*": "allow", "rm *": "deny"}`, `sudo -u $U cat x`, `env FOO=$Y cat x`, and `timeout $D cat x` ask with `<indirection-bash-wrapper>`.
+
 - **Commit type:** `fix:`.
 
   Landed: `fix(pi-permission-system): a computed word in a wrapper's options keeps the indirection floor` and `refactor(pi-permission-system): read the literal-word rule once for both floor exemptions`, after `test(pi-permission-system): pin the literal wrapper layers and session patterns a computed-word guard must leave alone`.
@@ -698,10 +791,15 @@ Release: independent
 **Cause:** `classifyWrapperWords` flags `env` as `"indirection"` by name alone, and `floorExemptionOf` finds its exemption reasons only in a peeled inner command, so when `ENV_GRAMMAR`'s walk consumes every word as an option, a value, or a `NAME=value` assignment, there is nothing to exempt and `env | rg '^PI_'` asks under `bash: {"*": "allow"}` while `env cat x` and `printenv` do not.
 
 - **Smell:** Category C (the floor's reason — a wrapper hides the command that should be gated — is false for a unit that names no command).
+
 - **Target:** `src/access-intent/bash/wrapper-analysis.ts` — a no-command exemption when the peel of an `env` layer runs off the end of its words; the plan settles whether the exemption is grammar-driven or `env`-specific (bare `xargs` runs `echo`, so it is not a no-command form).
+
 - **Constraint:** fail-closed — a computed word (`env $X`, `env "$X"`) and a refusing option (`-S`, `-C`, `-P`, `-a`, `--env0-from`) keep the floor; an explicit `ask`/`deny` on `env` still governs.
+
 - **Soft dependency:** [#1056], whose computed-word guard this exemption reuses.
+
 - **Outcome:** under `bash: {"*": "allow"}`, `env`, `env -0`, `env -i`, `env -u FOO`, and `env FOO=1` resolve `allow` by `*`; `env $X` and `env -S 'rm x'` still ask with `<indirection-bash-wrapper>`.
+
 - **Commit type:** `fix:`.
 
   Landed: `fix(pi-permission-system): a bare env that runs no command resolves by its own rule`, after `refactor(pi-permission-system): split the getopt option walk's end from the inner-command index`, `test(pi-permission-system): hoist exemptionOf to the floorExemptionOf describe`, and `refactor(pi-permission-system): name a bare env's floor exemption`, with `docs(pi-permission-system): measure the no-command exemption` and `fix(pi-permission-system): env --unset with a separate value keeps the indirection floor`.
@@ -717,14 +815,22 @@ Release: independent
 The long tail has nowhere to live but the package's own frozen core, which is the pressure ADR 0009 refused.
 
 - **Smell:** Category A (a declared design with no implementation, and a shipped doc describing it as present) over the Category C cause above.
+
 - **Target:** `src/config/config-schema.ts` — top-level `commandEffects` per §7's shape (exact command basenames, `effects`, `unlessOption`, recursive `subcommands`; no patterns), with `.meta` descriptions and `pnpm run gen:schema`; `src/config/extension-config.ts` and `src/config/config-loader.ts` — carried through the runtime type and shallow-merged by command key across global and project scopes on the `shellTools` precedent, never agent frontmatter (§7, §9); `src/access-intent/bash/command-effects.ts` — `proveCommandEffect` consults declarations after syntax and core, with `unlessOption` stems matched fail-closed over attached, clustered, and `=`-embedded forms; `src/access-intent/effect.ts` — `EffectSource` gains a declared value carrying the scope; `BashProgram.parse` threads the declarations to the collectors; `docs/configuration.md` — the line describing it as shipped becomes true, with a `git`/`curl` recipe (`sed`'s read-only case having moved to the core in [#924]) and the `external_directory_read` adoption recipe beside it.
+
 - **Constraint:** a declaration narrows uncertainty toward fewer effects and never lifts the wrapper floor (§11: `xargs git log` keeps its floor); undeclared is unknown; a guard retracts and never substitutes.
   The pipe-safety argument is the same as the core's: a wrong declaration is the user's own allow, at finer grain than the standing grants the record already accepts.
+
 - **Design question the plan must settle:** whether subcommand descent is exact-word (§7) or routes through `bash-arity.ts`'s meaningful-prefix machinery so `git -C ~/other log` resolves as `git log`; §7 says exact, §10 says structural, and Phase 17's [#804] will need the same answer.
+
 - **Acceptance case:** [#797] — `commandEffects: { officecli: { effects: [] } }` withdraws the tool's operands from the path surfaces, so `officecli set data.xlsx /Sheet1/B1` raises no `external_directory` ask while `bash: {"officecli *": …}` still governs the command; `[]` is the enforcement-relevant value §7 names beside `"read"`, and it is the ask-producing-side lever for the shape-indistinguishable class ([#882] is the ask-consuming one).
+
 - **Soft dependency:** [#963], whose ADR 0013 §11 amendment is the clause this step's "does not lift the floor" constraint cites.
+
 - **Outcome:** `git: { subcommands: { log: "read" } }` plus `external_directory_read: {"*": "allow"}` silences `git log ~/other`; the [#797] acceptance case passes; `scripts/measure-core-coverage.mjs` accepts a declarations file and reports the relieved share; the review log's `effectSource` can read `declared`.
+
 - **Commit type:** `feat:`.
+
 - **Impact 5 / Risk 2 / Priority 20.**
 
   Landed: `feat(pi-permission-system): declare a command's filesystem effects with commandEffects` and `feat(pi-permission-system): report a commandEffects declaration the pure-reader core shadows`, after `refactor(pi-permission-system): extract the option-guard matchers into option-guards.ts`, `refactor(pi-permission-system): name BashParseOptions in program.ts`, `refactor(pi-permission-system): fold commandEffects declarations by command key with their scope`, `refactor(pi-permission-system): prove a command's effect from its declaration`, `refactor(pi-permission-system): attribute a declared command's operands during token collection`, and `refactor(pi-permission-system): withdraw an inert operand from both path projections`, with `docs(pi-permission-system): measure the share of asks a declarations file relieves`.
@@ -743,13 +849,20 @@ Release: batch "declared-effects"
 So the blame reaches the review log on every path except the one a human decides — zero `effect` keys in the local log, and every bash `external_directory` ask since [#807] recorded with `path: null` — and it reaches the dialog on no path at all, so the user asked about `git log ~/x` on `external_directory_write` cannot see that the effect was unproven or what would prove it.
 
 - **Smell:** Category C (two projections of one request, one of which omits the facts the other was designed to carry).
+
 - **Target:** `src/presentation/prompt-payload.ts` — the `request` core gains the deciding path with its effect and source as **request facts** (bounded: one path, two enums), so `renderReviewLogFacts` renders them for every writer and ADR 0011 §6's evidence exclusion is untouched; `src/presentation/path-ask-payload.ts` — the three path payload builders stamp them from the gate's `worstEntry`; `src/handlers/gates/bash-path.ts` and `bash-external-directory.ts` — the `logContext` copies go, since the payload now carries them; `src/presentation/dialog-renderer.ts` and `fact-vocabulary.ts` — a blame line (`~/b: write (redirect) → external_directory_write asks`; `unproven — declare git log in commandEffects to classify it`) in the bounded render; `asPromptPayload` and the forwarded reader's allowlist admit the new facts so a serving node renders the child's blame.
+
 - **Constraint:** the fact set is the *deciding* path only; the full escaping-path list stays evidence and stays out of the log.
   The teaching sentence names `commandEffects`, so it lands after [#880].
+
 - **Hard dependency:** [#880], whose `commandEffects` key the blame line names.
+
 - **Soft dependency:** [#609], whose role-carrying `worstEntry` lets the blame read one shape rather than two.
+
 - **Outcome:** a bash `external_directory` ask's `waiting` entry names the path and its provenance; the dialog states why the direction was chosen; the package skill's claim about the stamped context becomes true; `effectSource` appears in the payload module.
+
 - **Commit type:** `fix:`.
+
 - **Impact 4 / Risk 2 / Priority 16.**
 
   Landed: `fix(pi-permission-system): record the deciding path and its effect provenance on a bash ask's review entries` and `fix(pi-permission-system): say in the ask dialog why a bash path ask landed on its direction`, after `refactor(pi-permission-system): carry a deciding path as a prompt request fact`.
@@ -768,13 +881,19 @@ ADR 0013 §7 layers the projection over judgment ("the judge absorbs the surplus
 [#880] answers this for a tool the user has declared; the undeclared tool has no lever at all.
 
 - **Smell:** Category F (two records, one population, contradictory boundaries) over Category C (a checkpoint that reads the surface but not the fact that would license the verdict).
+
 - **Target:** `docs/decisions/0007-model-judge-authorizer-chain-adr.md` — an amendment, settled interactively in the pattern of ADR 0007 / 0011 / 0012, deciding the bound: nothing exists at the path, no ancestor exists short of the root, or the effect is proven `read` and the path is absent (the `_read` half of a nonexistent path is vacuous; the `_write` half is where `mkdir -p` / `install -D` / `git clone` create parents).
   If accepted, the same issue lands the narrow change: an existence fact fixed at the child on `ForwardedAccessFacts` and the payload request core (never re-derived at the serving node, ADR 0008), read by `encloseInDelegationEnvelope` beside the surface, and carried onto the `authorizer` decider's review entry so the licensing fact is auditable.
   If rejected, the amendment records why, PR [#684] closes with that reasoning, and the class stays on [#880] and the human.
+
 - **Constraint:** this is not [#684]'s blanket flag — a link never gains `allow` over the outside-the-tree boundary for a path that exists; `path` stays excluded regardless.
+
 - **Soft dependency:** [#881], whose request-core addition is the vehicle the existence fact rides.
+
 - **Outcome:** ADR 0007 carries its first amendment; `officecli set data.xlsx /Sheet1/B1` with no declaration and `model-judge` in the chain either raises no prompt or the record says why it must.
+
 - **Commit type:** `docs:` for the amendment; `feat:` if the checkpoint change lands under it.
+
 - **Impact 4 / Risk 3 / Priority 12.**
 
   Landed: `feat(pi-permission-system)!: let a chain link allow a bash external_directory ask whose paths name nothing on disk`, after `docs(pi-permission-system): amend ADR 0007 to let a link allow a bash external_directory ask that names nothing on disk`, `refactor(pi-permission-system): mark a bash external_directory ask whose paths name nothing on disk`, `refactor(pi-permission-system): carry the nothing-on-disk license across the forwarding wire`, and `test(pi-permission-system): let the delegation-envelope fixture carry extra access facts`.

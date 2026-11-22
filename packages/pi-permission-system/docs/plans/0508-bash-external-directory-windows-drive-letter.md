@@ -75,12 +75,10 @@ Key existing facts that shape the design:
 
 The change relies on a clean separation of two distinct questions:
 
-1. **"Is this token shaped like a path worth gating?"**
-   — platform-independent, owned by the classifiers (this issue).
+1. **"Is this token shaped like a path worth gating?"** — platform-independent, owned by the classifiers (this issue).
    A drive-letter shape (`<letter>:` followed by `/` or `\`) is recognized unconditionally on every platform.
    On POSIX this is harmless: the token resolves as a real in-CWD relative path and is gated by the `path` surface as today.
-2. **"Is this path absolute (resolve base-independently) or relative (resolve against the effective `cd` base)?"**
-   — platform-dependent, delegated to the `PathNormalizer` ([#510]).
+2. **"Is this path absolute (resolve base-independently) or relative (resolve against the effective `cd` base)?"** — platform-dependent, delegated to the `PathNormalizer` ([#510]).
 
 Conflating them into a shared helper used by both classifier and projection would be the wrong abstraction — shape recognition is inclusive and platform-independent, absoluteness is exclusive and platform-dependent.
 [#510] established seam 2 (the `PathNormalizer`); #508 adds the missing case to seam 1 (the classifier) and converts the one straggler in seam 2 — `isRelativeCandidate` — onto the normalizer.

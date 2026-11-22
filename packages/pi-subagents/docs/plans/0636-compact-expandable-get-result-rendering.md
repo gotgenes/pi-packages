@@ -269,8 +269,10 @@ The extraction enables tests that are impractical today.
 - **Row-count as a direct assertion.**
   `BoundedLines.render(width).length` is the invariant the issue actually asks for, and it is checkable at several widths against pathological input.
   PR [#729] could only assert on substrings of a string, which cannot see a wrapped row at all.
-- **Collapsed/expanded shape as a line array.** `renderGetResultLines` returns `string[]`, so "collapsed is four lines" and "the conversation never appears collapsed" are exact assertions rather than `not.toContain` probes.
-- **Exhaustive status coverage.** `renderStatusIcon` takes a bare `SubagentStatus`, so all seven members are covered by a table-driven test rather than through seven fully-built details bags.
+- **Collapsed/expanded shape as a line array.**
+  `renderGetResultLines` returns `string[]`, so "collapsed is four lines" and "the conversation never appears collapsed" are exact assertions rather than `not.toContain` probes.
+- **Exhaustive status coverage.**
+  `renderStatusIcon` takes a bare `SubagentStatus`, so all seven members are covered by a table-driven test rather than through seven fully-built details bags.
 
 No existing test becomes redundant.
 `test/tools/get-result-report.test.ts` covers report text, which this change does not touch, and `test/tools/get-result-tool.test.ts`'s carrier-claim tests cover `execute`'s lifecycle, which is the invariant below.

@@ -145,8 +145,11 @@ The status guard replaces `dequeue` — an aborted queued agent (status `stopped
 ### Manager lifecycle methods
 
 - `buildObserver` — drop the `markStarted` (in `onStarted`) and `markFinished` (in `onRunFinished`) relays; `onRunFinished` keeps the background `onSubagentCompleted` dispatch.
+
 - `abort(id)` — for a `queued` agent, just `record.markStopped()` (no `dequeue`); otherwise `record.abort()`.
+
 - `abortAll()` — iterate agents: `markStopped()` each `queued` agent (count it), else `record.abort()`; then `this.limiter.clear()` to drop pending thunks (their promises resolve).
+
 - `waitForAll()` — every spawned agent has a `promise`, so the manual `drain()` loop collapses:
 
   ```typescript
@@ -169,6 +172,7 @@ The status guard replaces `dequeue` — an aborted queued agent (status `stopped
   The re-check loop is no longer `while (true)` and no longer drives scheduling — the limiter auto-starts queued agents as slots free, so a single `allSettled` covers the queued case.
   The loop survives only to catch agents spawned *during* the wait.
   The `eslint-disable @typescript-eslint/no-unnecessary-condition` is deleted.
+
 - `dispose()` — `this.limiter.clear()` (unchanged in intent).
 
 ### `index.ts` wiring

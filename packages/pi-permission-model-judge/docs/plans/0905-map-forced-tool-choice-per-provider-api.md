@@ -267,7 +267,8 @@ That is invisible to the assertions (JSON object key order is not asserted anywh
 
 Predicted unchanged, with the claim each rests on:
 
-- `src/extension.ts` — the production `complete` wrapper passes `options` straight through to `ProviderStreamOptions`, which is `StreamOptions & Record<string, unknown>`, so narrowing `CompleteFn.toolChoice` to a union still assigns. `pnpm run check` is the gate.
+- `src/extension.ts` — the production `complete` wrapper passes `options` straight through to `ProviderStreamOptions`, which is `StreamOptions & Record<string, unknown>`, so narrowing `CompleteFn.toolChoice` to a union still assigns.
+  `pnpm run check` is the gate.
 - `src/config-schema.ts`, `schemas/model-judge.schema.json`, `config/config.example.json` — no config key is added, removed, or re-typed.
 - `test/fixtures/assistant-message.ts` — its hardcoded `api: "anthropic-messages"` is the assistant *reply* envelope's provider echo, a different field on a different type that happens to share a name; `reviewPath` reads only `content`.
 - `test/config-loader.test.ts`, `test/config-schema.test.ts`, `test/typo-patterns.test.ts` — no model, no completion options.

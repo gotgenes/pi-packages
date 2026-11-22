@@ -53,7 +53,8 @@ No release was cut: every unreleased commit is a non-releasing `docs:` type, so 
 - **Plan-as-contract paid off end to end.**
   The one design ambiguity ("and/or mirror it into each `package-<PKG>` skill") was resolved once via `ask_user` in planning, encoded as an explicit Non-Goal, and then independently re-verified by the pre-completion reviewer at build.
   The rejected branch (`pi-subagents` mirror) never accidentally got "helpfully" added — a recurring risk the plan pre-empted.
-- **Reference-site grep bounded the change precisely.** `grep -rn "regrowth guard\|package-$1 skill\|module-tree entries describe"` established up front that exactly two live sites needed editing and every other hit was a point-in-time archive — the edit set matched the plan with no surprises.
+- **Reference-site grep bounded the change precisely.**
+  `grep -rn "regrowth guard\|package-$1 skill\|module-tree entries describe"` established up front that exactly two live sites needed editing and every other hit was a point-in-time archive — the edit set matched the plan with no surprises.
 
 #### What caused friction (agent side)
 

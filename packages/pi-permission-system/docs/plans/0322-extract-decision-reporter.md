@@ -174,7 +174,8 @@ No `package-*/SKILL.md` references these members.
 ## Test Impact Analysis
 
 1. New tests enabled — `GateDecisionReporter` is now unit-testable in isolation, which the anonymous handler closures never were: `writeReviewLog` delegates to `logger.review(event, details)`; `emitDecision` delegates to `emitDecisionEvent` (emits `event` on `PERMISSIONS_DECISION_CHANNEL`); a throwing decision listener does not propagate (inherited from `emitDecisionEvent`'s try/catch).
-2. Redundant/simplified tests — none become redundant. `runner.test.ts` keeps every assertion but reshapes the collaborator handle from two flat mocks to one grouped `reporter` mock that mirrors production structure.
+2. Redundant/simplified tests — none become redundant.
+   `runner.test.ts` keeps every assertion but reshapes the collaborator handle from two flat mocks to one grouped `reporter` mock that mirrors production structure.
 3. Tests that stay as-is — the four handler integration test files (they exercise the full gate/input paths through the real bus + logger mock); `permission-events.test.ts`'s `emitDecisionEvent` tests (the underlying primitive the reporter wraps); every gate descriptor test (unaffected by the runner's collaborator shape).
 
 ## TDD Order

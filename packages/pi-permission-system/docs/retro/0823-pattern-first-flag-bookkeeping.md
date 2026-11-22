@@ -99,6 +99,7 @@ So the oracle covers present implementations and the ADR rule has to cover absen
 - Round 2 existed because I defended a measurement instead of re-deriving it.
   The "projection is byte-identical with and without the `--context` entry" claim was true when measured and false three commits later, because `dce4d3f0` changed how an unclaimed node spends a positional.
   A measurement is scoped to the commit it was taken at; re-running it costs seconds and defending it cost a round.
+
 - The corpus figure in the plan (`1` external set changed) is actually **2**.
   I re-derived it three times and got `1` every time, because I diffed against a baseline JSON captured at planning time while the filesystem underneath drifted.
   The reviewer got the right answer by swapping `token-collection.ts` at each commit and re-running against the *current* filesystem.

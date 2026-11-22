@@ -16,8 +16,7 @@ The change is `refactor:` + `test:` only (both `hidden: true` changelog types), 
 ## Problem Statement
 
 `src/authority/subagent-context.ts` carries its own containment helper, `isPathWithinDirectoryForSubagent`, a string-prefix check (`pathValue.startsWith(directory + sep)`).
-It answers the same question as `PathFlavor.isWithin` (`src/path/path-flavor.ts`) — "is this path inside that directory under this platform?"
-— but with a different algorithm: a `path.relative`-based geometry versus a raw prefix compare.
+It answers the same question as `PathFlavor.isWithin` (`src/path/path-flavor.ts`) — "is this path inside that directory under this platform?" — but with a different algorithm: a `path.relative`-based geometry versus a raw prefix compare.
 Two algorithms for one must-agree question is the connascence-of-algorithm smell [#562] set out to remove; [#562] deferred this site by design because unifying it is nominally behavior-affecting, not a pure relocation, and so needs its own change with targeted tests.
 
 ## Goals

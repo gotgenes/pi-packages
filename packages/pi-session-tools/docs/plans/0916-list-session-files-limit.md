@@ -236,7 +236,8 @@ Its documented outcomes and the test that pins each:
   Constituency: a caller deciding whether to re-ask with a larger `limit`.
   The design keeps the bound above `listSessionFiles` specifically so `count` still sees the full array.
 - **Newest-first ordering** — pinned by `test/session-file.test.ts`.
-  The head-slice is only correct because of it; if the sort ever inverted, `limit` would return the oldest N. Step 3's ordering assertion (the bounded paths equal the newest N, in order) pins the composition, not just the sort.
+  The head-slice is only correct because of it; if the sort ever inverted, `limit` would return the oldest N.
+  Step 3's ordering assertion (the bounded paths equal the newest N, in order) pins the composition, not just the sort.
 
 Quantitative invariant — the tool-result size, which is the issue's whole motivation:
 

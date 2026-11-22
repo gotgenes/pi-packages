@@ -234,6 +234,7 @@ The plan should produce:
    Verify the command against the _predicted_ end state, not only today's tree — a command counting the mechanism being replaced reads 0, not the target, once the replacement lands.
    The fallow health score alone is a poor phase metric — it is blind to the type-level wins (a bug class made unrepresentable) that cause-driven phases produce.
    A dated `Baseline (<date>)` column is a fixed phase-open snapshot recomputed at phase close, not a per-step value — do not edit it as work lands.
+
 2. **Step list** — steps in working-sequence order, each with:
    - Title, with the step's issue number as its identity
    - **Cause** — the first-principles structural cause the step dissolves (name it explicitly), with any fallow signal cited as the _symptom_ of that cause, not the motivation.
@@ -292,12 +293,15 @@ The plan should produce:
    The `soft` label renders on the edge, so the diagram needs no legend sentence.
    A relation that asserts no order (one step's outcome informs another's design) is not drawn; say it in the step's prose or its track.
    Any other link spelling (bare `-.->`, `-.informs.->`, a `|label|`) is a checker error.
+
 4. **Tracks** — group steps into named parallel tracks, naming members as `[#N]` (`**Track A — Result delivery:** [#857] → [#878]`).
+
 5. **Release batches** — make release coordination grep-able, in two artifacts:
 
 - A per-step `Release:` tag on its own line in each step (alongside `Smell:`/`Outcome:`), exactly one of:
   - `Release: independent` — the step ships on its own; no coordination.
   - `Release: batch "<batch-name>"` — the step is a member of the named batch and is meant to ship together with the rest of that batch.
+
 - A `Release batches` subsection (after the parallel tracks) naming each batch and listing its member steps in dependency order; the **last listed member is the batch tail** — the step whose landing completes the batch.
 
   List independently releasable steps separately.

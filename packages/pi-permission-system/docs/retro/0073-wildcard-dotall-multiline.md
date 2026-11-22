@@ -18,7 +18,8 @@ The fix was a single-character addition (`"s"` flag), shipped as v4.1.1 with fou
 #### What went well
 
 - Root-cause verification before planning: a quick `node -e` command confirmed the `.` vs `\n` hypothesis in seconds, keeping the plan tightly scoped.
-- The issue was exceptionally well-written — clear reproducer, config excerpt, two specific hypotheses, and evidence against hypothesis B. This eliminated investigation time entirely.
+- The issue was exceptionally well-written — clear reproducer, config excerpt, two specific hypotheses, and evidence against hypothesis B.
+  This eliminated investigation time entirely.
 - Clean three-step TDD cycle with zero rework or deviations from the plan.
 - Full plan→implement→ship completed in three user prompts.
 

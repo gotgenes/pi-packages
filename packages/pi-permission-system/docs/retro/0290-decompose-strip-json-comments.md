@@ -21,7 +21,8 @@ The plan is behavior-preserving, adds direct unit tests for the already-exported
 - No exports change and no symbol is renamed, so no `index.ts` barrel, package skill, or other doc needs updating — only `docs/architecture/architecture.md` (Phase 2 Step 5, findings row 5, worst-CRAP-risk line, metrics).
 - `design-review` skill judged not applicable: the change is one self-contained pure function with no shared-interface or layer-wiring impact.
 - Block-comment scan is planned to switch from a character loop to `indexOf("*/")` (behavior-identical, including the unterminated-to-EOF branch) — flagged as a risk with a dedicated test.
-- markdownlint is not installed locally (`markdownlint-cli2` not found; no `.markdownlint*` config); relied on the `markdown-conventions` skill. `rumdl fmt` ran in the pre-commit hook and passed.
+- markdownlint is not installed locally (`markdownlint-cli2` not found; no `.markdownlint*` config); relied on the `markdown-conventions` skill.
+  `rumdl fmt` ran in the pre-commit hook and passed.
 
 ## Stage: Implementation — TDD (2026-05-31T15:23:14Z)
 

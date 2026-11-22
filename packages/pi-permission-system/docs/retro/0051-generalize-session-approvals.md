@@ -10,7 +10,8 @@ issue_title: "Generalize session approvals to all permission surfaces with wildc
 ### Session summary
 
 Implemented generalized session approvals across all permission surfaces (bash, mcp, skill, tools) in 6 commits released as v4.3.0.
-The work added a `pattern-suggest` module, extended `checkPermission` session evaluation to all surface branches, wired the gate with `sessionApproval` pass-through, made the dialog label dynamic, and threaded `sessionLabel` through the full prompt chain. 44 new tests (754 → 798), all green, no breaking changes.
+The work added a `pattern-suggest` module, extended `checkPermission` session evaluation to all surface branches, wired the gate with `sessionApproval` pass-through, made the dialog label dynamic, and threaded `sessionLabel` through the full prompt chain.
+44 new tests (754 → 798), all green, no breaking changes.
 
 ### Observations
 

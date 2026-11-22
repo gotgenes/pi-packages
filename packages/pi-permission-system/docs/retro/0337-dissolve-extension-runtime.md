@@ -81,8 +81,7 @@ No user corrections were needed beyond a single "Continue." nudge and a status c
 #### What caused friction (user side)
 
 - None of substance.
-  The user's involvement was light-touch oversight (one "Continue." after a turn ended without a trailing tool call, and one "Where are we?"
-  status check) rather than strategic correction — appropriate for a session executing a detailed pre-approved plan.
+  The user's involvement was light-touch oversight (one "Continue." after a turn ended without a trailing tool call, and one "Where are we?" status check) rather than strategic correction — appropriate for a session executing a detailed pre-approved plan.
 
 ### Diagnostic details
 

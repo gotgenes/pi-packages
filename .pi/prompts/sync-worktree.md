@@ -39,8 +39,10 @@ The deliberate, interactive final `/retro $1` runs once at the root after `/ship
 The stage note lives in an `exclude-paths` dir, so it triggers no release — but it must be committed **on this branch** so it rides the single ff-merge when root lands the work.
 
 1. Determine the retro file path (same `NNNN-<slug>` as the plan file: single-package → `packages/<PKG>/docs/retro/`; cross-package → `docs/retro/`).
+
 2. Capture this peer session's transcript path so the root's final `/retro` can read it with `read_session_file` (sessions live under `~/.pi/agent/sessions/`, so they survive the worktree teardown): `echo "$PI_SESSION_FILE"`.
    If it prints nothing, record the path as unknown; the root recovers it with `list_session_files({ cwd: "<this worktree path>" })`.
+
 3. Append a stage entry with the `Edit` tool, never `cat >>` or a heredoc (anchor the `Edit` on the file's last line — the repeated `### Observations` headers make header-anchored edits ambiguous).
    Do not cite a branch commit SHA in this note — step 4's rebase rewrites every one, leaving a dangling citation on `main`.
    Name the commit by its subject instead.
@@ -65,8 +67,10 @@ The stage note lives in an `exclude-paths` dir, so it triggers no release — bu
 ## 4. Sync and rebase onto main
 
 1. `git fetch origin`.
+
 2. Rebase onto the ref `/ship` will merge into — **local** `main`, which the shared `.git` makes visible: `git rebase main`.
    If `git rev-list --count main..origin/main` is non-zero, local `main` is behind the remote; stop and report, since the root must `git pull` before this rebase has the right target.
+
 3. On a conflict, attempt the resolution yourself, in docs, tests, config, and source alike.
    Read what actually collided first: `git log --oneline HEAD..main` for the commits, and the conflicting hunks, not a cause inferred from the file's recent history.
    Keep both sides' intent, then continue with `GIT_EDITOR=true git rebase --continue`.
@@ -74,8 +78,10 @@ The stage note lives in an `exclude-paths` dir, so it triggers no release — bu
    After resolving anything outside markdown, re-run the checks in the `## 2. Pre-push checks` section, since they ran before the rebase.
    Report each conflict to the operator: the files, the commits that collided, and how you resolved it.
    Run `git rebase --abort` and stop only when no resolution keeps both sides' intent, or when the re-run checks fail.
+
 4. Verify the merge will succeed: `git merge-base --is-ancestor main HEAD`.
    This, not the `origin/main` comparison, is what predicts the ff-merge.
+
 5. Confirm no stage note in the retro file cites a SHA the rebase just rewrote:
 
    ```bash

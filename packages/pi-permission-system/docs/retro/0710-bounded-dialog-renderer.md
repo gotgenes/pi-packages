@@ -68,11 +68,7 @@ Test count 2944 → 2978 (+34); `check`, root `lint` (0 findings), `fallow dead-
   Both `architecture.md` and `docs/configuration.md` now state the redundancy rule beside the never-omitted rule so neither reads as the other.
 - **`Ctrl+O` needed no change to the host forward.**
   The toggle went into `handleInput` at the one place that both knows the component and already treats the keystroke as handled, so `handleToolsExpandAction` is untouched and [#642]'s invariant holds by construction rather than by care.
-- **Plan deviations, all small:**
-  the `Paint` seam shipped as `HighlightPaint = (text: string) => string` rather than the plan's `(role, text)` — no caller ever needed a `"label"` role, and an unused parameter would have been speculative;
-  the seam was introduced in cycle 5 (where it is used) rather than cycle 1 (where it would have been dead);
-  `authorizer.ts`, `permission-dialog.test.ts`, `config-schema.test.ts`, and `config-reporter.test.ts` were listed in Module-Level Changes but needed no edit;
-  and `config-pipeline.test.ts` was edited but not listed — it is the strongest place to pin the #332/#347 config-drop class, which the plan named as a risk without naming its test.
+- **Plan deviations, all small:** the `Paint` seam shipped as `HighlightPaint = (text: string) => string` rather than the plan's `(role, text)` — no caller ever needed a `"label"` role, and an unused parameter would have been speculative; the seam was introduced in cycle 5 (where it is used) rather than cycle 1 (where it would have been dead); `authorizer.ts`, `permission-dialog.test.ts`, `config-schema.test.ts`, and `config-reporter.test.ts` were listed in Module-Level Changes but needed no edit; and `config-pipeline.test.ts` was edited but not listed — it is the strongest place to pin the #332/#347 config-drop class, which the plan named as a risk without naming its test.
 - **The tidy-first assessor found two `PromptPreferences` construction sites the plan's own grep obligation missed** (both inline in `local-user-authorizer.test.ts`), which is the same class of miss [#744]'s retro recorded.
   Landing the shared fixture first turned cycle 7's widening into a one-line change; the `PermissionPromptView` cast removal turned a would-be runtime surprise into a compile error.
 - **One self-inflicted friction point:** an `Edit` call used a fabricated absolute path with a doubled package segment, which this package's own `external_directory` gate blocked with a message naming the correct path.

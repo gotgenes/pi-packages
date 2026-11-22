@@ -42,7 +42,5 @@ One refinement worth noting: the moment a new testing rule is added to `AGENTS.m
 
 ### Changes made
 
-1. Sharpened the `mockReset` vs `mockClear` rule in `AGENTS.md` § Testing (lines 107–109):
-   replaced the parenthetical "(or `.mockClear()`)" with two explicit sentences explaining
-   when to use each, sourced from official Vitest documentation.
+1. Sharpened the `mockReset` vs `mockClear` rule in `AGENTS.md` § Testing (lines 107–109): replaced the parenthetical "(or `.mockClear()`)" with two explicit sentences explaining when to use each, sourced from official Vitest documentation.
 2. Created `docs/retro/0035-align-test-mock-cleanup-rules.md` (this file).

@@ -21,8 +21,7 @@ Plan committed at `packages/pi-subagents/docs/plans/0904-fallback-base-asserts-n
   [ADR 0009] had already recorded this as an accepted residual tracking this issue.
 - **The gate widened the fix past what the issue proposed.**
   The issue proposed deleting the capability sentence and rewording "general-purpose" to "focused".
-  The operator's bounce — "But what even makes it a 'coding agent'?"
-  — generalized correctly: every clause in that sentence ("coding", "general-purpose", "for complex, multi-step tasks") is an unverified claim about a child whose type, domain, and task shape the constant cannot know.
+  The operator's bounce — "But what even makes it a 'coding agent'?" — generalized correctly: every clause in that sentence ("coding", "general-purpose", "for complex, multi-step tasks") is an unverified claim about a child whose type, domain, and task shape the constant cannot know.
   The chosen outcome keeps only the imperative, which was never a claim, and renames the heading to `# Instructions`.
 - **A gate was bounced for over-long option text.**
   The first `preview` gate carried full briefings in the option descriptions even though the substance was already in the preceding message; the re-ask with bare labels plus previews was answered immediately.
@@ -94,8 +93,7 @@ The interesting material is all in the planning stage — the operator's single-
 - `premature-convergence` — the first `ask_user` gate offered three options that all kept the issue body's role sentence and differed only in whether "coding" survived.
   Every clause of that sentence was equally unverifiable, and the evidence was already open in context: `src/config/default-agents.ts` shows `description: "General-purpose agent for complex, multi-step tasks"`, the exact phrase the constant was reciting to every agent type.
   The `clarification-gates` skill was loaded and names this failure ("When every option shares a premise … name it and offer the option that removes it").
-  Impact: one gate round-trip; the operator's question — "But what even makes it a 'coding agent'?"
-  — produced the outcome that shipped.
+  Impact: one gate round-trip; the operator's question — "But what even makes it a 'coding agent'?" — produced the outcome that shipped.
   Recursive detail worth noting: this issue exists because [#890] fixed one constant and left an identical claim four lines below it, and the first gate was about to repeat that pattern inside the constant itself.
 - `instruction-violation` (user-caught) — the second `ask_user` call was bounced with "Way too much content loaded into `ask_user`".
   The option descriptions carried full briefings even though the substance was already in the preceding message, which the loaded `clarification-gates` skill forbids in as many words.
@@ -110,8 +108,7 @@ The interesting material is all in the planning stage — the operator's single-
 #### What caused friction (user side)
 
 - Nothing to record as friction.
-  The one intervention that mattered was a question rather than a correction, and it was the highest-leverage moment in the session: "But what even makes it a 'coding agent'?"
-  did not name the answer, and forced the clause-by-clause audit that produced it.
+  The one intervention that mattered was a question rather than a correction, and it was the highest-leverage moment in the session: "But what even makes it a 'coding agent'?" did not name the answer, and forced the clause-by-clause audit that produced it.
   The opportunity, if any, runs the other way — this is the interaction pattern to keep, and the agent should be reaching it unprompted.
 
 ### Diagnostic details

@@ -20,8 +20,7 @@ Released as `pi-permission-system` v7.0.0 (breaking: `GateDescriptor.messages` r
 - The user's question about sink architecture elevated a text substitution into a meaningful structural improvement.
   The `DenialContext` + centralized formatter pattern is cleaner and will scale better than the prior scattered message formatting.
 - The lift-and-shift migration (optional `denialContext` alongside `messages`, incremental gate migration, then removal) kept the repo green at every commit.
-- Upgrading `denial-messages.test.ts` to exact `toBe()` assertions — prompted by the user asking "Can we make strong assertions?"
-  — produced 39 tests that document the exact message contract.
+- Upgrading `denial-messages.test.ts` to exact `toBe()` assertions — prompted by the user asking "Can we make strong assertions?" — produced 39 tests that document the exact message contract.
 
 #### What caused friction (agent side)
 
@@ -43,8 +42,7 @@ Released as `pi-permission-system` v7.0.0 (breaking: `GateDescriptor.messages` r
    Impact: plan was rewritten, but no implementation rework since the question came during planning.
    User-caught.
 5. `missing-context` — Tests initially used `toContain` fragment assertions for the denial messages.
-   The user asked "Can we assert on the entire message instead of some of its contents?"
-   which led to upgrading to exact `toBe()` assertions.
+   The user asked "Can we assert on the entire message instead of some of its contents?" which led to upgrading to exact `toBe()` assertions.
    Impact: rewrote `denial-messages.test.ts` (no rework of production code).
    User-caught.
 

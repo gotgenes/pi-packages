@@ -181,7 +181,8 @@ Test assertions change from `deps.writeDebugLog` to `deps.logger.debug`, etc.
    These were previously untestable because the closures were inline in `index.ts`.
 2. **Existing tests that become simpler**: All 6 handler `makeDeps()` factories shrink by 2 net fields (3 removed, 1 added).
    Assertions on logging behavior get a single parent object (`deps.logger`) instead of reaching into `deps` directly.
-3. **Existing tests that must stay as-is**: All handler behavioral tests stay — they test permission logic, not logging wiring. `GateRunnerDeps` tests are completely unaffected.
+3. **Existing tests that must stay as-is**: All handler behavioral tests stay — they test permission logic, not logging wiring.
+   `GateRunnerDeps` tests are completely unaffected.
 
 ## TDD order
 
@@ -207,7 +208,8 @@ Test assertions change from `deps.writeDebugLog` to `deps.logger.debug`, etc.
 1. **Red**: `pnpm vitest run` shows failures in all 6 handler test files (old field names in `makeDeps` + assertions).
 2. **Green**: Update `makeDeps()` in each test file to use `logger: { debug: vi.fn(), review: vi.fn(), warn: vi.fn() }`.
    Update assertions that reference `deps.writeDebugLog` → `deps.logger.debug`, `deps.writeReviewLog` → `deps.logger.review`, `deps.notifyWarning` → `deps.logger.warn`.
-3. **Verify**: `pnpm vitest run` passes. `pnpm run build` passes.
+3. **Verify**: `pnpm vitest run` passes.
+   `pnpm run build` passes.
 4. **Commit**: `test: update handler test factories for SessionLogger (#127)`
 
 ### Step 4 — Update architecture doc

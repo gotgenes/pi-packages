@@ -10,9 +10,7 @@ issue_title: "fix: bash external_directory gate misses Windows drive-letter abso
 ### Session summary
 
 Planned the fix for the bash `external_directory` gate missing Windows drive-letter absolute paths (`C:/…` and `C:\…`).
-The operator's questions drove the scope progressively deeper: from "which classifier(s)" → "detect the platform?"
-→ "what makes this change easy (Kent Beck)?"
-→ "is there an architectural root cause?".
+The operator's questions drove the scope progressively deeper: from "which classifier(s)" → "detect the platform?" → "what makes this change easy (Kent Beck)?" → "is there an architectural root cause?".
 The investigation surfaced that the package has a half-threaded, ambient platform dependency (`process.platform` and the host-bound `node:path` import read in ~6 interior modules), which is the real root cause behind the recurring Windows-path bugs.
 Filed that as a separate architecture issue, #510, and rebased #508's plan to land on #510's clean seam.
 
@@ -85,11 +83,7 @@ This closes a four-stage arc (Planning → Planning refresh → TDD → Ship) in
 #### What went well
 
 - **Operator-driven architectural depth (planning).**
-  The progressive questioning — "which classifier?"
-  → "detect the platform?"
-  → "what makes this change easy?"
-  → "is there an architectural root cause?"
-  — surfaced the half-threaded ambient-platform dependency and produced #510 / #511.
+  The progressive questioning — "which classifier?" → "detect the platform?" → "what makes this change easy?" → "is there an architectural root cause?" — surfaced the half-threaded ambient-platform dependency and produced #510 / #511.
   Without it, #508 would have shipped a hand-rolled `startsWith("/")` check that drifts from `node:path` and a fragile `vi.mock("node:path")` test.
   Strategic judgment applied at exactly the right moment.
 - **Plan contingency foresight paid off.**

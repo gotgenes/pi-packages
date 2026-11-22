@@ -280,7 +280,8 @@ Greps run to build this list: `collectCommands` / `BashPathResolver` / `TSParser
 
 - `src/access-intent/bash/parser.ts` — export the new `BashReparser` interface beside `TSNode`; amend the module doc so "the two `parseUnresolved*` predicates" sentence names the salvage as a caller of `parseUnresolvedWithin`.
   `TSParser` stays private; `getParser` / `getWarmBashParser` are unchanged.
-- `src/access-intent/bash/unresolved-salvage.ts` — **new**. `withSalvagedRoots`, the private innermost-candidate walk, and the clean-re-parse guard.
+- `src/access-intent/bash/unresolved-salvage.ts` — **new**.
+  `withSalvagedRoots`, the private innermost-candidate walk, and the clean-re-parse guard.
 - `src/access-intent/bash/command-enumeration.ts` — `SALVAGED_SCOPE` and the exported `collectSalvagedCommands`; amend `collectCommands`' doc comment to name the salvage as the other entry point.
 - `src/access-intent/bash/bash-path-resolver.ts` — `resolve` takes `salvagedRoots`, walking each under `UNKNOWN_BASE` into the same candidate array before projection; doc comment records why the base is unknown.
 - `src/access-intent/bash/program.ts` — `BashProgram.parse` wraps its slice construction in `withSalvagedRoots`, concatenates salvaged units, and passes the roots to `resolve`; amend `commands()`' doc comment for the appended units.

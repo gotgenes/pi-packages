@@ -320,7 +320,8 @@ readonly sendMessage = ((message: unknown, options?: unknown) => {
 ### 12. Loop guard — at most one follow-up per user prompt
 
 - **Test surface:** `test/extension.test.ts`.
-- **Covers:** Simulate two consecutive `agent_end` events. `sendMessage` called exactly once.
+- **Covers:** Simulate two consecutive `agent_end` events.
+  `sendMessage` called exactly once.
 - **Commit:** `test: follow-up turn loop guard (#27)`
 
 ### 13. Follow-up resets across user prompts

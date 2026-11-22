@@ -39,8 +39,7 @@ A new issue (#61) was filed to port the output-file format to Pi's official JSON
 #### What caused friction (user side)
 
 - The issue body listed output-file for removal without noting its debugging value.
-  The user's "How confident are we in getting rid of the logging system?"
-  intervention was the correction.
+  The user's "How confident are we in getting rid of the logging system?" intervention was the correction.
   If the issue had marked output-file removal as "tentative pending debugging value assessment," the plan would have surfaced it as a design decision from the start.
   Minor — the discussion was quick and productive.
 

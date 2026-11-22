@@ -156,6 +156,7 @@ Clone groups `4ac7b228`, `a8e71e9c` (×3), `e36d2314` cluster in the "Menu optio
   ```
 
   The act (`editor.showAgentDetail(...)`) stays visible in the table body.
+
 - **Edit/Delete block (`23fe1f93`)** → hoist the shared `const filePath = "/project/.pi/agents/test-agent.md"` to a describe-scoped constant and keep each `await editor.showAgentDetail(...)` act explicit; the residual per-test arrange (`setupDetail`, `ui.editor`/`ui.confirm` resolution) stays inline because it carries the test's intent.
 
 No change to `setupDetail`, `makeEditor`, or `ui-stubs.ts` — they already provide the right arrange seam.

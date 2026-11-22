@@ -24,16 +24,14 @@ No plan was committed; instead #493 was closed as already-addressed with an evid
 #### What caused friction (agent side)
 
 1. `missing-context` — on a claimed security bypass, the agent first leaned on docs and the architecture roadmap and offered the operator a close-vs-plan disposition decision before running the strongest available evidence (the live repro).
-   The operator had to push twice ("So for sure, we've tested this case?"
-   then "Let's just try it here") to escalate from docs-claims → unit tests → live reproduction.
+   The operator had to push twice ("So for sure, we've tested this case?" then "Let's just try it here") to escalate from docs-claims → unit tests → live reproduction.
    Impact: two extra `ask_user` round-trips before the actionable bug (#507) surfaced; no rework, but the strongest evidence and the real finding both came late and operator-prompted.
 
 #### What caused friction (user side)
 
 1. The operator's "Let's just try it here.
    Create the link.
-   Then try to access it." was the highest-value intervention of the session — it converted an abstract "is this already handled?"
-   into a concrete repro that both proved the protection and surfaced #507.
+   Then try to access it." was the highest-value intervention of the session — it converted an abstract "is this already handled?" into a concrete repro that both proved the protection and surfaced #507.
    Framed as opportunity: the agent should reach for live reproduction proactively on bypass/vulnerability claims, so this strategic nudge is not needed next time.
 
 ### Diagnostic details

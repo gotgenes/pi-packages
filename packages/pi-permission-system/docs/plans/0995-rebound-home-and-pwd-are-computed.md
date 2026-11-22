@@ -187,8 +187,7 @@ collectCommands(tree.rootNode, words); // → UnitScope.words
 2. `refactor(pi-permission-system): read path tokens through the program's word reader` Prepares the relay friction the assessor counted: `BashPathResolver` takes a `WordReader`; the 13 `token-collection.ts` functions take it; `program.ts` passes `new WordReader(ShellVariables.UNREBOUND)`.
    Update `token-collection.test.ts` and `bash-command-metamorphic.test.ts` in the same commit (the signature change breaks them at the type level).
    No new tests; the suite stays green.
-3. `refactor(pi-permission-system): enumerate command units through the program's word reader`
-   `UnitScope.words`; scope builders replace `TOP_LEVEL_SCOPE`/`SALVAGED_SCOPE`; `collectCommands`, `collectSalvagedCommands`, `inlineShellPayloadNode` take the reader; `program.ts`, `sync-commands.ts`, and `command-redaction.ts` pass it; `command-enumeration.test.ts` and the redaction tests follow.
+3. `refactor(pi-permission-system): enumerate command units through the program's word reader` `UnitScope.words`; scope builders replace `TOP_LEVEL_SCOPE`/`SALVAGED_SCOPE`; `collectCommands`, `collectSalvagedCommands`, `inlineShellPayloadNode` take the reader; `program.ts`, `sync-commands.ts`, and `command-redaction.ts` pass it; `command-enumeration.test.ts` and the redaction tests follow.
 4. `test(pi-permission-system): read words through WordReader in the node-text tests` Move `node-text.test.ts` (18 calls) and `shell-variable-expansion.test.ts` onto `WordReader`/`resolveReference`, then delete the four free-function delegates.
    Run `pnpm fallow dead-code` after, since the delegates' removal is its only signal.
 5. `fix(pi-permission-system): a reassigned $HOME or $PWD is no longer resolved to its startup value` Mechanism: `ShellVariables.scan` applies rule 1 (a `variable_name` outside a plain reference), and the three entry points build their reader from `scan([root, ...salvaged])`.
@@ -204,8 +203,7 @@ collectCommands(tree.rootNode, words); // → UnitScope.words
 8. `fix(pi-permission-system): ~ may spell an option when the inherited HOME begins with a dash` The unrebound tilde's `mayLeadWithDash` follows `homedir()`.
    Tests (`vi.stubEnv("HOME", "-h")`, `vi.unstubAllEnvs()` in `afterEach`): `find ~` withdraws; with an absolute `HOME`, `find ~/x -name y` still reads.
    Killing mutation: hard-code the tilde lead to `false`.
-9. `docs(pi-permission-system): record that a reassigned $HOME or $PWD is not resolved`
-   ADR 0009 amendment, the two `architecture.md` module-tree entries, the roadmap `✅` on `#### [#995]` and node `S995` with its `Landed:` note (re-measure the changed-command count over the review log with the real `BashProgram.parse` before and after and write the number it prints), `docs/configuration.md`, and the package skill sentence.
+9. `docs(pi-permission-system): record that a reassigned $HOME or $PWD is not resolved` ADR 0009 amendment, the two `architecture.md` module-tree entries, the roadmap `✅` on `#### [#995]` and node `S995` with its `Landed:` note (re-measure the changed-command count over the review log with the real `BashProgram.parse` before and after and write the number it prints), `docs/configuration.md`, and the package skill sentence.
 
 ## Risks and Mitigations
 

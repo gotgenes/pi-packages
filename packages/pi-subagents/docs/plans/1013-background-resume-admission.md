@@ -325,8 +325,10 @@ Predicted unchanged, in the blast radius:
        `promise` is a `Promise`, `runTurnLoop` has been called once (the initial run), and the observer saw no `"resume"` start.
        After `openSlot()` and `await agent.promise`, the record reads `completed`, `runTurnLoop` was last called with the resume's prompt, and the observer saw the resume start.
      - (b) "is born claimed while it waits, when the caller claims it": with `claimOutcome: true`, `claimed` is `true` while still `queued`.
-     - (c) "never runs a resume stopped before its slot opened": `stopQueued()`, then `openSlot()`. `runTurnLoop` is still called once.
-     - (d) "runs only the resume that replaced a stopped one": queue resume A (gated), `stopQueued()`, resume B with the default scheduler, `await agent.promise`, then `openSlot()` and flush A's thunk. `runTurnLoop` was called exactly twice and never with A's prompt.
+     - (c) "never runs a resume stopped before its slot opened": `stopQueued()`, then `openSlot()`.
+       `runTurnLoop` is still called once.
+     - (d) "runs only the resume that replaced a stopped one": queue resume A (gated), `stopQueued()`, resume B with the default scheduler, `await agent.promise`, then `openSlot()` and flush A's thunk.
+       `runTurnLoop` was called exactly twice and never with A's prompt.
    - Killing mutations, one per class:
      - Call `this.startResumedRun(...)` directly and ignore `schedule`: (a) goes red.
      - Move `claim()` from `beginResume` into the admitted half: (b) goes red.
@@ -335,16 +337,21 @@ Predicted unchanged, in the blast radius:
    - Verify: the existing default-scheduler resume tests stay green.
 4. **`refactor(pi-subagents): end a queued resume stopped before its slot as a resume`**
    - `stopQueued()` reports `onRunFinished(this, this.currentRun.kind)`; update its doc comment.
-   - Test in `test/lifecycle/subagent.test.ts` `describe("stopQueued")`: queue a resume through the gated scheduler with a recording observer, then `stopQueued()`. `onRunFinished` was called exactly once, with `(agent, "resume")`, and `stoppedWhileQueued` is `true`.
+   - Test in `test/lifecycle/subagent.test.ts` `describe("stopQueued")`: queue a resume through the gated scheduler with a recording observer, then `stopQueued()`.
+     `onRunFinished` was called exactly once, with `(agent, "resume")`, and `stoppedWhileQueued` is `true`.
    - The existing initial-kind test stays.
    - Killing mutation: restore the hard-coded `"initial"`.
      The new test goes red.
    - Typed `refactor:` because no front door queues a resume until step 7.
 5. **`fix(pi-subagents)!: refuse a second resume while one waits for a concurrency slot`**
    - Add `resume-queued` to `ResumeRefusal`, with its doc, and add the getter arm from the Design Overview.
+
    - Add the `resumeRefusalMessage` case.
+
    - In `outcome-delivery.ts`, exclude both transient members from `RESUME_REFUSAL_CLAUSES` and branch `renderQuestionAffordance` on either.
+
    - Update the `SubagentRecord.resumeRefusal` JSDoc in `service.ts`.
+
    - Tests:
      - `subagent.test.ts` `describe("resumeRefusal")`: "refuses a second resume while one waits for a slot".
        Queue a resume through the gated scheduler; it reads `resume-queued`.
@@ -352,11 +359,14 @@ Predicted unchanged, in the blast radius:
      - `agent-tool.test.ts` `describe("refused")`: "tells the parent a resume is already waiting for a slot", with a full-string `toBe` on the sentence above.
      - `agent-tool.test.ts`: add `"resume-queued"` to the background door's `it.for` parity list.
      - `outcome-delivery.test.ts`: `renderQuestionAffordance("agent-1", "Which file?", "resume-queued")` equals the `still-running` rendering for the same arguments and contains no `resume:` token.
+
    - Killing mutations:
      - Delete the getter's `resume-queued` arm: the `subagent.test.ts` test goes red (it reads `undefined`).
      - Drop the `kind === "resume"` conjunct: the existing "leaves a queued agent reporting no-session" goes red.
      - Remove `resume-queued` from the affordance's transient branch: the outcome-delivery test goes red, since the clause lookup yields `undefined` at runtime.
+
    - Run `pnpm --filter @gotgenes/pi-subagents run check` after this step: it confirms both exhaustive sites compile, and it fails if one was missed.
+
    - Commit footer:
 
      ```text

@@ -85,8 +85,7 @@ A clean run with no rework — the only friction was minor tool-usage slips and 
 #### What caused friction (agent side)
 
 - `instruction-violation` (self/tool-caught) — authored the new tests against three testing-skill rules that were loaded but not applied: `mock.calls[0]![0]` with a `!` (the skill says use `toHaveBeenCalledWith` / drop the `!`), `ReturnType<typeof vi.fn<…>>` instead of `Mock<Sig>`, and a missing `beforeEach` `realpathSync` reset in the RPC suite.
-  The `!` was stripped by the ESLint pre-commit hook (aborting two commits, re-staged); the other two passed the pre-completion reviewer and were caught only by the operator's "do they meet our guidelines?"
-  prompt.
+  The `!` was stripped by the ESLint pre-commit hook (aborting two commits, re-staged); the other two passed the pre-completion reviewer and were caught only by the operator's "do they meet our guidelines?" prompt.
   Impact: two ESLint commit re-tries plus two follow-up `test:` commits (`dc79ed9b`, `5b5e2553`) — no behavior rework.
 - `other` (Edit-tool misuse) — twice packed two replacements into one `edits[]` object via `oldText2`/`newText2` keys; the tool rejected with "must not have additional properties."
   Impact: two rejected tool calls, immediately re-issued as separate array entries — no rework.
@@ -95,8 +94,7 @@ A clean run with no rework — the only friction was minor tool-usage slips and 
 
 #### What caused friction (user side)
 
-- The operator's mid-flight "take one more review of the code changes — do they meet our guidelines?"
-  was a high-value strategic intervention, not mechanical oversight: it surfaced two testing-skill conformance gaps the pre-completion reviewer's PASS had missed.
+- The operator's mid-flight "take one more review of the code changes — do they meet our guidelines?" was a high-value strategic intervention, not mechanical oversight: it surfaced two testing-skill conformance gaps the pre-completion reviewer's PASS had missed.
   Framed as opportunity: the reviewer's design lens (2d) loads the `code-design` skill for `src/` files but has no symmetric lens that loads the `testing` skill for `test/` files, so test-code convention drift currently relies on a manual prompt to catch.
 
 ### Diagnostic details

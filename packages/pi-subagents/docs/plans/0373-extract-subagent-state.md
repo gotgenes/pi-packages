@@ -58,7 +58,8 @@ AGENTS.md / code-design constraints that apply:
 
 ### `SubagentState` value object (`src/lifecycle/subagent-state.ts`)
 
-A pure, independently constructible value object. `SubagentStatus` moves here (its natural home) and is re-exported from `subagent.ts`.
+A pure, independently constructible value object.
+`SubagentStatus` moves here (its natural home) and is re-exported from `subagent.ts`.
 
 ```ts
 export type SubagentStatus =
@@ -213,9 +214,11 @@ Grep sweep confirmed no other `src/`, `test/`, or `SKILL.md` references to the r
 
 1. **Extract `SubagentState` (pure addition; lift-and-shift prep).**
    - Create `src/lifecycle/subagent-state.ts` and `test/lifecycle/subagent-state.test.ts` (red → green for every transition/accumulator).
-   - Refactor `Subagent` to hold a `SubagentState` built from the *existing* `SubagentInit` fields; getters/mutators delegate. `SubagentStatus` moves to `subagent-state.ts`, re-exported from `subagent.ts`.
+   - Refactor `Subagent` to hold a `SubagentState` built from the *existing* `SubagentInit` fields; getters/mutators delegate.
+     `SubagentStatus` moves to `subagent-state.ts`, re-exported from `subagent.ts`.
    - In `subagent.test.ts`, introduce a local construction helper and route call sites through it; move the pure state-machine `describe` blocks into `subagent-state.test.ts`.
-   - No consumer breaks (init shape unchanged). `pnpm run check` + `test`.
+   - No consumer breaks (init shape unchanged).
+     `pnpm run check` + `test`.
    - Commit: `refactor: extract SubagentState value object (#373)`.
 2. **Retarget the observer at `SubagentState`.**
    - Change `subscribeSubagentObserver` to accept `SubagentState` and an `onCompact(info)`; update the two `subagent.ts` call sites (pass `this.state`, close over `this`).

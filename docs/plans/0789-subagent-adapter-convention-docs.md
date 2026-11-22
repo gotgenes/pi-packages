@@ -77,8 +77,7 @@ It matches by exact string equality on Pi's configured package source, with no g
 
 ### 1. The convention's obligation becomes true by construction
 
-The two env lists answer different questions ("is this process a child?"
-and "whose child is it?") but the second answer entails the first: a process that names a parent session **is** a child.
+The two env lists answer different questions ("is this process a child?" and "whose child is it?") but the second answer entails the first: a process that names a parent session **is** a child.
 Rather than duplicating the string across both arrays, the hint list is composed from the third-party inventory plus the parent-session candidates:
 
 ```typescript

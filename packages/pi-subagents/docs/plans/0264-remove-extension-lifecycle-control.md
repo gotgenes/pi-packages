@@ -208,12 +208,7 @@ This is a narrowing of the assembler's output contract, which is the desired dir
 
 ### Docs
 
-- `docs/architecture/architecture.md` -
-  remove the `SafeFs` and `SkillLoader` nodes from the session-domain Mermaid subgraph;
-  remove `safe-fs.ts` and `skill-loader.ts` from the directory-tree listing;
-  drop `isolated` from the `SpawnOptions` field list (≈ line 418) and the `RunOptions` field list (≈ line 651);
-  mark Phase 16 Step 4 (#264) done in the roadmap and update the "Children always load the parent's extensions and skills" note;
-  reflect the smaller session domain (8 → 6 modules).
+- `docs/architecture/architecture.md` - remove the `SafeFs` and `SkillLoader` nodes from the session-domain Mermaid subgraph; remove `safe-fs.ts` and `skill-loader.ts` from the directory-tree listing; drop `isolated` from the `SpawnOptions` field list (≈ line 418) and the `RunOptions` field list (≈ line 651); mark Phase 16 Step 4 (#264) done in the roadmap and update the "Children always load the parent's extensions and skills" note; reflect the smaller session domain (8 → 6 modules).
 - `.pi/skills/package-pi-subagents/SKILL.md` - update the Session domain row (module count 8 → 6, drop `safe-fs.ts` / `skill-loader.ts` from the file list).
 
 ## Test Impact Analysis
@@ -221,17 +216,8 @@ This is a narrowing of the assembler's output contract, which is the desired dir
 1. New coverage enabled - minimal (this is a removal).
    The one behavioral assertion worth strengthening: the post-bind recursion guard now runs **unconditionally**.
    Update `agent-runner-extension-tools.test.ts` so a case that previously relied on `extensions: true` instead asserts the guard always calls `setActiveToolsByName` and always excludes `EXCLUDED_TOOL_NAMES`, with no config dependence.
-2. Tests that become redundant and are removed -
-   `skill-loader.test.ts` and `safe-fs.test.ts` (modules deleted);
-   the `isolated`-mode `describe` in `session-config.test.ts`;
-   the "extensions: false skips the filter entirely" case;
-   `isolated` parameter tests in `spawn-config.test.ts` / `invocation-config.test.ts`;
-   `extensions` / `skills` frontmatter-parsing tests in `custom-agents.test.ts`.
-3. Tests that must stay (genuinely exercise surviving layers) -
-   prompt assembly (`prompts.test.ts`, minus `extras`);
-   model resolution in `session-config.test.ts`;
-   the post-bind guard ordering tests (adjusted, not removed);
-   custom-agent `tools:` parsing (`csvList` survives).
+2. Tests that become redundant and are removed - `skill-loader.test.ts` and `safe-fs.test.ts` (modules deleted); the `isolated`-mode `describe` in `session-config.test.ts`; the "extensions: false skips the filter entirely" case; `isolated` parameter tests in `spawn-config.test.ts` / `invocation-config.test.ts`; `extensions` / `skills` frontmatter-parsing tests in `custom-agents.test.ts`.
+3. Tests that must stay (genuinely exercise surviving layers) - prompt assembly (`prompts.test.ts`, minus `extras`); model resolution in `session-config.test.ts`; the post-bind guard ordering tests (adjusted, not removed); custom-agent `tools:` parsing (`csvList` survives).
 
 ## TDD Order
 

@@ -22,7 +22,9 @@ The phase shape chosen is a full 7-step phase whose spine is the sibling boundar
 - **Deferral-gate outcome: did not fire.**
   `#574` is a genuine cause-level, user-reported enforcement gap, so the phase is not polish-only.
   The Phase 12 candidate (cross-session intent spine) is recorded, not silently re-deferred — an explicit `ask_user` decision confirmed deferring it with `#565` gathering real-session evidence first.
-- **Repeat deferrals resolved by decision.** `#472` (model judge) was deferred by name in Phases 9 and 10; this phase writes its decision record (Step 7, ADR 0007, filed as `#581`) so it becomes schedulable — implementation stays future work. `#519` (SDK UIContext) stays open by explicit decision, not a silent sweep: Step 4's `select`-fallback constraint keeps frontend-driven flows working meanwhile.
+- **Repeat deferrals resolved by decision.**
+  `#472` (model judge) was deferred by name in Phases 9 and 10; this phase writes its decision record (Step 7, ADR 0007, filed as `#581`) so it becomes schedulable — implementation stays future work.
+  `#519` (SDK UIContext) stays open by explicit decision, not a silent sweep: Step 4's `select`-fallback constraint keeps frontend-driven flows working meanwhile.
 - **Feasibility probes that shaped steps.**
   - `#573` (keybind dialog): verified `ctx.ui.custom<T>()` exists on the current SDK and renders **inline by default** (`overlay ?? false` in Pi core `interactive-mode.ts` `showExtensionCustom`).
     No SDK evolution needed — this moved `#573` from "blocked like `#519`" to a schedulable Step 4.

@@ -149,8 +149,7 @@ Two operator interventions were decisive rather than corrective:
   No offered option said that; the free-text note carried it.
   This is a case for keeping `ask_user` options open-ended enough that a reframe can arrive alongside a selection.
 - "What does 'fidelity up' and 'disclosure down' mean?
-  Which way is up and down?"
-  was a redirecting question, not a correction, and it surfaced that a maxim in `architecture.md` had been ambiguous since it was written.
+  Which way is up and down?" was a redirecting question, not a correction, and it surfaced that a maxim in `architecture.md` had been ambiguous since it was written.
 
 ### Diagnostic details
 

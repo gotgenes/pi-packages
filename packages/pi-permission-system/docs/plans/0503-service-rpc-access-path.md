@@ -18,8 +18,7 @@ Confirm the deferral at ship time.
 
 External callers query our policy two ways: the `Symbol.for()` service (`LocalPermissionsService.checkPermission`) and the deprecated event-bus RPC (`permissions:rpc:check`).
 Both build a query input with `buildInputForSurface` and resolve a `kind: "tool"` intent, which the manager normalizes **lexically only** via `normalizeInput` → `normalizePathSurfaceValues` → `getPathPolicyValues`.
-So an external caller asking "would this path be allowed?"
-for `path` / `external_directory` / a path-bearing surface gets lexical-only matching — inconsistent with the gates, which match the lexical aliases ∪ canonical (symlink-resolved) set after [#486] and Phase 7 Step 1 ([#502]).
+So an external caller asking "would this path be allowed?" for `path` / `external_directory` / a path-bearing surface gets lexical-only matching — inconsistent with the gates, which match the lexical aliases ∪ canonical (symlink-resolved) set after [#486] and Phase 7 Step 1 ([#502]).
 A query for a symlinked path therefore misses a rule that fires on the canonical alias at the gate.
 
 This is the second of the two residual lexical-only path-derivation paths Phase 7 closes (Step 1 closed the per-tool gate).

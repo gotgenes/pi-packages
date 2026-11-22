@@ -46,15 +46,15 @@ Recompute commands (run from the repo root):
 
 ### ✅ Step 1: Introduce a tool-kind classification decided once at the normalize boundary ([#568])
 
-**Cause:** the extraction question — "what does this invocation access: a bash command, an MCP target, or a path?"
-— is a domain decision re-derived by silent string comparison at every consumer instead of decided once where the invocation enters the system ([#561]).
+**Cause:** the extraction question — "what does this invocation access: a bash command, an MCP target, or a path?" — is a domain decision re-derived by silent string comparison at every consumer instead of decided once where the invocation enters the system ([#561]).
 The 21 grep sites are the symptom; the cause is the missing dispatch point.
 
 - **Smell:** Category C (repeated discriminator / OCP).
 - **Target:** new `src/access-intent/tool-kind.ts` (the classification and its per-kind extraction product); migrate the extraction consumers: `input-normalizer.ts`, `tool-input-path.ts`, `handlers/gates/tool.ts`, `handlers/gates/tool-call-gate-pipeline.ts`, `permission-manager.ts`.
   Constraint: `permission-manager.ts` stays string-based per `docs/decisions/0002-path-values-string-boundary.md`; the classification value is plain data, safe to consume there.
 - **Outcome:** extraction-family `toolName === "bash"`/`"mcp"` sites drop to 0 outside `access-intent/tool-kind.ts`; total family sites 21 → ≤ 12 (presentation family remains until Step 2).
-- **Landed:** `access-intent/tool-kind.ts` (`ToolKind` + `classifyToolKind`) added; the five extraction consumers migrated onto it; total family 21 → 12 (all remaining sites are the presentation family Step 2 clears, plus one docstring inside `tool-kind.ts`). `getToolPermission`'s dead per-kind branches collapsed to a single `evaluate(…, "*", …)` in the same pass.
+- **Landed:** `access-intent/tool-kind.ts` (`ToolKind` + `classifyToolKind`) added; the five extraction consumers migrated onto it; total family 21 → 12 (all remaining sites are the presentation family Step 2 clears, plus one docstring inside `tool-kind.ts`).
+  `getToolPermission`'s dead per-kind branches collapsed to a single `evaluate(…, "*", …)` in the same pass.
 - **Impact 4 / Risk 2 / Priority 16.**
 
 Release: batch "tool-kind-dispatch"

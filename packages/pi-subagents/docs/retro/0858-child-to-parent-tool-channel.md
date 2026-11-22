@@ -16,8 +16,7 @@ Committed `docs/plans/0858-child-to-parent-tool-channel.md` (8 TDD steps), filed
 ### Observations
 
 - **The issue's own author had deferred it** ("I would not build this until #465 has shipped and the end-and-resume loop has been used enough to show where it actually falls short").
-  [#465] has since shipped, so the deferral was satisfied — but reading it as a live constraint is what made the first design question "does the blocking ask still earn itself?"
-  rather than "how do we build it?".
+  [#465] has since shipped, so the deferral was satisfied — but reading it as a live constraint is what made the first design question "does the blocking ask still earn itself?" rather than "how do we build it?".
 - **Three of the issue's own premises did not survive checking.**
   The workspace motivation was closed by [#857]; the retention motivation turned out to be a bug in `sweep()`'s two-way branch rather than a missing channel; and the claim that a new child tool is invisible "to every agent that declares one" understates it — `BUILTIN_TOOL_NAMES` is *also* an explicit allowlist, so no child anywhere receives a new extension tool without an agent-file edit.
 - **The operator reversed my recommendation twice, and was right both times.**
@@ -184,8 +183,7 @@ The change shipped a net deletion: two child-facing tools (`ask_parent`, `notify
 #### What caused friction (user side)
 
 - Very little — the operator's interventions were the highest-leverage input in the session, and both arrived as redirecting questions rather than corrections, which is the ideal shape.
-  The "does this belong in a consumer package?"
-  and "tool masquerading in a protocol trenchcoat" questions each removed a whole subsystem from the design.
+  The "does this belong in a consumer package?" and "tool masquerading in a protocol trenchcoat" questions each removed a whole subsystem from the design.
 - The one opportunity is structural rather than behavioral: the operator adopted follow-ups [#871] and [#872] as Phase 22 steps against the agent's recommendation to defer both.
   Two reversals of the same recommendation in one issue suggests the `roadmap-fit` skill's deferral heuristic reads as more conservative than the operator's actual appetite for absorbing small adjacent defects into an open phase.
   Not worth a prompt change on two data points; worth watching.

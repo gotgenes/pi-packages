@@ -140,12 +140,13 @@ So reproducing the oracle reuses that hardening instead of introducing shapes no
 
 For each error-free `redirected_statement` S with a `heredoc_redirect` child H carrying a redirect tail or a statement tail:
 
-1. **Truncate H.**
-   H′ keeps `<<`/`<<-`, `heredoc_start`, any word tail, `heredoc_body`, and `heredoc_end`.
+1. **Truncate H.** H′ keeps `<<`/`<<-`, `heredoc_start`, any word tail, `heredoc_body`, and `heredoc_end`.
    Its range stays H's, because its body is written after the rest of the line.
+
 2. **Hoist the redirects.**
    S′ is S with H replaced by H′ followed by H's tail `file_redirect`/`herestring_redirect` children, then S's remaining children, in source order.
    S′ keeps S's range when the tail has no statement.
+
 3. **Rejoin a statement tail.**
    The operator is the `|`/`|&` inside H's `pipeline` child, or the `&&`/`||` token child of H, and T is the statement after it.
    The result replaces S in its parent:
@@ -159,7 +160,9 @@ For each error-free `redirected_statement` S with a `heredoc_redirect` child H c
    ```
 
    Each node on the rebuilt spine spans from S′'s start to the largest end beneath it, which is H′'s end.
+
 4. A node's children are corrected wherever they sit, bottom-up, so a heredoc statement nested in a list, a pipeline, a substitution, or another tail is corrected too.
+
 5. A statement with no such heredoc, or with a parse error, is presented as-is; when nothing in the tree changes, the root itself is returned.
 
 A word tail is left in H′ for pass 2.

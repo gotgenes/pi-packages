@@ -128,7 +128,8 @@ The issue ran four stages across two sessions — planning, TDD, and worktree sh
   The canonical marker string `/plan-issue` writes (line 148) ends with `confirm at ship time`, so the worktree path contradicts the text it is reading.
   Impact: no rework — deferring was the right call — but the operator never got the confirmation the plan requested, on a `fix!:` breaking change.
 - `other` — the same divergence has a **timing** half.
-  `/ship-issue` gathers the release decision in a step 0 explicitly placed "before any irreversible work," reasoning that "a decision presented early from the plan is far less likely to be reversed than one inferred from prose at the cancel point." `/land-worktree` reads the marker at step 6 — after push, CI, and issue close — so even if it asked, it would ask at exactly the cancel point the trunk path was designed to avoid.
+  `/ship-issue` gathers the release decision in a step 0 explicitly placed "before any irreversible work," reasoning that "a decision presented early from the plan is far less likely to be reversed than one inferred from prose at the cancel point."
+  `/land-worktree` reads the marker at step 6 — after push, CI, and issue close — so even if it asked, it would ask at exactly the cancel point the trunk path was designed to avoid.
   Impact: latent; it did not bite here because the answer was "defer", which needs no rollback.
 - `missing-context` — the plan's step 3 killing mutation was self-referential (see above).
   Impact: roughly six tool calls of rework at TDD step 3, all pre-commit.

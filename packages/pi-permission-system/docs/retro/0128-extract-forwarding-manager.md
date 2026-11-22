@@ -11,7 +11,8 @@ issue_title: "refactor: extract ForwardingManager class to encapsulate polling l
 
 Extracted the forwarding poll lifecycle — 3 mutable fields on `ExtensionRuntime` and 2 free functions in `runtime.ts` — into a `ForwardingManager` class in `src/forwarding-manager.ts`.
 Introduced a `ForwardingController` interface so `HandlerDeps` references a narrow type instead of the concrete class.
-Shipped as v5.9.0 with zero behavioral change. 11 new unit tests, 3 removed; total suite 1260 tests across 57 files.
+Shipped as v5.9.0 with zero behavioral change.
+11 new unit tests, 3 removed; total suite 1260 tests across 57 files.
 
 ### Observations
 

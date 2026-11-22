@@ -143,7 +143,8 @@ Baseline measured on `b1722630`: 64 test files, 1095 tests green, `pnpm fallow a
 - **Shutdown — reorder plus latch, deliberately broad.**
   Named three disadvantages before the operator confirmed: `dispose()` becomes one-shot; a documented, test-pinned cleanup order changes; and it also suppresses the nudges *running* agents currently leak asynchronously at shutdown.
   The operator chose to treat the third as intended and have the plan test it, so this fix is not scoped purely to queued agents.
-- **ESC path needs no work.** `InterruptHandler` fires inside the parent's run, so `parentRunActive` is true and the new nudges are withheld and flushed on `agent_settled` per #661 — the leak is specific to `session_shutdown`, where no run is active.
+- **ESC path needs no work.**
+  `InterruptHandler` fires inside the parent's run, so `parentRunActive` is true and the new nudges are withheld and flushed on `agent_settled` per #661 — the leak is specific to `session_shutdown`, where no run is active.
 - **Scope grew by one surface.**
   `get_subagent_result` would have returned the same `"No output."` lie, so `renderReportBody` gets a never-started branch (TDD 6).
   Kept as its own step so it can be dropped without disturbing the rest.

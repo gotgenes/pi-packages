@@ -202,6 +202,7 @@ Dry-run results at planning time:
 1. **Always-loaded measurement** — `node scripts/agent-docs/always-loaded.mjs` prints `agentsMd=8045 descriptions=454 total=8499` today (measured).
    Predicted after: `agentsMd` 1,500–1,700; `descriptions` 454 + ~320 for eight new skills ± the 11 rewrites; `total` ≈ 2,300–2,500 (estimated).
    Recorded in the final commit body and the retro note; the next `/audit-agent-docs` run writes the dated snapshot.
+
 2. **Moved-line check** — every prose line of the pre-split `AGENTS.md` (352 lines today, measured: non-blank, non-heading, outside fences) must appear verbatim in `AGENTS.md` or some `.pi/skills/*/SKILL.md`:
 
    ```bash
@@ -217,12 +218,17 @@ Dry-run results at planning time:
    Prints nothing against an unchanged tree (dry-run: 0 lines).
    After each move step it must print nothing; after the `AGENTS.md` rewrite step it may print only the lines the Module-Level Changes list as deliberately dropped.
    The `while read` loop is the intended form — `grep -F -f` would treat the list as patterns and match substrings across lines.
+
 3. **Duplicate check** — no moved line may survive in two places: `for f in .pi/skills/*/SKILL.md; do grep -cFf <(grep -v '^#' "$f" | grep -v '^\s*$') AGENTS.md; done` should print `0` per skill after the rewrite (a fixed-string overlap between a skill body and `AGENTS.md` is a line that was copied, not moved).
    Dry-run today: not meaningful (nothing moved yet).
+
 4. **Lint** — `find .rumdl_cache -type f -delete && pnpm run lint` after the rewrite step, because `finish-phase.md` and `plan-issue.md` link into `AGENTS.md` by heading text and the cache would hide a broken anchor.
    Also `pnpm exec rumdl check` on each new skill file at its step.
+
 5. **Skill discovery** — a fresh `pi` session's system prompt lists each new skill under `<available_skills>` with its description; verified once at the end by the operator (the running session cannot see skills added mid-session — `AGENTS.md` § Stale in-process extension code).
+
 6. **Template pointers** — `rg -n 'AGENTS\.md' .pi/prompts .pi/agents .pi/skills scripts CONTRIBUTING.md` after the repoint step lists only the predicted-unchanged mentions above.
+
 7. **`next-version.sh` error text** — the no-tag branch is unreachable by a real package name (every package is tagged; dry-run: `next-version.sh no-such-pkg` exits on the unknown-package check first), so verify by text: `grep -c 'AGENTS.md' scripts/release/next-version.sh` prints `2` today and must print `0` after step 7, with `grep -c 'releasing/SKILL.md'` printing at least `1`.
 
 ## Invariants at risk

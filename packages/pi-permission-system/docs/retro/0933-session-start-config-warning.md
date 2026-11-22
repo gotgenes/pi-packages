@@ -26,7 +26,8 @@ Plan committed as `packages/pi-permission-system/docs/plans/0933-session-start-c
 - **Rejected: driving the reporter from `ConfigStore.refresh` itself.**
   Needs no handler changes and reintroduces the bug: `refresh` runs at factory time and again at `handleSessionStart` *before* `resetForNewSession`, so `session.context` is null at both and `logger.warn` has nowhere to go.
   Verified `resetForNewSession` → `activate` → `this.context` is what makes the adjacent policy-issue loop work.
-- **Rejected: driving from turn prep alone.** `before_agent_start` fires after the user message is pushed (`../../pi/packages/coding-agent/src/core/agent-session.ts:1390-1406`), so a startup warning would wait for the operator's first prompt.
+- **Rejected: driving from turn prep alone.**
+  `before_agent_start` fires after the user message is pushed (`../../pi/packages/coding-agent/src/core/agent-session.ts:1390-1406`), so a startup warning would wait for the operator's first prompt.
 - **Rejected: wiring the reporter through `PermissionSession`.**
   It would spare the handlers a new dep at the cost of a fourth pure config relay on a seven-dep aggregate.
 - **Mid-session re-warn is load-bearing per the operator:** "given that we refresh mid-session, we must therefore keep the user informed if they create an issue with the config mid-session."
@@ -83,8 +84,7 @@ The plan was rewritten from five steps to seven and recommitted; the roadmap dis
   Fourth hand-rolled latch, but the logger is untouched by this change, so tidying it makes nothing easier.
   The fifth instance pays for it.
 - **Ownership question at the first gate.**
-  The operator answered the fix-shape gate with "who really wants to own this behavior?"
-  — a question, not a selection, which the `clarification-gates` skill reads as a premature gate.
+  The operator answered the fix-shape gate with "who really wants to own this behavior?" — a question, not a selection, which the `clarification-gates` skill reads as a premature gate.
   It was: the option set assumed the store owned notification.
   The grep that answered it (10 `ui.notify` sites; one session-lifecycle outlier) should have preceded the gate.
 

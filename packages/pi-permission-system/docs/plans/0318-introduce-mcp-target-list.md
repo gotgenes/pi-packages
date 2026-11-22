@@ -120,7 +120,8 @@ Each branch still returns `targets.toArray()` instead of the bare `targets` arra
 
 ### Edge cases (all already covered by behavior)
 
-- Empty/null/whitespace values: `add(null)` and `add("")` are no-ops (falsy guard). `getNonEmptyString` already normalizes input, so whitespace never reaches `add`.
+- Empty/null/whitespace values: `add(null)` and `add("")` are no-ops (falsy guard).
+  `getNonEmptyString` already normalizes input, so whitespace never reaches `add`.
 - Duplicate candidates (e.g. `tool: "exa:search"` with `["exa"]` configured): `add` dedups; ordering follows first-insertion, identical to the old `includes`-then-`push`.
 - Insertion order is the candidate priority (most-specific first); `toArray()` preserves it.
 

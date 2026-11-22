@@ -211,8 +211,7 @@ Symbols removed and their consumers (grepped across `src/` and `test/`):
    These absorb the existing `worktree-state.test.ts` coverage (constructor, `recordCleanup`, `performCleanup`) at the same granularity.
 2. Existing tests that become redundant / simplified: `test/lifecycle/worktree-state.test.ts` is removed (its behavior is covered by the new collaborator tests).
    The `Agent — setupWorktree` describe block in `agent.test.ts` is removed (the method is gone); its intent migrates to the `WorktreeIsolation` unit tests plus the existing `Agent.run() — worktree` integration tests.
-3. Existing tests that must stay (genuinely exercise the layer):
-   `test/lifecycle/worktree.test.ts` (git plumbing + `GitWorktreeManager`) is untouched.
+3. Existing tests that must stay (genuinely exercise the layer): `test/lifecycle/worktree.test.ts` (git plumbing + `GitWorktreeManager`) is untouched.
    `Agent.run() — worktree` integration tests stay but switch their assertions from `agent.worktreeState` to `agent.worktree` and construct the agent with a `WorktreeIsolation`.
    `agent-manager.test.ts` worktree tests stay but assert via `record.worktree?.path` / `record.worktree?.cleanupResult`.
 

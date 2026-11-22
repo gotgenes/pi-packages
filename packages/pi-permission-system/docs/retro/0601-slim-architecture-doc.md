@@ -57,7 +57,8 @@ Execution quality was high: incremental `lint:md` after every step, a clean temp
 
 #### What went well
 
-1. **Incremental verification, not end-of-run.** `pnpm run lint:md` ran after every content step (steps 1–5), so each of the seven commits was independently lint-valid — the feedback-loop-gap lens found no gap.
+1. **Incremental verification, not end-of-run.**
+   `pnpm run lint:md` ran after every content step (steps 1–5), so each of the seven commits was independently lint-valid — the feedback-loop-gap lens found no gap.
 2. **Large mechanical replacement done safely.**
    The ~130-entry module tree was rewritten by authoring the trimmed block to `/tmp/module-tree.txt` (`Write`) and splicing with a marker-keyed `python3` script, avoiding a fragile multi-KB `Edit` `oldText` — then verified block boundaries and a bijective ref/def check.
 3. **Mid-planning `ask_user` as a scope gate.**

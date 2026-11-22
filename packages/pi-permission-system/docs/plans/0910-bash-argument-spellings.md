@@ -253,16 +253,20 @@ export interface PermissionCheckResult {
    Extract the private builder from `parse`; add `BashProgram.parseSync(command, normalizer, options?)` beside it.
    Tests (`program.test.ts`, new `describe("parseSync")`): `null` while cold; once warm, `commands()`, `externalAccesses()`, and `pathRuleCandidates()` equal `parse`'s for a chain, a salvaged command, and a `workdir` case.
    Killing mutation: make `parseSync` return `new BashProgram(command, [], [], [])` instead of `null` when `getWarmBashParser()` is `null`.
+
 2. **`refactor(pi-permission-system): resolve the advisory bash query through BashProgram.parseSync`.**
    `resolveBashAdvisoryCheck` takes the normalizer; `permissions-service.ts` passes `this.session.getPathNormalizer()`; delete `sync-commands.ts`; migrate `sync-commands.test.ts` (20 sites, renamed `program-parse-sync.test.ts`), `bash-command.test.ts` (3 sites), and `bash-advisory-check.test.ts`'s calls in the same commit, because removing the export breaks them at the type level.
    Behavior-neutral; the existing suite is the check, and no new test means no mutation.
+
 3. **`refactor(pi-permission-system): give a whole-argument PathToken its source span`.**
    `wholeNodeToken` at sites 910, 967, 1018, 163, 275; `dischargePendingConsumption` takes the node; derived sites unchanged.
    Tests (`token-collection.test.ts`, new `describe("source spans")`): `rm a/b`, `grep pat a/b`, and a script-file flag's separate argument carry their node's `startIndex`/`endIndex`; `--out=a/b` and an inline-value script-file carry none.
    Killing mutation: pass the argument node's span to the token `embeddedOptionValueToken` builds.
+
 4. **`refactor(pi-permission-system): carry a path candidate whole through the resolver's projection`.**
    `tagTokens` spreads the `PathToken`; `projectRuleCandidates` and its dedup branch keep every field.
    Behavior-neutral; existing suite.
+
 5. **`refactor(pi-permission-system): record the absolute spelling of each resolved argument`.**
    `ResolvedBashPaths.argumentSpellings` per the Design Overview predicate; salvaged candidates carry no span.
    Tests (new `bash-path-resolver.test.ts`, driving `new BashPathResolver(normalizer, words).resolve(root, salvaged)` over a parsed tree):
@@ -276,6 +280,7 @@ export interface PermissionCheckResult {
    - `rm /tmp/x` under a win32-flavor normalizer → none.
 
    Killing mutations: move the recording after the dedup `continue` (kills `cp a/x a/x`); drop the `isAbsolute` check (kills `cd "$DIR" && rm ./a/x`, which would spell `a/x`); drop the glob check (kills `rm src/*.ts`); tag salvaged candidates with their spans (kills the salvaged case).
+
 6. **`fix(pi-permission-system)!: match a bash rule written with an absolute path against the relative spelling of that path`.**
    `UnitScope.speller`, `collectCommands(root, words, speller?)`, `readCommandUnit`'s parallel spelling over non-computed words, `makeCommandUnit` composing both producers; the builder passes `argumentSpellings`.
    Tests (`bash-command.test.ts`, new `describe("a rule written with an absolute path matches the relative spelling")`, real resolver and manager via `parseSync` with a normalizer whose cwd the rows name):
@@ -291,6 +296,7 @@ export interface PermissionCheckResult {
    Update the exact `commands()` assertions the spelling changes (program and parse-sync tests).
    Killing mutations: pass `undefined` as the speller in the builder's `collectCommands` call (kills the reproduction rows and the advisory parity test); drop the `!computed` guard in `readCommandUnit` (kills `rm $DIR/x`).
    Commit body ends with `BREAKING CHANGE:` (existing configs change decisions: an absolute bash `deny` now catches the relative spelling, and an absolute `allow` after a broader rule loosens it), then the final paragraph `Refs #910` and `Co-authored-by: Ilker Ulusoy <ilker@ilkerulusoy.com.tr>` (PR [#917]'s span-join mechanism and the issue's alias direction).
+
 7. **`feat(pi-permission-system): report which spelling of a bash command a rule matched`.**
    `PermissionCheckResult.matchedSpelling`, set in `check()`'s `bash-command` branch; `floorToAsk` drops it.
    Tests:
@@ -298,6 +304,7 @@ export interface PermissionCheckResult {
    - `bash-command.test.ts`: the floored wrapper row carries no `matchedSpelling`.
 
    Killing mutations: set `matchedSpelling` inside `buildCheckResult` whenever `value !== values[0]` (kills the MCP/path absence test); delete the drop in `floorToAsk` (kills the floor test).
+
 8. **`feat(pi-permission-system): show the matching bash spelling in the ask dialog and the review log`.**
    The request fact, its builders, `asPromptRequest` tolerance, `renderReviewLogFacts`, the `matched as` dialog line, and `COMMAND_BEARING_LOG_KEYS`, in one commit so no intermediate commit writes the spelling unmasked.
    Tests:
@@ -309,6 +316,7 @@ export interface PermissionCheckResult {
 
    Update the eight full-literal request assertions.
    Killing mutations: remove `matchedSpelling` from `COMMAND_BEARING_LOG_KEYS` (kills the redaction test); require the field in `asPromptRequest` (kills the absent-field test); drop the `present("matchedSpelling", …)` line (kills the log test).
+
 9. **`docs(pi-permission-system): document the absolute argument spelling of a bash command`.**
    The Module-Level Changes doc list.
    Re-run the step 5 and 6 rows' prose against `docs/configuration.md` so every exclusion the doc names has a test.

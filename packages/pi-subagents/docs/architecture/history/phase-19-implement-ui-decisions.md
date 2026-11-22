@@ -197,7 +197,8 @@ Outcome: −546 LOC source (wizard + editor + file-ops + file-writer); −948 LO
 
 Landed ([#441]): deleted `agent-creation-wizard.ts`, `agent-config-editor.ts`, `agent-file-ops.ts`, `agent-file-writer.ts`, and `menu-ui.ts` (orphaned transient) from `src/ui/`, plus their four test files.
 `test/helpers/ui-stubs.ts` pruned to `makeMenuUI` only (still consumed by `subagents-settings.test.ts`); `makeFileOps`, `makeMenuManager`, and `createTestSubagentConfig` removed with their `ui-stubs.test.ts` describe blocks.
-Production duplication: 0 lines (confirmed by `fallow dupes`); `fallow dead-code`: clean. 16 test clone groups remain — Step 7 consolidation target.
+Production duplication: 0 lines (confirmed by `fallow dupes`); `fallow dead-code`: clean.
+16 test clone groups remain — Step 7 consolidation target.
 
 `Release: batch "dissolve-agents"`
 

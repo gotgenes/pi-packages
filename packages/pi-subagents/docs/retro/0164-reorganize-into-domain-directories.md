@@ -18,14 +18,10 @@ Explored the full `src/` and `test/` structure, mapped every relative import in 
   This makes the reorganization cleaner: test imports are flat `#src/agent-manager` → `#src/lifecycle/agent-manager` with no depth variation.
 - `lifecycle/` and `observation/` have a circular dependency (`agent-manager` ↔ `record-observer`), so they must be moved in a single commit (Step 3).
   All other domains can be committed independently.
-- `vitest.config.ts` uses `"test/**/*.test.ts"` — test files in new subdirectories are
-  auto-discovered without config changes.
-- Three UI test files (`conversation-viewer.test.ts`, `display.test.ts`,
-  `widget-renderer.test.ts`) are misplaced at `test/` root; left out of scope for this issue.
-- No `default-agents.test.ts`, `context.test.ts`, or `execution-state.test.ts` exist —
-  those src modules have no dedicated test files.
-- The import tables in the plan enumerate every path change; `pnpm run check` will catch
-  any missed update before each commit.
+- `vitest.config.ts` uses `"test/**/*.test.ts"` — test files in new subdirectories are auto-discovered without config changes.
+- Three UI test files (`conversation-viewer.test.ts`, `display.test.ts`, `widget-renderer.test.ts`) are misplaced at `test/` root; left out of scope for this issue.
+- No `default-agents.test.ts`, `context.test.ts`, or `execution-state.test.ts` exist — those src modules have no dedicated test files.
+- The import tables in the plan enumerate every path change; `pnpm run check` will catch any missed update before each commit.
 
 ## Stage: Implementation — TDD (2026-05-23T16:55:00Z)
 

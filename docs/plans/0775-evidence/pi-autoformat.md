@@ -79,7 +79,8 @@ The skill generalizes this: "Treat any declared config field not read by the dis
 - **A "no scope check" escape hatch** — `docs/plans/0004-shell-driven-mutation-coverage.md`: "we deliberately do not provide a 'no scope check' escape hatch."
   Users who need a wider boundary configure `formatScope` roots.
 
-- **Blocking the original edit on a formatter failure** — `README.md` design goals: "surface formatter failures without blocking the original edit." `docs/plans/0001-initial-implementation-plan.md` Core Product Decision 4 and its answered Open Question 4 both hold this line.
+- **Blocking the original edit on a formatter failure** — `README.md` design goals: "surface formatter failures without blocking the original edit."
+  `docs/plans/0001-initial-implementation-plan.md` Core Product Decision 4 and its answered Open Question 4 both hold this line.
   Note the framing is "no strict mode should be added yet" — later plans (`0016` Non-Goals) still route strict-mode changes to a separate issue, so this is a firm current stance with an acknowledged open question, not a closed door.
 
 - **Masking a formatter's non-zero exit** — `docs/configuration.md` fallback semantics: "Non-zero exit codes are treated as real failures and surfaced — they are not masked by trying the next alternative"; the built-ins section adds "Anything else with a non-zero exit is reported as a real failure and is never silently swallowed."
@@ -88,7 +89,8 @@ The skill generalizes this: "Treat any declared config field not read by the dis
   `docs/plans/0016-detailed-formatter-output-on-failure.md` Non-Goals: "Surfacing successful-run output."
 
 - **Persisting formatter output or summaries** — `docs/plans/0016-detailed-formatter-output-on-failure.md` Non-Goals: "Persisting full output to disk (e.g. `.pi/extensions/pi-autoformat/last-run.log`).
-  Defer until someone asks; mechanism is forever." `docs/plans/0002-richer-tui-formatter-summaries.md` Non-Goals: "Persisting summaries across sessions."
+  Defer until someone asks; mechanism is forever."
+  `docs/plans/0002-richer-tui-formatter-summaries.md` Non-Goals: "Persisting summaries across sessions."
 
 - **A richer TUI surface than a footer status plus a warning toast** — `docs/plans/0002-richer-tui-formatter-summaries.md` Non-Goals declines a `setWidget` per-file table ("the user's framing… does not justify the screen real estate"), a `summarySurface` config key ("Premature; one good default beats a knob"), and theme overrides beyond the standard color names.
   `docs/plans/0016-detailed-formatter-output-on-failure.md` also declines "A separate widget / pane / file for full output."
@@ -114,7 +116,8 @@ The skill generalizes this: "Treat any declared config field not read by the dis
 - **Auto-rewriting users' on-disk config files** — `docs/plans/0012-remove-unused-formatter-extensions-field.md` Non-Goals.
   The deprecation policy is instead "accept the legacy key, emit a single non-fatal config issue per occurrence describing the deprecation, and discard the value" (`.pi/skills/package-pi-autoformat/SKILL.md`).
 
-- **A stable, versioned public TypeScript API for cross-extension use** — `docs/plans/0003-additional-pi-mutation-tools.md` Non-Goals: "We expose only the existing `pi.events` channel; everything else stays internal." `docs/plans/0022-pi-coding-agent-types.md` Non-Goals adds "Adding `@earendil-works/pi-coding-agent` to `dependencies` or `peerDependencies`.
+- **A stable, versioned public TypeScript API for cross-extension use** — `docs/plans/0003-additional-pi-mutation-tools.md` Non-Goals: "We expose only the existing `pi.events` channel; everything else stays internal."
+  `docs/plans/0022-pi-coding-agent-types.md` Non-Goals adds "Adding `@earendil-works/pi-coding-agent` to `dependencies` or `peerDependencies`.
   Pi is the loader, not a consumer of our package."
 
 - **A generic Pi-extension test harness, or LLM-backed tests in default CI** — `docs/plans/0010-acceptance-test-coverage.md` Non-Goals: "Building a generic Pi-extension test harness… the fixtures… exist solely to drive the autoformatter pipeline", and "default CI must not require API keys."

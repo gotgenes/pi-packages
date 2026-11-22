@@ -30,17 +30,14 @@ Released as v0.8.0.
   When pointed to issue #10 (config consolidation), the agent doubled down on dropping it.
   It took a third user message ("port this" with the concrete reason: zero-cost toggles save token usage) to land on the right approach.
   Impact: three rounds of plan revision before writing the final version; no rework in code since planning preceded implementation.
-- `scope-drift` — When the user asked "Have we updated all our documentation?", the agent interpreted this as "are there stale references to `zellij-modal`?"
-  and did a thorough grep.
+- `scope-drift` — When the user asked "Have we updated all our documentation?", the agent interpreted this as "are there stale references to `zellij-modal`?" and did a thorough grep.
   The user's actual question was whether user-facing behavior had changed in a way that needed documentation.
   The answer was no (behavior unchanged), but the agent reached the right conclusion via the wrong reasoning.
   Impact: added friction but no rework.
 
 #### What caused friction (user side)
 
-- The user's Socratic questioning (three progressively focused questions: "why a TUI?"
-  → "look at #10" → "what settings?"
-  → "port this") was effective at surfacing the right design, but could have been front-loaded with a single redirecting statement like "the modal is worth keeping for zero-cost toggles; just port it to `pi-tui` directly."
+- The user's Socratic questioning (three progressively focused questions: "why a TUI?" → "look at #10" → "what settings?" → "port this") was effective at surfacing the right design, but could have been front-loaded with a single redirecting statement like "the modal is worth keeping for zero-cost toggles; just port it to `pi-tui` directly."
   This would have saved two planning rounds.
   That said, the Socratic approach may have been intentional — testing whether the agent would question the premise independently.
 

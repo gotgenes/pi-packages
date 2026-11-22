@@ -26,10 +26,9 @@ Checking a file outside the repository (a scratch sample in `/tmp`) needs `--con
 The `pi-autoformat` extension reformats every file an `Edit`/`Write` touches, and its markdown pass rewrites prose in ways `rumdl` then accepts:
 
 - It also joins a line ending in `:` with the sentence after it — to add a sentence there, start a new paragraph, not a new line.
-- It likewise joins a sentence onto the previous line when the sentence opens with a lowercase token (a package or command name such as `git-cliff`) — lead with a capital instead.
-- It likewise joins a sentence that opens with `(` onto the previous line, and splits a parenthetical at any sentence end inside it — keep a parenthetical to one sentence.
-- It likewise joins a list-item continuation sentence that opens with an issue number (`#695 carries two reactions.`) onto the previous line — lead with a word (`Issue #695`).
-- It also reads a numbered section citation (`§ *7. Verify CI*`) as a sentence end and splits it — cite the heading instead (`` the `## 7. Verify CI` section ``).
+- It likewise joins a sentence that opens with an issue number (`#695 carries two reactions.`) onto the previous line, including a line that ends in a bold lead-in — lead with a word (`Issue #695`).
+- It splits a bold lead-in from the sentence after it (`**Lead.** Text` becomes two lines), so write the lead-in on its own line.
+- A code span that holds a backtick needs a double-backtick delimiter (``` `` a `b` `` ```); a backslash does not escape a backtick inside a code span, so a single-backtick span that writes its inner backticks as backslash-backtick ends at the first one, and the reflow collapses the paragraph around the unbalanced remainder.
 - It also reads a leading `~` as strikethrough and rewrites a `~`-prefixed token (`(~:211)` → `(~~211)`), which `rumdl check` passes — write an approximate line reference as `line ~211`.
 - It also trims a space at the edge of a code span (`rumdl`'s MD038 fix), so a space-prefixed wildcard lands as `*`; when the space is the meaning, say it in prose ("a space and `*`").
 
@@ -71,6 +70,8 @@ The split-sentence form stays a manual scan: `rumdl`'s sentence-per-line reflow 
 
 - Use sequential numbering (`1.` `2.` `3.`) in ordered lists, restarting at `1.` under each new heading — markdownlint's MD029 rejects continued numbering across section boundaries.
 - Do not use bold text (`**...**`) as a substitute for headings — use proper heading syntax; markdownlint's MD036 rejects emphasis used as headings.
+- A list is tight or loose as a whole (`rumdl`'s MD076): when any item holds a blank-separated block (a fenced code block, a second paragraph), `rumdl fmt` puts a blank line between every item of that list.
+- A sentence of the parent item that follows a nested list needs a blank line before it; without one it is lazy continuation of the last nested item, and the reflow joins it there.
 
 ### Inserting a new section
 

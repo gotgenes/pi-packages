@@ -15,8 +15,7 @@ It is not a member of any release batch, so there is nothing to defer or coordin
 
 ## Problem Statement
 
-"Can anyone answer this ask?"
-is currently a boolean pre-check smeared across five modules.
+"Can anyone answer this ask?" is currently a boolean pre-check smeared across five modules.
 `GateRunner` asks `GatePrompter.canConfirm()` before prompting; `applyPermissionGate` re-branches on the same boolean to short-circuit `ask` into a block; `deriveResolution` reads it a third time to distinguish `user_denied` from `confirmation_unavailable`; and `AuthorizerSelection` recomputes `hasUI || isSubagent` at `activate` to feed it (`canConfirm` appears 15 times across 5 modules in `src/`).
 
 Phase 9 Step 1 ([#555]) already introduced the `Authorizer` role and its three implementations, including `DenyingAuthorizer` — the least-privilege authority for a session with no reachable authority.

@@ -277,10 +277,12 @@ Pinned in step 3 (a turn at `warnAt` that ran no tools returns no action) and st
 1. **`refactor(pi-subagents): return a turn-loop result from resumeTurnLoop`** `resumeTurnLoop` returns `{ responseText }` as a `TurnLoopResult` (with `turnBudget` still optional at this point) and `completeResume` takes it; migrate every string-returning stub to `turnLoopResult({ responseText })` (Tidy-First recommendation: it isolates the ~25 mechanical stub edits from step 7's behavior).
    Suite and `pnpm --filter @gotgenes/pi-subagents run check` green with no behavior change.
    Killing mutation: none (no behavior).
+
 2. **`test(pi-subagents): drive turn-loop tests with realistic turn events`** In `test/lifecycle/subagent-session.test.ts`, `emitTurnEnd(listeners, { stopReason = "toolUse", toolResults = 1 } = {})` emits `{ type: "turn_end", message: { role: "assistant", stopReason }, toolResults }`; add `emitTurnStart`; `programTurns` emits `turn_start` before each turn after the first and accepts a per-turn spec; the `createSession` stub gains `sendCustomMessage: vi.fn()`.
    Tidy-First recommendation: the tracker reads these fields, so without this step every turn-limit test breaks inside step 4's diff.
    Suite green (the current loop ignores the new fields).
    Killing mutation: none (fixture only).
+
 3. **`refactor(pi-subagents): decide turn-budget warnings and stops in one tracker`** Add `TurnBudgetTracker` and `TurnBudgetAction`; make `TurnBudget.maxTurns` optional.
    No consumer yet, so `refactor:`.
    Table tests in `test/lifecycle/turn-limits.test.ts`, one `describe` per concern: counting (failed turns ignored), warning (at `warnAt`, deferred past a no-tools turn, once only, `warnBeforeFirstTurn` at `warnAt = 0`), ceiling (stop only with tools; no stop on a final-answer ceiling turn), backstop (`onTurnStart` past the ceiling), unlimited (never warns or stops), `budget` returns a copy.
@@ -291,6 +293,7 @@ Pinned in step 3 (a turn at `warnAt` that ran no tools returns no action) and st
    - backstop: make `onTurnStart` return `undefined` → kills the backstop test;
    - warnAt: compute `warnAt = maxTurns − wrapUpTurns` without `max(0, …)` → kills the `warnBeforeFirstTurn` test for `wrapUpTurns > maxTurns`;
    - copy: return the internal object from `budget` → kills the copy test.
+
 4. **`feat(pi-subagents)!: stop a subagent at max_turns, after warning it while wrap-up turns remain`** `runTurnLoop` drives the tracker: warning via `sendCustomMessage(…, { triggerTurn: false })`, stop via `abort()`, `turn_start` backstop, warn-before-first-turn ahead of `prompt()`, `onTurnBudget` reports, `TurnLoopResult.turnBudget` always present.
    `TurnLoopOptions.graceTurns` becomes `wrapUpTurns`, and the same step renames the setting end to end, since `RunConfig` is implemented by `SettingsManager` and the option has one producer: `settings.ts` (field, default 2, min 1, sanitize, snapshot, `applyWrapUpTurns`), `runtime.ts`, `subagents-settings.ts`, and `Subagent.run()`; the 87 `graceTurns` test lines are renamed in this step.
    `TurnLoopResult.turnBudget` turning required means `test/helpers/turn-loop-result.ts`'s `turnLoopResult()` gains a default `turnBudget: { used: 1, phase: "within" }` in this step, which every stub built from it inherits.
@@ -311,23 +314,28 @@ Pinned in step 3 (a turn at `warnAt` that ran no tools returns no action) and st
 5. **`feat(pi-subagents): describe a warned or stopped run by its turn budget`** The wording table in Design Overview: `outcome-delivery.ts`, `result-renderer.ts`, `widget-renderer.ts`.
    Tests: `outcome-delivery.test.ts` (all four carriers), `result-renderer.test.ts`, `widget-renderer.test.ts` expected strings.
    Killing mutation: restore "reached turn limit" in `WRAPPED_UP` → kills the four-carrier wording tests.
+
 6. **`feat(pi-subagents): track a running subagent's turn budget live`** `SubagentState.setTurnBudget` with the whole lifecycle in this step (set on each report, cleared by `resetForResume`, read by the getter and `currentOutcome`); `markCompleted`/`markAborted` drop the `turnBudget` parameter (4 test sites plus `completeRun`); `Subagent.run()` wires `onTurnBudget`.
    Records, details, and notifications now carry the budget while the run is live (additive: `turnCount`/`maxTurns` still present).
    Tests: `subagent-state.test.ts` (set, cleared by resume, superseded outcome keeps it, `stopped` keeps it), `subagent.test.ts` (a reported budget is readable on the record mid-run; `completeRun` still derives `aborted` from the final snapshot).
    Killing mutations: drop the `_turnBudget = undefined` in `resetForResume` → kills the resume-clears test; make `run()` pass no `onTurnBudget` → kills the mid-run test; drop `turnBudget` from `currentOutcome()` → kills the superseded test.
+
 7. **`feat(pi-subagents)!: give a resumed subagent a fresh turn budget`** `resumeTurnLoop(prompt, { signal, onTurnBudget })` builds a fresh tracker from the stored limits; `runResume` wires `onTurnBudget`; `completeResume` derives `aborted` from `exhausted`; correct the `onSubagentResumed` comment.
    Tests: `subagent-session.test.ts` (a resume after an exhausted run starts at `used: 0` with the same `maxTurns` and can stop again), `subagent.test.ts` (an exhausted resume ends `aborted` and fires `onResumeFinished`).
    Killing mutations: reuse the original tracker instead of a fresh one → kills the `used: 0` test; make `completeResume` always mark completed → kills the aborted-resume test.
    Footer: `BREAKING CHANGE: a resumed subagent now runs under a fresh turn budget with its original ceiling, and can end aborted when it exhausts it; resumes were previously unlimited.`
+
 8. **`feat(pi-subagents)!: report turns only through turnBudget`** Remove the top-level `turnCount`/`maxTurns` and the second counter in one step, since removing the state getter breaks every reader at type level: `SubagentRecord` + `toSubagentRecord`, `AgentDetails` + `buildDetails` + `foreground-runner`, `NotificationDetails` + `buildStatsParts`, `WidgetAgent` + `toWidgetAgent`, `SubagentState.turnCount`/`incrementTurnCount`/`SubagentStateInit.turnCount`, `Subagent.turnCount`/`maxTurns`, the record-observer arm, `createTestSubagent`'s `turnCount`/`maxTurns` options (it gains `turnBudget`); `formatTurns` → `formatTurnBudget`; the widget's warned color.
    The assessor declined a shared details fixture (five distinct per-file builders), so the literal edits land here per file.
    Tests: service-adapter exact `toEqual` on the admitted set (no `turnCount`/`maxTurns`), `formatTurnBudget` cases (limited, unlimited), widget running row in warning color when warned, notification stats line.
    Killing mutations: make `formatTurnBudget` ignore `maxTurns` → kills the limited-format test; drop the warned branch in the widget → kills the color test.
    Footer: `BREAKING CHANGE: SubagentRecord, the subagent tool details, and subagent notifications no longer carry turnCount or maxTurns; read turnBudget.used and turnBudget.maxTurns. used counts successful turns in the current run, not across resumes.`
+
 9. **`feat(pi-subagents)!: run subagents for at least two turns and warn below that`** `normalizeMaxTurns` floor 2; `buildMinimumTurnsNote`; frontmatter warning; `defaultMaxTurns` floor and warning in `settings.ts`; `legacyGraceTurns` marker and the `graceTurns` migration warning; `SpawnOptions.maxTurns` JSDoc.
    Tests: `turn-limits.test.ts` (1 → 2, 0 → unlimited), `spawn-config.test.ts` (note present for `max_turns: 1` from the call and from the agent file, absent for 2), `custom-agents.test.ts` (warn spy), `settings.test.ts` (warn for `defaultMaxTurns: 1` and for a `graceTurns` key, and `snapshot()` never writes `graceTurns`).
    Killing mutations: restore `Math.max(1, n)` → kills the floor test; drop the note → kills the spawn-note test; drop the legacy check → kills the migration-warning test.
    Footer: `BREAKING CHANGE: a max_turns or defaultMaxTurns of 1 now runs with 2, with a warning; a graceTurns key in subagents.json is ignored with a warning to set wrapUpTurns.`
+
 10. **`docs(pi-subagents): document the turn ceiling and live turn budget`** README, `docs/configuration.md`, architecture doc, ADR 0005 rows, package skill upstream-assumption rows, per Module-Level Changes.
     Verify the Mermaid diagram (load the `mermaid` skill); re-grep `graceTurns`, `grace turns`, `turnCount`, `max turns exceeded`, `reached turn limit` across `packages/pi-subagents/{README.md,docs,src}` and `.pi/skills/` — remaining hits only in plans, retros, history, and ADR 0004.
 

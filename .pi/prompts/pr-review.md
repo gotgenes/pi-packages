@@ -83,7 +83,9 @@ Never trust a PR's "all tests pass" claim; it is routinely made without running 
 
 2. From that worktree, run `pnpm run check`, `pnpm run lint`, and the affected package's tests.
    `pnpm run lint` catches what a contributor's local run usually misses — Biome's `organizeImports` assist fails on an import appended out of order, which is a CI failure even when every test passes.
+
 3. Tear the worktree down when finished: `git worktree remove /tmp/pr-$1 --force && git branch -D pr-$1`.
+
 4. Report each result concretely (the failing rule, the failing test) rather than "checks fail".
 
 ## Load skills
@@ -145,6 +147,7 @@ Whichever direction is chosen, the contributor gets explicit, durable credit:
   ```
 
 - The PR close comment (ship stage) thanks `@<login>` by name and links the implementing SHA(s).
+
 - Never use `Closes #$1` in a commit (it pre-empts the curated close comment, per the `git-workflow` skill); reference the PR as `Refs #$1` / `(#$1)`.
 
 ## Record the decision and hand off

@@ -29,8 +29,7 @@ Produced `docs/plans/0865-git-cliff-release-migration.md`: eight build steps cov
 
 - **Reading the dependency's `src/` directory listing was the highest-value single tool call.**
   `src/local-github.ts` was not something any search would have suggested; it appeared only from listing the package's source tree.
-  It reframed "are we at release-please's limits?"
-  from yes to "no, there is an unused code path" — which then made the *real* answer visible, namely that the unused code path fixes the wrong problem.
+  It reframed "are we at release-please's limits?" from yes to "no, there is an unused code path" — which then made the *real* answer visible, namely that the unused code path fixes the wrong problem.
 
 - **The operator's pain and the issue's pain were different, and only the operator knew.**
   Everything I measured pointed at the 135 s `release-please` job.
@@ -171,8 +170,7 @@ The migration's own first release, `pi-github-tools-v5.0.0`, was cut by the new 
 
 - **Listing a dependency's source directory found what no search would have.**
   `gh api .../contents/src` surfaced `local-github.ts` — release-please's unused local-git backend.
-  It reframed "are we at the tool's limits?"
-  from yes to "there is an unused code path," which in turn exposed that the unused path fixes the wrong problem.
+  It reframed "are we at the tool's limits?" from yes to "there is an unused code path," which in turn exposed that the unused path fixes the wrong problem.
 
 - **The migration self-validated.**
   `pi-github-tools-v5.0.0` — a breaking removal correctly majoring from 4.4.0 — was tagged, published, and released by the very pipeline the change introduced.
@@ -225,8 +223,7 @@ The migration's own first release, `pi-github-tools-v5.0.0`, was cut by the new 
 - **The real pain was named at round 4.**
   "The latency for releases has grown painful" is what selected git-cliff over every release-please-internal fix.
   Rounds 1 and 3 optimized the 135 s job I could see rather than the 14–24 min cycle the operator felt.
-  Opportunity: a gate that asks "what is the cost you are actually feeling?"
-  before offering mechanisms would have skipped two rounds — though the discarded rounds did produce the measurements that justified the final choice.
+  Opportunity: a gate that asks "what is the cost you are actually feeling?" before offering mechanisms would have skipped two rounds — though the discarded rounds did produce the measurements that justified the final choice.
 
 - **Pointing at `~/tinyigsoftware/repone` supplied a working reference implementation** that no web search would have matched for fidelity — a real `cliff.toml`, a real dispatch workflow, and a real script split, already proven in another repo.
 

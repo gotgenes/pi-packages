@@ -18,7 +18,8 @@ The `mcp` permission surface does not honor the package's own documented rule po
 Two independent causes produce one symptom — a configured rule that silently never fires.
 
 1. **Candidate short-circuit overrides last-match-wins.**
-   `README.md:134` states the contract: "Within a surface map like `bash` or `mcp`, **last matching rule wins** — put broad catch-alls first and specific overrides after." `evaluateFirst` (`src/policy/rule.ts:231`) returns at the first *candidate* matching any config-layer rule, then applies last-match-wins within that one candidate.
+   `README.md:134` states the contract: "Within a surface map like `bash` or `mcp`, **last matching rule wins** — put broad catch-alls first and specific overrides after."
+   `evaluateFirst` (`src/policy/rule.ts:231`) returns at the first *candidate* matching any config-layer rule, then applies last-match-wins within that one candidate.
    So a user-written `mcp` catch-all is matched by candidate[0] and every later candidate is never evaluated.
    `mcp` is the only surface with a multi-candidate list, so it is the only surface where this happens.
 2. **Prefix-named tools derive no server.**

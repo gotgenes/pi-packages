@@ -40,7 +40,8 @@ The operator further ruled, rejecting an earlier draft of this design, that the 
 - **Serving results from disk.**
   The stored result is not derivable from the transcript (`completeRun` appends a workspace-disposal suffix that never reaches the session JSONL), and the retrieval tool must not become a JSONL parser.
   Disk stays the navigator's and the parent's own `Read`-tool concern.
-- **Cross-session retrieval.** `clearCompleted()` still wipes all terminal records at `session_start`/`session_before_switch`; retention is bounded by the parent-session lifetime, as today.
+- **Cross-session retrieval.**
+  `clearCompleted()` still wipes all terminal records at `session_start`/`session_before_switch`; retention is bounded by the parent-session lifetime, as today.
 - **Service-level consumption.**
   `service.getRecord()`/`listAgents()` stay pure queries (CQS); cross-extension readers never mark consumption.
   Service-spawned agents fall under the unconsumed cap unless their results are pulled through the parent-facing tools.

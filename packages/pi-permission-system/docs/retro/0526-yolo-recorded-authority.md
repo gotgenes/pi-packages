@@ -32,7 +32,8 @@ Produced a 4-step TDD plan (rule helper → manager rewrite + wiring → resolut
 - **Doc-sync traps noted.**
   The architecture doc inline-copies `RuleOrigin`/`Rule` (must add `"yolo"`); the "yolo checks on the ask path" health-metric row is *not* flipped in this step (arms removed only in [#527]); `permission-prompter.md` update rides with [#527] since the arm still exists.
   No `README.md` command-surface change.
-- **ADR-0002 boundary preserved.** `rewriteAsksToYolo` is a string-only `Ruleset` transform in `rule.ts`; the manager imports it without breaching the `no-restricted-imports` `AccessPath` guard.
+- **ADR-0002 boundary preserved.**
+  `rewriteAsksToYolo` is a string-only `Ruleset` transform in `rule.ts`; the manager imports it without breaching the `no-restricted-imports` `AccessPath` guard.
 
 ## Stage: Implementation — TDD (2026-07-05T15:45:00Z)
 

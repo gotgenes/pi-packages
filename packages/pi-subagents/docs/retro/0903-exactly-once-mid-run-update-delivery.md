@@ -94,8 +94,7 @@ Every `ask_user` round produced a better design than the one offered into it.
 
 - `premature-convergence` — the second `ask_user` round offered a ledger design and priced its duplicate-render cost as **inherent**, when a one-bit-per-update delivery latch removes it entirely.
   `AGENTS.md`'s premise rule ("name it and offer the option that removes it") was applied to one premise — the withheld queue, named and defended with a measurement — and missed a second: that the ledger carries no per-message delivery state.
-  Impact: one extra `ask_user` round; the operator's "why does this have to be true?"
-  produced the mechanism that became the change's core.
+  Impact: one extra `ask_user` round; the operator's "why does this have to be true?" produced the mechanism that became the change's core.
   The rule is correctly stated; the failure was applying it once rather than exhaustively, so no prose change was proposed.
 - `missing-context` — framed the exactly-once trade as a reversal of [#872]'s report-idempotence decision without first checking whether the addenda tail was actually byte-stable.
   It never was: `resumeRefusal` is a live getter, so two pulls separated by the retention sweep already render different affordance sentences.

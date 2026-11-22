@@ -64,8 +64,7 @@ Execution was clean overall (pre-completion PASS, CI green, release merged); the
 
 - **User mid-TDD redirect produced a better design.**
   The user's question “Was that infinite `for` loop safe?
-  Was there something better?”
-  converted a `for (;;)` walk-up into a split-based `for (let i = parts.length; i >= 0; i--)` loop with an explicit bound and no `toReversed()`.
+  Was there something better?” converted a `for (;;)` walk-up into a split-based `for (let i = parts.length; i >= 0; i--)` loop with an explicit bound and no `toReversed()`.
   A strategic-judgment nudge at exactly the right moment, not mechanical oversight.
 - **`ask_user` at planning settled the IO approach cheaply.**
   The DI-threading-vs-direct-`fs.realpathSync` question surfaced the simpler answer (direct call + `vi.mock("node:fs")`) before any code was written.

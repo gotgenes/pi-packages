@@ -221,8 +221,7 @@ The dead-code prediction is the one that could surprise: `isRegisteredSubagentCh
 ## TDD Order
 
 The first two steps are the Tidy-First assessor's accepted preparatory refactorings.
-They land as their own commits, leave the tree green, and shrink step 4's diff to a pure excision — which is what turns "did the sweep silently drop coverage?"
-from a question a reviewer must re-derive per site into a visible property of the diff.
+They land as their own commits, leave the tree green, and shrink step 4's diff to a pure excision — which is what turns "did the sweep silently drop coverage?" from a question a reviewer must re-derive per site into a visible property of the diff.
 
 1. **`test:` retarget `test/service.test.ts`'s incidental root-slot handles onto the keyed locator.**
    Prepares: without this, step 4 must simultaneously delete a root-only suite and rewrite three suites that merely borrowed the accessor as a handle, in the same commit.

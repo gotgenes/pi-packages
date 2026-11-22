@@ -16,8 +16,7 @@ Released as `pi-subagents-v6.15.0`.
 
 #### What went well
 
-- User's two escalating questions ("Are there any other missing collaborators?"
-  → "Hiding dependencies in an object bag still counts as dependencies!") caught a `premature-convergence` before it landed as committed code.
+- User's two escalating questions ("Are there any other missing collaborators?" → "Hiding dependencies in an object bag still counts as dependencies!") caught a `premature-convergence` before it landed as committed code.
   The reverted partial step 3 attempt was ~4 files of changes that would have needed rework.
   The resulting design (injected collaborators) is meaningfully better than the original plan's mechanical relocation.
 - Folding tightly-coupled TDD steps (ctx elimination + params shrinking + deps dissolution) into fewer commits avoided intermediate states with broken types.
@@ -46,9 +45,7 @@ Released as `pi-subagents-v6.15.0`.
 #### What caused friction (user side)
 
 - The user's redirecting questions were well-timed and effective.
-  The escalation from "Are there any other missing collaborators?"
-  to the more pointed "Hiding dependencies in an object bag still counts as dependencies!"
-  was the right amount of pressure.
+  The escalation from "Are there any other missing collaborators?" to the more pointed "Hiding dependencies in an object bag still counts as dependencies!" was the right amount of pressure.
   No friction observed on the user side.
 
 ### Changes made

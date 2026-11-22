@@ -56,8 +56,7 @@ Nothing parses either piece of text today, so both are stale correctness claims,
   A `full` child in the parent's directory never calls it (ADR 0010), which keeps the replica off the shared prefix.
 - `buildPortablePrompt(options)` (private) trims `customPrompt` and `appendSystemPrompt`, drops empty ones, and joins the rest with `\n\n`, returning `undefined` when none remain so the caller falls back to `genericBase` (ADR 0009).
 - **Pi's real output, measured** from a scratch install of `@earendil-works/pi-coding-agent@0.86.1` by calling `dist/core/system-prompt.js`'s `buildSystemPrompt` directly:
-  - `{ customPrompt: "x", contextFiles: [/parent/AGENTS.md, /parent/sub/AGENTS.md] }` →
-    `x\n\n<project_context>\nProject-specific instructions and guidelines:\n\n<project_instructions path="/parent/AGENTS.md">\n# AGENTS\n\nParent house rules.\n</project_instructions>\n\n<project_instructions path="/parent/sub/AGENTS.md">\nSub rules.\n</project_instructions>\n</project_context>\n\n<cwd>\n/parent\n</cwd>`
+  - `{ customPrompt: "x", contextFiles: [/parent/AGENTS.md, /parent/sub/AGENTS.md] }` → `x\n\n<project_context>\nProject-specific instructions and guidelines:\n\n<project_instructions path="/parent/AGENTS.md">\n# AGENTS\n\nParent house rules.\n</project_instructions>\n\n<project_instructions path="/parent/sub/AGENTS.md">\nSub rules.\n</project_instructions>\n</project_context>\n\n<cwd>\n/parent\n</cwd>`
   - `{ customPrompt: "C", appendSystemPrompt: "A", selectedTools: [] }` → `C\n\n<addendum>\nA\n</addendum>\n\n<cwd>\n/parent\n</cwd>`
   - The same input on the pinned 0.84.4 dist produces `<project_context>\n\nProject-specific…:\n\n…\n\n</project_context>`, which is today's replica.
   - The published 0.87.1 tarball and Pi's `main` checkout (`../pi`) have the same `renderProjectContext` as 0.86.1.
@@ -177,8 +176,7 @@ Step 1 exists because of that result.
 
 ## TDD Order
 
-1. **`test(pi-subagents): hand-build the ≤0.85 project-context block in the footer-shaped prompt fixture`**
-   This prepares step 2: `parentPrompt()` stops depending on the function step 2 changes.
+1. **`test(pi-subagents): hand-build the ≤0.85 project-context block in the footer-shaped prompt fixture`** This prepares step 2: `parentPrompt()` stops depending on the function step 2 changes.
    - Replace `\n\n${renderProjectContext(layers.contextFiles) ?? ""}\n` with an inline ≤0.85 block.
      The fixture's output must stay byte-identical: `<project_context>\n\nProject-specific instructions and guidelines:\n\n`, then each `<project_instructions path="…">\n…\n</project_instructions>\n\n`, then `</project_context>\n`.
      That is the same layout as the pinned 0.84.4 `buildSystemPrompt`, including the `\n\n` it writes before the block.

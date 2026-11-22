@@ -281,7 +281,8 @@ Verified-unchanged (greps run at planning): `renderLegacyMessage` and every payl
   Nothing yet.
   The ~29 relocated string assertions in `test/presentation/legacy-message.test.ts` still pin `message` for the three consumers that keep reading it, and they retire with [#745] / [#746], not here.
   The component tests that asserted a message string appears verbatim in the rendered lines are *replaced* rather than removed: the same behavior is now "the core facts appear", which is what the contract actually promises.
-- **Must stay as-is.** `local-user-authorizer.test.ts`'s broadcast cases (they exercise `buildUiPrompt`, a [#292] invariant orthogonal to rendering); `permission-prompt-decision.test.ts` (the pure interaction model, untouched); `permission-dialog.test.ts` (the fallback's select/input protocol).
+- **Must stay as-is.**
+  `local-user-authorizer.test.ts`'s broadcast cases (they exercise `buildUiPrompt`, a [#292] invariant orthogonal to rendering); `permission-prompt-decision.test.ts` (the pure interaction model, untouched); `permission-dialog.test.ts` (the fallback's select/input protocol).
 
 ## Invariants at risk
 

@@ -40,7 +40,8 @@ Full suite green, `tsc` clean, root lint clean, `fallow dead-code` clean; pre-co
 - The three targeted groupings (is-active, terminal-error, is-running/steer) are fully eliminated outside `subagent-state.ts`.
 - DTO tightening (`NotificationDetails.status`, `WidgetAgent.status` → `SubagentStatus`) was producer-safe as predicted; `tsc` confirmed no stray non-`SubagentStatus` producer, and the `shouldShowFinished` `string` callback chain absorbed the tightened type with no change.
 - All existing consumer tests stayed green through Cycles 2–3 with no fixture edits — behavior was genuinely unchanged, confirming the refactor's safety net.
-- Pre-completion reviewer: PASS (no WARN findings). `mmdc` validated all 6 Mermaid blocks including the edited `S1` node.
+- Pre-completion reviewer: PASS (no WARN findings).
+  `mmdc` validated all 6 Mermaid blocks including the edited `S1` node.
 - The plan touched no `background-spawner.ts` / `agent-widget.ts` despite the roadmap's Target-files listing them — correct, since their status checks are single-status presentation (Non-Goals).
 
 ## Stage: Final Retrospective (2026-07-22T18:39:54Z)

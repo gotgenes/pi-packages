@@ -20,7 +20,8 @@ What is valuable (keep):
 - The capability and API shape — `reason` threaded onto `Rule` (`rule.ts`) and `PermissionCheckResult` (`types.ts`), surfaced in `buildToolDenyBody` (`denial-messages.ts`) as `Reason: <reason>.` appended after the sentence-ending period.
 - Backward-compatible config syntax `{ "action": "deny", "reason": "..." }`; existing string values are untouched.
 - Schema (`schemas/permissions.schema.json`), example (`config/config.example.json`), `docs/configuration.md`, and TypeScript types all kept aligned — matches the package's "keep schema/example/docs/loader/types aligned" rule.
-- Non-breaking and least-privilege-preserving: the object form only annotates `deny`, so it can never loosen policy (deny stays deny; `reason` is purely explanatory). `feat:` (not `feat!:`) is correct.
+- Non-breaking and least-privilege-preserving: the object form only annotates `deny`, so it can never loosen policy (deny stays deny; `reason` is purely explanatory).
+  `feat:` (not `feat!:`) is correct.
 - Solid test coverage (17 new tests across `normalize`, `rule`, `denial-messages`, `permission-manager-unified`), including malformed-`reason` rejection and last-match-wins propagation.
 
 What I would change (over-built / divergent — simplify in our design):
@@ -73,7 +74,9 @@ Attribution (required durable credit):
   ```
 
   The PR commit recorded a placeholder email (`kovalik@example.com`); the GitHub no-reply form (user id `85703878` + login) is used so the trailer links to `@k0valik`'s profile.
+
 - The ship-stage PR/issue close comment thanks `@k0valik` by name and links the implementing SHA(s).
+
 - Never use `Closes #395` in a commit (pre-empts the curated close comment); reference as `Refs #395` / `(#395)`.
 
 ## Stage: Planning (2026-06-13T01:45:00Z)

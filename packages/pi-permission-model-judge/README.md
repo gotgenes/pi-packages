@@ -27,8 +27,7 @@ Deferring means the ask falls through to the normal permission prompt — this e
 
 ## What it records
 
-Every review the link performs leaves a trail in pi-permission-system's shared review log (`~/.pi/agent/extensions/pi-permission-system/logs/pi-permission-system-permission-review.jsonl`), so you can answer "did the judge run, did it reach the model, and why did it defer?"
-without guesswork.
+Every review the link performs leaves a trail in pi-permission-system's shared review log (`~/.pi/agent/extensions/pi-permission-system/logs/pi-permission-system-permission-review.jsonl`), so you can answer "did the judge run, did it reach the model, and why did it defer?" without guesswork.
 
 Once an ask matches a `typoPattern` — the case that _should_ reach the model — the link writes one `model_judge.decision` entry recording the outcome:
 

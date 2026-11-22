@@ -9,24 +9,14 @@ issue_title: "Align #21 test files with updated mock-cleanup and node:* default-
 
 Two AGENTS.md testing rules were added during the #21 retro, but the three test files that were written as part of #21 still violate them:
 
-1. `vi.fn()` stubs are reset via `vi.clearAllMocks()` in `afterEach` rather than via
-   explicit `.mockReset()` (or `.mockClear()`) calls on named module-scope references
-   in `beforeEach`.
-   `vi.restoreAllMocks()` only handles `vi.spyOn()` spies — `vi.clearAllMocks()` is the
-   wrong hook for `vi.fn()` stubs, and reset-in-`afterEach` fires after the test body
-   has already completed, so a leaked state from test N can pollute test N+1 before
-   `afterEach` runs.
-2. `tests/external-directory.test.ts` mocks `node:os` without a `default` export, creating
-   a latent "No default export defined on the mock" failure for any future import path
-   that uses the default form of that module.
+1. `vi.fn()` stubs are reset via `vi.clearAllMocks()` in `afterEach` rather than via explicit `.mockReset()` (or `.mockClear()`) calls on named module-scope references in `beforeEach`.
+   `vi.restoreAllMocks()` only handles `vi.spyOn()` spies — `vi.clearAllMocks()` is the wrong hook for `vi.fn()` stubs, and reset-in-`afterEach` fires after the test body has already completed, so a leaked state from test N can pollute test N+1 before `afterEach` runs.
+2. `tests/external-directory.test.ts` mocks `node:os` without a `default` export, creating a latent "No default export defined on the mock" failure for any future import path that uses the default form of that module.
 
 ## Goals
 
-- Replace `vi.clearAllMocks()` in `afterEach` with explicit `beforeEach` + `.mockReset()`
-  (or `.mockClear()` where the default implementation must be preserved) on named stub
-  references in the three affected test files.
-- Add the `default` mirror export to the `node:os` mock factory in
-  `tests/external-directory.test.ts`.
+- Replace `vi.clearAllMocks()` in `afterEach` with explicit `beforeEach` + `.mockReset()` (or `.mockClear()` where the default implementation must be preserved) on named stub references in the three affected test files.
+- Add the `default` mirror export to the `node:os` mock factory in `tests/external-directory.test.ts`.
 - Pass `npx vitest run` and `npm run build` with no regressions.
 
 ## Non-Goals

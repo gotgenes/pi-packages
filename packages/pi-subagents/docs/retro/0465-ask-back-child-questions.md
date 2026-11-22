@@ -185,8 +185,7 @@ This entry synthesizes all four stages — planning, TDD, sync, and ship — fro
 #### What caused friction (user side)
 
 No friction — the operator's interventions were the highest-leverage contributions to the issue.
-Three successive design proposals of mine were wrong, and each was corrected by a redirecting question rather than a directive: "what if we made it safe to always tell the parent?"
-revealed that the parent *is* always told by exactly one of four carriers, and "distinguish the desired behaviors rather than complect them" produced the revocable-claim-versus-`consumedAt`-latch split that the final design rests on.
+Three successive design proposals of mine were wrong, and each was corrected by a redirecting question rather than a directive: "what if we made it safe to always tell the parent?" revealed that the parent *is* always told by exactly one of four carriers, and "distinguish the desired behaviors rather than complect them" produced the revocable-claim-versus-`consumedAt`-latch split that the final design rests on.
 Those arrived at the design gate, which is where they belong.
 
 One opportunity: the operator's own earlier comments on this third-party issue had already narrowed its literal ask twice, and planning recovered that only by reading [#798]'s close comments.

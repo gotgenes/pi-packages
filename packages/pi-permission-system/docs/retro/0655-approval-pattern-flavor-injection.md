@@ -60,8 +60,7 @@ Test count went 3136 → 3162 (+26) with all 145 pi-permission-system files gree
   Replacing `describeToolGate`'s `accessPath?` parameter with the `{ path, approvalPattern }` pair (rather than adding a required `normalizer` parameter) touched 4 of 17 call sites in `tool.test.ts` instead of all 17, and kept `pattern-suggest.ts` free of path-domain imports.
 - **The tidy-first assessor found exactly one thing and it was the right one:** `bash-external-directory.test.ts` had duplicated `describeGate` / `describeGateWin32` normalizer construction, so threading the new parameter would have hit two places.
   Consolidating first (mirroring `bash-path.test.ts`) made step 4 a one-line change there.
-- **Pre-completion reviewer: WARN** (no FAILs), both findings addressed in a follow-up `test:` commit:
-  a stale test title still naming the removed `deriveApprovalPattern` symbol (also upgraded from a `toBeDefined` placeholder to a real pattern assertion), and the one remaining non-differentiating win32 gate test, now labelled as the invariant pin it is — it guards against a *future* rewrite that scopes on `flavor.impl.sep`, not against the pre-fix code.
+- **Pre-completion reviewer: WARN** (no FAILs), both findings addressed in a follow-up `test:` commit: a stale test title still naming the removed `deriveApprovalPattern` symbol (also upgraded from a `toBeDefined` placeholder to a real pattern assertion), and the one remaining non-differentiating win32 gate test, now labelled as the invariant pin it is — it guards against a *future* rewrite that scopes on `flavor.impl.sep`, not against the pre-fix code.
 - **`buildLabel`'s `path` / `external_directory` arms remain unreachable**, as planned.
   They predate this change; folding their removal into [#604] stays the cheaper path.
 

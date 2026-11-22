@@ -12,12 +12,12 @@ Its second purpose is structural: it is the first — and deliberately first-par
 The advise-don't-authorize boundary is recorded explicitly, in the artifacts and in the source.
 `README.md` § How it works: "It is fail-safe by construction: a missing model, invalid config, model timeout, unparseable reply, or an unsure verdict all resolve to `defer`… this extension only ever *removes* a hand-denial, never grants access (it emits no `allow`)".
 `packages/pi-permission-model-judge/docs/configuration.md` § Two config files, one link name states the division of authority directly: "This extension owns only the *model mechanism*.
-The *chain policy* — whether the link runs at all, and its order — lives in `@gotgenes/pi-permission-system`… The link decides nothing until you name it in `authorizerChain` (opt-in activation), and pi-permission-system caps any link's authority, so this extension can only ever deny or defer an `external_directory` ask — never widen access." `packages/pi-permission-model-judge/src/typo-reviewer.ts`'s module docstring repeats it as an invariant: "Every failure path defers — more prompting, never less (ADR 0007 invariant 2).
+The *chain policy* — whether the link runs at all, and its order — lives in `@gotgenes/pi-permission-system`… The link decides nothing until you name it in `authorizerChain` (opt-in activation), and pi-permission-system caps any link's authority, so this extension can only ever deny or defer an `external_directory` ask — never widen access."
+`packages/pi-permission-model-judge/src/typo-reviewer.ts`'s module docstring repeats it as an invariant: "Every failure path defers — more prompting, never less (ADR 0007 invariant 2).
 This slice never emits `allow`."
 
 The third recorded purpose is observability of its own decisions, added after a silent-failure bug.
-`README.md` § What it records frames it as answering "did the judge run, did it reach the model, and why did it defer?"
-without guesswork, and notes that "a misconfiguration that silently defers every path… shows up as a run of `deferReason` entries rather than an empty log".
+`README.md` § What it records frames it as answering "did the judge run, did it reach the model, and why did it defer?" without guesswork, and notes that "a misconfiguration that silently defers every path… shows up as a run of `deferReason` entries rather than an empty log".
 
 ## In-scope signal
 
@@ -60,7 +60,8 @@ Tuning the shipped example patterns and their documentation.
   `docs/plans/0625-authenticate-model-judge-review-call.md` § Non-Goals: "No new slice-2 behavior (engine re-query); `query` remains unused here".
 - **Changing `@gotgenes/pi-permission-system` source** — the package is a pure downstream consumer, restated across two plans.
   `docs/plans/0600-dogfood-model-judge-authorizer.md` § Non-Goals: "Any change to `@gotgenes/pi-permission-system` source — the seam, the delegation envelope, and the `authorizerChain` config already shipped in [#599].
-  This package is a pure downstream consumer." `docs/plans/0630-review-typo-paths-in-bash-commands.md` § Non-Goals: "No change to the raising gates in `@gotgenes/pi-permission-system` — the fix is entirely inside this package's reviewer.
+  This package is a pure downstream consumer."
+  `docs/plans/0630-review-typo-paths-in-bash-commands.md` § Non-Goals: "No change to the raising gates in `@gotgenes/pi-permission-system` — the fix is entirely inside this package's reviewer.
   The gate's worst-path selection is relied upon, not modified."
 - **Keeping its own audit log** — a decided fork, not an omission.
   Issue #626 posed the two options ("Route through the `pi-permission-system` review log… Have the judge write its own JSONL under its config dir"), and `docs/retro/0625-authenticate-model-judge-review-call.md` § Dogfood verification records the operator leaning toward the shared trail: "(1) route through the `pi-permission-system` review log via a new cross-extension logging seam… vs (2) the judge writes its own JSONL… Operator leans (1)".

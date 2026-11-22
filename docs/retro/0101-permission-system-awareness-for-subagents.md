@@ -68,8 +68,7 @@ The shipping stage consumed more time than the feature work due to inheriting ~1
 - `rabbit-hole` — Investigating why `7b32e6a` CI passed despite identical lint violations.
   The agent ran `git show`, `git merge-base`, `git diff` across ~8 commits and ran `biome check` against the old state before concluding it was a CI ghost pass.
   Impact: ~5 min spent on diagnosis that didn't change the fix approach.
-  The user's "Why are we hitting these now?"
-  question was the right redirect.
+  The user's "Why are we hitting these now?" question was the right redirect.
 - `wrong-abstraction` — First attempt at `biome-ignore` used trailing inline syntax (`code; // biome-ignore ...`) which Biome does not support (comments must go on the line above).
   Impact: one wasted CI cycle.
 

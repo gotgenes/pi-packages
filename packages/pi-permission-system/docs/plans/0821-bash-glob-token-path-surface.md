@@ -56,7 +56,8 @@ Re-running that commit's own test corpus with the heuristic fully removed produc
 - **Per-command option tables.**
   ADR 0009 rejects them as a deterministic-layer mechanism, and nothing here revisits that.
 - **The structured bash surface** ([#804]) and **the sandbox seam** ([#802] / [#686]) — both would reshape this projection wholesale and are Phase 15 candidates.
-- **`src/access-intent/bash/token-collection.ts`.** `PATTERN_FIRST_COMMANDS` is the mechanism this change leans on; it is read and pinned, not modified.
+- **`src/access-intent/bash/token-collection.ts`.**
+  `PATTERN_FIRST_COMMANDS` is the mechanism this change leans on; it is read and pinned, not modified.
 
 ## Background
 

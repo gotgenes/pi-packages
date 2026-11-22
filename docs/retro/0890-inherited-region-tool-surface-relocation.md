@@ -153,8 +153,7 @@ The dominant story is a design that the operator's two questions changed twice, 
 #### What caused friction (user side)
 
 - **The two highest-leverage interventions in the whole issue were redirecting questions, not corrections.**
-  "What's actually happening here… are we missing anything bigger picture?"
-  and the follow-up about [#180]'s local-model user each changed the design, and neither prescribed an answer.
+  "What's actually happening here… are we missing anything bigger picture?" and the follow-up about [#180]'s local-model user each changed the design, and neither prescribed an answer.
   This is the pattern worth keeping — a correction would have fixed one option; the questions replaced the option set.
 - **Opportunity: the co-writer context lived with the operator, not in the issue.**
   That `pi-anthropic-auth` rewrites the same string at the wire is not discoverable from this monorepo — it is a separate checkout outside it.

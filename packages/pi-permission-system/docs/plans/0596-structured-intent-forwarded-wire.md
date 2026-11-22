@@ -54,13 +54,16 @@ Relevant existing modules and how they relate:
 - **`src/access-intent/access-intent.ts`** — the gate-emitted `AccessIntent` union (`tool | access-path`).
   The `access-path` variant holds the `AccessPath`.
   ADR-0002 (`docs/decisions/0002-path-values-string-boundary.md`) keeps the manager string-based: `AccessPath` never crosses into the manager or the wire; producers convert to strings.
-- **Gate factories** (`src/handlers/gates/`) — each builds a pure `GateDescriptor`. `path.ts`, `external-directory.ts` (tool surfaces) and `bash-path.ts`, `bash-external-directory.ts` (bash surfaces) hold an `AccessPath`; `tool.ts` holds one for the per-tool path-bearing surfaces (`accessPath?`); `skill-input.ts`/`skill-read.ts` are non-path.
+- **Gate factories** (`src/handlers/gates/`) — each builds a pure `GateDescriptor`.
+  `path.ts`, `external-directory.ts` (tool surfaces) and `bash-path.ts`, `bash-external-directory.ts` (bash surfaces) hold an `AccessPath`; `tool.ts` holds one for the per-tool path-bearing surfaces (`accessPath?`); `skill-input.ts`/`skill-read.ts` are non-path.
 - **`src/handlers/gates/runner.ts`** — `GateRunner.runDescriptor` spreads `descriptor.promptDetails` into `this.prompter.escalate({ requestId, ...descriptor.promptDetails, ... })`.
   Anything on `promptDetails` reaches the escalation edge.
-- **`src/authority/permission-prompter.ts`** — `PromptPermissionDetails` is the ask payload. `GateDescriptor.promptDetails` is `Omit<PromptPermissionDetails, "requestId">`, so a new optional field on `PromptPermissionDetails` is automatically available on every descriptor's `promptDetails`.
+- **`src/authority/permission-prompter.ts`** — `PromptPermissionDetails` is the ask payload.
+  `GateDescriptor.promptDetails` is `Omit<PromptPermissionDetails, "requestId">`, so a new optional field on `PromptPermissionDetails` is automatically available on every descriptor's `promptDetails`.
 - **`src/authority/approval-escalator.ts`** — `ParentAuthorizer.authorize(details)` builds a `ForwardedPermissionRequest` via `buildForwardedRequest` and writes/polls it.
   It already computes `requesterSessionId` (`getSessionId(ctx)`) and `requesterAgentName`.
-- **`src/authority/forwarder-context.ts`** — `ForwarderContext`, the narrow read-interface `ExtensionContext` satisfies structurally, plus `getSessionId(ctx)`. `ExtensionContext.cwd` exists (used at `permission-gate-handler.ts:73`, `lifecycle.ts:59`), but `ForwarderContext` does not currently expose it.
+- **`src/authority/forwarder-context.ts`** — `ForwarderContext`, the narrow read-interface `ExtensionContext` satisfies structurally, plus `getSessionId(ctx)`.
+  `ExtensionContext.cwd` exists (used at `permission-gate-handler.ts:73`, `lifecycle.ts:59`), but `ForwarderContext` does not currently expose it.
 - **`src/authority/permission-forwarding.ts` / `forwarding-io.ts`** — the `ForwardedPermissionRequest` type and its tolerant reader `readForwardedPermissionRequest`, which reconstructs an allowlist of known fields with per-field `asX` narrowers (`asUiPromptSource`, `asNullableDisplayString`, `asForwardedSessionApproval`).
 
 Constraint from AGENTS.md / the package skill applied here:
@@ -80,7 +83,8 @@ This plan mirrors that split across the two layers that own each half:
 
 - **The gate emits the access facts** — `surface`, `matchValues`, `boundaryValue`.
   Only the gate can produce `matchValues`/`boundaryValue` (they live on the `AccessPath`), and they must not be re-derived downstream.
-- **The escalation edge stamps the requester identity** — `requesterCwd` (the session cwd, `ctx.cwd`) and `principal` (`sessionId`, `agentName`). `ParentAuthorizer` already knows both.
+- **The escalation edge stamps the requester identity** — `requesterCwd` (the session cwd, `ctx.cwd`) and `principal` (`sessionId`, `agentName`).
+  `ParentAuthorizer` already knows both.
 
 This keeps each gate producing only what it genuinely fixes (no per-gate cwd threading) and localizes principal-stamping to the one edge that owns session identity.
 

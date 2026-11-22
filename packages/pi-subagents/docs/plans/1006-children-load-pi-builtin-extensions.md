@@ -62,14 +62,17 @@ An MCP server such as GitHub's exposes dozens of tools (estimated: the count dep
 - `parseListField` (`src/config/custom-agents.ts`) trims and splits on commas and does not strip `*`, so `mcp__github__*` survives frontmatter parsing.
   The tidy-first assessor read this function to confirm it.
 - **Pi 1.0.0, verified against the published tarballs of 0.99.0 and 1.0.0:**
-  - The root exports `createCodemodeExtension`, `createToolSearchExtension`, `createMcpExtension`, and the `InlineExtension` type. `InlineExtension` carries `builtin?` and `replaceable?`.
-  - `DefaultResourceLoader` sends `builtin: true` entries through the package manager as `builtin:<name>` resources. `isEnabledByOverrides` there honors the user's `extensions` setting (`-builtin:mcp`).
+  - The root exports `createCodemodeExtension`, `createToolSearchExtension`, `createMcpExtension`, and the `InlineExtension` type.
+    `InlineExtension` carries `builtin?` and `replaceable?`.
+  - `DefaultResourceLoader` sends `builtin: true` entries through the package manager as `builtin:<name>` resources.
+    `isEnabledByOverrides` there honors the user's `extensions` setting (`-builtin:mcp`).
   - `omitReplacedExtensions` drops a `replaceable` built-in when another extension registers the same tool, command, or flag.
   - Pi's own names are `codemode`, `tool-search`, and `mcp` (`packages/coding-agent/src/extensions/index.ts`).
     A user's `-builtin:<name>` matches only if our names are identical.
 - MCP tool names are `mcp__<server>__<tool>`, with non-`[A-Za-z0-9_]` characters replaced by `_` and a hash suffix past 64 characters or on collision (`createMcpToolName`).
   - The resource tools are `list_mcp_resources`, `list_mcp_resource_templates`, and `read_mcp_resource`.
-  - An MCP tool's default exposure is `codemode`, so it is callable only from a `codemode` script. `deferred` needs `tool_search`; `direct` is declared to the model.
+  - An MCP tool's default exposure is `codemode`, so it is callable only from a `codemode` script.
+    `deferred` needs `tool_search`; `direct` is declared to the model.
   - Pi's allowlist is an exact-match `Set` (`_isAllowedTool`), and it also filters the tools a codemode script can reach.
 - The parent's `pi.getAllTools()` returns every registered tool, MCP tools included, with `name`, `exposure`, and `namespace`.
   No `src/` or `test/` file calls it today.

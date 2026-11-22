@@ -59,6 +59,7 @@ Relevant modules:
     Used by both the spawn path and the UI.
   - `getDefaultAgentNames()` / `getUserAgentNames()`: filter by `isDefault`, not `enabled`.
     Sole consumer is `buildTypeListText` (verified by grep across `src/` and `test/`).
+
 - `src/tools/spawn-config.ts` — `resolveSpawnConfig(params, registry, modelInfo, settings)`.
   Pure function returning `ResolvedSpawnConfig | SpawnConfigError`.
   Lines 80-83 resolve the type:
@@ -71,6 +72,7 @@ Relevant modules:
   ```
 
 - `src/tools/helpers.ts` — `buildTypeListText(registry, agentDir)` and the `TypeListRegistry` interface (extends `AgentConfigLookup`, so `resolveAgentConfig` is already available on it).
+
 - `src/tools/agent-tool.ts` — `AgentTool.execute` already short-circuits on a config error: `if ("error" in config) return textResult(config.error);`.
   So returning `SpawnConfigError` from `resolveSpawnConfig` is sufficient to surface the message to the model with no further wiring.
 

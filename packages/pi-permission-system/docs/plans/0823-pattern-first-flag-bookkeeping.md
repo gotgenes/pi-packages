@@ -349,8 +349,7 @@ Steps 1–3 are the Tidy-First assessor's recommended preparatory commits: each 
    Green: `PatternFlagRole`, the `flags` map and the five shared tables, the two new classifier match forms, the `inline-value` and `suffix` arms, and the pattern-first ownership of the `=`-value split.
    Verify: full package suite, `pnpm run check`, root `pnpm run lint`, `pnpm fallow dead-code`.
 
-6. **`docs(pi-permission-system): record the pattern-first flag-spelling boundary (#823)`**
-   The ADR 0009 amendment and residual rewrite, the `architecture.md` module-tree entry and sweep disposition, and the package skill's `collectEmbeddedOptionValues` sentence.
+6. **`docs(pi-permission-system): record the pattern-first flag-spelling boundary (#823)`** The ADR 0009 amendment and residual rewrite, the `architecture.md` module-tree entry and sweep disposition, and the package skill's `collectEmbeddedOptionValues` sentence.
 
 ## Risks and Mitigations
 

@@ -77,7 +77,8 @@ The implementation landed cleanly in 7 TDD commits + 1 docs commit; test count 9
 1. `missing-context` — The plan's step-5 file list omitted 6 tool/service test files (`steer-tool`, `agent-tool`, `background-spawner`, `foreground-runner`, `get-result-tool`, `service-adapter`) that directly set `record.execution = { session, outputFile }`.
    The existing planning rule ("grep all test files for every removed symbol") was present but was not applied to the renamed `.execution` property — only to removed type imports.
    Impact: step 5 took ~2× expected time; each file was discovered reactively via `tsc --noEmit` errors.
-2. `rabbit-hole` — Step 6's `sed` invocation for import-path renames failed silently on macOS BSD `sed` because the `#` delimiter clashed with `#test/helpers/...` paths. 3 consecutive tool calls were spent diagnosing and retrying before switching to per-file `sed` with `@` delimiters.
+2. `rabbit-hole` — Step 6's `sed` invocation for import-path renames failed silently on macOS BSD `sed` because the `#` delimiter clashed with `#test/helpers/...` paths.
+   3 consecutive tool calls were spent diagnosing and retrying before switching to per-file `sed` with `@` delimiters.
    Impact: added ~3 minutes of friction; the `edit` tool would have been safer for targeted, known-file replacements.
 3. `other` (autoformat race) — The `pi-autoformat` extension ran concurrently with `git commit` twice during the docs phase, causing `.git/index.lock` conflicts.
    Recovery was mechanical (remove lock, retry) but required user intervention once.

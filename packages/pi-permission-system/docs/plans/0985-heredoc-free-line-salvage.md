@@ -146,7 +146,8 @@ A throwaway patch to `withSalvagedRoots` (reverted before this plan was committe
 | `cat <> rw.txt`                                       | unchanged                                                | ask                           |
 
 `(s)` marks a salvaged unit.
-The corpus is every distinct `bash` command in the local review log, excluding any truncated with `…`: 9084 commands, each parsed with and without the new candidate on the same tree. 8 hold a heredoc in an unresolved parse, and 7 change, all of the `git commit -F - <<'MSG' 2>&1 | tail -N` shape.
+The corpus is every distinct `bash` command in the local review log, excluding any truncated with `…`: 9084 commands, each parsed with and without the new candidate on the same tree.
+8 hold a heredoc in an unresolved parse, and 7 change, all of the `git commit -F - <<'MSG' 2>&1 | tail -N` shape.
 Every change is a duplicated unit (`git add -A`, `git commit -F`, `tail -N`), plus one extra literal-only path candidate.
 No verdict changes.
 With the prototype, 11 existing tests failed, all exact-list assertions over salvage output (listed under Module-Level Changes).
@@ -213,6 +214,7 @@ The input is real (the review log and the real parser), the path is the gate's o
    `withSalvagedRoots` builds `unresolvedRegionsWithin(primary).map((region) => region.text)` and loops over it.
    Friction it prepares: the behavior step then appends a second text source to an existing array instead of reshaping the loop.
    Verify: `unresolved-salvage.test.ts`, `program.test.ts`, and `sync-commands.test.ts` all pass unchanged.
+
 2. **Preparatory: anti-invention at word level.**
    `test(pi-permission-system): state the salvage's anti-invention property over words`.
    In `bash-command-metamorphic.test.ts`, "emits no unit whose text the command does not contain" becomes "emits no unit whose words are not the command's words, in order".
@@ -220,6 +222,7 @@ The input is real (the review log and the real parser), the path is the gate's o
    Friction it prepares: `cat <<EOF arg > /tmp/o` salvages `cat arg`, which is not a substring of the command, so step 4's new row would fail the substring form while inventing nothing.
    Green on arrival: an invariant pin.
    Killing mutation: make `collectCommandsInto` emit `` `${text} INVENTED` `` for each unit → every row red.
+
 3. **The heredoc-free spelling, unwired.**
    `refactor(pi-permission-system): derive the heredoc-free spelling of a line the grammar could not parse`.
    Add `heredoc-free-lines.ts` and `heredoc-free-lines.test.ts`.
@@ -243,6 +246,7 @@ The input is real (the review log and the real parser), the path is the gate's o
    - (f) stop descending `ERROR` nodes → row four and the unterminated case yield `[]`.
 
    Re-read the moved sibling-index logic against the `parse-health.ts` constraint: no `previousSibling` or `hasError` read outside it.
+
 4. **Wire it into the salvage.**
    `fix(pi-permission-system): deny a command written after a heredoc the grammar cannot parse`.
    Append `...heredocFreeLinesWithin(primary)` after the region texts, and update the doc comments.
@@ -257,6 +261,7 @@ The input is real (the review log and the real parser), the path is the gate's o
    - (a) delete the `...heredocFreeLinesWithin(primary)` spread → every new admitted case and the four issue rows' units go red, and the metamorphic rows stay green (they pin the floor, not recovery).
    - (b) skip the clean-re-parse guard for the appended texts → the `cat <<A <<B ; rm -rf x` dropped-on-error case goes red.
    - (c) put the heredoc-free texts ahead of the region texts → the ordering case goes red.
+
 5. **Docs.**
    `docs(pi-permission-system): record the heredoc-free salvage candidate`.
    Architecture module tree (three entries), the Phase 15 `✅` marks and `Landed:` note, and the ADR 0013 amendment.

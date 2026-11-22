@@ -70,8 +70,7 @@ Issue #725 closed with a root-cause explanation, and [PR 612] closed as supersed
   The whole issue turns on one line in the installed SDK — `_refreshToolRegistry`'s `isAllowedTool` filter running *before* the registry is built — and every downstream decision (docs-only direction, `excludeTools` denylist, the PR 612 critique) rests on it.
   Reading `node_modules/.pnpm/@earendil-works+pi-coding-agent@0.80.5/.../core/agent-session.js` directly cost about four tool calls and settled questions that prose could not.
 - The `ask_user` free-text note channel did real design work.
-  Three of this issue's scope decisions arrived as notes attached to option selections, not as answers to the options: the YAML-vs-CSV frontmatter question (became the parser fix), "this package deserves its own configuration doc" (became `docs/configuration.md`), and "can we please avoid an `as any` cast?"
-  (became the seam retyping).
+  Three of this issue's scope decisions arrived as notes attached to option selections, not as answers to the options: the YAML-vs-CSV frontmatter question (became the parser fix), "this package deserves its own configuration doc" (became `docs/configuration.md`), and "can we please avoid an `as any` cast?" (became the seam retyping).
   None required rework; each was a genuine improvement the option set had not anticipated.
 - Verification ran incrementally and caught two things at the moment they happened: root `pnpm run lint` reported the file-level `@typescript-eslint/no-unsafe-argument` disable as unused the instant the `as any` left `src/index.ts` (proving the cast was its only cause), and `pnpm pack` + `tar tzf` confirmed the new `docs/configuration.md` ships in the tarball — a risk the plan named rather than an assumption.
 - The plan's Risks table made the TDD stage decision-free.

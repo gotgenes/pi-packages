@@ -139,6 +139,7 @@ Before stopping, persist implementation observations for cross-session continuit
 1. Determine the retro file path: same location as the plan file (single-package → `packages/<PKG>/docs/retro/`; cross-package → `docs/retro/`).
    Use the same `NNNN-<slug>` as the plan file.
    Create the directory if needed.
+
 2. If the retro file does not exist, create it with YAML frontmatter:
 
    ```yaml
@@ -149,6 +150,7 @@ Before stopping, persist implementation observations for cross-session continuit
    ```
 
    Followed by `# Retro: #N — <issue title>`.
+
 3. Append a stage entry:
 
    ```markdown

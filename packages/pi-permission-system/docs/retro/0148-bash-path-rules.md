@@ -24,8 +24,7 @@ A follow-up edge-case pass added 11 tests and documentation for ordering gotchas
   The plan was rewritten completely in the same session.
   This is a textbook example of the user's domain intuition outperforming the agent's systematic analysis.
 - **The edge-case test pass was user-initiated and productive.**
-  The user asked "Can you think of any other interesting examples to test and/or document?"
-  after the implementation was complete.
+  The user asked "Can you think of any other interesting examples to test and/or document?" after the implementation was complete.
   The resulting `ask_user` flow surfaced 6 scenarios (ordering gotchas, universal fallback interaction, composition inverse, `.env.example` recipe, redirect targets, multi-token mixed results).
   All 6 were selected and implemented as 11 tests + documentation.
   This pattern — user prompts a quality pass after green, agent proposes concrete scenarios — is worth repeating.
@@ -47,14 +46,12 @@ A follow-up edge-case pass added 11 tests and documentation for ordering gotchas
   The testing skill already warns about this ("account for existing tests that will break") but the plan's TDD Order section didn't flag this file.
 - `wrong-abstraction` — In the planning session, the agent initially built a detailed 18-file effects analysis for the command×path matrix design.
   The user redirected after saying "I have regrets" and the agent adapted, but the initial analysis was wasted work.
-  The agent could have surfaced the complexity concern earlier — "this touches 18 files and adds a new evaluation model; is this the right level of complexity?"
-  — instead of presenting it as a fait accompli.
+  The agent could have surfaced the complexity concern earlier — "this touches 18 files and adds a new evaluation model; is this the right level of complexity?" — instead of presenting it as a fait accompli.
   Impact: ~5 minutes of planning-session time on the abandoned design.
 
 #### What caused friction (user side)
 
 - The design insight that `path` and `external_directory` are orthogonal dimensions of the same concept came from the user, not the agent.
   The agent had all the context (it read `external_directory`, `bash-path-extractor.ts`, and the gate chain) but didn't propose the unification.
-  The user's question — "is there a unification of `external_directory` and `bash_path`?"
-  — was the pivotal moment.
+  The user's question — "is there a unification of `external_directory` and `bash_path`?" — was the pivotal moment.
   An opportunity exists for the agent to more actively propose simplifying unifications when a feature request looks like it duplicates an existing surface's concerns.

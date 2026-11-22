@@ -296,14 +296,9 @@ No barrel (`src/index.ts`) export changes — the formatter is an internal colla
    Commit: `test: update tool gate tests with formatter parameter`
 
 4. `refactor:` Thread the formatter through the gate descriptor chain.
-   - `src/handlers/gates/tool.ts`: add `formatter` parameter to `describeToolGate`,
-     replace `getPermissionLogContext(...)` import with `formatter.getPermissionLogContext(...)`,
-     pass formatter to `formatAskPrompt`.
-   - `src/permission-prompts.ts`: add `formatter?: ToolPreviewFormatter` parameter
-     to `formatAskPrompt`, use `formatter.formatToolInputForPrompt(...)` when present.
-   - `src/handlers/permission-gate-handler.ts`: import `ToolPreviewFormatter` and
-     the three constants; construct the formatter inside `handleToolCall` with
-     default values; pass it to the tool gate producer thunk.
+   - `src/handlers/gates/tool.ts`: add `formatter` parameter to `describeToolGate`, replace `getPermissionLogContext(...)` import with `formatter.getPermissionLogContext(...)`, pass formatter to `formatAskPrompt`.
+   - `src/permission-prompts.ts`: add `formatter?: ToolPreviewFormatter` parameter to `formatAskPrompt`, use `formatter.formatToolInputForPrompt(...)` when present.
+   - `src/handlers/permission-gate-handler.ts`: import `ToolPreviewFormatter` and the three constants; construct the formatter inside `handleToolCall` with default values; pass it to the tool gate producer thunk.
 
    All existing handler and gate tests remain green.
    Commit: `refactor: thread ToolPreviewFormatter through gate descriptor chain`
@@ -341,8 +336,7 @@ This keeps each commit individually reviewable and the type checker satisfied at
 - Whether `TOOL_INPUT_LOG_PREVIEW_MAX_LENGTH` should also become configurable in [#266].
   It is included in `ToolPreviewFormatterOptions` for consistency since the log-formatting methods that use it live on the class.
   If [#266] decides not to expose it in `PermissionSystemExtensionConfig`, the field defaults to 1000 and remains internal.
-- Whether the constructor should also be used as a factory for a future
-  extension seam (`register()` for custom tool formatters) — deferred to [#283].
+- Whether the constructor should also be used as a factory for a future extension seam (`register()` for custom tool formatters) — deferred to [#283].
 
 [#266]: https://github.com/gotgenes/pi-packages/issues/266
 [#283]: https://github.com/gotgenes/pi-packages/issues/283

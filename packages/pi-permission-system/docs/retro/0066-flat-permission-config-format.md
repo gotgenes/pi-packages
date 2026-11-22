@@ -40,7 +40,8 @@ The release-please workflow required manual intervention (force-push reset + re-
 4. `missing-context` — The first release-please merge attempt got a 502, which actually succeeded silently.
    The second attempt said "already merged."
    The merged PR had a stale title (`release 3.11.1`) because release-please failed to update the PR metadata, causing a `v3.11.1` tag on the `4.0.0` commit.
-   Impact: required force-push reset of main and re-merge to get a clean release. ~10 extra tool calls.
+   Impact: required force-push reset of main and re-merge to get a clean release.
+   ~10 extra tool calls.
 
 #### What caused friction (user side)
 

@@ -221,7 +221,8 @@ No more LoD violations — every call is one level deep.
 
 1. **New unit tests enabled**: `PermissionSession` can be tested in isolation — `resetForNewSession()`, `shutdown()`, `activate()`, cache key logic, agent name resolution.
    These were previously untestable because the logic was scattered across handlers.
-2. **Existing handler tests simplified**: `makeSession()` factories shrink from 7+ fields with nested mocks (`permissionManager: { checkPermission: vi.fn() }`) to a flat mock of `PermissionSession` methods. `as unknown as` casts on `SessionState["permissionManager"]` disappear.
+2. **Existing handler tests simplified**: `makeSession()` factories shrink from 7+ fields with nested mocks (`permissionManager: { checkPermission: vi.fn() }`) to a flat mock of `PermissionSession` methods.
+   `as unknown as` casts on `SessionState["permissionManager"]` disappear.
 3. **Existing handler tests that must stay**: Tests that verify handler orchestration logic (which gates are called, in what order, how results are handled) must remain.
    Tests that verify the scattered reset sequences can be simplified to assert `session.resetForNewSession()` / `session.shutdown()` was called once.
 4. **Integration test unaffected**: `tests/permission-system.test.ts` calls `piPermissionSystemExtension(mockPi)` and never constructs `HandlerDeps` — validates the wiring is correct.

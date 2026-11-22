@@ -69,8 +69,7 @@ The build had no deviations from the plan, and CI and the release run both passe
 
 #### What went well
 
-- The planning spike (swap the imports, run `check` and `test`, revert) settled "is this breaking?"
-  with a measurement before the gate, and the build then matched it exactly.
+- The planning spike (swap the imports, run `check` and `test`, revert) settled "is this breaking?" with a measurement before the gate, and the build then matched it exactly.
 - The `next-version.sh` predictions recorded at planning (`pi-subagents-v21.8.1`, `pi-colgrep-v1.5.4`, `pi-github-tools-v5.0.1`) held through build, sync, and release.
   The ship dispatch needed no derivation beyond confirming them.
 
@@ -78,8 +77,7 @@ The build had no deviations from the plan, and CI and the release run both passe
 
 - `instruction-violation` (user-caught) — Three planning `ask_user` calls were made with no visible assistant text before them.
   In the peer transcript, the first gate and both re-asks after the zod answer show a bare tool call.
-  The briefing was never emitted, so the operator asked "So what are my choices again?"
-  before the substance was re-sent as plain text.
+  The briefing was never emitted, so the operator asked "So what are my choices again?" before the substance was re-sent as plain text.
   The planning stage note recorded this as context that "did not reach" the operator, which reads as a delivery fault; the transcript shows it was never written.
   `clarification-gates` states the reasoning-only hazard only for answering an operator's question, not for the briefing before a gate.
   Impact: two wasted gate round-trips and one operator clarification turn.

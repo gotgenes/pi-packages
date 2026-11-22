@@ -210,8 +210,7 @@ time (cd /tmp) && cat ./x   ./x → <cwd>/x  (unchanged: the subshell's cd does 
    Verify: `pnpm --filter @gotgenes/pi-permission-system exec vitest run test/access-intent/bash && pnpm --filter @gotgenes/pi-permission-system run check`, and `pnpm --silent fallow dead-code` reports no cycle.
    Re-read the moved function against the `code-design` skill before committing.
 
-2. **`fix(pi-permission-system): commands inside time ( … ) are gated on their own rules`**
-   Red, then green, in one commit (the recognizer has no consumer without the wiring):
+2. **`fix(pi-permission-system): commands inside time ( … ) are gated on their own rules`** Red, then green, in one commit (the recognizer has no consumer without the wiring):
    - `nested-execution.test.ts` — `timedSubshellOf` returns the subshell's text for `time (rm x)`, `time (rm x) > /tmp/out` (on the inner `command`), `2>./err time (rm x)`, `A=1 time (rm x)`; `null` for `"time" (rm x)`, `sudo (rm x)`, `time $(rm x)`, `time -p (rm x)`, `time ls (rm x)`, `time pnpm test`.
    - `program.test.ts` `commands` — full `toEqual` unit lists for `time (rm -rf /tmp/x)`, `time (grep -l foo a | wc -l)`, `time (echo $(rm x))` (`rm x` exactly once), `2>$(rm y) time (rm x)` (`rm y` emitted), `time ( (rm x) )`; `sudo (rm x)` and `nice (rm x)` stay a single unit; `time -p (rm x)` stays a single `parseUnresolved` unit.
    - `program.test.ts` `floor exemption` — move `time (rm -rf /tmp/x)` out of the "does not exempt" table into an exempt row asserting `["execution-modifier", undefined]`; recomment the `time { …; }` row to cite [#1043].

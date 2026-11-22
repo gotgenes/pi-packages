@@ -104,9 +104,7 @@ The dominant story is that a docs-consolidation issue turned into a contract-cor
   The gate turned a mistake into a one-line correction instead of a hunt.
 - **A cheap check reframed an expensive-looking question.**
   Comparing `.pi/npm/node_modules/@gotgenes/pi-permission-system/src/service.ts` (the published 26.3.1 copy) against the working tree established that `getPermissionsServiceForSession` has never shipped.
-  "Should we do a painful rename?"
-  became "what should we name a surface we are publishing for the first time?"
-  — and produced [#794].
+  "Should we do a painful rename?" became "what should we name a surface we are publishing for the first time?" — and produced [#794].
 - **The ship stage overrode its own template correctly, on the cheaper model.**
   `/ship-issue` step 6 says merge the release-please PR; the TDD stage's retro said do not.
   The ship turn read the retro, verified the hold was still live (judge still on the zero-arg accessor, PR #790 still proposing `26.4.0`), skipped step 6, and said why — rather than following the mechanical instruction.

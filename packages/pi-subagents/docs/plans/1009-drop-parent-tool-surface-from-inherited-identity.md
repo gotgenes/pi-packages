@@ -64,7 +64,8 @@ Without pi-permission-system the child already inherits the parent's list today 
     With one, the custom prompt is the preamble and none of the three is rendered.
   - Then `addendum` (if any), `project_context` (if any), `skills` (if any), `cwd` (always), then extension `sections` in insertion order.
   - Each non-preamble section is wrapped `<name>\n…\n</name>`; `getSystemMessageText` joins them with `"\n\n"`.
-  - `tools` content is the bullet list (or `(none)`) plus the sentence "In addition to the tools above, you may have access to other custom tools depending on the project." `rules` always carries at least "Be concise in your responses" and "Show file paths clearly when working with files".
+  - `tools` content is the bullet list (or `(none)`) plus the sentence "In addition to the tools above, you may have access to other custom tools depending on the project."
+    `rules` always carries at least "Be concise in your responses" and "Show file paths clearly when working with files".
     Every `tools`/`rules` content line starts with `- `, a blank, or that sentence, so neither can contain a bare `</tools>` or `</rules>` line.
 - Pi's default preamble measures 169 characters (measured with `printf '%s' … | wc -c`), so `<tools>` opens at offset 171.
   That matches the 171 recorded in [#890]'s planning.

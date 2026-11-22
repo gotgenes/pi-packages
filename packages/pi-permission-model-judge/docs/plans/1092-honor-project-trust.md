@@ -134,8 +134,7 @@ pi.on("session_start", (_event, ctx) => {
 - `reportWarning(ctx: Pick<ExtensionContext, "hasUI" | "ui">, message)` is a module-private helper beside `warn()`: it builds the same `[pi-permission-model-judge] <message>` text for both sinks, calls `ctx.ui.notify(text, "warning")` when `ctx.hasUI`, and `console.warn(text)` otherwise.
   The narrow `Pick` mirrors `pi-autoformat`'s `AutoformatExtensionContext`.
 - Existing `injected loadConfig: () => CONFIG_RESULT` test seams stay assignable to the two-parameter signature.
-- Untrusted-skip message text (exact, pinned by tests):
-  `project is not trusted — skipping its model-judge config at <path>. Only the global config applies; grant project trust to load it.`
+- Untrusted-skip message text (exact, pinned by tests): `project is not trusted — skipping its model-judge config at <path>. Only the global config applies; grant project trust to load it.`
 - Ordering: the trust-skip warning precedes the config-issue warnings.
 
 ### Edge cases and the steps that pin them

@@ -157,8 +157,7 @@ const manager = new AgentManager({
 
 ### `src/index.ts`
 
-1. Move `exec` and `registry` from the `AgentManager` constructor call to `ConcreteAgentRunner`:
-   `new ConcreteAgentRunner({ io: runnerIO, exec: ..., registry })`.
+1. Move `exec` and `registry` from the `AgentManager` constructor call to `ConcreteAgentRunner`: `new ConcreteAgentRunner({ io: runnerIO, exec: ..., registry })`.
 2. Remove `exec` and `registry` from the `AgentManager({...})` constructor argument.
 
 ### `test/lifecycle/agent-runner.test.ts`

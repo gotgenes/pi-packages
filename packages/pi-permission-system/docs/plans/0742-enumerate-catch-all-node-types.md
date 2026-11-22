@@ -131,11 +131,8 @@ A quoted heredoc delimiter still needs no handling — tree-sitter emits a `comm
 
 ### Constraints from AGENTS.md and the package skill
 
-- The two questions "is this node a command?"
-  and "can this node host one?"
-  are answered by separate sets; conflating them is the bypass [#741] fixed.
-  This change adds a third question — "is this node a *statement*, so that descending an enclosing compound reaches it?"
-  — and gives it its own set rather than widening either existing one.
+- The two questions "is this node a command?" and "can this node host one?" are answered by separate sets; conflating them is the bypass [#741] fixed.
+  This change adds a third question — "is this node a *statement*, so that descending an enclosing compound reaches it?" — and gives it its own set rather than widening either existing one.
 - A mid-plan commit must be correct on its own, not just at the end ([#741]'s near-miss on `COMMAND_ENUM_SKIP`).
   The `ERROR` branch must therefore land in the **same commit** as the catch-all's hosted-execution descent, or `ERROR` falls through to a descending catch-all for one commit.
 - `docs/architecture/architecture.md` module-tree entries describe current behavior; cite an issue only where the ref encodes an active constraint.

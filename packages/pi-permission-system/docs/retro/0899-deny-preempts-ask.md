@@ -25,8 +25,7 @@ Filed [#915] for the neighboring multiple-ask defect and recorded its Phase 15 d
   Measuring both against the real suite — 4157/4157 for A, 4156/4157 for B — turned an abstract choice into one concrete artifact: the `external_directory_write` allow decision event that B stops emitting.
 
 - **The first gate framing was rejected, correctly, for leading with a test count.**
-  The operator's reply — "Is the recommendation for A simply to avoid changing tests?"
-  — was right: a suite delta is a proxy, not a reason.
+  The operator's reply — "Is the recommendation for A simply to avoid changing tests?" — was right: a suite delta is a proxy, not a reason.
   Re-gating on *what the log shows for a pre-empted call* got a decision immediately.
   Lesson for future gates: when two options are outcome-equivalent, name the artifact that differs, not the measurement that detected it.
 

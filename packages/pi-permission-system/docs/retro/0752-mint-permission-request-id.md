@@ -21,8 +21,7 @@ Filed [#753] for the gate-error path's missing `permissions:decision`, which sur
   And `GateRunner.run`'s third parameter is **deleted**, not narrowed to `string | null`: `requestId: toolCallId` at `runner.ts:162` is its only reader, so once the runner mints its own id the parameter has nothing left to do.
 - **Four decisions went to the operator; two produced follow-up questions that changed the answer.**
   Format, the forwarding edge's third mint, the transcript join, and the gate-error boundary.
-  The operator's "what about UUIDv7?"
-  was worth chasing: `crypto.randomUUID({ version: 7 })` does **not** throw, it silently ignores the option and returns a v4 — verified by reading the version nibble of the returned id on Node v26.7.0.
+  The operator's "what about UUIDv7?" was worth chasing: `crypto.randomUUID({ version: 7 })` does **not** throw, it silently ignores the option and returns a v4 — verified by reading the version nibble of the returned id on Node v26.7.0.
   Node has no v7 at any version this package supports (`engines: >=22`).
 - **found a real gap the issue had not named.**
   **"We don't emit any events for blocked requests yet?"**
@@ -92,10 +91,8 @@ The pre-completion reviewer returned PASS with no warnings; [#753] was filed for
 #### What went well
 
 - **The `ask_user` gate earned its keep twice, and both times through the operator's follow-up rather than the options themselves.**
-  "What about UUIDv7?"
-  forced a verification that found Node silently ignores `randomUUID({ version: 7 })` and returns a v4 — the option was about to be chosen on an assumption.
-  "Wait, we don't emit any events for blocked requests yet?"
-  surfaced that the gate-error path is the only blocking path with no terminal broadcast, which became [#753].
+  "What about UUIDv7?" forced a verification that found Node silently ignores `randomUUID({ version: 7 })` and returns a v4 — the option was about to be chosen on an assumption.
+  "Wait, we don't emit any events for blocked requests yet?" surfaced that the gate-error path is the only blocking path with no terminal broadcast, which became [#753].
   Neither was reachable from the option list as written; both came from the operator reading the framing and pushing on it.
 - **Planning corrected three of the issue's own structural claims before any code moved**, and the corrections held.
   Four non-prompting write paths, not three; one `GateBypass.decision` literal, not three; and `run`'s third parameter deleted rather than narrowed.

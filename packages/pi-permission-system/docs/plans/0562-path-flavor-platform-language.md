@@ -199,7 +199,8 @@ Edited (signature/body, no relocation):
 - `src/permission-session.ts` — constructor `platform` → `flavor`; build `new PathNormalizer(flavor, "")` and rebuild on `activate`.
 - `src/access-intent/bash/token-classification.ts` — `classifyTokenAsRuleCandidate(token, flavor)` via `flavor.hasPathSeparator`; delete `RuleCandidateOptions.windowsSeparators` (and the interface if it empties).
 - `src/access-intent/bash/bash-path-resolver.ts` — pass `this.normalizer.flavor` to the classifier; drop the `usesWindowsSeparators()` read.
-- `src/index.ts` — construct the flavor once; inject into `PermissionManager`, `PermissionSession`, `SubagentDetection`. `hostPlatform` stays only as the argument to `pathFlavorForPlatform`.
+- `src/index.ts` — construct the flavor once; inject into `PermissionManager`, `PermissionSession`, `SubagentDetection`.
+  `hostPlatform` stays only as the argument to `pathFlavorForPlatform`.
 
 Verify `BashTokenShape` is exported from `src/access-intent/bash/msys-bash-tokens.ts` for `path-flavor.ts` to import (it holds the discriminated union `classifyWin32BashToken` returns); export it if it is currently local.
 

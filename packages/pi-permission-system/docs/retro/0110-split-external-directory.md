@@ -23,8 +23,7 @@ Released as v5.6.3 with zero behavioral change.
   5 steps, all green at every commit.
   The incremental extract-then-re-export-from-barrel pattern meant no downstream test ever broke during the extraction.
 - **Post-ship review caught the real abstraction gap.**
-  The user's question "is what we really need a higher level abstraction?"
-  took ~10 minutes of import analysis to answer definitively.
+  The user's question "is what we really need a higher level abstraction?" took ~10 minutes of import analysis to answer definitively.
   The follow-up commit was small (12 files, +24/−49 lines) because the extraction was already done — only import paths changed.
 
 #### What caused friction (agent side)

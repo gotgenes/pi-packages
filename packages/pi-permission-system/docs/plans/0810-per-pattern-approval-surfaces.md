@@ -218,7 +218,8 @@ That an approval carrying several paths under-names its scope in that label is p
 - `src/permission-gate.ts` — `PermissionGateParams.sessionApproval?: { surface, pattern }` becomes `canGrantForSession: boolean`; `PermissionGateResult`'s allow arm swaps `sessionApproval?: { surface, pattern }` for `forSession?: true` (`forSession` is already the vocabulary `resolutionFor` uses in `src/authority/decision-resolution.ts`).
 - `src/handlers/gates/runner.ts` — line 212 passes the boolean; line 233 reads `gateResult.forSession === true`.
 - `src/session-approval.ts` — fields, constructors, `representativeGrant`, `toForwardedData`; `toGateApproval` and `representativePattern` and `multiple` all removed.
-- `src/session-rules.ts` — `recordSessionApproval` destructures each grant. `approve` is untouched.
+- `src/session-rules.ts` — `recordSessionApproval` destructures each grant.
+  `approve` is untouched.
 - `src/authority/permission-forwarding.ts` — `ForwardedSessionApproval` becomes `{ grants }`, importing `ApprovalGrant`; its doc comment's "rebuilds via `SessionApproval.multiple`" sentence is rewritten to name `forGrants`.
 - `src/authority/forwarding-io.ts` — `asForwardedSessionApproval` narrows the new shape only.
 - `src/authority/forwarded-request-server.ts` — `applyGrantScope` (line 344) rebuilds with `forGrants`; its `forwarded_permission.session_recorded` review entry logs `grants` in place of `surface`/`patterns`.

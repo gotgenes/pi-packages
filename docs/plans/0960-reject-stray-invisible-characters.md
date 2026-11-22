@@ -68,7 +68,8 @@ Nothing published changes behavior, output shape, or a default; this is reposito
 ### Where the corruption actually happens
 
 The retro attributes the bytes to "the `Edit` tool mangling an em-dash."
-Measured across all 1764 session transcripts in `~/.pi/agent/sessions` (299 candidate files, 86,025 JSONL records parsed, 0 unparseable), that attribution is wrong in a way the design depends on. 122 decoded U+000C occurrences appear in 7 session files, distributed over these JSON field paths:
+Measured across all 1764 session transcripts in `~/.pi/agent/sessions` (299 candidate files, 86,025 JSONL records parsed, 0 unparseable), that attribution is wrong in a way the design depends on.
+122 decoded U+000C occurrences appear in 7 session files, distributed over these JSON field paths:
 
 | Field path                                    | Count | What it is                                       |
 | --------------------------------------------- | ----- | ------------------------------------------------ |

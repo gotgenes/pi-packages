@@ -28,8 +28,7 @@ Released as v4.2.0.
 #### What caused friction (agent side)
 
 - `missing-context` — Did not proactively check `docs/architecture/` for stale descriptions after the feat commit.
-  User had to ask "did we update our architecture docs?"
-  and then explicitly reference `target-architecture.md`.
+  User had to ask "did we update our architecture docs?" and then explicitly reference `target-architecture.md`.
   The architecture docs described the old `shell-quote`-based approach and were not in my mental checklist.
   Impact: two extra user prompts and a follow-up commit.
 - `missing-context` — Tried `const Parser = (await import("web-tree-sitter")).default` which returned `undefined`.

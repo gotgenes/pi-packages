@@ -67,7 +67,8 @@ The session was clean: the two friction points were minor, self-inflicted, and e
 - **Proactive cross-issue follow-up (#513).**
   The final `getPlatform()` removal cannot be completed by #511 or #502 alone (the pipeline reads it once and threads it to three gates; the tool gate keeps it until #502).
   Filing #513 during planning gave that order-independent cleanup an explicit home rather than leaving an untracked dangling accessor.
-- **Incremental feedback loop did its job.** `pnpm run check` ran after each signature-changing step and caught the one un-planned test file (`external-directory-symlink-acceptance.test.ts`) the moment Step 2's production edit landed — no end-of-session surprise.
+- **Incremental feedback loop did its job.**
+  `pnpm run check` ran after each signature-changing step and caught the one un-planned test file (`external-directory-symlink-acceptance.test.ts`) the moment Step 2's production edit landed — no end-of-session surprise.
 - **Pre-completion reviewer PASS on first dispatch** (ran on `anthropic/claude-sonnet-4-6`, model well-matched to judgment-heavy review).
 
 #### What caused friction (agent side)

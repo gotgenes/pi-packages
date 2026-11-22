@@ -88,8 +88,7 @@ The `containsGlobChars` helper is a private function — not exported, no new mo
 
 ## TDD Order
 
-1. **test: glob patterns in `isPiInfrastructureRead`**
-   Add failing tests to `tests/pi-infrastructure-read.test.ts`:
+1. **test: glob patterns in `isPiInfrastructureRead`** Add failing tests to `tests/pi-infrastructure-read.test.ts`:
    - Glob entry `/opt/homebrew/*/@earendil-works/pi-coding-agent/*` matches a versioned path.
    - Glob entry with `**` behaves the same as `*` (matches across `/`).
    - Glob entry that doesn't match returns false.
@@ -98,8 +97,7 @@ The `containsGlobChars` helper is a private function — not exported, no new mo
    - Plain entry with `~` prefix now matches (currently broken).
    - Write tool with a glob-matching path is still rejected (read-only guard).
 
-2. **feat: support glob patterns in `piInfrastructureReadPaths`**
-   Update `src/path-utils.ts`:
+2. **feat: support glob patterns in `piInfrastructureReadPaths`** Update `src/path-utils.ts`:
    - Import `expandHomePath` from `./expand-home` and `wildcardMatch` from `./wildcard-matcher`.
    - Add private `containsGlobChars()` helper.
    - Update the `infrastructureDirs` loop in `isPiInfrastructureRead()` to branch on glob detection.

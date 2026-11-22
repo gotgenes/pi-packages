@@ -299,10 +299,12 @@ A gate that declines them is over-firing, and the fix is the gate's wording — 
 ## Build Order
 
 1. **Insert the gate and renumber.**
-   Apply edits A and B. Verify: `rg -n 'Step [0-9]'` shows Steps 1–9 in order with no dangling reference; `git diff` on the Score step shows only its heading changed.
+   Apply edits A and B.
+   Verify: `rg -n 'Step [0-9]'` shows Steps 1–9 in order with no dangling reference; `git diff` on the Score step shows only its heading changed.
    Commit: `docs: add a scope-alignment gate to /triage-backlog (#777)`.
 2. **Wire the gate into the surrounding template.**
-   Apply edits C, D, E, and F. Verify: the Output section lists eight items in order, the Deferred item points out-of-scope entries at the new section, and the Mutations rule still forbids closing.
+   Apply edits C, D, E, and F.
+   Verify: the Output section lists eight items in order, the Deferred item points out-of-scope entries at the new section, and the Mutations rule still forbids closing.
    Commit: `docs: carry scope verdicts forward and report them in /triage-backlog output (#777)`.
 3. **Dry-run the gate over the six items in Test Impact Analysis.**
    Read each item and the relevant charter, write the verdict, and compare against the expected column.

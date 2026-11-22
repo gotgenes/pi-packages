@@ -67,8 +67,7 @@ Mid-TDD, at the operator's request, the subagents moved to `claude-sonnet-5-5`.
 - Widening the corpus from the review log to every `bash` tool call in `~/.pi/agent/sessions/*.jsonl` (70,961 unique commands, against the review log's asks and approvals only) measured every number a gate needed, including the round-3 decision: closing the nameref gap cost 3 `find` units of 2,025, which made the sound option an easy call.
   The review log alone cannot price a change that newly prompts, because it holds few of the commands the gate allowed silently.
 - The planning spike found the `number`-node defect (460 of 625 would-be withdrawals caused by `-maxdepth 2`) before any design was settled, so it became a leading step instead of a regression.
-- The operator's "what will the end user notice?"
-  question produced the framing that decided the breaking-change call: the fix's visible effect is new prompts on benign reads, not blocked writes.
+- The operator's "what will the end user notice?" question produced the framing that decided the breaking-change call: the fix's visible effect is new prompts on benign reads, not blocked writes.
 
 #### What caused friction (agent side)
 

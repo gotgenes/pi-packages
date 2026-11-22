@@ -100,7 +100,8 @@ The git plumbing bracketing a child run, not losing the child's work when cleanu
   A failed cleanup is exactly the case where the content is not safe to discard on the extension's judgment.
 - _Handing removal to the agent._
   Recovery is a slash command rather than a tool, keeping a destructive `git worktree remove --force` out of the model's reach.
-- _Worktree knowledge in the subagents core._ `git` does not appear there; uninstalling this package leaves children running in the parent's directory.
+- _Worktree knowledge in the subagents core._
+  `git` does not appear there; uninstalling this package leaves children running in the parent's directory.
 
 **Where adjacent requests belong.**
 Whether a child gets an isolated workspace at all, the seam that asks, and a child's system prompt or working-directory claim → [@gotgenes/pi-subagents](https://www.npmjs.com/package/@gotgenes/pi-subagents).

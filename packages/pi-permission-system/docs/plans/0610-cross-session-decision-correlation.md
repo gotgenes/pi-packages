@@ -302,10 +302,12 @@ Nothing here is quantitative — no budget, prefix, or latency characteristic is
    `src/decision-reporter.ts` gains the narrow interface with `DecisionReporter` extending it; `src/index.ts` moves the `GateDecisionReporter` construction above the `ForwardedRequestServer` construction.
    No behavior change and no new test — `pnpm run check` plus the full suite is the gate.
    Commit: `refactor(pi-permission-system): split DecisionBroadcaster out of DecisionReporter`.
+
 2. **The fail-closed boundary broadcasts its terminal decision ([#753]).**
    Red, in `test/handlers/tool-call-boundary.test.ts`: "emits a terminal decision carrying the same request id as the `gate_error` review entry" and "still blocks when the decision emit throws".
    Green: add `"gate_error"` to `PermissionDecisionResolution` and emit from `recordGateError`.
    Commit: `feat(pi-permission-system): broadcast a terminal decision when a gate error blocks a tool call (#753)`.
+
 3. **The serving session broadcasts a terminal decision for a served forwarded ask ([#610]).**
    Red, in `test/authority/forwarded-request-server.test.ts`, after adding the `broadcaster` default to `makeServerDeps`:
    1. A human approval emits `result: "allow"`, `resolution: "user_approved"`, with the request's `id` as `requestId`.
@@ -320,6 +322,7 @@ Nothing here is quantitative — no budget, prefix, or latency characteristic is
 
    Green: the `broadcaster` dep, the `escalateAsk` extraction, `buildServedDecisionEvent` / `servedResolution`, the optional `forwarding` field on `PermissionDecisionEvent`, and the `index.ts` wiring — all in one commit, since the required dep makes the call site a compile error otherwise.
    Commit: `feat(pi-permission-system): emit a parent-side terminal decision for a served forwarded ask (#610)`.
+
 4. **Documentation.**
    `docs/cross-extension-api.md`, `docs/architecture/architecture.md` (module tree, Step 10 `✅` + Mermaid node + `Landed:` note, two new metric rows), `README.md`, and the package skill.
    Commit: `docs(pi-permission-system): document the served forwarded decision broadcast (#610)`.

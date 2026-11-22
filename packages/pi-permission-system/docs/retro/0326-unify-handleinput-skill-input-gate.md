@@ -31,7 +31,8 @@ This planning session then produced the numbered plan for #326, the first pivot 
   The concrete-session mocks stay.
 - **TDD shape.**
   Two commits: (1) additive `skill_input` denial context + formatter tests; (2) factory + `handleInput` rewrite + consumer-test updates folded together so the new `describeSkillInputGate` has a `src` consumer immediately (no dead-code window for fallow).
-- **Known test edit.** `input.test.ts`'s "passes agentName…" assertion uses `expect.anything()` for the prompt's first arg; prompting now flows through the context-bound `promptPermission(details)`, so that one assertion must retarget `session.promptPermission`.
+- **Known test edit.**
+  `input.test.ts`'s "passes agentName…" assertion uses `expect.anything()` for the prompt's first arg; prompting now flows through the context-bound `promptPermission(details)`, so that one assertion must retarget `session.promptPermission`.
 - **Process note.**
   Per the user's direction, this is a recursive "discover → note in architecture.md → file issues → backtrack" loop; expect further smells (e.g. the `ToolCallGatePipeline` shape in #327, and the `index.ts` composition root in #320) to be refined as those issues are planned.
 

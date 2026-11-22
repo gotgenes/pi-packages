@@ -44,7 +44,9 @@ Relevant modules:
 - `src/subagent-context.ts` — `isSubagentExecutionContext(ctx, subagentSessionsDir, registry?)`.
   Branch 1 (registry by session id) is the only signal that identifies an **in-process** child; branches 2–3 (env, filesystem) identify **process-based** subagents.
 - `src/subagent-registry.ts` — the process-global `SubagentSessionRegistry`, populated by the parent's `subagents:child:session-created` subscription before the child's `bindExtensions()`.
-- `src/handlers/lifecycle.ts` — `SessionLifecycleHandler`. `handleSessionStart(event, ctx)` is the first lifecycle event that carries a `ctx` (and therefore a session id). `handleSessionShutdown()` runs the injected cleanup closure.
+- `src/handlers/lifecycle.ts` — `SessionLifecycleHandler`.
+  `handleSessionStart(event, ctx)` is the first lifecycle event that carries a `ctx` (and therefore a session id).
+  `handleSessionShutdown()` runs the injected cleanup closure.
 - `src/permission-events.ts` — `emitReadyEvent` / `PERMISSIONS_READY_CHANNEL`, documented as "emitted once on extension load."
 
 Key constraint discovered during investigation: **the factory has no `ctx` at init**, so it cannot read the child's session id and cannot consult the registry to know whether it is an in-process child.

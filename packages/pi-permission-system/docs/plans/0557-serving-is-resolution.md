@@ -188,7 +188,8 @@ Notes:
 - **Single-surface re-resolution is best-effort.**
   One `(surface, value)` pair cannot reproduce a child decision that layered multiple checks (e.g. `external_directory` over `path`); an imperfect resolution lands on `ask` → prompt, never a silent grant.
   Known simplification, recorded in ADR-0005 and validated post-ship in [#565].
-- **The `if (!ctx.hasUI) return` guard is removed.** `ForwardingManager.start` already refuses to poll without UI, so the guard is unreachable defense; removing it is behavior-neutral and completes resolved direction 1's "the `hasUI` guards dissolve into selection."
+- **The `if (!ctx.hasUI) return` guard is removed.**
+  `ForwardingManager.start` already refuses to poll without UI, so the guard is unreachable defense; removing it is behavior-neutral and completes resolved direction 1's "the `hasUI` guards dissolve into selection."
   `processInbox` keeps its `ForwarderContext` parameter for `getSessionId(ctx)` but no longer touches `ctx.hasUI`/`ctx.ui`.
 
 ### Review-log and event deltas (deliberate, observable)

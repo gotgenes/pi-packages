@@ -49,8 +49,7 @@ So the reported security consequence does not hold, but three real defects do: a
 
 - Settle and record the adjudication semantics: exactly one node adjudicates an ask, and it is the node whose terminal decides — never a node that relays the ask upward.
 - Stop a relaying (subagent) node from reporting its deliberate delegation as a fail-safe skip of unregistered links.
-- Record positive evidence per ask of which chain links were consulted, so "did the judge see this request?"
-  is answerable from the review log.
+- Record positive evidence per ask of which chain links were consulted, so "did the judge see this request?" is answerable from the review log.
 - Pin the parent-side invariant with an end-to-end regression test, so the behavior the issue doubted cannot regress silently.
 - Endorse the direction of [#699] in the ADR (a child deliberately hosts no links, so a sibling extension should skip registering in one) without implementing it here.
 
@@ -109,8 +108,7 @@ That hides the genuine unregistered-link case (23 of the 43 measured records) be
 
 ### Threading the decision, not the discriminator
 
-`AuthorizerSelection` must not re-derive "is this a relaying node?"
-from `detection.isSubagent(ctx)` — that decision already has a home in `selectAuthorizer`, and re-deriving it would get the subagent-with-UI case wrong (`selectAuthorizer` tests `hasUI` first, so such a node decides locally).
+`AuthorizerSelection` must not re-derive "is this a relaying node?" from `detection.isSubagent(ctx)` — that decision already has a home in `selectAuthorizer`, and re-deriving it would get the subagent-with-UI case wrong (`selectAuthorizer` tests `hasUI` first, so such a node decides locally).
 So `selectAuthorizer` returns its product rather than a bare terminal:
 
 ```typescript

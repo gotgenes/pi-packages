@@ -240,8 +240,11 @@ Bare `cd` stays the exact `cd`.
 
 1. **`fix(pi-permission-system): a cd session option names its directory instead of every cd`**
    - Red: `test/access-intent/bash/bash-arity.test.ts` (`maps 'cd' to arity 2`), and a `suggestBashPattern` case in `test/presentation/pattern-suggest.test.ts`: `cd sub` → `cd sub*`, bare `cd` → `cd`.
+
    - Green: `cd: 2` in `ARITY`; the arity row in `docs/session-approvals.md`.
+
    - Killing mutation: delete the `cd: 2` entry; the suggestion returns `cd *`.
+
    - The final commit paragraph carries:
 
      ```text

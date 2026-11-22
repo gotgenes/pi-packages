@@ -34,7 +34,8 @@ Test count unchanged at 2387 (net-zero: 2 unit tests inverted in place, 7 integr
 ### Observations
 
 - Empirically confirmed during GREEN that `//` and `///` normalize to lexical `/`, so the resolved external set is `["/"]` for all three — the plan's predicted expectation held exactly.
-- No deviations from the plan. `find /` now resolves to external root `["/"]`; verified `pnpm run check`, root `pnpm run lint`, full `pnpm run test` (2387), and `pnpm fallow dead-code` all green; no lockfile changes.
+- No deviations from the plan.
+  `find /` now resolves to external root `["/"]`; verified `pnpm run check`, root `pnpm run lint`, full `pnpm run test` (2387), and `pnpm fallow dead-code` all green; no lockfile changes.
 - Pre-completion reviewer: WARN (single non-blocking finding) → resolved.
   It caught a stale "seven shared rejection cases" comment in the test file header (line 13) that mirrored the source-module comment I had already corrected to "six"; fixed and amended into the fix commit before it was pushed.
 - Deliberately left the historical plan `0533-win32-git-bash-posix-paths.md` parenthetical unchanged, as the plan specified.
@@ -76,7 +77,8 @@ Friction was minimal — one absolute-path typo (caught by the very gate under r
 - **Model-performance correlation** — both subagents (`tidy-first-assessor`, `pre-completion-reviewer`) ran on `anthropic/claude-sonnet-5`, appropriate for read-only judgment work; the reviewer's WARN finding confirms the model was capable of the self-consistency check.
   No mismatch.
 - **Escalation-delay tracking** — no `rabbit-hole` friction; the longest same-target loop was the deliberate 3-cycle poll of the release PR's in-progress check, which is correct protocol, not an escalation delay.
-- **Unused-tool detection** — none missed. `grep`/`Read` were the right tools for a single-symbol trace (`rejectNonPathToken`, `^\/+$`); a semantic `colgrep` would have added noise.
+- **Unused-tool detection** — none missed.
+  `grep`/`Read` were the right tools for a single-symbol trace (`rejectNonPathToken`, `^\/+$`); a semantic `colgrep` would have added noise.
 - **Feedback-loop gap analysis** — verification was incremental: RED confirmed before GREEN, affected-file tests during the cycle, then full `test`/`check`/`lint`/`fallow` after.
   No end-only batching.
 

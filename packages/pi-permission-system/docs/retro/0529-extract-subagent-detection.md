@@ -71,8 +71,7 @@ All three stages ran cleanly — two design forks resolved via `ask_user` at pla
 
 - None.
   The operator's only involvement was answering the two planning-time `ask_user` forks (exactly the right strategic input) and running the three slash commands; no corrections or redirects were needed.
-- Minor, not friction: a prior-branch commit (`72c15808`, the pluggable-escalation-seam architecture note) landed on `main` and rode along in the #529 push, requiring a one-line "is this mine?"
-  check during the ship close-comment range scan — resolved without rework.
+- Minor, not friction: a prior-branch commit (`72c15808`, the pluggable-escalation-seam architecture note) landed on `main` and rode along in the #529 push, requiring a one-line "is this mine?" check during the ship close-comment range scan — resolved without rework.
 
 ### Diagnostic details
 

@@ -287,6 +287,7 @@ Interface width check: `ToolSurfaceInputs` goes to five fields, and its one cons
    This prepares for step 5's tagged wrapper, which must wrap the same bullets without re-deriving them.
    Behavior-preserving; the existing suite is the pin, with no new tests.
    Commit: `refactor(pi-permission-system): compute tool-surface bullets apart from their headers`.
+
 2. **Tidy: repackage today's behavior as `HEADER_LAYOUT`.**
    Introduce `PromptLayout`, `HEADER_LAYOUT`, and `detectPromptLayout`, which returns `HEADER_LAYOUT` unconditionally, with `tailStart` from the footer search.
    Change `settleRegion` to take a removal function or `null`, and route `renderToolSurface` through it.
@@ -294,6 +295,7 @@ Interface width check: `ToolSurfaceInputs` goes to five fields, and its one cons
    Behavior-preserving; the existing suite is the pin.
    Re-read the moved code against `code-design` before committing.
    Commit: `refactor(pi-permission-system): select the tool-surface layout at one dispatch point`.
+
 3. **Section anchor: split a 0.86 prompt at pi's `<cwd>` section.**
    Add the hand-built section fixtures, the section-anchor search, the later-anchor rule, and `SECTION_LAYOUT` with a no-op `removePiSurface`, the header-shape `removeRelocatedSurface`, and the header-shape `renderBlock` for now.
    Tests (new `describe("a section-shaped prompt")` › `describe("the extension tail")`):
@@ -308,6 +310,7 @@ Interface width check: `ToolSurfaceInputs` goes to five fields, and its one cons
    - "return `SECTION_LAYOUT` whenever a `<cwd>` triple is found" turns test 4 red.
 
    Commit: `fix(pi-permission-system): keep a project's own Guidelines section on a pi ≥0.86 prompt`.
+
 4. **Remove pi's own `<tools>` and `<rules>`.**
    Implement `SECTION_LAYOUT.removePiSurface` with the later-section bound.
    Tests (`describe("pi's own sections")`):
@@ -323,6 +326,7 @@ Interface width check: `ToolSurfaceInputs` goes to five fields, and its one cons
    - "pass `layout.removePiSurface` for the head regardless of `piAuthoredPreamble`" turns test 4 red.
 
    Commit: `fix(pi-permission-system): remove pi's own tool list and rules on a pi ≥0.86 prompt`.
+
 5. **Render the block in the host's shape.**
    Implement `SECTION_LAYOUT.renderBlock` (tagged) and `SECTION_LAYOUT.removeRelocatedSurface` (tagged, then plain).
    Update step 3–4 expectations that asserted the plain block on the section shape in this same step.
@@ -339,6 +343,7 @@ Interface width check: `ToolSurfaceInputs` goes to five fields, and its one cons
    - "make it skip `removeToolSurfaceSections`" turns test 4 red.
 
    Commit: `feat(pi-permission-system): state the relocated tool surface in pi ≥0.86's section shape`.
+
 6. **Carry extension-contributed rules.**
    Add the required `promptGuidelines` to `ToolSurfaceInputs`, the filter in `toolSurfaceBullets`, the `inputs()` default `promptGuidelines: []`, and the handler's payload field and pass-through, all in this step, because the field is required.
    Tests:
@@ -354,6 +359,7 @@ Interface width check: `ToolSurfaceInputs` goes to five fields, and its one cons
 
    Run `pnpm --filter @gotgenes/pi-permission-system run check` after this step (shared interface change).
    Commit: `fix(pi-permission-system): keep extension-contributed rules when relocating the tool surface`.
+
 7. **Docs.**
    Add the ADR 0014 amendment consequence, update the `architecture.md` module-tree entry, and update the `configuration.md` hook row and relocation bullet, all as listed in Module-Level Changes.
    Commit: `docs(pi-permission-system): describe the tool-surface relocation on pi ≥0.86 section prompts`.

@@ -9,8 +9,7 @@ issue_title: "Add WorkspaceProvider extension seam"
 
 Phase 16, Step 2 of [ADR-0002].
 The core needs only a working directory and a disposal hook for a child run; the default - the parent's cwd, with no setup or teardown - is always correct.
-"Where does a child run, and what brackets the run?"
-is a *strategy* (git worktree, container, tmpdir, remote sandbox), not core behavior.
+"Where does a child run, and what brackets the run?" is a *strategy* (git worktree, container, tmpdir, remote sandbox), not core behavior.
 [ADR-0002] classifies this as the single *generative* extension surface: a concern that must return a value the core consumes synchronously attaches through a rationed provider seam, not an observational event.
 This issue adds that seam -`WorkspaceProvider` / `Workspace` plus `SubagentsService.registerWorkspaceProvider` - without the core gaining any knowledge of what an "isolation strategy" is.
 

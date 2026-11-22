@@ -40,7 +40,8 @@ The recompute metric landed at 0 (7 → 0 `unknown` sites), the `runtime.ts` cas
   Caught immediately by `pnpm run check`, fixed in the `refactor:` commit with the same `{ find: () => undefined, getAll: () => [] }` stub used elsewhere.
   The plan's "no change needed" list had enumerated the SessionContext/ParentSnapshot constructors but missed this one (a `buildParentContext` test fixture).
   A `grep -rn "modelRegistry: undefined"` at plan time would have caught it.
-- **Design decision validated:** making `SessionContext.modelRegistry` non-optional (matching the SDK's `ExtensionContext`) was the clean lever to drop the `!` — no cascade of `registry?.` guards into `resolveDefaultModel`, and only three fixtures needed a stub-registry default. `getModelInfo`/`service-adapter` keep their `ModelRegistry | undefined` results via `currentCtx?.` (optional from `currentCtx`, not the field), so no consumer regressed.
+- **Design decision validated:** making `SessionContext.modelRegistry` non-optional (matching the SDK's `ExtensionContext`) was the clean lever to drop the `!` — no cascade of `registry?.` guards into `resolveDefaultModel`, and only three fixtures needed a stub-registry default.
+  `getModelInfo`/`service-adapter` keep their `ModelRegistry | undefined` results via `currentCtx?.` (optional from `currentCtx`, not the field), so no consumer regressed.
 - **Pre-completion reviewer: PASS** — all deterministic checks green (check/lint/test/fallow), recompute metric verified at 0, 6/6 Mermaid diagrams parse with the new `✅` `S3` node, code design clean (mechanical type substitutions, no control-flow change), cross-step invariants preserved (model-resolution priority + `getModelInfo` pass-through pinned by still-passing tests, now with a stronger `toBe(model)` identity assertion).
   No warnings.
 

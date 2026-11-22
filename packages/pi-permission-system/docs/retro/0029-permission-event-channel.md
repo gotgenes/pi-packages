@@ -9,7 +9,8 @@ issue_title: "Re-add permission-request event channel with a proper public contr
 
 ### Session summary
 
-Planned and implemented a 3-surface permission event API (decision broadcast, policy query RPC, prompt forwarding RPC) plus a `permissions:ready` signal. 9 TDD steps produced 77 new tests across 4 test files, with all 1109 tests passing at ship.
+Planned and implemented a 3-surface permission event API (decision broadcast, policy query RPC, prompt forwarding RPC) plus a `permissions:ready` signal.
+9 TDD steps produced 77 new tests across 4 test files, with all 1109 tests passing at ship.
 Released as v5.3.0.
 
 ### Observations

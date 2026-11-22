@@ -82,8 +82,7 @@ The run was clean apart from one substantive rework (a plan LOC target missed un
 #### What caused friction (user side)
 
 - None material.
-  The operator's one substantive decision (fix vs. skip the 74-line FAIL) was answered promptly and correctly; the earlier "are we ready?"
-  check surfaced two real plan tightenings before implementation, which is the intended pre-flight.
+  The operator's one substantive decision (fix vs. skip the 74-line FAIL) was answered promptly and correctly; the earlier "are we ready?" check surfaced two real plan tightenings before implementation, which is the intended pre-flight.
 
 ### Diagnostic details
 

@@ -156,8 +156,7 @@ case "expansion":
   return resolvePlainVariableExpansion(node) ?? node.text;
 ```
 
-Tell-Don't-Ask holds: the caller hands over the node and receives the answer, never walking children itself or asking "is this a `$HOME`?"
-and then acting.
+Tell-Don't-Ask holds: the caller hands over the node and receives the answer, never walking children itself or asking "is this a `$HOME`?" and then acting.
 Law of Demeter holds: `node-text.ts` gains no `node.child(1).text` reach-through.
 Parameter type is `TSNode`, the package's own minimal AST projection (six members); the module reads `type`, `childCount`, `child()`, and a child's `type`/`text`.
 Narrowing further would fragment the one AST abstraction the bash modules share, so `TSNode` is the right ISP granularity here.
@@ -326,6 +325,7 @@ The change adds behavior to a previously identity-mapped branch; no existing ass
    Green: add the three prefix branches to `expand-home.ts` and update its doc comment.
    Non-breaking pure widening — the braced form previously matched nothing.
    Commit: `feat(pi-permission-system): expand ${HOME} alongside $HOME in path patterns`
+
 2. **Plain-expansion resolution in bash tokens.**
    Red, in one cycle:
    - `test/access-intent/bash/shell-variable-expansion.test.ts` — `$HOME` / `${HOME}` → `homedir()`, `$PWD` / `${PWD}` → `.`, `$HOMEDIR` / `$CURRENT` / `${HOME:-/tmp}` / `${#HOME}` / a childless node → `null`.
@@ -336,6 +336,7 @@ The change adds behavior to a previously identity-mapped branch; no existing ass
    Green: add `src/access-intent/bash/shell-variable-expansion.ts` and delegate from `resolveNodeText`.
    The module and its wiring land in **one** commit: an unwired export would trip the CI `pnpm fallow dead-code` gate.
    Commit: `fix(pi-permission-system)!: resolve $HOME and $PWD expansions in bash path tokens`, with a `BREAKING CHANGE:` footer naming the remediation — an `external_directory` allow rule for the home-anchored path (e.g. `"~/.cargo/registry/*": "allow"`), the mechanism `docs/configuration.md` already documents.
+
 3. **Docs and ADR amendment.**
    ADR 0009 (three sections), `docs/configuration.md` (line 592 rewrite plus the four `~`/`$HOME` prose sites), `docs/opencode-compatibility.md` line 23, `docs/architecture/architecture.md` (lines 291, 702, 727 plus the new tree entry), and `.pi/skills/package-pi-permission-system/SKILL.md` lines 268–269.
    Commit: `docs(pi-permission-system): record resolved shell expansions in ADR 0009 and user docs`

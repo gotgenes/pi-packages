@@ -219,8 +219,7 @@ It continues to receive plain strings (now extracted from AST nodes instead of `
 
 ## TDD Order
 
-1. **test: add failing heredoc false-positive tests**
-   Add a new `describe("heredoc handling")` block in `tests/bash-external-directory.test.ts` with:
+1. **test: add failing heredoc false-positive tests** Add a new `describe("heredoc handling")` block in `tests/bash-external-directory.test.ts` with:
    - Single-quoted heredoc delimiter: `cat << 'EOF'\n/etc/hosts\nEOF` → no external path.
    - Double-quoted heredoc delimiter: `cat << "EOF"\n/etc/hosts\nEOF` → no external path.
    - Unquoted heredoc delimiter: `cat << EOF\n/etc/hosts\nEOF` → no external path.
@@ -239,8 +238,7 @@ It continues to receive plain strings (now extracted from AST nodes instead of `
      Full suite passes.
    Commit: `feat: replace shell-quote with tree-sitter-bash for AST-based path extraction`
 
-3. **test: add command-substitution and redirect coverage**
-   Add tests confirming:
+3. **test: add command-substitution and redirect coverage** Add tests confirming:
    - `echo $(cat /etc/hosts)` → `/etc/hosts` detected (command substitution paths are real).
    - `echo hello > /tmp/out.txt` → `/tmp/out.txt` detected via redirect walker.
    - `cat << 'EOF'\n$(cat /etc/hosts)\nEOF` → no external path (command substitution inside heredoc body is not executed by the outer shell in single-quoted heredocs; but with unquoted delimiters it is — verify correct behavior for both).

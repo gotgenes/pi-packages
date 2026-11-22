@@ -22,7 +22,8 @@ The plan has nine TDD cycles split into Track A (build the new package) and Trac
 - This is the **first intra-repo `@gotgenes/*` package import** — the new package imports seam types + `getSubagentsService` from `@gotgenes/pi-subagents`.
   Plan wires it as `workspace:*` devDep + peerDep range; flagged in Risks since no existing package does this.
 - `service.ts` already carried a comment that "#263 adds named re-exports when it imports them" — so Step 1 adds `Workspace`/context/result type re-exports (currently only `WorkspaceProvider` is named).
-- Core eviction must be **two type-coherent commits**: removing the tool-facing `isolation` axis (`SpawnExecution`/`AgentInvocation` field removal breaks all downstream object literals at once), then deleting the legacy worktree wiring + modules. `AgentSpawnConfig.isolation` is left optional after Step 7 so Step 7 type-checks, then removed in Step 8.
+- Core eviction must be **two type-coherent commits**: removing the tool-facing `isolation` axis (`SpawnExecution`/`AgentInvocation` field removal breaks all downstream object literals at once), then deleting the legacy worktree wiring + modules.
+  `AgentSpawnConfig.isolation` is left optional after Step 7 so Step 7 type-checks, then removed in Step 8.
 - Label note: the issue carries `pkg:pi-permission-system` **and** `pkg:pi-subagents`, but the content does not touch the permission system.
   Treated as cross-package (new package + core + root config) and placed in top-level `docs/plans/`; the `pi-permission-system` label appears incongruent.
 - Confirmed no regression for no-provider children: `agent-runner.ts` uses `effectiveCwd = options.context.cwd ?? snapshot.cwd`, so a `undefined` cwd already falls back to the parent cwd today.
@@ -126,8 +127,7 @@ The dominant story was a cross-package *consumability* blocker that was flagged 
 #### What caused friction (user side)
 
 - The "no workspace trickery / use the released version" constraint was settled in #270 and arrived in this session as a retro note — a clean handoff, not friction.
-  The user's two mid-session interventions ("why `.npmrc`?"
-  and "create a GitHub Issue") were both *redirecting questions* that landed before rework, which is the cheap place to catch things — worth repeating.
+  The user's two mid-session interventions ("why `.npmrc`?" and "create a GitHub Issue") were both *redirecting questions* that landed before rework, which is the cheap place to catch things — worth repeating.
 
 ### Diagnostic details
 

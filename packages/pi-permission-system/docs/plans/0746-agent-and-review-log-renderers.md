@@ -383,7 +383,8 @@ A mid-session config change therefore takes effect on the next line, matching ho
 
 ### Removed
 
-- `packages/pi-permission-system/src/denial-messages.ts` — `DenialContext`, `formatDenyReason`, `formatUnavailableReason`, `formatUserDeniedReason`, `matchQualifier`, `resolvesToSuffix`. `ExternalPathDisclosure` relocates to `src/presentation/path-ask-payload.ts`; `EXTENSION_TAG` and `describeBashCommandContext` relocate as above.
+- `packages/pi-permission-system/src/denial-messages.ts` — `DenialContext`, `formatDenyReason`, `formatUnavailableReason`, `formatUserDeniedReason`, `matchQualifier`, `resolvesToSuffix`.
+  `ExternalPathDisclosure` relocates to `src/presentation/path-ask-payload.ts`; `EXTENSION_TAG` and `describeBashCommandContext` relocate as above.
 - `packages/pi-permission-system/src/presentation/legacy-message.ts` — `renderLegacyMessage` and its private fragment helpers.
 - `packages/pi-permission-system/test/denial-messages.test.ts` (728 lines) and `test/presentation/legacy-message.test.ts` (344 lines).
 - `PromptPermissionDetails.message` (`src/authority/permission-prompter.ts`).
@@ -413,7 +414,8 @@ A mid-session config change therefore takes effect on the next line, matching ho
 - `test/bash-external-directory.test.ts` — `ExternalPathDisclosure` import path; drops its `renderLegacyMessage` import.
 - `test/presentation/tool-ask-payload.test.ts`, `path-ask-payload.test.ts`, `skill-ask-payload.test.ts` — assertions move from the rendered legacy string to the payload's own fields.
 - `test/helpers/presentation-fixtures.ts` — drops `TOOL_INPUT_LOG_PREVIEW_MAX_LENGTH`.
-- `test/helpers/gate-fixtures.ts` — `makeDescriptor` / `makeDenialDescriptor` build a `payload` rather than a `denialContext`. `makeDenialDescriptor`'s reason for existing (a caller-supplied `DenialContext`) goes; confirm whether it collapses into `makeDescriptor`.
+- `test/helpers/gate-fixtures.ts` — `makeDescriptor` / `makeDenialDescriptor` build a `payload` rather than a `denialContext`.
+  `makeDenialDescriptor`'s reason for existing (a caller-supplied `DenialContext`) goes; confirm whether it collapses into `makeDescriptor`.
 - `test/logging.test.ts`, `test/session-logger.test.ts` — the review-stream width bound, the debug stream's exemption, and cap-before-redaction.
 - `test/config-loader.test.ts`, `test/extension-config.test.ts`, `test/config-schema.test.ts` — the new field survives merge, normalization, and schema parity.
 - Any test constructing a `PromptPermissionDetails` literal: `message` is a **removed required field**, so grep `message:` across `test/` and the `test/helpers/` factories — a shared fixture is the common miss.

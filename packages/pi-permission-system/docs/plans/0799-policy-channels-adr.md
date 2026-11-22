@@ -261,13 +261,21 @@ Decisions are recorded in the ADR draft as they are made.
 
 1. Re-run the Test Impact Analysis commands and both spikes; verify Pi's settings merge semantics in the pinned dist; fix the plan's premises if anything drifted.
    Commit nothing.
+
 2. Gate A: admissibility criteria K1–K7.
+
 3. Gate B: inventory sign-off and cluster A.
+
 4. Gate C: cluster B (write-back).
+
 5. Gate D: cluster C (relaxation scope), with the scope ladder drawn.
+
 6. Gate E: cluster D (floor), leading with the measured override.
+
 7. Gate F: cluster E (session-layer management), after Gate E because it composes with the floor answer.
+
 8. Gate G: sequencing, breaking classification per admitted change, and the disposition map, including what [#1103] implements.
+
 9. Author `docs/decisions/0016-policy-channels.md`; update the architecture-doc paragraph and non-goals rows and the README paragraph; lint all three.
    Commit: `docs(pi-permission-system): record ADR 0016, the policy channels`.
    When a gate adopts a commenter's or contributor's mechanism, credit it in the commit's final paragraph, below `Refs #799`, with the matching line (resolved at planning):
@@ -281,6 +289,7 @@ Decisions are recorded in the ADR draft as they are made.
    - [#983]'s trust map: `Co-authored-by: minicx <39405619+loss-and-quick@users.noreply.github.com>`
 
    Verify with `git interpret-trailers --parse`.
+
 10. File the downstream implementation issues the decisions shaped, run the `roadmap-fit` skill per filed issue, write the issue numbers into the ADR's disposition map, and post a reply on each dependant naming its disposition.
    Commit: `docs(pi-permission-system): map ADR 0016 decisions to implementation issues`.
 

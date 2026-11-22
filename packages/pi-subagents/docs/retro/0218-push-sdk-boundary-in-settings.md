@@ -62,8 +62,7 @@ Planning, TDD (2 feat commits + 1 doc commit), shipping, CI verification, issue 
 
 #### What caused friction (user side)
 
-- The user asked "Are we ready for shipping?"
-  which surfaced that the TDD retro stage notes were still uncommitted.
+- The user asked "Are we ready for shipping?" which surfaced that the TDD retro stage notes were still uncommitted.
   This was a useful checkpoint — the ship stage committed them before pushing.
   Opportunity: the `/tdd-plan` prompt could commit retro notes as part of its final step, but the current flow (write notes, then commit in ship) is lightweight enough that enforcing it would add complexity for marginal gain.
 

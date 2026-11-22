@@ -17,8 +17,7 @@ Confirmed the third-party report's root cause empirically rather than by reading
 
 - Two throwaway probes (`/tmp/probe640.mjs`, `/tmp/probe640c.mjs`) drove the whole design.
   They imported the installed SDK's `buildSystemPrompt` and reconstructed the child prompt end to end, proving that Pi appends a *correct* `Current working directory: <child cwd>` footer for free (from the child session's own cwd, nothing passed by us) and that the stale claim sits mid-prompt at the inherited tail.
-  The operator asked "are we confident pi puts the correct footer?"
-  — the probe answered it in a way that reading `agent-session.js` alone would not have.
+  The operator asked "are we confident pi puts the correct footer?" — the probe answered it in a way that reading `agent-session.js` alone would not have.
 - The operator asked to see examples of each redaction option "including overcorrections", and that request changed the outcome.
   Rendering the global `replaceAll(parentCwd, childCwd)` option against a realistic prompt exposed that it rewrites a valid `.pi/npm/node_modules/…/SKILL.md` skill location (gitignored, absent from a `git worktree add` checkout) into a 404, plus three prefix collisions (`issue-640-worktrees/issue-448`, `-archive`, `pi-packages2`).
   Strip won on that evidence.

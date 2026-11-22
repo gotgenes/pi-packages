@@ -221,7 +221,8 @@ The derived estimate is only a fallback for the (unreachable in practice) case o
   This is the one place where identical output depends on hoisted state; the equivalence test pins it.
 - **In-place message replacement.**
   An extension returning a replacement from `message_end` mutates the settled object, but Pi applies that *before* notifying session listeners, so the overlay always consumes final content.
-- **Empty width.** `slice`/`lineCount` return empty/zero for a non-positive width, matching today's `buildContentLines` guard.
+- **Empty width.**
+  `slice`/`lineCount` return empty/zero for a non-positive width, matching today's `buildContentLines` guard.
 - **Width change.**
   A width change clears every block's line cache and the flat cache; blocks and components survive, so pi-tui's `Markdown` caches re-warm at the new width once.
 - **Disposal.**

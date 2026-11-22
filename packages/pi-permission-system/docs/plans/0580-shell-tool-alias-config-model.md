@@ -16,8 +16,7 @@ A `feat:` commit that lands here waits on `main` and auto-batches into the relea
 
 ## Problem Statement
 
-`classifyToolKind` decides "what does this invocation access?"
-from a closed set of hardcoded built-in tool names.
+`classifyToolKind` decides "what does this invocation access?" from a closed set of hardcoded built-in tool names.
 A tool that carries bash semantics under a different name — e.g. `@howaboua/pi-codex-conversion` replaces the native `bash` tool with `exec_command` (`cmd` + optional `workdir`) — is classified as a generic extension tool, so it never receives command decomposition, wrapper flooring, bash path/external-directory token gates, or `bash:` config rules.
 The same shell operation is then evaluated differently depending on which toolset is active.
 

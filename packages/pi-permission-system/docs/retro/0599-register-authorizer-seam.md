@@ -87,10 +87,8 @@ Friction was minor and mechanical — two path-transcription slips and one trunc
 #### What caused friction (user side)
 
 1. None.
-   The operator's plan-time clarifying questions were a strength — pushing back with "when *will* we inject it?"
-   and "is there a refining issue?
-   is this hard-coded?"
-   forced the slice-2/`#620` framing that made the plan sharper.
+   The operator's plan-time clarifying questions were a strength — pushing back with "when *will* we inject it?" and "is there a refining issue?
+   is this hard-coded?" forced the slice-2/`#620` framing that made the plan sharper.
    No mechanical-oversight friction.
 
 ### Diagnostic details

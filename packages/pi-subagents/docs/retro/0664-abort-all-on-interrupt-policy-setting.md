@@ -173,8 +173,7 @@ The defining moment was a planning-time code trace that changed the shape of the
 1. Nothing that cost this session anything.
    The triage session's decision record was unusually complete — it pre-answered direction, default, naming, attribution, and the rejected alternative, with the mechanical reasons ESC interception is unreachable.
    That is the pattern to keep for third-party proposals: decide direction in triage, then let `/plan-issue` spend its `ask_user` budget on parameters the operator has not already settled.
-2. One small opportunity: the plan deferred "should the global-defaults README example include the new key?"
-   to the docs step as an Open Question.
+2. One small opportunity: the plan deferred "should the global-defaults README example include the new key?" to the docs step as an Open Question.
    Deciding it at docs time is what surfaced the section-structure slip above.
    A deferred doc-shape question is cheap to answer at planning time and would have had the section read in full before the edit.
 

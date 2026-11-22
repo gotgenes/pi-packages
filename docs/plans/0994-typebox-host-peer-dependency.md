@@ -51,7 +51,9 @@ Its 0.69.0 changelog also says new packages should import from `typebox` (1.x) i
 
 - Pi warning source: `../pi/packages/coding-agent/src/core/resource-loader.ts`, `HOST_PROVIDED_EXTENSION_PACKAGES` and `collectExtensionPackageWarnings`.
   It checks only `manifest.dependencies`; that commit is pi `8d897edaa` (pi#9863).
+
 - Runtime aliasing: `../pi/packages/coding-agent/src/core/extensions/loader.ts` maps `typebox`, `@sinclair/typebox`, and their `/compile` and `/value` subpaths to one bundled entry.
+
 - Usage in `pi-subagents`: exactly 5 imports, all of the form `import { Type } from "@sinclair/typebox";`:
   - `src/tools/agent-tool.ts:4`
   - `src/tools/get-result-tool.ts:4`
@@ -61,9 +63,12 @@ Its 0.69.0 changelog also says new packages should import from `typebox` (1.x) i
 
   They use only `Type.Object`, `Type.String`, `Type.Optional`, `Type.Number`, and `Type.Boolean`.
   The Tidy-First assessor confirmed there are no other `@sinclair/typebox` importers in any package's `src/` or `test/`.
+
 - Precedent: `pi-colgrep` (`src/tools/colgrep.ts`) and `pi-github-tools` (`src/tools/ci-*.ts`, `issue-close.ts`) already import from `typebox` with `typebox: ^1.2.8` in devDependencies and no peer entry.
+
 - The public entries import no typebox at runtime: `src/service/service.ts` has only `import type`, and `src/layered-settings.ts` imports only `node:*`.
   Declaring the peer therefore does not affect `pi-subagents-worktrees`.
+
 - AGENTS.md: use pnpm only; lockfile changes come from `pnpm install`.
 
 ## Design Overview
@@ -162,8 +167,11 @@ Each step ends with its verification, then a commit.
 
 1. **`pi-subagents`: import `typebox` and declare it as a host-provided peer.**
    - Swap the 5 imports and edit `package.json` as specified above.
+
    - Run `pnpm install`.
+
    - Update `rollup.dts.config.mjs`, `docs/comparison-with-upstream.md`, and ADR 0003 line 45.
+
    - Verify:
      - `pnpm --filter @gotgenes/pi-subagents run check`
      - `pnpm --filter @gotgenes/pi-subagents run test`
@@ -171,7 +179,9 @@ Each step ends with its verification, then a commit.
      - `pnpm --filter @gotgenes/pi-subagents run lint`
      - the manifest scan, whose `pi-subagents` row should read `hostDeps= -` and `peerTypebox= *`
      - the `@sinclair/typebox` grep, expecting no output
+
    - Killing mutation: restore `"dependencies": { "@sinclair/typebox": "^0.34.49" }`, and the manifest scan reports `hostDeps= @sinclair/typebox` again.
+
    - Commit: `fix(pi-subagents): stop Pi's host-provided dependency warning at startup`, with this trailer:
 
      ```text

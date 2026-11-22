@@ -26,6 +26,7 @@ Also performed a thorough gap analysis of `docs/architecture/target-architecture
 1. `missing-context` — Edited `docs/architecture/v3-architecture.md` without reading its purpose statement ("as-is design" = historical snapshot).
    User had to correct me.
    Impact: 2 wasted commits (`94be5b5`, `c49523e` revert).
+
 2. `wrong-abstraction` — After the v3 correction, added `permission-prompter.ts` to `target-architecture.md` with an "interim; subsumed by permission-gate.ts" annotation.
    The user clarified that interim stepping stones don't belong in the target at all.
    Impact: 2 more wasted commits (`c5cf101`, `f300f08` removal).

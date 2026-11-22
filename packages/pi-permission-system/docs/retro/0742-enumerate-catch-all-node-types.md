@@ -25,8 +25,7 @@ Two residuals were filed and dispositioned against Phase 14 during the session: 
 - **A dataset artifact nearly became a design constraint.**
   The review log's `reviewLogFieldMaxWidth` cap (1000) stores a long heredoc without its terminator, so it re-parses as garbage.
   That inflated the `ERROR` population from **1** to **111** and drove an entire `ask_user` option set priced at "108 commands would newly prompt".
-  The operator's question — "is the bash command *actually* malformed?"
-  — is what exposed it.
+  The operator's question — "is the bash command *actually* malformed?" — is what exposed it.
   The rule this instance teaches: a measurement taken through a lossy instrument measures the instrument.
   Check the field cap before treating a review-log string as the command that ran.
 - **`ERROR` is not always malformed input, and that changed the argument rather than the conclusion.**
@@ -49,8 +48,7 @@ Two residuals were filed and dispositioned against Phase 14 during the session: 
 
 - `src/access-intent/bash/command-enumeration.ts` — extracting `collectCommandsInto`'s if-chain into a dispatch table; rejected as scope creep, since encoding "emit?
   / descend-how?
-  / scope-transform?"
-  per node type is a redesign of working code rather than a preparation, and readability holds at ~70 lines with this comment density.
+  / scope-transform?" per node type is a redesign of working code rather than a preparation, and readability holds at ~70 lines with this comment density.
 - `src/access-intent/bash/command-enumeration.ts` — merging `descendCommandChildren` and `descendStatementChildren` into one parameterized loop; rejected as the wrong-abstraction trap, since the discriminator would sit over a real behavioral difference (unconditional recurse vs. recurse-or-fallback).
 
 ## Stage: Implementation — TDD (2026-08-29T22:24:59Z)
@@ -122,12 +120,9 @@ Across all four the design survived contact intact, the operator's three plannin
   TDD re-measured rather than restating the plan's figures, which surfaced a corpus difference (11 wrapper-headed units against the plan's 5).
   Pre-completion review then rejected the numbers for having no committed instrument, and the replacement `scripts/measure-statement-descent.mjs` is strictly better than what it replaced — it derives the delta at any commit with no baseline checkout, and its `prefix-position substitution: 0` row converts "zero path-slice changes" from a historical diff into a forward bound.
 - **The three planning `ask_user` rounds were the highest-value thing in the issue, and all three were elaboration requests rather than answers.**
-  The operator's "is the bash command *actually* malformed?"
-  collapsed a 111-command `ERROR` population to 1 and voided an entire option set priced on it.
-  "Are you showing me a command stack, represented as a LIFO array?"
-  rejected raw JSON as a before/after presentation.
-  "Is it our ability to correctly assess … or merely about the presentation?"
-  was settled by a one-line grep the first gate should have carried.
+  The operator's "is the bash command *actually* malformed?" collapsed a 111-command `ERROR` population to 1 and voided an entire option set priced on it.
+  "Are you showing me a command stack, represented as a LIFO array?" rejected raw JSON as a before/after presentation.
+  "Is it our ability to correctly assess … or merely about the presentation?" was settled by a one-line grep the first gate should have carried.
   None of the three was a preference question; each was a defect report against the gate.
 - **Per-step killing mutations caught a vacuous test that the Red step could not have.**
   Step 4's "leaves a function's own name unemitted" passed during its own Red step.

@@ -18,8 +18,7 @@ Released as v5.5.0.
 #### What went well
 
 - The user's intervention during planning — asking to add test impact analysis (what new tests are enabled, what existing tests become redundant) — significantly improved the plan quality.
-  This two-question framework ("what can we now test that we couldn't before?"
-  / "what existing tests are now redundant?") is a reusable pattern for extraction refactors.
+  This two-question framework ("what can we now test that we couldn't before?" / "what existing tests are now redundant?") is a reusable pattern for extraction refactors.
 - The TDD cycle was notably clean for steps 1–3: all tests passed on first attempt.
   The in-memory `PolicyLoader` stub pattern worked exactly as designed, producing 25 tests that are faster, simpler, and more focused than their filesystem-dependent equivalents.
 - Backward compatibility was maintained seamlessly — all 1161 pre-existing tests continued to pass after the extraction without any modifications.

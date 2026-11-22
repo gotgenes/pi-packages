@@ -19,7 +19,8 @@ The plan embeds four rendered-and-validated Mermaid diagrams: a shared data-flow
   Plan recommends B and is written for B, with A/C deltas noted inline; the decision is flagged **pending visual review** — the one gate before TDD.
 - Corrected the operator's initial framing of B: B's win is **cohesion/encapsulation** (one module owns the `cd`-projection lifecycle end to end; `EffectiveBase` never crosses a boundary), not new test surface.
   The projection functions' natural input is parse output, so existing parse-driven tests stay as facade coverage rather than converting to isolated unit tests.
-- `BashCommand` moves to `command-enumeration.ts` (its producer); only `bash-command.ts` imports it externally. `BashPathRuleCandidate` has no external importer (public return type only), so under B it co-locates with `cwd-projection.ts`.
+- `BashCommand` moves to `command-enumeration.ts` (its producer); only `bash-command.ts` imports it externally.
+  `BashPathRuleCandidate` has no external importer (public return type only), so under B it co-locates with `cwd-projection.ts`.
 - Mermaid pitfall hit during validation: `class` and `enum` are reserved flowchart node ids (`Expecting 'SPACE', got 'SQS'`); renamed to `clsf` / `enm`.
   All four diagrams validated with `mmdc`; `rumdl` clean.
 - Batch-tail release caveat recorded: all three steps are `refactor:`, so release-please derives no version bump from them — "ship now" means "nothing holds the batch back," not "force a release."
@@ -39,8 +40,7 @@ The plan and both Mermaid diagrams were rewritten to the decided design; the thr
 
 ### Observations
 
-- **Born-ready insight** — the operator pushed on "why is `cwd` not available at parse time?"
-  then "why pass `cwd` to `parse()` rather than store it?"
+- **Born-ready insight** — the operator pushed on "why is `cwd` not available at parse time?" then "why pass `cwd` to `parse()` rather than store it?"
   Resolution: `parse(command, cwd)` is the async factory (constructors can't be async); `cwd` is consumed during birth to produce the resolved arrays, so it is a factory parameter, not a retained field (storing it would be dead state).
   `PathCandidate` / `EffectiveBase` become fully internal to `cwd-projection.ts` — never on the instance.
 - **`cwd` type widening is a real error** — verified `ExtensionContext.cwd: string` (non-optional; the same SDK interface marks `model` / `signal` as `| undefined`, so `cwd`'s presence is deliberate).
@@ -104,9 +104,7 @@ Released as `pi-permission-system-v16.0.2`, completing the `bash-program-decompo
 
 - **The planning `ask_user` gate did real design work, not just direction confirmation** — it surfaced the facade-scope fork (A/B/C), and the ensuing Socratic dialogue expanded the change to born-ready construction *and* uncovered a latent type-widening defect (`ToolCallContext.cwd: string | undefined` vs the SDK's non-optional `ExtensionContext.cwd: string`) with five dead branches across unrelated gates.
   A planning gate finding and fixing a real bug orthogonal to the issue's stated scope is the standout of this arc.
-- **Born-ready emerged from operator pushback, not a correction** — "why is `cwd` not available at parse time?"
-  then "why store it rather than pass it to `parse()`?"
-  reframed the value object cleanly: `cwd` is a factory parameter consumed at birth, not a retained field (storing it would be dead state); `PathCandidate` / `EffectiveBase` never reach the instance.
+- **Born-ready emerged from operator pushback, not a correction** — "why is `cwd` not available at parse time?" then "why store it rather than pass it to `parse()`?" reframed the value object cleanly: `cwd` is a factory parameter consumed at birth, not a retained field (storing it would be dead state); `PathCandidate` / `EffectiveBase` never reach the instance.
 - **Cross-session retro bridging worked end to end** — each stage's notes (planning → revision → TDD) carried decisions forward, so no ground was re-litigated; the design-revision stage's born-ready spec drove the five-cycle TDD order without rediscovery.
 - **`tsc`-guided, behavior-preserving TDD** — the born-ready signature change is a type-level break, so `tsc` enumerated every stale call site immediately; verification ran incrementally (check + full suite per cycle), and the suite stayed green throughout with zero rework.
   Pre-completion reviewer PASS, ship clean.

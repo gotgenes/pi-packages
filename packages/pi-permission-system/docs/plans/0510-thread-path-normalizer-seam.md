@@ -22,8 +22,7 @@ This half-built seam is the root cause behind the recurring Windows-path bugs ([
 
 The correction is to stop threading platform *knobs* into the pipeline and re-deriving path forms *during* evaluation.
 Instead, inject a single collaborator constructed at the edge with the platform (and the working directory) baked in, hand it raw path tokens, and let it return the normalized values the gates expect.
-Path interpretation — "by which platform's rules, and against which working directory, do we read this path?"
-— becomes one collaborator's job, prepared before evaluation rather than scattered through it.
+Path interpretation — "by which platform's rules, and against which working directory, do we read this path?" — becomes one collaborator's job, prepared before evaluation rather than scattered through it.
 
 ## Goals
 

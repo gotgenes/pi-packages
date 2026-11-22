@@ -20,7 +20,8 @@ This completes the full handler decomposition series (#126 → #127 → #128 →
 
 - The 8-step incremental plan converted one handler class at a time, keeping the repo green after every commit.
   Zero rework across all steps.
-- The lift-and-shift pattern (introduce new alongside old, migrate, delete old last) worked exactly as designed. `HandlerDeps` survived until step 7, so steps 4–6 could each wire their new class in `index.ts` independently.
+- The lift-and-shift pattern (introduce new alongside old, migrate, delete old last) worked exactly as designed.
+  `HandlerDeps` survived until step 7, so steps 4–6 could each wire their new class in `index.ts` independently.
 - Test factory simplification was dramatic: `makeDeps()` with 8 unrelated fields replaced by `new Handler(mockSession, ...)` with 2–3 typed deps.
   No `as unknown as` casts needed for the narrow mocks.
 - Full test suite (1288 tests) passed at every step with no behavioral changes, confirming this was a pure refactor.

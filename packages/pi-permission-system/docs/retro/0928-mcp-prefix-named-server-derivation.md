@@ -264,29 +264,35 @@ The ship stage also uncovered an expired PAT in the release pipeline that turned
    Impact: the bad comment went out to every issue subscriber; recovery took a GraphQL `deleteIssueComment` mutation plus a re-verified re-post.
    The notification cannot be recalled.
    This is the session's most serious failure, and notably the rule it violated is already maximally prominent — more prose will not fix it.
+
 2. `instruction-violation` (user-caught, twice) — **crammed gate context into `ask_user` option descriptions and `preview` panes instead of a preceding message.**
    The `clarification-gates` skill's first section says exactly this, and I had not loaded it: `/pr-review` is the one gate-bearing prompt whose Load-skills list omits it, where `plan-issue`, `plan-improvements`, `retro`, and `audit-agent-docs` all name it.
    Impact: **four `ask_user` calls to settle one decision.**
    The operator's bounce was verbatim "Whoah, all this context needs to be placed *before* invoking the `ask_user` tool."
+
 3. `wrong-abstraction` — **offered a mechanism menu before naming what the existing policy already required.**
    The third gate presented `evaluateFirst` vs `evaluateAnyValue` as a design choice among options, when `evaluateAnyValue` is simply last-match-wins applied to a multi-candidate lookup — the policy the repo already has.
-   The operator had to supply that framing: "we have a guiding policy of last entry wins … if we stick with the policy, what would be necessary so rows 3 and 4 behave correctly?"
-   `clarification-gates` anticipates this failure in one sentence (name which component owns the lever and what happens today in each concrete configuration, before offering mechanisms).
+   The operator had to supply that framing: "we have a guiding policy of last entry wins … if we stick with the policy, what would be necessary so rows 3 and 4 behave correctly?" `clarification-gates` anticipates this failure in one sentence (name which component owns the lever and what happens today in each concrete configuration, before offering mechanisms).
    Impact: one extra round trip — but it produced the archaeology and blast-radius analysis that became the plan's spine, so the cost was partly recovered.
+
 4. `instruction-violation` (self-identified) — **wrote `#933` into the plan for a follow-up issue before filing it**; the API returned `#946`.
    `git-workflow` states the rule directly: file first, then write back the number the API returned.
    Impact: one corrective `Edit`; caught immediately, no published artifact carried the wrong number.
+
 5. `missing-context` — **three plan misses, all in the same class: the plan grepped for the removed *symbol* and missed places describing the *mechanism*.**
    - `architecture.md`'s Mermaid flowchart modelled the per-candidate loop with an `Explicit match?` decision node and never names `evaluateFirst`, so the symbol grep could not see it; the plan listed only line 481.
    - The baseline-attribution pin asserted `matchedPattern` where a `baseline`-layer rule reports only `target` — `buildCheckResult`'s condition had been read during planning but not carried into the assertion.
    - Step 4 needed a tool-name-first ordering change in the explicit-`server` branch that the plan never named.
 
    Impact: all three were absorbed into the commits they belonged to; no follow-up commits, but each cost a red-for-the-wrong-reason cycle.
+
 6. `rabbit-hole` (mild) — **escalated a cached `pnpm view` read to "published silently no-opped" in a user-facing report before reading the publish job's own log**, which had plainly printed `✅ Published package @gotgenes/pi-permission-system@33.0.0`.
    Impact: seven tool calls spent on "did it publish", and a moment of false alarm in the ship report.
    The producer's log is authoritative and was available first.
+
 7. `premature-convergence` — **diagnosed the expired PAT correctly and stopped at "rotate it"**, accepting the existing pipeline design as given rather than asking whether a PAT was still needed after release-please was retired.
    Impact: none, because the operator asked the question — but the whole investigation that followed (no branch protection, no rulesets, `github-release` already using `GITHUB_TOKEN`) was available to me at the point I recommended rotation.
+
 8. `scope-drift` (user-caught, after the ship report) — **left PR [#930] dangling.**
    The ship stage treated gap 2 as fully discharged by filing [#946] and never told the contributor anything, so a 990-line PR was left open and silently broken by the work that had just landed.
    The `/ship` prompt's supersession rule did not cleanly cover it: [#930] was not superseded (gap 2 genuinely did not ship) but deferred, and the prompt's only PR outcome is "close each PR the plan-and-retro read named".

@@ -22,8 +22,7 @@ The planned `ExtensionAPIWithEvents` workaround turned out to be unnecessary —
 - `pnpm exec tsc --noEmit` filled in for vitest as the red/green signal on a typing-only refactor — vitest's esbuild transform strips types, so runtime tests passed even when `src/extension.ts` and `test/extension.test.ts` had real type errors mid-step.
   Splitting the work into `refactor: import Pi types from pi-coding-agent` (`f9ef728`, intentional broken `tsc`) and `test: adopt class-based Theme stubs and Pi event types` (`261bd05`, green) preserved a coherent commit-by-commit story even though one intermediate commit didn't typecheck.
   Worth promoting as a project pattern: add a `typecheck` script so future type-only refactors don't have to remember the incantation.
-- The user's mid-flight question — "We're confident that's the latest release of the npm package, right?"
-  — was a clean trust gate.
+- The user's mid-flight question — "We're confident that's the latest release of the npm package, right?" — was a clean trust gate.
   I had checked `npm view @earendil-works/pi-coding-agent version` during planning, but hadn't restated it.
   A 30-second re-verify (`dist-tags.latest = 0.72.0`, last modified the same day) closed the loop with no rework.
 

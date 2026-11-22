@@ -251,8 +251,7 @@ The root `README.md` lists the package in its table and in the no-dedicated-skil
 ## Test Impact Analysis
 
 1. **Newly enabled coverage.**
-   The registry makes "is this worktree live?"
-   an assertable property rather than an implicit consequence of timing, so the exclusion rule can be tested directly instead of through a racing subagent.
+   The registry makes "is this worktree live?" an assertable property rather than an implicit consequence of timing, so the exclusion rule can be tested directly instead of through a racing subagent.
    Injecting `discard` into the command makes the whole confirm-and-remove dialog testable without a git repository — the first UI-flow tests in this package.
 2. **Tests that become redundant.**
    None.

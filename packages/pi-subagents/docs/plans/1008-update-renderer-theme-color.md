@@ -143,7 +143,8 @@ The `display.ts` pin reads `Parameters<Theme["fg"]>[0]`.
 - **`ThemeColor` changes upstream.**
   Pi adds members over time; removing `accent` is unlikely.
   If a member is removed, `tsc` flags the call site, which is the point of the change.
-- **Peer-dep type import from `observation/`.** `import type` is erased at runtime, so it adds no load-time dependency.
+- **Peer-dep type import from `observation/`.**
+  `import type` is erased at runtime, so it adds no load-time dependency.
 
 ## Open Questions
 

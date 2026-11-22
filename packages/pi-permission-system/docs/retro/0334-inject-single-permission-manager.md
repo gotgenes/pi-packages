@@ -18,8 +18,10 @@ Structured as three commits: additive `configureForCwd` (`feat:`), the coupled s
 - The package has two separate `PermissionManager` instances today (`runtime.permissionManager` vs. the session's).
   The plan deliberately **preserves** this split-brain — unifying is Step 4 (#337).
   Called out in Non-Goals and Risks so the implementer/reviewer does not treat it as a regression.
-- Decided to inject a **narrow `ScopedPermissionManager` interface** (five methods) rather than the concrete class, which is what lets `permission-session.test.ts` drop the `as unknown as PermissionManager` cast — the issue's stated outcome. `getComposedConfigRules` / `getResolvedPolicyPaths` are excluded (ISP) since only the `runtime.permissionManager` path uses them.
-- The cwd→paths helper had to move out of `runtime.ts` into `permission-manager.ts` to avoid an import cycle (`runtime.ts` imports `permission-manager.ts`). `config-paths.ts` is cycle-free, so the helper imports `getGlobalConfigPath` / `getProjectConfigPath` from there.
+- Decided to inject a **narrow `ScopedPermissionManager` interface** (five methods) rather than the concrete class, which is what lets `permission-session.test.ts` drop the `as unknown as PermissionManager` cast — the issue's stated outcome.
+  `getComposedConfigRules` / `getResolvedPolicyPaths` are excluded (ISP) since only the `runtime.permissionManager` path uses them.
+- The cwd→paths helper had to move out of `runtime.ts` into `permission-manager.ts` to avoid an import cycle (`runtime.ts` imports `permission-manager.ts`).
+  `config-paths.ts` is cycle-free, so the helper imports `getGlobalConfigPath` / `getProjectConfigPath` from there.
 - Intentional tightening: `derivePolicyLoaderOptions` sets `agentsDir = join(agentDir, "agents")` explicitly.
   Today `createPermissionManagerForCwd` leaves it unset, so `FilePolicyLoader` falls back to a hidden `getAgentDir()` env read.
   In production `agentDir === getAgentDir()`, so this is observably identical while removing the env dependency and making the new unit test deterministic.

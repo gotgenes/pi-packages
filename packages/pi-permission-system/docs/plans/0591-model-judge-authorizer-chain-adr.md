@@ -51,9 +51,7 @@ The deliverable is a decision, not code — so the design below was settled inte
 - `selectAuthorizer(ctx, deps)` performs a hardcoded three-way dispatch, returning a **single** `Authorizer`: `hasUI` → `LocalUserAuthorizer` (human, decides); `isSubagent` → `ParentAuthorizer` (forwards up to the parent node's authority); else → `DenyingAuthorizer` (headless, always denies).
   Evaluated once per session activation (`AuthorizerSelection.activate`).
   So the chain is effectively length 1 today.
-- `PermissionsService` (`src/service.ts`), published via `Symbol.for()` and consumed cross-extension, already answers the query primitives the judge needs: `checkPermission(surface, value?, agentName?)` is "is this external?"
-  (`external_directory`), "what does this bash resolve to / does it hit a deny?"
-  (`bash`, decomposed at gate parity via `resolveBashAdvisoryCheck`, [#309]), and per-surface rule queries; `getToolPermission` answers tool-level state.
+- `PermissionsService` (`src/service.ts`), published via `Symbol.for()` and consumed cross-extension, already answers the query primitives the judge needs: `checkPermission(surface, value?, agentName?)` is "is this external?" (`external_directory`), "what does this bash resolve to / does it hit a deny?" (`bash`, decomposed at gate parity via `resolveBashAdvisoryCheck`, [#309]), and per-surface rule queries; `getToolPermission` answers tool-level state.
 - `registerToolAccessExtractor(toolName, extractor)` / `registerToolInputFormatter(toolName, formatter)` are the established named-capability registration seams this design mirrors.
 - ADR 0005 (`docs/decisions/0005-serving-authorizer-provenance.md`) established that determinism governs *recorded* authority (`evaluate()`), never the *live*-authority layer — the enabling premise for a non-deterministic model holding an `Authorizer` role.
 

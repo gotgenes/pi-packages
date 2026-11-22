@@ -189,7 +189,8 @@ return windowEntries(pruned, selection.offset, selection.limit);
 
 Three ordering decisions, each load-bearing:
 
-1. **Branch resolution runs first.** `filterByTypes` severs parent chains — a `types: ["message"]` query would drop the `model_change` root of every session in the corpus, orphaning the entries below it.
+1. **Branch resolution runs first.**
+   `filterByTypes` severs parent chains — a `types: ["message"]` query would drop the `model_change` root of every session in the corpus, orphaning the entries below it.
 2. **`branches: undefined` means "do not resolve".**
    This is `EntrySelection`'s existing idiom (`types` undefined is no filter, `limit` undefined is no window), and it keeps `selectEntries` a pure function of its arguments rather than one with a hidden default.
    The user-facing default lives at the boundary, in `buildTranscriptResult`, where the tool parameter is normalized.

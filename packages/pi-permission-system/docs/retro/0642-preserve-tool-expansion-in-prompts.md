@@ -201,8 +201,7 @@ One user correction (retro keyed to the PR number instead of the issue) and one 
   The single correction ("Note, this is also about Issue #642") was five words delivered at the earliest possible moment — immediately after the mis-keyed handoff was printed, before any downstream stage consumed it.
   That is the ideal shape for this intervention, and the fix belongs in the prompt rather than in operator vigilance.
 - Invoking `/pr-review 643` without the issue number was reasonable; the prompt should derive the issue from the PR body, and the proposal below makes it do so.
-- "Everything ready to ship?"
-  before `/ship-issue` was a useful checkpoint: it found nothing wrong but forced an explicit state verification (clean tree, 6 unpushed commits, nothing through CI yet) before an irreversible action.
+- "Everything ready to ship?" before `/ship-issue` was a useful checkpoint: it found nothing wrong but forced an explicit state verification (clean tree, 6 unpushed commits, nothing through CI yet) before an irreversible action.
 
 ### Diagnostic details
 

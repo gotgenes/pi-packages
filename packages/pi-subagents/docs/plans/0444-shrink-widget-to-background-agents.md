@@ -78,7 +78,8 @@ Edge cases verified:
 - **`clearWidget` stale-purge:** it deletes `finishedTurnAge` entries for IDs "no longer in the list."
   Because `seedFinishedAgents` only ever seeds from the background-filtered list, no foreground agent is ever tracked, so purging against the background-only list cannot drop a still-relevant entry — no behavior regression.
 - **Queued agents:** the concurrency limiter queues only background agents (foreground bypasses the queue), so they carry `runInBackground === true` and remain visible; the queued-count display stays accurate.
-- **All-foreground case:** `update()` sees an empty background list → `assembleWidgetState` reports no active/finished → `clearWidget` → widget never registers. `renderWidget()` is consequently never invoked.
+- **All-foreground case:** `update()` sees an empty background list → `assembleWidgetState` reports no active/finished → `clearWidget` → widget never registers.
+  `renderWidget()` is consequently never invoked.
 - **Mixed case (the latent bug):** one background running + one foreground running → `update()` registers the widget (1 background active); `renderWidget()` must also filter, or it renders both.
   Routing both sites through the accessor closes this.
 

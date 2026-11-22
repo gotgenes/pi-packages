@@ -84,9 +84,12 @@ export interface TerminalAuthorizer {
 }
 ```
 
-The terminal-cannot-defer invariant is **type-level**: a `TerminalAuthorizer` returns `PermissionPromptDecision` (which always carries `approved: boolean` — it cannot express "defer"), while a deferring link returns `AuthorizerVerdict`. `composeAuthorizerChain`'s signature (below) accepts links as `Authorizer[]` and the terminal as `TerminalAuthorizer`, so a deferring link cannot occupy the terminal slot — the compiler rejects it.
+The terminal-cannot-defer invariant is **type-level**: a `TerminalAuthorizer` returns `PermissionPromptDecision` (which always carries `approved: boolean` — it cannot express "defer"), while a deferring link returns `AuthorizerVerdict`.
+`composeAuthorizerChain`'s signature (below) accepts links as `Authorizer[]` and the terminal as `TerminalAuthorizer`, so a deferring link cannot occupy the terminal slot — the compiler rejects it.
 
-The three concrete terminals (`LocalUserAuthorizer`, `DenyingAuthorizer`, `ParentAuthorizer`) change `implements Authorizer` → `implements TerminalAuthorizer`; their bodies are unchanged (they already return `PermissionPromptDecision`). `selectAuthorizer`'s return type changes `Authorizer` → `TerminalAuthorizer`. `PermissionPrompterApi.prompt` and `AuthorizerSelection.selected` retype to `TerminalAuthorizer`.
+The three concrete terminals (`LocalUserAuthorizer`, `DenyingAuthorizer`, `ParentAuthorizer`) change `implements Authorizer` → `implements TerminalAuthorizer`; their bodies are unchanged (they already return `PermissionPromptDecision`).
+`selectAuthorizer`'s return type changes `Authorizer` → `TerminalAuthorizer`.
+`PermissionPrompterApi.prompt` and `AuthorizerSelection.selected` retype to `TerminalAuthorizer`.
 
 ### The chain composition
 

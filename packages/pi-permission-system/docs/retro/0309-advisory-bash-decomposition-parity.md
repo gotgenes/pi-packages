@@ -21,7 +21,9 @@ The plan preserves the synchronous public contract and ships as `feat:` (non-bre
 - **Breaking classification resolved by the roadmap.**
   The advisory answer for chained bash commands changes on upgrade (technically observable-behavior-changing), but `docs/architecture/architecture.md` Phase 10 Step 4 records the owner's 2026-07-10 decision: `feat:` (not `feat!:`), `Release: independent`, noted in release notes, because no external consumer exercises bash advisory queries yet.
   Skipped the `ask-user` gate on that basis.
-- **Layer boundary drove module placement.** `resolveBashAdvisoryCheck` imports `resolveBashCommandCheck` from `handlers/gates/`, so it lives at the service layer (`src/bash-advisory-check.ts`), not under `access-intent/` — keeping the domain layer free of a handler-layer import. `parseBashCommandsSync` stays in `access-intent/bash/` (pure over the parser + `collectCommands`).
+- **Layer boundary drove module placement.**
+  `resolveBashAdvisoryCheck` imports `resolveBashCommandCheck` from `handlers/gates/`, so it lives at the service layer (`src/bash-advisory-check.ts`), not under `access-intent/` — keeping the domain layer free of a handler-layer import.
+  `parseBashCommandsSync` stays in `access-intent/bash/` (pure over the parser + `collectCommands`).
 - **`input-normalizer.ts` deliberately untouched** despite the roadmap target text naming it.
   The decompose-or-fallback decision returns a full `PermissionCheckResult` (most-restrictive over multiple resolves), which cannot live in an intent *builder*; keeping `buildAccessIntentForSurface` pure and branching in the service is cleaner.
   Noted as a deviation in Non-Goals.

@@ -33,7 +33,8 @@ The setter-injection pattern (`setExtensionConfig`, `setLoggingWarningReporter`,
 
 ### Dependencies (all resolved)
 
-- #41 (permission-gate extraction) — CLOSED. `applyPermissionGate` exists in `src/permission-gate.ts`.
+- #41 (permission-gate extraction) — CLOSED.
+  `applyPermissionGate` exists in `src/permission-gate.ts`.
 - #42 (handler extraction) — CLOSED.
   Handlers live in `src/handlers/` and receive a `HandlerDeps` object.
   The #42 plan explicitly noted: "#43 will fold the getter/setter pairs and mutable fields into ExtensionRuntime."

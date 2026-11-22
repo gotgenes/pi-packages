@@ -47,7 +47,8 @@ Relevant modules:
   Constructor: `this.loader = options.policyLoader ?? new FilePolicyLoader(options)`.
 - `src/runtime.ts` — defines `derivePiProjectPaths(cwd)` and `createPermissionManagerForCwd(agentDir, cwd)`.
   The latter is called by the session (3×) and by `createExtensionRuntime()` (1×, for the separate `runtime.permissionManager`).
-- `src/policy-loader.ts` — `FilePolicyLoader` reads config from `globalConfigPath` / `projectGlobalConfigPath` / `projectAgentsDir` / `agentsDir`, with mtime-based caching. `PolicyLoaderOptions` carries those paths.
+- `src/policy-loader.ts` — `FilePolicyLoader` reads config from `globalConfigPath` / `projectGlobalConfigPath` / `projectAgentsDir` / `agentsDir`, with mtime-based caching.
+  `PolicyLoaderOptions` carries those paths.
 - `src/config-paths.ts` — `getGlobalConfigPath(agentDir)`, `getProjectConfigPath(cwd)`.
 - `src/index.ts` — the composition root.
   Constructs `runtime` (which holds `runtime.permissionManager`) and `new PermissionSession(runtime, logger, forwarding, runtimeDeps)`.

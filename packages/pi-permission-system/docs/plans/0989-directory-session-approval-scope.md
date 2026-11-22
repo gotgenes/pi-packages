@@ -211,7 +211,8 @@ On upgrade a directory approval stops covering siblings, so a session that relie
   Accepted; estimated negligible, not measured.
 - **Directory created after approval / missing at approval.**
   Falls back to the parent glob (today's behavior); recorded as a Non-Goal.
-- **Symlinked directory.** `statSync` follows it, and the grant's lexical patterns match through `matchValues`' lexical ∪ canonical set; a later access through the canonical spelling is not covered by the lexical pattern alone — the same limitation the file case has today.
+- **Symlinked directory.**
+  `statSync` follows it, and the grant's lexical patterns match through `matchValues`' lexical ∪ canonical set; a later access through the canonical spelling is not covered by the lexical pattern alone — the same limitation the file case has today.
 - **Label vocabulary.**
   The fallback reads `Yes, allow access to "…" for this session`, parallel to the directional `Yes, allow reads to "…"`; `docs/session-approvals.md` is updated in step 6.
 

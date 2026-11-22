@@ -217,8 +217,7 @@ Predicted after step 5: about 2116 in 86 files (estimated: +1, +2, +4, +9 across
 
 ## TDD Order
 
-1. **`test(pi-subagents): observe the run's lever through the signal its turn loop received`**
-   Preparatory, green before and after; it removes the friction of eight test reads of the `abortController` getter step 2 deletes.
+1. **`test(pi-subagents): observe the run's lever through the signal its turn loop received`** Preparatory, green before and after; it removes the friction of eight test reads of the `abortController` getter step 2 deletes.
    - Hoist a `parkRunUntilSignalled(stub)` helper beside `createRunnableAgent`, mirroring `parkResumeUntilSignalled`: it captures the loop's `signal`, `abortedAtEntry`, and whether it was signalled.
    - Migrate the reads: around line 346 ("fires the AbortController…") drives a parked `run()` and asserts the loop was signalled, since `abort()` on a never-run record will have no lever to observe.
      Around line 1195, capture `signal` in the `runTurnLoop` mock and assert it aborted.
@@ -239,8 +238,7 @@ Predicted after step 5: about 2116 in 86 files (estimated: +1, +2, +4, +9 across
    - Re-read the moved `RunListeners` code against `code-design` before committing.
    - Killing mutations: delete `this.currentRun?.abort();` in `abort()` (step 1's parked-run and cancellation tests go red); delete the `this.currentRun.attachObserver(...)` call in `run()` (step 1's unsubscribe pin goes red); make the `SubagentRun` constructor skip `addEventListener` (the migrated "abort signal forwarding" test and the `subagent-run.test.ts` caller-abort test go red).
    - Verify: `grep -c '_abortController' packages/pi-subagents/src/lifecycle/subagent.ts` prints 0, `run-listeners.ts` is gone, `pnpm run check`, `fallow dead-code`.
-3. **`fix(pi-subagents): a turn loop whose signal already fired takes no turn`**
-   Tests in `subagent-session.test.ts`, under a new `describe("a signal that already fired")` for both loops:
+3. **`fix(pi-subagents): a turn loop whose signal already fired takes no turn`** Tests in `subagent-session.test.ts`, under a new `describe("a signal that already fired")` for both loops:
    - `runTurnLoop` with an aborted signal: `session.prompt` not called, `responseText === ""`, `lifecycle.completed` called once.
    - `resumeTurnLoop` with an aborted signal on a session whose history ends in an assistant answer: `prompt` not called, `responseText === ""`.
    - `resumeTurnLoop` with an aborted signal on a session whose last assistant message has `stopReason: "error"`: resolves.

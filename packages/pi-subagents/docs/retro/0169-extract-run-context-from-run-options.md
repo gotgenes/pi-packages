@@ -58,8 +58,7 @@ Released as `pi-subagents-v6.18.6`.
 
 - `missing-context` — After the TDD step, checked the architecture doc for staleness by running `grep` for the exact symbols `RunOptions` and `RunContext`.
   The doc's "Dependency bag inventory" table and "Proposed bag decompositions" section used prose descriptions ("12 fields", "High") rather than code identifiers, so the grep found no matches and the agent skipped the update.
-  The user then asked "Is the architecture doc up to date?"
-  which prompted a three-fix commit (`ea49fe1`).
+  The user then asked "Is the architecture doc up to date?" which prompted a three-fix commit (`ea49fe1`).
   Impact: one extra round-trip with the user; no rework to code, but an extra commit that could have been folded into the TDD step.
 
 #### What caused friction (user side)

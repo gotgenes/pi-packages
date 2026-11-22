@@ -67,7 +67,8 @@ The single user intervention was a one-line comment removal during TDD Step 3.
 - **Clean model allocation across stages.**
   Planning ran on `claude-opus-4-8`, TDD on `claude-sonnet-4-6`, Ship on `opencode-go/deepseek-v4-flash` (mechanical git/CI/close work), the pre-completion reviewer subagent on `claude-sonnet-4-6`, and Retro on `claude-opus-4-8`.
   Judgment-heavy work landed on reasoning-strong models; the cheap model handled only the mechanical ship sequence.
-- **Incremental verification.** `pnpm run check` ran after every TDD step (not just at the end), catching the shared-type breakage at the right boundary; the affected test files were run per-step before the full suite.
+- **Incremental verification.**
+  `pnpm run check` ran after every TDD step (not just at the end), catching the shared-type breakage at the right boundary; the affected test files were run per-step before the full suite.
 
 #### What caused friction (agent side)
 

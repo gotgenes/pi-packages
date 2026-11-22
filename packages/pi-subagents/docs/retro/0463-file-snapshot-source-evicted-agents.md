@@ -26,7 +26,8 @@ The central design fork — how evicted agents enter the picker — was resolved
   Coverage is limited to in-session evictions — which are the sweep's only targets, since a fresh manager per session never reloads prior-process subagents.
   Operator confirmed; an `(evicted)` snapshot marker was also chosen for the label.
 - **`NavigationEntry` becomes a discriminated union** (`live` | `evicted`); this breaks the handler, the `index.ts` call site, and both UI test files, so step 3 folds all of them into one commit.
-- **SDK-runtime call kept direct.** `fileSnapshotSource` calls `parseSessionEntries` / `buildSessionContext` directly rather than injecting them — the injected `readFile` already provides the unit-test seam, and there is no `no-restricted-imports` rule.
+- **SDK-runtime call kept direct.**
+  `fileSnapshotSource` calls `parseSessionEntries` / `buildSessionContext` directly rather than injecting them — the injected `readFile` already provides the unit-test seam, and there is no `no-restricted-imports` rule.
 - **Transient dead-code risk noted:** `fileSnapshotSource` and `listEvicted()` have no caller until step 3; flagged not to ship before step 3 lands (CI/`fallow` gate the pushed tip).
 - Release: independent (Phase 19 Step 4b roadmap tag).
 
@@ -63,8 +64,7 @@ Execution was notably clean — no rework, no plan deviations, two auto-fixed li
 - **The `ask_user` gate caught a real design fork the issue body got wrong.**
   The issue's "Proposed change" said "enumerate persisted child-session JSONL files" (a directory scan).
   Exploration revealed the persisted session carries no subagent `type`/`description`, so a scan yields degraded labels.
-  The gate surfaced descriptors-vs-scan-vs-hybrid; the operator's "why are we evicting at all?"
-  and "tell me more about how the labels degrade" drove a better-grounded decision (descriptors).
+  The gate surfaced descriptors-vs-scan-vs-hybrid; the operator's "why are we evicting at all?" and "tell me more about how the labels degrade" drove a better-grounded decision (descriptors).
   This is the `/plan-issue` "treat Proposed change as a hypothesis" contract working as intended — novel because the divergence was the *enumeration mechanism*, not a surface ambiguity.
 - **Exploratory probe before the first TDD test.**
   A disposable script (`explore-session.mjs`, deleted after) confirmed `buildSessionContext` auto-detects the leaf with no `leafId` and the `type !== "session"` filter drops the header — validating the `fileSnapshotSource` shape before any test was written (the `testing` skill's "inspect the actual runtime shape first" rule).

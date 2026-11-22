@@ -33,7 +33,8 @@ After Steps 1–3 ([#502], [#503], [#504]) routed the per-tool gate and service/
 - **No config-pattern derivation.**
   Rule patterns (`*.env`, `src/*`) stay raw globs/regex — they are never path-derived (a standing Phase 7 Non-goal).
   Nothing in this work touches the matcher.
-- **No change to `AccessPath`'s outputs or accessors.** `matchValues()` / `boundaryValue()` / `value()` keep their exact results; only the import path of their backing functions moves.
+- **No change to `AccessPath`'s outputs or accessors.**
+  `matchValues()` / `boundaryValue()` / `value()` keep their exact results; only the import path of their backing functions moves.
 - **No deeper boundary rework.**
   We do not re-express `isPathOutsideWorkingDirectory` as an `AccessPath` method or collapse it into the gate flow beyond the minimal prep refactor below — the `path-values` boundary formalization is Step 5 ([#506]), a separate issue.
 - **No `PathNormalizer` API change.**

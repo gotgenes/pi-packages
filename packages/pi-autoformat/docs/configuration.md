@@ -409,15 +409,8 @@ This pattern lets a project-level dispatcher (`treefmt` or `treefmt-nix`) handle
 
 Two formatter names are shipped as built-ins and may be referenced in `chains` without a `formatters` entry:
 
-- `treefmt` — discovers `treefmt.toml` (preferred) or `.treefmt.toml`
-  by walking up from each touched file, then invokes
-  `treefmt --config-file <found> -- <paths...>` from the discovered
-  root.
-- `treefmt-nix` — discovers `flake.nix` together with `treefmt.nix`
-  (or `nix/treefmt.nix`) by walking up from each touched file, then
-  invokes
-  `nix fmt --no-update-lock-file --no-write-lock-file -- <paths...>`
-  from the flake root.
+- `treefmt` — discovers `treefmt.toml` (preferred) or `.treefmt.toml` by walking up from each touched file, then invokes `treefmt --config-file <found> -- <paths...>` from the discovered root.
+- `treefmt-nix` — discovers `flake.nix` together with `treefmt.nix` (or `nix/treefmt.nix`) by walking up from each touched file, then invokes `nix fmt --no-update-lock-file --no-write-lock-file -- <paths...>` from the flake root.
 
 Discovered config-root paths are cached for the lifetime of the autoformatter, so repeated flushes within a session do not re-walk the filesystem.
 
@@ -425,10 +418,7 @@ Both built-ins translate documented "no formatter for path" output into a clean 
 
 - `treefmt`: stderr lines matching `no formatter for path: <p>` mark that file as unhandled.
   An exit-0 run where every input file was unhandled is treated as a full skip.
-- `treefmt-nix`: stderr containing `emitted 0 files for processing`
-  is treated as a full skip; transient `nix` daemon errors
-  (e.g. `cannot connect to socket`) are also skipped so a downstream
-  fallback alternative can take over.
+- `treefmt-nix`: stderr containing `emitted 0 files for processing` is treated as a full skip; transient `nix` daemon errors (e.g. `cannot connect to socket`) are also skipped so a downstream fallback alternative can take over.
 
 Anything else with a non-zero exit is reported as a real failure and is never silently swallowed.
 

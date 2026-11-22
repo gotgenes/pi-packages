@@ -309,12 +309,15 @@ No tool's TypeBox parameter schema changes, so no tool gains or loses an argumen
    `isTransientError` and `transientRetryDelay` are pure, so the full pattern matrix — each 5xx, the GraphQL text, each transport string, and the negative cases (401/403/404/422, rate-limit text, a JSON parse error) — is covered with no subprocess mock at all.
    Expressed through `mergeReleasePR` instead, each case would cost a multi-call `runCommand` sequence.
    `withRetry` gets direct tests for the retry count, the exact sleep arguments (1000, 4000, 9000), first-attempt success with zero sleeps, rethrow-on-non-transient with zero sleeps, and abort during backoff.
+
 2. **Tests that become redundant.**
    None are removed.
    The loop-level tests still earn their place as wiring checks — that `ghJsonRetrying` is actually the function the loop calls, and that `onRetry` folds into `elapsed`.
+
 3. **Tests that must stay as-is in substance.**
    The three merge-method tests, the signal-threading test from [#5], and the [#673] check-wait/blocked/timeout tests all pin behavior this change must not disturb.
    They need no mechanical edit: `ghJsonRetrying` issues the identical `runCommand` call on a first-attempt success, so call ordinals and asserted argument arrays are unchanged.
+
 4. **The abort tests change meaning and must be rewritten deliberately.**
    Four tests (`findReleasePR`, `findRun`, `watchRun`, `watchRelease`) today create an `AbortController`, never abort it, and make `sleep` reject — asserting the loop reports `aborted:`.
    That assertion only passes because of the bug being fixed.

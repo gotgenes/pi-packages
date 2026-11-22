@@ -97,8 +97,7 @@ Rolled forward to `16.0.0` with a correctly-formatted `fix(pi-permission-system)
 #### What caused friction (user side)
 
 - Opportunity, not criticism: the user's redirect — "A `fix!` should bump the major version IMO.
-  What am I missing?"
-  — was the ideal intervention, reframing the wrong explanation as a question to investigate rather than just flagging it as wrong.
+  What am I missing?" — was the ideal intervention, reframing the wrong explanation as a question to investigate rather than just flagging it as wrong.
   Nothing the user could have done earlier: the malformed header originated in the plan from a prior session.
 
 ### Diagnostic details

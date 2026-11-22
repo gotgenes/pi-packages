@@ -12,8 +12,7 @@ The extension currently splits configuration across two unrelated files and path
 1. A **policy file** (`~/.pi/agent/pi-permissions.jsonc` / `<cwd>/.pi/agent/pi-permissions.jsonc`) holding permission rules.
 2. An **extension runtime config** (`<extension-install-dir>/config.json`) holding knobs like `debugLog`, `permissionReviewLog`, and `yoloMode`.
 
-This split makes "what does this project allow?"
-hard to answer by looking in one place.
+This split makes "what does this project allow?" hard to answer by looking in one place.
 The runtime config lives inside the install directory, which is read-only for npm-installed extensions and has no project-scope counterpart.
 The project policy path (`.pi/agent/`) does not match the convention used by other Pi extensions.
 

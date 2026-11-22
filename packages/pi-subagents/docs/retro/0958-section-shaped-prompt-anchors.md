@@ -184,8 +184,7 @@ The direction landed on `adopt-as-is`, the rarer of `/pr-review`'s branches, wit
 #### What caused friction (user side)
 
 - **The redirecting question outperformed a correction.**
-  "Can we directly modify the PR to add our commits?"
-  surfaced `maintainerCanModify: true`, a capability the session had not checked and that `.pi/prompts/pr-review.md` does not mention.
+  "Can we directly modify the PR to add our commits?" surfaced `maintainerCanModify: true`, a capability the session had not checked and that `.pi/prompts/pr-review.md` does not mention.
   It changed the landing shape from "merge, then fix on `main`" to "fix on the contributor's branch, then rebase-merge", which is strictly better and cost one question.
 - **The note attached to an `ask_user` answer pre-empted a round.**
   "Make follow up commits on top to fix what we don't like" answered the next gate before it was asked.

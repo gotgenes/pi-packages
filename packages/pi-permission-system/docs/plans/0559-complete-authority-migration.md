@@ -70,14 +70,10 @@ The `authority/` subtree already imports four of the five via `#src/…` aliases
 
 Import-rewrite rules by category (mechanically enforced by `tsc` + `eslint --fix`):
 
-1. Moved modules that reference each other stay `./sibling` (all five land in the same `authority/` directory):
-   `permission-forwarding.ts` keeps `./permission-dialog` and `./subagent-registry`; `subagent-lifecycle-events.ts` keeps `./subagent-registry`; `forwarding-manager.ts` keeps `./permission-forwarding`.
-2. Moved modules that reference an existing `authority/` resident lose the `authority/` path segment:
-   `forwarding-manager.ts`'s `./authority/forwarded-request-server` → `./forwarded-request-server`, `./authority/subagent-detection` → `./subagent-detection`.
-3. Moved modules that reference a module staying in `src/` root gain a `#src/` alias (was same-dir `./`, now parent-relative):
-   `permission-forwarding.ts`'s `./permission-events` → `#src/permission-events`.
-4. Existing `authority/` importers of a moved module gain the `authority/` segment:
-   `#src/permission-dialog` → `#src/authority/permission-dialog`, `#src/subagent-registry` → `#src/authority/subagent-registry`, `#src/permission-forwarding` → `#src/authority/permission-forwarding`.
+1. Moved modules that reference each other stay `./sibling` (all five land in the same `authority/` directory): `permission-forwarding.ts` keeps `./permission-dialog` and `./subagent-registry`; `subagent-lifecycle-events.ts` keeps `./subagent-registry`; `forwarding-manager.ts` keeps `./permission-forwarding`.
+2. Moved modules that reference an existing `authority/` resident lose the `authority/` path segment: `forwarding-manager.ts`'s `./authority/forwarded-request-server` → `./forwarded-request-server`, `./authority/subagent-detection` → `./subagent-detection`.
+3. Moved modules that reference a module staying in `src/` root gain a `#src/` alias (was same-dir `./`, now parent-relative): `permission-forwarding.ts`'s `./permission-events` → `#src/permission-events`.
+4. Existing `authority/` importers of a moved module gain the `authority/` segment: `#src/permission-dialog` → `#src/authority/permission-dialog`, `#src/subagent-registry` → `#src/authority/subagent-registry`, `#src/permission-forwarding` → `#src/authority/permission-forwarding`.
 5. `handlers/gates/runner.ts` and test files/helpers: same `#src/…` → `#src/authority/…` rewrite as (4).
 6. `index.ts` (composition root, same-dir `./` style): `./forwarding-manager` → `./authority/forwarding-manager`, `./permission-dialog` → `./authority/permission-dialog`, `./subagent-lifecycle-events` → `./authority/subagent-lifecycle-events`, `./subagent-registry` → `./authority/subagent-registry`.
 

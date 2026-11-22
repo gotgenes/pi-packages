@@ -27,7 +27,8 @@ These are not hypothetical — the escaped-quote bug triggered a false-positive 
 
 ## Non-Goals
 
-- Adopting `web-tree-sitter` + `tree-sitter-bash` — deferred to a follow-up issue. `shell-quote` is sufficient for path extraction and avoids the 1.5MB WASM overhead.
+- Adopting `web-tree-sitter` + `tree-sitter-bash` — deferred to a follow-up issue.
+  `shell-quote` is sufficient for path extraction and avoids the 1.5MB WASM overhead.
 - Handling heredocs — `shell-quote` flattens heredoc content into tokens, which is the same behavior as the current tokenizer.
   This is a known limitation shared by both approaches.
 - Changing `classifyTokenAsPathCandidate` logic — the classification heuristics are orthogonal to tokenization.
@@ -101,8 +102,7 @@ This is the first runtime dependency for this package.
 
 ## TDD Order
 
-1. **test: add failing tests for regex tokenizer edge cases (#72)**
-   Add a new `describe("shell-quote tokenizer edge cases")` block in `tests/bash-external-directory.test.ts` with:
+1. **test: add failing tests for regex tokenizer edge cases (#72)** Add a new `describe("shell-quote tokenizer edge cases")` block in `tests/bash-external-directory.test.ts` with:
    - Escaped double quote: `git commit -m "fix \"the /etc/hosts\" issue"` → no external path (path is inside quotes).
    - Shell comment: `echo hello # read /etc/shadow` → no external path (path is in comment).
    - Comment alongside real path: `cat /etc/hosts # /etc/shadow` → only `/etc/hosts`.

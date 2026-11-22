@@ -133,8 +133,7 @@ That diagnosis, not the shipped change, consumed the bulk of the session.
 
 - Nothing blocking.
   One opportunity: the failure was diagnosed to completion before the operator was consulted at all.
-  Surfacing it after the **second** identical `prepare` failure — "this looks pre-existing and unrelated to #919; dig now, or defer the release?"
-  — would have offered the choice while the cost was still small.
+  Surfacing it after the **second** identical `prepare` failure — "this looks pre-existing and unrelated to #919; dig now, or defer the release?" — would have offered the choice while the cost was still small.
   The gate that did fire came only once the answer was already known, so it settled scope rather than direction.
 
 ### Diagnostic details

@@ -327,12 +327,15 @@ Lifecycle, in one place:
        - approving for the session leaves the session rules `["bash:git commit *"]`;
        - re-running the command prompts nothing (the link settles the assignment, the grant covers `git commit`).
      - `forwarded-request-server.test.ts`, with a real `AuthorizerSelection` and the same link: the serving dialog receives the narrowed payload, and a whole-session grant records only the narrowed pattern.
+
    - Green: the verdict member, the chain's `allow_units` case and `withNarrowedGrants`, the envelope cap, the two log keys.
+
    - Killing mutations:
      - chain: treat `allow_units` as `defer` (kills the narrowing and integration tests);
      - chain: skip `withNarrowedGrants` (kills the stamping and the integration grant assertion);
      - envelope: cap only `kind === "allow"` (kills the envelope test);
      - redaction: remove `allowedUnits` from `COMMAND_BEARING_LOG_KEYS` (kills the masking test).
+
    - The final commit paragraph carries:
 
      ```text

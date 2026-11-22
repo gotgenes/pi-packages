@@ -53,8 +53,7 @@ Test delta: 986 → 1005 (+19).
 
 #### What went well
 
-- The user's two redirecting questions during planning ("What's the change that makes this easier?"
-  and "Tell me more about RunHandle — is there something that should replace it?") transformed a mechanical "move the class" plan into a "dissolve the abstraction" plan.
+- The user's two redirecting questions during planning ("What's the change that makes this easier?" and "Tell me more about RunHandle — is there something that should replace it?") transformed a mechanical "move the class" plan into a "dissolve the abstraction" plan.
   The dissolve approach is architecturally superior and sets up #232 (resume unification) for free.
 - The lift-and-shift decomposition (introduce Agent methods alongside `RunHandle`, then swap and delete) produced 5 independently-green commits.
   The riskiest commit (step 3: delete `RunHandle`, -96/+6 lines) was trivially safe because step 2 had already proven the replacement methods.
@@ -72,8 +71,7 @@ Test delta: 986 → 1005 (+19).
 
 - No friction observed.
   The user's questioning style (asking "what does it do?
-  who needs it?"
-  rather than prescribing the solution) was collaborative and effective.
+  who needs it?" rather than prescribing the solution) was collaborative and effective.
 
 ### Changes made
 

@@ -76,9 +76,7 @@ The review and verification were clean, but the release-please PR (#436) was mer
 #### What caused friction (user side)
 
 - The PR-review closing summary echoed the operator's own gate phrasing ("any future tweaks land as commits on top") without stating that adopt-as-is meant *done, nothing queued*.
-  The operator had to ask "what future tweaks?"
-  and "am I on to /ship-issue?"
-  to disambiguate.
+  The operator had to ask "what future tweaks?" and "am I on to /ship-issue?" to disambiguate.
   Opportunity, not criticism: an adopt-as-is summary should state explicitly that no follow-up work is queued.
 
 ### Root cause — release-method miss

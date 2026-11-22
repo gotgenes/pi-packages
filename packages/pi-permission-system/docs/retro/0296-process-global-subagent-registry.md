@@ -26,8 +26,7 @@ The plan adds one accessor (`getSubagentSessionRegistry`) and changes one line i
 - Both code commits use `fix:` (regression restoration, patch bump); the accessor is internal, not part of the published `PermissionsService` surface, so it is not a `feat`.
 - Skipped `ask_user`: the issue's suggested fix (globalThis-backed registry) is unambiguous and already weighs the rejected alternatives (env hints, shared bus).
 - Doc updates needed beyond code: `docs/subagent-integration.md` (the "deterministic child detection" claim is currently misleading), `docs/architecture/architecture.md` (detection-model section + module listing), and the `package-pi-permission-system` skill ("Event-based subagent integration" section).
-- Added a "Why not share the event bus instead?"
-  subsection to the plan after a design discussion with the user.
+- Added a "Why not share the event bus instead?" subsection to the plan after a design discussion with the user.
   Key finding: lifecycle events dispatch through the per-session `ExtensionRunner`'s per-extension handler maps, **not** through `pi.events`, so session isolation does not depend on the bus being per-session — the per-session scope of `pi.events` is incidental.
   The regression is using a per-session bus as a cross-session transport, not the bus being per-session.
   Rejected sharing the parent's bus into the child (crosses every extension's intra-session channels) and inventing a process-global event bus (broader scope; `globalThis` + `Symbol.for()` already covers it).
@@ -78,8 +77,7 @@ The fix backs the registry with a process-global `globalThis` + `Symbol.for()` s
    This converted a multi-hypothesis investigation into fact rather than speculation.
 2. Precise impacted-version analysis.
    `git tag --contains <sha>` plus checking `permission-bridge.ts` presence at `v11.3.0` vs `v11.4.0` and the `registerSubagentSession` method count at `v7.4.1` vs `v8.0.0` produced an exact last-good / first-broken matrix for the issue body.
-3. The "Why not share the event bus?"
-   exploration surfaced a durable architectural insight — lifecycle events dispatch through the per-session `ExtensionRunner`'s per-extension handler maps, not through `pi.events`, so session isolation does not depend on the bus being per-session — now captured in the plan and the `package-pi-permission-system` skill.
+3. The "Why not share the event bus?" exploration surfaced a durable architectural insight — lifecycle events dispatch through the per-session `ExtensionRunner`'s per-extension handler maps, not through `pi.events`, so session isolation does not depend on the bus being per-session — now captured in the plan and the `package-pi-permission-system` skill.
 4. Clean three-cycle TDD with incremental verification (per-file `vitest` after each red/green, `pnpm run check` right after the wiring change, full suite + `lint` + `fallow` at the end) and a first-try pre-completion PASS.
 
 #### What caused friction (agent side)

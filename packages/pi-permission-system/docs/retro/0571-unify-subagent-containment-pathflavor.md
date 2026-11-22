@@ -61,8 +61,7 @@ The run was friction-free: no rework, no user corrections, one self-recovered sh
 - **Empirical parity verification before classifying the change.**
   At planning (transcript turn 12) a throwaway `node -e` script compared the prefix check against `path.relative`-based `isWithin` across seven normalized inputs, proving they agree.
   This turned the issue's and [#562]'s "behavior-affecting" hypothesis into a verified "behavior-preserving" finding, which then shaped the entire TDD approach (characterization tests, cover-then-refactor under green rather than red→green).
-  This is the `testing` skill's "write a disposable exploratory script first" rule applied proactively at plan time — a good pattern to repeat for any "is this refactor really behavior-preserving?"
-  question.
+  This is the `testing` skill's "write a disposable exploratory script first" rule applied proactively at plan time — a good pattern to repeat for any "is this refactor really behavior-preserving?" question.
 - **Cover-then-refactor executed cleanly.**
   The 8 characterization tests passed green against the old helper and stayed green after the swap — the safety net worked as designed for a behavior-preserving refactor.
 - **Pre-completion reviewer earned its dispatch.**

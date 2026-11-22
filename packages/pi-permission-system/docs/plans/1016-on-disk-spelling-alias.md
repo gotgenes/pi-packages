@@ -264,7 +264,8 @@ On `ubuntu-latest` (ext4) both are expected false (estimated), so CI skips the f
        An `external_directory` allow on the on-disk spelling of an outside file applies to its lowercase spelling.
      - **Boundary.**
        A case-variant ancestor spelling of an in-cwd file raises no `external_directory` gate under `{ "*": "ask" }`.
-     - **Disclosure.** `describePathGate`'s ask for a typed `upper.txt` carries `{ label: "resolves to", text: "<cwd>/Upper.txt" }`.
+     - **Disclosure.**
+       `describePathGate`'s ask for a typed `upper.txt` carries `{ label: "resolves to", text: "<cwd>/Upper.txt" }`.
      - **Residual (characterization).**
        A deny on `upper.txt` (not on disk) still allows `UPPER.TXT`, and a deny on the NFC spelling still allows the NFD-stored spelling.
        These pass before and after by design, as the documented limitation.

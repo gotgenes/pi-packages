@@ -24,8 +24,7 @@ Pulling that thread exposed progressively more rudimentary issues.
    The `create(cwd?)` parameter only existed because we split one run-scoped resource (the worktree) out and made `Agent` relay its output back in.
 4. Worktrees are not intrinsic to what makes subagents useful.
    The maintainer never uses them (WIP-of-1, trunk-based, CI/CD).
-   Git worktree isolation is one *strategy* for answering "where does this child run, and what brackets the run?"
-   — a container, a throwaway tmpdir, or a remote sandbox are others.
+   Git worktree isolation is one *strategy* for answering "where does this child run, and what brackets the run?" — a container, a throwaway tmpdir, or a remote sandbox are others.
    The core needs only *a working directory and a disposal hook*; the default (the parent's cwd, no setup/teardown) is always correct.
 5. This mirrors Phase 14, which evicted tool/extension *policy* (`disallowed_tools`, `extensions` filtering) to `@gotgenes/pi-permission-system`.
    Worktrees are *environment* policy; they belong outside the core for the same reason.
@@ -57,8 +56,7 @@ When deciding how a concern attaches:
 - It only needs to **know** what happened → subscribe to a lifecycle event (observational, unlimited).
 - It must **return a value the core consumes** → register a provider (generative, rationed).
 
-Permissions are observational: the core does not enforce policy; it publishes the child's identity at the pre-bind instant so the permission extension (loaded in the child) can detect "am I a subagent?"
-and gate tool calls at runtime.
+Permissions are observational: the core does not enforce policy; it publishes the child's identity at the pre-bind instant so the permission extension (loaded in the child) can detect "am I a subagent?" and gate tool calls at runtime.
 Workspaces are generative: the core cannot default the cwd away when an isolation strategy is requested, so the provider hands it back.
 
 ### The governing rule: no vacant hooks

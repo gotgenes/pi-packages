@@ -111,8 +111,7 @@ The dominant finding is not in this session but upstream of it: the `tidy-first-
 - The pre-completion reviewer re-derived its own claims instead of reporting them.
   On the delta round it reverted both described mutations itself against a backup and confirmed the discrimination counts (4 of 22 in `test/session-tree.test.ts`, 3 of 50 for the `filterByTypes` exemption), rather than accepting the implementing session's report.
   That is the `delegation` skill's posture executed by the subagent on its own input.
-- The operator's single intervention across all four stages was a redirecting question at the planning gate — "how do you identify the live path?"
-  — not a correction after the fact.
+- The operator's single intervention across all four stages was a redirecting question at the planning gate — "how do you identify the live path?" — not a correction after the fact.
   It cost one message to answer and the re-asked gate was answered immediately.
 
 #### What caused friction (agent side)

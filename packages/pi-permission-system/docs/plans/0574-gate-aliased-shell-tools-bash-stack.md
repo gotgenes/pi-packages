@@ -15,8 +15,7 @@ Step 3 is the batch tail, so landing it cuts the release that carries both: the 
 
 ## Problem Statement
 
-`classifyToolKind` answers "what does this invocation access?"
-from a closed set of hardcoded built-in tool names.
+`classifyToolKind` answers "what does this invocation access?" from a closed set of hardcoded built-in tool names.
 A tool that carries bash semantics under a different name — `@howaboua/pi-codex-conversion` replaces the native `bash` tool with `exec_command` (`cmd` + optional `workdir`) — is classified as a generic extension tool, so it never receives command decomposition, wrapper flooring ([#490]), bash path / external-directory token gates, or `bash:` config rules.
 A user's `bash:` deny rules silently do not apply, and the same shell operation is gated differently depending on which toolset is active — an enforcement gap, not a polish item.
 
@@ -26,8 +25,7 @@ This step consumes it: once the alias is recorded, the dispatch point must route
 ## Goals
 
 - Consume `shellTools` at gate time so an aliased shell tool (e.g. `exec_command`) is gated at parity with native `bash`: command decomposition, wrapper flooring, the `<unparseable-bash-command>` fail-closed sentinel, bash path + external-directory token gates, and `bash:` config rules.
-- Introduce **one dispatch point** — `resolveShellInvocation(toolName, input, aliases)` in `access-intent/tool-kind.ts` — that decides "does this invocation carry shell semantics, and what is its command + workdir?"
-  for native bash and aliased tools alike, so the bash gates stop hardcoding `toolName === "bash"` and `input.command`.
+- Introduce **one dispatch point** — `resolveShellInvocation(toolName, input, aliases)` in `access-intent/tool-kind.ts` — that decides "does this invocation carry shell semantics, and what is its command + workdir?" for native bash and aliased tools alike, so the bash gates stop hardcoding `toolName === "bash"` and `input.command`.
 - Full `workdir` parity: the alias's `workdirArgument` value becomes the effective resolve base for the aliased command's relative tokens, and `workdir` is itself gated by `external_directory` when it resolves outside the session cwd.
 - Preserve the invoked tool's real name in the review log and prompts (`exec_command`, not `bash`) while recording the effective command — a user must see which tool ran what.
 - A session "allow for this session" on an aliased shell command adds a `bash:` session rule (so it applies to native `bash` and the alias alike), not an `exec_command:` rule.
@@ -114,8 +112,7 @@ Behavior:
 
 Design notes:
 
-- `classifyToolKind` stays **unchanged and config-free** — it still answers the static "what kind of built-in is this name?"
-  question the presentation consumers and the manager need without config.
+- `classifyToolKind` stays **unchanged and config-free** — it still answers the static "what kind of built-in is this name?" question the presentation consumers and the manager need without config.
   The alias consult is a **separate** function because it needs config (the alias map) and its product (`{ command, workdir }`) is richer than a `ToolKind` string.
   This keeps `classifyToolKind`'s AccessPath-free / config-free contract intact (the ADR-0002 string boundary, the presentation consumers that have no config) while giving the gates one place to ask "is this a shell, and what is it running?".
 - `ShellInvocation` is a value object the pipeline threads down; the gates never re-read `input`.

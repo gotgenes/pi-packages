@@ -15,8 +15,7 @@ It is a `refactor:` change (a hidden changelog type), so it auto-batches into th
 
 ## Problem Statement
 
-The extraction question — "what does this invocation access: a bash command, an MCP target, or a path?"
-— is re-derived by silent string comparison (`toolName === "bash"`, `toolName === "mcp"`, `source === "mcp"`) at 21 production sites across 8 modules ([#561]).
+The extraction question — "what does this invocation access: a bash command, an MCP target, or a path?" — is re-derived by silent string comparison (`toolName === "bash"`, `toolName === "mcp"`, `source === "mcp"`) at 21 production sites across 8 modules ([#561]).
 This is a Category C repeated-discriminator / OCP flaw: the same domain decision is re-decided at every consumer, so adding a tool kind or changing what "MCP-ness" means requires finding and editing every site, and a missed site diverges silently — there is no compiler-enforced exhaustive dispatch, just scattered `===` comparisons.
 `fallow dupes` is structurally blind to it (one-line comparisons never form a token-run clone); the repeated-discriminator grep sweep is the only detector.
 
@@ -62,7 +61,9 @@ The classification set is fixed by the existing surfaces:
 
 Two AGENTS.md constraints apply:
 
-- `permission-manager.ts` carries an ESLint `no-restricted-imports` rule (`eslint.config.js`) forbidding any import of `access-intent/access-path`. `tool-kind.ts` imports only `PATH_BEARING_TOOLS` (from `path-surfaces.ts`, a pure module), so importing `classifyToolKind` there does not breach the boundary. `tool-kind.ts` must stay `AccessPath`-free to keep this true.
+- `permission-manager.ts` carries an ESLint `no-restricted-imports` rule (`eslint.config.js`) forbidding any import of `access-intent/access-path`.
+  `tool-kind.ts` imports only `PATH_BEARING_TOOLS` (from `path-surfaces.ts`, a pure module), so importing `classifyToolKind` there does not breach the boundary.
+  `tool-kind.ts` must stay `AccessPath`-free to keep this true.
 - When the roadmap step completes, the implementation doc-update commit marks Phase 10 Step 1 `✅` on both its heading and its Mermaid node in `docs/architecture/architecture.md`, per the package skill — not a deferred ship commit.
 
 ## Design Overview
@@ -177,9 +178,9 @@ No public `exports`, event channel, or `Symbol.for()` surface changes — so no 
    `test/access-intent/tool-kind.test.ts` pins it directly: `bash`/`mcp`/`skill`, each member of `PATH_BEARING_TOOLS` → `path`, an arbitrary extension tool → `extension`, and whitespace-trim (`" bash "` → `bash`).
 2. **Redundant tests.**
    None become fully redundant.
-   Per-consumer "is this bash/mcp?"
-   behavior is now also covered indirectly by the classifier test, but the consumer tests assert the consumer's *product* (surface/values/extras, path, suggestion value, source) — the refactor must preserve those, so they stay.
-3. **Tests that must stay as-is.** `input-normalizer.test.ts`, `tool-input-path.test.ts`, `handlers/gates/tool.test.ts`, `handlers/gates/tool-call-gate-pipeline.test.ts`, and `permission-manager-unified.test.ts` exercise the extraction products the refactor keeps invariant — they are the characterization safety net.
+   Per-consumer "is this bash/mcp?" behavior is now also covered indirectly by the classifier test, but the consumer tests assert the consumer's *product* (surface/values/extras, path, suggestion value, source) — the refactor must preserve those, so they stay.
+3. **Tests that must stay as-is.**
+   `input-normalizer.test.ts`, `tool-input-path.test.ts`, `handlers/gates/tool.test.ts`, `handlers/gates/tool-call-gate-pipeline.test.ts`, and `permission-manager-unified.test.ts` exercise the extraction products the refactor keeps invariant — they are the characterization safety net.
 
 Before each migration, confirm the touched branch has characterization coverage; add a red characterization test only where a branch is uncovered (candidates: `getToolInputPath("skill", …)` → default path; `deriveSource` for the `external_directory`/`path` special surfaces and for an extension tool at the default layer).
 
@@ -241,7 +242,8 @@ Run `pnpm run check` after each step (shared-type / interface touch) and the ful
 
 ## Open Questions
 
-- None blocking. `getToolPermission`'s dead-branch collapse is included as a behavior-identical simplification; if review prefers to keep it out of a classification-focused refactor, it can drop to a one-line follow-up without affecting the rest.
+- None blocking.
+  `getToolPermission`'s dead-branch collapse is included as a behavior-identical simplification; if review prefers to keep it out of a classification-focused refactor, it can drop to a one-line follow-up without affecting the rest.
 
 [#309]: https://github.com/gotgenes/pi-packages/issues/309
 [#478]: https://github.com/gotgenes/pi-packages/issues/478

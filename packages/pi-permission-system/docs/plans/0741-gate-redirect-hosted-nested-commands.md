@@ -320,8 +320,7 @@ Two quantitative baselines measured at planning time, to be re-measured after im
 6. **`test(pi-permission-system): pin gate and advisory parity for hosted nested commands`** End-to-end: the reported repro `echo "hello world" > $(rm *.txt)` denies under `echo *: allow` + `rm *: deny`.
    Extend the metamorphic property so wrapping a gated command as `echo hi > $(<cmd>)` never weakens its decision.
    Add one `bash-advisory-check` case confirming the advisory answer matches the gate.
-7. **`docs(pi-permission-system): document hosted nested-command evaluation`**
-   ADR 0009 clarification and Consequences bullet, `docs/configuration.md`, the architecture module-tree entries, and the package skill.
+7. **`docs(pi-permission-system): document hosted nested-command evaluation`** ADR 0009 clarification and Consequences bullet, `docs/configuration.md`, the architecture module-tree entries, and the package skill.
 
 Steps 2 and 3 change the same table, so run `pnpm run check` and the full suite after each rather than batching.
 

@@ -127,8 +127,7 @@ The defining irony of the session: the ship step could not use the fix it had ju
 #### What caused friction (user side)
 
 1. **The redirecting question was right and I overrode it — the failure was mine, not the intervention's.**
-   "Do we need to pause and reload to use this tool now?"
-   is precisely the strategic-judgment intervention style that works best: a question, not a correction, at the exact moment it mattered.
+   "Do we need to pause and reload to use this tool now?" is precisely the strategic-judgment intervention style that works best: a question, not a correction, at the exact moment it mattered.
    The only opportunity here is that a follow-up ("are you sure?
    the tool you just changed is the one you're about to call") would have forced the reasoning I skipped — but the first question should have been enough.
 

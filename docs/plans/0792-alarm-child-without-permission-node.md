@@ -230,7 +230,8 @@ Exported as a builder (not a bare constant) so the child session id can be inter
 
 ### `pi-permission-system`
 
-- `packages/pi-permission-system/src/authority/child-node-audit.ts` — **new**. `NodePresenceLookup`, `ChildNodeAuditLog`, `ChildNodeAudit`, and the exported warning-message builder.
+- `packages/pi-permission-system/src/authority/child-node-audit.ts` — **new**.
+  `NodePresenceLookup`, `ChildNodeAuditLog`, `ChildNodeAudit`, and the exported warning-message builder.
 - `packages/pi-permission-system/src/authority/subagent-lifecycle-events.ts` — add `SUBAGENT_CHILD_BOUND`, a `ChildBoundEvent` read-shape interface, a third parameter on `subscribeSubagentLifecycle`, and the third subscription plus its unsubscribe.
   Extend the module doc comment: the two-channel description becomes three, and it must state that the `bound` handler carries no synchronous-dispatch requirement while `session-created` still does.
 - `packages/pi-permission-system/src/index.ts` — construct `ChildNodeAudit` over `(sessionId) => getPermissionsService(sessionId) !== undefined` and the existing `logger`, and pass it to `subscribeSubagentLifecycle`.
@@ -334,8 +335,7 @@ Each leaves both suites green.
 7. **`docs(pi-permission-system): document the optional bound channel and the unguarded-child alarm`** `docs/subagent-integration.md` (channel table row, the new subsection, the "on both ends" list, the conformance note) and the ADR 0012 decision-5 amendment.
    Verify with `grep -c '#### Amendment' packages/pi-permission-system/docs/decisions/0012-cross-node-extension-contract.md` → 4.
 
-8. **`docs(pi-subagents): note the permission warning under excludedExtensionPackages`**
-   `docs/configuration.md`'s `#### Excluding a permission extension` subsection, plus the two channel enumerations (`docs/architecture/architecture.md` line 446, `docs/comparison-with-upstream.md` line 55).
+8. **`docs(pi-subagents): note the permission warning under excludedExtensionPackages`** `docs/configuration.md`'s `#### Excluding a permission extension` subsection, plus the two channel enumerations (`docs/architecture/architecture.md` line 446, `docs/comparison-with-upstream.md` line 55).
 
 9. **`docs(pi-permission-system): mark Phase 14 Step 7 complete`** `✅` on the Step 7 heading and its Mermaid node, plus a `Landed:` note recording the seam finding (the two dead alternatives) and the optional-channel decision.
    Update `.pi/skills/package-pi-permission-system/SKILL.md`'s event-integration paragraph in the same commit.

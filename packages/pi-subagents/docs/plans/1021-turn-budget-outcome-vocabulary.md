@@ -254,20 +254,24 @@ Appending keeps every existing caller valid: 4 test sites in `test/lifecycle/sub
    Refactor-only: the suite stays green with no `src/` change.
    This is the Tidy-First assessor's recommended preparation — it turns the result-shape changes in steps 2 and 6 from per-literal edits (25 measured `steered:` lines plus their `aborted:` siblings) into one fixture file.
    Killing mutation: none (no behavior); verify by `pnpm --filter @gotgenes/pi-subagents exec vitest run` and `pnpm --filter @gotgenes/pi-subagents run check` both green.
+
 2. **`refactor(pi-subagents): report the turn loop's budget alongside its flags`** Add `TurnBudget`/`TurnBudgetPhase` to `turn-limits.ts`.
    `runTurnLoop` returns `turnBudget` **in addition to** `aborted`/`steered` (lift; the booleans go in step 6), absent when no limit resolves.
    Tests in `test/lifecycle/subagent-session.test.ts`: no limit → no budget; finishes before the limit → `within`, `used` = turns run; finishes after the wrap-up steer → `warned`; hits `limit + grace` → `exhausted`.
    Killing mutations: make `runTurnLoop` set `phase: "within"` unconditionally (kills the `warned` and `exhausted` tests); make it return a budget when `maxTurns` is undefined (kills the no-limit test); make `used` the constant `maxTurns` (kills the `within` count test).
+
 3. **`refactor(pi-subagents): carry the turn budget as an outcome fact on the subagent state`** `SubagentState` gains `_turnBudget` with its whole lifecycle in this step: seeded by `SubagentStateInit.turnBudget`; set by `markCompleted`/`markAborted` (decide the signature per Design Overview); cleared by `resetForResume`; read through the getter and `SettledOutcome.turnBudget`.
    `Subagent` gains the getter and `completeRun` passes `result.turnBudget` to whichever transition it already calls — status derivation does not change yet.
    Tests in `test/lifecycle/subagent-state.test.ts` and `test/lifecycle/subagent.test.ts`.
    Killing mutations: delete the `_turnBudget = undefined` line in `resetForResume` (kills the resume-clears test); drop `turnBudget` from `currentOutcome()` (kills the superseded-outcome test); have `completeRun` pass `undefined` instead of `result.turnBudget` (kills the completeRun test).
+
 4. **`feat(pi-subagents): report the turn budget on finished subagents`** Expose the field, additively, on `SubagentRecord` (`toSubagentRecord`, by value), `AgentDetails` (`buildDetails`), `GetResultDetails` (`buildGetResultDetails`, `liveOutcome`), `NotificationDetails`, `buildEventData`, the `subagents:record` entry, and `WidgetAgent`; re-export the types from `service.ts`.
    Add `wrappedUpAtTurnLimit` and route the presentation sites through it while `steered` still exists: the predicate returns true for `completed` + `warned` **or** `status === "steered"`, so real runs (still `steered`) render as today and seeded `completed` + `warned` records render identically.
    `renderStatusLabel`/`renderStatusNote`/`resolveStatusPresentation` take the outcome object; update their call sites.
    Observable: consumers can now read `turnBudget`.
    Tests: `test/service/` adapter test (by-value copy: mutating the record's budget after the snapshot does not change the snapshot), notification-details and event-data tests, a table test for the predicate, and presentation tests seeding `completed` + `warned` beside the existing `steered` ones in `outcome-delivery`, `renderer`, `result-renderer`, `get-result-renderer`, and `widget-renderer` tests.
    Killing mutations: make `toSubagentRecord` assign `record.turnBudget` without copying (kills the by-value test); drop `turnBudget` from `buildEventData` (kills the event-payload test); make the predicate ignore `turnBudget` (kills every `completed` + `warned` presentation test while the `steered` ones stay green — that split is the predicted outcome).
+
 5. **`feat(pi-subagents)!: report a run that wraps up at its turn limit as completed`** `completeRun` derives the status from the budget; remove `"steered"` from `SubagentStatus`, the `display.ts` union, `ERROR_STATUSES`, `renderStatusIcon`, `STATUS_MEANINGS`, and the predicate's legacy arm; delete both `markSteered` methods; add the `holdForResume` clause.
    Narrowing the union breaks every `"steered"` test literal at type level, so all 15 migrate in this step (to `completed` + `turnBudget: { …, phase: "warned" }`).
    Tests: `completeRun` with a `warned` result ends `completed` and fires `subagents:completed`; with an `exhausted` result ends `aborted` and fires `subagents:failed`; a wrapped-up run with a pending question tears its workspace down; the widget lingers a wrapped-up row for the completed duration.
@@ -285,11 +289,13 @@ Appending keeps every existing caller valid: 4 test sites in `test/lifecycle/sub
    ```
 
    The trailer credits the issue's adopted constraint — every finished run reports a status consumers already treat as final.
+
 6. **`feat(pi-subagents)!: report the turn budget on subagents:child:completed`** Drop `aborted`/`steered` from `TurnLoopResult` (`completeRun` already reads only `turnBudget`) and from `ChildCompletedEvent`, which gains `turnBudget`.
    The step-1 fixtures absorb the shape change; any literal they did not cover migrates here.
    Tests in `test/lifecycle/child-lifecycle.test.ts` and `subagent-session.test.ts`: the emitted event carries the budget and no booleans.
    Killing mutation: emit `turnBudget: undefined` from `runTurnLoop`'s `lifecycle.completed` call (kills the event-payload test).
    Footer: `BREAKING CHANGE: subagents:child:completed no longer carries aborted or steered; read turnBudget.phase ("exhausted" or "warned").`
+
 7. **`docs(pi-subagents): document the turn budget outcome and correct the lifecycle diagram`** README, architecture doc, ADR 0005 row, per Module-Level Changes.
    Verify the Mermaid diagram renders (load the `mermaid` skill), re-grep `steered` across `packages/pi-subagents/{README.md,docs}` and `.pi/skills/` — the only remaining hits should be the `subagents:steered` redirect event, plans, retros, and history.
 

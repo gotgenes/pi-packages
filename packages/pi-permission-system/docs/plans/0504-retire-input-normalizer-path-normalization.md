@@ -126,7 +126,8 @@ const { surface, values, resultExtras } = normalizeInput(
 
 ### Test migration (the bulk of the work)
 
-`test/permission-manager-unified.test.ts` exercises path-surface pattern matching via the `checkTool` adapter, which builds a `tool` intent. ~30 calls pass a real `{ path: … }` and rely on `normalizeInput`'s path derivation; the ~39 empty-input `checkTool(manager, <surface>, {})` calls produce `["*"]` and are unaffected.
+`test/permission-manager-unified.test.ts` exercises path-surface pattern matching via the `checkTool` adapter, which builds a `tool` intent.
+~30 calls pass a real `{ path: … }` and rely on `normalizeInput`'s path derivation; the ~39 empty-input `checkTool(manager, <surface>, {})` calls produce `["*"]` and are unaffected.
 
 The ~30 real-path calls migrate to the production intent kind via a new local helper that computes the same lexical alias set `normalizeInput` produced today:
 

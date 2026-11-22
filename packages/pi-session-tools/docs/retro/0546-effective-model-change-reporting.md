@@ -142,7 +142,6 @@ The one notable moment was `release_pr_merge` refusing with `merge_state: UNSTAB
 
 ### Diagnostic details (retro-discussion follow-up)
 
-- **Unused-tool / feedback-loop insight** — the operator's question "does the final retro agent have enough information to double-check messages in the worktree session?"
-  exposed that moving `/retro` to the root traded away the peer session's `read_session` access.
+- **Unused-tool / feedback-loop insight** — the operator's question "does the final retro agent have enough information to double-check messages in the worktree session?" exposed that moving `/retro` to the root traded away the peer session's `read_session` access.
   Verified empirically: `read_session` reads only `ctx.sessionManager.getEntries()` (current session), `read_parent_session` reaches only a `tasks/`-derived parent, and the peer session `.jsonl` (243 messages, 2 `model_change` entries for #546) persists at `~/.pi/agent/sessions/--<encoded-cwd>--/` after teardown.
   Mitigated inline (B) and queued the complete fix (C, #549).

@@ -137,8 +137,7 @@ This entry synthesizes all four stages (planning, TDD, sync, ship), reading the 
 
 - Nothing that cost time.
   Two interventions materially improved the outcome:
-  - Asking "why not match Pi's own animation timer?"
-    at the cadence gate turned a picked number into a grounded one — the investigation found Pi's `Loader` default is *also* 80 ms but module-private, setter-only, and animating on the **opposite** duty cycle, which is a far better justification for choosing 250 ms than the original.
+  - Asking "why not match Pi's own animation timer?" at the cadence gate turned a picked number into a grounded one — the investigation found Pi's `Loader` default is *also* 80 ms but module-private, setter-only, and animating on the **opposite** duty cycle, which is a far better justification for choosing 250 ms than the original.
   - Choosing to fix the `assembleOverflow` finding in-branch rather than defer it kept the fix where its reachability was created, and declining the offered "raise the budget floor to hide the path again" preserved the honest 3-line floor.
 - Opportunity, not criticism: the operator reviewed the `perf:` subject-line judgment call only because the implementing session surfaced it explicitly at handoff.
   That surfacing is worth keeping as a habit — it converted a silent judgment into a reviewed one at zero cost.

@@ -39,6 +39,7 @@ What we know from `pi-mono` (verified against `packages/coding-agent/src/core/ex
   Of those, only `bash`, `edit`, and `write` mutate files.
   `edit` and `write` are already covered; `bash` is reserved for Issue #4.
   **There are no additional built-in mutation tools to wire up.**
+
 - Extensions can register arbitrary tools via `pi.registerTool()`.
   Their results arrive as `CustomToolResultEvent` through the same `tool_result` event we already subscribe to, with the shape:
 
@@ -54,6 +55,7 @@ What we know from `pi-mono` (verified against `packages/coding-agent/src/core/ex
   ```
 
   So extension-provided mutation tools already flow past our `tool_result` handler — we just don't recognize their names or know which input field carries the path(s).
+
 - Pi exposes a shared `pi.events: EventBus` with a stable `emit(channel, data)` / `on(channel, handler)` shape.
   This means we can subscribe to a documented channel without coordinating any new public API on Pi's side.
 
@@ -104,7 +106,8 @@ Field semantics:
 Recognition rules:
 
 - Only act on `tool_result` events whose `isError === false`.
-- Built-in tool names (`bash`, `edit`, `write`, `read`, `grep`, `find`, `ls`) are rejected at config load with a validation issue. `edit` and `write` are already covered; the others are not mutating tools and declaring them would be a configuration mistake.
+- Built-in tool names (`bash`, `edit`, `write`, `read`, `grep`, `find`, `ls`) are rejected at config load with a validation issue.
+  `edit` and `write` are already covered; the others are not mutating tools and declaring them would be a configuration mistake.
 - Duplicate `toolName` entries are an error at config load.
 - Per-handler output is fed into the queue, which applies the standard `formatScope` filter and dedupe.
   No new path-handling logic is added.

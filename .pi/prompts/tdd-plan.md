@@ -83,11 +83,13 @@ For **each** step in the plan's "TDD Order", in order:
    When the step pins a literal pattern (regex, glob, format string), derive your own input set — the plan's examples are a floor, not the case list.
    Run the pattern over the values the repo already produces in bulk (`git tag --list`, `gh pr list`) before committing.
    When the step quotes a string the code under test **produces** (a rendered sentence, an error message), copy it from the producer or an existing assertion — a plan transcribes it from memory and drops an article.
+
 2. **Green.**
    Implement the minimum code to make those tests pass.
    Re-run the same file and confirm green.
    When the step adds or changes a shared type/interface (or a loop/consumer over one), run `pnpm run check` before committing — Vitest does not typecheck, and a type error caught only at end-of-cycle forces a commit reorder.
    When the step adds a module or an import between modules, also run `pnpm fallow dead-code` from the root — an import cycle caught only at end-of-cycle forces a history rewrite.
+
 3. **Verify the pins.**
    Apply the killing mutation the plan named for this step, confirm the step's new tests go red, then revert it.
    Fixing a vacuous test costs nothing here and costs an amended commit later, which is why this sits before the commit rather than in the end-of-cycle review.
@@ -107,6 +109,7 @@ For **each** step in the plan's "TDD Order", in order:
    Prefer changing a compared literal over restructuring control flow: a mutation that crashes, or that the linter rejects, produces reds that are not discrimination signals.
    Such a mutation can also produce too *few* reds — swapping a guard's `return x` for a `throw` changes nothing observable when a downstream `catch` returns `x` too.
    Count the reds against the step's prediction: a mutation that kills fewer tests than the plan named is a finding, not a pass — the test was never written, the plan's claim was wrong, or the mutated code is dead.
+
 4. **Commit.**
    Use the commit message the plan suggests, or a Conventional Commits message that matches:
    - `test:` for test-only commits (rare; usually folded into the feat).
@@ -185,6 +188,7 @@ Before stopping, persist implementation observations for cross-session continuit
 1. Determine the retro file path: same location as the plan file (single-package → `packages/<PKG>/docs/retro/`; cross-package → `docs/retro/`).
    Use the same `NNNN-<slug>` as the plan file.
    Create the directory if needed.
+
 2. If the retro file does not exist, create it with YAML frontmatter:
 
    ```yaml
@@ -195,6 +199,7 @@ Before stopping, persist implementation observations for cross-session continuit
    ```
 
    Followed by `# Retro: #N — <issue title>`.
+
 3. Append a stage entry:
 
    ```markdown

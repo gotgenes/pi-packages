@@ -236,6 +236,7 @@ Commit bodies cite `@eko24ive/pi-ask`'s `notifications.channels` as prior art, i
    Friction it prepares: three dialog-key cases (lines ~256–295) pass `CTRL_O, DEFAULT_RENDER_BUDGET` only to reach the fourth positional, and step 4's cases would need a fifth.
    Pure refactor: the suite stays green with no assertion changed; no killing mutation applies.
    Commit: `test(pi-permission-system): pass dialog test preferences by name`.
+
 2. **Config: accept `promptNotifications`.**
    `config-schema.ts`, the regenerated schema, `extension-config.ts`, `config-loader.ts`, and their three test files.
    Tests:
@@ -250,6 +251,7 @@ Commit bodies cite `@eko24ive/pi-ask`'s `notifications.channels` as prior art, i
 
    No consumer reads the field yet, so this is not changelog-visible.
    Commit: `refactor(pi-permission-system): accept a promptNotifications config field`.
+
 3. **Render: `renderPromptNotification`.**
    `src/presentation/prompt-notification.ts` and its test.
    Tests:
@@ -266,6 +268,7 @@ Commit bodies cite `@eko24ive/pi-ask`'s `notifications.channels` as prior art, i
 
    No consumer yet.
    Commit: `refactor(pi-permission-system): render terminal notification sequences`.
+
 4. **Wire: signal when the inline dialog opens.**
    `PromptPreferences.promptNotifications`, the factory write, the `index.ts` thunk, `makePromptPreferences`, and the composition double.
    Component tests (`permission-prompt-component.test.ts`):
@@ -284,6 +287,7 @@ Commit bodies cite `@eko24ive/pi-ask`'s `notifications.channels` as prior art, i
    - move the write out of the factory into the component's `render()`: the once-only case goes red.
 
    Commit: `feat(pi-permission-system): ring the terminal when a permission prompt opens`.
+
 5. **Docs.**
    `docs/configuration.md` (row and subsection), `docs/cross-extension-api.md` (recipe), `README.md`, `config/config.example.json`, and `docs/architecture/architecture.md` (the two module-tree entries).
    Verify with `pnpm exec rumdl check` on each markdown file, and by confirming that the example config still parses under the schema test.

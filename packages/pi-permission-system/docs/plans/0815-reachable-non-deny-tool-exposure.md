@@ -204,8 +204,7 @@ No export is removed or renamed, so no removed-symbol grep is required.
 - **`docs/architecture/architecture.md`**
   - Line ~336 (`### Path-bearing tool normalization`): the sentence "`getToolPermission()` is unaffected — it always evaluates with `"*"` to determine whether to inject the tool at agent start" is now wrong about injection.
     Rewrite: `getToolPermission()` still evaluates with `"*"`, but injection asks `isToolFullyDenied` instead.
-  - Line ~460 (`### Phase 1: Tool filtering`): rewrite to describe the probe — "is every value under this surface denied?"
-    — replacing the `evaluate(toolName, "*", rules)` description.
+  - Line ~460 (`### Phase 1: Tool filtering`): rewrite to describe the probe — "is every value under this surface denied?" — replacing the `evaluate(toolName, "*", rules)` description.
   - Line ~553 (`## Cross-extension service accessor`): "exposes five methods" → six, with an `isToolFullyDenied` bullet.
   - Module-tree entries: `permission-resolver.ts` (line ~822) and `permissions-service.ts` (line ~882) list `getToolPermission` and gain `isToolFullyDenied`; `handlers/before-agent-start.ts` (line ~857) names the `shouldExposeTool` helper and needs no symbol change, but its description should not imply the catch-all rule.
     Per the architecture-doc convention these are current-behavior edits with no issue ref.

@@ -38,8 +38,10 @@ This bounds the ask-back loop [#465] shipped as Phase 22 Step 8 for exactly the 
 - **Delivering the addendum produced at the deferred disposal edge.**
   When a question-ending child is never resumed, its workspace disposes at `releaseSession()`/`disposeSession()` and the returned addendum has no reader.
   Filed as [#870] and adopted as Phase 22 Step 12; this plan accepts the drop.
-- **Suppressing the question affordance.** `renderQuestionAffordance` stays as it is: under this plan a question-ending workspace-backed child is genuinely resumable, so the affordance is correct.
-- **Changing retention windows or the sweep.** `consumedSessionRetentionMinutes` / `unconsumedSessionRetentionMinutes` keep their meaning and defaults.
+- **Suppressing the question affordance.**
+  `renderQuestionAffordance` stays as it is: under this plan a question-ending workspace-backed child is genuinely resumable, so the affordance is correct.
+- **Changing retention windows or the sweep.**
+  `consumedSessionRetentionMinutes` / `unconsumedSessionRetentionMinutes` keep their meaning and defaults.
 - **Extending `SubagentRecord`.**
   The new `workspaceDisposed` accessor is on the `Subagent` class, read by the Agent tool; it does not enter the public snapshot.
 
@@ -72,7 +74,8 @@ Three independent blockers, each verified in source:
 1. **The session's cwd is frozen.**
    `createSubagentSession` takes `cwd` as a value (`src/lifecycle/create-subagent-session.ts:159`) and hands it to `createSessionManager(cwd, …)` and `createSettingsManager(cwd, …)`.
    Nothing re-sets it, so a re-prepared workspace at a new path is not where the resumed child runs.
-2. **The path is randomized.** `createWorktree` appends `randomUUID().slice(0, 8)` to the worktree path (`packages/pi-subagents-worktrees/src/worktree.ts`), so a second `prepare()` cannot return the first path even in principle.
+2. **The path is randomized.**
+   `createWorktree` appends `randomUUID().slice(0, 8)` to the worktree path (`packages/pi-subagents-worktrees/src/worktree.ts`), so a second `prepare()` cannot return the first path even in principle.
 3. **The child's work is not in the new tree.**
    `cleanupWorktree` commits a dirty tree to `pi-agent-<id>` and removes the worktree; a fresh `git worktree add --detach <path> HEAD` checks out the *parent's* HEAD.
    The resumed child would find none of its own edits, and the second cleanup would collide on the branch name and fall back to `pi-agent-<id>-<timestamp>`, scattering the work across two branches.

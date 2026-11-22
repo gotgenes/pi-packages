@@ -171,8 +171,7 @@ No exports are removed or renamed, so no consumer-import sweep is needed; the on
    This is now possible because the FS effect is isolated in one tiny module.
 2. Redundant tests: none.
    Existing `isPathOutsideWorkingDirectory` and `externalPaths` cases assert containment, not canonicalization; they stay as behavioral guards (and pass with an identity `realpathSync` mock).
-3. Tests that must stay as-is:
-   `external-directory-integration.test.ts` and `external-directory-session-dedup.test.ts` use synthetic non-existent paths (`/test/project`, `/outside/...`); the walk-to-root fallback returns them unchanged, so they exercise the unchanged lexical path with no mock and need no edits.
+3. Tests that must stay as-is: `external-directory-integration.test.ts` and `external-directory-session-dedup.test.ts` use synthetic non-existent paths (`/test/project`, `/outside/...`); the walk-to-root fallback returns them unchanged, so they exercise the unchanged lexical path with no mock and need no edits.
 
 ## TDD Order
 

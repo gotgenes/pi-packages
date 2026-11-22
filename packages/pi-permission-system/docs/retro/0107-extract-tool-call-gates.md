@@ -19,8 +19,7 @@ Released as v5.4.0.
 
 - The TDD cycle was clean: red→green→commit for each gate, with existing integration tests providing a safety net during the final wiring step.
   All 1165 (later 1147) tests passed at every checkpoint.
-- The user's "why do we need deep mocking?"
-  question surfaced the real design issue (`ExtensionRuntime` as a god object, #111) rather than letting us paper over it with `Record<string, any>`.
+- The user's "why do we need deep mocking?" question surfaced the real design issue (`ExtensionRuntime` as a god object, #111) rather than letting us paper over it with `Record<string, any>`.
   This is a good example of asking "why" to get past the surface symptom.
 - The npm shim pass-through for `npm root` was a pragmatic solution that let us enforce pnpm without breaking our own startup path.
 

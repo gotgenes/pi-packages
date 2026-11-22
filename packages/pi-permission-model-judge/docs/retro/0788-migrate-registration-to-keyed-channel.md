@@ -49,7 +49,8 @@ Test count 48 → 54 in this package (added: latch-ordering, node-locality, and 
 
 - **The plan's size criterion failed, and the failure was the most interesting result.**
   ADR 0012 decision 7 makes this package the contract's proof: the migrated registration must be smaller than the workaround.
-  Measured, `src/extension.ts` went 106 → 109 for the migration alone (127 with the separately-counted vacancy warning). 30 lines of workaround died and 33 arrived; the seven that tip the balance narrow the `unknown` ready payload, which is decision 2's own cost rather than workaround residue.
+  Measured, `src/extension.ts` went 106 → 109 for the migration alone (127 with the separately-counted vacancy warning).
+  30 lines of workaround died and 33 arrived; the seven that tip the balance narrow the `unknown` ready payload, which is decision 2's own cost rather than workaround residue.
   Surfaced at a clarification gate mid-cycle: the operator chose to keep the named `readySessionId` helper and record the measurement honestly over inlining the narrowing to reach 105 lines.
   Both `ask_user` options were measured, not estimated — the inline variant was written to a scratch file and counted rather than guessed at.
 - **The version bump broke more than the accessor.**

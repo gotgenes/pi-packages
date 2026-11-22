@@ -21,8 +21,7 @@ Produced a plan that settles the semantics (one chain per node, the relaying nod
 - `ask_user` answers drove the plan: parent-only semantics codified, one `authorizer_chain_delegated` record per ask, an `authorizer_chain_resolved` record naming consulted links, and [#699] endorsed in the ADR but implemented separately (PR [#702] is open against it).
 - Rejected making `AuthorizerRegistry` process-global.
   It would double-adjudicate every deferring ask and let a link short-circuit before the serving node ever sees the request — a privilege change dressed as plumbing.
-- `AuthorizerSelection` must not re-derive "is this a relaying node?"
-  from `detection.isSubagent(ctx)`: `selectAuthorizer` tests `hasUI` first, so a subagent with UI decides locally.
+- `AuthorizerSelection` must not re-derive "is this a relaying node?" from `detection.isSubagent(ctx)`: `selectAuthorizer` tests `hasUI` first, so a subagent with UI decides locally.
   Hence `selectAuthorizer` returns a `SelectedAuthority` product rather than a bare terminal — the decision keeps one home.
 - Confirmed the change is not breaking: `selectAuthorizer` and `TerminalAuthorizer` are absent from `dist/public.d.ts`; only `Authorizer`, `AuthorizerVerdict`, `AuthorizerLog`, and friends are public.
 - Filed [#732] while reading `pi-permission-model-judge`'s `config-loader.ts`: its `defaultAgentDir()` hardcodes `~/.pi/agent` and ignores `PI_CODING_AGENT_DIR`, diverging from pi-permission-system's SDK `getAgentDir()`.

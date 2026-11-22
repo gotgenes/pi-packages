@@ -83,8 +83,7 @@ Triggered the judge via a `read` on a doubled-package typo path; the new `model_
 
 ### Observations
 
-- Decision-trail entry (ground truth):
-  `{"event":"model_judge.decision","path":".../pi-permission-system/packages/pi-permission-system/src/handlers/gates/bash-command.ts","matchedPattern":"([^/]+)/packages/\\1(/|$)","modelCalled":true,"modelId":"anthropic/claude-haiku-4-5","latencyMs":1426,"verdict":"defer","deferReason":"parse-failed"}`.
+- Decision-trail entry (ground truth): `{"event":"model_judge.decision","path":".../pi-permission-system/packages/pi-permission-system/src/handlers/gates/bash-command.ts","matchedPattern":"([^/]+)/packages/\\1(/|$)","modelCalled":true,"modelId":"anthropic/claude-haiku-4-5","latencyMs":1426,"verdict":"defer","deferReason":"parse-failed"}`.
 - A **separate** defect surfaced immediately: `deferReason: "parse-failed"`.
   The model replied but `reviewPath`'s `JSON.parse` threw — the reply was not strict JSON (likely a Markdown code fence or prose preamble around the object; debug log was off so the literal bytes were not captured).
   Distinct root cause from #625 (reply-format robustness, not auth).

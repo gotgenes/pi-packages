@@ -36,7 +36,8 @@ Two distinct discriminated unions encode the seam, with exactly one converter be
 - `ResolvedAccessIntent = ToolAccessIntent | PathValuesAccessIntent` — what the manager consumes.
 
 `PermissionResolver.toResolvedIntent` is the **only** function that converts `access-path` → `path-values`, calling `path.matchValues()` exactly once.
-Its JSDoc already states the intent: "Tell-Don't-Ask: the resolver asks an `AccessPath` for its `matchValues()`, so the low-level manager never imports the value object." `PermissionManager.check` consumes `ResolvedAccessIntent` and has zero imports from `access-intent/access-path` — the manager's entire path contract is a `string[]` plus a surface name.
+Its JSDoc already states the intent: "Tell-Don't-Ask: the resolver asks an `AccessPath` for its `matchValues()`, so the low-level manager never imports the value object."
+`PermissionManager.check` consumes `ResolvedAccessIntent` and has zero imports from `access-intent/access-path` — the manager's entire path contract is a `string[]` plus a surface name.
 
 ## Decision
 

@@ -35,7 +35,8 @@ Forwarding is the mechanism by which subagent permission prompts are relayed to 
 
 ### Dependencies
 
-- **#126 ExtensionPaths** — closed, implemented. `ForwardingManager` constructor takes `ExtensionPaths` (needs `subagentSessionsDir` for the subagent-context check).
+- **#126 ExtensionPaths** — closed, implemented.
+  `ForwardingManager` constructor takes `ExtensionPaths` (needs `subagentSessionsDir` for the subagent-context check).
 - **#127 SessionLogger** — closed, implemented.
   Not directly consumed by `ForwardingManager` (logging goes through `PermissionForwardingDeps`).
 

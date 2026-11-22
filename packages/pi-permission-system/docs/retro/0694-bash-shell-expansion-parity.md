@@ -96,8 +96,7 @@ Shipped with 6 commits, +49 tests, and a `PASS` pre-completion review.
   A denial message that repairs the caller's mistake is a notably good failure mode, and worth remembering as a design bar for other gates.
 - **The package's own review log is a measurement instrument.**
   `~/.pi/agent/extensions/pi-permission-system/logs/pi-permission-system-permission-review.jsonl` holds 2767 deduplicated real bash commands.
-  Scanning it produced the three numbers that drove the operator's decision — 0.5% touch `$HOME`, 1.6% have a statically-resolvable assign-then-use, 7.0% carry any `$VAR` — turning "which of these three scope ladders?"
-  from a taste question into an evidence question.
+  Scanning it produced the three numbers that drove the operator's decision — 0.5% touch `$HOME`, 1.6% have a statically-resolvable assign-then-use, 7.0% carry any `$VAR` — turning "which of these three scope ladders?" from a taste question into an evidence question.
   ADR 0009 had already used this technique for its probe-selectivity figure, but it was nowhere written down as a *method*.
 - **Tidy-First earned its dispatch for once.**
   The assessor's single recommendation (extract `node-text.test.ts`'s fake-`TSNode` builder to `test/helpers/fake-ts-node.ts`) was consumed 15 turns later by the new `shell-variable-expansion.test.ts`, exactly as predicted.

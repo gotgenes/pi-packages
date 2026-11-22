@@ -176,9 +176,7 @@ The Tidy-First assessor examined merging the two scans and rejected it, and the 
 `readTurnFailure` must inspect the message the provider error actually landed on, which is exactly a message with no text content.
 Reusing the skip-empty predicate for the failure read would walk straight past the erroring message to an earlier, unrelated one — a correctness bug dressed as a simplification.
 
-They are the "shared predicate, different burden of proof" case from the `code-design` skill: one answers "what did the child say?"
-and may skip what it does not recognize; the other answers "did this run fail?"
-and may not.
+They are the "shared predicate, different burden of proof" case from the `code-design` skill: one answers "what did the child say?" and may skip what it does not recognize; the other answers "did this run fail?" and may not.
 Two small scans, kept apart.
 
 The stale-text hazard `getLastAssistantText` carries is closed by this change without editing it: when the run failed, `responseText` is discarded on the throw, so an earlier turn's text can no longer be presented as the child's final answer.
@@ -332,8 +330,7 @@ Each cycle is red → green → verify → commit.
 5. **`fix(pi-subagents): name the transcript on a failed foreground return`** Test surface: `test/tools/foreground-runner.test.ts` — a failed record with an `outputFile` prints `Full transcript available at: <path>`; one without prints no dangling label; the existing workspace-notice and run-updates assertions on the error branch stay green.
    **Killing mutation:** make the transcript line unconditional (drop the `record.outputFile` guard) — the no-`outputFile` case goes red with a dangling `Full transcript available at: undefined`.
 
-6. **`docs(pi-subagents): mark Phase 22 Step 17 complete`**
-   Architecture-doc step mark: `✅` on the heading and the `S17` Mermaid node, plus the `Landed:` note recording that the failure surfaces as a throw into the existing `failRun`/`failResume` path, that `lifecycle.completed` does not fire for such a run, and that `getLastAssistantText` was examined and deliberately left alone.
+6. **`docs(pi-subagents): mark Phase 22 Step 17 complete`** Architecture-doc step mark: `✅` on the heading and the `S17` Mermaid node, plus the `Landed:` note recording that the failure surfaces as a throw into the existing `failRun`/`failResume` path, that `lifecycle.completed` does not fire for such a run, and that `getLastAssistantText` was examined and deliberately left alone.
 
 Steps 2 through 5 are each independently releasable `fix:` commits; they land together and the release names the package once.
 

@@ -158,8 +158,10 @@ Source (`src/`):
 
 Tests (`test/`) — fixtures that pass partial `Model` literals or registries missing `getAll` **uncast** into the tightened types:
 
-- `test/helpers/stub-ctx.ts` — `STUB_SNAPSHOT.modelRegistry: { find: () => undefined }` → add `getAll: () => []` (satisfy `ModelRegistry`). `model: undefined` already valid.
-- `test/session/session-config.test.ts` — `mockRegistry`: add `getAll: vi.fn((): Model<any>[] => [])`; change `find`'s annotation `(): unknown` → `(): Model<any> | undefined`; change `getAvailable`'s return type `Array<{ provider; id }>` → `Model<any>[]` and its `mockReturnValueOnce([{ provider, id }])` calls to `[makeModel({ provider, id })]`; change the `parentModel` / `explicitModel` / `resolvedModel` / `foundModel` partial literals (`{ provider, id }`) to `makeModel({ provider, id })` (import `makeModel` from `#test/helpers/make-model`). `toBe(...)` assertions are unaffected (same object identity).
+- `test/helpers/stub-ctx.ts` — `STUB_SNAPSHOT.modelRegistry: { find: () => undefined }` → add `getAll: () => []` (satisfy `ModelRegistry`).
+  `model: undefined` already valid.
+- `test/session/session-config.test.ts` — `mockRegistry`: add `getAll: vi.fn((): Model<any>[] => [])`; change `find`'s annotation `(): unknown` → `(): Model<any> | undefined`; change `getAvailable`'s return type `Array<{ provider; id }>` → `Model<any>[]` and its `mockReturnValueOnce([{ provider, id }])` calls to `[makeModel({ provider, id })]`; change the `parentModel` / `explicitModel` / `resolvedModel` / `foundModel` partial literals (`{ provider, id }`) to `makeModel({ provider, id })` (import `makeModel` from `#test/helpers/make-model`).
+  `toBe(...)` assertions are unaffected (same object identity).
 - `test/runtime.test.ts` — default `makeSessionCtx.modelRegistry: undefined` → a stub registry `{ find: () => undefined, getAll: () => [] }` (satisfy non-optional `SessionContext.modelRegistry`); in the `getModelInfo returns model and modelRegistry` test, change `model: { id, name }` to a `makeModel({ id, name })` captured in a var and switch the assertion `toEqual({ id, name })` → `toBe(model)`.
 
 No change needed (verified): `test/lifecycle/parent-snapshot.test.ts` (casts via `as unknown as ExtensionContext`), `test/service/service-adapter.test.ts` (`makeStubCtx` already supplies `{ find, getAll }` and `model: undefined`), `test/print-mode.test.ts` (`as any`), `test/lifecycle/create-subagent-session.test.ts` (uses `STUB_SNAPSHOT`).

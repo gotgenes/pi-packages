@@ -16,15 +16,11 @@ catalog:
   "eslint": "^10.15.0"
   "globals": "^17.14.0"
   "typescript-eslint": "^8.73.0"
-  # Pinned exactly, not caret-ranged. Newer releases join a sentence that opens
-  # with a reference link or a lowercase word ("[#752] and ...", "release-please
-  # reads ...") onto the previous line under our sentence-per-line reflow:
-  # 0.2.78 reports 593 MD013 findings across 369 files, 0.2.24 reports none.
-  # require-sentence-capital = false trades those joins for false splits after
-  # "etc." and closing quotes, so it is not a workaround.
-  # Upstream: https://github.com/rvben/rumdl/issues/933
+  # Pinned exactly, not caret-ranged: rumdl's sentence-per-line reflow output
+  # changes between releases, so a version bump reflows the whole repo and
+  # lands as its own reviewed commit (0.2.24 -> 0.3.5 touched about 400 files).
   # Keep prek.toml's rumdl-pre-commit rev in lockstep with this pin.
-  "rumdl": "0.2.24"
+  "rumdl": "0.3.5"
   # TypeScript 7 runs side by side with TypeScript 6, the setup the TS 7.0
   # release documents. TS 7 ships no compiler API, and typescript-eslint and
   # rollup-plugin-dts `require("typescript")` for one, so the name `typescript`

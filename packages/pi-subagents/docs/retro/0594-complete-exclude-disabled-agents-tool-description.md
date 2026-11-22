@@ -61,6 +61,7 @@ Attribution — the contributor gets durable credit:
   ```
 
 - The ship-stage PR close comment thanks `@whaoa` by name and links the implementing SHA(s).
+
 - Reference the PR as `Refs #594` / `(#594)` — never `Closes #594`.
 
 ## Stage: Planning (2026-07-15T18:52:00Z)
@@ -77,7 +78,8 @@ Two `fix:` cycles: (1) source guidelines from config + wire into `AgentTool`, (2
   Sourcing from config in registry order emits guidelines as `general-purpose, Explore, Plan` — a cosmetic reorder from the current `Explore, Plan, general-purpose`, now consistent with the `Default agents:` type-list order.
   Operator chose registry order over an explicit order anchor; the all-enabled description text is byte-identical, only line order changes.
   This intentionally relaxes the PR-review "no change to default description" non-goal (line order only).
-- **ISP.** `buildAgentGuidelines` reuses the existing `TypeListRegistry` interface (reads only `getDefaultAgentNames` + `resolveAgentConfig`) — no new or wider dependency.
+- **ISP.**
+  `buildAgentGuidelines` reuses the existing `TypeListRegistry` interface (reads only `getDefaultAgentNames` + `resolveAgentConfig`) — no new or wider dependency.
 - **No dead-code window.**
   The helper is introduced and wired into `AgentTool` in the same commit, so `fallow dead-code` sees no orphaned export mid-sequence.
 - **Empty-list safety.**

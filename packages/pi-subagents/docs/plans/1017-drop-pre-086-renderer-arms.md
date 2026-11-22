@@ -226,10 +226,8 @@ Test count (estimated): 81 today → 80 after step 3 → 81 after step 5 → 68 
 9. **`test(pi-subagents): group the inherited-identity tests by anchor`** Dissolve the `pi ≥0.86 section shape` describe into anchor describes under `inherited session-resolved tail`: `skills-section anchor`, `cwd-section anchor`, `project-context anchor`, `Pi's tool surface`, `no <cwd> section`, then the existing `the assembled child prompt`, `shared prefix with the parent` (keep this name; the package skill cites it), and `the child's own project context`.
    Reword the fixture doc and the `#918`-era comment to cite the 1.0.0 dist without version contrast.
    Verify: test count unchanged from step 7.
-10. **`docs(pi-subagents): describe the prompt layers Pi renders today`**
-    `docs/configuration.md`: line 24 lists the section order (preamble, `<tools>`, `<rules>`, `<docs>`, an `<addendum>`, `<project_context>`, `<skills>`, `<cwd>`, then extension sections); line 35's row becomes `<cwd>`; delete line 53's pre-0.86 sentence.
-11. **`docs(pi-subagents): mark the pre-0.86 renderer step landed (#1017)`**
-    `docs/architecture/architecture.md`: line 378, the step heading and Mermaid node ✅, a `Landed:` note (arms removed, the unanchored fix as the `fix:` vehicle, both metric rows at 0).
+10. **`docs(pi-subagents): describe the prompt layers Pi renders today`** `docs/configuration.md`: line 24 lists the section order (preamble, `<tools>`, `<rules>`, `<docs>`, an `<addendum>`, `<project_context>`, `<skills>`, `<cwd>`, then extension sections); line 35's row becomes `<cwd>`; delete line 53's pre-0.86 sentence.
+11. **`docs(pi-subagents): mark the pre-0.86 renderer step landed (#1017)`** `docs/architecture/architecture.md`: line 378, the step heading and Mermaid node ✅, a `Landed:` note (arms removed, the unanchored fix as the `fix:` vehicle, both metric rows at 0).
     `.pi/skills/package-pi-subagents/SKILL.md` lines 40–44: the `<cwd>` anchor, the `<skills>` wrapper, the unanchored fallback, and the #640 rationale restated for the section shape.
 
 ## Risks and Mitigations

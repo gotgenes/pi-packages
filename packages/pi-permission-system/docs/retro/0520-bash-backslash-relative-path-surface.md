@@ -50,8 +50,7 @@ Execution was notably clean: no rabbit-holes, an exemplary incremental feedback 
 
 #### What went well
 
-- Design-challenge handling (novel win): when the operator asked "branch vs. polymorphism?"
-  mid-plan, the response gave a balanced five-rule analysis, cited in-codebase precedent (`wildcard-matcher.ts` / `rule.ts` `windowsSeparators`), correctly located the *real* polymorphism question one layer down (`PathNormalizer`'s accumulating `platform === "win32"` branches), and used `ask_user` to let the operator decide — rather than defensively holding the plan or capitulating.
+- Design-challenge handling (novel win): when the operator asked "branch vs. polymorphism?" mid-plan, the response gave a balanced five-rule analysis, cited in-codebase precedent (`wildcard-matcher.ts` / `rule.ts` `windowsSeparators`), correctly located the *real* polymorphism question one layer down (`PathNormalizer`'s accumulating `platform === "win32"` branches), and used `ask_user` to let the operator decide — rather than defensively holding the plan or capitulating.
   The settled reasoning was carried forward into `/tdd-plan` as a note.
 - Dogfooding: the `pi-permission-system` extension under change gated the agent's own exploratory `bash -c` probe (opaque-wrapper flooring) and its own malformed-path `Edit` (external-directory gate) — two live confirmations of the surface being modified.
 - Dead-code sequencing planned in advance paid off: `PathNormalizer.usesWindowsSeparators()` landed in the same commit as its sole consumer, so `pnpm fallow dead-code` stayed clean with no suppression.

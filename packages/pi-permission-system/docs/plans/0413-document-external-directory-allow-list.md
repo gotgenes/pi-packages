@@ -80,10 +80,8 @@ The mechanism already works; the edits make it visible and teach the right surfa
 
 ### Mental model to convey
 
-- `path` answers "is this file path allowed at all?"
-  and applies everywhere (tools, bash, MCP, extension tools) — use it to **deny** sensitive files (`.env`, `~/.ssh/*`) globally.
-- `external_directory` answers "is reaching outside the working directory allowed?"
-  — use it to **allow** specific outside-CWD directories (caches, sibling projects) without opening all external access.
+- `path` answers "is this file path allowed at all?" and applies everywhere (tools, bash, MCP, extension tools) — use it to **deny** sensitive files (`.env`, `~/.ssh/*`) globally.
+- `external_directory` answers "is reaching outside the working directory allowed?" — use it to **allow** specific outside-CWD directories (caches, sibling projects) without opening all external access.
 - The layers compose with most-restrictive-wins, so allowing an outside-CWD directory belongs in `external_directory`, and an explicit `path` allow cannot loosen an `external_directory: ask` boundary.
 
 ### The recipe (single `*`)
@@ -114,8 +112,7 @@ Docs/config/schema only — no `src/` changes.
 
 - `docs/configuration.md`
   - In the `external_directory` Surface section, add a "cache directory" recipe block using `~/.cargo/registry/*`, with a sentence on single-`*` crossing subdirectory boundaries.
-  - Add a short "path vs external_directory — which surface?"
-    clarification (a sentence or compact bullet pair) so readers pick `external_directory` for outside-CWD allows.
+  - Add a short "path vs external_directory — which surface?" clarification (a sentence or compact bullet pair) so readers pick `external_directory` for outside-CWD allows.
   - Reaffirm most-restrictive-wins where the recipe lives (a `path` allow cannot loosen an `external_directory: ask` boundary).
   - Do not introduce any `**` example; if an adjacent sentence is edited, keep single-`*` idiom.
 - `README.md`

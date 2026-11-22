@@ -47,8 +47,7 @@ Filed follow-up #80 (consolidate `getConfig`/`getAgentConfig`) and updated the a
 
 - The user's second pushback ("Do we need more decomposition?") was the highest-leverage intervention in the session.
   Without it, the `as any` approach would have landed and the `pi-ai` import would have stayed in `session-config.ts` - defeating the goal of a SDK-free business-logic module.
-  The pattern of catching design-level issues through "is there a better seam?"
-  questions is worth preserving.
+  The pattern of catching design-level issues through "is there a better seam?" questions is worth preserving.
 
 #### Design observations (not actionable as rules)
 

@@ -32,8 +32,7 @@ Released as `pi-subagents-v5.6.0`.
   The dependency-graph analysis itself was sound — it confirmed no circular deps — but it answered a question nobody was asking.
 
 - `premature-convergence` — First draft of the plan included `WorktreeManager` extraction as "Phase A step 1" inside #72.
-  The user asked "did we create another issue that we need to tackle first?"
-  — pointing out that the prep work should be its own issue.
+  The user asked "did we create another issue that we need to tackle first?" — pointing out that the prep work should be its own issue.
   Impact: minor rework to update the plan and file #84; no code rework since it was caught during planning. (User-caught.)
 
 #### What caused friction (user side)

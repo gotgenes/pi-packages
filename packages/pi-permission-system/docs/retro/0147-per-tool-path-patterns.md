@@ -47,8 +47,7 @@ Filed #148 (path-aware bash rules) as a follow-on.
 #### What caused friction (user side)
 
 - The user's early exploration of nested bash rules and a universal `path` surface was valuable design work, but it extended the design phase significantly before converging on the simpler per-tool path patterns scope.
-  This was appropriate given the design space, but earlier convergence on "what's the minimal viable scope?"
-  could have shortened the session.
+  This was appropriate given the design space, but earlier convergence on "what's the minimal viable scope?" could have shortened the session.
   Not a criticism — the exploration produced #148 as a well-scoped follow-on.
 
 ### Changes made

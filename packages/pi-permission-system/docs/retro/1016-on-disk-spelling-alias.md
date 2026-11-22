@@ -99,8 +99,7 @@ One follow-up was filed: #1130, the infra-read exclusion compared lexically agai
 #### What caused friction (agent side)
 
 - `instruction-violation` — the first scope `ask_user` offered "NFC/NFD aliases" without defining NFC/NFD, against `clarification-gates`' "define a gate's terms of art before its substance".
-  User-caught: the operator answered with "What does NFC NFD mean?"
-  and then "Show me scope options again".
+  User-caught: the operator answered with "What does NFC NFD mean?" and then "Show me scope options again".
   Impact: two extra round trips; no rework.
 - `missing-context` — the plan's Risks section said an infra-read spelling mismatch fails toward an ask.
   It treated `isPiInfrastructureRead` as one comparison, but the function makes two that fail in opposite directions: the allow-list roots and the `excludedDirs` exclusion.

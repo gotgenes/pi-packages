@@ -15,8 +15,7 @@ Plan filed at `docs/plans/0575-survey-exec-capable-wrappers.md`; two TDD cycles 
 
 ### Observations
 
-- Web research classified each candidate by the criterion "does it run an inner command per input or as a subcommand?":
-  adopt `parallel`/`rust-parallel`/`rush` (parallelizers), `doas` (sudo rewrite), `setsid`/`stdbuf`/`watch`/`flock` (prefix wrappers); reject `sad` (batch file editor), `fselect` (SQL file search), `runiq` (line dedupe) as non-exec.
+- Web research classified each candidate by the criterion "does it run an inner command per input or as a subcommand?": adopt `parallel`/`rust-parallel`/`rush` (parallelizers), `doas` (sudo rewrite), `setsid`/`stdbuf`/`watch`/`flock` (prefix wrappers); reject `sad` (batch file editor), `fselect` (SQL file search), `runiq` (line dedupe) as non-exec.
 - `ask_user` confirmed the operator adopts all 8 always-invoke wrappers and **declines** `gargs` (exec-capable but niche); rejection notes stay plan-only (no issue comment).
 - None of the adopted tools is flag-gated like `find`/`fd` — each always invokes its command — so all go into `INDIRECTION_WRAPPER_NAMES`, none into `EXEC_CONDITIONAL_WRAPPERS`.
 - Per the [#490] retro, the floor half needs no code beyond the set edit: `WRAPPER_SENTINEL` already carries the `indirection` key and the advisory path reuses `resolveBashCommandCheck`, so the entire change is 8 strings + classifier tests + docs.
@@ -58,8 +57,7 @@ Friction was effectively nil; the session is a clean baseline for the "well-scop
   Planning read `docs/retro/0490-floor-indirection-wrappers.md` and lifted two load-bearing facts from it: the floor half needs no code beyond the `Set` edit (the `WRAPPER_SENTINEL` `indirection` key and advisory reuse already exist), and the change is a behavior-tightening `fix:` not a breaking change.
   Both held exactly, so the plan's "entire production change is 8 strings" prediction was literally true — a cross-session context bridge working as designed.
 - **Grounded the survey with `web_search` before deciding.**
-  Three `web_search` batches classified every candidate by the single criterion "does it run an inner command per input or as a subcommand?"
-  — confirming `sad`/`fselect`/`runiq` are non-exec (reject) and `flock` has a bare-fd form that over-floors (accepted edge), rather than guessing from tool names.
+  Three `web_search` batches classified every candidate by the single criterion "does it run an inner command per input or as a subcommand?" — confirming `sad`/`fselect`/`runiq` are non-exec (reject) and `flock` has a bare-fd form that over-floors (accepted edge), rather than guessing from tool names.
   The evidence then fed a crisp `ask_user` inventory confirmation.
 - **Smooth handling of the release-PR `UNSTABLE` edge case.**
   `release_pr_merge` refused on `merge_state: UNSTABLE`; per the ship prompt's step 6.4, checked `statusCheckRollup` (a non-empty rollup with a check `IN_PROGRESS`), waited it out via `ci_watch` (~180s), then retried `release_pr_merge` successfully — never fell back to `gh pr merge` while a check was running.

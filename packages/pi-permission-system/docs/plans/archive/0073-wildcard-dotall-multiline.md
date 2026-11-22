@@ -55,8 +55,7 @@ No new types, no data-shape changes, no config changes.
 
 ## TDD Order
 
-1. **test: multiline value fails to match wildcard `*` pattern (red)**
-   Add tests in `tests/wildcard-matcher.test.ts`:
+1. **test: multiline value fails to match wildcard `*` pattern (red)** Add tests in `tests/wildcard-matcher.test.ts`:
    - `wildcardMatch("*", "line1\nline2")` → expected `true`
    - `wildcardMatch("node *", "node -e \"\nfoo\n\"")` → expected `true`
    - `compileWildcardPattern("*", "allow").regex.test("a\nb")` → expected `true`
@@ -68,8 +67,7 @@ No new types, no data-shape changes, no config changes.
 
    Commit: `fix: add dotAll flag so wildcard`*`matches newlines (#73)`
 
-3. **test: integration — multiline bash command resolves to allow**
-   Add a test in `tests/permission-manager.test.ts`:
+3. **test: integration — multiline bash command resolves to allow** Add a test in `tests/permission-manager.test.ts`:
    - Config: `{ "*": "allow", bash: { "rm -rf *": "deny" } }`
    - `checkPermission("bash", { command: "node -e \"\nimport(...)\n\"" })` → `state: "allow"`
 

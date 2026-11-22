@@ -62,8 +62,7 @@ All ten plan steps completed except step 10's replies on dependant threads, defe
   A bundled K1–K5 gate bounced ("go over these one at a time … provide context"); every later gate briefed one question with history, consequences, and concrete scenarios first.
   Several `ask_user` calls failed with "no visible text" when the call carried no prose in the same message; the operator's guidance was to present the case in the message, then call `ask_user`.
   Twice the operator saw the options without the question ("What was the question?"), and the fix was restating the full question.
-- **Operator asides that changed the design**, each better than the plan's candidate: the glossary; yolo acting before the chain ("Have I misunderstood?") became auto-approve as a terminal; "run this agent completely unfettered" became the unrestricted mode; Route 3 (a downstream policy-source point) stayed open with binding constraints; "Do *we* offer `systemctl restart *`?"
-  reopened Gate E and produced deny-aware suggestions plus deny suspension (P2) instead of two kinds of session rule.
+- **Operator asides that changed the design**, each better than the plan's candidate: the glossary; yolo acting before the chain ("Have I misunderstood?") became auto-approve as a terminal; "run this agent completely unfettered" became the unrestricted mode; Route 3 (a downstream policy-source point) stayed open with binding constraints; "Do *we* offer `systemctl restart *`?" reopened Gate E and produced deny-aware suggestions plus deny suspension (P2) instead of two kinds of session rule.
 - **Re-survey before closing.**
   The operator asked for a survey of issues filed during the build before Gate G; [#1108] showed the cross-scope merge keeps a redefined key's position, which every slot decision had assumed away.
   A long deliberation should re-survey incoming issues before its final gate.

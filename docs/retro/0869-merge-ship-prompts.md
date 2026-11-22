@@ -89,8 +89,7 @@ The pre-completion reviewer returned WARN with two documentation findings, both 
 
 - **The autoformatter split two section citations mid-sentence.**
   `§ *7. Verify CI on the pushed commit*` was reflowed into two lines at the numeral's period, because `7.` reads as a sentence end.
-  Reworded to `` the `## 7. Verify CI on the pushed commit` section of ...
-  ``, which survives the reflow.
+  Reworded to `` the `## 7. Verify CI on the pushed commit` section of ... ``, which survives the reflow.
   Worth knowing before citing a numbered section by `§ N.` anywhere in this repo's markdown.
 
 - **One deviation from the plan's step list.**
@@ -132,8 +131,7 @@ The session produced ten commits and one round of post-review corrections; no ga
   The second gate then priced merging the two prompts outright — an option the issue had not listed — and that became the design.
 
 - **The operator asked a question where a directive would have closed the door.**
-  "Are we able to specify multiple models?"
-  produced a reading of the resolver that changed the answer's shape: a comma list is an *acceptable set* (no switch when the current model is already in it), not a preference order.
+  "Are we able to specify multiple models?" produced a reading of the resolver that changed the answer's shape: a comma list is an *acceptable set* (no switch when the current model is already in it), not a preference order.
   A directive to pin a specific model would have shipped the same frontmatter with a wrong mental model of what it does.
 
 #### What caused friction (agent side)

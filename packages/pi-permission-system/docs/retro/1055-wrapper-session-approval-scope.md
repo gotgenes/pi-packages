@@ -68,9 +68,13 @@ A non-breaking `fix(pi-permission-system):` — a user who relied on `nohup *` s
 
 - Direction: **adopt the capability, simplified design** — plan via `/plan-issue #1055`; the PR is reference, not the merge target.
   `/plan-issue` should treat the direction as decided and plan around the scope below.
+
 - Scope: inner-command narrowing for recognized literal wrapper prefixes, nested layers retained, space-before-wildcard, fail-closed exact-command fallback, `OPAQUE_COMMAND_LINE_WRAPPERS`/exec-conditional/opaque-payload layers kept exact, the gate round-trip tests, the docs paragraph.
+
 - Non-goals: `xargs` replacement generalization (operator decision: exact command, no wildcard); config `deny` reaching behind wrappers; `command`/`exec` vocabulary; #1042's `sudoedit` peeling.
+
 - Roadmap: #1055 is out of scope for Phase 15 (operator decision, 2026-10-10), recorded in `docs/architecture/architecture.md`'s sweep list.
+
 - Attribution: every implementation/docs commit ends with
 
   ```text

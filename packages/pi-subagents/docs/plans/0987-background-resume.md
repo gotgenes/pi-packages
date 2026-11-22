@@ -211,6 +211,7 @@ Predicted unchanged, in the blast radius:
    Verify: the existing `spawnBackground` tests pass unmodified.
    Re-read the moved code against the `code-design` skill before committing (an extraction copies the source's shape into a shared function).
    Prepares: the resume door's launch message in step 5, and closes [#988]'s duplication before it exists.
+
 2. **`refactor(pi-subagents): start a resume synchronously through startResume`** Add `ResumeStart` and `SubagentManager.startResume`; `resume` composes it.
    Claim semantics unchanged in this step (`if (options.claimOutcome) agent.claim();`).
    Tests in `test/lifecycle/subagent-manager.test.ts` under the resume `describe`, in a new nested `describe("startResume")`:
@@ -219,6 +220,7 @@ Predicted unchanged, in the blast radius:
    Killing mutations: (a) make `startResume` return `{ kind: "started", record: agent }` before calling `agent.resume(...)` — the running-status test goes red; (b) delete the `resumeRefusal` check — the `still-running` test goes red.
    Verify: every existing `resume` test passes unmodified.
    Prepares: a non-waiting door (step 5) and the single site for the claim fix (step 3).
+
 3. **`fix(pi-subagents): announce a resumed agent's outcome even after an earlier carrier delivered it`** In `startResume`, `if (options.claimOutcome) agent.claim(); else agent.release();`, with the comment from the Design Overview; update the `release()` caller comment in `src/lifecycle/subagent.ts`.
    Tests in `test/lifecycle/subagent-manager.test.ts`, new `describe("resume announcement after a delivered outcome")`, using a real `NotificationManager` wired as `onSubagentResumed: (r) => notifications.sendCompletion(r)` with the parent run idle:
    - after `spawnFg` (which claims), an unclaimed `resume` sends one completion message (`sendMessage` called once) and leaves `claimed === false`;
@@ -226,8 +228,10 @@ Predicted unchanged, in the blast radius:
    - a `claimOutcome: true` resume after `spawnFg` sends none (pins that the fix does not over-release).
    Killing mutation: revert to `if (options.claimOutcome) agent.claim();` — the first two tests go red, the third stays green.
    This is the service door's fix too; its commit body says so (an unclaimed `SubagentsService.resume` of an agent that was foreground-spawned or waited on now announces, as the README contract states).
+
 4. **`refactor(pi-subagents): give the subagent tool's manager seam startResume`** Add `startResume` to `AgentToolManager` in `src/tools/agent-tool.ts`; add it to `createToolDeps`'s default manager and add `mockResumeStart`/`mockResumeStartRefusal` in `test/helpers/make-deps.ts`, mirroring `mockResumeRecord`/`mockResumeRefusal` (typed `vi.fn` implementations per the `testing` skill so the fixture satisfies the interface).
    No behavior change; `pnpm --filter @gotgenes/pi-subagents run check` after the commit confirms `SubagentManager` still satisfies `AgentToolManager` at the composition root.
+
 5. **`fix(pi-subagents): resume a subagent in the background when the call asks for run_in_background`** Add the explicit-flag branch and `resumeInBackground` to `AgentTool`; extend the `resume` parameter description.
    Tests in `test/tools/agent-tool.test.ts`, new `describe("background resume")` inside `AgentTool — resume path`:
    - with `run_in_background: true`, calls `manager.startResume` with `("agent-1", "continue", {})` and never `manager.resume`, and returns the full launch text (`Agent resumed in background.`, `Agent ID: …`, `Type: …`, `Description: …`, notification lines) via `toBe`;

@@ -52,8 +52,7 @@ Relevant modules and how they relate:
   `checkPathPolicy(values, agentName?, sessionRules?, surface="path")` skips normalization, uses precomputed values, then `buildCheckResult`.
   Both already funnel through the shared private `buildCheckResult` helper ([#393]).
 - `src/access-intent/access-path.ts` — the `AccessPath` value object ([#476]); `matchValues()` returns the lexical alias union ∪ canonical for the `external_directory` surface.
-- Gate descriptor factories that resolve:
-  `src/handlers/gates/path.ts` (`resolve("path", {path})`), `bash-command.ts` (three `resolve("bash", {command})` calls), `bash-path.ts` (`resolvePathPolicy(policyValues)`), `external-directory-policy.ts` (`resolvePathPolicy(path.matchValues(), …, "external_directory")`), plus the tool-resolve site in `tool-call-gate-pipeline.ts` and the descriptor-resolve site in `runner.ts`.
+- Gate descriptor factories that resolve: `src/handlers/gates/path.ts` (`resolve("path", {path})`), `bash-command.ts` (three `resolve("bash", {command})` calls), `bash-path.ts` (`resolvePathPolicy(policyValues)`), `external-directory-policy.ts` (`resolvePathPolicy(path.matchValues(), …, "external_directory")`), plus the tool-resolve site in `tool-call-gate-pipeline.ts` and the descriptor-resolve site in `runner.ts`.
 - Raw (non-gate) manager callers: `src/permissions-service.ts`, `src/skill-prompt-sanitizer.ts`, `src/permission-event-rpc.ts`, and the resolver's own raw `checkPermission`.
 
 AGENTS.md / skill constraints that apply:

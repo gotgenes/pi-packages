@@ -21,7 +21,8 @@ The five-step plan (`docs/plans/0985-heredoc-free-line-salvage.md`) leads with a
   `cat 0<<EOF | …` lexes `0<<EOF` as one `heredoc_start` inside a top-level `ERROR`, which is never a candidate.
 - **Prototype (a patched `withSalvagedRoots`, reverted).**
   All four fail-open rows deny, and `cat <<EOF arg > /tmp/o` projects `/tmp/o` as a `write`.
-  Over 9084 distinct intact review-log commands, 7 change (all `git commit -F - <<'MSG' 2>&1 | tail`), and only by duplicated units; 0 verdicts change. 11 existing tests fail, all exact-list assertions over salvage output.
+  Over 9084 distinct intact review-log commands, 7 change (all `git commit -F - <<'MSG' 2>&1 | tail`), and only by duplicated units; 0 verdicts change.
+  11 existing tests fail, all exact-list assertions over salvage output.
 - **Anchor choice.**
   Anchoring on the host `redirected_statement` rather than the source line is what recovers `if true; then cat <<EOF ; rm x`; an `ERROR` host falls back to the line start.
 - **Cut, not blank.**

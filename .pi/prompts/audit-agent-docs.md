@@ -237,7 +237,9 @@ A destination that does not exist is a design choice for a separate change; the 
    ```
 
    Run the `always-loaded` line only when the audit covered `docs`.
+
 3. Confirm every applied row landed: for each `delete`, `grep -c '<passage>'` on its file returns 0; for each `compress`, the rule's distinctive phrase is still present and the incident's is not; for each applied `offload`, the distinctive phrase is absent from the source and present in the destination.
+
 4. When the run applied any `offload` row, verify the **corpus** as well — a per-row grep cannot see a line dropped rather than mis-moved:
 
    ````bash
@@ -250,8 +252,10 @@ A destination that does not exist is a design choice for a separate change; the 
    ````
 
    Every line it prints must be a recorded `delete`/`compress` target, a heading the destination re-shaped, or a `pi-autoformat` reflow; anything else is a lost line.
+
 5. For `workflow`, confirm the structure the executing agents depend on survived:
    - `grep -h '^# ' .pi/prompts/*.md | diff /tmp/audit-h1-before.txt -` prints nothing — no H1 moved.
+
    - For each edited template, the skills it loads are a superset of the pre-prune set; this prints nothing when they are:
 
      ```bash
@@ -260,11 +264,13 @@ A destination that does not exist is a design choice for a separate change; the 
      ```
 
    - Every `step N`/`Step N` reference into an edited template (`grep -rn '<template-name>.*[Ss]tep [0-9]' .pi/prompts .pi/agents .pi/skills AGENTS.md`, plus the template's own "step N" mentions) still names the step it meant.
+
 6. Write the inventory's `## Assessment` — the audit's verdict on the admission test, not on the corpus:
    - Which verdict dominated, and what that says about where the growth is.
    - Which admission question did the cutting, and which never fired.
      A question that never fires is disconnected, not satisfied.
    - Any passage kept only because it had nowhere to go; name the destination that does not exist and needs creating.
+
 7. Commit twice, adding the corpus's paths — `AGENTS.md .pi/skills/` for `docs`, `.pi/prompts/ .pi/agents/` for `workflow` (plus `.pi/skills/` when an offload landed there), all four for `all`:
 
    ```bash

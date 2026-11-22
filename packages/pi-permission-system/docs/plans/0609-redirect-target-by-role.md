@@ -50,7 +50,8 @@ The cause is the phase's: the collector knows the token is a redirect target (th
   The `COMMAND_PREFIX_TYPES` re-spellings sit in functions this change does not edit and moved to [#977]; `bash-path-extractor.ts` has no production caller, so this change adds no case to its test and the question moved to [#978] (operator decision at planning, recorded in the roadmap).
 - **`> /dev/null` on the path surface.**
   It is already a `path_write` candidate today (absolute, so the shape gate admits it) and this change does not alter it; [#951] owns the device fact.
-- **The gates.** `bash-path.ts`, `bash-external-directory.ts`, and `external-directory-policy.ts` are predicted unchanged (see Module-Level Changes).
+- **The gates.**
+  `bash-path.ts`, `bash-external-directory.ts`, and `external-directory-policy.ts` are predicted unchanged (see Module-Level Changes).
 - **Blame on the ask** ([#881]) and command-effect declarations ([#880]).
 
 ## Background
@@ -315,17 +316,21 @@ The first credits #609's mechanism (keep a redirect's provenance through to the 
    Add an `effectsOf(tokens)` projection to `{ token, effect }[]` beside `tokenTextsOf`, and route those calls through it; no literal's contents change.
    Verify: suite green; then apply the mutation "make `redirectDestinationEffect` return `UNPROVEN_EFFECT` for an output operator" and confirm "proves a write for an output redirect destination" still goes red through the helper; revert.
    Commit: `test(pi-permission-system): assert collected token effects through a projection`.
+
 2. **Name a redirect's target** — `redirect-analysis.ts` `redirectTargetIndex`; tests in `redirect-analysis.test.ts` asserting `redirect.child(index)?.text`: `> out.txt` → `out.txt`; `grep pat 2>/dev/null f.txt` → `/dev/null`; `cmd 2>&1` → `1`; `echo hi >&-` → `undefined`.
    Killing mutations: "return the index of the **last** named child" kills the `2>/dev/null f.txt` case; "return the index of the first named child" (no operator skip) kills it too by returning the descriptor `2`.
    Commit: `refactor(pi-permission-system): name the child a redirect reads or writes`.
+
 3. **Tell a literal argument from a computed one** — `node-text.ts` `hasComputedPart`; tests in `node-text.test.ts`: `out.txt`, `'$x'`, `"$HOME/out"` → false; `$OUT`, `"$OUT"`, `"${DIR}/x"`, `out-$(date).txt`, `<(cmd)` → true.
    Killing mutations: "return `false` unconditionally" kills `"$OUT"`; "treat every variable expansion as computed (skip `resolvePlainVariableExpansion`)" kills `"$HOME/out"`.
    Commit: `refactor(pi-permission-system): detect an argument whose value is computed at run time`.
+
 4. **Stamp the role at collection** — `token-collection.ts`: `TokenRole`, required `PathToken.role`, all 8 sites, `collectRedirectTokens` + `provesTarget`.
    Run `pnpm run check` after this step; `bash-path-resolver.ts`'s `tagTokens` still destructures `{ token, effect }` and compiles unchanged.
    New `describe("token role")` in `token-collection.test.ts`, asserting `{ token, role }` pairs over `collectPathCandidateTokens`: `cat a > out.txt` → `a` operand, `out.txt` redirect-destination; `sort < in.txt` → redirect-destination; `grep pat 2>/dev/null f.txt` → `/dev/null` redirect-destination, `f.txt` operand; `echo hi > "$OUT"` → operand; `cat <> rw.txt` → operand; `echo hi > ""` → operand; `echo hi > $(cat /etc/shadow)` → `/etc/shadow` operand.
    Killing mutations, one per class: stamp `redirect-destination` on every destination child (kills `f.txt`); drop the `hasComputedPart` clause (kills `"$OUT"`); drop the `syntax`-source clause (kills `<>`); drop the non-empty clause (kills `""`); stamp `"operand"` everywhere (kills `out.txt` and `in.txt`).
    Commit: `refactor(pi-permission-system): record a redirect target's role on its collected token` (no consumer reads the role yet), with the co-author trailer paragraph.
+
 5. **Project by role** — `bash-path-resolver.ts`: `PathCandidate.role`, `tagTokens`, both projections.
    `program.test.ts`, under `pathRuleCandidates` (cwd `/projects/my-app`, which does not exist, so the probe never admits a bare token): `cat /etc/hosts > out.txt` → `{ token: "out.txt", effect: write/syntax }` among the candidates; `sort < in.txt` → `in.txt` read/syntax; `cd "$D" && echo hi > out.txt` → `out.txt` with a literal-only match value; negatives `find /usr 2>/dev/null -type d` (no `-type`, no `d`), `echo hi > "$OUT"` (no `$OUT`), `cat <> rw.txt` (no `rw.txt`).
    Under `externalPaths`: `cd "$D" && echo hi > out.txt` → one external access, effect write; `cd "$D" && sort < in.txt` → effect read; `echo hi > out.txt` with a known base → none (inside cwd).
@@ -349,6 +354,7 @@ The first credits #609's mechanism (keep a redirect's provenance through to the 
    ```
 
    and the co-author trailer paragraph last.
+
 6. **Docs** — every file under Module-Level Changes → Docs, including the roadmap `✅` (heading and Mermaid node) and `Landed:` note with the re-run corpus figures.
    Commit: `docs(pi-permission-system): record that a redirect's target is projected by its role`.
 

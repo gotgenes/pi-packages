@@ -37,7 +37,8 @@ All 60 test files pass; `pnpm run check`, `pnpm run lint`, and `pnpm fallow dead
 
 - One deviation from the plan: the `makeWorktrees` test helper in `worktree-state.test.ts` needed an explicit `WorktreeCleanupResult` type annotation on its `result` parameter — TypeScript inferred `{ hasChanges: boolean }` (no optional `branch`/`path` fields) from the default argument, which caused a type error on the call site that passed `{ hasChanges: true, branch: "pi-agent-1" }`.
   Fixed in the same commit as the `RunHandle` step.
-- `RunHandle` landed exactly as designed: `wireSignal`, `attachObserver`, `complete`, `fail`, `releaseListeners`, `fireOnFinished` (idempotent). `startAgent` is now ~40 lines with zero mutable `let` bindings and one-liner `.then()`/`.catch()` handlers.
+- `RunHandle` landed exactly as designed: `wireSignal`, `attachObserver`, `complete`, `fail`, `releaseListeners`, `fireOnFinished` (idempotent).
+  `startAgent` is now ~40 lines with zero mutable `let` bindings and one-liner `.then()`/`.catch()` handlers.
 - `flushPendingSteers` and `setupWorktree` extracted cleanly — each about 8 lines, no surprises.
 - The `WorktreeCleanupResult` import needed to be added to the test file alongside the existing `WorktreeManager` import for the type annotation fix — minor but worth noting for the next engineer.
 - Architecture doc updated: Step 3 entry now reflects `RunHandle` rather than the original `handleRunCompletion`/`handleRunError` proposal.
@@ -53,8 +54,7 @@ The final design replaced the original mechanical-extraction proposal with a `Ru
 
 #### What went well
 
-- The user's two design redirections during planning ("What collaborators are still missing?"
-  and "Make the change that makes the change easy") transformed a mechanical extraction plan into a structural improvement.
+- The user's two design redirections during planning ("What collaborators are still missing?" and "Make the change that makes the change easy") transformed a mechanical extraction plan into a structural improvement.
   The resulting `RunHandle` eliminated the root cause (mutable closure state) rather than just shortening the method.
 - The prep-step pattern worked exactly as intended: `WorktreeState.performCleanup` (step 1) and `finalizeBackgroundRun` (step 3) made the `RunHandle` rewrite (step 4) straightforward.
   Step 4's large edit landed cleanly with all 962 tests passing on the first run.

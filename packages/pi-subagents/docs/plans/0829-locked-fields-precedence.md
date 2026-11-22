@@ -281,12 +281,17 @@ Both runners read `config.notes` and never build note text themselves — one pr
 
 ### Design review notes
 
-- **Tell-Don't-Ask.** `resolveField` answers a question; no consumer inspects a lock declaration and decides for itself. `isLocked` is private to `invocation-config.ts`.
-- **ISP.** `resolveAgentInvocationConfig` takes the whole `AgentConfig` because it reads six of its fields, which is the object's own purpose; no narrower slice would be honest.
+- **Tell-Don't-Ask.**
+  `resolveField` answers a question; no consumer inspects a lock declaration and decides for itself.
+  `isLocked` is private to `invocation-config.ts`.
+- **ISP.**
+  `resolveAgentInvocationConfig` takes the whole `AgentConfig` because it reads six of its fields, which is the object's own purpose; no narrower slice would be honest.
 - **Scattered decisions.**
   Note construction moves from one runner's inline expression to one producer read by both.
-- **Dependency width.** `thinking-level.ts` imports one type from pi-ai and nothing else; `invocation-config.ts` gains no new import beyond it.
-- **No vacant hooks.** `LOCKABLE_FIELDS` has one consumer (`custom-agents.ts`'s parser) and `notes` has two; neither is speculative.
+- **Dependency width.**
+  `thinking-level.ts` imports one type from pi-ai and nothing else; `invocation-config.ts` gains no new import beyond it.
+- **No vacant hooks.**
+  `LOCKABLE_FIELDS` has one consumer (`custom-agents.ts`'s parser) and `notes` has two; neither is speculative.
 
 ## Module-Level Changes
 
@@ -297,7 +302,8 @@ Greps backing this list, run at planning time over `packages/pi-subagents/` plus
 - `ThinkingLevel` — imported from `#src/types` by nine `src/` modules; only `src/types.ts:5` imports it from pi-ai.
 - `fellBack` — `src/tools/spawn-config.ts`, `src/tools/foreground-runner.ts:115`, `test/helpers/make-spawn-config.ts`, and three test files.
 - "are locked for that agent" / "Frontmatter is authoritative" — `docs/configuration.md:86-88` only.
-- No `.pi/skills/**` file names any symbol or mechanism this change touches. `AGENTS.md:117` asserts the `Explore` + `model: "sonnet-5"` dispatch; that claim becomes true and needs no edit.
+- No `.pi/skills/**` file names any symbol or mechanism this change touches.
+  `AGENTS.md:117` asserts the `Explore` + `model: "sonnet-5"` dispatch; that claim becomes true and needs no edit.
 
 ### Source
 

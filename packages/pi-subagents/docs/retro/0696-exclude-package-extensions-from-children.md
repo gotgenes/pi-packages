@@ -295,8 +295,7 @@ A mid-session permission anomaly the operator caught produced two extra issues (
 #### What caused friction (user side)
 
 1. **The highest-leverage intervention in the session was a question, not a correction.**
-   "What justification did it have running `find /`?"
-   was strategic oversight of exactly the kind this workflow wants from the operator — it questioned an agent's *judgment* rather than its output, and it found things no deterministic gate would have.
+   "What justification did it have running `find /`?" was strategic oversight of exactly the kind this workflow wants from the operator — it questioned an agent's *judgment* rather than its output, and it found things no deterministic gate would have.
    Worth repeating as a pattern.
 
 2. **A durable principle arrived late and only in chat.**

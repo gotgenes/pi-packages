@@ -10,7 +10,8 @@ issue_title: "Split AgentWidget rendering from lifecycle (Phase 9, Step P)"
 ### Session summary
 
 Extracted pure rendering functions (`renderWidgetLines`, `renderFinishedLine`, `renderRunningLines`) from `AgentWidget` into `ui/widget-renderer.ts`.
-The widget shrank from 374 to 198 lines — now a thin lifecycle wrapper. 23 new unit tests cover all status variants, overflow, tree connectors, and empty states.
+The widget shrank from 374 to 198 lines — now a thin lifecycle wrapper.
+23 new unit tests cover all status variants, overflow, tree connectors, and empty states.
 Released as `pi-subagents-v6.16.1`.
 
 ### Observations

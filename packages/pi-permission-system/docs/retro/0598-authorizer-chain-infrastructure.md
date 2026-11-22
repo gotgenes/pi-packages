@@ -47,7 +47,8 @@ Test count 2499 → 2506 (+7 `composeAuthorizerChain` unit tests); full suite, `
 - **The plan held exactly.**
   All three commits landed as planned (`refactor:` / `refactor:` / `docs:`); every file in Module-Level Changes was touched and the two behavior pins (`authorizer.test.ts`, `authorizer-selection.test.ts`) stayed unchanged (zero-line diffs).
   No deviations.
-- **Empty-links identity verified two ways.** `composeAuthorizerChain([], terminal)` returns the terminal instance, pinned both by the unchanged `authorizer-selection.test.ts` (`expect.any(LocalUserAuthorizer)`) and a dedicated `toBe(terminal)` unit test.
+- **Empty-links identity verified two ways.**
+  `composeAuthorizerChain([], terminal)` returns the terminal instance, pinned both by the unchanged `authorizer-selection.test.ts` (`expect.any(LocalUserAuthorizer)`) and a dedicated `toBe(terminal)` unit test.
 - **One tool-friction note:** an `Edit` to `architecture.md` was first denied by the `external_directory` gate because I used a wrong path (`.../pi-permission-system/docs/...` instead of `.../pi-packages/packages/pi-permission-system/docs/...`) — corrected on retry. (A live instance of exactly the typo-path class ADR 0007's future model judge targets.)
 - **Pre-completion reviewer: PASS** — ready for `/ship-issue`.
   Reviewer reconfirmed the mid-batch defer: the `docs:` completion commit sits in the pending release-please PR unmerged until Step 5 (#599) ships.

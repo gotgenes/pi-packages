@@ -324,7 +324,8 @@ A direct `test/session/project-context.test.ts` pins the format for both.
 **Becoming redundant.**
 The two `contextFiles`-bearing portable tests in `parent-snapshot.test.ts` lose their input; the format half moves to the new file and the composition half (`orders the parts the way Pi composes them`) shrinks to custom + append.
 
-**Must stay as-is.** `describe("shared prefix with the parent")` and `describe("the assembled child prompt")` in `prompts.test.ts` exercise exactly the layer this change touches and are the regression net for the equal-cwd case.
+**Must stay as-is.**
+`describe("shared prefix with the parent")` and `describe("the assembled child prompt")` in `prompts.test.ts` exercise exactly the layer this change touches and are the regression net for the equal-cwd case.
 
 **New surface.**
 The `parentPrompt()` fixture (line 406) composes `identity` → `skills` → `footerCwd` → `extensionTail` with Pi's real separators, and reads the catalogue heading back from Pi's own `formatSkillsForPrompt` rather than copying it.

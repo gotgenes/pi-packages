@@ -19,9 +19,7 @@ Planning also uncovered a matching hole on the `path` / `external_directory` sur
   The package skill's debugging rule ("reproduce the literal repro before concluding it is already handled") paid off in both directions: it confirmed `nikaro`'s case *and* surfaced four more (`>>`, `2>`, `&>`, `< <(…)`, unquoted heredoc) that the report did not mention.
   A pure code reading of `COMMAND_ENUM_SKIP` would have found the redirect case but probably not the heredoc one.
 - **Root cause is a conflated set, not a missing branch.**
-  `COMMAND_ENUM_SKIP` answers two questions at once — "is this a command?"
-  and "can this host a command?"
-  — and a redirect answers them differently.
+  `COMMAND_ENUM_SKIP` answers two questions at once — "is this a command?" and "can this host a command?" — and a redirect answers them differently.
   Framing the fix as splitting that set (rather than adding a special case for `file_redirect`) is what made the heredoc case fall out for free.
 - **tree-sitter already solves the quoted-heredoc problem.**
   I expected to need a `heredoc_start` quote check; probing showed `<<'EOF'` and `<<"EOF"` simply produce no `command_substitution` node.

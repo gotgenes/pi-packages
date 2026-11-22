@@ -22,7 +22,8 @@ Produced a 3-cycle TDD plan (`docs/plans/0644-gate-project-config-on-trust.md`) 
   The runtime path needs an **explicit** `includeProjectScope` flag, not an empty cwd — `getProjectConfigPath("")` resolves relative to `process.cwd()`, which would defeat the gate.
 - Chose a **required** (no-default) `projectTrusted` parameter at every internal seam so TypeScript forces a conscious trust decision — no unsafe "trusted by default" fallback.
   The signature cascade (config-store → session → handler → index.ts) is compile-coupled, so the gate + all consumer/test updates land in one commit (cycle 2), per the lift-and-shift rule.
-- Verified `ctx.isProjectTrusted()` exists on `ExtensionContext` in `@earendil-works/pi-coding-agent@0.79.1`. `resources_discover` handlers do receive `(event, ctx)`; `index.ts` currently drops the ctx arg — cycle 2 wires it.
+- Verified `ctx.isProjectTrusted()` exists on `ExtensionContext` in `@earendil-works/pi-coding-agent@0.79.1`.
+  `resources_discover` handlers do receive `(event, ctx)`; `index.ts` currently drops the ctx arg — cycle 2 wires it.
 - `#646` fail-closed clamp does not interact: an untrusted project's config is never loaded, so `projectConfig.invalid` never fires.
   No regression.
 - Breaking change (`fix!`) → next major (package.json already at 21.0.0, release-please manifest ahead).
@@ -78,7 +79,8 @@ The ship phase was clean end-to-end — lint/fallow/CI green, issue closed with 
 
 #### What caused friction (agent side)
 
-- `missing-context` — a hand-built ctx literal in `test/permission-events.test.ts` (cast to `ExtensionContext`) lacked `isProjectTrusted`, so it slipped `tsc` and failed only at the full-suite run (`ctx.isProjectTrusted is not a function`). 18 test files hand-roll ctx literals via `as unknown as ExtensionContext` / `as never`; only 4 needed the new field, and the casts hide the gap from the type check.
+- `missing-context` — a hand-built ctx literal in `test/permission-events.test.ts` (cast to `ExtensionContext`) lacked `isProjectTrusted`, so it slipped `tsc` and failed only at the full-suite run (`ctx.isProjectTrusted is not a function`).
+  18 test files hand-roll ctx literals via `as unknown as ExtensionContext` / `as never`; only 4 needed the new field, and the casts hide the gap from the type check.
   Impact: one extra fix cycle during TDD (a full-suite runtime failure after the affected-file cycle passed); no shipped defect.
 - `missing-context` (plan-time) — the plan's Module-Level Changes did not enumerate the `before_agent_start` and factory-init `refreshConfig` call sites, despite the `testing` skill's rule to list every file in a threaded-parameter chain.
   Impact: none in the end — the required-param cascade made `tsc` surface both, folded into the same commit; but the miss was a latent security gap that only the design choice caught.

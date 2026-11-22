@@ -60,7 +60,8 @@ Constraints from AGENTS.md / the package skill that apply:
 - Enforce permissions deterministically — recording the same patterns and emitting the same events must be preserved.
 - Keep modules focused (one concern per file); import siblings via `#src/` / `#test/` aliases.
 - Every new export needs a consumer — fallow flags speculative re-exports as dead code.
-- Biome `noNonNullAssertion` bans `x!`; prefer explicit guards. `representativePattern` returns `string | undefined` and callers guard rather than assert.
+- Biome `noNonNullAssertion` bans `x!`; prefer explicit guards.
+  `representativePattern` returns `string | undefined` and callers guard rather than assert.
 - ES2024 target — `for...of`, spread, getters available.
 
 ## Design Overview

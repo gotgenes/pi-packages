@@ -88,7 +88,8 @@ Clean hands-off execution — the only user input was one `ask_user` answer ("Re
   Ship ran on `opencode-go/deepseek-v4-flash` — fine for the mechanical push/CI/close flow, but it also made the "no release expected" inference; correct here, latent risk in general (see user-side note).
 - **Escalation-delay tracking** — No `rabbit-hole`s.
   Both deviations resolved within 1–2 tool calls; no sequence exceeded 5 calls on one error.
-- **Unused-tool detection** — No `missing-context` gaps. `grep` (not `colgrep`) was used throughout planning, correctly — every search was an exact symbol match (`agentActivity`, `AgentActivityTracker`, `subscribeUIObserver`), which is grep's lane per the colgrep decision table.
+- **Unused-tool detection** — No `missing-context` gaps.
+  `grep` (not `colgrep`) was used throughout planning, correctly — every search was an exact symbol match (`agentActivity`, `AgentActivityTracker`, `subscribeUIObserver`), which is grep's lane per the colgrep decision table.
 - **Feedback-loop gap analysis** — No gap; verification was incremental, not end-only (see "What went well").
   The one escape (`import type` removal) is a tsc-tolerance gap, not a cadence gap — `check` ran on schedule but cannot flag an unused type import.
 

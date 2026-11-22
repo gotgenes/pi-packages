@@ -32,8 +32,7 @@ This session also included #133 (plan + implement + ship) which preceded the #13
    Impact: added friction but no rework — the conclusion was correct, just slow to reach.
 
 2. `wrong-abstraction` — Step 4 (`MenuCtx`) attempted to mechanically narrow the handler parameter without questioning why `ctx` was threaded 4 layers deep.
-   Partially implemented the `MenuCtx` interface before the user's "What am I misunderstanding?"
-   prompt exposed the real issue: a TDA violation where intermediate functions carry `ExtensionContext` only to relay it.
+   Partially implemented the `MenuCtx` interface before the user's "What am I misunderstanding?" prompt exposed the real issue: a TDA violation where intermediate functions carry `ExtensionContext` only to relay it.
    Impact: partial implementation reverted via `git checkout src/ui/agent-menu.ts`; ~10 minutes of wasted edits.
 
 3. `instruction-violation` (user-caught) — Used `pnpm exec biome check --write --unsafe` instead of `pnpm run lint:fix` to fix pre-existing lint issues.
@@ -41,8 +40,7 @@ This session also included #133 (plan + implement + ship) which preceded the #13
    Impact: no functional difference (same result), but violated the established convention and used an unnecessary `--unsafe` flag.
 
 4. `instruction-violation` (user-caught) — Dismissed pre-existing lint issues as "not from our changes" without fixing them.
-   The user asked "Why do we have pre-existing lint issues?"
-   — the correct action was to fix them immediately rather than noting and ignoring them.
+   The user asked "Why do we have pre-existing lint issues?" — the correct action was to fix them immediately rather than noting and ignoring them.
    Impact: required an extra commit (`style: fix pre-existing lint issues`) that should have been folded into an earlier step.
 
 #### What caused friction (user side)

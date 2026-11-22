@@ -107,21 +107,27 @@ The issue closed with both breaking changes documented, and [#788] is now unbloc
 - `instruction-violation` (self-identified) — read a hand-built absolute path with a doubled package segment instead of the repo-relative form `AGENTS.md` § Shell and search requires (Refs [#726]).
   Impact: one denied tool call, no rework — the `model-judge` denial named the correct path.
   Notable as a **recurring** friction: [#787]'s retro recorded the identical slip one issue earlier, so the rule's existence is not the gap.
+
 - `other` (shell semantics) — built a `FILES="a b c"` variable and passed it unquoted to `perl`; `zsh` does not word-split an unquoted parameter, so the whole list arrived as one filename.
   Impact: one failed call, re-run with the list spelled inline.
   `AGENTS.md` collects three other `zsh`-vs-`bash` divergences but not this one.
+
 - `instruction-violation` (self-identified) — added an `eslint-disable-next-line @typescript-eslint/no-unnecessary-condition` preemptively on the `typeof sessionId !== "string"` guard, which the `code-design` skill forbids ("add the directive only after the linter reports the rule").
   Impact: one extra edit; `pnpm run lint` reported `Unused eslint-disable directive` immediately, so the loop closed in one cycle.
+
 - `instruction-violation` (identified at retro, not in-session) — one `edits[]` entry in the [ADR 0012] amendment carried `oldText2`/`newText2` keys, which `AGENTS.md` explicitly names as silently ignored (Refs [#605]).
   Impact: **none** — the keys were empty and the real replacement sat in `oldText`/`newText`, and the reported block count (3) matched the intended edits (3).
   Recorded because the failure mode is latent: real content in `oldText2` would have been dropped under a success report.
+
 - `other` (anticipated, absorbed) — the scripted docs rename produced the contradiction "the zero-arg `getRootPermissionsService()`" in four files, plus a stale arity in the guide's degradation note and an over-broad `stringContaining` probe in the deprecation test.
   Impact: five hand edits after the script; caught by reading every diff, flagged by no gate.
+
 - `other` (during the retro itself) — posted the [#772] evidence comment with `gh issue comment --body '…'`, hand-escaping backticks as `` \` `` inside **single** quotes, where a backslash is literal.
   Every backtick shipped as `` \` ``.
   Impact: one malformed comment, repaired with `--edit-last --body-file`.
   The planning stage's [#788] comment used the same hand-escaping and survived only because it was double-quoted.
   This is the sibling of the backslash trap `AGENTS.md` already records for `Edit` replacements, and it became proposal P4.
+
 - `other` (formatter interaction) — three `Edit` attempts were needed to land the new `zsh` line, because the `rumdl fmt` pass kept joining it onto the preceding line.
   Impact: two wasted edits, then a rewrite to "In zsh an unquoted parameter is not word-split …".
 

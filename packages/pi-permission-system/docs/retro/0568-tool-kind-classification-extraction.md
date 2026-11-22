@@ -29,7 +29,8 @@ Wrote a five-step TDD plan (one true red for the new module, the rest behavior-p
 - **ADR-0002 boundary holds.**
   `tool-kind.ts` imports only the pure `PATH_BEARING_TOOLS` set, staying `AccessPath`-free, so `permission-manager.ts` importing `classifyToolKind` does not breach the string boundary.
   Noted as an at-risk invariant pinned by the existing ESLint rule.
-- **Release posture.** `refactor:` (hidden changelog type), head of batch "tool-kind-dispatch" (tail = Step 2, #569) → mid-batch defer; does not cut a release on its own.
+- **Release posture.**
+  `refactor:` (hidden changelog type), head of batch "tool-kind-dispatch" (tail = Step 2, #569) → mid-batch defer; does not cut a release on its own.
 - **First-party, unambiguous** → no `ask_user` gate; the one design choice (union vs product) was resolved via code-design heuristics.
 
 ## Stage: Implementation — TDD (2026-07-10T15:00:00Z)
@@ -42,8 +43,10 @@ The extraction-family production discriminator sites dropped to 0 and the total 
 
 ### Observations
 
-- **No new characterization tests needed.** `permission-manager-unified.test.ts` already pinned every `deriveSource` arm (special / skill / bash / mcp config+default / tool config+default), so the manager migration was a pure refactor under green.
-- **Two in-scope cleanups folded into the manager step (deviation from a strict file-by-file plan, anticipated in the plan's Design Overview).** `getToolPermission`'s per-kind branches were provably dead (every branch, including SPECIAL and default, evaluated the identical `evaluate(normalizedToolName, "*", composedRules, platform).action`) and collapsed to one line; `BUILT_IN_TOOL_PERMISSION_NAMES` became dead once the `path`/`bash` kinds covered its role and was removed.
+- **No new characterization tests needed.**
+  `permission-manager-unified.test.ts` already pinned every `deriveSource` arm (special / skill / bash / mcp config+default / tool config+default), so the manager migration was a pure refactor under green.
+- **Two in-scope cleanups folded into the manager step (deviation from a strict file-by-file plan, anticipated in the plan's Design Overview).**
+  `getToolPermission`'s per-kind branches were provably dead (every branch, including SPECIAL and default, evaluated the identical `evaluate(normalizedToolName, "*", composedRules, platform).action`) and collapsed to one line; `BUILT_IN_TOOL_PERMISSION_NAMES` became dead once the `path`/`bash` kinds covered its role and was removed.
 - **Exhaustive switches** in `normalizeInput`, `getToolInputPath`, and `deriveSource` make a future `ToolKind` variant a compile error rather than a silent fall-through — the OCP win.
 - **`buildInputForSurface` left untouched** as planned (it dispatches on service/path *surface* names including `external_directory`, which has no `ToolKind` variant).
 - **Metric nuance:** the recompute grep now returns 12, one of which is a docstring inside `tool-kind.ts` (the outcome permits sites inside that module); all 11 others are the presentation family.

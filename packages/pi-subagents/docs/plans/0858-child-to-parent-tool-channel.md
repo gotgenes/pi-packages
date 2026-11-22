@@ -58,7 +58,8 @@ Investigation reduced them to one real gap and one bug, and turned up a fourth p
 - **Rate-limiting or quota on updates.**
   The lever is the `midRunUpdates` setting and the tool's own description; a per-run cap is policy the core does not need until a chatty child is observed.
 - **Widening the allowlist from a user-authored key.** [#768] and [#612] stay closed on their own grounds; see Background.
-- **Widget rendering of an update.** `AgentWidget` implements `SubagentManagerObserver`, but it has no use for the new hook, and a vacant hook is refused by [ADR-0002]'s governing rule.
+- **Widget rendering of an update.**
+  `AgentWidget` implements `SubagentManagerObserver`, but it has no use for the new hook, and a vacant hook is refused by [ADR-0002]'s governing rule.
 - **[#870]'s post-result addendum delivery.**
   Phase 22 Step 12, unaffected by this plan.
 - **Fixing `tools: none`.**
@@ -82,7 +83,8 @@ The marker is read off the child's **final** assistant message, so a child that 
 
 Three findings, each verified rather than assumed:
 
-1. **It deadlocks in the foreground.** `runForeground` awaits `spawnAndWait`, so the parent cannot call `steer_subagent` while inside its own tool execution.
+1. **It deadlocks in the foreground.**
+   `runForeground` awaits `spawnAndWait`, so the parent cannot call `steer_subagent` while inside its own tool execution.
 2. **The reply cannot travel through the SDK.**
    `Agent.steer()` enqueues into `steeringQueue`, drained *between* turns (`pi/packages/agent/src/agent.ts:283`), so a tool blocked awaiting an answer blocks its own delivery.
    The reply would have to be intercepted in `Subagent.steer()`.
@@ -470,8 +472,7 @@ Neither direction is pinned by a byte-count test today and this plan adds none �
 7. **`feat(pi-subagents): let a running background child send its parent an update`** `NotifyParentTool`; `CreateSubagentSessionParams.notifyParent` and its definition; `Subagent.run()` supplies it under `isBackground && midRunUpdates`; `RunConfig.midRunUpdates`; the settings field and its `/subagents:settings` row.
    *Killing mutations:* (a) supply it regardless of `isBackground` — the "a foreground child is not given `notify_parent`" test goes red; (b) supply it regardless of the setting — the `midRunUpdates: false` test goes red; (c) remove the 2000-character truncation — the cap test goes red.
 
-8. **`docs(pi-subagents): document the child-to-parent tools and narrow the tool-widening boundary`**
-   README, `configuration.md`, `architecture.md` (including Step 11 ✅, its `Landed:` note, and the Mermaid mark), and the package skill, per Module-Level Changes.
+8. **`docs(pi-subagents): document the child-to-parent tools and narrow the tool-widening boundary`** README, `configuration.md`, `architecture.md` (including Step 11 ✅, its `Landed:` note, and the Mermaid mark), and the package skill, per Module-Level Changes.
 
 ## Risks and Mitigations
 

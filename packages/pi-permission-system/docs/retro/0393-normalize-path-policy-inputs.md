@@ -17,13 +17,10 @@ The operator chose to **adopt the capability and plan a simplified design** (dir
 
 **Valuable core (keep):**
 
-- `getPathPolicyValues` / `normalizePathPolicyLiteral` (`src/path-utils.ts`) —
-  a clean way to derive the equivalent lookup forms for a path, reusing the
-  existing `normalizePathForComparison` lexical cleanup.
+- `getPathPolicyValues` / `normalizePathPolicyLiteral` (`src/path-utils.ts`) — a clean way to derive the equivalent lookup forms for a path, reusing the existing `normalizePathForComparison` lexical cleanup.
 - `evaluateAnyValue` (`src/rule.ts`) — genuinely distinct from `evaluateFirst`: it preserves global last-match-wins **across** aliases of the same path, so a catch-all match on the first alias can't mask a later, more specific rule on another alias.
   This is the right semantic for "same path, multiple spellings" and is correctly gated behind `PATH_SURFACES` in `permission-manager.ts` while MCP (genuinely different targets) keeps `evaluateFirst`.
-- The cwd plumbing in `permission-manager.ts` (`currentCwd` captured in
-  `configureForCwd`, threaded into `normalizeInput`).
+- The cwd plumbing in `permission-manager.ts` (`currentCwd` captured in `configureForCwd`, threaded into `normalizeInput`).
 
 **What I would change (simplify):**
 
@@ -120,7 +117,8 @@ Two `feat!:` commits carried `BREAKING CHANGE:` footers; every implementation/do
 - **Pre-implementation code reading prevented carrying over dead mechanism.**
   Reading `runDescriptor` (`runner.ts`) during planning revealed the PR's symbol stamp on `descriptor.input` was vestigial (the bash path gate always sets `preCheck`, so `descriptor.input` is never re-resolved).
   This directly shaped the simpler design — no rework, the insight was confirmed again during TDD.
-- **Incremental verification caught breakage at the seam, not at the end.** `pnpm run check` run immediately after each interface-break step (manager `checkPathPolicy`, resolver `resolvePathPolicy`) caught the inline fake manager in `permission-resolver.test.ts` the moment it broke.
+- **Incremental verification caught breakage at the seam, not at the end.**
+  `pnpm run check` run immediately after each interface-break step (manager `checkPathPolicy`, resolver `resolvePathPolicy`) caught the inline fake manager in `permission-resolver.test.ts` the moment it broke.
 - **The pre-completion reviewer earned its keep.**
   It caught the stale `SKILL.md` fixture catalog that the implementation missed; fixed before ship.
 

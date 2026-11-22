@@ -90,7 +90,8 @@ Execution was clean overall; the one recurring friction was the plan over-predic
   No quality defect resulted, but ship-issue does carry real judgment — worth noting that its proceduralization is what absorbed the model mismatch.
 - **Escalation-delay tracking** — no `rabbit-hole`; the two prediction-gap fixes resolved in 1–2 tool calls each via the per-step `fallow dupes` check.
   No sequence exceeded the 5-call flag.
-- **Unused-tool detection** — none needed; scope was small and fully understood from the planning-stage file reads. `fallow dupes` was the right and sufficient tool.
+- **Unused-tool detection** — none needed; scope was small and fully understood from the planning-stage file reads.
+  `fallow dupes` was the right and sufficient tool.
 - **Feedback-loop gap analysis** — verification ran *incrementally*: `pnpm run check` + `vitest run <file>` + `pnpm fallow dupes` after every step, full suite + `fallow dead-code` at the end.
   No end-only verification gap.
 

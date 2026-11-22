@@ -191,8 +191,10 @@ Stamping here rather than inside `reducePrompt` keeps the pure decision model fr
 - **Yolo.**
   Two arms reach the yolo fast path: a composition-stage rewrite (`origin: "yolo"` on the matched rule, #526) and an `ask` synthesized after resolution (#712).
   Both are `{ kind: "yolo", pattern }`, where `pattern` is the preserved `matchedPattern` — including a sentinel like `<opaque-bash-wrapper>`, which is what makes a yolo grant over a synthetic ask legible.
-- **Grant-scope translation.** `ForwardedRequestServer.applyGrantScope` rewrites `approved_for_serving_session` to a plain `approved`; it must carry `decidedBy` through unchanged, or a whole-session grant loses its decider.
-- **Serving-node policy arms.** `resolveDecision` currently reads only `.state` off `policy.resolve(...)`; it takes the whole `PermissionCheckResult` so the `rule` variant can carry `matchedPattern` and `origin`.
+- **Grant-scope translation.**
+  `ForwardedRequestServer.applyGrantScope` rewrites `approved_for_serving_session` to a plain `approved`; it must carry `decidedBy` through unchanged, or a whole-session grant loses its decider.
+- **Serving-node policy arms.**
+  `resolveDecision` currently reads only `.state` off `policy.resolve(...)`; it takes the whole `PermissionCheckResult` so the `rule` variant can carry `matchedPattern` and `origin`.
 - **Escalation failure.**
   The `catch` arm in `resolveDecision` becomes `{ kind: "gate_error", reason }` rather than an unattributed deny.
 - **Version skew, both directions.**

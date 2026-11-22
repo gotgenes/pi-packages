@@ -83,8 +83,7 @@ This completes Phase 23 Track B ([#947] → #912); Track A and Track D remain op
 - `other` (planning judgment): the plan noted that #912 shifts the baseline of #1051's "`SubagentRecord` is unchanged" constraint but judged no edit necessary; the pre-completion reviewer WARNed on it.
   Impact: one follow-up `docs:` commit and a second reviewer dispatch.
 - `instruction-violation` (self-identified at retro): the ship's `git merge --ff-only "$BRANCH" | tail -3` piped the merge through `tail`, which masks its exit status, and `git-workflow` § Gating a commit on a check forbids exactly that.
-  The ship report also handed the operator the "last step of a phase?"
-  check instead of running the one `grep` it needed.
+  The ship report also handed the operator the "last step of a phase?" check instead of running the one `grep` it needed.
   Impact: none; the merge was a fast-forward, and #912 is not Phase 23's last step.
 
 #### What caused friction (user side)

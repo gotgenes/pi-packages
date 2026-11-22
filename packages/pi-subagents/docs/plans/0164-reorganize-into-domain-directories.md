@@ -13,8 +13,7 @@ The flat layout makes it hard to reason about domain boundaries and navigate to 
 
 ## Goals
 
-- Move the 26 flat `src/` domain files into five new subdirectories (`config/`, `session/`,
-  `lifecycle/`, `observation/`, `service/`).
+- Move the 26 flat `src/` domain files into five new subdirectories (`config/`, `session/`, `lifecycle/`, `observation/`, `service/`).
 - Mirror the new structure in `test/` by moving the 25 corresponding test files.
 - Update every import path (relative imports in `src/`; `#src/` aliases in `test/`).
 - Leave `index.ts`, `runtime.ts`, `types.ts`, `settings.ts`, `debug.ts` at the `src/` root.
@@ -23,9 +22,7 @@ The flat layout makes it hard to reason about domain boundaries and navigate to 
 ## Non-Goals
 
 - Moving `handlers/`, `tools/`, or `ui/` — these directories already exist.
-- Consolidating the three UI test files (`conversation-viewer.test.ts`, `display.test.ts`,
-  `widget-renderer.test.ts`) that are misplaced at `test/` root — pre-existing inconsistency,
-  out of scope.
+- Consolidating the three UI test files (`conversation-viewer.test.ts`, `display.test.ts`, `widget-renderer.test.ts`) that are misplaced at `test/` root — pre-existing inconsistency, out of scope.
 - Any refactoring of module interfaces or logic — this is a pure filesystem reorganization.
 
 ## Background
@@ -87,12 +84,9 @@ When a file at `src/X.ts` moves to `src/domain/X.ts`, three sets of paths change
    - `"../Y"` if `Y` stays at the `src/` root (`debug`, `types`, `runtime`)
    - `"../other-domain/Y"` if `Y` moves to a different domain
 
-2. **`src/` consumers** — files in `tools/`, `ui/`, or at the root that previously imported
-   `"../X"` or `"./X"` update to `"../domain/X"` or `"./domain/X"` respectively.
+2. **`src/` consumers** — files in `tools/`, `ui/`, or at the root that previously imported `"../X"` or `"./X"` update to `"../domain/X"` or `"./domain/X"` respectively.
 
-3. **`test/` consumers** — `#src/X` aliases become `#src/domain/X`; relative
-   test-helper imports like `"./helpers/mock-session"` become `"../helpers/mock-session"` for
-   files that move one level deeper.
+3. **`test/` consumers** — `#src/X` aliases become `#src/domain/X`; relative test-helper imports like `"./helpers/mock-session"` become `"../helpers/mock-session"` for files that move one level deeper.
 
 ### Circular dependency between `lifecycle` and `observation`
 

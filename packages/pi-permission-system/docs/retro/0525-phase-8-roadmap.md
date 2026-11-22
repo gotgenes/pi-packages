@@ -18,8 +18,7 @@ The Phase 7 archival was done inline — which, surfaced during the retro, turne
 #### What went well
 
 - The prompt's "treat a declared direction as a hypothesis, confirm with `ask_user`" instruction combined with the user's tidy-first note pivoted the entire phase cleanly.
-  The agent read the "Target: the authority model" section, deferred deep-tracing until after the focus gate, and let the user's "what makes the spine change easy?"
-  question become the organizing principle — producing a preparatory phase (yolo into the ruleset, `PermissionForwarder` split by direction, `SubagentDetection` collaborator) rather than a premature spine build.
+  The agent read the "Target: the authority model" section, deferred deep-tracing until after the focus gate, and let the user's "what makes the spine change easy?" question become the organizing principle — producing a preparatory phase (yolo into the ruleset, `PermissionForwarder` split by direction, `SubagentDetection` collaborator) rather than a premature spine build.
   No rework followed either `ask_user` gate.
 - The mandated "verify each created issue's title matches its body" step (File the issues, step 2) caught the `\u2192` literal-escape bug in [#526]'s title before it stuck — a case of a verification step earning its place in the workflow.
 - Verification was incremental: `rumdl` + `mmdc` ran after the first doc restructure (both diagrams checked) and again after the issue-linking edit, not only at session end.

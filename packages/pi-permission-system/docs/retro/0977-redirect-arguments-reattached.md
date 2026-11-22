@@ -56,8 +56,7 @@ The `pi-permission-system` suite went from 4648 to 4743 tests (+95), and every n
   Wiring the correction into `parser.ts` made `parser.ts` → `redirect-arguments.ts` → `redirect-analysis.ts` → `parser.ts` a cycle, which `fallow dead-code` rejects.
   The operator chose to extract `parseUnresolvedAt`/`parseUnresolvedWithin` into `parse-health.ts` rather than split `redirect-analysis.ts`.
   The correction now asks `parseUnresolvedWithin` instead of reading `hasError` itself.
-  The plan's import graph was never checked against the new edge; a `fallow guard`-style check of "does the module I am wiring in import back into me?"
-  would have caught it at planning.
+  The plan's import graph was never checked against the new edge; a `fallow guard`-style check of "does the module I am wiring in import back into me?" would have caught it at planning.
 - **Pipeline body (plan gap).**
   The grammar hangs a redirect on a pipeline's last stage off the whole pipeline (`rg -l x | xargs ls -1t 2>&1 ~/x` parses as `redirected_statement(pipeline, file_redirect)`), so the correction also descends `pipeline`.
   The plan's census checked body types only in real traffic (4 `command` bodies), and its own step-7 exemption test surfaced the gap.

@@ -77,7 +77,8 @@ No type shape changes — `promptMode` remains `"replace" | "append"` (`src/type
   Keep the cell's behavioral description of `replace`/`append` unchanged.
 - `test/config/custom-agents.test.ts` — update the two tests that assert the old default (see TDD Order).
 
-No architecture-doc references to the default value were found (`docs/architecture/` describes module layout, not field defaults). `CHANGELOG.md` is owned by release-please and is not edited.
+No architecture-doc references to the default value were found (`docs/architecture/` describes module layout, not field defaults).
+`CHANGELOG.md` is owned by release-please and is not edited.
 
 ## Test Impact Analysis
 
@@ -93,10 +94,15 @@ Existing tests in `test/config/custom-agents.test.ts` directly exercise the chan
 
 1. Red → Green: update default-mode tests in `test/config/custom-agents.test.ts`.
    - Change the empty-frontmatter test to expect `promptMode` `"append"`.
+
    - Rename the unknown-mode test to `"defaults unknown prompt_mode to append"` and expect `"append"`.
+
    - Add a `promptMode` assertion (`"append"`) to the no-frontmatter (`bare`) test.
+
    - These fail against the current line 65, then pass after the source fix.
+
    - Apply the one-line fix in `src/config/custom-agents.ts` in the same cycle (the test file and source are coupled — the type checker and assertions move together).
+
    - Commit (breaking — include the footer):
 
      ```text

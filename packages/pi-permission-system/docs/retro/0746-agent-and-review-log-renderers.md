@@ -123,7 +123,8 @@ The measured outcome held: `renderLegacyMessage` in `src/` went 17 → 0, and th
   No mismatch: no reasoning-weak model on judgment work, no high-cost model on mechanical work.
 - **Unused-tool detection** — the `design-review` skill was available, named by the active prompt, and not loaded; its checklist item 5 targets the one design defect the plan shipped.
   This is the only unused-tool finding.
-- **Feedback-loop gap analysis** — no gap. 57 verification invocations spread continuously across the TDD stage: a four-command green baseline at lines 137–144, then `pnpm run check` / scoped `vitest run` after essentially every change through line 590, with `lint` and `fallow dead-code` at each commit boundary.
+- **Feedback-loop gap analysis** — no gap.
+  57 verification invocations spread continuously across the TDD stage: a four-command green baseline at lines 137–144, then `pnpm run check` / scoped `vitest run` after essentially every change through line 590, with `lint` and `fallow dead-code` at each commit boundary.
   Verification was never deferred to the end.
 - **Escalation-delay tracking** — nothing notable.
   No `rabbit-hole` friction points; the longest same-error sequence was 2 tool calls (the 8-failure agent-renderer Green, resolved in one analysis pass into two distinct causes).

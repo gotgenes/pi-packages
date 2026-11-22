@@ -67,8 +67,7 @@ Filed #76 (`AgentManager.dispose()` reads `process.cwd()` without a stored `cwd`
 #### What caused friction (user side)
 
 - Nothing notable.
-  The user's two redirecting questions ("should that be a function?"
-  and "how many places access `process.*`?") were well-timed interventions that broadened scope productively.
+  The user's two redirecting questions ("should that be a function?" and "how many places access `process.*`?") were well-timed interventions that broadened scope productively.
 
 ### Changes made
 

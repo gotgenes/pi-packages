@@ -295,8 +295,10 @@ Run `pnpm run build` to verify.
 ### Step 6: Convert tool-call and input handlers to PermissionGateHandler
 
 1. Create `PermissionGateHandler` class with `handleToolCall` and `handleInput` methods.
-2. `handleToolCall` moves from `src/handlers/tool-call.ts` into the class. `getEventInput` stays as exported free function.
-3. `handleInput` moves from `src/handlers/input.ts` into the class. `extractSkillNameFromInput` stays as exported free function.
+2. `handleToolCall` moves from `src/handlers/tool-call.ts` into the class.
+   `getEventInput` stays as exported free function.
+3. `handleInput` moves from `src/handlers/input.ts` into the class.
+   `extractSkillNameFromInput` stays as exported free function.
 4. Update `tests/handlers/tool-call.test.ts` and `tests/handlers/tool-call-events.test.ts`: replace `makeDeps()` with `new PermissionGateHandler(mockSession, mockEvents, mockToolRegistry)`.
    Add `canPrompt`/`prompt` to session mock.
 5. Update `tests/handlers/input.test.ts` and `tests/handlers/input-events.test.ts`: same pattern.

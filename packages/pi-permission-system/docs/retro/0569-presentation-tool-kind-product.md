@@ -29,7 +29,8 @@ Wrote a five-step TDD plan (one true red for the new `isMcpCheck` unit tests, th
   Migrated `classifyToolKind(x) === "bash"` does not match the grep (the `)` before `===`), as confirmed by Step 1.
 - **`deriveDecisionValue` empty-path fallback.**
   The original `if (path) return path; return toolName` treats `""` as falsy; preserved with a truthy ternary (not `??`), pinned by `helpers.test.ts`.
-- **Release posture.** `refactor:` (hidden changelog type), **tail** of batch "tool-kind-dispatch" (head Step 1 / #568 landed) → ship now (land the batch tail); does not cut a release on its own, auto-batches into the next releasing change.
+- **Release posture.**
+  `refactor:` (hidden changelog type), **tail** of batch "tool-kind-dispatch" (head Step 1 / #568 landed) → ship now (land the batch tail); does not cut a release on its own, auto-batches into the next releasing change.
 - **First-party, unambiguous** → no `ask_user` gate; the one design choice (single no-target predicate) was resolved via code-design/SRP heuristics and existing characterization coverage.
 
 ## Stage: Implementation — TDD (2026-07-10T16:12:00Z)

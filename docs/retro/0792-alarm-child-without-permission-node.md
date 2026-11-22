@@ -152,8 +152,7 @@ The ship report nonetheless printed "Nothing skipped."
 ### Diagnostic details
 
 - **Model-performance correlation** — Planning and TDD ran on `anthropic/claude-opus-5` (judgment-heavy: seam elimination, ADR amendment, mutation design) and Sync and Ship on `anthropic/claude-sonnet-5` (mechanical: gates, rebase, ff-merge, CI watch).
-  The split is appropriate, and the miss is instructive rather than a mis-assignment: the one judgment call left in the ship stage — "is this sibling release PR mine?"
-  — landed on the cheaper model, against a prompt line that answered it wrongly.
+  The split is appropriate, and the miss is instructive rather than a mis-assignment: the one judgment call left in the ship stage — "is this sibling release PR mine?" — landed on the cheaper model, against a prompt line that answered it wrongly.
   The correction belongs in the prompt, which is the artifact the ship stage actually reads.
   Subagent dispatches: `tidy-first-assessor` (planning, one real preparatory gap plus one target-list contradiction) and `pre-completion-reviewer` ×2 (TDD, WARN both rounds, no blocking findings).
 - **Escalation-delay tracking** — no sequence exceeded two consecutive tool calls on the same error across any stage; no `rabbit-hole` friction point was recorded.

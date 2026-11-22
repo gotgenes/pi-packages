@@ -141,8 +141,7 @@ The decisive moment was not in the code but in the design gate, where the operat
   The longest same-topic sequence was five calls polling the release PR's `statusCheckRollup`; that was correct blocking behavior on a genuinely in-progress check, not a stall.
 - **Unused-tool detection** — `colgrep` was available and never invoked.
   Most exploration was exact-symbol tracing (`safeJsonStringify`, `appendFileSync`, `writeJsonFileAtomic`) where `grep` is the correct choice per the `colgrep` skill's own decision table.
-  The exception is the question that drove the whole design — "where does tool input get serialized on the way to the log?"
-  — which is intent-shaped and was answered by manually reading four files.
+  The exception is the question that drove the whole design — "where does tool input get serialized on the way to the log?" — which is intent-shaped and was answered by manually reading four files.
 - **Feedback-loop gap analysis** — no gap.
   `pnpm run check` plus the full package suite ran after every one of the five code-bearing TDD steps, not just at the end; each cycle confirmed a red before implementing; `pnpm run lint` ran at baseline, after the extraction, after the docs commit, and again pre-push.
   The one gate that ran only once was `pnpm pack`, and it was the one that found a bug — an argument for running it whenever a shipped doc gains a link.

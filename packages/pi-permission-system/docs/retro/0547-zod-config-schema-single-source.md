@@ -74,7 +74,9 @@ Six implementation commits, `+10` net tests, pre-completion WARN fixed, CI green
 - **Proactively checked biome warnings (exit 0).**
   After removing test blocks, an unused `it` import lingered as a biome *warning* — which `pnpm run lint` passes and the pre-completion reviewer's error-gated checks would miss.
   Explicitly inspecting `biome check` warnings caught it before commit.
-- **Incremental verification, no feedback-loop gap.** `pnpm run check` / the affected test file / `pnpm run lint` ran after *every* TDD step, and the full suite + `fallow dead-code` + a `pnpm pack` tarball inspection ran at the end. `expectTypeOf(...).toEqualTypeOf(...)` (enforced by `tsc`) de-risked the ~58-consumer type lift-and-shift before it landed.
+- **Incremental verification, no feedback-loop gap.**
+  `pnpm run check` / the affected test file / `pnpm run lint` ran after *every* TDD step, and the full suite + `fallow dead-code` + a `pnpm pack` tarball inspection ran at the end.
+  `expectTypeOf(...).toEqualTypeOf(...)` (enforced by `tsc`) de-risked the ~58-consumer type lift-and-shift before it landed.
 - **Ship-flow rule adherence under an in-progress release check.**
   The release-please PR reported `UNSTABLE` with a check still `IN_PROGRESS`; per the ship prompt I waited and re-polled rather than falling back to `gh pr merge` while the check ran, then merged clean via `release_pr_merge`.
 

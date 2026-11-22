@@ -82,9 +82,12 @@ The `roadmap-fit` skill dispositions these at filing time; this is the net for t
    ```
 
    The query keys on the package label, so an issue born from the phase but filed without one does not surface — label it at filing time.
+
 3. Drop the ones already accounted for: the phase's step issues from Step 1, and any number already named in the roadmap's `#### Open-issue sweep dispositions` list (grep `architecture.md` for each `[#N]`).
+
 4. Propose a disposition for each survivor and put the whole set to the user in **one** `ask_user` pass — not one round-trip per issue.
    Issues sharing a verdict share one bullet, matching the list's existing convention (`Feature issues [#736], [#720], … — out of scope for a structural phase`).
+
 5. Append the agreed entries — and their `[#N]:` link definitions — to the dispositions list **before** Step 5 archives the roadmap; an entry added after the move lands in the wrong file.
 
 Expect a non-trivial residual.
@@ -117,6 +120,7 @@ Do not copy a doc metric forward — recompute it:
 - When the phase findings table records a recompute command for a metric, **use that exact command** — not the `fallow:health` / `fallow:dupes` scripts.
   The scripts and the recorded commands can disagree: `pnpm fallow:health` expands to `fallow health --score --hotspots --targets`, and the `--hotspots --targets` flags **lower the score** (a package baselined at 88 A with `fallow health --score` alone reports 78 B under the script).
   Reconcile against the same command the baseline was computed with, or the "delivered" number will spuriously differ from the target.
+
 - When no recompute command is recorded, reconcile against the package's committed snapshot (`packages/$1/docs/fallow-snapshot.json`), which the previous phase close wrote.
   It records the score, grade, and nine other vital signs as of that close, so the comparison needs no guess about which `--score` form produced the doc's number.
   A snapshot records no workspace, and `--trend` reads the most recent file in `.fallow/snapshots/`, so empty that directory first or a sibling package's snapshot is compared silently:
@@ -129,6 +133,7 @@ Do not copy a doc metric forward — recompute it:
 
   Reconcile duplication with `pnpm fallow dupes --workspace @gotgenes/$1`.
   The fallow subcommands are root-level and take `--workspace @gotgenes/$1`; the `--filter`/`-C package` forms used elsewhere do **not** apply to them.
+
 - After reconciling, rewrite the snapshot so the next phase starts from this close, and commit it with the reconciliation:
 
   ```bash
@@ -136,9 +141,12 @@ Do not copy a doc metric forward — recompute it:
   ```
 
   Never hand-edit the file — every field in it is a number a command produces.
+
 - "Total LOC" / "Source LOC" counts `src/` only (`find packages/$1/src -name '*.ts' | wc -l` for the file count; `… -exec wc -l {} +` for LOC).
   Test counts come from `pnpm --filter @gotgenes/$1 run test`.
+
 - If a doc metric carries a mid-phase label ("as of Step N", "Phase N Step M", "as of [#N]"), replace it with the end-of-phase value and drop the label — the archived doc should read as the settled post-phase baseline, not a snapshot.
+
 - When the phase findings table records a recompute command for a target metric (a `grep -c`, `wc -l`, or fallow field), run it and record predicted vs. delivered in the history file's health-metrics table (a "delivered" column) and summarise it in the reconciliation commit body.
   Report misses honestly — they are retro input for the next planning round, not something to paper over.
 

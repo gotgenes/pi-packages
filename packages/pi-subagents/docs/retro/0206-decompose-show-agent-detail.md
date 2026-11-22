@@ -24,7 +24,8 @@ The plan extracts two exported pure functions (`buildMenuOptions`, `buildEjectCo
 
 ### Session summary
 
-Completed all 4 TDD steps. 3 `refactor:` commits extract `buildMenuOptions`, the three inline handlers, and `buildEjectContent`; 1 `docs:` commit updates the architecture table.
+Completed all 4 TDD steps.
+3 `refactor:` commits extract `buildMenuOptions`, the three inline handlers, and `buildEjectContent`; 1 `docs:` commit updates the architecture table.
 Test count grew from 21 to 33 (+12 new unit tests for the two exported pure functions).
 
 ### Observations

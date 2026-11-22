@@ -24,8 +24,11 @@ The plan scopes #445 to the first releasable vertical slice — full list → pi
   So no record in `listAgents()` is ever session-disposed; with the `listAgents()`-only candidate set, every listed session-ready record has a live session, and the dual-source "evicted/untracked → file" branch has no caller.
   Implementing it now would be dead code that fails the `fallow dead-code` gate.
   This sharpened the slice: #445 ships the **live source only** behind the seam.
-- **Type-boundary plan.** `AgentMessage` is not in the `@earendil-works/pi-coding-agent` barrel and `@earendil-works/pi-agent-core` is not a dependency, so the plan derives `SessionMessage = SessionContext["messages"][number]` from the barrel-exported `SessionContext` rather than adding a dep. `serializeConversation` takes a mutable `Message[]`, so the renderer spreads (`serializeConversation([...messages])`); `AgentMessage`→`Message` assignability is flagged as a TDD step-2 `pnpm run check` verification with a typed-adapter fallback.
-- **Seam justifies its weight via testability, not just the follow-up.** `TranscriptSource` + narrow `NavigableSubagent` interfaces let the pure module be unit-tested with light stubs (no full `Subagent`/`TUI`/`AgentSession`), and decouple the renderer (text→components) from sourcing (live→file) for the two named follow-ups.
+- **Type-boundary plan.**
+  `AgentMessage` is not in the `@earendil-works/pi-coding-agent` barrel and `@earendil-works/pi-agent-core` is not a dependency, so the plan derives `SessionMessage = SessionContext["messages"][number]` from the barrel-exported `SessionContext` rather than adding a dep.
+  `serializeConversation` takes a mutable `Message[]`, so the renderer spreads (`serializeConversation([...messages])`); `AgentMessage`→`Message` assignability is flagged as a TDD step-2 `pnpm run check` verification with a typed-adapter fallback.
+- **Seam justifies its weight via testability, not just the follow-up.**
+  `TranscriptSource` + narrow `NavigableSubagent` interfaces let the pure module be unit-tested with light stubs (no full `Subagent`/`TUI`/`AgentSession`), and decouple the renderer (text→components) from sourcing (live→file) for the two named follow-ups.
 - **Doomed-code avoidance.**
   The navigator must not import `message-formatters.ts` or `conversation-viewer.ts` (both deleted in Step 5, [#442]); the streaming indicator is a small local helper and the transcript text is Pi's `serializeConversation`.
 - **Open item for ship time:** the architecture roadmap's Step 4 description currently scopes full dual-source + components as one step and will need rescoping to match the slice, plus filing the two follow-up issues.

@@ -69,8 +69,7 @@ Two further facts constrain any fix:
 | in-process child (registry-detected)  | no — resolves the parent's | no — relays (ADR 0007 §7) | throws, 2× per subagent start          |
 | own-process child (env-hint-detected) | yes — its own process slot | no — relays (ADR 0007 §7) | succeeds into a registry nothing reads |
 
-Both node shapes answer "should this node host a link?"
-identically: no. Any fix keyed on "am I a registered in-process child" — the shape of [#699]'s Option A and PR [#702] — is process-specific by construction (it reads shared `globalThis` memory that only exists in-process) and leaves the silent case silently wrong.
+Both node shapes answer "should this node host a link?" identically: no. Any fix keyed on "am I a registered in-process child" — the shape of [#699]'s Option A and PR [#702] — is process-specific by construction (it reads shared `globalThis` memory that only exists in-process) and leaves the silent case silently wrong.
 Conversely, `permissions:ready` is a per-session channel that behaves identically in both shapes.
 
 One counterexample constrains the "links sit at the parent" intuition: `selectAuthorizer` (`src/authority/authorizer.ts`) gives a headless non-subagent node (CI) `DenyingAuthorizer` with `adjudicatesLocally: true` — it runs its chain, and a model judge there is meaningful.

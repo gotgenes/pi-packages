@@ -129,7 +129,8 @@ Key details:
 - **npm root -g returns a non-existent path**: `existsSync` check → returns `null`.
 - **Bun binary runtime**: walk-up fails (virtual filesystem), npm may not be available → subprocess fails → returns `null`.
   Acceptable — Bun binary bundles extensions.
-- **Windows**: `npm root -g` works on Windows. `spawnSync` handles cross-platform.
+- **Windows**: `npm root -g` works on Windows.
+  `spawnSync` handles cross-platform.
 - **NVM / fnm**: `npm root -g` returns the correct root for the active Node version.
 - **Custom npm prefix**: `npm root -g` respects the configured prefix.
 
@@ -165,8 +166,7 @@ Key details:
 
 ## TDD Order
 
-1. **test: cover `npm root -g` fallback in `discoverGlobalNodeModulesRoot`**
-   Add tests in `tests/external-directory.test.ts`:
+1. **test: cover `npm root -g` fallback in `discoverGlobalNodeModulesRoot`** Add tests in `tests/external-directory.test.ts`:
    - Walk-up-from-self succeeds → returns result without invoking subprocess.
    - Walk-up-from-self fails, subprocess returns valid path → returns that path.
    - Walk-up-from-self fails, subprocess fails (non-zero exit / throws) → returns `null`.

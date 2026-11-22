@@ -10,8 +10,7 @@ issue_title: "refactor: evolve SubagentRuntime from data bag to object with meth
 `SubagentRuntime` (introduced in #69) consolidates all mutable extension state into one object, but it remains a plain data bag — an interface with public mutable fields and no methods.
 This causes two structural smells in `index.ts`:
 
-1. **Output arguments** — handlers write raw fields on the runtime instead of calling methods:
-   `runtime.currentCtx = { pi, ctx }` and `runtime.currentCtx = undefined`.
+1. **Output arguments** — handlers write raw fields on the runtime instead of calling methods: `runtime.currentCtx = { pi, ctx }` and `runtime.currentCtx = undefined`.
 2. **Law of Demeter violations** — 8 occurrences of `runtime.widget!.method()` across 4 call sites in `index.ts`, where callers reach through the runtime to talk to the widget with unsafe `!` non-null assertions.
 
 Issue #70 (extract event handlers) explicitly lists this issue as a prerequisite.

@@ -287,8 +287,7 @@ The package skill (`.pi/skills/package-pi-permission-system/SKILL.md`) does not 
 ## Risks and Mitigations
 
 - Risk: the descent regresses an existing decision.
-  Mitigation: the change is strictly additive (whole-emit preserved, nested units added) and `pickMostRestrictive` can only move a decision toward more-restrictive; the full suite (incl.
-  `tool-call.test.ts` and the manager harness) runs in step 2, and the never-weaker case is asserted in step 1.
+  Mitigation: the change is strictly additive (whole-emit preserved, nested units added) and `pickMostRestrictive` can only move a decision toward more-restrictive; the full suite (incl. `tool-call.test.ts` and the manager harness) runs in step 2, and the never-weaker case is asserted in step 1.
 - Risk: anonymous delimiter tokens (`$(`, `)`, `(`) get emitted as spurious command units.
   Mitigation: the `!node.isNamed` guard skips every anonymous token; verified against the actual AST with a `web-tree-sitter` probe.
 - Risk: adding `context` / `commandContext` ahead of a reader trips `pnpm fallow dead-code`.

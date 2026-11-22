@@ -22,7 +22,8 @@ Committed the plan; no follow-up issues filed (deferred items are unfiled by des
 - Enter semantics decided by the planner (not re-asked): enter confirms the highlighted option in a single press; the double-press toggle governs only the **letter-hotkey** fast path.
   Navigate-then-enter is already two deliberate keystrokes.
 - Classified **non-breaking** (`feat:`, not `feat!:`): the TUI interaction changes on upgrade, but the `PermissionPromptDecision` contract, gate outcomes, and config surface are additive/unchanged; the new toggle defaults on and is disableable.
-- SDK verification: `ctx.ui.custom` renders inline by default and works only in TUI (`hasUI` is also true for RPC), so the gate is `ctx.mode === "tui"`, not `hasUI`. `config-modal.ts` is the in-package `ctx.ui.custom` precedent; `@earendil-works/pi-tui` is already a `devDependency`.
+- SDK verification: `ctx.ui.custom` renders inline by default and works only in TUI (`hasUI` is also true for RPC), so the gate is `ctx.mode === "tui"`, not `hasUI`.
+  `config-modal.ts` is the in-package `ctx.ui.custom` precedent; `@earendil-works/pi-tui` is already a `devDependency`.
 - `requestPermissionDecisionFromUi` is **retained** as the RPC fallback (lift-and-shift), so no consumer/doc breaks — only the injected seam re-points to a new `requestPermissionDecision` dispatcher.
 - `doublePressToConfirm` threaded as a live **getter** (not an activation snapshot) so the `/permission-system` settings-modal toggle takes effect on the next prompt.
 
@@ -65,7 +66,8 @@ Five TDD cycles landed with zero rework commits and no test failures (+37 tests,
   The operator explicitly appended "I also want to improve the flow" to an answer, which the interactive flow invited.
 - **An implementation-time design refinement improved on the plan.**
   The plan's "widen `PermissionDecisionUi` + dispatcher in `permission-dialog.ts`" would have created a `permission-dialog.ts` ↔ component import cycle; catching it during TDD and refining to a narrow `PermissionDecisionUi` + a `Pick`-based `PermissionPromptUi` (ISP) left `permission-dialog.ts` untouched and shrank the diff.
-- **The ship `UNSTABLE` guidance worked as written.** `release_pr_merge` refused with `merge_state: UNSTABLE`; the `statusCheckRollup` check was `IN_PROGRESS` (not the empty-rollup `GITHUB_TOKEN` case), so waiting two polls for it to finish and then retrying `release_pr_merge` was exactly the prompt's prescribed path — no premature `gh pr merge` fallback.
+- **The ship `UNSTABLE` guidance worked as written.**
+  `release_pr_merge` refused with `merge_state: UNSTABLE`; the `statusCheckRollup` check was `IN_PROGRESS` (not the empty-rollup `GITHUB_TOKEN` case), so waiting two polls for it to finish and then retrying `release_pr_merge` was exactly the prompt's prescribed path — no premature `gh pr merge` fallback.
 
 #### What caused friction (agent side)
 

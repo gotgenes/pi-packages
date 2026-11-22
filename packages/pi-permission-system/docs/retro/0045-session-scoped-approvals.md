@@ -27,8 +27,7 @@ The TDD cycle caught a `deriveApprovalPrefix` edge case (trailing-separator path
 #### What caused friction (agent side)
 
 - `missing-context` — After committing the docs update, I did not proactively confirm that all plan-flagged documents were aligned.
-  The user had to ask "All our documents are up to date?"
-  to trigger verification.
+  The user had to ask "All our documents are up to date?" to trigger verification.
   Impact: one extra user round-trip, no rework needed (docs were actually complete).
 - `other` (tool fragility) — A multi-edit `Edit` call on `README.md` failed on the second edit due to an `oldText` mismatch with Unicode `→` characters in the architecture tree.
   The first edit (session-scoped approvals section) was silently lost.
@@ -37,6 +36,5 @@ The TDD cycle caught a `deriveApprovalPrefix` edge case (trailing-separator path
 
 #### What caused friction (user side)
 
-- The "All our documents are up to date?"
-  prompt was mechanical oversight — the agent should have provided a verification summary unprompted after the docs commit.
+- The "All our documents are up to date?" prompt was mechanical oversight — the agent should have provided a verification summary unprompted after the docs commit.
   No user-side change needed; this is an agent salience issue.

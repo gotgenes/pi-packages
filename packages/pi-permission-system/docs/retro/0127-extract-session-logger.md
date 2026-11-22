@@ -11,7 +11,8 @@ issue_title: "refactor: extract SessionLogger interface to unify logging + notif
 
 Extracted three separate `HandlerDeps` logging/notification fields (`writeDebugLog`, `writeReviewLog`, `notifyWarning`) into a `SessionLogger` interface with `debug`/`review`/`warn` methods.
 Created `src/session-logger.ts` with the interface and `createSessionLogger()` factory, updated all handler source files and 6 test `makeDeps()` factories.
-Shipped as v5.8.0 with zero behavioral change. 7 new unit tests; total suite 1252 tests across 56 files.
+Shipped as v5.8.0 with zero behavioral change.
+7 new unit tests; total suite 1252 tests across 56 files.
 
 ### Observations
 

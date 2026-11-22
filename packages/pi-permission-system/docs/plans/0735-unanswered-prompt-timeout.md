@@ -56,7 +56,8 @@ Today a forwarded ask to a live, draining parent whose human is away waits the f
   Rederiving the column from `decidedBy` is a separate change.
 - **A live countdown.**
   The inline dialog names the window in its hint row as static text; the fallback gets no countdown (Pi's `select` `timeout` option would be a second clock racing this one).
-- **The `/permission-system` settings modal.** `promptTimeoutMs` is file-configured only, like `forwardingTimeoutMs`.
+- **The `/permission-system` settings modal.**
+  `promptTimeoutMs` is file-configured only, like `forwardingTimeoutMs`.
 - **[#722].**
   Its root-cause comment is the [#907] diagnosis, already fixed; whether to close it is housekeeping outside this plan (see Open Questions).
 
@@ -294,7 +295,9 @@ Named with the `prompt*` prefix its siblings (`promptMaxRows`, `promptFieldMaxWi
      - make `expiredDecision()` stamp `{ kind: "unavailable", reason: "" }` (kills the decision test).
 6. **`feat(pi-permission-system): deny a permission prompt nobody answers within promptTimeoutMs`**
    - Wires `PromptPreferences.promptTimeoutMs` → the `index.ts` thunk → the dispatcher's `AnswerWindow`, and both arms' signal handling.
+
    - Widen the test file's `PromptFactory`/`custom` fake to `| undefined`, and update the L550 `select` arity assertion, in this commit.
+
    - Tests:
      - `permission-prompt-component.test.ts`, inline arm under fake timers:
        - expiry yields the `unanswered` decision and Pi's `done` was called;
@@ -304,11 +307,13 @@ Named with the `prompt*` prefix its siblings (`promptMaxRows`, `promptFieldMaxWi
      - `local-user-authorizer.test.ts` "one dialog at a time", using the real `requestPermissionDecision` and the real queue: the first ask expires, then the second presents with its own full window.
      - `forwarded-request-server.test.ts` "terminal decision broadcast": an escalator returning the `unanswered` decision writes it to the response file and broadcasts `prompt_unanswered`.
      - `composition-root.test.ts`, via the `makeTuiCtx` harness with `promptTimeoutMs: 20` (real timers): an unanswered `demo` ask blocks with the "Nobody answered" sentence.
+
    - Killing mutations:
      - make the dispatcher open `AnswerWindow.open(undefined)` (kills every expiry test);
      - delete the `finally { window.close() }` (kills the answer-then-no-second-`done` test);
      - drop `{ signal }` from the fallback's `ui.select` call (kills the fallback abort test, whose fake resolves `undefined` only when its signal aborts);
      - delete `promptTimeoutMs` from the `index.ts` thunk (kills the composition-root test).
+
    - Commit footer, last paragraph:
 
      ```text

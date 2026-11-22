@@ -76,8 +76,7 @@ The feature — a `registerToolInputFormatter` seam plus a built-in MCP argument
 #### What caused friction (agent side)
 
 1. `scope-drift` (user-caught) — the first-pass docs for the public seam (`docs: document tool input formatter seam`, `2fc9ff1d`) were just the interface signature plus one example.
-   The user had to ask "Did we thoroughly document how to create these formatters…?"
-   which triggered a substantial authoring guide (`6d154a14`, +115/−19) covering per-tool `input` shapes, the must-not-throw contract, `undefined`-vs-`""` semantics, lifecycle wiring, and limitations.
+   The user had to ask "Did we thoroughly document how to create these formatters…?" which triggered a substantial authoring guide (`6d154a14`, +115/−19) covering per-tool `input` shapes, the must-not-throw contract, `undefined`-vs-`""` semantics, lifecycle wiring, and limitations.
    Impact: one extra user prompt and one follow-up commit; every gap was knowable when the thin docs were written.
 2. `premature-convergence` (partly user-surfaced) — the agent committed to "MCP summarizer keyed to `mcp`" in planning without tracing the umbrella-keying constraint to its conclusion: because every MCP call arrives under the single `mcp` tool, the seam can *never* do bespoke per-MCP-tool rendering, which is literally what `#266`'s title ("smart formatters for known MCP tools") and the `ctx_batch_execute` example asked for.
    The limitation only became explicit while writing the authoring guide and was disclosed post-ship.

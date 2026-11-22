@@ -141,7 +141,8 @@ The standalone `wildcardMatch()` function also calls `compileWildcardPattern`, s
    Green tests from step 3.
 5. **test: integration test for external_directory with ~ pattern** — `tests/permission-manager-unified.test.ts`: config with `"~/trusted/*": "allow"`, `checkPermission("external_directory", { path: "<homedir>/trusted/repo" })` returns allow.
 6. **feat: green integration test (no code change expected)** — Step 4 already makes this pass; confirm and commit together with step 5 if trivial.
-7. **docs: update schema and example config** — `schemas/permissions.schema.json`: add note about `~`/`$HOME` expansion in pattern descriptions. `config/config.example.json`: add `~/...` example in `external_directory`.
+7. **docs: update schema and example config** — `schemas/permissions.schema.json`: add note about `~`/`$HOME` expansion in pattern descriptions.
+   `config/config.example.json`: add `~/...` example in `external_directory`.
 
 ## Risks and Mitigations
 

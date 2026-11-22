@@ -18,11 +18,9 @@ The user also prompted a research detour into `shell-quote` and `tree-sitter-bas
 #### What went well
 
 - **Research detour produced lasting value.**
-  The user's question "are we confident there's not a parser package?"
-  led to a concrete comparison of `shell-quote` (23KB, zero deps) and `tree-sitter-bash` (what OpenCode uses).
+  The user's question "are we confident there's not a parser package?" led to a concrete comparison of `shell-quote` (23KB, zero deps) and `tree-sitter-bash` (what OpenCode uses).
   This is documented in the plan's Open Questions and ready to file as a follow-up issue.
-  The detour cost ~10 minutes but eliminated a class of future "should we have checked?"
-  doubt.
+  The detour cost ~10 minutes but eliminated a class of future "should we have checked?" doubt.
 - **Dog-fooding surfaced the root cause in real time.**
   The `gh issue close` command's `--comment` argument contained `//` and `\"`, triggering the very bug class we just patched — but through the `stripQuotedStrings` escaped-quote vector, not the bare-slash vector.
   This validated the plan's "Broader issue" framing and made the follow-up issue concrete rather than theoretical.
@@ -30,8 +28,7 @@ The user also prompted a research detour into `shell-quote` and `tree-sitter-bas
 #### What caused friction (agent side)
 
 - `premature-convergence` — The initial plan committed to the one-line regex fix without investigating parser alternatives.
-  The user had to explicitly ask "are we confident there's not a parser?"
-  to trigger the research.
+  The user had to explicitly ask "are we confident there's not a parser?" to trigger the research.
   Impact: required a plan amendment and an extra commit, though the final plan was better for it.
   Self-identified after user prompt.
 - `rabbit-hole` — The `tree-sitter-bash` exploration tried to run test scripts via `cat > file << 'SCRIPT'` heredocs, which themselves triggered permission prompts (the extension scanning the heredoc content for paths).

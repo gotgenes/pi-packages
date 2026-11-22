@@ -75,8 +75,7 @@ The span across stages was a clean Beck-style arc: a planning-time architecture 
 #### What caused friction (agent side)
 
 - `premature-convergence` — the initial mechanism recommendation was a synchronous hand-rolled bash splitter.
-  The agent flagged the "second decomposition that can diverge from tree-sitter" risk in its own `ask_user` option text but still recommended that option; only the user's "is something more fundamentally off?"
-  question forced re-ranking toward reusing the tree-sitter parse.
+  The agent flagged the "second decomposition that can diverge from tree-sitter" risk in its own `ask_user` option text but still recommended that option; only the user's "is something more fundamentally off?" question forced re-ranking toward reusing the tree-sitter parse.
   Impact: no rework (caught in planning before any code), but the agent under-weighted an architectural concern it had already identified.
 - `instruction-violation` (tooling-caught) — the #301 TDD stage notes were appended with a quoted shell heredoc (`cat <<'EOF'`), so `\u2014` was written literally instead of em-dashes and a two-sentence line slipped in, tripping `rumdl` MD013.
   Impact: one fix cycle (a four-part `Edit`).
@@ -90,8 +89,7 @@ The span across stages was a clean Beck-style arc: a planning-time architecture 
 #### What caused friction (user side)
 
 - The single highest-leverage moment was the user's architecture-review question, posed as a redirecting question rather than a correction — it prevented a divergent-second-parser design and reframed the whole effort.
-  Opportunity (agent side): internalize asking "what change would make this change easy?"
-  during planning rather than waiting for the prompt.
+  Opportunity (agent side): internalize asking "what change would make this change easy?" during planning rather than waiting for the prompt.
 - The decision to skip `/ship-issue 304` and stack it under #301 was efficient, but neither party surfaced at decision time that the stacked issue would still need closing.
 
 ### Diagnostic details

@@ -74,6 +74,7 @@ Two facts that shape the design:
 Constraints from `AGENTS.md` that apply:
 
 - Conventional Commits with the scope before `!`; no `Closes #N` in commit bodies — reference [#665] as `Refs #665`.
+
 - Every implementation and docs commit for this issue carries, after a blank line at the end of the body:
 
   ```text
@@ -81,6 +82,7 @@ Constraints from `AGENTS.md` that apply:
   ```
 
 - Architecture-doc module-tree entries describe current behavior; do not append issue-provenance trails.
+
 - Load the `mermaid` skill before editing the agent-lifecycle state diagram.
 
 ## Design Overview

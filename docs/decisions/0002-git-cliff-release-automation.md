@@ -72,8 +72,7 @@ One run — git-cliff (< 1 s per package), publish (~30 s), plus setup — inste
 
 **The release-PR review gate is gone.**
 This is the trade that buys the latency, and it is the decision's main cost.
-It is partly offset by something release-please could not do at all: `scripts/release/next-version.sh <pkg>` answers "what would release?"
-locally, offline, before anything is dispatched.
+It is partly offset by something release-please could not do at all: `scripts/release/next-version.sh <pkg>` answers "what would release?" locally, offline, before anything is dispatched.
 
 **Exclusions became a convention.**
 `docs/{plans,retro,architecture,decisions,assets}` per package, verified to reproduce the retired hand-maintained `exclude-paths` array exactly.
@@ -86,7 +85,8 @@ Without it, such a commit is dropped by the `skip` parser and produces no releas
 
 **The changelogs are not regenerated.**
 Regeneration was the original plan and was abandoned on measurement: it deletes 101 of 220 entries for `pi-permission-system` and 71 of 192 for `pi-subagents`.
-Two causes, neither fixable by configuration. 153 entries predate this repository — these packages were consolidated from separate repos and only the changelog text came across, as `MIGRATION.md` records — and roughly 45 tagged releases were cut entirely from `docs:` commits under paths added to `exclude-paths` later.
+Two causes, neither fixable by configuration.
+153 entries predate this repository — these packages were consolidated from separate repos and only the changelog text came across, as `MIGRATION.md` records — and roughly 45 tagged releases were cut entirely from `docs:` commits under paths added to `exclude-paths` later.
 Each release is therefore spliced in below the header, and an HTML comment marks the boundary.
 
 **npm Trusted Publishing must be repointed.**

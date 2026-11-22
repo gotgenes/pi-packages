@@ -52,8 +52,7 @@ Resulting follow-up work promoted all dead-code rule categories to `error` sever
 
 #### What went well
 
-- The user reading CI output carefully and asking "why did fallow check fail yet we proceeded to release?"
-  surfaced a real process gap that would have silently accumulated dead code over time.
+- The user reading CI output carefully and asking "why did fallow check fail yet we proceeded to release?" surfaced a real process gap that would have silently accumulated dead code over time.
 - Incremental severity promotion was effective: checking each category's violation count before promoting let us ratchet from 3 error-level rules to 9 in three commits with zero cleanup work (all categories were already clean except the `steerAgent` export we'd just created).
 
 #### What caused friction (agent side)

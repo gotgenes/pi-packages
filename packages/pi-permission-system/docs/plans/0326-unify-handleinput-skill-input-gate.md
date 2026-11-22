@@ -161,7 +161,8 @@ The change gives skill input the same `[pi-permission-system]` attribution every
    `input-events.test.ts` continues to pin the end-to-end resolutions; with the runner now producing them, those assertions also document that the unified path is equivalent.
    The bespoke-ternary branches are no longer separately reachable, but the event-level tests still cover every resolution.
 3. **Tests that must stay as-is.**
-   `input.test.ts` (activation, skill-name parsing, allow/deny/ask outcomes, deny-warning notify) and `input-events.test.ts` (decision events) genuinely exercise `handleInput`'s contract and remain the behavioral guard for this refactor. `runner.test.ts` is untouched.
+   `input.test.ts` (activation, skill-name parsing, allow/deny/ask outcomes, deny-warning notify) and `input-events.test.ts` (decision events) genuinely exercise `handleInput`'s contract and remain the behavioral guard for this refactor.
+   `runner.test.ts` is untouched.
 
 ## TDD Order
 
@@ -188,7 +189,8 @@ The change gives skill input the same `[pi-permission-system]` attribution every
   Deliberate (gains the `[pi-permission-system]` tag); not asserted by any input test; surfaced only in the review log; called out in the issue and `denial-messages.test.ts`.
 - **`expect.anything()` assertion break.**
   Anticipated; the single affected `input.test.ts` case is updated in Step 2.
-- **Unused-import lint after the rewrite.** `applyPermissionGate` and `formatSkillAskPrompt` become unused in the handler; both are removed in Step 2 (eslint would otherwise fail).
+- **Unused-import lint after the rewrite.**
+  `applyPermissionGate` and `formatSkillAskPrompt` become unused in the handler; both are removed in Step 2 (eslint would otherwise fail).
 
 ## Open Questions
 

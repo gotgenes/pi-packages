@@ -16,8 +16,7 @@ Plan committed at `packages/pi-subagents/docs/plans/0466-resume-completion-signa
 ### Observations
 
 - **Terminology correction mid-`ask_user`.**
-  The operator asked "distinct event vs distinct channel?"
-  — in this codebase each event *is* its own channel string (`SUBAGENT_EVENTS` already has six), so "distinct resumed event" and "a new `subagents:resumed` channel" are the same thing.
+  The operator asked "distinct event vs distinct channel?" — in this codebase each event *is* its own channel string (`SUBAGENT_EVENTS` already has six), so "distinct resumed event" and "a new `subagents:resumed` channel" are the same thing.
   Re-asked with that framing; operator chose the distinct channel.
 - **Scope reduction from the roadmap.**
   The roadmap's tentative target-file list named `subagent-session.ts` (`resumeTurnLoop` result shape).
@@ -32,7 +31,8 @@ Plan committed at `packages/pi-subagents/docs/plans/0466-resume-completion-signa
   Leaving the child channel silent honors the roadmap invariant with zero risk to the bracket.
 - **Interface widening is the main compile-time hazard.**
   Adding a required `onSubagentResumed` to `SubagentManagerObserver` breaks `CompositeSubagentObserver`, `AgentWidget`, and the full-object test mocks (`composite-subagent-observer.test.ts` `makeDelegate` + inline literals, `subagent-manager.test.ts` `createManager`); folded into the one cycle that adds the method.
-- **Step-1 (#563) invariant checked.** `completeResume`/`failResume` and the `isBackground`-gated `onResumeFinished` arm add no `status === …` groupings, so the repeated-discriminator sweep stays at 2; named as a post-cycle check.
+- **Step-1 (#563) invariant checked.**
+  `completeResume`/`failResume` and the `isBackground`-gated `onResumeFinished` arm add no `status === …` groupings, so the repeated-discriminator sweep stays at 2; named as a post-cycle check.
 
 ## Stage: Implementation — TDD (2026-07-18T15:15:00Z)
 

@@ -128,7 +128,8 @@ The dominant friction was a three-round `ask_user` gate that only became decidab
   Either would have surfaced #610 without the operator supplying it.
 - **Feedback-loop gap analysis** — no gap.
   Verification ran incrementally throughout: full `check`/`lint`/`test` baseline before any edit; file-scoped `vitest` on red and again on green; package-scoped `check` plus full package suite immediately after the green edit; root `lint` after each documentation edit (which is what caught the `MD057` artifact before commit); full `test`/`check`/root `lint`/`fallow dead-code` after the last step; `lint` and `fallow` again as pre-push gates.
-- **Assessor checkpoint status** — the `tidy-first` skill carries a "first-live-use checkpoint (added 2026-07-13)" instructing removal once the scope boundary has held across a handful of issues. 42 retro files now reference the assessor, with the boundary explicitly recorded as holding in `0579`, `0594`, `0611`, and this one, and its recommendations taken as-is in `0538` and `0611`.
+- **Assessor checkpoint status** — the `tidy-first` skill carries a "first-live-use checkpoint (added 2026-07-13)" instructing removal once the scope boundary has held across a handful of issues.
+  42 retro files now reference the assessor, with the boundary explicitly recorded as holding in `0579`, `0594`, `0611`, and this one, and its recommendations taken as-is in `0538` and `0611`.
   The validation window is well past "a handful."
   Operator decision at retro: do not retire it yet — the assessor's frequent "no preparatory tidying warranted" verdict is exactly what a weaker model would also produce, so the checkpoint is narrowed to one more validation run on `anthropic/claude-opus-5` before deletion.
 

@@ -45,7 +45,8 @@ src/
   Never re-add an `await` there.
 - Index only what is searched: the write/edit auto-reindex is gated on `indexExists` (probed once on `session_start` via `colgrep status`).
   Do not proactively index a directory the operator never searches.
-- The reindexer serializes all builds: one `colgrep init` at a time. `runNow()` coalesces concurrent calls onto the in-flight promise; `shutdown()` awaits it.
+- The reindexer serializes all builds: one `colgrep init` at a time.
+  `runNow()` coalesces concurrent calls onto the in-flight promise; `shutdown()` awaits it.
 
 ## colgrep CLI Facts
 

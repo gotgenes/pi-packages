@@ -9,8 +9,7 @@ issue_title: "Introduce a structured BashCommand model and parse the bash comman
 
 ### Session summary
 
-Issue #308 was created during what began as the `/plan-issue 306` session, after the owner asked "what architecture or system design changes would make #306 easier?"
-and chose to pay the foundation upfront.
+Issue #308 was created during what began as the `/plan-issue 306` session, after the owner asked "what architecture or system design changes would make #306 easier?" and chose to pay the foundation upfront.
 The friction analysis surfaced that the three bash gates each parse the command independently (three parses per `tool_call`) and apply three subtly different AST descent policies, and that the command-pattern unit is a flat `string[]` re-derived per feature — the divergence that produced the #301-class bug.
 This issue captures the behavior-preserving enabler (a `BashCommand` model for the command-pattern slice plus a single shared parse injected into the gates); #306 (nested-context descent) and #307 (effective-cwd projection) become consumers, mirroring the #304 → #301 split.
 

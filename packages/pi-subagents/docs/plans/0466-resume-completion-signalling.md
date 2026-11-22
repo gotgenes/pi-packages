@@ -57,7 +57,8 @@ Constraints from AGENTS.md and the package skill:
 
 - **Open/closed core** — pi-subagents publishes events; consumers subscribe.
   Adding a channel keeps the core closed to consumer knowledge.
-- **Public-type verification** — adding a `SUBAGENT_EVENTS` constant changes the public surface; run `pnpm --filter @gotgenes/pi-subagents run verify:public-types` after. `dist/*.d.ts` is gitignored — never commit it.
+- **Public-type verification** — adding a `SUBAGENT_EVENTS` constant changes the public surface; run `pnpm --filter @gotgenes/pi-subagents run verify:public-types` after.
+  `dist/*.d.ts` is gitignored — never commit it.
 - **Architecture-doc landing (#540)** — the roadmap step's `✅` mark (heading + Mermaid node) and its `Landed:` note are landed at implementation completion, not deferred.
 
 Soft-depends on Step 1 (#563, already landed): both edit `subagent.ts`'s termination area, and Step 1's classification predicates keep the guard clean.

@@ -79,8 +79,7 @@ Pre-completion reviewer: PASS.
   A stage summary's "next step" must be checked against the plan's acceptance criterion, not against the last step this session could execute.
 - **Overcorrected before re-reading the plan.**
   When the operator flagged the gap, the first reaction was to hand-execute the template in this session — measuring, then dispatching two classifier subagents — rather than re-reading step 10, which already said a fresh session runs the command.
-  The operator's "was that the plan?"
-  caught it; the classifiers were stopped and the working-tree residue (a refreshed `model-usage.csv`, an `always-loaded-before.txt`) reverted so the fresh session's `git pull --ff-only` would not refuse.
+  The operator's "was that the plan?" caught it; the classifiers were stopped and the working-tree residue (a refreshed `model-usage.csv`, an `always-loaded-before.txt`) reverted so the fresh session's `git pull --ff-only` would not refuse.
   Hand-executing would also have skipped the one real test of the deliverable: the command running as a command.
 
 [#935]: https://github.com/gotgenes/pi-packages/issues/935
@@ -129,8 +128,7 @@ The operator's follow-up question about structural remedies produced three issue
 
 #### What caused friction (user side)
 
-- The session's highest-leverage moment was the operator's question after the audit reported — "were we aggressive enough / what can we do structurally?"
-  — which produced #937, #938, and #939.
+- The session's highest-leverage moment was the operator's question after the audit reported — "were we aggressive enough / what can we do structurally?" — which produced #937, #938, and #939.
   The template's own `Finally` step asks for numbers and open `offload` rows, not for an assessment of the test that produced them.
   Opportunity: make that assessment a template output rather than something that depends on the operator asking.
 

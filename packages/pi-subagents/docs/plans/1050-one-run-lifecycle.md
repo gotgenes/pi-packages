@@ -78,8 +78,7 @@ A resumed run keeps the worktree and shows the question with the `resume` call t
 With no workspace provider the two are indistinguishable (`dispose()` returns `""` and `workspaceDisposed` stays false).
 
 The initial run's rule lives only in [#1021]'s plan and one test.
-That plan kept it for continuity with the retired `steered` status and listed "should a wrapped-up run with a question hold?"
-as an open question, to revisit with [#1022]'s resume budgets; [#1022] then gave every resume a fresh budget and left the rule as a non-goal.
+That plan kept it for continuity with the retired `steered` status and listed "should a wrapped-up run with a question hold?" as an open question, to revisit with [#1022]'s resume budgets; [#1022] then gave every resume a fresh budget and left the rule as a non-goal.
 Every user-facing doc already describes hold: `docs/configuration.md` ("a workspace is torn down at run end unless the child completed"), `README.md` (resumable "until you answer it"), and `pi-subagents-worktrees/README.md` ("When the child ends its turn with a question for you, the worktree is kept").
 The operator chose hold for both kinds (2026-10-16), which answers [#1021]'s open question.
 
@@ -379,8 +378,7 @@ Steps 1-8 are preparatory (the Tidy-First assessment); each leaves the tree gree
     No test is dropped: the count before and after the re-indent is equal apart from rows the grid adds.
     The top-level `describe` row reads 1.
     Killing mutation: make `complete` dispose when `run.kind === "resume"` and a question is pending (kills only the grid's resume rows, proving the grid reaches both kinds).
-14. **`docs(pi-subagents): record the one run lifecycle in the architecture doc`**
-    The doc updates listed under Module-Level Changes; re-run every count in the Test Impact table and write what it prints into the `Landed:` note.
+14. **`docs(pi-subagents): record the one run lifecycle in the architecture doc`** The doc updates listed under Module-Level Changes; re-run every count in the Test Impact table and write what it prints into the `Landed:` note.
 
 ## Risks and Mitigations
 

@@ -41,19 +41,19 @@ No surface-level rule evaluation changes — only the subagent detection and par
 
 `src/permission-forwarding.ts`
 : Declares `SUBAGENT_ENV_HINT_KEYS`, `SUBAGENT_PARENT_SESSION_ENV_KEY`, and `resolvePermissionForwardingTargetSessionId()`.
-These are the primary targets of this fix.
+    These are the primary targets of this fix.
 
 `src/subagent-context.ts`
 : `isSubagentExecutionContext()` iterates `SUBAGENT_ENV_HINT_KEYS` and falls back to session-dir path comparison.
-The path-based fallback works only when the session directory happens to be nested under `subagentSessionsDir`, which is path-layout-dependent and fragile for external extensions.
+    The path-based fallback works only when the session directory happens to be nested under `subagentSessionsDir`, which is path-layout-dependent and fragile for external extensions.
 
 `src/forwarded-permissions/polling.ts`
 : `waitForForwardedPermissionApproval()` calls both `isSubagentExecutionContext()` and `resolvePermissionForwardingTargetSessionId()`.
-When either returns a falsy result the function logs a forwarding error and returns `{ approved: false, state: "denied" }` — the silent denial.
+    When either returns a falsy result the function logs a forwarding error and returns `{ approved: false, state: "denied" }` — the silent denial.
 
 `tests/subagent-context.test.ts`
 : Existing tests cover the three original `SUBAGENT_ENV_HINT_KEYS` and the session-dir path fallback.
-New tests for the additional keys go in the same file.
+    New tests for the additional keys go in the same file.
 
 ### Extension env var inventory
 

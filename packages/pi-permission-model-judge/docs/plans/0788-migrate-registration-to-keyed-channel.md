@@ -220,8 +220,7 @@ TDD step 1 records the measured before/after numbers.
 
 ### `.pi/skills/package-pi-permission-system/SKILL.md`
 
-- Line 187 reads "The still-unimplemented half of that contract is the judge migration (#788) and the docs consolidation (#789)."
-  [#789] has already landed and [#788] lands here, so rewrite the sentence to state the contract is fully implemented.
+- Line 187 reads "The still-unimplemented half of that contract is the judge migration (#788) and the docs consolidation (#789)." [#789] has already landed and [#788] lands here, so rewrite the sentence to state the contract is fully implemented.
 
 ### Checked and not changed
 

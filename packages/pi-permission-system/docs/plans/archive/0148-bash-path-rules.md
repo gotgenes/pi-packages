@@ -25,7 +25,8 @@ There is no single place to say "no tool — built-in or bash — may access `.e
 
 ## Non-Goals
 
-- Replacing `external_directory` — it remains the CWD-boundary check. `path` is the pattern-level policy.
+- Replacing `external_directory` — it remains the CWD-boundary check.
+  `path` is the pattern-level policy.
 - Replacing per-tool path patterns (#147) — they remain for tool-specific overrides (e.g., allow reads of `.env` but deny writes).
 - Additive or nested command × path evaluation — the original #148 design, deferred due to complexity.
 - Extending `PATTERN_FIRST_COMMANDS` with additional commands — follow-up refinement.

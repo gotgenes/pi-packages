@@ -138,12 +138,17 @@ function readToolCallOutcome(reply: AssistantMessage, latencyMs: number): Review
 
 Design notes:
 
-- **Read by position, not name.** `content.find(part => part.type === "toolCall")` takes the first tool call regardless of its (possibly OAuth-rewritten) name — the sketch and the SDK both confirm this is the safe read.
+- **Read by position, not name.**
+  `content.find(part => part.type === "toolCall")` takes the first tool call regardless of its (possibly OAuth-rewritten) name — the sketch and the SDK both confirm this is the safe read.
+
 - **`rawReply` repurposed.**
   It now carries `JSON.stringify(args)` when a tool call is present (still a diagnostic string for the `model_judge.model_reply` debug event), and the concatenated assistant text on a `no-tool-call` defer (so the operator sees what the model said instead of calling the tool).
   `extractText` and `GENERIC_TEACHING_REASON` are retained.
+
 - **`ModelCallDeferReason`** becomes `"no-tool-call" | "non-deny-verdict" | "timeout" | "call-failed"` (`parse-failed` removed).
+
 - **`CompleteFn`** options type gains `toolChoice?: string`.
+
 - **`renderReviewPrompt`** drops the strict-JSON directive and points the model at the tool (the tool schema now carries the reply shape):
 
   ```ts

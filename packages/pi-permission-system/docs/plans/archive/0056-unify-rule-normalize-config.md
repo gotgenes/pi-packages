@@ -419,8 +419,7 @@ Conversely, if `bash: { "*": "deny" }`, the tool is hidden — which is better U
    Green: implement `mergeDefaults()` in `src/defaults.ts`.
    `test: mergeDefaults shallow merge`
 
-8. **feat: add normalizeConfig and defaults modules**
-   Commit the new modules (`src/normalize.ts`, `src/defaults.ts`) and their tests.
+8. **feat: add normalizeConfig and defaults modules** Commit the new modules (`src/normalize.ts`, `src/defaults.ts`) and their tests.
    `feat: add normalizeConfig and defaults modules`
 
 ### Phase 2: Update evaluate() signature
@@ -485,8 +484,7 @@ Conversely, if `bash: { "*": "deny" }`, the tool is hidden — which is better U
 
 ### Phase 5: Docs and verification
 
-1. **docs: update target architecture to mark #56 complete**
-   Update `docs/architecture/target-architecture.md` refactoring sequence to mark #56 as done.
+1. **docs: update target architecture to mark #56 complete** Update `docs/architecture/target-architecture.md` refactoring sequence to mark #56 as done.
    `docs: mark #56 complete in target architecture`
 
 2. **verify: full build and test suite** Run `pnpm run build` and `npx vitest run`.

@@ -130,7 +130,8 @@ Relevant only if we later reuse the PR's shape.
 4. **Hand-rolled near-copy of pi's rendering.**
    `buildPortablePrompt` in `parent-snapshot.ts` re-renders `<project_context>` without pi's `Project-specific instructions and guidelines:` lead-in and with different blank-line spacing, and joins `promptGuidelines` raw where pi renders them as `-` bullets under a `Guidelines:` heading.
    The operator's preference is to match pi byte for byte and pin the format with a test.
-5. **Naming.** `PromptInheritanceConfig.def` is an abbreviation, against the `code-design` skill.
+5. **Naming.**
+   `PromptInheritanceConfig.def` is an abbreviation, against the `code-design` skill.
 6. **Commit hygiene.**
    One commit carries the feature, the ADR, the docs, and an unrelated `sanitize` to `sanitizeTuningFields`/`isBoundedInt` tidying, which under this repo's flow is a preparatory `refactor:` commit.
 
@@ -187,8 +188,7 @@ That finding arrived only after the operator asked what `pi-claude-bridge` was, 
 
 #### What caused friction (agent side)
 
-- `missing-context` — the decisive evidence sat in a repository named in the **first paragraph** of issue #883, and it went unread until the operator asked "What is `pi-claude-bridge`?"
-  on the fourth round.
+- `missing-context` — the decisive evidence sat in a repository named in the **first paragraph** of issue #883, and it went unread until the operator asked "What is `pi-claude-bridge`?" on the fourth round.
   Everything that reframed the review — the shipped `findInheritedPrompts`, `diag/EXTRA-USAGE-400.md`, the exact-substring matcher, the date table — came from a single `fetch_content` call on that repo.
   Impact: the largest in the session.
   The recommendation given at the first gate ("adopt the capability, plan a simplified design") was wrong, and the final direction ("reply with the evidence, hold the PR") is a different outcome, not a refinement of it.
@@ -353,7 +353,8 @@ The bridge-side fix has not landed and has drawn no maintainer response, so the 
 
 #### The eight-scenario trace
 
-The decisive analysis. `pi-subagents` captures the parent's **post-extension** prompt: `parent-snapshot.ts:40` calls `ctx.getSystemPrompt()`, which returns `this.agent.state.systemPrompt`, assigned from `result.systemPrompt` after `before_agent_start` (`../pi/…/agent-session.ts:1298-1300`, `:930-932`).
+The decisive analysis.
+`pi-subagents` captures the parent's **post-extension** prompt: `parent-snapshot.ts:40` calls `ctx.getSystemPrompt()`, which returns `this.agent.state.systemPrompt`, assigned from `result.systemPrompt` after `before_agent_start` (`../pi/…/agent-session.ts:1298-1300`, `:930-932`).
 
 | #   | Stack                           | Strategy   | Result                                                          |
 | --- | ------------------------------- | ---------- | --------------------------------------------------------------- |
@@ -408,7 +409,8 @@ PR #884 is reference, not merge target — it conflicts with `main` and its prec
 
 Agreed scope:
 
-1. **Default stays `full`.** `portable` is opt-in.
+1. **Default stays `full`.**
+   `portable` is opt-in.
 2. **Provider-keyed settings map only** — `"promptInheritance": { "claude-bridge": "portable" }`.
    No `inherit_prompt` frontmatter, no union form, no global `default` arm, no `normalizePromptInheritance`, no dual raw/normalized state.
 3. **`portable` is documented as re-homing-hosts-only**, not enforced, with scenario 5 as the worked counter-example in `docs/configuration.md`.

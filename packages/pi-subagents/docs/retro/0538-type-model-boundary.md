@@ -17,7 +17,8 @@ Produced a two-refactor-commit + one-docs-commit plan and committed it.
 
 - **`Model<any>` vs `Model<Api>`**: chose `Model<any>` to match the issue, the roadmap, and four existing modules, despite `Model<Api>` being strictly more precise (it matches the real `ModelRegistry` class return types exactly).
   Convention-consistency won; not surfaced to the operator as it was explicitly specified.
-- **Forced commit coupling**: retyping `resolveInvocationModel`'s `parentModel` parameter to `Model<any> | undefined` breaks the `spawn-config.ts` call site at typecheck (a `{ id; name? }` is not a `Model<any>`), so `model-resolver.ts` + `spawn-config.ts` + `runtime.ts` must land in one commit. `service-adapter.ts` is independent (its own `spawn` path, injected `resolveModel`) and is a separate commit.
+- **Forced commit coupling**: retyping `resolveInvocationModel`'s `parentModel` parameter to `Model<any> | undefined` breaks the `spawn-config.ts` call site at typecheck (a `{ id; name? }` is not a `Model<any>`), so `model-resolver.ts` + `spawn-config.ts` + `runtime.ts` must land in one commit.
+  `service-adapter.ts` is independent (its own `spawn` path, injected `resolveModel`) and is a separate commit.
 - **`ModelInfo.modelRegistry: unknown` → `ModelRegistry | undefined`** required `resolveInvocationModel` to accept `ModelRegistry | undefined` with a new no-registry guard.
   The guarded path is unreachable mid-session and previously would have thrown a `TypeError`; converting an unreachable crash into a typed error result is internal hardening, kept as `refactor:` (not `fix:`), preserving the refactor-only / release-neutral framing.
 - **Test-fixture migration**: registry typing forces `MODELS` / stub returns from partial literals (`{ id, provider }`) to full `Model<any>` objects.

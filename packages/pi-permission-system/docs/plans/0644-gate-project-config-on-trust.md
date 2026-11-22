@@ -200,7 +200,8 @@ These are a single compile-coupled chain (each caller is the sole consumer of th
    The explicit `projectTrusted` seam makes the trust decision directly assertable at each layer: `loadAndMergeConfigs` project-skip (loader unit), `ConfigStore.refresh` forwarding (store unit), `PermissionSession` cwd-withholding (session unit), and handler skip/warn behavior (handler unit) — none of which existed before because trust was never consulted.
 2. **Redundant tests.**
    None become redundant; the existing trusted-path tests remain valid as the `projectTrusted: true` case (they now pass the arg explicitly).
-3. **Tests that must stay as-is.** `test/permission-manager-unified.test.ts` `configureForCwd(cwd) applies project config` and the #646 fail-closed clamp tests genuinely exercise the trusted/loaded path and the manager merge; they are unchanged (the gate never reaches the manager when untrusted).
+3. **Tests that must stay as-is.**
+   `test/permission-manager-unified.test.ts` `configureForCwd(cwd) applies project config` and the #646 fail-closed clamp tests genuinely exercise the trusted/loaded path and the manager merge; they are unchanged (the gate never reaches the manager when untrusted).
 
 ## Invariants at risk
 

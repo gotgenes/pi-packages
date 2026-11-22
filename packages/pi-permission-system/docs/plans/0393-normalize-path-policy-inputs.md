@@ -42,9 +42,11 @@ Relevant existing modules:
 - `src/path-utils.ts` — `normalizePathForComparison` (lexical cleanup + resolve against cwd), `PATH_SURFACES` (the set of path-matching surfaces), `PATH_BEARING_TOOLS`.
 - `src/rule.ts` — `evaluate` (last-match-wins over one value), `evaluateFirst` (first-non-default across MCP candidates).
 - `src/input-normalizer.ts` — `normalizeInput(toolName, input, mcpServerNames)` maps a tool call to `{ surface, values, resultExtras }`; `normalizePathSurfaceValue` extracts and home-expands `input.path`.
-- `src/permission-manager.ts` — `configureForCwd` already records the cwd via the loader; `checkPermission` calls `normalizeInput` then `evaluateFirst`. `ScopedPermissionManager` is the narrow interface gates depend on.
+- `src/permission-manager.ts` — `configureForCwd` already records the cwd via the loader; `checkPermission` calls `normalizeInput` then `evaluateFirst`.
+  `ScopedPermissionManager` is the narrow interface gates depend on.
 - `src/permission-resolver.ts` — `ScopedPermissionResolver.resolve(surface, input, agentName)`; the bash path gate's sole evaluation entry point.
-- `src/handlers/gates/bash-program.ts` — parses a command once; `rawCandidates` pairs each path token with its `EffectiveBase` (the effective dir after folding literal `cd` commands). `pathTokens()` returns deduplicated rule-candidate tokens (no cwd resolution).
+- `src/handlers/gates/bash-program.ts` — parses a command once; `rawCandidates` pairs each path token with its `EffectiveBase` (the effective dir after folding literal `cd` commands).
+  `pathTokens()` returns deduplicated rule-candidate tokens (no cwd resolution).
 - `src/handlers/gates/bash-path.ts` — `describeBashPathGate` evaluates each `pathTokens()` token against the `path` surface and returns the most restrictive result; always sets `preCheck`.
 - `src/handlers/gates/bash-path-extractor.ts` — `extractTokensForPathRules` (thin facade over `pathTokens`, test-only) and `extractExternalPathsFromBashCommand` (used by the external-directory gate path; **kept**).
 - `src/handlers/gates/runner.ts` — `runDescriptor` uses `descriptor.preCheck` when set and **only** calls `resolver.resolve(descriptor.surface, descriptor.input, …)` when `preCheck` is absent.

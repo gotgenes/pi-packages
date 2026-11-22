@@ -64,7 +64,8 @@ Implications for this change:
 - `genericBase` fallback (only when the parent snapshot has no system prompt — effectively never in real sessions, since `parentSystemPrompt` is a required `string` at the `session-config` layer): `genericBase` carries no Pi fingerprint, so the OAuth shaping no-ops and the billing header is still prepended.
   `genericBase` is already neutral, so nothing leaks.
 
-Conclusion: #400 introduces no new OAuth interaction. `genericBase` remains the correct fallback and stays consistent with append mode.
+Conclusion: #400 introduces no new OAuth interaction.
+`genericBase` remains the correct fallback and stays consistent with append mode.
 
 ### Constraints from AGENTS.md
 

@@ -675,7 +675,8 @@ Supplied as input to [#799], which decides the channel set.
 - **Sugar expands at load, before composition**, in decision 4's normative order, so every source is normalized identically and no source can introduce a surface the others cannot express.
 - **A persisted rule is written in a directional key or a sugar key, never a third form.**
   A source that writes rules back (as [#691] and [#692] propose) emits the same vocabulary a human would author.
-- **Direction does not create a new precedence tier.** `path_read` and `path_write` are surfaces; they merge across scopes by the existing global → project → agent order and compose by decision 6.
+- **Direction does not create a new precedence tier.**
+  `path_read` and `path_write` are surfaces; they merge across scopes by the existing global → project → agent order and compose by decision 6.
 - **`commandEffects` is classification vocabulary, not a permission rule**, and travels separately: user config scopes only (§7), shallow-merged by command key, never grantable by an agent-controlled channel until [#799] decides otherwise.
 
 ### 10. Bash evaluation is a recursive verdict fold, and structured command description is its config language

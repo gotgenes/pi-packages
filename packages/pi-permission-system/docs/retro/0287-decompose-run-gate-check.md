@@ -65,10 +65,7 @@ The defining event was a planning-stage design correction: the agent first plann
 #### What caused friction (agent side)
 
 - `instruction-violation` (user-caught) — the planning stage did not load `code-design` or `design-review` before evaluating the issue's proposed approach, despite the plan-issue prompt's "Load skills" section listing both.
-  It planned the issue's literal "extract three helpers," wrote the full plan to disk, and only the user's four Socratic interventions ("they have side effects?"
-  → "pushing dirt around, what's the missing collaborator?"
-  → "where's the stateful object?"
-  → "a function in a class trenchcoat") surfaced that the decomposition was procedure-splitting.
+  It planned the issue's literal "extract three helpers," wrote the full plan to disk, and only the user's four Socratic interventions ("they have side effects?" → "pushing dirt around, what's the missing collaborator?" → "where's the stateful object?" → "a function in a class trenchcoat") surfaced that the decomposition was procedure-splitting.
   Impact: first plan draft discarded and rewritten; issue #287 amended (title + body); four rounds of planning-conversation rework — but entirely pre-code, so zero implementation churn.
 - `wrong-abstraction` — within the wrong frame, the first `ask_user` (entry 10) asked about helper *visibility* (export vs. private) before establishing whether the helpers should exist at all.
   Impact: one wasted decision-gate round; folded into the larger redesign above.

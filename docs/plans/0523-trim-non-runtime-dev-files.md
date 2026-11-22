@@ -112,7 +112,8 @@ Redundancy of the surviving `.npmignore` files (why they are safe to delete, not
 
 Edge cases:
 
-- `pi-autoformat` `docs/*.md` matches `configuration.md` and `testing.md` (top-level) but **not** `docs/plans/*.md` or `docs/retro/*.md` (subdirectories) — internal docs stay out. `docs/assets` ships the logo referenced by the README.
+- `pi-autoformat` `docs/*.md` matches `configuration.md` and `testing.md` (top-level) but **not** `docs/plans/*.md` or `docs/retro/*.md` (subdirectories) — internal docs stay out.
+  `docs/assets` ships the logo referenced by the README.
 - `pi-nocd`/`pi-session-tools`/`pi-subagents-worktrees` have no user-facing docs, so their allowlists omit any `docs` entry entirely — `docs/retro/` and `docs/plans/` never ship.
 - `pi-subagents` keeps `dist` (gitignored, regenerated at `prepack`, carries the public `.d.ts` bundles per ADR-0003) and its `docs/architecture`/`docs/decisions` entries unchanged — only the three dev-file entries are removed.
 - Per-package `AGENTS.md` files (present in all four denylist packages and `pi-subagents`) stop shipping because they are simply absent from every allowlist — no explicit exclusion needed.

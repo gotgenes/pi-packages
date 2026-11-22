@@ -309,7 +309,8 @@ return this.manager.spawn(snapshot, type, prompt, {
   The `getSessionInfo` addition removes the only reach-through the SDK change would otherwise introduce.
 - **Scattered decisions.**
   Five `options.isBackground` reads plus the widget's `invocation?.runInBackground` collapse to one resolution point and one record field.
-- **Parameter relay.** `background` is not relayed; it is consumed at the manager and replaced by `ResolvedSpawn.isBackground`.
+- **Parameter relay.**
+  `background` is not relayed; it is consumed at the manager and replaced by `ResolvedSpawn.isBackground`.
 - **Test mock depth.**
   `SubagentManagerLike.spawn` currently types its options `unknown`, which is why `tsc` never noticed the SDK door omitting a field the tool door passes.
   Tidying 1 closes that hole before the change lands.

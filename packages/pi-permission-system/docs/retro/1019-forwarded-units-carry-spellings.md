@@ -17,7 +17,8 @@ Filed [#1128] for the local-gate sibling: an exempt wrapper's inner command reso
 
 - The issue's framing (spellings on `PermissionCheckResult`) predates [#1030]; since then the pairing is per `AskingBashUnit`, which shrank the design question to how the gate keeps spellings paired with the `command` the wire names.
 - The first `ask_user` offered three pairings (A: re-pair by `result.command === cmd.text`; B: a field on the public `PermissionCheckResult`; C: a module-private `ResolvedUnit { check, spellings }`).
-  The operator asked for a deeper explanation and stated a standing preference for explicit designs over implicit ones, then chose C. The gate recommended A on diff size; for this operator, lead with the explicit option when the implicit one's safety rests on an invariant a reader must infer.
+  The operator asked for a deeper explanation and stated a standing preference for explicit designs over implicit ones, then chose C.
+  The gate recommended A on diff size; for this operator, lead with the explicit option when the implicit one's safety rests on an invariant a reader must infer.
 - Operator decisions: `fix:` (not breaking, since the serving node is brought to the local spelling contract [#910]/[#981] already shipped); a malformed `spellings` drops the whole intent and escalates, mirroring `floor` and `askingUnits`.
 - The tidy-first assessor recommended extracting a typed per-unit predicate in `forwarding-io.ts` (Step 1) and, as optional, a `tagWithUnitFacts` helper in `bash-command.ts` (Step 2); both are in the TDD Order.
   It also advised `floorUnparsedUnit` take and return the pair, so the "whole line has no spellings" rule lives at the one site that replaces `command`.

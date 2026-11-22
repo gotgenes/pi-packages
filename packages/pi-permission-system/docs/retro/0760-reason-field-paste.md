@@ -63,8 +63,7 @@ Six commits landed (`refactor:` × 2, `fix:`, `test:`, `docs:` × 1 plus stage n
   The newline-collapse pre-pass exists *because* the spike showed the framework joins words across a break — a design element that reading the `.d.ts` would never have surfaced.
   The `testing` skill's "Exploration before planning" rule already prescribes this; this session is evidence it pays off at plan time, not just at integration time.
 - **A second spike converted an assumption into a pinned invariant.**
-  Asking "what does a paste chunk do at the *decision* step?"
-  (answer: `matchesKey` matches none of ten decision keys) turned a hand-wave into the regression test "never decides on a stray paste at the decision step".
+  Asking "what does a paste chunk do at the *decision* step?" (answer: `matchesKey` matches none of ten decision keys) turned a hand-wave into the regression test "never decides on a stray paste at the decision step".
 - **The `pre-completion-reviewer` verified rather than read.**
   It checked out the pre-fix tree, overlaid the new test file, and re-ran the suite to confirm which new cases actually discriminate — stronger evidence than inspection, and it independently confirmed the vacuous-probe fix was sound.
 - **The two-round `ask_user` structure matched the decision's shape.**

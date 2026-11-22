@@ -319,7 +319,9 @@ Keep `sendMessage` capture for steering-message assertions.
 ### 8. Remove `agent_end` follow-up turn logic
 
 - **Test surface:** `test/extension.test.ts`.
-- **Covers:** `agent_end` handler no longer calls `pi.sendMessage`. `followUpPending` removed from `SessionState`. `agent_end` still calls safety-net `queueFlush`.
+- **Covers:** `agent_end` handler no longer calls `pi.sendMessage`.
+  `followUpPending` removed from `SessionState`.
+  `agent_end` still calls safety-net `queueFlush`.
 - **Commit:** `feat!: replace agent_end follow-up with turn-end steering (#31)`
 
 ### 9. Agent-end safety-net flush
@@ -332,7 +334,8 @@ Keep `sendMessage` capture for steering-message assertions.
 ### 10. Documentation
 
 - **Test surface:** Manual review.
-- **Covers:** `docs/configuration.md` updated. `README.md` updated.
+- **Covers:** `docs/configuration.md` updated.
+  `README.md` updated.
 - **Commit:** `docs: document turn-end formatting and steering notifications (#31)`
 
 ## Risks and Mitigations

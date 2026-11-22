@@ -164,6 +164,7 @@ The child whose inherited identity is a user's `SYSTEM.md` is exactly the case w
    The Tidy-First assessor's one Recommended tidying is folded in here: a detector seam in `makeSetup`.
    It cannot land as its own commit, because `AgentPrepHandler` has no parameter to receive it until this step adds one, and an injected-but-unread dependency would trip the unused-member lint.
    - `makeSetup({ isSubagentChild })`: a `SubagentDetector` fake, `{ isSubagent: vi.fn(() => isSubagentChild ?? false) }`, passed as the sixth constructor argument.
+
    - New `describe("under a custom system prompt")` holding:
      - **root, returned as Pi built it**: `customPrompt` set, `toolSnippets: { read: … }`, active `["read"]`, no skills; `expect(result).toEqual({})`.
      - **root, tools still filtered**: `bash` fully denied; `toolRegistry.setActive` called with `["read"]`, and `result` is `{}`.
@@ -171,15 +172,18 @@ The child whose inherited identity is a user's `SYSTEM.md` is exactly the case w
      - **child, block still rendered**: the existing `states the session's tools when Pi built the prompt from a custom one`, run with `isSubagentChild: true` and renamed to name the child.
      - **child, custom sections kept**: the existing `keeps a custom system prompt's own tool and guideline sections`, run with `isSubagentChild: true`.
      - **empty `customPrompt` reads as none**: root, `customPrompt: ""`, a Pi-authored `Available tools:` prompt; the block is rendered, as on Pi's default prompt.
+
    - `test/composition-root.test.ts`, new `describe("tool-surface prose under a custom system prompt")`: through the real factory, a root node (`makeBaseCtx`) firing `before_agent_start` with `customPrompt` and a `read` snippet returns `{}`.
      A child registered with `getSubagentSessionRegistry().register(childSessionId, { parentSessionId })` (`makeChildCtx`), firing the same payload, returns a `systemPrompt` containing `- read: Read file contents`.
      The file's existing `beforeEach` already clears `SUBAGENT_ENV_HINT_KEYS`, so the root is not misread as a child.
+
    - Killing mutations:
      - Make `statesOwnToolSurface` return `true` unconditionally → the three root cases and the composition-root root case go red; the child and empty-string cases stay green.
      - Make `statesOwnToolSurface` return `!event.systemPromptOptions?.customPrompt` (drop the detector) → both child cases and the composition-root child case go red.
      - Replace `!event.systemPromptOptions?.customPrompt` with `event.systemPromptOptions?.customPrompt === undefined` → the empty-string case goes red.
      - In `src/index.ts`, pass `{ isSubagent: () => false }` instead of `subagentDetection` → only the composition-root child case goes red (the handler tests use their own fake), which is what proves the wiring is pinned.
      - In the stand-aside branch, `return {}` before the skill filter → the root skills case goes red.
+
    - Commit body ends with the `BREAKING CHANGE:` note, then `Refs #980`, then the trailers as the final paragraph:
 
      ```text
@@ -193,6 +197,7 @@ The child whose inherited identity is a user's `SYSTEM.md` is exactly the case w
 
      Both reporters proposed the `customPrompt` branch this step adopts, with a subagent-child guard added: tonybro233 in Issue #980 and yofriadi in [#919].
      Verify with `git interpret-trailers --parse`.
+
    - Run `pnpm run check` after this step (constructor signature change).
 2. **`docs(pi-permission-system): record that a custom system prompt gets no appended tool surface`** `docs/decisions/0014-tool-surface-is-node-local-prose.md`, `docs/architecture/architecture.md`, and `docs/configuration.md`, as listed in Module-Level Changes.
    No tests; verify with `pnpm exec rumdl check` on the three files and a re-read for split sentences.

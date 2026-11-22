@@ -48,7 +48,9 @@ The package set is derived differently here, because there is no issue plan to n
    ```
 
    Each package prints the tag it would cut, or nothing.
+
 2. If none prints a tag, skip to step 6.
+
 3. **Show the operator the list and ask which to release** — do not release everything that happens to be releasable.
 
 With the set confirmed, read the `## 10. Dispatch the release` section of `.pi/prompts/ship.md` (from its dispatch command onward) and the `## 11. Verify the release run` section, and follow both.

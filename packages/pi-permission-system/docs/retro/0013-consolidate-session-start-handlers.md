@@ -40,8 +40,7 @@ Released as v0.6.1 with no breaking changes.
 
 #### What caused friction (user side)
 
-- The user had to ask "Are all changes committed?"
-  — a mechanical verification check the agent should have performed.
+- The user had to ask "Are all changes committed?" — a mechanical verification check the agent should have performed.
   This is the same class of issue as the #6 retro's `.gitignore` miss: the agent declared completion without verifying a clean state.
 
 ### Changes made

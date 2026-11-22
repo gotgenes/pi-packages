@@ -284,11 +284,9 @@ Steps 1-3 are the Tidy-First preparation; steps 4-13 are the move; step 14 is do
 4. **`refactor(pi-permission-system): move path modules into path/`** `expand-home`, `node-modules-discovery`, `path-normalizer`, `safe-system-paths` and their four tests.
    Update `biome.json:59-62` in this commit — `expand-home` is one of the four, and the exemption is silently voided otherwise.
 
-5. **`refactor(pi-permission-system): move bash leaves into access-intent/bash/`**
-   `async-cache`, `bash-arity` and their two tests.
+5. **`refactor(pi-permission-system): move bash leaves into access-intent/bash/`** `async-cache`, `bash-arity` and their two tests.
 
-6. **`refactor(pi-permission-system): group logging modules under logging/`**
-   The eight modules and their eight tests.
+6. **`refactor(pi-permission-system): group logging modules under logging/`** The eight modules and their eight tests.
 
 7. **`refactor(pi-permission-system): group configuration modules under config/`** The eleven modules; thirteen tests (the eleven siblings plus `config-pipeline` and `detect-permissive-bash-fallback`).
    Also update `scripts/generate-permissions-schema.ts:10`, and verify with `pnpm run gen:schema && git diff --exit-code schemas/permissions.schema.json` — nothing else exercises that import.
@@ -299,17 +297,13 @@ Steps 1-3 are the Tidy-First preparation; steps 4-13 are the move; step 14 is do
    Do the same for the `process.platform` ban on `src/policy/rule.ts`.
    A relocated `files:` glob is as unpinned at its new path as at its old one, and both rules fail permissively.
 
-9. **`refactor(pi-permission-system): group tool-input shaping under tool-input/`**
-   The six modules and their six tests.
+9. **`refactor(pi-permission-system): group tool-input shaping under tool-input/`** The six modules and their six tests.
 
-10. **`refactor(pi-permission-system): group the tool-exposure pass under exposure/`**
-    The four modules and their four tests.
+10. **`refactor(pi-permission-system): group the tool-exposure pass under exposure/`** The four modules and their four tests.
 
-11. **`refactor(pi-permission-system): group session-scoped modules under session/`**
-    The seven modules; six tests (`session-approval-recorder` has none).
+11. **`refactor(pi-permission-system): group session-scoped modules under session/`** The seven modules; six tests (`session-approval-recorder` has none).
 
-12. **`refactor(pi-permission-system): group the cross-extension surface under service/`**
-    The five modules and their five tests.
+12. **`refactor(pi-permission-system): group the cross-extension surface under service/`** The five modules and their five tests.
     `service.ts` stays at the root — confirm `package.json` `exports`, `rollup.dts.config.mjs`, and `pnpm run verify:public-types` are untouched and passing.
 
 13. **`refactor(pi-permission-system): move the remaining root modules to presentation/ and mirror the test tree`** `pattern-suggest`, `permission-prompts` and their tests into `presentation/`; `bash-external-directory` and `bash-effect-invariants` into `test/handlers/gates/`; `path-normalization` into `test/access-intent/`.

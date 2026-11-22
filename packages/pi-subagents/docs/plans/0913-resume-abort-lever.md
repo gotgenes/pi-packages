@@ -48,14 +48,17 @@ Commit type `fix:`, per the roadmap step.
   Filed as [#949] rather than folded in, because the fix changes `run()`'s spawn-path behavior too.
 - **`SubagentSession.resumeTurnLoop`'s signature and `forwardAbortSignal`.**
   The roadmap's Target line names `subagent-session.ts`; the settled design leaves it unchanged (see Module-Level Changes).
-- **Retention, workspace, and claim semantics on resume.** `completeResume`/`failResume`, `WorkspaceBracket`, and the `claimOutcome` path are untouched.
+- **Retention, workspace, and claim semantics on resume.**
+  `completeResume`/`failResume`, `WorkspaceBracket`, and the `claimOutcome` path are untouched.
 
 ## Background
 
 Relevant modules, all in `packages/pi-subagents/`:
 
-- `src/lifecycle/subagent.ts` — `Subagent` owns the record. `readonly abortController: AbortController` (line ~168) is assigned once in the constructor (line ~305); `run()` passes `this.abortController.signal` into `runTurnLoop` and wires the spawn-time signal with `this.listeners.wireSignal(this.execution.signal, () => this.abort())`; `runResume()` passes the caller's `signal` through to `resumeTurnLoop` and wires nothing; `abort()` guards on `isRunning()`, fires the controller, and calls `markStopped()`.
-- `src/lifecycle/run-listeners.ts` — `RunListeners.wireSignal(signal, onAbort)` stores a detach handle; `release()` drops both the observer unsubscribe and the signal listener. `resetForResume()` calls `listeners.release()`, which is the ordering constraint the resume wiring must respect.
+- `src/lifecycle/subagent.ts` — `Subagent` owns the record.
+  `readonly abortController: AbortController` (line ~168) is assigned once in the constructor (line ~305); `run()` passes `this.abortController.signal` into `runTurnLoop` and wires the spawn-time signal with `this.listeners.wireSignal(this.execution.signal, () => this.abort())`; `runResume()` passes the caller's `signal` through to `resumeTurnLoop` and wires nothing; `abort()` guards on `isRunning()`, fires the controller, and calls `markStopped()`.
+- `src/lifecycle/run-listeners.ts` — `RunListeners.wireSignal(signal, onAbort)` stores a detach handle; `release()` drops both the observer unsubscribe and the signal listener.
+  `resetForResume()` calls `listeners.release()`, which is the ordering constraint the resume wiring must respect.
 - `src/lifecycle/subagent-session.ts` — `resumeTurnLoop(prompt, signal?)` calls `forwardAbortSignal(session, signal)`, which turns an abort into `session.abort()`.
 - `src/lifecycle/subagent-manager.ts` — `abort(id)` routes a `queued` record to `stopQueued()` and everything else to `record.abort()`; `resume(id, prompt, options)` owns the refusal policy and forwards `options.signal`.
 - `src/service/service.ts` / `src/service/service-adapter.ts` — the public `ResumeOptions.signal`, whose doc comment currently documents the defect.
@@ -117,7 +120,8 @@ subagents.abort(id);  // fires the record's current controller → status "stopp
 - **Abort mid-resume, then the loop resolves.**
   `completeResume` calls `markCompleted`, whose status guard refuses to overwrite `stopped`; `result` is still set (measured), so the record reads `stopped` carrying whatever text the loop produced.
   Unchanged by this plan, and the same as the initial-run abort path.
-- **A caller signal that fires after the resume settles.** `completeResume`/`failResume` call `listeners.release()`, which detaches the signal listener — so a late fire reaches nothing, and `abort()` would decline on status anyway.
+- **A caller signal that fires after the resume settles.**
+  `completeResume`/`failResume` call `listeners.release()`, which detaches the signal listener — so a late fire reaches nothing, and `abort()` would decline on status anyway.
 - **Repeated resumes.**
   Each mints its own controller; the previous one is dropped un-aborted, exactly as Pi's own loop discards a finished run's controller.
 - **`abortAll()` / interrupt.**
@@ -149,8 +153,10 @@ subagents.abort(id);  // fires the record's current controller → status "stopp
 - `src/lifecycle/subagent-session.ts` — `resumeTurnLoop(prompt, signal?)` and `forwardAbortSignal` already accept any signal; only the argument changes.
   The roadmap's Target line names this file; the design does not need it.
 - `src/lifecycle/run-listeners.ts` — `wireSignal` is used as-is on the resume path. (The already-aborted gap it carries is [#949], a Non-Goal.)
-- `src/service/service-adapter.ts`, `src/tools/agent-tool.ts` — no code change. `agent-tool.ts`'s `signal ?? new AbortController().signal` keeps working; the dummy simply never fires.
-- `test/service/service-adapter.test.ts` (line ~576) — asserts `service.resume()` forwards the `signal` option to a **mocked** manager, so `Subagent`'s internal routing is invisible to it. `test/tools/agent-tool.test.ts` likewise drives a mocked manager.
+- `src/service/service-adapter.ts`, `src/tools/agent-tool.ts` — no code change.
+  `agent-tool.ts`'s `signal ?? new AbortController().signal` keeps working; the dummy simply never fires.
+- `test/service/service-adapter.test.ts` (line ~576) — asserts `service.resume()` forwards the `signal` option to a **mocked** manager, so `Subagent`'s internal routing is invisible to it.
+  `test/tools/agent-tool.test.ts` likewise drives a mocked manager.
 - `test/helpers/make-subagent.ts`, `test/helpers/mock-session.ts` — `createSubagentSessionStub.resumeTurnLoop` is a plain `vi.fn()`, so a test can record the signal it received with no fixture change.
 - The five existing `record.abortController` / `agent.abortController` assertions (`subagent.test.ts` lines ~75, ~94, ~95, ~355, ~1135) — a getter preserves the read shape exactly, and the constructor still assigns one.
 

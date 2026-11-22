@@ -33,7 +33,8 @@ Full suite: 62 files, 977 tests, all passing; type check and lint clean.
 - **Plan deviation — step consolidation**: The type narrowing in step 1 caused immediate `tsc` errors in test files that the plan assigned to steps 2–4 (the `string[]`-specific tests in `agent-runner-extension-tools.test.ts`, `session-config.test.ts`, and `agent-config-editor.test.ts`).
   All test fixes were folded into the step 1 commit to keep the build green at every commit.
   Steps 2–4 became purely production-code changes.
-- **Plan deviation — deprecation warning**: The plan said to use `debugLog` for the deprecation warning, but `debugLog` is debug-only (requires `PI_SUBAGENTS_DEBUG=1`) and its signature requires an error object as the second argument. `console.warn` was used instead, which is user-visible without special env vars and testable with `vi.spyOn`.
+- **Plan deviation — deprecation warning**: The plan said to use `debugLog` for the deprecation warning, but `debugLog` is debug-only (requires `PI_SUBAGENTS_DEBUG=1`) and its signature requires an error object as the second argument.
+  `console.warn` was used instead, which is user-visible without special env vars and testable with `vi.spyOn`.
 - **ESLint auto-fix in step 2**: ESLint rewrote `extensions === false` to `!extensions` and `cfg.toolFilter.extensions === false` to `!cfg.toolFilter.extensions` after the type narrowed to `boolean`.
   Both are semantically identical; the changes were staged and included in the same commit.
 - The `resolveBoolExtensions` helper in `custom-agents.ts` is a clean seam — if `skills` is ever also simplified to `boolean`, the same pattern applies.

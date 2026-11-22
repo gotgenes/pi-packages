@@ -58,6 +58,7 @@ They ask that a deny on the effective target apply to every spelling the native 
   6. `isAbsolute ? resolve(p) : resolve(cwd, p)`.
 
   It does **not** trim, strip quotes, or expand `$HOME`.
+
 - `resolveReadPath(path, cwd)` (`read` only, async twin `resolveReadPathAsync` is what `read.ts:103` calls) returns `resolveToCwd`'s result when it exists (`access F_OK`), else the first existing of: AM/PM variant (` AM.`/` PM.` → `\u202FAM.`), NFD variant, curly-quote variant (`'` → `\u2019`), NFD + curly; else the unmodified result.
 
 ### Ours

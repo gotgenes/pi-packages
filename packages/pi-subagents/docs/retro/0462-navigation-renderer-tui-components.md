@@ -65,8 +65,7 @@ Execution was notably clean — six commits, no rework of production code, CI gr
 2. **Probe-driven de-risking.**
    Before the renderer rewrite, a throwaway `_probe-theme.test.ts` confirmed `getMarkdownTheme()` + a Pi component render works outside interactive mode — validating the riskiest assumption cheaply, then deleted.
 3. **The operator's planning interjections were strategic, not mechanical.**
-   Rather than picking an `ask_user` option, the operator asked "what update frequency are we anticipating?"
-   and flagged a dependency-inversion risk on tool definitions.
+   Rather than picking an `ask_user` option, the operator asked "what update frequency are we anticipating?" and flagged a dependency-inversion risk on tool definitions.
    Both redirects improved the design: the frequency analysis justified rebuild-on-change, and the inversion concern led to the dependency-safe `getToolDefinition` read accessor (discovered on the SDK, not invented).
 4. **Incremental verification throughout.**
    Targeted `vitest` per Red→Green step, `pnpm run check` immediately after each shared-interface change, then full suite + root lint + `fallow dead-code` before each commit — no end-of-session verification pile-up.

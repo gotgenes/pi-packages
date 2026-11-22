@@ -38,8 +38,7 @@ The plan's Background section was written from the web search and OpenCode sourc
 #### What caused friction (user side)
 
 - The user had to provide three corrections that could have been self-discovered.
-  Each was a simple "did you check our code?"
-  moment.
+  Each was a simple "did you check our code?" moment.
   No strategic judgment was needed — this was mechanical oversight the agent should handle autonomously.
 
 ### Changes made

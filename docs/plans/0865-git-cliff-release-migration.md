@@ -189,8 +189,7 @@ Following the [#816] precedent that a pushing script is separated from the read-
 | `scripts/release/create-github-releases.sh` | no      | one `gh release create` per tag, notes from `git-cliff --latest`                              |
 
 `prepare-release.sh` guards on `CI` with an `ALLOW_LOCAL_PUSH` escape, exactly as `advance-release-baseline.sh` does.
-`next-version.sh` is safe to run in a working checkout, which is what makes "what would release?"
-answerable locally — something the release-please setup could never do.
+`next-version.sh` is safe to run in a working checkout, which is what makes "what would release?" answerable locally — something the release-please setup could never do.
 
 ### Version write-back and the lockfile
 

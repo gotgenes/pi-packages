@@ -60,6 +60,7 @@ None of our six config arrays has a bound, so raising the floor alone changes th
     It reads the global file, plus the project and legacy-project files only when `includeProjectScope` (the project-trust flag) is set.
     `FilePolicyLoader` reads the same files through `loadUnifiedConfig`.
   - `pi-permission-model-judge`: `loadModelJudgeConfig` (`src/config-loader.ts`) runs `modelJudgeConfigSchema.safeParse` over the shallow merge of the global and project layers, with no trust check ([#1092]).
+
 - **Where the arrays are.**
   The schemas have six array sites (grep for `z.array` / `.array(`; confirmed by the Tidy-First assessor):
 
@@ -75,9 +76,13 @@ None of our six config arrays has a bound, so raising the floor alone changes th
 - **Fail-closed rejection.**
   The `pi-permission-system` skill's Configuration section governs this: a schema-invalid file rejects its whole scope, and a rejected non-global scope floors `allow` to `ask`.
   An oversized array takes that existing path; no new rejection mechanism is added.
+
 - **Generated schemas.**
   Both `schemas/*.json` are generated from `config-schema.ts` (`pnpm run gen:schema`) and pinned by parity tests, so a `.max()` edit needs a regeneration in the same commit.
-- **Precedent.** `config-schema.ts` already bounds a string: `reason: z.string().max(500)`.
+
+- **Precedent.**
+  `config-schema.ts` already bounds a string: `reason: z.string().max(500)`.
+
 - **Release-age gate.** zod 4.6.7 was published 2026-10-12 (`pnpm view zod time`), well past pnpm's 24-hour `minimumReleaseAge`.
 
 ## Design Overview

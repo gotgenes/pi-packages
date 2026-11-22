@@ -44,7 +44,8 @@ Relevant modules (all under `packages/pi-permission-system/src/`):
 - `types.ts` — `PermissionState`, `FlatPermissionConfig` (the on-disk shape), and `PermissionCheckResult` (the evaluation result returned to gates).
 - `common.ts` — shared narrow type guards, including `isPermissionState`.
   This is the natural home for a shared `isDenyWithReason` guard, beside its sibling.
-- `rule.ts` — the `Rule` value object and `evaluate()`. `evaluate()` returns the matched `Rule` **directly** (last-match-wins via `findLast`), so a `reason` field on `Rule` propagates to the result automatically — no change to `evaluate()` is needed.
+- `rule.ts` — the `Rule` value object and `evaluate()`.
+  `evaluate()` returns the matched `Rule` **directly** (last-match-wins via `findLast`), so a `reason` field on `Rule` propagates to the result automatically — no change to `evaluate()` is needed.
 - `normalize.ts` — `normalizeFlatConfig(FlatPermissionConfig): Ruleset`.
   Converts the on-disk flat config into `Rule[]`.
   The object-value branch currently only accepts `isPermissionState(action)` and silently drops everything else (including deny-with-reason objects).

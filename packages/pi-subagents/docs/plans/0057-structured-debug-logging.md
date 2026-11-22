@@ -12,19 +12,15 @@ Each block correctly suppresses a non-essential side-effect failure, but in deve
 
 ## Goals
 
-- Add a `debugLog(context, err)` utility in `src/debug.ts` gated on
-  `PI_SUBAGENTS_DEBUG=1`.
+- Add a `debugLog(context, err)` utility in `src/debug.ts` gated on `PI_SUBAGENTS_DEBUG=1`.
 - Thread `debugLog` into every silenced `catch` block listed in the issue scope.
-- Leave production behavior **completely unchanged** — no new log output unless
-  the env var is explicitly set.
+- Leave production behavior **completely unchanged** — no new log output unless the env var is explicitly set.
 - Provide a `debug.test.ts` unit test covering the on/off branching.
 
 ## Non-Goals
 
-- `usage.ts` catch blocks — they return `0`/`null` on failure and are already
-  recoverable, not truly "silent drops"; they are out of scope.
-- `settings.ts` catch block — it returns `false` on failure, already surfaced
-  to the caller; out of scope.
+- `usage.ts` catch blocks — they return `0`/`null` on failure and are already recoverable, not truly "silent drops"; they are out of scope.
+- `settings.ts` catch block — it returns `false` on failure, already surfaced to the caller; out of scope.
 - Log rotation, structured JSON output, or stderr vs. stdout routing.
 - Wiring debug output to the Pi UI; `console.warn` to stderr is sufficient.
 
