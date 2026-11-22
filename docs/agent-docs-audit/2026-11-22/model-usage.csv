@@ -1,0 +1,543 @@
+week,model,thinking_level,stage,sessions,messages,tokens,cost_usd
+2026-05-11,claude-opus-4-6,high,(unnamed),12,797,57783926,51.15
+2026-05-11,claude-opus-4-6,medium,(unnamed),2,166,18037163,13.81
+2026-05-11,claude-sonnet-4-6,high,(unnamed),2,80,3764942,2.08
+2026-05-11,claude-sonnet-4-6,medium,(unnamed),5,67,6502144,3.74
+2026-05-11,deepseek-v4-pro,high,(unnamed),1,38,1336448,0.14
+2026-05-11,kimi-k2.6,high,(unnamed),1,16,171130,0.12
+2026-05-18,claude-opus-4-6,high,(unnamed),73,3758,413842202,345.50
+2026-05-18,claude-opus-4-6,high,Build,2,4,714438,2.42
+2026-05-18,claude-opus-4-6,high,Planning,14,464,18485908,17.29
+2026-05-18,claude-opus-4-6,high,Retrospective,15,182,22215198,16.14
+2026-05-18,claude-opus-4-6,high,Ship,2,5,438684,1.29
+2026-05-18,claude-opus-4-6,high,TDD,11,73,7022321,11.81
+2026-05-18,claude-opus-4-6,medium,(unnamed),6,62,5866955,7.97
+2026-05-18,claude-opus-4-6,xhigh,(unnamed),19,474,34475089,38.47
+2026-05-18,claude-sonnet-4-6,high,(unnamed),37,2229,245172702,107.12
+2026-05-18,claude-sonnet-4-6,high,Build,2,501,82598268,28.11
+2026-05-18,claude-sonnet-4-6,high,Planning,16,218,9433463,7.90
+2026-05-18,claude-sonnet-4-6,high,TDD,14,769,64015762,26.36
+2026-05-18,claude-sonnet-4-6,medium,(unnamed),5,69,8349113,5.30
+2026-05-18,claude-sonnet-4-6,xhigh,(unnamed),1,42,14302633,4.79
+2026-05-18,deepseek-v4-flash,high,(unnamed),42,711,70482185,0.77
+2026-05-18,deepseek-v4-flash,high,Build,2,27,4005515,0.05
+2026-05-18,deepseek-v4-flash,high,Ship,2,33,2429273,0.01
+2026-05-18,deepseek-v4-flash,high,TDD,14,176,13940306,0.20
+2026-05-18,deepseek-v4-flash,xhigh,(unnamed),2,52,1184690,0.03
+2026-05-18,deepseek-v4-pro,high,(unnamed),2,67,3558451,0.37
+2026-05-18,deepseek-v4-pro,high,Retrospective,1,27,2776373,0.44
+2026-05-18,deepseek-v4-pro,xhigh,(unnamed),2,40,3379144,0.37
+2026-05-18,kimi-k2.6,high,(unnamed),3,133,6746926,3.06
+2026-05-25,claude-haiku-4-5,high,TDD,1,24,3064312,0.61
+2026-05-25,claude-opus-4-6,high,(unnamed),43,454,25618881,28.21
+2026-05-25,claude-opus-4-6,high,Build,1,3,293157,0.72
+2026-05-25,claude-opus-4-6,high,Planning,31,1085,51008077,47.49
+2026-05-25,claude-opus-4-6,high,Retrospective,32,525,81321868,52.86
+2026-05-25,claude-opus-4-6,high,Ship,8,187,30231130,23.03
+2026-05-25,claude-opus-4-6,high,TDD,27,673,93685928,77.53
+2026-05-25,claude-opus-4-6,medium,Planning,1,9,944334,1.13
+2026-05-25,claude-opus-4-6,off,(unnamed),1,1,53452,0.03
+2026-05-25,claude-opus-4-6,xhigh,(unnamed),4,155,13464634,17.11
+2026-05-25,claude-opus-4-6,xhigh,Planning,5,145,11456956,13.34
+2026-05-25,claude-opus-4-6,xhigh,Retrospective,1,43,8533872,7.11
+2026-05-25,claude-opus-4-8,high,(unnamed),20,73,2294186,5.37
+2026-05-25,claude-opus-4-8,high,Build,1,56,8908405,7.78
+2026-05-25,claude-opus-4-8,high,Planning,18,387,32703573,50.62
+2026-05-25,claude-opus-4-8,high,Retrospective,16,219,50475188,40.86
+2026-05-25,claude-opus-4-8,high,Ship,3,10,2243202,4.93
+2026-05-25,claude-opus-4-8,high,TDD,15,803,158812477,126.61
+2026-05-25,claude-opus-4-8,low,(unnamed),2,4,43301,0.15
+2026-05-25,claude-opus-4-8,low,Planning,1,21,935658,1.40
+2026-05-25,claude-opus-4-8,medium,(unnamed),1,1,0,0.00
+2026-05-25,claude-opus-4-8,minimal,(unnamed),1,1,0,0.00
+2026-05-25,claude-opus-4-8,off,(unnamed),1,1,22010,0.02
+2026-05-25,claude-opus-4-8,xhigh,(unnamed),2,43,4201413,6.73
+2026-05-25,claude-opus-4-8,xhigh,Planning,4,85,11780718,19.21
+2026-05-25,claude-opus-4-8,xhigh,TDD,1,36,7904906,8.28
+2026-05-25,claude-sonnet-4-6,high,(unnamed),7,88,3551953,2.86
+2026-05-25,claude-sonnet-4-6,high,Build,2,88,5568671,3.07
+2026-05-25,claude-sonnet-4-6,high,Planning,38,151,9199811,12.01
+2026-05-25,claude-sonnet-4-6,high,Ship,1,95,13232372,4.89
+2026-05-25,claude-sonnet-4-6,high,TDD,38,2421,254910468,105.23
+2026-05-25,claude-sonnet-4-6,xhigh,Planning,1,6,578454,0.49
+2026-05-25,deepseek-v4-flash,high,(unnamed),4,14,242755,0.01
+2026-05-25,deepseek-v4-flash,high,Build,2,48,4610481,0.04
+2026-05-25,deepseek-v4-flash,high,Planning,2,43,1940719,0.02
+2026-05-25,deepseek-v4-flash,high,Ship,10,156,16334641,0.06
+2026-05-25,deepseek-v4-flash,high,TDD,46,626,66216330,0.86
+2026-06-01,claude-opus-4-8,high,(unnamed),37,357,37239636,47.09
+2026-06-01,claude-opus-4-8,high,Build,2,46,4708945,4.96
+2026-06-01,claude-opus-4-8,high,Planning,33,723,74560108,95.77
+2026-06-01,claude-opus-4-8,high,Retrospective,33,433,110877507,78.10
+2026-06-01,claude-opus-4-8,high,Ship,5,13,3004340,7.90
+2026-06-01,claude-opus-4-8,high,TDD,29,862,178804185,164.96
+2026-06-01,claude-opus-4-8,low,Planning,1,3,792563,1.96
+2026-06-01,claude-opus-4-8,medium,(unnamed),1,1,128932,0.14
+2026-06-01,claude-opus-4-8,xhigh,(unnamed),10,85,7871807,13.37
+2026-06-01,claude-opus-4-8,xhigh,Planning,9,229,30941176,42.55
+2026-06-01,claude-sonnet-4-6,high,(unnamed),3,10,151733,0.20
+2026-06-01,claude-sonnet-4-6,high,Build,1,52,8220192,4.79
+2026-06-01,claude-sonnet-4-6,high,Planning,21,87,9040725,10.82
+2026-06-01,claude-sonnet-4-6,high,Retrospective,1,9,2299208,1.69
+2026-06-01,claude-sonnet-4-6,high,TDD,23,1878,257792896,112.46
+2026-06-01,deepseek-v4-flash,high,Build,1,14,1783564,0.02
+2026-06-01,deepseek-v4-flash,high,Ship,5,78,9192566,0.03
+2026-06-01,deepseek-v4-flash,high,TDD,19,233,33197483,0.44
+2026-06-08,claude-fable-5,high,(unnamed),3,109,11804208,28.07
+2026-06-08,claude-opus-4-6,high,Retrospective,1,18,641669,1.89
+2026-06-08,claude-opus-4-8,high,(unnamed),38,288,22594134,43.84
+2026-06-08,claude-opus-4-8,high,Build,2,30,2410905,2.67
+2026-06-08,claude-opus-4-8,high,PR Review,2,27,1678918,2.69
+2026-06-08,claude-opus-4-8,high,Planning,29,611,47921237,59.51
+2026-06-08,claude-opus-4-8,high,Retrospective,29,495,108507906,87.58
+2026-06-08,claude-opus-4-8,high,Ship,10,22,3805702,12.16
+2026-06-08,claude-opus-4-8,high,TDD,23,677,115499553,96.39
+2026-06-08,claude-opus-4-8,xhigh,(unnamed),3,72,10947000,17.86
+2026-06-08,claude-opus-4-8,xhigh,Planning,3,117,19003530,20.55
+2026-06-08,claude-opus-4-8,xhigh,TDD,2,137,42559486,24.36
+2026-06-08,claude-sonnet-4-6,high,(unnamed),4,30,1261780,1.23
+2026-06-08,claude-sonnet-4-6,high,Build,3,126,8583157,3.65
+2026-06-08,claude-sonnet-4-6,high,PR Review,1,3,50406,0.09
+2026-06-08,claude-sonnet-4-6,high,Planning,19,102,5966210,6.44
+2026-06-08,claude-sonnet-4-6,high,Ship,6,96,11106588,3.59
+2026-06-08,claude-sonnet-4-6,high,TDD,24,1043,110803680,49.71
+2026-06-08,deepseek-v4-flash,high,Ship,4,77,8075090,0.03
+2026-06-08,deepseek-v4-flash,high,TDD,9,81,7421386,0.15
+2026-06-15,claude-opus-4-8,high,(unnamed),46,808,79831751,94.78
+2026-06-15,claude-opus-4-8,high,Build,6,216,26737451,21.26
+2026-06-15,claude-opus-4-8,high,Land,2,7,285319,0.70
+2026-06-15,claude-opus-4-8,high,PR Review,1,40,2527479,2.82
+2026-06-15,claude-opus-4-8,high,Planning,29,717,61260255,77.55
+2026-06-15,claude-opus-4-8,high,Retrospective,29,438,87160082,66.60
+2026-06-15,claude-opus-4-8,high,Ship,26,101,21246568,39.75
+2026-06-15,claude-opus-4-8,high,TDD,10,764,130921514,87.31
+2026-06-15,claude-opus-4-8,low,(unnamed),1,4,452232,0.89
+2026-06-15,claude-opus-4-8,medium,Build,1,33,2955934,2.02
+2026-06-15,claude-opus-4-8,medium,Planning,6,13,1234262,4.03
+2026-06-15,claude-opus-4-8,medium,TDD,5,214,29520798,20.63
+2026-06-15,claude-opus-4-8,xhigh,(unnamed),2,27,2721570,5.32
+2026-06-15,claude-opus-4-8,xhigh,Planning,2,29,3057950,3.53
+2026-06-15,claude-sonnet-4-6,high,(unnamed),9,138,8670155,5.60
+2026-06-15,claude-sonnet-4-6,high,Build,2,48,3868905,1.85
+2026-06-15,claude-sonnet-4-6,high,Land,1,20,446634,0.21
+2026-06-15,claude-sonnet-4-6,high,Planning,10,32,2274612,3.34
+2026-06-15,claude-sonnet-4-6,high,Retrospective,2,33,4978407,3.45
+2026-06-15,claude-sonnet-4-6,high,Ship,5,91,12657893,4.11
+2026-06-15,claude-sonnet-4-6,high,Ship (worktree),1,3,259521,0.09
+2026-06-15,claude-sonnet-4-6,high,TDD,12,530,59828207,26.16
+2026-06-15,claude-sonnet-4-6,low,Ship,1,19,2120029,0.69
+2026-06-15,claude-sonnet-4-6,low,TDD,2,8,216512,0.44
+2026-06-15,claude-sonnet-4-6,medium,Ship,1,16,1207919,0.40
+2026-06-15,claude-sonnet-4-6,medium,TDD,2,4,147070,0.30
+2026-06-15,claude-sonnet-4-6,minimal,Ship,1,20,2617647,0.84
+2026-06-15,claude-sonnet-4-6,minimal,TDD,1,2,256668,0.52
+2026-06-15,deepseek-v4-flash,high,(unnamed),2,4,43751,0.00
+2026-06-15,deepseek-v4-flash,high,Build,5,10,784218,0.05
+2026-06-15,deepseek-v4-flash,high,Land,1,21,387643,0.00
+2026-06-15,deepseek-v4-flash,high,Retrospective,1,10,1405302,0.01
+2026-06-15,deepseek-v4-flash,high,Ship,21,375,38353316,0.13
+2026-06-15,deepseek-v4-flash,high,Ship (worktree),1,6,645476,0.00
+2026-06-15,deepseek-v4-flash,high,TDD,16,37,2866011,0.21
+2026-06-15,glm-5.2,high,Planning,1,2,124408,0.10
+2026-06-15,glm-5.2,high,TDD,1,47,3854309,1.12
+2026-06-22,claude-opus-4-8,high,(unnamed),30,194,14927622,17.13
+2026-06-22,claude-opus-4-8,high,Build,4,123,17190427,13.95
+2026-06-22,claude-opus-4-8,high,Planning,26,701,69076364,96.69
+2026-06-22,claude-opus-4-8,high,Retrospective,23,311,70767145,55.74
+2026-06-22,claude-opus-4-8,high,Ship,21,110,22288692,44.22
+2026-06-22,claude-opus-4-8,high,TDD,5,624,124320890,86.49
+2026-06-22,claude-opus-4-8,medium,(unnamed),1,4,375840,0.75
+2026-06-22,claude-opus-4-8,medium,Planning,4,8,930214,3.17
+2026-06-22,claude-opus-4-8,medium,TDD,5,351,80514350,51.54
+2026-06-22,claude-opus-4-8,xhigh,(unnamed),1,12,969190,1.85
+2026-06-22,claude-opus-4-8,xhigh,Planning,1,5,704903,1.17
+2026-06-22,claude-opus-4-8,xhigh,TDD,1,41,12452181,7.71
+2026-06-22,claude-sonnet-4-6,high,(unnamed),2,42,2671626,1.47
+2026-06-22,claude-sonnet-4-6,high,Build,2,136,14527031,6.56
+2026-06-22,claude-sonnet-4-6,high,Planning,9,45,3883373,4.58
+2026-06-22,claude-sonnet-4-6,high,Retrospective,1,1,0,0.00
+2026-06-22,claude-sonnet-4-6,high,Ship,3,53,7171444,3.24
+2026-06-22,claude-sonnet-4-6,high,TDD,9,452,61337952,27.32
+2026-06-22,claude-sonnet-4-6,low,Ship,2,41,7241366,2.33
+2026-06-22,claude-sonnet-4-6,low,TDD,2,4,664326,1.35
+2026-06-22,claude-sonnet-4-6,medium,Ship,3,53,6871311,2.23
+2026-06-22,claude-sonnet-4-6,medium,TDD,3,6,752853,1.53
+2026-06-22,deepseek-v4-flash,high,Build,4,7,653571,0.05
+2026-06-22,deepseek-v4-flash,high,Ship,13,286,37264068,0.13
+2026-06-22,deepseek-v4-flash,high,TDD,9,13,1736800,0.17
+2026-06-22,glm-5.2,high,Retrospective,1,16,573027,0.24
+2026-06-22,kimi-k2.6,high,(unnamed),1,1,0,0.00
+2026-06-29,claude-fable-5,high,(unnamed),2,80,10083803,32.17
+2026-06-29,claude-fable-5,high,Planning,1,37,4037076,9.53
+2026-06-29,claude-opus-4-8,high,(unnamed),17,53,5123356,7.21
+2026-06-29,claude-opus-4-8,high,Build,2,71,7822970,5.32
+2026-06-29,claude-opus-4-8,high,Planning,17,357,32790792,42.88
+2026-06-29,claude-opus-4-8,high,Retrospective,14,187,48542635,34.09
+2026-06-29,claude-opus-4-8,high,Ship,13,38,9508820,23.92
+2026-06-29,claude-opus-4-8,high,TDD,5,485,104299545,83.22
+2026-06-29,claude-opus-4-8,medium,Planning,1,2,311942,1.06
+2026-06-29,claude-opus-4-8,medium,TDD,1,49,9980307,6.62
+2026-06-29,claude-opus-4-8,minimal,Retrospective,1,7,1076964,0.69
+2026-06-29,claude-opus-4-8,minimal,Ship,1,2,297152,1.01
+2026-06-29,claude-opus-4-8,xhigh,(unnamed),1,2,54148,0.20
+2026-06-29,claude-opus-4-8,xhigh,Planning,1,19,2249147,5.10
+2026-06-29,claude-sonnet-4-6,high,Planning,2,6,686012,1.03
+2026-06-29,claude-sonnet-4-6,high,Ship,1,20,3458965,1.11
+2026-06-29,claude-sonnet-4-6,high,TDD,2,189,31526583,12.46
+2026-06-29,claude-sonnet-4-6,medium,Ship,1,11,1631372,0.53
+2026-06-29,claude-sonnet-4-6,medium,TDD,1,2,293211,0.60
+2026-06-29,claude-sonnet-5,high,(unnamed),2,97,11160633,3.49
+2026-06-29,claude-sonnet-5,high,Build,3,99,10141634,2.88
+2026-06-29,claude-sonnet-5,high,Planning,4,16,1603013,1.30
+2026-06-29,claude-sonnet-5,high,Retrospective,1,8,1964071,1.10
+2026-06-29,claude-sonnet-5,high,Ship,3,72,11659639,2.54
+2026-06-29,claude-sonnet-5,high,TDD,3,238,52624171,13.48
+2026-06-29,claude-sonnet-5,low,Ship,2,37,10007867,2.50
+2026-06-29,claude-sonnet-5,low,TDD,2,4,997154,1.35
+2026-06-29,claude-sonnet-5,medium,Ship,1,18,2897171,0.64
+2026-06-29,claude-sonnet-5,medium,TDD,1,2,315690,0.43
+2026-06-29,claude-sonnet-5,minimal,Build,1,2,260487,0.35
+2026-06-29,claude-sonnet-5,minimal,Ship,1,17,2245930,0.49
+2026-06-29,deepseek-v4-flash,high,Build,1,3,280425,0.01
+2026-06-29,deepseek-v4-flash,high,Ship,5,110,17441332,0.06
+2026-06-29,deepseek-v4-flash,high,TDD,4,10,1638401,0.10
+2026-06-29,glm-5.2,high,(unnamed),1,42,1010226,0.37
+2026-07-06,claude-fable-5,high,(unnamed),2,97,13180450,31.02
+2026-07-06,claude-fable-5,high,Planning,3,54,5586875,14.65
+2026-07-06,claude-fable-5,high,Retrospective,1,30,5260606,14.43
+2026-07-06,claude-fable-5,xhigh,Planning,1,6,731651,6.48
+2026-07-06,claude-opus-4-8,high,(unnamed),23,112,7241424,9.21
+2026-07-06,claude-opus-4-8,high,Land,2,30,1365539,1.55
+2026-07-06,claude-opus-4-8,high,Planning,22,475,48781412,66.23
+2026-07-06,claude-opus-4-8,high,Retrospective,20,299,70974890,58.95
+2026-07-06,claude-opus-4-8,high,Ship,18,39,10124598,31.78
+2026-07-06,claude-opus-4-8,high,TDD,12,933,202890215,128.36
+2026-07-06,claude-opus-4-8,medium,Retrospective,2,8,1386314,0.88
+2026-07-06,claude-opus-4-8,medium,Ship,1,2,295738,1.01
+2026-07-06,claude-sonnet-5,high,(unnamed),3,165,15253047,4.68
+2026-07-06,claude-sonnet-5,high,Build,1,55,6683978,1.70
+2026-07-06,claude-sonnet-5,high,Land,1,34,1933906,0.48
+2026-07-06,claude-sonnet-5,high,Planning,11,40,4260278,3.69
+2026-07-06,claude-sonnet-5,high,Retrospective,1,18,6371396,2.26
+2026-07-06,claude-sonnet-5,high,Ship,2,2,617856,0.13
+2026-07-06,claude-sonnet-5,high,Ship (worktree),2,39,6919859,2.50
+2026-07-06,claude-sonnet-5,high,TDD,10,841,162473905,40.18
+2026-07-06,claude-sonnet-5,low,Build,1,2,300868,0.41
+2026-07-06,claude-sonnet-5,low,Ship,17,413,96219542,20.36
+2026-07-06,claude-sonnet-5,low,TDD,16,32,7154012,9.70
+2026-07-06,claude-sonnet-5,medium,Ship,2,35,4243201,0.94
+2026-07-06,claude-sonnet-5,medium,TDD,2,4,476185,0.65
+2026-07-06,deepseek-v4-flash,high,Ship,1,22,4599899,0.01
+2026-07-06,deepseek-v4-flash,high,TDD,1,2,412961,0.03
+2026-07-13,claude-fable-5,high,(unnamed),3,124,17202069,47.88
+2026-07-13,claude-fable-5,high,Planning,3,28,4336380,16.61
+2026-07-13,claude-fable-5,max,Planning,1,8,1065617,6.72
+2026-07-13,claude-fable-5,xhigh,(unnamed),1,41,5540581,10.33
+2026-07-13,claude-opus-4-8,high,(unnamed),38,265,31524859,33.94
+2026-07-13,claude-opus-4-8,high,Build,9,233,35812560,24.89
+2026-07-13,claude-opus-4-8,high,Land,3,26,1159230,1.51
+2026-07-13,claude-opus-4-8,high,PR Review,1,13,615239,0.99
+2026-07-13,claude-opus-4-8,high,Planning,33,727,69734697,87.97
+2026-07-13,claude-opus-4-8,high,Retrospective,34,529,107467849,90.74
+2026-07-13,claude-opus-4-8,high,Ship,30,91,17080763,43.06
+2026-07-13,claude-opus-4-8,high,TDD,13,818,173207028,117.32
+2026-07-13,claude-opus-4-8,xhigh,(unnamed),2,4,124617,0.46
+2026-07-13,claude-opus-4-8,xhigh,Planning,2,13,808124,1.88
+2026-07-13,claude-sonnet-5,high,(unnamed),5,192,18242996,5.67
+2026-07-13,claude-sonnet-5,high,Build,4,146,22251289,5.66
+2026-07-13,claude-sonnet-5,high,Land,2,20,537948,0.15
+2026-07-13,claude-sonnet-5,high,Planning,10,44,4722006,3.66
+2026-07-13,claude-sonnet-5,high,Ship,7,162,31838471,6.76
+2026-07-13,claude-sonnet-5,high,Ship (worktree),3,47,8939084,3.99
+2026-07-13,claude-sonnet-5,high,TDD,12,455,72851213,20.70
+2026-07-13,claude-sonnet-5,low,Build,5,10,1384457,1.88
+2026-07-13,claude-sonnet-5,low,Ship,13,268,49527399,11.23
+2026-07-13,claude-sonnet-5,low,TDD,8,16,3191329,4.33
+2026-07-13,claude-sonnet-5,medium,Build,1,2,168739,0.23
+2026-07-13,claude-sonnet-5,medium,Ship,2,34,3856060,0.87
+2026-07-13,claude-sonnet-5,medium,TDD,1,3,286853,0.39
+2026-07-13,claude-sonnet-5,minimal,Build,1,3,319088,0.43
+2026-07-13,claude-sonnet-5,minimal,Ship,1,19,3100673,0.68
+2026-07-13,deepseek-v4-flash,high,(unnamed),2,10,231662,0.01
+2026-07-13,deepseek-v4-flash,high,Build,2,3,383721,0.04
+2026-07-13,deepseek-v4-flash,high,Land,1,33,1037658,0.01
+2026-07-13,deepseek-v4-flash,high,Ship,5,101,10402766,0.04
+2026-07-13,deepseek-v4-flash,high,TDD,4,7,554978,0.05
+2026-07-20,claude-fable-5,high,Planning,2,16,2544184,9.36
+2026-07-20,claude-fable-5,xhigh,Planning,1,16,2823085,12.87
+2026-07-20,claude-opus-4-8,high,(unnamed),14,32,1046123,2.55
+2026-07-20,claude-opus-4-8,high,Planning,13,424,43807855,47.82
+2026-07-20,claude-opus-4-8,high,Retrospective,12,214,65177804,56.33
+2026-07-20,claude-opus-4-8,high,Ship,12,164,45312004,56.56
+2026-07-20,claude-opus-4-8,high,TDD,11,782,159502535,103.77
+2026-07-20,claude-opus-5,high,(unnamed),7,58,3932305,5.01
+2026-07-20,claude-opus-5,high,PR Review,2,46,3172048,3.90
+2026-07-20,claude-opus-5,high,Planning,6,236,25212318,26.38
+2026-07-20,claude-opus-5,high,Retrospective,5,111,33505245,22.86
+2026-07-20,claude-opus-5,high,Ship,5,12,2848932,8.36
+2026-07-20,claude-opus-5,high,TDD,6,497,106393204,68.89
+2026-07-20,claude-sonnet-5,high,(unnamed),2,156,15824219,4.46
+2026-07-20,claude-sonnet-5,high,Retrospective,1,19,5427101,1.93
+2026-07-20,claude-sonnet-5,high,Ship,11,344,85161806,20.86
+2026-07-20,claude-sonnet-5,high,TDD,10,20,4572860,6.21
+2026-07-20,claude-sonnet-5,low,Ship,6,135,22745642,4.89
+2026-07-20,claude-sonnet-5,low,TDD,6,12,1945284,2.64
+2026-07-20,claude-sonnet-5,minimal,Ship,1,26,7040886,1.46
+2026-07-20,claude-sonnet-5,minimal,TDD,1,2,535673,0.72
+2026-07-20,deepseek-v4-flash,high,(unnamed),1,16,530152,0.01
+2026-07-27,claude-opus-5,high,(unnamed),7,61,7702931,10.68
+2026-07-27,claude-opus-5,high,PR Review,4,141,12062922,16.60
+2026-07-27,claude-opus-5,high,Planning,6,214,21156950,21.63
+2026-07-27,claude-opus-5,high,Retrospective,6,124,31480416,27.43
+2026-07-27,claude-opus-5,high,Ship,6,16,3421056,9.20
+2026-07-27,claude-opus-5,high,TDD,6,363,62489357,42.24
+2026-07-27,claude-sonnet-5,high,Ship,6,175,32977861,7.02
+2026-07-27,claude-sonnet-5,high,TDD,6,11,2036311,2.96
+2026-07-27,deepseek-v4-flash,high,(unnamed),1,8,195273,0.00
+2026-08-03,claude-opus-5,high,(unnamed),3,68,8685713,8.83
+2026-08-03,claude-opus-5,high,Planning,1,30,2338730,2.83
+2026-08-03,claude-opus-5,high,Retrospective,1,27,8623101,7.10
+2026-08-03,claude-opus-5,high,Ship,1,5,1293429,2.17
+2026-08-03,claude-sonnet-5,high,Planning,1,5,532624,0.38
+2026-08-03,claude-sonnet-5,high,Ship,1,33,7910402,2.33
+2026-08-03,claude-sonnet-5,high,TDD,1,100,17681644,4.29
+2026-08-10,claude-fable-5,high,(unnamed),1,30,4070707,11.93
+2026-08-10,claude-opus-5,high,(unnamed),22,124,8590767,10.83
+2026-08-10,claude-opus-5,high,Build,1,74,15109858,20.26
+2026-08-10,claude-opus-5,high,PR Review,3,71,4404426,4.66
+2026-08-10,claude-opus-5,high,Planning,18,935,127303190,125.40
+2026-08-10,claude-opus-5,high,Retrospective,17,405,141164730,103.20
+2026-08-10,claude-opus-5,high,Ship,17,39,12110738,36.01
+2026-08-10,claude-opus-5,high,TDD,16,1914,485683753,311.30
+2026-08-10,claude-sonnet-5,high,(unnamed),2,5,119956,0.17
+2026-08-10,claude-sonnet-5,high,Build,1,2,473836,0.64
+2026-08-10,claude-sonnet-5,high,Ship,17,403,110113413,23.09
+2026-08-10,claude-sonnet-5,high,TDD,16,34,9201464,12.52
+2026-08-17,claude-fable-5,high,(unnamed),1,6,213265,0.72
+2026-08-17,claude-fable-5,high,Build,2,137,19457697,62.41
+2026-08-17,claude-fable-5,high,Planning,1,21,3888436,9.63
+2026-08-17,claude-opus-5,high,(unnamed),20,132,13047848,16.45
+2026-08-17,claude-opus-5,high,Build,5,284,64434316,73.53
+2026-08-17,claude-opus-5,high,Planning,19,654,73716908,85.74
+2026-08-17,claude-opus-5,high,Retrospective,18,485,145680807,107.89
+2026-08-17,claude-opus-5,high,Ship,18,134,34994973,42.84
+2026-08-17,claude-opus-5,high,TDD,13,1111,270701563,167.50
+2026-08-17,claude-sonnet-5,high,(unnamed),1,67,10225347,2.98
+2026-08-17,claude-sonnet-5,high,Build,5,9,1697958,2.44
+2026-08-17,claude-sonnet-5,high,Ship,16,342,78499682,16.73
+2026-08-17,claude-sonnet-5,high,TDD,11,22,5397029,7.31
+2026-08-24,claude-fable-5,high,(unnamed),1,61,9221625,19.02
+2026-08-24,claude-fable-5,high,Build,1,1,238963,3.08
+2026-08-24,claude-opus-5,high,(unnamed),30,271,25165004,30.06
+2026-08-24,claude-opus-5,high,Build,3,163,24116835,19.37
+2026-08-24,claude-opus-5,high,Land,3,29,1374386,1.71
+2026-08-24,claude-opus-5,high,PR Review,1,50,4124275,4.55
+2026-08-24,claude-opus-5,high,Planning,20,1180,183960602,182.53
+2026-08-24,claude-opus-5,high,Retrospective,19,503,137938848,101.49
+2026-08-24,claude-opus-5,high,Ship,12,35,10286728,26.59
+2026-08-24,claude-opus-5,high,Ship (worktree),4,20,1172280,2.32
+2026-08-24,claude-opus-5,high,Sync (worktree),1,1,380434,2.38
+2026-08-24,claude-opus-5,high,TDD,17,2206,566920191,421.59
+2026-08-24,claude-sonnet-5,high,(unnamed),7,19,715882,0.77
+2026-08-24,claude-sonnet-5,high,Build,4,8,1408902,1.91
+2026-08-24,claude-sonnet-5,high,Land,2,43,1864825,0.51
+2026-08-24,claude-sonnet-5,high,Ship,12,287,77835629,16.78
+2026-08-24,claude-sonnet-5,high,Ship (worktree),8,129,12391653,2.85
+2026-08-24,claude-sonnet-5,high,Sync (worktree),5,59,17433270,3.64
+2026-08-24,claude-sonnet-5,high,TDD,16,36,10483147,13.14
+2026-08-31,claude-fable-5-1,high,(unnamed),1,150,37018436,32.49
+2026-08-31,claude-fable-5-1,high,Planning,1,2,454477,3.23
+2026-08-31,claude-opus-4-8,high,Planning,1,2,319459,2.20
+2026-08-31,claude-opus-5,high,(unnamed),30,418,53571124,56.81
+2026-08-31,claude-opus-5,high,Build,2,206,57570677,45.41
+2026-08-31,claude-opus-5,high,PR Review,1,101,14682471,14.31
+2026-08-31,claude-opus-5,high,Planning,24,1408,213594827,225.07
+2026-08-31,claude-opus-5,high,Retrospective,26,803,134605468,110.55
+2026-08-31,claude-opus-5,high,Ship,4,24,5584913,8.74
+2026-08-31,claude-opus-5,high,Ship (worktree),21,121,7696265,13.31
+2026-08-31,claude-opus-5,high,Sync (worktree),3,36,12495850,12.20
+2026-08-31,claude-opus-5,high,TDD,20,2656,782077365,505.33
+2026-08-31,claude-sonnet-5,high,(unnamed),24,237,25551663,10.40
+2026-08-31,claude-sonnet-5,high,Build,2,6,1762945,1.72
+2026-08-31,claude-sonnet-5,high,Ship,3,79,23236501,5.01
+2026-08-31,claude-sonnet-5,high,Ship (worktree),21,559,26200796,7.52
+2026-08-31,claude-sonnet-5,high,Sync (worktree),20,275,85956900,19.47
+2026-08-31,claude-sonnet-5,high,TDD,20,44,13404890,16.82
+2026-09-07,claude-fable-5-1,high,(unnamed),1,4,203771,0.77
+2026-09-07,claude-fable-5-1,high,Planning,2,150,42932015,61.14
+2026-09-07,claude-opus-5,high,(unnamed),16,56,3424919,7.11
+2026-09-07,claude-opus-5,high,Build,1,41,8168190,6.03
+2026-09-07,claude-opus-5,high,PR Review,1,95,12938002,15.18
+2026-09-07,claude-opus-5,high,Planning,15,852,126706863,116.23
+2026-09-07,claude-opus-5,high,Retrospective,17,489,114988709,90.00
+2026-09-07,claude-opus-5,high,Ship,6,12,4299712,14.54
+2026-09-07,claude-opus-5,high,Ship (worktree),10,53,3914820,6.95
+2026-09-07,claude-opus-5,high,TDD,14,1809,502242381,323.05
+2026-09-07,claude-sonnet-5,high,(unnamed),10,39,1716609,1.30
+2026-09-07,claude-sonnet-5,high,Build,1,2,418672,0.57
+2026-09-07,claude-sonnet-5,high,Planning,1,3,1077557,1.04
+2026-09-07,claude-sonnet-5,high,Ship,6,160,52935068,11.07
+2026-09-07,claude-sonnet-5,high,Ship (worktree),10,314,16933984,4.42
+2026-09-07,claude-sonnet-5,high,Sync (worktree),10,148,44684497,10.19
+2026-09-07,claude-sonnet-5,high,TDD,14,39,12135358,12.32
+2026-09-14,claude-fable-5-1,high,(unnamed),4,105,14515500,25.53
+2026-09-14,claude-fable-5-1,high,Build,2,223,52128846,28.18
+2026-09-14,claude-fable-5-1,high,Planning,4,141,21914203,24.68
+2026-09-14,claude-fable-5-1,high,TDD,1,101,23685772,15.40
+2026-09-14,claude-opus-5,high,(unnamed),37,679,64929232,68.85
+2026-09-14,claude-opus-5,high,PR Review,2,164,17357643,13.11
+2026-09-14,claude-opus-5,high,Planning,23,1401,187979980,182.51
+2026-09-14,claude-opus-5,high,Retrospective,23,631,123213862,92.51
+2026-09-14,claude-opus-5,high,Ship,7,47,15758363,19.75
+2026-09-14,claude-opus-5,high,Ship (worktree),15,101,9304477,12.83
+2026-09-14,claude-opus-5,high,TDD,20,2183,578387540,399.61
+2026-09-14,claude-sonnet-5,high,(unnamed),17,187,24771404,8.18
+2026-09-14,claude-sonnet-5,high,Build,2,4,1087332,1.52
+2026-09-14,claude-sonnet-5,high,Ship,7,172,45976885,9.82
+2026-09-14,claude-sonnet-5,high,Ship (worktree),15,541,30313743,8.48
+2026-09-14,claude-sonnet-5,high,Sync (worktree),15,367,109390167,24.03
+2026-09-14,claude-sonnet-5,high,TDD,19,50,13389804,14.49
+2026-09-21,claude-fable-5-1,high,(unnamed),1,5,605760,1.84
+2026-09-21,claude-fable-5-1,high,Planning,1,110,14275826,9.65
+2026-09-21,claude-opus-5,high,(unnamed),2,4,139980,0.46
+2026-09-21,claude-opus-5,high,Build,1,109,26585786,24.54
+2026-09-21,claude-opus-5,high,Planning,3,89,14809528,16.33
+2026-09-21,claude-opus-5,high,Retrospective,4,158,42475271,27.21
+2026-09-21,claude-opus-5,high,Ship,2,4,1369512,4.63
+2026-09-21,claude-opus-5,high,Ship (worktree),2,38,2384198,2.89
+2026-09-21,claude-opus-5,high,TDD,4,309,89627270,52.28
+2026-09-21,claude-opus-5-5,high,(unnamed),10,63,2558373,2.68
+2026-09-21,claude-opus-5-5,high,PR Review,2,128,16345442,6.36
+2026-09-21,claude-opus-5-5,high,Planning,8,395,73185302,32.47
+2026-09-21,claude-opus-5-5,high,Retrospective,6,161,32505595,17.62
+2026-09-21,claude-opus-5-5,high,Ship,3,3,914460,4.58
+2026-09-21,claude-opus-5-5,high,Ship (worktree),3,5,289924,0.90
+2026-09-21,claude-opus-5-5,high,TDD,5,336,94651117,27.37
+2026-09-21,claude-opus-5-5,medium,(unnamed),3,9,304410,0.53
+2026-09-21,claude-opus-5-5,medium,Planning,5,273,47643665,24.99
+2026-09-21,claude-opus-5-5,medium,Retrospective,5,91,12237254,4.78
+2026-09-21,claude-opus-5-5,medium,Ship (worktree),4,6,344212,1.21
+2026-09-21,claude-opus-5-5,medium,Sync (worktree),1,20,10424277,4.76
+2026-09-21,claude-opus-5-5,medium,TDD,4,435,157256939,46.06
+2026-09-21,claude-sonnet-5,high,(unnamed),5,19,550344,0.42
+2026-09-21,claude-sonnet-5,high,Build,1,4,1155584,0.90
+2026-09-21,claude-sonnet-5,high,PR Review,1,4,770503,0.60
+2026-09-21,claude-sonnet-5,high,Ship,5,121,37276494,7.96
+2026-09-21,claude-sonnet-5,high,Ship (worktree),5,135,6232845,1.80
+2026-09-21,claude-sonnet-5,high,Sync (worktree),4,76,22704738,4.81
+2026-09-21,claude-sonnet-5,high,TDD,7,18,5631079,6.00
+2026-09-21,claude-sonnet-5,medium,(unnamed),4,15,419282,0.32
+2026-09-21,claude-sonnet-5,medium,Ship (worktree),4,121,5548971,1.56
+2026-09-21,claude-sonnet-5,medium,Sync (worktree),5,69,22292266,4.67
+2026-09-21,claude-sonnet-5,medium,TDD,5,10,3139950,4.26
+2026-09-21,deepseek-v4-flash,high,(unnamed),1,14,380052,0.01
+2026-09-28,claude-opus-5,high,(unnamed),1,2,246289,0.86
+2026-09-28,claude-opus-5,medium,(unnamed),1,1,125969,0.09
+2026-09-28,claude-opus-5-5,high,(unnamed),5,332,69855012,31.92
+2026-09-28,claude-opus-5-5,high,Planning,9,359,53028512,35.16
+2026-09-28,claude-opus-5-5,high,TDD,6,655,176554988,54.72
+2026-09-28,claude-opus-5-5,medium,(unnamed),39,174,11050717,10.99
+2026-09-28,claude-opus-5-5,medium,Build,3,47,5856889,1.68
+2026-09-28,claude-opus-5-5,medium,PR Review,2,48,5673610,2.10
+2026-09-28,claude-opus-5-5,medium,Planning,32,1344,162424092,88.10
+2026-09-28,claude-opus-5-5,medium,Retrospective,30,601,107825883,40.61
+2026-09-28,claude-opus-5-5,medium,Ship,9,36,10902968,15.69
+2026-09-28,claude-opus-5-5,medium,Ship (worktree),22,72,5437922,9.56
+2026-09-28,claude-opus-5-5,medium,Sync (worktree),1,6,1739549,0.41
+2026-09-28,claude-opus-5-5,medium,TDD,24,1789,455221668,132.12
+2026-09-28,claude-sonnet-5,medium,(unnamed),3,11,307970,0.25
+2026-09-28,claude-sonnet-5,medium,Build,1,4,493209,0.39
+2026-09-28,claude-sonnet-5,medium,Ship,3,60,15078668,3.24
+2026-09-28,claude-sonnet-5,medium,Ship (worktree),3,86,3997895,1.13
+2026-09-28,claude-sonnet-5,medium,Sync (worktree),2,34,9619070,2.03
+2026-09-28,claude-sonnet-5,medium,TDD,5,16,3677456,3.86
+2026-09-28,claude-sonnet-5-5,medium,(unnamed),22,47,1629833,1.98
+2026-09-28,claude-sonnet-5-5,medium,Build,2,3,380190,0.70
+2026-09-28,claude-sonnet-5-5,medium,PR Review,1,2,342466,0.47
+2026-09-28,claude-sonnet-5-5,medium,Retrospective,1,2,150098,0.19
+2026-09-28,claude-sonnet-5-5,medium,Ship,6,77,23536830,5.04
+2026-09-28,claude-sonnet-5-5,medium,Ship (worktree),20,255,14030202,4.43
+2026-09-28,claude-sonnet-5-5,medium,Sync (worktree),18,87,20923086,4.63
+2026-09-28,claude-sonnet-5-5,medium,TDD,24,56,13553688,16.78
+2026-10-05,claude-opus-5-5,high,(unnamed),5,40,1904361,1.52
+2026-10-05,claude-opus-5-5,high,Build,1,40,6727209,1.83
+2026-10-05,claude-opus-5-5,high,PR Review,1,35,3671643,2.40
+2026-10-05,claude-opus-5-5,high,Planning,8,277,46951006,25.59
+2026-10-05,claude-opus-5-5,high,Retrospective,4,102,21670567,7.41
+2026-10-05,claude-opus-5-5,high,Ship,1,1,342698,1.72
+2026-10-05,claude-opus-5-5,high,Ship (worktree),3,3,175258,0.82
+2026-10-05,claude-opus-5-5,high,TDD,5,300,86930867,27.00
+2026-10-05,claude-opus-5-5,medium,(unnamed),23,151,10719326,7.68
+2026-10-05,claude-opus-5-5,medium,Build,3,38,4737003,2.19
+2026-10-05,claude-opus-5-5,medium,PR Review,3,95,6596903,3.95
+2026-10-05,claude-opus-5-5,medium,Planning,19,793,99600148,52.72
+2026-10-05,claude-opus-5-5,medium,Retrospective,20,426,55974349,22.88
+2026-10-05,claude-opus-5-5,medium,Ship,6,6,1181082,5.92
+2026-10-05,claude-opus-5-5,medium,Ship (worktree),13,14,772914,3.59
+2026-10-05,claude-opus-5-5,medium,TDD,15,900,218227648,62.21
+2026-10-05,claude-opus-5-5,xhigh,(unnamed),1,157,46156997,19.89
+2026-10-05,claude-sonnet-5-5,high,(unnamed),2,6,185968,0.18
+2026-10-05,claude-sonnet-5-5,high,Ship,1,18,5724077,0.66
+2026-10-05,claude-sonnet-5-5,high,Ship (worktree),2,32,1591827,0.33
+2026-10-05,claude-sonnet-5-5,high,Sync (worktree),1,5,1928675,0.23
+2026-10-05,claude-sonnet-5-5,high,TDD,2,4,1377070,1.80
+2026-10-05,claude-sonnet-5-5,max,(unnamed),1,1,28552,0.05
+2026-10-05,claude-sonnet-5-5,medium,(unnamed),13,26,754098,0.85
+2026-10-05,claude-sonnet-5-5,medium,Build,4,6,916446,1.50
+2026-10-05,claude-sonnet-5-5,medium,Ship,6,55,10133655,2.23
+2026-10-05,claude-sonnet-5-5,medium,Ship (worktree),13,168,7667557,2.57
+2026-10-05,claude-sonnet-5-5,medium,Sync (worktree),12,58,13463953,2.53
+2026-10-05,claude-sonnet-5-5,medium,TDD,16,50,14502908,13.60
+2026-10-12,claude-opus-5-5,high,(unnamed),17,137,10913476,6.82
+2026-10-12,claude-opus-5-5,high,PR Review,1,35,3013373,1.42
+2026-10-12,claude-opus-5-5,high,Planning,15,885,147809580,75.80
+2026-10-12,claude-opus-5-5,high,Retrospective,13,331,54969555,19.60
+2026-10-12,claude-opus-5-5,high,Ship,2,3,782184,3.92
+2026-10-12,claude-opus-5-5,high,Ship (worktree),12,28,2786001,4.48
+2026-10-12,claude-opus-5-5,high,TDD,13,1574,549870574,169.34
+2026-10-12,claude-sonnet-5-5,high,(unnamed),13,66,5381936,1.84
+2026-10-12,claude-sonnet-5-5,high,Ship,2,38,14027531,1.60
+2026-10-12,claude-sonnet-5-5,high,Ship (worktree),11,168,7931157,1.69
+2026-10-12,claude-sonnet-5-5,high,Sync (worktree),7,48,15827295,1.81
+2026-10-12,claude-sonnet-5-5,high,TDD,13,62,22553215,13.40
+2026-10-19,claude-opus-5-5,high,(unnamed),4,39,2148547,1.70
+2026-10-19,claude-opus-5-5,high,Planning,4,156,20908499,10.78
+2026-10-19,claude-opus-5-5,high,Retrospective,3,72,6851054,2.71
+2026-10-19,claude-opus-5-5,high,Ship (worktree),3,3,166620,0.86
+2026-10-19,claude-opus-5-5,high,Sync (worktree),1,13,2279633,1.38
+2026-10-19,claude-opus-5-5,high,TDD,4,205,45966363,12.09
+2026-10-19,claude-sonnet-5-5,high,(unnamed),3,6,184260,0.23
+2026-10-19,claude-sonnet-5-5,high,Ship (worktree),3,43,1983609,0.41
+2026-10-19,claude-sonnet-5-5,high,Sync (worktree),3,18,3334789,0.42
+2026-10-19,claude-sonnet-5-5,high,TDD,3,6,1073954,1.42
+2026-10-26,claude-opus-5-5,high,(unnamed),5,43,4076706,2.43
+2026-10-26,claude-opus-5-5,high,Build,1,35,3091044,1.28
+2026-10-26,claude-opus-5-5,high,Planning,3,213,28500221,12.60
+2026-10-26,claude-opus-5-5,high,Retrospective,3,54,13978676,4.66
+2026-10-26,claude-opus-5-5,high,Ship,3,4,1216992,4.31
+2026-10-26,claude-opus-5-5,high,TDD,2,114,21525897,13.50
+2026-10-26,claude-opus-5-5,xhigh,(unnamed),1,135,23916239,8.23
+2026-10-26,claude-sonnet-5-5,high,(unnamed),1,15,972491,0.37
+2026-10-26,claude-sonnet-5-5,high,Ship,3,40,10101635,1.18
+2026-10-26,claude-sonnet-5-5,high,TDD,3,6,1448539,1.90
+2026-11-02,claude-opus-5-5,high,Build,1,154,35585242,20.50
+2026-11-09,claude-opus-5-5,high,(unnamed),2,21,651810,0.59
+2026-11-09,claude-opus-5-5,high,Build,1,32,9393181,4.00
+2026-11-16,claude-fable-5-2,high,(unnamed),3,318,90248224,93.36
+2026-11-16,claude-fable-5-2,high,Build,1,9,714817,2.01
+2026-11-16,claude-haiku-5-5,high,(unnamed),1,9,243044,0.01
+2026-11-16,claude-opus-5-5,high,(unnamed),10,64,3184791,2.55
+2026-11-16,claude-opus-5-5,high,Build,1,52,19270978,7.48
+2026-11-16,claude-opus-5-5,high,PR Review,1,79,8189138,3.11
+2026-11-16,claude-opus-5-5,high,Planning,6,371,65049119,35.90
+2026-11-16,claude-opus-5-5,high,Retrospective,7,149,51787116,14.14
+2026-11-16,claude-opus-5-5,high,Ship,6,27,8632078,12.92
+2026-11-16,claude-opus-5-5,high,Ship (worktree),1,1,56841,0.29
+2026-11-16,claude-opus-5-5,high,Sync (worktree),1,1,458710,2.30
+2026-11-16,claude-opus-5-5,high,TDD,6,457,141173945,38.14
+2026-11-16,claude-sonnet-5-5,high,(unnamed),1,2,58140,0.08
+2026-11-16,claude-sonnet-5-5,high,Build,1,2,786341,1.03
+2026-11-16,claude-sonnet-5-5,high,Ship,6,72,23401349,3.64
+2026-11-16,claude-sonnet-5-5,high,Ship (worktree),1,18,841576,0.17
+2026-11-16,claude-sonnet-5-5,high,Sync (worktree),1,6,2029579,0.23
+2026-11-16,claude-sonnet-5-5,high,TDD,6,13,3949091,4.83
