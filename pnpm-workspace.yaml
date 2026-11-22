@@ -17,8 +17,9 @@ catalog:
   "globals": "^17.14.0"
   "typescript-eslint": "^8.73.0"
   # Pinned exactly, not caret-ranged: rumdl's sentence-per-line reflow output
-  # changes between releases, so a version bump reflows the whole repo and
-  # lands as its own reviewed commit (0.2.24 -> 0.3.5 touched about 400 files).
+  # changes between releases, so a version bump reflows the whole repo; land
+  # the pin and that reflow together in one reviewed commit (0.2.24 -> 0.3.5
+  # touched about 400 files).
   # Keep prek.toml's rumdl-pre-commit rev in lockstep with this pin.
   "rumdl": "0.3.5"
   # TypeScript 7 runs side by side with TypeScript 6, the setup the TS 7.0

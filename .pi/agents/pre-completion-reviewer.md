@@ -166,7 +166,7 @@ For changed `src/` files, load the `code-design` skill (`.pi/skills/code-design/
 For changed `test/` files, load the `testing` skill (`.pi/skills/testing/SKILL.md`) and spot-check for convention drift:
 
 - mock fields typed `Mock<Sig>`, not `ReturnType<typeof vi.fn<…>>`
-- module-scope `vi.fn()` stubs reset in `beforeEach`
+- a module-scope `vi.fn()` stub given a per-test implementation is `.mockReset()` in `beforeEach` (Vitest 5 already clears call history before each test)
 - mock-call assertions via `toHaveBeenCalledWith`, not `mock.calls[0]![0]`
 
 Report findings as **WARN** (non-blocking suggestions).

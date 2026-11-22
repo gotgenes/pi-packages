@@ -28,6 +28,7 @@ The `pi-autoformat` extension reformats every file an `Edit`/`Write` touches, an
 - It also joins a line ending in `:` with the sentence after it — to add a sentence there, start a new paragraph, not a new line.
 - It likewise joins a sentence that opens with an issue number (`#695 carries two reactions.`) onto the previous line, including a line that ends in a bold lead-in — lead with a word (`Issue #695`).
 - It splits a bold lead-in from the sentence after it (`**Lead.** Text` becomes two lines), so write the lead-in on its own line.
+  A bold label without terminal punctuation (`2. **feat: add X**`) is the opposite case: it joins the next line onto it, so end the label with a period, or follow it with a blank line.
 - A code span that holds a backtick needs a double-backtick delimiter (``` `` a `b` `` ```); a backslash does not escape a backtick inside a code span, so a single-backtick span that writes its inner backticks as backslash-backtick ends at the first one, and the reflow collapses the paragraph around the unbalanced remainder.
 - It also reads a leading `~` as strikethrough and rewrites a `~`-prefixed token (`(~:211)` → `(~~211)`), which `rumdl check` passes — write an approximate line reference as `line ~211`.
 - It also trims a space at the edge of a code span (`rumdl`'s MD038 fix), so a space-prefixed wildcard lands as `*`; when the space is the meaning, say it in prose ("a space and `*`").

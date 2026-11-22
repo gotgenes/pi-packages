@@ -36,6 +36,7 @@ The change is not breaking: no published package's runtime code, exports, or def
 - Adopting fallow functionality new since 3.22: `fallow mutation`, `audit --staged`, boundary `publicFiles`, raising `package-cycle`, V8 coverage input, and the review brief's `test_reach`.
   Filed as [#1138].
 - Moving CI's boundary reporting from `fallow dead-code` to `fallow architecture`; 3.46 deprecates the former's architecture options but keeps reporting them until the next major.
+  Filed as [#1139].
 - Regenerating `packages/pi-subagents/docs/fallow-snapshot.json` and `packages/pi-permission-system/docs/fallow-snapshot.json` (both record `"version": "3.22.0"`); they are phase-close artifacts that are never hand-edited.
 - `@types/node` (stays on 22: Pi requires Node `>=22.19.0` and CI runs Node 22) and runtime/product dependencies (`zod`, `typebox`, `web-tree-sitter`, the `@earendil-works/pi-*` SDK), as the issue excludes them.
 - Pruning `minimumReleaseAgeExclude` entries other than the ones a bumped tool retires (the fallow `@3.22.0` set and `globals@17.12.0`).
@@ -318,7 +319,7 @@ At planning time `fallow@3.46.0` (published 2026-11-21T22:10Z) and `rollup@4.68.
 ## Open Questions
 
 - When typescript-eslint's TypeScript 7 backend leaves experimental, drop the alias pair and take `typescript@7` directly.
-- Whether CI should move its boundary reporting to `fallow architecture` before fallow's next major (not in [#1138]'s list).
+- Whether CI should move its boundary reporting to `fallow architecture` before fallow's next major: [#1139].
 
 [#866]: https://github.com/gotgenes/pi-packages/issues/866
 [#867]: https://github.com/gotgenes/pi-packages/issues/867
@@ -326,3 +327,4 @@ At planning time `fallow@3.46.0` (published 2026-11-21T22:10Z) and `rollup@4.68.
 [#1037]: https://github.com/gotgenes/pi-packages/issues/1037
 [#1066]: https://github.com/gotgenes/pi-packages/issues/1066
 [#1138]: https://github.com/gotgenes/pi-packages/issues/1138
+[#1139]: https://github.com/gotgenes/pi-packages/issues/1139
