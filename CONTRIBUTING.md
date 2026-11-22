@@ -33,7 +33,7 @@ Prerequisites, setup, and the commands themselves are in the README's [Developme
 | Conventional Commits  | `type(scope): subject`, with a breaking change written `feat(pkg)!:` — the `!` after the scope. A `commit-msg` hook checks the header. |
 | Tests first           | A bug fix ships a test that fails without the fix and passes with it.                                                                  |
 | Green checks          | `pnpm run check`, `pnpm run lint`, and `pnpm run test` all pass.                                                                       |
-| pnpm only             | Never `npm` or `npx`. Node 22 or newer, pnpm 11.                                                                                       |
+| pnpm only             | Never `npm` or `npx`. Node 22 or newer, pnpm 12.                                                                                       |
 | One sentence per line | Markdown is written one sentence to a line, enforced by `rumdl`.                                                                       |
 
 ## Credit
