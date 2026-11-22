@@ -7,8 +7,6 @@ description: |
 
 # Releasing and packaging
 
-Load this skill before touching anything that decides what ships: a release dispatch, a package's manifest, or the workspace's package list.
-
 ## Dispatching a release
 
 `.github/workflows/release.yml` triggers only on `workflow_dispatch` and takes an explicit package list plus an optional expected-SHA guard:
@@ -54,7 +52,7 @@ A cross-package change names every package it bumps in one dispatch.
 
 A package's internal docs directories — `docs/plans`, `docs/retro`, `docs/architecture`, `docs/decisions`, `docs/assets` — are excluded from its release scope by convention, in `scripts/release/lib.sh`.
 Adding one of those subdirectories needs no configuration edit; adding a differently named one does.
-So does adding a file *directly* under `packages/<pkg>/docs/`: the exclusions match `docs/<sub>/**`, so `docs/fallow-snapshot.json` cuts a release even though the `files` allowlist keeps it out of the tarball (Refs #966).
+So does adding a file *directly* under `packages/<pkg>/docs/`: the exclusions match `docs/<sub>/**`, so `docs/fallow-snapshot.json` cuts a release even though the `files` allowlist keeps it out of the tarball.
 Tarball scope and release scope are different lists — check the one you mean.
 Commits that only touch excluded paths do not trigger releases, and neither do files outside the package tree.
 A package's own `CHANGELOG.md` is excluded too, so a release commit never re-enters the next changelog.

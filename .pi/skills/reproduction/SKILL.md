@@ -7,12 +7,9 @@ description: |
 
 # Reproducing a defect
 
-Load this skill before building a repro, spike, or probe for a bug report — before its result is treated as a diagnosis.
-
 Every quality gate this repo has validates internal consistency: tests, `check`, `lint`, `fallow dead-code`, the tidy-first assessor, the pre-completion reviewer.
 None of them inspect whether the premise is true.
 A false diagnosis therefore passes all of them and ships, so the provenance of the evidence is the only thing standing between a plausible story and a wrong release.
-The worked example is `pi-anthropic-auth` issue #65 — six rounds of increasingly rigorous measurement on a hand-built fixture, a plan, six TDD commits, a release, and an upstream bug report, all wrong.
 
 ## Build it from real artifacts
 
@@ -23,11 +20,11 @@ Rigor applied to the wrong object stays wrong: restoring verbatim prompts, addin
 Take the input from something that already exists:
 
 - A real session's `message` entries from a `.jsonl` under `~/.pi/agent/sessions/`, read with `read_session_file`.
-- The live review log (`~/.pi/agent/extensions/pi-permission-system/logs/*.jsonl`), which turns an estimated blast radius into a measured one (Refs #694, #727).
+- The live review log (`~/.pi/agent/extensions/pi-permission-system/logs/*.jsonl`), which turns an estimated blast radius into a measured one.
 - Real config on disk — `.pi/settings.json`, a package's own `config.json` — rather than an object literal describing what one would contain.
 - The upstream function itself, called from `../pi` or the pinned dependency, rather than a hand-written imitation of its output.
 
-A probe that selects its input through the code under test's own filter inherits that filter's blind spot: #924's spike read argument words through `ARG_NODE_TYPES` and so never saw the bare `$opt` a sound design had to catch.
+A probe that selects its input through the code under test's own filter inherits that filter's blind spot.
 Enumerate the input independently of the code the probe is meant to judge.
 
 When no real artifact is reachable, say so: label the evidence synthetic and unconfirmed, and carry that label into the plan's Design Overview.
@@ -42,7 +39,7 @@ For a permission ask, drive the gate's decision (`resolveBashAdvisoryCheck` shar
 ## A prototype's measurement expires when the implementation diverges
 
 A number measured against a prototype covers only the mechanisms the prototype had.
-Re-measure against the real pre- and post-change code whenever the implementation later gained one it lacked — the stale number still reads true, so nothing surfaces the expiry (Refs #923).
+Re-measure against the real pre- and post-change code whenever the implementation later gained one it lacked — the stale number still reads true, so nothing surfaces the expiry.
 Diff the full input→output mapping, not a count of changed inputs: a count cannot see one input leaving the set as another enters.
 
 ## Read the report for what contradicts you
@@ -59,7 +56,7 @@ When the repro path runs through one of this repo's own extensions, that extensi
 In practice: `pi --no-extensions -e packages/<pkg>` loads only the copy under test, while a bare `pi` launched from this repo also loads everything in the root `.pi/settings.json` and is never a clean control.
 For a library-level probe, call the upstream function directly instead of the wrapper when the question is about upstream's behavior rather than ours.
 In a monorepo a probe also answers only for the package it ran in: `packages/*/biome.json`, per-package `eslint` overrides, and per-package `vitest.config.*` each make one package's result unrepresentative.
-Before generalizing a probe to `packages/*`, re-run it under a package with no local override — #966's plan recorded "Biome ignores this path" from a package whose own config disables the formatter.
+Before generalizing a probe to `packages/*`, re-run it under a package with no local override.
 State which side of the extension each row of the results table was measured on.
 
 ## Probing a third-party Pi tool

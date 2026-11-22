@@ -7,8 +7,6 @@ description: |
 
 # Delegation
 
-Load this skill before handing work to a subagent, and again before trusting what it returns.
-
 ## Scope bounds
 
 When delegating lint-fix or refactoring work to a background agent:
@@ -25,7 +23,7 @@ Bound its searches to the repo, and require fixing a failed pattern before widen
 A subagent's universal claim ("no ordering issue", "nothing else calls this") is the one to verify — a positive finding ships the line that proves it, a universal one quantifies over cases the report never shows.
 Check a multi-question report against itself first, and check that each answer cites the implementation rather than a test fixture.
 A **count** the report supplies — call sites, occurrences, files matched — is re-derived before it lands in a plan, an ADR, or an issue body.
-The report's conclusion can be right while its arithmetic is wrong, and the artifact outlives the dispatch (Refs #762).
+The report's conclusion can be right while its arithmetic is wrong, and the artifact outlives the dispatch.
 
 The mirror holds for a claim **you** supply: a reviewer cannot verify a coverage assertion handed to it as a premise, so state what you checked, not what you conclude was covered.
 When a change creates N artifacts that cross-reference each other, enumerate the edges rather than sampling them.
@@ -37,7 +35,6 @@ A measurement is also scoped to the commit it was taken at: re-run it after any 
 ### Pre-completion reviewer
 
 The `pre-completion-reviewer` agent (`.pi/agents/pre-completion-reviewer.md`) is dispatched automatically by `/tdd-plan` and `/build-plan` after all implementation steps are complete.
-It runs as a fresh-context subagent (no implementation bias) and produces a PASS / WARN / FAIL report covering: deterministic checks (`pnpm run check`, `pnpm run lint`, `pnpm run test`, `pnpm fallow dead-code`), acceptance criteria verification, conventional commits, documentation staleness, code design, test artifacts, Mermaid diagrams, cross-step invariant preservation (a later phase step must not regress an earlier step's documented `Outcome:` invariant), and planned follow-up filing (a follow-up the plan names must carry a recorded issue number).
 The `pre-completion` skill (`.pi/skills/pre-completion/SKILL.md`) encodes the dispatch protocol loaded by both templates.
 The agent's `model:` frontmatter must use the `provider/id` alias form the Pi CLI/UI accepts (e.g. `anthropic/claude-sonnet-4-6`); an ID absent from the model registry silently falls back to the parent session's model.
 

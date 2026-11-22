@@ -7,9 +7,6 @@ description: |
 
 # Improvement Discovery
 
-Use this skill when planning the next round of structural improvements for a package.
-It codifies the patterns, smell categories, and analysis workflow that have proven effective across 10 phases of refactoring.
-
 ## Analysis workflow
 
 Follow this order — each step builds context for the next.
@@ -66,8 +63,6 @@ pnpm fallow health --coverage-gaps --workspace @gotgenes/<PKG> 2>&1 || true
 pnpm fallow health --type-aware --type-aware-project packages/<PKG>/tsconfig.json --type-coupling --workspace @gotgenes/<PKG> 2>&1 || true
 ```
 
-`similar-code` finds intent-level overlap `dupes` misses, but needs an explicit local model download (`fallow similar-code setup`); treat it as opt-in and do not run it as part of discovery.
-
 Fallow is blind to repeated discriminators — scattered one-line conditionals never form a token-run clone — so sweep for them alongside it:
 
 ```bash
@@ -118,7 +113,6 @@ Before committing any step whose outcome depends on the SDK/type surface, feasib
 
 ## Smell taxonomy
 
-These are the recurring patterns that have driven 10 phases of improvements.
 They are ordered from most impactful (structural) to least (cosmetic).
 
 ### Category A: Dead or redundant code
@@ -127,9 +121,9 @@ They are ordered from most impactful (structural) to least (cosmetic).
 | ---------------------- | ---------------------------------------- | --------------------------------- |
 | Unused exports         | fallow dead-code reports                 | Remove or suppress with `@public` |
 | Unused files           | No import chain reaches them             | Delete                            |
-| Dead subsystems        | Feature with zero runtime consumers      | Remove entirely (Phase 2, 3)      |
-| Dual counting          | Same metric tracked in two places        | Single source of truth (Phase 9)  |
-| Production duplication | Shared logic copy-pasted between modules | Extract shared module (Phase 10)  |
+| Dead subsystems        | Feature with zero runtime consumers      | Remove entirely                   |
+| Dual counting          | Same metric tracked in two places        | Single source of truth            |
+| Production duplication | Shared logic copy-pasted between modules | Extract shared module             |
 
 ### Category B: Oversized structures
 
@@ -215,8 +209,7 @@ Priority = Impact × (6 − Risk)
 | ≤ 5      | Defer indefinitely         |
 
 > **Fallow-CRAP gotcha.**
-> Fallow estimates CRAP from static reference tracing when no coverage file is supplied, and the estimate is unreliable — a module with a real test file can report a CRAP in the 70s.
-> Before citing a CRAP score as a step's motivation, run the Step 3 coverage feed so the score comes from real coverage: the estimate reported `tools/agent-tool.ts` at 13.8 where Istanbul data says 42.0, and flagged twelve pi-subagents files above the threshold where real coverage flags five.
+> Before citing a CRAP score as a step's motivation, run the Step 3 coverage feed so the score comes from real coverage (the `fallow` skill's Coverage section measures the estimate's error).
 > Treat estimated CRAP as a hint, not a finding — never let a step earn its place on an estimated score.
 
 ## Grouping heuristics
@@ -240,6 +233,7 @@ The plan should produce:
    Prefer cause-level metrics recomputable by a single command (a `grep -c`, `wc -l`, or fallow field — e.g. `canConfirm` occurrences in `src/`, role-interface count) and record the recompute command with the metric, so `/finish-phase` can verify delivered vs. predicted deterministically.
    Verify the command against the _predicted_ end state, not only today's tree — a command counting the mechanism being replaced reads 0, not the target, once the replacement lands.
    The fallow health score alone is a poor phase metric — it is blind to the type-level wins (a bug class made unrepresentable) that cause-driven phases produce.
+   A dated `Baseline (<date>)` column is a fixed phase-open snapshot recomputed at phase close, not a per-step value — do not edit it as work lands.
 2. **Step list** — steps in working-sequence order, each with:
    - Title, with the step's issue number as its identity
    - **Cause** — the first-principles structural cause the step dissolves (name it explicitly), with any fallow signal cited as the _symptom_ of that cause, not the motivation.
@@ -337,7 +331,6 @@ These are failure modes and corrections discovered empirically.
 ### Planning and analysis
 
 - **Don't plan a single step that rewrites an entire large test file** — use lift-and-shift (introduce new alongside old, migrate incrementally, remove old last).
-- **Start from index.ts outward** — the composition root reveals wiring overhead, coupling, and initialization hazards that file-by-file analysis misses.
 - **Test setup is a production-design signal**, and fallow's structural metrics miss the god objects, closure density, and DIP violations it reveals.
   When a unit needs module-level `vi.mock`, wide `as unknown as` casts, or a multi-field fixture, the production object is hard to construct — fix the object, not the test.
   The test is the symptom; the production object is the disease.
@@ -361,9 +354,3 @@ These are failure modes and corrections discovered empirically.
 - **Pure function > method on wide class** — if the logic doesn't need instance state, extract it.
 - **Lifecycle object > method extraction** — when mutable `let` variables are shared across closures, the fix is an object that owns that state, not extracting methods that still close over the variables.
 - **Behavior on domain object > orchestration in manager** — when a manager reaches into a data object 10+× to check status and perform transitions, the object is anemic; move the behavior to the object itself.
-- **Dispatch once > re-derived discriminator** — when the same semantic condition (`platform === "win32"`, `status === "running" || status === "queued"`) is evaluated at 3+ sites, capture the decision at a boundary and hand consumers its product; severity rises when the sites must agree (a re-derived case-fold that diverges is a silent bug) and when the branching is silent `===` rather than a compiler-enforced exhaustive switch.
-- **Pass the resolved capability, not the raw discriminator** — when every consumer of a parameter opens with the same mapping (`platform === "win32" ? winPath : posixPath`), thread the mapping's product (the impl, the flavor object, the options literal) instead of the raw string.
-- **Events > outbound bridges** — when package A needs to notify package B, prefer emitting events that B listens for over A calling B directly via a bridge module.
-  This keeps A closed for modification when new consumers (C, D, …) arrive.
-- **Single source of truth for policy** — when two packages both enforce the same kind of restriction (tool filtering, access control), the duplication creates confusion about where to configure it.
-  Remove the duplicate and direct users to the authoritative package.

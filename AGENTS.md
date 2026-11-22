@@ -5,12 +5,7 @@
 This is a pnpm workspace monorepo.
 Each package under `packages/` is a Pi extension published to npm under `@gotgenes/`.
 Always launch Pi from the repo root — the root `.pi/settings.json` and `.pi/prompts/` are only discovered from CWD.
-The working directory is always the repo root, so for a package-scoped script run `pnpm --filter @gotgenes/<pkg> run <script>` (or `pnpm -C packages/<pkg> run <script>`) from the root instead of `cd packages/<pkg> && pnpm run <script>`.
-Before working on a specific package, load its `package-<name>` skill for architecture, priorities, and testing context.
 Load skills inline — never dispatch a subagent to load skills.
-
-Repo-level work — build, CI, tooling, cross-package docs — is labeled `scope:repo` rather than with every package's label.
-That scope is always asserted (the forms' repo-wide option, or `gh issue create --label scope:repo`), never inferred from the absence of a package.
 
 ## Principles
 
@@ -38,15 +33,10 @@ When a situation has no rule, apply the principle.
 
 Facts about this environment that no model could infer.
 
-### Shell
-
-Three prose tripwires are now `pi-permission-system` deny rules in `.pi/extensions/pi-permission-system/config.json` (`rg -r`, `git commit -F` from a heredoc, `cd packages/<pkg>`); the reason string says what to do instead.
-
 ### Tooling
 
 This project uses **pnpm** exclusively — never `npm` or `npx`.
 A `commit-msg` hook (`committed`, via `prek`) rejects a malformed Conventional Commits header; pre-commit hooks reject stray invisible characters, decode literal Unicode escapes in markdown prose and code comments, and run Biome, ESLint, and `rumdl fmt`.
-Use `colgrep` for intent-based codebase exploration and convention discovery; use `grep` for exact symbol matching.
 Pi's own source is checked out beside this repo (`../pi` from the root, `../../pi` from a worktree) and tracks Pi's `main`, ahead of the pinned dependency.
 
 ### Tool-injected messages
@@ -107,10 +97,6 @@ Dispatch one by hand before committing a rewrite of an artifact a prior review r
 Each prompt template writes a stage entry to `docs/retro/NNNN-<slug>.md` (or `packages/<PKG>/docs/retro/`) before finishing.
 These entries accumulate across sessions and serve as the cross-session context bridge — when a later stage starts, it reads the retro file to pick up decisions, observations, and warnings from prior sessions.
 Each template also names the session `#N <Stage> — <title>` via `set_session_name`.
-
-An issue spun off mid-lifecycle — by a step's implementation, a plan's follow-up, or a retrospective — is evaluated for roadmap fit when it is filed, not at phase close, so load the `roadmap-fit` skill at the filing point.
-It exits immediately when the package has no open improvement phase; otherwise it records the operator's disposition (fold into a step / new step / defer / out of scope) in the roadmap's `#### Open-issue sweep dispositions` list, and filing-without-scope-creeping remains the correct local move.
-`/finish-phase` reconciles the phase window's issues against that list before archiving, so a miss surfaces at phase close instead of vanishing from the history.
 
 Use `/retro-note` to capture quick observations mid-session without interrupting the workflow.
 Use `scripts/issue-context.sh <N>` to gather all available context for an issue (plan, retro, commits, branches) when bootstrapping a new session.

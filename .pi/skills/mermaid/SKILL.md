@@ -7,8 +7,6 @@ description: |
 
 # Mermaid
 
-Load this skill before authoring or reviewing Mermaid diagrams in any doc type (plans, retros, architecture docs, READMEs).
-
 ## Pitfalls
 
 ### Backslash-n in node labels

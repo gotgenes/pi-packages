@@ -49,8 +49,6 @@ src/
 
 ## colgrep CLI Facts
 
-These bit us once — encode them, don't rediscover them:
-
 - `colgrep search` auto-indexes a missing/stale index on demand.
   Lazy indexing is free; the extension never needs to force an index just so search works.
 - `colgrep status <path>` exits `0` whether or not an index exists and has **no** `--json`.
@@ -59,7 +57,7 @@ These bit us once — encode them, don't rediscover them:
 
 ## Configuration
 
-Extension-owned JSON config, project overriding global (mirrors `pi-github-tools`):
+Extension-owned JSON config, project overriding global:
 
 - Global: `<agentDir>/extensions/pi-colgrep/config.json`
 - Project: `<cwd>/.pi/extensions/pi-colgrep/config.json`

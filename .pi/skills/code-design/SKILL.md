@@ -7,8 +7,6 @@ description: |
 
 # Code Design
 
-Load this skill when implementing, refactoring, or reviewing TypeScript code.
-
 ## Chosen practices
 
 These are the operator's choices among defensible alternatives.
@@ -57,20 +55,9 @@ Aligning code the change does not touch is improvement-phase work.
 
 ## Self-Documenting Code
 
-Code should be its own primary documentation.
-Prefer names that reveal intent — for functions, methods, classes, variables, and modules.
-
 ### Names over comments
 
-If a comment is needed to explain _what_ code does, extract a well-named function or rename the symbol.
-Comments should explain _why_ — the reasoning or non-obvious context behind a decision.
 Do not leave tombstone comments that narrate removed code or the absence of a guard, test, or branch — the type system and the diff already document it.
-
-### Scope-appropriate naming
-
-Name length should correspond to scope.
-Short names (`i`, `x`, `fn`) are fine for small scopes (loop counters, short lambdas).
-Exported functions, module-level variables, and class names warrant longer, descriptive names.
 
 ### Doc comments
 
@@ -79,16 +66,8 @@ Do not add doc comments when the name and signature already convey usage.
 
 ## Code Organization
 
-Source files should read like a newspaper article: high-level intent at the top, progressively deeper detail as you read down.
-
-### Public API first
-
-Exported functions, classes, and interfaces appear near the top so readers can scan the module's surface without wading through implementation details.
-
 ### Stepdown rule
 
-Each function should be followed by the helpers it calls, at the next level of abstraction — caller first, then the helpers it depends on.
-Related functions that collaborate on the same data should be grouped together.
 When extracting a helper during a refactor, place it _below_ the function that calls it, not above — function declarations hoist, so "define before use" is unnecessary and inverts the stepdown order.
 
 ### Helpers stay in the file
@@ -97,12 +76,6 @@ Private helper functions remain in the same file as the code that uses them.
 When private helpers accumulate to the point where they warrant their own tests, extract them into a new module with its own public API.
 
 ## SOLID Principles
-
-### Single Responsibility (SRP)
-
-Each function, class, and module should do one thing well.
-When a unit of code has multiple reasons to change, split it.
-A function that parses input _and_ processes it should be two functions; a module that handles both HTTP routing and business logic should be two modules.
 
 ### Open/Closed (OCP) — decide once
 
@@ -122,10 +95,6 @@ When an interface grows, look for natural seams to split it into smaller, cohesi
 
 ### Dependency Inversion (DIP)
 
-High-level modules should not depend on low-level modules; both should depend on abstractions.
-Default to dependency injection for non-trivial dependencies — accept collaborators as parameters rather than constructing them internally.
-DI is the mechanical foundation of test-driven development: without it, you cannot substitute test doubles, and without test doubles, you cannot test units in isolation.
-Design for injection from the start rather than retrofitting it later.
 When adding a new collaborator to a class that still constructs other collaborators internally, inject the new one anyway — existing constructor-internal construction is often the smell being removed, not a precedent to extend.
 
 ## Structural Design
@@ -144,20 +113,9 @@ Concrete class types expose private fields to TypeScript's structural checker, f
 Do not reach through an injected collaborator to talk to a stranger.
 If multiple callers do the same reach-through, the missing abstraction is a method on the intermediate object that delegates internally.
 
-### Output arguments
-
-Do not write back into a received dependency bag.
-If a function sets a field on a received object, it is doing work that belongs inside the owning object.
-Encapsulate the mutation behind a method.
-
 ### Scattered resets
 
 When the same set of fields is reset to the same values in multiple places, extract a single method (`reset()`, `shutdown()`) on the owning object.
-
-### Scattered decisions
-
-The decision analog of scattered resets: when the same condition is evaluated in multiple places, extract the decision to a single point.
-Prefer a predicate on the object that owns the data (`isActive()`, not `status === "running" || status === "queued"` at every consumer) or a component selected once at the boundary (see the OCP section).
 
 ### Parameter relay
 
@@ -191,8 +149,6 @@ Read the surrounding layout, the call sites, the document outline.
 If the difference is a real structural distinction, prefer duplication and document why.
 If the difference is incidental, extract.
 
-Sandi Metz: "duplication is far cheaper than the wrong abstraction."
-
 ### Shared predicate, different burden of proof
 
 When a second consumer reuses an existing predicate, ask what it does with a `false`.
@@ -215,7 +171,6 @@ A log showing `approved` without _approved by whom_ cannot distinguish a human a
 ### Preparatory refactoring (tidy first)
 
 Before planning or landing a refactor as one atomic commit, ask whether a preparatory step would shrink it — a pure-addition interface, or migrating tests to a shared fixture — landed as separate commits first.
-Kent Beck: "make the change that makes the change easy, then make the easy change."
 
 ### Removing code you shipped
 
@@ -228,9 +183,6 @@ When the removal undoes a series of commits, `git revert` them rather than hand-
 
 - Avoid `any` unless absolutely necessary.
 - Use standard top-level imports only.
-- Within a package, import sibling modules via the `#src/` / `#test/` path aliases, not relative paths (`../src/...`) — eslint enforces this and will rewrite violations.
-- Keep modules focused and composable (one concern per file).
-- Prefer explicit configuration over hidden behavior.
 - Do not read `process.env`, `process.cwd()`, or `process.platform` inside library/utility functions — accept the value as a parameter.
   Reading `process.*` inside a function hides a dependency on global state and forces tests to stub or reset modules.
 
@@ -271,10 +223,8 @@ Cast each return's `details` `as <Union>` so the full union flows into the gener
 ### Reading Pi's own source
 
 - For Pi SDK internals (prompt assembly, caching, session lifecycle), read Pi's own source at the `pi` checkout beside this repo's main checkout, rather than the installed `dist/` bundles or their sourcemaps.
-  That is `../pi` from the root checkout and `../../pi` from a worktree — the worktree sits one level deeper, so the bare `../pi` misses it.
   Dispatch an `Explore` subagent with `model: "sonnet-5-5"` for a multi-hop trace there (e.g. "how does `ui.custom` pass keybindings to the factory?") — a targeted read of a known file is fine inline, but a hunt costs 5–10 greps of this session's context, and `Explore`'s haiku default is too weak for the reasoning.
   Keep the trace inline when its output is a universal claim the design will rest on — a subagent returns it as a summary you would have to re-verify anyway.
-  The checkout tracks Pi's `main` and runs ahead of the pinned dependency.
   Read it for mechanism, but confirm any API you design around exists in the installed version first — resolve the version from the package's own `devDependencies` pin, then `grep` the types under that exact `node_modules/.pnpm/@earendil-works+pi-coding-agent@<version>_*/` directory.
   The bare `@*/` glob matches every version in the store, and `head -1` can select one below the package's declared peer floor.
   Existence is not enough for a seam you design _around_: a callback's position in the call order, and the data populated by the time it fires, are visible only in the compiled `.js`, never in the `.d.ts`.
@@ -283,8 +233,6 @@ Cast each return's `details` `as <Union>` so the full union flows into the gener
 
 ## Tooling
 
-- This project uses **pnpm** exclusively (`"packageManager"` in root `package.json`; `pnpm-lock.yaml`).
-  Use `pnpm run`, `pnpm exec`, and `pnpm add` — never `npm` or `npx`.
 - When you change a `package.json` dependency, run `pnpm install` and commit the updated `pnpm-lock.yaml` in the same commit — CI installs with `--frozen-lockfile`.
   Bumping to a freshly-published version may also add a `minimumReleaseAgeExclude` entry to `pnpm-workspace.yaml`; stage that too.
 - When you touch a dependency or a tool's version, move it to the latest published one, read from `pnpm view <pkg> version`.

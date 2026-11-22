@@ -17,7 +17,7 @@ The fork carries two original patches from the thin-patch era, still present in 
 
 1. **Peer-dep rename** - peer dependencies point at `@earendil-works/pi-*` (the active scope) rather than the deprecated `@mariozechner/pi-*` scope.
 2. **Patch 3 (active_agent tag)** - `buildAgentPrompt` includes `<active_agent name="${agentConfig.name}"/>` in every assembled child system prompt (both `replace` and `append` modes); the tag follows the cacheable parent-prompt prefix so `@gotgenes/pi-permission-system` can resolve per-agent `permission:` frontmatter inside the child.
-   Since #890 the two modes differ only in the `<agent_instructions>` wrapper: the hard-coded `<sub_agent_context>` bridge append mode carried was removed, because its tool bullets duplicated the `promptGuidelines` pi's own tools contribute and named `edit`/`write` to children that have neither.
+   The two modes differ only in the `<agent_instructions>` wrapper.
 
 There is no post-bind active-tool re-filter: `EXCLUDED_TOOL_NAMES` reaches the SDK as the `excludeTools` denylist at session creation, which it reapplies on every tool-registry rebuild.
 
@@ -30,11 +30,9 @@ Every update joins the ledger of the run under way (`SubagentRun`, which owns th
 `NotificationManager` announces one only while nothing has claimed the outcome and the child is still running (`canAnnounceUpdate`), re-read at emit rather than replayed from enqueue — a message parked for the parent's turn can be claimed or outlived by its child in between.
 Every other update rides that run's outcome through the shared addenda tail (`renderRunUpdates`), including the completion nudge, so it reaches the parent exactly once and never as a prompt to steer a finished child.
 The lifecycle event fires either way.
-The boundary the `tools:` allowlist draws is **capability**, not provenance — neither tool reaches the filesystem, the shell, or the network, so a read-only agent that gains them stays read-only, and #612's and #768's refusals still hold.
+The boundary the `tools:` allowlist draws is **capability**, not provenance — neither tool reaches the filesystem, the shell, or the network, so a read-only agent that gains them stays read-only.
 They are appended to the allowlist at `createSubagentSession` and passed as SDK `customTools`; both halves are needed, because Pi filters `customTools` through the allowlist and drops an unlisted one with no error.
-This replaced the `<question-for-parent>` text marker and its 222-line fence-aware parser (#858) — do not reintroduce a marker protocol.
-
-Upstream PRs for these patches ([#71](https://github.com/tintinweb/pi-subagents/pull/71), [#72](https://github.com/tintinweb/pi-subagents/pull/72), [#73](https://github.com/tintinweb/pi-subagents/pull/73)) are open but the fork continues independently regardless.
+Do not reintroduce a text-marker protocol for a child's questions.
 
 `buildAgentPrompt` embeds only the **identity** region of the inherited parent prompt, per `docs/decisions/0006-inherited-prompt-is-identity-only.md`.
 Pi's `buildSystemPrompt` ends every prompt with sections it resolves per session — the `<available_skills>` catalogue inside a `<skills>` section, then a `<cwd>` section — and extensions add further sections after those from `before_agent_start`, rebuilt every turn.
@@ -42,19 +40,19 @@ The child's own session rebuilds all of them, so `inheritedIdentity` cuts the in
 The cut is anchored by position rather than document order: the `<cwd>` section whose single line is the parent's cwd (whole-line, after Pi's separator normalization), then Pi's `<skills>` wrapper immediately above it, accepted only when the catalogue heading is its first line — which keeps a catalogue quoted in a project-context file or appended after `<cwd>` from being taken for Pi's.
 The `<cwd>` section is the cut when the parent resolved no skills.
 A prompt with no such `<cwd>` section is one a `before_agent_start` handler returned as Pi's forced prompt; the cut then falls back to the last `</available_skills>`, searched back to its heading and widened to a `<skills>` wrapper directly above it, and the tool-surface excision below does not apply.
-Do not re-add the equal-cwd exception #640 originally carried: the catalogue precedes `<cwd>`, so once the catalogue is cut the cwd is already past the divergence point and the exception preserves no shared prefix.
+Do not re-add an equal-cwd exception: the catalogue precedes `<cwd>`, so once the catalogue is cut the cwd is already past the divergence point and the exception preserves no shared prefix.
 
 What that placement guarantees is **shared parts, not shared bytes** (`docs/decisions/0008-inherited-region-is-shared-parts.md`, amending ADR 0006).
 The benefit is host-dependent and the package must not claim otherwise: Anthropic builds its cache prefix as `tools` → `system` → `messages`, so a child — whose tool array always differs from its parent's, if only by `ask_parent`/`notify_parent` — gets no hit from a byte-identical system prompt.
-It pays on hosts that render tool definitions after the system text, which is #180's own local-model constituency.
+It pays on hosts that render tool definitions after the system text, which is the local-model constituency.
 Per-session prose about the tool surface therefore does not belong in the inherited region: on Pi's section-shaped prompt `inheritedIdentity` excises Pi's own `<tools>` and `<rules>` sections, the one interior span it removes (`docs/decisions/0011-tool-surface-sections-are-session-resolved.md`), and `@gotgenes/pi-permission-system` states each child's tools after `<cwd>`.
-Without that extension a child carries no tool prose at all (#901).
-The shared prefix is pinned by tests in `test/session/prompts.test.ts` (`shared prefix with the parent`); it had none before #890.
+Without that extension a child carries no tool prose at all.
+The shared prefix is pinned by tests in `test/session/prompts.test.ts` (`shared prefix with the parent`).
 
-That identity is Pi's preamble, so a provider that **re-homes** the prompt into another harness carries Pi's base into that harness's API — which is how a `pi-claude-bridge` child tripped Anthropic's third-party-app classifier (#883).
+That identity is Pi's preamble, so a provider that **re-homes** the prompt into another harness carries Pi's base into that harness's API, where a third-party-app classifier can flag it.
 `docs/decisions/0009-portable-inheritance-is-provider-scoped.md` adds an opt-in second strategy for that case: `promptInheritance` in `subagents.json` maps a **provider id** to `portable`, and such a child's identity is built from the parent's operator-authored parts alone (custom prompt, append prompt, project context), composed in Pi's own order.
 The key is the provider, never the agent — re-homing is a property of the transport, and a per-spawn `model` override moves a child between transports, so an agent-level declaration would survive the move and select the wrong strategy.
-There is no global default arm by design: one would silently cost #180's local-inference constituency the prefix #890 restored.
+There is no global default arm by design: one would silently cost local-inference hosts the shared prefix.
 `promptGuidelines` is never inherited under `portable` (Pi derives it per session from the tools in the registry, so the parent's would assert guidance for tools the child lacks — the ADR 0008 defect), and neither are context files.
 
 `<project_context>` is a **directory-resolved** layer, not identity (`docs/decisions/0010-project-context-is-directory-resolved.md`, amending ADR 0006 and ADR 0009).
@@ -72,7 +70,7 @@ Refactoring history is preserved in `docs/architecture/history/` (one file per c
 
 ### Domain organization
 
-The extension is organized into seven domains (74 files):
+The extension is organized into seven domains:
 
 | Domain      | Directory                                                                                                                                                                                                                                                                                                                | Modules | Responsibility                                                                                                                                                                                                                                                                                                                                                                                       |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -110,15 +108,13 @@ service-adapter ─wraps─→ SubagentManager
   Pi-subagents has zero knowledge of its consumers - dependency arrows point inward, never outward.
 - Narrow core - the extension owns agent spawning, execution, and result retrieval; everything else is a consumer.
 - **No policy enforcement** - tool restrictions, skill access control, and extension filtering belong in `@gotgenes/pi-permission-system`, not in this package.
-  The `disallowed_tools` frontmatter field and `extensions: string[]` allowlist were removed in Phase 14 (#237, #238, #239).
   Users should use `permission:` frontmatter for tool restrictions.
-  The one carve-out is **prevent-load**, which cannot be reduced to observation: the global/project `excludedExtensionPackages` setting keeps named packages' extensions out of children (#696).
+  The one carve-out is **prevent-load**, which cannot be reduced to observation: the global/project `excludedExtensionPackages` setting keeps named packages' extensions out of children.
   It is package-scoped and settings-scoped only — never per agent type, and never tool permissions.
   The policy is resolved in `index.ts` and reaches `createSubagentSession` as a ready-made settings view, so the assembly factory stays policy-free; keep it that way.
-  Excluding a permission extension is an optimization, never a correctness requirement, with one hazard: a tool and its path extractor supplied by *different* packages, with only the extractor's package excluded, leaves that tool ungated in the child (#793).
+  Excluding a permission extension is an optimization, never a correctness requirement, with one hazard: a tool and its path extractor supplied by *different* packages, with only the extractor's package excluded, leaves that tool ungated in the child.
   `docs/configuration.md` carries the operator-facing condition; the rule itself lives in pi-permission-system's `docs/subagent-integration.md` § Loading asymmetry, which is also the canonical spec for the child-announcement contract ADR 0002 requires.
-- Typed API boundary - export `SubagentsService` via `Symbol.for()` accessors so other extensions can spawn agents without importing this package directly (done, #48).
-- Remove scheduling subsystem (done); ad-hoc RPC and group-join (done); output-file porting to Pi session format tracked in #61.
+- Typed API boundary - export `SubagentsService` via `Symbol.for()` accessors so other extensions can spawn agents without importing this package directly.
 - Cherry-pick upstream fixes when they align with this fork's scope; do not track upstream as a merge target.
 
 ### Architectural direction
@@ -132,11 +128,6 @@ Before changing or adding one, measure its monospace coverage with the `fc-list`
 Pi's TUI sizes every cell with `get-east-asian-width`, so a glyph that no monospace font covers is drawn by a proportional fallback that overruns its cell and collides with the next column.
 East Asian Width does not detect this — an offending glyph and its replacement can both be width 1.
 Box-drawing characters are deliberately excluded: they are layout, not vocabulary.
-
-## Code Style
-
-Formatting is handled by Biome (`biome check`, `biome format`).
-The repo intentionally does not use Prettier - a top-level `.prettierignore` blocks any harness with project-level write-time Prettier formatting from reformatting files here.
 
 ## Public exports
 
@@ -194,9 +185,6 @@ The lifecycle tests (`test/lifecycle/child-shutdown.test.ts`, `test/lifecycle/cr
 
 ## Testing
 
-The package has an extensive `vitest` suite.
-All tests must pass before publishing.
-Use `vi.hoisted(...)` for module-level mocks, matching the existing patterns in `test/lifecycle/subagent-session.test.ts`.
 Tests that mount Pi's per-entry interactive components (`UserMessageComponent`, `ToolExecutionComponent`, etc., used by `session-navigator.ts`) must call `initTheme(undefined, false)` in `beforeAll` — they read a global theme Pi initializes at startup.
 The dependency is component-specific: `AssistantMessageComponent` alone does not trip it, so a one-variant probe gives false confidence.
 `createTestSubagent` defaults `result` to `"All done."` and `completedAt` to `2000`; a fixture for a `queued` or `running` agent passes both as `undefined`, or it renders as a finished run.
@@ -207,7 +195,5 @@ When working in this package:
 
 1. New features and removals follow the phase plan in `docs/architecture/architecture.md`.
    Document architectural decisions in `docs/decisions/`.
-2. The upstream test suite is run periodically as a regression canary for the session assembly core.
-3. Modules marked `← removing` or `← replacing` in the architecture doc's current-state listing are slated for deletion - do not add features to them.
 
 [ADR-0003]: https://github.com/gotgenes/pi-packages/blob/main/packages/pi-subagents/docs/decisions/0003-publish-bundled-type-declarations.md

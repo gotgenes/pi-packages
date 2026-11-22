@@ -8,8 +8,6 @@ description: |
 
 # Git workflow
 
-Load this skill before committing, rewriting history, or running a `gh` command that changes state.
-
 ## Conventional Commits
 
 Use Conventional Commits.

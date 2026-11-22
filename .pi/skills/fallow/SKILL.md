@@ -190,7 +190,7 @@ pnpm fallow dead-code        # verify
 4. Never run `fallow watch` — it is interactive and never exits.
 5. The human-readable `health --targets` output omits the "Refactoring targets" section entirely when there are zero targets — to confirm a file dropped off the list, use `--format json` and check the `targets` array is empty rather than grepping the text output.
 6. Class-member liveness is keyed off `implements` clauses: a member reached only through a structural type the class does not explicitly `implements` reads as dead once the last `implements` is removed.
-   `--type-aware` resolves part of this: with all five of this repo's `unused-class-member` suppressions removed, it cleared three (one confirmed use, two preserved contracts) and abstained on the two reached through a field typed by a structural interface (`SubagentManagerLike`).
+   `--type-aware` resolves part of this, but abstains on a member reached through a field typed by a structural interface (`SubagentManagerLike`).
    So prefer re-declaring the genuine contract (`implements ThatInterface`), and keep a suppression for the structural-field case.
    If the consumer is wired via an object-literal property (which fallow cannot trace), prefer moving the read into a traced closure body at the composition root (e.g. `getX: () => owner.member`) over a suppression; suppress only when neither is practical.
    A test helper that returns the instance inside an object literal (`return { provider, live }`) hides its call sites the same way — return the instance directly and pass collaborators in as parameters.

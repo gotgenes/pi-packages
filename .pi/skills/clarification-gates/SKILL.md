@@ -7,8 +7,6 @@ description: |
 
 # Clarification gates
 
-Load this skill before putting a decision to the operator with `ask_user`.
-
 ## Substance first
 
 Present the substance — concrete examples, before/after, trade-offs — in a message first, then call `ask_user` with options that reference it.

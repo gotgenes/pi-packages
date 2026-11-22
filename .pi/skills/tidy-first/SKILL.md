@@ -7,8 +7,6 @@ description: |
 
 # Skill: tidy-first
 
-Load this skill during planning — after the design is settled (the `Decide` step) and before the plan is written.
-It encodes Kent Beck's *Tidy First*: make the change easy (with small preparatory refactors landed first), then make the easy change.
 The assessment runs in a **subagent** so the many-files read does not consume the planning agent's context.
 
 Planning is the right moment because the plan is the artifact that must absorb the answer.

@@ -7,7 +7,6 @@ description: |
 
 # Skill: pre-completion
 
-Load this skill when all implementation steps are complete and the final deterministic checks have passed.
 Follow these steps in order before moving to "Summarize" and "Write stage notes."
 
 ## Step 1: Gather context
@@ -95,4 +94,4 @@ Scope the next dispatch to the delta — name the new commit and the rounds alre
 ## A non-blocking observation can still be the issue's own defect
 
 The reviewer scopes findings against the plan, so "matches the plan's scoping, not a defect" is a claim about the plan, not about the issue.
-Check each non-blocking observation against the issue's reported symptom before accepting it (Refs #923).
+Check each non-blocking observation against the issue's reported symptom before accepting it.

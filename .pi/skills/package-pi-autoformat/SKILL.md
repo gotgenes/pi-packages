@@ -18,8 +18,6 @@ Read `docs/plans/` before making architectural changes.
 - Prefer extension-owned config files over Pi `settings.json` keys for package-specific behavior.
 - Format only files touched by the agent, not the whole repository.
 - Make formatter failures visible, but do not block the original file edit by default.
-- When a config pattern or documented recommendation can solve a problem, prefer that over a new runtime mechanism.
-  Mechanism is forever; docs are reversible.
 - Trust formatters to discover their own project configs (most walk up the directory tree natively).
   Do not reimplement formatter-side config resolution inside this extension.
 - Treat any declared config field not read by the dispatcher as a maintenance trap.
@@ -69,10 +67,8 @@ When adding a test that calls `runRpcSession`, add its path to `ACCEPTANCE_FILES
 
 Before implementing, understand:
 
-1. The problem being solved.
-2. The timing tradeoffs between tool-mode and prompt-mode formatting.
-3. The need to support repository-specific formatter chains.
-4. The chosen config layout and merge precedence.
-5. The need to keep schema, config loader, and docs aligned.
+1. The timing tradeoffs between tool-mode and prompt-mode formatting.
+2. The need to support repository-specific formatter chains.
+3. The chosen config layout and merge precedence.
 
 Do not assume commit-time hooks are an acceptable primary formatting mechanism.

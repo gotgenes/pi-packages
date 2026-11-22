@@ -18,6 +18,9 @@ This skill carries the issue back up to the roadmap; it never pulls the work int
 Search for an existing issue or pull request first, open or closed, on this tracker or the upstream one: `gh issue list --state all --search "<terms>"`.
 Add to an existing one instead of filing a duplicate.
 
+Repo-level work — build, CI, tooling, cross-package docs — is labeled `scope:repo` rather than with every package's label.
+That scope is always asserted (the forms' repo-wide option, or `gh issue create --label scope:repo`), never inferred from the absence of a package.
+
 ## Step 1: Resolve the package and detect an open phase
 
 Take the package from the new issue's `pkg:*` label.

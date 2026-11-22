@@ -7,8 +7,6 @@ description: |
 
 # Parallel peer sessions (git worktrees)
 
-Load this skill before creating, syncing, shipping, or tearing down a worktree peer.
-
 Run two agents in parallel by giving each its own git worktree and its own interactive Pi session.
 Use `/worktree <issue>` (the project-local `.pi/extensions/worktree.ts` command) or `scripts/worktree-new.sh <issue> [initial-command]` directly.
 The launcher creates branch `issue-<N>-<slug>` off `origin/main`, checks out a worktree at `~/development/pi/pi-packages-worktrees/issue-<N>`, runs `pnpm install`, and spawns a new WezTerm tab whose CWD is the worktree, launching `pi --approve "/plan-issue <N>"`.

@@ -7,13 +7,10 @@ description: |
 
 # Shell traps
 
-Load this skill before composing a non-trivial `bash` call.
-
 ## Command flags and state
 
 Quote a glob pattern meant for a command rather than the shell — `--include='*.ts'`, `find . -name '*.ts'`.
 Unquoted, bash expands it against the cwd first and silently substitutes any matched filename; with no match it passes the pattern through, so the bug surfaces only in a directory that happens to hold a match.
-`rg -r` is `--replace`, not `--recursive`; `rg` recurses by default, so drop the `-r`.
 Search the tree with `rg` or `git grep`, not `grep -r .` — `grep` ignores `.gitignore` and walks `.rumdl_cache/`, whose one-line JSON entries overflow the 50KB output limit.
 Each `bash` call runs in a fresh shell — a variable set in one call is unset in the next.
 Chain producer and consumer in one call, or re-derive the value.
