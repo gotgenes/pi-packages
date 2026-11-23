@@ -8,6 +8,7 @@ export interface ToolCallContext {
   toolName: string;
   agentName: string | null;
   input: unknown;
+  purpose?: string;
   toolCallId: string;
   cwd: string;
 }
