@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [42.2.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v42.2.0...pi-permission-system-v42.2.1) (2026-11-23)
+
+
+### Bug Fixes
+
+* **pi-permission-system:** the double-press setting survives the next prompt ([5f8f2cf](https://github.com/gotgenes/pi-packages/commit/5f8f2cf26e070e2bf9f03f72a35db406fc428d08)), closes [#1102](https://github.com/gotgenes/pi-packages/issues/1102)
+* **pi-permission-system:** /permission-system show lists the double-press setting ([9c64262](https://github.com/gotgenes/pi-packages/commit/9c642625f6d0b092c54db34a9c2656784508733b)), closes [#1102](https://github.com/gotgenes/pi-packages/issues/1102)
+* **pi-permission-system:** /permission-system reset reports success only when the settings were saved ([1aa6256](https://github.com/gotgenes/pi-packages/commit/1aa62562c1f1066b0c152fb934faf364361b4ec5)), closes [#1102](https://github.com/gotgenes/pi-packages/issues/1102)
+* **pi-permission-system:** a /permission-system save refuses a config file that fails to parse or validate ([186a1a7](https://github.com/gotgenes/pi-packages/commit/186a1a78023a202972c1cdf45600200d52d88ef4)), closes [#1102](https://github.com/gotgenes/pi-packages/issues/1102)
+* **pi-permission-system:** a /permission-system save keeps the config file's comments and formatting ([199ea2b](https://github.com/gotgenes/pi-packages/commit/199ea2b92f3c09bb4996d3fb04b0c2e1b987dd56)), closes [#1102](https://github.com/gotgenes/pi-packages/issues/1102)
+* **pi-permission-system:** a /permission-system save writes the config file owner-only and atomically ([483c25a](https://github.com/gotgenes/pi-packages/commit/483c25a1d1e83bb3e2b4c46acf28ba90682b2e2c)), closes [#1102](https://github.com/gotgenes/pi-packages/issues/1102)
+
+### Documentation
+
+* **pi-permission-system:** document what a /permission-system save writes and refuses ([204f83b](https://github.com/gotgenes/pi-packages/commit/204f83be6741375e53cb6151749f4195c3d2e203)), closes [#1102](https://github.com/gotgenes/pi-packages/issues/1102)
+* **pi-permission-system:** say which layouts a /permission-system save re-indents ([7138621](https://github.com/gotgenes/pi-packages/commit/71386213c9ea0acf6baaf418259cb392121d0f04)), closes [#1102](https://github.com/gotgenes/pi-packages/issues/1102)
+* **pi-permission-system:** name the brace-line comment a /permission-system save moves ([00a9bb0](https://github.com/gotgenes/pi-packages/commit/00a9bb0b8841657e565b95f8fcfabc82bd9f7214)), closes [#1102](https://github.com/gotgenes/pi-packages/issues/1102)
+
 ## [42.2.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v42.1.0...pi-permission-system-v42.2.0) (2026-11-18)
 
 
