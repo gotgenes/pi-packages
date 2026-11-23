@@ -39,4 +39,25 @@ Filed [#1140] for the barrel/`publicFiles` work and recorded its Phase 16 dispos
 - **Tidy First skipped:** no `src/` or `test/` file changes; the only `packages/` edits are the nine `vitest.config.ts` files.
 - **Issue #155 checked:** it removed unused barrel re-exports, which is consistent with the new `index.ts` rule, and [#1140] cites it.
 
+## Stage: Implementation — Build (2026-11-23T03:11:03Z)
+
+### Session summary
+
+Landed all five build steps as separate commits (`bc0bcbe3`, `16ed3bf5`, `be1cd70d`, `28ad7dfb`, `285adc19`).
+The commits root the Vitest configs, swap in `@vitest/coverage-v8`, set the two `.fallowrc.json` rules, add the `fallow audit --staged` pre-commit hook, and add the `fallow` skill updates.
+Per-package test counts are identical to the pre-change baseline, and every verification command the plan's Test Impact Analysis names reproduced its planned result.
+
+### Observations
+
+- **Deviation (step 2): `pnpm install` does not drop a removed package that is still a resolved optional peer.**
+  `@vitest/coverage-istanbul` stayed in every `vitest@5.1.1(...)` lockfile key and stayed installed after its root devDependency was removed.
+  Neither `--fix-lockfile` nor `pnpm update -r vitest` cleared it, and `pnpm dedupe` rewrote about 500 unrelated lines, so it was reverted.
+  The fix was a hand edit: strip the peer suffix and the orphaned entries, then `pnpm install` and `--frozen-lockfile`.
+- **Pre-completion reviewer: WARN, then PASS on the delta.**
+  The WARN found an orphan the hand edit missed (`@istanbuljs/schema`), and a commit body that credited `pnpm install` with pruning it.
+  Both were fixed by rewriting the unpushed step-2 commit (`c81b2c73` → `16ed3bf5`); the replayed commits keep the same patch ids.
+  The delta PASS noted one wording nit in the rewritten body: `js-tokens` became non-optional rather than "a required dependency".
+- **The delta review's first test run failed 3 heartbeat tests** in pi-permission-system under machine load (files took 333 s and 168 s); its rerun and a second full run passed.
+- **The hook ran on this session's own commits** and skipped each one, because none staged code or JSON after `prek.toml` landed.
+
 [#1140]: https://github.com/gotgenes/pi-packages/issues/1140
