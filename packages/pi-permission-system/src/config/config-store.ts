@@ -28,6 +28,7 @@ import {
   EXTENSION_ROOT,
   normalizePermissionSystemConfig,
   type PermissionSystemExtensionConfig,
+  runtimeKnobValues,
 } from "./extension-config";
 import type { ResolvedPolicyPaths } from "./policy-loader";
 import { syncPermissionSystemStatus } from "./status";
@@ -189,13 +190,10 @@ export class ConfigStore
     const normalized = normalizePermissionSystemConfig(next);
     const globalPath = getGlobalConfigPath(this.deps.agentDir);
 
+    const knobs = runtimeKnobValues(normalized);
+
     const existing = loadUnifiedConfig(globalPath);
-    const merged = {
-      ...existing.config,
-      debugLog: normalized.debugLog,
-      permissionReviewLog: normalized.permissionReviewLog,
-      yoloMode: normalized.yoloMode,
-    };
+    const merged = { ...existing.config, ...knobs };
 
     const tmpPath = `${globalPath}.tmp`;
     try {
@@ -221,11 +219,7 @@ export class ConfigStore
     this.config = normalized;
     syncPermissionSystemStatus(ctx, normalized);
 
-    this.deps.logger.debug("config.saved", {
-      debugLog: normalized.debugLog,
-      permissionReviewLog: normalized.permissionReviewLog,
-      yoloMode: normalized.yoloMode,
-    });
+    this.deps.logger.debug("config.saved", { ...knobs });
   }
 
   /**

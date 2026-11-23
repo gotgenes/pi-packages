@@ -370,7 +370,25 @@ describe("ConfigStore", () => {
           debugLog: true,
           permissionReviewLog: true,
           yoloMode: false,
+          doublePressToConfirm: true,
         });
+      });
+
+      it("persists the double-press setting across the next refresh", async () => {
+        const { loadAndMergeConfigs } = await vi.importActual<
+          typeof import("#src/config/config-loader")
+        >("#src/config/config-loader");
+        mockLoadAndMergeConfigs.mockImplementation(loadAndMergeConfigs);
+        const { store } = makeStore();
+        store.refresh(undefined, true);
+
+        store.save(
+          { ...store.current(), doublePressToConfirm: false },
+          makeCommandCtx(),
+        );
+        store.refresh(undefined, true);
+
+        expect(store.current().doublePressToConfirm).toBe(false);
       });
 
       it("keeps the keys of a valid existing file that it does not set", () => {
@@ -393,6 +411,7 @@ describe("ConfigStore", () => {
           debugLog: false,
           permissionReviewLog: true,
           yoloMode: true,
+          doublePressToConfirm: true,
         });
       });
 
