@@ -99,11 +99,9 @@ function summarizeConfig(
   config: PermissionSystemExtensionConfig,
   rules?: Ruleset,
 ): string {
-  const knobs = [
-    `yoloMode=${toOnOff(config.yoloMode)}`,
-    `permissionReviewLog=${toOnOff(config.permissionReviewLog)}`,
-    `debugLog=${toOnOff(config.debugLog)}`,
-  ].join(", ");
+  const knobs = RUNTIME_KNOB_KEYS.map(
+    (id) => `${id}=${toOnOff(config[id])}`,
+  ).join(", ");
   const rulesSuffix = rules ? formatRulesSummary(rules) : "";
   return `${knobs}${rulesSuffix}`;
 }

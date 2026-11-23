@@ -165,6 +165,7 @@ describe("/permission-system command", () => {
         debugLog: true,
         permissionReviewLog: false,
         yoloMode: true,
+        doublePressToConfirm: false,
       });
       const { definition } = captureCommand({ store });
       const { ctx, notifications } = createCommandContext(true);
@@ -173,7 +174,7 @@ describe("/permission-system command", () => {
 
       expect(lastNotification(notifications)).toEqual({
         message:
-          "permission-system: yoloMode=on, permissionReviewLog=off, debugLog=on",
+          "permission-system: yoloMode=on, permissionReviewLog=off, debugLog=on, doublePressToConfirm=off",
         level: "info",
       });
     });
