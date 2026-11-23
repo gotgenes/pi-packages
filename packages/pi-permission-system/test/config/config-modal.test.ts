@@ -11,10 +11,29 @@ vi.mock("@earendil-works/pi-coding-agent", () => ({
   getSettingsListTheme: () => ({}),
 }));
 
+interface RecordedSettingsList {
+  items: { id: string; currentValue: string }[];
+  onChange: (id: string, newValue: string) => void;
+  updates: [string, string][];
+}
+
+const settingsLists = vi.hoisted((): RecordedSettingsList[] => []);
+
 vi.mock("@earendil-works/pi-tui", () => ({
   SettingsList: class {
+    readonly updates: [string, string][] = [];
+    constructor(
+      readonly items: { id: string; currentValue: string }[],
+      _maxVisible: number,
+      _theme: unknown,
+      readonly onChange: (id: string, newValue: string) => void,
+    ) {
+      settingsLists.push(this);
+    }
     handleInput(): void {}
-    updateValue(): void {}
+    updateValue(id: string, newValue: string): void {
+      this.updates.push([id, newValue]);
+    }
     render(): string[] {
       return [];
     }
@@ -59,10 +78,11 @@ function createCommandContext(hasUI: boolean): {
           notifications.push({ message, level });
         },
         async custom<T>(
-          _renderer: (...args: unknown[]) => unknown,
+          renderer: (...args: unknown[]) => unknown,
           _options?: unknown,
         ): Promise<T> {
           customCalls += 1;
+          renderer(undefined, undefined, undefined, () => {});
           return undefined as T;
         },
       },
@@ -299,6 +319,55 @@ describe("/permission-system command", () => {
       await definition.handler("", ctx);
 
       expect(getCustomCalls()).toBe(1);
+    });
+  });
+
+  describe("the settings modal", () => {
+    async function openModal(store: CommandConfigStore): Promise<{
+      list: RecordedSettingsList;
+      ctx: CommandContextStub;
+    }> {
+      const { definition } = captureCommand({ store });
+      const { ctx } = createCommandContext(true);
+      settingsLists.length = 0;
+      await definition.handler("", ctx);
+      expect(settingsLists).toHaveLength(1);
+      return { list: settingsLists[0], ctx };
+    }
+
+    it("lists the four knobs in order with their current values", async () => {
+      const { store } = makeConfigStore({
+        ...DEFAULT_EXTENSION_CONFIG,
+        yoloMode: true,
+      });
+      const { list } = await openModal(store);
+
+      expect(
+        list.items.map(({ id, currentValue }) => [id, currentValue]),
+      ).toEqual([
+        ["yoloMode", "on"],
+        ["permissionReviewLog", "on"],
+        ["debugLog", "off"],
+        ["doublePressToConfirm", "on"],
+      ]);
+    });
+
+    it("saves a toggled knob and re-syncs the list from the store", async () => {
+      const { store, save } = makeConfigStore(DEFAULT_EXTENSION_CONFIG);
+      const { list, ctx } = await openModal(store);
+
+      list.onChange("debugLog", "on");
+
+      expect(save).toHaveBeenCalledWith(
+        { ...DEFAULT_EXTENSION_CONFIG, debugLog: true },
+        ctx,
+      );
+      expect(list.updates).toEqual([
+        ["yoloMode", "off"],
+        ["permissionReviewLog", "on"],
+        ["debugLog", "on"],
+        ["doublePressToConfirm", "on"],
+      ]);
     });
   });
 });
