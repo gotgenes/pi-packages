@@ -65,7 +65,7 @@ pnpm install
 ```
 
 This installs dependencies and wires the `prek` git hooks automatically via the `prepare` script.
-The hooks include a `pre-commit` stage (a stray-invisible-character check, a Unicode-escape check for markdown prose and code comments, Biome, ESLint, rumdl) and a `commit-msg` stage that validates Conventional Commit headers via [committed](https://github.com/crate-ci/committed).
+The hooks include a `pre-commit` stage (a stray-invisible-character check, a Unicode-escape check for markdown prose and code comments, Biome, ESLint, rumdl, and a `fallow audit --staged` gate on code changes) and a `commit-msg` stage that validates Conventional Commit headers via [committed](https://github.com/crate-ci/committed).
 
 The invisible-character check rejects C0 control characters other than tab, line feed, and carriage return, plus DEL and the zero-width characters.
 It deletes the two whose only correct repair is deletion (the zero-width space and the byte order mark) and reports the rest, because repairing those needs the surrounding sentence.

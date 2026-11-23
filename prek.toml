@@ -24,6 +24,11 @@ hooks = [
     { id = "unicode-escapes", name = "unicode escapes", entry = "node scripts/lint/unicode-escapes.mjs --fix", language = "system", types_or = ["markdown", "ts", "javascript"] },
     { id = "biome", name = "biome", entry = "pnpm exec biome check --write --files-ignore-unknown=true", language = "system", types_or = ["javascript", "jsx", "ts", "tsx", "json"] },
     { id = "eslint", name = "eslint", entry = "pnpm exec eslint --fix", language = "system", types = ["ts"], files = "^packages/" },
+    # Last, so it judges what the formatters left staged. CI audits only pull
+    # requests, so this is the one place a main-lane commit meets audit's
+    # complexity and duplication gate; it fails only on findings the staged
+    # change introduces. `--staged` reads the index itself, hence no filenames.
+    { id = "fallow-audit", name = "fallow audit", entry = "pnpm --silent fallow audit --staged --quiet", language = "system", pass_filenames = false, types_or = ["ts", "javascript", "json"] },
 ]
 
 [[repos]]
