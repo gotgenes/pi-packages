@@ -495,16 +495,48 @@ describe("ConfigStore", () => {
           expect.anything(),
         );
       });
+    });
 
-      it("leaves no temporary file beside the target", () => {
-        // A directory where the file should be: the rename onto it fails.
+    describe("when the existing file is invalid", () => {
+      it("refuses, keeping every rule the file holds", () => {
+        const original =
+          '{\n  "permission": { "bash": { "rm *": "deny" } },\n  "typoKey": true\n}\n';
+        const path = writeGlobalConfig(original);
+        const mockNotify = vi.fn();
+        const ctx = makeCommandCtx({ ui: { notify: mockNotify } as never });
+        const { store, logger } = makeStore();
+
+        const saved = store.save(
+          { ...DEFAULT_EXTENSION_CONFIG, yoloMode: true },
+          ctx,
+        );
+
+        expect(saved).toBe(false);
+        expect(readFileSync(path, "utf-8")).toBe(original);
+        expect(mockNotify).toHaveBeenCalledWith(
+          `Refusing to save permission-system settings: '${path}' has problems a save would overwrite. Fix them by hand, then try again:\n- Unrecognized config key 'typoKey'.`,
+          "error",
+        );
+        expect(store.current()).toEqual(DEFAULT_EXTENSION_CONFIG);
+        expect(logger.debug).not.toHaveBeenCalledWith(
+          "config.saved",
+          expect.anything(),
+        );
+      });
+
+      it("refuses a config path that is a directory, leaving nothing beside it", () => {
         const configDir = getGlobalConfigDir(agentDir);
         fixture.subdir(configDir, "config.json");
         const mockNotify = vi.fn();
         const ctx = makeCommandCtx({ ui: { notify: mockNotify } as never });
         const { store } = makeStore();
-        store.save({ ...DEFAULT_EXTENSION_CONFIG }, ctx);
-        expect(mockNotify).toHaveBeenCalledWith(expect.any(String), "error");
+
+        expect(store.save({ ...DEFAULT_EXTENSION_CONFIG }, ctx)).toBe(false);
+
+        expect(mockNotify).toHaveBeenCalledWith(
+          expect.stringContaining("Refusing to save"),
+          "error",
+        );
         expect(readdirSync(configDir)).toEqual(["config.json"]);
       });
     });

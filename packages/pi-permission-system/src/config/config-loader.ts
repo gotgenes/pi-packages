@@ -531,15 +531,40 @@ export function loadUnifiedConfig(path: string): UnifiedConfigLoadResult {
     return { config: {}, issues: [] };
   }
 
+  let raw: string;
   try {
-    const raw = readFileSync(path, "utf-8");
-    const parsed = JSON.parse(stripJsonComments(raw)) as unknown;
-    return validateUnifiedConfig(parsed);
+    raw = readFileSync(path, "utf-8");
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    return {
-      config: {},
-      issues: [`Failed to read config at '${path}': ${message}`],
-    };
+    return unreadableConfig(path, error);
   }
+  return parseUnifiedConfigText(raw, path);
+}
+
+/**
+ * Parse and validate a config file's text, as {@link loadUnifiedConfig} does
+ * for the file at `path`. A reader and a writer of the same file share this,
+ * so they agree on which files are invalid.
+ */
+export function parseUnifiedConfigText(
+  raw: string,
+  path: string,
+): UnifiedConfigLoadResult {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(stripJsonComments(raw));
+  } catch (error) {
+    return unreadableConfig(path, error);
+  }
+  return validateUnifiedConfig(parsed);
+}
+
+function unreadableConfig(
+  path: string,
+  error: unknown,
+): UnifiedConfigLoadResult {
+  const message = error instanceof Error ? error.message : String(error);
+  return {
+    config: {},
+    issues: [`Failed to read config at '${path}': ${message}`],
+  };
 }

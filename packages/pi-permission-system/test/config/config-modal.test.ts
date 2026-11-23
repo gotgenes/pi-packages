@@ -375,6 +375,23 @@ describe("/permission-system command", () => {
       ]);
     });
 
+    it("puts a toggle back when the store refuses the save", async () => {
+      const { store, save } = makeConfigStore(DEFAULT_EXTENSION_CONFIG, {
+        saves: false,
+      });
+      const { list } = await openModal(store);
+
+      list.onChange("yoloMode", "on");
+
+      expect(save).toHaveBeenCalledTimes(1);
+      expect(list.updates).toEqual([
+        ["yoloMode", "off"],
+        ["permissionReviewLog", "on"],
+        ["debugLog", "off"],
+        ["doublePressToConfirm", "on"],
+      ]);
+    });
+
     it("saves a toggled knob and re-syncs the list from the store", async () => {
       const { store, save } = makeConfigStore(DEFAULT_EXTENSION_CONFIG);
       const { list, ctx } = await openModal(store);

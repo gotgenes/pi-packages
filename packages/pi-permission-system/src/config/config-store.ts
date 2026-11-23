@@ -1,11 +1,5 @@
-import {
-  existsSync,
-  mkdirSync,
-  renameSync,
-  unlinkSync,
-  writeFileSync,
-} from "node:fs";
-import { dirname, normalize } from "node:path";
+import { existsSync } from "node:fs";
+import { normalize } from "node:path";
 import type { ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import type { DebugReviewLogger } from "#src/logging/session-logger";
 import {
@@ -14,8 +8,9 @@ import {
   detectWrapperCommandEffects,
   NO_DECLARED_COMMAND_EFFECTS,
 } from "./command-effects-config";
+import { writeConfigValues } from "./config-file-writer";
 import type { ConfigIssueSource } from "./config-issue-reporter";
-import { loadAndMergeConfigs, loadUnifiedConfig } from "./config-loader";
+import { loadAndMergeConfigs } from "./config-loader";
 import {
   getGlobalConfigPath,
   getLegacyExtensionConfigPath,
@@ -187,25 +182,14 @@ export class ConfigStore
     const globalPath = getGlobalConfigPath(this.deps.agentDir);
     const written = runtimeKnobValues(knobs);
 
-    const existing = loadUnifiedConfig(globalPath);
-    const merged = { ...existing.config, ...written };
-
-    const tmpPath = `${globalPath}.tmp`;
-    try {
-      mkdirSync(dirname(globalPath), { recursive: true });
-      writeFileSync(tmpPath, `${JSON.stringify(merged, null, 2)}\n`, "utf-8");
-      renameSync(tmpPath, globalPath);
-    } catch (error) {
-      try {
-        if (existsSync(tmpPath)) {
-          unlinkSync(tmpPath);
-        }
-      } catch {
-        // Ignore cleanup failures.
-      }
-      const message = error instanceof Error ? error.message : String(error);
+    const result = writeConfigValues(globalPath, written);
+    if (result.kind === "refused") {
+      ctx.ui.notify(refusalNotice(globalPath, result.issues), "error");
+      return false;
+    }
+    if (result.kind === "failed") {
       ctx.ui.notify(
-        `Failed to save permission-system config at '${globalPath}': ${message}`,
+        `Failed to save permission-system config at '${globalPath}': ${result.message}`,
         "error",
       );
       return false;
@@ -252,4 +236,9 @@ export class ConfigStore
       entry as unknown as Record<string, unknown>,
     );
   }
+}
+
+function refusalNotice(path: string, issues: readonly string[]): string {
+  const listed = issues.map((issue) => `- ${issue}`).join("\n");
+  return `Refusing to save permission-system settings: '${path}' has problems a save would overwrite. Fix them by hand, then try again:\n${listed}`;
 }
