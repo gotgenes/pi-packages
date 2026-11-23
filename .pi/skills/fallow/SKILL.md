@@ -127,14 +127,15 @@ CRAP scores are **estimated** from export references unless you feed real covera
 The estimate is not conservative in one direction: on pi-subagents it put `tools/agent-tool.ts` at 13.8 where real coverage says 42.0, and flagged 12 files above the threshold where real coverage flags 5.
 
 ```bash
-pnpm --filter @gotgenes/<PKG> exec vitest run --coverage --coverage.provider istanbul \
+pnpm --filter @gotgenes/<PKG> exec vitest run --coverage \
   --coverage.reporter json --coverage.reportsDirectory /tmp/cov-<PKG>
 pnpm --silent fallow health --coverage /tmp/cov-<PKG>/coverage-final.json \
   --score --hotspots --targets --workspace @gotgenes/<PKG> 2>&1 || true
 ```
 
-`--coverage` accepts an Istanbul `coverage-final.json` or raw V8 coverage (since 3.29.0); this repo uses Istanbul, and whether to switch is #1138.
-`@vitest/coverage-istanbul` is a root devDependency, so no package manifest needs one.
+The provider is Vitest's default, `@vitest/coverage-v8`, a root devDependency, so no package manifest needs one.
+It writes the Istanbul-format `coverage-final.json` that `--coverage` reads, and its CRAP scores match the Istanbul provider's (measured on 82 files in two packages).
+`--coverage` also accepts a raw V8 dump directory (`NODE_V8_COVERAGE=<dir>`), but Vitest's workers write none, so that path yields no `src` coverage here.
 For pi-autoformat add `--project unit` — its acceptance project spawns the real `pi` CLI.
 
 `health --coverage-gaps` is a separate, static question: which runtime files and exports no test dependency path reaches.

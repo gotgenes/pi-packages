@@ -23,7 +23,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
-    "@vitest/coverage-istanbul": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
     "eslint": "catalog:",
     "fallow": "catalog:",
     "fallow-type-aware": "catalog:",

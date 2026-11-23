@@ -30,11 +30,12 @@ catalog:
   "typescript": "npm:@typescript/typescript6@^6.0.2"
   "@typescript/native": "npm:typescript@^7.0.2"
   "vitest": "^5.1.1"
-  # Istanbul coverage for `fallow health --coverage`, the format the fallow
-  # skill's command produces (fallow also reads raw V8 coverage since 3.29.0;
-  # switching is #1138). Root-only: a coverage run is `pnpm --filter
-  # <pkg> exec vitest run --coverage`, so no package manifest references it.
-  "@vitest/coverage-istanbul": "^5.1.1"
+  # Vitest's default coverage provider, for `fallow health --coverage`: it
+  # writes the Istanbul-format `coverage-final.json` fallow reads. Raw
+  # `NODE_V8_COVERAGE` dumps do not work here, because Vitest's workers write
+  # none (#1138). Root-only: a coverage run is `pnpm --filter <pkg> exec
+  # vitest run --coverage`, so no package manifest references it.
+  "@vitest/coverage-v8": "^5.1.1"
   "@types/node": "^22.15.3"
   fallow: "^3.46.0"
   fallow-type-aware: "^3.46.0"

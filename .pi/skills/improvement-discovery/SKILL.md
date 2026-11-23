@@ -47,7 +47,7 @@ Four further reads, each answering something the three commands above cannot (th
 
 ```bash
 # Real CRAP scores: the estimate both hides hotspots and invents them.
-pnpm --filter @gotgenes/<PKG> exec vitest run --coverage --coverage.provider istanbul \
+pnpm --filter @gotgenes/<PKG> exec vitest run --coverage \
   --coverage.reporter json --coverage.reportsDirectory /tmp/cov-<PKG>
 pnpm fallow health --coverage /tmp/cov-<PKG>/coverage-final.json --score --hotspots --targets --workspace @gotgenes/<PKG> 2>&1 || true
 
