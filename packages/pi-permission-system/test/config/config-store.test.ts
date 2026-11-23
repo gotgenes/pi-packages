@@ -337,7 +337,7 @@ describe("ConfigStore", () => {
       expect(store.declaredCommandEffects()).toBe(declared);
     });
 
-    it("survives a save, which rebuilds the runtime config", () => {
+    it("survives a save", () => {
       const { store } = makeStore();
       mockLoadAndMergeConfigs.mockReturnValue({
         declaredCommandEffects: declared,
