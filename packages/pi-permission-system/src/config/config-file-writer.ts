@@ -39,9 +39,11 @@ export type ConfigWriteResult =
  * Set top-level `values` in the config file at `path`, leaving every other
  * key as it is (ADR 0016 §4).
  *
- * The edit is made in the file's text, so comments, formatting, and key
- * order survive; a key not yet present is inserted at the top of the object,
- * where it cannot disturb a neighbor's layout or trailing comment.
+ * The edit is made in the file's text, so comments, key order, and most of
+ * the layout survive. A key not yet present is inserted at the top of the
+ * object, which spares a later entry's layout and trailing comment; the
+ * formatter still re-indents a single-line file or an entry on the `{` line,
+ * and a comment on the `{` line ends up trailing the last inserted key.
  *
  * A file that exists but fails to read, parse, or validate is refused rather
  * than overwritten, and so is an edit whose result would not validate or
