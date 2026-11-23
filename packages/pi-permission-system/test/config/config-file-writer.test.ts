@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { chmodSync, existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { writeConfigValues } from "#src/config/config-file-writer";
@@ -166,6 +166,30 @@ describe("writeConfigValues", () => {
         ],
       });
       expect(existsSync(path)).toBe(false);
+    });
+  });
+
+  // POSIX file modes; win32 reports them differently.
+  describe.skipIf(process.platform === "win32")("the written file", () => {
+    it("is owner-only, even when it replaces a world-readable file", () => {
+      fixture.file(dir, "config.json", "{}");
+      chmodSync(path, 0o644);
+
+      expect(writeConfigValues(path, { debugLog: true })).toEqual({
+        kind: "written",
+      });
+
+      expect(statSync(path).mode & 0o777).toBe(0o600);
+    });
+
+    it("is written past a stale temporary file a crashed save left behind", () => {
+      fixture.file(dir, "config.json.tmp", "stale");
+
+      expect(writeConfigValues(path, { debugLog: true })).toEqual({
+        kind: "written",
+      });
+
+      expect(readBack()).toEqual({ debugLog: true });
     });
   });
 

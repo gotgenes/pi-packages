@@ -1,6 +1,10 @@
+import { randomUUID } from "node:crypto";
 import {
+  closeSync,
   existsSync,
+  fsyncSync,
   mkdirSync,
+  openSync,
   readFileSync,
   renameSync,
   unlinkSync,
@@ -9,6 +13,10 @@ import {
 import { dirname } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { applyEdits, type ModificationOptions, modify } from "jsonc-parser";
+import {
+  OWNER_ONLY_DIRECTORY_MODE,
+  OWNER_ONLY_FILE_MODE,
+} from "#src/logging/log-file-permissions";
 import {
   parseUnifiedConfigText,
   type UnifiedConfigLoadResult,
@@ -98,15 +106,29 @@ function setTopLevelValues(
     );
 }
 
+/**
+ * Replace `path` atomically with an owner-only file: write a uniquely named
+ * temporary file created exclusively, flush it to disk, then rename it over
+ * the target, so a reader sees the old file or the new one and never a part.
+ */
 function replaceFile(path: string, content: string): ConfigWriteResult {
-  const tmpPath = `${path}.tmp`;
+  const tmpPath = `${path}.${randomUUID()}.tmp`;
+  let fd: number | undefined;
   try {
-    mkdirSync(dirname(path), { recursive: true });
-    writeFileSync(tmpPath, content, "utf-8");
+    mkdirSync(dirname(path), {
+      recursive: true,
+      mode: OWNER_ONLY_DIRECTORY_MODE,
+    });
+    fd = openSync(tmpPath, "wx", OWNER_ONLY_FILE_MODE);
+    writeFileSync(fd, content, "utf-8");
+    fsyncSync(fd);
+    closeSync(fd);
+    fd = undefined;
     renameSync(tmpPath, path);
     return { kind: "written" };
   } catch (error) {
     try {
+      if (fd !== undefined) closeSync(fd);
       if (existsSync(tmpPath)) unlinkSync(tmpPath);
     } catch {
       // Ignore cleanup failures.
