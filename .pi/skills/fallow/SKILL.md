@@ -16,7 +16,7 @@ An `invalid boundary configuration` error with `autoDiscover path … did not re
 
 ```bash
 pnpm fallow                # full analysis: dead code + dupes + health
-pnpm fallow:audit          # changed-file audit (PR gate)
+pnpm fallow:audit          # changed-file audit (PR gate; the pre-commit hook runs it --staged)
 pnpm fallow:health         # complexity, hotspots, refactoring targets
 pnpm fallow:dead-code      # unused code, dependencies, cycles, boundary violations
 pnpm fallow:dupes          # duplicated code blocks
@@ -71,6 +71,7 @@ A zone with no rule is unrestricted, so rules — not zones — are what make a 
 
 Each zone's `allow` list is the set of zones it imported when the zones were encoded, so the baseline is zero violations and every **new** cross-zone edge is reported.
 Severity is `warn`: `fallow dead-code` and `fallow audit` print the violation and still exit 0, so the `main` gate is unaffected.
+No zone sets `publicFiles` (a list of the only files other zones may import): 18 of the 20 zone directories have no `index.ts`, and requiring one reports 462 violations, so #1140 adds the barrels first.
 
 - Before adding a cross-directory import, run `pnpm --silent fallow guard <file>` — it prints the file's zone, the zones it may import, and the type-only exceptions.
 - When the new edge is intended, extend that zone's `allow` list in the same commit and say why in the commit body.
@@ -82,7 +83,8 @@ Severity is `warn`: `fallow dead-code` and `fallow audit` print the violation an
 `fallow-type-aware` (a TypeScript semantic backend) is installed; check it with `fallow type-aware status`.
 It is **opt-in per invocation** via `--type-aware`.
 On 3.46 it refines only the candidate findings the syntactic pass produced, so a clean `dead-code --type-aware` costs what the syntactic run does (measured: about 1 s each with `--no-cache`).
-It also adds a `private-type-leak` warning class (exported signatures that reference a same-file private type), which the syntactic run does not report; this repo carries 48 of them, untriaged.
+It also adds a `private-type-leak` warning class (exported signatures that reference a same-file private type), which the syntactic run does not report.
+This repo turns it `off` (`private-type-leaks` in `.fallowrc.json`): the 48 it reported are deliberately narrow local interfaces, and #1140 re-enables it once per-directory barrels keep an exported type out of the directory's API.
 Without the flag, fallow's analysis is structural — it reads the module graph and the syntax, not the type checker.
 
 - `--type-coupling` (on `health`) reports project-local public-signature type coupling, an ISP/DIP lead: a file that "depends on 5, used by 1" is a dependency-bag candidate.
@@ -141,6 +143,28 @@ For pi-autoformat add `--project unit` — its acceptance project spawns the rea
 `health --coverage-gaps` is a separate, static question: which runtime files and exports no test dependency path reaches.
 Read it as a reachability lead, not a coverage number, and discount barrels — an export re-exported from `index.ts` whose tests import the source module directly reads as untested.
 
+## Mutation testing
+
+`fallow mutation` changes the code in small ways (mutants) and runs the tests against each one; a mutant no test fails on survives.
+It is on demand: no workflow step runs it.
+Pass the package's Vitest config, which is rooted at its own directory:
+
+```bash
+# Count the mutants and run nothing
+pnpm --silent fallow mutation packages/<PKG>/src --runner-config packages/<PKG>/vitest.config.ts --plan
+# A package, a directory, or one file under it
+pnpm --silent fallow mutation packages/<PKG>/src --runner-config packages/<PKG>/vitest.config.ts
+# The code changed since a ref, against one package's tests
+pnpm --silent fallow mutation --base <ref> --runner-config packages/<PKG>/vitest.config.ts
+```
+
+For pi-autoformat add `--runner-project unit`.
+Without `--runner-config` the run reports `partial (test-files-not-discovered)`.
+`--base` cannot be narrowed to one package (`--workspace` and path arguments are both rejected), so mutants in another package's changed files report as "no coverage"; read only the package whose config you passed.
+Cost: all of pi-github-tools is 441 mutants in 44 s, and a 6-commit pi-permission-system range is 254 mutants in 5 m 14 s; `--max-mutants` and `--time-budget` bound a run.
+A survivor is a lead, not a verdict: equivalent mutants survive (`grants.length > 0` to `!= 0`), and so does a mutant whose only effect is an `undefined` property `toEqual` ignores.
+`fallow mutation inspect <id>` shows one survivor without running anything.
+
 ## Change review
 
 ```bash
@@ -151,6 +175,10 @@ pnpm --silent fallow review --brief --base <ref> --quiet
 `decision-surface` returns at most five `signal_id`-anchored questions in three categories (`public-api-contract`, `coupling-boundary`, `dependency`); it always exits 0 and gates nothing.
 `review --brief` renders the same analysis as an orientation brief ("where do I look?") rather than a verdict.
 The `pre-completion-reviewer` runs the first of these over the range it reviews; a judgment it reports must cite a `signal_id` fallow emitted.
+No workflow reads the brief's `test_reach` section (how tests reach each changed export): across 60 commits it flagged 2 exports, both a constant tested through its in-file consumer.
+
+The pre-commit hook runs `fallow audit --staged` on every commit that stages code or JSON, after the formatters.
+It fails only on findings the staged change introduces; a new module whose only consumer is its own new test passes.
 
 ## Configuration
 
@@ -158,6 +186,7 @@ Config lives at `.fallowrc.json` in the repo root.
 Entry points for `pi.extensions` are declared manually since fallow does not know that convention.
 Rules use `"error"` (fail CI), `"warn"` (report only), or `"off"` (skip).
 Some rules default to `off`; `coverage-gaps` is one.
+`package-cycle` is raised to `error`, so a cycle between workspace packages fails `dead-code` even when no file-level loop forms one.
 On 3.46 setting it to `warn` makes every `health` run print the section `health --coverage-gaps` prints, so prefer the flag when you want the answer once.
 
 ## Suppressing findings
