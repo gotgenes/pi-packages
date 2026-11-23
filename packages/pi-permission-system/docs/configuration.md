@@ -129,6 +129,11 @@ A longer list makes the file invalid, so it is rejected like any other invalid v
 Both logs write to `~/.pi/agent/extensions/pi-permission-system/logs/`.
 No debug output is printed to the terminal.
 
+The `/permission-system` settings modal and `/permission-system reset` save `yoloMode`, `permissionReviewLog`, `debugLog`, and `doublePressToConfirm` to the global `config.json`.
+The save edits the file in place: comments, formatting, and every other key stay as you wrote them, and a knob the file does not yet set is added at the top.
+When the existing file fails to parse or validate, the save is refused with a notice naming the file and each problem, and the file is left untouched; fix it by hand, then toggle again.
+The saved file is written atomically and is readable by its owner only (mode `0600`).
+
 ### Inline permission dialog (TUI)
 
 In an interactive **TUI** session, an `ask` decision opens an inline keybind dialog with one-key shortcuts:
