@@ -51,6 +51,68 @@ describe("writeConfigValues", () => {
     });
   });
 
+  describe("a JSONC file", () => {
+    it("keeps every original line, putting new keys at the top in the order given", () => {
+      fixture.file(
+        dir,
+        "config.json",
+        '{\n  // c\n  "permission": { "*": "ask" },\n  "promptMaxRows": 10 // rows\n}\n',
+      );
+
+      expect(
+        writeConfigValues(path, {
+          yoloMode: true,
+          permissionReviewLog: true,
+          debugLog: false,
+          doublePressToConfirm: false,
+        }),
+      ).toEqual({ kind: "written" });
+
+      expect(readFileSync(path, "utf-8")).toBe(
+        [
+          "{",
+          '  "yoloMode": true,',
+          '  "permissionReviewLog": true,',
+          '  "debugLog": false,',
+          '  "doublePressToConfirm": false,',
+          "  // c",
+          '  "permission": { "*": "ask" },',
+          '  "promptMaxRows": 10 // rows',
+          "}",
+          "",
+        ].join("\n"),
+      );
+    });
+
+    it("changes an existing key's value in place", () => {
+      fixture.file(
+        dir,
+        "config.json",
+        '{\n  "debugLog": true, // was on\n  "permission": { "*": "ask" }\n}\n',
+      );
+
+      expect(writeConfigValues(path, { debugLog: false })).toEqual({
+        kind: "written",
+      });
+
+      expect(readFileSync(path, "utf-8")).toBe(
+        '{\n  "debugLog": false, // was on\n  "permission": { "*": "ask" }\n}\n',
+      );
+    });
+
+    // `modify` edits a duplicated key's first occurrence, but `JSON.parse`
+    // reads the last, so the edit would not change the value the loader sees.
+    it("is refused when the edit would not produce the values given", () => {
+      const original = '{"debugLog": true, "debugLog": true}';
+      fixture.file(dir, "config.json", original);
+
+      const result = writeConfigValues(path, { debugLog: false });
+
+      expect(result.kind).toBe("refused");
+      expect(readFileSync(path, "utf-8")).toBe(original);
+    });
+  });
+
   describe("an existing file that fails to read, parse, or validate", () => {
     it("is refused when it holds an unknown key, and left byte-identical", () => {
       const original =
