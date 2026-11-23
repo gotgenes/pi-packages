@@ -1218,6 +1218,8 @@ Non-path tokens flagged per month (unmeasured at close) is **superseded**: re-ru
   Issues [#736] and [#856] are at their 3rd consecutive sweep and [#936], [#991], and [#1074] at their 2nd.
 - [#1104] — out of scope: the label is contextual.
   The body asks that a project-agent child session resolve project trust the way its parent does, and ADR 0016 records that the session's creator sets its trust, so the work is `pi-subagents`'.
+- [#1140] — filed by [#1138]'s planning; deferred to a later phase (operator decision).
+  A per-directory `index.ts` barrel enforced by fallow's `publicFiles` moves 462 cross-directory imports (measured across both packages), many in `access-intent/`, `authority/`, and `config/`, which this phase's steps edit, and it shares nothing with the channel cause.
 
 #### Deferred tidyings swept
 
@@ -1793,3 +1795,5 @@ Each phase's findings, step plan, dependency diagram, and health metrics are pre
 [#1131]: https://github.com/gotgenes/pi-packages/issues/1131
 [#1133]: https://github.com/gotgenes/pi-packages/issues/1133
 [#1134]: https://github.com/gotgenes/pi-packages/issues/1134
+[#1138]: https://github.com/gotgenes/pi-packages/issues/1138
+[#1140]: https://github.com/gotgenes/pi-packages/issues/1140
