@@ -9,9 +9,9 @@ import type { CommandConfigStore } from "./config-store";
 import {
   DEFAULT_EXTENSION_CONFIG,
   isRuntimeKnob,
-  type PermissionSystemExtensionConfig,
   RUNTIME_KNOB_KEYS,
   type RuntimeKnob,
+  type RuntimeKnobValues,
   runtimeKnobValues,
 } from "./extension-config";
 
@@ -74,7 +74,7 @@ const COMMAND_ARGUMENTS = [
 const USAGE_TEXT =
   "Usage: /permission-system [show|path|reset|help] (or run /permission-system with no args to open settings modal)";
 
-function cloneDefaultConfig(): PermissionSystemExtensionConfig {
+function defaultKnobValues(): RuntimeKnobValues {
   return runtimeKnobValues(DEFAULT_EXTENSION_CONFIG);
 }
 
@@ -95,43 +95,38 @@ function formatRulesSummary(rules: Ruleset): string {
   return `\n  rules: ${formatted}`;
 }
 
-function summarizeConfig(
-  config: PermissionSystemExtensionConfig,
-  rules?: Ruleset,
-): string {
-  const knobs = RUNTIME_KNOB_KEYS.map(
-    (id) => `${id}=${toOnOff(config[id])}`,
+function summarizeConfig(knobs: RuntimeKnobValues, rules?: Ruleset): string {
+  const knobSummary = RUNTIME_KNOB_KEYS.map(
+    (id) => `${id}=${toOnOff(knobs[id])}`,
   ).join(", ");
   const rulesSuffix = rules ? formatRulesSummary(rules) : "";
-  return `${knobs}${rulesSuffix}`;
+  return `${knobSummary}${rulesSuffix}`;
 }
 
-function buildSettingItems(
-  config: PermissionSystemExtensionConfig,
-): SettingItem[] {
+function buildSettingItems(knobs: RuntimeKnobValues): SettingItem[] {
   return RUNTIME_KNOB_KEYS.map((id) => ({
     id,
     ...KNOB_PRESENTATION[id],
-    currentValue: toOnOff(config[id]),
+    currentValue: toOnOff(knobs[id]),
     values: ON_OFF,
   }));
 }
 
 function applySetting(
-  config: PermissionSystemExtensionConfig,
+  knobs: RuntimeKnobValues,
   id: string,
   value: string,
-): PermissionSystemExtensionConfig {
-  if (!isRuntimeKnob(id)) return config;
-  return { ...config, [id]: value === "on" };
+): RuntimeKnobValues {
+  if (!isRuntimeKnob(id)) return knobs;
+  return { ...knobs, [id]: value === "on" };
 }
 
 function syncSettingValues(
   settingsList: SettingsList,
-  config: PermissionSystemExtensionConfig,
+  knobs: RuntimeKnobValues,
 ): void {
   for (const id of RUNTIME_KNOB_KEYS) {
-    settingsList.updateValue(id, toOnOff(config[id]));
+    settingsList.updateValue(id, toOnOff(knobs[id]));
   }
 }
 
@@ -163,16 +158,20 @@ async function openSettingsModal(
   // eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- ctx.ui.custom<void> is valid; rule does not allow void in generic fn call type args
   await ctx.ui.custom<void>(
     (_tui, _theme, _keybindings, done) => {
-      let current = controller.config.current();
       const settingsList = new SettingsList(
-        buildSettingItems(current),
+        buildSettingItems(controller.config.current()),
         10,
         getSettingsListTheme(),
         (id, newValue) => {
-          current = applySetting(current, id, newValue);
-          controller.config.save(current, ctx);
-          current = controller.config.current();
-          syncSettingValues(settingsList, current);
+          controller.config.save(
+            applySetting(
+              runtimeKnobValues(controller.config.current()),
+              id,
+              newValue,
+            ),
+            ctx,
+          );
+          syncSettingValues(settingsList, controller.config.current());
         },
         () => done(),
       );
@@ -208,8 +207,9 @@ function handleArgs(
   }
 
   if (normalized === "reset") {
-    controller.config.save(cloneDefaultConfig(), ctx);
-    ctx.ui.notify("Permission system settings reset to defaults.", "info");
+    if (controller.config.save(defaultKnobValues(), ctx)) {
+      ctx.ui.notify("Permission system settings reset to defaults.", "info");
+    }
     return true;
   }
 

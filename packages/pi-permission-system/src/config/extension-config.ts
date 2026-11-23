@@ -70,7 +70,7 @@ export function isRuntimeKnob(id: string): id is RuntimeKnob {
 
 /** The runtime knobs of `config`, and nothing else. */
 export function runtimeKnobValues(
-  config: PermissionSystemExtensionConfig,
+  config: RuntimeKnobValues,
 ): RuntimeKnobValues {
   return {
     yoloMode: config.yoloMode,

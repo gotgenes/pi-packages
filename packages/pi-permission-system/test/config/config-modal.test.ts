@@ -4,6 +4,7 @@ import type { CommandConfigStore } from "#src/config/config-store";
 import {
   DEFAULT_EXTENSION_CONFIG,
   type PermissionSystemExtensionConfig,
+  type RuntimeKnobValues,
 } from "#src/config/extension-config";
 import type { Rule, Ruleset } from "#src/policy/rule";
 
@@ -96,11 +97,18 @@ function lastNotification(notifications: Notification[]): Notification {
   return notifications[notifications.length - 1];
 }
 
-/** A store that keeps whatever it is told to save. */
-function makeConfigStore(initial: PermissionSystemExtensionConfig) {
+/**
+ * A store that keeps the knobs it is told to save, or, with `saves: false`,
+ * one whose every save is refused: it reports `false` and changes nothing.
+ */
+function makeConfigStore(
+  initial: PermissionSystemExtensionConfig,
+  { saves = true }: { saves?: boolean } = {},
+) {
   let config = { ...initial };
-  const save = vi.fn((next: PermissionSystemExtensionConfig): void => {
-    config = next;
+  const save = vi.fn((knobs: RuntimeKnobValues): boolean => {
+    if (saves) config = { ...config, ...knobs };
+    return saves;
   });
   const store: CommandConfigStore = { current: () => config, save };
   return { store, save };
@@ -278,6 +286,20 @@ describe("/permission-system command", () => {
         message: "Permission system settings reset to defaults.",
         level: "info",
       });
+    });
+
+    it("does not claim a reset the store did not save", async () => {
+      const { store, save } = makeConfigStore(
+        { ...DEFAULT_EXTENSION_CONFIG, yoloMode: true },
+        { saves: false },
+      );
+      const { definition } = captureCommand({ store });
+      const { ctx, notifications } = createCommandContext(true);
+
+      await definition.handler("reset", ctx);
+
+      expect(save).toHaveBeenCalledWith(DEFAULT_EXTENSION_CONFIG, ctx);
+      expect(notifications).toEqual([]);
     });
   });
 

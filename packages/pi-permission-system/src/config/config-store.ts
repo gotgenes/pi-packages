@@ -28,6 +28,7 @@ import {
   EXTENSION_ROOT,
   normalizePermissionSystemConfig,
   type PermissionSystemExtensionConfig,
+  type RuntimeKnobValues,
   runtimeKnobValues,
 } from "./extension-config";
 import type { ResolvedPolicyPaths } from "./policy-loader";
@@ -58,10 +59,8 @@ export interface SessionConfigStore extends ConfigReader {
  * coupling between the class and test doubles.
  */
 export interface CommandConfigStore extends ConfigReader {
-  save(
-    next: PermissionSystemExtensionConfig,
-    ctx: ExtensionCommandContext,
-  ): void;
+  /** Persist the runtime knobs; `true` when the file was written. */
+  save(knobs: RuntimeKnobValues, ctx: ExtensionCommandContext): boolean;
 }
 
 /** Narrow view of the manager's resolved policy paths (for `logResolvedPaths`). */
@@ -95,7 +94,7 @@ export class ConfigStore
 {
   private config: PermissionSystemExtensionConfig;
   private configIssues: readonly string[] = [];
-  // Held beside the runtime config rather than on it: `save()` rebuilds the
+  // Held beside the runtime config rather than on it: `refresh()` rebuilds the
   // config through `normalizePermissionSystemConfig`, which would drop it.
   private declared: DeclaredCommandEffects = NO_DECLARED_COMMAND_EFFECTS;
 
@@ -178,22 +177,18 @@ export class ConfigStore
   }
 
   /**
-   * Save updated runtime knobs to the global config file, then update
+   * Save the runtime knobs to the global config file, then merge them into
    * the current config and sync UI status.
    *
-   * Equivalent to `saveExtensionConfig(runtime, next, ctx)`.
+   * Returns whether the file was written; a failure has already been
+   * reported to the operator through `ctx`.
    */
-  save(
-    next: PermissionSystemExtensionConfig,
-    ctx: ExtensionCommandContext,
-  ): void {
-    const normalized = normalizePermissionSystemConfig(next);
+  save(knobs: RuntimeKnobValues, ctx: ExtensionCommandContext): boolean {
     const globalPath = getGlobalConfigPath(this.deps.agentDir);
-
-    const knobs = runtimeKnobValues(normalized);
+    const written = runtimeKnobValues(knobs);
 
     const existing = loadUnifiedConfig(globalPath);
-    const merged = { ...existing.config, ...knobs };
+    const merged = { ...existing.config, ...written };
 
     const tmpPath = `${globalPath}.tmp`;
     try {
@@ -213,13 +208,14 @@ export class ConfigStore
         `Failed to save permission-system config at '${globalPath}': ${message}`,
         "error",
       );
-      return;
+      return false;
     }
 
-    this.config = normalized;
-    syncPermissionSystemStatus(ctx, normalized);
+    this.config = { ...this.config, ...written };
+    syncPermissionSystemStatus(ctx, this.config);
 
-    this.deps.logger.debug("config.saved", { ...knobs });
+    this.deps.logger.debug("config.saved", { ...written });
+    return true;
   }
 
   /**

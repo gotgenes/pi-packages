@@ -360,12 +360,13 @@ describe("ConfigStore", () => {
 
   describe("save()", () => {
     describe("when the write lands", () => {
-      it("writes the knobs to the global config file", () => {
+      it("writes the knobs to the global config file and reports it saved", () => {
         const { store } = makeStore();
-        store.save(
+        const saved = store.save(
           { ...DEFAULT_EXTENSION_CONFIG, debugLog: true },
           makeCommandCtx(),
         );
+        expect(saved).toBe(true);
         expect(readGlobalConfig(agentDir)).toEqual({
           debugLog: true,
           permissionReviewLog: true,
@@ -424,6 +425,33 @@ describe("ConfigStore", () => {
         expect(store.current().debugLog).toBe(true);
       });
 
+      it("keeps the loaded settings it does not write in current()", () => {
+        mockLoadAndMergeConfigs.mockReturnValue({
+          declaredCommandEffects: NO_DECLARED_COMMAND_EFFECTS,
+          merged: {
+            ...DEFAULT_EXTENSION_CONFIG,
+            shellTools: { exec_command: { commandArgument: "cmd" } },
+          },
+          issues: [],
+        });
+        const { store } = makeStore();
+        store.refresh(undefined, true);
+
+        store.save(
+          {
+            yoloMode: false,
+            permissionReviewLog: true,
+            debugLog: false,
+            doublePressToConfirm: true,
+          },
+          makeCommandCtx(),
+        );
+
+        expect(store.current().shellTools).toEqual({
+          exec_command: { commandArgument: "cmd" },
+        });
+      });
+
       it("syncs the status bar", () => {
         const { store } = makeStore();
         const ctx = makeCommandCtx();
@@ -452,7 +480,11 @@ describe("ConfigStore", () => {
         const mockNotify = vi.fn();
         const ctx = makeCommandCtx({ ui: { notify: mockNotify } as never });
         const { store, logger } = makeStore();
-        store.save({ ...DEFAULT_EXTENSION_CONFIG, debugLog: true }, ctx);
+        const saved = store.save(
+          { ...DEFAULT_EXTENSION_CONFIG, debugLog: true },
+          ctx,
+        );
+        expect(saved).toBe(false);
         expect(mockNotify).toHaveBeenCalledWith(
           expect.stringContaining("Failed to save"),
           "error",
