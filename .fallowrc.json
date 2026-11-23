@@ -31,6 +31,8 @@
     "unused-dev-dependencies": "error",
     "dev-dependencies-in-production": "error",
     "stale-suppressions": "error",
+    "package-cycle": "error",
+    "private-type-leaks": "off",
     "boundary-violation": "warn"
   },
   "boundaries": {
