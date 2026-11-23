@@ -10,6 +10,9 @@
  * not. Tool-result messages also emit `message_end`; only assistant messages update the record.
  * When the blocked message held thinking blocks, the reason says the briefing stayed in thinking:
  * that is the recurring shape, and the generic reason led to re-sends with the same mistake.
+ * From the second consecutive block on, the reason stops the retry loop instead: a re-send
+ * repeats the same shape, and a plain-text reply that ends the turn is what reliably recovers.
+ * A message with visible text resets the count.
  *
  * Interim: `@gotgenes/pi-ask` absorbs this guard (#1087).
  */
@@ -28,6 +31,12 @@ const BLOCK_REASON = [
 const THINKING_ONLY_REASON = [
   "this assistant message held only thinking blocks — prose written while thinking is not visible.",
   "End the thinking, write the briefing as reply text, then call ask_user in that same response.",
+].join(" ");
+
+const REPEAT_REASON = [
+  "ask_user has been blocked twice in a row: your briefing is still in thinking, not in a reply.",
+  "Stop calling ask_user: write the briefing and the questions as plain reply text and end your turn;",
+  "the operator answers in chat.",
 ].join(" ");
 
 interface ContentBlock {
@@ -54,19 +63,25 @@ function hasThinking(content: unknown): boolean {
 export default function askUserTextFirst(pi: ExtensionAPI): void {
   let lastAssistantHadText = true;
   let lastAssistantHadThinking = false;
+  let consecutiveBlocks = 0;
 
   pi.on("message_end", (event) => {
     const message = event.message as { role?: string; content?: unknown };
     if (message.role !== "assistant") return;
     lastAssistantHadText = hasVisibleText(message.content);
     lastAssistantHadThinking = hasThinking(message.content);
+    if (lastAssistantHadText) consecutiveBlocks = 0;
   });
 
   pi.on("tool_call", (event) => {
     if (event.toolName !== ASK_TOOL_NAME || lastAssistantHadText) return;
-    const reason = lastAssistantHadThinking
-      ? THINKING_ONLY_REASON
-      : BLOCK_REASON;
+    consecutiveBlocks += 1;
+    const reason =
+      consecutiveBlocks >= 2
+        ? REPEAT_REASON
+        : lastAssistantHadThinking
+          ? THINKING_ONLY_REASON
+          : BLOCK_REASON;
     return { block: true, reason };
   });
 }
