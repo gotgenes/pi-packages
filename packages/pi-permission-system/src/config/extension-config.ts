@@ -49,6 +49,37 @@ export const DEFAULT_EXTENSION_CONFIG: PermissionSystemExtensionConfig = {
   doublePressToConfirm: true,
 };
 
+/** The boolean runtime knobs the `/permission-system` modal edits, in display order. */
+export const RUNTIME_KNOB_KEYS = [
+  "yoloMode",
+  "permissionReviewLog",
+  "debugLog",
+  "doublePressToConfirm",
+] as const;
+
+export type RuntimeKnob = (typeof RUNTIME_KNOB_KEYS)[number];
+
+export type RuntimeKnobValues = Pick<
+  PermissionSystemExtensionConfig,
+  RuntimeKnob
+>;
+
+export function isRuntimeKnob(id: string): id is RuntimeKnob {
+  return (RUNTIME_KNOB_KEYS as readonly string[]).includes(id);
+}
+
+/** The runtime knobs of `config`, and nothing else. */
+export function runtimeKnobValues(
+  config: PermissionSystemExtensionConfig,
+): RuntimeKnobValues {
+  return {
+    yoloMode: config.yoloMode,
+    permissionReviewLog: config.permissionReviewLog,
+    debugLog: config.debugLog,
+    doublePressToConfirm: config.doublePressToConfirm,
+  };
+}
+
 function resolveExtensionRoot(moduleUrl = import.meta.url): string {
   return join(dirname(fileURLToPath(moduleUrl)), "..");
 }

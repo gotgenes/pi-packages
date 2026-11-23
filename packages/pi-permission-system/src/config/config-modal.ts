@@ -8,7 +8,11 @@ import type { Ruleset } from "#src/policy/rule";
 import type { CommandConfigStore } from "./config-store";
 import {
   DEFAULT_EXTENSION_CONFIG,
+  isRuntimeKnob,
   type PermissionSystemExtensionConfig,
+  RUNTIME_KNOB_KEYS,
+  type RuntimeKnob,
+  runtimeKnobValues,
 } from "./extension-config";
 
 interface PermissionSystemConfigController {
@@ -20,6 +24,31 @@ interface PermissionSystemConfigController {
 }
 
 const ON_OFF = ["on", "off"];
+const KNOB_PRESENTATION: Record<
+  RuntimeKnob,
+  { label: string; description: string }
+> = {
+  yoloMode: {
+    label: "YOLO mode",
+    description:
+      "Auto-approve ask-state permission checks, including subagent approval forwarding",
+  },
+  permissionReviewLog: {
+    label: "Permission review log",
+    description:
+      "Write permission request and decision audit events to the extension logs directory",
+  },
+  debugLog: {
+    label: "Debug logging",
+    description:
+      "Write verbose permission-system diagnostics to the extension logs directory",
+  },
+  doublePressToConfirm: {
+    label: "Double-press to confirm",
+    description:
+      "Require a confirming second press of a decision hotkey in the inline TUI permission dialog",
+  },
+};
 const COMMAND_ARGUMENTS = [
   {
     value: "show",
@@ -46,12 +75,7 @@ const USAGE_TEXT =
   "Usage: /permission-system [show|path|reset|help] (or run /permission-system with no args to open settings modal)";
 
 function cloneDefaultConfig(): PermissionSystemExtensionConfig {
-  return {
-    debugLog: DEFAULT_EXTENSION_CONFIG.debugLog,
-    permissionReviewLog: DEFAULT_EXTENSION_CONFIG.permissionReviewLog,
-    yoloMode: DEFAULT_EXTENSION_CONFIG.yoloMode,
-    doublePressToConfirm: DEFAULT_EXTENSION_CONFIG.doublePressToConfirm,
-  };
+  return runtimeKnobValues(DEFAULT_EXTENSION_CONFIG);
 }
 
 function toOnOff(value: boolean): string {
@@ -87,40 +111,12 @@ function summarizeConfig(
 function buildSettingItems(
   config: PermissionSystemExtensionConfig,
 ): SettingItem[] {
-  return [
-    {
-      id: "yoloMode",
-      label: "YOLO mode",
-      description:
-        "Auto-approve ask-state permission checks, including subagent approval forwarding",
-      currentValue: toOnOff(config.yoloMode),
-      values: ON_OFF,
-    },
-    {
-      id: "permissionReviewLog",
-      label: "Permission review log",
-      description:
-        "Write permission request and decision audit events to the extension logs directory",
-      currentValue: toOnOff(config.permissionReviewLog),
-      values: ON_OFF,
-    },
-    {
-      id: "debugLog",
-      label: "Debug logging",
-      description:
-        "Write verbose permission-system diagnostics to the extension logs directory",
-      currentValue: toOnOff(config.debugLog),
-      values: ON_OFF,
-    },
-    {
-      id: "doublePressToConfirm",
-      label: "Double-press to confirm",
-      description:
-        "Require a confirming second press of a decision hotkey in the inline TUI permission dialog",
-      currentValue: toOnOff(config.doublePressToConfirm),
-      values: ON_OFF,
-    },
-  ];
+  return RUNTIME_KNOB_KEYS.map((id) => ({
+    id,
+    ...KNOB_PRESENTATION[id],
+    currentValue: toOnOff(config[id]),
+    values: ON_OFF,
+  }));
 }
 
 function applySetting(
@@ -128,34 +124,17 @@ function applySetting(
   id: string,
   value: string,
 ): PermissionSystemExtensionConfig {
-  switch (id) {
-    case "yoloMode":
-      return { ...config, yoloMode: value === "on" };
-    case "permissionReviewLog":
-      return { ...config, permissionReviewLog: value === "on" };
-    case "debugLog":
-      return { ...config, debugLog: value === "on" };
-    case "doublePressToConfirm":
-      return { ...config, doublePressToConfirm: value === "on" };
-    default:
-      return config;
-  }
+  if (!isRuntimeKnob(id)) return config;
+  return { ...config, [id]: value === "on" };
 }
 
 function syncSettingValues(
   settingsList: SettingsList,
   config: PermissionSystemExtensionConfig,
 ): void {
-  settingsList.updateValue("yoloMode", toOnOff(config.yoloMode));
-  settingsList.updateValue(
-    "permissionReviewLog",
-    toOnOff(config.permissionReviewLog),
-  );
-  settingsList.updateValue("debugLog", toOnOff(config.debugLog));
-  settingsList.updateValue(
-    "doublePressToConfirm",
-    toOnOff(config.doublePressToConfirm),
-  );
+  for (const id of RUNTIME_KNOB_KEYS) {
+    settingsList.updateValue(id, toOnOff(config[id]));
+  }
 }
 
 function getArgumentCompletions(
