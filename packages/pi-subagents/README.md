@@ -185,6 +185,10 @@ Pick any subagent — running, or completed with its live session already releas
 Read-only: no steering, no session takeover (steering lives in the `steer_subagent` tool and the background widget).
 Runs that finished earlier in the session stay listed after a `/reload`, and a resumed session lists the runs it recorded; both open from their saved transcript.
 
+Tool calls, compaction and branch summaries, skill blocks, and bash runs open the way the main conversation shows them: collapsed, unless you expanded tool output there with `app.tools.expand` (`Ctrl+O` by default).
+The same key expands or collapses every block in the viewer without changing the main conversation, and in fullscreen mode a left click toggles a single block, as it does in the conversation.
+A released agent's calls to Pi's built-in tools (`read`, `bash`, `edit`, and the rest) draw with Pi's own renderers; calls to an extension's tools show their full output, as Pi draws any tool it has no renderer for.
+
 The viewer is framed by two rules in the style of pi's editor border, coloured for the agent's thinking level:
 
 ```text
@@ -196,7 +200,8 @@ The viewer is framed by two rules in the style of pi's editor border, coloured f
 The top rule names the agent, its task, model, and thinking level; the bottom carries the scroll position and key hints.
 Paging and jumping to the top or bottom follow Pi's viewport keybindings (`tui.altScreen.pageUp`, `pageDown`, `top`, `bottom`), so a remap applies here too, and the footer names the keys you bound; the mouse wheel scrolls the transcript as well.
 In fullscreen mode the viewer floats over the bottom of the screen, above Pi's footer, so those keys reach it instead of scrolling the conversation behind it.
-On a narrow terminal the footer drops the key hints, and the header drops the task and then the model before it shortens the agent's name.
+The footer also names the `app.tools.expand` key when the terminal is wide enough.
+On a narrower terminal the footer drops that key first and then the other key hints, and the header drops the task and then the model before it shortens the agent's name.
 
 Creating and editing agent definitions is not a command — write an agent `.md` file in your editor, or ask a pi session to generate one (see [Custom Agents](./docs/configuration.md#custom-agents)).
 
