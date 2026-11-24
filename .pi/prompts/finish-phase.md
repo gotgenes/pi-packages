@@ -1,5 +1,4 @@
 ---
-model: anthropic/claude-sonnet-5-5
 description: Verify the current improvement phase is complete, update docs, and archive its roadmap to history/
 ---
 

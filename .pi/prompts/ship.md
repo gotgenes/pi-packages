@@ -1,5 +1,4 @@
 ---
-model: anthropic/claude-sonnet-5-5, opencode-go/deepseek-v4-flash
 description: Land the work (trunk or worktree branch), verify CI, close the issue, dispatch the release, and tear down
 ---
 

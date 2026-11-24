@@ -1,6 +1,5 @@
 ---
 description: Measure the agent documentation, classify every passage against the admission test, gate the inventory, and apply the approved cuts — for AGENTS.md and skills (docs), prompt templates and subagent definitions (workflow), or both
-model: anthropic/claude-opus-5-5
 ---
 
 # Audit the agent documentation

@@ -1,6 +1,5 @@
 ---
 description: Assess what a new Pi release breaks in this monorepo's packages, with an empirical scratch-tree verification
-model: anthropic/claude-opus-5-5
 ---
 
 # Assess a new Pi release
