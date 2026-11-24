@@ -449,13 +449,6 @@ describe("TranscriptPane", () => {
         grow(90);
         expect(firstRow(pane)).toBe(atBottom + 10);
       });
-
-      it("leaves a click no block handles to the host", () => {
-        // Row 5 is a user message, which has no click handling.
-        const { pane } = livePane();
-        pane.render(80);
-        expect(pane.handleMouse(mouse({ type: "click", button: "left" }))).toBeUndefined();
-      });
     });
 
     describe("click", () => {
@@ -470,6 +463,13 @@ describe("TranscriptPane", () => {
         const { pane, toolRow } = paneWithToolCall();
         expect(pane.handleMouse(mouse({ type: "click", button: "left", x: 3, y: toolRow }))).toEqual({ handled: true });
         expect(pane.render(80).join("\n")).toContain("file body");
+      });
+
+      it("leaves a click no block handles to the host", () => {
+        // Row 5 is a user message, which has no click handling.
+        const pane = makePane({ tui: mockTui(40, 80), source: fakeSource({ getMessages: () => rowsOf(10) }) });
+        pane.render(80);
+        expect(pane.handleMouse(mouse({ type: "click", button: "left", y: 5 }))).toBeUndefined();
       });
 
       it("leaves a click on the header rule to the host, even over a block scrolled beneath it", () => {
