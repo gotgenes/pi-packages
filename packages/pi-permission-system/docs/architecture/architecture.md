@@ -1221,6 +1221,8 @@ Non-path tokens flagged per month (unmeasured at close) is **superseded**: re-ru
   The body asks that a project-agent child session resolve project trust the way its parent does, and ADR 0016 records that the session's creator sets its trust, so the work is `pi-subagents`'.
 - [#1140] — filed by [#1138]'s planning; deferred to a later phase (operator decision).
   A per-directory `index.ts` barrel enforced by fallow's `publicFiles` moves 462 cross-directory imports (measured across both packages), many in `access-intent/`, `authority/`, and `config/`, which this phase's steps edit, and it shares nothing with the channel cause.
+- [#1142] — filed by [#1102]'s implementation; folds into [#1122] (operator decision).
+  A modal toggle saves the other knobs from the merged config, so a trusted project's values land in the global file; [#1122] already moves the knob writes, so the same change decides which values they carry.
 
 #### Deferred tidyings swept
 
@@ -1433,18 +1435,18 @@ Release: independent
 
 Release: independent
 
-#### [#1122] A machine-local `config.local.json` at the global and project scopes
+#### [#1122] A machine-local `config.local.json` at the global and project scopes (with [#1142])
 
 **Cause:** there is no channel for personal policy that should not be committed, and no file an extension write may target without machine-editing an authored one (ADR 0016 §2 through §4).
 
 - **Smell:** Category C (a missing channel; every write today lands in an authored file).
-- **Target:** `src/config/config-paths.ts`, `src/config/policy-loader.ts` (two entries in the scope list), `src/policy/rule.ts` (`RuleOrigin`), `src/config/config-store.ts` (knob writes move to the global local file), `src/config/config-schema.ts`; `docs/configuration.md`, `config/config.example.json`.
+- **Target:** `src/config/config-paths.ts`, `src/config/policy-loader.ts` (two entries in the scope list), `src/policy/rule.ts` (`RuleOrigin`), `src/config/config-store.ts` (knob writes move to the global local file), `src/config/config-modal.ts` (which knob values a toggle saves), `src/config/config-schema.ts`; `docs/configuration.md`, `config/config.example.json`.
 - **Hard dependency:** [#1108], [#1102].
   The slots mean nothing until scopes compose in order, and the knob writes move through the write contract.
 - **Soft dependency:** [#1028].
   Landed after it, two files join one reader instead of two.
 - **Design question the step must settle:** whether the two local files add `RuleOrigin` literals or ride the additive channel field [#1124] introduces, given ADR 0016 K5 freezes the published values and says nothing on adding one.
-- **Outcome:** both files load after their scope's `config.json`, each as its own scope with per-scope sugar expansion and strict validation; an invalid project-local file floors like the project file; both join the per-check stamp; no `config.json` is machine-written.
+- **Outcome:** both files load after their scope's `config.json`, each as its own scope with per-scope sugar expansion and strict validation; an invalid project-local file floors like the project file; both join the per-check stamp; no `config.json` is machine-written; a toggle never copies a knob value another scope contributed into the global file ([#1142]).
 - **Commit type:** `feat:`.
 - **Impact 5 / Risk 3 / Priority 15.**
 
@@ -1800,3 +1802,4 @@ Each phase's findings, step plan, dependency diagram, and health metrics are pre
 [#1134]: https://github.com/gotgenes/pi-packages/issues/1134
 [#1138]: https://github.com/gotgenes/pi-packages/issues/1138
 [#1140]: https://github.com/gotgenes/pi-packages/issues/1140
+[#1142]: https://github.com/gotgenes/pi-packages/issues/1142
