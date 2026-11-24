@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [25.1.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v25.0.5...pi-subagents-v25.1.0) (2026-11-24)
+
+
+### Features
+
+* **pi-subagents:** draw read calls in a released subagent's transcript with Pi's own renderer ([6fc487a](https://github.com/gotgenes/pi-packages/commit/6fc487ada8313c087ceafe37996cdd84676d847e)), closes [#1088](https://github.com/gotgenes/pi-packages/issues/1088)
+* **pi-subagents:** draw every built-in tool call in a released subagent's transcript with Pi's own renderers ([0c4977c](https://github.com/gotgenes/pi-packages/commit/0c4977c522a6dbd453c14f68a9558ce0793a9b8b)), closes [#1088](https://github.com/gotgenes/pi-packages/issues/1088)
+* **pi-subagents:** toggle every block in the session viewer with Ctrl+O ([372e6cf](https://github.com/gotgenes/pi-packages/commit/372e6cfba813aeba6c3e75624063ebe4abe6e8c9)), closes [#1088](https://github.com/gotgenes/pi-packages/issues/1088)
+* **pi-subagents:** name the tool-output toggle key in the session viewer's footer ([ee12733](https://github.com/gotgenes/pi-packages/commit/ee12733f30175a4ac52946e037b0541784e55f40)), closes [#1088](https://github.com/gotgenes/pi-packages/issues/1088)
+* **pi-subagents:** click a block in the fullscreen session viewer to expand or collapse it ([bee3f13](https://github.com/gotgenes/pi-packages/commit/bee3f137af43960bfb5197e65593f912533238a1)), closes [#1088](https://github.com/gotgenes/pi-packages/issues/1088)
+
+### Bug Fixes
+
+* **pi-subagents:** open a subagent's transcript in the main conversation's tool-output state ([b83bc57](https://github.com/gotgenes/pi-packages/commit/b83bc5705d80ca1d430f9a9da3fb7fd04d4b3561)), closes [#1088](https://github.com/gotgenes/pi-packages/issues/1088)
+
+### Documentation
+
+* **pi-subagents:** archive Phase 23 to history ([d376574](https://github.com/gotgenes/pi-packages/commit/d376574ec45911862855d98a506f9bc7aa4b6c0c)), closes [#947](https://github.com/gotgenes/pi-packages/issues/947)
+* **pi-subagents:** describe collapsible blocks in the session viewer ([f43a080](https://github.com/gotgenes/pi-packages/commit/f43a080f9e4df36c32492c32b31a7ab89a3a7975)), closes [#1088](https://github.com/gotgenes/pi-packages/issues/1088)
+* **pi-subagents:** note that the built-in fallback keeps each tool's render shell ([d95b0af](https://github.com/gotgenes/pi-packages/commit/d95b0af0d6319a29c449fa04e88f5845f0484bd3)), closes [#1088](https://github.com/gotgenes/pi-packages/issues/1088)
+
 ## [25.0.5](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v25.0.4...pi-subagents-v25.0.5) (2026-10-28)
 
 
