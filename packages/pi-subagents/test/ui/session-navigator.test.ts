@@ -239,7 +239,16 @@ describe("TranscriptPane", () => {
 
     it("omits a pair the operator left unbound", () => {
       const footer = footerAt(80, keysWith({ "tui.altScreen.top": [], "tui.altScreen.bottom": [] }));
-      expect(footer.endsWith(" ↑↓ scroll · PageUp/PageDown · Esc close ──")).toBe(true);
+      expect(footer.endsWith(" ↑↓ scroll · PageUp/PageDown · Ctrl+O expand · Esc close ──")).toBe(true);
+    });
+
+    it("names the tool-output toggle key when the terminal is wide enough", () => {
+      expect(footerAt(100).endsWith(" ↑↓ scroll · PageUp/PageDown · Home/End · Ctrl+O expand · Esc close ──")).toBe(true);
+    });
+
+    it("omits the tool-output toggle when the operator left it unbound", () => {
+      const footer = footerAt(100, keysWith({ "app.tools.expand": [] }));
+      expect(footer.endsWith(" ↑↓ scroll · PageUp/PageDown · Home/End · Esc close ──")).toBe(true);
     });
 
     it("drops the key hints, keeping the position, when both do not fit", () => {

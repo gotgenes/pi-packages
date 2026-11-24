@@ -319,8 +319,8 @@ export class TranscriptPane implements Component {
         ? "100%"
         : `${Math.round(((visibleStart + viewportHeight) / totalLines) * 100)}%`;
     const position = th.fg("dim", `${totalLines} lines · ${scrollPct}`);
-    const hints = th.fg("dim", this.footerHint());
-    lines.push(labeledRule(width, paint, [position], [hints]));
+    const hints = this.footerHints().map((hint) => th.fg("dim", hint));
+    lines.push(labeledRule(width, paint, [position], hints));
 
     return lines;
   }
@@ -343,17 +343,24 @@ export class TranscriptPane implements Component {
   /**
    * The key hints the footer rule carries on its right, naming the keys the
    * operator actually bound: the first key of each binding, and no segment
-   * for a pair left wholly unbound.
+   * for a binding left wholly unbound. Fallbacks in preference order: the
+   * tool-output toggle is the first hint a narrow footer drops.
    */
-  private footerHint(): string {
-    const page = this.keyPair("tui.altScreen.pageUp", "tui.altScreen.pageDown");
-    const ends = this.keyPair("tui.altScreen.top", "tui.altScreen.bottom");
-    return ["↑↓ scroll", page, ends, "Esc close"].filter((segment) => segment !== "").join(" · ");
+  private footerHints(): string[] {
+    const page = this.firstKeys("tui.altScreen.pageUp", "tui.altScreen.pageDown");
+    const ends = this.firstKeys("tui.altScreen.top", "tui.altScreen.bottom");
+    const toggle = this.firstKeys("app.tools.expand");
+    const withToggle = ["↑↓ scroll", page, ends, toggle && `${toggle} expand`, "Esc close"];
+    const withoutToggle = ["↑↓ scroll", page, ends, "Esc close"];
+    return [withToggle, withoutToggle].map((segments) => segments.filter((segment) => segment !== "").join(" · "));
   }
 
-  /** `PageUp/PageDown` for a pair of bindings; the bound side alone when the other is unbound. */
-  private keyPair(first: Keybinding, second: Keybinding): string {
-    return [first, second]
+  /**
+   * The first key of each binding, joined: `PageUp/PageDown` for a pair, the
+   * bound side alone when the other is unbound, and empty when none is bound.
+   */
+  private firstKeys(...keybindings: Keybinding[]): string {
+    return keybindings
       .flatMap((keybinding) => this.keys.getKeys(keybinding).slice(0, 1))
       .map(displayKey)
       .join("/");
