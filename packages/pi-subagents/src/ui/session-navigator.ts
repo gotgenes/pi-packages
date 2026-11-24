@@ -113,6 +113,8 @@ export type CustomComponentFactory<R> = (
 export interface SessionNavigatorUI {
   select(title: string, options: string[]): Promise<string | undefined>;
   notify(message: string, level: "info" | "warning" | "error"): void;
+  /** Whether the main conversation shows tool output expanded (Pi's `app.tools.expand` state). */
+  getToolsExpanded(): boolean;
   custom<R>(component: CustomComponentFactory<R>, options?: ViewerMountOptions): Promise<R>;
 }
 
@@ -152,6 +154,8 @@ export interface TranscriptPaneOptions {
   done: (result: undefined) => void;
   cwd: string;
   markdownTheme: MarkdownTheme;
+  /** Whether collapsible blocks open expanded: the main conversation's state when the pane opened. */
+  toolsExpanded: boolean;
 }
 
 /**
@@ -186,10 +190,12 @@ export class SessionNavigatorHandler {
       return;
     }
     const markdownTheme = getMarkdownTheme();
+    // Read after the picker: Pi's selector toggles the main conversation's state on its own key.
+    const toolsExpanded = ui.getToolsExpanded();
     const mode = await probeTuiMode(ui);
     await ui.custom<undefined>(
       (tui, theme, keys, done) =>
-        new TranscriptPane({ tui, theme, keys, source, heading: entry.heading, done, cwd, markdownTheme }),
+        new TranscriptPane({ tui, theme, keys, source, heading: entry.heading, done, cwd, markdownTheme, toolsExpanded }),
       viewerMountOptions(mode),
     );
   }
@@ -238,14 +244,14 @@ export class TranscriptPane implements Component {
   /** Width the host last rendered at; input must use the same layout. */
   private renderedWidth: number | undefined;
 
-  constructor({ tui, theme, keys, source, heading, done, cwd, markdownTheme }: TranscriptPaneOptions) {
+  constructor({ tui, theme, keys, source, heading, done, cwd, markdownTheme, toolsExpanded }: TranscriptPaneOptions) {
     this.tui = tui;
     this.theme = theme;
     this.keys = keys;
     this.source = source;
     this.heading = heading;
     this.done = done;
-    this.content = new TranscriptContent({ tui, cwd, markdownTheme, source });
+    this.content = new TranscriptContent({ tui, cwd, markdownTheme, source, toolsExpanded });
     this.unsubscribe = source.subscribe((event) => {
       if (this.closed) return;
       this.content.apply(event);

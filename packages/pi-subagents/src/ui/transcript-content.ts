@@ -21,7 +21,14 @@ import {
   ToolExecutionComponent,
   UserMessageComponent,
 } from "@earendil-works/pi-coding-agent";
-import { Container, type MarkdownTheme, Spacer, type TUI, truncateToWidth } from "@earendil-works/pi-tui";
+import {
+  type Component,
+  Container,
+  type MarkdownTheme,
+  Spacer,
+  type TUI,
+  truncateToWidth,
+} from "@earendil-works/pi-tui";
 import type { AgentSessionEvent, SessionMessage } from "#src/types";
 import { withBuiltInRenderers } from "#src/ui/builtin-tool-renderers";
 import { describeActivity } from "#src/ui/display";
@@ -36,6 +43,8 @@ export interface TranscriptContentOptions {
   cwd: string;
   markdownTheme: MarkdownTheme;
   source: TranscriptSource;
+  /** Whether collapsible blocks (tool calls, summaries, skills, bash runs) mount expanded. */
+  toolsExpanded: boolean;
 }
 
 /**
@@ -79,9 +88,12 @@ export class TranscriptContent {
   /** Width `inFlightRows` was rendered at. */
   private inFlightWidth: number | undefined;
   private inFlightRows: readonly string[] | undefined;
+  /** Whether collapsible blocks show their full content; a rebuild keeps it. */
+  private expanded: boolean;
 
   constructor(options: TranscriptContentOptions) {
     this.options = options;
+    this.expanded = options.toolsExpanded;
     this.consumeSettled();
   }
 
@@ -207,7 +219,9 @@ export class TranscriptContent {
     const messages = this.options.source.getMessages();
     if (this.hasRewrittenHistory(messages)) this.reset();
     if (messages.length === this.consumedCount) return;
+    const firstNewBlock = this.blocks.length;
     for (let i = this.consumedCount; i < messages.length; i++) this.consumeMessage(messages[i]);
+    applyExpansion(this.blocks.slice(firstNewBlock), this.expanded);
     this.consumedCount = messages.length;
     this.lastConsumed = messages.at(-1);
     this.settledRows = undefined;
@@ -261,7 +275,6 @@ export class TranscriptContent {
         this.options.tui,
         this.options.cwd,
       );
-      tool.setExpanded(true);
       block.container.addChild(tool);
       this.pendingTools.set(content.id, { component: tool, block });
     }
@@ -293,13 +306,12 @@ export class TranscriptContent {
     this.hasVisibleContent = true;
   }
 
-  /** Compaction and branch summaries share the same spacer-plus-expanded shape. */
+  /** Compaction and branch summaries share the same spacer-plus-summary shape. */
   private consumeSummary(
     summary: CompactionSummaryMessageComponent | BranchSummaryMessageComponent,
   ): void {
     const block = this.appendBlock();
     block.container.addChild(new Spacer(1));
-    summary.setExpanded(true);
     block.container.addChild(summary);
     this.hasVisibleContent = true;
   }
@@ -315,6 +327,27 @@ export class TranscriptContent {
 interface SettledBlock {
   readonly container: Container;
   rows: readonly string[] | undefined;
+}
+
+/** A Pi component that collapses to a preview, as Pi's own interactive mode detects one. */
+interface Expandable {
+  setExpanded(expanded: boolean): void;
+}
+
+function isExpandable(component: Component): component is Component & Expandable {
+  return "setExpanded" in component && typeof component.setExpanded === "function";
+}
+
+/**
+ * Set every collapsible component in `blocks` to `expanded`. Each one is a
+ * direct child of its block's container, as in Pi's own chat container.
+ */
+function applyExpansion(blocks: readonly SettledBlock[], expanded: boolean): void {
+  for (const block of blocks) {
+    for (const child of block.container.children) {
+      if (isExpandable(child)) child.setExpanded(expanded);
+    }
+  }
 }
 
 /** A tool call awaiting its result, and the block whose rows it will invalidate. */
@@ -356,9 +389,7 @@ function addUserComponents(
     container.addChild(new UserMessageComponent(text, markdownTheme));
     return;
   }
-  const skill = new SkillInvocationMessageComponent(skillBlock, markdownTheme);
-  skill.setExpanded(true);
-  container.addChild(skill);
+  container.addChild(new SkillInvocationMessageComponent(skillBlock, markdownTheme));
   if (skillBlock.userMessage) {
     container.addChild(new Spacer(1));
     container.addChild(new UserMessageComponent(skillBlock.userMessage, markdownTheme));

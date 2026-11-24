@@ -12,17 +12,18 @@ beforeAll(() => initTheme(undefined, false));
 
 const WIDTH = 76;
 
-function makeContent(source: TranscriptSource = fakeSource()): TranscriptContent {
+function makeContent(source: TranscriptSource = fakeSource(), toolsExpanded = false): TranscriptContent {
   return new TranscriptContent({
     tui: mockTui(),
     cwd: "/test/cwd",
     markdownTheme: getMarkdownTheme(),
     source,
+    toolsExpanded,
   });
 }
 
-function contentFrom(messages: SessionMessage[]): TranscriptContent {
-  return makeContent(fakeSource({ getMessages: () => messages }));
+function contentFrom(messages: SessionMessage[], toolsExpanded = false): TranscriptContent {
+  return makeContent(fakeSource({ getMessages: () => messages }), toolsExpanded);
 }
 
 function allRows(content: TranscriptContent, width = WIDTH): string[] {
@@ -62,7 +63,8 @@ describe("TranscriptContent", () => {
         },
       ] as unknown as SessionMessage[];
 
-      const out = rendered(contentFrom(messages));
+      // Expanded: a collapsed `read` hides its result body.
+      const out = rendered(contentFrom(messages, true));
 
       expect(out).toContain("read");
       expect(out).toContain("file body");
@@ -111,6 +113,92 @@ describe("TranscriptContent", () => {
 
       expect(out).toContain("read");
       expect(out).not.toContain('"path"');
+    });
+  });
+
+  describe("expansion", () => {
+    const readCall = (): SessionMessage[] => [toolCallMessage("tc-1"), toolResultMessage("tc-1", "file body")];
+    const compaction = {
+      role: "compactionSummary",
+      summary: "the compacted summary",
+      tokensBefore: 1000,
+      timestamp: 1,
+    } as unknown as SessionMessage;
+    const skill = userMessage('<skill name="testing" location="/skills/testing">\nthe skill body\n</skill>\n\nrun the suite');
+    // Pi previews a collapsed bash run by its last 20 lines, so only the first is hidden.
+    const bash = {
+      role: "bashExecution",
+      command: "seq 30",
+      output: Array.from({ length: 30 }, (_, i) => `out ${String(i + 1).padStart(2, "0")}`).join("\n"),
+      exitCode: 0,
+    } as unknown as SessionMessage;
+
+    describe("collapsed", () => {
+      it("hides a tool result's body", () => {
+        expect(rendered(contentFrom(readCall(), false))).not.toContain("file body");
+      });
+
+      it("hides a compaction summary's text", () => {
+        expect(rendered(contentFrom([compaction], false))).not.toContain("the compacted summary");
+      });
+
+      it("hides a skill's body", () => {
+        expect(rendered(contentFrom([skill], false))).not.toContain("the skill body");
+      });
+
+      it("previews a bash run by its last lines", () => {
+        expect(rendered(contentFrom([bash], false))).not.toContain("out 01");
+      });
+    });
+
+    describe("expanded", () => {
+      it("shows a tool result's body", () => {
+        expect(rendered(contentFrom(readCall(), true))).toContain("file body");
+      });
+
+      it("shows a compaction summary's text", () => {
+        expect(rendered(contentFrom([compaction], true))).toContain("the compacted summary");
+      });
+
+      it("shows a skill's body", () => {
+        expect(rendered(contentFrom([skill], true))).toContain("the skill body");
+      });
+
+      it("shows a bash run's whole output", () => {
+        expect(rendered(contentFrom([bash], true))).toContain("out 01");
+      });
+
+      it("expands a tool call that settles in a later batch", () => {
+        const history: SessionMessage[] = [userMessage("read the file")];
+        const content = makeContent(fakeSource({ getMessages: () => history }), true);
+        allRows(content);
+
+        history.push(...readCall());
+        content.apply(settled());
+
+        expect(rendered(content)).toContain("file body");
+      });
+
+      it("keeps blocks expanded when agent_end rebuilds the transcript", () => {
+        const history = readCall();
+        const content = makeContent(fakeSource({ getMessages: () => history }), true);
+        allRows(content);
+
+        content.apply({ type: "agent_end" } as AgentSessionEvent);
+
+        expect(rendered(content)).toContain("file body");
+      });
+
+      it("keeps blocks expanded when history is replaced by a shorter one", () => {
+        let history: SessionMessage[] = [userMessage("a"), userMessage("b"), userMessage("c")];
+        const content = makeContent(fakeSource({ getMessages: () => history }), true);
+        allRows(content);
+
+        history = readCall();
+        content.apply(settled());
+
+        expect(rendered(content)).toContain("file body");
+      });
     });
   });
 
@@ -353,7 +441,8 @@ describe("TranscriptContent", () => {
 
     it("re-renders only the affected block when a tool result lands", () => {
       const history: SessionMessage[] = [...manyMessages(20), toolCallMessage("tc-1")];
-      const content = makeContent(growingSource(history));
+      // Expanded: a collapsed `read` hides the body this test watches land.
+      const content = makeContent(growingSource(history), true);
       content.apply(settled());
       allRows(content);
       history.push(toolResultMessage("tc-1", "tool output body"));

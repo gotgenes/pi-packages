@@ -53,6 +53,7 @@ function makePane(
     tui?: TUI;
     heading?: EntryHeading;
     keys?: PaneKeys;
+    toolsExpanded?: boolean;
   } = {},
 ) {
   return new TranscriptPane({
@@ -64,6 +65,7 @@ function makePane(
     done: opts.done ?? vi.fn(),
     cwd: "/test/cwd",
     markdownTheme: getMarkdownTheme(),
+    toolsExpanded: opts.toolsExpanded ?? false,
   });
 }
 
@@ -474,10 +476,14 @@ describe("SessionNavigatorHandler", () => {
    * here). A non-interactive UI resolves `undefined` without running anything,
    * as Pi's print and RPC modes do.
    */
-  function makeUI(selectResult?: string, { mode = "regular", interactive = true }: { mode?: TuiMode; interactive?: boolean } = {}) {
+  function makeUI(
+    selectResult?: string,
+    { mode = "regular", interactive = true, toolsExpanded = false }: { mode?: TuiMode; interactive?: boolean; toolsExpanded?: boolean } = {},
+  ) {
     return {
       select: vi.fn().mockResolvedValue(selectResult),
       notify: vi.fn(),
+      getToolsExpanded: vi.fn(() => toolsExpanded),
       custom: vi.fn().mockImplementation((factory: ComponentFactory<unknown>) => {
         if (!interactive) return Promise.resolve(undefined);
         let result: unknown;
@@ -567,6 +573,29 @@ describe("SessionNavigatorHandler", () => {
     await handleWith(ui, [makeNavigable()]);
 
     expect(ui.custom).toHaveBeenLastCalledWith(expect.any(Function), { overlay: false });
+  });
+
+  describe("tool output state", () => {
+    // A `read` call: collapsed, Pi's renderer hides its result body.
+    const PICK = makeNavigable({
+      agentMessages: [
+        { role: "assistant", content: [{ type: "toolCall", id: "tc-1", name: "read", arguments: { path: "/x.ts" } }], stopReason: "toolUse" },
+        { role: "toolResult", toolCallId: "tc-1", toolName: "read", content: [{ type: "text", text: "file body" }], isError: false },
+      ] as unknown as SessionMessage[],
+    });
+    const label = () => listNavigableAgents([PICK], registry, [])[0]?.label;
+
+    it("opens expanded when the main conversation shows tool output expanded", async () => {
+      const ui = makeUI(label(), { toolsExpanded: true });
+      await handleWith(ui, [PICK]);
+      expect(renderCapturedPane(ui).join("\n")).toContain("file body");
+    });
+
+    it("opens collapsed when the main conversation shows tool output collapsed", async () => {
+      const ui = makeUI(label(), { toolsExpanded: false });
+      await handleWith(ui, [PICK]);
+      expect(renderCapturedPane(ui).join("\n")).not.toContain("file body");
+    });
   });
 
   describe("mount mode", () => {

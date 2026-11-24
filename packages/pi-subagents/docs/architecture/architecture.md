@@ -441,7 +441,7 @@ src/
 │   ├── session-navigation.ts       pure session-selection and transcript-source logic
 │   ├── session-navigator.ts        /subagents:sessions command handler
 │   ├── builtin-tool-renderers.ts   Pi's built-in tool renderers, merged in for a transcript source that lacks them
-│   └── transcript-content.ts       transcript rows: per-message component blocks, width-cached (settles incrementally against Pi's state-before-listeners ordering, #689)
+│   └── transcript-content.ts       transcript rows: per-message component blocks, width-cached, collapsible blocks mounted in the pane's expansion state (settles incrementally against Pi's state-before-listeners ordering, #689)
 │
 └── handlers/                       event handlers
     ├── index.ts                    barrel re-export
