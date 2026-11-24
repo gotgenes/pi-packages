@@ -10,6 +10,9 @@
  *
  * Pi keeps that merge (`withBuiltInRenderers`) internal and exports only the
  * per-tool definition factories, so this module mirrors the merge over them.
+ * A factory's definition is what a live session registers, so it also carries
+ * the tool's `renderShell` (`edit` draws itself), which Pi's renderers-only
+ * table leaves out; a released transcript then draws as the live one did.
  */
 
 import {
