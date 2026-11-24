@@ -386,9 +386,10 @@ describe("TranscriptPane", () => {
     });
   });
 
-  describe("mouse wheel", () => {
-    const mouse = (type: TuiMouseEvent["type"], wheelDelta?: number): TuiMouseEvent => ({
-      type,
+  describe("mouse", () => {
+    /** A mouse event over the pane; a test names the fields its claim depends on. */
+    const mouse = (overrides: Partial<TuiMouseEvent>): TuiMouseEvent => ({
+      type: "move",
       button: "none",
       x: 10,
       y: 5,
@@ -399,56 +400,58 @@ describe("TranscriptPane", () => {
       shift: false,
       alt: false,
       ctrl: false,
-      ...(wheelDelta === undefined ? {} : { wheelDelta }),
+      ...overrides,
     });
 
-    const firstRow = (pane: TranscriptPane): number =>
-      pane
-        .render(80)
-        .map((line) => /\br(\d{3})\b/.exec(stripAnsi(line))?.[1])
-        .filter((row) => row !== undefined)
-        .map(Number)[0] ?? -1;
+    describe("wheel", () => {
+      const firstRow = (pane: TranscriptPane): number =>
+        pane
+          .render(80)
+          .map((line) => /\br(\d{3})\b/.exec(stripAnsi(line))?.[1])
+          .filter((row) => row !== undefined)
+          .map(Number)[0] ?? -1;
 
-    function livePane() {
-      let messages = rowsOf(80);
-      let captured: (() => void) | undefined;
-      const pane = makePane({
-        tui: mockTui(40, 80),
-        source: fakeSource({
-          getMessages: () => messages,
-          subscribe: (onChange) => {
-            captured = onChange;
-            return () => {};
-          },
-        }),
+      function livePane() {
+        let messages = rowsOf(80);
+        let captured: (() => void) | undefined;
+        const pane = makePane({
+          tui: mockTui(40, 80),
+          source: fakeSource({
+            getMessages: () => messages,
+            subscribe: (onChange) => {
+              captured = onChange;
+              return () => {};
+            },
+          }),
+        });
+        const grow = (rows: number) => {
+          messages = rowsOf(rows);
+          captured?.();
+        };
+        return { pane, grow };
+      }
+
+      it("scrolls the transcript up by the wheel's lines", () => {
+        const { pane } = livePane();
+        const atBottom = firstRow(pane);
+        expect(pane.handleMouse(mouse({ type: "wheel", wheelDelta: -3 }))).toEqual({ handled: true });
+        expect(firstRow(pane)).toBe(atBottom - 3);
       });
-      const grow = (rows: number) => {
-        messages = rowsOf(rows);
-        captured?.();
-      };
-      return { pane, grow };
-    }
 
-    it("scrolls the transcript up by the wheel's lines", () => {
-      const { pane } = livePane();
-      const atBottom = firstRow(pane);
-      expect(pane.handleMouse(mouse("wheel", -3))).toEqual({ handled: true });
-      expect(firstRow(pane)).toBe(atBottom - 3);
-    });
+      it("scrolls back to the bottom and follows new output", () => {
+        const { pane, grow } = livePane();
+        const atBottom = firstRow(pane);
+        pane.handleMouse(mouse({ type: "wheel", wheelDelta: -3 }));
+        pane.handleMouse(mouse({ type: "wheel", wheelDelta: 3 }));
+        expect(firstRow(pane)).toBe(atBottom);
+        grow(90);
+        expect(firstRow(pane)).toBe(atBottom + 10);
+      });
 
-    it("scrolls back to the bottom and follows new output", () => {
-      const { pane, grow } = livePane();
-      const atBottom = firstRow(pane);
-      pane.handleMouse(mouse("wheel", -3));
-      pane.handleMouse(mouse("wheel", 3));
-      expect(firstRow(pane)).toBe(atBottom);
-      grow(90);
-      expect(firstRow(pane)).toBe(atBottom + 10);
-    });
-
-    it("leaves other mouse events to the host", () => {
-      const { pane } = livePane();
-      expect(pane.handleMouse(mouse("click"))).toBeUndefined();
+      it("leaves other mouse events to the host", () => {
+        const { pane } = livePane();
+        expect(pane.handleMouse(mouse({ type: "click" }))).toBeUndefined();
+      });
     });
   });
 
