@@ -133,6 +133,12 @@ The #1142 roadmap disposition was still owed at ship time, because three `ask_us
    The heading gains `(with [#1142])`, `Target:` gains `config-modal.ts`, and `Outcome:` gains the no-cross-scope-copy clause; the sweep list records the disposition.
    Committed separately as `docs(pi-permission-system): disposition #1142 against Phase 16`.
 2. The proposed same-file batching guard issue was declined by the operator; the recurrence stays recorded above.
+3. `.pi/prompts/*.md`: the `model:` pin is removed from all eight templates that had one (operator decision: "Pin nothing"), so no stage switches models and cold-starts the prompt cache.
+   Measured in this session: `/ship`'s first Sonnet turn wrote 323,898 tokens to cache ($0.81), and the first Opus turn after it wrote 368,506 ($1.85).
+   Committed as `docs(prompts): let every prompt template inherit the session's model`.
+4. Outside this repo, in the chezmoi source `private_dot_config/shell/env.sh.tmpl`: `PI_CACHE_RETENTION="long"`, so Pi uses the 1-hour prompt cache.
+   Anthropic's pricing page confirms the trade: 1-hour writes cost 2x base input against 1.25x, and cache hits cost 0.05x on Opus 5.5 and Sonnet 5.5.
+   Replaying this session's usage estimated about 13% saved (about $3.50), mostly from avoided full re-writes after CI waits and pauses.
 
 [#999]: https://github.com/gotgenes/pi-packages/issues/999
 [#1006]: https://github.com/gotgenes/pi-packages/issues/1006
