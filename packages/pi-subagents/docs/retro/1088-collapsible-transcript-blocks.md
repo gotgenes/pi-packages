@@ -33,3 +33,32 @@ Plan committed as `packages/pi-subagents/docs/plans/1088-collapsible-transcript-
 #### Deferred tidyings
 
 - `packages/pi-subagents/src/ui/session-navigator.ts`: `TranscriptPaneOptions` relays `toolsExpanded`/`cwd`/`markdownTheme` into `TranscriptContent` untouched; a pane built around a prebuilt content object would drop the relay (assessor rejected as scope creep).
+
+## Stage: Implementation — TDD (2026-11-24T06:12:59Z)
+
+### Session summary
+
+All 9 planned TDD steps landed, plus two review follow-ups (a relocated click test and a `renderShell` comment): built-in renderer fallback (mechanism, then the seven remaining rows), blocks opening in the main conversation's tool-output state, `Ctrl+O` toggle, the footer hint, and fullscreen click-to-toggle.
+pi-subagents tests went from 2189 to 2229 (+40); `check`, root `lint`, `test`, and `fallow dead-code` are green.
+
+### Observations
+
+- Plan deviations, each recorded in its commit body:
+  - Step 1: Pi's `withBuiltInRenderers` returns a merged copy whenever a built-in exists, so the planned identity (`toBe`) test was wrong; it asserts the kept renderers instead, plus a passthrough test for a non-built-in tool.
+  - Step 2: `new Map([...])` infers its value type from the first row, so the heterogeneous factory table needed `new Map<string, DefinitionFactory>`.
+  - Step 3: `agent_end` resets in `apply()` before `consumeSettled`, so it cannot kill the planned "start index before reset" mutation; a "history replaced by a shorter one" test does.
+  - Step 6: the existing unbound-Home/End footer test now shows the toggle at 80 columns (it needs 78 once that pair is gone); the plan missed it.
+    `keyPair` became the variadic `firstKeys`.
+  - Step 8: the pane records `renderedView {start, rows}`.
+    The two bounds guards had no test in the plan; scrolled header-row and footer-row click tests now pin them.
+    The existing host-click test never painted first, so it returned before forwarding and pinned nothing until it rendered.
+- Every planned killing mutation went red as predicted, plus extras for the two expanded-state tests, the passthrough test, and both bounds guards.
+- A same-message batch of a doc edit plus `git commit` left `architecture.md` unstaged and tripped the invisible-characters hook's stash; it re-committed cleanly.
+  Likewise, a full-suite run batched with a mutation script read the mutated tree.
+  Both are the AGENTS.md "never batch" rule.
+- Biome ignores the test files, so the re-indent after nesting `describe("wheel")` under `describe("mouse")` was scripted.
+- I passed the pre-completion reviewer a base ref I had written from memory rather than from the `git rev-parse` output printed one call earlier; the reviewer caught it and used the right parent.
+- Pre-completion reviewer: WARN, then PASS on the delta.
+  The WARN's code findings (a click test nested under `wheel`; the `edit` `renderShell` difference from Pi's renderers-only table) were fixed in two follow-up commits.
+  Still open: Step 9's live check in a real Pi session (live and released agents, regular and fullscreen, main conversation expanded first, and whether Pi's inline "… to expand" hint names its key).
+  This session cannot drive the interactive TUI, so the operator should run it before `/ship`.
