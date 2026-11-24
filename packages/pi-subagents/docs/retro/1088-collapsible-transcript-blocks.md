@@ -62,3 +62,20 @@ pi-subagents tests went from 2189 to 2229 (+40); `check`, root `lint`, `test`, a
   The WARN's code findings (a click test nested under `wheel`; the `edit` `renderShell` difference from Pi's renderers-only table) were fixed in two follow-up commits.
   Still open: Step 9's live check in a real Pi session (live and released agents, regular and fullscreen, main conversation expanded first, and whether Pi's inline "… to expand" hint names its key).
   This session cannot drive the interactive TUI, so the operator should run it before `/ship`.
+
+## Stage: Sync (worktree) (2026-11-24T16:52:37Z)
+
+### Session summary
+
+Pre-push checks passed (`pnpm run lint`, `pnpm fallow dead-code`), and local `main` equalled `origin/main` when the sync began.
+The plan's `**Release:**` marker is `ship independently`, and no follow-up issue was filed (the upstream export ask is the operator's to file, in Open Questions).
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-1088--/2026-11-23T17-13-00-525Z_01a20965-8f6c-73ea-9d9e-7a92613f6327.jsonl` — read with `read_session_file({ path: "<path>" })` for message-level verification at land/retro time.
+
+### Observations
+
+- The open Step 9 live check was settled in this stage.
+  A background `Explore` subagent (36 tool calls) produced a transcript, and the operator opened it in `/subagents:sessions` before and after a `/reload`, and reported that it all works as expected.
+  The operator's report was a single summary, so this stage did not record a separate answer on whether Pi's inline "… to expand" line names its key.
+- The viewer code under test was the worktree's own `packages/pi-subagents` (`.pi/settings.json` loads it from `../packages/pi-subagents`), so the check exercised the code that lands.
+- `/reload` aborts a running background subagent (#1111), so the check waited for the subagent to finish; the reloaded viewer then opened it from its saved transcript, which is the released-agent path.
