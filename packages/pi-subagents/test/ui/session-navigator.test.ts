@@ -43,8 +43,15 @@ function ansiTheme() {
 
 const DEFAULT_HEADING: EntryHeading = { name: "Explore", modeLabel: undefined, description: "Find auth files" };
 
-/** Pi's keybindings with the given overrides, as Pi passes them to a `ui.custom` factory. */
-const keysWith = (overrides: KeybindingsConfig = {}): PaneKeys => new KeybindingsManager(TUI_KEYBINDINGS, overrides);
+/**
+ * Pi's keybindings with the given overrides, as Pi passes them to a `ui.custom` factory.
+ * Pi's app-level definitions are not exported, so the one the pane reads is restated here.
+ */
+const keysWith = (overrides: KeybindingsConfig = {}): PaneKeys =>
+  new KeybindingsManager(
+    { ...TUI_KEYBINDINGS, "app.tools.expand": { defaultKeys: "ctrl+o", description: "Toggle tool output" } },
+    overrides,
+  );
 
 function makePane(
   opts: {
