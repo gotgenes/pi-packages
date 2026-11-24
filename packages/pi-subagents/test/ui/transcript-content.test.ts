@@ -103,6 +103,17 @@ describe("TranscriptContent", () => {
     });
   });
 
+  describe("built-in tool renderers", () => {
+    it("draws a built-in tool with Pi's renderer when the source has no definition for it", () => {
+      // A released agent's snapshot source has no tool registry; without a
+      // definition Pi prints the call's arguments as JSON.
+      const out = rendered(contentFrom([toolCallMessage("tc-1"), toolResultMessage("tc-1", "file body")]));
+
+      expect(out).toContain("read");
+      expect(out).not.toContain('"path"');
+    });
+  });
+
   // The leading-spacer decision is a whole-transcript property that per-message
   // blocks cannot read off their own container, so it is hoisted onto the
   // content object. The equivalence test cannot catch a bug here — both of its

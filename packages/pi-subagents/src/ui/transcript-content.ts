@@ -23,6 +23,7 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import { Container, type MarkdownTheme, Spacer, type TUI, truncateToWidth } from "@earendil-works/pi-tui";
 import type { AgentSessionEvent, SessionMessage } from "#src/types";
+import { withBuiltInRenderers } from "#src/ui/builtin-tool-renderers";
 import { describeActivity } from "#src/ui/display";
 import { GLYPHS } from "#src/ui/glyphs";
 import type { TranscriptSource } from "#src/ui/session-navigation";
@@ -256,7 +257,7 @@ export class TranscriptContent {
         content.id,
         content.arguments,
         { showImages: false },
-        this.options.source.getToolDefinition(content.name),
+        withBuiltInRenderers(content.name, this.options.source.getToolDefinition(content.name), this.options.cwd),
         this.options.tui,
         this.options.cwd,
       );
