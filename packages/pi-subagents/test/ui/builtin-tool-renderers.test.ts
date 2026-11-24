@@ -6,9 +6,14 @@ const CWD = "/test/cwd";
 
 describe("withBuiltInRenderers", () => {
   describe("without a definition", () => {
-    it("takes Pi's built-in renderers for a built-in tool", () => {
-      expect(withBuiltInRenderers("read", undefined, CWD)).toHaveProperty("name", "read");
-    });
+    // Each row of the built-in table, checked against the definition Pi's own
+    // factory builds: a swapped or misspelled row resolves the wrong tool.
+    it.each(["read", "bash", "edit", "write", "grep", "find", "ls", "powershell"])(
+      "takes Pi's built-in renderers for %s",
+      (toolName) => {
+        expect(withBuiltInRenderers(toolName, undefined, CWD)).toHaveProperty("name", toolName);
+      },
+    );
 
     it("has nothing for a tool Pi does not build in", () => {
       expect(withBuiltInRenderers("colgrep", undefined, CWD)).toBeUndefined();

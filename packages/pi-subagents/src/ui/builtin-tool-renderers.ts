@@ -12,13 +12,35 @@
  * per-tool definition factories, so this module mirrors the merge over them.
  */
 
-import { createReadToolDefinition, type ToolExecutionComponent } from "@earendil-works/pi-coding-agent";
+import {
+  createBashToolDefinition,
+  createEditToolDefinition,
+  createFindToolDefinition,
+  createGrepToolDefinition,
+  createLsToolDefinition,
+  createPowerShellToolDefinition,
+  createReadToolDefinition,
+  createWriteToolDefinition,
+  type ToolExecutionComponent,
+} from "@earendil-works/pi-coding-agent";
 
 /** What `ToolExecutionComponent` accepts to draw a tool's call and result. */
 type ToolRenderers = NonNullable<ConstructorParameters<typeof ToolExecutionComponent>[4]>;
 
+/** One of Pi's exported built-in tool definition factories. */
+type DefinitionFactory = (cwd: string) => ToolRenderers;
+
 /** Pi's built-in tools, by the name a transcript's tool call carries. */
-const BUILT_IN_TOOLS: ReadonlyMap<string, (cwd: string) => ToolRenderers> = new Map([["read", createReadToolDefinition]]);
+const BUILT_IN_TOOLS: ReadonlyMap<string, DefinitionFactory> = new Map<string, DefinitionFactory>([
+  ["read", createReadToolDefinition],
+  ["bash", createBashToolDefinition],
+  ["powershell", createPowerShellToolDefinition],
+  ["edit", createEditToolDefinition],
+  ["write", createWriteToolDefinition],
+  ["grep", createGrepToolDefinition],
+  ["find", createFindToolDefinition],
+  ["ls", createLsToolDefinition],
+]);
 
 /**
  * A tool's renderers, falling back to Pi's built-in ones the way Pi's own
