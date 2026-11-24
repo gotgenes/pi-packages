@@ -4,8 +4,13 @@
  * Owns the transcript's content model: the `SessionMessage` → Pi-component
  * mapping (mirroring Pi's own interactive-mode `renderSessionContext`), and the
  * rendered rows those components produce at a given width. The overlay
- * (`session-navigator.ts`) owns scroll state, chrome, and key handling, and
- * asks this collaborator only for rows — it never reaches into the components.
+ * (`session-navigator.ts`) owns scroll state, chrome, and key handling; it asks
+ * this collaborator for rows, tells it to toggle expansion, and hands it mouse
+ * events by transcript row — it never reaches into the components.
+ *
+ * Collapsible blocks (tool calls, summaries, skill blocks, bash runs) follow one
+ * expansion state, as in Pi's own conversation; a click toggles the block under
+ * it through that block's own component.
  *
  * Lives in the SDK/TUI layer rather than the pure `session-navigation.ts` core
  * because Pi's per-entry components require a `TUI`, `cwd`, and markdown theme.
@@ -27,6 +32,8 @@ import {
   type MarkdownTheme,
   Spacer,
   type TUI,
+  type TuiMouseEvent,
+  type TuiMouseEventResult,
   truncateToWidth,
 } from "@earendil-works/pi-tui";
 import type { AgentSessionEvent, SessionMessage } from "#src/types";
@@ -144,6 +151,23 @@ export class TranscriptContent {
     this.settledRows = undefined;
   }
 
+  /**
+   * Route a mouse event to the settled block under it, where Pi's own
+   * components decide what a click means (a tool call, summary, or skill block
+   * toggles itself). `event.y` is a transcript row and `event.width` the layout
+   * width. Only the block that handled the event re-renders; the live tail and
+   * any event no component handles are left to the host.
+   */
+  handleMouse(event: TuiMouseEvent): TuiMouseEventResult | undefined {
+    const hit = this.blockAt(event.width, event.y);
+    if (!hit) return undefined;
+    const result = hit.block.container.handleMouse({ ...event, y: event.y - hit.top, height: hit.height });
+    if (!result) return undefined;
+    hit.block.rows = undefined;
+    this.settledRows = undefined;
+    return { handled: true };
+  }
+
   /** Drop cached rendering held by the mounted components and by this object. */
   invalidate(): void {
     for (const block of this.blocks) {
@@ -172,6 +196,18 @@ export class TranscriptContent {
     }
     this.settledRows = rows;
     return rows;
+  }
+
+  /** The settled block covering transcript row `row` at `width`, with its first row and height. */
+  private blockAt(width: number, row: number): { block: SettledBlock; top: number; height: number } | undefined {
+    this.settled(width);
+    let top = 0;
+    for (const block of this.blocks) {
+      const height = block.rows?.length ?? 0;
+      if (row >= top && row < top + height) return { block, top, height };
+      top += height;
+    }
+    return undefined;
   }
 
   /** Rows below settled history: the in-flight message, then the activity row. */

@@ -61,6 +61,8 @@ import { TranscriptContent } from "#src/ui/transcript-content";
 
 /** Chrome lines: the header rule and the footer rule. The pane sits on Pi's own chrome, so it needs no frame. */
 const CHROME_LINES = 2;
+/** Rows above the transcript: the header rule. */
+const HEADER_LINES = 1;
 const MIN_VIEWPORT = 3;
 const VIEWPORT_HEIGHT_PCT = 70;
 
@@ -243,6 +245,8 @@ export class TranscriptPane implements Component {
   private readonly content: TranscriptContent;
   /** Width the host last rendered at; input must use the same layout. */
   private renderedWidth: number | undefined;
+  /** The transcript rows the last paint showed: the first row's index, and how many. */
+  private renderedView: { start: number; rows: number } | undefined;
 
   constructor({ tui, theme, keys, source, heading, done, cwd, markdownTheme, toolsExpanded }: TranscriptPaneOptions) {
     this.tui = tui;
@@ -288,11 +292,23 @@ export class TranscriptPane implements Component {
     }
   }
 
-  /** The wheel scrolls the transcript; every other mouse event is left to the host. */
+  /**
+   * The wheel scrolls the transcript. Any other event over a transcript row goes
+   * to the block painted there, so a click toggles a tool call as it does in
+   * Pi's own conversation; whatever no block handles, a press included, is left
+   * to the host, which starts text selection from it.
+   */
   handleMouse(event: TuiMouseEvent): TuiMouseEventResult | undefined {
-    if (event.type !== "wheel") return undefined;
-    this.scrollBy(event.wheelDelta ?? 0);
-    return { handled: true };
+    if (event.type === "wheel") {
+      this.scrollBy(event.wheelDelta ?? 0);
+      return { handled: true };
+    }
+    const width = this.renderedWidth;
+    const view = this.renderedView;
+    // Row 0 is the header rule; the transcript rows follow it.
+    const offset = event.y - HEADER_LINES;
+    if (width === undefined || !view || offset < 0 || offset >= view.rows) return undefined;
+    return this.content.handleMouse({ ...event, y: view.start + offset, width });
   }
 
   render(width: number): string[] {
@@ -312,6 +328,7 @@ export class TranscriptPane implements Component {
     if (this.autoScroll) this.scrollOffset = maxScroll;
     const visibleStart = Math.min(this.scrollOffset, maxScroll);
     const visible = this.content.slice(width, visibleStart, viewportHeight);
+    this.renderedView = { start: visibleStart, rows: viewportHeight };
     for (let i = 0; i < viewportHeight; i++) lines.push(fit(visible[i] ?? ""));
 
     const scrollPct =

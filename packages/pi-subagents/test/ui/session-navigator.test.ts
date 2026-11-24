@@ -82,6 +82,12 @@ const rowsOf = (n: number) =>
     { role: "user", content: Array.from({ length: n }, (_, i) => `r${String(i).padStart(3, "0")}`).join("\n") },
   ] as unknown as SessionMessage[];
 
+/** A `read` call and its result; collapsed, Pi's renderer hides the body. */
+const readCall = [
+  { role: "assistant", content: [{ type: "toolCall", id: "tc-1", name: "read", arguments: { path: "/x.ts" } }], stopReason: "toolUse" },
+  { role: "toolResult", toolCallId: "tc-1", toolName: "read", content: [{ type: "text", text: "file body" }], isError: false },
+] as unknown as SessionMessage[];
+
 const SONNET_HIGH: SessionModel = { model: { provider: "anthropic", id: "claude-sonnet-5" }, thinkingLevel: "high" };
 
 describe("TranscriptPane", () => {
@@ -360,10 +366,6 @@ describe("TranscriptPane", () => {
   describe("tool output toggle", () => {
     const CTRL_O = "\x0f";
     const CTRL_T = "\x14";
-    const readCall = [
-      { role: "assistant", content: [{ type: "toolCall", id: "tc-1", name: "read", arguments: { path: "/x.ts" } }], stopReason: "toolUse" },
-      { role: "toolResult", toolCallId: "tc-1", toolName: "read", content: [{ type: "text", text: "file body" }], isError: false },
-    ] as unknown as SessionMessage[];
     const paneWith = (keys?: PaneKeys) => {
       const pane = makePane({ source: fakeSource({ getMessages: () => readCall }), keys, toolsExpanded: false });
       pane.render(80);
@@ -448,9 +450,55 @@ describe("TranscriptPane", () => {
         expect(firstRow(pane)).toBe(atBottom + 10);
       });
 
-      it("leaves other mouse events to the host", () => {
+      it("leaves a click no block handles to the host", () => {
+        // Row 5 is a user message, which has no click handling.
         const { pane } = livePane();
-        expect(pane.handleMouse(mouse({ type: "click" }))).toBeUndefined();
+        pane.render(80);
+        expect(pane.handleMouse(mouse({ type: "click", button: "left" }))).toBeUndefined();
+      });
+    });
+
+    describe("click", () => {
+      /** A painted pane over a collapsed `read` call, and the screen row naming it. */
+      function paneWithToolCall() {
+        const pane = makePane({ tui: mockTui(40, 80), source: fakeSource({ getMessages: () => readCall }), toolsExpanded: false });
+        const toolRow = pane.render(80).findIndex((line) => line.includes("/x.ts"));
+        return { pane, toolRow };
+      }
+
+      it("toggles the tool call a left click lands on", () => {
+        const { pane, toolRow } = paneWithToolCall();
+        expect(pane.handleMouse(mouse({ type: "click", button: "left", x: 3, y: toolRow }))).toEqual({ handled: true });
+        expect(pane.render(80).join("\n")).toContain("file body");
+      });
+
+      it("leaves a click on the header rule to the host, even over a block scrolled beneath it", () => {
+        const messages = [...readCall, ...rowsOf(80)];
+        const pane = makePane({ tui: mockTui(40, 80), source: fakeSource({ getMessages: () => messages }), toolsExpanded: false });
+        pane.render(80);
+        pane.handleInput("\x1b[H");
+        // Scroll down until the tool call's row sits just above the view, under the header.
+        for (let row = pane.render(80).findIndex((line) => line.includes("/x.ts")); row > 0; row--) pane.handleInput("\x1b[B");
+        expect(pane.render(80).some((line) => line.includes("/x.ts"))).toBe(false);
+
+        expect(pane.handleMouse(mouse({ type: "click", button: "left", x: 3, y: 0 }))).toBeUndefined();
+      });
+
+      it("leaves a click on the footer rule to the host, even over a block scrolled beneath it", () => {
+        const messages = [...rowsOf(80), ...readCall];
+        const pane = makePane({ tui: mockTui(40, 80), source: fakeSource({ getMessages: () => messages }), toolsExpanded: false });
+        const lines = pane.render(80);
+        const footerRow = lines.length - 1;
+        // Scroll up until the tool call's row sits just past the view, under the footer.
+        for (let row = lines.findIndex((line) => line.includes("/x.ts")); row < footerRow; row++) pane.handleInput("\x1b[A");
+        expect(pane.render(80).some((line) => line.includes("/x.ts"))).toBe(false);
+
+        expect(pane.handleMouse(mouse({ type: "click", button: "left", x: 3, y: footerRow }))).toBeUndefined();
+      });
+
+      it("leaves a press to the host, so text selection still starts", () => {
+        const { pane, toolRow } = paneWithToolCall();
+        expect(pane.handleMouse(mouse({ type: "press", button: "left", x: 3, y: toolRow }))).toBeUndefined();
       });
     });
   });

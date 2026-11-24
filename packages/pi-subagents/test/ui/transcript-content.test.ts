@@ -1,5 +1,5 @@
 import { getMarkdownTheme, initTheme } from "@earendil-works/pi-coding-agent";
-import { Container, visibleWidth } from "@earendil-works/pi-tui";
+import { Container, type TuiMouseEvent, visibleWidth } from "@earendil-works/pi-tui";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { AgentSessionEvent, SessionMessage } from "#src/types";
 import type { TranscriptSource } from "#src/ui/session-navigation";
@@ -224,6 +224,67 @@ describe("TranscriptContent", () => {
         content.apply(settled());
 
         expect(rendered(content)).toContain("file body");
+      });
+    });
+
+    describe("clicks", () => {
+      afterEach(() => vi.restoreAllMocks());
+
+      /** A left click on transcript row `y`, as the pane forwards it. */
+      const click = (y: number, overrides: Partial<TuiMouseEvent> = {}): TuiMouseEvent => ({
+        type: "click",
+        button: "left",
+        x: 3,
+        y,
+        screenX: 3,
+        screenY: y,
+        width: WIDTH,
+        height: 1,
+        shift: false,
+        alt: false,
+        ctrl: false,
+        ...overrides,
+      });
+      const rowContaining = (content: TranscriptContent, text: string): number =>
+        allRows(content).findIndex((row) => row.includes(text));
+
+      it("toggles the collapsed tool call a click lands on", () => {
+        const content = contentFrom([userMessage("first"), ...readCall()], false);
+
+        const result = content.handleMouse(click(rowContaining(content, "/x.ts")));
+
+        expect(result).toEqual({ handled: true });
+        expect(rendered(content)).toContain("file body");
+      });
+
+      it("leaves a click on a block with no click handling to the host", () => {
+        const content = contentFrom([userMessage("first"), ...readCall()], false);
+
+        expect(content.handleMouse(click(rowContaining(content, "first")))).toBeUndefined();
+      });
+
+      it("leaves a click below the settled history to the host", () => {
+        const source = fakeSource({
+          getMessages: readCall,
+          streaming: () => ({ activeTools: new Map([["k", "read"]]), responseText: "" }),
+        });
+        const content = makeContent(source, false);
+
+        expect(content.handleMouse(click(rowContaining(content, "◍")))).toBeUndefined();
+      });
+
+      it("re-renders only the clicked block", () => {
+        const history = [...manyMessages(20), ...readCall()];
+        const content = contentFrom(history, false);
+        const y = rowContaining(content, "/x.ts");
+        const fullRebuild = fullRebuildRenderCount(history);
+
+        const render = vi.spyOn(Container.prototype, "render");
+        content.handleMouse(click(y));
+        allRows(content);
+
+        expect(render.mock.calls.length).toBeGreaterThan(0);
+        expect(render.mock.calls.length).toBeLessThan(fullRebuild);
       });
     });
   });
