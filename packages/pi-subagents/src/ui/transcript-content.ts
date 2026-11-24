@@ -136,6 +136,14 @@ export class TranscriptContent {
     this.consumeSettled();
   }
 
+  /** Expand every collapsible block, or collapse them all; later blocks mount the same way. */
+  toggleExpanded(): void {
+    this.expanded = !this.expanded;
+    applyExpansion(this.blocks, this.expanded);
+    for (const block of this.blocks) block.rows = undefined;
+    this.settledRows = undefined;
+  }
+
   /** Drop cached rendering held by the mounted components and by this object. */
   invalidate(): void {
     for (const block of this.blocks) {

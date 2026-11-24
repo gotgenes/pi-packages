@@ -348,6 +348,35 @@ describe("TranscriptPane", () => {
     });
   });
 
+  describe("tool output toggle", () => {
+    const CTRL_O = "\x0f";
+    const CTRL_T = "\x14";
+    const readCall = [
+      { role: "assistant", content: [{ type: "toolCall", id: "tc-1", name: "read", arguments: { path: "/x.ts" } }], stopReason: "toolUse" },
+      { role: "toolResult", toolCallId: "tc-1", toolName: "read", content: [{ type: "text", text: "file body" }], isError: false },
+    ] as unknown as SessionMessage[];
+    const paneWith = (keys?: PaneKeys) => {
+      const pane = makePane({ source: fakeSource({ getMessages: () => readCall }), keys, toolsExpanded: false });
+      pane.render(80);
+      return pane;
+    };
+    const shown = (pane: TranscriptPane): string => pane.render(80).join("\n");
+
+    it("expands every block on the tool-output key", () => {
+      const pane = paneWith();
+      pane.handleInput(CTRL_O);
+      expect(shown(pane)).toContain("file body");
+    });
+
+    it("toggles on the key the operator bound instead of Ctrl+O", () => {
+      const pane = paneWith(keysWith({ "app.tools.expand": "ctrl+t" }));
+      pane.handleInput(CTRL_O);
+      expect(shown(pane)).not.toContain("file body");
+      pane.handleInput(CTRL_T);
+      expect(shown(pane)).toContain("file body");
+    });
+  });
+
   describe("mouse wheel", () => {
     const mouse = (type: TuiMouseEvent["type"], wheelDelta?: number): TuiMouseEvent => ({
       type,

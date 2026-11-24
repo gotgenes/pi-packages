@@ -200,6 +200,32 @@ describe("TranscriptContent", () => {
         expect(rendered(content)).toContain("file body");
       });
     });
+
+    describe("toggling", () => {
+      it("expands every block on one toggle and collapses them on the next", () => {
+        const content = contentFrom(readCall(), false);
+        allRows(content);
+
+        content.toggleExpanded();
+        const expanded = rendered(content);
+        content.toggleExpanded();
+
+        expect(expanded).toContain("file body");
+        expect(rendered(content)).not.toContain("file body");
+      });
+
+      it("mounts a block that settles after a toggle in the toggled state", () => {
+        const history: SessionMessage[] = [userMessage("read the file")];
+        const content = makeContent(fakeSource({ getMessages: () => history }), false);
+        allRows(content);
+        content.toggleExpanded();
+
+        history.push(...readCall());
+        content.apply(settled());
+
+        expect(rendered(content)).toContain("file body");
+      });
+    });
   });
 
   // The leading-spacer decision is a whole-transcript property that per-message

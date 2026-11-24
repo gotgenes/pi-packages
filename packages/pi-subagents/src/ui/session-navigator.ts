@@ -266,6 +266,11 @@ export class TranscriptPane implements Component {
       return;
     }
 
+    if (this.keys.matches(data, "app.tools.expand")) {
+      this.content.toggleExpanded();
+      return;
+    }
+
     const { viewportHeight } = this.scrollBounds(this.inputWidth());
 
     if (matchesKey(data, "up") || matchesKey(data, "k")) {
