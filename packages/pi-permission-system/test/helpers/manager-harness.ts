@@ -39,13 +39,30 @@ export function createInMemoryPolicyLoader(
   mcpServerNames: readonly string[] = [],
 ): PolicyLoader {
   return {
-    loadGlobalConfig: () => scopes.global ?? ({} as const),
-    loadProjectConfig: () => scopes.project ?? ({} as const),
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- || is intentional: handles both falsy name and missing key
-    loadAgentConfig: (name?: string) => (name && scopes.agent?.[name]) || {},
-    loadProjectAgentConfig: (name?: string) =>
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- || is intentional: handles both falsy name and missing key
-      (name && scopes.projectAgent?.[name]) || {},
+    loadScopes: (name?: string) => [
+      {
+        origin: "global",
+        config: scopes.global ?? {},
+        floorsWhenInvalid: false,
+      },
+      {
+        origin: "project",
+        config: scopes.project ?? {},
+        floorsWhenInvalid: true,
+      },
+      {
+        origin: "agent",
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- || is intentional: handles both falsy name and missing key
+        config: (name && scopes.agent?.[name]) || {},
+        floorsWhenInvalid: true,
+      },
+      {
+        origin: "project-agent",
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- || is intentional: handles both falsy name and missing key
+        config: (name && scopes.projectAgent?.[name]) || {},
+        floorsWhenInvalid: true,
+      },
+    ],
     getConfiguredMcpServerNames: () => mcpServerNames,
     getCacheStamp: () => "in-memory",
     getResolvedPolicyPaths: (): ResolvedPolicyPaths => ({

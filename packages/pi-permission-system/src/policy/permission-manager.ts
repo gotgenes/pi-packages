@@ -25,7 +25,7 @@ import type {
 } from "#src/types";
 import { isPermissionState } from "#src/types";
 import { normalizeFlatConfig, relocateMcpToolKeyRules } from "./normalize";
-import type { Rule, RuleOrigin, Ruleset } from "./rule";
+import type { Rule, RuleOrigin, Ruleset, ScopeOrigin } from "./rule";
 import {
   evaluate,
   evaluateAnyValue,
@@ -64,7 +64,7 @@ type ResolvedPermissions = {
    * non-empty the composed ruleset has been floored allow→ask (#646); the
    * names also drive the fail-closed notice in {@link getPolicyIssues}.
    */
-  failClosedScopes: RuleOrigin[];
+  failClosedScopes: ScopeOrigin[];
   /**
    * Top-level permission keys naming Pi MCP tools, relocated onto the `mcp`
    * surface; they drive the port notice in {@link getPolicyIssues}.
@@ -197,20 +197,14 @@ export class PermissionManager implements ScopedPermissionManager {
       return cached.value;
     }
 
-    const globalConfig = this.loader.loadGlobalConfig();
-    const projectConfig = this.loader.loadProjectConfig();
-    const agentConfig = this.loader.loadAgentConfig(agentName);
-    const projectAgentConfig = this.loader.loadProjectAgentConfig(agentName);
+    const scopes = this.loader.loadScopes(agentName);
 
     // Merge permission objects across scopes (lowest → highest precedence),
     // building a parallel origin map that tracks which scope contributed each
     // (surface, pattern) entry.
-    const { mergedPermission, origins } = mergeScopesWithOrigins([
-      ["global", globalConfig],
-      ["project", projectConfig],
-      ["agent", agentConfig],
-      ["project-agent", projectAgentConfig],
-    ]);
+    const { mergedPermission, origins } = mergeScopesWithOrigins(
+      scopes.map((scope) => [scope.origin, scope.config] as const),
+    );
 
     // Extract the universal fallback from permission["*"].
     // The "*" key feeds synthesizeDefaults() only — it is NOT included as a
@@ -234,15 +228,14 @@ export class PermissionManager implements ScopedPermissionManager {
       relocation.rules,
     );
 
-    // Fail closed when a non-global scope's config is invalid: floor every
+    // Fail closed when a flooring scope's config is invalid: floor every
     // `allow` (including one inherited from a lower scope) to `ask` so a
     // higher scope meant to tighten policy cannot silently fail open (#646).
-    // Global is excluded — nothing more permissive is inherited when it fails.
-    const failClosedScopes: RuleOrigin[] = [];
-    if (projectConfig.invalid === true) failClosedScopes.push("project");
-    if (agentConfig.invalid === true) failClosedScopes.push("agent");
-    if (projectAgentConfig.invalid === true)
-      failClosedScopes.push("project-agent");
+    const failClosedScopes = scopes
+      .filter(
+        (scope) => scope.floorsWhenInvalid && scope.config.invalid === true,
+      )
+      .map((scope) => scope.origin);
 
     const effectiveRules =
       failClosedScopes.length > 0

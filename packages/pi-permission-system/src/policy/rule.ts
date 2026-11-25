@@ -7,7 +7,7 @@ import { type WildcardMatchOptions, wildcardMatch } from "./wildcard-matcher";
 /**
  * Provenance of a rule — which source contributed it.
  *
- * Config scopes: "global", "project", "agent", "project-agent".
+ * Config scopes: {@link ScopeOrigin}.
  * Synthesized:   "builtin" (universal default / evaluate() fallback),
  *                "baseline" (conditional MCP metadata auto-allow).
  * Runtime:       "session" (session approvals).
@@ -16,15 +16,15 @@ import { type WildcardMatchOptions, wildcardMatch } from "./wildcard-matcher";
  *                invalid non-global config scope is detected).
  */
 export type RuleOrigin =
-  | "global"
-  | "project"
-  | "agent"
-  | "project-agent"
+  | ScopeOrigin
   | "builtin"
   | "baseline"
   | "session"
   | "yolo"
   | "fail-closed";
+
+/** The config scopes, named in precedence order (lowest first). */
+export type ScopeOrigin = "global" | "project" | "agent" | "project-agent";
 
 /** A single permission rule — the atomic unit of policy. */
 export interface Rule {

@@ -2,6 +2,7 @@ import { utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { FilePolicyLoader } from "#src/config/policy-loader";
+import type { ScopeOrigin } from "#src/policy/rule";
 import type { ScopeConfig } from "#src/types";
 import { createTmpFixture, type TmpFixture } from "#test/helpers/tmp-fixture";
 
@@ -74,24 +75,17 @@ function makeLoader(files: LoaderFiles = {}) {
   };
 }
 
-type ScopeName = "global" | "project" | "agent" | "project-agent";
-
 /** What `loader` loads for one scope. */
 function scopeConfig(
   loader: FilePolicyLoader,
-  scope: ScopeName,
+  origin: ScopeOrigin,
   agentName?: string,
 ): ScopeConfig {
-  switch (scope) {
-    case "global":
-      return loader.loadGlobalConfig();
-    case "project":
-      return loader.loadProjectConfig();
-    case "agent":
-      return loader.loadAgentConfig(agentName);
-    case "project-agent":
-      return loader.loadProjectAgentConfig(agentName);
-  }
+  const scope = loader
+    .loadScopes(agentName)
+    .find((candidate) => candidate.origin === origin);
+  if (!scope) throw new Error(`no ${origin} scope loaded`);
+  return scope.config;
 }
 
 /** Busy-wait past the filesystem's mtime resolution. */
@@ -103,10 +97,37 @@ function waitForMtimeTick(): void {
 }
 
 // ---------------------------------------------------------------------------
-// loadGlobalConfig
+// loadScopes
 // ---------------------------------------------------------------------------
 
-describe("FilePolicyLoader.loadGlobalConfig", () => {
+describe("FilePolicyLoader.loadScopes", () => {
+  it("lists the four scopes lowest precedence first, every one but global flooring", () => {
+    const { loader } = makeLoader();
+    const scopes = loader.loadScopes("coder");
+    expect(
+      scopes.map(({ origin, floorsWhenInvalid }) => [
+        origin,
+        floorsWhenInvalid,
+      ]),
+    ).toEqual([
+      ["global", false],
+      ["project", true],
+      ["agent", true],
+      ["project-agent", true],
+    ]);
+  });
+
+  it("marks a rejected global file invalid", () => {
+    const { loader } = makeLoader({ globalConfig: { debugLo: true } });
+    expect(scopeConfig(loader, "global").invalid).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Global scope
+// ---------------------------------------------------------------------------
+
+describe("FilePolicyLoader global scope", () => {
   it("returns ScopeConfig with permission from a valid config file", () => {
     const { loader } = makeLoader({
       globalConfig: { permission: { "*": "allow", read: "ask" } },
@@ -132,10 +153,10 @@ describe("FilePolicyLoader.loadGlobalConfig", () => {
 });
 
 // ---------------------------------------------------------------------------
-// loadProjectConfig
+// Project scope
 // ---------------------------------------------------------------------------
 
-describe("FilePolicyLoader.loadProjectConfig", () => {
+describe("FilePolicyLoader project scope", () => {
   it("returns empty ScopeConfig when no project path is configured", () => {
     const loader = new FilePolicyLoader({
       globalConfigPath: "/nonexistent/config.json",
@@ -173,10 +194,10 @@ describe("FilePolicyLoader.loadProjectConfig", () => {
 });
 
 // ---------------------------------------------------------------------------
-// loadAgentConfig / loadProjectAgentConfig
+// Agent and project-agent scopes
 // ---------------------------------------------------------------------------
 
-describe("FilePolicyLoader.loadAgentConfig", () => {
+describe("FilePolicyLoader agent scope", () => {
   it("returns empty ScopeConfig when agentName is undefined", () => {
     const { loader } = makeLoader();
     expect(scopeConfig(loader, "agent")).toEqual({});
@@ -209,7 +230,7 @@ describe("FilePolicyLoader.loadAgentConfig", () => {
   });
 });
 
-describe("FilePolicyLoader.loadProjectAgentConfig", () => {
+describe("FilePolicyLoader project-agent scope", () => {
   it("returns empty ScopeConfig when no projectAgentsDir is configured", () => {
     const { loader } = makeLoader();
     expect(scopeConfig(loader, "project-agent", "coder")).toEqual({});

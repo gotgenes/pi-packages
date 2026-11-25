@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { getAgentDir } from "@earendil-works/pi-coding-agent";
+import type { ScopeOrigin } from "#src/policy/rule";
 import type { ScopeConfig } from "#src/types";
 import { toRecord } from "#src/value-guards";
 import {
@@ -79,6 +80,17 @@ export interface ResolvedPolicyPaths {
 // PolicyLoader interface
 // ---------------------------------------------------------------------------
 
+/** One config scope's contribution to an agent's policy. */
+export interface PolicyScope {
+  readonly origin: ScopeOrigin;
+  readonly config: ScopeConfig;
+  /**
+   * Whether an invalid file at this scope floors the composed policy
+   * `allow`→`ask` (#646). False for a scope nothing is inherited beneath.
+   */
+  readonly floorsWhenInvalid: boolean;
+}
+
 /**
  * Abstraction over file I/O for loading permission policy from disk.
  * Implementations handle caching, path resolution, and marking a rejected
@@ -86,10 +98,8 @@ export interface ResolvedPolicyPaths {
  * merge + evaluation logic can be tested with an in-memory stub.
  */
 export interface PolicyLoader {
-  loadGlobalConfig(): ScopeConfig;
-  loadProjectConfig(): ScopeConfig;
-  loadAgentConfig(agentName?: string): ScopeConfig;
-  loadProjectAgentConfig(agentName?: string): ScopeConfig;
+  /** The config scopes for `agentName`, lowest precedence first. */
+  loadScopes(agentName?: string): readonly PolicyScope[];
   getConfiguredMcpServerNames(): readonly string[];
   /** Combined mtime stamp for cache invalidation. */
   getCacheStamp(agentName?: string): string;
@@ -152,10 +162,6 @@ export class FilePolicyLoader implements PolicyLoader {
   private readonly agentsDir: string;
   private readonly projectGlobalConfigPath: string | null;
   private readonly projectAgentsDir: string | null;
-  private readonly globalScope: ConfigFileScopeSource;
-  private readonly projectScope: ConfigFileScopeSource;
-  private readonly agentScope: AgentFileScopeSource;
-  private readonly projectAgentScope: AgentFileScopeSource;
   /** Every scope source, lowest precedence first. */
   private readonly scopeSources: readonly ScopeSource[];
   private readonly globalMcpConfigPath: string;
@@ -172,15 +178,13 @@ export class FilePolicyLoader implements PolicyLoader {
     this.agentsDir = options.agentsDir ?? defaultAgentsDir();
     this.projectGlobalConfigPath = options.projectGlobalConfigPath ?? null;
     this.projectAgentsDir = options.projectAgentsDir ?? null;
-    this.globalScope = new ConfigFileScopeSource(this.globalConfigPath);
-    this.projectScope = new ConfigFileScopeSource(this.projectGlobalConfigPath);
-    this.agentScope = new AgentFileScopeSource(this.agentsDir);
-    this.projectAgentScope = new AgentFileScopeSource(this.projectAgentsDir);
+    // Global is the lowest precedence, so nothing more permissive is
+    // inherited beneath it: an invalid global file does not floor.
     this.scopeSources = [
-      this.globalScope,
-      this.projectScope,
-      this.agentScope,
-      this.projectAgentScope,
+      new ConfigFileScopeSource("global", this.globalConfigPath, false),
+      new ConfigFileScopeSource("project", this.projectGlobalConfigPath, true),
+      new AgentFileScopeSource("agent", this.agentsDir, true),
+      new AgentFileScopeSource("project-agent", this.projectAgentsDir, true),
     ];
     this.globalMcpConfigPath =
       options.globalMcpConfigPath ?? defaultGlobalMcpConfigPath();
@@ -196,22 +200,10 @@ export class FilePolicyLoader implements PolicyLoader {
       : null;
   }
 
-  // ── Scope loaders ────────────────────────────────────────────────────
+  // ── Scopes ───────────────────────────────────────────────────────────
 
-  loadGlobalConfig(): ScopeConfig {
-    return this.globalScope.load();
-  }
-
-  loadProjectConfig(): ScopeConfig {
-    return this.projectScope.load();
-  }
-
-  loadAgentConfig(agentName?: string): ScopeConfig {
-    return this.agentScope.load(agentName);
-  }
-
-  loadProjectAgentConfig(agentName?: string): ScopeConfig {
-    return this.projectAgentScope.load(agentName);
+  loadScopes(agentName?: string): readonly PolicyScope[] {
+    return this.scopeSources.map((source) => source.scope(agentName));
   }
 
   // ── MCP server names ─────────────────────────────────────────────────
@@ -268,7 +260,7 @@ export class FilePolicyLoader implements PolicyLoader {
 
 /** One config scope's file, read with mtime caching. */
 interface ScopeSource {
-  load(agentName?: string): ScopeConfig;
+  scope(agentName?: string): PolicyScope;
   /** The file's mtime stamp, for the loader's combined cache stamp. */
   stamp(agentName?: string): string;
 }
@@ -285,9 +277,21 @@ interface ScopeSource {
 class ConfigFileScopeSource implements ScopeSource {
   private cache: FileCacheEntry<ScopeConfig> | null = null;
 
-  constructor(private readonly path: string | null) {}
+  constructor(
+    private readonly origin: ScopeOrigin,
+    private readonly path: string | null,
+    private readonly floorsWhenInvalid: boolean,
+  ) {}
 
-  load(): ScopeConfig {
+  scope(): PolicyScope {
+    return {
+      origin: this.origin,
+      config: this.load(),
+      floorsWhenInvalid: this.floorsWhenInvalid,
+    };
+  }
+
+  private load(): ScopeConfig {
     if (!this.path) {
       return {};
     }
@@ -319,9 +323,21 @@ class ConfigFileScopeSource implements ScopeSource {
 class AgentFileScopeSource implements ScopeSource {
   private readonly cache = new Map<string, FileCacheEntry<ScopeConfig>>();
 
-  constructor(private readonly dir: string | null) {}
+  constructor(
+    private readonly origin: ScopeOrigin,
+    private readonly dir: string | null,
+    private readonly floorsWhenInvalid: boolean,
+  ) {}
 
-  load(agentName?: string): ScopeConfig {
+  scope(agentName?: string): PolicyScope {
+    return {
+      origin: this.origin,
+      config: this.load(agentName),
+      floorsWhenInvalid: this.floorsWhenInvalid,
+    };
+  }
+
+  private load(agentName?: string): ScopeConfig {
     if (!this.dir || !agentName) {
       return {};
     }
