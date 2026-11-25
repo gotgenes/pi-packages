@@ -1,4 +1,5 @@
 import { utimesSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { FilePolicyLoader } from "#src/config/policy-loader";
 import type { ScopeConfig } from "#src/types";
@@ -64,7 +65,13 @@ function makeLoader(files: LoaderFiles = {}) {
       ? [...files.mcpServerNames]
       : undefined,
   });
-  return { loader, globalConfigPath, agentsDir };
+  return {
+    loader,
+    globalConfigPath,
+    agentsDir,
+    projectConfigPath,
+    projectAgentsDir,
+  };
 }
 
 type ScopeName = "global" | "project" | "agent" | "project-agent";
@@ -264,6 +271,40 @@ describe("FilePolicyLoader.getCacheStamp", () => {
     const stampWith = loader.getCacheStamp("coder");
     // Agent file exists, so the stamp differs from the no-agent case.
     expect(stampWithout).not.toBe(stampWith);
+  });
+
+  describe("follows every scope's file", () => {
+    const agentFile = "---\npermission:\n  read: allow\n---\n";
+
+    function makeFullLoader() {
+      const made = makeLoader({
+        projectConfig: {},
+        agents: { coder: agentFile },
+        projectAgents: { coder: agentFile },
+      });
+      return {
+        loader: made.loader,
+        files: {
+          global: made.globalConfigPath,
+          project: made.projectConfigPath ?? "",
+          agent: join(made.agentsDir, "coder.md"),
+          "project-agent": join(made.projectAgentsDir ?? "", "coder.md"),
+        },
+      };
+    }
+
+    it.each(["global", "project", "agent", "project-agent"] as const)(
+      "changes when the %s file changes",
+      (scope) => {
+        const { loader, files } = makeFullLoader();
+        const before = loader.getCacheStamp("coder");
+
+        const later = new Date(Date.now() + 5000);
+        utimesSync(files[scope], later, later);
+
+        expect(loader.getCacheStamp("coder")).not.toBe(before);
+      },
+    );
   });
 });
 

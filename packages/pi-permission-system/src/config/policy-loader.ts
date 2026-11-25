@@ -121,8 +121,7 @@ type FileCacheEntry<TValue> = {
 };
 
 // ---------------------------------------------------------------------------
-// Options shared between FilePolicyLoader and the backward-compat
-// PermissionManager constructor.
+// FilePolicyLoader options
 // ---------------------------------------------------------------------------
 
 export interface PolicyLoaderOptions {
@@ -153,20 +152,16 @@ export class FilePolicyLoader implements PolicyLoader {
   private readonly agentsDir: string;
   private readonly projectGlobalConfigPath: string | null;
   private readonly projectAgentsDir: string | null;
+  private readonly globalScope: ConfigFileScopeSource;
+  private readonly projectScope: ConfigFileScopeSource;
+  private readonly agentScope: AgentFileScopeSource;
+  private readonly projectAgentScope: AgentFileScopeSource;
+  /** Every scope source, lowest precedence first. */
+  private readonly scopeSources: readonly ScopeSource[];
   private readonly globalMcpConfigPath: string;
   private readonly projectMcpConfigPath: string | null;
   private readonly configuredMcpServerNamesOverride: readonly string[] | null;
 
-  private globalConfigCache: FileCacheEntry<ScopeConfig> | null = null;
-  private projectGlobalConfigCache: FileCacheEntry<ScopeConfig> | null = null;
-  private readonly agentConfigCache = new Map<
-    string,
-    FileCacheEntry<ScopeConfig>
-  >();
-  private readonly projectAgentConfigCache = new Map<
-    string,
-    FileCacheEntry<ScopeConfig>
-  >();
   private configuredMcpServerNamesCache: FileCacheEntry<
     readonly string[]
   > | null = null;
@@ -177,6 +172,16 @@ export class FilePolicyLoader implements PolicyLoader {
     this.agentsDir = options.agentsDir ?? defaultAgentsDir();
     this.projectGlobalConfigPath = options.projectGlobalConfigPath ?? null;
     this.projectAgentsDir = options.projectAgentsDir ?? null;
+    this.globalScope = new ConfigFileScopeSource(this.globalConfigPath);
+    this.projectScope = new ConfigFileScopeSource(this.projectGlobalConfigPath);
+    this.agentScope = new AgentFileScopeSource(this.agentsDir);
+    this.projectAgentScope = new AgentFileScopeSource(this.projectAgentsDir);
+    this.scopeSources = [
+      this.globalScope,
+      this.projectScope,
+      this.agentScope,
+      this.projectAgentScope,
+    ];
     this.globalMcpConfigPath =
       options.globalMcpConfigPath ?? defaultGlobalMcpConfigPath();
     this.projectMcpConfigPath = options.projectMcpConfigPath ?? null;
@@ -192,114 +197,21 @@ export class FilePolicyLoader implements PolicyLoader {
   }
 
   // ── Scope loaders ────────────────────────────────────────────────────
-  //
-  // A config file's schema errors are not kept here: `ConfigStore` loads the
-  // same files through the same `loadUnifiedConfig` and reports them, so this
-  // loader reads them only to decide whether a scope fails closed (#953).
 
   loadGlobalConfig(): ScopeConfig {
-    const stamp = getFileStamp(this.globalConfigPath);
-    if (this.globalConfigCache?.stamp === stamp) {
-      return this.globalConfigCache.value;
-    }
-
-    const { config } = loadUnifiedConfig(this.globalConfigPath);
-
-    const value: ScopeConfig = {
-      permission: config.permission,
-    };
-
-    this.globalConfigCache = { stamp, value };
-    return value;
+    return this.globalScope.load();
   }
 
   loadProjectConfig(): ScopeConfig {
-    if (!this.projectGlobalConfigPath) {
-      return {};
-    }
-
-    const stamp = getFileStamp(this.projectGlobalConfigPath);
-    if (this.projectGlobalConfigCache?.stamp === stamp) {
-      return this.projectGlobalConfigCache.value;
-    }
-
-    const { config, issues } = loadUnifiedConfig(this.projectGlobalConfigPath);
-
-    // A present-but-rejected file yields issues (parse error or schema
-    // rejection); an absent file yields none. Fail closed on the former.
-    const value: ScopeConfig = {
-      permission: config.permission,
-      ...(issues.length > 0 ? { invalid: true } : {}),
-    };
-
-    this.projectGlobalConfigCache = { stamp, value };
-    return value;
-  }
-
-  private loadScopeConfigFrom(
-    dir: string | null,
-    cache: Map<string, FileCacheEntry<ScopeConfig>>,
-    agentName?: string,
-  ): ScopeConfig {
-    if (!dir || !agentName) {
-      return {};
-    }
-
-    const filePath = join(dir, `${agentName}.md`);
-    const stamp = getFileStamp(filePath);
-    const cached = cache.get(agentName);
-    if (cached?.stamp === stamp) {
-      return cached.value;
-    }
-
-    // An absent file (stat failed) is a legitimately-empty scope, not invalid;
-    // only a present-but-unreadable file fails closed.
-    if (stamp === "missing") {
-      const value: ScopeConfig = {};
-      cache.set(agentName, { stamp, value });
-      return value;
-    }
-
-    let value: ScopeConfig;
-    try {
-      const markdown = readFileSync(filePath, "utf-8");
-      const frontmatter = extractFrontmatter(markdown);
-      if (!frontmatter) {
-        value = {};
-      } else {
-        // Agent frontmatter carries non-config keys (name, description, model,
-        // …) alongside `permission`, so it is not validated by the strict
-        // config-file schema; only the `permission` block is extracted, and its
-        // malformed entries are dropped tolerantly as before.
-        const parsed = parseSimpleYamlMap(frontmatter);
-        value = {
-          permission: normalizeFlatPermissionValue(parsed.permission),
-        };
-      }
-    } catch {
-      // The file exists (stat succeeded above) but could not be read or
-      // parsed — fail closed for this scope (#646).
-      value = { invalid: true };
-    }
-
-    cache.set(agentName, { stamp, value });
-    return value;
+    return this.projectScope.load();
   }
 
   loadAgentConfig(agentName?: string): ScopeConfig {
-    return this.loadScopeConfigFrom(
-      this.agentsDir,
-      this.agentConfigCache,
-      agentName,
-    );
+    return this.agentScope.load(agentName);
   }
 
   loadProjectAgentConfig(agentName?: string): ScopeConfig {
-    return this.loadScopeConfigFrom(
-      this.projectAgentsDir,
-      this.projectAgentConfigCache,
-      agentName,
-    );
+    return this.projectAgentScope.load(agentName);
   }
 
   // ── MCP server names ─────────────────────────────────────────────────
@@ -327,18 +239,7 @@ export class FilePolicyLoader implements PolicyLoader {
   // ── Cache stamp ───────────────────────────────────────────────────────
 
   getCacheStamp(agentName?: string): string {
-    const agentStamp = agentName
-      ? getFileStamp(join(this.agentsDir, `${agentName}.md`))
-      : "missing";
-    const projectStamp = this.projectGlobalConfigPath
-      ? getFileStamp(this.projectGlobalConfigPath)
-      : "none";
-    const projectAgentStamp =
-      this.projectAgentsDir && agentName
-        ? getFileStamp(join(this.projectAgentsDir, `${agentName}.md`))
-        : "none";
-
-    return `${getFileStamp(this.globalConfigPath)}|${projectStamp}|${agentStamp}|${projectAgentStamp}`;
+    return this.scopeSources.map((source) => source.stamp(agentName)).join("|");
   }
 
   // ── Resolved paths ────────────────────────────────────────────────────
@@ -358,5 +259,117 @@ export class FilePolicyLoader implements PolicyLoader {
         ? existsSync(this.projectAgentsDir)
         : false,
     };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Scope sources
+// ---------------------------------------------------------------------------
+
+/** One config scope's file, read with mtime caching. */
+interface ScopeSource {
+  load(agentName?: string): ScopeConfig;
+  /** The file's mtime stamp, for the loader's combined cache stamp. */
+  stamp(agentName?: string): string;
+}
+
+/**
+ * A scope held in one config file, validated strictly. A file that is present
+ * but rejected (parse error or schema rejection) marks the scope `invalid`; an
+ * absent file, or no path at all, is a plain empty scope.
+ *
+ * A config file's schema errors are not kept here: `ConfigStore` loads the
+ * same files through the same `loadUnifiedConfig` and reports them, so this
+ * source reads them only to decide whether the scope is invalid (#953).
+ */
+class ConfigFileScopeSource implements ScopeSource {
+  private cache: FileCacheEntry<ScopeConfig> | null = null;
+
+  constructor(private readonly path: string | null) {}
+
+  load(): ScopeConfig {
+    if (!this.path) {
+      return {};
+    }
+
+    const stamp = getFileStamp(this.path);
+    if (this.cache?.stamp === stamp) {
+      return this.cache.value;
+    }
+
+    const { config, issues } = loadUnifiedConfig(this.path);
+    const value: ScopeConfig = {
+      permission: config.permission,
+      ...(issues.length > 0 ? { invalid: true } : {}),
+    };
+
+    this.cache = { stamp, value };
+    return value;
+  }
+
+  stamp(): string {
+    return this.path ? getFileStamp(this.path) : "none";
+  }
+}
+
+/**
+ * A scope held in the `permission:` block of an agent definition's
+ * frontmatter, one file per agent name under a directory.
+ */
+class AgentFileScopeSource implements ScopeSource {
+  private readonly cache = new Map<string, FileCacheEntry<ScopeConfig>>();
+
+  constructor(private readonly dir: string | null) {}
+
+  load(agentName?: string): ScopeConfig {
+    if (!this.dir || !agentName) {
+      return {};
+    }
+
+    const filePath = join(this.dir, `${agentName}.md`);
+    const stamp = getFileStamp(filePath);
+    const cached = this.cache.get(agentName);
+    if (cached?.stamp === stamp) {
+      return cached.value;
+    }
+
+    // An absent file (stat failed) is a legitimately-empty scope, not invalid;
+    // only a present-but-unreadable file fails closed.
+    if (stamp === "missing") {
+      const value: ScopeConfig = {};
+      this.cache.set(agentName, { stamp, value });
+      return value;
+    }
+
+    let value: ScopeConfig;
+    try {
+      const markdown = readFileSync(filePath, "utf-8");
+      const frontmatter = extractFrontmatter(markdown);
+      if (!frontmatter) {
+        value = {};
+      } else {
+        // Agent frontmatter carries non-config keys (name, description, model,
+        // …) alongside `permission`, so it is not validated by the strict
+        // config-file schema; only the `permission` block is extracted, and its
+        // malformed entries are dropped tolerantly as before.
+        const parsed = parseSimpleYamlMap(frontmatter);
+        value = {
+          permission: normalizeFlatPermissionValue(parsed.permission),
+        };
+      }
+    } catch {
+      // The file exists (stat succeeded above) but could not be read or
+      // parsed — fail closed for this scope (#646).
+      value = { invalid: true };
+    }
+
+    this.cache.set(agentName, { stamp, value });
+    return value;
+  }
+
+  stamp(agentName?: string): string {
+    return this.dir && agentName
+      ? getFileStamp(join(this.dir, `${agentName}.md`))
+      : "none";
   }
 }
