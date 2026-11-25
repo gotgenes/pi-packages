@@ -8,7 +8,7 @@ import { SessionRules } from "#src/session/session-rules";
 import type { PermissionCheckResult, PermissionState } from "#src/types";
 import { makeForwardedAccessIntent } from "#test/helpers/forwarding-fixtures";
 import {
-  createInMemoryManager,
+  createInMemoryGlobalManager,
   createManagerWithConfig,
 } from "#test/helpers/manager-harness";
 
@@ -404,7 +404,7 @@ function servingPolicyOver(
 ): ResolverServingPolicy {
   return new ResolverServingPolicy(
     new PermissionResolver(
-      createInMemoryManager({ global: { permission: { bash } } }),
+      createInMemoryGlobalManager({ permission: { bash } }),
       options.sessionRules ?? new SessionRules(),
     ),
     () => options.yolo ?? false,

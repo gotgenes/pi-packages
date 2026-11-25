@@ -22,11 +22,11 @@ import {
   makeGateRunner,
   makeTcc,
 } from "#test/helpers/gate-fixtures";
-import { createInMemoryManager } from "#test/helpers/manager-harness";
+import { createInMemoryGlobalManager } from "#test/helpers/manager-harness";
 
-type Permission = NonNullable<
-  NonNullable<Parameters<typeof createInMemoryManager>[0]>["global"]
->["permission"];
+type Permission = Parameters<
+  typeof createInMemoryGlobalManager
+>[0]["permission"];
 
 neutralizeSubagentEnvHints();
 
@@ -37,7 +37,7 @@ neutralizeSubagentEnvHints();
 function sessionApprovingGate(permission: Permission) {
   const rules = new SessionRules();
   const resolver = new PermissionResolver(
-    createInMemoryManager({ global: { permission } }),
+    createInMemoryGlobalManager({ permission }),
     rules,
   );
   const escalate = vi.fn<AskEscalator["escalate"]>().mockResolvedValue({
@@ -151,7 +151,7 @@ const allowAssignments: Authorizer["authorize"] = (details) => {
 function gateWithAssignmentLink(permission: Permission) {
   const rules = new SessionRules();
   const resolver = new PermissionResolver(
-    createInMemoryManager({ global: { permission } }),
+    createInMemoryGlobalManager({ permission }),
     rules,
   );
   const registry = new AuthorizerRegistry();

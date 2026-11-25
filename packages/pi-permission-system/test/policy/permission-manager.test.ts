@@ -29,6 +29,7 @@ import type {
 } from "#src/types";
 import {
   createAgentDirHarness,
+  createInMemoryGlobalManager,
   createInMemoryManager,
   createInMemoryPolicyLoader,
   createManager,
@@ -100,8 +101,8 @@ describe("PermissionManager", () => {
       });
 
       it("respects permission['*'] = 'allow' from global config", () => {
-        const manager = createInMemoryManager({
-          global: { permission: { "*": "allow" } },
+        const manager = createInMemoryGlobalManager({
+          permission: { "*": "allow" },
         });
         const result = checkTool(manager, "read", {});
         expect(result.state).toBe("allow");
@@ -109,8 +110,8 @@ describe("PermissionManager", () => {
       });
 
       it("respects permission['*'] = 'deny' from global config", () => {
-        const manager = createInMemoryManager({
-          global: { permission: { "*": "deny" } },
+        const manager = createInMemoryGlobalManager({
+          permission: { "*": "deny" },
         });
         const result = checkTool(manager, "write", {});
         expect(result.state).toBe("deny");
@@ -209,8 +210,8 @@ describe("PermissionManager", () => {
 
     describe("rule origin", () => {
       it("single-scope global: config rule has origin 'global'", () => {
-        const manager = createInMemoryManager({
-          global: { permission: { read: "allow" } },
+        const manager = createInMemoryGlobalManager({
+          permission: { read: "allow" },
         });
         const result = checkTool(manager, "read", {});
         expect(result.state).toBe("allow");
@@ -218,11 +219,9 @@ describe("PermissionManager", () => {
       });
 
       it("single-scope global with pattern map: origin is 'global'", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: {
-              bash: { "git *": "allow" },
-            },
+        const manager = createInMemoryGlobalManager({
+          permission: {
+            bash: { "git *": "allow" },
           },
         });
         const result = checkTool(manager, "bash", { command: "git status" });
@@ -763,8 +762,9 @@ permission:
       it("does not floor when the invalid flag is on the global scope", () => {
         // Global is the lowest precedence — nothing more permissive is inherited,
         // so its invalid flag is ignored by the clamp.
-        const manager = createInMemoryManager({
-          global: { permission: { bash: "allow" }, invalid: true },
+        const manager = createInMemoryGlobalManager({
+          permission: { bash: "allow" },
+          invalid: true,
         });
         const result = manager.check(bashCheck);
         expect(result.state).toBe("allow");
@@ -819,10 +819,8 @@ permission:
 
     describe("composed config rules", () => {
       it("returns only config-layer rules", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: { "*": "ask", bash: { "git *": "allow" } },
-          },
+        const manager = createInMemoryGlobalManager({
+          permission: { "*": "ask", bash: { "git *": "allow" } },
         });
         const rules = manager.getComposedConfigRules();
         expect(rules.every((r) => r.layer === "config")).toBe(true);
@@ -837,13 +835,13 @@ permission:
         const config: ScopeConfig = {
           permission: { "*": "ask", external_directory: "ask" },
         };
-        const manager = createInMemoryManager({ global: config });
+        const manager = createInMemoryGlobalManager(config);
         const issues = manager.getPolicyIssues();
         expect(issues.length).toBe(0);
       });
 
       it("is empty for an empty config", () => {
-        const manager = createInMemoryManager({ global: {} });
+        const manager = createInMemoryGlobalManager({});
         const issues = manager.getPolicyIssues();
         expect(issues.length).toBe(0);
       });
@@ -1125,7 +1123,7 @@ permission:
       });
 
       it("returns source 'session' for bash when session rules match", () => {
-        const manager = createInMemoryManager({ global: { permission: {} } });
+        const manager = createInMemoryGlobalManager({ permission: {} });
         const sessionRules = [sessionRule("bash", "git *")];
 
         const result = checkTool(
@@ -1141,7 +1139,7 @@ permission:
       });
 
       it("returns source 'session' for bash when session rule is exact match", () => {
-        const manager = createInMemoryManager({ global: { permission: {} } });
+        const manager = createInMemoryGlobalManager({ permission: {} });
         const sessionRules = [sessionRule("bash", "ls")];
 
         const result = checkTool(
@@ -1156,7 +1154,7 @@ permission:
       });
 
       it("returns source 'session' for mcp when session rules match the target", () => {
-        const manager = createInMemoryManager({ global: { permission: {} } });
+        const manager = createInMemoryGlobalManager({ permission: {} });
         const sessionRules = [sessionRule("mcp", "exa:*")];
 
         const result = checkTool(
@@ -1173,8 +1171,8 @@ permission:
 
     describe("over a config rule", () => {
       it("session rule wins over config", () => {
-        const manager = createInMemoryManager({
-          global: { permission: { "*": "deny" } },
+        const manager = createInMemoryGlobalManager({
+          permission: { "*": "deny" },
         });
         const sessionRules: Ruleset = [sessionRule("read", "*")];
         const result = checkTool(manager, "read", {}, undefined, sessionRules);
@@ -1183,10 +1181,8 @@ permission:
       });
 
       it("returns source 'session' when session rules cover the external_directory path", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: { "*": "allow" },
-          },
+        const manager = createInMemoryGlobalManager({
+          permission: { "*": "allow" },
         });
         const sessionRules = [
           sessionRule("external_directory_read", "/other/project/*"),
@@ -1206,10 +1202,8 @@ permission:
       });
 
       it("falls back to config policy when session rules do not cover the path", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: { "*": "allow", external_directory: "deny" },
-          },
+        const manager = createInMemoryGlobalManager({
+          permission: { "*": "allow", external_directory: "deny" },
         });
         const sessionRules = [
           sessionRule("external_directory_read", "/other/project/*"),
@@ -1227,10 +1221,8 @@ permission:
       });
 
       it("session rules override config deny for external_directory", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: { "*": "allow", external_directory: "deny" },
-          },
+        const manager = createInMemoryGlobalManager({
+          permission: { "*": "allow", external_directory: "deny" },
         });
         const sessionRules = [
           sessionRule("external_directory_read", "/other/project/*"),
@@ -1249,8 +1241,8 @@ permission:
       });
 
       it("falls back to config for bash when session rules do not match the command", () => {
-        const manager = createInMemoryManager({
-          global: { permission: { bash: "deny" } },
+        const manager = createInMemoryGlobalManager({
+          permission: { bash: "deny" },
         });
         const sessionRules = [sessionRule("bash", "git *")];
 
@@ -1266,10 +1258,8 @@ permission:
       });
 
       it("treats an empty session ruleset like none", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: { "*": "allow", external_directory: "deny" },
-          },
+        const manager = createInMemoryGlobalManager({
+          permission: { "*": "allow", external_directory: "deny" },
         });
         const withEmpty = checkPath(
           manager,
@@ -1297,11 +1287,9 @@ permission:
       });
 
       it("session rule for specific path overrides config deny", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: {
-              read: { "*": "allow", "*.env": "deny" },
-            },
+        const manager = createInMemoryGlobalManager({
+          permission: {
+            read: { "*": "allow", "*.env": "deny" },
           },
         });
         const sessionRules: Ruleset = [sessionRule("read", ".env")];
@@ -1318,11 +1306,9 @@ permission:
       });
 
       it("session approval on path surface overrides config deny", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: {
-              path: { "*": "allow", "*.env": "deny" },
-            },
+        const manager = createInMemoryGlobalManager({
+          permission: {
+            path: { "*": "allow", "*.env": "deny" },
           },
         });
         const sessionRules: Ruleset = [
@@ -1343,8 +1329,8 @@ permission:
 
     describe("surface isolation", () => {
       it("session rule does not bleed across surfaces", () => {
-        const manager = createInMemoryManager({
-          global: { permission: { "*": "ask" } },
+        const manager = createInMemoryGlobalManager({
+          permission: { "*": "ask" },
         });
         const sessionRules: Ruleset = [sessionRule("bash", "git *")];
         const bashResult = checkTool(
@@ -1367,7 +1353,7 @@ permission:
       });
 
       it("session rules for one surface do not affect checks on other surfaces", () => {
-        const manager = createInMemoryManager({ global: { permission: {} } });
+        const manager = createInMemoryGlobalManager({ permission: {} });
         const sessionRules = [
           sessionRule("external_directory_read", "/other/project/*"),
         ];
@@ -1394,7 +1380,7 @@ permission:
       });
 
       it("bash session rules do not bleed into mcp checks", () => {
-        const manager = createInMemoryManager({ global: { permission: {} } });
+        const manager = createInMemoryGlobalManager({ permission: {} });
         const sessionRules = [sessionRule("bash", "git *")];
 
         const result = checkTool(
@@ -1438,12 +1424,10 @@ permission:
     describe("source and matchedPattern", () => {
       describe("external_directory (special surface)", () => {
         it("source is 'special' for a config-matched path", () => {
-          const manager = createInMemoryManager({
-            global: {
-              permission: {
-                "*": "ask",
-                external_directory: { "/trusted/*": "allow" },
-              },
+          const manager = createInMemoryGlobalManager({
+            permission: {
+              "*": "ask",
+              external_directory: { "/trusted/*": "allow" },
             },
           });
           const result = checkPath(
@@ -1489,12 +1473,10 @@ permission:
           "external_directory_read",
           "external_directory_write",
         ])("source is 'special' for a config-matched %s rule", (surface) => {
-          const manager = createInMemoryManager({
-            global: {
-              permission: {
-                "*": "ask",
-                [surface]: { "/trusted/*": "allow" },
-              },
+          const manager = createInMemoryGlobalManager({
+            permission: {
+              "*": "ask",
+              [surface]: { "/trusted/*": "allow" },
             },
           });
           const result = checkPath(manager, "/trusted/repo", {}, surface);
@@ -1506,12 +1488,10 @@ permission:
 
       describe("skill surface", () => {
         it("source is 'skill' for a config-matched skill name", () => {
-          const manager = createInMemoryManager({
-            global: {
-              permission: {
-                "*": "ask",
-                skill: { librarian: "allow" },
-              },
+          const manager = createInMemoryGlobalManager({
+            permission: {
+              "*": "ask",
+              skill: { librarian: "allow" },
             },
           });
           const result = checkTool(manager, "skill", { name: "librarian" });
@@ -1530,12 +1510,10 @@ permission:
 
       describe("bash surface", () => {
         it("source is 'bash' and command is included in result", () => {
-          const manager = createInMemoryManager({
-            global: {
-              permission: {
-                "*": "ask",
-                bash: { "git *": "allow" },
-              },
+          const manager = createInMemoryGlobalManager({
+            permission: {
+              "*": "ask",
+              bash: { "git *": "allow" },
             },
           });
           const result = checkTool(manager, "bash", {
@@ -1558,11 +1536,9 @@ permission:
 
       describe("mcp surface", () => {
         it("source is 'mcp' for a config-matched target", () => {
-          const manager = createInMemoryManager(
+          const manager = createInMemoryGlobalManager(
             {
-              global: {
-                permission: { "*": "ask", mcp: { exa_search: "allow" } },
-              },
+              permission: { "*": "ask", mcp: { exa_search: "allow" } },
             },
             ["exa"],
           );
@@ -1585,11 +1561,9 @@ permission:
         });
 
         it("target field is set for a matched mcp call", () => {
-          const manager = createInMemoryManager(
+          const manager = createInMemoryGlobalManager(
             {
-              global: {
-                permission: { "*": "ask", mcp: { mcp_status: "allow" } },
-              },
+              permission: { "*": "ask", mcp: { mcp_status: "allow" } },
             },
             [],
           );
@@ -1601,12 +1575,10 @@ permission:
 
       describe("tool surfaces", () => {
         it("built-in tool: source is always 'tool' (config match)", () => {
-          const manager = createInMemoryManager({
-            global: {
-              permission: {
-                "*": "ask",
-                read: "allow",
-              },
+          const manager = createInMemoryGlobalManager({
+            permission: {
+              "*": "ask",
+              read: "allow",
             },
           });
           const result = checkTool(manager, "read", {});
@@ -1629,12 +1601,10 @@ permission:
         });
 
         it("extension tool: source is 'tool' when a config rule matches", () => {
-          const manager = createInMemoryManager({
-            global: {
-              permission: {
-                "*": "ask",
-                my_custom_tool: "allow",
-              },
+          const manager = createInMemoryGlobalManager({
+            permission: {
+              "*": "ask",
+              my_custom_tool: "allow",
             },
           });
           const result = checkTool(manager, "my_custom_tool", {});
@@ -1643,8 +1613,8 @@ permission:
         });
 
         it("extension tools use 'default' source when no config rule matches", () => {
-          const manager = createInMemoryManager({
-            global: { permission: { "*": "ask" } },
+          const manager = createInMemoryGlobalManager({
+            permission: { "*": "ask" },
           });
           const result = checkTool(manager, "my_custom_tool", {});
           expect(result.state).toBe("ask");
@@ -1655,10 +1625,8 @@ permission:
 
     describe("built-in and extension tools", () => {
       it("resolves a canonical built-in tool on its tool surface", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: { "*": "deny", read: "allow" },
-          },
+        const manager = createInMemoryGlobalManager({
+          permission: { "*": "deny", read: "allow" },
         });
         const readResult = checkTool(manager, "read", {});
         expect(readResult.state).toBe("allow");
@@ -1670,13 +1638,11 @@ permission:
       });
 
       it("Arbitrary extension tools use exact-name tool permissions instead of MCP fallback", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: {
-              "*": "deny",
-              third_party_tool: "allow",
-              mcp: { "*": "deny" },
-            },
+        const manager = createInMemoryGlobalManager({
+          permission: {
+            "*": "deny",
+            third_party_tool: "allow",
+            mcp: { "*": "deny" },
           },
         });
         const allowed = checkTool(manager, "third_party_tool", {});
@@ -1691,10 +1657,8 @@ permission:
       });
 
       it("Canonical tools map directly without legacy aliases", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: { "*": "ask", find: "allow", ls: "deny" },
-          },
+        const manager = createInMemoryGlobalManager({
+          permission: { "*": "ask", find: "allow", ls: "deny" },
         });
         const findResult = checkTool(manager, "find", {});
         expect(findResult.state).toBe("allow");
@@ -1706,10 +1670,8 @@ permission:
       });
 
       it("task uses exact-name tool permissions like any registered extension tool", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: { "*": "deny", task: "allow" },
-          },
+        const manager = createInMemoryGlobalManager({
+          permission: { "*": "deny", task: "allow" },
         });
         const taskResult = checkTool(manager, "task", {});
         expect(taskResult.state).toBe("allow");
@@ -1722,12 +1684,10 @@ permission:
         // Regression test for #73: node -e "..." with embedded newlines was
         // falling through to the hard-coded 'ask' default because wildcardMatch
         // used /^.*$/ (no dotAll), which does not match '\n'.
-        const manager = createInMemoryManager({
-          global: {
-            permission: {
-              "*": "allow",
-              bash: { "rm -rf *": "deny", "sudo *": "ask" },
-            },
+        const manager = createInMemoryGlobalManager({
+          permission: {
+            "*": "allow",
+            bash: { "rm -rf *": "deny", "sudo *": "ask" },
           },
         });
         const command =
@@ -1739,12 +1699,10 @@ permission:
       it("Bash specific deny patterns override catch-all within the same config", () => {
         // In the flat format, patterns within a surface map are ordered by insertion.
         // Last-match-wins means specific patterns placed AFTER the catch-all override it.
-        const manager = createInMemoryManager({
-          global: {
-            permission: {
-              "*": "ask",
-              bash: { "*": "allow", "rm -rf *": "deny" },
-            },
+        const manager = createInMemoryGlobalManager({
+          permission: {
+            "*": "ask",
+            bash: { "*": "allow", "rm -rf *": "deny" },
           },
         });
         const denied = checkTool(manager, "bash", {
@@ -1769,9 +1727,7 @@ permission:
           spellings: readonly string[],
           sessionRules?: Ruleset,
         ): PermissionCheckResult {
-          const manager = createInMemoryManager({
-            global: { permission: { bash } },
-          });
+          const manager = createInMemoryGlobalManager({ permission: { bash } });
           return manager.check(
             { kind: "bash-command", surface: "bash", command, spellings },
             sessionRules,
@@ -1869,10 +1825,8 @@ permission:
           });
 
           it("is never reported for an MCP target matched under a later candidate", () => {
-            const manager = createInMemoryManager(
-              {
-                global: { permission: { mcp: { "*": "ask", github: "deny" } } },
-              },
+            const manager = createInMemoryGlobalManager(
+              { permission: { mcp: { "*": "ask", github: "deny" } } },
               ["github"],
             );
             const result = manager.check({
@@ -1885,8 +1839,8 @@ permission:
           });
 
           it("is never reported for a path matched under a later alias", () => {
-            const manager = createInMemoryManager({
-              global: { permission: { path: { "*": "ask", "src/*": "deny" } } },
+            const manager = createInMemoryGlobalManager({
+              permission: { path: { "*": "ask", "src/*": "deny" } },
             });
             const result = checkPathValues(manager, ["/repo/src/x", "src/x"]);
             expect(result.state).toBe("deny");
@@ -1898,15 +1852,13 @@ permission:
 
     describe("skill", () => {
       it("Skill permission matching", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: {
+        const manager = createInMemoryGlobalManager({
+          permission: {
+            "*": "ask",
+            skill: {
               "*": "ask",
-              skill: {
-                "*": "ask",
-                "web-*": "deny",
-                "requesting-code-review": "allow",
-              },
+              "web-*": "deny",
+              "requesting-code-review": "allow",
             },
           },
         });
@@ -1933,11 +1885,9 @@ permission:
 
     describe("deny reasons", () => {
       it("deny-with-reason: reason threads through to PermissionCheckResult", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: {
-              bash: { "npm *": { action: "deny", reason: "Use pnpm instead" } },
-            },
+        const manager = createInMemoryGlobalManager({
+          permission: {
+            bash: { "npm *": { action: "deny", reason: "Use pnpm instead" } },
           },
         });
         const result = checkTool(manager, "bash", {
@@ -1949,11 +1899,9 @@ permission:
       });
 
       it("deny-without-reason: reason is undefined in PermissionCheckResult", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: {
-              bash: { "rm -rf *": "deny" },
-            },
+        const manager = createInMemoryGlobalManager({
+          permission: {
+            bash: { "rm -rf *": "deny" },
           },
         });
         const result = checkTool(manager, "bash", { command: "rm -rf /" });
@@ -1962,14 +1910,12 @@ permission:
       });
 
       it("deny-with-reason on a non-bash surface", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: {
-              read: {
-                "*.env": {
-                  action: "deny",
-                  reason: "Environment files contain secrets",
-                },
+        const manager = createInMemoryGlobalManager({
+          permission: {
+            read: {
+              "*.env": {
+                action: "deny",
+                reason: "Environment files contain secrets",
               },
             },
           },
@@ -1999,25 +1945,23 @@ permission:
     describe("tool exposure", () => {
       describe("getToolPermission", () => {
         it("returns tool-level state for built-in tools", () => {
-          const manager = createInMemoryManager({
-            global: { permission: { "*": "deny", read: "allow" } },
+          const manager = createInMemoryGlobalManager({
+            permission: { "*": "deny", read: "allow" },
           });
           expect(manager.getToolPermission("read")).toBe("allow");
           expect(manager.getToolPermission("write")).toBe("deny");
         });
 
         it("returns tool-level state for bash surface", () => {
-          const manager = createInMemoryManager({
-            global: { permission: { "*": "deny", bash: "allow" } },
+          const manager = createInMemoryGlobalManager({
+            permission: { "*": "deny", bash: "allow" },
           });
           expect(manager.getToolPermission("bash")).toBe("allow");
         });
 
         it("reports the surface catch-all even when a nested pattern is permissive", () => {
-          const manager = createInMemoryManager({
-            global: {
-              permission: { "*": "ask", bash: { "*": "deny", "git *": "ask" } },
-            },
+          const manager = createInMemoryGlobalManager({
+            permission: { "*": "ask", bash: { "*": "deny", "git *": "ask" } },
           });
           expect(manager.getToolPermission("bash")).toBe("deny");
         });
@@ -2066,10 +2010,8 @@ permission:
         });
 
         it("getToolPermission supports arbitrary extension tool names", () => {
-          const manager = createInMemoryManager({
-            global: {
-              permission: { "*": "deny", third_party_tool: "allow" },
-            },
+          const manager = createInMemoryGlobalManager({
+            permission: { "*": "deny", third_party_tool: "allow" },
           });
           const explicitPermission =
             manager.getToolPermission("third_party_tool");
@@ -2084,45 +2026,39 @@ permission:
 
       describe("isToolFullyDenied", () => {
         it("is false when a nested pattern under a deny catch-all is reachable", () => {
-          const manager = createInMemoryManager({
-            global: {
-              permission: { "*": "ask", bash: { "*": "deny", "git *": "ask" } },
-            },
+          const manager = createInMemoryGlobalManager({
+            permission: { "*": "ask", bash: { "*": "deny", "git *": "ask" } },
           });
           expect(manager.isToolFullyDenied("bash")).toBe(false);
         });
 
         it("is true when the surface is denied outright", () => {
-          const manager = createInMemoryManager({
-            global: { permission: { "*": "ask", bash: "deny" } },
+          const manager = createInMemoryGlobalManager({
+            permission: { "*": "ask", bash: "deny" },
           });
           expect(manager.isToolFullyDenied("bash")).toBe(true);
         });
 
         it("is true when the exception is shadowed by a later deny catch-all", () => {
-          const manager = createInMemoryManager({
-            global: {
-              permission: { "*": "ask", bash: { "git *": "ask", "*": "deny" } },
-            },
+          const manager = createInMemoryGlobalManager({
+            permission: { "*": "ask", bash: { "git *": "ask", "*": "deny" } },
           });
           expect(manager.isToolFullyDenied("bash")).toBe(true);
         });
 
         it("is false for a path-bearing tool with a permissive path pattern", () => {
-          const manager = createInMemoryManager({
-            global: {
-              permission: {
-                "*": "ask",
-                read: { "*": "deny", "~/notes/*": "allow" },
-              },
+          const manager = createInMemoryGlobalManager({
+            permission: {
+              "*": "ask",
+              read: { "*": "deny", "~/notes/*": "allow" },
             },
           });
           expect(manager.isToolFullyDenied("read")).toBe(false);
         });
 
         it("is true for every tool under a universal deny", () => {
-          const manager = createInMemoryManager({
-            global: { permission: { "*": "deny" } },
+          const manager = createInMemoryGlobalManager({
+            permission: { "*": "deny" },
           });
           expect(manager.isToolFullyDenied("bash")).toBe(true);
           expect(manager.isToolFullyDenied("third_party_tool")).toBe(true);
@@ -2145,11 +2081,9 @@ permission:
 
     describe("a tool intent", () => {
       it("resolves a tool call on the bash surface", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: {
-              bash: { "*": "allow", "git push": "deny" },
-            },
+        const manager = createInMemoryGlobalManager({
+          permission: {
+            bash: { "*": "allow", "git push": "deny" },
           },
         });
         const intent: ResolvedAccessIntent = {
@@ -2164,8 +2098,8 @@ permission:
       });
 
       it("resolves a tool call on the read surface", () => {
-        const manager = createInMemoryManager({
-          global: { permission: { read: "deny" } },
+        const manager = createInMemoryGlobalManager({
+          permission: { read: "deny" },
         });
         const intent: ResolvedAccessIntent = {
           kind: "tool",
@@ -2179,11 +2113,9 @@ permission:
       });
 
       it("applies session rules via the tool intent", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: {
-              bash: { "*": "deny" },
-            },
+        const manager = createInMemoryGlobalManager({
+          permission: {
+            bash: { "*": "deny" },
           },
         });
         const sessionRules: Ruleset = [sessionRule("bash", "echo *")];
@@ -2223,15 +2155,13 @@ permission:
   describe("mcp", () => {
     describe("target resolution", () => {
       it("MCP wildcard matching uses the registered mcp tool", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: {
-              "*": "ask",
-              mcp: {
-                "*": "deny",
-                "research_*": "ask",
-                "research_query-*": "allow",
-              },
+        const manager = createInMemoryGlobalManager({
+          permission: {
+            "*": "ask",
+            mcp: {
+              "*": "deny",
+              "research_*": "ask",
+              "research_query-*": "allow",
             },
           },
         });
@@ -2259,13 +2189,11 @@ permission:
       });
 
       it("MCP proxy tool infers server-prefixed aliases from configured server names", () => {
-        const manager = createInMemoryManager(
+        const manager = createInMemoryGlobalManager(
           {
-            global: {
-              permission: {
-                "*": "ask",
-                mcp: { "exa_*": "deny", exa_get_code_context_exa: "allow" },
-              },
+            permission: {
+              "*": "ask",
+              mcp: { "exa_*": "deny", exa_get_code_context_exa: "allow" },
             },
           },
           ["exa"],
@@ -2280,13 +2208,11 @@ permission:
       });
 
       it("MCP describe mode normalizes qualified tool names without duplicating server prefixes", () => {
-        const manager = createInMemoryManager(
+        const manager = createInMemoryGlobalManager(
           {
-            global: {
-              permission: {
-                "*": "ask",
-                mcp: { "exa_*": "deny", exa_web_search_exa: "allow" },
-              },
+            permission: {
+              "*": "ask",
+              mcp: { "exa_*": "deny", exa_web_search_exa: "allow" },
             },
           },
           ["exa"],
@@ -2429,8 +2355,8 @@ permission:
         const servers = ["myServer", "dangerousServer"];
 
         it("grants the documented mcp_list allow for a server listing", () => {
-          const manager = createInMemoryManager(
-            { global: { permission: documentedConfig } },
+          const manager = createInMemoryGlobalManager(
+            { permission: documentedConfig },
             servers,
           );
           const result = checkTool(manager, "mcp", { server: "myServer" });
@@ -2439,8 +2365,8 @@ permission:
         });
 
         it("enforces the documented dangerousServer deny for an explicit server", () => {
-          const manager = createInMemoryManager(
-            { global: { permission: documentedConfig } },
+          const manager = createInMemoryGlobalManager(
+            { permission: documentedConfig },
             servers,
           );
           const result = checkTool(manager, "mcp", {
@@ -2456,11 +2382,9 @@ permission:
         it("allows a discovery operation named after the catch-all", () => {
           // The shape reported in #687: the wildcard matches the tool-name
           // candidate before the `mcp_describe` candidate is ever reached.
-          const manager = createInMemoryManager(
+          const manager = createInMemoryGlobalManager(
             {
-              global: {
-                permission: { mcp: { "*": "ask", mcp_describe: "allow" } },
-              },
+              permission: { mcp: { "*": "ask", mcp_describe: "allow" } },
             },
             ["github"],
           );
@@ -2479,10 +2403,8 @@ permission:
             { tool: "search_code", server: "github" },
           ],
         ])("denies the named server for %s", (_label, input) => {
-          const manager = createInMemoryManager(
-            {
-              global: { permission: { mcp: { "*": "allow", github: "deny" } } },
-            },
+          const manager = createInMemoryGlobalManager(
+            { permission: { mcp: { "*": "allow", github: "deny" } } },
             ["github"],
           );
           const result = checkTool(manager, "mcp", input);
@@ -2505,10 +2427,8 @@ permission:
         ])(
           "lets a trailing catch-all override the server rule for %s",
           (_label, input) => {
-            const manager = createInMemoryManager(
-              {
-                global: { permission: { mcp: { github: "deny", "*": "ask" } } },
-              },
+            const manager = createInMemoryGlobalManager(
+              { permission: { mcp: { github: "deny", "*": "ask" } } },
               ["github"],
             );
             const result = checkTool(manager, "mcp", input);
@@ -2520,8 +2440,8 @@ permission:
 
       describe("session grants", () => {
         it("honors a session grant matching a later candidate than the config rule", () => {
-          const manager = createInMemoryManager(
-            { global: { permission: { mcp: { exa_search: "deny" } } } },
+          const manager = createInMemoryGlobalManager(
+            { permission: { mcp: { exa_search: "deny" } } },
             ["exa"],
           );
           const result = checkTool(
@@ -2546,8 +2466,8 @@ permission:
           // config rule outranks the baseline. The decision is the same `allow`
           // the baseline already produced; only the attribution moved, and the
           // more specific reason is the better one to show.
-          const manager = createInMemoryManager(
-            { global: { permission: { mcp: { github: "allow" } } } },
+          const manager = createInMemoryGlobalManager(
+            { permission: { mcp: { github: "allow" } } },
             ["github"],
           );
           const result = checkTool(manager, "mcp", {
@@ -2562,8 +2482,8 @@ permission:
           // tool belonging to some *other*, unconfigured server. Nothing in the
           // config matches any candidate, so the baseline decides and reports no
           // `matchedPattern` -- only a config or session rule does.
-          const manager = createInMemoryManager(
-            { global: { permission: { mcp: { github: "allow" } } } },
+          const manager = createInMemoryGlobalManager(
+            { permission: { mcp: { github: "allow" } } },
             ["github"],
           );
           const result = checkTool(manager, "mcp", {
@@ -2581,7 +2501,7 @@ permission:
         permission: FlatPermissionConfig,
         use: (manager: PermissionManager) => T,
       ): T {
-        const manager = createInMemoryManager({ global: { permission } }, [
+        const manager = createInMemoryGlobalManager({ permission }, [
           "danger-srv",
         ]);
         return use(manager);
@@ -2596,10 +2516,7 @@ permission:
           permission: FlatPermissionConfig,
           servers: readonly string[] = ["danger-srv"],
         ): PermissionCheckResult {
-          const manager = createInMemoryManager(
-            { global: { permission } },
-            servers,
-          );
+          const manager = createInMemoryGlobalManager({ permission }, servers);
           return wipe(manager);
         }
 
@@ -2779,10 +2696,10 @@ permission:
       };
 
       function serve(values: string[]): PermissionCheckResult {
-        const manager = createInMemoryManager(
-          { global: { permission: config } },
-          ["github", "danger"],
-        );
+        const manager = createInMemoryGlobalManager({ permission: config }, [
+          "github",
+          "danger",
+        ]);
         return manager.check(
           buildResolvedIntentFromMatchValues("mcp", values, "Explore"),
         );
@@ -2920,12 +2837,10 @@ permission:
 
     describe("directional sugar", () => {
       it("expands a bare path rule onto both directional surfaces at load", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: {
-              "*": "ask",
-              path: { "/secret/*": "deny" },
-            },
+        const manager = createInMemoryGlobalManager({
+          permission: {
+            "*": "ask",
+            path: { "/secret/*": "deny" },
           },
         });
         for (const surface of ["path_read", "path_write"]) {
@@ -2940,13 +2855,11 @@ permission:
       });
 
       it("appends an explicit directional rule after the sugar-derived ones", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: {
-              "*": "ask",
-              external_directory: { "*": "ask" },
-              external_directory_read: { "/dev-root/*": "allow" },
-            },
+        const manager = createInMemoryGlobalManager({
+          permission: {
+            "*": "ask",
+            external_directory: { "*": "ask" },
+            external_directory_read: { "/dev-root/*": "allow" },
           },
         });
         expect(
@@ -2962,11 +2875,9 @@ permission:
 
     describe("per-tool path patterns", () => {
       it("denies read of .env when path pattern matches", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: {
-              read: { "*": "allow", "*.env": "deny" },
-            },
+        const manager = createInMemoryGlobalManager({
+          permission: {
+            read: { "*": "allow", "*.env": "deny" },
           },
         });
         const result = checkPath(manager, ".env", {}, "read");
@@ -2975,11 +2886,9 @@ permission:
       });
 
       it("allows read of non-.env file when .env is denied", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: {
-              read: { "*": "allow", "*.env": "deny" },
-            },
+        const manager = createInMemoryGlobalManager({
+          permission: {
+            read: { "*": "allow", "*.env": "deny" },
           },
         });
         const result = checkPath(manager, "src/main.ts", {}, "read");
@@ -2987,11 +2896,9 @@ permission:
       });
 
       it("allows write to src/ when only src/ is allowed", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: {
-              write: { "*": "deny", "src/*": "allow" },
-            },
+        const manager = createInMemoryGlobalManager({
+          permission: {
+            write: { "*": "deny", "src/*": "allow" },
           },
         });
         const result = checkPath(manager, "src/main.ts", {}, "write");
@@ -3000,11 +2907,9 @@ permission:
       });
 
       it("denies write outside src/ when only src/ is allowed", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: {
-              write: { "*": "deny", "src/*": "allow" },
-            },
+        const manager = createInMemoryGlobalManager({
+          permission: {
+            write: { "*": "deny", "src/*": "allow" },
           },
         });
         const result = checkPath(manager, "vendor/lib.ts", {}, "write");
@@ -3012,11 +2917,9 @@ permission:
       });
 
       it("backward compat: 'read': 'allow' allows read of any path", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: {
-              read: "allow",
-            },
+        const manager = createInMemoryGlobalManager({
+          permission: {
+            read: "allow",
           },
         });
         const result = checkPath(manager, ".env", {}, "read");
@@ -3024,11 +2927,9 @@ permission:
       });
 
       it("backward compat: 'read': 'deny' denies read of any path", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: {
-              read: "deny",
-            },
+        const manager = createInMemoryGlobalManager({
+          permission: {
+            read: "deny",
           },
         });
         const result = checkPath(manager, "src/main.ts", {}, "read");
@@ -3036,11 +2937,9 @@ permission:
       });
 
       it("falls back to '*' when input.path is missing", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: {
-              read: { "*": "allow", "*.env": "deny" },
-            },
+        const manager = createInMemoryGlobalManager({
+          permission: {
+            read: { "*": "allow", "*.env": "deny" },
           },
         });
         const result = checkTool(manager, "read", {});
@@ -3048,11 +2947,9 @@ permission:
       });
 
       it("getToolPermission still returns surface-level state (not path-specific)", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: {
-              read: { "*": "allow", "*.env": "deny" },
-            },
+        const manager = createInMemoryGlobalManager({
+          permission: {
+            read: { "*": "allow", "*.env": "deny" },
           },
         });
         const toolState = manager.getToolPermission("read");
@@ -3062,12 +2959,10 @@ permission:
 
     describe("path surface", () => {
       it("denies .env via the path surface", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: {
-              path: { "*": "allow", "*.env": "deny" },
-              read: "allow",
-            },
+        const manager = createInMemoryGlobalManager({
+          permission: {
+            path: { "*": "allow", "*.env": "deny" },
+            read: "allow",
           },
         });
         const result = checkPath(manager, ".env");
@@ -3076,12 +2971,10 @@ permission:
       });
 
       it("allows non-matching paths via the path surface", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: {
-              path: { "*": "allow", "*.env": "deny" },
-              read: "allow",
-            },
+        const manager = createInMemoryGlobalManager({
+          permission: {
+            path: { "*": "allow", "*.env": "deny" },
+            read: "allow",
           },
         });
         const result = checkPath(manager, "README.md");
@@ -3089,12 +2982,10 @@ permission:
       });
 
       it("path surface does not interfere with per-tool rules", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: {
-              path: { "*": "allow" },
-              read: { "*": "allow", "*.secret": "deny" },
-            },
+        const manager = createInMemoryGlobalManager({
+          permission: {
+            path: { "*": "allow" },
+            read: { "*": "allow", "*.secret": "deny" },
           },
         });
         // path surface allows, per-tool denies
@@ -3106,11 +2997,9 @@ permission:
       });
 
       it("getToolPermission('path') returns catch-all action", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: {
-              path: { "*": "allow", "*.env": "deny" },
-            },
+        const manager = createInMemoryGlobalManager({
+          permission: {
+            path: { "*": "allow", "*.env": "deny" },
           },
         });
         const toolState = manager.getToolPermission("path_read");
@@ -3118,11 +3007,9 @@ permission:
       });
 
       it("configs without path key behave identically (no path gate fires)", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: {
-              read: "allow",
-            },
+        const manager = createInMemoryGlobalManager({
+          permission: {
+            read: "allow",
           },
         });
         // path surface falls through to universal default
@@ -3131,13 +3018,11 @@ permission:
       });
 
       it("universal default produces undefined matchedPattern for gate skip", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: {
-              "*": "ask",
-              read: "allow",
-              find: "allow",
-            },
+        const manager = createInMemoryGlobalManager({
+          permission: {
+            "*": "ask",
+            read: "allow",
+            find: "allow",
           },
         });
         // No explicit "path" key → matchedPattern must be undefined so the
@@ -3156,11 +3041,9 @@ permission:
 
       it("last-match-wins: catch-all after deny overrides the deny", () => {
         // Classic misconfiguration: deny is before allow, so allow wins.
-        const manager = createInMemoryManager({
-          global: {
-            permission: {
-              path: { "*.env": "deny", "*": "allow" },
-            },
+        const manager = createInMemoryGlobalManager({
+          permission: {
+            path: { "*.env": "deny", "*": "allow" },
           },
         });
         const result = checkPath(manager, ".env");
@@ -3170,11 +3053,9 @@ permission:
 
       it("last-match-wins: deny after catch-all blocks the path", () => {
         // Correct ordering: catch-all first, specific deny after.
-        const manager = createInMemoryManager({
-          global: {
-            permission: {
-              path: { "*": "allow", "*.env": "deny" },
-            },
+        const manager = createInMemoryGlobalManager({
+          permission: {
+            path: { "*": "allow", "*.env": "deny" },
           },
         });
         const result = checkPath(manager, ".env");
@@ -3184,15 +3065,13 @@ permission:
       // ── .env.example override recipe ────────────────────────────────────────
 
       it(".env.example override: denies .env and .env.local, allows .env.example", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: {
-              path: {
-                "*": "allow",
-                "*.env": "deny",
-                "*.env.*": "deny",
-                "*.env.example": "allow",
-              },
+        const manager = createInMemoryGlobalManager({
+          permission: {
+            path: {
+              "*": "allow",
+              "*.env": "deny",
+              "*.env.*": "deny",
+              "*.env.example": "allow",
             },
           },
         });
@@ -3207,11 +3086,9 @@ permission:
       // ── Universal fallback interaction ──────────────────────────────────────
 
       it("universal '*': 'allow' with no path key makes the path gate transparent", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: {
-              "*": "allow",
-            },
+        const manager = createInMemoryGlobalManager({
+          permission: {
+            "*": "allow",
           },
         });
         const result = checkPath(manager, ".env");
@@ -3219,11 +3096,9 @@ permission:
       });
 
       it("universal '*': 'deny' with no path key denies via path surface too", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: {
-              "*": "deny",
-            },
+        const manager = createInMemoryGlobalManager({
+          permission: {
+            "*": "deny",
           },
         });
         const result = checkPath(manager, ".env");
@@ -3233,12 +3108,10 @@ permission:
       // ── Composition: path allows, per-tool denies ──────────────────────
 
       it("per-tool deny still blocks even when path surface allows", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: {
-              path: { "*": "allow" },
-              read: "deny",
-            },
+        const manager = createInMemoryGlobalManager({
+          permission: {
+            path: { "*": "allow" },
+            read: "deny",
           },
         });
         // path gate passes (allow), but tool gate denies
@@ -3252,11 +3125,9 @@ permission:
     describe("home expansion", () => {
       describe("in path values", () => {
         it("~/... path value is denied by a ~/* rule (reported footgun)", () => {
-          const manager = createInMemoryManager({
-            global: {
-              permission: {
-                path: { "*": "allow", "~/.ssh/*": "deny" },
-              },
+          const manager = createInMemoryGlobalManager({
+            permission: {
+              path: { "*": "allow", "~/.ssh/*": "deny" },
             },
           });
           const result = checkPath(manager, "~/.ssh/config");
@@ -3265,11 +3136,9 @@ permission:
         });
 
         it("$HOME/... path value is denied by a ~/* rule", () => {
-          const manager = createInMemoryManager({
-            global: {
-              permission: {
-                path: { "*": "allow", "~/.ssh/*": "deny" },
-              },
+          const manager = createInMemoryGlobalManager({
+            permission: {
+              path: { "*": "allow", "~/.ssh/*": "deny" },
             },
           });
           const result = checkPath(manager, `${homedir()}/.ssh/config`);
@@ -3278,11 +3147,9 @@ permission:
         });
 
         it("$HOME/... path value matches a $HOME/* pattern rule", () => {
-          const manager = createInMemoryManager({
-            global: {
-              permission: {
-                path: { "*": "allow", "$HOME/.ssh/*": "deny" },
-              },
+          const manager = createInMemoryGlobalManager({
+            permission: {
+              path: { "*": "allow", "$HOME/.ssh/*": "deny" },
             },
           });
           const result = checkPath(manager, "$HOME/.ssh/config");
@@ -3291,11 +3158,9 @@ permission:
         });
 
         it("already-absolute home path is still denied by ~/* rule", () => {
-          const manager = createInMemoryManager({
-            global: {
-              permission: {
-                path: { "*": "allow", "~/.ssh/*": "deny" },
-              },
+          const manager = createInMemoryGlobalManager({
+            permission: {
+              path: { "*": "allow", "~/.ssh/*": "deny" },
             },
           });
           const result = checkPath(manager, `${homedir()}/.ssh/config`);
@@ -3303,11 +3168,9 @@ permission:
         });
 
         it("non-home value is unchanged — .env still matches *.env", () => {
-          const manager = createInMemoryManager({
-            global: {
-              permission: {
-                path: { "*": "allow", "*.env": "deny" },
-              },
+          const manager = createInMemoryGlobalManager({
+            permission: {
+              path: { "*": "allow", "*.env": "deny" },
             },
           });
           const result = checkPath(manager, ".env");
@@ -3316,12 +3179,10 @@ permission:
         });
 
         it("per-tool read surface denies ~/... path with a ~/* rule", () => {
-          const manager = createInMemoryManager({
-            global: {
-              permission: {
-                "*": "allow",
-                read: { "*": "allow", "~/.ssh/*": "deny" },
-              },
+          const manager = createInMemoryGlobalManager({
+            permission: {
+              "*": "allow",
+              read: { "*": "allow", "~/.ssh/*": "deny" },
             },
           });
           const result = checkPath(manager, "~/.ssh/config", {}, "read");
@@ -3332,12 +3193,10 @@ permission:
 
       describe("in external_directory rules", () => {
         it("~/glob pattern allows a path under the real home directory", () => {
-          const manager = createInMemoryManager({
-            global: {
-              permission: {
-                "*": "ask",
-                external_directory: { "~/trusted/*": "allow" },
-              },
+          const manager = createInMemoryGlobalManager({
+            permission: {
+              "*": "ask",
+              external_directory: { "~/trusted/*": "allow" },
             },
           });
           const result = checkPath(
@@ -3352,12 +3211,10 @@ permission:
         });
 
         it("$HOME/glob pattern allows a path under the real home directory", () => {
-          const manager = createInMemoryManager({
-            global: {
-              permission: {
-                "*": "ask",
-                external_directory: { "$HOME/trusted/*": "allow" },
-              },
+          const manager = createInMemoryGlobalManager({
+            permission: {
+              "*": "ask",
+              external_directory: { "$HOME/trusted/*": "allow" },
             },
           });
           const result = checkPath(
@@ -3372,12 +3229,10 @@ permission:
         });
 
         it("~/glob deny rule blocks a path under home", () => {
-          const manager = createInMemoryManager({
-            global: {
-              permission: {
-                "*": "allow",
-                external_directory: { "~/private/*": "deny" },
-              },
+          const manager = createInMemoryGlobalManager({
+            permission: {
+              "*": "allow",
+              external_directory: { "~/private/*": "deny" },
             },
           });
           const result = checkPath(
@@ -3391,12 +3246,10 @@ permission:
         });
 
         it("~/glob pattern does not match a path outside home", () => {
-          const manager = createInMemoryManager({
-            global: {
-              permission: {
-                "*": "ask",
-                external_directory: { "~/trusted/*": "allow" },
-              },
+          const manager = createInMemoryGlobalManager({
+            permission: {
+              "*": "ask",
+              external_directory: { "~/trusted/*": "allow" },
             },
           });
           const result = checkPath(
@@ -3414,7 +3267,7 @@ permission:
 
     describe("external_directory config", () => {
       it("external_directory permission falls back to universal default when not explicitly configured", () => {
-        const manager = createInMemoryManager({ global: { permission: {} } });
+        const manager = createInMemoryGlobalManager({ permission: {} });
         const result = checkTool(manager, "external_directory_read", {});
         expect(result.state).toBe("ask");
         expect(result.source).toBe("special");
@@ -3422,10 +3275,8 @@ permission:
       });
 
       it("external_directory permission respects explicit deny", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: { "*": "allow", external_directory: "deny" },
-          },
+        const manager = createInMemoryGlobalManager({
+          permission: { "*": "allow", external_directory: "deny" },
         });
         const result = checkTool(manager, "external_directory_read", {});
         expect(result.state).toBe("deny");
@@ -3434,10 +3285,8 @@ permission:
       });
 
       it("external_directory permission can be explicitly allowed", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: { "*": "allow", external_directory: "allow" },
-          },
+        const manager = createInMemoryGlobalManager({
+          permission: { "*": "allow", external_directory: "allow" },
         });
         const result = checkTool(manager, "external_directory_read", {});
         expect(result.state).toBe("allow");
@@ -3450,11 +3299,9 @@ permission:
       const cwd = "/workspace/project";
 
       it("matches a relative read input against an absolute allowlist", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: {
-              read: { "*": "ask", [`${cwd}/*`]: "allow" },
-            },
+        const manager = createInMemoryGlobalManager({
+          permission: {
+            read: { "*": "ask", [`${cwd}/*`]: "allow" },
           },
         });
         manager.configureForCwd(cwd);
@@ -3464,11 +3311,9 @@ permission:
       });
 
       it("keeps legacy relative path rules working after configureForCwd", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: {
-              read: { "*": "allow", "src/*": "deny" },
-            },
+        const manager = createInMemoryGlobalManager({
+          permission: {
+            read: { "*": "allow", "src/*": "deny" },
           },
         });
         manager.configureForCwd(cwd);
@@ -3478,14 +3323,12 @@ permission:
       });
 
       it("preserves last-match-wins across absolute and relative aliases", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: {
-              read: {
-                "*": "ask",
-                [`${cwd}/*`]: "allow",
-                "src/*": "deny",
-              },
+        const manager = createInMemoryGlobalManager({
+          permission: {
+            read: {
+              "*": "ask",
+              [`${cwd}/*`]: "allow",
+              "src/*": "deny",
             },
           },
         });
@@ -3497,11 +3340,9 @@ permission:
       });
 
       it("matches the cross-cutting path surface against absolute allowlists", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: {
-              path: { "*": "ask", [`${cwd}/*`]: "allow" },
-            },
+        const manager = createInMemoryGlobalManager({
+          permission: {
+            path: { "*": "ask", [`${cwd}/*`]: "allow" },
           },
         });
         manager.configureForCwd(cwd);
@@ -3515,11 +3356,9 @@ permission:
       const cwd = "/workspace/project";
 
       it("evaluates precomputed policy values against the path surface", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: {
-              path: { "*": "ask", [`${cwd}/*`]: "allow" },
-            },
+        const manager = createInMemoryGlobalManager({
+          permission: {
+            path: { "*": "ask", [`${cwd}/*`]: "allow" },
           },
         });
         const intent: ResolvedAccessIntent = {
@@ -3535,11 +3374,9 @@ permission:
       });
 
       it("evaluates against the external_directory surface", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: {
-              external_directory: { "*": "ask", "/tmp/*": "allow" },
-            },
+        const manager = createInMemoryGlobalManager({
+          permission: {
+            external_directory: { "*": "ask", "/tmp/*": "allow" },
           },
         });
         const intent: ResolvedAccessIntent = {
@@ -3555,11 +3392,9 @@ permission:
       });
 
       it("falls back to the catch-all for an empty value list", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: {
-              path: { "*": "deny" },
-            },
+        const manager = createInMemoryGlobalManager({
+          permission: {
+            path: { "*": "deny" },
           },
         });
         const intent: ResolvedAccessIntent = {
@@ -3573,11 +3408,9 @@ permission:
       });
 
       it("applies session rules via the path-values intent", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: {
-              path: { "*": "ask", "src/*": "deny" },
-            },
+        const manager = createInMemoryGlobalManager({
+          permission: {
+            path: { "*": "ask", "src/*": "deny" },
           },
         });
         const sessionRules: Ruleset = [sessionRule("path_read", "src/*")];
@@ -3592,11 +3425,9 @@ permission:
       });
 
       it("last-match-wins across the provided aliases", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: {
-              path: { "*": "ask", [`${cwd}/*`]: "allow", "src/*": "deny" },
-            },
+        const manager = createInMemoryGlobalManager({
+          permission: {
+            path: { "*": "ask", [`${cwd}/*`]: "allow", "src/*": "deny" },
           },
         });
         const intent: ResolvedAccessIntent = {
@@ -3610,12 +3441,10 @@ permission:
       });
 
       it("does not apply an external_directory rule on the path surface", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: {
-              external_directory: { "*": "ask", "/tmp/*": "allow" },
-              path: { "*": "allow" },
-            },
+        const manager = createInMemoryGlobalManager({
+          permission: {
+            external_directory: { "*": "ask", "/tmp/*": "allow" },
+            path: { "*": "allow" },
           },
         });
         const intent: ResolvedAccessIntent = {

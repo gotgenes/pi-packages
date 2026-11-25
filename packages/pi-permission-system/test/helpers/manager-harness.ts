@@ -71,6 +71,14 @@ export function createInMemoryManager(
   });
 }
 
+/** The common case: a manager over one global scope and nothing else. */
+export function createInMemoryGlobalManager(
+  global: ScopeConfig,
+  mcpServerNames: readonly string[] = [],
+): PermissionManager {
+  return createInMemoryManager({ global }, mcpServerNames);
+}
+
 /**
  * Manager reading policy files at explicit paths, for tests that place config
  * outside an agentDir layout. Production derives every path from an agentDir.

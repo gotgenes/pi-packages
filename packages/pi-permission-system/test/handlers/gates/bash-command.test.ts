@@ -14,7 +14,7 @@ import type { PermissionCheckResult, PermissionState } from "#src/types";
 import { bashCommandOf, makeResolver } from "#test/helpers/gate-fixtures";
 import { makeCheckResult } from "#test/helpers/handler-fixtures";
 import {
-  createInMemoryManager,
+  createInMemoryGlobalManager,
   sessionRule,
 } from "#test/helpers/manager-harness";
 
@@ -765,9 +765,7 @@ describe("resolveBashCommandCheck: home-prefixed rules and commands", () => {
     command: string,
     sessionGrants: Ruleset = [],
   ): PermissionCheckResult {
-    const manager = createInMemoryManager({
-      global: { permission: { bash } },
-    });
+    const manager = createInMemoryGlobalManager({ permission: { bash } });
     const resolver = new PermissionResolver(manager, {
       getRuleset: () => sessionGrants,
     });
@@ -1587,7 +1585,7 @@ function resolverOver(
   sessionGrants: Ruleset = [],
 ): PermissionResolver {
   return new PermissionResolver(
-    createInMemoryManager({ global: { permission: { bash } } }),
+    createInMemoryGlobalManager({ permission: { bash } }),
     { getRuleset: () => sessionGrants },
   );
 }

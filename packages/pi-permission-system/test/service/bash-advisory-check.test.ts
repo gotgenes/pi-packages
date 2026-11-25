@@ -15,7 +15,7 @@ import type { PermissionCheckResult } from "#src/types";
 
 import { bashCommandOf } from "#test/helpers/gate-fixtures";
 import { makeCheckResult } from "#test/helpers/handler-fixtures";
-import { createInMemoryManager } from "#test/helpers/manager-harness";
+import { createInMemoryGlobalManager } from "#test/helpers/manager-harness";
 
 /**
  * Resolver whose `resolve` dispatches on the bash command text, so a test can
@@ -263,10 +263,8 @@ describe("resolveBashAdvisoryCheck", () => {
 
     it("resolves a unit's absolute argument spelling as the gate does", () => {
       const resolver = new PermissionResolver(
-        createInMemoryManager({
-          global: {
-            permission: { bash: { "*": "allow", "rm /tmp/a/*": "deny" } },
-          },
+        createInMemoryGlobalManager({
+          permission: { bash: { "*": "allow", "rm /tmp/a/*": "deny" } },
         }),
         { getRuleset: () => [] },
       );
