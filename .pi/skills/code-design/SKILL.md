@@ -13,6 +13,7 @@ These are the operator's choices among defensible alternatives.
 
 - The schools are _Clean Code_, _Working Effectively with Legacy Code_, _Extreme Programming Explained_, and Gary Bernhardt's functional core, imperative shell.
 - Name things for what they mean in the domain, in plain, conventional words, and rename an ambiguous name instead of documenting the ambiguity.
+  Follow Domain-Driven Design's ubiquitous language: one term per concept, the package glossary's where it has one.
 - Keep I/O and sequencing in a thin shell that receives its dependencies, and keep decisions free of I/O.
 - The object that holds the state a decision depends on is the receiver, and the per-call context is the argument.
 - Tell a collaborator what to do; do not ask it for data and decide on its behalf.
