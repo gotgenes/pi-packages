@@ -345,8 +345,8 @@ Entries must match Pi's configured package source string exactly, as it appears 
 
 What this does and does not do:
 
-- Only the matched packages' **extensions** are disabled, and only in children.
-  Their skills, prompts, and themes stay available to children.
+- Only the matched packages' **extensions** and **skills** are disabled, and only in children.
+  Their prompts and themes stay available to children.
 - The parent session is unaffected, as is the child's own settings — only the child's resource loading is filtered.
 - The exclusion happens during package resolution, so the extension's module is never imported and its factory never runs in the child.
 - Excluding a package keeps the **tools** that extension registers out of child sessions too: its factory never runs there, so an agent that names one of those tools in [`tools`](#tool-selection) gets nothing.

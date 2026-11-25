@@ -8,39 +8,39 @@ import {
 const MAGIC = "npm:@cortexkit/pi-magic-context";
 
 describe("withPackageExtensionsDisabled", () => {
-  it("promotes a matched string entry to the object form with extensions disabled", () => {
+  it("promotes a matched string entry to the object form with extensions and skills disabled", () => {
     const result = withPackageExtensionsDisabled(
       { packages: [MAGIC, "npm:keep-me"] },
       new Set([MAGIC]),
     );
-    expect(result.packages).toEqual([{ source: MAGIC, extensions: [] }, "npm:keep-me"]);
+    expect(result.packages).toEqual([{ source: MAGIC, extensions: [], skills: [] }, "npm:keep-me"]);
   });
 
-  it("preserves a matched object entry's other resource filters", () => {
+  it("empties a matched object entry's skills while preserving its prompts", () => {
     const result = withPackageExtensionsDisabled(
       { packages: [{ source: MAGIC, skills: ["skills/**"], prompts: ["prompts/**"] }] },
       new Set([MAGIC]),
     );
     expect(result.packages).toEqual([
-      { source: MAGIC, skills: ["skills/**"], prompts: ["prompts/**"], extensions: [] },
+      { source: MAGIC, skills: [], prompts: ["prompts/**"], extensions: [] },
     ]);
   });
 
-  it("replaces an existing extensions filter on a matched entry", () => {
+  it("replaces existing extensions and skills filters on a matched entry", () => {
     const result = withPackageExtensionsDisabled(
-      { packages: [{ source: MAGIC, extensions: ["index.ts"] }] },
+      { packages: [{ source: MAGIC, extensions: ["index.ts"], skills: ["skills/**"] }] },
       new Set([MAGIC]),
     );
-    expect(result.packages).toEqual([{ source: MAGIC, extensions: [] }]);
+    expect(result.packages).toEqual([{ source: MAGIC, extensions: [], skills: [] }]);
   });
 
-  it("preserves autoload: false, where an empty filter adds no extensions", () => {
+  it("preserves autoload: false, where empty filters add no extensions or skills", () => {
     const result = withPackageExtensionsDisabled(
       { packages: [{ source: MAGIC, autoload: false, skills: ["skills/**"] }] },
       new Set([MAGIC]),
     );
     expect(result.packages).toEqual([
-      { source: MAGIC, autoload: false, skills: ["skills/**"], extensions: [] },
+      { source: MAGIC, autoload: false, skills: [], extensions: [] },
     ]);
   });
 
@@ -90,18 +90,18 @@ describe("createExcludedPackagesStorage", () => {
     };
   }
 
-  it("builds a real SettingsManager whose packages disable the excluded extensions", () => {
+  it("builds a real SettingsManager whose packages disable the excluded extensions and skills", () => {
     const parent = createParent();
     const child = SettingsManager.fromStorage(
       createExcludedPackagesStorage(parent, new Set([MAGIC])),
     );
 
     expect(child.getGlobalSettings().packages).toEqual([
-      { source: MAGIC, extensions: [] },
+      { source: MAGIC, extensions: [], skills: [] },
       "npm:keep-me",
     ]);
     expect(child.getProjectSettings().packages).toEqual([
-      { source: MAGIC, skills: ["skills/**"], extensions: [] },
+      { source: MAGIC, skills: [], extensions: [] },
     ]);
   });
 
@@ -124,7 +124,7 @@ describe("createExcludedPackagesStorage", () => {
 
     expect(child.getProjectSettings()).toEqual({});
     expect(child.getGlobalSettings().packages).toEqual([
-      { source: MAGIC, extensions: [] },
+      { source: MAGIC, extensions: [], skills: [] },
       "npm:keep-me",
     ]);
   });
@@ -138,7 +138,7 @@ describe("createExcludedPackagesStorage", () => {
     expect(parent.getGlobalSettings().packages).toEqual([MAGIC, "npm:keep-me"]);
     const child = SettingsManager.fromStorage(storage);
     expect(child.getGlobalSettings().packages).toEqual([
-      { source: MAGIC, extensions: [] },
+      { source: MAGIC, extensions: [], skills: [] },
       "npm:keep-me",
     ]);
   });
