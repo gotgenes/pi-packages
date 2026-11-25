@@ -15,6 +15,7 @@ import {
 import {
   FilePolicyLoader,
   type PolicyLoaderOptions,
+  type PolicyScope,
   type ResolvedPolicyPaths,
 } from "#src/config/policy-loader";
 import type { PathFlavor } from "#src/path/path-flavor";
@@ -26,43 +27,32 @@ import type { Rule } from "#src/policy/rule";
 import type { PermissionState, ScopeConfig } from "#src/types";
 
 /**
+ * A scope the in-memory loader delivers. One carrying an `agentName` is
+ * delivered only when that agent's policy is loaded, as agent frontmatter is.
+ */
+export type InMemoryScope = PolicyScope & { readonly agentName?: string };
+
+/**
  * Minimal in-memory PolicyLoader for testing merge + evaluation logic
- * without touching the filesystem.
+ * without touching the filesystem. It delivers `scopes` in the order given,
+ * which is the precedence the manager composes them in.
  */
 export function createInMemoryPolicyLoader(
-  scopes: {
-    global?: ScopeConfig;
-    project?: ScopeConfig;
-    agent?: Record<string, ScopeConfig>;
-    projectAgent?: Record<string, ScopeConfig>;
-  } = {},
+  scopes: readonly InMemoryScope[] = [],
   mcpServerNames: readonly string[] = [],
 ): PolicyLoader {
   return {
-    loadScopes: (name?: string) => [
-      {
-        origin: "global",
-        config: scopes.global ?? {},
-        floorsWhenInvalid: false,
-      },
-      {
-        origin: "project",
-        config: scopes.project ?? {},
-        floorsWhenInvalid: true,
-      },
-      {
-        origin: "agent",
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- || is intentional: handles both falsy name and missing key
-        config: (name && scopes.agent?.[name]) || {},
-        floorsWhenInvalid: true,
-      },
-      {
-        origin: "project-agent",
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- || is intentional: handles both falsy name and missing key
-        config: (name && scopes.projectAgent?.[name]) || {},
-        floorsWhenInvalid: true,
-      },
-    ],
+    loadScopes: (agentName?: string) =>
+      scopes
+        .filter(
+          (scope) =>
+            scope.agentName === undefined || scope.agentName === agentName,
+        )
+        .map(({ origin, config, floorsWhenInvalid }) => ({
+          origin,
+          config,
+          floorsWhenInvalid,
+        })),
     getConfiguredMcpServerNames: () => mcpServerNames,
     getCacheStamp: () => "in-memory",
     getResolvedPolicyPaths: (): ResolvedPolicyPaths => ({
@@ -80,7 +70,7 @@ export function createInMemoryPolicyLoader(
 
 /** Manager backed by an in-memory PolicyLoader — no filesystem required. */
 export function createInMemoryManager(
-  scopes: Parameters<typeof createInMemoryPolicyLoader>[0] = {},
+  scopes: readonly InMemoryScope[] = [],
   mcpServerNames: readonly string[] = [],
 ): PermissionManager {
   return new PermissionManager({
@@ -93,7 +83,10 @@ export function createInMemoryGlobalManager(
   global: ScopeConfig,
   mcpServerNames: readonly string[] = [],
 ): PermissionManager {
-  return createInMemoryManager({ global }, mcpServerNames);
+  return createInMemoryManager(
+    [{ origin: "global", config: global, floorsWhenInvalid: false }],
+    mcpServerNames,
+  );
 }
 
 /**

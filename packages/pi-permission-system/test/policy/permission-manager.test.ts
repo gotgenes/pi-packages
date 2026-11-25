@@ -121,42 +121,85 @@ describe("PermissionManager", () => {
 
     describe("precedence between scopes", () => {
       it("project overrides global", () => {
-        const manager = createInMemoryManager({
-          global: { permission: { read: "ask" } },
-          project: { permission: { read: "allow" } },
-        });
+        const manager = createInMemoryManager([
+          {
+            origin: "global",
+            config: { permission: { read: "ask" } },
+            floorsWhenInvalid: false,
+          },
+          {
+            origin: "project",
+            config: { permission: { read: "allow" } },
+            floorsWhenInvalid: true,
+          },
+        ]);
         const result = checkTool(manager, "read", {});
         expect(result.state).toBe("allow");
         expect(result.origin).toBe("project");
       });
 
       it("agent overrides project", () => {
-        const manager = createInMemoryManager({
-          global: { permission: { read: "ask" } },
-          project: { permission: { read: "allow" } },
-          agent: { coder: { permission: { read: "deny" } } },
-        });
+        const manager = createInMemoryManager([
+          {
+            origin: "global",
+            config: { permission: { read: "ask" } },
+            floorsWhenInvalid: false,
+          },
+          {
+            origin: "project",
+            config: { permission: { read: "allow" } },
+            floorsWhenInvalid: true,
+          },
+          {
+            origin: "agent",
+            agentName: "coder",
+            config: { permission: { read: "deny" } },
+            floorsWhenInvalid: true,
+          },
+        ]);
         const result = checkTool(manager, "read", {}, "coder");
         expect(result.state).toBe("deny");
         expect(result.origin).toBe("agent");
       });
 
       it("project-agent overrides agent", () => {
-        const manager = createInMemoryManager({
-          global: { permission: { read: "deny" } },
-          agent: { coder: { permission: { read: "deny" } } },
-          projectAgent: { coder: { permission: { read: "allow" } } },
-        });
+        const manager = createInMemoryManager([
+          {
+            origin: "global",
+            config: { permission: { read: "deny" } },
+            floorsWhenInvalid: false,
+          },
+          {
+            origin: "agent",
+            agentName: "coder",
+            config: { permission: { read: "deny" } },
+            floorsWhenInvalid: true,
+          },
+          {
+            origin: "project-agent",
+            agentName: "coder",
+            config: { permission: { read: "allow" } },
+            floorsWhenInvalid: true,
+          },
+        ]);
         const result = checkTool(manager, "read", {}, "coder");
         expect(result.state).toBe("allow");
         expect(result.origin).toBe("project-agent");
       });
 
       it("deep-shallow merge preserves patterns from different scopes", () => {
-        const manager = createInMemoryManager({
-          global: { permission: { bash: { "git *": "allow" } } },
-          project: { permission: { bash: { "rm *": "deny" } } },
-        });
+        const manager = createInMemoryManager([
+          {
+            origin: "global",
+            config: { permission: { bash: { "git *": "allow" } } },
+            floorsWhenInvalid: false,
+          },
+          {
+            origin: "project",
+            config: { permission: { bash: { "rm *": "deny" } } },
+            floorsWhenInvalid: true,
+          },
+        ]);
         const gitResult = checkTool(manager, "bash", {
           command: "git status",
         });
@@ -171,29 +214,45 @@ describe("PermissionManager", () => {
       });
 
       it("string replaces object in override scope", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: { bash: { "git *": "ask", "npm *": "ask" } },
+        const manager = createInMemoryManager([
+          {
+            origin: "global",
+            config: {
+              permission: { bash: { "git *": "ask", "npm *": "ask" } },
+            },
+            floorsWhenInvalid: false,
           },
-          project: { permission: { bash: "allow" } },
-        });
+          {
+            origin: "project",
+            config: { permission: { bash: "allow" } },
+            floorsWhenInvalid: true,
+          },
+        ]);
         const result = checkTool(manager, "bash", { command: "anything" });
         expect(result.state).toBe("allow");
         expect(result.origin).toBe("project");
       });
 
       it("Project-level config overrides base bash patterns", () => {
-        const manager = createInMemoryManager({
-          global: {
-            permission: {
-              "*": "allow",
-              bash: { "*": "ask", "rm -rf *": "deny" },
+        const manager = createInMemoryManager([
+          {
+            origin: "global",
+            config: {
+              permission: {
+                "*": "allow",
+                bash: { "*": "ask", "rm -rf *": "deny" },
+              },
             },
+            floorsWhenInvalid: false,
           },
-          project: {
-            permission: { bash: { "rm -rf build": "allow" } },
+          {
+            origin: "project",
+            config: {
+              permission: { bash: { "rm -rf build": "allow" } },
+            },
+            floorsWhenInvalid: true,
           },
-        });
+        ]);
 
         const allowed = checkTool(manager, "bash", {
           command: "rm -rf build",
@@ -232,10 +291,18 @@ describe("PermissionManager", () => {
 
       it("both-object merge: project pattern overrides global pattern for same key", () => {
         // Both scopes define bash["git *"]; project wins for that pattern.
-        const manager = createInMemoryManager({
-          global: { permission: { bash: { "git *": "ask" } } },
-          project: { permission: { bash: { "git *": "allow" } } },
-        });
+        const manager = createInMemoryManager([
+          {
+            origin: "global",
+            config: { permission: { bash: { "git *": "ask" } } },
+            floorsWhenInvalid: false,
+          },
+          {
+            origin: "project",
+            config: { permission: { bash: { "git *": "allow" } } },
+            floorsWhenInvalid: true,
+          },
+        ]);
         const result = checkTool(manager, "bash", {
           command: "git status",
         });
@@ -245,20 +312,36 @@ describe("PermissionManager", () => {
 
       it("object replaces string: all patterns from replacing scope get origin 'project'", () => {
         // global defines read as a string "ask"; project replaces with object.
-        const manager = createInMemoryManager({
-          global: { permission: { read: "ask" } },
-          project: { permission: { read: { "*": "allow" } } },
-        });
+        const manager = createInMemoryManager([
+          {
+            origin: "global",
+            config: { permission: { read: "ask" } },
+            floorsWhenInvalid: false,
+          },
+          {
+            origin: "project",
+            config: { permission: { read: { "*": "allow" } } },
+            floorsWhenInvalid: true,
+          },
+        ]);
         const result = checkTool(manager, "read", {});
         expect(result.state).toBe("allow");
         expect(result.origin).toBe("project");
       });
 
       it("universal fallback from project carries origin 'project'", () => {
-        const manager = createInMemoryManager({
-          global: { permission: { "*": "ask" } },
-          project: { permission: { "*": "allow" } },
-        });
+        const manager = createInMemoryManager([
+          {
+            origin: "global",
+            config: { permission: { "*": "ask" } },
+            floorsWhenInvalid: false,
+          },
+          {
+            origin: "project",
+            config: { permission: { "*": "allow" } },
+            floorsWhenInvalid: true,
+          },
+        ]);
         const result = checkTool(manager, "read", {});
         expect(result.state).toBe("allow");
         expect(result.origin).toBe("project");
@@ -731,78 +814,144 @@ permission:
       };
 
       it("floors a lower-scope allow to ask when a project scope is invalid", () => {
-        const manager = createInMemoryManager({
-          global: { permission: { bash: "allow" } },
-          project: { invalid: true },
-        });
+        const manager = createInMemoryManager([
+          {
+            origin: "global",
+            config: { permission: { bash: "allow" } },
+            floorsWhenInvalid: false,
+          },
+          {
+            origin: "project",
+            config: { invalid: true },
+            floorsWhenInvalid: true,
+          },
+        ]);
         const result = manager.check(bashCheck);
         expect(result.state).toBe("ask");
         expect(result.origin).toBe("fail-closed");
       });
 
       it("preserves a lower-scope deny when a project scope is invalid", () => {
-        const manager = createInMemoryManager({
-          global: { permission: { bash: "deny" } },
-          project: { invalid: true },
-        });
+        const manager = createInMemoryManager([
+          {
+            origin: "global",
+            config: { permission: { bash: "deny" } },
+            floorsWhenInvalid: false,
+          },
+          {
+            origin: "project",
+            config: { invalid: true },
+            floorsWhenInvalid: true,
+          },
+        ]);
         const result = manager.check(bashCheck);
         expect(result.state).toBe("deny");
         expect(result.origin).not.toBe("fail-closed");
       });
 
       it("floors when an agent scope is invalid", () => {
-        const manager = createInMemoryManager({
-          global: { permission: { bash: "allow" } },
-          agent: { coder: { invalid: true } },
-        });
+        const manager = createInMemoryManager([
+          {
+            origin: "global",
+            config: { permission: { bash: "allow" } },
+            floorsWhenInvalid: false,
+          },
+          {
+            origin: "agent",
+            agentName: "coder",
+            config: { invalid: true },
+            floorsWhenInvalid: true,
+          },
+        ]);
         const result = manager.check({ ...bashCheck, agentName: "coder" });
         expect(result.state).toBe("ask");
         expect(result.origin).toBe("fail-closed");
       });
 
-      it("does not floor when the invalid flag is on the global scope", () => {
-        // Global is the lowest precedence — nothing more permissive is inherited,
-        // so its invalid flag is ignored by the clamp.
-        const manager = createInMemoryGlobalManager({
-          permission: { bash: "allow" },
-          invalid: true,
-        });
+      it("does not floor for an invalid scope that is not marked to floor", () => {
+        // Which scopes floor is the loader's call (global does not; see
+        // "over real files"); the manager honors the flag, not the name.
+        const manager = createInMemoryManager([
+          {
+            origin: "global",
+            config: { permission: { bash: "allow" } },
+            floorsWhenInvalid: false,
+          },
+          {
+            origin: "project",
+            config: { invalid: true },
+            floorsWhenInvalid: false,
+          },
+        ]);
         const result = manager.check(bashCheck);
         expect(result.state).toBe("allow");
-        expect(result.origin).not.toBe("fail-closed");
+        expect(result.origin).toBe("global");
+        expect(manager.getPolicyIssues()).toEqual([]);
       });
 
       it("does not floor when all scopes are valid", () => {
-        const manager = createInMemoryManager({
-          global: { permission: { bash: "allow" } },
-          project: { permission: { read: "allow" } },
-        });
+        const manager = createInMemoryManager([
+          {
+            origin: "global",
+            config: { permission: { bash: "allow" } },
+            floorsWhenInvalid: false,
+          },
+          {
+            origin: "project",
+            config: { permission: { read: "allow" } },
+            floorsWhenInvalid: true,
+          },
+        ]);
         const result = manager.check(bashCheck);
         expect(result.state).toBe("allow");
         expect(result.origin).not.toBe("fail-closed");
       });
 
       it("floors getToolPermission too (display parity)", () => {
-        const manager = createInMemoryManager({
-          global: { permission: { bash: "allow" } },
-          project: { invalid: true },
-        });
+        const manager = createInMemoryManager([
+          {
+            origin: "global",
+            config: { permission: { bash: "allow" } },
+            floorsWhenInvalid: false,
+          },
+          {
+            origin: "project",
+            config: { invalid: true },
+            floorsWhenInvalid: true,
+          },
+        ]);
         expect(manager.getToolPermission("bash")).toBe("ask");
       });
 
       it("keeps a floored tool exposed — the clamp makes allows ask, never deny", () => {
-        const manager = createInMemoryManager({
-          global: { permission: { bash: "allow" } },
-          project: { invalid: true },
-        });
+        const manager = createInMemoryManager([
+          {
+            origin: "global",
+            config: { permission: { bash: "allow" } },
+            floorsWhenInvalid: false,
+          },
+          {
+            origin: "project",
+            config: { invalid: true },
+            floorsWhenInvalid: true,
+          },
+        ]);
         expect(manager.isToolFullyDenied("bash")).toBe(false);
       });
 
       it("appends a fail-closed notice to config issues naming the invalid scope", () => {
-        const manager = createInMemoryManager({
-          global: { permission: { bash: "allow" } },
-          project: { invalid: true },
-        });
+        const manager = createInMemoryManager([
+          {
+            origin: "global",
+            config: { permission: { bash: "allow" } },
+            floorsWhenInvalid: false,
+          },
+          {
+            origin: "project",
+            config: { invalid: true },
+            floorsWhenInvalid: true,
+          },
+        ]);
         expect(manager.getPolicyIssues()).toEqual([
           "Invalid project configuration detected — failing closed: 'allow' rules " +
             "are clamped to 'ask' for this session until the configuration is corrected.",
@@ -810,10 +959,18 @@ permission:
       });
 
       it("emits no fail-closed notice when all scopes are valid", () => {
-        const manager = createInMemoryManager({
-          global: { permission: { bash: "allow" } },
-          project: { permission: { read: "allow" } },
-        });
+        const manager = createInMemoryManager([
+          {
+            origin: "global",
+            config: { permission: { bash: "allow" } },
+            floorsWhenInvalid: false,
+          },
+          {
+            origin: "project",
+            config: { permission: { read: "allow" } },
+            floorsWhenInvalid: true,
+          },
+        ]);
         expect(manager.getPolicyIssues()).toEqual([]);
       });
 
@@ -981,10 +1138,14 @@ permission:
       project?: ScopeConfig,
     ): PermissionManager {
       return new PermissionManager({
-        policyLoader: createInMemoryPolicyLoader({
-          global: { permission: global } as ScopeConfig,
-          project,
-        }),
+        policyLoader: createInMemoryPolicyLoader([
+          {
+            origin: "global",
+            config: { permission: global } as ScopeConfig,
+            floorsWhenInvalid: false,
+          },
+          { origin: "project", config: project ?? {}, floorsWhenInvalid: true },
+        ]),
         isYoloEnabled,
       });
     }
@@ -2152,14 +2313,21 @@ permission:
         });
 
         it("trims the tool name and honors the agent scope", () => {
-          const manager = createInMemoryManager({
-            global: { permission: { "*": "ask", bash: "deny" } },
-            agent: {
-              reviewer: {
+          const manager = createInMemoryManager([
+            {
+              origin: "global",
+              config: { permission: { "*": "ask", bash: "deny" } },
+              floorsWhenInvalid: false,
+            },
+            {
+              origin: "agent",
+              agentName: "reviewer",
+              config: {
                 permission: { bash: { "*": "deny", "git *": "ask" } },
               },
+              floorsWhenInvalid: true,
             },
-          });
+          ]);
           expect(manager.isToolFullyDenied(" bash ")).toBe(true);
           expect(manager.isToolFullyDenied("bash", "reviewer")).toBe(false);
         });
