@@ -12,7 +12,12 @@ import {
   getGlobalConfigPath,
   getProjectConfigPath,
 } from "#src/config/config-paths";
-import type { ResolvedPolicyPaths } from "#src/config/policy-loader";
+import {
+  FilePolicyLoader,
+  type PolicyLoaderOptions,
+  type ResolvedPolicyPaths,
+} from "#src/config/policy-loader";
+import type { PathFlavor } from "#src/path/path-flavor";
 import {
   PermissionManager,
   type PolicyLoader,
@@ -66,11 +71,25 @@ export function createInMemoryManager(
   });
 }
 
+/**
+ * Manager reading policy files at explicit paths, for tests that place config
+ * outside an agentDir layout. Production derives every path from an agentDir.
+ */
+export function createManagerFromPaths(
+  paths: PolicyLoaderOptions,
+  options: { flavor?: PathFlavor; isYoloEnabled?: () => boolean } = {},
+): PermissionManager {
+  return new PermissionManager({
+    policyLoader: new FilePolicyLoader(paths),
+    ...options,
+  });
+}
+
 /** Manager backed by nonexistent config paths — universal default is "ask". */
 export function createMissingConfigManager(
   mcpServerNames: readonly string[] = [],
 ): PermissionManager {
-  return new PermissionManager({
+  return createManagerFromPaths({
     globalConfigPath: "/nonexistent/config.json",
     agentsDir: "/nonexistent/agents",
     mcpServerNames: [...mcpServerNames],
@@ -115,7 +134,7 @@ export function createManager(
     writeFileSync(join(agentsDir, `${name}.md`), content, "utf8");
   }
 
-  const manager = new PermissionManager({
+  const manager = createManagerFromPaths({
     globalConfigPath,
     agentsDir,
     mcpServerNames: options.mcpServerNames,
@@ -186,7 +205,7 @@ export function createManagerWithProject(
     writeFileSync(join(projectAgentsDir, `${name}.md`), content, "utf8");
   }
 
-  const manager = new PermissionManager({
+  const manager = createManagerFromPaths({
     globalConfigPath,
     agentsDir,
     projectGlobalConfigPath,

@@ -32,6 +32,7 @@ import {
   createInMemoryManager,
   createInMemoryPolicyLoader,
   createManager,
+  createManagerFromPaths,
   createManagerWithConfig,
   createManagerWithProject,
   createMissingConfigManager,
@@ -2809,11 +2810,14 @@ permission:
       ];
 
       it("win32 manager folds case for path-surface matching", () => {
-        const manager = new PermissionManager({
-          globalConfigPath: "/nonexistent/config.json",
-          agentsDir: "/nonexistent/agents",
-          flavor: win32PathFlavor,
-        });
+        const manager = createManagerFromPaths(
+          {
+            globalConfigPath: "/nonexistent/config.json",
+            agentsDir: "/nonexistent/agents",
+            mcpServerNames: [],
+          },
+          { flavor: win32PathFlavor },
+        );
         const result = manager.check(
           {
             kind: "path-values",
@@ -2826,11 +2830,14 @@ permission:
       });
 
       it("posix manager keeps path-surface matching case-sensitive", () => {
-        const manager = new PermissionManager({
-          globalConfigPath: "/nonexistent/config.json",
-          agentsDir: "/nonexistent/agents",
-          flavor: posixPathFlavor,
-        });
+        const manager = createManagerFromPaths(
+          {
+            globalConfigPath: "/nonexistent/config.json",
+            agentsDir: "/nonexistent/agents",
+            mcpServerNames: [],
+          },
+          { flavor: posixPathFlavor },
+        );
         const result = manager.check(
           {
             kind: "path-values",
@@ -2852,11 +2859,14 @@ permission:
           new PathNormalizer(win32PathFlavor, "C:/projects/app"),
         );
         const values = program.externalAccesses()[0].path.matchValues();
-        const manager = new PermissionManager({
-          globalConfigPath: "/nonexistent/config.json",
-          agentsDir: "/nonexistent/agents",
-          flavor: win32PathFlavor,
-        });
+        const manager = createManagerFromPaths(
+          {
+            globalConfigPath: "/nonexistent/config.json",
+            agentsDir: "/nonexistent/agents",
+            mcpServerNames: [],
+          },
+          { flavor: win32PathFlavor },
+        );
 
         const allowed = manager.check(
           { kind: "path-values", surface: "external_directory_read", values },
@@ -2882,11 +2892,14 @@ permission:
         const values = program.pathRuleCandidates()[0].path.matchValues();
         expect(values).toEqual(["/dev/null"]);
 
-        const manager = new PermissionManager({
-          globalConfigPath: "/nonexistent/config.json",
-          agentsDir: "/nonexistent/agents",
-          flavor: win32PathFlavor,
-        });
+        const manager = createManagerFromPaths(
+          {
+            globalConfigPath: "/nonexistent/config.json",
+            agentsDir: "/nonexistent/agents",
+            mcpServerNames: [],
+          },
+          { flavor: win32PathFlavor },
+        );
 
         const allowed = manager.check(
           { kind: "path-values", surface: "path_read", values },
@@ -3622,7 +3635,7 @@ permission:
     describe("agentDir and configureForCwd", () => {
       it("ScopedPermissionManager is exported and PermissionManager satisfies it", () => {
         // Type-level assertion: assigning PermissionManager to ScopedPermissionManager compiles.
-        const manager = new PermissionManager({
+        const manager = createManagerFromPaths({
           globalConfigPath: "/nonexistent/config.json",
           agentsDir: "/nonexistent/agents",
         });
@@ -3834,7 +3847,7 @@ permission:
           "utf8",
         );
 
-        const manager = new PermissionManager({
+        const manager = createManagerFromPaths({
           globalConfigPath,
           agentsDir,
           globalMcpConfigPath: mcpConfigPath,
@@ -3905,7 +3918,7 @@ permission:
           writeFileSync(projectConfigPath, "{}", "utf-8");
           mkdirSync(projectAgentsDir, { recursive: true });
 
-          const pm = new PermissionManager({
+          const pm = createManagerFromPaths({
             globalConfigPath,
             agentsDir,
             projectGlobalConfigPath: projectConfigPath,
@@ -3933,7 +3946,7 @@ permission:
           const globalConfigPath = join(tempDir, "does-not-exist.jsonc");
           const agentsDir = join(tempDir, "no-agents");
 
-          const pm = new PermissionManager({
+          const pm = createManagerFromPaths({
             globalConfigPath,
             agentsDir,
           });

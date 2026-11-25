@@ -11,7 +11,7 @@ import { expect, test } from "vitest";
 import { buildResolvedConfigLogEntry } from "#src/config/config-reporter";
 import { createPermissionSystemLogger } from "#src/logging/logging";
 import type { ResolvedPolicyPaths } from "#src/policy/permission-manager";
-import { PermissionManager } from "#src/policy/permission-manager";
+import { createManagerFromPaths } from "#test/helpers/manager-harness";
 
 test("buildResolvedConfigLogEntry includes policy paths and legacy detection flags", () => {
   const policyPaths: ResolvedPolicyPaths = {
@@ -103,7 +103,7 @@ test("config.resolved entry appears in review log via logger", () => {
     writeFileSync(globalConfigPath, "{}", "utf-8");
     const agentsDir = join(tempDir, "agents");
 
-    const pm = new PermissionManager({
+    const pm = createManagerFromPaths({
       globalConfigPath,
       agentsDir,
     });
