@@ -341,12 +341,43 @@ List the offending packages under `excludedExtensionPackages` to keep their exte
 }
 ```
 
-Entries must match Pi's configured package source string exactly, as it appears in your Pi `settings.json` `packages` array — there is no glob or prefix matching.
+Entries must match Pi's configured package sources exactly, as they appear in your Pi `settings.json` `packages` array — there is no glob or prefix matching of sources.
+
+An entry may also be an object with a `source` plus resource filters, read as a blocklist: it equals the same entry in `settings.json` with `!` prefixed to each pattern, because `settings.json` filters say what loads while this list says what is excluded.
+
+```json
+{
+  "excludedExtensionPackages": [
+    "npm:@cortexkit/pi-magic-context",
+    { "source": "npm:pi-goal", "skills": ["**"] }
+  ]
+}
+```
+
+The string keeps pi-magic-context's skills, prompts, and themes available to children.
+The object also blocks all of pi-goal's skills.
+`"skills": ["myskill/**"]` blocks just the matching ones.
+`"skills": []` blocks nothing, the inverse of its `settings.json` meaning.
+`prompts` and `themes` filters work the same way.
+`extensions` in an entry is ignored, since exclusion always means no extensions in the child.
+
+What each form blocks:
+
+| Entry | Blocked in children |
+| --- | --- |
+| `"npm:pkg"` | extensions only |
+| `{ "source": "npm:pkg" }` | everything: extensions and all skills, prompts, and themes |
+| `{ "source": "npm:pkg", "skills": ["**"] }` | extensions + all skills |
+| `{ "source": "npm:pkg", "skills": ["myskill/**"] }` | extensions + matching skills; the rest stay available |
+| `{ "source": "npm:pkg", "skills": [] }` | extensions only, since an empty list blocks nothing |
 
 What this does and does not do:
 
-- Only the matched packages' **extensions** are disabled, and only in children.
+- A bare string disables only the matched package's **extensions**, and only in children.
   Their skills, prompts, and themes stay available to children.
+- An object entry's patterns name resources to also keep out of the child:
+  `{ "source": "npm:pi-goal", "skills": ["**"] }` blocks its skills too.
+  `extensions: []` is always applied to an excluded package, whatever the entry says.
 - The parent session is unaffected, as is the child's own settings — only the child's resource loading is filtered.
 - The exclusion happens during package resolution, so the extension's module is never imported and its factory never runs in the child.
 - Excluding a package keeps the **tools** that extension registers out of child sessions too: its factory never runs there, so an agent that names one of those tools in [`tools`](#tool-selection) gets nothing.

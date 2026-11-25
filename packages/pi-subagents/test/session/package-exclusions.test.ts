@@ -1,9 +1,7 @@
 import { SettingsManager } from "@earendil-works/pi-coding-agent";
 import { describe, expect, it, vi } from "vitest";
-import {
-  createExcludedPackagesStorage,
-  withPackageExtensionsDisabled,
-} from "#src/session/package-exclusions";
+import * as pkgExclusions from "#src/session/package-exclusions";
+const { createExcludedPackagesStorage, withPackageExtensionsDisabled } = pkgExclusions;
 
 const MAGIC = "npm:@cortexkit/pi-magic-context";
 
@@ -153,5 +151,71 @@ describe("createExcludedPackagesStorage", () => {
     await child.reload();
 
     expect(child.getGlobalSettings().packages).toEqual(["npm:added-later"]);
+  });
+});
+
+describe("object-entry blocklists", () => {
+  it("prefixes bare patterns with !, preserving the entry's other resources", () => {
+    const result = withPackageExtensionsDisabled(
+      { packages: [{ source: MAGIC, prompts: ["prompts/**"] }] },
+      new Map([[MAGIC, { skills: ["myskill/**"] }]]),
+    );
+    expect(result.packages).toEqual([
+      { source: MAGIC, prompts: ["prompts/**"], skills: ["!myskill/**"], extensions: [] },
+    ]);
+  });
+
+  it("treats an empty list as blocking nothing: the base view stands", () => {
+    const result = withPackageExtensionsDisabled(
+      { packages: [{ source: MAGIC, skills: ["skills/**"] }] },
+      new Map([[MAGIC, { skills: [] }]]),
+    );
+    expect(result.packages).toEqual([{ source: MAGIC, skills: ["skills/**"], extensions: [] }]);
+  });
+
+  it("passes patterns that already carry Pi's markers through unchanged", () => {
+    const result = withPackageExtensionsDisabled(
+      { packages: [MAGIC] },
+      new Map([[MAGIC, { skills: ["!already/**", "+exact.md"] }]]),
+    );
+    expect(result.packages).toEqual([
+      { source: MAGIC, skills: ["!already/**", "+exact.md"], extensions: [] },
+    ]);
+  });
+
+  it("always empties extensions, whatever the entry says", () => {
+    const result = withPackageExtensionsDisabled(
+      { packages: [MAGIC] },
+      new Map([[MAGIC, { extensions: ["index.ts"] }]]),
+    );
+    expect(result.packages).toEqual([{ source: MAGIC, extensions: [] }]);
+  });
+
+  it("synthesizes the inverted filters through the storage backend", () => {
+    const parent = {
+      getGlobalSettings: vi.fn(() => ({ packages: [MAGIC] })),
+      getProjectSettings: vi.fn(() => ({ packages: [] })),
+    };
+    const child = SettingsManager.fromStorage(
+      createExcludedPackagesStorage(parent, new Map([[MAGIC, { skills: ["**"] }]])),
+    );
+    expect(child.getGlobalSettings().packages).toEqual([
+      { source: MAGIC, skills: ["!**"], extensions: [] },
+    ]);
+  });
+});
+
+describe("entry normalization", () => {
+  it("blocks every resource for a bare object: nothing listed means everything", () => {
+    const { excludedFiltersBySource } = pkgExclusions;
+    const map = excludedFiltersBySource([{ source: MAGIC }, "npm:keep-me"]);
+    expect(map.get(MAGIC)).toEqual({ skills: ["**"], prompts: ["**"], themes: ["**"] });
+    expect(map.get("npm:keep-me")).toEqual({});
+  });
+
+  it("keeps an object that lists blocks as exactly those blocks", () => {
+    const { excludedFiltersBySource } = pkgExclusions;
+    const map = excludedFiltersBySource([{ source: MAGIC, skills: ["**"] }]);
+    expect(map.get(MAGIC)).toEqual({ skills: ["**"] });
   });
 });

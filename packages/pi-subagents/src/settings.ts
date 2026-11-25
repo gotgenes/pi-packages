@@ -6,6 +6,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { type LayeredSettingsSource, loadLayeredSettings } from "#src/layered-settings";
 import { isBelowMinimumTurns, MIN_MAX_TURNS } from "#src/lifecycle/turn-limits";
+import type { PackageSource } from "@earendil-works/pi-coding-agent";
 import type { PromptInheritance } from "#src/types";
 export interface SubagentsSettings {
   maxConcurrent?: number;
@@ -39,10 +40,13 @@ export interface SubagentsSettings {
   midRunUpdates?: boolean;
   /**
    * Pi package sources whose extensions child sessions must not load, matched
-   * against Pi's configured source string exactly (e.g. `npm:@scope/pkg`).
-   * The package's skills, prompts, and themes stay available to children.
+   * exactly (e.g. `npm:@scope/pkg`). A bare string keeps the package's other
+   * resources available to children. An object entry is a blocklist — the
+   * same filters as `settings.json` with `!` implied, so
+   * `{ "source": "npm:pkg", "skills": ["**"] }` blocks all of its skills;
+   * `prompts` and `themes` filters work the same way.
    */
-  excludedExtensionPackages?: string[];
+  excludedExtensionPackages?: PackageSource[];
   /**
    * Prompt-inheritance strategy per provider, keyed by the provider id of the
    * child's resolved model. Every provider not listed inherits `"full"`.
@@ -71,7 +75,7 @@ export interface SettingsSnapshot {
    * It must round-trip: the key has no `/subagents:settings` affordance, so a
    * hand-edited value would otherwise be erased by any unrelated setting change.
    */
-  excludedExtensionPackages?: string[];
+  excludedExtensionPackages?: PackageSource[];
   /** Present only when non-empty, and round-tripped for the same reason. */
   promptInheritance?: Record<string, PromptInheritance>;
 }
@@ -99,7 +103,7 @@ export class SettingsManager {
   private _unconsumedSessionRetentionMinutes: number = DEFAULT_UNCONSUMED_RETENTION_MINUTES;
   private _abortAllOnInterrupt: boolean = DEFAULT_ABORT_ALL_ON_INTERRUPT;
   private _midRunUpdates: boolean = DEFAULT_MID_RUN_UPDATES;
-  private _excludedExtensionPackages: string[] = [];
+  private _excludedExtensionPackages: PackageSource[] = [];
   private _promptInheritance: Record<string, PromptInheritance> = {};
 
   private readonly emit: SettingsEmit;
@@ -174,7 +178,7 @@ export class SettingsManager {
 
   // ── excludedExtensionPackages: hand-edited only; no /subagents:settings affordance ──
 
-  get excludedExtensionPackages(): readonly string[] {
+  get excludedExtensionPackages(): readonly PackageSource[] {
     return this._excludedExtensionPackages;
   }
 
@@ -397,11 +401,17 @@ function sanitize(raw: unknown): SubagentsSettings {
     out.midRunUpdates = r.midRunUpdates;
   }
   if (Array.isArray(r.excludedExtensionPackages)) {
-    const sources = r.excludedExtensionPackages
-      .filter((value): value is string => typeof value === "string")
-      .map((value) => value.trim())
-      .filter(Boolean);
-    out.excludedExtensionPackages = [...new Set(sources)];
+    out.excludedExtensionPackages = r.excludedExtensionPackages
+      .map((v) => (typeof v === "string" ? v.trim() : v))
+      .filter(
+        (v): v is PackageSource =>
+          typeof v === "string"
+            ? v !== ""
+            : typeof v === "object" &&
+              v !== null &&
+              typeof (v as { source?: unknown }).source === "string" &&
+              (v as { source: string }).source.trim() !== "",
+      );
   }
   const promptInheritance = sanitizePromptInheritance(r.promptInheritance);
   if (promptInheritance) {
