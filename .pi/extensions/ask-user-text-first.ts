@@ -8,11 +8,14 @@
  * Pi emits the assistant message's `message_end` before executing its tool calls, so the guard
  * records whether that message carried a non-empty text block and blocks `ask_user` when it did
  * not. Tool-result messages also emit `message_end`; only assistant messages update the record.
- * When the blocked message held thinking blocks, the reason says the briefing stayed in thinking:
- * that is the recurring shape, and the generic reason led to re-sends with the same mistake.
- * From the second consecutive block on, the reason stops the retry loop instead: a re-send
- * repeats the same shape, and a plain-text reply that ends the turn is what reliably recovers.
- * A message with visible text resets the count.
+ *
+ * The usual cause is model-side: recent models sometimes emit the prose that precedes a tool call
+ * as a second thinking block instead of a text block, and the model cannot steer which channel it
+ * lands in. A reply that ends without a tool call is not affected. So the block reason asks for the
+ * shape that recovers — plain reply text that ends the turn — on the first block, not for a re-sent
+ * `ask_user` call. Measured over this repo's sessions (2026-11-25): asked to re-send with text,
+ * the model produced text plus `ask_user` in 1 of 38 replies; asked to end the turn in plain text,
+ * it did so in 3 of 3.
  *
  * Interim: `@gotgenes/pi-ask` absorbs this guard (#1087).
  */
@@ -21,23 +24,16 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 const ASK_TOOL_NAME = "ask_user";
 
-const BLOCK_REASON = [
-  "this assistant message has no visible text.",
-  "The operator sees only your visible text and the ask_user form, never your reasoning.",
-  "Write the context the questions depend on — findings, trade-offs, what each option means — as visible text,",
-  "then call ask_user again in that same response.",
+const NO_TEXT =
+  "ask_user blocked: this message has no text block, so the operator would see only the form.";
+
+const BRIEFING_IN_THINKING = [
+  "Your briefing went into a thinking block, which the operator never sees;",
+  "recent models do this when a reply ends in a tool call, and retrying the call repeats it.",
 ].join(" ");
 
-const THINKING_ONLY_REASON = [
-  "this assistant message held only thinking blocks — prose written while thinking is not visible.",
-  "End the thinking, write the briefing as reply text, then call ask_user in that same response.",
-].join(" ");
-
-const REPEAT_REASON = [
-  "ask_user has been blocked twice in a row: your briefing is still in thinking, not in a reply.",
-  "Stop calling ask_user: write the briefing and the questions as plain reply text and end your turn;",
-  "the operator answers in chat.",
-].join(" ");
+const RECOVERY =
+  "Write the briefing and the questions as plain reply text, with no tool call, and end your turn; the operator answers in chat.";
 
 interface ContentBlock {
   type: string;
@@ -60,28 +56,25 @@ function hasThinking(content: unknown): boolean {
   );
 }
 
+function blockReason(hadThinking: boolean): string {
+  return hadThinking
+    ? `${NO_TEXT} ${BRIEFING_IN_THINKING} ${RECOVERY}`
+    : `${NO_TEXT} ${RECOVERY}`;
+}
+
 export default function askUserTextFirst(pi: ExtensionAPI): void {
   let lastAssistantHadText = true;
   let lastAssistantHadThinking = false;
-  let consecutiveBlocks = 0;
 
   pi.on("message_end", (event) => {
     const message = event.message as { role?: string; content?: unknown };
     if (message.role !== "assistant") return;
     lastAssistantHadText = hasVisibleText(message.content);
     lastAssistantHadThinking = hasThinking(message.content);
-    if (lastAssistantHadText) consecutiveBlocks = 0;
   });
 
   pi.on("tool_call", (event) => {
     if (event.toolName !== ASK_TOOL_NAME || lastAssistantHadText) return;
-    consecutiveBlocks += 1;
-    const reason =
-      consecutiveBlocks >= 2
-        ? REPEAT_REASON
-        : lastAssistantHadThinking
-          ? THINKING_ONLY_REASON
-          : BLOCK_REASON;
-    return { block: true, reason };
+    return { block: true, reason: blockReason(lastAssistantHadThinking) };
   });
 }
