@@ -54,3 +54,23 @@ The package suite went from 6553 to 6563 tests: +5 file-backed floor rows, +4 pe
 - Measured after the change: scope-specific load methods 8 → 0, `project-agent` mentions in `src/` 28 → 7, `mergeScopesWithOrigins` in `permission-manager.ts` still 2 (that is #1108's), flat top-level tests in `test/policy/` 0, `try` blocks there 36.
 - Pre-completion reviewer: WARN.
   Reviewer warnings: the same `ScopeOrigin` is named `scope` on `ResolvedScopePath` (the log contract the operator approved) and `origin` on `PolicyScope`; `scope()`/`resolvedPath()` are structurally duplicated across the two source classes, which it rated acceptable for two kinds.
+
+## Stage: Sync (worktree) (2026-11-25T17:27:24Z)
+
+### Session summary
+
+Both reviewer warnings were settled with the operator before syncing; lint, `fallow dead-code`, `check`, and the full test suite pass after the resulting commits.
+The plan's marker is `**Release:** ship independently`, and the issue now ships a `feat!:` (major) for `pi-permission-system`.
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-1134--/2026-11-24T05-51-30-612Z_01a20c1b-fd33-777a-8288-ed8ff2e950d1.jsonl` — read with `read_session_file({ path: "<path>" })` for message-level verification at land/retro time.
+
+### Observations
+
+- Naming warning, resolved by ubiquitous language (operator: "a big help to cognitive debt").
+  The value is a scope's *name* wherever it identifies a scope, and becomes an *origin* only when stamped on a rule.
+  `ScopeOrigin` became `ScopeName` and `PolicyScope.origin` became `name` (`refactor(pi-permission-system): name a config scope by its name, not its origin`).
+  The `config.resolved` entry's key became `name`, folded into the `feat!:` commit through an `amend!` commit so its `BREAKING CHANGE:` footer reads `{ name, path, exists }`.
+  The glossary's Origin entry now says a scope has a name, not an origin.
+- Duplication warning: the operator agreed the better organization is composition (one scope source = a locator for *which file* + a reader for *how it is read*), deferred to the step that first needs it.
+  It is recorded as #1127's `Ride-along tidying` in the roadmap, with a note on #1028 to take it if planned first (`docs(pi-permission-system): plan the scope-source locator/reader split as #1127's ride-along`).
+- The `amend!` commit is squashed into the `feat!:` commit by this sync's rebase (`--autosquash`), so `main` receives one `feat!:` commit with the corrected footer.
