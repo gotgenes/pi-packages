@@ -13,6 +13,7 @@ import { getPathPolicyValues } from "#src/access-intent/path-normalization";
 import {
   getGlobalConfigPath,
   getProjectAgentsDir,
+  getProjectConfigPath,
 } from "#src/config/config-paths";
 import { posixPathFlavor, win32PathFlavor } from "#src/path/path-flavor";
 import { PathNormalizer } from "#src/path/path-normalizer";
@@ -3814,8 +3815,12 @@ permission:
           const manager = new PermissionManager({ agentDir });
           manager.configureForCwd(cwd);
           const paths = manager.getResolvedPolicyPaths();
-          expect(paths.projectAgentsDir).toBe(getProjectAgentsDir(cwd));
-          expect(paths.agentsDir).toBe(join(agentDir, "agents"));
+          expect(paths.map(({ name, path }) => [name, path])).toEqual([
+            ["global", getGlobalConfigPath(agentDir)],
+            ["project", getProjectConfigPath(cwd)],
+            ["agent", join(agentDir, "agents")],
+            ["project-agent", getProjectAgentsDir(cwd)],
+          ]);
         } finally {
           cleanup();
         }
@@ -4009,16 +4014,12 @@ permission:
             projectAgentsDir,
           });
 
-          const result = pm.getResolvedPolicyPaths();
-
-          expect(result.globalConfigPath).toBe(globalConfigPath);
-          expect(result.globalConfigExists).toBe(true);
-          expect(result.projectConfigPath).toBe(projectConfigPath);
-          expect(result.projectConfigExists).toBe(true);
-          expect(result.agentsDir).toBe(agentsDir);
-          expect(result.agentsDirExists).toBe(true);
-          expect(result.projectAgentsDir).toBe(projectAgentsDir);
-          expect(result.projectAgentsDirExists).toBe(true);
+          expect(pm.getResolvedPolicyPaths()).toEqual([
+            { name: "global", path: globalConfigPath, exists: true },
+            { name: "project", path: projectConfigPath, exists: true },
+            { name: "agent", path: agentsDir, exists: true },
+            { name: "project-agent", path: projectAgentsDir, exists: true },
+          ]);
         } finally {
           rmSync(tempDir, { recursive: true, force: true });
         }
@@ -4035,16 +4036,12 @@ permission:
             agentsDir,
           });
 
-          const result = pm.getResolvedPolicyPaths();
-
-          expect(result.globalConfigPath).toBe(globalConfigPath);
-          expect(result.globalConfigExists).toBe(false);
-          expect(result.projectConfigPath).toBe(null);
-          expect(result.projectConfigExists).toBe(false);
-          expect(result.agentsDir).toBe(agentsDir);
-          expect(result.agentsDirExists).toBe(false);
-          expect(result.projectAgentsDir).toBe(null);
-          expect(result.projectAgentsDirExists).toBe(false);
+          expect(pm.getResolvedPolicyPaths()).toEqual([
+            { name: "global", path: globalConfigPath, exists: false },
+            { name: "project", path: null, exists: false },
+            { name: "agent", path: agentsDir, exists: false },
+            { name: "project-agent", path: null, exists: false },
+          ]);
         } finally {
           rmSync(tempDir, { recursive: true, force: true });
         }

@@ -1,14 +1,8 @@
-import type { ResolvedPolicyPaths } from "#src/policy/permission-manager";
+import type { ResolvedPolicyPaths } from "./policy-loader";
 
 export interface ResolvedConfigLogEntry {
-  globalConfigPath: string;
-  globalConfigExists: boolean;
-  projectConfigPath: string | null;
-  projectConfigExists: boolean;
-  agentsDir: string;
-  agentsDirExists: boolean;
-  projectAgentsDir: string | null;
-  projectAgentsDirExists: boolean;
+  /** Every config scope's location, lowest precedence first. */
+  scopes: ResolvedPolicyPaths;
   legacyGlobalPolicyDetected: boolean;
   legacyProjectPolicyDetected: boolean;
   legacyExtensionConfigDetected: boolean;
@@ -25,7 +19,7 @@ export function buildResolvedConfigLogEntry(
   options: BuildResolvedConfigLogEntryOptions,
 ): ResolvedConfigLogEntry {
   return {
-    ...options.policyPaths,
+    scopes: options.policyPaths,
     legacyGlobalPolicyDetected: options.legacyGlobalPolicyDetected ?? false,
     legacyProjectPolicyDetected: options.legacyProjectPolicyDetected ?? false,
     legacyExtensionConfigDetected:

@@ -242,18 +242,14 @@ describe("FilePolicyLoader project-agent scope", () => {
 // ---------------------------------------------------------------------------
 
 describe("FilePolicyLoader.getResolvedPolicyPaths", () => {
-  it("returns correct paths and existence when files exist", () => {
+  it("lists each scope's path and existence, lowest precedence first", () => {
     const { loader, globalConfigPath, agentsDir } = makeLoader();
-    const paths = loader.getResolvedPolicyPaths();
-
-    expect(paths.globalConfigPath).toBe(globalConfigPath);
-    expect(paths.globalConfigExists).toBe(true);
-    expect(paths.agentsDir).toBe(agentsDir);
-    expect(paths.agentsDirExists).toBe(true);
-    expect(paths.projectConfigPath).toBeNull();
-    expect(paths.projectConfigExists).toBe(false);
-    expect(paths.projectAgentsDir).toBeNull();
-    expect(paths.projectAgentsDirExists).toBe(false);
+    expect(loader.getResolvedPolicyPaths()).toEqual([
+      { name: "global", path: globalConfigPath, exists: true },
+      { name: "project", path: null, exists: false },
+      { name: "agent", path: agentsDir, exists: true },
+      { name: "project-agent", path: null, exists: false },
+    ]);
   });
 });
 

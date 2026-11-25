@@ -65,16 +65,20 @@ function getConfiguredMcpServerNamesFromPaths(
 // Resolved policy paths
 // ---------------------------------------------------------------------------
 
-export interface ResolvedPolicyPaths {
-  globalConfigPath: string;
-  globalConfigExists: boolean;
-  projectConfigPath: string | null;
-  projectConfigExists: boolean;
-  agentsDir: string;
-  agentsDirExists: boolean;
-  projectAgentsDir: string | null;
-  projectAgentsDirExists: boolean;
+/**
+ * Where one config scope is read from, and whether that place exists. An
+ * agent scope names its directory: which agent's file loads is decided per
+ * check, not here.
+ */
+export interface ResolvedScopePath {
+  readonly name: ScopeOrigin;
+  /** `null` when the scope has no location (no project is configured). */
+  readonly path: string | null;
+  readonly exists: boolean;
 }
+
+/** Every config scope's location, lowest precedence first. */
+export type ResolvedPolicyPaths = readonly ResolvedScopePath[];
 
 // ---------------------------------------------------------------------------
 // PolicyLoader interface
@@ -103,7 +107,7 @@ export interface PolicyLoader {
   getConfiguredMcpServerNames(): readonly string[];
   /** Combined mtime stamp for cache invalidation. */
   getCacheStamp(agentName?: string): string;
-  /** Resolved paths for the /permission-system show command. */
+  /** Where each scope is read from, for the `config.resolved` log entry. */
   getResolvedPolicyPaths(): ResolvedPolicyPaths;
 }
 
@@ -158,10 +162,6 @@ export interface PolicyLoaderOptions {
  * mtime-based caching.
  */
 export class FilePolicyLoader implements PolicyLoader {
-  private readonly globalConfigPath: string;
-  private readonly agentsDir: string;
-  private readonly projectGlobalConfigPath: string | null;
-  private readonly projectAgentsDir: string | null;
   /** Every scope source, lowest precedence first. */
   private readonly scopeSources: readonly ScopeSource[];
   private readonly globalMcpConfigPath: string;
@@ -173,18 +173,29 @@ export class FilePolicyLoader implements PolicyLoader {
   > | null = null;
 
   constructor(options: PolicyLoaderOptions = {}) {
-    this.globalConfigPath =
-      options.globalConfigPath ?? defaultGlobalConfigPath();
-    this.agentsDir = options.agentsDir ?? defaultAgentsDir();
-    this.projectGlobalConfigPath = options.projectGlobalConfigPath ?? null;
-    this.projectAgentsDir = options.projectAgentsDir ?? null;
     // Global is the lowest precedence, so nothing more permissive is
     // inherited beneath it: an invalid global file does not floor.
     this.scopeSources = [
-      new ConfigFileScopeSource("global", this.globalConfigPath, false),
-      new ConfigFileScopeSource("project", this.projectGlobalConfigPath, true),
-      new AgentFileScopeSource("agent", this.agentsDir, true),
-      new AgentFileScopeSource("project-agent", this.projectAgentsDir, true),
+      new ConfigFileScopeSource(
+        "global",
+        options.globalConfigPath ?? defaultGlobalConfigPath(),
+        false,
+      ),
+      new ConfigFileScopeSource(
+        "project",
+        options.projectGlobalConfigPath ?? null,
+        true,
+      ),
+      new AgentFileScopeSource(
+        "agent",
+        options.agentsDir ?? defaultAgentsDir(),
+        true,
+      ),
+      new AgentFileScopeSource(
+        "project-agent",
+        options.projectAgentsDir ?? null,
+        true,
+      ),
     ];
     this.globalMcpConfigPath =
       options.globalMcpConfigPath ?? defaultGlobalMcpConfigPath();
@@ -237,20 +248,7 @@ export class FilePolicyLoader implements PolicyLoader {
   // ── Resolved paths ────────────────────────────────────────────────────
 
   getResolvedPolicyPaths(): ResolvedPolicyPaths {
-    return {
-      globalConfigPath: this.globalConfigPath,
-      globalConfigExists: existsSync(this.globalConfigPath),
-      projectConfigPath: this.projectGlobalConfigPath,
-      projectConfigExists: this.projectGlobalConfigPath
-        ? existsSync(this.projectGlobalConfigPath)
-        : false,
-      agentsDir: this.agentsDir,
-      agentsDirExists: existsSync(this.agentsDir),
-      projectAgentsDir: this.projectAgentsDir,
-      projectAgentsDirExists: this.projectAgentsDir
-        ? existsSync(this.projectAgentsDir)
-        : false,
-    };
+    return this.scopeSources.map((source) => source.resolvedPath());
   }
 }
 
@@ -263,6 +261,7 @@ interface ScopeSource {
   scope(agentName?: string): PolicyScope;
   /** The file's mtime stamp, for the loader's combined cache stamp. */
   stamp(agentName?: string): string;
+  resolvedPath(): ResolvedScopePath;
 }
 
 /**
@@ -313,6 +312,14 @@ class ConfigFileScopeSource implements ScopeSource {
 
   stamp(): string {
     return this.path ? getFileStamp(this.path) : "none";
+  }
+
+  resolvedPath(): ResolvedScopePath {
+    return {
+      name: this.origin,
+      path: this.path,
+      exists: this.path ? existsSync(this.path) : false,
+    };
   }
 }
 
@@ -387,5 +394,13 @@ class AgentFileScopeSource implements ScopeSource {
     return this.dir && agentName
       ? getFileStamp(join(this.dir, `${agentName}.md`))
       : "none";
+  }
+
+  resolvedPath(): ResolvedScopePath {
+    return {
+      name: this.origin,
+      path: this.dir,
+      exists: this.dir ? existsSync(this.dir) : false,
+    };
   }
 }

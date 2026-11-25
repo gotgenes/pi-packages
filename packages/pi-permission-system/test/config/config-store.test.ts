@@ -52,22 +52,15 @@ import { createTmpFixture, type TmpFixture } from "#test/helpers/tmp-fixture";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-function makePolicyPathProvider(
-  paths?: Partial<ResolvedPolicyPaths>,
-): ResolvedPolicyPathProvider {
+function makePolicyPathProvider(): ResolvedPolicyPathProvider {
   return {
     getResolvedPolicyPaths: vi.fn(
-      (): ResolvedPolicyPaths => ({
-        globalConfigPath: "/agent/config.json",
-        globalConfigExists: false,
-        projectConfigPath: null,
-        projectConfigExists: false,
-        agentsDir: "/agent/agents",
-        agentsDirExists: false,
-        projectAgentsDir: null,
-        projectAgentsDirExists: false,
-        ...paths,
-      }),
+      (): ResolvedPolicyPaths => [
+        { name: "global", path: "/agent/config.json", exists: false },
+        { name: "project", path: null, exists: false },
+        { name: "agent", path: "/agent/agents", exists: false },
+        { name: "project-agent", path: null, exists: false },
+      ],
     ),
   };
 }

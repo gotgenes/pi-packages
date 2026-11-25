@@ -18,20 +18,23 @@
 
 Enable `"debugLog": true` in your config to write verbose diagnostics to `logs/pi-permission-system-debug.jsonl`.
 
-On every session start, the extension emits a `config.resolved` entry to both logs listing the resolved config paths and whether each exists.
-This makes it easy to verify which files the extension actually loaded:
+On every session start, the extension emits a `config.resolved` entry to both logs listing each config scope's location and whether it exists.
+This makes it easy to verify which files the extension actually loaded.
+
+The `scopes` array is listed from lowest to highest precedence, so a later entry overrides an earlier one, and the last is the highest-precedence scope.
+A decision whose `origin` is a config scope names one of these entries.
+The two agent scopes report their agents directory, since which agent's file loads is decided per check.
+A `path` of `null` means the scope has no location, such as the project scopes when no project is configured.
 
 ```jsonc
 {
   "event": "config.resolved",
-  "globalConfigPath": "/…/.pi/agent/extensions/pi-permission-system/config.json",
-  "globalConfigExists": true,
-  "projectConfigPath": "/…/my-project/.pi/extensions/pi-permission-system/config.json",
-  "projectConfigExists": false,
-  "agentsDir": "/…/.pi/agent/agents",
-  "agentsDirExists": true,
-  "projectAgentsDir": "/…/my-project/.pi/agents",
-  "projectAgentsDirExists": false,
+  "scopes": [
+    { "name": "global", "path": "/…/.pi/agent/extensions/pi-permission-system/config.json", "exists": true },
+    { "name": "project", "path": "/…/my-project/.pi/extensions/pi-permission-system/config.json", "exists": false },
+    { "name": "agent", "path": "/…/.pi/agent/agents", "exists": true },
+    { "name": "project-agent", "path": "/…/my-project/.pi/agents", "exists": false }
+  ],
   "legacyGlobalPolicyDetected": false,
   "legacyProjectPolicyDetected": false,
   "legacyExtensionConfigDetected": false

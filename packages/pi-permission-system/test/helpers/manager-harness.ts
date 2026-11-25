@@ -55,16 +55,9 @@ export function createInMemoryPolicyLoader(
         })),
     getConfiguredMcpServerNames: () => mcpServerNames,
     getCacheStamp: () => "in-memory",
-    getResolvedPolicyPaths: (): ResolvedPolicyPaths => ({
-      globalConfigPath: "/in-memory/config.json",
-      globalConfigExists: true,
-      projectConfigPath: null,
-      projectConfigExists: false,
-      agentsDir: "/in-memory/agents",
-      agentsDirExists: false,
-      projectAgentsDir: null,
-      projectAgentsDirExists: false,
-    }),
+    getResolvedPolicyPaths: (): ResolvedPolicyPaths => [
+      { name: "global", path: "/in-memory/config.json", exists: true },
+    ],
   };
 }
 
