@@ -111,7 +111,7 @@ Recheck that cadence before rereading this section as settled.
 /**
  * Provenance of a rule - which source contributed it.
  *
- * Config scopes: "global", "project", "agent", "project-agent".
+ * Config scopes: ScopeName, the scope a rule was loaded from.
  * Synthesized:   "builtin" (universal default / evaluate() fallback),
  *                "baseline" (conditional MCP metadata auto-allow).
  * Runtime:       "session" (session approvals).
@@ -120,15 +120,15 @@ Recheck that cadence before rereading this section as settled.
  *                invalid non-global config scope is detected).
  */
 type RuleOrigin =
-  | "global"
-  | "project"
-  | "agent"
-  | "project-agent"
+  | ScopeName
   | "builtin"
   | "baseline"
   | "session"
   | "yolo"
   | "fail-closed";
+
+/** The name of a config scope; listed here in precedence order (lowest first). */
+type ScopeName = "global" | "project" | "agent" | "project-agent";
 
 interface Rule {
   /** The permission surface: "bash", "edit", "mcp", "skill", "external_directory", "path", etc. */
@@ -679,7 +679,8 @@ Recorded authority is not one source.
 It is composed from [channels](../glossary.md#channel), each a path by which rules reach the package, and a channel delivers its rules one [scope](../glossary.md#scope) at a time, before any cross-scope merge ([ADR 0016](../decisions/0016-policy-channels.md) K2).
 
 The config channels reach the manager as one ordered list.
-`PolicyLoader.loadScopes(agentName)` returns a `PolicyScope` per scope, lowest precedence first, each carrying its origin (a `ScopeOrigin`), its content (`ScopeConfig`), and whether an invalid file there floors the composed policy (`floorsWhenInvalid`).
+`PolicyLoader.loadScopes(agentName)` returns a `PolicyScope` per scope, lowest precedence first, each carrying its name (a `ScopeName`), its content (`ScopeConfig`), and whether an invalid file there floors the composed policy (`floorsWhenInvalid`).
+A scope's name becomes an [origin](../glossary.md#origin) only when the manager stamps it onto the rules it merges from that scope; the `config.resolved` log entry reports each scope by the same `name`.
 `resolvePermissions` iterates that list to merge and to decide the [fail-closed floor](#fail-closed-on-an-invalid-non-global-scope), and names no scope; the cache stamp and the `config.resolved` log entry are built from the same list.
 So a per-channel decision (a slot, a strictness, a floor) is a property of one list entry, not an edit at every site that enumerates the scopes.
 
@@ -773,7 +774,7 @@ When that scope is one marked `floorsWhenInvalid` (project, agent, or project-ag
 ```typescript
 const failClosedScopes = scopes
   .filter((scope) => scope.floorsWhenInvalid && scope.config.invalid === true)
-  .map((scope) => scope.origin);
+  .map((scope) => scope.name);
 const effective =
   failClosedScopes.length > 0
     ? composed.map((r) => (r.action === "allow" ? { ...r, action: "ask", origin: "fail-closed" } : r))
@@ -937,7 +938,7 @@ src/
 │   ├── config-modal.ts      /permission-system slash command UI; its settings list, `show` summary, and `reset` all iterate `RUNTIME_KNOB_KEYS` (`extension-config.ts`), the one ordered list of the four boolean knobs
 │   ├── extension-config.ts  Runtime knobs (debugLog, yoloMode, etc.)
 │   ├── extension-paths.ts   `ExtensionPaths` value object - immutable path constants derived from `agentDir` (and optional Pi `getPackageDir()`) at startup (`computeExtensionPaths`), including the infrastructure read roots (only Pi's harness entries under `agentDir`, never `agentDir` itself, so credentials and session transcripts stay gated) and the excluded logs directory
-│   ├── policy-loader.ts     PolicyLoader interface + FilePolicyLoader (file I/O, mtime caching). `loadScopes(agentName)` delivers the config scopes as one list of `PolicyScope` (origin, `ScopeConfig`, `floorsWhenInvalid`), lowest precedence first, read from one ordered array of scope sources of two kinds: a config file and an agent's frontmatter; the cache stamp and the resolved-paths report map over the same array, so adding a scope is one source plus its `ScopeOrigin` literal. A present-but-unloadable file marks its scope `invalid` (an absent file stays a plain empty scope), and every scope but global floors when invalid; reads MCP server names from the global `mcp.json` and, when given one, the trusted project's `.pi/mcp.json`
+│   ├── policy-loader.ts     PolicyLoader interface + FilePolicyLoader (file I/O, mtime caching). `loadScopes(agentName)` delivers the config scopes as one list of `PolicyScope` (`name`, `ScopeConfig`, `floorsWhenInvalid`), lowest precedence first, read from one ordered array of scope sources of two kinds: a config file and an agent's frontmatter; the cache stamp and the resolved-paths report map over the same array, so adding a scope is one source plus its `ScopeName` literal. A present-but-unloadable file marks its scope `invalid` (an absent file stays a plain empty scope), and every scope but global floors when invalid; reads MCP server names from the global `mcp.json` and, when given one, the trusted project's `.pi/mcp.json`
 │   ├── policy-issue-reporter.ts `PolicyIssueReporter` + `PolicyIssueSource` / `PolicyIssueReporting` seams: tells the operator what composing policy revealed for an agent — the fail-closed clamp of a rejected non-global scope and the MCP tool-key port notice — with `ConfigIssueReporter`'s latch (per notice, one joined message per report, replaced each report). `report(agentName)` takes the name as an argument because the notices are agent-scoped and `AgentPrepHandler` reads the `<active_agent>` tag after turn prep. A config file's own schema errors are `ConfigIssueReporter`'s, never this one's, so each reaches the operator once. Driven at `session_start` and on every `before_agent_start`
 │   ├── yaml-frontmatter.ts  Minimal YAML/frontmatter parsing (`parseSimpleYamlMap`, `extractFrontmatter`)
 │   └── status.ts            Footer status bar integration

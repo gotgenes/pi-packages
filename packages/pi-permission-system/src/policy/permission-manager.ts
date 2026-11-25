@@ -25,7 +25,7 @@ import type {
 } from "#src/types";
 import { isPermissionState } from "#src/types";
 import { normalizeFlatConfig, relocateMcpToolKeyRules } from "./normalize";
-import type { Rule, RuleOrigin, Ruleset, ScopeOrigin } from "./rule";
+import type { Rule, RuleOrigin, Ruleset, ScopeName } from "./rule";
 import {
   evaluate,
   evaluateAnyValue,
@@ -64,7 +64,7 @@ type ResolvedPermissions = {
    * non-empty the composed ruleset has been floored allow→ask (#646); the
    * names also drive the fail-closed notice in {@link getPolicyIssues}.
    */
-  failClosedScopes: ScopeOrigin[];
+  failClosedScopes: ScopeName[];
   /**
    * Top-level permission keys naming Pi MCP tools, relocated onto the `mcp`
    * surface; they drive the port notice in {@link getPolicyIssues}.
@@ -203,7 +203,7 @@ export class PermissionManager implements ScopedPermissionManager {
     // building a parallel origin map that tracks which scope contributed each
     // (surface, pattern) entry.
     const { mergedPermission, origins } = mergeScopesWithOrigins(
-      scopes.map((scope) => [scope.origin, scope.config] as const),
+      scopes.map((scope) => [scope.name, scope.config] as const),
     );
 
     // Extract the universal fallback from permission["*"].
@@ -235,7 +235,7 @@ export class PermissionManager implements ScopedPermissionManager {
       .filter(
         (scope) => scope.floorsWhenInvalid && scope.config.invalid === true,
       )
-      .map((scope) => scope.origin);
+      .map((scope) => scope.name);
 
     const effectiveRules =
       failClosedScopes.length > 0

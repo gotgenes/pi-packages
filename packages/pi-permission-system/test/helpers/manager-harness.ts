@@ -48,8 +48,8 @@ export function createInMemoryPolicyLoader(
           (scope) =>
             scope.agentName === undefined || scope.agentName === agentName,
         )
-        .map(({ origin, config, floorsWhenInvalid }) => ({
-          origin,
+        .map(({ name, config, floorsWhenInvalid }) => ({
+          name,
           config,
           floorsWhenInvalid,
         })),
@@ -77,7 +77,7 @@ export function createInMemoryGlobalManager(
   mcpServerNames: readonly string[] = [],
 ): PermissionManager {
   return createInMemoryManager(
-    [{ origin: "global", config: global, floorsWhenInvalid: false }],
+    [{ name: "global", config: global, floorsWhenInvalid: false }],
     mcpServerNames,
   );
 }

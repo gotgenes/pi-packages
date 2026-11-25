@@ -87,7 +87,8 @@ See [Composed ruleset](architecture/architecture.md#composed-ruleset).
 
 ### Origin
 
-Which source contributed a rule (`RuleOrigin`): `global`, `project`, `agent`, `project-agent`, `builtin`, `baseline`, `session`, `yolo`, or `fail-closed`.
+Which source contributed a rule (`RuleOrigin`): the name of the [scope](#scope) it was loaded from (`global`, `project`, `agent`, `project-agent`), or `builtin`, `baseline`, `session`, `yolo`, or `fail-closed`.
+A scope has a name, not an origin; its name becomes an origin once it is stamped on the rules that scope contributed.
 It is reported on the `permissions:decision` event and in the review log, so a surprising outcome traces to its source.
 
 ### Scope

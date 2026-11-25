@@ -2,7 +2,7 @@ import { utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { FilePolicyLoader } from "#src/config/policy-loader";
-import type { ScopeOrigin } from "#src/policy/rule";
+import type { ScopeName } from "#src/policy/rule";
 import type { ScopeConfig } from "#src/types";
 import { createTmpFixture, type TmpFixture } from "#test/helpers/tmp-fixture";
 
@@ -78,13 +78,13 @@ function makeLoader(files: LoaderFiles = {}) {
 /** What `loader` loads for one scope. */
 function scopeConfig(
   loader: FilePolicyLoader,
-  origin: ScopeOrigin,
+  name: ScopeName,
   agentName?: string,
 ): ScopeConfig {
   const scope = loader
     .loadScopes(agentName)
-    .find((candidate) => candidate.origin === origin);
-  if (!scope) throw new Error(`no ${origin} scope loaded`);
+    .find((candidate) => candidate.name === name);
+  if (!scope) throw new Error(`no ${name} scope loaded`);
   return scope.config;
 }
 
@@ -105,10 +105,7 @@ describe("FilePolicyLoader.loadScopes", () => {
     const { loader } = makeLoader();
     const scopes = loader.loadScopes("coder");
     expect(
-      scopes.map(({ origin, floorsWhenInvalid }) => [
-        origin,
-        floorsWhenInvalid,
-      ]),
+      scopes.map(({ name, floorsWhenInvalid }) => [name, floorsWhenInvalid]),
     ).toEqual([
       ["global", false],
       ["project", true],

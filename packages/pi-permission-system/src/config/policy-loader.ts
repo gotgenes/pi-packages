@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { getAgentDir } from "@earendil-works/pi-coding-agent";
-import type { ScopeOrigin } from "#src/policy/rule";
+import type { ScopeName } from "#src/policy/rule";
 import type { ScopeConfig } from "#src/types";
 import { toRecord } from "#src/value-guards";
 import {
@@ -71,7 +71,7 @@ function getConfiguredMcpServerNamesFromPaths(
  * check, not here.
  */
 export interface ResolvedScopePath {
-  readonly name: ScopeOrigin;
+  readonly name: ScopeName;
   /** `null` when the scope has no location (no project is configured). */
   readonly path: string | null;
   readonly exists: boolean;
@@ -86,7 +86,7 @@ export type ResolvedPolicyPaths = readonly ResolvedScopePath[];
 
 /** One config scope's contribution to an agent's policy. */
 export interface PolicyScope {
-  readonly origin: ScopeOrigin;
+  readonly name: ScopeName;
   readonly config: ScopeConfig;
   /**
    * Whether an invalid file at this scope floors the composed policy
@@ -277,14 +277,14 @@ class ConfigFileScopeSource implements ScopeSource {
   private cache: FileCacheEntry<ScopeConfig> | null = null;
 
   constructor(
-    private readonly origin: ScopeOrigin,
+    private readonly name: ScopeName,
     private readonly path: string | null,
     private readonly floorsWhenInvalid: boolean,
   ) {}
 
   scope(): PolicyScope {
     return {
-      origin: this.origin,
+      name: this.name,
       config: this.load(),
       floorsWhenInvalid: this.floorsWhenInvalid,
     };
@@ -316,7 +316,7 @@ class ConfigFileScopeSource implements ScopeSource {
 
   resolvedPath(): ResolvedScopePath {
     return {
-      name: this.origin,
+      name: this.name,
       path: this.path,
       exists: this.path ? existsSync(this.path) : false,
     };
@@ -331,14 +331,14 @@ class AgentFileScopeSource implements ScopeSource {
   private readonly cache = new Map<string, FileCacheEntry<ScopeConfig>>();
 
   constructor(
-    private readonly origin: ScopeOrigin,
+    private readonly name: ScopeName,
     private readonly dir: string | null,
     private readonly floorsWhenInvalid: boolean,
   ) {}
 
   scope(agentName?: string): PolicyScope {
     return {
-      origin: this.origin,
+      name: this.name,
       config: this.load(agentName),
       floorsWhenInvalid: this.floorsWhenInvalid,
     };
@@ -398,7 +398,7 @@ class AgentFileScopeSource implements ScopeSource {
 
   resolvedPath(): ResolvedScopePath {
     return {
-      name: this.origin,
+      name: this.name,
       path: this.dir,
       exists: this.dir ? existsSync(this.dir) : false,
     };

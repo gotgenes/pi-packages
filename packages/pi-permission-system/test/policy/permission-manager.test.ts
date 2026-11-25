@@ -124,12 +124,12 @@ describe("PermissionManager", () => {
       it("project overrides global", () => {
         const manager = createInMemoryManager([
           {
-            origin: "global",
+            name: "global",
             config: { permission: { read: "ask" } },
             floorsWhenInvalid: false,
           },
           {
-            origin: "project",
+            name: "project",
             config: { permission: { read: "allow" } },
             floorsWhenInvalid: true,
           },
@@ -142,17 +142,17 @@ describe("PermissionManager", () => {
       it("agent overrides project", () => {
         const manager = createInMemoryManager([
           {
-            origin: "global",
+            name: "global",
             config: { permission: { read: "ask" } },
             floorsWhenInvalid: false,
           },
           {
-            origin: "project",
+            name: "project",
             config: { permission: { read: "allow" } },
             floorsWhenInvalid: true,
           },
           {
-            origin: "agent",
+            name: "agent",
             agentName: "coder",
             config: { permission: { read: "deny" } },
             floorsWhenInvalid: true,
@@ -166,18 +166,18 @@ describe("PermissionManager", () => {
       it("project-agent overrides agent", () => {
         const manager = createInMemoryManager([
           {
-            origin: "global",
+            name: "global",
             config: { permission: { read: "deny" } },
             floorsWhenInvalid: false,
           },
           {
-            origin: "agent",
+            name: "agent",
             agentName: "coder",
             config: { permission: { read: "deny" } },
             floorsWhenInvalid: true,
           },
           {
-            origin: "project-agent",
+            name: "project-agent",
             agentName: "coder",
             config: { permission: { read: "allow" } },
             floorsWhenInvalid: true,
@@ -191,12 +191,12 @@ describe("PermissionManager", () => {
       it("deep-shallow merge preserves patterns from different scopes", () => {
         const manager = createInMemoryManager([
           {
-            origin: "global",
+            name: "global",
             config: { permission: { bash: { "git *": "allow" } } },
             floorsWhenInvalid: false,
           },
           {
-            origin: "project",
+            name: "project",
             config: { permission: { bash: { "rm *": "deny" } } },
             floorsWhenInvalid: true,
           },
@@ -217,14 +217,14 @@ describe("PermissionManager", () => {
       it("string replaces object in override scope", () => {
         const manager = createInMemoryManager([
           {
-            origin: "global",
+            name: "global",
             config: {
               permission: { bash: { "git *": "ask", "npm *": "ask" } },
             },
             floorsWhenInvalid: false,
           },
           {
-            origin: "project",
+            name: "project",
             config: { permission: { bash: "allow" } },
             floorsWhenInvalid: true,
           },
@@ -237,7 +237,7 @@ describe("PermissionManager", () => {
       it("Project-level config overrides base bash patterns", () => {
         const manager = createInMemoryManager([
           {
-            origin: "global",
+            name: "global",
             config: {
               permission: {
                 "*": "allow",
@@ -247,7 +247,7 @@ describe("PermissionManager", () => {
             floorsWhenInvalid: false,
           },
           {
-            origin: "project",
+            name: "project",
             config: {
               permission: { bash: { "rm -rf build": "allow" } },
             },
@@ -294,12 +294,12 @@ describe("PermissionManager", () => {
         // Both scopes define bash["git *"]; project wins for that pattern.
         const manager = createInMemoryManager([
           {
-            origin: "global",
+            name: "global",
             config: { permission: { bash: { "git *": "ask" } } },
             floorsWhenInvalid: false,
           },
           {
-            origin: "project",
+            name: "project",
             config: { permission: { bash: { "git *": "allow" } } },
             floorsWhenInvalid: true,
           },
@@ -315,12 +315,12 @@ describe("PermissionManager", () => {
         // global defines read as a string "ask"; project replaces with object.
         const manager = createInMemoryManager([
           {
-            origin: "global",
+            name: "global",
             config: { permission: { read: "ask" } },
             floorsWhenInvalid: false,
           },
           {
-            origin: "project",
+            name: "project",
             config: { permission: { read: { "*": "allow" } } },
             floorsWhenInvalid: true,
           },
@@ -333,12 +333,12 @@ describe("PermissionManager", () => {
       it("universal fallback from project carries origin 'project'", () => {
         const manager = createInMemoryManager([
           {
-            origin: "global",
+            name: "global",
             config: { permission: { "*": "ask" } },
             floorsWhenInvalid: false,
           },
           {
-            origin: "project",
+            name: "project",
             config: { permission: { "*": "allow" } },
             floorsWhenInvalid: true,
           },
@@ -817,12 +817,12 @@ permission:
       it("floors a lower-scope allow to ask when a project scope is invalid", () => {
         const manager = createInMemoryManager([
           {
-            origin: "global",
+            name: "global",
             config: { permission: { bash: "allow" } },
             floorsWhenInvalid: false,
           },
           {
-            origin: "project",
+            name: "project",
             config: { invalid: true },
             floorsWhenInvalid: true,
           },
@@ -835,12 +835,12 @@ permission:
       it("preserves a lower-scope deny when a project scope is invalid", () => {
         const manager = createInMemoryManager([
           {
-            origin: "global",
+            name: "global",
             config: { permission: { bash: "deny" } },
             floorsWhenInvalid: false,
           },
           {
-            origin: "project",
+            name: "project",
             config: { invalid: true },
             floorsWhenInvalid: true,
           },
@@ -853,12 +853,12 @@ permission:
       it("floors when an agent scope is invalid", () => {
         const manager = createInMemoryManager([
           {
-            origin: "global",
+            name: "global",
             config: { permission: { bash: "allow" } },
             floorsWhenInvalid: false,
           },
           {
-            origin: "agent",
+            name: "agent",
             agentName: "coder",
             config: { invalid: true },
             floorsWhenInvalid: true,
@@ -874,12 +874,12 @@ permission:
         // "over real files"); the manager honors the flag, not the name.
         const manager = createInMemoryManager([
           {
-            origin: "global",
+            name: "global",
             config: { permission: { bash: "allow" } },
             floorsWhenInvalid: false,
           },
           {
-            origin: "project",
+            name: "project",
             config: { invalid: true },
             floorsWhenInvalid: false,
           },
@@ -893,12 +893,12 @@ permission:
       it("does not floor when all scopes are valid", () => {
         const manager = createInMemoryManager([
           {
-            origin: "global",
+            name: "global",
             config: { permission: { bash: "allow" } },
             floorsWhenInvalid: false,
           },
           {
-            origin: "project",
+            name: "project",
             config: { permission: { read: "allow" } },
             floorsWhenInvalid: true,
           },
@@ -911,12 +911,12 @@ permission:
       it("floors getToolPermission too (display parity)", () => {
         const manager = createInMemoryManager([
           {
-            origin: "global",
+            name: "global",
             config: { permission: { bash: "allow" } },
             floorsWhenInvalid: false,
           },
           {
-            origin: "project",
+            name: "project",
             config: { invalid: true },
             floorsWhenInvalid: true,
           },
@@ -927,12 +927,12 @@ permission:
       it("keeps a floored tool exposed — the clamp makes allows ask, never deny", () => {
         const manager = createInMemoryManager([
           {
-            origin: "global",
+            name: "global",
             config: { permission: { bash: "allow" } },
             floorsWhenInvalid: false,
           },
           {
-            origin: "project",
+            name: "project",
             config: { invalid: true },
             floorsWhenInvalid: true,
           },
@@ -943,12 +943,12 @@ permission:
       it("appends a fail-closed notice to config issues naming the invalid scope", () => {
         const manager = createInMemoryManager([
           {
-            origin: "global",
+            name: "global",
             config: { permission: { bash: "allow" } },
             floorsWhenInvalid: false,
           },
           {
-            origin: "project",
+            name: "project",
             config: { invalid: true },
             floorsWhenInvalid: true,
           },
@@ -962,12 +962,12 @@ permission:
       it("emits no fail-closed notice when all scopes are valid", () => {
         const manager = createInMemoryManager([
           {
-            origin: "global",
+            name: "global",
             config: { permission: { bash: "allow" } },
             floorsWhenInvalid: false,
           },
           {
-            origin: "project",
+            name: "project",
             config: { permission: { read: "allow" } },
             floorsWhenInvalid: true,
           },
@@ -1141,11 +1141,11 @@ permission:
       return new PermissionManager({
         policyLoader: createInMemoryPolicyLoader([
           {
-            origin: "global",
+            name: "global",
             config: { permission: global } as ScopeConfig,
             floorsWhenInvalid: false,
           },
-          { origin: "project", config: project ?? {}, floorsWhenInvalid: true },
+          { name: "project", config: project ?? {}, floorsWhenInvalid: true },
         ]),
         isYoloEnabled,
       });
@@ -2316,12 +2316,12 @@ permission:
         it("trims the tool name and honors the agent scope", () => {
           const manager = createInMemoryManager([
             {
-              origin: "global",
+              name: "global",
               config: { permission: { "*": "ask", bash: "deny" } },
               floorsWhenInvalid: false,
             },
             {
-              origin: "agent",
+              name: "agent",
               agentName: "reviewer",
               config: {
                 permission: { bash: { "*": "deny", "git *": "ask" } },
