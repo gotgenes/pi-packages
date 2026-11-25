@@ -5,7 +5,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { ResolvedAccessIntent } from "#src/access-intent/access-intent";
 import { BashProgram } from "#src/access-intent/bash/program";
 import { buildResolvedIntentFromMatchValues } from "#src/access-intent/input-normalizer";
@@ -39,6 +39,7 @@ import {
   createMissingConfigManager,
   sessionRule,
 } from "#test/helpers/manager-harness";
+import { createTmpFixture, type TmpFixture } from "#test/helpers/tmp-fixture";
 
 // Adapters that build an AccessIntent and call the unified `check` entry point,
 // so these tests exercise the single resolution path (#478) without a
@@ -814,6 +815,92 @@ permission:
           project: { permission: { read: "allow" } },
         });
         expect(manager.getPolicyIssues()).toEqual([]);
+      });
+
+      describe("over real files", () => {
+        // Production decides which scopes floor; these rows read real files
+        // through `FilePolicyLoader`, so they pin that decision, not a fixture's.
+        let fixture: TmpFixture;
+
+        beforeEach(() => {
+          fixture = createTmpFixture();
+        });
+
+        afterEach(() => {
+          fixture.cleanup();
+        });
+
+        type ConfigScope = "global" | "project" | "agent" | "project-agent";
+
+        /**
+         * A manager whose global file allows `read`, with each named scope's
+         * file made invalid: malformed JSON for a config file, a directory at
+         * the agent's file path (EISDIR) for agent frontmatter.
+         */
+        function managerWithInvalid(
+          invalid: readonly ConfigScope[],
+        ): PermissionManager {
+          const baseDir = fixture.dir("fail-closed-");
+          const malformed = "{ not json";
+          const globalConfigPath = fixture.file(
+            baseDir,
+            "config.json",
+            invalid.includes("global")
+              ? malformed
+              : JSON.stringify({ permission: { read: "allow" } }),
+          );
+          const projectGlobalConfigPath = fixture.file(
+            baseDir,
+            "project/config.json",
+            invalid.includes("project") ? malformed : "{}",
+          );
+          const agentsDir = fixture.subdir(baseDir, "agents");
+          const projectAgentsDir = fixture.subdir(baseDir, "project/agents");
+          if (invalid.includes("agent")) fixture.subdir(agentsDir, "coder.md");
+          if (invalid.includes("project-agent")) {
+            fixture.subdir(projectAgentsDir, "coder.md");
+          }
+          return createManagerFromPaths({
+            globalConfigPath,
+            agentsDir,
+            projectGlobalConfigPath,
+            projectAgentsDir,
+            mcpServerNames: [],
+          });
+        }
+
+        function failClosedNotice(named: string): string {
+          return (
+            `Invalid ${named} configuration detected — failing closed: 'allow' rules ` +
+            "are clamped to 'ask' for this session until the configuration is corrected."
+          );
+        }
+
+        it.each<{ invalid: ConfigScope[]; named: string }>([
+          { invalid: ["project"], named: "project" },
+          { invalid: ["agent"], named: "agent" },
+          { invalid: ["project-agent"], named: "project-agent" },
+          {
+            invalid: ["project", "project-agent"],
+            named: "project, project-agent",
+          },
+        ])("floors the global allow and names $named", ({ invalid, named }) => {
+          const manager = managerWithInvalid(invalid);
+          const result = checkTool(manager, "read", {}, "coder");
+          expect(result.state).toBe("ask");
+          expect(result.origin).toBe("fail-closed");
+          expect(manager.getPolicyIssues("coder")).toEqual([
+            failClosedNotice(named),
+          ]);
+        });
+
+        it("neither floors nor reports an invalid global file", () => {
+          const manager = managerWithInvalid(["global"]);
+          const result = checkTool(manager, "read", {}, "coder");
+          expect(result.state).toBe("ask");
+          expect(result.origin).toBe("builtin");
+          expect(manager.getPolicyIssues("coder")).toEqual([]);
+        });
       });
     });
 
