@@ -1447,6 +1447,7 @@ Release: independent
 - **Soft dependency:** [#1126].
   With the legacy layers gone, both loaders read exactly the same two files, which is what makes one read expressible.
 - **Constraint:** `ConfigStore.refresh` takes no `ExtensionContext` and must keep that property, and the manager must stay string-based (ADR 0002).
+- **Note:** the locator/reader split of `FilePolicyLoader`'s scope sources is [#1127]'s ride-along tidying; if this step is planned first, the split lands here instead, so this step replaces only the config-file reader.
 - **Outcome:** each `config.json` is parsed and validated once per change, the settings view and the policy view derive from that one result, and the lines naming `loadUnifiedConfig(` in `src/` fall from 9 to at most 4.
 - **Commit type:** `refactor:`.
 - **Impact 4 / Risk 3 / Priority 12.**
@@ -1540,6 +1541,10 @@ Release: independent
 - **Target:** `src/config/policy-loader.ts`, `src/config/config-loader.ts` (`normalizeFlatPermissionValue`), `src/config/config-schema.ts` (the `permission` object's schema, reused).
 - **Soft dependency:** [#1134].
   Marking an agent scope invalid is one flag on a list entry once the scopes are a list.
+- **Ride-along tidying:** `FilePolicyLoader`'s two scope-source classes (`ConfigFileScopeSource`, `AgentFileScopeSource`) become one source composed of a *locator* (which file holds the scope for an agent: one fixed path, or `<dir>/<agent>.md`; and the location it reports) and a *reader* (how that file becomes a `ScopeConfig`: strict `loadUnifiedConfig`, or frontmatter extraction).
+  The name, `floorsWhenInvalid`, the mtime cache keyed by file path, the stamp, and `resolvedPath()` then live once instead of in both classes.
+  Land it as a `refactor:` ahead of this step's `fix!:`, which then swaps only the frontmatter reader; the same split lets [#1028] swap only the config reader and gives ADR 0016 §3's downstream path provider a locator to implement.
+  Recorded at [#1134]'s sync (operator decision), where the reviewer flagged the two classes' duplicated `scope()`/`resolvedPath()`.
 - **Outcome:** a malformed block marks the agent scope invalid, floors the composed policy `allow` to `ask`, and is reported per issue; the rest of the frontmatter document stays tolerant; `normalizeFlatPermissionValue` has no caller in `policy-loader.ts`.
 - **Commit type:** `fix!:` — a malformed block now floors where it used to drop entries silently.
 - **Impact 4 / Risk 2 / Priority 16.**
