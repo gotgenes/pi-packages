@@ -673,6 +673,31 @@ The three are one thing at different lifetimes.
 A live ruling, once persisted, *becomes* recorded authority — principle 8's "their decision is a rule."
 The "for this session" dialog option writes a session rule; a future "always" writes config.
 
+### Recorded authority is composed from channels
+
+Recorded authority is not one source.
+It is composed from [channels](../glossary.md#channel), each a path by which rules reach the package, and a channel delivers its rules one [scope](../glossary.md#scope) at a time, before any cross-scope merge ([ADR 0016](../decisions/0016-policy-channels.md) K2).
+
+The config channels reach the manager as one ordered list.
+`PolicyLoader.loadScopes(agentName)` returns a `PolicyScope` per scope, lowest precedence first, each carrying its origin (a `ScopeOrigin`), its content (`ScopeConfig`), and whether an invalid file there floors the composed policy (`floorsWhenInvalid`).
+`resolvePermissions` iterates that list to merge and to decide the [fail-closed floor](#fail-closed-on-an-invalid-non-global-scope), and names no scope; the cache stamp and the `config.resolved` log entry are built from the same list.
+So a per-channel decision (a slot, a strictness, a floor) is a property of one list entry, not an edit at every site that enumerates the scopes.
+
+The resolved direction is ADR 0016's slot table:
+
+| Slot | Channel                     | Status                         |
+| ---- | --------------------------- | ------------------------------ |
+| 1    | Global `config.json`        | shipped                        |
+| 1.5  | Global `config.local.json`  | admitted, not shipped          |
+| 2    | Project `config.json`       | shipped                        |
+| 2.5  | Project `config.local.json` | admitted, not shipped          |
+| 3    | Global agent frontmatter    | shipped                        |
+| 4    | Project agent frontmatter   | shipped                        |
+| —    | Session layer               | shipped, appended after config |
+
+The list delivers slots 1, 2, 3, and 4 today; [#1122] adds the two local files as entries at their slots.
+The session layer is a channel too, appended after the config band at check time rather than delivered by the loader.
+
 ### The `Authorizer` role
 
 On `ask`, the gate escalates to **one `Authorizer`, selected once per session from context**, and is told the decision.
@@ -742,10 +767,13 @@ It is not built, and it would be requested by name, never conflated with yolo.
 ### Fail-closed on an invalid non-global scope
 
 The mirror image of the yolo rewrite.
-When a non-global config scope (project, agent, or project-agent) is present but fails to load or validate, the loader marks it invalid (`ScopeConfig.invalid`) instead of silently substituting an empty scope.
-At composition the manager floors every `allow` in the composed ruleset to `ask`, tagged `origin: "fail-closed"`, so a permissive rule inherited from a lower-precedence scope cannot remain effective behind a higher scope that was meant to tighten it (#646).
+When a config scope is present but fails to load or validate, the loader marks it invalid (`ScopeConfig.invalid`) instead of silently substituting an empty scope.
+When that scope is one marked `floorsWhenInvalid` (project, agent, or project-agent), the manager floors every `allow` in the composed ruleset to `ask` at composition, tagged `origin: "fail-closed"`, so a permissive rule inherited from a lower-precedence scope cannot remain effective behind a higher scope that was meant to tighten it (#646).
 
 ```typescript
+const failClosedScopes = scopes
+  .filter((scope) => scope.floorsWhenInvalid && scope.config.invalid === true)
+  .map((scope) => scope.origin);
 const effective =
   failClosedScopes.length > 0
     ? composed.map((r) => (r.action === "allow" ? { ...r, action: "ask", origin: "fail-closed" } : r))
@@ -753,7 +781,7 @@ const effective =
 ```
 
 Like yolo it is deny-preserving (only `allow` is touched) and applied at composition, so the display surfaces (`getComposedConfigRules`, `getToolPermission`) reflect the clamp too.
-Global is excluded — it is the lowest precedence, so nothing more permissive is inherited when it fails.
+Global is excluded (its `floorsWhenInvalid` is `false`): it is the lowest precedence, so nothing more permissive is inherited when it fails.
 The two overlays stack in order: fail-closed floors `allow`→`ask` first, then yolo (if enabled) rewrites `ask`→`allow`, so an explicit yolo opt-in still wins.
 
 ### Discriminating delegation: a model `Authorizer`
@@ -905,11 +933,11 @@ src/
 │   ├── config-issue-reporter.ts `ConfigIssueReporter` + `ConfigIssueSource` / `ConfigIssueWarner` / `ConfigIssueReporting` seams: decides whether the operator has already heard a config issue, latched per issue and delivered per report (three detector hits are one notification; a later report announces only what is new). `reported` is replaced rather than added to on each report, so an issue fixed and reintroduced is announced again. Delivery goes through the injected `warn` seam (`SessionLogger.warn`, reaching `PermissionSession.notify`), never a ctx parameter, because a reporter cannot be handed a context that does not exist. Driven at `session_start` and on every `before_agent_start` (#933)
 │   ├── dialog-keys.ts       The inline dialog's key vocabulary: `PromptAction` (the five decisions, whose ids are the `permissionDialogKeys` config keys), `DEFAULT_DIALOG_KEYS`, the bindable character set, and `resolveDialogKeys`. Tolerant by design - an unusable, reserved (`j`/`k`), or colliding override keeps its decision's default letter and is reported, so a mistyped hotkey never reaches the policy the way every other invalid field does. Collision detection settles rather than checks once: dropping an override restores its default, which can collide with an override that survived the previous look. Constraint: no SDK import, so the bindable roster is a literal held in step with pi-tui's `Key` export by test
 │   ├── config-paths.ts      Path derivation
-│   ├── config-reporter.ts   Structured log entries for resolved config
+│   ├── config-reporter.ts   Builds the `config.resolved` log entry: every config scope's location as one `scopes` array, lowest precedence first, plus the legacy-file detection flags
 │   ├── config-modal.ts      /permission-system slash command UI; its settings list, `show` summary, and `reset` all iterate `RUNTIME_KNOB_KEYS` (`extension-config.ts`), the one ordered list of the four boolean knobs
 │   ├── extension-config.ts  Runtime knobs (debugLog, yoloMode, etc.)
 │   ├── extension-paths.ts   `ExtensionPaths` value object - immutable path constants derived from `agentDir` (and optional Pi `getPackageDir()`) at startup (`computeExtensionPaths`), including the infrastructure read roots (only Pi's harness entries under `agentDir`, never `agentDir` itself, so credentials and session transcripts stay gated) and the excluded logs directory
-│   ├── policy-loader.ts     PolicyLoader interface + FilePolicyLoader (file I/O, mtime caching); marks a present-but-unloadable non-global scope `invalid` (an absent file stays a plain empty scope) so composition can fail closed; reads MCP server names from the global `mcp.json` and, when given one, the trusted project's `.pi/mcp.json`
+│   ├── policy-loader.ts     PolicyLoader interface + FilePolicyLoader (file I/O, mtime caching). `loadScopes(agentName)` delivers the config scopes as one list of `PolicyScope` (origin, `ScopeConfig`, `floorsWhenInvalid`), lowest precedence first, read from one ordered array of scope sources of two kinds: a config file and an agent's frontmatter; the cache stamp and the resolved-paths report map over the same array, so adding a scope is one source plus its `ScopeOrigin` literal. A present-but-unloadable file marks its scope `invalid` (an absent file stays a plain empty scope), and every scope but global floors when invalid; reads MCP server names from the global `mcp.json` and, when given one, the trusted project's `.pi/mcp.json`
 │   ├── policy-issue-reporter.ts `PolicyIssueReporter` + `PolicyIssueSource` / `PolicyIssueReporting` seams: tells the operator what composing policy revealed for an agent — the fail-closed clamp of a rejected non-global scope and the MCP tool-key port notice — with `ConfigIssueReporter`'s latch (per notice, one joined message per report, replaced each report). `report(agentName)` takes the name as an argument because the notices are agent-scoped and `AgentPrepHandler` reads the `<active_agent>` tag after turn prep. A config file's own schema errors are `ConfigIssueReporter`'s, never this one's, so each reaches the operator once. Driven at `session_start` and on every `before_agent_start`
 │   ├── yaml-frontmatter.ts  Minimal YAML/frontmatter parsing (`parseSimpleYamlMap`, `extractFrontmatter`)
 │   └── status.ts            Footer status bar integration
@@ -921,7 +949,7 @@ src/
 │   ├── scope-merge.ts          Cross-scope permission merge + origin-map bookkeeping
 │   ├── permission-merge.ts     Deep-shallow merge for flat permission configs
 │   ├── restrictiveness.ts      The deny > ask > allow ordering, first-wins on ties: `mostRestrictiveOf` over a statically non-empty tuple (total, so the resolver's family fold has no `undefined` branch) and the empty-tolerant `pickMostRestrictive` the bash gates use. Core-layer, so `permission-resolver.ts` can depend on it
-│   ├── permission-manager.ts   Scope loading + rule composition + `check(intent)` (single resolution entry point); delegates I/O to PolicyLoader; floors the composed ruleset `allow`→`ask` (origin `fail-closed`) when a non-global scope is `invalid`, and answers that fail-closed notice, plus the MCP tool-key port notice, from `getPolicyIssues`; a config file's own schema errors are `ConfigStore`'s to report, never listed here. Constraint: stays string-based — must not import `AccessPath` (the ADR 0002 string boundary, lint-guarded by `no-restricted-imports`)
+│   ├── permission-manager.ts   Rule composition + `check(intent)` (single resolution entry point); delegates I/O to PolicyLoader and iterates its scope list, naming no scope; floors the composed ruleset `allow`→`ask` (origin `fail-closed`) when a scope marked `floorsWhenInvalid` is `invalid`, and answers that fail-closed notice, plus the MCP tool-key port notice, from `getPolicyIssues`; a config file's own schema errors are `ConfigStore`'s to report, never listed here. Constraint: stays string-based — must not import `AccessPath` (the ADR 0002 string boundary, lint-guarded by `no-restricted-imports`)
 │   ├── permission-resolver.ts  `ScopedPermissionResolver` interface - the single `{ resolve(intent) }` role the gate factories / runner / pipeline depend on; `PermissionResolver` concrete class holds `ScopedPermissionManager` + `SessionRules`, owns `resolve(intent)` (unwraps an `access-path` `AccessIntent` via `matchValues()` before calling `manager.check`; the concrete class also accepts a pre-fixed `path-values` intent as a passthrough — the forwarded-serving wire's producer, #597 — while the gate-facing interface stays narrow to `AccessIntent`), the surface-family fold (an intent naming a bare `path` / `external_directory` surface is resolved against each directional member and combined most-restrictive, returning the losing member's own result). Constraint: the fold lives here, not in the gates — this is the one entry point the gates, `LocalPermissionsService`, and `ServingPolicy` share, and a serving node resolving a forwarded child request against an emptied bare surface would stop hard-denying what the parent's config denies (#712, #806). Also owns raw `checkPermission` (`implements SkillPermissionChecker`, no session rules), `getToolPermission`, `isToolFullyDenied`, and `getPolicyIssues`. `ResolverServingPolicy` (`serving-policy.ts`) is that composition, pinned over a filesystem-backed manager by `test/policy/serving-policy.test.ts`; every `ForwardedRequestServer` test stubs `policy`, so none of them would catch a regression there
 │   ├── serving-policy.ts       `ResolverServingPolicy` (`implements ServingPolicy`, a type-only edge into `authority/`) - the serving node's recorded authority over a forwarded request. When the intent carries `askingUnits`, each unit resolves as a `bash-command` intent carrying the spellings the child fixed for it, never recomputed here, with that unit's own floor honored, and the most restrictive answer decides; otherwise `resolveValue` judges the single value: `buildResolvedIntentFromMatchValues` over the child-fixed `ForwardedAccessIntent`, agent-scoped to `principal.agentName`, through `PermissionResolver.resolve`, then `honorChildFloor`: when the intent carries the child's bash `floor`, a rule `allow` is clamped to `ask` naming the floor's sentinel, or under this node's yolo kept as `allow` with `origin: "yolo"` and the sentinel as its pattern. Constraint: a `deny`, an `ask`, and a `source: "session"` grant pass through untouched, each for the reason it stands on the child's own gate — the floor is computed only in the child's parse, so without it a permissive serving rule answers the ask the floor exists to raise
 │   └── permission-gate.ts      Pure deny/ask/allow gate (injected IO). Reports a whole-session grant as one optional field (`canGrantForSession` in, `sessionGrant` out) rather than echoing the suggestion, which the caller already holds and which has no single representative once an approval carries a surface per pattern. The field carries the width to record at rather than sitting beside a separate flag, so a width for a grant that never happened is unrepresentable. Both result arms carry the `DecisionSource` that answered — the gate is the one place that knows whether recorded authority or an escalation decided, so the caller reads it rather than reconstructing it from a captured decision. The `sessionGrant` also carries `grants` when the decision names `narrowedGrants` (an answer to an ask a link narrowed), kept as given even when empty, since absence means the caller's own wider suggestion. Its `messages` bag holds one refusal factory, not one per outcome: which sentence a refusal earns follows from the decision's own decider, dispatched at the renderer
@@ -1314,7 +1342,7 @@ ADR 0016 §4 states that contract for every extension write, and this step is wh
 
 Release: independent
 
-#### [#1134] The config scopes are one ordered list
+#### ✅ [#1134] The config scopes are one ordered list
 
 **Cause:** a channel has no representation, so its order, its fail-closed behavior, its cache stamp, and its reported path are each spelled at a separate site that names all four scopes.
 This is the phase's spine: once the scopes are a list, a reorder, an addition, and a per-entry validation rule are each one edit.
@@ -1328,7 +1356,10 @@ This is the phase's spine: once the scopes are a list, a reorder, an addition, a
 - **Ride-along tidying:** a table test covers the fail-closed floor for every non-global scope, `project-agent` included, which has no manager-level test today; the explicit-path constructor mode only tests use moves into the harness.
 - **Design note:** this step also writes the authority model's missing subsection, naming a channel as the unit recorded authority is composed from and recording ADR 0016's slots as the resolved direction.
 - **Outcome:** `PolicyLoader` exposes no scope-specific load method (8 declarations to 0), `resolvePermissions` names no scope, and adding a scope is an entry in one list plus its `RuleOrigin` literal.
-- **Commit type:** `refactor:`.
+  Landed: `PolicyLoader.loadScopes` delivers a `PolicyScope` list (origin, config, `floorsWhenInvalid`) from one ordered array of config-file and agent-file sources, and the cache stamp and resolved paths map over the same array; scope-specific load methods read 0, `mergeScopesWithOrigins` references stay at 2 for [#1108], and `project-agent` mentions in `src/` fell from 28 to 7.
+  Preparatory `test:`/`refactor:` commits moved explicit-path managers into the harness, routed global-only in-memory managers through one helper, put the loader tests on a tmp fixture, and pinned the floor for every scope over real files; the in-memory fake now takes a scope list.
+  At the planning gate the operator chose to have the `config.resolved` log entry report the scopes as one `scopes` array in precedence order, so the step closes with `feat(pi-permission-system)!: list the config scopes in precedence order in config.resolved`.
+- **Commit type:** `refactor:` steps, then `feat!:` for the `config.resolved` entry (operator decision).
 - **Impact 4 / Risk 2 / Priority 16.**
 
 Release: independent
@@ -1593,7 +1624,7 @@ Release: independent
 flowchart TD
     S1133["✅ #1133<br/>Group the manager test by concern"]
     S1102["✅ #1102<br/>A knob save never erases"]
-    S1134["#1134<br/>Scopes as one ordered list"]
+    S1134["✅ #1134<br/>Scopes as one ordered list"]
     S1108["#1108<br/>Later scope placed after"]
     S1067["#1067<br/>Forwarding wire validates"]
     S1115["#1115<br/>Forwarding directory location"]
@@ -1653,7 +1684,7 @@ flowchart TD
 There is no batch: every step releases on its own, and the README commits each breaking change to its own release.
 The `fix:`, `feat:`, and breaking steps are the release vehicles; `test:` and `refactor:` are hidden changelog types that cut no release, and [#780]'s records sit under `docs/decisions/`, outside the package's release scope.
 
-- Independently releasable: [#1133] (no release), [#1102] (`fix:`), [#1134] (no release), [#1108] (`fix!:`), [#1067] (`fix:`), [#1115] (`fix:`), [#1118] (`feat!:`), [#1126] (`feat!:`), [#1028] (no release), [#1125] (`fix:`), [#1122] (`feat:`), [#1124] (`feat:`), [#1120] (`fix!:`), [#1123] (`feat:`), [#1127] (`fix!:`), [#1119] (`feat:`), [#1121] (`feat!:`), [#1103] (`feat!:`), [#1110] (`feat:`), [#780] (no release).
+- Independently releasable: [#1133] (no release), [#1102] (`fix:`), [#1134] (`feat!:`), [#1108] (`fix!:`), [#1067] (`fix:`), [#1115] (`fix:`), [#1118] (`feat!:`), [#1126] (`feat!:`), [#1028] (no release), [#1125] (`fix:`), [#1122] (`feat:`), [#1124] (`feat:`), [#1120] (`fix!:`), [#1123] (`feat:`), [#1127] (`fix!:`), [#1119] (`feat:`), [#1121] (`feat!:`), [#1103] (`feat!:`), [#1110] (`feat:`), [#780] (no release).
 
 ## Refactoring history
 
