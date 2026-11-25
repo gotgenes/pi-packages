@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [43.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v42.2.1...pi-permission-system-v43.0.0) (2026-11-25)
+
+
+### Features
+
+* **pi-permission-system:** **breaking:** list the config scopes in precedence order in config.resolved ([e5cc34c](https://github.com/gotgenes/pi-packages/commit/e5cc34c472562623aa944a990d67723b6dd66048)), closes [#1134](https://github.com/gotgenes/pi-packages/issues/1134)
+
 ## [42.2.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v42.2.0...pi-permission-system-v42.2.1) (2026-11-23)
 
 
