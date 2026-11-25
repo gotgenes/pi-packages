@@ -95,7 +95,7 @@ export interface ScopedPermissionManager {
   getPolicyIssues(agentName?: string): string[];
 }
 
-export interface PermissionManagerOptions extends PolicyLoaderOptions {
+export interface PermissionManagerOptions {
   policyLoader?: PolicyLoader;
   /**
    * Pi agent directory.  When provided, the manager derives all loader paths
@@ -138,7 +138,7 @@ export class PermissionManager implements ScopedPermissionManager {
       new FilePolicyLoader(
         options.agentDir !== undefined
           ? derivePolicyLoaderOptions(options.agentDir, undefined)
-          : options,
+          : {},
       );
   }
 
@@ -146,8 +146,8 @@ export class PermissionManager implements ScopedPermissionManager {
    * Rebuild the policy loader for a new working directory and clear the
    * resolved-permissions cache.
    *
-   * When `agentDir` was not provided at construction (e.g. test managers
-   * built with explicit paths), only the cache is cleared.
+   * When `agentDir` was not provided at construction (a manager over an
+   * injected `policyLoader`), only the cache is cleared.
    */
   configureForCwd(cwd: string | undefined | null): void {
     if (this.agentDir !== undefined) {
