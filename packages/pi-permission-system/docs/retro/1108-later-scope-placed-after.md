@@ -84,3 +84,79 @@ Read it with `read_session_file({ path: "<path>" })`.
   Its roadmap disposition is committed on this branch as "docs(pi-permission-system): disposition #1147 against Phase 16".
 - The close comment should credit the reporter, @smb374, whose expected ordering is the constraint the fix adopts.
   The "place a later scope's patterns after an earlier scope's" commit already carries their `Co-authored-by:` trailer.
+
+## Stage: Final Retrospective (2026-11-26T06:53:44Z)
+
+### Session summary
+
+The worktree branch fast-forwarded onto `main`, the root lint and `fallow dead-code` gates passed on the merged tree, and CI passed on `42a7bfd7`.
+Issue #1108 closed with a comment crediting @smb374, and `pi-permission-system-v44.0.0` released.
+The worktree and branch are torn down.
+Across planning, TDD, sync, and ship, the issue needed no re-plan, no CI fix-forward, and no re-dispatch.
+
+### Observations
+
+#### What went well
+
+- Planning prototyped the fix in place before the first gate and ran the full suite against it (6562 passed / 1 failed).
+  The one failure was a test that passed only because of the bug, and it became TDD step 1 ("put the project-agent skill catch-all before its exception").
+  The gate's before/after table came from that measurement, not from reasoning.
+- TDD verified every pin with a scripted mutation harness (`/tmp/mut.mjs`, `/tmp/mut3.mjs`, `/tmp/mut4.mjs`).
+  Each script applied a named mutation, ran the policy tests, listed the reds, and restored the file, with a `diff -q` against a saved green copy as the restore check.
+  Nine mutations each killed their predicted class, and the two tests that stayed green during Red were proven as pins rather than assumed.
+- The `ask-user-text-first.ts` guard blocked the #1147 roadmap-fit gate once, because the briefing was in a thinking block.
+  The agent followed the block reason on the first try: plain-text options, no retry, end of turn.
+  The operator answered "Fold it." in chat.
+- The worktree-lane `/ship` ran with no rejection: `merge-base --is-ancestor` predicted the fast-forward, `origin/main..main` was 0, and the release `prepare`/`publish`/`github-release` jobs all passed on the first dispatch.
+
+#### What caused friction
+
+- `rule-ignored` — the first planning gate used "last scope" and "first scope" without defining them, and did not say which checks reach `permission["*"]`.
+  `clarification-gates` ("Define a gate's terms of art before its substance") was loaded at that point.
+  The operator answered the universal-`"*"` question with a question instead of a selection.
+  Impact: one extra round trip (a terminology message with the slot table, then a re-ask); no rework.
+  Self-identified in the planning stage note ("lead with the slot table next time").
+- `judgment` — the same gate described the warning merge as "`config-loader.ts` still calls `mergeFlatPermissions` (global + project)" without saying it also merges the current `config.json` files.
+  The operator picked "Align it" on the premise that it was legacy configuration.
+  Impact: one re-asked gate with the context added; the answer held ("Align it now").
+  Self-identified: the agent re-asked instead of proceeding on the operator's mistaken premise.
+- `slip` — planning turn 8 ran `cd packages/pi-permission-system; …`, and the `cd packages/*` permission rule denied it.
+  Impact: one denied call, retried at once with root-relative paths.
+- `judgment` — the pre-completion reviewer returned WARN with four doc findings: the ASCII band diagram still in the old order, a duplicated baseline sentence, a test name the plan's rename list missed, and an understated YAML comment.
+  Step 5's stale-phrase grep could not see a diagram's row order or a test name absent from the list.
+  Impact: two follow-up commits and one delta re-review (PASS).
+  Caught by the mechanism built for it.
+- `slip` — `FlatPermissionConfig[string]` failed `tsc`, because `"*"` is optional; it was fixed to `FlatPermissionConfig["*"]` after one `check` run.
+  Impact: one edit; no rework.
+
+#### What the operator steered
+
+The operator picked the recommended option at every gate (direction, universal `"*"`, warning merge, #1147 disposition), so no `steer:choice` went against a recommendation.
+Two gate answers were clarification requests rather than redirects:
+
+- "Help me out with terminology.
+  Last scope meaning last to be read?
+  First scope as first to be read?
+  What cases hit a `permission["*"]` rule?", after the gate offered "Stays the fallback" / "Overrides earlier scopes" without defining the scope order.
+  Then: "That was helpful.
+  As a user, I'm least surprised by "Stays the fallback" behavior."
+- "This is legacy configuration right?
+  It's time to deprecate it, if so.", attached to "Align it"; the premise was wrong, and the re-ask corrected it.
+
+### Diagnostic details
+
+- **Model-performance correlation** — every turn in the peer session (planning, TDD, sync) and in this root session (ship, retro) ran on `anthropic/claude-opus-5-5`.
+  The three subagents (one `tidy-first-assessor`, two `pre-completion-reviewer`) also ran on `anthropic/claude-opus-5-5`, read from their own transcripts.
+  All three are judgment-heavy reviews, so the model fits; no mechanical task went to a subagent.
+- **Escalation-delay tracking** — no stretch exceeded five calls on one error; the longest was the `tsc` fix (two calls).
+- **Feedback-loop gap analysis** — TDD ran the scoped tests, `check`, and `fallow dead-code` after every step, ran the full root gates before the reviewer, and the pre-push gates ran again on the merged tree at ship.
+  No gap.
+
+### Proposals considered and not made
+
+- Terms-of-art miss: ten earlier retros match `rg -l "terms of art|Help me out with terminology|terminology question"` (for example `packages/pi-permission-system/docs/retro/1016-on-disk-spelling-alias.md`, `packages/pi-permission-model-judge/docs/retro/0905-map-forced-tool-choice-per-provider-api.md`, `packages/pi-session-tools/docs/retro/0944-branch-aware-transcript-rendering.md`).
+  A `rule-ignored` finding calls for a mechanism or deletion, never a louder rule.
+  No deterministic check can tell whether a briefing defines the terms its options use, and deleting the rule would drop guidance that the operator's questions keep validating.
+  Nothing is proposed; the cost per occurrence stays at one round trip.
+- `cd packages/*` slip: it recurs across many retros, but the deny rule is already the mechanism, and it fired with a reason that redirected the next call.
+- Pre-completion doc WARN: the reviewer is the mechanism that catches stale diagrams and missed renames, and it caught them here.
