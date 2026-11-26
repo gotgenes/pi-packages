@@ -10,6 +10,7 @@ import {
   ObservedAuthorizerRegistrar,
 } from "#src/authority/authorizer-registry";
 import { AuthorizerSelection } from "#src/authority/authorizer-selection";
+import { AutoApproval } from "#src/authority/auto-approval";
 import { ChildNodeAudit } from "#src/authority/child-node-audit";
 import { ForwardedRequestServer } from "#src/authority/forwarded-request-server";
 import {
@@ -146,6 +147,10 @@ export default function piPermissionSystemExtension(pi: ExtensionAPI): void {
   // presentation there strands the first ask's promise (#965).
   const askDialogQueue = new AskDialogQueue();
 
+  // This session's auto-approve scopes, in memory only: built here so a
+  // session switch, which re-runs the factory, starts with none (ADR 0016 §5).
+  const autoApproval = new AutoApproval();
+
   // The filesystem half of the serving announcement. `servingRegistry` reaches
   // an in-process child through `globalThis`; a child in its own process shares
   // nothing but this directory, so the served session publishes a heartbeat
@@ -193,6 +198,7 @@ export default function piPermissionSystemExtension(pi: ExtensionAPI): void {
     // operator once per name — the ask is decided without the judge they
     // asked for, and the review log alone never said so (#861).
     chainAudit: new AuthorizerChainAudit(logger),
+    autoApproval,
   });
 
   // Resolver composes the manager + session ruleset and owns the

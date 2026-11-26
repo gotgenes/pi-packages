@@ -14,6 +14,7 @@ import type { AuthorizerVerdict } from "#src/authority/authorizer";
 import type { UnregisteredLinkAuditor } from "#src/authority/authorizer-chain-audit";
 import { AuthorizerRegistry } from "#src/authority/authorizer-registry";
 import type { AuthorizerSelectionConstructorDeps } from "#src/authority/authorizer-selection";
+import { AutoApproval } from "#src/authority/auto-approval";
 import { ForwardingLivenessJudge } from "#src/authority/forwarding-liveness";
 import { SUBAGENT_ENV_HINT_KEYS } from "#src/authority/permission-forwarding";
 import type { PermissionPrompterApi } from "#src/authority/permission-prompter";
@@ -151,5 +152,6 @@ export function makeAuthorizerSelectionDeps(
       overrides.authorizerRegistry ?? new AuthorizerRegistry(),
     getAuthorizerChain: overrides.getAuthorizerChain ?? (() => []),
     chainAudit: overrides.chainAudit ?? makeChainAudit(),
+    autoApproval: overrides.autoApproval ?? new AutoApproval(),
   };
 }

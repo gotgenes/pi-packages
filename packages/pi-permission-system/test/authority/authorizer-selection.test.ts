@@ -15,6 +15,11 @@ import {
   type AdjudicationRole,
   AuthorizerSelection,
 } from "#src/authority/authorizer-selection";
+import {
+  AutoApproval,
+  type AutoApproveScope,
+  AutoApprovingAuthorizer,
+} from "#src/authority/auto-approval";
 import { LocalUserAuthorizer } from "#src/authority/local-user-authorizer";
 import type { PermissionPromptDecision } from "#src/authority/permission-dialog";
 import type { PromptPermissionDetails } from "#src/authority/permission-prompter";
@@ -697,6 +702,185 @@ describe("AuthorizerSelection", () => {
       selection.deactivate();
 
       expect(logger.review).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("auto-approve", () => {
+    const FORWARDED = makeDetails({
+      forwarding: {
+        requesterAgentName: "reviewer",
+        requesterSessionId: "child-1",
+      },
+    });
+
+    function approvalWith(scope: AutoApproveScope): AutoApproval {
+      const approval = new AutoApproval();
+      approval.enable(scope, "flag");
+      return approval;
+    }
+
+    describe("on a node that adjudicates its own asks", () => {
+      it("approves a covered ask at the terminal, prompting nobody", async () => {
+        const prompter = makeInvokingPrompter();
+        const selection = new AuthorizerSelection(
+          makeDeps({ prompter, autoApproval: approvalWith({ kind: "own" }) }),
+        );
+        selection.activate(makeCtx({ hasUI: true }));
+
+        const decision = await selection.escalate(makeDetails());
+
+        expect(prompter.prompt).toHaveBeenCalledWith(
+          expect.any(AutoApprovingAuthorizer),
+          expect.anything(),
+        );
+        expect(decision).toEqual({
+          approved: true,
+          state: "approved",
+          decidedBy: { kind: "auto_approve", setter: "flag", scope: "own" },
+        });
+      });
+
+      it("approves a covered ask on a headless node instead of denying it", async () => {
+        const selection = new AuthorizerSelection(
+          makeDeps({
+            prompter: makeInvokingPrompter(),
+            autoApproval: approvalWith({ kind: "forwarded" }),
+          }),
+        );
+        selection.activate(makeCtx({ hasUI: false }));
+
+        const decision = await selection.escalate(FORWARDED);
+
+        expect(decision.decidedBy).toEqual({
+          kind: "auto_approve",
+          setter: "flag",
+          scope: "forwarded",
+        });
+      });
+
+      it("leaves an uncovered ask to the selected terminal", async () => {
+        const prompter = makePrompterApi();
+        const selection = new AuthorizerSelection(
+          makeDeps({
+            prompter,
+            autoApproval: approvalWith({ kind: "forwarded" }),
+          }),
+        );
+        selection.activate(makeCtx({ hasUI: true }));
+
+        await selection.escalate(makeDetails());
+
+        expect(prompter.prompt).toHaveBeenCalledWith(
+          expect.any(LocalUserAuthorizer),
+          expect.anything(),
+        );
+      });
+
+      it("lets a configured link's deny stand", async () => {
+        const registry = new AuthorizerRegistry();
+        register(registry, "judge", { kind: "deny", reason: "typo path" });
+        const selection = new AuthorizerSelection(
+          makeDeps({
+            prompter: makeInvokingPrompter(),
+            authorizerRegistry: registry,
+            getAuthorizerChain: () => ["judge"],
+            autoApproval: approvalWith({ kind: "own" }),
+          }),
+        );
+        selection.activate(makeCtx({ hasUI: true }));
+
+        const decision = await selection.escalate(makeDetailsOn("bash"));
+
+        expect(decision.decidedBy).toEqual({
+          kind: "authorizer",
+          name: "judge",
+          verdict: "deny",
+          reason: "typo path",
+        });
+      });
+
+      it("consults a configured link before approving", async () => {
+        const link = vi
+          .fn<Authorizer["authorize"]>()
+          .mockResolvedValue({ kind: "defer" });
+        const registry = new AuthorizerRegistry();
+        registry.register("judge", link);
+        const selection = new AuthorizerSelection(
+          makeDeps({
+            prompter: makeInvokingPrompter(),
+            authorizerRegistry: registry,
+            getAuthorizerChain: () => ["judge"],
+            autoApproval: approvalWith({ kind: "own" }),
+          }),
+        );
+        selection.activate(makeCtx({ hasUI: true }));
+
+        const decision = await selection.escalate(makeDetailsOn("bash"));
+
+        expect(link).toHaveBeenCalledOnce();
+        expect(decision.decidedBy).toEqual({
+          kind: "auto_approve",
+          setter: "flag",
+          scope: "own",
+        });
+      });
+
+      it("applies a scope turned on after activation to the next ask", async () => {
+        const approval = new AutoApproval();
+        const selection = new AuthorizerSelection(
+          makeDeps({
+            prompter: makeInvokingPrompter(),
+            autoApproval: approval,
+          }),
+        );
+        selection.activate(makeCtx({ hasUI: false }));
+
+        approval.enable({ kind: "own" }, "command");
+        const decision = await selection.escalate(makeDetails());
+
+        expect(decision.approved).toBe(true);
+      });
+    });
+
+    describe("on a relaying node", () => {
+      it("relays a covered ask to the serving node and records why", async () => {
+        const prompter = makePrompterApi();
+        const logger = makeAuthorizerLog();
+        const selection = new AuthorizerSelection(
+          makeDeps({
+            detection: makeDetection(true),
+            prompter,
+            logger,
+            autoApproval: approvalWith({ kind: "own" }),
+          }),
+        );
+        selection.activate(makeCtx({ hasUI: false }));
+
+        await selection.escalate(makeDetails());
+
+        expect(prompter.prompt).toHaveBeenCalledWith(
+          expect.any(ParentAuthorizer),
+          expect.anything(),
+        );
+        expect(logger.review).toHaveBeenCalledWith("auto_approve_delegated", {
+          requestId: "req-1",
+        });
+      });
+
+      it("records nothing when auto-approve would not have covered the ask", async () => {
+        const logger = makeAuthorizerLog();
+        const selection = new AuthorizerSelection(
+          makeDeps({ detection: makeDetection(true), logger }),
+        );
+        selection.activate(makeCtx({ hasUI: false }));
+
+        await selection.escalate(makeDetails());
+
+        expect(logger.review).not.toHaveBeenCalledWith(
+          "auto_approve_delegated",
+          expect.anything(),
+        );
+      });
     });
   });
 });

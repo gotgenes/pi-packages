@@ -5,10 +5,15 @@ import {
   type NamedAuthorizer,
   type SelectedAuthority,
   selectAuthorizer,
+  type TerminalAuthorizer,
 } from "./authorizer";
 import { composeAuthorizerChain } from "./authorizer-chain";
 import type { UnregisteredLinkAuditor } from "./authorizer-chain-audit";
 import type { AuthorizerLookup } from "./authorizer-registry";
+import {
+  type AutoApproveGrants,
+  AutoApprovingAuthorizer,
+} from "./auto-approval";
 import { encloseInDelegationEnvelope } from "./delegation-envelope";
 import type { PermissionPromptDecision } from "./permission-dialog";
 import type { PermissionForwardingTarget } from "./permission-forwarding";
@@ -82,6 +87,11 @@ export type AuthorizerSelectionConstructorDeps = AuthorizerSelectionDeps & {
   getAuthorizerChain: () => string[];
   /** Told about each configured name the registry could not resolve. */
   chainAudit: UnregisteredLinkAuditor;
+  /**
+   * This session's auto-approve state, asked per ask whether a scope covers
+   * it (ADR 0016 §5). Read live, so a toggle applies to the next ask.
+   */
+  autoApproval: AutoApproveGrants;
 };
 
 /**
@@ -260,10 +270,37 @@ export class AuthorizerSelection
     }
     const chain = composeAuthorizerChain(
       this.linksFor(authority, details.requestId),
-      authority.terminal,
+      this.terminalFor(authority, details),
       this.deps.getPermissionQuery(),
       this.deps.logger,
     );
     return this.deps.prompter.prompt(chain, details);
+  }
+
+  /**
+   * The terminal for this ask: the auto-approve terminal when this node
+   * adjudicates and one of its auto-approve scopes covers the ask, the
+   * selected terminal otherwise.
+   *
+   * A relaying node never auto-approves: its ask is adjudicated by the serving
+   * node, where auto-approve is set and scoped by requester (ADR 0016 §5). It
+   * records the relay when its own auto-approve would have answered, so an
+   * operator who turned it on here can see why it did not apply.
+   */
+  private terminalFor(
+    authority: SelectedAuthority,
+    details: PromptPermissionDetails,
+  ): TerminalAuthorizer {
+    const grant = this.deps.autoApproval.grantFor(details);
+    if (grant === null) {
+      return authority.terminal;
+    }
+    if (!authority.adjudicatesLocally) {
+      this.deps.logger.review("auto_approve_delegated", {
+        requestId: details.requestId,
+      });
+      return authority.terminal;
+    }
+    return new AutoApprovingAuthorizer(grant);
   }
 }
