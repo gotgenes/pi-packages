@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [44.0.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v44.0.0...pi-permission-system-v44.0.1) (2026-11-26)
+
+
+### Bug Fixes
+
+* **pi-permission-system:** drop a forwarded request whose id could name a path outside the inbox ([06f6202](https://github.com/gotgenes/pi-packages/commit/06f6202f9ad66627ccb909109fee4195aee0b5cc)), closes [#1067](https://github.com/gotgenes/pi-packages/issues/1067)
+* **pi-permission-system:** answer a forwarded request in the file it arrived in ([0e40e44](https://github.com/gotgenes/pi-packages/commit/0e40e441a6b398186d9dc61dcb883e05ecc16f83)), closes [#1067](https://github.com/gotgenes/pi-packages/issues/1067)
+* **pi-permission-system:** keep a dot-only session id's forwarding files under sessions/ ([98f3ed9](https://github.com/gotgenes/pi-packages/commit/98f3ed9822707b2687e18e66de2660ba4bed6f3f)), closes [#1068](https://github.com/gotgenes/pi-packages/issues/1068)
+
 ## [44.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v43.0.0...pi-permission-system-v44.0.0) (2026-11-26)
 
 
