@@ -48,7 +48,7 @@ To lock an agent out of a surface the global config grants, give the agent that 
 ---
 name: locked
 permission:
-  "*": deny # every surface no scope configures
+  "*": deny # any check no rule matches
   bash:
     "*": deny # overrides the global bash patterns too
 ---

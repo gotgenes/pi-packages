@@ -214,10 +214,10 @@ Index position determines priority (higher index wins):
   │      origin: "global" }                                         │
   │    { surface: "bash",  pattern: "git *", action: "allow",       │
   │      origin: "global" }                                         │
-  │    { surface: "bash",  pattern: "rm *",  action: "deny",        │
-  │      origin: "project" }                                        │
   │    { surface: "read",  pattern: "*",     action: "allow",       │
   │      origin: "global" }                                         │
+  │    { surface: "bash",  pattern: "rm *",  action: "deny",        │
+  │      origin: "project" }                                        │
   │    { surface: "mcp",   pattern: "exa:*", action: "allow",       │
   │      origin: "agent" }                                          │
   │                                                                 │
@@ -343,9 +343,8 @@ Ahead of it, `expandDirectionalSugar` runs once per scope inside `composeScopes`
 After expansion no rule lives on a bare family surface; `PermissionResolver.resolve` answers a bare-family query by folding the members most-restrictive.
 
 After normalization, `relocateMcpToolKeyRules` copies the catch-all rule of every top-level key that can name a Pi MCP tool (the name itself or an `mcp__`-prefixed wildcard) onto the `mcp` surface, with the key as the pattern, and appends the copy after every other rule of the same scope, since that key was once the only rule reaching the tool; a later scope's `mcp` rules still follow it.
-The MCP baseline reads a separate composition of the rules as written, so a relocated copy never opens the discovery targets and never hides a written `mcp` allow from them.
 The original rule stays, so `mcp__*` still covers non-Pi tools resolving on their own name.
-The MCP baseline is synthesized from the rules as written, before relocation, and the relocated keys drive a port notice in `getPolicyIssues`.
+The MCP baseline is synthesized from a separate composition of the rules as written, before relocation, so a relocated copy never opens the discovery targets and never hides a written `mcp` allow from them; the relocated keys drive a port notice in `getPolicyIssues`.
 
 ## MCP pre-processing
 
