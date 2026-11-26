@@ -167,16 +167,17 @@ A stale mark left in that registry by a session that died without `session_shutd
 A child running as a separate `pi` process (the `PI_SUBAGENT_PARENT_SESSION` path) shares no memory with its parent, so it reads a heartbeat record the serving session refreshes under `<forwarding dir>/serving/`, holding the served session id, the serving process id, and the time it was last refreshed.
 The forwarding directory is `<agent dir>/sessions/permission-forwarding`, or `$PI_CODING_AGENT_SESSION_DIR/permission-forwarding` when that variable is set, so relocating Pi's session store takes the heartbeat with it.
 Only the inherited variable counts, not `--session-dir` or `settings.sessionDir`: a parent and its child must compute the same directory, so a spawner that overrides the variable for its child splits them.
+The record is rewritten every 30 seconds, and at the next quarter-second poll when it goes missing.
 That `serving/` directory is created on demand and never removed.
 
 For an out-of-process target, four things count as "not draining":
 
-| What the child finds                              | What it means                                                                |
-| ------------------------------------------------- | ---------------------------------------------------------------------------- |
-| No record                                         | The parent exited, never served, or runs a version that does not publish one |
-| A record naming a process that is gone            | The parent was killed rather than shut down                                  |
-| A record nobody has refreshed for several seconds | The parent's process survives but has stopped polling                        |
-| A record for a different session id               | The child is forwarding somewhere nobody is listening                        |
+| What the child finds                                  | What it means                                                                                                 |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| No record                                             | The parent exited, never served, or runs a version that does not publish one                                  |
+| A record naming a process that is gone                | The parent was killed rather than shut down                                                                   |
+| A record nobody has refreshed for a minute and a half | The parent's process survives but has stopped polling (suspended, or killed with its process id since reused) |
+| A record for a different session id                   | The child is forwarding somewhere nobody is listening                                                         |
 
 If the target is not draining its inbox, the child gives up after a two-second grace window (`PERMISSION_FORWARDING_SERVING_GRACE_MS`) rather than waiting out `forwardingTimeoutMs`, and the tool is blocked with:
 

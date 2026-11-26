@@ -308,6 +308,34 @@ describe("ServingHeartbeatStore.read", () => {
   });
 });
 
+describe("ServingHeartbeatStore cadence", () => {
+  it("writes an idle session's record every 30 seconds, not every tick", () => {
+    const { store } = makeStore();
+    const start = clock;
+    const writes = new Set<number>();
+    for (let at = start; at <= start + 60_000; at += 250) {
+      clock = at;
+      store.markServing("sess-1");
+      writes.add(readRecord("sess-1").updatedAt);
+    }
+    expect([...writes]).toEqual([start, start + 30_000, start + 60_000]);
+  });
+
+  it("still reads a record a minute old as alive", () => {
+    publishRecord("sess-1");
+    clock += 60_000;
+    const { store } = makeStore({ isProcessAlive: onlyOwnPidAlive });
+    expect(store.read("sess-1")).toBe("alive");
+  });
+
+  it("reads a record a minute and a half old as stale", () => {
+    publishRecord("sess-1");
+    clock += 90_000;
+    const { store } = makeStore({ isProcessAlive: onlyOwnPidAlive });
+    expect(store.read("sess-1")).toBe("stale");
+  });
+});
+
 describe("ServingHeartbeatStore.servingIds", () => {
   it("is empty when nothing has been published", () => {
     const { store } = makeStore({ isProcessAlive: onlyOwnPidAlive });

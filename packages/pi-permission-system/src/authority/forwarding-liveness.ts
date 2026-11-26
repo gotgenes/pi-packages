@@ -27,33 +27,31 @@ import {
   writeJsonFileAtomic,
 } from "./forwarding-io";
 import type { PermissionForwardingTarget } from "./permission-forwarding";
-import {
-  encodeSessionIdForPath,
-  PERMISSION_FORWARDING_POLL_INTERVAL_MS,
-} from "./permission-forwarding";
+import { encodeSessionIdForPath } from "./permission-forwarding";
 import type { ServingAnnouncer, ServingLookup } from "./serving-registry";
 
 /**
- * How often a serving session rewrites its heartbeat — four poll ticks.
+ * How often a serving session rewrites its heartbeat — every 30 seconds.
  *
- * Longer than the poll interval so `ForwardingManager` can announce on every
- * tick without four filesystem writes a second, and short enough that a record
- * deleted underneath its owner reappears well inside the grace window a
- * forwarding child waits out before abandoning.
+ * Every interactive session publishes one whether or not any child is waiting,
+ * so this interval is the idle cost of the channel, paid as a file write (and
+ * a filesystem event for every watcher of the directory). It is decoupled from
+ * the grace window: a record deleted underneath its owner reappears at the next
+ * poll tick through the throttle's existence check, not at the next refresh.
  */
-export const SERVING_HEARTBEAT_REFRESH_MS =
-  4 * PERMISSION_FORWARDING_POLL_INTERVAL_MS;
+export const SERVING_HEARTBEAT_REFRESH_MS = 30_000;
 
 /**
  * How long a heartbeat may go unrefreshed before its writer is presumed gone —
- * five refreshes.
+ * three refreshes, a minute and a half.
  *
- * Generous because a delayed Node timer is not a dead session, and because the
- * case this threshold exists for (a process that is alive but no longer
- * polling) is the rare one: an exited session withdraws its record and a killed
- * one is caught by the recorded pid, neither of which waits for staleness.
+ * Two missed refreshes are tolerated because a delayed Node timer is not a dead
+ * session. The case this threshold exists for is the rare one: a process that
+ * is alive but no longer polling (suspended, or killed with its pid since
+ * reused). An exited session withdraws its record and a killed one is caught
+ * by the recorded pid, neither of which waits for staleness.
  */
-export const SERVING_HEARTBEAT_STALE_MS = 5 * SERVING_HEARTBEAT_REFRESH_MS;
+export const SERVING_HEARTBEAT_STALE_MS = 3 * SERVING_HEARTBEAT_REFRESH_MS;
 
 /** What a serving session publishes while it drains its forwarded-permission inbox. */
 export interface ServingHeartbeat {
