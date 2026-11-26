@@ -423,6 +423,46 @@ describe("readForwardedPermissionRequest", () => {
       });
       expect(parsed?.accessIntent).toBeUndefined();
     });
+
+    it("drops an access intent with no boundary value, which only a non-path surface sets to null", () => {
+      const parsed = writeAndRead({
+        ...baseRequest(),
+        accessIntent: {
+          surface: "path",
+          matchValues: ["/ok"],
+          requesterCwd: "/repo",
+          principal: { sessionId: "child-session", agentName: "researcher" },
+        },
+      });
+      expect(parsed?.accessIntent).toBeUndefined();
+    });
+
+    it("carries no key the reader does not know, on the intent, its principal, or a unit", () => {
+      const parsed = writeAndRead({
+        ...baseRequest(),
+        accessIntent: {
+          surface: "bash",
+          matchValues: ["ls"],
+          boundaryValue: null,
+          askingUnits: [{ command: "ls", note: "unit extra" }],
+          requesterCwd: "/repo",
+          principal: {
+            sessionId: "child-session",
+            agentName: "researcher",
+            role: "principal extra",
+          },
+          note: "intent extra",
+        },
+      });
+      expect(parsed?.accessIntent).toStrictEqual({
+        surface: "bash",
+        matchValues: ["ls"],
+        boundaryValue: null,
+        askingUnits: [{ command: "ls" }],
+        requesterCwd: "/repo",
+        principal: { sessionId: "child-session", agentName: "researcher" },
+      });
+    });
   });
 
   describe("sessionApproval field", () => {
@@ -673,6 +713,109 @@ describe("readForwardedPermissionRequest", () => {
       expect(parsed?.surface).toBe("read");
       expect(parsed?.value).toBe("/tmp/x");
       expect(parsed?.payload).toBeUndefined();
+    });
+  });
+
+  describe("display fields", () => {
+    it("round-trips a recognized source and display strings", () => {
+      const parsed = writeAndRead({
+        ...baseRequest(),
+        source: "skill_read",
+        surface: "read",
+        value: "/tmp/x",
+      });
+      expect(parsed?.source).toBe("skill_read");
+      expect(parsed?.surface).toBe("read");
+      expect(parsed?.value).toBe("/tmp/x");
+    });
+
+    it("reads an unrecognized source as absent", () => {
+      const parsed = writeAndRead({ ...baseRequest(), source: "telepathy" });
+      expect(parsed?.source).toBeUndefined();
+      expect(parsed?.requesterAgentName).toBe("researcher");
+    });
+
+    it("keeps a null display surface and value", () => {
+      const parsed = writeAndRead({
+        ...baseRequest(),
+        surface: null,
+        value: null,
+      });
+      expect(parsed?.surface).toBeNull();
+      expect(parsed?.value).toBeNull();
+    });
+
+    it("reads a non-string display surface and value as absent", () => {
+      const parsed = writeAndRead({ ...baseRequest(), surface: 42, value: {} });
+      expect(parsed?.surface).toBeUndefined();
+      expect(parsed?.value).toBeUndefined();
+      expect(parsed?.requesterAgentName).toBe("researcher");
+    });
+  });
+
+  describe("required fields", () => {
+    // The detail gains the parse failure's own description; the message is
+    // what this asserts, so the detail is matched loosely.
+    function expectFormatWarning(logger: DebugReviewLogger): void {
+      expect(logger.review).toHaveBeenCalledWith(
+        "permission_forwarding.warning",
+        expect.objectContaining({
+          message: expect.stringContaining(
+            "Ignoring invalid forwarded permission request format in ",
+          ),
+        }),
+      );
+    }
+
+    it.each([
+      ["id", 42],
+      ["createdAt", "1000"],
+      ["requesterSessionId", null],
+      ["targetSessionId", undefined],
+      ["requesterAgentName", 7],
+    ])(
+      "rejects a request whose %s is malformed, and logs it",
+      (field, value) => {
+        const logger = makeLogger();
+        const parsed = writeAndRead(
+          { ...baseRequest(), [field]: value },
+          logger,
+        );
+        expect(parsed).toBeNull();
+        expectFormatWarning(logger);
+      },
+    );
+
+    it.each([
+      ["JSON null", null],
+      ["a top-level array", [baseRequest()]],
+      ["a string", "req-1"],
+    ])("rejects %s, and logs it", (_label, raw) => {
+      const logger = makeLogger();
+      expect(writeAndRead(raw, logger)).toBeNull();
+      expectFormatWarning(logger);
+    });
+
+    it("rejects a file that is not JSON, and logs the read failure", () => {
+      root = mkdtempSync(join(tmpdir(), "io-read-"));
+      const filePath = join(root, "req.json");
+      writeFileSync(filePath, "{ not json", "utf-8");
+      const logger = makeLogger();
+
+      expect(readForwardedPermissionRequest(logger, filePath)).toBeNull();
+      expect(logger.review).toHaveBeenCalledWith(
+        "permission_forwarding.warning",
+        expect.objectContaining({
+          message: `Failed to read forwarded permission request '${filePath}'`,
+        }),
+      );
+    });
+
+    it("accepts a request carrying only the required fields", () => {
+      const logger = makeLogger();
+      const parsed = writeAndRead(baseRequest(), logger);
+      expect(parsed).toEqual(baseRequest());
+      expect(logger.review).not.toHaveBeenCalled();
     });
   });
 });
