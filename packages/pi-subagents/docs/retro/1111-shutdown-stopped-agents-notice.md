@@ -49,3 +49,20 @@ The pi-subagents suite ends at 2249 tests, +18: 13 in the new `shutdown-notice.t
 - Pre-completion reviewer: WARN.
   Reviewer warnings: the delivery evidence is one probe run on Pi 1.6.1 rather than the pinned 1.0.0 (source-checked for 1.0.0); the new `mockSendMessage` field follows the file's `ReturnType<typeof vi.fn<…>>` convention rather than `Mock<Sig>`; optional hardening to read `event.reason` inside the `try`.
   All three were left as they are: the event-less call is unreachable (the parameter is required and every Pi path emits an event), and converting one field against the file's convention would be inconsistent.
+
+## Stage: Sync (worktree) (2026-11-26T20:36:34Z)
+
+### Session summary
+
+`pnpm run lint` and `pnpm fallow dead-code` passed; the branch is rebased onto local `main` for the root's ff-merge.
+The plan's marker is `**Release:** ship independently`, so `/ship` dispatches a `pi-subagents` release; the follow-ups are #1152 (prerequisite of #1135) and the resume pointer recorded on #1135.
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-1111--/2026-11-26T18-03-06-439Z_01a21906-8146-77d7-99cc-e3114b43889c.jsonl`, read with `read_session_file({ path: "<path>" })` for message-level verification at land/retro time.
+
+### Observations
+
+- The operator settled the TDD stage's reviewer WARN:
+  - Probe evidence: re-run on the pinned Pi 1.0.0 (`dist/bundle/cli.js` in the pnpm store), 5/5 trials with the shutdown message in `get_messages` ahead of the reloaded instance's `session_start`, and no `agent_start`/`turn_start` event, so no turn started.
+  - Mock typing: converted, because tidying-as-you-go covers files the change touches; the commit "type the shutdown and interrupt handler mocks as `Mock<Sig>`" covers all eight fields in `lifecycle.test.ts` and the one in `interrupt.test.ts` (also touched by the change).
+    `widget-events.test.ts`, untouched by the change, was left.
+  - `event.reason` outside the `try`: judged a false positive by the operator, since the parameter is required.
