@@ -1255,6 +1255,8 @@ Non-path tokens flagged per month (unmeasured at close) is **superseded**: re-ru
   A per-directory `index.ts` barrel enforced by fallow's `publicFiles` moves 462 cross-directory imports (measured across both packages), many in `access-intent/`, `authority/`, and `config/`, which this phase's steps edit, and it shares nothing with the channel cause.
 - [#1142] — filed by [#1102]'s implementation; folds into [#1122] (operator decision).
   A modal toggle saves the other knobs from the merged config, so a trusted project's values land in the global file; [#1122] already moves the knob writes, so the same change decides which values they carry.
+- [#1148] — filed by the #1067 retrospective; out of scope for the roadmap (operator decision).
+  A repo-wide markdown lint check for a backtick nested in a single-backtick code span, unrelated to the channel cause.
 
 #### Deferred tidyings swept
 
@@ -1849,3 +1851,4 @@ Each phase's findings, step plan, dependency diagram, and health metrics are pre
 [#1138]: https://github.com/gotgenes/pi-packages/issues/1138
 [#1140]: https://github.com/gotgenes/pi-packages/issues/1140
 [#1142]: https://github.com/gotgenes/pi-packages/issues/1142
+[#1148]: https://github.com/gotgenes/pi-packages/issues/1148
