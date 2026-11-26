@@ -188,7 +188,7 @@ describe("PermissionManager", () => {
         expect(result.origin).toBe("project-agent");
       });
 
-      it("deep-shallow merge preserves patterns from different scopes", () => {
+      it("keeps each scope's patterns, each attributed to its scope", () => {
         const manager = createInMemoryManager([
           {
             name: "global",
