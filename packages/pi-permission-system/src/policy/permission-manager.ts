@@ -19,7 +19,6 @@ import {
 } from "#src/config/policy-loader";
 import { type PathFlavor, posixPathFlavor } from "#src/path/path-flavor";
 import type { PermissionCheckResult, PermissionState } from "#src/types";
-import { relocateMcpToolKeyRules } from "./normalize";
 import type { Rule, Ruleset, ScopeName } from "./rule";
 import {
   evaluate,
@@ -202,16 +201,12 @@ export class PermissionManager implements ScopedPermissionManager {
       origin: "builtin",
     };
 
-    const configRules = composed.rules;
-    // A top-level `mcp__…` key now names an `mcp` candidate. The baseline reads
-    // the rules as written, so a relocated `allow` on one Pi MCP tool does not
-    // newly open the proxy's discovery targets.
-    const relocation = relocateMcpToolKeyRules(configRules);
-
+    // The baseline reads the rules as written, so a relocated `allow` on one Pi
+    // MCP tool does not newly open the proxy's discovery targets.
     const composedRules = composeRuleset(
       synthesizeDefaults(universalFallback.action, universalFallback.origin),
-      synthesizeBaseline(configRules),
-      relocation.rules,
+      synthesizeBaseline(composed.writtenRules),
+      composed.rules,
     );
 
     // Fail closed when a flooring scope's config is invalid: floor every
@@ -231,7 +226,7 @@ export class PermissionManager implements ScopedPermissionManager {
     const value: ResolvedPermissions = {
       composedRules: effectiveRules,
       failClosedScopes,
-      legacyMcpToolKeys: [...new Set(relocation.relocatedKeys)],
+      legacyMcpToolKeys: [...new Set(composed.relocatedMcpToolKeys)],
     };
     this.resolvedPermissionsCache.set(cacheKey, { stamp, value });
     return value;

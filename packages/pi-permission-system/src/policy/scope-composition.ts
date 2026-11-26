@@ -1,7 +1,11 @@
 import type { PolicyScope } from "#src/config/policy-loader";
 import type { FlatPermissionConfig, PermissionState } from "#src/types";
 import { isPermissionState } from "#src/types";
-import { expandDirectionalSugar, normalizeFlatConfig } from "./normalize";
+import {
+  expandDirectionalSugar,
+  normalizeFlatConfig,
+  relocateMcpToolKeyRules,
+} from "./normalize";
 import type { Rule, RuleOrigin, Ruleset } from "./rule";
 
 /** The universal fallback and the scope that set it. */
@@ -15,11 +19,21 @@ export interface ComposedScopes {
   /**
    * Config-layer rules, each scope's placed after the scopes before it. A
    * `(surface, pattern)` a later scope redefines appears once, at the later
-   * scope's position (ADR 0016 §2).
+   * scope's position (ADR 0016 §2). Includes each scope's relocated Pi MCP
+   * tool keys, placed after that scope's own rules.
    */
   rules: Ruleset;
+  /**
+   * The same composition over the rules as written, before relocation — the
+   * MCP baseline reads these. It is its own fold, not `rules` without the
+   * copies: a later scope's copy can redefine (and so drop) an earlier
+   * scope's written `mcp` rule in `rules`.
+   */
+  writtenRules: Ruleset;
   /** Absent when no scope sets the universal `"*"`. */
   universalFallback: UniversalFallback | undefined;
+  /** Each relocated top-level `mcp__` key, in scope order. */
+  relocatedMcpToolKeys: string[];
 }
 
 /**
@@ -35,7 +49,9 @@ export function composeScopes(
   scopes: readonly Pick<PolicyScope, "name" | "config">[],
 ): ComposedScopes {
   let rules: Ruleset = [];
+  let writtenRules: Ruleset = [];
   let universalFallback: UniversalFallback | undefined;
+  const relocatedMcpToolKeys: string[] = [];
 
   for (const { name, config } of scopes) {
     if (!config.permission) continue;
@@ -43,10 +59,14 @@ export function composeScopes(
     if (Object.hasOwn(permission, "*")) {
       universalFallback = universalFallbackOf(permission["*"], name);
     }
-    rules = redefine(rules, scopeRules(permission, name));
+    const written = scopeRules(permission, name);
+    const relocation = relocateMcpToolKeyRules(written);
+    rules = redefine(rules, relocation.rules);
+    writtenRules = redefine(writtenRules, written);
+    relocatedMcpToolKeys.push(...relocation.relocatedKeys);
   }
 
-  return { rules, universalFallback };
+  return { rules, writtenRules, universalFallback, relocatedMcpToolKeys };
 }
 
 /**

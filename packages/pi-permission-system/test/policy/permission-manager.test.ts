@@ -3074,6 +3074,29 @@ permission:
             },
           );
         });
+
+        it("yields to a later scope's mcp catch-all", () => {
+          const manager = createInMemoryManager(
+            [
+              {
+                name: "global",
+                config: { permission: { [toolName]: "allow" } },
+                floorsWhenInvalid: false,
+              },
+              {
+                name: "agent",
+                agentName: "coder",
+                config: { permission: { mcp: { "*": "deny" } } },
+                floorsWhenInvalid: true,
+              },
+            ],
+            ["danger-srv"],
+          );
+          const result = checkTool(manager, toolName, {}, "coder");
+          expect(result.state).toBe("deny");
+          expect(result.matchedPattern).toBe("*");
+          expect(result.origin).toBe("agent");
+        });
       });
 
       describe("tool exposure follows the mcp rules", () => {
