@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [26.0.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v25.1.0...pi-subagents-v26.0.0) (2026-11-26)
+
+
+### Bug Fixes
+
+* **pi-subagents:** **breaking:** run the tool calls of a message that includes a subagent call one at a time ([5336a1c](https://github.com/gotgenes/pi-packages/commit/5336a1cb85ee7a02fd531eed4fde513bb8e17a85)), closes [#1112](https://github.com/gotgenes/pi-packages/issues/1112)
+
 ## [25.1.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v25.0.5...pi-subagents-v25.1.0) (2026-11-24)
 
 
