@@ -47,6 +47,68 @@ Every planned killing mutation killed exactly the predicted tests.
 - `ExtensionPathOptions` stays unexported, unlike the plan's sketch: nothing outside `extension-paths.ts` names it, and an unread export would trip `fallow`.
 - The step-4 negation mutation (`!existsSync`) killed the republish test as well as "does not rewrite within the refresh window"; that is inherent to a negation, not a weak pin.
 
+## Stage: Final Retrospective (2026-11-26T17:58:21Z)
+
+### Session summary
+
+One session ran all four stages: planning (with a third-party direction gate and the follow-up [#1149]), five TDD steps plus two review-driven commits, the ship (`pi-permission-system` 44.0.2, closing #1115, [#1052], and PR [#1107]), and this retro.
+The forwarding directory now follows an inherited `PI_CODING_AGENT_SESSION_DIR`, and an idle serving session rewrites its heartbeat every 30 seconds instead of every second.
+
+### Observations
+
+#### What went well
+
+- The mutation batteries ran as one script per step (`/tmp/mut3.sh`, `/tmp/mut4.sh`): each asserted its pattern occurs exactly once, printed the `git diff --stat` before reading the run, and restored from a saved green copy.
+  Eleven mutations across steps 3–5 and the review fix each killed exactly the predicted tests, in four tool calls.
+- The Tidy-First assessor found a test that would have stayed green while its stated invariant broke ("republishes at the next refresh boundary" advanced a full refresh window), which turned the existence probe into a planned, pinned step instead of a silent regression.
+- The pre-completion reviewer's first round found a real defect class the plan missed (the cadence version skew) and a real coverage hole (the parent-side wiring), both cheap to fix before the push.
+
+#### What caused friction
+
+- `rule-ignored` — the frequency question at the planning gate offered [#1052]'s two remedies plus "defer", the option space the issue itself proposed; `clarification-gates` (loaded before the gate) says a third-party artifact's own decomposition is a premise, and to derive the option space from the problem first.
+  The operator answered with "tell me, what other mechanisms can you think of", and the derived table (seven mechanisms against six needs) came one round later.
+  Impact: one extra gate round-trip; no rework, and the table became [#1149]'s body.
+  Operator-caught.
+- `rule-ignored` — the plan's Risks named version skew only for the relocated-directory case; it never listed that an older child compares a new parent's `updatedAt` against a 5 s staleness window.
+  The `/plan-issue` template says that when a change alters a value consumers compare against, list each comparison per consumer with the direction a mismatch fails.
+  Impact: one review round and a `docs:` commit ("note heartbeat timing skew between parent and child versions").
+  Reviewer-caught.
+- `judgment` — the plan adopted PR [#1107]'s child-only composition-root test, so nothing pinned that `ServingHeartbeatStore` and `ForwardedRequestServer` receive the relocated `paths.forwardingDir`; replacing either wiring site passed the suite.
+  Impact: one review round and a `test:` commit ("pin the parent side of a relocated forwarding rendezvous").
+  Reviewer-caught.
+- `rule-ignored` — the #1149 disposition `ask_user` went out with its briefing only in thinking; the `ask-user-text-first` guard blocked it, and the re-ask in plain text worked first time.
+  Impact: one rejected call.
+  Self-recovered via the existing mechanism.
+- `rule-ignored` — the plan draft carried PR [#1107]'s "six existing forwarding tests" count unverified; a grep found seven before the plan commit.
+  Impact: one edit; self-identified.
+- `rule-ignored` — the first `cd packages/pi-permission-system && …` call was denied by the permission policy, whose message names the rule (root-relative paths).
+  Impact: one wasted call; self-identified.
+- `rule-ignored` — two Red runs were piped through `grep` (`vitest run … | grep -E "✓|×|Tests"`) against the `testing` skill's run-bare rule.
+  Impact: none here, since the failures were read from the filtered lines and not gated on the exit status.
+
+#### What the operator steered
+
+- `steer:choice`: "This said, tell me, what other mechanisms can you think of that would solve our needs?", attached to selecting the recommended slower refresh; it widened the option space past [#1052]'s two remedies.
+  Reach: general, by the operator's answer at this retro's gate: "I'm trying to make sure we're considering the overall design.
+  I haven't designed this whole system.
+  This communication mechanism, I think we inherited it.
+  So I'm trying to make sure we're not settling into local optima when there's a broader improvement to be made."
+  That is `AGENTS.md` principle 6 ("look past the issue to the design it sits in") and `code-design`'s "Inherited features, config, and output get no protection", so the gate's narrow option space was those rules unapplied, not a missing rule.
+  The same move appears in `packages/pi-subagents/docs/retro/1088-collapsible-transcript-blocks.md` ("Is there _anything_ new in Pi's API that will help us with any of this issue?", widening past the pinned surface).
+- `steer:choice`: "Yes to both.
+  Or perhaps, a more open ended issue, but we can propose that candidate.", after the agent offered to file the request-as-ping mechanism as a follow-up; the operator made the follow-up a decision issue with a candidate rather than a mechanism spec.
+  Reach unstated.
+
+### Diagnostic details
+
+- **Unused-tool detection** — nothing missed; the cross-repo spawner check used `gh search code`, and the Pi trace stayed inline because its output was a universal claim the design rested on.
+- **Model-performance correlation** — every turn, the Tidy-First assessor, and both pre-completion reviewer rounds ran on `anthropic/claude-opus-5-5` (from each subagent transcript); appropriate for the judgment-heavy work each did.
+- **Feedback-loop gap analysis** — no gap: each step ran its file's tests and `pnpm run check` before committing, the shared-fixture step ran the full package suite, and the root gates ran at baseline, after the last step, and before the push.
+
+### Changes made
+
+1. None beyond this retro entry: every finding is covered by a rule already in `AGENTS.md`, `clarification-gates`, the `/plan-issue` template, or an existing mechanism (the `ask-user-text-first` guard, the permission policy, the pre-completion reviewer).
+
 [#1052]: https://github.com/gotgenes/pi-packages/issues/1052
 [#1107]: https://github.com/gotgenes/pi-packages/pull/1107
 [#1149]: https://github.com/gotgenes/pi-packages/issues/1149
