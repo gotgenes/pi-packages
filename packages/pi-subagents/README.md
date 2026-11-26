@@ -246,6 +246,15 @@ That applies to every other tool call in a message that includes a `subagent` ca
 Stopping a still-queued agent produces the same completion notification a running agent's stop does.
 Because that agent never started, the notification says so and offers no result to collect.
 
+## When the parent session ends
+
+Reloading (`/reload`), quitting, starting or switching to another session, and forking all stop every running and queued subagent, and Pi gives extensions no way to defer or cancel them.
+When that stops anything, the parent session gets one message listing each stopped agent: its ID, type, and description, whether it was running or still queued, and its transcript path when it has one.
+The message starts no turn; the parent agent reads it on its next one, so neither you nor the agent waits for results that will not arrive.
+
+Pi refuses `/reload` only while the parent itself is responding, so a background agent is still exposed to it.
+Let background agents finish, or collect their results, before reloading.
+
 ## Child session lifecycle
 
 A child session runs in the parent's process but is a full Pi session with its own extension set.
