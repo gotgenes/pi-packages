@@ -17,11 +17,17 @@
  * - `fire(event, input, ctx)` — drive a registered handler; resolves to its
  *   (possibly async) result.
  *
- * The harness object is cast to `ExtensionAPI` at the call to the factory; the
- * `FakePi` interface itself stays narrow (ISP — only what the factory touches).
+ * The harness object is cast to `ExtensionAPI` once, inside `bootExtension`;
+ * the `FakePi` interface itself stays narrow (ISP — only what the factory
+ * touches).
  */
-import { createEventBus, type EventBus } from "@earendil-works/pi-coding-agent";
+import {
+  createEventBus,
+  type EventBus,
+  type ExtensionAPI,
+} from "@earendil-works/pi-coding-agent";
 import { vi } from "vitest";
+import piPermissionSystemExtension from "#src/index";
 
 /** A handler recorded by `pi.on(...)`, kept generic over event/result shapes. */
 export type RecordedHandler = (event: unknown, ctx: unknown) => unknown;
@@ -33,6 +39,8 @@ export interface FakePi {
   handlers: Map<string, RecordedHandler>;
   /** Every `pi.registerCommand(name, …)` registration, keyed by command name. */
   commands: Map<string, unknown>;
+  /** Every `pi.registerFlag(name, …)` registration, keyed by flag name. */
+  flags: Map<string, unknown>;
   /**
    * Drive a registered handler; resolves to its (possibly async) result.
    *
@@ -52,6 +60,11 @@ export interface MakeFakePiOptions {
   events?: EventBus;
   /** Tool names returned by `getAllTools()`; defaults to a small set. */
   toolNames?: readonly string[];
+  /**
+   * Launch-flag values `getFlag` answers for a registered flag, as Pi's CLI
+   * would have set them; an unset flag answers `undefined`.
+   */
+  flagValues?: Readonly<Record<string, boolean | string>>;
 }
 
 const DEFAULT_TOOL_NAMES = ["read", "write", "edit", "bash", "ls", "grep"];
@@ -59,19 +72,22 @@ const DEFAULT_TOOL_NAMES = ["read", "write", "edit", "bash", "ls", "grep"];
 /**
  * Build a fake `ExtensionAPI` for composition-root tests.
  *
- * The returned object is structurally a `FakePi`; pass it to the factory as
- * `piPermissionSystemExtension(pi as unknown as ExtensionAPI)`.
+ * The returned object is structurally a `FakePi`; run the factory against it
+ * with {@link bootExtension}.
  */
 export function makeFakePi(options: MakeFakePiOptions = {}): FakePi {
   const events = options.events ?? createEventBus();
   const toolNames = options.toolNames ?? DEFAULT_TOOL_NAMES;
+  const flagValues = options.flagValues ?? {};
   const handlers = new Map<string, RecordedHandler>();
   const commands = new Map<string, unknown>();
+  const flags = new Map<string, unknown>();
 
   return {
     events,
     handlers,
     commands,
+    flags,
     fire(event, input, ctx): Promise<unknown> {
       const handler = handlers.get(event);
       if (!handler) {
@@ -93,8 +109,28 @@ export function makeFakePi(options: MakeFakePiOptions = {}): FakePi {
     registerCommand(name: string, optionsArg: unknown): void {
       commands.set(name, optionsArg);
     },
+    registerFlag(name: string, optionsArg: unknown): void {
+      flags.set(name, optionsArg);
+    },
+    // Pi answers only a flag the extension registered, so an unregistered
+    // name reads `undefined` here too.
+    getFlag(name: string): boolean | string | undefined {
+      return flags.has(name) ? flagValues[name] : undefined;
+    },
     // ── ExtensionAPI methods present for the cast but unused by the factory ─
     registerProvider: vi.fn(),
     exec: vi.fn(),
   } as FakePi & Record<string, unknown>;
+}
+
+/**
+ * Run the real `piPermissionSystemExtension` factory against `pi` and return
+ * it, so a test drives the wired result.
+ *
+ * The one place the harness is cast to `ExtensionAPI`: `FakePi` carries only
+ * what the factory touches.
+ */
+export function bootExtension(pi: FakePi = makeFakePi()): FakePi {
+  piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+  return pi;
 }

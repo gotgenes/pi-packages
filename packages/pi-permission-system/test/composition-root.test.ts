@@ -26,10 +26,7 @@ import {
 import { homedir, tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 
-import {
-  createEventBus,
-  type ExtensionAPI,
-} from "@earendil-works/pi-coding-agent";
+import { createEventBus } from "@earendil-works/pi-coding-agent";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { unregisteredLinkMessage } from "#src/authority/authorizer-chain-audit";
 import { childNodeAbsentMessage } from "#src/authority/child-node-audit";
@@ -52,7 +49,6 @@ import {
 } from "#src/config/config-paths";
 import { DEFAULT_EXTENSION_CONFIG } from "#src/config/extension-config";
 import { SESSION_ENDED_REASON } from "#src/handlers/lifecycle";
-import piPermissionSystemExtension from "#src/index";
 import { getPermissionsService } from "#src/service";
 import {
   PERMISSIONS_READY_CHANNEL,
@@ -60,7 +56,7 @@ import {
 } from "#src/service/permission-events";
 import { publishServingHeartbeat } from "#test/helpers/forwarding-fixtures";
 import { makePromptOptions } from "#test/helpers/handler-fixtures";
-import { makeFakePi } from "#test/helpers/make-fake-pi";
+import { bootExtension, makeFakePi } from "#test/helpers/make-fake-pi";
 
 const SUBAGENT_REGISTRY_KEY = Symbol.for(
   "@gotgenes/pi-permission-system:subagent-registry",
@@ -279,7 +275,7 @@ async function approveForwardedRequest(
 describe("event-handler registration completeness", () => {
   it("registers a handler for every required event exactly once", () => {
     const pi = makeFakePi();
-    piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+    bootExtension(pi);
 
     expect([...pi.handlers.keys()].sort()).toEqual(EXPECTED_HANDLERS);
   });
@@ -305,14 +301,12 @@ describe("subagent registry sharing across factory instances", () => {
     // every session's ResourceLoader creates a separate bus).
     const parentBus = createEventBus();
     const childBus = createEventBus();
-    piPermissionSystemExtension(
-      makeFakePi({ events: parentBus }) as unknown as ExtensionAPI,
-    );
+    bootExtension(makeFakePi({ events: parentBus }));
     const childPi = makeFakePi({
       events: childBus,
       toolNames: ["read"],
     });
-    piPermissionSystemExtension(childPi as unknown as ExtensionAPI);
+    bootExtension(childPi);
 
     // The child session is announced on the *parent's* bus only; the parent's
     // lifecycle subscription writes it into the shared global registry.
@@ -369,11 +363,9 @@ describe("subagent registry sharing across factory instances", () => {
 
     const parentBus = createEventBus();
     const childBus = createEventBus();
-    piPermissionSystemExtension(
-      makeFakePi({ events: parentBus }) as unknown as ExtensionAPI,
-    );
+    bootExtension(makeFakePi({ events: parentBus }));
     const childPi = makeFakePi({ events: childBus, toolNames: ["bash"] });
-    piPermissionSystemExtension(childPi as unknown as ExtensionAPI);
+    bootExtension(childPi);
     parentBus.emit(SUBAGENT_CHILD_SESSION_CREATED, {
       sessionId: childSessionId,
       parentSessionId,
@@ -414,11 +406,9 @@ describe("subagent registry sharing across factory instances", () => {
 
     const parentBus = createEventBus();
     const childBus = createEventBus();
-    piPermissionSystemExtension(
-      makeFakePi({ events: parentBus }) as unknown as ExtensionAPI,
-    );
+    bootExtension(makeFakePi({ events: parentBus }));
     const childPi = makeFakePi({ events: childBus, toolNames: ["bash"] });
-    piPermissionSystemExtension(childPi as unknown as ExtensionAPI);
+    bootExtension(childPi);
     parentBus.emit(SUBAGENT_CHILD_SESSION_CREATED, {
       sessionId: childSessionId,
       parentSessionId,
@@ -461,11 +451,9 @@ describe("subagent registry sharing across factory instances", () => {
 
     const parentBus = createEventBus();
     const childBus = createEventBus();
-    piPermissionSystemExtension(
-      makeFakePi({ events: parentBus }) as unknown as ExtensionAPI,
-    );
+    bootExtension(makeFakePi({ events: parentBus }));
     const childPi = makeFakePi({ events: childBus, toolNames: ["bash"] });
-    piPermissionSystemExtension(childPi as unknown as ExtensionAPI);
+    bootExtension(childPi);
     parentBus.emit(SUBAGENT_CHILD_SESSION_CREATED, {
       sessionId: childSessionId,
       parentSessionId,
@@ -514,14 +502,12 @@ describe("subagent registry sharing across factory instances", () => {
     const childSessionId = "child-session-2";
 
     const parentBus = createEventBus();
-    piPermissionSystemExtension(
-      makeFakePi({ events: parentBus }) as unknown as ExtensionAPI,
-    );
+    bootExtension(makeFakePi({ events: parentBus }));
     const childPi = makeFakePi({
       events: createEventBus(),
       toolNames: ["read"],
     });
-    piPermissionSystemExtension(childPi as unknown as ExtensionAPI);
+    bootExtension(childPi);
 
     parentBus.emit(SUBAGENT_CHILD_SESSION_CREATED, {
       sessionId: childSessionId,
@@ -572,7 +558,7 @@ describe("unguarded in-process child detection", () => {
     const notified: string[] = [];
     const parentBus = createEventBus();
     const parentPi = makeFakePi({ events: parentBus });
-    piPermissionSystemExtension(parentPi as unknown as ExtensionAPI);
+    bootExtension(parentPi);
     await fireSessionStart(
       parentPi,
       makeBaseCtx(parentCwd, "parent-session-unguarded", {
@@ -601,7 +587,7 @@ describe("unguarded in-process child detection", () => {
     const notified: string[] = [];
     const parentBus = createEventBus();
     const parentPi = makeFakePi({ events: parentBus });
-    piPermissionSystemExtension(parentPi as unknown as ExtensionAPI);
+    bootExtension(parentPi);
     await fireSessionStart(
       parentPi,
       makeBaseCtx(parentCwd, "parent-session-unguarded", {
@@ -628,7 +614,7 @@ describe("unguarded in-process child detection", () => {
     const notified: string[] = [];
     const parentBus = createEventBus();
     const parentPi = makeFakePi({ events: parentBus });
-    piPermissionSystemExtension(parentPi as unknown as ExtensionAPI);
+    bootExtension(parentPi);
     await fireSessionStart(
       parentPi,
       makeBaseCtx(parentCwd, "parent-session-guarded", {
@@ -640,7 +626,7 @@ describe("unguarded in-process child detection", () => {
     // the healthy case the alarm must not fire for.
     const childCwd = mkdtempSync(join(tmpdir(), "pi-perm-child-cwd-"));
     const childPi = makeFakePi({ events: createEventBus() });
-    piPermissionSystemExtension(childPi as unknown as ExtensionAPI);
+    bootExtension(childPi);
     await fireSessionStart(childPi, makeChildCtx(childCwd, "child-guarded-1"));
 
     parentBus.emit(SUBAGENT_CHILD_BOUND, {
@@ -670,7 +656,7 @@ describe("interactive serving eligibility", () => {
     const cwd = mkdtempSync(join(tmpdir(), "pi-perm-root-serving-cwd-"));
     const pi = makeFakePi();
     const ctx = makeBaseCtx(cwd, "ui-root-session");
-    piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+    bootExtension(pi);
 
     await fireSessionStart(pi, ctx);
     expect(getServingSessionRegistry().servingIds()).toEqual([
@@ -730,7 +716,7 @@ describe("out-of-process forwarding liveness", () => {
       events: createEventBus(),
       toolNames: ["read"],
     });
-    piPermissionSystemExtension(childPi as unknown as ExtensionAPI);
+    bootExtension(childPi);
     return childPi.fire(
       "tool_call",
       {
@@ -834,7 +820,7 @@ describe("out-of-process forwarding liveness", () => {
     // nothing here stands in for either.
     const parentTitles: string[] = [];
     const parentPi = makeFakePi({ events: createEventBus() });
-    piPermissionSystemExtension(parentPi as unknown as ExtensionAPI);
+    bootExtension(parentPi);
     await fireSessionStart(
       parentPi,
       makeBaseCtx(parentCwd, parentSessionId, {
@@ -912,7 +898,7 @@ describe("out-of-process forwarding liveness", () => {
       events: createEventBus(),
       toolNames: ["read"],
     });
-    piPermissionSystemExtension(childPi as unknown as ExtensionAPI);
+    bootExtension(childPi);
     const firePromise = childPi.fire(
       "tool_call",
       {
@@ -948,7 +934,7 @@ describe("shutdown teardown chain", () => {
   it("unpublishes the service and unsubscribes the lifecycle on shutdown", async () => {
     const cwd = mkdtempSync(join(tmpdir(), "pi-perm-teardown-cwd-"));
     const pi = makeFakePi();
-    piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+    bootExtension(pi);
 
     // The service is published at session_start, not at factory init.
     await fireSessionStart(pi, makeChildCtx(cwd, "top-session"));
@@ -974,7 +960,7 @@ describe("shutdown teardown chain", () => {
 
     const cwd = mkdtempSync(join(tmpdir(), "pi-perm-release-cwd-"));
     const pi = makeFakePi({ toolNames: ["demo"] });
-    piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+    bootExtension(pi);
 
     // A human who never answers: the dialog stays open until the session ends.
     const ctx = makeBaseCtx(cwd, "ui-session", {
@@ -1013,7 +999,7 @@ describe("service and gate share one formatter registry", () => {
 
     const cwd = mkdtempSync(join(tmpdir(), "pi-perm-ui-cwd-"));
     const pi = makeFakePi({ toolNames: ["demo"] });
-    piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+    bootExtension(pi);
 
     const capturedTitles: string[] = [];
     const { ctx } = makeUiCtx(cwd, capturedTitles);
@@ -1051,7 +1037,7 @@ describe("service and gate share one access extractor registry", () => {
 
     const cwd = mkdtempSync(join(tmpdir(), "pi-perm-ext-cwd-"));
     const pi = makeFakePi({ toolNames: ["ffgrep"] });
-    piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+    bootExtension(pi);
 
     const { ctx } = makeUiCtx(cwd, []);
     await fireSessionStart(pi, ctx);
@@ -1095,12 +1081,12 @@ describe("service and gate share one access extractor registry", () => {
       toolNames: ["ffgrep"],
       events: createEventBus(),
     });
-    piPermissionSystemExtension(parentPi as unknown as ExtensionAPI);
+    bootExtension(parentPi);
     const childPi = makeFakePi({
       toolNames: ["ffgrep"],
       events: createEventBus(),
     });
-    piPermissionSystemExtension(childPi as unknown as ExtensionAPI);
+    bootExtension(childPi);
 
     await fireSessionStart(parentPi, makeBaseCtx(parentCwd, parentSessionId));
     getSubagentSessionRegistry().register(childSessionId, { parentSessionId });
@@ -1158,9 +1144,9 @@ describe("split-provider extractor inheritance", () => {
       toolNames: ["ffgrep"],
       events: createEventBus(),
     });
-    piPermissionSystemExtension(parentPi as unknown as ExtensionAPI);
+    bootExtension(parentPi);
     childPi = makeFakePi({ toolNames: ["ffgrep"], events: createEventBus() });
-    piPermissionSystemExtension(childPi as unknown as ExtensionAPI);
+    bootExtension(childPi);
 
     await fireSessionStart(parentPi, makeBaseCtx(parentCwd, parentSessionId));
     getSubagentSessionRegistry().register(childSessionId, { parentSessionId });
@@ -1269,12 +1255,12 @@ describe("fact-shaping inheritance stops at live authority", () => {
       toolNames: ["demo"],
       events: createEventBus(),
     });
-    piPermissionSystemExtension(parentPi as unknown as ExtensionAPI);
+    bootExtension(parentPi);
     const childPi = makeFakePi({
       toolNames: ["demo"],
       events: createEventBus(),
     });
-    piPermissionSystemExtension(childPi as unknown as ExtensionAPI);
+    bootExtension(childPi);
 
     // The parent is headless so it serves no inbox: a serving parent would make
     // the child relay its ask instead of deciding it (#909), and the question
@@ -1344,7 +1330,7 @@ describe("service and chain share one authorizer registry", () => {
 
     const cwd = mkdtempSync(join(tmpdir(), "pi-perm-auth-cwd-"));
     const pi = makeFakePi({ toolNames: ["demo"] });
-    piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+    bootExtension(pi);
 
     const capturedTitles: string[] = [];
     const { ctx } = makeUiCtx(cwd, capturedTitles);
@@ -1376,7 +1362,7 @@ describe("service and chain share one authorizer registry", () => {
 
     const cwd = mkdtempSync(join(tmpdir(), "pi-perm-auth-optin-"));
     const pi = makeFakePi({ toolNames: ["demo"] });
-    piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+    bootExtension(pi);
 
     const capturedTitles: string[] = [];
     const { ctx } = makeUiCtx(cwd, capturedTitles);
@@ -1414,7 +1400,7 @@ describe("the nothing-on-disk license reaches the delegation envelope", () => {
     });
     const cwd = mkdtempSync(join(tmpdir(), "pi-perm-license-cwd-"));
     const pi = makeFakePi({ toolNames: ["bash"] });
-    piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+    bootExtension(pi);
     const titles: string[] = [];
     const { ctx } = makeUiCtx(cwd, titles);
     await fireSessionStart(pi, ctx);
@@ -1495,7 +1481,7 @@ describe("ready emitted after service publication", () => {
       );
     });
 
-    piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+    bootExtension(pi);
 
     // ready is not emitted at load; only after session_start publishes.
     expect(seenKeyed).toEqual([]);
@@ -1526,7 +1512,7 @@ describe("ready emitted after service publication", () => {
       );
     });
 
-    piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+    bootExtension(pi);
     const ctx = makeBaseCtx(cwd, "latch-session");
     await fireSessionStart(pi, ctx);
 
@@ -1567,7 +1553,7 @@ describe("ready emitted after service publication", () => {
       emissions += 1;
     });
 
-    piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+    bootExtension(pi);
     const ctx = makeBaseCtx(cwd, "latch-reload-session");
     await fireSessionStart(pi, ctx);
     await pi.fire(
@@ -1617,7 +1603,7 @@ describe("single source of truth for session state", () => {
 
     const cwd = mkdtempSync(join(tmpdir(), "pi-perm-sot-cwd-"));
     const pi = makeFakePi({ toolNames: ["demo"] });
-    piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+    bootExtension(pi);
 
     // UI ctx that approves the gate prompt for this session (options[1]).
     // Return the second option label-agnostically — always the "for this
@@ -1665,7 +1651,7 @@ describe("service path queries evaluate the supplied path (#503)", () => {
     writeGlobalConfig({ permission: { path: { [target]: "deny" } } });
 
     const pi = makeFakePi({ events: createEventBus() });
-    piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+    bootExtension(pi);
     await fireSessionStart(pi, makeChildCtx(cwd, "svc-path-session"));
 
     const result = getPermissionsService("svc-path-session")!.checkPermission(
@@ -1685,7 +1671,7 @@ describe("project trust gates project-scoped config (#644)", () => {
     writeProjectConfig(cwd, { permission: { bash: "allow" } });
 
     const pi = makeFakePi({ events: createEventBus() });
-    piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+    bootExtension(pi);
     await fireSessionStart(
       pi,
       makeBaseCtx(cwd, "untrusted-session", { isProjectTrusted: false }),
@@ -1708,7 +1694,7 @@ describe("project trust gates project-scoped config (#644)", () => {
     writeProjectConfig(cwd, { permission: { bash: "allow" } });
 
     const pi = makeFakePi({ events: createEventBus() });
-    piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+    bootExtension(pi);
     await fireSessionStart(
       pi,
       makeBaseCtx(cwd, "trusted-session", { isProjectTrusted: true }),
@@ -1754,7 +1740,7 @@ describe("bash bare-token path gating (#509, #645)", () => {
     });
 
     const pi = makeFakePi({ events: createEventBus() });
-    piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+    bootExtension(pi);
     const ctx = makeChildCtx(cwd, "bare-token-session-deny");
     await fireSessionStart(pi, ctx);
 
@@ -1772,7 +1758,7 @@ describe("bash bare-token path gating (#509, #645)", () => {
     });
 
     const pi = makeFakePi({ events: createEventBus() });
-    piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+    bootExtension(pi);
     const ctx = makeChildCtx(cwd, "bare-token-session-wildcard");
     await fireSessionStart(pi, ctx);
 
@@ -1794,7 +1780,7 @@ describe("bash bare-token path gating (#509, #645)", () => {
     });
 
     const pi = makeFakePi({ events: createEventBus() });
-    piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+    bootExtension(pi);
     const ctx = makeChildCtx(cwd, "bare-symlink-session-deny");
     await fireSessionStart(pi, ctx);
 
@@ -1811,7 +1797,7 @@ describe("bash bare-token path gating (#509, #645)", () => {
     });
 
     const pi = makeFakePi({ events: createEventBus() });
-    piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+    bootExtension(pi);
     const ctx = makeChildCtx(cwd, "bare-token-session-unaffected");
     await fireSessionStart(pi, ctx);
 
@@ -1830,7 +1816,7 @@ describe("bash bare-token path gating (#509, #645)", () => {
     });
 
     const pi = makeFakePi({ events: createEventBus() });
-    piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+    bootExtension(pi);
     const ctx = makeChildCtx(cwd, "bare-token-session-absent");
     await fireSessionStart(pi, ctx);
 
@@ -1851,7 +1837,7 @@ describe("bash bare-token path gating (#509, #645)", () => {
     });
 
     const pi = makeFakePi({ events: createEventBus() });
-    piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+    bootExtension(pi);
     const ctx = makeChildCtx(cwd, "bare-token-session-norule");
     await fireSessionStart(pi, ctx);
 
@@ -1879,7 +1865,7 @@ describe("bash bare-token path gating (#509, #645)", () => {
     });
 
     const pi = makeFakePi({ events: createEventBus() });
-    piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+    bootExtension(pi);
     const ctx = makeChildCtx(cwd, "bare-escape-session-deny");
     await fireSessionStart(pi, ctx);
 
@@ -1906,7 +1892,7 @@ describe("bash bare-token path gating (#509, #645)", () => {
     });
 
     const pi = makeFakePi({ events: createEventBus() });
-    piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+    bootExtension(pi);
     const ctx = makeChildCtx(cwd, "flag-path-session-deny");
     await fireSessionStart(pi, ctx);
 
@@ -1934,9 +1920,9 @@ describe("session-keyed service publication", () => {
     const childSessionId = "child-session-keyed";
 
     const parentPi = makeFakePi({ events: createEventBus() });
-    piPermissionSystemExtension(parentPi as unknown as ExtensionAPI);
+    bootExtension(parentPi);
     const childPi = makeFakePi({ events: createEventBus() });
-    piPermissionSystemExtension(childPi as unknown as ExtensionAPI);
+    bootExtension(childPi);
 
     await fireSessionStart(parentPi, makeChildCtx(parentCwd, parentSessionId));
     getSubagentSessionRegistry().register(childSessionId, { parentSessionId });
@@ -1974,14 +1960,14 @@ describe("session-keyed service publication", () => {
     parentPi.events.on(PERMISSIONS_READY_CHANNEL, (data) => {
       parentReady.push(data);
     });
-    piPermissionSystemExtension(parentPi as unknown as ExtensionAPI);
+    bootExtension(parentPi);
 
     const childReady: unknown[] = [];
     const childPi = makeFakePi({ events: createEventBus() });
     childPi.events.on(PERMISSIONS_READY_CHANNEL, (data) => {
       childReady.push(data);
     });
-    piPermissionSystemExtension(childPi as unknown as ExtensionAPI);
+    bootExtension(childPi);
 
     // A UI-bearing parent adjudicates locally; a headless registered child
     // relays its asks to the parent, so its chain does not run.
@@ -2009,9 +1995,9 @@ describe("session-keyed service publication", () => {
     const childSessionId = "child-session-vacant";
 
     const parentPi = makeFakePi({ events: createEventBus() });
-    piPermissionSystemExtension(parentPi as unknown as ExtensionAPI);
+    bootExtension(parentPi);
     const childPi = makeFakePi({ events: createEventBus() });
-    piPermissionSystemExtension(childPi as unknown as ExtensionAPI);
+    bootExtension(childPi);
 
     await fireSessionStart(parentPi, makeBaseCtx(parentCwd, parentSessionId));
     getSubagentSessionRegistry().register(childSessionId, { parentSessionId });
@@ -2043,9 +2029,9 @@ describe("session-keyed service publication", () => {
     const childSessionId = "child-session-teardown";
 
     const parentPi = makeFakePi({ events: createEventBus() });
-    piPermissionSystemExtension(parentPi as unknown as ExtensionAPI);
+    bootExtension(parentPi);
     const childPi = makeFakePi({ events: createEventBus() });
-    piPermissionSystemExtension(childPi as unknown as ExtensionAPI);
+    bootExtension(childPi);
 
     await fireSessionStart(parentPi, makeChildCtx(parentCwd, parentSessionId));
     getSubagentSessionRegistry().register(childSessionId, { parentSessionId });
@@ -2097,7 +2083,7 @@ describe("session approvals do not leak across same-cwd session switches", () =>
 
     // ── Session #1: approve `demo` for the session, then shut down ──────────
     const firstPi = makeFakePi({ toolNames: ["demo"] });
-    piPermissionSystemExtension(firstPi as unknown as ExtensionAPI);
+    bootExtension(firstPi);
 
     const firstCtx = makeSessionApprovingCtx(cwd, "switch-session-1");
     await fireSessionStart(firstPi, firstCtx);
@@ -2118,7 +2104,7 @@ describe("session approvals do not leak across same-cwd session switches", () =>
 
     // ── Session #2: the re-invoked cached factory, same cwd ────────────────
     const secondPi = makeFakePi({ toolNames: ["demo"] });
-    piPermissionSystemExtension(secondPi as unknown as ExtensionAPI);
+    bootExtension(secondPi);
 
     await fireSessionStart(secondPi, makeChildCtx(cwd, "switch-session-2"));
 
@@ -2152,7 +2138,7 @@ describe("tool-surface prose under a custom system prompt", () => {
   it("leaves a root session's custom prompt as Pi built it", async () => {
     const cwd = mkdtempSync(join(tmpdir(), "pi-perm-custom-root-cwd-"));
     const pi = makeFakePi({ toolNames: ["read"] });
-    piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+    bootExtension(pi);
     const ctx = makeBaseCtx(cwd, "custom-root-session");
     await fireSessionStart(pi, ctx);
 
@@ -2176,12 +2162,12 @@ describe("tool-surface prose under a custom system prompt", () => {
       toolNames: ["read"],
       events: createEventBus(),
     });
-    piPermissionSystemExtension(parentPi as unknown as ExtensionAPI);
+    bootExtension(parentPi);
     const childPi = makeFakePi({
       toolNames: ["read"],
       events: createEventBus(),
     });
-    piPermissionSystemExtension(childPi as unknown as ExtensionAPI);
+    bootExtension(childPi);
 
     await fireSessionStart(parentPi, makeBaseCtx(parentCwd, parentSessionId));
     getSubagentSessionRegistry().register(childSessionId, { parentSessionId });
@@ -2243,12 +2229,12 @@ describe("forwarded grant-scope selection round-trip", () => {
 
     const parentBus = createEventBus();
     const parentPi = makeFakePi({ events: parentBus, toolNames: ["demo"] });
-    piPermissionSystemExtension(parentPi as unknown as ExtensionAPI);
+    bootExtension(parentPi);
     const childPi = makeFakePi({
       events: createEventBus(),
       toolNames: ["demo"],
     });
-    piPermissionSystemExtension(childPi as unknown as ExtensionAPI);
+    bootExtension(childPi);
 
     // The parent starts serving (its poll drains the inbox using the UI ctx).
     const parentCtx = makeServingCtx(
@@ -2308,12 +2294,12 @@ describe("forwarded grant-scope selection round-trip", () => {
 
     const parentBus = createEventBus();
     const parentPi = makeFakePi({ events: parentBus, toolNames: ["demo"] });
-    piPermissionSystemExtension(parentPi as unknown as ExtensionAPI);
+    bootExtension(parentPi);
     const childPi = makeFakePi({
       events: createEventBus(),
       toolNames: ["demo"],
     });
-    piPermissionSystemExtension(childPi as unknown as ExtensionAPI);
+    bootExtension(childPi);
 
     const parentCtx = makeServingCtx(
       parentCwd,
@@ -2372,7 +2358,7 @@ describe("yolo grants asks synthesized after resolution", () => {
     writeGlobalConfig(config);
     const cwd = mkdtempSync(join(tmpdir(), "pi-perm-yolo-cwd-"));
     const pi = makeFakePi({ toolNames: ["bash"] });
-    piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+    bootExtension(pi);
 
     const prompts: string[] = [];
     const { ctx } = makeUiCtx(cwd, prompts);
@@ -2472,7 +2458,7 @@ describe("directional external-directory relief (#806)", () => {
     writeGlobalConfig(config);
     const cwd = mkdtempSync(join(tmpdir(), "pi-perm-directional-cwd-"));
     const pi = makeFakePi({ toolNames: ["read", "write", "edit"] });
-    piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+    bootExtension(pi);
 
     const prompts: string[] = [];
     const { ctx } = makeUiCtx(cwd, prompts);
@@ -2628,7 +2614,7 @@ describe("configured prompt preferences reach the inline dialog", () => {
 
     const cwd = mkdtempSync(join(tmpdir(), "pi-perm-notify-cwd-"));
     const pi = makeFakePi({ toolNames: ["demo", "quiet"] });
-    piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+    bootExtension(pi);
 
     const { ctx, press, terminalWrites } = makeTuiCtx(cwd);
     await fireSessionStart(pi, ctx);
@@ -2666,7 +2652,7 @@ describe("configured prompt preferences reach the inline dialog", () => {
 
     const cwd = mkdtempSync(join(tmpdir(), "pi-perm-unanswered-cwd-"));
     const pi = makeFakePi({ toolNames: ["demo"] });
-    piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+    bootExtension(pi);
 
     const { ctx } = makeTuiCtx(cwd);
     await fireSessionStart(pi, ctx);
@@ -2694,7 +2680,7 @@ describe("configured prompt preferences reach the inline dialog", () => {
       });
       const cwd = mkdtempSync(join(tmpdir(), "pi-perm-notice-cwd-"));
       const pi = makeFakePi({ toolNames: ["demo"] });
-      piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+      bootExtension(pi);
       const { ctx, press, terminalWrites } = makeTuiCtx(cwd, sessionName);
       await fireSessionStart(pi, ctx);
 
@@ -2743,7 +2729,7 @@ describe("configured prompt preferences reach the inline dialog", () => {
 
     const cwd = mkdtempSync(join(tmpdir(), "pi-perm-keys-cwd-"));
     const pi = makeFakePi({ toolNames: ["demo"] });
-    piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+    bootExtension(pi);
 
     const { ctx, render, press } = makeTuiCtx(cwd);
     await fireSessionStart(pi, ctx);
@@ -2776,7 +2762,7 @@ describe("configured prompt preferences reach the inline dialog", () => {
 
     const cwd = mkdtempSync(join(tmpdir(), "pi-perm-keys-bad-cwd-"));
     const pi = makeFakePi({ toolNames: ["demo", "quiet"] });
-    piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+    bootExtension(pi);
 
     const { ctx, render, press, notified } = makeTuiCtx(cwd);
     await fireSessionStart(pi, ctx);
@@ -2824,7 +2810,7 @@ describe("configured prompt preferences reach the inline dialog", () => {
 
       const cwd = mkdtempSync(join(tmpdir(), "pi-perm-shadow-cwd-"));
       const pi = makeFakePi({ toolNames: ["demo"] });
-      piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+      bootExtension(pi);
 
       const { ctx, notified } = makeTuiCtx(cwd);
       await fireSessionStart(pi, ctx);
@@ -2851,7 +2837,7 @@ describe("configured prompt preferences reach the inline dialog", () => {
 
       const cwd = mkdtempSync(join(tmpdir(), "pi-perm-warn-start-cwd-"));
       const pi = makeFakePi({ toolNames: ["demo"] });
-      piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+      bootExtension(pi);
 
       // No before_agent_start: that fires when the operator submits a prompt,
       // so session_start must carry the warning on its own.
@@ -2873,7 +2859,7 @@ describe("configured prompt preferences reach the inline dialog", () => {
 
       const cwd = mkdtempSync(join(tmpdir(), "pi-perm-warn-cwd-"));
       const pi = makeFakePi({ toolNames: ["demo"] });
-      piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+      bootExtension(pi);
 
       const { ctx, notified } = makeTuiCtx(cwd);
       await fireSessionStart(pi, ctx);
@@ -2902,7 +2888,7 @@ describe("configured prompt preferences reach the inline dialog", () => {
 
       const cwd = mkdtempSync(join(tmpdir(), "pi-perm-warn-mid-cwd-"));
       const pi = makeFakePi({ toolNames: ["demo"] });
-      piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+      bootExtension(pi);
 
       const { ctx, notified } = makeTuiCtx(cwd);
       await fireSessionStart(pi, ctx);
@@ -2943,7 +2929,7 @@ describe("configured prompt preferences reach the inline dialog", () => {
       const cwd = mkdtempSync(join(tmpdir(), "pi-perm-policy-start-cwd-"));
       writeProjectConfig(cwd, { permission: { demo: "allow" }, bogusKey: 1 });
       const pi = makeFakePi({ toolNames: ["demo"] });
-      piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+      bootExtension(pi);
 
       const { ctx, notified } = makeTuiCtx(cwd);
       await fireSessionStart(pi, ctx);
@@ -2959,7 +2945,7 @@ describe("configured prompt preferences reach the inline dialog", () => {
       const cwd = mkdtempSync(join(tmpdir(), "pi-perm-policy-mid-cwd-"));
       writeProjectConfig(cwd, { permission: { demo: "allow" } });
       const pi = makeFakePi({ toolNames: ["demo"] });
-      piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+      bootExtension(pi);
 
       const { ctx, notified } = makeTuiCtx(cwd);
       await fireSessionStart(pi, ctx);
@@ -3016,7 +3002,7 @@ describe("Pi's built-in MCP tools are gated on the mcp surface", () => {
     writeGlobalMcpConfig({ "danger-srv": { command: "danger" } });
     const cwd = mkdtempSync(join(tmpdir(), "pi-perm-mcp-tool-cwd-"));
     const pi = makeFakePi({ toolNames: [wipe] });
-    piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+    bootExtension(pi);
     const ctx = makeChildCtx(cwd, "mcp-tool-deny");
     await fireSessionStart(pi, ctx);
 
@@ -3031,7 +3017,7 @@ describe("Pi's built-in MCP tools are gated on the mcp surface", () => {
     writeGlobalMcpConfig({ "danger-srv": { command: "danger" } });
     const cwd = mkdtempSync(join(tmpdir(), "pi-perm-mcp-tool-cwd-"));
     const pi = makeFakePi({ toolNames: [wipe, other] });
-    piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+    bootExtension(pi);
     const prompted: string[] = [];
     const ctx = makeBaseCtx(cwd, "mcp-tool-session", {
       select: async (
@@ -3071,7 +3057,7 @@ describe("Pi infrastructure reads", () => {
     const cwd = mkdtempSync(join(tmpdir(), "pi-perm-infra-cwd-"));
     writeGlobalConfig({ permission });
     const pi = makeFakePi({ events: createEventBus() });
-    piPermissionSystemExtension(pi as unknown as ExtensionAPI);
+    bootExtension(pi);
     const ctx = makeChildCtx(cwd, `infra-${basename(target)}`);
     await fireSessionStart(pi, ctx);
     const result = (await pi.fire(
