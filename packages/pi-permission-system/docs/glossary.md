@@ -15,7 +15,7 @@ A `deny` may carry a reason, which the agent is shown.
 ### Decision
 
 The final `allow` or `deny` for one request, after any escalation.
-The [review log](#review-log) records it with `decidedBy`, naming what decided: a rule, a session approval, [yolo](#yolo), the user, an [authorizer link](#link), or a forward.
+The [review log](#review-log) records it with `decidedBy`, naming what decided: a rule, a session approval, [auto-approve](#auto-approve), the user, an [authorizer link](#link), or a forward.
 
 ### Verdict
 
@@ -87,7 +87,7 @@ See [Composed ruleset](architecture/architecture.md#composed-ruleset).
 
 ### Origin
 
-Which source contributed a rule (`RuleOrigin`): the name of the [scope](#scope) it was loaded from (`global`, `project`, `agent`, `project-agent`), or `builtin`, `baseline`, `session`, `yolo`, or `fail-closed`.
+Which source contributed a rule (`RuleOrigin`): the name of the [scope](#scope) it was loaded from (`global`, `project`, `agent`, `project-agent`), or `builtin`, `baseline`, `session`, or `fail-closed`.
 A scope has a name, not an origin; its name becomes an origin once it is stamped on the rules that scope contributed.
 It is reported on the `permissions:decision` event and in the review log, so a surprising outcome traces to its source.
 
@@ -99,9 +99,9 @@ The two project scopes load only for a trusted project; see [project trust](#pro
 
 ### Channel
 
-Any path by which something that changes a check's outcome reaches the package: a scope's file, agent frontmatter, the session layer, or a runtime knob such as `yoloMode`.
+Any path by which something that changes a check's outcome reaches the package: a scope's file, agent frontmatter, the session layer, a runtime knob such as `debugLog`, or a launch flag such as `--auto-approve`.
 Which channels are admissible, and at what precedence, is decided in [ADR 0016](decisions/0016-policy-channels.md).
-The authority model's "three channels" for reaching live authority, and its statement that yolo "is not a channel", use the word in that narrower sense.
+The authority model's "three channels" for reaching live authority use the word in that narrower sense.
 
 ### Relax and tighten
 
@@ -122,18 +122,18 @@ It is held in memory, appended after every config rule (the session layer), and 
 For bash, the suggested pattern comes from the arity table (`git checkout main` suggests `git checkout *`).
 See [docs/session-approvals.md](session-approvals.md).
 
-### Yolo
+### Auto-approve
 
-The `yoloMode` runtime knob.
-When on, every `ask` becomes `allow` and every `deny` is preserved; the decision's origin is `yolo`.
-A rule's `ask` is rewritten when the ruleset is composed, and an `ask` a gate synthesizes after resolution (the bash wrapper floor, an unparseable command) is granted at the gate.
-Under yolo an `ask` never reaches live authority, so no [authorizer link](#link) or human is consulted.
-See [yolo is recorded authority](architecture/architecture.md#yolo-is-recorded-authority).
+A per-session mode in which an `ask` every [authorizer link](#link) defers is allowed instead of prompted; a `deny` still denies.
+It is a terminal reached after the chain, so links see every ask, and its decision is recorded as `decidedBy: { kind: "auto_approve", setter, scope }` with resolution `auto_approved`.
+It is set in memory, never in a file: by the `--auto-approve` launch flag or the `/permission-system:auto-approve` command, scoped to this session's own asks, forwarded asks, or one requesting agent.
+It replaced yolo, the retired `yoloMode` key, which rewrote every `ask` to `allow` before the chain.
+See [Auto-approve is a terminal](architecture/architecture.md#auto-approve-is-a-terminal).
 
 ### Fail-closed floor
 
 When a non-global scope is present but invalid, every composed `allow` becomes `ask` (origin `fail-closed`), so a permissive lower scope cannot survive behind a broken higher one.
-It is applied before yolo.
+Its asks reach live authority like any other, so auto-approve may answer them.
 See [Fail-closed on an invalid non-global scope](architecture/architecture.md#fail-closed-on-an-invalid-non-global-scope).
 
 ### Default and baseline
@@ -143,7 +143,7 @@ The baseline is a small set of synthesized MCP metadata allows, placed after the
 
 ### Runtime knob
 
-A config field that changes behavior without being a rule, such as `yoloMode`, `debugLog`, `permissionReviewLog`, or `promptTimeoutMs`.
+A config field that changes behavior without being a rule, such as `debugLog`, `permissionReviewLog`, or `promptTimeoutMs`.
 
 ### Propagation
 

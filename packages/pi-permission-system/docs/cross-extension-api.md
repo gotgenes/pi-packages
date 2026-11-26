@@ -509,21 +509,21 @@ pi.events.on("permissions:decision", (raw) => {
 
 ### Resolution Values
 
-| Value                         | Meaning                                                                  |
-| ----------------------------- | ------------------------------------------------------------------------ |
-| `policy_allow`                | Config rule said allow — no prompt shown                                 |
-| `policy_deny`                 | Config rule said deny — blocked immediately                              |
-| `session_approved`            | Covered by a session-level approval from earlier in the same session     |
-| `infrastructure_auto_allowed` | Read of a Pi infrastructure path — auto-allowed                          |
-| `user_approved`               | User approved once via dialog                                            |
-| `user_approved_for_session`   | User approved for the rest of the session                                |
-| `user_denied`                 | User denied via dialog                                                   |
-| `authorizer_allowed`          | A registered `authorizerChain` link granted the ask — no human asked     |
-| `authorizer_denied`           | A registered `authorizerChain` link refused the ask — no human asked     |
-| `auto_approved`               | Yolo mode — approved automatically without dialog                        |
-| `confirmation_unavailable`    | State was `ask` but no UI was available — blocked                        |
-| `prompt_unanswered`           | A prompt was shown and nobody answered within `promptTimeoutMs` — denied |
-| `gate_error`                  | The gate threw, or an escalation failed — blocked, fail-closed           |
+| Value                         | Meaning                                                                                                                          |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `policy_allow`                | Config rule said allow — no prompt shown                                                                                         |
+| `policy_deny`                 | Config rule said deny — blocked immediately                                                                                      |
+| `session_approved`            | Covered by a session-level approval from earlier in the same session                                                             |
+| `infrastructure_auto_allowed` | Read of a Pi infrastructure path — auto-allowed                                                                                  |
+| `user_approved`               | User approved once via dialog                                                                                                    |
+| `user_approved_for_session`   | User approved for the rest of the session                                                                                        |
+| `user_denied`                 | User denied via dialog                                                                                                           |
+| `authorizer_allowed`          | A registered `authorizerChain` link granted the ask — no human asked                                                             |
+| `authorizer_denied`           | A registered `authorizerChain` link refused the ask — no human asked                                                             |
+| `auto_approved`               | This session's auto-approve allowed an ask every `authorizerChain` link deferred — no human asked; `origin` is the asking rule's |
+| `confirmation_unavailable`    | State was `ask` but no UI was available — blocked                                                                                |
+| `prompt_unanswered`           | A prompt was shown and nobody answered within `promptTimeoutMs` — denied                                                         |
+| `gate_error`                  | The gate threw, or an escalation failed — blocked, fail-closed                                                                   |
 
 ### Recipe: bridging a prompt to an external notifier
 

@@ -15,8 +15,8 @@
 Only the outcome entries carry `decidedBy`; the waiting entry does not, because nothing has decided yet and a `null` there would read as decided-by-nobody.
 The prompter records what the decision states rather than deriving it — which is what lets one entry distinguish a human at the dialog, a chain link, an unreachable authority, and another session's answer, where the shape alone cannot.
 
-Yolo-mode auto-approval is resolved upstream: at the composition stage (`PermissionManager.check`'s `rewriteAsksToYolo`) for a rule-driven ask, and at `GateRunner`'s auto-approve fast path (`resolveYoloGrant`) for an ask synthesized after resolution, which no rule rewrite can reach ([#712]).
-An `ask` never reaches this class under yolo, so `PermissionPrompter` has no yolo-mode knowledge.
+Auto-approve is a terminal like the others: `AuthorizerSelection` hands this class an `AutoApprovingAuthorizer` for an ask the session's auto-approve covers, so an auto-approval is bracketed by the same two entries, its `decidedBy` naming `auto_approve` and its setter.
+`PermissionPrompter` has no auto-approve knowledge.
 
 ## Why a class instead of a free function
 
@@ -82,4 +82,3 @@ The Authorizer spine is entirely behind that seam.
 [#555]: https://github.com/gotgenes/pi-packages/issues/555
 [#556]: https://github.com/gotgenes/pi-packages/issues/556
 [#726]: https://github.com/gotgenes/pi-packages/issues/726
-[#712]: https://github.com/gotgenes/pi-packages/issues/712

@@ -17,7 +17,7 @@ The batch ships together when Step 3 lands, so this issue leaves the release-ple
 
 yolo mode is smeared across the prompt path.
 `shouldAutoApprovePermissionState` is checked in `PermissionPrompter.prompt` and again in the forwarded-inbox serve arm, and `canResolveAskPermissionRequest`'s yolo arm sits in `PromptingGateway.canConfirm()` — three modules know about yolo on the decision path.
-The [architecture "yolo is recorded authority" section](../architecture/architecture.md#yolo-is-recorded-authority) names yolo as a standing authorization that belongs in the ruleset, not the prompt path.
+The architecture "yolo is recorded authority" section (since replaced by [Auto-approve is a terminal](../architecture/architecture.md#auto-approve-is-a-terminal)) names yolo as a standing authorization that belongs in the ruleset, not the prompt path.
 This step delivers that framing: yolo becomes a composition-stage rewrite over the composed ruleset — every `ask` action becomes `allow`, tagged `origin: "yolo"` — so `evaluate()` is the single yolo decision point.
 It is a preparatory step ahead of the full authority spine (Phase 9); it does not build the spine.
 

@@ -160,6 +160,21 @@ Third-party packages are maintained by their authors; review one before granting
 
 ## Upgrading
 
+### The major after 44.x — auto-approve replaces yolo
+
+The `yoloMode` config key is no longer read, and a config that still sets it is warned.
+Auto-approve replaces it, set for one session and never in a file: launch with `pi --auto-approve`, or run `/permission-system:auto-approve on`, or use the "Auto-approve (this session)" row of the `/permission-system` modal.
+Write the flag after your prompt or before another option (`pi --auto-approve -p "…"`): Pi reads the word right after a flag as its value.
+
+Four things change:
+
+- Your `authorizerChain` links now see asks under auto-approve, and their `deny` stands; yolo used to approve before any link ran.
+- A subagent's asks are auto-approved by the session serving it, which can scope auto-approve to its own asks, forwarded asks, or one agent; a subagent no longer reads the setting from the shared config file.
+- The `"yolo"` origin value is gone from the `permissions:decision` event: an auto-approved decision reports the origin of the rule that asked, with `resolution: "auto_approved"`, and the review log names what turned auto-approve on in `decidedBy`.
+- `PermissionsService.checkPermission` answers `ask` where yolo made it answer `allow`.
+
+See [Auto-approve](docs/configuration.md#auto-approve).
+
 ### The major after 43.x — a later scope's patterns follow an earlier scope's
 
 Each config scope's rules are now placed after the earlier scopes' rules, so a later scope's catch-all overrides an earlier scope's specific patterns.

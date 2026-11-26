@@ -12,7 +12,7 @@ One unified config file per scope:
 Project config overrides global config; per-agent frontmatter overrides both.
 
 **Project config requires project trust.**
-Project and project-agent scopes (both permission policy and runtime config such as `yoloMode`) are loaded only when Pi reports the project as trusted (`ctx.isProjectTrusted()`).
+Project and project-agent scopes (both permission policy and runtime config such as `authorizerChain`) are loaded only when Pi reports the project as trusted (`ctx.isProjectTrusted()`).
 In an untrusted directory, only global (and global-agent) config applies, so an untrusted repository cannot loosen your global policy; the extension surfaces a loud warning plus a `project_trust.skipped` review-log entry when it skips a project scope.
 Grant project trust (or configure `defaultProjectTrust`) to load the project's config; a trust grant reloads project policy on the next `resources_discover` reload.
 See [migration/0644-project-trust-gating.md](migration/0644-project-trust-gating.md).
@@ -56,7 +56,7 @@ permission:
 
 A surface whose every pattern resolves to `deny` is withheld from the agent entirely.
 
-Scalar fields (`debugLog`, `permissionReviewLog`, `yoloMode`, `doublePressToConfirm`, `forwardingTimeoutMs`, `promptTimeoutMs`, `promptMaxRows`, `promptFieldMaxWidth`) use simple replacement.
+Scalar fields (`debugLog`, `permissionReviewLog`, `doublePressToConfirm`, `forwardingTimeoutMs`, `promptTimeoutMs`, `promptMaxRows`, `promptFieldMaxWidth`) use simple replacement.
 `permissionDialogKeys` replaces the whole map rather than merging entry by entry, so the map that was validated is the map that applies.
 `promptNotifications` likewise replaces the whole list, so a project `[]` turns off a global list.
 
@@ -66,7 +66,7 @@ Instead the effective policy is floored so nothing resolves more permissively th
 So a global `bash: allow` cannot remain effective behind a project scope that was meant to deny bash but contains a typo — bash prompts until the invalid config is fixed.
 A validation warning plus a distinct fail-closed notice are emitted, and a fix + reload restores the intended policy.
 An invalid **global** scope does not trigger the clamp — it is the lowest precedence, so nothing more permissive is inherited when it fails.
-This clamp is deny-preserving and, like `yoloMode`, applied at composition; when `yoloMode` is on it re-permits the floored `ask` back to `allow`, since yolo is an explicit full-permissive opt-in.
+This clamp is deny-preserving and applied at composition; a floored `ask` escalates like any other, so [auto-approve](#auto-approve) still answers it when it covers the ask.
 
 ## Full Example
 
@@ -77,7 +77,6 @@ This clamp is deny-preserving and, like `yoloMode`, applied at composition; when
   // Runtime knobs
   "debugLog": false,
   "permissionReviewLog": true,
-  "yoloMode": false,
   "doublePressToConfirm": true,
   "forwardingTimeoutMs": 600000,
   // "promptTimeoutMs": 60000, // opt-in: deny a prompt nobody answers (unset = no timer)
@@ -125,23 +124,23 @@ This clamp is deny-preserving and, like `yoloMode`, applied at composition; when
 
 ## Runtime Knobs
 
-| Key                         | Default  | Description                                                                                                                                                                                                                                  |
-| --------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `debugLog`                  | `false`  | Enables verbose diagnostic logging to `logs/pi-permission-system-debug.jsonl`                                                                                                                                                                |
-| `permissionReviewLog`       | `true`   | Enables the permission request/denial review log at `logs/pi-permission-system-permission-review.jsonl`. Records bash command strings, masked only where a name binds the secret — see [Log file sensitivity](#log-file-sensitivity)         |
-| `yoloMode`                  | `false`  | Auto-approves `ask` results instead of prompting when yolo mode is enabled                                                                                                                                                                   |
-| `doublePressToConfirm`      | `true`   | Requires a confirming second press of a decision hotkey in the inline TUI dialog (see below). TUI sessions only; set to `false` for single-press.                                                                                            |
-| `permissionDialogKeys`      | —        | Remaps the inline TUI dialog's decision hotkeys (see below). One printable character per decision; omitted decisions keep `y` / `s` / `b` / `n` / `r`.                                                                                       |
-| `promptNotifications`       | `[]`     | Terminal notifications to emit when the inline TUI dialog opens: `"bell"`, `"osc9"`, `"osc777"` (see below). Empty for none.                                                                                                                 |
-| `forwardingTimeoutMs`       | `600000` | How long a subagent waits for the parent session to answer a forwarded permission request, in milliseconds. A child whose parent is not draining its inbox gives up in ~2 s regardless, whether that parent runs in this process or its own. |
-| `promptTimeoutMs`           | —        | How long a permission prompt, once shown, waits for an answer before it is dismissed and the request denied, in milliseconds. Unset (the default) means no timer. See [Unanswered prompts](#unanswered-prompts).                             |
-| `promptMaxRows`             | `24`     | Max rows a permission prompt renders before eliding its evidence. The request's own facts are never elided by this budget; `Ctrl+O` expands the prompt to the complete request.                                                              |
-| `promptFieldMaxWidth`       | `400`    | Max characters of any one field shown in a permission prompt. This is what bounds a single long field (a here-string command, say) that would otherwise fill the prompt through wrapping.                                                    |
-| `reviewLogFieldMaxWidth`    | `1000`   | Max characters of any one value written to the review log. A longer value is stored shortened, marked with an ellipsis. Raise it to keep longer values; this is a length bound, not redaction.                                               |
-| `toolInputPreviewMaxLength` | —        | **Deprecated and ignored.** Superseded by `promptMaxRows` / `promptFieldMaxWidth`. Still accepted so an existing config is not rejected, but the value no longer applies; setting it logs a warning.                                         |
-| `toolTextSummaryMaxLength`  | —        | **Deprecated and ignored.** Superseded by `promptMaxRows` / `promptFieldMaxWidth`. Still accepted so an existing config is not rejected, but the value no longer applies; setting it logs a warning.                                         |
-| `piInfrastructureReadPaths` | `[]`     | Extra directories to auto-allow for reads, bypassing the `external_directory` gate. Supports `~`/`$HOME`/`${HOME}` expansion and wildcard patterns (`*`, `?`).                                                                               |
-| `authorizerChain`           | `[]`     | Ordered names of registered live-authority chain links to consult before the terminal authorizer (see [Authorizer chain](#authorizer-chain--case-by-case-decision-links)).                                                                   |
+| Key                         | Default  | Description                                                                                                                                                                                                                                           |
+| --------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `debugLog`                  | `false`  | Enables verbose diagnostic logging to `logs/pi-permission-system-debug.jsonl`                                                                                                                                                                         |
+| `permissionReviewLog`       | `true`   | Enables the permission request/denial review log at `logs/pi-permission-system-permission-review.jsonl`. Records bash command strings, masked only where a name binds the secret — see [Log file sensitivity](#log-file-sensitivity)                  |
+| `doublePressToConfirm`      | `true`   | Requires a confirming second press of a decision hotkey in the inline TUI dialog (see below). TUI sessions only; set to `false` for single-press.                                                                                                     |
+| `permissionDialogKeys`      | —        | Remaps the inline TUI dialog's decision hotkeys (see below). One printable character per decision; omitted decisions keep `y` / `s` / `b` / `n` / `r`.                                                                                                |
+| `promptNotifications`       | `[]`     | Terminal notifications to emit when the inline TUI dialog opens: `"bell"`, `"osc9"`, `"osc777"` (see below). Empty for none.                                                                                                                          |
+| `forwardingTimeoutMs`       | `600000` | How long a subagent waits for the parent session to answer a forwarded permission request, in milliseconds. A child whose parent is not draining its inbox gives up in ~2 s regardless, whether that parent runs in this process or its own.          |
+| `promptTimeoutMs`           | —        | How long a permission prompt, once shown, waits for an answer before it is dismissed and the request denied, in milliseconds. Unset (the default) means no timer. See [Unanswered prompts](#unanswered-prompts).                                      |
+| `promptMaxRows`             | `24`     | Max rows a permission prompt renders before eliding its evidence. The request's own facts are never elided by this budget; `Ctrl+O` expands the prompt to the complete request.                                                                       |
+| `promptFieldMaxWidth`       | `400`    | Max characters of any one field shown in a permission prompt. This is what bounds a single long field (a here-string command, say) that would otherwise fill the prompt through wrapping.                                                             |
+| `reviewLogFieldMaxWidth`    | `1000`   | Max characters of any one value written to the review log. A longer value is stored shortened, marked with an ellipsis. Raise it to keep longer values; this is a length bound, not redaction.                                                        |
+| `toolInputPreviewMaxLength` | —        | **Deprecated and ignored.** Superseded by `promptMaxRows` / `promptFieldMaxWidth`. Still accepted so an existing config is not rejected, but the value no longer applies; setting it logs a warning.                                                  |
+| `toolTextSummaryMaxLength`  | —        | **Deprecated and ignored.** Superseded by `promptMaxRows` / `promptFieldMaxWidth`. Still accepted so an existing config is not rejected, but the value no longer applies; setting it logs a warning.                                                  |
+| `yoloMode`                  | —        | **No longer read.** Replaced by [auto-approve](#auto-approve), which is set per session with `--auto-approve` or `/permission-system:auto-approve`, never in a file. Still accepted so an existing config is not rejected; setting it logs a warning. |
+| `piInfrastructureReadPaths` | `[]`     | Extra directories to auto-allow for reads, bypassing the `external_directory` gate. Supports `~`/`$HOME`/`${HOME}` expansion and wildcard patterns (`*`, `?`).                                                                                        |
+| `authorizerChain`           | `[]`     | Ordered names of registered live-authority chain links to consult before the terminal authorizer (see [Authorizer chain](#authorizer-chain--case-by-case-decision-links)).                                                                            |
 
 Every array field (`promptNotifications`, `piInfrastructureReadPaths`, `authorizerChain`, and a `commandEffects` entry's `effects` and `unlessOption` lists) accepts at most 1,000 entries.
 A longer list makes the file invalid, so it is rejected like any other invalid value (see [Merge Precedence](#merge-precedence) for how an invalid scope fails closed).
@@ -149,7 +148,8 @@ A longer list makes the file invalid, so it is rejected like any other invalid v
 Both logs write to `~/.pi/agent/extensions/pi-permission-system/logs/`.
 No debug output is printed to the terminal.
 
-The `/permission-system` settings modal and `/permission-system reset` save `yoloMode`, `permissionReviewLog`, `debugLog`, and `doublePressToConfirm` to the global `config.json`.
+The `/permission-system` settings modal and `/permission-system reset` save `permissionReviewLog`, `debugLog`, and `doublePressToConfirm` to the global `config.json`.
+The modal's first row, "Auto-approve (this session)", is not a knob: it turns [auto-approve](#auto-approve) on or off for this session and writes nothing.
 The save edits the file in place: your rules, comments, and every other key are kept, and a knob the file does not yet set is added at the top.
 Adding a knob can re-indent a file written on a single line, or an entry that shares a line with the opening `{`; a comment on the `{` line ends up after the last added knob.
 When the existing file fails to parse or validate, the save is refused with a notice naming the file and each problem, and the file is left untouched; fix it by hand, then toggle again.
@@ -414,6 +414,43 @@ Registration returns a disposer, and only one link may hold a given name.
 Register in every session without branching: a session that relays its asks accepts the link and records `authorizer_link_vacant` rather than refusing it.
 For a complete working example, see [`@gotgenes/pi-permission-model-judge`](https://github.com/gotgenes/pi-packages/tree/main/packages/pi-permission-model-judge): it registers a `model-judge` link on `permissions:ready` that reviews `external_directory` asks and auto-denies mistyped paths with a corrective reason.
 
+### Auto-approve
+
+Auto-approve allows an `ask` instead of prompting for it, after every configured [authorizer link](#authorizer-chain--case-by-case-decision-links) has deferred.
+A `deny` still denies: a rule's `deny` decides before anything is asked, and a link's `deny` stands because the links run first.
+It is set for one session, in memory, and never read from or written to a file.
+
+Two things turn it on:
+
+- the `--auto-approve` launch flag, which covers this session's own asks and every ask its subagents forward to it;
+- the `/permission-system:auto-approve` command, or the "Auto-approve (this session)" row of the `/permission-system` modal.
+
+Pi reads the word after a flag as the flag's value when it does not start with `-`, so `pi --auto-approve "fix the bug"` swallows the prompt.
+Write the flag alone, after the prompt (`pi "fix the bug" --auto-approve`), or before another option (`pi --auto-approve -p "fix the bug"`).
+
+The command takes a scope:
+
+| Command                                                              | Effect                                              |
+| -------------------------------------------------------------------- | --------------------------------------------------- |
+| `/permission-system:auto-approve on`                                 | this session's own asks and every forwarded ask     |
+| `/permission-system:auto-approve on own`                             | only asks this session's own tools raise            |
+| `/permission-system:auto-approve on forwarded`                       | only asks a subagent forwards here                  |
+| `/permission-system:auto-approve on agent <name>`                    | only asks the named subagent forwards here          |
+| `/permission-system:auto-approve off [own\|forwarded\|agent <name>]` | turn one scope off, or every scope (the flag's too) |
+| `/permission-system:auto-approve status`                             | say which scopes are on and what set each           |
+
+So "this reviewer agent runs unattended, my own session prompts" is `on agent reviewer`, and "I am unattended, but my subagents' asks still reach me" is `on own`.
+The status bar shows `auto-approve` while any scope is on.
+
+A subagent's asks are answered by the session serving it, so set auto-approve there; a subagent's own setting does not apply while it relays its asks, and the command warns when you set it in such a session.
+A session without a UI (`pi -p`, RPC) serves its subagents while auto-approve covers forwarded asks, so `pi -p --auto-approve` answers them.
+
+The review log records an auto-approved ask as `permission_request.waiting` then `permission_request.approved`, with `decidedBy: { "kind": "auto_approve", "setter": "flag" | "command", "scope": "own" | "forwarded" | "agent" }`; the `permissions:decision` event reports `resolution: "auto_approved"` and the origin of the rule that asked.
+A served ask appears in the serving session's log as `forwarded_permission.prompted` then `forwarded_permission.approved` with the same `decidedBy`.
+
+Auto-approve replaced `yoloMode`, which rewrote every `ask` to `allow` before the links ran, so no link ever saw an ask under it, and which the modal saved to the global file, where it reached every running session.
+A config that still sets `yoloMode` is warned that it is no longer read.
+
 ---
 
 ## Policy Reference
@@ -640,13 +677,13 @@ The bash gate fails closed: when in doubt it blocks or prompts, never silently a
   An `allow` is clamped to `ask`, and an explicit `deny` still denies.
   The [three exceptions](#wrapper-transparency) are a wrapper running a pure-reader command, whose direction is provable however unknown its argument feed is; a wrapper that only modifies how a command runs (`time`, `timeout`, `nice`, `stdbuf`, `setsid`), which is decided exactly as the command it runs; and an `env` that names no command at all, which is decided by its own rule.
 
-Every synthetic `ask` above — the two parse sentinels and both wrapper floors — is auto-approved under `yoloMode: true`, which is an explicit full-permissive opt-in rather than a rule that could ride through.
-An explicit `deny` still denies under yolo, and with yolo off the floors are unaffected.
+Every synthetic `ask` above — the two parse sentinels and both wrapper floors — reaches the authorizer chain and the prompt like any other ask, so [auto-approve](#auto-approve) answers it when it covers the ask.
+An explicit `deny` still denies under auto-approve, and with auto-approve off the floors are unaffected.
 Approving one for the session works normally: the floors clamp the decision and leave the grant's provenance intact, so a command you have already approved does not prompt again.
 
 A subagent's floored ask keeps its floor when it is forwarded to the parent session.
 The parent's `allow` rule does not answer it, so `sudo rm x` from a subagent prompts in the parent even under a parent `bash: *` allow.
-The parent's `deny` still denies, and a grant for the whole parent session or the parent's `yoloMode` still approves.
+The parent's `deny` still denies, a grant for the whole parent session still approves, and so does the parent's auto-approve when it covers forwarded asks.
 A subagent's chained command (`ls && rm -rf /tmp/x`) is judged by the parent command by command: every command the subagent's own policy left asking is forwarded with its floor, and the parent's `deny` or `ask` on any one of them decides, not only on the first.
 The parent's rules and session grants match each forwarded command in the same spellings the subagent's own rules do: the [home-expanded form](#home-directory-expansion-in-patterns) and the form with every path argument made absolute against the subagent's working directory.
 So a parent `"~/bin/tool *": "deny"` denies a subagent's `$HOME/bin/tool --now`, and a parent `"rm /tmp/builds/*": "deny"` denies `rm builds/x` from a subagent working in `/tmp`.
@@ -1332,7 +1369,7 @@ That rule matches the wrapper's own text, so it is decided before the exemption 
 
 `sudo`'s own options are read the way `sudo` reads them, so `sudo -nu cat rm x` runs `rm x`, not a pure reader named `cat`.
 A `sudo` mode in which the command it names is not what runs as named keeps the floor whatever that command is: `-e`/`--edit` (sudoedit edits its operands as files, as root), `-s`/`--shell` and `-i`/`--login` (a shell runs the operand), and `-D`/`--chdir` and `-R`/`--chroot` (relative operands resolve somewhere the path surfaces do not look).
-So does `-h`, whose meaning depends on what follows it, and any option `sudo`'s manual does not list; a mode that keeps the floor is approved at the prompt or under `yoloMode`.
+So does `-h`, whose meaning depends on what follows it, and any option `sudo`'s manual does not list; a mode that keeps the floor is approved at the prompt or by auto-approve.
 
 `env`, `xargs`, and `doas` are read the same way, from the BSD and GNU manuals for the first two and `opendoas` for the third, and any option those do not list keeps the floor too.
 So `xargs -n 1 cat` and `env -u FOO cat x` still resolve by `cat`'s rule, while these keep the floor whatever command they name:
