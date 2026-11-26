@@ -725,8 +725,8 @@ permission:
 name: analyst
 permission:
   skill:
-    "pi-*": allow
     "*": deny
+    "pi-*": allow
 ---
 `,
             },
