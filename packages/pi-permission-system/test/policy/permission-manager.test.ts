@@ -214,7 +214,7 @@ describe("PermissionManager", () => {
         expect(rmResult.origin).toBe("project");
       });
 
-      it("string replaces object in override scope", () => {
+      it("a later string catch-all shadows an earlier scope's patterns", () => {
         const manager = createInMemoryManager([
           {
             name: "global",
@@ -267,6 +267,146 @@ describe("PermissionManager", () => {
         expect(denied.state).toBe("deny");
         expect(denied.matchedPattern).toBe("rm -rf *");
       });
+
+      describe("a later scope's patterns follow an earlier scope's", () => {
+        const lockedAgent = `---
+name: locked
+permission:
+  bash:
+    "*": deny
+---
+Locked.
+`;
+
+        it("an agent's catch-all denies a command the global config allows", () => {
+          const { manager, cleanup } = createManager(
+            { permission: { bash: { "*": "ask", "git *": "allow" } } },
+            { locked: lockedAgent },
+          );
+          try {
+            const result = checkTool(
+              manager,
+              "bash",
+              { command: "git status" },
+              "locked",
+            );
+            expect(result.state).toBe("deny");
+            expect(result.matchedPattern).toBe("*");
+            expect(result.origin).toBe("agent");
+          } finally {
+            cleanup();
+          }
+        });
+
+        it("withholds the tool from an agent whose catch-all denies every pattern", () => {
+          const { manager, cleanup } = createManager(
+            { permission: { bash: { "*": "ask", "git *": "allow" } } },
+            { locked: lockedAgent },
+          );
+          try {
+            expect(manager.isToolFullyDenied("bash", "locked")).toBe(true);
+          } finally {
+            cleanup();
+          }
+        });
+
+        it("keeps an earlier scope's string catch-all under a later scope's pattern map", () => {
+          const manager = createInMemoryManager([
+            {
+              name: "global",
+              config: { permission: { bash: "allow" } },
+              floorsWhenInvalid: false,
+            },
+            {
+              name: "project",
+              config: { permission: { bash: { "rm *": "deny" } } },
+              floorsWhenInvalid: true,
+            },
+          ]);
+          const result = checkTool(manager, "bash", { command: "ls" });
+          expect(result.state).toBe("allow");
+          expect(result.origin).toBe("global");
+        });
+
+        it("leaves the universal fallback below every scope's surface rules", () => {
+          const manager = createInMemoryManager([
+            {
+              name: "global",
+              config: { permission: { bash: { "git *": "allow" } } },
+              floorsWhenInvalid: false,
+            },
+            {
+              name: "agent",
+              agentName: "coder",
+              config: { permission: { "*": "deny" } },
+              floorsWhenInvalid: true,
+            },
+          ]);
+          const git = checkTool(
+            manager,
+            "bash",
+            { command: "git status" },
+            "coder",
+          );
+          expect(git.state).toBe("allow");
+          expect(git.origin).toBe("global");
+
+          const ls = checkTool(manager, "bash", { command: "ls" }, "coder");
+          expect(ls.state).toBe("deny");
+          expect(ls.origin).toBe("agent");
+        });
+
+        it("lets a later scope's own key order decide between its patterns", () => {
+          const manager = createInMemoryManager([
+            {
+              name: "agent",
+              agentName: "analyst",
+              config: { permission: { skill: { "*": "ask" } } },
+              floorsWhenInvalid: true,
+            },
+            {
+              name: "project-agent",
+              agentName: "analyst",
+              config: {
+                permission: { skill: { "pi-*": "allow", "*": "deny" } },
+              },
+              floorsWhenInvalid: true,
+            },
+          ]);
+          const result = checkTool(
+            manager,
+            "skill",
+            { name: "pi-code-review" },
+            "analyst",
+          );
+          expect(result.state).toBe("deny");
+          expect(result.matchedPattern).toBe("*");
+          expect(result.origin).toBe("project-agent");
+        });
+
+        it("does not auto-allow mcp discovery from an mcp allow a later scope overrides", () => {
+          const manager = createInMemoryManager(
+            [
+              {
+                name: "global",
+                config: { permission: { mcp: { github: "allow" } } },
+                floorsWhenInvalid: false,
+              },
+              {
+                name: "project",
+                config: { permission: { mcp: { github: "deny" } } },
+                floorsWhenInvalid: true,
+              },
+            ],
+            ["github"],
+          );
+          const result = checkTool(manager, "mcp", {
+            describe: "unconfigured_server_tool",
+          });
+          expect(result.state).toBe("ask");
+          expect(result.origin).toBe("builtin");
+        });
+      });
     });
 
     describe("rule origin", () => {
@@ -311,8 +451,8 @@ describe("PermissionManager", () => {
         expect(result.origin).toBe("project");
       });
 
-      it("object replaces string: all patterns from replacing scope get origin 'project'", () => {
-        // global defines read as a string "ask"; project replaces with object.
+      it("a later pattern-map catch-all shadows an earlier string, with origin 'project'", () => {
+        // global defines read as a string "ask"; project's "*" follows it.
         const manager = createInMemoryManager([
           {
             name: "global",
@@ -1072,6 +1212,39 @@ permission:
         expect(
           rules.some((r) => r.surface === "bash" && r.pattern === "git *"),
         ).toBe(true);
+      });
+
+      it("lists a pattern two scopes define once, at the later scope's position", () => {
+        const manager = createInMemoryManager([
+          {
+            name: "global",
+            config: {
+              permission: { bash: { "git *": "ask", "ls *": "allow" } },
+            },
+            floorsWhenInvalid: false,
+          },
+          {
+            name: "project",
+            config: { permission: { bash: { "git *": "allow" } } },
+            floorsWhenInvalid: true,
+          },
+        ]);
+        expect(manager.getComposedConfigRules()).toEqual([
+          {
+            surface: "bash",
+            pattern: "ls *",
+            action: "allow",
+            layer: "config",
+            origin: "global",
+          },
+          {
+            surface: "bash",
+            pattern: "git *",
+            action: "allow",
+            layer: "config",
+            origin: "project",
+          },
+        ]);
       });
     });
 

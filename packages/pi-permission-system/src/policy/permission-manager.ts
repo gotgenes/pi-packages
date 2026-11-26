@@ -18,14 +18,9 @@ import {
   type ResolvedPolicyPaths,
 } from "#src/config/policy-loader";
 import { type PathFlavor, posixPathFlavor } from "#src/path/path-flavor";
-import type {
-  FlatPermissionConfig,
-  PermissionCheckResult,
-  PermissionState,
-} from "#src/types";
-import { isPermissionState } from "#src/types";
-import { normalizeFlatConfig, relocateMcpToolKeyRules } from "./normalize";
-import type { Rule, RuleOrigin, Ruleset, ScopeName } from "./rule";
+import type { PermissionCheckResult, PermissionState } from "#src/types";
+import { relocateMcpToolKeyRules } from "./normalize";
+import type { Rule, Ruleset, ScopeName } from "./rule";
 import {
   evaluate,
   evaluateAnyValue,
@@ -33,7 +28,7 @@ import {
   isSurfaceFullyDenied,
   rewriteAsksToYolo,
 } from "./rule";
-import { type MergedScopes, mergeScopesWithOrigins } from "./scope-merge";
+import { composeScopes } from "./scope-composition";
 import {
   composeRuleset,
   synthesizeBaseline,
@@ -198,32 +193,23 @@ export class PermissionManager implements ScopedPermissionManager {
     }
 
     const scopes = this.loader.loadScopes(agentName);
+    const composed = composeScopes(scopes);
 
-    // Merge permission objects across scopes (lowest → highest precedence),
-    // building a parallel origin map that tracks which scope contributed each
-    // (surface, pattern) entry.
-    const { mergedPermission, origins } = mergeScopesWithOrigins(
-      scopes.map((scope) => [scope.name, scope.config] as const),
-    );
+    // The universal "*" feeds synthesizeDefaults() only — it is not a config
+    // rule, so extension tools fall through to source:"default".
+    const universalFallback = composed.universalFallback ?? {
+      action: DEFAULT_UNIVERSAL_FALLBACK,
+      origin: "builtin",
+    };
 
-    // Extract the universal fallback from permission["*"].
-    // The "*" key feeds synthesizeDefaults() only — it is NOT included as a
-    // config rule so that extension tools fall through to source:"default".
-    const universalFallback = isPermissionState(mergedPermission["*"])
-      ? mergedPermission["*"]
-      : DEFAULT_UNIVERSAL_FALLBACK;
-    // Track which scope contributed the universal fallback.
-    const universalFallbackOrigin: RuleOrigin =
-      origins.get("*")?.get("*") ?? "builtin";
-
-    const configRules = buildConfigRules(mergedPermission, origins);
+    const configRules = composed.rules;
     // A top-level `mcp__…` key now names an `mcp` candidate. The baseline reads
     // the rules as written, so a relocated `allow` on one Pi MCP tool does not
     // newly open the proxy's discovery targets.
     const relocation = relocateMcpToolKeyRules(configRules);
 
     const composedRules = composeRuleset(
-      synthesizeDefaults(universalFallback, universalFallbackOrigin),
+      synthesizeDefaults(universalFallback.action, universalFallback.origin),
       synthesizeBaseline(configRules),
       relocation.rules,
     );
@@ -481,27 +467,6 @@ function formatMcpToolKeyPortNotice(keys: readonly string[]): string {
   return (
     `Top-level permission keys naming Pi MCP tools are applied as "mcp" rules: ${named}. ` +
     `Move them under "mcp" — see ${MCP_TOOL_KEY_MIGRATION_GUIDE}`
-  );
-}
-
-/**
- * Build the config-layer rules from the merged permission object: every key
- * except the universal `"*"` (which feeds `synthesizeDefaults` only), each
- * rule tagged with the `config` layer and the scope that contributed it.
- */
-function buildConfigRules(
-  mergedPermission: FlatPermissionConfig,
-  origins: MergedScopes["origins"],
-): Ruleset {
-  const permissionWithoutUniversal: FlatPermissionConfig = Object.fromEntries(
-    Object.entries(mergedPermission).filter(([k]) => k !== "*"),
-  );
-  return normalizeFlatConfig(permissionWithoutUniversal).map(
-    (r): Rule => ({
-      ...r,
-      layer: "config",
-      origin: origins.get(r.surface)?.get(r.pattern) ?? "builtin",
-    }),
   );
 }
 
