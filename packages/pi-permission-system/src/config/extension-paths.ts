@@ -4,7 +4,8 @@ import { discoverGlobalNodeModulesRoot } from "#src/path/node-modules-discovery"
 import { getGlobalLogsDir } from "./config-paths";
 
 /**
- * Immutable path constants derived from `agentDir` at construction time.
+ * Immutable path constants derived from `agentDir` (and, for the forwarding
+ * directory, a relocated session store) at construction time.
  *
  * Computed once at startup in `computeExtensionPaths()` and handed to the
  * collaborators that read them.
@@ -77,7 +78,7 @@ interface ExtensionPathOptions {
 }
 
 /**
- * Compute all immutable path constants from `agentDir`.
+ * Compute all immutable path constants from `agentDir` and `options`.
  *
  * Calls `discoverGlobalNodeModulesRoot()` internally so the result is
  * self-contained. Call this once at extension startup, not at module scope.

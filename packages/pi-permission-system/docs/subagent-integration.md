@@ -221,6 +221,12 @@ Upgrade the parent before relying on the out-of-process signal — in practice, 
 
 A parent session still running a version that predates the heartbeat publishes none, and a child on a version that expects one reads that absence as "not draining" and gives up in about two seconds.
 That only happens in the window where an upgrade lands while a parent session is already running, and it resolves as soon as that session restarts.
+
+The parent and child must also agree on the heartbeat's timing.
+A parent that refreshes every 30 seconds, read by a child on a version that expects a refresh every second, looks stale to that child for most of each interval, so the child gives up in about two seconds there too.
+This arises only when a child loads an older copy of the package than its parent, such as a project-pinned install, and it ends once both run the same version.
+
+The forwarding directory itself moves with `PI_CODING_AGENT_SESSION_DIR`, so a parent and child on either side of that change look in different places when the variable is set, with the same two-second outcome.
 Nothing needs to be edited, and in-process children are unaffected: parent and child there are the same running copy by construction.
 
 ---
