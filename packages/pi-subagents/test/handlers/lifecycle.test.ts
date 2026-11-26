@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import type { LifecycleManager, LifecycleRuntime } from "#src/handlers/lifecycle";
 import { SessionLifecycleHandler } from "#src/handlers/lifecycle";
 import { buildShutdownNotice, type ShutdownNotice, type StoppedAgent } from "#src/handlers/shutdown-notice";
@@ -14,14 +14,14 @@ const stoppedAgent: StoppedAgent = {
 describe("SessionLifecycleHandler", () => {
   let runtime: LifecycleRuntime;
   let manager: LifecycleManager;
-  let mockSetSessionContext: ReturnType<typeof vi.fn<LifecycleRuntime["setSessionContext"]>>;
-  let mockClearSessionContext: ReturnType<typeof vi.fn<LifecycleRuntime["clearSessionContext"]>>;
-  let mockClearCompleted: ReturnType<typeof vi.fn<LifecycleManager["clearCompleted"]>>;
-  let mockAbortAll: ReturnType<typeof vi.fn<LifecycleManager["abortAll"]>>;
-  let mockDispose: ReturnType<typeof vi.fn<LifecycleManager["dispose"]>>;
-  let mockDisposeNotifications: ReturnType<typeof vi.fn<() => void>>;
-  let mockUnpublishService: ReturnType<typeof vi.fn<() => void>>;
-  let mockSendMessage: ReturnType<typeof vi.fn<(message: ShutdownNotice, options: { triggerTurn: false }) => void>>;
+  let mockSetSessionContext: Mock<LifecycleRuntime["setSessionContext"]>;
+  let mockClearSessionContext: Mock<LifecycleRuntime["clearSessionContext"]>;
+  let mockClearCompleted: Mock<LifecycleManager["clearCompleted"]>;
+  let mockAbortAll: Mock<LifecycleManager["abortAll"]>;
+  let mockDispose: Mock<LifecycleManager["dispose"]>;
+  let mockDisposeNotifications: Mock<() => void>;
+  let mockUnpublishService: Mock<() => void>;
+  let mockSendMessage: Mock<(message: ShutdownNotice, options: { triggerTurn: false }) => void>;
   let handler: SessionLifecycleHandler;
 
   beforeEach(() => {

@@ -1,10 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import type { InterruptManager } from "#src/handlers/interrupt";
 import { InterruptHandler } from "#src/handlers/interrupt";
 
 describe("InterruptHandler", () => {
   let manager: InterruptManager;
-  let mockAbortAll: ReturnType<typeof vi.fn<InterruptManager["abortAll"]>>;
+  let mockAbortAll: Mock<InterruptManager["abortAll"]>;
   let handler: InterruptHandler;
 
   beforeEach(() => {
