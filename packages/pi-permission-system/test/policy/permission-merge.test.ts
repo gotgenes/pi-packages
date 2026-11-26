@@ -18,12 +18,20 @@ describe("mergeFlatPermissions", () => {
     });
   });
 
-  test("object replaces string", () => {
+  test("a string base survives a pattern-map override as its catch-all", () => {
     const result = mergeFlatPermissions(
       { tools: "ask" },
       { tools: { Write: "deny" } },
     );
-    expect(result).toEqual({ tools: { Write: "deny" } });
+    expect(result).toEqual({ tools: { "*": "ask", Write: "deny" } });
+  });
+
+  test("a pattern-map override that sets its own catch-all replaces the string base", () => {
+    const result = mergeFlatPermissions(
+      { tools: "ask" },
+      { tools: { "*": "allow", Write: "deny" } },
+    );
+    expect(result).toEqual({ tools: { "*": "allow", Write: "deny" } });
   });
 
   test("string replaces object", () => {

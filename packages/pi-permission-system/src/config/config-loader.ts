@@ -198,7 +198,8 @@ function formatConfigIssues(error: ZodError): string[] {
 
 /**
  * Merge two unified configs.
- * - `permission` is deep-shallow merged (surface-level object maps are shallow-merged).
+ * - `permission` is merged by `mergeFlatPermissions` for the bash-ungated
+ *   warning; the policy itself is composed per scope by the permission manager.
  * - Scalar fields (debugLog, permissionReviewLog, yoloMode) are replaced when
  *   present in the override.
  * - Array fields (piInfrastructureReadPaths) replace the base when present in
@@ -287,7 +288,7 @@ export function mergeUnifiedConfigs(
     merged.shellTools = overrideShell;
   }
 
-  // Permission: deep-shallow merge
+  // Permission: read only by detectPermissiveBashFallback
   const basePerm = base.permission;
   const overridePerm = override.permission;
   if (basePerm && overridePerm) {

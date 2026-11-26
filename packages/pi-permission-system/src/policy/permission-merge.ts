@@ -1,9 +1,13 @@
 import type { FlatPermissionConfig } from "#src/types";
 
 /**
- * Deep-shallow merge two flat permission configs.
- * Both objects → shallow-merge the pattern maps.
- * Otherwise → override replaces base.
+ * Merge two flat permission configs into the runtime-config view, whose one
+ * reader asks which surfaces carry a catch-all (`detectPermissiveBashFallback`).
+ *
+ * Agrees with the composed policy on that question: a pattern-map override
+ * keeps a string base as its `"*"` entry unless it sets its own, because the
+ * earlier scope's catch-all still applies under the later scope's patterns.
+ * Two maps shallow-merge; a string override replaces the base.
  */
 export function mergeFlatPermissions(
   base: FlatPermissionConfig,
@@ -13,17 +17,13 @@ export function mergeFlatPermissions(
   for (const [key, value] of Object.entries(override)) {
     const baseVal = merged[key];
     /* eslint-disable @typescript-eslint/no-unnecessary-condition -- defensive null/type checks; config values may differ at runtime */
-    if (
-      typeof baseVal === "object" &&
-      baseVal !== null &&
-      typeof value === "object" &&
-      value !== null
-    ) {
-      /* eslint-enable @typescript-eslint/no-unnecessary-condition */
-      merged[key] = {
-        ...baseVal,
-        ...value,
-      };
+    const overrideIsMap = typeof value === "object" && value !== null;
+    const baseIsMap = typeof baseVal === "object" && baseVal !== null;
+    /* eslint-enable @typescript-eslint/no-unnecessary-condition */
+    if (overrideIsMap && typeof baseVal === "string") {
+      merged[key] = { "*": baseVal, ...value };
+    } else if (overrideIsMap && baseIsMap) {
+      merged[key] = { ...baseVal, ...value };
     } else {
       merged[key] = value;
     }

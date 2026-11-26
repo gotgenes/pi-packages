@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
   detectDeprecatedPreviewCaps,
+  detectPermissiveBashFallback,
   detectUnusableDialogKeys,
   loadAndMergeConfigs,
   loadUnifiedConfig,
@@ -540,6 +541,14 @@ describe("mergeUnifiedConfigs", () => {
       { permission: { bash: "deny" } },
     );
     expect(merged.permission).toEqual({ bash: "deny" });
+  });
+
+  it("does not report bash ungated when an earlier scope's bash catch-all still covers it", () => {
+    const merged = mergeUnifiedConfigs(
+      { permission: { "*": "allow", bash: "ask" } },
+      { permission: { bash: { "git *": "allow" } } },
+    );
+    expect(detectPermissiveBashFallback(merged.permission)).toBeUndefined();
   });
 
   it("replaces scalar runtime knobs (project wins)", () => {
