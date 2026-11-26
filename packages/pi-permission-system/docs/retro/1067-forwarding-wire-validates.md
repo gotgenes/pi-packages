@@ -31,3 +31,21 @@ The plan has nine steps: two `refactor:`, two `test:` tidyings ahead of the sche
 
 - `test/authority/permission-forwarding.test.ts`: flat top-level `test()` calls (lines ~265–325) are not nested by concern.
 - `src/authority/forwarding-io.ts`: the filesystem and logging helpers could split from the response reader once the request guards leave.
+
+## Stage: Implementation — TDD (2026-11-26T07:43:40Z)
+
+### Session summary
+
+All 9 plan steps landed as separate commits (2 `refactor:`, 2 `test:`, 1 `refactor:` schema swap, 3 `fix:`, 1 `docs:`), plus one `test:` and one `docs:` commit fixing the reviewer's WARN findings.
+The `pi-permission-system` suite went from 6578 to 6629 tests (+51); every new test was mutation-checked, and each mutation killed what the plan predicted.
+
+### Observations
+
+- Step 4's new required-field pins earned their keep right away: the first schema draft used `z.unknown().transform(asPromptPayload)` for `payload`, which Zod 4 treats as required (`expected nonoptional`), so every request with no `payload` was rejected.
+  The fix is `.transform(...).optional()`; the "accepts a request carrying only the required fields" pin found it.
+- One tolerance did tighten, caught by the reviewer's 703-input differential probe: Zod's `z.number()` rejects a non-finite `createdAt` (JSON `1e400`), which the hand-rolled reader accepted.
+  No requester writes one and `src/` never reads `createdAt`, so it was kept, pinned in `forwarded-request-schema.test.ts`, and named in the architecture `Landed:` note.
+- The reviewer also noted the pre-#752 id's random part can be short or empty (`Math.random().toString(36).slice(2, 10)`); both forms pass the new rule and are now pinned.
+- The parsed request no longer carries `undefined`-valued keys at the top level (the old reader always emitted `payload`, `source`, etc.); the reviewer grepped and found no consumer that checks for them.
+- `forwardableRequestId`'s doc comment claimed the reader validates an id only as a string; it was updated in the `fix:` commit that made it false.
+- Pre-completion reviewer: WARN on the full range (the `createdAt` tolerance and the "already used" wording, plus unpinned short legacy ids), then PASS on the delta after the fixes.
