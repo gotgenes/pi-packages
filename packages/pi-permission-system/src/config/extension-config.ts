@@ -17,7 +17,6 @@ export const EXTENSION_ID = "pi-permission-system";
 export interface PermissionSystemExtensionConfig {
   debugLog: boolean;
   permissionReviewLog: boolean;
-  yoloMode: boolean;
   /** Require a confirming second press of a decision hotkey in the inline TUI dialog. Defaults to true. */
   doublePressToConfirm: boolean;
   /** Additional directories to auto-allow for reads as Pi infrastructure. */
@@ -45,13 +44,11 @@ export interface PermissionSystemExtensionConfig {
 export const DEFAULT_EXTENSION_CONFIG: PermissionSystemExtensionConfig = {
   debugLog: false,
   permissionReviewLog: true,
-  yoloMode: false,
   doublePressToConfirm: true,
 };
 
 /** The boolean runtime knobs the `/permission-system` modal edits, in display order. */
 export const RUNTIME_KNOB_KEYS = [
-  "yoloMode",
   "permissionReviewLog",
   "debugLog",
   "doublePressToConfirm",
@@ -73,7 +70,6 @@ export function runtimeKnobValues(
   config: RuntimeKnobValues,
 ): RuntimeKnobValues {
   return {
-    yoloMode: config.yoloMode,
     permissionReviewLog: config.permissionReviewLog,
     debugLog: config.debugLog,
     doublePressToConfirm: config.doublePressToConfirm,
@@ -108,7 +104,6 @@ export function normalizePermissionSystemConfig(
   const result: PermissionSystemExtensionConfig = {
     debugLog: raw.debugLog === true,
     permissionReviewLog: raw.permissionReviewLog !== false,
-    yoloMode: raw.yoloMode === true,
     doublePressToConfirm: raw.doublePressToConfirm !== false,
   };
   if (raw.piInfrastructureReadPaths !== undefined) {
@@ -146,13 +141,6 @@ export function normalizePermissionSystemConfig(
     result.authorizerChain = raw.authorizerChain;
   }
   return result;
-}
-
-export function isYoloModeEnabled(
-  config: PermissionSystemExtensionConfig,
-): boolean {
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-conversion -- typed as boolean but may be undefined at runtime (untyped callers); Boolean() guards against that
-  return Boolean(config.yoloMode);
 }
 
 export function ensurePermissionSystemLogsDirectory(

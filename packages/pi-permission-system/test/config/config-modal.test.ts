@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { registerPermissionSystemCommand } from "#src/config/config-modal";
+import {
+  registerPermissionSystemCommand,
+  type SessionAutoApproveToggle,
+} from "#src/config/config-modal";
 import type { CommandConfigStore } from "#src/config/config-store";
 import {
   DEFAULT_EXTENSION_CONFIG,
@@ -114,11 +117,24 @@ function makeConfigStore(
   return { store, save };
 }
 
+/** A session auto-approve toggle that remembers what it was told. */
+function makeAutoApprove(initial = false) {
+  let active = initial;
+  return {
+    isActive: () => active,
+    describe: () => (active ? "own (command), forwarded (command)" : "off"),
+    setAll: vi.fn((on: boolean): void => {
+      active = on;
+    }),
+  };
+}
+
 /** Register the command against a recorder and return what was registered. */
 function captureCommand(options: {
   store: CommandConfigStore;
   rules?: Ruleset;
   configPath?: string;
+  autoApprove?: SessionAutoApproveToggle;
 }): { name: string; definition: CommandDefinition } {
   const registered: { name: string; definition: CommandDefinition }[] = [];
   registerPermissionSystemCommand(
@@ -131,6 +147,7 @@ function captureCommand(options: {
       config: options.store,
       configPath: options.configPath ?? "/fake/config.json",
       getActiveAgentConfigRules: () => options.rules ?? [],
+      autoApprove: options.autoApprove ?? makeAutoApprove(),
     },
   );
   expect(registered).toHaveLength(1);
@@ -167,22 +184,24 @@ describe("/permission-system command", () => {
   });
 
   describe("show", () => {
-    it("summarizes the runtime knobs", async () => {
+    it("summarizes the runtime knobs and this session's auto-approve", async () => {
       const { store } = makeConfigStore({
         ...DEFAULT_EXTENSION_CONFIG,
         debugLog: true,
         permissionReviewLog: false,
-        yoloMode: true,
         doublePressToConfirm: false,
       });
-      const { definition } = captureCommand({ store });
+      const { definition } = captureCommand({
+        store,
+        autoApprove: makeAutoApprove(true),
+      });
       const { ctx, notifications } = createCommandContext(true);
 
       await definition.handler("show", ctx);
 
       expect(lastNotification(notifications)).toEqual({
         message:
-          "permission-system: yoloMode=on, permissionReviewLog=off, debugLog=on, doublePressToConfirm=off",
+          "permission-system: permissionReviewLog=off, debugLog=on, doublePressToConfirm=off, autoApprove=own (command), forwarded (command)",
         level: "info",
       });
     });
@@ -220,7 +239,7 @@ describe("/permission-system command", () => {
     it("omits the rule summary when no config rule applies", async () => {
       const { store } = makeConfigStore({
         ...DEFAULT_EXTENSION_CONFIG,
-        yoloMode: true,
+        debugLog: true,
       });
       const { definition } = captureCommand({ store });
       const { ctx, notifications } = createCommandContext(true);
@@ -228,7 +247,7 @@ describe("/permission-system command", () => {
       await definition.handler("show", ctx);
 
       const msg = lastNotification(notifications).message;
-      expect(msg).toContain("yoloMode=on");
+      expect(msg).toContain("debugLog=on");
       expect(msg).not.toContain("(global)");
     });
   });
@@ -272,7 +291,6 @@ describe("/permission-system command", () => {
         ...DEFAULT_EXTENSION_CONFIG,
         debugLog: true,
         permissionReviewLog: false,
-        yoloMode: true,
         doublePressToConfirm: false,
       });
       const { definition } = captureCommand({ store });
@@ -290,7 +308,7 @@ describe("/permission-system command", () => {
 
     it("does not claim a reset the store did not save", async () => {
       const { store, save } = makeConfigStore(
-        { ...DEFAULT_EXTENSION_CONFIG, yoloMode: true },
+        { ...DEFAULT_EXTENSION_CONFIG, debugLog: true },
         { saves: false },
       );
       const { definition } = captureCommand({ store });
@@ -346,11 +364,14 @@ describe("/permission-system command", () => {
   });
 
   describe("the settings modal", () => {
-    async function openModal(store: CommandConfigStore): Promise<{
+    async function openModal(
+      store: CommandConfigStore,
+      autoApprove: SessionAutoApproveToggle = makeAutoApprove(),
+    ): Promise<{
       list: RecordedSettingsList;
       ctx: CommandContextStub;
     }> {
-      const { definition } = captureCommand({ store });
+      const { definition } = captureCommand({ store, autoApprove });
       const { ctx } = createCommandContext(true);
       settingsLists.length = 0;
       await definition.handler("", ctx);
@@ -358,17 +379,38 @@ describe("/permission-system command", () => {
       return { list: settingsLists[0], ctx };
     }
 
-    it("lists the four knobs in order with their current values", async () => {
+    it("lists auto-approve, then the three knobs, with their current values", async () => {
       const { store } = makeConfigStore({
         ...DEFAULT_EXTENSION_CONFIG,
-        yoloMode: true,
+        debugLog: true,
       });
-      const { list } = await openModal(store);
+      const { list } = await openModal(store, makeAutoApprove(true));
 
       expect(
         list.items.map(({ id, currentValue }) => [id, currentValue]),
       ).toEqual([
-        ["yoloMode", "on"],
+        ["autoApprove", "on"],
+        ["permissionReviewLog", "on"],
+        ["debugLog", "on"],
+        ["doublePressToConfirm", "on"],
+      ]);
+    });
+
+    it("turns this session's auto-approve on and off without writing the file", async () => {
+      const { store, save } = makeConfigStore(DEFAULT_EXTENSION_CONFIG);
+      const autoApprove = makeAutoApprove();
+      const { list, ctx } = await openModal(store, autoApprove);
+
+      list.onChange("autoApprove", "on");
+      list.onChange("autoApprove", "off");
+
+      expect(autoApprove.setAll.mock.calls).toEqual([
+        [true, ctx],
+        [false, ctx],
+      ]);
+      expect(save).not.toHaveBeenCalled();
+      expect(list.updates.slice(0, 4)).toEqual([
+        ["autoApprove", "on"],
         ["permissionReviewLog", "on"],
         ["debugLog", "off"],
         ["doublePressToConfirm", "on"],
@@ -381,11 +423,11 @@ describe("/permission-system command", () => {
       });
       const { list } = await openModal(store);
 
-      list.onChange("yoloMode", "on");
+      list.onChange("debugLog", "on");
 
       expect(save).toHaveBeenCalledTimes(1);
       expect(list.updates).toEqual([
-        ["yoloMode", "off"],
+        ["autoApprove", "off"],
         ["permissionReviewLog", "on"],
         ["debugLog", "off"],
         ["doublePressToConfirm", "on"],
@@ -403,7 +445,7 @@ describe("/permission-system command", () => {
         ctx,
       );
       expect(list.updates).toEqual([
-        ["yoloMode", "off"],
+        ["autoApprove", "off"],
         ["permissionReviewLog", "on"],
         ["debugLog", "on"],
         ["doublePressToConfirm", "on"],

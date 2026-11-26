@@ -212,6 +212,22 @@ describe("AutoApproval launch flag and status", () => {
     ]);
   });
 
+  it("turns own and forwarded on, set by the command, from the modal toggle, and all off again", () => {
+    const approval = new AutoApproval(() => true);
+    const sink = makeStatusSink();
+    approval.applyLaunchFlag(sink);
+
+    approval.setAll(false, sink);
+    expect(approval.isActive()).toBe(false);
+
+    approval.setAll(true, sink);
+    expect(approval.describe()).toBe("own (command), forwarded (command)");
+    expect(sink.ui.setStatus).toHaveBeenLastCalledWith(
+      "pi-permission-system",
+      "auto-approve",
+    );
+  });
+
   it("clears the indicator at shutdown whatever is on", () => {
     const approval = new AutoApproval(() => true);
     const sink = makeStatusSink();

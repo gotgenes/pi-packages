@@ -926,14 +926,14 @@ describe("loadAndMergeConfigs", () => {
   it("detects legacy extension runtime config and emits migration issue", () => {
     writeLegacyExtensionConfig({
       debugLog: true,
-      yoloMode: true,
+      permissionReviewLog: false,
     });
 
     const result = loadAndMergeConfigs(agentDir, cwd, extensionRoot);
     expect(result.issues).toHaveLength(1);
     expect(result.issues[0]).toContain(extensionRoot);
     expect(result.merged.debugLog).toBe(true);
-    expect(result.merged.yoloMode).toBe(true);
+    expect(result.merged.permissionReviewLog).toBe(false);
   });
 
   it("does not emit legacy extension config issue when path equals new global path", () => {
@@ -986,6 +986,36 @@ describe("loadAndMergeConfigs", () => {
 
     const result = loadAndMergeConfigs(agentDir, cwd, extensionRoot);
     expect(result.issues).toEqual([]);
+  });
+
+  describe("the retired yoloMode", () => {
+    const RETIRED =
+      "Permission config sets 'yoloMode', which is no longer read. Auto-approve is set per session: launch with 'pi --auto-approve' or run '/permission-system:auto-approve on'; remove the setting.";
+
+    it("warns, without rejecting the file, when the global config sets it", () => {
+      writeGlobal({ permission: { "*": "ask" }, yoloMode: true });
+
+      const result = loadAndMergeConfigs(agentDir, cwd, extensionRoot);
+
+      expect(result.issues).toEqual([RETIRED]);
+      expect(result.global.permission).toEqual({ "*": "ask" });
+    });
+
+    it("warns when a trusted project's config sets it", () => {
+      writeProject({ permission: { "*": "ask" }, yoloMode: false });
+
+      expect(loadAndMergeConfigs(agentDir, cwd, extensionRoot).issues).toEqual([
+        RETIRED,
+      ]);
+    });
+
+    it("says nothing when no config sets it", () => {
+      writeGlobal({ permission: { "*": "ask" } });
+
+      expect(loadAndMergeConfigs(agentDir, cwd, extensionRoot).issues).toEqual(
+        [],
+      );
+    });
   });
 
   describe("includeProjectScope", () => {

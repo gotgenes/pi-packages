@@ -115,6 +115,5 @@ describe("config pipeline seam", () => {
 
     expect(config.debugLog).toBe(false);
     expect(config.permissionReviewLog).toBe(true);
-    expect(config.yoloMode).toBe(false);
   });
 });

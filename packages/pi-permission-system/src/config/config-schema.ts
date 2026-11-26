@@ -458,11 +458,11 @@ export const unifiedConfigSchema = z
       default: true,
     }),
     yoloMode: z.boolean().optional().meta({
+      deprecated: true,
       description:
-        "Auto-approve ask-state permission checks, including subagent approval forwarding.",
+        "No longer read. Auto-approve is set per session: launch with --auto-approve or run /permission-system:auto-approve. Still accepted so an existing config is not rejected; remove it.",
       markdownDescription:
-        "Auto-approve `ask`-state permission checks, including subagent approval forwarding.\n\n⚠️ **Use with caution** — this disables all interactive confirmation prompts.",
-      default: false,
+        "**No longer read.** Auto-approve is set per session, never in a file: launch Pi with `--auto-approve`, or run `/permission-system:auto-approve on`.\n\nStill accepted so an existing config is not rejected fail-closed, but the value no longer takes effect. Remove it.",
     }),
     doublePressToConfirm: z.boolean().optional().meta({
       description:

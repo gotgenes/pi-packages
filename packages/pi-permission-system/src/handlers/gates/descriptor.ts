@@ -142,9 +142,6 @@ export function preResolvedCheckOf(
  * session fast path takes only a session `allow`, so any other session-sourced
  * check reaches the deny/ask/allow gate and a `deny` blocks there. `SessionRules`
  * records only allows, so that combination is unreachable today.
- *
- * Yolo needs no clause: `resolveYoloGrant` matches an `allow` of origin
- * `yolo` and an `ask`, never a `deny`.
  */
 export function isUnconditionalDeny(gate: GateResult): boolean {
   if (!isGateDescriptor(gate)) {

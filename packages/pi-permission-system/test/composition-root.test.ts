@@ -2347,105 +2347,6 @@ describe("forwarded grant-scope selection round-trip", () => {
   });
 });
 
-describe("yolo grants asks synthesized after resolution", () => {
-  // The composition-stage ask→allow rewrite cannot reach a floor applied to a
-  // parsed command unit, so under yolo the wrapper and unparseable sentinels
-  // used to prompt anyway (#712). These drive the real factory end to end.
-  async function runBashCommand(
-    config: Record<string, unknown>,
-    command: string,
-  ): Promise<{ blocked: boolean; prompts: string[] }> {
-    writeGlobalConfig(config);
-    const cwd = mkdtempSync(join(tmpdir(), "pi-perm-yolo-cwd-"));
-    const pi = makeFakePi({ toolNames: ["bash"] });
-    bootExtension(pi);
-
-    const prompts: string[] = [];
-    const { ctx } = makeUiCtx(cwd, prompts);
-    await fireSessionStart(pi, ctx);
-
-    const result = (await pi.fire(
-      "tool_call",
-      { toolName: "bash", toolCallId: "yolo-1", input: { command } },
-      ctx,
-    )) as { block?: true };
-
-    rmSync(cwd, { recursive: true, force: true });
-    return { blocked: result.block === true, prompts };
-  }
-
-  const permissiveBash = {
-    permission: { "*": "allow", bash: { "*": "allow" } },
-  };
-
-  // The inner command must be one the pure-reader core does not cover, or the
-  // wrapper is exempt from the floor and there is no synthesized ask left for
-  // yolo to reconcile — which would make both tests below pass for the wrong
-  // reason (#803).
-  const flooredWrapper = "git status | xargs rm -rf";
-
-  it("auto-approves an indirection wrapper under yolo", async () => {
-    const outcome = await runBashCommand(
-      { ...permissiveBash, yoloMode: true },
-      flooredWrapper,
-    );
-
-    expect(outcome).toEqual({ blocked: false, prompts: [] });
-  });
-
-  it("still floors an indirection wrapper to a prompt with yolo off", async () => {
-    const outcome = await runBashCommand(
-      { ...permissiveBash, yoloMode: false },
-      flooredWrapper,
-    );
-
-    expect(outcome.blocked).toBe(false);
-    expect(outcome.prompts).toHaveLength(1);
-    expect(outcome.prompts[0]).toContain("<indirection-bash-wrapper>");
-  });
-
-  it("never raises the ask for a wrapper running a pure reader", async () => {
-    // The relief #803 ships, end to end through the real extension: no floor is
-    // synthesized, so yolo has nothing to reconcile and the user sees nothing.
-    const outcome = await runBashCommand(
-      { ...permissiveBash, yoloMode: false },
-      "git status | xargs grep foo",
-    );
-
-    expect(outcome).toEqual({ blocked: false, prompts: [] });
-  });
-
-  it("auto-approves an unparseable command under yolo", async () => {
-    const outcome = await runBashCommand(
-      { ...permissiveBash, yoloMode: true },
-      "> out.txt",
-    );
-
-    expect(outcome).toEqual({ blocked: false, prompts: [] });
-  });
-
-  it("blocks a denied wrapper under yolo", async () => {
-    const outcome = await runBashCommand(
-      {
-        permission: { "*": "allow", bash: { "*": "allow", "xargs*": "deny" } },
-        yoloMode: true,
-      },
-      "git status | xargs grep foo",
-    );
-
-    expect(outcome).toEqual({ blocked: true, prompts: [] });
-  });
-
-  it("blocks a denied unparseable command under yolo", async () => {
-    const outcome = await runBashCommand(
-      { permission: { "*": "allow", bash: { "*": "deny" } }, yoloMode: true },
-      "> out.txt",
-    );
-
-    expect(outcome).toEqual({ blocked: true, prompts: [] });
-  });
-});
-
 describe("auto-approve, set by --auto-approve or /permission-system:auto-approve", () => {
   const AUTO_APPROVE_COMMAND = "permission-system:auto-approve";
 
@@ -2704,6 +2605,37 @@ describe("auto-approve, set by --auto-approve or /permission-system:auto-approve
       });
 
       await parentPi.fire("session_shutdown");
+      rmSync(cwd, { recursive: true, force: true });
+    });
+  });
+
+  describe("a config that still sets the retired yoloMode", () => {
+    it("prompts as before and says yoloMode is no longer read", async () => {
+      writeGlobalConfig({ ...askingBash, yoloMode: true });
+      const cwd = mkdtempSync(join(tmpdir(), "pi-perm-retired-yolo-"));
+      const pi = bootExtension(makeFakePi({ toolNames: ["bash"] }));
+      const prompts: string[] = [];
+      const notified: string[] = [];
+      const ctx = makeBaseCtx(cwd, "ui-session", {
+        select: async (title: string): Promise<string | undefined> => {
+          prompts.push(title);
+          return "Yes";
+        },
+        notify: (message) => notified.push(message),
+      });
+      await fireSessionStart(pi, ctx);
+
+      const blocked = await fireBash(pi, ctx, "git push");
+
+      expect({ blocked, prompted: prompts.length }).toEqual({
+        blocked: false,
+        prompted: 1,
+      });
+      expect(
+        notified.filter((message) =>
+          message.includes("'yoloMode', which is no longer read"),
+        ),
+      ).toHaveLength(1);
       rmSync(cwd, { recursive: true, force: true });
     });
   });

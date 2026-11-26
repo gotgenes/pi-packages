@@ -426,13 +426,7 @@ export function makeHandler(overrides?: {
       decidedBy: DECIDED_BY_HUMAN,
     }),
   };
-  const runner = new GateRunner(
-    resolver,
-    recorder,
-    prompter,
-    reporter,
-    () => false,
-  );
+  const runner = new GateRunner(resolver, recorder, prompter, reporter);
   const handler = new PermissionGateHandler(
     session,
     toolRegistry,

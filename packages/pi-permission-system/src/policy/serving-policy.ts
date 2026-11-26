@@ -26,10 +26,7 @@ import { mostRestrictiveOf } from "./restrictiveness";
  * why this goes through `resolve` rather than the manager directly (#712, #806).
  */
 export class ResolverServingPolicy implements ServingPolicy {
-  constructor(
-    private readonly resolver: Pick<PermissionResolver, "resolve">,
-    private readonly isYoloEnabled: () => boolean,
-  ) {}
+  constructor(private readonly resolver: Pick<PermissionResolver, "resolve">) {}
 
   resolve(intent: ForwardedAccessIntent): PermissionCheckResult {
     const units = intent.askingUnits ?? [];
@@ -59,7 +56,7 @@ export class ResolverServingPolicy implements ServingPolicy {
       spellings: unit.spellings ?? [],
       agentName,
     });
-    return honorChildFloor(check, unit.floor, this.isYoloEnabled());
+    return honorChildFloor(check, unit.floor);
   }
 
   /**
@@ -73,7 +70,7 @@ export class ResolverServingPolicy implements ServingPolicy {
         intent.principal.agentName,
       ),
     );
-    return honorChildFloor(check, intent.floor, this.isYoloEnabled());
+    return honorChildFloor(check, intent.floor);
   }
 }
 
@@ -83,16 +80,15 @@ export class ResolverServingPolicy implements ServingPolicy {
  *
  * Only the child's parse knows a bash unit was a wrapper or failed to parse,
  * so without this a permissive serving rule answers exactly the ask the floor
- * exists to raise. The floor leaves three answers standing, each for the
- * reason it stands locally: a `deny` or `ask` decides before any floor is
- * consulted; a session grant names a command the user already approved, which
- * the local gate honors through its session fast path; and yolo approves every
- * synthetic ask, keeping the floor's sentinel as the reported pattern.
+ * exists to raise. The floor leaves two answers standing, each for the reason
+ * it stands locally: a `deny` or `ask` decides before any floor is consulted,
+ * and a session grant names a command the user already approved, which the
+ * local gate honors through its session fast path. The floored ask escalates
+ * to this node's chain, where auto-approve may answer it.
  */
 function honorChildFloor(
   check: PermissionCheckResult,
   floor: string | undefined,
-  yoloEnabled: boolean,
 ): PermissionCheckResult {
   if (
     floor === undefined ||
@@ -101,7 +97,5 @@ function honorChildFloor(
   ) {
     return check;
   }
-  return yoloEnabled
-    ? { ...check, origin: "yolo", matchedPattern: floor }
-    : { ...check, state: "ask", matchedPattern: floor };
+  return { ...check, state: "ask", matchedPattern: floor };
 }

@@ -49,8 +49,6 @@ describe("asDecisionSource", () => {
         pattern: "/tmp/*",
       },
       { kind: "session_approval", surface: "bash", pattern: null },
-      { kind: "yolo", pattern: "<opaque-bash-wrapper>" },
-      { kind: "yolo", pattern: null },
       { kind: "auto_approve", setter: "flag", scope: "own" },
       { kind: "auto_approve", setter: "command", scope: "forwarded" },
       { kind: "auto_approve", setter: "command", scope: "agent" },
@@ -114,7 +112,7 @@ describe("asDecisionSource", () => {
         "a missing session_approval surface",
         { kind: "session_approval", pattern: null },
       ],
-      ["a missing yolo pattern", { kind: "yolo" }],
+      ["a retired yolo record", { kind: "yolo", pattern: null }],
       [
         "an unknown auto_approve setter",
         { kind: "auto_approve", setter: "config", scope: "own" },
@@ -214,7 +212,10 @@ describe("effectiveDecider", () => {
         },
       ],
       ["rule", { kind: "rule", surface: "bash", pattern: "*", origin: null }],
-      ["yolo", { kind: "yolo", pattern: null }],
+      [
+        "auto_approve",
+        { kind: "auto_approve", setter: "flag", scope: "forwarded" },
+      ],
       ["unavailable", { kind: "unavailable", reason: "nobody answered" }],
       ["gate_error", { kind: "gate_error", reason: "boom" }],
     ] as const)("returns a %s source unchanged", (_label, source) => {

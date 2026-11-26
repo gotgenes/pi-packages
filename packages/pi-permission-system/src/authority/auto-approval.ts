@@ -1,3 +1,4 @@
+import type { SessionAutoApproveToggle } from "#src/config/config-modal";
 import { EXTENSION_ID } from "#src/config/extension-config";
 import type { TerminalAuthorizer } from "./authorizer";
 import type {
@@ -67,7 +68,9 @@ const STATUS_KEY = EXTENSION_ID;
  * (which re-invokes the factory) starts it empty; nothing here is ever read
  * from or written to a file.
  */
-export class AutoApproval implements AutoApproveGrants, AutoApproveLifecycle {
+export class AutoApproval
+  implements AutoApproveGrants, AutoApproveLifecycle, SessionAutoApproveToggle
+{
   private readonly scopes = new Map<string, ScopeEntry>();
 
   /**
@@ -106,6 +109,20 @@ export class AutoApproval implements AutoApproveGrants, AutoApproveLifecycle {
   /** Turn `scope` on, recording `setter` as what did. */
   enable(scope: AutoApproveScope, setter: AutoApproveSetter): void {
     this.scopes.set(scopeKey(scope), { scope, setter });
+  }
+
+  /**
+   * The modal's toggle: on turns this node's own and forwarded asks on, off
+   * turns every scope off; either way the command is the setter.
+   */
+  setAll(on: boolean, sink: AutoApproveStatusSink): void {
+    if (on) {
+      this.enable({ kind: "own" }, "command");
+      this.enable({ kind: "forwarded" }, "command");
+    } else {
+      this.disable();
+    }
+    this.syncStatus(sink);
   }
 
   /** Turn `scope` off, or every scope when none is named. */

@@ -3,19 +3,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, test } from "vitest";
 
-import type { PermissionSystemExtensionConfig } from "#src/config/extension-config";
 import {
   detectMisplacedPermissionKeys,
   ensurePermissionSystemLogsDirectory,
-  isYoloModeEnabled,
   normalizePermissionSystemConfig,
 } from "#src/config/extension-config";
-
-function makeConfig(
-  yoloMode: boolean | undefined,
-): PermissionSystemExtensionConfig {
-  return { yoloMode } as PermissionSystemExtensionConfig;
-}
 
 describe("detectMisplacedPermissionKeys", () => {
   it("returns an empty array for a record with only valid extension keys", () => {
@@ -93,10 +85,10 @@ describe("normalizePermissionSystemConfig", () => {
       permissionReviewLog: false,
       yoloMode: true,
     });
+    // The retired yoloMode is accepted on input and never carried to runtime.
     expect(result).toEqual({
       debugLog: true,
       permissionReviewLog: false,
-      yoloMode: true,
       doublePressToConfirm: true,
     });
   });
@@ -109,11 +101,6 @@ describe("normalizePermissionSystemConfig", () => {
   it("defaults permissionReviewLog to true when missing", () => {
     const result = normalizePermissionSystemConfig({});
     expect(result.permissionReviewLog).toBe(true);
-  });
-
-  it("defaults yoloMode to false when missing", () => {
-    const result = normalizePermissionSystemConfig({});
-    expect(result.yoloMode).toBe(false);
   });
 
   it("defaults doublePressToConfirm to true when missing", () => {
@@ -268,19 +255,5 @@ describe("ensurePermissionSystemLogsDirectory", () => {
 
     expect(ensurePermissionSystemLogsDirectory(logsDir)).toBe(undefined);
     expect(statSync(logsDir).mode & 0o777).toBe(0o700);
-  });
-});
-
-describe("isYoloModeEnabled", () => {
-  it("returns true when yoloMode is true", () => {
-    expect(isYoloModeEnabled(makeConfig(true))).toBe(true);
-  });
-
-  it("returns false when yoloMode is false", () => {
-    expect(isYoloModeEnabled(makeConfig(false))).toBe(false);
-  });
-
-  it("returns false when yoloMode is undefined", () => {
-    expect(isYoloModeEnabled(makeConfig(undefined))).toBe(false);
   });
 });

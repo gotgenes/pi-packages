@@ -51,7 +51,7 @@ export class SessionTurnPrep implements TurnPreparation {
     this.warmParser();
     this.session.activate(ctx);
     // Gate the mid-session runtime-config refresh on project trust too, so an
-    // untrusted project cannot slip its runtime config (e.g. `yoloMode`) in
+    // untrusted project cannot slip its runtime config (e.g. `authorizerChain`) in
     // right before agent start after session_start withheld it (#644). The
     // session_start handler already warned; do not re-warn on every start.
     this.session.refreshConfig(ctx, ctx.isProjectTrusted());

@@ -159,10 +159,6 @@ export function makeGateRunner(
     recordSessionApproval?: SessionApprovalRecorder["recordSessionApproval"];
     escalate?: AskEscalator["escalate"];
     reporter?: Partial<DecisionReporter>;
-    /** Standing yolo setting for the runner's residual-ask grant. */
-    yolo?: boolean;
-    /** Live yolo reader, for tests that toggle the setting between runs. */
-    isYoloEnabled?: () => boolean;
   } = {},
 ) {
   const reporter = makeReporter(overrides.reporter);
@@ -183,14 +179,11 @@ export function makeGateRunner(
       state: "approved",
       decidedBy: DECIDED_BY_HUMAN,
     });
-  const isYoloEnabled =
-    overrides.isYoloEnabled ?? ((): boolean => overrides.yolo ?? false);
   const runner = new GateRunner(
     { resolve },
     { recordSessionApproval },
     { escalate },
     reporter,
-    isYoloEnabled,
   );
   return {
     runner,

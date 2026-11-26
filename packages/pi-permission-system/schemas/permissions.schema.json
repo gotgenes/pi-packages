@@ -20,9 +20,9 @@
       "type": "boolean"
     },
     "yoloMode": {
-      "description": "Auto-approve ask-state permission checks, including subagent approval forwarding.",
-      "markdownDescription": "Auto-approve `ask`-state permission checks, including subagent approval forwarding.\n\n⚠️ **Use with caution** — this disables all interactive confirmation prompts.",
-      "default": false,
+      "deprecated": true,
+      "description": "No longer read. Auto-approve is set per session: launch with --auto-approve or run /permission-system:auto-approve. Still accepted so an existing config is not rejected; remove it.",
+      "markdownDescription": "**No longer read.** Auto-approve is set per session, never in a file: launch Pi with `--auto-approve`, or run `/permission-system:auto-approve on`.\n\nStill accepted so an existing config is not rejected fail-closed, but the value no longer takes effect. Remove it.",
       "type": "boolean"
     },
     "doublePressToConfirm": {

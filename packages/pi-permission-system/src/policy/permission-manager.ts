@@ -25,7 +25,6 @@ import {
   evaluateAnyValue,
   floorAllowsToAsk,
   isSurfaceFullyDenied,
-  rewriteAsksToYolo,
 } from "./rule";
 import { composeScopes } from "./scope-composition";
 import {
@@ -38,9 +37,6 @@ const SPECIAL_PERMISSION_KEYS = new Set(["external_directory", "path"]);
 
 /** Universal fallback when permission["*"] is absent from all scopes. */
 const DEFAULT_UNIVERSAL_FALLBACK: PermissionState = "ask";
-
-/** Default yolo reader — yolo disabled unless the composition root injects one. */
-const YOLO_DISABLED = (): boolean => false;
 
 type FileCacheEntry<TValue> = {
   stamp: string;
@@ -103,20 +99,11 @@ export interface PermissionManagerOptions {
    * platform's flavor.
    */
   flavor?: PathFlavor;
-  /**
-   * yolo-mode reader, injected from the composition root. When it reports
-   * true, {@link PermissionManager.check} rewrites every matched `ask` to a
-   * standing `allow` tagged `origin: "yolo"` (recorded authority, #526).
-   * Read per check so a mid-session config change takes effect; defaults to
-   * yolo disabled.
-   */
-  isYoloEnabled?: () => boolean;
 }
 
 export class PermissionManager implements ScopedPermissionManager {
   private readonly agentDir: string | undefined;
   private readonly flavor: PathFlavor;
-  private readonly isYoloEnabled: () => boolean;
   private loader: PolicyLoader;
   private readonly resolvedPermissionsCache = new Map<
     string,
@@ -126,7 +113,6 @@ export class PermissionManager implements ScopedPermissionManager {
   constructor(options: PermissionManagerOptions = {}) {
     this.agentDir = options.agentDir;
     this.flavor = options.flavor ?? posixPathFlavor;
-    this.isYoloEnabled = options.isYoloEnabled ?? YOLO_DISABLED;
     this.loader =
       options.policyLoader ??
       new FilePolicyLoader(
@@ -268,9 +254,8 @@ export class PermissionManager implements ScopedPermissionManager {
    * though `git status` would be asked about (#815).
    *
    * Reads the same composed rules the catch-all query does, so it inherits the
-   * fail-closed floor and not the yolo rewrite. Neither matters: one touches
-   * only `allow` and the other only `ask`, so neither can create or remove the
-   * `deny` this answer turns on.
+   * fail-closed floor. That does not matter: the floor touches only `allow`, so
+   * it cannot create or remove the `deny` this answer turns on.
    */
   isToolFullyDenied(toolName: string, agentName?: string): boolean {
     const { composedRules } = this.resolvePermissions(agentName);
@@ -321,15 +306,9 @@ export class PermissionManager implements ScopedPermissionManager {
     sessionRules?: Ruleset,
   ): PermissionCheckResult {
     const { composedRules } = this.resolvePermissions(intent.agentName);
-    const composedWithSession: Ruleset = sessionRules?.length
+    const fullRules: Ruleset = sessionRules?.length
       ? [...composedRules, ...sessionRules]
       : composedRules;
-    // Apply the yolo rewrite post-cache so the resolved-permissions cache and
-    // the display surfaces (getComposedConfigRules / getToolPermission) stay
-    // yolo-free — only the resolution path sees the ask→allow rewrite (#526).
-    const fullRules: Ruleset = this.isYoloEnabled()
-      ? rewriteAsksToYolo(composedWithSession)
-      : composedWithSession;
 
     if (intent.kind === "path-values") {
       const lookupValues =

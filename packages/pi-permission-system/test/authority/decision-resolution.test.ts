@@ -46,15 +46,6 @@ describe("resolutionFor", () => {
         ),
       ).toBe("auto_approved");
     });
-
-    it("names a yolo grant auto_approved", () => {
-      expect(
-        resolutionFor(
-          { kind: "yolo", pattern: "<opaque-bash-wrapper>" },
-          ALLOWED,
-        ),
-      ).toBe("auto_approved");
-    });
   });
 
   describe("a human at a prompt", () => {

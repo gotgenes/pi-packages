@@ -1,9 +1,9 @@
 /**
  * What decided a permission request, recorded at the site that decided it.
  *
- * The decision paths are already distinct in the code — a session hit, a yolo
- * grant, an infrastructure read, a config rule, a chain link, a human at a
- * dialog, an unreachable authority — and each one knows what it is at the
+ * The decision paths are already distinct in the code — a session hit, an
+ * auto-approval, an infrastructure read, a config rule, a chain link, a human
+ * at a dialog, an unreachable authority — and each one knows what it is at the
  * moment it decides. This is that fact, carried to the record instead of being
  * discarded and re-guessed from an event name downstream.
  *
@@ -45,12 +45,6 @@ export type DecisionSource =
     }
   /** A session-scoped grant the operator made earlier in this session. */
   | { kind: "session_approval"; surface: string; pattern: string | null }
-  /**
-   * `yoloMode`. `pattern` preserves the ask's matched rule — including a
-   * synthetic sentinel such as `<opaque-bash-wrapper>` — which is what makes a
-   * yolo grant over a synthesized ask legible.
-   */
-  | { kind: "yolo"; pattern: string | null }
   /**
    * The session's auto-approve terminal allowed an ask every chain link
    * deferred. `setter` names what turned it on and `scope` which of its scopes
@@ -159,10 +153,6 @@ function narrowSource(
       return narrowRule(candidate);
     case "session_approval":
       return narrowSessionApproval(candidate);
-    case "yolo":
-      return isNullableString(candidate.pattern)
-        ? { kind: "yolo", pattern: candidate.pattern }
-        : undefined;
     case "auto_approve":
       return narrowAutoApprove(candidate);
     case "infrastructure_read":

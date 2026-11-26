@@ -200,7 +200,8 @@ function formatConfigIssues(error: ZodError): string[] {
  * Merge two unified configs.
  * - `permission` is merged by `mergeFlatPermissions` for the bash-ungated
  *   warning; the policy itself is composed per scope by the permission manager.
- * - Scalar fields (debugLog, permissionReviewLog, yoloMode) are replaced when
+ * - Scalar fields (debugLog, permissionReviewLog, doublePressToConfirm, and the
+ *   retired yoloMode, kept so its detector sees it) are replaced when
  *   present in the override.
  * - Array fields (piInfrastructureReadPaths) replace the base when present in
  *   the override (override-wins, same as scalars).
@@ -212,7 +213,7 @@ function formatConfigIssues(error: ZodError): string[] {
  */
 // Scalar knobs merged by override-replaces-base; keep in sync with
 // PermissionSystemExtensionConfig booleans (debugLog, permissionReviewLog,
-// yoloMode, doublePressToConfirm).
+// doublePressToConfirm), plus the retired yoloMode its detector reads.
 export function mergeUnifiedConfigs(
   base: UnifiedPermissionConfig,
   override: UnifiedPermissionConfig,
@@ -429,6 +430,9 @@ export function loadAndMergeConfigs(
   const deprecatedCapsIssue = detectDeprecatedPreviewCaps(merged);
   if (deprecatedCapsIssue) allIssues.push(deprecatedCapsIssue);
 
+  const retiredYoloIssue = detectRetiredYoloMode(merged);
+  if (retiredYoloIssue) allIssues.push(retiredYoloIssue);
+
   const dialogKeysIssue = detectUnusableDialogKeys(merged);
   if (dialogKeysIssue) allIssues.push(dialogKeysIssue);
 
@@ -497,6 +501,27 @@ export function detectDeprecatedPreviewCaps(
     `Permission config sets ${set.map((key) => `'${key}'`).join(" and ")}, ` +
     "which is deprecated and ignored. The prompt is bounded by " +
     "'promptMaxRows' and 'promptFieldMaxWidth' instead; remove the setting."
+  );
+}
+
+/**
+ * Detect a config still setting `yoloMode`, which is no longer read.
+ *
+ * Auto-approve replaced it and is set per session, never in a file (ADR 0016
+ * §5): a file key would reach every running session. The key stays valid in the
+ * schema so an existing config is not rejected fail-closed.
+ *
+ * Pure, following {@link detectPermissiveBashFallback}: it takes the merged
+ * config and returns a message; the caller owns pushing it onto the issue list.
+ */
+export function detectRetiredYoloMode(
+  config: UnifiedPermissionConfig,
+): string | undefined {
+  if (config.yoloMode === undefined) return undefined;
+  return (
+    "Permission config sets 'yoloMode', which is no longer read. " +
+    "Auto-approve is set per session: launch with 'pi --auto-approve' or run " +
+    "'/permission-system:auto-approve on'; remove the setting."
   );
 }
 

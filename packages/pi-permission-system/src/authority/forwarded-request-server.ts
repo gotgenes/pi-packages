@@ -450,10 +450,9 @@ export class ForwardedRequestServer implements InboxProcessor {
    * Resolve the request the same way the session resolves a local action:
    * recorded authority first (a request carrying an `accessIntent` — the
    * child-fixed facts, ADR 0008 §2 — resolves against the serving node's
-   * composed ruleset — `allow`, including yolo-rewritten, auto-approves;
-   * `deny` auto-denies), then escalate `ask` (or a request missing
-   * `accessIntent`, the version-skew floor, ADR 0008 §4) to the selected
-   * `Authorizer`.
+   * composed ruleset — `allow` auto-approves, `deny` auto-denies), then
+   * escalate `ask` (or a request missing `accessIntent`, the version-skew
+   * floor, ADR 0008 §4) to the selected `Authorizer`.
    */
   private async resolveDecision(
     request: ForwardedPermissionRequest,

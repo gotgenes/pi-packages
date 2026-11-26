@@ -19,7 +19,7 @@ import type {
   GateResult,
 } from "./descriptor";
 import { isGateBypass, preResolvedCheckOf } from "./descriptor";
-import { buildDecisionEvent, resolveYoloGrant } from "./helpers";
+import { buildDecisionEvent } from "./helpers";
 import type { GateOutcome } from "./types";
 
 // ── GateRunner class ───────────────────────────────────────────────────────
@@ -39,11 +39,6 @@ export class GateRunner {
     private readonly recorder: SessionApprovalRecorder,
     private readonly prompter: AskEscalator,
     private readonly reporter: DecisionReporter,
-    /**
-     * Live yolo reader, read per gate so a mid-session config change takes
-     * effect — the same closure `PermissionManager` receives.
-     */
-    private readonly isYoloEnabled: () => boolean,
   ) {}
 
   /**
@@ -139,37 +134,6 @@ export class GateRunner {
           agentName,
           "allow",
           "session_approved",
-        ),
-      );
-      return { action: "allow" };
-    }
-
-    // 2b. Yolo fast-path — the composition-stage ask→allow rewrite (origin
-    // "yolo" on the matched rule, #526) or, under yolo, an ask synthesized
-    // after resolution (#712). Auto-approve without prompting, preserving the
-    // single auto_approved review entry + decision event so log parity holds.
-    const yoloGrant = resolveYoloGrant(check, this.isYoloEnabled());
-    if (yoloGrant) {
-      // The pattern that raised the ask, sentinel included: "yolo allowed it"
-      // alone does not say why it was asked in the first place. One record for
-      // both the review entry and the broadcast, so they cannot disagree.
-      const decidedByYolo: DecisionSource = {
-        kind: "yolo",
-        pattern: check.matchedPattern ?? null,
-      };
-      this.reporter.writeReviewLog("permission_request.auto_approved", {
-        ...logContext,
-        resolution: "auto_approved",
-        decidedBy: decidedByYolo,
-      });
-      this.emitDecision(
-        requestId,
-        buildDecisionEvent(
-          descriptor.decision,
-          yoloGrant,
-          agentName,
-          "allow",
-          resolutionFor(decidedByYolo, { approved: true, forSession: false }),
         ),
       );
       return { action: "allow" };

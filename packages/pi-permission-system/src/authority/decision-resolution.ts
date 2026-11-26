@@ -39,7 +39,6 @@ export function resolutionFor(
       return "session_approved";
     case "infrastructure_read":
       return "infrastructure_auto_allowed";
-    case "yolo":
     case "auto_approve":
       return "auto_approved";
     case "authorizer":

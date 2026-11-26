@@ -15,24 +15,36 @@ import {
   runtimeKnobValues,
 } from "./extension-config";
 
+/**
+ * This session's auto-approve, as the modal drives it: on means this session's
+ * own asks and every forwarded ask, off means none. In memory only; the modal
+ * never writes it to a file (ADR 0016 §5).
+ */
+export interface SessionAutoApproveToggle {
+  isActive(): boolean;
+  /** The scopes that are on and what set each, for `show`. */
+  describe(): string;
+  setAll(on: boolean, ctx: ExtensionCommandContext): void;
+}
+
 interface PermissionSystemConfigController {
   config: CommandConfigStore;
   /** Precomputed global config file path. */
   configPath: string;
   /** Returns the composed config-layer ruleset for the active agent scope. */
   getActiveAgentConfigRules(): Ruleset;
+  /** This session's auto-approve, shown and toggled beside the knobs. */
+  autoApprove: SessionAutoApproveToggle;
 }
+
+/** The modal row for this session's auto-approve; not a config knob. */
+const AUTO_APPROVE_ITEM = "autoApprove";
 
 const ON_OFF = ["on", "off"];
 const KNOB_PRESENTATION: Record<
   RuntimeKnob,
   { label: string; description: string }
 > = {
-  yoloMode: {
-    label: "YOLO mode",
-    description:
-      "Auto-approve ask-state permission checks, including subagent approval forwarding",
-  },
   permissionReviewLog: {
     label: "Permission review log",
     description:
@@ -63,7 +75,8 @@ const COMMAND_ARGUMENTS = [
   {
     value: "reset",
     label: "Reset defaults",
-    description: "Restore default yolo/logging settings and persist them",
+    description:
+      "Restore the default logging and dialog settings and persist them",
   },
   {
     value: "help",
@@ -95,21 +108,38 @@ function formatRulesSummary(rules: Ruleset): string {
   return `\n  rules: ${formatted}`;
 }
 
-function summarizeConfig(knobs: RuntimeKnobValues, rules?: Ruleset): string {
+function summarizeConfig(
+  knobs: RuntimeKnobValues,
+  autoApprove: SessionAutoApproveToggle,
+  rules?: Ruleset,
+): string {
   const knobSummary = RUNTIME_KNOB_KEYS.map(
     (id) => `${id}=${toOnOff(knobs[id])}`,
   ).join(", ");
   const rulesSuffix = rules ? formatRulesSummary(rules) : "";
-  return `${knobSummary}${rulesSuffix}`;
+  return `${knobSummary}, autoApprove=${autoApprove.describe()}${rulesSuffix}`;
 }
 
-function buildSettingItems(knobs: RuntimeKnobValues): SettingItem[] {
-  return RUNTIME_KNOB_KEYS.map((id) => ({
-    id,
-    ...KNOB_PRESENTATION[id],
-    currentValue: toOnOff(knobs[id]),
-    values: ON_OFF,
-  }));
+function buildSettingItems(
+  knobs: RuntimeKnobValues,
+  autoApprove: SessionAutoApproveToggle,
+): SettingItem[] {
+  return [
+    {
+      id: AUTO_APPROVE_ITEM,
+      label: "Auto-approve (this session)",
+      description:
+        "Allow asks every authorizer link defers, for this session and its subagents; a deny still denies. Never saved to a file",
+      currentValue: toOnOff(autoApprove.isActive()),
+      values: ON_OFF,
+    },
+    ...RUNTIME_KNOB_KEYS.map((id) => ({
+      id,
+      ...KNOB_PRESENTATION[id],
+      currentValue: toOnOff(knobs[id]),
+      values: ON_OFF,
+    })),
+  ];
 }
 
 function applySetting(
@@ -124,7 +154,9 @@ function applySetting(
 function syncSettingValues(
   settingsList: SettingsList,
   knobs: RuntimeKnobValues,
+  autoApprove: SessionAutoApproveToggle,
 ): void {
+  settingsList.updateValue(AUTO_APPROVE_ITEM, toOnOff(autoApprove.isActive()));
   for (const id of RUNTIME_KNOB_KEYS) {
     settingsList.updateValue(id, toOnOff(knobs[id]));
   }
@@ -159,19 +191,16 @@ async function openSettingsModal(
   await ctx.ui.custom<void>(
     (_tui, _theme, _keybindings, done) => {
       const settingsList = new SettingsList(
-        buildSettingItems(controller.config.current()),
+        buildSettingItems(controller.config.current(), controller.autoApprove),
         10,
         getSettingsListTheme(),
         (id, newValue) => {
-          controller.config.save(
-            applySetting(
-              runtimeKnobValues(controller.config.current()),
-              id,
-              newValue,
-            ),
-            ctx,
+          applyChange(controller, ctx, id, newValue);
+          syncSettingValues(
+            settingsList,
+            controller.config.current(),
+            controller.autoApprove,
           );
-          syncSettingValues(settingsList, controller.config.current());
         },
         () => done(),
       );
@@ -179,6 +208,26 @@ async function openSettingsModal(
       return settingsList;
     },
     { overlay: true, overlayOptions },
+  );
+}
+
+/**
+ * Carry out one modal toggle: this session's auto-approve stays in memory, and
+ * a knob is saved to the global config file.
+ */
+function applyChange(
+  controller: PermissionSystemConfigController,
+  ctx: ExtensionCommandContext,
+  id: string,
+  newValue: string,
+): void {
+  if (id === AUTO_APPROVE_ITEM) {
+    controller.autoApprove.setAll(newValue === "on", ctx);
+    return;
+  }
+  controller.config.save(
+    applySetting(runtimeKnobValues(controller.config.current()), id, newValue),
+    ctx,
   );
 }
 
@@ -195,7 +244,7 @@ function handleArgs(
   if (normalized === "show") {
     const rules = controller.getActiveAgentConfigRules();
     ctx.ui.notify(
-      `permission-system: ${summarizeConfig(controller.config.current(), rules)}`,
+      `permission-system: ${summarizeConfig(controller.config.current(), controller.autoApprove, rules)}`,
       "info",
     );
     return true;
@@ -228,7 +277,7 @@ export function registerPermissionSystemCommand(
 ): void {
   pi.registerCommand("permission-system", {
     description:
-      "Configure pi-permission-system logging and yolo-mode behavior",
+      "Configure pi-permission-system logging, the permission dialog, and this session's auto-approve",
     getArgumentCompletions,
     handler: async (args, ctx) => {
       if (handleArgs(args, ctx, controller)) {

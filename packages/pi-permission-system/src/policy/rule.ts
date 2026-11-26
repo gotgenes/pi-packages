@@ -11,8 +11,7 @@ import { type WildcardMatchOptions, wildcardMatch } from "./wildcard-matcher";
  * Synthesized:   "builtin" (universal default / evaluate() fallback),
  *                "baseline" (conditional MCP metadata auto-allow).
  * Runtime:       "session" (session approvals).
- * Rewrite:       "yolo" (composition-stage ask→allow rewrite under yolo mode),
- *                "fail-closed" (composition-stage allow→ask floor when an
+ * Rewrite:       "fail-closed" (composition-stage allow→ask floor when an
  *                invalid non-global config scope is detected).
  */
 export type RuleOrigin =
@@ -20,7 +19,6 @@ export type RuleOrigin =
   | "builtin"
   | "baseline"
   | "session"
-  | "yolo"
   | "fail-closed";
 
 /** The name of a config scope; listed here in precedence order (lowest first). */
@@ -49,29 +47,10 @@ export interface Rule {
 export type Ruleset = Rule[];
 
 /**
- * Rewrite every `ask` rule to `allow`, tagged `origin: "yolo"`.
- *
- * The composition-stage expression of yolo mode as recorded authority: when
- * enabled, an `ask` becomes a standing `allow` grant in the ruleset rather than
- * a live prompt-path concern. `deny` and existing `allow` rules pass through
- * untouched, so yolo suppresses prompts but preserves hard denies.
- *
- * Pure and non-mutating — `surface`, `pattern`, and `layer` are preserved so
- * downstream `matchedPattern` / source derivation is unaffected; only `action`
- * and `origin` change.
- */
-export function rewriteAsksToYolo(rules: Ruleset): Ruleset {
-  return rules.map((rule) =>
-    rule.action === "ask" ? { ...rule, action: "allow", origin: "yolo" } : rule,
-  );
-}
-
-/**
  * Floor every `allow` rule to `ask`, tagged `origin: "fail-closed"`.
  *
- * The mirror image of {@link rewriteAsksToYolo}: the composition-stage
- * expression of the fail-closed clamp applied when an invalid non-global config
- * scope is detected. A permissive `allow` inherited from a lower-precedence
+ * The composition-stage expression of the fail-closed clamp applied when an
+ * invalid non-global config scope is detected. A permissive `allow` inherited from a lower-precedence
  * scope becomes an `ask` prompt rather than a silent grant, while `deny` and
  * existing `ask` rules pass through untouched — so the clamp removes only
  * permissive inheritance and never weakens a hard deny.

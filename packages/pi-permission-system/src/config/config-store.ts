@@ -131,8 +131,8 @@ export class ConfigStore
    * `cwd` scopes the project-level lookup; omit it when no session cwd is
    * known yet (the factory-time priming load).
    * When `projectTrusted` is `false`, the project scope is withheld so an
-   * untrusted repository's runtime config (`yoloMode`, `permissionReviewLog`,
-   * …) cannot loosen the operator's global config (#644).
+   * untrusted repository's runtime config (`authorizerChain`,
+   * `permissionReviewLog`, …) cannot loosen the operator's global config (#644).
    *
    * Takes no `ExtensionContext` on purpose: a load that holds one acquires UI
    * side effects it cannot honor when there is no session yet, which is how a
@@ -165,7 +165,6 @@ export class ConfigStore
       warning: warning ?? null,
       debugLog: runtimeConfig.debugLog,
       permissionReviewLog: runtimeConfig.permissionReviewLog,
-      yoloMode: runtimeConfig.yoloMode,
       projectTrusted,
     });
   }

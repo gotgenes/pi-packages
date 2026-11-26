@@ -6,11 +6,9 @@ import {
   accessFactsFromValue,
   buildDecisionEvent,
   deriveDecisionValue,
-  resolveYoloGrant,
 } from "#src/handlers/gates/helpers";
 import { posixPathFlavor } from "#src/path/path-flavor";
 import type { PermissionCheckResult } from "#src/types";
-import { makeCheckResult } from "#test/helpers/handler-fixtures";
 
 describe("deriveDecisionValue", () => {
   it("returns command for bash", () => {
@@ -128,56 +126,6 @@ describe("buildDecisionEvent", () => {
     );
     expect(event.result).toBe("deny");
     expect(event.resolution).toBe("user_denied");
-  });
-});
-
-describe("resolveYoloGrant", () => {
-  it("returns the check unchanged for a ruleset-granted yolo allow", () => {
-    const check = makeCheckResult({ origin: "yolo", matchedPattern: "*" });
-
-    expect(resolveYoloGrant(check, false)).toBe(check);
-  });
-
-  it("grants a residual ask under yolo, preserving the matched pattern", () => {
-    const check = makeCheckResult({
-      state: "ask",
-      source: "bash",
-      toolName: "bash",
-      matchedPattern: "<indirection-bash-wrapper>",
-    });
-
-    expect(resolveYoloGrant(check, true)).toEqual({
-      ...check,
-      state: "allow",
-      origin: "yolo",
-    });
-  });
-
-  it("returns null for a residual ask with yolo disabled", () => {
-    expect(
-      resolveYoloGrant(
-        makeCheckResult({ state: "ask", matchedPattern: "*" }),
-        false,
-      ),
-    ).toBeNull();
-  });
-
-  it("returns null for an allow granted by an ordinary rule", () => {
-    expect(
-      resolveYoloGrant(
-        makeCheckResult({ origin: "global", matchedPattern: "*" }),
-        true,
-      ),
-    ).toBeNull();
-  });
-
-  it("returns null for a deny, so an explicit deny survives yolo", () => {
-    expect(
-      resolveYoloGrant(
-        makeCheckResult({ state: "deny", matchedPattern: "rm *" }),
-        true,
-      ),
-    ).toBeNull();
   });
 });
 

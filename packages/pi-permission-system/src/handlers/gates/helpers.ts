@@ -152,33 +152,3 @@ export function buildDecisionEvent(
     matchedPattern: check.matchedPattern ?? null,
   };
 }
-
-/**
- * The standing yolo grant covering a gate's resolved check, or `null` when
- * yolo does not answer it.
- *
- * yolo is primarily recorded authority: `rewriteAsksToYolo` turns every `ask`
- * rule into an `allow` tagged `origin: "yolo"` at composition (#526), and the
- * first arm recognizes that grant. The second arm covers an `ask` synthesized
- * *after* resolution — the bash wrapper floor (#481, #490) and the two
- * fail-closed parse sentinels, `<unparseable-bash-command>` (#452) and
- * `<unparsed-bash-subtree>` (#840) — which the ruleset rewrite cannot reach
- * because the floor is a property of a parsed command unit, not of a pattern
- * (#712). The synthetic `matchedPattern` is preserved so the review
- * log still shows why the ask was raised, while `origin: "yolo"` records why it
- * was granted.
- *
- * A `deny` matches neither arm, so an explicit deny survives yolo.
- */
-export function resolveYoloGrant(
-  check: PermissionCheckResult,
-  yoloEnabled: boolean,
-): PermissionCheckResult | null {
-  if (check.state === "allow" && check.origin === "yolo") {
-    return check;
-  }
-  if (check.state === "ask" && yoloEnabled) {
-    return { ...check, state: "allow", origin: "yolo" };
-  }
-  return null;
-}

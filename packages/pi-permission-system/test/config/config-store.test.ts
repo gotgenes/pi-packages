@@ -346,7 +346,6 @@ describe("ConfigStore", () => {
         expect(readGlobalConfig(agentDir)).toEqual({
           debugLog: true,
           permissionReviewLog: true,
-          yoloMode: false,
           doublePressToConfirm: true,
         });
       });
@@ -378,16 +377,15 @@ describe("ConfigStore", () => {
         );
         const { store } = makeStore();
         store.save(
-          { ...DEFAULT_EXTENSION_CONFIG, yoloMode: true },
+          { ...DEFAULT_EXTENSION_CONFIG, debugLog: true },
           makeCommandCtx(),
         );
         expect(readGlobalConfig(agentDir)).toEqual({
           permission: { bash: { "rm *": "deny" } },
           piInfrastructureReadPaths: ["/extra/path"],
           toolInputPreviewMaxLength: 800,
-          debugLog: false,
+          debugLog: true,
           permissionReviewLog: true,
-          yoloMode: true,
           doublePressToConfirm: true,
         });
       });
@@ -415,7 +413,6 @@ describe("ConfigStore", () => {
 
         store.save(
           {
-            yoloMode: false,
             permissionReviewLog: true,
             debugLog: false,
             doublePressToConfirm: true,
@@ -473,7 +470,7 @@ describe("ConfigStore", () => {
         const { store, logger } = makeStore();
 
         const saved = store.save(
-          { ...DEFAULT_EXTENSION_CONFIG, yoloMode: true },
+          { ...DEFAULT_EXTENSION_CONFIG, debugLog: true },
           ctx,
         );
 

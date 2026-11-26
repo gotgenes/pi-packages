@@ -94,10 +94,6 @@ describe("GateRunner — descriptor path", () => {
       "permission_request.session_approved",
       makeCheckResult({ source: "session", matchedPattern: "/outside/*" }),
     ],
-    [
-      "permission_request.auto_approved",
-      makeCheckResult({ state: "allow", origin: "yolo", matchedPattern: "*" }),
-    ],
   ])(
     "records the deciding path's provenance from the payload on %s",
     async (event, resolveResult) => {
@@ -174,109 +170,6 @@ describe("GateRunner — descriptor path", () => {
     );
   });
 
-  it("returns allow and emits auto_approved on a yolo-origin allow without prompting", async () => {
-    const { runner, deps } = makeGateRunner({
-      resolveResult: makeCheckResult({
-        state: "allow",
-        origin: "yolo",
-        matchedPattern: "*",
-      }),
-    });
-    const result = await runner.run(makeDescriptor(), null);
-    expect(result).toEqual({ action: "allow" });
-    expect(deps.escalate).not.toHaveBeenCalled();
-    expect(deps.reporter.writeReviewLog).toHaveBeenCalledWith(
-      "permission_request.auto_approved",
-      expect.objectContaining({
-        resolution: "auto_approved",
-        decidedBy: { kind: "yolo", pattern: "*" },
-      }),
-    );
-    expect(deps.reporter.emitDecision).toHaveBeenCalledWith(
-      expect.objectContaining({
-        result: "allow",
-        resolution: "auto_approved",
-        origin: "yolo",
-      }),
-    );
-  });
-
-  it("preserves the synthetic sentinel that raised a yolo-granted ask", async () => {
-    const { runner, deps } = makeGateRunner({
-      resolveResult: makeCheckResult({
-        state: "ask",
-        matchedPattern: "<opaque-bash-wrapper>",
-      }),
-      isYoloEnabled: () => true,
-    });
-
-    await runner.run(makeDescriptor(), null);
-
-    // Which sentinel raised the ask is what makes a yolo grant over a
-    // synthesized ask legible; "yolo allowed it" alone does not say why it
-    // was asked.
-    expect(deps.reporter.writeReviewLog).toHaveBeenCalledWith(
-      "permission_request.auto_approved",
-      expect.objectContaining({
-        decidedBy: { kind: "yolo", pattern: "<opaque-bash-wrapper>" },
-      }),
-    );
-  });
-
-  it("auto-approves a residual synthetic ask under yolo without prompting", async () => {
-    const { runner, deps } = makeGateRunner({
-      yolo: true,
-      resolveResult: makeCheckResult({
-        state: "ask",
-        source: "bash",
-        toolName: "bash",
-        matchedPattern: "<indirection-bash-wrapper>",
-      }),
-    });
-
-    const result = await runner.run(makeDescriptor(), null);
-
-    expect(result).toEqual({ action: "allow" });
-    expect(deps.escalate).not.toHaveBeenCalled();
-    expect(deps.reporter.writeReviewLog).toHaveBeenCalledWith(
-      "permission_request.auto_approved",
-      expect.objectContaining({ resolution: "auto_approved" }),
-    );
-    expect(deps.reporter.emitDecision).toHaveBeenCalledWith(
-      expect.objectContaining({
-        result: "allow",
-        resolution: "auto_approved",
-        origin: "yolo",
-        matchedPattern: "<indirection-bash-wrapper>",
-      }),
-    );
-  });
-
-  it("auto-approves an unparsed-subtree ask under yolo without prompting", async () => {
-    const { runner, deps } = makeGateRunner({
-      yolo: true,
-      resolveResult: makeCheckResult({
-        state: "ask",
-        source: "bash",
-        toolName: "bash",
-        matchedPattern: "<unparsed-bash-subtree>",
-      }),
-    });
-
-    const result = await runner.run(makeDescriptor(), null);
-
-    expect(result).toEqual({ action: "allow" });
-    expect(deps.escalate).not.toHaveBeenCalled();
-    expect(deps.reporter.emitDecision).toHaveBeenCalledWith(
-      expect.objectContaining({
-        result: "allow",
-        resolution: "auto_approved",
-        origin: "yolo",
-        matchedPattern: "<unparsed-bash-subtree>",
-      }),
-    );
-  });
-
   it("escalates a session-sourced ask instead of approving it", async () => {
     // `SessionRules` records only allows, so a session-sourced ask means
     // something clamped a grant; approving it would let the grant speak for
@@ -297,36 +190,6 @@ describe("GateRunner — descriptor path", () => {
       "permission_request.session_approved",
       expect.anything(),
     );
-  });
-
-  it("blocks an explicit deny under yolo without prompting", async () => {
-    const { runner, deps } = makeGateRunner({
-      yolo: true,
-      resolveResult: makeCheckResult({ state: "deny", matchedPattern: "rm *" }),
-    });
-
-    const result = await runner.run(makeDescriptor(), null);
-
-    expect(result).toMatchObject({ action: "block" });
-    expect(deps.escalate).not.toHaveBeenCalled();
-  });
-
-  it("reads the yolo setting per run, so a mid-session toggle takes effect", async () => {
-    let yolo = false;
-    const { runner, deps } = makeGateRunner({
-      isYoloEnabled: () => yolo,
-      resolveResult: makeCheckResult({
-        state: "ask",
-        matchedPattern: "<unparseable-bash-command>",
-      }),
-    });
-
-    await runner.run(makeDescriptor(), null);
-    expect(deps.escalate).toHaveBeenCalledTimes(1);
-
-    yolo = true;
-    await runner.run(makeDescriptor(), null);
-    expect(deps.escalate).toHaveBeenCalledTimes(1);
   });
 
   it("returns allow and emits user_approved when ask + user approves", async () => {
@@ -522,13 +385,13 @@ describe("GateRunner — descriptor path", () => {
     );
   });
 
-  it("emits auto_approved resolution when yolo decided the escalated ask", async () => {
+  it("emits auto_approved resolution when auto-approve decided the escalated ask", async () => {
     const { runner, deps } = makeGateRunner({
       resolveResult: makeCheckResult({ state: "ask", matchedPattern: "*" }),
       escalate: vi.fn().mockResolvedValue({
         approved: true,
         state: "approved",
-        decidedBy: { kind: "yolo", pattern: "*" },
+        decidedBy: { kind: "auto_approve", setter: "flag", scope: "own" },
       }),
     });
     const result = await runner.run(makeDescriptor(), null);
@@ -1118,17 +981,6 @@ describe("GateRunner — request identity", () => {
     expect(reviewWrites[0].details.requestId).toMatch(/^perm-/);
   });
 
-  it("carries the minted id on the auto-approved review entry", async () => {
-    const { runner, reviewWrites } = makeRecordingRunner({
-      resolveResult: makeCheckResult({ state: "ask", matchedPattern: "*" }),
-      yolo: true,
-    });
-    await runner.run(makeDescriptor(), null);
-    expect(reviewWrites).toHaveLength(1);
-    expect(reviewWrites[0].event).toBe("permission_request.auto_approved");
-    expect(reviewWrites[0].details.requestId).toMatch(/^perm-/);
-  });
-
   it("carries the minted id on the policy-denied review entry", async () => {
     const { runner, reviewWrites } = makeRecordingRunner({
       resolveResult: makeCheckResult({ state: "deny", matchedPattern: "*" }),
@@ -1200,15 +1052,6 @@ describe("GateRunner — request identity", () => {
         source: "session",
         matchedPattern: "git *",
       }),
-    });
-    await runner.run(makeDescriptor(), null);
-    expect(decisions[0].requestId).toBe(reviewWrites[0].details.requestId);
-  });
-
-  it("stamps the auto-approved entry and its decision event with one id", async () => {
-    const { runner, reviewWrites, decisions } = makeRecordingRunner({
-      resolveResult: makeCheckResult({ state: "ask", matchedPattern: "*" }),
-      yolo: true,
     });
     await runner.run(makeDescriptor(), null);
     expect(decisions[0].requestId).toBe(reviewWrites[0].details.requestId);

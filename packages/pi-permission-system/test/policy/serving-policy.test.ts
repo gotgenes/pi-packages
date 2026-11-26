@@ -25,7 +25,6 @@ describe("ResolverServingPolicy over real recorded authority", () => {
     const { manager, cleanup } = createManagerWithConfig(permission);
     const policy = new ResolverServingPolicy(
       new PermissionResolver(manager, new SessionRules()),
-      () => false,
     );
     return { resolve: (intent) => policy.resolve(intent), cleanup };
   }
@@ -197,15 +196,6 @@ describe("ResolverServingPolicy honors the floor the child raised", () => {
     expect(result.state).toBe("allow");
     expect(result.source).toBe("session");
   });
-
-  test("approves under the serving node's yolo, naming the floor and yolo", () => {
-    const result = servingPolicyOver({ "*": "allow" }, { yolo: true }).resolve(
-      flooredIntent,
-    );
-    expect(result.state).toBe("allow");
-    expect(result.origin).toBe("yolo");
-    expect(result.matchedPattern).toBe(WRAPPER);
-  });
 });
 
 describe("ResolverServingPolicy judges every unit the child left asking", () => {
@@ -270,21 +260,6 @@ describe("ResolverServingPolicy judges every unit the child left asking", () => 
       { "*": "allow" },
       { sessionRules: sessionGranting("sudo rm y") },
     ).resolve(
-      makeForwardedAccessIntent({
-        surface: "bash",
-        matchValues: ["ls"],
-        floor: WRAPPER,
-        askingUnits: [
-          { command: "ls" },
-          { command: "sudo rm y", floor: WRAPPER },
-        ],
-      }),
-    );
-    expect(result.state).toBe("allow");
-  });
-
-  test("approves a floored unit under the serving node's yolo", () => {
-    const result = servingPolicyOver({ "*": "allow" }, { yolo: true }).resolve(
       makeForwardedAccessIntent({
         surface: "bash",
         matchValues: ["ls"],
@@ -400,13 +375,12 @@ describe("ResolverServingPolicy matches each unit in the spellings the child fix
 
 function servingPolicyOver(
   bash: Record<string, PermissionState>,
-  options: { yolo?: boolean; sessionRules?: SessionRules } = {},
+  options: { sessionRules?: SessionRules } = {},
 ): ResolverServingPolicy {
   return new ResolverServingPolicy(
     new PermissionResolver(
       createInMemoryGlobalManager({ permission: { bash } }),
       options.sessionRules ?? new SessionRules(),
     ),
-    () => options.yolo ?? false,
   );
 }
