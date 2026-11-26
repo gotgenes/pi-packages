@@ -3,8 +3,10 @@
  *
  * Background runs, spawned or resumed, are subject to a configurable concurrency
  * limit (default: 4). Excess runs are scheduled on a ConcurrencyLimiter and
- * auto-started as running ones complete. Foreground runs bypass the limiter
- * (they block the parent anyway).
+ * auto-started as running ones complete. Foreground runs bypass the limiter:
+ * the subagent tool runs one assistant message's calls one at a time, so the
+ * parent holds at most one foreground run per message. The manager itself does
+ * not bound concurrent spawnAndWait callers.
  */
 
 import { randomUUID } from "node:crypto";
@@ -304,7 +306,8 @@ export class SubagentManager {
 
   /**
    * Spawn an agent and wait for completion (foreground use).
-   * Foreground agents bypass the concurrency queue.
+   * Foreground agents bypass the concurrency queue; concurrent callers each start
+   * a run at once (the subagent tool serializes its own calls, not this method).
    *
    * The caller holds the result, which is a delivery commitment: the agent must
    * not be queued and must not be announced, whatever its frontmatter declares.

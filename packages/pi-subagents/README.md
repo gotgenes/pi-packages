@@ -239,7 +239,9 @@ A background resume counts as well: at the limit it queues behind the agents alr
 The widget shows queued agents as a collapsed count.
 It also bounds its own height to the terminal's, collapsing the agents that do not fit into a `+N more` summary, so a short pane keeps its conversation visible.
 
-Foreground agents bypass the queue — they block the parent anyway; so does a foreground resume.
+Foreground agents bypass the queue, and so does a foreground resume.
+The `subagent` tool runs the tool calls of one assistant message one at a time, so several foreground spawns or resumes in a message run in call order rather than at once.
+That applies to every other tool call in a message that includes a `subagent` call too (a `read` or `bash` beside it waits its turn); issue parallel work with `run_in_background: true`, whose launch returns at once.
 
 Stopping a still-queued agent produces the same completion notification a running agent's stop does.
 Because that agent never started, the notification says so and offers no result to collect.

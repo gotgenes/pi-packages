@@ -78,6 +78,21 @@ describe("AgentTool", () => {
 		},
 	);
 
+	describe("execution mode", () => {
+		it("declares sequential execution so Pi runs a message's calls one at a time", () => {
+			const def = makeTool(createToolDeps()).toToolDefinition();
+			expect(def.executionMode).toBe("sequential");
+		});
+
+		it("tells the model that calls in a message with a subagent call run one at a time", () => {
+			const def = makeTool(createToolDeps()).toToolDefinition();
+			expect(def.description).toContain(
+				"- Tool calls in a message that includes a subagent call run one at a time, so foreground agents never overlap. For parallel work, use run_in_background: true on each agent.",
+			);
+			expect(def.description).not.toContain("Foreground calls run sequentially");
+		});
+	});
+
 	it("calls registry.reload() on each execute", async () => {
 		const deps = createToolDeps();
 		const reloadSpy = vi.spyOn(deps.registry, "reload");

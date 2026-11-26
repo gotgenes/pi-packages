@@ -195,7 +195,7 @@ export class AgentTool {
 		const registry = this.registry;
 
 		const guidelines = [
-			"- For parallel work, use run_in_background: true on each agent. Foreground calls run sequentially — only one executes at a time.",
+			"- Tool calls in a message that includes a subagent call run one at a time, so foreground agents never overlap. For parallel work, use run_in_background: true on each agent.",
 			...this.agentGuidelines,
 			"- Provide clear, detailed prompts so the agent can work autonomously.",
 			"- Subagent results are returned as text — summarize them for the user.",
@@ -210,6 +210,7 @@ export class AgentTool {
 		return defineTool({
 			name: "subagent" as const,
 			label: "Subagent",
+			executionMode: "sequential",
 			promptSnippet: "Launch a specialized agent for complex, multi-step tasks.",
 			description: `Launch a new agent to handle complex, multi-step tasks autonomously.
 
