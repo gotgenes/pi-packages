@@ -24,6 +24,12 @@ export interface ForwardingManagerDeps {
   /** Publishes that this session is draining its inbox, for forwarding children. */
   serving: ServingAnnouncer;
   logger: DebugReviewLogger;
+  /**
+   * Whether something on this node answers a forwarded ask without a human:
+   * auto-approve covering forwarded asks (ADR 0016 §5). Read on every `start`,
+   * so turning it off stops a headless node serving at its next turn event.
+   */
+  servesWithoutUI: () => boolean;
 }
 
 /**
@@ -40,8 +46,9 @@ export interface ForwardingManagerDeps {
  * *different* id is visible as a one-line diff against its
  * `forwarded_permission.request_created` entry (#719).
  *
- * Serving eligibility is `hasUI` and nothing else: a node with a UI has a human
- * who can answer, so it drains its own inbox. It deliberately does **not** ask
+ * Serving eligibility is `hasUI`, or a node that answers forwarded asks without
+ * a human (auto-approve covering them): either way someone here can answer, so
+ * it drains its own inbox. It deliberately does **not** ask
  * whether this process looks like a subagent — a spawner may export a
  * parent-session marker from its own root process so the children it later
  * launches inherit it, which made the root withdraw serving and fail every
@@ -56,13 +63,14 @@ export class ForwardingManager {
   constructor(private readonly deps: ForwardingManagerDeps) {}
 
   /**
-   * Start polling if `ctx` has UI.
+   * Start polling if `ctx` has UI, or this node answers forwarded asks without
+   * one.
    * No-op (timer stays running) if already polling — updates the stored
    * context so the next tick uses the latest session.
    * Stops any existing poll when the context does not qualify for forwarding.
    */
   start(ctx: ExtensionContext): void {
-    if (!ctx.hasUI) {
+    if (!ctx.hasUI && !this.deps.servesWithoutUI()) {
       this.stop();
       return;
     }

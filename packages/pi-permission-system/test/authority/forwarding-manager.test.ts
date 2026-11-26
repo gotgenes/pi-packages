@@ -48,11 +48,15 @@ function makeAnnouncer() {
   return { markServing: vi.fn(), clearServing: vi.fn() };
 }
 
-function makeManager(serving: ServingAnnouncer = new ServingSessionRegistry()) {
+function makeManager(
+  serving: ServingAnnouncer = new ServingSessionRegistry(),
+  servesWithoutUI: () => boolean = () => false,
+) {
   return new ForwardingManager({
     forwarder: makeForwarder(),
     serving,
     logger: { review: mockReview, debug: vi.fn() },
+    servesWithoutUI,
   });
 }
 
@@ -189,6 +193,38 @@ describe("ForwardingManager", () => {
       resolveProcess!();
       await vi.advanceTimersByTimeAsync(250);
       expect(mockProcessInbox).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe("a headless node", () => {
+    it("serves while something here answers forwarded asks without a human", async () => {
+      const serving = new ServingSessionRegistry();
+      const manager = makeManager(serving, () => true);
+
+      manager.start(makeCtx({ hasUI: false, sessionId: "headless-1" }));
+      await vi.advanceTimersByTimeAsync(250);
+
+      expect(serving.servingIds()).toEqual(["headless-1"]);
+      expect(mockProcessInbox).toHaveBeenCalled();
+    });
+
+    it("does not serve when nothing here answers forwarded asks", () => {
+      const serving = new ServingSessionRegistry();
+      makeManager(serving, () => false).start(makeCtx({ hasUI: false }));
+
+      expect(serving.servingIds()).toEqual([]);
+    });
+
+    it("stops serving at the next start once nothing answers forwarded asks", () => {
+      const serving = new ServingSessionRegistry();
+      let answers = true;
+      const manager = makeManager(serving, () => answers);
+      manager.start(makeCtx({ hasUI: false, sessionId: "headless-1" }));
+
+      answers = false;
+      manager.start(makeCtx({ hasUI: false, sessionId: "headless-1" }));
+
+      expect(serving.servingIds()).toEqual([]);
     });
   });
 

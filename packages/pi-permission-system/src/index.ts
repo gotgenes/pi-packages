@@ -255,6 +255,9 @@ export default function piPermissionSystemExtension(pi: ExtensionAPI): void {
       forwarder: requestServer,
       serving: composeServingAnnouncers(servingRegistry, servingHeartbeats),
       logger,
+      // A headless node serves its subagents while auto-approve answers their
+      // forwarded asks, so `pi -p --auto-approve` keeps working with subagents.
+      servesWithoutUI: () => autoApproval.answersForwardedAsks(),
     }),
     permissionManager,
     sessionRules,

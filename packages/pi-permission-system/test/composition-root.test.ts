@@ -2637,6 +2637,77 @@ describe("auto-approve, set by --auto-approve or /permission-system:auto-approve
     });
   });
 
+  describe("on a headless parent", () => {
+    async function startHeadlessParent(
+      flag: boolean,
+      bus = createEventBus(),
+    ): Promise<{ pi: ReturnType<typeof makeFakePi>; cwd: string }> {
+      writeGlobalConfig(askingBash);
+      const cwd = mkdtempSync(join(tmpdir(), "pi-perm-headless-parent-"));
+      const pi = bootExtension(
+        makeFakePi({
+          events: bus,
+          toolNames: ["bash"],
+          flagValues: flag ? { "auto-approve": true } : {},
+        }),
+      );
+      await fireSessionStart(
+        pi,
+        makeBaseCtx(cwd, "headless-parent", { hasUI: false }),
+      );
+      return { pi, cwd };
+    }
+
+    it("does not serve its inbox without the flag", async () => {
+      const { pi, cwd } = await startHeadlessParent(false);
+
+      expect(getServingSessionRegistry().servingIds()).toEqual([]);
+
+      await pi.fire("session_shutdown");
+      rmSync(cwd, { recursive: true, force: true });
+    });
+
+    it("serves a headless child's forwarded ask and approves it under the flag", async () => {
+      const parentBus = createEventBus();
+      const { pi: parentPi, cwd } = await startHeadlessParent(true, parentBus);
+      expect(getServingSessionRegistry().servingIds()).toEqual([
+        "headless-parent",
+      ]);
+
+      const childPi = bootExtension(
+        makeFakePi({ events: createEventBus(), toolNames: ["bash"] }),
+      );
+      parentBus.emit(SUBAGENT_CHILD_SESSION_CREATED, {
+        sessionId: "headless-child",
+        parentSessionId: "headless-parent",
+      });
+
+      const result = (await childPi.fire(
+        "tool_call",
+        {
+          toolName: "bash",
+          toolCallId: "child-push",
+          input: { command: "git push" },
+        },
+        makeChildCtx(cwd, "headless-child"),
+      )) as { block?: true };
+
+      expect(result.block).toBeUndefined();
+      const served = (readReviewLog() as Record<string, unknown>[]).filter(
+        (entry) => entry.event === "forwarded_permission.approved",
+      );
+      expect(served).toHaveLength(1);
+      expect(served[0]?.decidedBy).toEqual({
+        kind: "auto_approve",
+        setter: "flag",
+        scope: "forwarded",
+      });
+
+      await parentPi.fire("session_shutdown");
+      rmSync(cwd, { recursive: true, force: true });
+    });
+  });
+
   describe("set by the session command", () => {
     it("allows an asking command after on own, and prompts again after off", async () => {
       const prompts: string[] = [];
