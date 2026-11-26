@@ -445,7 +445,7 @@ src/
 └── handlers/                       event handlers
     ├── index.ts                    barrel re-export
     ├── interrupt.ts                turn_start handler — abort all subagents on parent interrupt (ESC), when policy allows
-    ├── lifecycle.ts                session_start, session_before_switch, session_shutdown (aborts, then leaves the shutdown notice)
+    ├── lifecycle.ts                session_start, session_before_switch, session_shutdown (aborts, leaves the shutdown notice, waits for the stopped runs to end, then disposes)
     ├── shutdown-notice.ts          the parent-session message naming the agents a shutdown stopped
     └── widget-events.ts            widget's host events — session_start (UI context), turn_start (linger aging), session_shutdown (teardown)
 ```

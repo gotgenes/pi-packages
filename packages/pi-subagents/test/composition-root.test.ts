@@ -62,6 +62,7 @@ import subagentsExtension from "#src/index";
 import { createSubagentSession } from "#src/lifecycle/create-subagent-session";
 import { getSubagentsService } from "#src/service/service";
 import { createMockSession, createSubagentSessionStub, toSubagentSession } from "./helpers/mock-session";
+import { turnLoopResult } from "./helpers/turn-loop-result";
 
 function makePi() {
   const tools = new Map<string, any>();
@@ -115,6 +116,30 @@ function makeParentRegistry() {
       getRegisteredProviderConfig: vi.fn((id: string) => (id === "claude-bridge" ? config : undefined)),
     } as any,
   };
+}
+
+/**
+ * A child session whose turn loop runs until it is aborted. Like a real
+ * session, the loop ends only once the abort has unwound it, which Pi does on a
+ * later pass of the event loop, not synchronously inside the abort.
+ */
+function createRunningChildStub() {
+  const stub = createSubagentSessionStub(createMockSession(), "/sessions/child.jsonl");
+  stub.runTurnLoop.mockImplementation(
+    (_prompt: string, { signal }: { signal: AbortSignal }) =>
+      new Promise((resolve) => {
+        signal.addEventListener(
+          "abort",
+          () => {
+            setTimeout(() => {
+              resolve(turnLoopResult({ responseText: "" }));
+            }, 0);
+          },
+          { once: true },
+        );
+      }),
+  );
+  return stub;
 }
 
 /** A UI context that records what the widget registers on it. */
@@ -313,12 +338,12 @@ describe("composition root: widget teardown", () => {
    * widget registered and its interval live.
    *
    * The agent must be **terminal** before the shutdown. An agent still running
-   * at shutdown is aborted by the lifecycle handler, and the notification that
-   * abort settles lands after `manager.dispose()` has emptied the registry — so
-   * `update()` takes its idle path into `clearWidget()` and tears the widget
-   * down incidentally, whether or not anything called `dispose()`. A completed
-   * agent produces no such notification (`disposeSession()` notifies no
-   * observer), so the teardown is observable only if it was actually wired.
+   * at shutdown is aborted by the lifecycle handler, and the terminal
+   * transition that abort settles notifies the widget in the middle of the
+   * teardown, so what the widget shows afterwards would depend on that
+   * `update()` as well as on the wiring. A completed agent produces no such
+   * notification (`disposeSession()` notifies no observer), so the teardown is
+   * observable only if it was actually wired.
    */
   async function completeAgentIntoWidget() {
     vi.mocked(createSubagentSession).mockResolvedValue(
@@ -492,9 +517,7 @@ describe("composition root: parent tool list", () => {
 
 describe("composition root: shutdown notice", () => {
   it("tells the parent session which running agents a reload stopped", async () => {
-    const stub = createSubagentSessionStub(createMockSession(), "/sessions/child.jsonl");
-    // The child's turn loop never settles, so it is still running at shutdown.
-    stub.runTurnLoop.mockReturnValue(new Promise(() => {}));
+    const stub = createRunningChildStub();
     vi.mocked(createSubagentSession).mockResolvedValue(toSubagentSession(stub));
     const { pi, fire } = makePi();
     subagentsExtension(pi);
@@ -519,6 +542,31 @@ describe("composition root: shutdown notice", () => {
         display: true,
       },
       { triggerTurn: false },
+    );
+  });
+});
+
+describe("composition root: stopped record at shutdown", () => {
+  it("persists a running child's stopped record before the shutdown handler resolves", async () => {
+    const stub = createRunningChildStub();
+    vi.mocked(createSubagentSession).mockResolvedValue(toSubagentSession(stub));
+    const { pi, fire } = makePi();
+    subagentsExtension(pi);
+    await fire("session_start", {}, makeSessionStartCtx(makeParentRegistry().registry, makeRecordingUI()));
+
+    const service = getSubagentsService()!;
+    const id = service.spawn("general-purpose", "hi", { description: "child" });
+    await vi.waitFor(() => {
+      expect(stub.runTurnLoop).toHaveBeenCalled();
+    });
+    expect(service.getRecord(id)?.status).toBe("running");
+    expect(pi.appendEntry).not.toHaveBeenCalled();
+
+    await fire("session_shutdown", { type: "session_shutdown", reason: "reload" }, {});
+
+    expect(pi.appendEntry).toHaveBeenCalledExactlyOnceWith(
+      "subagents:record",
+      expect.objectContaining({ id, status: "stopped", stoppedWhileQueued: false }),
     );
   });
 });

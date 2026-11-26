@@ -251,6 +251,7 @@ Because that agent never started, the notification says so and offers no result 
 Reloading (`/reload`), quitting, starting or switching to another session, and forking all stop every running and queued subagent, and Pi gives extensions no way to defer or cancel them.
 When that stops anything, the parent session gets one message listing each stopped agent: its ID, type, and description, whether it was running or still queued, and its transcript path when it has one.
 The message starts no turn; the parent agent reads it on its next one, so neither you nor the agent waits for results that will not arrive.
+The shutdown finishes only once each stopped run has ended and been recorded in the parent session, so a run the shutdown stopped stays listed in `/subagents:sessions` after a `/reload`.
 
 Pi refuses `/reload` only while the parent itself is responding, so a background agent is still exposed to it.
 Let background agents finish, or collect their results, before reloading.
