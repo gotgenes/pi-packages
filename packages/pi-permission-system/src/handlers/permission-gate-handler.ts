@@ -60,10 +60,7 @@ export class PermissionGateHandler {
     const agentName = this.session.resolveAgentName(ctx);
 
     const input = getEventInput(event);
-    const toolCallId =
-      typeof (event as Record<string, unknown>).toolCallId === "string"
-        ? ((event as Record<string, unknown>).toolCallId as string)
-        : "";
+    const toolCallId = getEventToolCallId(event);
 
     const tcc: ToolCallContext = {
       toolName,
@@ -164,6 +161,12 @@ export function getEventInput(event: unknown): unknown {
   }
 
   return {};
+}
+
+/** The host's tool call id, or `""` when the event carries none. */
+export function getEventToolCallId(event: unknown): string {
+  const toolCallId = toRecord(event).toolCallId;
+  return typeof toolCallId === "string" ? toolCallId : "";
 }
 
 /**

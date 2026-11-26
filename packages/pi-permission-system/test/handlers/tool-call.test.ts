@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { getEventInput } from "#src/handlers/permission-gate-handler";
+import {
+  getEventInput,
+  getEventToolCallId,
+} from "#src/handlers/permission-gate-handler";
 import { findEvidence } from "#src/presentation/prompt-payload";
 import type { PermissionCheckResult } from "#src/types";
 import {
@@ -48,6 +51,24 @@ describe("getEventInput", () => {
     expect(getEventInput({ input: { a: 1 }, arguments: { b: 2 } })).toEqual({
       a: 1,
     });
+  });
+});
+
+describe("getEventToolCallId", () => {
+  it("returns a string tool call id as-is", () => {
+    expect(getEventToolCallId({ toolCallId: "tc-7" })).toBe("tc-7");
+  });
+
+  it("reads an absent tool call id as empty", () => {
+    expect(getEventToolCallId({ type: "tool_call" })).toBe("");
+  });
+
+  it("reads a non-string tool call id as empty", () => {
+    expect(getEventToolCallId({ toolCallId: 42 })).toBe("");
+  });
+
+  it("reads a null event as having no tool call id", () => {
+    expect(getEventToolCallId(null)).toBe("");
   });
 });
 
