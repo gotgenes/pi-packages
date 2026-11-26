@@ -147,15 +147,15 @@ describe("ServingHeartbeatStore.markServing", () => {
     expect(readRecord("sess-1").updatedAt).toBe(clock - 1);
   });
 
-  it("republishes at the next refresh boundary when the record was removed underneath it", () => {
-    // The gap is bounded by the refresh window, which is shorter than the
-    // grace a forwarding child waits out — so a pruned or externally deleted
-    // record cannot make a live session look unserved for long enough to
-    // abandon a request.
+  it("republishes at the next tick when the record was removed underneath it", () => {
+    // The gap is one poll tick, well inside the grace a forwarding child waits
+    // out — so a pruned or externally deleted record cannot make a live
+    // session look unserved for long enough to abandon a request, however long
+    // the refresh window is.
     const { store } = makeStore();
     store.markServing("sess-1");
     rmSync(servingHeartbeatPath(forwardingDir, "sess-1"));
-    clock += SERVING_HEARTBEAT_REFRESH_MS;
+    clock += PERMISSION_FORWARDING_POLL_INTERVAL_MS;
     store.markServing("sess-1");
     expect(readRecord("sess-1").updatedAt).toBe(clock);
   });

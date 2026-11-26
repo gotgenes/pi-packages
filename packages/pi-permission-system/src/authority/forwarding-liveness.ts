@@ -16,7 +16,7 @@
  * refreshed while it polls and withdrawn when it stops.
  */
 
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { DebugReviewLogger } from "#src/logging/session-logger";
 import {
@@ -309,9 +309,9 @@ export class ServingHeartbeatStore
    *
    * Without this the directory grows one record per session that was killed
    * rather than shut down, forever. Bounded to a single directory read at the
-   * first announcement, and safe under pid reuse: a wrongly swept owner
-   * republishes within the refresh window, which is shorter than the grace a
-   * forwarding child waits out.
+   * first announcement, and safe under pid reuse: a wrongly swept owner finds
+   * its record missing and republishes at its next poll tick, well inside the
+   * grace a forwarding child waits out.
    *
    * Only a dead pid is proof. A record that is merely stale belongs to a
    * process that still exists, and the reader already reports it as stale
@@ -381,17 +381,19 @@ export class ServingHeartbeatStore
   }
 
   /**
-   * Whether the record on disk is recent enough to leave alone.
+   * Whether the record on disk is recent enough, and still there, to leave alone.
    *
-   * Time alone, with no existence probe: an existence check would cost a
-   * syscall on every poll tick to save at most one refresh window, and a record
-   * removed underneath its owner reappears inside the grace window anyway.
+   * The existence probe is a stat, not a write, so it costs no filesystem event;
+   * it is what lets a record removed underneath its owner reappear at the next
+   * poll tick rather than at the next refresh, which can be longer than the
+   * grace a forwarding child waits out.
    */
   private isThrottled(sessionId: string, at: number): boolean {
     return (
       this.published !== null &&
       this.published.sessionId === sessionId &&
-      at - this.published.at < SERVING_HEARTBEAT_REFRESH_MS
+      at - this.published.at < SERVING_HEARTBEAT_REFRESH_MS &&
+      existsSync(servingHeartbeatPath(this.forwardingDir, sessionId))
     );
   }
 }
