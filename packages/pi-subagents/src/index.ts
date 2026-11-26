@@ -208,6 +208,7 @@ export default function (pi: ExtensionAPI) {
     manager,
     () => notifications.dispose(),
     unpublishSubagentsService,
+    (message, options) => pi.sendMessage(message, options),
   );
 
   // Live widget: constructed after the manager (it polls listAgents()) and
@@ -223,7 +224,7 @@ export default function (pi: ExtensionAPI) {
   pi.on("session_start", (event, ctx) => lifecycle.handleSessionStart(event, ctx));
   pi.on("session_start", (event, ctx) => widgetEvents.handleSessionStart(event, ctx));
   pi.on("session_before_switch", () => lifecycle.handleSessionBeforeSwitch());
-  pi.on("session_shutdown", () => lifecycle.handleSessionShutdown());
+  pi.on("session_shutdown", (event) => lifecycle.handleSessionShutdown(event));
   // Registered after the lifecycle handler on purpose. Pi awaits an extension's
   // handlers for an event in registration order, so the widget is torn down once
   // `abortAll()` and the awaited `manager.dispose()` have finished — no terminal

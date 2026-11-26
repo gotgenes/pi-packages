@@ -221,7 +221,9 @@ describe("composition root: io.createSession", () => {
 });
 
 describe("composition root: message renderers", () => {
-  it("registers a renderer for every custom message type the extension sends", () => {
+  // The shutdown notice (`subagent-shutdown-notice`) is deliberately absent: it
+  // is short, carries no result to collapse, and renders with Pi's default.
+  it("registers a renderer for every result-carrying message type the extension sends", () => {
     const { pi } = makePi();
     subagentsExtension(pi);
 
@@ -485,5 +487,38 @@ describe("composition root: parent tool list", () => {
     vi.mocked(pi.getAllTools).mockReturnValue([{ name: "read" }, { name: "mcp__github__get_issue" }]);
 
     expect(deps.listParentToolNames()).toEqual(["read", "mcp__github__get_issue"]);
+  });
+});
+
+describe("composition root: shutdown notice", () => {
+  it("tells the parent session which running agents a reload stopped", async () => {
+    const stub = createSubagentSessionStub(createMockSession(), "/sessions/child.jsonl");
+    // The child's turn loop never settles, so it is still running at shutdown.
+    stub.runTurnLoop.mockReturnValue(new Promise(() => {}));
+    vi.mocked(createSubagentSession).mockResolvedValue(toSubagentSession(stub));
+    const { pi, fire } = makePi();
+    subagentsExtension(pi);
+    await fire("session_start", {}, makeSessionStartCtx(makeParentRegistry().registry, makeRecordingUI()));
+
+    const service = getSubagentsService()!;
+    const id = service.spawn("general-purpose", "hi", { description: "child" });
+    await vi.waitFor(() => {
+      expect(service.getRecord(id)?.outputFile).toBe("/sessions/child.jsonl");
+    });
+
+    await fire("session_shutdown", { type: "session_shutdown", reason: "reload" }, {});
+
+    expect(pi.sendMessage).toHaveBeenCalledWith(
+      {
+        customType: "subagent-shutdown-notice",
+        content: [
+          "`/reload` stopped these subagents before they finished, so their results will not arrive:",
+          `- \`${id}\` (general-purpose) "child": was running. Transcript: \`/sessions/child.jsonl\``,
+          "Spawn them again if the work is still needed.",
+        ].join("\n"),
+        display: true,
+      },
+      { triggerTurn: false },
+    );
   });
 });

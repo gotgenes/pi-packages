@@ -1,6 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { LifecycleManager, LifecycleRuntime } from "#src/handlers/lifecycle";
 import { SessionLifecycleHandler } from "#src/handlers/lifecycle";
+import { buildShutdownNotice, type ShutdownNotice, type StoppedAgent } from "#src/handlers/shutdown-notice";
+
+const stoppedAgent: StoppedAgent = {
+  id: "a1b2c3",
+  type: "general-purpose",
+  description: "Refactor auth module",
+  stoppedWhileQueued: false,
+  outputFile: "/sessions/parent/tasks/a1b2c3.jsonl",
+};
 
 describe("SessionLifecycleHandler", () => {
   let runtime: LifecycleRuntime;
@@ -12,16 +21,18 @@ describe("SessionLifecycleHandler", () => {
   let mockDispose: ReturnType<typeof vi.fn<LifecycleManager["dispose"]>>;
   let mockDisposeNotifications: ReturnType<typeof vi.fn<() => void>>;
   let mockUnpublishService: ReturnType<typeof vi.fn<() => void>>;
+  let mockSendMessage: ReturnType<typeof vi.fn<(message: ShutdownNotice, options: { triggerTurn: false }) => void>>;
   let handler: SessionLifecycleHandler;
 
   beforeEach(() => {
     mockSetSessionContext = vi.fn();
     mockClearSessionContext = vi.fn();
     mockClearCompleted = vi.fn(() => Promise.resolve());
-    mockAbortAll = vi.fn();
+    mockAbortAll = vi.fn((): StoppedAgent[] => []);
     mockDispose = vi.fn(() => Promise.resolve());
     mockDisposeNotifications = vi.fn();
     mockUnpublishService = vi.fn();
+    mockSendMessage = vi.fn();
 
     runtime = {
       setSessionContext: mockSetSessionContext,
@@ -38,6 +49,7 @@ describe("SessionLifecycleHandler", () => {
       manager,
       mockDisposeNotifications,
       mockUnpublishService,
+      mockSendMessage,
     );
   });
 
@@ -109,7 +121,7 @@ describe("SessionLifecycleHandler", () => {
 
   describe("handleSessionShutdown", () => {
     it("calls all cleanup steps", async () => {
-      await handler.handleSessionShutdown();
+      await handler.handleSessionShutdown({ reason: "reload" });
 
       expect(mockUnpublishService).toHaveBeenCalled();
       expect(mockClearSessionContext).toHaveBeenCalled();
@@ -126,23 +138,27 @@ describe("SessionLifecycleHandler", () => {
       });
       mockAbortAll.mockImplementation(() => {
         callOrder.push("abortAll");
+        return [stoppedAgent];
       });
+      mockSendMessage.mockImplementation(() => { callOrder.push("sendMessage"); });
       mockDisposeNotifications.mockImplementation(() => { callOrder.push("disposeNotifications"); });
       mockDispose.mockImplementation(() => {
         callOrder.push("dispose");
         return Promise.resolve();
       });
 
-      await handler.handleSessionShutdown();
+      await handler.handleSessionShutdown({ reason: "reload" });
 
       // Notifications are torn down before the aborts: a terminal transition
       // fires its nudge synchronously when no parent run is active, and Pi
-      // cannot recall a message already handed to it.
+      // cannot recall a message already handed to it. The shutdown notice
+      // reports what the aborts stopped, before the children are disposed.
       expect(callOrder).toEqual([
         "unpublishService",
         "clearSessionContext",
         "disposeNotifications",
         "abortAll",
+        "sendMessage",
         "dispose",
       ]);
     });
@@ -152,7 +168,7 @@ describe("SessionLifecycleHandler", () => {
       mockDispose.mockReturnValue(disposed.promise);
 
       let settled = false;
-      const pending = handler.handleSessionShutdown().then(() => {
+      const pending = handler.handleSessionShutdown({ reason: "reload" }).then(() => {
         settled = true;
       });
       await Promise.resolve();
@@ -161,6 +177,35 @@ describe("SessionLifecycleHandler", () => {
       disposed.resolve();
       await pending;
       expect(settled).toBe(true);
+    });
+
+    describe("the shutdown notice", () => {
+      it("tells the parent which agents the shutdown stopped, without starting a turn", async () => {
+        mockAbortAll.mockReturnValue([stoppedAgent]);
+
+        await handler.handleSessionShutdown({ reason: "reload" });
+
+        expect(mockSendMessage).toHaveBeenCalledExactlyOnceWith(buildShutdownNotice("reload", [stoppedAgent]), {
+          triggerTurn: false,
+        });
+      });
+
+      it("sends nothing when the shutdown stopped nothing", async () => {
+        await handler.handleSessionShutdown({ reason: "reload" });
+
+        expect(mockSendMessage).not.toHaveBeenCalled();
+      });
+
+      it("still disposes the children when the notice cannot be sent", async () => {
+        mockAbortAll.mockReturnValue([stoppedAgent]);
+        mockSendMessage.mockImplementation(() => {
+          throw new Error("stale extension context");
+        });
+
+        await handler.handleSessionShutdown({ reason: "reload" });
+
+        expect(mockDispose).toHaveBeenCalledOnce();
+      });
     });
   });
 });

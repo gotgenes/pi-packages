@@ -1,3 +1,5 @@
+import { debugLog } from "#src/debug";
+import { buildShutdownNotice, type ShutdownNotice, type StoppedAgent } from "#src/handlers/shutdown-notice";
 import type { SessionContext } from "#src/types";
 
 /**
@@ -10,8 +12,13 @@ import type { SessionContext } from "#src/types";
 /** Narrow manager interface — only the methods lifecycle handlers call. */
 export interface LifecycleManager {
   clearCompleted(): Promise<void>;
-  abortAll(): void;
+  abortAll(): readonly StoppedAgent[];
   dispose(): Promise<void>;
+}
+
+/** The `session_shutdown` payload field the handler reads. */
+interface SessionShutdownPayload {
+  readonly reason?: string;
 }
 
 /** Narrow runtime interface — only the methods lifecycle handlers call. */
@@ -28,6 +35,7 @@ export interface LifecycleRuntime {
  * - `manager` — manages agent lifecycle (clear, abort, dispose)
  * - `disposeNotifications` — tears down the notification system on shutdown
  * - `unpublishService` — unpublishes the SubagentsService symbol on shutdown
+ * - `sendMessage` — leaves the shutdown notice in the parent session
  */
 export class SessionLifecycleHandler {
   constructor(
@@ -35,6 +43,7 @@ export class SessionLifecycleHandler {
     private readonly manager: LifecycleManager,
     private readonly disposeNotifications: () => void,
     private readonly unpublishService: () => void,
+    private readonly sendMessage: (message: ShutdownNotice, options: { triggerTurn: false }) => void,
   ) {}
 
   handleSessionStart(_event: unknown, ctx: unknown): Promise<void> {
@@ -53,13 +62,25 @@ export class SessionLifecycleHandler {
   //    raise them: no parent run is active at shutdown, so a terminal
   //    transition delivers its nudge synchronously and Pi cannot recall it
   // 4. Abort all agents — stop running and queued work
-  // 5. Dispose manager — final cleanup, awaited so each child's extensions get
+  // 5. Leave the shutdown notice — name what step 4 stopped, so neither the
+  //    user nor the parent waits for results that will not arrive. It starts
+  //    no turn, and a send that fails must not skip the disposal below.
+  // 6. Dispose manager — final cleanup, awaited so each child's extensions get
   //    their `session_shutdown` before Pi tears the parent down (#709)
-  handleSessionShutdown(): Promise<void> {
+  handleSessionShutdown(event: SessionShutdownPayload): Promise<void> {
     this.unpublishService();
     this.runtime.clearSessionContext();
     this.disposeNotifications();
-    this.manager.abortAll();
+    const stopped = this.manager.abortAll();
+    if (stopped.length > 0) this.sendShutdownNotice(event.reason, stopped);
     return this.manager.dispose();
+  }
+
+  private sendShutdownNotice(reason: string | undefined, stopped: readonly StoppedAgent[]): void {
+    try {
+      this.sendMessage(buildShutdownNotice(reason, stopped), { triggerTurn: false });
+    } catch (err) {
+      debugLog("shutdown notice", err);
+    }
   }
 }
