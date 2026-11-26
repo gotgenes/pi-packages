@@ -33,6 +33,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { unregisteredLinkMessage } from "#src/authority/authorizer-chain-audit";
 import { childNodeAbsentMessage } from "#src/authority/child-node-audit";
+import { servingHeartbeatPath } from "#src/authority/forwarding-liveness";
 import {
   createPermissionForwardingLocation,
   type ForwardedPermissionRequest,
@@ -815,6 +816,55 @@ describe("out-of-process forwarding liveness", () => {
     expect(result.block).toBeUndefined();
     expect(existsSync(join(agentDir, "sessions"))).toBe(false);
 
+    rmSync(childCwd, { recursive: true, force: true });
+    rmSync(externalDir, { recursive: true, force: true });
+    rmSync(sessionDir, { recursive: true, force: true });
+  });
+
+  it("serves a child from a parent whose session store is relocated", async () => {
+    writeGlobalConfig(externalAsk);
+    const parentCwd = mkdtempSync(join(tmpdir(), "pi-perm-parent-cwd-"));
+    const childCwd = mkdtempSync(join(tmpdir(), "pi-perm-child-cwd-"));
+    const externalDir = mkdtempSync(join(tmpdir(), "pi-perm-external-"));
+    const sessionDir = mkdtempSync(join(tmpdir(), "pi-perm-session-dir-"));
+    const parentSessionId = "parent-session-oop-relocated-serving";
+    vi.stubEnv("PI_CODING_AGENT_SESSION_DIR", sessionDir);
+
+    // The parent's own timer publishes the heartbeat and drains the inbox;
+    // nothing here stands in for either.
+    const parentTitles: string[] = [];
+    const parentPi = makeFakePi({ events: createEventBus() });
+    piPermissionSystemExtension(parentPi as unknown as ExtensionAPI);
+    await fireSessionStart(
+      parentPi,
+      makeBaseCtx(parentCwd, parentSessionId, {
+        select: async (title: string): Promise<string | undefined> => {
+          parentTitles.push(title);
+          return "Yes";
+        },
+      }),
+    );
+    expect(
+      existsSync(
+        servingHeartbeatPath(
+          join(sessionDir, "permission-forwarding"),
+          parentSessionId,
+        ),
+      ),
+    ).toBe(true);
+
+    vi.stubEnv("PI_SUBAGENT_CHILD", "1");
+    vi.stubEnv("PI_SUBAGENT_PARENT_SESSION", parentSessionId);
+    const result = (await fireChildRead(childCwd, externalDir)) as {
+      block?: true;
+    };
+    await parentPi.fire("session_shutdown");
+
+    expect(result.block).toBeUndefined();
+    expect(parentTitles).toHaveLength(1);
+    expect(existsSync(join(agentDir, "sessions"))).toBe(false);
+
+    rmSync(parentCwd, { recursive: true, force: true });
     rmSync(childCwd, { recursive: true, force: true });
     rmSync(externalDir, { recursive: true, force: true });
     rmSync(sessionDir, { recursive: true, force: true });
