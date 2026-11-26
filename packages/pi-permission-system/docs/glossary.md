@@ -94,8 +94,7 @@ It is reported on the `permissions:decision` event and in the review log, so a s
 ### Scope
 
 A config source with a fixed precedence position: `global` (the global config file), `project` (the project config file), `agent` (global agent frontmatter), and `project-agent` (project agent frontmatter), in that order.
-A later scope overrides an earlier one on an identical pattern, and a pattern only the later scope defines is placed after the earlier scope's.
-A pattern both define keeps the earlier scope's position, so a later catch-all does not override an earlier scope's specific patterns ([ADR 0016](decisions/0016-policy-channels.md) measurement 4, changing in [#1108]).
+A later scope's patterns are placed after an earlier scope's, and a pattern both define moves to the later scope's position, so a later catch-all overrides an earlier scope's specific patterns ([ADR 0016](decisions/0016-policy-channels.md) §2).
 The two project scopes load only for a trusted project; see [project trust](#project-trust).
 
 ### Channel
@@ -286,5 +285,3 @@ Pi's installable unit (`pi install npm:…`, `git:…`, or a local path), bundli
 An extension that integrates with this package through its published service (`getPermissionsService(sessionId)`, with `registerAuthorizer`, `registerToolAccessExtractor`, and the query methods) or its `permissions:*` events, such as `@gotgenes/pi-permission-model-judge`.
 The dependency points toward this package, never away from it.
 See [docs/cross-extension-api.md](cross-extension-api.md).
-
-[#1108]: https://github.com/gotgenes/pi-packages/issues/1108

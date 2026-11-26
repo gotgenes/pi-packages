@@ -236,9 +236,9 @@ Per-surface catch-alls (e.g. `bash: { "*": "allow" }`) are expressed as regular 
 
 `composeRuleset()` concatenates: defaults + baseline + config rules.
 
-The config band is not yet the per-scope concatenation the diagram shows.
-The scopes' permission objects are merged first (`mergeScopesWithOrigins`) and normalized once, so a pattern that a later scope redefines keeps the position the earlier scope gave it, and the band follows the merged object's key order instead of scope order.
-Issue [#1108] makes the band a concatenation in scope order.
+`composeScopes()` (`src/policy/scope-composition.ts`) builds the config band scope by scope: each scope's permission is expanded and normalized on its own, its rules are stamped with that scope's origin, and they are placed after every earlier scope's rules (ADR 0016 §2).
+A `(surface, pattern)` a later scope redefines is dropped from its earlier position rather than kept twice, since an identical later rule matches whenever the earlier one does; so `/permission-system show` lists it once, and the MCP baseline does not count a shadowed `mcp` allow.
+The universal `"*"` is not part of the band: the last scope that sets it decides the synthesized default.
 
 Session rules are concatenated after config rules so `evaluate()` handles them via last-match-wins - no separate per-branch pre-check.
 
@@ -339,10 +339,11 @@ An object value maps patterns to actions.
 
 `normalizeFlatConfig` (`src/policy/normalize.ts`) flattens each `permission` entry into `Rule`s: a string value expands to a single surface catch-all (`{ surface, pattern: "*", action }`), and an object value expands each `pattern → action` pair to one `Rule`.
 
-Ahead of it, `expandDirectionalSugar` runs once per scope inside `mergeScopesWithOrigins`, rewriting a bare `path` / `external_directory` key into its two directional members so origins stay attributed to the authoring scope.
+Ahead of it, `expandDirectionalSugar` runs once per scope inside `composeScopes`, rewriting a bare `path` / `external_directory` key into its two directional members so origins stay attributed to the authoring scope.
 After expansion no rule lives on a bare family surface; `PermissionResolver.resolve` answers a bare-family query by folding the members most-restrictive.
 
-After normalization, `relocateMcpToolKeyRules` copies the catch-all rule of every top-level key that can name a Pi MCP tool (the name itself or an `mcp__`-prefixed wildcard) onto the `mcp` surface, with the key as the pattern, and appends the copy after every other config rule, since that key was once the only rule reaching the tool.
+After normalization, `relocateMcpToolKeyRules` copies the catch-all rule of every top-level key that can name a Pi MCP tool (the name itself or an `mcp__`-prefixed wildcard) onto the `mcp` surface, with the key as the pattern, and appends the copy after every other rule of the same scope, since that key was once the only rule reaching the tool; a later scope's `mcp` rules still follow it.
+The MCP baseline reads a separate composition of the rules as written, so a relocated copy never opens the discovery targets and never hides a written `mcp` allow from them.
 The original rule stays, so `mcp__*` still covers non-Pi tools resolving on their own name.
 The MCP baseline is synthesized from the rules as written, before relocation, and the relocated keys drive a port notice in `getPolicyIssues`.
 
@@ -944,11 +945,11 @@ src/
 │   └── status.ts            Footer status bar integration
 ├── policy/               Policy domain: the rule model and the composition that turns configuration into a decision. Depends on `config/` for loading and on nothing above it
 │   ├── rule.ts                 Rule type, Ruleset type, evaluate() (takes an injected `PathFlavor` for win32 path-surface case-folding); exports `pathMatchOptions(surface, flavor)` and `isSurfaceFullyDenied(surface, rules, flavor)`, the reachability probe tool exposure asks (each configured pattern probed through evaluate, so last-match-wins shadowing is honored)
-│   ├── normalize.ts            Config → Ruleset normalization (flat format); `expandDirectionalSugar` rewrites a scope's bare `path` / `external_directory` key into its directional members before composition, sugar entries first and explicit directional entries appended after, whatever the file's key order. Constraint: no rule survives on a bare family surface — the resolver's family fold is the read path (ADR 0013 §4). `relocateMcpToolKeyRules` copies a top-level key that can name a Pi MCP tool onto the `mcp` surface, appended after every other rule, and leaves the original in place
+│   ├── normalize.ts            Config → Ruleset normalization (flat format); `expandDirectionalSugar` rewrites a scope's bare `path` / `external_directory` key into its directional members before composition, sugar entries first and explicit directional entries appended after, whatever the file's key order. Constraint: no rule survives on a bare family surface — the resolver's family fold is the read path (ADR 0013 §4). `relocateMcpToolKeyRules` copies a top-level key that can name a Pi MCP tool onto the `mcp` surface, appended after every other rule it is given (one scope's), and leaves the original in place
 │   ├── synthesize.ts           Universal default + MCP baseline → Ruleset
 │   ├── wildcard-matcher.ts     Compiled glob matching. `CompiledWildcardPattern.matches(value)` is the only match surface (no exposed `RegExp`). Constraint: the win32 `windowsSeparators` fold applies to the pattern and the matched value alike, and lives on the compiled pattern so it cannot be half-applied — folding only the pattern makes every forward-slash value unmatchable (#653). Constraint: the `~`/`$HOME`/`${HOME}` prefix is expanded on the pattern only; a value arrives already spelled by the producer that knows what the prefix means for it (`AccessPath` for a path, `ShellVariables.spellHomeAtStart` for a bash command unit), because a bash program can rebind `HOME`
-│   ├── scope-merge.ts          Cross-scope permission merge + origin-map bookkeeping
-│   ├── permission-merge.ts     Deep-shallow merge for flat permission configs
+│   ├── scope-composition.ts    `composeScopes`: the config band, scope by scope in precedence order, each rule stamped with its scope; a pattern a later scope redefines moves to the later position. Also yields the universal fallback, the rules as written for the MCP baseline, and the relocated `mcp__` keys
+│   ├── permission-merge.ts     `mergeFlatPermissions`, the runtime-config view's permission merge; read only by `detectPermissiveBashFallback`, so it agrees with the band on which surfaces carry a catch-all
 │   ├── restrictiveness.ts      The deny > ask > allow ordering, first-wins on ties: `mostRestrictiveOf` over a statically non-empty tuple (total, so the resolver's family fold has no `undefined` branch) and the empty-tolerant `pickMostRestrictive` the bash gates use. Core-layer, so `permission-resolver.ts` can depend on it
 │   ├── permission-manager.ts   Rule composition + `check(intent)` (single resolution entry point); delegates I/O to PolicyLoader and iterates its scope list, naming no scope; floors the composed ruleset `allow`→`ask` (origin `fail-closed`) when a scope marked `floorsWhenInvalid` is `invalid`, and answers that fail-closed notice, plus the MCP tool-key port notice, from `getPolicyIssues`; a config file's own schema errors are `ConfigStore`'s to report, never listed here. Constraint: stays string-based — must not import `AccessPath` (the ADR 0002 string boundary, lint-guarded by `no-restricted-imports`)
 │   ├── permission-resolver.ts  `ScopedPermissionResolver` interface - the single `{ resolve(intent) }` role the gate factories / runner / pipeline depend on; `PermissionResolver` concrete class holds `ScopedPermissionManager` + `SessionRules`, owns `resolve(intent)` (unwraps an `access-path` `AccessIntent` via `matchValues()` before calling `manager.check`; the concrete class also accepts a pre-fixed `path-values` intent as a passthrough — the forwarded-serving wire's producer, #597 — while the gate-facing interface stays narrow to `AccessIntent`), the surface-family fold (an intent naming a bare `path` / `external_directory` surface is resolved against each directional member and combined most-restrictive, returning the losing member's own result). Constraint: the fold lives here, not in the gates — this is the one entry point the gates, `LocalPermissionsService`, and `ServingPolicy` share, and a serving node resolving a forwarded child request against an emptied bare surface would stop hard-denying what the parent's config denies (#712, #806). Also owns raw `checkPermission` (`implements SkillPermissionChecker`, no session rules), `getToolPermission`, `isToolFullyDenied`, and `getPolicyIssues`. `ResolverServingPolicy` (`serving-policy.ts`) is that composition, pinned over a filesystem-backed manager by `test/policy/serving-policy.test.ts`; every `ForwardedRequestServer` test stubs `policy`, so none of them would catch a regression there
@@ -1367,7 +1368,7 @@ This is the phase's spine: once the scopes are a list, a reorder, an addition, a
 
 Release: independent
 
-#### [#1108] A later scope's patterns are placed after an earlier scope's
+#### ✅ [#1108] A later scope's patterns are placed after an earlier scope's
 
 **Cause:** cross-scope precedence is a side effect of merging raw objects, not a composition of ordered rulesets, so a later scope's catch-all sits wherever the earlier scope first put that key and loses to the earlier scope's specific patterns under last-match-wins.
 The fallow signal is `mergeScopesWithOrigins` (cognitive 29), which re-implements `mergeFlatPermissions`' both-objects predicate beside a call to it.
@@ -1378,6 +1379,9 @@ The fallow signal is `mergeScopesWithOrigins` (cognitive 29), which re-implement
   Composing per-scope rulesets in slot order needs the scopes as an ordered list.
 - **Design question the step must settle:** what a later scope's universal `"*"` means against an earlier scope's surface rules, and whether `config-loader.ts`'s use of `mergeFlatPermissions` for the runtime-config view still has a caller once the manager stops using it.
 - **Outcome:** an agent's `bash: { "*": "deny" }` denies `git status` under a global `"git *": "allow"`; each rule carries its scope from normalization, so the parallel origin map and `mergeScopesWithOrigins` are deleted; one `PermissionManager.check` test per resolver pins the order.
+  Landed: `composeScopes` (`src/policy/scope-composition.ts`) replaced `mergeScopesWithOrigins` and `buildConfigRules`; `mergeScopesWithOrigins` references in `permission-manager.ts` read 0.
+  The design question settled at the planning gate: a later scope's universal `"*"` stays the fallback (operator decision), and `mergeFlatPermissions` keeps its one caller, the bash-ungated warning, aligned so an earlier scope's string catch-all survives a later pattern map.
+  The order is pinned through `check` (`evaluateAnyValue`) and `isToolFullyDenied` (`evaluate`) over real agent files; top-level `mcp__` keys are now relocated within their own scope, a second `fix!:`.
 - **Commit type:** `fix!:` — a restated catch-all now overrides an earlier scope's specific patterns.
 - **Impact 5 / Risk 3 / Priority 15.**
 
@@ -1633,7 +1637,7 @@ flowchart TD
     S1133["✅ #1133<br/>Group the manager test by concern"]
     S1102["✅ #1102<br/>A knob save never erases"]
     S1134["✅ #1134<br/>Scopes as one ordered list"]
-    S1108["#1108<br/>Later scope placed after"]
+    S1108["✅ #1108<br/>Later scope placed after"]
     S1067["#1067<br/>Forwarding wire validates"]
     S1115["#1115<br/>Forwarding directory location"]
     S1118["#1118<br/>Auto-approve terminal"]
@@ -1676,7 +1680,7 @@ flowchart TD
 ### Parallel tracks
 
 - **Track A — scope order and strictness:** [#1133] → [#1134] → [#1108], then [#1127].
-  Owns `src/policy/scope-merge.ts`, the scope list in `src/config/policy-loader.ts`, and `test/policy/`.
+  Owns `src/policy/scope-composition.ts`, the scope list in `src/config/policy-loader.ts`, and `test/policy/`.
 - **Track B — one read, one write:** [#1102], and [#1126] → [#1028] → [#1125], converging on [#1122] → [#1124] → [#1123].
   Owns `src/config/config-store.ts`, `config-loader.ts`, and `config-modal.ts`; it meets Track A at [#1122], which needs [#1108] landed.
 - **Track C — live relaxation and self-protection:** [#1118] → [#1119] → [#1121].

@@ -160,6 +160,20 @@ Third-party packages are maintained by their authors; review one before granting
 
 ## Upgrading
 
+### The major after 43.x — a later scope's patterns follow an earlier scope's
+
+Each config scope's rules are now placed after the earlier scopes' rules, so a later scope's catch-all overrides an earlier scope's specific patterns.
+An agent whose frontmatter sets `bash: { "*": "deny" }` now denies `git status` under a global `bash: { "git *": "allow" }`, and the bash tool is withheld from it; before, the global allow won.
+
+Three outcomes can change:
+
+- A scope that restates a catch-all after its own exceptions now gets the catch-all: write `{ "*": "deny", "pi-*": "allow" }`, not `{ "pi-*": "allow", "*": "deny" }`.
+- An earlier scope's string catch-all now survives a later scope's pattern map: global `bash: "allow"` with project `bash: { "rm *": "deny" }` now allows `ls`, where it used to fall to the universal `"*"`.
+- A later scope's `mcp` rules now override an earlier scope's top-level `mcp__<server>__<tool>` key.
+
+The universal `permission["*"]` is unchanged: it is the fallback for checks no rule matches, so it does not override another scope's surface rules.
+See [Merge Precedence](docs/configuration.md#merge-precedence).
+
 ### The major after 36.x — requires Pi 1.0.0
 
 The extension now requires `@earendil-works/pi-coding-agent` and `@earendil-works/pi-tui` 1.0.0 or later.

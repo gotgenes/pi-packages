@@ -35,7 +35,27 @@ See [migration/0644-project-trust-gating.md](migration/0644-project-trust-gating
 3. Global agent frontmatter
 4. Project agent frontmatter
 
-The `permission` object uses deep-shallow merge: string-vs-string replaces; both-object shallow-merges pattern maps; string-vs-object the override wins entirely.
+Each scope's `permission` rules are placed after every earlier scope's, and the last matching rule wins.
+So a later scope's catch-all overrides an earlier scope's specific patterns on the same surface, and a pattern both scopes define takes the later scope's action.
+A string value is shorthand for `{ "*": action }` here too: a global `bash: "allow"` still covers `ls` under a project `bash: { "rm *": "deny" }`.
+Within one scope the file's own order decides, so write a catch-all before its exceptions.
+
+The universal `permission["*"]` is the exception: it is not a rule but the fallback for a check no rule matches, and the last scope that sets it decides.
+An agent's `"*": "deny"` therefore does not override a global `bash: { "git *": "allow" }`.
+To lock an agent out of a surface the global config grants, give the agent that surface's catch-all:
+
+```yaml
+---
+name: locked
+permission:
+  "*": deny # every surface no scope configures
+  bash:
+    "*": deny # overrides the global bash patterns too
+---
+```
+
+A surface whose every pattern resolves to `deny` is withheld from the agent entirely.
+
 Scalar fields (`debugLog`, `permissionReviewLog`, `yoloMode`, `doublePressToConfirm`, `forwardingTimeoutMs`, `promptTimeoutMs`, `promptMaxRows`, `promptFieldMaxWidth`) use simple replacement.
 `permissionDialogKeys` replaces the whole map rather than merging entry by entry, so the map that was validated is the map that applies.
 `promptNotifications` likewise replaces the whole list, so a project `[]` turns off a global list.

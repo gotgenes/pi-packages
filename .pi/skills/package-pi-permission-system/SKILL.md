@@ -54,7 +54,7 @@ Run `pnpm --silent fallow guard <file>` before adding a cross-directory import: 
 - The four path layers (`path`, `external_directory`, per-tool, `bash`) compose with **most-restrictive-wins** across surfaces: a more-permissive rule on one surface cannot loosen a more-restrictive rule on another (`ask` > `allow`).
   So a `path` allow cannot suppress an `external_directory: ask` prompt — allow outside-CWD directories on `external_directory`, not `path`.
 - `path` and `external_directory` each carry a **read/write axis** (ADR 0013 §3–§4), and the two directions are independent bits, not tiers — a `path_write` allow grants no read, a `path_read` deny floors no write.
-  A bare family key is **load-time sugar**: `expandDirectionalSugar` (`src/policy/normalize.ts`), called once per scope inside `mergeScopesWithOrigins` before origin bookkeeping and the merge, rewrites it into both directional members, sugar entries first and explicit directional entries appended after, whatever the file's key order.
+  A bare family key is **load-time sugar**: `expandDirectionalSugar` (`src/policy/normalize.ts`), called once per scope inside `composeScopes` (`src/policy/scope-composition.ts`) before that scope's rules are normalized and placed, rewrites it into both directional members, sugar entries first and explicit directional entries appended after, whatever the file's key order.
   The mechanism — the resolver's family fold, per-token effect proofs, per-pattern session grants, and their constraints — is ADR 0013 and `docs/architecture/architecture.md` (`normalize.ts`, `permission-resolver.ts`, `command-effects.ts`, `session-approval.ts` entries).
 - Wildcard matching must be explicit and tested — silent over-matching is a permission bypass.
 - A wrapper option grammar that unions BSD and GNU is verified by running both installed binaries over every option the grammar lists, long names included: BSD `env` has no long options and reads `--unset FOO` as `-u nset`, then runs `FOO`.
@@ -97,7 +97,8 @@ One unified config file per scope, following the `pi-autoformat` convention (`ex
 - **Per-agent overrides**: YAML frontmatter in agent definition files
 
 Merge precedence: project overrides global; per-agent frontmatter overrides both.
-The `permission` object uses deep-shallow merge; scalar fields use simple replacement.
+Each scope's `permission` rules are placed after the earlier scopes' (a redefined pattern moves to the later position), so a later catch-all overrides earlier specific patterns; the universal `"*"` stays a fallback, the last scope that sets it deciding.
+Scalar fields use simple replacement.
 
 - Zod source of truth: `src/config/config-schema.ts` (the composable schemas, the `z.infer` config types, and `buildPermissionsJsonSchema`).
 - Schema: `schemas/permissions.schema.json` — **generated** from `config-schema.ts` via `pnpm run gen:schema`; never edit it by hand.
