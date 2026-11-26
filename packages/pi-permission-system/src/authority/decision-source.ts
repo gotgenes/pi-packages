@@ -17,6 +17,15 @@
 /** Which human-facing surface the operator answered on. */
 export type UserDecisionSurface = "dialog" | "select";
 
+/** What turned auto-approve on: the `--auto-approve` launch flag, or the session command. */
+export type AutoApproveSetter = "flag" | "command";
+
+/**
+ * Which asks an auto-approve scope covers: this node's own, every forwarded
+ * one, or the forwarded asks of one requesting agent.
+ */
+export type AutoApproveScopeKind = "own" | "forwarded" | "agent";
+
 export type DecisionSource =
   /** A human ruled, at the inline dialog or the `select`/`input` fallback. */
   | { kind: "user"; via: UserDecisionSurface }
@@ -42,6 +51,17 @@ export type DecisionSource =
    * yolo grant over a synthesized ask legible.
    */
   | { kind: "yolo"; pattern: string | null }
+  /**
+   * The session's auto-approve terminal allowed an ask every chain link
+   * deferred. `setter` names what turned it on and `scope` which of its scopes
+   * covered the ask; the requesting agent of an `agent` scope is already on
+   * the record that carries this.
+   */
+  | {
+      kind: "auto_approve";
+      setter: AutoApproveSetter;
+      scope: AutoApproveScopeKind;
+    }
   /** A Pi infrastructure read, allowed by containment rather than by a rule. */
   | { kind: "infrastructure_read" }
   /**
@@ -143,6 +163,8 @@ function narrowSource(
       return isNullableString(candidate.pattern)
         ? { kind: "yolo", pattern: candidate.pattern }
         : undefined;
+    case "auto_approve":
+      return narrowAutoApprove(candidate);
     case "infrastructure_read":
       return { kind: "infrastructure_read" };
     case "unavailable":
@@ -167,6 +189,18 @@ function narrowUser(
 ): DecisionSource | undefined {
   const via = USER_DECISION_SURFACES.find((entry) => entry === candidate.via);
   return via ? { kind: "user", via } : undefined;
+}
+
+function narrowAutoApprove(
+  candidate: Record<string, unknown>,
+): DecisionSource | undefined {
+  const setter = AUTO_APPROVE_SETTERS.find(
+    (entry) => entry === candidate.setter,
+  );
+  const scope = AUTO_APPROVE_SCOPE_KINDS.find(
+    (entry) => entry === candidate.scope,
+  );
+  return setter && scope ? { kind: "auto_approve", setter, scope } : undefined;
 }
 
 function narrowUnanswered(
@@ -271,6 +305,17 @@ const USER_DECISION_SURFACES = [
 ] as const satisfies readonly UserDecisionSurface[];
 
 const AUTHORIZER_VERDICTS = ["allow", "deny"] as const;
+
+const AUTO_APPROVE_SETTERS = [
+  "flag",
+  "command",
+] as const satisfies readonly AutoApproveSetter[];
+
+const AUTO_APPROVE_SCOPE_KINDS = [
+  "own",
+  "forwarded",
+  "agent",
+] as const satisfies readonly AutoApproveScopeKind[];
 
 function asObject(value: unknown): Record<string, unknown> | undefined {
   return typeof value === "object" && value !== null && !Array.isArray(value)

@@ -51,6 +51,9 @@ describe("asDecisionSource", () => {
       { kind: "session_approval", surface: "bash", pattern: null },
       { kind: "yolo", pattern: "<opaque-bash-wrapper>" },
       { kind: "yolo", pattern: null },
+      { kind: "auto_approve", setter: "flag", scope: "own" },
+      { kind: "auto_approve", setter: "command", scope: "forwarded" },
+      { kind: "auto_approve", setter: "command", scope: "agent" },
       { kind: "infrastructure_read" },
       {
         kind: "unavailable",
@@ -112,6 +115,15 @@ describe("asDecisionSource", () => {
         { kind: "session_approval", pattern: null },
       ],
       ["a missing yolo pattern", { kind: "yolo" }],
+      [
+        "an unknown auto_approve setter",
+        { kind: "auto_approve", setter: "config", scope: "own" },
+      ],
+      [
+        "an unknown auto_approve scope",
+        { kind: "auto_approve", setter: "flag", scope: "everything" },
+      ],
+      ["a missing auto_approve setter", { kind: "auto_approve", scope: "own" }],
       ["a missing unavailable reason", { kind: "unavailable" }],
       ["a non-string gate_error reason", { kind: "gate_error", reason: null }],
       ["a missing unanswered timeoutMs", { kind: "unanswered" }],

@@ -40,6 +40,7 @@ export function resolutionFor(
     case "infrastructure_read":
       return "infrastructure_auto_allowed";
     case "yolo":
+    case "auto_approve":
       return "auto_approved";
     case "authorizer":
       return outcome.approved ? "authorizer_allowed" : "authorizer_denied";

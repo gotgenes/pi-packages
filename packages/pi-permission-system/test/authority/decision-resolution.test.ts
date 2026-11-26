@@ -38,6 +38,15 @@ describe("resolutionFor", () => {
       );
     });
 
+    it("names an auto-approve grant auto_approved", () => {
+      expect(
+        resolutionFor(
+          { kind: "auto_approve", setter: "flag", scope: "own" },
+          ALLOWED,
+        ),
+      ).toBe("auto_approved");
+    });
+
     it("names a yolo grant auto_approved", () => {
       expect(
         resolutionFor(

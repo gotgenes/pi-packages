@@ -102,16 +102,17 @@ export function renderRefusal(
         decidedElsewhere,
       });
     // Three different reasons share this arm. `user` is the render's true
-    // subject: a human refused, and the sentence says so. The three below it
-    // never refuse at all — a session grant, an infrastructure read, and yolo
-    // only ever allow — so they are unreachable here and listed only to keep
-    // the switch exhaustive. A `forwarded` reaching this far named no inner
+    // subject: a human refused, and the sentence says so. The ones below it
+    // never refuse at all — a session grant, an infrastructure read, yolo, and
+    // auto-approve only ever allow — so they are unreachable here and listed
+    // only to keep the switch exhaustive. A `forwarded` reaching this far named no inner
     // decider (an older responder), so the hop is all that is known, and the
     // user render is the fail-soft answer rather than the accurate one.
     case "user":
     case "session_approval":
     case "infrastructure_read":
     case "yolo":
+    case "auto_approve":
     case "forwarded":
       return renderUserDenial(payload, denialReason, budget);
   }

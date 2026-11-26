@@ -257,10 +257,10 @@ describe("handleToolCall decision events — infrastructure_auto_allowed", () =>
   });
 });
 
-// ── auto_approved path (yolo mode) ───────────────────────────────────
+// ── auto_approved path (auto-approve) ────────────────────────────────
 
 describe("handleToolCall decision events — auto_approved", () => {
-  it("emits allow with auto_approved when yolo decided the escalated ask", async () => {
+  it("emits allow with auto_approved when auto-approve decided the escalated ask", async () => {
     const { handler, events } = makeHandler({
       session: {
         checkPermission: vi
@@ -271,7 +271,7 @@ describe("handleToolCall decision events — auto_approved", () => {
         escalate: vi.fn<AskEscalator["escalate"]>().mockResolvedValue({
           approved: true,
           state: "approved",
-          decidedBy: { kind: "yolo", pattern: "*" },
+          decidedBy: { kind: "auto_approve", setter: "flag", scope: "own" },
         }),
       },
     });
