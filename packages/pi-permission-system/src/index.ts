@@ -11,6 +11,7 @@ import {
 } from "#src/authority/authorizer-registry";
 import { AuthorizerSelection } from "#src/authority/authorizer-selection";
 import { AutoApproval } from "#src/authority/auto-approval";
+import { registerAutoApproveCommand } from "#src/authority/auto-approve-command";
 import { ChildNodeAudit } from "#src/authority/child-node-audit";
 import { ForwardedRequestServer } from "#src/authority/forwarded-request-server";
 import {
@@ -67,6 +68,9 @@ import {
   SessionTurnPrep,
 } from "./handlers";
 import { getPermissionsService, type PermissionsService } from "./service";
+
+/** The launch flag that turns auto-approve on: `pi --auto-approve`. */
+const AUTO_APPROVE_FLAG = "auto-approve";
 
 export default function piPermissionSystemExtension(pi: ExtensionAPI): void {
   const agentDir = getAgentDir();
@@ -147,9 +151,20 @@ export default function piPermissionSystemExtension(pi: ExtensionAPI): void {
   // presentation there strands the first ask's promise (#965).
   const askDialogQueue = new AskDialogQueue();
 
+  // `--auto-approve` sets auto-approve for this process only; a child process
+  // does not inherit it (ADR 0016 §5). Pi fills a flag's value after this
+  // factory returns, so the session start reads it, not this body.
+  pi.registerFlag(AUTO_APPROVE_FLAG, {
+    type: "boolean",
+    description:
+      "Auto-approve every ask the authorizer chain defers, in this session and for its subagents; a deny still denies",
+  });
+
   // This session's auto-approve scopes, in memory only: built here so a
-  // session switch, which re-runs the factory, starts with none (ADR 0016 §5).
-  const autoApproval = new AutoApproval();
+  // session switch, which re-runs the factory, starts with none but the flag's.
+  const autoApproval = new AutoApproval(
+    () => pi.getFlag(AUTO_APPROVE_FLAG) === true,
+  );
 
   // The filesystem half of the serving announcement. `servingRegistry` reaches
   // an in-process child through `globalThis`; a child in its own process shares
@@ -266,6 +281,10 @@ export default function piPermissionSystemExtension(pi: ExtensionAPI): void {
         session.lastKnownActiveAgentName ?? undefined,
       ),
   });
+  registerAutoApproveCommand(pi, {
+    approval: autoApproval,
+    role: authorizerSelection,
+  });
 
   // Explicitly annotated to break a type-inference cycle: the selection's
   // `getPermissionQuery` thunk closes over this service, and the service's
@@ -339,6 +358,7 @@ export default function piPermissionSystemExtension(pi: ExtensionAPI): void {
     audit,
     configIssueReporter,
     askDialogQueue,
+    autoApproval,
   );
   const turnPrep = new SessionTurnPrep(
     session,

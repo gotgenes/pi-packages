@@ -4,25 +4,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // ── Module mocks (hoisted) ─────────────────────────────────────────────────
 
-const {
-  mockLoadAndMergeConfigs,
-  mockSyncPermissionSystemStatus,
-  mockBuildResolvedConfigLogEntry,
-} = vi.hoisted(() => ({
-  mockLoadAndMergeConfigs: vi.fn(),
-  mockSyncPermissionSystemStatus: vi.fn(),
-  mockBuildResolvedConfigLogEntry: vi.fn(),
-}));
+const { mockLoadAndMergeConfigs, mockBuildResolvedConfigLogEntry } = vi.hoisted(
+  () => ({
+    mockLoadAndMergeConfigs: vi.fn(),
+    mockBuildResolvedConfigLogEntry: vi.fn(),
+  }),
+);
 
 // Only the merge is replaced: `save()` reads the global file through the real
 // loader, against the real temporary directory each test stages.
 vi.mock("#src/config/config-loader", async (importOriginal) => ({
   ...(await importOriginal<typeof import("#src/config/config-loader")>()),
   loadAndMergeConfigs: mockLoadAndMergeConfigs,
-}));
-
-vi.mock("#src/config/status", () => ({
-  syncPermissionSystemStatus: mockSyncPermissionSystemStatus,
 }));
 
 vi.mock("#src/config/config-reporter", () => ({
@@ -120,7 +113,6 @@ describe("ConfigStore", () => {
       merged: { ...DEFAULT_EXTENSION_CONFIG },
       issues: [],
     });
-    mockSyncPermissionSystemStatus.mockReset();
     mockBuildResolvedConfigLogEntry
       .mockReset()
       .mockReturnValue({ resolved: true });
@@ -282,15 +274,6 @@ describe("ConfigStore", () => {
       );
     });
 
-    // The load takes no context now, so it cannot notify or sync the status
-    // bar even by accident, which is the point: `PermissionSession` owns the
-    // status sync and `ConfigIssueReporter` owns the warning (#933).
-    it("does not sync the status bar", () => {
-      const { store } = makeStore();
-      store.refresh("/my/project", true);
-      expect(mockSyncPermissionSystemStatus).not.toHaveBeenCalled();
-    });
-
     it("carries piInfrastructureReadPaths from merged config into current()", () => {
       const { store } = makeStore();
       mockLoadAndMergeConfigs.mockReturnValue({
@@ -443,16 +426,6 @@ describe("ConfigStore", () => {
         expect(store.current().shellTools).toEqual({
           exec_command: { commandArgument: "cmd" },
         });
-      });
-
-      it("syncs the status bar", () => {
-        const { store } = makeStore();
-        const ctx = makeCommandCtx();
-        store.save({ ...DEFAULT_EXTENSION_CONFIG }, ctx);
-        expect(mockSyncPermissionSystemStatus).toHaveBeenCalledWith(
-          ctx,
-          expect.any(Object),
-        );
       });
 
       it("writes the config.saved debug log", () => {

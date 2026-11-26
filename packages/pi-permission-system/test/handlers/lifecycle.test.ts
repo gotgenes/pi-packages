@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { AskDialogRelease } from "#src/authority/ask-dialog-queue";
+import type { AutoApproveLifecycle } from "#src/authority/auto-approval";
 import {
   SESSION_ENDED_REASON,
   SessionLifecycleHandler,
@@ -14,13 +15,6 @@ import {
   makePolicyIssueReporter,
 } from "#test/helpers/handler-fixtures";
 import { makeLogger, makeRealSession } from "#test/helpers/session-fixtures";
-
-// ── status stub ────────────────────────────────────────────────────────────
-vi.mock("#src/config/status", () => ({
-  PERMISSION_SYSTEM_STATUS_KEY: "permission-system",
-  syncPermissionSystemStatus: vi.fn(),
-  getPermissionSystemStatus: vi.fn(),
-}));
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
@@ -37,6 +31,10 @@ function makeSetup() {
   const configIssues = makeConfigIssueReporter();
   const policyIssues = makePolicyIssueReporter();
   const dialogs = { releaseAll: vi.fn<AskDialogRelease["releaseAll"]>() };
+  const autoApprove = {
+    applyLaunchFlag: vi.fn<AutoApproveLifecycle["applyLaunchFlag"]>(),
+    clearStatus: vi.fn<AutoApproveLifecycle["clearStatus"]>(),
+  };
   const handler = new SessionLifecycleHandler(
     session,
     policyIssues,
@@ -45,6 +43,7 @@ function makeSetup() {
     audit,
     configIssues,
     dialogs,
+    autoApprove,
   );
   return {
     handler,
@@ -57,6 +56,7 @@ function makeSetup() {
     audit,
     configIssues,
     dialogs,
+    autoApprove,
   };
 }
 
@@ -197,6 +197,25 @@ describe("handleSessionStart", () => {
     expect(callOrder).toEqual(["resetForNewSession", "refreshConfig"]);
   });
 
+  // Activation starts forwarding, which serves a headless node only when its
+  // auto-approve answers forwarded asks, so the launch flag is read first.
+  it("applies the auto-approve launch flag before resetForNewSession", async () => {
+    const callOrder: string[] = [];
+    const { handler, session, autoApprove } = makeSetup();
+    autoApprove.applyLaunchFlag.mockImplementation(() => {
+      callOrder.push("applyLaunchFlag");
+    });
+    vi.spyOn(session, "resetForNewSession").mockImplementation(() => {
+      callOrder.push("resetForNewSession");
+    });
+    const ctx = makeCtx();
+
+    await handler.handleSessionStart({ reason: "startup" }, ctx);
+
+    expect(callOrder).toEqual(["applyLaunchFlag", "resetForNewSession"]);
+    expect(autoApprove.applyLaunchFlag).toHaveBeenCalledWith(ctx);
+  });
+
   describe("config issues", () => {
     it("reports them, so one present before the session starts is shown", async () => {
       const { handler, configIssues } = makeSetup();
@@ -278,15 +297,12 @@ describe("handleResourcesDiscover", () => {
 // ── handleSessionShutdown ──────────────────────────────────────────────────
 
 describe("handleSessionShutdown", () => {
-  it("clears UI status when runtime context is present", async () => {
+  it("takes the auto-approve indicator down when runtime context is present", async () => {
     const ctx = makeCtx();
-    const { handler, session } = makeSetup();
+    const { handler, session, autoApprove } = makeSetup();
     session.activate(ctx);
     await handler.handleSessionShutdown();
-    expect(ctx.ui.setStatus).toHaveBeenCalledWith(
-      "permission-system",
-      undefined,
-    );
+    expect(autoApprove.clearStatus).toHaveBeenCalledWith(ctx);
   });
 
   it("does not throw when runtime context is null", async () => {

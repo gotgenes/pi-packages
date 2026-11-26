@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { TerminalAuthorizer } from "#src/authority/authorizer";
 import {
   AutoApproval,
@@ -163,6 +163,66 @@ describe("AutoApproval", () => {
 
       expect(approval.describe()).toBe("own (flag), agent reviewer (command)");
     });
+  });
+});
+
+describe("AutoApproval launch flag and status", () => {
+  function makeStatusSink() {
+    return { ui: { setStatus: vi.fn<(key: string, text?: string) => void>() } };
+  }
+
+  it("turns on the own and forwarded scopes, set by the flag, when the flag is set", () => {
+    const approval = new AutoApproval(() => true);
+    const sink = makeStatusSink();
+
+    approval.applyLaunchFlag(sink);
+
+    expect(approval.describe()).toBe("own (flag), forwarded (flag)");
+    expect(sink.ui.setStatus).toHaveBeenCalledWith(
+      "pi-permission-system",
+      "auto-approve",
+    );
+  });
+
+  it("turns nothing on, and clears the status, when the flag is unset", () => {
+    const approval = new AutoApproval(() => false);
+    const sink = makeStatusSink();
+
+    approval.applyLaunchFlag(sink);
+
+    expect(approval.isActive()).toBe(false);
+    expect(sink.ui.setStatus).toHaveBeenCalledWith(
+      "pi-permission-system",
+      undefined,
+    );
+  });
+
+  it("shows the indicator while any scope is on, and clears it once none is", () => {
+    const approval = new AutoApproval();
+    const sink = makeStatusSink();
+
+    approval.enable({ kind: "agent", agentName: "reviewer" }, "command");
+    approval.syncStatus(sink);
+    approval.disable();
+    approval.syncStatus(sink);
+
+    expect(sink.ui.setStatus.mock.calls).toEqual([
+      ["pi-permission-system", "auto-approve"],
+      ["pi-permission-system", undefined],
+    ]);
+  });
+
+  it("clears the indicator at shutdown whatever is on", () => {
+    const approval = new AutoApproval(() => true);
+    const sink = makeStatusSink();
+    approval.applyLaunchFlag(sink);
+
+    approval.clearStatus(sink);
+
+    expect(sink.ui.setStatus).toHaveBeenLastCalledWith(
+      "pi-permission-system",
+      undefined,
+    );
   });
 });
 

@@ -27,7 +27,6 @@ import {
   runtimeKnobValues,
 } from "./extension-config";
 import type { ResolvedPolicyPaths } from "./policy-loader";
-import { syncPermissionSystemStatus } from "./status";
 
 /** Read-only view of the current config — for consumers that only read. */
 export interface ConfigReader {
@@ -173,7 +172,7 @@ export class ConfigStore
 
   /**
    * Save the runtime knobs to the global config file, then merge them into
-   * the current config and sync UI status.
+   * the current config.
    *
    * Returns whether the file was written; a failure has already been
    * reported to the operator through `ctx`.
@@ -196,7 +195,6 @@ export class ConfigStore
     }
 
     this.config = { ...this.config, ...written };
-    syncPermissionSystemStatus(ctx, this.config);
 
     this.deps.logger.debug("config.saved", { ...written });
     return true;

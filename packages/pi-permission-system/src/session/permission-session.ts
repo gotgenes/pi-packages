@@ -6,7 +6,6 @@ import type { ShellToolsConfig } from "#src/config/config-schema";
 import type { SessionConfigStore } from "#src/config/config-store";
 import type { PermissionSystemExtensionConfig } from "#src/config/extension-config";
 import type { ExtensionPaths } from "#src/config/extension-paths";
-import { syncPermissionSystemStatus } from "#src/config/status";
 import type { SkillPromptEntry } from "#src/exposure/skill-prompt-sanitizer";
 import {
   ToolSurfaceBaseline,
@@ -205,25 +204,19 @@ export class PermissionSession implements ToolCallGateInputs {
   // ── Config ─────────────────────────────────────────────────────────────
 
   /**
-   * Reload merged config from disk, then bring the status bar in step with it.
+   * Reload merged config from disk.
    *
    * When `projectTrusted` is `false`, the project scope is withheld so an
    * untrusted project's runtime config is not merged (#644).
    *
-   * The status sync lives here rather than in `ConfigStore` because it is a UI
-   * side effect of the session, keyed on the session's context: the store
-   * loads and answers, and needs no ctx to do it (#933). Both drivers
-   * (`session_start` and every `before_agent_start`) call this one method, so
-   * the sync has a single home rather than one copy per handler.
+   * The status bar is not config's to set: it shows auto-approve, which lives
+   * in memory and owns its own indicator.
    */
   refreshConfig(
     ctx: ExtensionContext | undefined,
     projectTrusted: boolean,
   ): void {
     this.configStore.refresh(ctx?.cwd, projectTrusted);
-    if (ctx?.hasUI) {
-      syncPermissionSystemStatus(ctx, this.configStore.current());
-    }
   }
 
   /** Write the resolved config path set to the review and debug logs. */

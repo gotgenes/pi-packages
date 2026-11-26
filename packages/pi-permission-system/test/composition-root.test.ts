@@ -2446,6 +2446,230 @@ describe("yolo grants asks synthesized after resolution", () => {
   });
 });
 
+describe("auto-approve, set by --auto-approve or /permission-system:auto-approve", () => {
+  const AUTO_APPROVE_COMMAND = "permission-system:auto-approve";
+
+  /** Boot a bash-only node, launched with or without `--auto-approve`. */
+  async function bootBashNode(
+    config: Record<string, unknown>,
+    options: { flag?: boolean; prompts?: string[] } = {},
+  ): Promise<{ pi: ReturnType<typeof makeFakePi>; ctx: unknown; cwd: string }> {
+    writeGlobalConfig(config);
+    const cwd = mkdtempSync(join(tmpdir(), "pi-perm-auto-approve-cwd-"));
+    const pi = bootExtension(
+      makeFakePi({
+        toolNames: ["bash"],
+        flagValues: options.flag === true ? { "auto-approve": true } : {},
+      }),
+    );
+    const { ctx } = makeUiCtx(cwd, options.prompts ?? []);
+    await fireSessionStart(pi, ctx);
+    return { pi, ctx, cwd };
+  }
+
+  async function fireBash(
+    pi: ReturnType<typeof makeFakePi>,
+    ctx: unknown,
+    command: string,
+  ): Promise<boolean> {
+    const result = (await pi.fire(
+      "tool_call",
+      { toolName: "bash", toolCallId: "auto-1", input: { command } },
+      ctx,
+    )) as { block?: true };
+    return result.block === true;
+  }
+
+  /** Run a bash command once, under the launch flag, and report what happened. */
+  async function runUnderFlag(
+    config: Record<string, unknown>,
+    command: string,
+    flag = true,
+  ): Promise<{ blocked: boolean; prompts: string[] }> {
+    const prompts: string[] = [];
+    const { pi, ctx, cwd } = await bootBashNode(config, { flag, prompts });
+    const blocked = await fireBash(pi, ctx, command);
+    rmSync(cwd, { recursive: true, force: true });
+    return { blocked, prompts };
+  }
+
+  async function runCommand(
+    pi: ReturnType<typeof makeFakePi>,
+    ctx: unknown,
+    args: string,
+  ): Promise<void> {
+    const command = pi.commands.get(AUTO_APPROVE_COMMAND) as {
+      handler: (args: string, ctx: unknown) => Promise<void>;
+    };
+    await command.handler(args, ctx);
+  }
+
+  const askingBash = { permission: { "*": "allow", bash: { "*": "ask" } } };
+  const permissiveBash = {
+    permission: { "*": "allow", bash: { "*": "allow" } },
+  };
+
+  it("registers the launch flag and the session command", () => {
+    const pi = bootExtension();
+
+    expect(pi.flags.has("auto-approve")).toBe(true);
+    expect(pi.commands.has(AUTO_APPROVE_COMMAND)).toBe(true);
+  });
+
+  describe("under the launch flag", () => {
+    it("allows an asking command without a prompt, naming the flag as the decider", async () => {
+      const outcome = await runUnderFlag(askingBash, "git push");
+
+      expect(outcome).toEqual({ blocked: false, prompts: [] });
+      const approved = (readReviewLog() as Record<string, unknown>[]).filter(
+        (entry) => entry.event === "permission_request.approved",
+      );
+      expect(approved).toHaveLength(1);
+      expect(approved[0]?.decidedBy).toEqual({
+        kind: "auto_approve",
+        setter: "flag",
+        scope: "own",
+      });
+    });
+
+    it("still prompts for an asking command without the flag", async () => {
+      const outcome = await runUnderFlag(askingBash, "git push", false);
+
+      expect(outcome.prompts).toHaveLength(1);
+    });
+
+    it("consults a configured link before allowing", async () => {
+      const prompts: string[] = [];
+      const { pi, ctx, cwd } = await bootBashNode(
+        { ...askingBash, authorizerChain: ["watching-judge"] },
+        { flag: true, prompts },
+      );
+      const link = vi.fn(() => Promise.resolve({ kind: "defer" as const }));
+      getPermissionsService("ui-session")!.registerAuthorizer(
+        "watching-judge",
+        link,
+      );
+
+      const blocked = await fireBash(pi, ctx, "git push");
+
+      expect(link).toHaveBeenCalledOnce();
+      expect({ blocked, prompts }).toEqual({ blocked: false, prompts: [] });
+      rmSync(cwd, { recursive: true, force: true });
+    });
+
+    it("lets a configured link's deny stand", async () => {
+      const { pi, ctx, cwd } = await bootBashNode(
+        { ...askingBash, authorizerChain: ["denying-judge"] },
+        { flag: true },
+      );
+      getPermissionsService("ui-session")!.registerAuthorizer(
+        "denying-judge",
+        () => Promise.resolve({ kind: "deny", reason: "not this one" }),
+      );
+
+      expect(await fireBash(pi, ctx, "git push")).toBe(true);
+      rmSync(cwd, { recursive: true, force: true });
+    });
+
+    it("blocks a command a rule denies", async () => {
+      const outcome = await runUnderFlag(
+        { permission: { "*": "allow", bash: { "*": "ask", "rm *": "deny" } } },
+        "rm -rf build",
+      );
+
+      expect(outcome).toEqual({ blocked: true, prompts: [] });
+    });
+
+    // An ask synthesized after resolution has no rule behind it, so it reaches
+    // the terminal like any other ask (#712's contract, now at the terminal).
+    describe("asks synthesized after resolution", () => {
+      // Not a pure reader inside, so the wrapper floor applies (#803).
+      const flooredWrapper = "git status | xargs rm -rf";
+
+      it("allows an indirection wrapper", async () => {
+        expect(await runUnderFlag(permissiveBash, flooredWrapper)).toEqual({
+          blocked: false,
+          prompts: [],
+        });
+      });
+
+      it("still floors an indirection wrapper to a prompt without the flag", async () => {
+        const outcome = await runUnderFlag(
+          permissiveBash,
+          flooredWrapper,
+          false,
+        );
+
+        expect(outcome.blocked).toBe(false);
+        expect(outcome.prompts).toHaveLength(1);
+        expect(outcome.prompts[0]).toContain("<indirection-bash-wrapper>");
+      });
+
+      it("allows an unparseable command", async () => {
+        expect(await runUnderFlag(permissiveBash, "> out.txt")).toEqual({
+          blocked: false,
+          prompts: [],
+        });
+      });
+
+      it("blocks a denied wrapper", async () => {
+        const outcome = await runUnderFlag(
+          {
+            permission: {
+              "*": "allow",
+              bash: { "*": "allow", "xargs*": "deny" },
+            },
+          },
+          "git status | xargs grep foo",
+        );
+
+        expect(outcome).toEqual({ blocked: true, prompts: [] });
+      });
+
+      it("blocks a denied unparseable command", async () => {
+        const outcome = await runUnderFlag(
+          { permission: { "*": "allow", bash: { "*": "deny" } } },
+          "> out.txt",
+        );
+
+        expect(outcome).toEqual({ blocked: true, prompts: [] });
+      });
+    });
+  });
+
+  describe("set by the session command", () => {
+    it("allows an asking command after on own, and prompts again after off", async () => {
+      const prompts: string[] = [];
+      const { pi, ctx, cwd } = await bootBashNode(askingBash, { prompts });
+
+      await runCommand(pi, ctx, "on own");
+      await fireBash(pi, ctx, "git push");
+      expect(prompts).toEqual([]);
+
+      await runCommand(pi, ctx, "off");
+      await fireBash(pi, ctx, "git push");
+      expect(prompts).toHaveLength(1);
+
+      rmSync(cwd, { recursive: true, force: true });
+    });
+
+    it("does not carry over into the next same-cwd session", async () => {
+      const prompts: string[] = [];
+      const first = await bootBashNode(askingBash, { prompts });
+      await runCommand(first.pi, first.ctx, "on");
+      await first.pi.fire("session_shutdown", {}, first.ctx);
+
+      // The cached factory runs again for the next session.
+      const second = bootExtension(makeFakePi({ toolNames: ["bash"] }));
+      await fireSessionStart(second, first.ctx);
+      await fireBash(second, first.ctx, "git push");
+
+      expect(prompts).toHaveLength(1);
+      rmSync(first.cwd, { recursive: true, force: true });
+    });
+  });
+});
+
 describe("directional external-directory relief (#806)", () => {
   // The change's user-visible payoff: an `external_directory_read` grant
   // silences a read outside the working tree while a write to the same path

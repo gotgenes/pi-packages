@@ -1,3 +1,4 @@
+import { EXTENSION_ID } from "#src/config/extension-config";
 import type { TerminalAuthorizer } from "./authorizer";
 import type {
   AutoApproveScopeKind,
@@ -38,6 +39,26 @@ interface ScopeEntry {
   setter: AutoApproveSetter;
 }
 
+/** Where the auto-approve indicator is shown: the session's status bar. */
+export interface AutoApproveStatusSink {
+  ui: { setStatus(key: string, text: string | undefined): void };
+}
+
+/**
+ * The session-lifecycle half of auto-approve: read the launch flag when a
+ * session starts, and take the indicator down when it ends.
+ */
+export interface AutoApproveLifecycle {
+  applyLaunchFlag(sink: AutoApproveStatusSink): void;
+  clearStatus(sink: AutoApproveStatusSink): void;
+}
+
+/** The status-bar text shown while any auto-approve scope is on. */
+const AUTO_APPROVE_STATUS = "auto-approve";
+
+/** The status-bar key this extension owns. */
+const STATUS_KEY = EXTENSION_ID;
+
 /**
  * One session's auto-approve state (ADR 0016 §5): which scopes are on, and
  * what turned each on.
@@ -46,8 +67,41 @@ interface ScopeEntry {
  * (which re-invokes the factory) starts it empty; nothing here is ever read
  * from or written to a file.
  */
-export class AutoApproval implements AutoApproveGrants {
+export class AutoApproval implements AutoApproveGrants, AutoApproveLifecycle {
   private readonly scopes = new Map<string, ScopeEntry>();
+
+  /**
+   * @param readLaunchFlag Whether the process was launched with
+   *   `--auto-approve`. A reader rather than a value: Pi fills a flag's value
+   *   only after the extension factory has run.
+   */
+  constructor(private readonly readLaunchFlag: () => boolean = () => false) {}
+
+  /**
+   * Turn on this node's own and forwarded asks when the process was launched
+   * with `--auto-approve`, then show the indicator. Called as a session starts,
+   * before forwarding is, so a headless node knows it can serve.
+   */
+  applyLaunchFlag(sink: AutoApproveStatusSink): void {
+    if (this.readLaunchFlag()) {
+      this.enable({ kind: "own" }, "flag");
+      this.enable({ kind: "forwarded" }, "flag");
+    }
+    this.syncStatus(sink);
+  }
+
+  /** Show the indicator while any scope is on, and clear it otherwise. */
+  syncStatus(sink: AutoApproveStatusSink): void {
+    sink.ui.setStatus(
+      STATUS_KEY,
+      this.isActive() ? AUTO_APPROVE_STATUS : undefined,
+    );
+  }
+
+  /** Take the indicator down, as the session ends. */
+  clearStatus(sink: AutoApproveStatusSink): void {
+    sink.ui.setStatus(STATUS_KEY, undefined);
+  }
 
   /** Turn `scope` on, recording `setter` as what did. */
   enable(scope: AutoApproveScope, setter: AutoApproveSetter): void {

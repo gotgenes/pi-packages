@@ -1,8 +1,8 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import type { AskDialogRelease } from "#src/authority/ask-dialog-queue";
+import type { AutoApproveLifecycle } from "#src/authority/auto-approval";
 import type { ConfigIssueReporting } from "#src/config/config-issue-reporter";
 import type { PolicyIssueReporting } from "#src/config/policy-issue-reporter";
-import { PERMISSION_SYSTEM_STATUS_KEY } from "#src/config/status";
 import type { DecisionSummaryWriter } from "#src/logging/decision-audit";
 import type { SessionLogger } from "#src/logging/session-logger";
 import type { ServiceLifecycle } from "#src/service/service-lifecycle";
@@ -54,6 +54,8 @@ export const UNTRUSTED_PROJECT_MESSAGE =
  *   the session opens is shown rather than swallowed (#933)
  * - `dialogs` — the session's ask queue, released on shutdown so a gate waiting
  *   on a dialog nobody can answer any more is unblocked (#965)
+ * - `autoApprove` — reads the `--auto-approve` launch flag as the session starts,
+ *   before activation starts forwarding, and takes its indicator down at the end
  */
 export class SessionLifecycleHandler {
   constructor(
@@ -64,6 +66,7 @@ export class SessionLifecycleHandler {
     private readonly audit: DecisionSummaryWriter,
     private readonly configIssues: ConfigIssueReporting,
     private readonly dialogs: AskDialogRelease,
+    private readonly autoApprove: AutoApproveLifecycle,
   ) {}
 
   handleSessionStart(
@@ -71,7 +74,10 @@ export class SessionLifecycleHandler {
     ctx: ExtensionContext,
   ): Promise<void> {
     const projectTrusted = ctx.isProjectTrusted();
-    // Reset first: it activates the session, binding the context that
+    // Before the reset: activation starts forwarding, and a headless node
+    // serves only while its auto-approve answers forwarded asks.
+    this.autoApprove.applyLaunchFlag(ctx);
+    // Reset first among the session steps: it activates the session, binding the context that
     // `PermissionSession.notify` — and therefore `logger.warn` — delivers
     // through. A refresh before activation has no UI to report into, which is
     // how a config warning present at session start went unseen (#933).
@@ -140,7 +146,7 @@ export class SessionLifecycleHandler {
   handleSessionShutdown(): Promise<void> {
     const ctx = this.session.getRuntimeContext();
     if (ctx) {
-      ctx.ui.setStatus(PERMISSION_SYSTEM_STATUS_KEY, undefined);
+      this.autoApprove.clearStatus(ctx);
     }
     this.audit.writeSummary(this.logger);
     // Ahead of the session shutdown that stops forwarding: a drain awaiting a

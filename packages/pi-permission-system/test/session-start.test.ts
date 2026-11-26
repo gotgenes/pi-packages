@@ -102,7 +102,11 @@ describe("session_start handler consolidation", () => {
       cwd: baseDir,
       hasUI: false,
       isProjectTrusted: () => true,
-      ui: { select: async () => "", input: async () => "" },
+      ui: {
+        select: async () => "",
+        input: async () => "",
+        setStatus: () => {},
+      },
       agent: { name: "test-agent" },
       sessionManager: {
         getEntries: () => [],
