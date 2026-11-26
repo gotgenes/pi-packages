@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isFilenameSafeRequestId } from "#src/permission-request-id";
 import { asPromptPayload } from "#src/presentation/prompt-payload";
 import type { PermissionUiPromptSource } from "#src/service/permission-events";
 import type { ForwardedPermissionRequest } from "./permission-forwarding";
@@ -74,7 +75,11 @@ const forwardedAccessIntentSchema = z
  */
 export const forwardedPermissionRequestSchema = z
   .object({
-    id: z.string(),
+    // The id names the requester's response file at a relay hop, so one that
+    // could name a path outside the inbox drops the request.
+    id: z
+      .string()
+      .refine(isFilenameSafeRequestId, "not a filename-safe request id"),
     createdAt: z.number(),
     requesterSessionId: z.string(),
     targetSessionId: z.string(),

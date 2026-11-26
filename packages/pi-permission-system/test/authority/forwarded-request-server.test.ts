@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import {
@@ -1527,6 +1527,53 @@ describe("processInbox — inbox mechanics", () => {
     );
 
     expect(resolve).not.toHaveBeenCalled();
+  });
+
+  test("drops, unanswered, a request whose id would name a file outside responses/", async () => {
+    temp = createForwardingTempDir("parent-session");
+    // Written by hand: the fixture's writeRequest names the file after the id,
+    // which would itself land outside requests/.
+    const plantedPath = join(temp.location.requestsDir, "planted.json");
+    writeFileSync(
+      plantedPath,
+      JSON.stringify({
+        id: "../escape-test",
+        createdAt: Date.now(),
+        requesterSessionId: "child-session",
+        targetSessionId: "parent-session",
+        requesterAgentName: "Explore",
+      }),
+      "utf-8",
+    );
+
+    const escalate = vi.fn(() =>
+      Promise.resolve<PermissionPromptDecision>({
+        approved: true,
+        state: "approved",
+        decidedBy: DECIDED_BY_HUMAN,
+      }),
+    );
+    const server = new ForwardedRequestServer(
+      makeServerDeps({
+        forwardingDir: temp.forwardingDir,
+        escalator: { escalate },
+      }),
+    );
+
+    await server.processInbox(
+      makeForwarderContext({ hasUI: true, sessionId: "parent-session" }),
+    );
+
+    expect(escalate).not.toHaveBeenCalled();
+    expect(existsSync(plantedPath)).toBe(false);
+    expect(
+      existsSync(join(temp.location.sessionRootDir, "escape-test.json")),
+    ).toBe(false);
+    expect(
+      existsSync(temp.location.responsesDir)
+        ? readdirSync(temp.location.responsesDir)
+        : [],
+    ).toEqual([]);
   });
 });
 

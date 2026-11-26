@@ -156,9 +156,9 @@ function relayDecision(
  * The id to write on the forwarded request: the requester's own, or a fresh
  * mint when that id could not safely name a file.
  *
- * At a relay hop the adopted id came from a request file on disk, which the
- * tolerant reader validates only as a string — so this is the boundary that
- * keeps an inbound id from choosing an outbound path.
+ * At a relay hop the adopted id came from a request file on disk. The reader
+ * already drops a request whose id fails the same rule; this check is where
+ * the id is about to name a file, so it holds whatever produced the id.
  */
 function forwardableRequestId(requesterRequestId: string): string {
   return isFilenameSafeRequestId(requesterRequestId)

@@ -811,6 +811,21 @@ describe("readForwardedPermissionRequest", () => {
       );
     });
 
+    it("rejects a request whose id could name a path, and says the id is why", () => {
+      const logger = makeLogger();
+      const parsed = writeAndRead(
+        { ...baseRequest(), id: "../escape-test" },
+        logger,
+      );
+      expect(parsed).toBeNull();
+      expect(logger.review).toHaveBeenCalledWith(
+        "permission_forwarding.warning",
+        expect.objectContaining({
+          error: expect.stringContaining("at id"),
+        }),
+      );
+    });
+
     it("accepts a request carrying only the required fields", () => {
       const logger = makeLogger();
       const parsed = writeAndRead(baseRequest(), logger);
