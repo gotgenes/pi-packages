@@ -1,7 +1,10 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import type { DebugReviewLogger } from "#src/logging/session-logger";
-import { createPermissionRequestId } from "#src/permission-request-id";
+import {
+  createPermissionRequestId,
+  isFilenameSafeRequestId,
+} from "#src/permission-request-id";
 import type { PromptPayload } from "#src/presentation/prompt-payload";
 import { buildUiPrompt } from "#src/service/permission-ui-prompt";
 import {
@@ -149,9 +152,6 @@ function relayDecision(
   };
 }
 
-/** Ids this node is willing to use as a request/response filename. */
-const FILENAME_SAFE_REQUEST_ID = /^[A-Za-z0-9._-]+$/;
-
 /**
  * The id to write on the forwarded request: the requester's own, or a fresh
  * mint when that id could not safely name a file.
@@ -161,7 +161,7 @@ const FILENAME_SAFE_REQUEST_ID = /^[A-Za-z0-9._-]+$/;
  * keeps an inbound id from choosing an outbound path.
  */
 function forwardableRequestId(requesterRequestId: string): string {
-  return FILENAME_SAFE_REQUEST_ID.test(requesterRequestId)
+  return isFilenameSafeRequestId(requesterRequestId)
     ? requesterRequestId
     : createPermissionRequestId();
 }
