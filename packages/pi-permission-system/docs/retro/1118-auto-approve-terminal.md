@@ -29,6 +29,31 @@ The plan has ten steps: three test-wiring preparations, two `refactor:` steps th
 
 - `src/authority/authorizer-selection.ts`: chain-link resolution (`linksFor`, `resolveConfiguredLinks`, and four deps) is a separable `ChainLinkResolver`; it does not shrink this change.
 
+## Stage: Implementation — TDD (2026-11-26T21:56:48Z)
+
+### Session summary
+
+All ten plan steps landed as ten commits, plus two review fix-ups: three test-wiring preparations, the `AutoApproval` decider and its terminal, per-ask composition in `AuthorizerSelection`, the flag and command, headless serving, the `feat!:` yolo retirement, the [#868] schema ride-along, and docs.
+The `pi-permission-system` suite went from 6637 to 6675 tests (+38); every step's named killing mutations turned its new tests red.
+
+### Observations
+
+- Deviation, design: `AutoApprovingAuthorizer` is a value terminal holding the grant that selected it (the mirror of `DenyingAuthorizer`), not the planned decorator wrapping an inner terminal.
+  The decorator broke three `authorizer-selection` tests that pin "the prompter receives a `LocalUserAuthorizer`" (terminal identity); `AuthorizerSelection.terminalFor` now asks `grantFor(details)` per ask and keeps the selected terminal when nothing covers it.
+  The one behavioral difference: the grant is read when `escalate` starts, so a toggle made while a link is still deciding does not reach that ask.
+  The step-4 commit was amended in place before step 5 began.
+- Deviation, API: `AutoApproval.enable`/`disable` do not sync the status bar (the command and `setAll`/`applyLaunchFlag` do); `setAll` was added for the modal's `SessionAutoApproveToggle`; the constructor's flag reader defaults to `() => false`.
+  `makeFakePi`'s option is `flagValues` (its `flags` map records registrations).
+- Status ownership moved in the flag-and-command commit, as the Tidy-First assessor predicted: between that commit and the yolo retirement, yolo kept working without its status indicator.
+- A hand-built `session_start` ctx in `test/session-start.test.ts` lacked `ui.setStatus`, which the launch-flag step now calls; fixed in the fixture rather than guarding on `hasUI`, since a real ctx always has it.
+- The first `bootExtension` codemod matched from the doc comment on line 2 to the first real call, rewriting both; caught in the diff and repaired by hand before commit.
+- One mutation survived on the first pass: the [#868] test asserted the item description contains `model-judge`, which `@gotgenes/pi-permission-model-judge` in the same sentence also satisfies; tightened to `registers as model-judge`.
+- Not covered by the plan: a headless **relaying** node launched with `--auto-approve` now serves its own children's inbox (its `servesWithoutUI` reads only `answersForwardedAsks()`) and relays their asks upward, multi-hop.
+  A relaying node with a UI already behaves this way, and the plan deliberately keeps `AdjudicationRole` out of `ForwardingManager`; left as is.
+- Pre-completion reviewer: WARN, then PASS on the delta.
+  The two fixed WARNs were `docs/migration/strict-config-validation.md`'s stale yolo guidance and `config-file-writer.test.ts`'s `yoloMode` sample data; the rest are the deviations recorded above.
+  `docs/migration/0644-project-trust-gating.md` and `docs/architecture/v3-architecture.md` still name `yoloMode` as historical records.
+
 [#720]: https://github.com/gotgenes/pi-packages/issues/720
 [#868]: https://github.com/gotgenes/pi-packages/issues/868
 [#990]: https://github.com/gotgenes/pi-packages/pull/990
