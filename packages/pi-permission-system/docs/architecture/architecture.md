@@ -1228,6 +1228,8 @@ Non-path tokens flagged per month (unmeasured at close) is **superseded**: re-ru
 - [#926], [#680], [#706], PR [#971], [#1129], [#1043], [#1057] — out of scope for the roadmap (operator decision): the wrapper group is decided outside the phase by its own `/plan-issue` on [#926].
   Issue [#926] is at its 2nd consecutive sweep, as are [#1043] and [#1057]; [#680] holds the most reactions of any open item (7, per the 2026-11-19 triage), which is why it stops waiting on [#804].
   The group lives in `access-intent/bash/` and shares no file with this phase, so it can run in a parallel lane.
+- [#1147] — filed by [#1108]'s planning; folds into [#1127] (operator decision).
+  It is the same K3 strictness class: the schema accepts a pattern map under the universal `"*"` that the policy then drops, and [#1127] already decides how frontmatter treats that value.
 - [#892], [#802], [#891], [#822], [#968], [#686] — deferred to the phase after this one, the sandbox record (operator decision in the 2026-11-19 triage).
   Phase 15 recorded them for Phase 16; ADR 0016's implementation now goes ahead.
   Issue [#822] is at its 4th consecutive sweep and the others at their 2nd; the rationale is unchanged (a sandbox subsumes static glob and brace expansion, and the record decides the launcher's manifest shape), and [#686] is owed a reply regardless.
@@ -1533,19 +1535,19 @@ Release: independent
 
 Release: independent
 
-#### [#1127] An agent's frontmatter `permission:` block is validated strictly
+#### [#1127] An agent's frontmatter `permission:` block is validated strictly (with [#1147])
 
 **Cause:** a classifier is used as a guard: `normalizeFlatPermissionValue` answers "what is this entry" and drops what it does not recognize, so a typo in a deny's action silently removes the deny (ADR 0016 K3).
 
 - **Smell:** Category C (shared predicate, different burden of proof; a fail-open parse on a channel that can only tighten by being read).
-- **Target:** `src/config/policy-loader.ts`, `src/config/config-loader.ts` (`normalizeFlatPermissionValue`), `src/config/config-schema.ts` (the `permission` object's schema, reused).
+- **Target:** `src/config/policy-loader.ts`, `src/config/config-loader.ts` (`normalizeFlatPermissionValue`), `src/config/config-schema.ts` (the `permission` object's schema, reused, and the universal `"*"` key's schema narrowed to a permission state for [#1147]).
 - **Soft dependency:** [#1134].
   Marking an agent scope invalid is one flag on a list entry once the scopes are a list.
 - **Ride-along tidying:** `FilePolicyLoader`'s two scope-source classes (`ConfigFileScopeSource`, `AgentFileScopeSource`) become one source composed of a *locator* (which file holds the scope for an agent: one fixed path, or `<dir>/<agent>.md`; and the location it reports) and a *reader* (how that file becomes a `ScopeConfig`: strict `loadUnifiedConfig`, or frontmatter extraction).
   The name, `floorsWhenInvalid`, the mtime cache keyed by file path, the stamp, and `resolvedPath()` then live once instead of in both classes.
   Land it as a `refactor:` ahead of this step's `fix!:`, which then swaps only the frontmatter reader; the same split lets [#1028] swap only the config reader and gives ADR 0016 §3's downstream path provider a locator to implement.
   Recorded at [#1134]'s sync (operator decision), where the reviewer flagged the two classes' duplicated `scope()`/`resolvedPath()`.
-- **Outcome:** a malformed block marks the agent scope invalid, floors the composed policy `allow` to `ask`, and is reported per issue; the rest of the frontmatter document stays tolerant; `normalizeFlatPermissionValue` has no caller in `policy-loader.ts`.
+- **Outcome:** a malformed block marks the agent scope invalid, floors the composed policy `allow` to `ask`, and is reported per issue; the rest of the frontmatter document stays tolerant; `normalizeFlatPermissionValue` has no caller in `policy-loader.ts`; a pattern map under the universal `"*"` key is rejected in a config file and in frontmatter instead of silently becoming `ask` ([#1147]).
 - **Commit type:** `fix!:` — a malformed block now floors where it used to drop entries silently.
 - **Impact 4 / Risk 2 / Priority 16.**
 
@@ -1837,6 +1839,7 @@ Each phase's findings, step plan, dependency diagram, and health metrics are pre
 [#1131]: https://github.com/gotgenes/pi-packages/issues/1131
 [#1133]: https://github.com/gotgenes/pi-packages/issues/1133
 [#1134]: https://github.com/gotgenes/pi-packages/issues/1134
+[#1147]: https://github.com/gotgenes/pi-packages/issues/1147
 [#1138]: https://github.com/gotgenes/pi-packages/issues/1138
 [#1140]: https://github.com/gotgenes/pi-packages/issues/1140
 [#1142]: https://github.com/gotgenes/pi-packages/issues/1142
