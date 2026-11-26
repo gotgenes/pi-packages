@@ -184,11 +184,12 @@ describe("forwarding artifact permissions", () => {
 
 // ── readForwardedPermissionRequest ─────────────────────────────────────────
 
-describe("readForwardedPermissionRequest — accessIntent field", () => {
-  let root: string;
+describe("readForwardedPermissionRequest", () => {
+  let root: string | undefined;
 
   afterEach(() => {
-    rmSync(root, { recursive: true, force: true });
+    if (root) rmSync(root, { recursive: true, force: true });
+    root = undefined;
   });
 
   function baseRequest(): ForwardedPermissionRequest {
@@ -198,512 +199,481 @@ describe("readForwardedPermissionRequest — accessIntent field", () => {
       requesterSessionId: "child-session",
       targetSessionId: "parent-session",
       requesterAgentName: "researcher",
-      surface: "read",
     };
   }
 
-  function writeAndRead(raw: unknown): ForwardedPermissionRequest | null {
+  /** Write `raw` as a request file and read it back through the reader. */
+  function writeAndRead(
+    raw: unknown,
+    logger: DebugReviewLogger | null = null,
+  ): ForwardedPermissionRequest | null {
     root = mkdtempSync(join(tmpdir(), "io-read-"));
     const filePath = join(root, "req.json");
     writeJsonFileAtomic(null, filePath, raw);
-    return readForwardedPermissionRequest(null, filePath);
+    return readForwardedPermissionRequest(logger, filePath);
   }
 
-  it("round-trips a well-formed access intent (path surface)", () => {
-    const accessIntent: ForwardedAccessIntent = {
-      surface: "path",
-      matchValues: ["/worktree/issue-42/src/foo.ts", "src/foo.ts"],
-      boundaryValue: "/worktree/issue-42/src/foo.ts",
-      requesterCwd: "/worktree/issue-42",
-      principal: { sessionId: "child-session", agentName: "researcher" },
-    };
-    const parsed = writeAndRead({ ...baseRequest(), accessIntent });
-    expect(parsed?.accessIntent).toEqual(accessIntent);
-  });
-
-  it("round-trips a non-path access intent (skill surface, null boundary)", () => {
-    const accessIntent: ForwardedAccessIntent = {
-      surface: "skill",
-      matchValues: ["deep-research"],
-      boundaryValue: null,
-      requesterCwd: "/repo",
-      principal: { sessionId: "child-session", agentName: "unknown" },
-    };
-    const parsed = writeAndRead({ ...baseRequest(), accessIntent });
-    expect(parsed?.accessIntent).toEqual(accessIntent);
-  });
-
-  it("carries only strings on matchValues (the ADR-0002 wire boundary)", () => {
-    const accessIntent: ForwardedAccessIntent = {
-      surface: "external_directory",
-      matchValues: ["/etc/hosts", "/private/etc/hosts"],
-      boundaryValue: "/private/etc/hosts",
-      requesterCwd: "/repo",
-      principal: { sessionId: "child-session", agentName: "researcher" },
-    };
-    const parsed = writeAndRead({ ...baseRequest(), accessIntent });
-    expect(
-      parsed?.accessIntent?.matchValues.every((v) => typeof v === "string"),
-    ).toBe(true);
-    expect(
-      parsed?.accessIntent?.boundaryValue === null ||
-        typeof parsed?.accessIntent?.boundaryValue === "string",
-    ).toBe(true);
-  });
-
-  it("reads a request with no access intent as undefined (version skew)", () => {
-    const parsed = writeAndRead(baseRequest());
-    expect(parsed?.accessIntent).toBeUndefined();
-    // Display/routing fields still reconstruct.
-    expect(parsed?.surface).toBe("read");
-    expect(parsed?.requesterAgentName).toBe("researcher");
-  });
-
-  it("drops a malformed access intent to undefined (non-string match value)", () => {
-    const parsed = writeAndRead({
-      ...baseRequest(),
-      accessIntent: {
+  describe("accessIntent field", () => {
+    it("round-trips a well-formed access intent (path surface)", () => {
+      const accessIntent: ForwardedAccessIntent = {
         surface: "path",
-        matchValues: ["/ok", 42],
+        matchValues: ["/worktree/issue-42/src/foo.ts", "src/foo.ts"],
+        boundaryValue: "/worktree/issue-42/src/foo.ts",
+        requesterCwd: "/worktree/issue-42",
+        principal: { sessionId: "child-session", agentName: "researcher" },
+      };
+      const parsed = writeAndRead({ ...baseRequest(), accessIntent });
+      expect(parsed?.accessIntent).toEqual(accessIntent);
+    });
+
+    it("round-trips a non-path access intent (skill surface, null boundary)", () => {
+      const accessIntent: ForwardedAccessIntent = {
+        surface: "skill",
+        matchValues: ["deep-research"],
         boundaryValue: null,
         requesterCwd: "/repo",
-        principal: { sessionId: "child-session", agentName: "researcher" },
-      },
+        principal: { sessionId: "child-session", agentName: "unknown" },
+      };
+      const parsed = writeAndRead({ ...baseRequest(), accessIntent });
+      expect(parsed?.accessIntent).toEqual(accessIntent);
     });
-    expect(parsed?.accessIntent).toBeUndefined();
-  });
 
-  it("round-trips the floor that raised a bash ask", () => {
-    const accessIntent: ForwardedAccessIntent = {
-      surface: "bash",
-      matchValues: ["sudo rm x"],
-      boundaryValue: null,
-      floor: "<indirection-bash-wrapper>",
-      requesterCwd: "/repo",
-      principal: { sessionId: "child-session", agentName: "reviewer" },
-    };
-    const parsed = writeAndRead({ ...baseRequest(), accessIntent });
-    expect(parsed?.accessIntent).toEqual(accessIntent);
-  });
+    it("carries only strings on matchValues (the ADR-0002 wire boundary)", () => {
+      const accessIntent: ForwardedAccessIntent = {
+        surface: "external_directory",
+        matchValues: ["/etc/hosts", "/private/etc/hosts"],
+        boundaryValue: "/private/etc/hosts",
+        requesterCwd: "/repo",
+        principal: { sessionId: "child-session", agentName: "researcher" },
+      };
+      const parsed = writeAndRead({ ...baseRequest(), accessIntent });
+      expect(
+        parsed?.accessIntent?.matchValues.every((v) => typeof v === "string"),
+      ).toBe(true);
+      expect(
+        parsed?.accessIntent?.boundaryValue === null ||
+          typeof parsed?.accessIntent?.boundaryValue === "string",
+      ).toBe(true);
+    });
 
-  it("drops an access intent whose floor is not a string, so the ask escalates", () => {
-    const parsed = writeAndRead({
-      ...baseRequest(),
-      accessIntent: {
+    it("reads a request with no access intent as undefined (version skew)", () => {
+      const parsed = writeAndRead({ ...baseRequest(), surface: "read" });
+      expect(parsed?.accessIntent).toBeUndefined();
+      // Display/routing fields still reconstruct.
+      expect(parsed?.surface).toBe("read");
+      expect(parsed?.requesterAgentName).toBe("researcher");
+    });
+
+    it("drops a malformed access intent to undefined (non-string match value)", () => {
+      const parsed = writeAndRead({
+        ...baseRequest(),
+        accessIntent: {
+          surface: "path",
+          matchValues: ["/ok", 42],
+          boundaryValue: null,
+          requesterCwd: "/repo",
+          principal: { sessionId: "child-session", agentName: "researcher" },
+        },
+      });
+      expect(parsed?.accessIntent).toBeUndefined();
+    });
+
+    it("round-trips the floor that raised a bash ask", () => {
+      const accessIntent: ForwardedAccessIntent = {
         surface: "bash",
         matchValues: ["sudo rm x"],
         boundaryValue: null,
-        floor: 42,
-        requesterCwd: "/repo",
-        principal: { sessionId: "child-session", agentName: "reviewer" },
-      },
-    });
-    expect(parsed?.accessIntent).toBeUndefined();
-  });
-
-  describe("askingUnits", () => {
-    function bashIntent(askingUnits: unknown): Record<string, unknown> {
-      return {
-        surface: "bash",
-        matchValues: ["ls"],
-        boundaryValue: null,
-        askingUnits,
-        requesterCwd: "/repo",
-        principal: { sessionId: "child-session", agentName: "reviewer" },
-      };
-    }
-
-    it("round-trips every unit the child left asking, with each one's rule, floor, and spellings", () => {
-      const accessIntent: ForwardedAccessIntent = {
-        surface: "bash",
-        matchValues: ["ls"],
-        boundaryValue: null,
-        askingUnits: [
-          { command: "ls", matchedPattern: "*" },
-          {
-            command: "sudo ~/y",
-            spellings: ["sudo /h/y"],
-            matchedPattern: "<indirection-bash-wrapper>",
-            floor: "<indirection-bash-wrapper>",
-          },
-        ],
+        floor: "<indirection-bash-wrapper>",
         requesterCwd: "/repo",
         principal: { sessionId: "child-session", agentName: "reviewer" },
       };
       const parsed = writeAndRead({ ...baseRequest(), accessIntent });
-      expect(parsed?.accessIntent).toStrictEqual(accessIntent);
+      expect(parsed?.accessIntent).toEqual(accessIntent);
     });
 
-    it.each([
-      ["not an array", "ls"],
-      ["an empty list", []],
-      ["a unit whose command is not a string", [{ command: 42 }]],
-      ["a unit whose floor is not a string", [{ command: "ls", floor: 42 }]],
-      [
-        "a unit whose matched rule is not a string",
-        [{ command: "ls", matchedPattern: 42 }],
-      ],
-      ["a unit that is not an object", [null]],
-      [
-        "a unit whose spellings are not an array",
-        [{ command: "ls", spellings: "x" }],
-      ],
-      ["a unit whose spellings are empty", [{ command: "ls", spellings: [] }]],
-      [
-        "a unit with a spelling that is not a string",
-        [{ command: "ls", spellings: [42] }],
-      ],
-    ])("drops the access intent for %s, so the ask escalates", (_, units) => {
+    it("drops an access intent whose floor is not a string, so the ask escalates", () => {
       const parsed = writeAndRead({
         ...baseRequest(),
-        accessIntent: bashIntent(units),
+        accessIntent: {
+          surface: "bash",
+          matchValues: ["sudo rm x"],
+          boundaryValue: null,
+          floor: 42,
+          requesterCwd: "/repo",
+          principal: { sessionId: "child-session", agentName: "reviewer" },
+        },
+      });
+      expect(parsed?.accessIntent).toBeUndefined();
+    });
+
+    describe("askingUnits", () => {
+      function bashIntent(askingUnits: unknown): Record<string, unknown> {
+        return {
+          surface: "bash",
+          matchValues: ["ls"],
+          boundaryValue: null,
+          askingUnits,
+          requesterCwd: "/repo",
+          principal: { sessionId: "child-session", agentName: "reviewer" },
+        };
+      }
+
+      it("round-trips every unit the child left asking, with each one's rule, floor, and spellings", () => {
+        const accessIntent: ForwardedAccessIntent = {
+          surface: "bash",
+          matchValues: ["ls"],
+          boundaryValue: null,
+          askingUnits: [
+            { command: "ls", matchedPattern: "*" },
+            {
+              command: "sudo ~/y",
+              spellings: ["sudo /h/y"],
+              matchedPattern: "<indirection-bash-wrapper>",
+              floor: "<indirection-bash-wrapper>",
+            },
+          ],
+          requesterCwd: "/repo",
+          principal: { sessionId: "child-session", agentName: "reviewer" },
+        };
+        const parsed = writeAndRead({ ...baseRequest(), accessIntent });
+        expect(parsed?.accessIntent).toStrictEqual(accessIntent);
+      });
+
+      it.each([
+        ["not an array", "ls"],
+        ["an empty list", []],
+        ["a unit whose command is not a string", [{ command: 42 }]],
+        ["a unit whose floor is not a string", [{ command: "ls", floor: 42 }]],
+        [
+          "a unit whose matched rule is not a string",
+          [{ command: "ls", matchedPattern: 42 }],
+        ],
+        ["a unit that is not an object", [null]],
+        [
+          "a unit whose spellings are not an array",
+          [{ command: "ls", spellings: "x" }],
+        ],
+        [
+          "a unit whose spellings are empty",
+          [{ command: "ls", spellings: [] }],
+        ],
+        [
+          "a unit with a spelling that is not a string",
+          [{ command: "ls", spellings: [42] }],
+        ],
+      ])("drops the access intent for %s, so the ask escalates", (_, units) => {
+        const parsed = writeAndRead({
+          ...baseRequest(),
+          accessIntent: bashIntent(units),
+        });
+        expect(parsed?.accessIntent).toBeUndefined();
+      });
+    });
+
+    describe("delegationLicense", () => {
+      function externalIntent(
+        license: unknown,
+      ): Record<string, unknown> & { delegationLicense?: unknown } {
+        return {
+          surface: "external_directory",
+          matchValues: ["/Sheet1/B1"],
+          boundaryValue: "/Sheet1/B1",
+          delegationLicense: license,
+          requesterCwd: "/repo",
+          principal: { sessionId: "child-session", agentName: "reviewer" },
+        };
+      }
+
+      it("round-trips the nothing-on-disk license the child's gate granted", () => {
+        const accessIntent: ForwardedAccessIntent = {
+          surface: "external_directory",
+          matchValues: ["/Sheet1/B1"],
+          boundaryValue: "/Sheet1/B1",
+          delegationLicense: "nothing-on-disk",
+          requesterCwd: "/repo",
+          principal: { sessionId: "child-session", agentName: "reviewer" },
+        };
+        const parsed = writeAndRead({ ...baseRequest(), accessIntent });
+        expect(parsed?.accessIntent).toStrictEqual(accessIntent);
+      });
+
+      it.each([
+        ["an unknown license", "anything-else"],
+        ["a boolean", true],
+      ])(
+        "drops %s but keeps the intent, since absence is the restrictive reading",
+        (_, license) => {
+          const raw = externalIntent(license);
+          const parsed = writeAndRead({ ...baseRequest(), accessIntent: raw });
+          const { delegationLicense: _dropped, ...rest } = raw;
+          expect(parsed?.accessIntent).toStrictEqual(rest);
+        },
+      );
+    });
+
+    it("drops a malformed access intent to undefined (missing principal)", () => {
+      const parsed = writeAndRead({
+        ...baseRequest(),
+        accessIntent: {
+          surface: "path",
+          matchValues: ["/ok"],
+          boundaryValue: null,
+          requesterCwd: "/repo",
+        },
       });
       expect(parsed?.accessIntent).toBeUndefined();
     });
   });
 
-  describe("delegationLicense", () => {
-    function externalIntent(
-      license: unknown,
-    ): Record<string, unknown> & { delegationLicense?: unknown } {
-      return {
-        surface: "external_directory",
-        matchValues: ["/Sheet1/B1"],
-        boundaryValue: "/Sheet1/B1",
-        delegationLicense: license,
-        requesterCwd: "/repo",
-        principal: { sessionId: "child-session", agentName: "reviewer" },
-      };
+  describe("sessionApproval field", () => {
+    function readSessionApproval(sessionApproval: unknown) {
+      return writeAndRead({ ...baseRequest(), sessionApproval })
+        ?.sessionApproval;
     }
 
-    it("round-trips the nothing-on-disk license the child's gate granted", () => {
-      const accessIntent: ForwardedAccessIntent = {
-        surface: "external_directory",
-        matchValues: ["/Sheet1/B1"],
-        boundaryValue: "/Sheet1/B1",
-        delegationLicense: "nothing-on-disk",
-        requesterCwd: "/repo",
-        principal: { sessionId: "child-session", agentName: "reviewer" },
-      };
-      const parsed = writeAndRead({ ...baseRequest(), accessIntent });
-      expect(parsed?.accessIntent).toStrictEqual(accessIntent);
+    it("round-trips a single grant", () => {
+      expect(
+        readSessionApproval({
+          grants: [{ surface: "bash", pattern: "git *" }],
+        }),
+      ).toEqual({ grants: [{ surface: "bash", pattern: "git *" }] });
+    });
+
+    it("round-trips several grants naming different surfaces", () => {
+      const grants = [
+        { surface: "external_directory_read", pattern: "/outside/*" },
+        { surface: "external_directory_write", pattern: "/elsewhere/*" },
+      ];
+      expect(readSessionApproval({ grants })).toEqual({ grants });
+    });
+
+    it("ignores unknown sibling keys on a grant", () => {
+      expect(
+        readSessionApproval({
+          grants: [{ surface: "bash", pattern: "git *", effect: "read" }],
+        }),
+      ).toEqual({ grants: [{ surface: "bash", pattern: "git *" }] });
+    });
+
+    it("reads a request with no session approval as undefined (version skew)", () => {
+      const parsed = writeAndRead(baseRequest());
+      expect(parsed?.sessionApproval).toBeUndefined();
+      // The rest of the request still reconstructs.
+      expect(parsed?.requesterAgentName).toBe("researcher");
+    });
+
+    it("rejects the pre-#810 shape rather than normalizing it", () => {
+      expect(
+        readSessionApproval({ surface: "bash", patterns: ["git *"] }),
+      ).toBeUndefined();
     });
 
     it.each([
-      ["an unknown license", "anything-else"],
-      ["a boolean", true],
+      ["a non-object", "bash"],
+      ["null", null],
+      ["an object with no grants", {}],
+      ["an empty grant list", { grants: [] }],
+      ["a non-array grants", { grants: "bash" }],
+      ["a null grant", { grants: [null] }],
+      ["an empty surface", { grants: [{ surface: "", pattern: "git *" }] }],
+      ["a missing pattern", { grants: [{ surface: "bash" }] }],
+      ["a missing surface", { grants: [{ pattern: "git *" }] }],
+      ["a non-string pattern", { grants: [{ surface: "bash", pattern: 42 }] }],
+      [
+        "one bad grant among good ones",
+        {
+          grants: [
+            { surface: "bash", pattern: "git *" },
+            { surface: "bash", pattern: 42 },
+          ],
+        },
+      ],
     ])(
-      "drops %s but keeps the intent, since absence is the restrictive reading",
-      (_, license) => {
-        const raw = externalIntent(license);
-        const parsed = writeAndRead({ ...baseRequest(), accessIntent: raw });
-        const { delegationLicense: _dropped, ...rest } = raw;
-        expect(parsed?.accessIntent).toStrictEqual(rest);
+      "drops a malformed session approval to undefined (%s)",
+      (_label, raw) => {
+        expect(readSessionApproval(raw)).toBeUndefined();
       },
     );
   });
 
-  it("drops a malformed access intent to undefined (missing principal)", () => {
-    const parsed = writeAndRead({
-      ...baseRequest(),
-      accessIntent: {
-        surface: "path",
-        matchValues: ["/ok"],
-        boundaryValue: null,
-        requesterCwd: "/repo",
-      },
-    });
-    expect(parsed?.accessIntent).toBeUndefined();
-  });
-});
-
-describe("readForwardedPermissionRequest — sessionApproval field", () => {
-  let root: string;
-
-  afterEach(() => {
-    rmSync(root, { recursive: true, force: true });
-  });
-
-  function baseRequest(): ForwardedPermissionRequest {
-    return {
-      id: "req-1",
-      createdAt: 1000,
-      requesterSessionId: "child-session",
-      targetSessionId: "parent-session",
-      requesterAgentName: "researcher",
-      surface: "bash",
-    };
-  }
-
-  function readSessionApproval(sessionApproval: unknown) {
-    root = mkdtempSync(join(tmpdir(), "io-approval-"));
-    const filePath = join(root, "req.json");
-    writeJsonFileAtomic(null, filePath, {
-      ...baseRequest(),
-      sessionApproval,
-    });
-    return readForwardedPermissionRequest(null, filePath)?.sessionApproval;
-  }
-
-  it("round-trips a single grant", () => {
-    expect(
-      readSessionApproval({ grants: [{ surface: "bash", pattern: "git *" }] }),
-    ).toEqual({ grants: [{ surface: "bash", pattern: "git *" }] });
-  });
-
-  it("round-trips several grants naming different surfaces", () => {
-    const grants = [
-      { surface: "external_directory_read", pattern: "/outside/*" },
-      { surface: "external_directory_write", pattern: "/elsewhere/*" },
-    ];
-    expect(readSessionApproval({ grants })).toEqual({ grants });
-  });
-
-  it("ignores unknown sibling keys on a grant", () => {
-    expect(
-      readSessionApproval({
-        grants: [{ surface: "bash", pattern: "git *", effect: "read" }],
-      }),
-    ).toEqual({ grants: [{ surface: "bash", pattern: "git *" }] });
-  });
-
-  it("reads a request with no session approval as undefined (version skew)", () => {
-    root = mkdtempSync(join(tmpdir(), "io-approval-"));
-    const filePath = join(root, "req.json");
-    writeJsonFileAtomic(null, filePath, baseRequest());
-    const parsed = readForwardedPermissionRequest(null, filePath);
-    expect(parsed?.sessionApproval).toBeUndefined();
-    // The rest of the request still reconstructs.
-    expect(parsed?.requesterAgentName).toBe("researcher");
-  });
-
-  it("rejects the pre-#810 shape rather than normalizing it", () => {
-    expect(
-      readSessionApproval({ surface: "bash", patterns: ["git *"] }),
-    ).toBeUndefined();
-  });
-
-  it.each([
-    ["a non-object", "bash"],
-    ["null", null],
-    ["an object with no grants", {}],
-    ["an empty grant list", { grants: [] }],
-    ["a non-array grants", { grants: "bash" }],
-    ["a null grant", { grants: [null] }],
-    ["an empty surface", { grants: [{ surface: "", pattern: "git *" }] }],
-    ["a missing pattern", { grants: [{ surface: "bash" }] }],
-    ["a missing surface", { grants: [{ pattern: "git *" }] }],
-    ["a non-string pattern", { grants: [{ surface: "bash", pattern: 42 }] }],
-    [
-      "one bad grant among good ones",
-      {
-        grants: [
-          { surface: "bash", pattern: "git *" },
-          { surface: "bash", pattern: 42 },
-        ],
-      },
-    ],
-  ])("drops a malformed session approval to undefined (%s)", (_label, raw) => {
-    expect(readSessionApproval(raw)).toBeUndefined();
-  });
-});
-
-describe("readForwardedPermissionRequest — payload field", () => {
-  let root: string;
-
-  afterEach(() => {
-    rmSync(root, { recursive: true, force: true });
-  });
-
-  function baseRequest(): ForwardedPermissionRequest {
-    return {
-      id: "req-1",
-      createdAt: 1000,
-      requesterSessionId: "child-session",
-      targetSessionId: "parent-session",
-      requesterAgentName: "researcher",
-    };
-  }
-
-  function writeAndRead(raw: unknown): ForwardedPermissionRequest | null {
-    root = mkdtempSync(join(tmpdir(), "io-payload-"));
-    const filePath = join(root, "req.json");
-    writeJsonFileAtomic(null, filePath, raw);
-    return readForwardedPermissionRequest(null, filePath);
-  }
-
-  it("round-trips the child's complete prompt payload", () => {
-    const payload = makePromptPayload({
-      kind: "bash",
-      request: {
-        requester: { agentName: "Explore", forwarded: false, sessionId: null },
-        surface: "bash",
-        toolName: "bash",
-        invokedToolName: null,
-        value: "git push",
-        matchedPattern: "git *",
-        commandContext: null,
-        matchedSpelling: null,
-        executedUnit: null,
-        decidingPath: {
-          path: "/outside/x",
-          effect: "unproven",
-          effectSource: "unproven",
+  describe("payload field", () => {
+    it("round-trips the child's complete prompt payload", () => {
+      const payload = makePromptPayload({
+        kind: "bash",
+        request: {
+          requester: {
+            agentName: "Explore",
+            forwarded: false,
+            sessionId: null,
+          },
+          surface: "bash",
+          toolName: "bash",
+          invokedToolName: null,
+          value: "git push",
+          matchedPattern: "git *",
+          commandContext: null,
+          matchedSpelling: null,
+          executedUnit: null,
+          decidingPath: {
+            path: "/outside/x",
+            effect: "unproven",
+            effectSource: "unproven",
+          },
         },
+        evidence: [{ label: "command", text: "git push", detail: null }],
+      });
+      const parsed = writeAndRead({ ...baseRequest(), payload });
+      expect(parsed?.payload).toEqual(payload);
+    });
+
+    it("reads request facts without a deciding path as having none (version skew)", () => {
+      const payload = makePromptPayload();
+      const { decidingPath: _absent, ...olderRequest } = payload.request;
+      const parsed = writeAndRead({
+        ...baseRequest(),
+        payload: { ...payload, request: olderRequest },
+      });
+      expect(parsed?.payload).toBeDefined();
+      expect(parsed?.payload?.request.decidingPath).toBeNull();
+    });
+
+    it.each([
+      [
+        "an unknown effect source",
+        { path: "/x", effect: "read", effectSource: "guessed" },
+      ],
+      [
+        "an unknown effect",
+        { path: "/x", effect: "delete", effectSource: "core" },
+      ],
+      ["a non-string path", { path: 42, effect: "read", effectSource: "core" }],
+      ["a non-object", "/x"],
+    ])("drops a payload whose deciding path has %s", (_label, decidingPath) => {
+      const payload = makePromptPayload();
+      const parsed = writeAndRead({
+        ...baseRequest(),
+        payload: { ...payload, request: { ...payload.request, decidingPath } },
+      });
+      expect(parsed?.payload).toBeUndefined();
+    });
+
+    it("reads request facts without a matched spelling as having none (version skew)", () => {
+      const payload = makePromptPayload();
+      const { matchedSpelling: _absent, ...olderRequest } = payload.request;
+      const parsed = writeAndRead({
+        ...baseRequest(),
+        payload: { ...payload, request: olderRequest },
+      });
+      expect(parsed?.payload?.request.matchedSpelling).toBeNull();
+    });
+
+    it("round-trips a bash chain's other asking units", () => {
+      const payload = makePromptPayload();
+      const chain = {
+        ...payload,
+        request: { ...payload.request, otherAskingUnits: ["npm test"] },
+      };
+      const parsed = writeAndRead({ ...baseRequest(), payload: chain });
+      expect(parsed?.payload?.request.otherAskingUnits).toEqual(["npm test"]);
+    });
+
+    it("reads request facts without other asking units as having none (version skew)", () => {
+      const parsed = writeAndRead({
+        ...baseRequest(),
+        payload: makePromptPayload(),
+      });
+      expect(parsed?.payload).toBeDefined();
+      expect(parsed?.payload?.request).not.toHaveProperty("otherAskingUnits");
+    });
+
+    it.each([
+      ["a non-array", "npm test"],
+      ["a non-string entry", ["npm test", 42]],
+      ["a null", null],
+    ])(
+      "drops a payload whose other asking units are %s",
+      (_label, otherAskingUnits) => {
+        const payload = makePromptPayload();
+        const parsed = writeAndRead({
+          ...baseRequest(),
+          payload: {
+            ...payload,
+            request: { ...payload.request, otherAskingUnits },
+          },
+        });
+        expect(parsed?.payload).toBeUndefined();
       },
-      evidence: [{ label: "command", text: "git push", detail: null }],
+    );
+
+    it("reads a request with no payload as undefined (version skew)", () => {
+      const parsed = writeAndRead(baseRequest());
+      expect(parsed?.payload).toBeUndefined();
+      expect(parsed?.requesterAgentName).toBe("researcher");
     });
-    const parsed = writeAndRead({ ...baseRequest(), payload });
-    expect(parsed?.payload).toEqual(payload);
-  });
 
-  it("reads request facts without a deciding path as having none (version skew)", () => {
-    const payload = makePromptPayload();
-    const { decidingPath: _absent, ...olderRequest } = payload.request;
-    const parsed = writeAndRead({
-      ...baseRequest(),
-      payload: { ...payload, request: olderRequest },
+    it("drops a payload with an unrecognized kind", () => {
+      const parsed = writeAndRead({
+        ...baseRequest(),
+        payload: { ...makePromptPayload(), kind: "telepathy" },
+      });
+      expect(parsed?.payload).toBeUndefined();
     });
-    expect(parsed?.payload).toBeDefined();
-    expect(parsed?.payload?.request.decidingPath).toBeNull();
-  });
 
-  it.each([
-    [
-      "an unknown effect source",
-      { path: "/x", effect: "read", effectSource: "guessed" },
-    ],
-    [
-      "an unknown effect",
-      { path: "/x", effect: "delete", effectSource: "core" },
-    ],
-    ["a non-string path", { path: 42, effect: "read", effectSource: "core" }],
-    ["a non-object", "/x"],
-  ])("drops a payload whose deciding path has %s", (_label, decidingPath) => {
-    const payload = makePromptPayload();
-    const parsed = writeAndRead({
-      ...baseRequest(),
-      payload: { ...payload, request: { ...payload.request, decidingPath } },
+    it("drops a payload whose request facts are malformed", () => {
+      const payload = makePromptPayload();
+      const parsed = writeAndRead({
+        ...baseRequest(),
+        payload: { ...payload, request: { ...payload.request, value: 42 } },
+      });
+      expect(parsed?.payload).toBeUndefined();
     });
-    expect(parsed?.payload).toBeUndefined();
-  });
 
-  it("reads request facts without a matched spelling as having none (version skew)", () => {
-    const payload = makePromptPayload();
-    const { matchedSpelling: _absent, ...olderRequest } = payload.request;
-    const parsed = writeAndRead({
-      ...baseRequest(),
-      payload: { ...payload, request: olderRequest },
-    });
-    expect(parsed?.payload?.request.matchedSpelling).toBeNull();
-  });
-
-  it("round-trips a bash chain's other asking units", () => {
-    const payload = makePromptPayload();
-    const chain = {
-      ...payload,
-      request: { ...payload.request, otherAskingUnits: ["npm test"] },
-    };
-    const parsed = writeAndRead({ ...baseRequest(), payload: chain });
-    expect(parsed?.payload?.request.otherAskingUnits).toEqual(["npm test"]);
-  });
-
-  it("reads request facts without other asking units as having none (version skew)", () => {
-    const parsed = writeAndRead({
-      ...baseRequest(),
-      payload: makePromptPayload(),
-    });
-    expect(parsed?.payload).toBeDefined();
-    expect(parsed?.payload?.request).not.toHaveProperty("otherAskingUnits");
-  });
-
-  it.each([
-    ["a non-array", "npm test"],
-    ["a non-string entry", ["npm test", 42]],
-    ["a null", null],
-  ])(
-    "drops a payload whose other asking units are %s",
-    (_label, otherAskingUnits) => {
+    it("drops a payload whose requester is malformed", () => {
       const payload = makePromptPayload();
       const parsed = writeAndRead({
         ...baseRequest(),
         payload: {
           ...payload,
-          request: { ...payload.request, otherAskingUnits },
+          request: { ...payload.request, requester: { forwarded: true } },
         },
       });
       expect(parsed?.payload).toBeUndefined();
-    },
-  );
-
-  it("reads a request with no payload as undefined (version skew)", () => {
-    const parsed = writeAndRead(baseRequest());
-    expect(parsed?.payload).toBeUndefined();
-    expect(parsed?.requesterAgentName).toBe("researcher");
-  });
-
-  it("drops a payload with an unrecognized kind", () => {
-    const parsed = writeAndRead({
-      ...baseRequest(),
-      payload: { ...makePromptPayload(), kind: "telepathy" },
     });
-    expect(parsed?.payload).toBeUndefined();
-  });
 
-  it("drops a payload whose request facts are malformed", () => {
-    const payload = makePromptPayload();
-    const parsed = writeAndRead({
-      ...baseRequest(),
-      payload: { ...payload, request: { ...payload.request, value: 42 } },
+    it("drops a payload whose evidence entries are malformed", () => {
+      const parsed = writeAndRead({
+        ...baseRequest(),
+        payload: {
+          ...makePromptPayload(),
+          evidence: [{ label: "command", text: null, detail: null }],
+        },
+      });
+      expect(parsed?.payload).toBeUndefined();
     });
-    expect(parsed?.payload).toBeUndefined();
-  });
 
-  it("drops a payload whose requester is malformed", () => {
-    const payload = makePromptPayload();
-    const parsed = writeAndRead({
-      ...baseRequest(),
-      payload: {
-        ...payload,
-        request: { ...payload.request, requester: { forwarded: true } },
-      },
+    it("drops a payload whose annotations are malformed", () => {
+      const parsed = writeAndRead({
+        ...baseRequest(),
+        payload: { ...makePromptPayload(), annotations: [{ source: "judge" }] },
+      });
+      expect(parsed?.payload).toBeUndefined();
     });
-    expect(parsed?.payload).toBeUndefined();
-  });
 
-  it("drops a payload whose evidence entries are malformed", () => {
-    const parsed = writeAndRead({
-      ...baseRequest(),
-      payload: {
-        ...makePromptPayload(),
-        evidence: [{ label: "command", text: null, detail: null }],
-      },
+    it("accepts a legacy message-only request and reconstructs no message", () => {
+      // An older child writes `message` and no `payload`. The required-core gate
+      // no longer demands the field, so the request is served (from its display
+      // fields) rather than rejected outright — and the sentence is not salvaged.
+      const parsed = writeAndRead({
+        ...baseRequest(),
+        message: "Allow this path access?",
+        surface: "read",
+        value: "/tmp/x",
+      });
+      expect(parsed).not.toHaveProperty("message");
+      expect(parsed?.surface).toBe("read");
+      expect(parsed?.value).toBe("/tmp/x");
+      expect(parsed?.payload).toBeUndefined();
     });
-    expect(parsed?.payload).toBeUndefined();
-  });
-
-  it("drops a payload whose annotations are malformed", () => {
-    const parsed = writeAndRead({
-      ...baseRequest(),
-      payload: { ...makePromptPayload(), annotations: [{ source: "judge" }] },
-    });
-    expect(parsed?.payload).toBeUndefined();
-  });
-
-  it("accepts a legacy message-only request and reconstructs no message", () => {
-    // An older child writes `message` and no `payload`. The required-core gate
-    // no longer demands the field, so the request is served (from its display
-    // fields) rather than rejected outright — and the sentence is not salvaged.
-    const parsed = writeAndRead({
-      ...baseRequest(),
-      message: "Allow this path access?",
-      surface: "read",
-      value: "/tmp/x",
-    });
-    expect(parsed).not.toHaveProperty("message");
-    expect(parsed?.surface).toBe("read");
-    expect(parsed?.value).toBe("/tmp/x");
-    expect(parsed?.payload).toBeUndefined();
   });
 });
 
