@@ -88,7 +88,7 @@ export function createInMemoryGlobalManager(
  */
 export function createManagerFromPaths(
   paths: PolicyLoaderOptions,
-  options: { flavor?: PathFlavor; isYoloEnabled?: () => boolean } = {},
+  options: { flavor?: PathFlavor } = {},
 ): PermissionManager {
   return new PermissionManager({
     policyLoader: new FilePolicyLoader(paths),
