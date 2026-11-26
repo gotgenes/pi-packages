@@ -66,3 +66,21 @@ The `pi-permission-system` suite went from 6563 to 6578 tests (+15: 14 new unit 
   The delta re-review returned PASS.
 - The reviewer noted outside the delta that `architecture.md` line 210's box-drawing line is one column short.
   It predates this work and was left alone.
+
+## Stage: Sync (worktree) (2026-11-26T06:34:07Z)
+
+### Session summary
+
+Root `pnpm run lint` and `pnpm fallow dead-code` pass, and the branch is rebased onto local `main`.
+The plan's marker is `**Release:** ship independently`.
+The branch carries two `fix!:` commits, so the release is a pi-permission-system major, and the README Upgrading entry names it "the major after 43.x".
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-1108--/2026-11-25T17-40-39-933Z_01a213cb-997c-7493-a2ab-c916ad1d9218.jsonl`.
+Read it with `read_session_file({ path: "<path>" })`.
+
+### Observations
+
+- Follow-up #1147 (a pattern map under the universal `"*"` is accepted and ignored) is filed and folded into #1127.
+  Its roadmap disposition is committed on this branch as "docs(pi-permission-system): disposition #1147 against Phase 16".
+- The close comment should credit the reporter, @smb374, whose expected ordering is the constraint the fix adopts.
+  The "place a later scope's patterns after an earlier scope's" commit already carries their `Co-authored-by:` trailer.
