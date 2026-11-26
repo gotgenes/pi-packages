@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [26.0.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v26.0.0...pi-subagents-v26.0.1) (2026-11-26)
+
+
+### Bug Fixes
+
+* **pi-subagents:** tell the parent which subagents a session shutdown stopped ([#1111](https://github.com/gotgenes/pi-packages/issues/1111)) ([b11b6ac](https://github.com/gotgenes/pi-packages/commit/b11b6acddda548e7a13f162fb6f3c670d48b6c93)), closes [#1111](https://github.com/gotgenes/pi-packages/issues/1111)
+
+### Documentation
+
+* **pi-subagents:** document the shutdown notice ([#1111](https://github.com/gotgenes/pi-packages/issues/1111)) ([37282e7](https://github.com/gotgenes/pi-packages/commit/37282e7c614b331a42aa0f27fe55908b61b95d31))
+
 ## [26.0.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v25.1.0...pi-subagents-v26.0.0) (2026-11-26)
 
 
