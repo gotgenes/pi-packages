@@ -59,12 +59,13 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
+/** The response written for the request file `requests/<fileStem>.json`. */
 function readResponse(
   dir: ForwardingTempDir,
-  requestId: string,
+  fileStem: string,
 ): ForwardedPermissionResponse {
   const raw = readFileSync(
-    join(dir.location.responsesDir, `${requestId}.json`),
+    join(dir.location.responsesDir, `${fileStem}.json`),
     "utf-8",
   );
   return JSON.parse(raw) as ForwardedPermissionResponse;
@@ -1574,6 +1575,35 @@ describe("processInbox — inbox mechanics", () => {
         ? readdirSync(temp.location.responsesDir)
         : [],
     ).toEqual([]);
+  });
+
+  test("answers a request in the file it arrived in, not the one its id names", async () => {
+    temp = createForwardingTempDir("parent-session");
+    writeFileSync(
+      join(temp.location.requestsDir, "req-b.json"),
+      JSON.stringify({
+        id: "req-a",
+        createdAt: Date.now(),
+        requesterSessionId: "child-session",
+        targetSessionId: "parent-session",
+        requesterAgentName: "Explore",
+      }),
+      "utf-8",
+    );
+
+    const server = new ForwardedRequestServer(
+      makeServerDeps({ forwardingDir: temp.forwardingDir }),
+    );
+
+    await server.processInbox(
+      makeForwarderContext({ hasUI: true, sessionId: "parent-session" }),
+    );
+
+    expect(readdirSync(temp.location.responsesDir)).toEqual(["req-b.json"]);
+    expect(readResponse(temp, "req-b")).toMatchObject({
+      approved: true,
+      state: "approved",
+    });
   });
 });
 

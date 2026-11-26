@@ -1,4 +1,4 @@
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import type { DecisionBroadcaster } from "#src/logging/decision-reporter";
 import type { DebugReviewLogger } from "#src/logging/session-logger";
 import { buildForwardedAskPayload } from "#src/presentation/forwarded-ask-payload";
@@ -380,9 +380,10 @@ export class ForwardedRequestServer implements InboxProcessor {
   }
 
   /**
-   * Persist the served decision: write the response file the child polls for,
-   * log the outcome, and delete the drained request. The symmetric "respond"
-   * half to {@link resolveDecision}'s "decide" half.
+   * Persist the served decision: write the response file the child polls for
+   * (named after the request file it answers), log the outcome, and delete the
+   * drained request. The symmetric "respond" half to {@link resolveDecision}'s
+   * "decide" half.
    */
   private recordForwardedDecision(
     request: ForwardedPermissionRequest,
@@ -391,7 +392,10 @@ export class ForwardedRequestServer implements InboxProcessor {
     currentSessionId: string,
     decision: PermissionPromptDecision,
   ): void {
-    const responsePath = join(location.responsesDir, `${request.id}.json`);
+    // Named after the drained request file, a single directory entry, so no
+    // value read off the wire chooses where this session writes. A requester
+    // names its request file after the id it polls for, so the two agree.
+    const responsePath = join(location.responsesDir, basename(requestPath));
     this.logger.review(
       decision.approved
         ? "forwarded_permission.approved"
