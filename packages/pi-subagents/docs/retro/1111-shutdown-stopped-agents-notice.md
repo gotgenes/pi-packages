@@ -32,3 +32,20 @@ That discussion produced #1152 (filed this session) as a prerequisite of #1135, 
 #### Deferred tidyings
 
 - `src/handlers/lifecycle.ts`: `SessionLifecycleHandler`'s positional constructor reaches five deps with two adjacent `() => void` parameters (`disposeNotifications`, `unpublishService`), a swap risk; a deps object is improvement-phase work.
+
+## Stage: Implementation — TDD (2026-11-26T19:16:05Z)
+
+### Session summary
+
+Completed all three TDD steps: "return the stopped agents from abortAll()" (`refactor:`), "tell the parent which subagents a session shutdown stopped" (`fix:`, with the reporter's `Co-authored-by:` trailer), and "document the shutdown notice" (`docs:`).
+The pi-subagents suite ends at 2249 tests, +18: 13 in the new `shutdown-notice.test.ts` (with `it.each` expansion), 3 in `lifecycle.test.ts`, 1 in `subagent-manager.test.ts`, and 1 in `composition-root.test.ts`.
+
+### Observations
+
+- Every killing mutation the plan named went red on exactly the predicted tests (2 in step 1, 12 in step 2, run as one scripted battery that asserted each pattern occurred once and restored the file after each); an extra input-order mutation (`toReversed()`) killed the ordering test.
+- The composition-root wiring test asserts the full message content, not just the header line the plan settled for: `vi.waitFor` on the service record's `outputFile` makes the child's transcript path known before shutdown, and the spawn returns the generated id.
+- Deviation: `composition-root.test.ts`'s "registers a renderer for every custom message type the extension sends" became false once the extension sends `subagent-shutdown-notice` with no renderer; it was renamed to "every result-carrying message type" with a comment, in the `fix:` commit.
+- `buildShutdownNotice` looks causes up in a `Map` rather than a `Record`, so a reason like `constructor` cannot resolve to a prototype member.
+- Pre-completion reviewer: WARN.
+  Reviewer warnings: the delivery evidence is one probe run on Pi 1.6.1 rather than the pinned 1.0.0 (source-checked for 1.0.0); the new `mockSendMessage` field follows the file's `ReturnType<typeof vi.fn<…>>` convention rather than `Mock<Sig>`; optional hardening to read `event.reason` inside the `try`.
+  All three were left as they are: the event-less call is unreachable (the parameter is required and every Pi path emits an event), and converting one field against the file's convention would be inconsistent.
