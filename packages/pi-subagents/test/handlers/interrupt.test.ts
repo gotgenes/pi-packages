@@ -8,7 +8,7 @@ describe("InterruptHandler", () => {
   let handler: InterruptHandler;
 
   beforeEach(() => {
-    mockAbortAll = vi.fn(() => 0);
+    mockAbortAll = vi.fn();
     manager = { abortAll: mockAbortAll };
     handler = new InterruptHandler(manager, () => true);
   });

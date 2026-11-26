@@ -515,20 +515,23 @@ export class SubagentManager {
     return [...this.agents.values()].some(r => r.isActive());
   }
 
-  /** Abort all running and queued agents immediately. */
-  abortAll(): number {
-    let count = 0;
+  /**
+   * Abort all running and queued agents immediately, returning the agents this
+   * call stopped, in registry order. An agent already finished is left out.
+   */
+  abortAll(): Subagent[] {
+    const stopped: Subagent[] = [];
     for (const record of this.agents.values()) {
       if (record.status === "queued") {
         record.stopQueued();
-        count++;
+        stopped.push(record);
       } else if (record.abort()) {
-        count++;
+        stopped.push(record);
       }
     }
     // Drop pending thunks (their promises resolve).
     this.limiter.clear();
-    return count;
+    return stopped;
   }
 
   /** Wait for all running and queued agents to complete (including queued ones). */

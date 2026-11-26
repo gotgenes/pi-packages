@@ -12,7 +12,7 @@
 
 /** Narrow manager interface — only the method the interrupt handler calls. */
 export interface InterruptManager {
-  abortAll(): number;
+  abortAll(): void;
 }
 
 /** Minimal context shape — only the field the handler reads. */

@@ -538,12 +538,12 @@ describe("SubagentManager", () => {
 
       it("abortAll() notifies onSubagentRunFinished for queued agents", () => {
         const completed: Subagent[] = [];
-        const { manager: mgr, queued } = arrangeQueuedPair({
+        const { manager: mgr, running, queued } = arrangeQueuedPair({
           onSubagentRunFinished: (record) => completed.push(record),
         });
         manager = mgr;
 
-        expect(manager.abortAll()).toBe(2);
+        expect(manager.abortAll().map((a) => a.id)).toEqual([running, queued]);
 
         // Only the queued agent notifies here: the running one's session creation
         // never resolves, so its run never reaches a terminal transition.
@@ -589,6 +589,24 @@ describe("SubagentManager", () => {
 
         expect(notificationsFor(queued)).toHaveLength(1);
         expect(factory).toHaveBeenCalledOnce();
+      });
+    });
+
+    describe("abortAll", () => {
+      let manager: SubagentManager;
+
+      afterEach(async () => {
+        await manager.dispose();
+      });
+
+      it("returns only the agents it stopped, leaving a finished one out", async () => {
+        ({ manager } = createManager());
+        const finished = spawnBg(manager, "finished");
+        await manager.getRecord(finished)!.promise;
+        const running = spawnBg(manager, "running");
+
+        expect(manager.getRecord(finished)!.status).toBe("completed");
+        expect(manager.abortAll().map((a) => a.id)).toEqual([running]);
       });
     });
 
