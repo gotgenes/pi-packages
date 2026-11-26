@@ -50,6 +50,32 @@ describe("AgentTool", () => {
 		);
 	});
 
+	describe("model-facing text", () => {
+		it("states the tool's purpose once, keeping only the sentence the opening line does not cover", () => {
+			const def = makeTool(createToolDeps()).toToolDefinition();
+			expect(def.description).toContain(
+				"Launch a new agent to handle complex, multi-step tasks autonomously.",
+			);
+			expect(def.description).not.toContain(
+				"The subagent tool launches specialized agents that autonomously handle complex tasks.",
+			);
+			expect(def.description).toContain(
+				"Each agent type has specific capabilities and tools available to it.",
+			);
+		});
+
+		it("names the custom-agent paths once, in the type list rather than the subagent_type parameter", () => {
+			const def = makeTool(createToolDeps()).toToolDefinition();
+			expect(def.parameters.properties.subagent_type.description).not.toContain(
+				".pi/agents/<name>.md",
+			);
+			expect(def.description).toContain(
+				"Custom agents can be defined in .pi/agents/<name>.md (project) or /home/user/.pi/agents/<name>.md (global)",
+			);
+			expect(def.description).toContain("Project-level agents override global ones.");
+		});
+	});
+
 	it("derives type list from registry — includes default agents in description", () => {
 		const def = makeTool(createToolDeps()).toToolDefinition();
 		// testRegistry loads default agents: general-purpose, Explore, Plan

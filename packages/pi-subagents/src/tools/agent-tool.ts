@@ -65,7 +65,7 @@ export class AgentTool {
 		private readonly runtime: AgentToolRuntime,
 		private readonly settings: AgentToolSettings,
 		private readonly registry: AgentTypeRegistry,
-		private readonly agentDir: string,
+		agentDir: string,
 	) {
 		this.typeListText = buildTypeListText(registry, agentDir);
 		this.availableTypesText = registry.getAvailableTypes().join(", ");
@@ -191,7 +191,6 @@ export class AgentTool {
 	toToolDefinition() {
 		const typeListText = this.typeListText;
 		const availableTypesText = this.availableTypesText;
-		const agentDir = this.agentDir;
 		const registry = this.registry;
 
 		const guidelines = [
@@ -214,7 +213,7 @@ export class AgentTool {
 			promptSnippet: "Launch a specialized agent for complex, multi-step tasks.",
 			description: `Launch a new agent to handle complex, multi-step tasks autonomously.
 
-The subagent tool launches specialized agents that autonomously handle complex tasks. Each agent type has specific capabilities and tools available to it.
+Each agent type has specific capabilities and tools available to it.
 
 Available agent types:
 ${typeListText}
@@ -230,7 +229,7 @@ ${guidelines}
 					description: "A short (3-5 word) description of the task (shown in UI).",
 				}),
 				subagent_type: Type.String({
-					description: `The type of specialized agent to use. Available types: ${availableTypesText}. Custom agents from .pi/agents/<name>.md (project) or ${agentDir}/agents/<name>.md (global) are also available.`,
+					description: `The type of specialized agent to use. Available types: ${availableTypesText}.`,
 				}),
 				model: Type.Optional(
 					Type.String({
