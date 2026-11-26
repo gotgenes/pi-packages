@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [44.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v43.0.0...pi-permission-system-v44.0.0) (2026-11-26)
+
+
+### Bug Fixes
+
+* **pi-permission-system:** **breaking:** place a later scope's patterns after an earlier scope's ([aab986a](https://github.com/gotgenes/pi-packages/commit/aab986abcb807164f7f7b8cc2bfca26c97846221)), closes [#1108](https://github.com/gotgenes/pi-packages/issues/1108)
+* **pi-permission-system:** **breaking:** let a later scope's mcp rules override an earlier scope's top-level mcp__ key ([f5214b8](https://github.com/gotgenes/pi-packages/commit/f5214b8bc643315c727c54356fd7e87a2102ca01)), closes [#1108](https://github.com/gotgenes/pi-packages/issues/1108)
+* **pi-permission-system:** stop warning that bash is ungated when an earlier scope's bash catch-all still applies ([dab7d0e](https://github.com/gotgenes/pi-packages/commit/dab7d0ed00024216b5bb8506a31795d679485325)), closes [#1108](https://github.com/gotgenes/pi-packages/issues/1108)
+
+### Documentation
+
+* **pi-permission-system:** document scope-by-scope rule placement ([7169fc6](https://github.com/gotgenes/pi-packages/commit/7169fc6c0c71acdd52c2e6b8b46e1ceabda51efa)), closes [#1108](https://github.com/gotgenes/pi-packages/issues/1108)
+* **pi-permission-system:** show the composed config band in scope order ([378738c](https://github.com/gotgenes/pi-packages/commit/378738c4a97034c2c50d6e959cb486e0f8293372)), closes [#1108](https://github.com/gotgenes/pi-packages/issues/1108)
+
 ## [43.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v42.2.1...pi-permission-system-v43.0.0) (2026-11-25)
 
 
