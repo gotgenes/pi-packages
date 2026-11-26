@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [44.0.2](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v44.0.1...pi-permission-system-v44.0.2) (2026-11-26)
+
+
+### Bug Fixes
+
+* **pi-permission-system:** the forwarding directory follows a relocated PI_CODING_AGENT_SESSION_DIR ([a9786a3](https://github.com/gotgenes/pi-packages/commit/a9786a358e657cf1deab7a16746d47f00677c9d1)), closes [#1115](https://github.com/gotgenes/pi-packages/issues/1115)
+* **pi-permission-system:** an idle serving session rewrites its heartbeat every 30 seconds, not every second ([05c67f7](https://github.com/gotgenes/pi-packages/commit/05c67f718568d2a529a3aa976cd2eaed0e3b43cc)), closes [#1115](https://github.com/gotgenes/pi-packages/issues/1115), closes [#1052](https://github.com/gotgenes/pi-packages/issues/1052)
+
+### Documentation
+
+* **pi-permission-system:** note heartbeat timing skew between parent and child versions ([b50bb79](https://github.com/gotgenes/pi-packages/commit/b50bb799e1418175482cc337c1a34df89acad8ab)), closes [#1115](https://github.com/gotgenes/pi-packages/issues/1115)
+
 ## [44.0.1](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v44.0.0...pi-permission-system-v44.0.1) (2026-11-26)
 
 
