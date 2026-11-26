@@ -61,7 +61,6 @@ describe("writeConfigValues", () => {
 
       expect(
         writeConfigValues(path, {
-          yoloMode: true,
           permissionReviewLog: true,
           debugLog: false,
           doublePressToConfirm: false,
@@ -71,7 +70,6 @@ describe("writeConfigValues", () => {
       expect(readFileSync(path, "utf-8")).toBe(
         [
           "{",
-          '  "yoloMode": true,',
           '  "permissionReviewLog": true,',
           '  "debugLog": false,',
           '  "doublePressToConfirm": false,',
@@ -119,7 +117,7 @@ describe("writeConfigValues", () => {
         '{\n  "permission": { "bash": { "rm *": "deny" } },\n  "typoKey": true\n}\n';
       fixture.file(dir, "config.json", original);
 
-      expect(writeConfigValues(path, { yoloMode: true })).toEqual({
+      expect(writeConfigValues(path, { debugLog: true })).toEqual({
         kind: "refused",
         issues: ["Unrecognized config key 'typoKey'."],
       });
@@ -129,7 +127,7 @@ describe("writeConfigValues", () => {
     it("is refused when it is not JSON, and left byte-identical", () => {
       fixture.file(dir, "config.json", "not valid json {{{");
 
-      const result = writeConfigValues(path, { yoloMode: true });
+      const result = writeConfigValues(path, { debugLog: true });
 
       expect(result.kind).toBe("refused");
       expect(result.kind === "refused" && result.issues).toEqual([
@@ -141,14 +139,14 @@ describe("writeConfigValues", () => {
     it("is refused when it is empty", () => {
       fixture.file(dir, "config.json", "");
 
-      expect(writeConfigValues(path, { yoloMode: true }).kind).toBe("refused");
+      expect(writeConfigValues(path, { debugLog: true }).kind).toBe("refused");
       expect(readFileSync(path, "utf-8")).toBe("");
     });
 
     it("is refused when the path is a directory", () => {
       fixture.subdir(dir, "config.json");
 
-      const result = writeConfigValues(path, { yoloMode: true });
+      const result = writeConfigValues(path, { debugLog: true });
 
       expect(result.kind).toBe("refused");
       expect(result.kind === "refused" && result.issues).toEqual([
