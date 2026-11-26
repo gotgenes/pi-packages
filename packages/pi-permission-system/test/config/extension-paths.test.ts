@@ -60,7 +60,9 @@ describe("computeExtensionPaths", () => {
   ];
 
   it("lists Pi's harness entries, the discovered root, and piPackageDir", () => {
-    const paths = computeExtensionPaths("/test/agent", "/pi/install");
+    const paths = computeExtensionPaths("/test/agent", {
+      piPackageDir: "/pi/install",
+    });
     expect(paths.piInfrastructureDirs).toEqual([
       ...HARNESS_ENTRIES,
       "/mock/global/node_modules",
@@ -88,7 +90,7 @@ describe("computeExtensionPaths", () => {
   });
 
   it("omits piPackageDir when given an empty string", () => {
-    const paths = computeExtensionPaths("/test/agent", "");
+    const paths = computeExtensionPaths("/test/agent", { piPackageDir: "" });
     expect(paths.piInfrastructureDirs).not.toContain("");
   });
 

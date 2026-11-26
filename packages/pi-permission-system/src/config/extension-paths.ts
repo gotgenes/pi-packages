@@ -51,21 +51,27 @@ const AGENT_DIR_INFRASTRUCTURE_ENTRIES = [
   "AGENTS.md",
 ] as const;
 
+/** The values {@link computeExtensionPaths} reads besides `agentDir`. */
+interface ExtensionPathOptions {
+  /**
+   * Pi's own install directory (from the coding-agent `getPackageDir()` API,
+   * resolved at the composition root). When provided it is auto-allowed for
+   * read-only tools so the agent can read Pi's bundled docs and examples
+   * regardless of install layout. It is strictly narrower than the discovered
+   * global `node_modules` root already included here.
+   */
+  readonly piPackageDir?: string;
+}
+
 /**
  * Compute all immutable path constants from `agentDir`.
  *
  * Calls `discoverGlobalNodeModulesRoot()` internally so the result is
  * self-contained. Call this once at extension startup, not at module scope.
- *
- * `piPackageDir` is Pi's own install directory (from the coding-agent
- * `getPackageDir()` API, resolved at the composition root). When provided it is
- * auto-allowed for read-only tools so the agent can read Pi's bundled docs and
- * examples regardless of install layout. It is strictly narrower than the
- * discovered global `node_modules` root already included here.
  */
 export function computeExtensionPaths(
   agentDir: string,
-  piPackageDir?: string,
+  { piPackageDir }: ExtensionPathOptions = {},
 ): ExtensionPaths {
   const sessionsDir = join(agentDir, "sessions");
   const subagentSessionsDir = join(agentDir, "subagent-sessions");
