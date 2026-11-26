@@ -52,4 +52,18 @@ Tests went from 2229 to 2231 in `pi-subagents`; check, root lint, the full suite
 - Pre-completion reviewer: WARN — the only finding was that the live-check result was not yet recorded; this entry records it.
   The reviewer re-derived every Pi fact in the skill edits against the pinned 1.0.0 `.js` and the 1.6.0 abort fix, and confirmed `next-version.sh` predicts a major.
 
+## Stage: Sync (worktree) (2026-11-26T03:55:28Z)
+
+### Session summary
+
+Root `pnpm run lint` and `pnpm fallow dead-code` pass; the branch rebases onto local `main`.
+The plan's marker is `**Release:** ship independently`, and the fix commit is breaking, so the `pi-subagents` release is a major; [#1146] (raise the Pi floor to 1.6.0) is the open follow-up.
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-1112--/2026-11-25T17-27-51-668Z_01a213bf-e073-778d-86b6-7fa069c0555a.jsonl` — read with `read_session_file({ path: "<path>" })` for message-level verification at land/retro time.
+
+### Observations
+
+- Planning, TDD, and sync all ran in this one peer session.
+- The reporter offered a PR; whether to reply that the fix landed in-house (credited via `Co-authored-by:`) belongs in `/ship`'s close comment.
+
 [#1146]: https://github.com/gotgenes/pi-packages/issues/1146
