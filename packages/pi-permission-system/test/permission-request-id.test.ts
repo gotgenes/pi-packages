@@ -26,8 +26,14 @@ describe("isFilenameSafeRequestId", () => {
       expect(isFilenameSafeRequestId(createPermissionRequestId())).toBe(true);
     });
 
-    it("the timestamp-random-pid id an older escalator minted", () => {
-      expect(isFilenameSafeRequestId("1723750000000-k3j5h2a9-4242")).toBe(true);
+    // An older escalator minted `<Date.now()>-<base36 slice(2, 10)>-<pid>`,
+    // whose random part can be shorter than eight characters, or empty.
+    it.each([
+      ["a full random part", "1723750000000-k3j5h2a9-4242"],
+      ["a short random part", "1723750000000-k3-4242"],
+      ["an empty random part", "1723750000000--4242"],
+    ])("the id an older escalator minted, with %s", (_, id) => {
+      expect(isFilenameSafeRequestId(id)).toBe(true);
     });
 
     it("an id at the length bound", () => {

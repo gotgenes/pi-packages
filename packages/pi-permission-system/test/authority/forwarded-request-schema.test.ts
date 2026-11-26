@@ -35,4 +35,17 @@ describe("forwardedPermissionRequestSchema", () => {
       expect(parsed.error?.issues.map((issue) => issue.path)).toEqual([["id"]]);
     });
   });
+
+  describe("creation time", () => {
+    // JSON `1e400` parses to Infinity. No requester writes one (they stamp
+    // `Date.now()`), and Zod's `z.number()` refuses a non-finite number, so
+    // such a request is dropped rather than served.
+    it("rejects a non-finite creation time", () => {
+      const parsed = forwardedPermissionRequestSchema.safeParse({
+        ...requestWithId("req-1"),
+        createdAt: Number.POSITIVE_INFINITY,
+      });
+      expect(parsed.success).toBe(false);
+    });
+  });
 });
