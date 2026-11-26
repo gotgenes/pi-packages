@@ -388,6 +388,7 @@ src/
 │   ├── provider-inheritance.ts     replays the parent's runtime-registered providers onto the child's own runtime, so the child inherits them without sharing the parent's mutable pool
 │   ├── session-dir.ts              session directory derivation
 │   ├── transcript-header.ts        reads the session id, spawning parent, and cwd from the child transcript
+│   ├── transcript-branch.ts        whether a child transcript's raw branch is rooted and holds a prompt and a reply
 │   └── recorded-model.ts           the model a reopened child transcript's branch selects, by Pi's own rule
 │
 ├── lifecycle/                      agent execution and state tracking
@@ -447,8 +448,8 @@ src/
 └── handlers/                       event handlers
     ├── index.ts                    barrel re-export
     ├── interrupt.ts                turn_start handler — abort all subagents on parent interrupt (ESC), when policy allows
-    ├── lifecycle.ts                session_start, session_before_switch, session_shutdown (aborts, leaves the shutdown notice, waits for the stopped runs to end, then disposes)
-    ├── shutdown-notice.ts          the parent-session message naming the agents a shutdown stopped
+    ├── lifecycle.ts                session_start, session_before_switch, session_shutdown (aborts, waits for the stopped runs to end, leaves the shutdown notice, then disposes)
+    ├── shutdown-notice.ts          the parent-session message naming the agents a shutdown stopped, and the resume call for each one the parent can restore
     └── widget-events.ts            widget's host events — session_start (UI context), turn_start (linger aging), session_shutdown (teardown)
 ```
 
@@ -485,6 +486,10 @@ The agent definition is read afresh after the factory's last await before assemb
 Each entry records which definition the child's session was assembled under (`agentDefinition`: the file a project or global agent was read from, or `builtin`), and both the manager and the factory require the type to still be supplied by that definition: deleting a project file that overrode a global or built-in agent of the same name uncovers a definition with other tools, which is refused as `agent-type-unavailable`.
 The run that reopens the transcript holds the record until it reaches its turn loop or ends, so `resumeRefusal` reads `still-running` meanwhile even once that run is stopped: only one reopening is in flight.
 A session that arrives after the record was torn down is disposed on arrival rather than adopted.
+
+A session shutdown waits for every run it stopped to end, so each one's entry is in the parent session before Pi invalidates the extension, then leaves its notice.
+The notice names the resume call for each stopped agent that `Subagent.restorable` reads as one a later manager would restore: the entry its latest run is recorded as, read back as `readRestorableRun` reads it, is restorable and names no provider workspace (`isRestorableRecord`), and its live session's transcript holds a continuable conversation by the same raw-branch reading the factory applies on reopening (`SubagentSession.holdsContinuableTranscript`, `transcript-branch.ts`).
+Whether the agent's definition and model are still available is decided only when it is resumed.
 
 ## Cross-extension architecture
 

@@ -34,6 +34,7 @@ import type { ModelRegistry } from "#src/session/model-resolver";
 import { NotifyParentTool, type UpdateAnnouncer } from "#src/session/notify-parent-tool";
 import { type BranchEntryLike, branchModelSelection, latestModelChange } from "#src/session/recorded-model";
 import { type AssemblerIO, assembleSessionConfig } from "#src/session/session-config";
+import { holdsConversation, rootedBranch, type TranscriptEntryLike } from "#src/session/transcript-branch";
 import type { ChildTranscriptHeader } from "#src/session/transcript-header";
 import type {
   AgentConfig,
@@ -65,15 +66,6 @@ export interface SessionManagerLike {
   newSession(opts: { parentSession?: string }): void;
   getSessionFile(): string | undefined;
   getSessionId(): string;
-}
-
-/** The fields of a raw transcript entry the factory reads to check its ancestry. */
-export interface TranscriptEntryLike {
-  readonly type: string;
-  readonly id: string;
-  /** The entry this one follows; null only for the root. */
-  readonly parentId: string | null;
-  readonly message?: { readonly role: string };
 }
 
 /**
@@ -454,38 +446,6 @@ function reopenTranscript(io: SessionFactoryIO, transcript: ContinuedTranscript)
     throw new Error(`Transcript ${transcript.file} holds no conversation to continue; it was not restored.`);
   }
   return reopened;
-}
-
-/**
- * The raw entries from the transcript's leaf back to its root, or undefined
- * unless every link holds: each parent is an entry the file holds, and the
- * chain ends at a root (`parentId: null`) without looping. Read from the raw
- * entries because Pi's own walk stops silently at a missing parent, treating
- * a tail cut off from its start as the whole conversation, and never returns
- * from a loop; Pi walks the branch only once this has held.
- */
-function rootedBranch(entries: readonly TranscriptEntryLike[], leafId: string | null): TranscriptEntryLike[] | undefined {
-  const byId = new Map(entries.map((entry) => [entry.id, entry]));
-  const branch: TranscriptEntryLike[] = [];
-  let entry = leafId === null ? undefined : byId.get(leafId);
-  // A chain longer than the distinct entries it can visit has looped.
-  while (entry && branch.length < byId.size) {
-    branch.push(entry);
-    if (entry.parentId === null) return branch;
-    entry = byId.get(entry.parentId);
-  }
-  return undefined;
-}
-
-/**
- * Whether a transcript's branch holds an exchange: a prompt the child was given
- * and a reply it made. Read from the raw entries, which a compaction keeps:
- * Pi's projection of a compacted branch replaces the earlier prompt with its
- * summary, so it may show no user message at all.
- */
-function holdsConversation(branch: readonly TranscriptEntryLike[]): boolean {
-  const roles = new Set(branch.flatMap((entry) => (entry.type === "message" && entry.message ? [entry.message.role] : [])));
-  return roles.has("user") && roles.has("assistant");
 }
 
 /**

@@ -72,12 +72,13 @@ export class SessionLifecycleHandler {
   //    raise them: no parent run is active at shutdown, so a terminal
   //    transition delivers its nudge synchronously and Pi cannot recall it
   // 4. Abort all agents — stop running and queued work
-  // 5. Leave the shutdown notice — name what step 4 stopped, so neither the
-  //    user nor the parent waits for results that will not arrive. It starts
-  //    no turn, and a send that fails must not skip the disposal below.
-  // 6. Wait for every stopped run to end — a running child's abort only pulls
+  // 5. Wait for every stopped run to end — a running child's abort only pulls
   //    its lever, and its record is appended once its turn loop has unwound,
   //    which must happen before Pi invalidates this instance (#1152)
+  // 6. Leave the shutdown notice — name what step 4 stopped, so neither the
+  //    user nor the parent waits for results that will not arrive, and which
+  //    of them the parent can resume, read from the runs step 5 recorded. It
+  //    starts no turn, and a send that fails must not skip the disposal below.
   // 7. Dispose manager — final cleanup, awaited so each child's extensions get
   //    their `session_shutdown` before Pi tears the parent down (#709)
   handleSessionShutdown(event: SessionShutdownPayload): Promise<void> {
@@ -85,12 +86,12 @@ export class SessionLifecycleHandler {
     this.runtime.clearSessionContext();
     this.disposeNotifications();
     const stopped = this.manager.abortAll();
-    if (stopped.length > 0) this.sendShutdownNotice(event.reason, stopped);
-    return this.disposeOnceEnded(stopped);
+    return this.finishShutdown(event.reason, stopped);
   }
 
-  private async disposeOnceEnded(stopped: readonly StoppedRun[]): Promise<void> {
+  private async finishShutdown(reason: string | undefined, stopped: readonly StoppedRun[]): Promise<void> {
     await Promise.allSettled(stopped.flatMap(run => run.promise ?? []));
+    if (stopped.length > 0) this.sendShutdownNotice(reason, stopped);
     await this.manager.dispose();
   }
 

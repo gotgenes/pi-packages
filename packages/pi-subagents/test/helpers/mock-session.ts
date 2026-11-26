@@ -72,6 +72,8 @@ export function createSubagentSessionStub(
 			session.dispose();
 			return Promise.resolve();
 		}),
+		/** Whether the transcript could be continued after a shutdown; a stub's holds no conversation unless a test says so. */
+		holdsContinuableTranscript: vi.fn((): boolean => false),
 		getConversation: vi.fn((): string => ""),
 		getContextPercent: vi.fn((): number | null => null),
 		subscribe: vi.fn((fn: (event: unknown) => void): (() => void) => session.subscribe(fn)),

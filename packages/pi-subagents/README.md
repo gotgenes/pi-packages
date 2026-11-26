@@ -138,6 +138,7 @@ A background resume shows in the widget regardless of the mode the agent was spa
 Like a background spawn, a background resume waits for a slot when the [concurrency limit](#concurrency) is reached, and its result says it was queued.
 
 A settled agent stays resumable after a `/reload`, and after restarting Pi and reopening the same parent session.
+That includes an agent that the end of the parent session [stopped](#when-the-parent-session-ends) while it was running, once its transcript holds a prompt and a reply.
 The parent session records each finished run, so a `resume` naming an agent from before the reload continues that agent's own transcript under its original ID, as the agent type it was, in the directory it ran in, on the model its transcript selected, under the turn limit it ran with, and with its tool, token, and compaction counts carried on.
 A fork can resume children it spawned itself, but neither the `subagent` tool nor `SubagentsService.resume` can resume children inherited from the source parent.
 Reopen the original parent to continue those children.
@@ -265,6 +266,11 @@ Reloading (`/reload`), quitting, starting or switching to another session, and f
 When that stops anything, the parent session gets one message listing each stopped agent: its ID, type, and description, whether it was running or still queued, and its transcript path when it has one.
 The message starts no turn; the parent agent reads it on its next one, so neither you nor the agent waits for results that will not arrive.
 The shutdown finishes only once each stopped run has ended and been recorded in the parent session, so a run the shutdown stopped stays listed in `/subagents:sessions` after a `/reload`.
+
+The message also names the `subagent` call that resumes each stopped agent the parent session can [resume](#subagent) later, and tells the agent to spawn the others again.
+An agent qualifies when its run recorded a transcript that holds a prompt and a reply, it ran outside a workspace a workspace provider prepared, and the run was recorded with its transcript's identity.
+A queued agent that never started has no transcript, so it does not qualify; a queued resume of an agent that already ran does.
+The resume still refuses, or fails before the model receives anything, if the agent's definition or the model its transcript selected is no longer available by then, as any resume after a reload does.
 
 Pi refuses `/reload` only while the parent itself is responding, so a background agent is still exposed to it.
 Let background agents finish, or collect their results, before reloading.

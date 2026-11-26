@@ -9,6 +9,7 @@ const stoppedAgent: StoppedRun = {
   description: "Refactor auth module",
   stoppedWhileQueued: false,
   outputFile: "/sessions/parent/tasks/a1b2c3.jsonl",
+  restorable: false,
   promise: Promise.resolve(),
 };
 
@@ -207,6 +208,29 @@ describe("SessionLifecycleHandler", () => {
         expect(mockSendMessage).toHaveBeenCalledExactlyOnceWith(buildShutdownNotice("reload", [stoppedAgent]), {
           triggerTurn: false,
         });
+      });
+
+      it("is left once every stopped run has ended, so it reads whether each can be resumed from the run it recorded", async () => {
+        const ended = Promise.withResolvers<void>(); // eslint-disable-line @typescript-eslint/no-invalid-void-type -- Promise.withResolvers<void> is valid; rule does not allow void in generic fn call type args
+        let recorded = false;
+        // A running agent's run records itself as it ends, and only then reads restorable.
+        const run: StoppedRun = {
+          ...stoppedAgent,
+          get restorable() { return recorded; },
+          promise: ended.promise.then(() => { recorded = true; }),
+        };
+        mockAbortAll.mockReturnValue([run]);
+
+        const pending = handler.handleSessionShutdown({ reason: "reload" });
+        await Promise.resolve();
+        expect(mockSendMessage).not.toHaveBeenCalled();
+
+        ended.resolve();
+        await pending;
+        expect(mockSendMessage).toHaveBeenCalledExactlyOnceWith(
+          buildShutdownNotice("reload", [{ ...stoppedAgent, restorable: true }]),
+          { triggerTurn: false },
+        );
       });
 
       it("sends nothing when the shutdown stopped nothing", async () => {

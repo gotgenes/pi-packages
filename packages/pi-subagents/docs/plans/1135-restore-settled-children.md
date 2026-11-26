@@ -14,6 +14,8 @@ The child's transcript is still on disk and `/subagents:sessions` still lists it
 
 - From the reopened parent, `resume` continues the settled child under its original ID, with its prior conversation, through the normal subagent interface: foreground delivery, background delivery with its completion notice, the concurrency limit, the lifecycle events, and a fresh `subagents:record` entry.
 - The same holds for the `SubagentsService.resume` front door, which goes through the same manager method.
+- A child a session shutdown stopped is resumable the same way, and the shutdown notice ([#1111]) names the resume call for each stopped child that qualifies, and only for those.
+  This relies on the shutdown recording each running child's stop before it resolves ([#1152]).
 - A restored child runs only as it was: its own transcript, its agent type's current definition (never another type's), the model route its transcript selected, the turn ceiling it last ran under, and its cumulative tool, token, and compaction counts.
   Anything that cannot be shown to hold refuses the resume or fails its run before the model receives a request.
 - No default changes, and an ID the parent session never recorded is still `unknown-agent`.
@@ -77,6 +79,11 @@ They are the source, read when a resume names an ID the manager holds no record 
    The rebuilt record keeps the ceiling in the latest recorded `turnBudget`, or stays unlimited when that budget named none, with its used turns reset; with no budget recorded at all it gets what a fresh spawn of its type would.
    Its state starts from the recorded `toolUses`, `lifetimeUsage`, and `compactionCount`.
 
+5. **The shutdown notice points at resume.**
+   The shutdown waits for every run it stopped to end, then builds the notice from what each one recorded.
+   A stopped agent is offered a resume when `Subagent.restorable` holds: the entry its latest run is recorded as passes `isRestorableRecord` (restorable as `readRestorableRun` reads it, and no provider workspace), and its live session's transcript passes the factory's own raw-branch check (`holdsContinuableTranscript`).
+   A queued child that never started has no session, so it is told to spawn again; a queued resume of a child that already ran is offered the resume.
+
 ## Verification
 
 - Unit tests cover each layer: `test/lifecycle/create-subagent-session.test.ts`, `test/lifecycle/subagent.test.ts`, `test/lifecycle/subagent-manager.test.ts`, `test/session/transcript-header.test.ts`, `test/session/recorded-model.test.ts` (which sweeps every branch of up to four entries against Pi's own selection), `test/persisted-record.test.ts`, and `test/runtime.test.ts`.
@@ -84,6 +91,7 @@ They are the source, read when a resume names an ID the manager holds no record 
   It covers the resumed child answering from its reopened conversation, on the model it selected, under the turn limit it ran with (also across a restart whose resume was stopped in the queue), with cumulative usage.
   It covers a compacted child continuing from its summary although Pi's projection of it holds no prompt.
   It also covers refusals with no model request and no change to the file: a deleted read-only project definition uncovering the built-in one (the session allowlist never gains `bash`), a sibling's transcript at the path, a transcript cut back to an earlier exchange or missing an entry from its middle, a recorded model the parent no longer has, and a transcript removed, emptied, cut back to its pre-conversation entries, or replaced while the resume waited for a slot.
+- `test/lifecycle/restore-real-transcript.test.ts` also stops a real child mid-run through the shutdown handler, checks that the notice offers its resume, and resumes it from a fresh manager.
 - `test/composition-root.test.ts` runs a child to completion in one extension instance, shuts it down as `/reload` does, and resumes the child from a fresh instance over the same session entries, including a service-only resume after the agent file was disabled on disk.
 - Live, against Pi with this extension loaded by `-e`: a child resumed after a restart reopened on the same session file, and after `/reload` in the TUI, recalled a code word given only in its first run, appending to its original transcript; a background resume after `/reload` delivered its completion notice.
   That check predates the identity and route requirements above.
@@ -109,3 +117,4 @@ They are the source, read when a resume names an ID the manager holds no record 
 [#1013]: https://github.com/gotgenes/pi-packages/issues/1013
 [#1034]: https://github.com/gotgenes/pi-packages/issues/1034
 [#1111]: https://github.com/gotgenes/pi-packages/issues/1111
+[#1152]: https://github.com/gotgenes/pi-packages/issues/1152

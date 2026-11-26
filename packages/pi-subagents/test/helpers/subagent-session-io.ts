@@ -1,14 +1,11 @@
 import { vi } from "vitest";
 import type { AgentConfigLookup } from "#src/config/agent-types";
 import type { ChildLifecyclePublisher } from "#src/lifecycle/child-lifecycle";
-import type {
-	ContinuedTranscript,
-	ReopenedSessionManagerLike,
-	TranscriptEntryLike,
-} from "#src/lifecycle/create-subagent-session";
+import type { ContinuedTranscript, ReopenedSessionManagerLike } from "#src/lifecycle/create-subagent-session";
 import type { ParentSnapshot } from "#src/lifecycle/parent-snapshot";
 import type { BranchEntryLike } from "#src/session/recorded-model";
 import type { AssemblerIO } from "#src/session/session-config";
+import type { TranscriptEntryLike } from "#src/session/transcript-branch";
 import type { ChildTranscriptHeader } from "#src/session/transcript-header";
 import type { AgentConfig, PromptInheritance, ShellExec } from "#src/types";
 import { makeModel } from "#test/helpers/make-model";

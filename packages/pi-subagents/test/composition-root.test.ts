@@ -125,8 +125,11 @@ function makeParentRegistry() {
  * session, the loop ends only once the abort has unwound it, which Pi does on a
  * later pass of the event loop, not synchronously inside the abort.
  */
-function createRunningChildStub() {
-  const stub = createSubagentSessionStub(createMockSession(), "/sessions/child.jsonl");
+function createRunningChildStub(
+  outputFile = "/sessions/child.jsonl",
+  transcript: Parameters<typeof createSubagentSessionStub>[2] = {},
+) {
+  const stub = createSubagentSessionStub(createMockSession(), outputFile, transcript);
   stub.runTurnLoop.mockImplementation(
     (_prompt: string, { signal }: { signal: AbortSignal }) =>
       new Promise((resolve) => {
@@ -677,6 +680,45 @@ describe("composition root: a settled child across a reload", () => {
 
     expect(createSubagentSession).toHaveBeenCalledExactlyOnceWith(
       expect.objectContaining({ type: "general-purpose", transcript: { file: transcript, header, leafId: CHILD_LEAF, agentDefinition: "builtin" } }),
+      expect.anything(),
+    );
+    expect(result.content[0].text).toBe(`Agent ID: ${id}\n\nPicked up where I left off.`);
+  });
+
+  it("resumes a child that /reload stopped mid-run, as the shutdown notice says it can", async () => {
+    const parent = createParent();
+    const transcript = join(tasksDir, "child.jsonl");
+    const header = { id: "child-session", parentSession: parent.getSessionId(), cwd: "/tmp" };
+    writeFileSync(transcript, `${JSON.stringify({ type: "session", ...header })}\n`);
+    const stub = createRunningChildStub(transcript, { sessionId: header.id, leafId: CHILD_LEAF, agentDefinition: "builtin" });
+    stub.holdsContinuableTranscript.mockReturnValue(true);
+    vi.mocked(createSubagentSession).mockClear();
+    vi.mocked(createSubagentSession).mockResolvedValue(toSubagentSession(stub));
+    const { pi, tools, fire } = makePi();
+    vi.mocked(pi.appendEntry).mockImplementation((customType: string, data: unknown) => {
+      parent.appendCustomEntry(customType, data);
+    });
+    subagentsExtension(pi);
+    await fire("session_start", {}, contextFor(parent));
+    const started = await tools.get("subagent").execute(
+      "tool-call-1",
+      { prompt: "Map the configs", description: "configs", subagent_type: "general-purpose", run_in_background: true },
+      undefined,
+      undefined,
+    );
+    const id = /Agent ID: (\S+)/.exec(started.content[0].text)?.[1];
+    await vi.waitFor(() => {
+      expect(stub.runTurnLoop).toHaveBeenCalled();
+    });
+
+    await fire("session_shutdown", { type: "session_shutdown", reason: "reload" }, {});
+
+    expect(vi.mocked(pi.sendMessage).mock.calls[0][0].content).toContain(
+      `"configs": was running; resume it by calling subagent with resume: "${id}".`,
+    );
+    const result = await resumeAfterReload(parent, id!);
+    expect(createSubagentSession).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ transcript: { file: transcript, header, leafId: CHILD_LEAF, agentDefinition: "builtin" } }),
       expect.anything(),
     );
     expect(result.content[0].text).toBe(`Agent ID: ${id}\n\nPicked up where I left off.`);

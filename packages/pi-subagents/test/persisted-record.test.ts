@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+	isRestorableRecord,
 	type PersistedSubagentRecord,
 	readPersistedRuns,
 	readRestorableRun,
@@ -385,5 +386,24 @@ describe("readRestorableRun", () => {
 			const entries = [recordEntry(persistedRecord()), recordEntry(preUpgrade)];
 			expect(readRestorableRun(entries, "run-1").kind).toBe("unprovable");
 		});
+	});
+});
+
+describe("isRestorableRecord", () => {
+	it("accepts a record that names its transcript and carries what proves and continues it", () => {
+		expect(isRestorableRecord(persistedRecord({ status: "stopped" }))).toBe(true);
+	});
+
+	it.each([
+		["names no transcript", { outputFile: undefined }],
+		["has no session id, as a run stopped before it created its session", { sessionId: undefined }],
+		["has no last transcript entry", { transcriptLeafId: undefined }],
+		["names no agent definition", { agentDefinition: undefined }],
+	])("refuses a record that %s", (_label, override) => {
+		expect(isRestorableRecord(persistedRecord(override))).toBe(false);
+	});
+
+	it("refuses a child that ran in a provider's workspace, which its manager tore down", () => {
+		expect(isRestorableRecord(persistedRecord({ providerWorkspace: true }))).toBe(false);
 	});
 });

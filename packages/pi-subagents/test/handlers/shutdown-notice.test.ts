@@ -7,6 +7,7 @@ const running: StoppedAgent = {
   description: "Refactor auth module",
   stoppedWhileQueued: false,
   outputFile: "/sessions/parent/tasks/a1b2c3.jsonl",
+  restorable: false,
 };
 
 const queued: StoppedAgent = {
@@ -15,6 +16,7 @@ const queued: StoppedAgent = {
   description: "Find callers",
   stoppedWhileQueued: true,
   outputFile: undefined,
+  restorable: false,
 };
 
 describe("buildShutdownNotice", () => {
@@ -82,6 +84,39 @@ describe("buildShutdownNotice", () => {
 
     it("keeps the order the agents were stopped in", () => {
       expect(agentLines([queued, running]).map((line) => line.slice(0, 10))).toEqual(["- `d4e5f6`", "- `a1b2c3`"]);
+    });
+  });
+
+  describe("an agent the parent can resume", () => {
+    const resumableRunning: StoppedAgent = { ...running, restorable: true };
+    const resumableQueued: StoppedAgent = {
+      ...queued,
+      outputFile: "/sessions/parent/tasks/d4e5f6.jsonl",
+      restorable: true,
+    };
+
+    it("names the resume call for a running agent, and drops the advice to spawn it again", () => {
+      expect(buildShutdownNotice("reload", [resumableRunning]).content.split("\n")).toEqual([
+        "`/reload` stopped these subagents before they finished, so their results will not arrive:",
+        '- `a1b2c3` (general-purpose) "Refactor auth module": was running; resume it by calling subagent with resume: "a1b2c3". Transcript: `/sessions/parent/tasks/a1b2c3.jsonl`',
+        "A resumed agent picks up its own conversation where it stopped.",
+      ]);
+    });
+
+    it("names the resume call for a queued resume of an agent that already ran", () => {
+      expect(buildShutdownNotice("reload", [resumableQueued]).content.split("\n")[1]).toBe(
+        '- `d4e5f6` (Explore) "Find callers": was queued; resume it by calling subagent with resume: "d4e5f6". Transcript: `/sessions/parent/tasks/d4e5f6.jsonl`',
+      );
+    });
+
+    it("still tells the parent to spawn again the agents it cannot resume", () => {
+      expect(buildShutdownNotice("quit", [resumableRunning, queued]).content.split("\n")).toEqual([
+        "Quitting Pi stopped these subagents before they finished, so their results will not arrive:",
+        '- `a1b2c3` (general-purpose) "Refactor auth module": was running; resume it by calling subagent with resume: "a1b2c3". Transcript: `/sessions/parent/tasks/a1b2c3.jsonl`',
+        '- `d4e5f6` (Explore) "Find callers": was queued.',
+        "A resumed agent picks up its own conversation where it stopped.",
+        "Spawn the others again if the work is still needed.",
+      ]);
     });
   });
 });

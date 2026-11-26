@@ -190,6 +190,19 @@ export function readRestorableRun(entries: readonly SessionEntryLike[], id: stri
 	return { kind: "restorable", run: { summary: last.summary, outputFile, ...provenance, turnBudget } };
 }
 
+/**
+ * Whether a later manager would restore a child from this entry, as far as the
+ * entry decides: read back as `readRestorableRun` reads it, it names a
+ * transcript and carries everything that proves and continues it, and the
+ * child ran outside a provider workspace, which the manager that ran it tore
+ * down. The transcript itself is checked when it is reopened.
+ */
+export function isRestorableRecord(record: PersistedSubagentRecord): boolean {
+	const entry = { type: "custom", customType: SUBAGENT_RECORD_ENTRY, data: record };
+	const recorded = readRestorableRun([entry], record.id);
+	return recorded.kind === "restorable" && !recorded.run.providerWorkspace;
+}
+
 /** The `data` of every `subagents:record` entry, in session order. */
 function* recordData(entries: readonly SessionEntryLike[]): Generator {
 	for (const entry of entries) {

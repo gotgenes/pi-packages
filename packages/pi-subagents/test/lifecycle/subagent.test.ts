@@ -863,6 +863,64 @@ describe("Subagent", () => {
 		});
 	});
 
+	describe("restorable", () => {
+		const TRANSCRIPT = { sessionId: "child-1", leafId: "leaf-1", agentDefinition: "builtin" };
+
+		/** An agent whose run parks in its turn loop until stopped, on a session reporting `transcript`. */
+		function createParkedAgent(options: {
+			transcript?: { sessionId?: string; leafId?: string; agentDefinition?: string };
+			holdsConversation?: boolean;
+			workspaceProvider?: WorkspaceProvider;
+		} = {}) {
+			const stub = createSubagentSessionStub(createMockSession(), "/sessions/child.jsonl", options.transcript ?? TRANSCRIPT);
+			stub.holdsContinuableTranscript.mockReturnValue(options.holdsConversation ?? true);
+			parkLoopUntilSignalled(stub.runTurnLoop);
+			return createRunnableAgent({
+				createSubagentSession: () => Promise.resolve(toSubagentSession(stub)),
+				workspaceProvider: options.workspaceProvider,
+			});
+		}
+
+		/** Start the agent, stop it once its turn loop is running, and wait for the run to end. */
+		async function stopMidRun(agent: Subagent) {
+			agent.start();
+			await vi.waitFor(() => { expect(agent.isSessionReady()).toBe(true); });
+			agent.abort();
+			await agent.promise;
+			expect(agent.status).toBe("stopped");
+		}
+
+		it("is true for a stopped run whose record identifies a transcript that holds a conversation", async () => {
+			const agent = createParkedAgent();
+			await stopMidRun(agent);
+			expect(agent.restorable).toBe(true);
+		});
+
+		it("is false for an agent stopped before its first run created a session", () => {
+			const agent = createRunnableAgent({ status: "queued" });
+			agent.stopQueued();
+			expect(agent.restorable).toBe(false);
+		});
+
+		it("is false when its transcript holds no conversation to continue", async () => {
+			const agent = createParkedAgent({ holdsConversation: false });
+			await stopMidRun(agent);
+			expect(agent.restorable).toBe(false);
+		});
+
+		it("is false when its session reports no session id to prove its transcript by", async () => {
+			const agent = createParkedAgent({ transcript: { leafId: "leaf-1", agentDefinition: "builtin" } });
+			await stopMidRun(agent);
+			expect(agent.restorable).toBe(false);
+		});
+
+		it("is false for an agent that ran in a workspace a provider prepared", async () => {
+			const agent = createParkedAgent({ workspaceProvider: makeWorkspaceProvider(makeWorkspace("/ws/dir")) });
+			await stopMidRun(agent);
+			expect(agent.restorable).toBe(false);
+		});
+	});
+
 	describe("workspaceDisposed", () => {
 		it("is false before the agent has run", () => {
 			expect(createRunnableAgent({ workspaceProvider: makeWorkspaceProvider(makeWorkspace("/ws/dir")) }).workspaceDisposed).toBe(false);

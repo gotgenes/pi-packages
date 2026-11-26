@@ -29,6 +29,8 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AgentTypeRegistry } from "#src/config/agent-types";
 import { loadCustomAgents } from "#src/config/custom-agents";
+import { SessionLifecycleHandler } from "#src/handlers/lifecycle";
+import type { ShutdownNotice } from "#src/handlers/shutdown-notice";
 import { createChildLifecyclePublisher } from "#src/lifecycle/child-lifecycle";
 import { ConcurrencyLimiter } from "#src/lifecycle/concurrency-limiter";
 import { createSubagentSession, type SubagentSessionDeps } from "#src/lifecycle/create-subagent-session";
@@ -43,6 +45,8 @@ const CODE_WORD = "PERIWINKLE";
 /** The prompt of a child that holds the only concurrency slot until the test lets it answer. */
 const OCCUPY = "Occupy the only slot.";
 const RECALL = "What was the code word?";
+/** The end of a prompt the model works on until its request is aborted. */
+const UNTIL_STOPPED = "Keep working until you are stopped.";
 
 /** The text of every user message a request carries, in order. */
 function userTexts(context: TranscriptContext): string[] {
@@ -63,6 +67,13 @@ function answer(context: TranscriptContext): AssistantMessage {
   if (!latest.includes(RECALL)) return fauxAssistantMessage("Noted.");
   const given = said.map((text) => /code word is (\w+)/.exec(text)?.[1]).find((word) => word !== undefined);
   return fauxAssistantMessage(given ? `The code word was ${given}.` : "I was never told a code word.");
+}
+
+/** A reply that arrives only once its request is aborted, as a provider's stream ends when it is cut. */
+function answeredOnceAborted(signal: AbortSignal | undefined): Promise<AssistantMessage> {
+  return new Promise((resolve) => {
+    signal?.addEventListener("abort", () => { resolve(fauxAssistantMessage("Still working on it.")); }, { once: true });
+  });
 }
 
 describe("restoring a settled child from its real transcript", () => {
@@ -97,10 +108,16 @@ describe("restoring a settled child from its real transcript", () => {
     const occupied = Promise.withResolvers<void>(); // eslint-disable-line @typescript-eslint/no-invalid-void-type -- Promise.withResolvers<void> is valid; rule does not allow void in generic fn call type args
     releaseOccupant = () => { occupied.resolve(); };
     faux = fauxProvider({ provider: "faux", models: [{ id: "scripted" }, { id: "parent-default" }] });
-    const respond = (context: TranscriptContext, _options: unknown, _state: unknown, model: Model<string>) => {
+    const respond = (
+      context: TranscriptContext,
+      options: { signal?: AbortSignal } | undefined,
+      _state: unknown,
+      model: Model<string>,
+    ) => {
       requestedModels.push(model.id);
       requests.push(userTexts(context));
       if (userTexts(context).at(-1) === OCCUPY) return occupied.promise.then(() => fauxAssistantMessage("Held it."));
+      if (userTexts(context).at(-1)?.endsWith(UNTIL_STOPPED)) return answeredOnceAborted(options?.signal);
       return answer(context);
     };
     faux.setResponses(Array.from({ length: 8 }, () => respond));
@@ -336,6 +353,38 @@ describe("restoring a settled child from its real transcript", () => {
       output: before.output + output,
       cacheWrite: before.cacheWrite + cacheWrite,
     });
+  });
+
+  it("resumes a child a shutdown stopped mid-run, which the shutdown notice offered to resume", async () => {
+    const parent = SessionManager.create(project, join(root, "sessions"));
+    parent.appendMessage({ role: "user", content: "Delegate this", timestamp: 1 });
+    const earlier = createManager(undefined, 4, parent);
+    const notices: ShutdownNotice[] = [];
+    const shutdown = new SessionLifecycleHandler(
+      { setSessionContext: () => {}, clearSessionContext: () => {} },
+      earlier,
+      () => {},
+      () => {},
+      (notice) => { notices.push(notice); },
+    );
+    const id = earlier.spawn(snapshot(), "Explore", `Remember this: the code word is ${CODE_WORD}. ${UNTIL_STOPPED}`, {
+      description: "Hold a code word",
+      model: registry.find("faux", "scripted"),
+      background: { kind: "explicit", isBackground: true },
+      parentSession: { parentSessionFile: parent.getSessionFile()!, parentSessionId: parent.getSessionId() },
+    });
+    await vi.waitFor(() => { expect(requests).toHaveLength(1); });
+    expect(earlier.getRecord(id)?.status).toBe("running");
+
+    await shutdown.handleSessionShutdown({ reason: "reload" });
+
+    expect(notices.map((notice) => notice.content)).toEqual([
+      expect.stringContaining(`"Hold a code word": was running; resume it by calling subagent with resume: "${id}".`),
+    ]);
+    const outcome = await restartedManager(parent.getSessionFile()!).resume(id, RECALL, { background: false });
+    if (outcome.kind !== "resumed") throw new Error(`resume refused: ${outcome.reason}`);
+    expect(outcome.record.status).toBe("completed");
+    expect(outcome.record.result).toBe(`The code word was ${CODE_WORD}.`);
   });
 
   it("refuses a sibling's transcript put at the child's path, leaving it untouched and running nothing", async () => {

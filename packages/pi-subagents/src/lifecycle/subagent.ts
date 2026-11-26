@@ -20,6 +20,7 @@ import type { TurnBudget } from "#src/lifecycle/turn-limits";
 import type { LifetimeUsage } from "#src/lifecycle/usage";
 import type { WorkspaceProvider } from "#src/lifecycle/workspace";
 import { WorkspaceBracket } from "#src/lifecycle/workspace-bracket";
+import { isRestorableRecord, toPersistedRecord } from "#src/persisted-record";
 import type { RunConfig } from "#src/runtime";
 import type { CompactionInfo, ParentSessionInfo, SessionMessage, SubagentType, ThinkingLevel } from "#src/types";
 
@@ -309,6 +310,26 @@ export class Subagent {
 	// fallow-ignore-next-line unused-class-member
 	get agentDefinition(): string | undefined {
 		return this.subagentSession?.agentDefinition ?? this.execution.transcript?.agentDefinition;
+	}
+
+	/**
+	 * Whether a later manager on this parent session would restore the agent
+	 * from the run it last recorded, as far as anything known now decides: the
+	 * entry its latest run is recorded as names a transcript and carries what
+	 * proves and continues it (`isRestorableRecord`), and the live session's
+	 * transcript holds a conversation to continue. Read once that run has
+	 * ended, when its entry is the one a restore reads. An agent with no live
+	 * session, such as one stopped before its first run created one, answers
+	 * false. Whether its definition and model are still available is decided
+	 * only when it is resumed.
+	 */
+	// Read structurally, by the shutdown notice, with the rest of each stopped agent.
+	// fallow-ignore-next-line unused-class-member
+	get restorable(): boolean {
+		return (
+			this.subagentSession?.holdsContinuableTranscript() === true &&
+			isRestorableRecord(toPersistedRecord(this, this.latestRun))
+		);
 	}
 
 	/**

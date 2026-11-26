@@ -28,6 +28,7 @@ import {
 import { getSessionContextPercent, type SessionStatsLike } from "#src/lifecycle/usage";
 import { extractText } from "#src/session/context";
 import { getAgentConversation } from "#src/session/conversation";
+import { holdsConversation, rootedBranch } from "#src/session/transcript-branch";
 import type { SessionMessage, ThinkingLevel } from "#src/types";
 
 /** Outcome of one turn loop. */
@@ -126,6 +127,20 @@ export class SubagentSession {
   /** The id of the last entry the child's transcript holds, or undefined while it holds none. */
   get leafId(): string | undefined {
     return this._session.sessionManager.getLeafId() ?? undefined;
+  }
+
+  /**
+   * Whether a later manager could reopen and continue the child's transcript,
+   * read the way `createSubagentSession` reads a reopened one: its header
+   * names the spawning parent, and the branch from its leaf is rooted and holds
+   * a prompt and a reply. A child stopped before it was given its prompt, or
+   * before anything answered it, holds no conversation to continue.
+   */
+  holdsContinuableTranscript(): boolean {
+    const sessionManager = this._session.sessionManager;
+    if (!sessionManager.getHeader()?.parentSession) return false;
+    const branch = rootedBranch(sessionManager.getEntries(), sessionManager.getLeafId());
+    return branch !== undefined && holdsConversation(branch);
   }
 
   /** The model the child is running now — a failover or `/model` switch shows here. */
