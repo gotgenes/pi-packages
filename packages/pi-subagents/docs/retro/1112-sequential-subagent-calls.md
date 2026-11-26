@@ -31,4 +31,25 @@ Plan committed as `packages/pi-subagents/docs/plans/1112-sequential-subagent-cal
 
 - `packages/pi-subagents/src/tools/agent-tool.ts`: the first guideline bullet and "Use run_in_background for work you don't need immediately" overlap; merging them is prompt-wording work outside this defect.
 
+## Stage: Implementation — TDD (2026-11-26T01:44:42Z)
+
+### Session summary
+
+All four plan steps landed: the `fix(pi-subagents)!:` commit (`executionMode: "sequential"`, rewritten guideline, README and manager comments), the `pi-extension-lifecycle` correction, the upstream-assumptions row, and the live check.
+Tests went from 2229 to 2231 in `pi-subagents`; check, root lint, the full suite, and `fallow dead-code` are green.
+
+### Observations
+
+- Live check (step 4), run through `pi -p --approve --no-session --mode json --model anthropic/claude-haiku-5-5` from the worktree root, reading the parent's `tool_execution_start`/`tool_execution_end` order:
+  - Fixed code, two foreground calls in one message: start A, end A, start B, end B (serialized).
+  - Control, pre-fix `agent-tool.ts` copied in from the parent of the fix commit: start A, start B, end B, end A (concurrent), so the probe discriminates.
+  - Fixed code, three background calls in one message: each launch returned "Agent started in background." (none queued), so the runs overlap under `maxConcurrent`.
+- The event-order probe needs no child `bash`, which avoids permission prompts in print mode; `--model haiku` is ambiguous across authenticated providers, so name `anthropic/claude-haiku-5-5`.
+- Killing mutations: deleting the field reddened only the field test; restoring the old bullet reddened the guideline test at its `toContain`, so a second mutation (keep the new bullet, add the old sentence back) was needed to prove the `not.toContain` assertion discriminates on its own.
+- The baseline `pnpm run test` stalled once in `pi-permission-system` (and again when re-run alone); after clearing processes it passed in 31.5 s, and every later root run finished.
+  Not reproduced, so environmental.
+- No `tsc` cast was needed for the `executionMode` literal, as the plan predicted.
+- Pre-completion reviewer: WARN — the only finding was that the live-check result was not yet recorded; this entry records it.
+  The reviewer re-derived every Pi fact in the skill edits against the pinned 1.0.0 `.js` and the 1.6.0 abort fix, and confirmed `next-version.sh` predicts a major.
+
 [#1146]: https://github.com/gotgenes/pi-packages/issues/1146
