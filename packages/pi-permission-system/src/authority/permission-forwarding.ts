@@ -279,9 +279,16 @@ export function normalizePermissionForwardingSessionId(
  * `sessions/<id>/` and the serving-heartbeat records beside it — and a second
  * encoding would be a silent way for the two to disagree about which file
  * belongs to which session.
+ *
+ * `encodeURIComponent` encodes every separator but leaves dots alone, so an id
+ * made of dots alone (`.`, `..`) would name a relative segment and resolve
+ * outside `sessions/`. Such an id has each dot escaped; no Pi session id is
+ * all dots, so every real id encodes as before. Injective, since
+ * `encodeURIComponent` never emits `%2E` and encodes a literal `%` as `%25`.
  */
 export function encodeSessionIdForPath(sessionId: string): string {
-  return encodeURIComponent(sessionId);
+  const encoded = encodeURIComponent(sessionId);
+  return /^\.+$/.test(encoded) ? encoded.replaceAll(".", "%2E") : encoded;
 }
 
 export function createPermissionForwardingLocation(

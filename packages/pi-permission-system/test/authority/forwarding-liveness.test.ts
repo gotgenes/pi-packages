@@ -90,6 +90,12 @@ describe("servingHeartbeatPath", () => {
       join(forwardingDir, "serving", "a%2F..%2Fb.json"),
     );
   });
+
+  it("shares the sessions tree's escape for a dot-only session id", () => {
+    expect(servingHeartbeatPath(forwardingDir, "..")).toBe(
+      join(forwardingDir, "serving", "%2E%2E.json"),
+    );
+  });
 });
 
 describe("ServingHeartbeatStore.markServing", () => {

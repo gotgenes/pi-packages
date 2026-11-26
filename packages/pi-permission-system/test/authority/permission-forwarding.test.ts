@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import {
   createPermissionForwardingLocation,
+  encodeSessionIdForPath,
   isForwardedPermissionRequestForSession,
   resolvePermissionForwardingTarget,
   SUBAGENT_PARENT_SESSION_ENV_CANDIDATES,
@@ -298,6 +299,41 @@ test("Permission forwarding uses session-scoped directories per interactive sess
   expect(sessionA.sessionRootDir).not.toBe(sessionB.sessionRootDir);
   expect(sessionA.requestsDir).not.toBe(sessionB.requestsDir);
   expect(sessionA.responsesDir).not.toBe(sessionB.responsesDir);
+});
+
+describe("encodeSessionIdForPath", () => {
+  test.each([
+    [".", "%2E"],
+    ["..", "%2E%2E"],
+    ["...", "%2E%2E%2E"],
+  ])(
+    "escapes the dot-only id %s, which would otherwise name a relative segment",
+    (sessionId, encoded) => {
+      expect(encodeSessionIdForPath(sessionId)).toBe(encoded);
+    },
+  );
+
+  test.each([
+    ["a Pi session id", "019ab8c2-5f3e-7c41-9d2a-6e8f0b1c2d3e"],
+    ["an id with an inner dot", "a.b"],
+    ["an id that ends in dots after another character", "a.."],
+  ])("leaves %s unchanged", (_, sessionId) => {
+    expect(encodeSessionIdForPath(sessionId)).toBe(sessionId);
+  });
+
+  test("encodes a separator, so a traversal stays one segment", () => {
+    expect(encodeSessionIdForPath("../../escaped")).toBe("..%2F..%2Fescaped");
+  });
+
+  test("keeps a dot-only session's forwarding tree under sessions/", () => {
+    const forwardingRoot = join(
+      tmpdir(),
+      "pi-permission-system-forwarding-root",
+    );
+    expect(
+      createPermissionForwardingLocation(forwardingRoot, "..").sessionRootDir,
+    ).toBe(join(forwardingRoot, "sessions", "%2E%2E"));
+  });
 });
 
 test("Permission forwarding request routing only matches the intended UI session", () => {
