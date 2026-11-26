@@ -39,7 +39,7 @@ These are the operator's choices among defensible alternatives.
 - Inherited features, config, and output get no protection: clarity outranks keeping them.
 - Propose the clearer design even when it breaks compatibility, and settle migration second; the operator decides whether to take the break.
 - Follow Pi's own conventions, and adopt its newer SDK mechanisms when they exist.
-- Raise the Pi version floor when that simplifies the code, instead of supporting an older version.
+- Raise the Pi version floor when that simplifies the code or a newer release fixes behavior the change relies on, instead of supporting an older version; offer the bump as an option at the planning gate.
 
 ### Existing code and precedent
 

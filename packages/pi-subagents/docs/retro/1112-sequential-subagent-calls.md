@@ -66,4 +66,55 @@ The plan's marker is `**Release:** ship independently`, and the fix commit is br
 - Planning, TDD, and sync all ran in this one peer session.
 - The reporter offered a PR; whether to reply that the fix landed in-house (credited via `Co-authored-by:`) belongs in `/ship`'s close comment.
 
+## Stage: Final Retrospective (2026-11-26T04:19:59Z)
+
+### Session summary
+
+The root session fast-forward-merged the 7-commit branch onto `74346aa7`, passed lint, `fallow dead-code`, and CI, closed #1112 with a reply to @richardaubin (fix landed in-house with his `Co-authored-by:`, no PR needed, the pre-1.6.0 abort residual tracked in [#1146]), and released `pi-subagents-v26.0.0`.
+The peer session's only real cost was a 32-minute TDD baseline "stall", which this retro traced to the laptop sleeping with its lid closed.
+
+### Observations
+
+#### What went well
+
+- The planning spike priced the Pi floor bump instead of guessing: it bumped the three `@earendil-works/*` pins to 1.6.0, measured 3 `tsc` errors and 5 failing `session-navigator` tests, restored the tree, and filed [#1146].
+- The live check used a control: the pre-fix `agent-tool.ts` copied from the fix commit's parent showed interleaved `tool_execution_start`/`tool_execution_end` events, so the serialized order on the fixed code is a discriminating result, not a default.
+- The second guideline mutation (keep the new bullet, re-add the old sentence) proved the `not.toContain` assertion on its own, after the first mutation reddened only the `toContain`.
+
+#### What caused friction
+
+- `fact` — the TDD baseline's two timed-out calls were host sleep, not a test stall.
+  `pmset -g log` shows `Entering Sleep state due to 'Clamshell Sleep'` at 17:41:16Z, 57 s into the batched `check; lint; test; fallow` call, then `DarkWake` at 17:51:12Z and 18:11:05Z: the exact timestamps the two tool results landed.
+  The second call (300 s timeout) returned after 1185 s, overrunning its own timeout by about 885 s.
+  The same signature explains `packages/pi-subagents/docs/retro/1088-collapsible-transcript-blocks.md`'s ship-stage lint stall: its timeouts landed at 17:10:26Z and 17:25:55Z on 2026-11-24, both `DarkWake` timestamps after a 17:00:31Z clamshell sleep.
+  `packages/pi-permission-model-judge/docs/retro/1092-honor-project-trust.md`'s stalls ("overruns its own timeout by 700 s") predate the oldest `pmset` entry (2026-11-18), so they are consistent with sleep but unverified.
+  Impact: about 32 minutes of wall-clock (17:40:19Z to 18:12:29Z) across five calls, plus a stage note that blamed leftover processes, which `pgrep` had just shown did not exist.
+  Neither the agent nor the operator caught it in session; found in this retro.
+- `slip` — planning's `cd packages/pi-subagents; …` was denied by the `cd packages/*` policy rule; recurring, and the deny rule is already the mechanism.
+  Impact: one call.
+- `slip` — the live check's first `pi -p --model haiku` failed: `Model "haiku" is ambiguous across providers`; the error named the fix (`anthropic/claude-haiku-5-5`).
+  Impact: one call.
+  Self-identified.
+
+#### What the operator steered
+
+- `steer:choice`: "We always have the option of bumping the version of Pi on which we depend.", interjected while the agent was reading only the pinned 1.0.0 surface, before any gate.
+  The operator's words made it general ("always").
+  It led to finding Pi's abort fix (`4438c58ba`, 1.6.0), the measured bump spike, and [#1146].
+  `packages/pi-subagents/docs/retro/1088-collapsible-transcript-blocks.md` records the same choice: "Is there _anything_ new in Pi's API that will help us with any of this issue?" and "I don't mind a version bump of Pi if it helps guarantee something."
+  `.pi/skills/code-design/SKILL.md` already says to raise the floor "when that simplifies the code"; both steers widen it to a newer release that fixes behavior the change relies on.
+
+### Diagnostic details
+
+- **Model-performance correlation** — every peer turn, the `tidy-first-assessor` (5 turns), the `pre-completion-reviewer` (29 turns), and this root session ran on `anthropic/claude-opus-5-5`; no mismatch.
+- **Escalation-delay tracking** — the baseline stretch took five calls and 32 minutes of wall-clock, but only because two of them slept through the lid closure; the agent's own response (re-run alone, then a `timeout 120` run) was right for a genuine stall.
+- **Unused-tool detection** — the host's own sleep log (`pmset -g log`) was available and would have named the cause in one call; no prior retro had looked there.
+- **Feedback-loop gap analysis** — per-file `vitest` runs after each Red, Green, and mutation, `check` after the Green edit, and the root gates before the commit; no end-only verification.
+
+### Changes made
+
+1. `.pi/skills/code-design/SKILL.md`: the Pi-floor bullet now also covers a newer release that fixes behavior the change relies on, and says to offer the bump as an option at the planning gate (the operator confirmed the choice as general).
+
+Proposed and declined: P1, adding a host-sleep check (`pmset -g log`) to the `testing` skill's stall rule; the finding stays in this retro.
+
 [#1146]: https://github.com/gotgenes/pi-packages/issues/1146
