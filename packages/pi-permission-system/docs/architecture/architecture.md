@@ -1407,7 +1407,7 @@ ADR 0016 §9 traces the same weakness on the response side, which [#1121] protec
 
 Release: independent
 
-#### [#1115] The forwarding directory follows a relocated session store (with [#1052])
+#### ✅ [#1115] The forwarding directory follows a relocated session store (with [#1052])
 
 **Cause:** the forwarding directory is derived from the agent directory alone, so an operator who moves Pi's session store still gets a per-second heartbeat rewrite inside the directory they moved sessions out of.
 Issue [#1052] is the same path's cost: the heartbeat is written whether or not any forwarding child is waiting.
@@ -1417,6 +1417,10 @@ Issue [#1052] is the same path's cost: the heartbeat is written whether or not a
 - **Constraint:** parent and child rendezvous in this directory, so its location may depend only on something both are guaranteed to share; PR [#1107] reads the inherited `PI_CODING_AGENT_SESSION_DIR` for that reason.
 - **Design question the step must settle:** which of [#1052]'s two remedies (announce on demand, or a slower refresh with a scaled staleness window) the liveness judge can take without lengthening the roughly two-second abandon window.
 - **Outcome:** with `PI_CODING_AGENT_SESSION_DIR` set, the forwarding tree lives under it; an idle serving session with no child waiting no longer costs a heartbeat write every second.
+  Landed: `computeExtensionPaths` takes an options object whose `sessionDir` (the inherited variable, read once in `index.ts`, `~` expanded, empty ignored) roots `forwardingDir`; the unread `sessionsDir` and `agentDir` fields left `ExtensionPaths` first.
+  The design question settled at the planning gate as a slower refresh (operator decision): 30 s refresh, stale after 90 s, and the throttle checks the record still exists so a deleted one reappears at the next tick; exited and killed parents still abandon in about two seconds.
+  `forwarding-manager.ts` needed no change, since the store owns the throttle.
+  A liveness signal with no idle writes is [#1149], deferred.
 - **Commit type:** `fix:`.
 - **Impact 3 / Risk 2 / Priority 12.**
 
@@ -1645,7 +1649,7 @@ flowchart TD
     S1134["✅ #1134<br/>Scopes as one ordered list"]
     S1108["✅ #1108<br/>Later scope placed after"]
     S1067["✅ #1067<br/>Forwarding wire validates"]
-    S1115["#1115<br/>Forwarding directory location"]
+    S1115["✅ #1115<br/>Forwarding directory location"]
     S1118["#1118<br/>Auto-approve terminal"]
     S1126["#1126<br/>Legacy files not read"]
     S1028["#1028<br/>Each config file read once"]
