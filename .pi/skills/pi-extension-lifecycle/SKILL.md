@@ -99,11 +99,16 @@ agent_end
 
 ## Tool call sequencing within a turn
 
-When the LLM generates multiple tool calls in one response, they execute **sequentially** (not in parallel) when any tool has `executionMode: "sequential"` or the agent config sets `toolExecution: "sequential"`.
-Pi's built-in coding tools (bash, edit, write, read, grep, find, ls) use sequential execution.
+Source: `@earendil-works/pi-agent-core` `agent-loop.js` (`executeToolCalls`); `@earendil-works/pi-coding-agent` `nested-tool-calls.js`.
 
-Each tool call follows the full lifecycle: `tool_call` → execute → `tool_result` before the next tool's `tool_call` fires.
-This means an extension's `tool_result` handler for tool N runs before `tool_call` for tool N+1.
+The tool calls of one assistant message run **in parallel** by default.
+The whole batch runs **sequentially** when any call in it names a tool declaring `executionMode: "sequential"`, or when the agent config sets `toolExecution: "sequential"`; one sequential tool serializes all its siblings, and there is no per-tool exclusivity.
+`pi-coding-agent` never sets `toolExecution`, and none of Pi's built-in tools declares `executionMode`.
+Under codemode, a nested call to a sequential tool waits on a shared queue, while nested calls to parallel tools do not.
+
+In a parallel batch, every call's `tool_call` handler runs, one call after another, before any call executes; execution and `tool_result` then interleave.
+In a sequential batch, each call completes `tool_call` → execute → `tool_result` before the next call's `tool_call` fires.
+Below Pi 1.6.0, an abort mid-batch leaves the calls not yet reached without a tool result; from 1.6.0 each gets "Operation aborted".
 
 ## Abort / interrupt signal lifecycle
 
