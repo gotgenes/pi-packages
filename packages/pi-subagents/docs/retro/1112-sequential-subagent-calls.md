@@ -115,6 +115,8 @@ The peer session's only real cost was a 32-minute TDD baseline "stall", which th
 
 1. `.pi/skills/code-design/SKILL.md`: the Pi-floor bullet now also covers a newer release that fixes behavior the change relies on, and says to offer the bump as an option at the planning gate (the operator confirmed the choice as general).
 
+2. `.pi/skills/code-design/SKILL.md`: after the commit, the operator widened the bullet to every upstream dependency ("That bump advice isn't just for pi, but any upstream package on which we depend."), so it now names an upstream dependency's floor, Pi or any other package.
+
 Proposed and declined: P1, adding a host-sleep check (`pmset -g log`) to the `testing` skill's stall rule; the finding stays in this retro.
 
 [#1146]: https://github.com/gotgenes/pi-packages/issues/1146
