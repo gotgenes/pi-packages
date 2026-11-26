@@ -1,11 +1,11 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { createEventBus } from "@earendil-works/pi-coding-agent";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SUBAGENT_ENV_HINT_KEYS } from "#src/authority/permission-forwarding";
 import { getGlobalConfigPath } from "#src/config/config-paths";
-import piPermissionSystemExtension from "#src/index";
 import type {
   PermissionDecisionEvent,
   PermissionsReadyEvent,
@@ -19,6 +19,7 @@ import {
   PERMISSIONS_READY_CHANNEL,
   PERMISSIONS_UI_PROMPT_CHANNEL,
 } from "#src/service/permission-events";
+import { bootExtension, makeFakePi } from "#test/helpers/make-fake-pi";
 import { makePromptPayload } from "#test/helpers/prompt-details-fixtures";
 
 // The suite drives the real extension factory, whose detection path reads
@@ -270,24 +271,9 @@ describe("piPermissionSystemExtension ready event wiring", () => {
   });
 
   it("emits permissions:ready at session_start", async () => {
-    const emitSpy = vi.fn();
-    const handlers = new Map<
-      string,
-      (event: unknown, ctx: unknown) => unknown
-    >();
-    piPermissionSystemExtension({
-      on: vi.fn(
-        (event: string, handler: (e: unknown, c: unknown) => unknown) => {
-          handlers.set(event, handler);
-        },
-      ),
-      registerCommand: vi.fn(),
-      getAllTools: vi.fn().mockReturnValue([]),
-      getActiveTools: vi.fn().mockReturnValue([]),
-      setActiveTools: vi.fn(),
-      registerProvider: vi.fn(),
-      events: { emit: emitSpy, on: vi.fn().mockReturnValue(() => undefined) },
-    } as never);
+    const events = createEventBus();
+    const emitSpy = vi.spyOn(events, "emit");
+    const pi = bootExtension(makeFakePi({ events, toolNames: [] }));
 
     // ready is not emitted at load — only after session_start publishes.
     expect(
@@ -310,7 +296,7 @@ describe("piPermissionSystemExtension ready event wiring", () => {
         input: async (): Promise<string | undefined> => undefined,
       },
     };
-    await handlers.get("session_start")?.({ reason: "start" }, ctx);
+    await pi.fire("session_start", { reason: "start" }, ctx);
 
     const readyCalls = emitSpy.mock.calls.filter(
       ([channel]) => channel === PERMISSIONS_READY_CHANNEL,

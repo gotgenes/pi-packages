@@ -59,6 +59,8 @@ describe("session_start handler consolidation", () => {
       getActiveTools: (): string[] => [],
       setActiveTools: (): void => {},
       registerProvider: (): void => {},
+      registerFlag: (): void => {},
+      getFlag: (): undefined => undefined,
       events: {
         emit: (): void => {},
         on: (): (() => void) => () => undefined,
@@ -83,6 +85,8 @@ describe("session_start handler consolidation", () => {
       getActiveTools: (): string[] => [],
       setActiveTools: (): void => {},
       registerProvider: (): void => {},
+      registerFlag: (): void => {},
+      getFlag: (): undefined => undefined,
       events: {
         emit: (): void => {},
         on: (): (() => void) => () => undefined,
