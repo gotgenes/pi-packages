@@ -37,8 +37,6 @@ export function makePaths(
   overrides: Partial<ExtensionPaths> = {},
 ): ExtensionPaths {
   return {
-    agentDir: "/test/agent",
-    sessionsDir: "/test/agent/sessions",
     subagentSessionsDir: "/test/agent/subagent-sessions",
     forwardingDir: "/test/agent/sessions/permission-forwarding",
     globalLogsDir: "/test/agent/logs",

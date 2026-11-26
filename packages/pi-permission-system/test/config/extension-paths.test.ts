@@ -20,22 +20,12 @@ describe("computeExtensionPaths", () => {
     );
   });
 
-  it("sets agentDir from argument", () => {
-    const paths = computeExtensionPaths("/test/agent");
-    expect(paths.agentDir).toBe("/test/agent");
-  });
-
-  it("derives sessionsDir as agentDir/sessions", () => {
-    const paths = computeExtensionPaths("/test/agent");
-    expect(paths.sessionsDir).toBe("/test/agent/sessions");
-  });
-
   it("derives subagentSessionsDir as agentDir/subagent-sessions", () => {
     const paths = computeExtensionPaths("/test/agent");
     expect(paths.subagentSessionsDir).toBe("/test/agent/subagent-sessions");
   });
 
-  it("derives forwardingDir as sessionsDir/permission-forwarding", () => {
+  it("derives forwardingDir as agentDir/sessions/permission-forwarding", () => {
     const paths = computeExtensionPaths("/test/agent");
     expect(paths.forwardingDir).toBe(
       join("/test/agent/sessions", "permission-forwarding"),
@@ -105,9 +95,7 @@ describe("computeExtensionPaths", () => {
   it("two calls with different agentDirs produce independent results", () => {
     const a = computeExtensionPaths("/agent/a");
     const b = computeExtensionPaths("/agent/b");
-    expect(a.agentDir).toBe("/agent/a");
-    expect(b.agentDir).toBe("/agent/b");
-    expect(a.sessionsDir).toBe("/agent/a/sessions");
-    expect(b.sessionsDir).toBe("/agent/b/sessions");
+    expect(a.forwardingDir).toBe("/agent/a/sessions/permission-forwarding");
+    expect(b.forwardingDir).toBe("/agent/b/sessions/permission-forwarding");
   });
 });

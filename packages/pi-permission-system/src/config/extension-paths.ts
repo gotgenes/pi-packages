@@ -5,13 +5,10 @@ import { getGlobalLogsDir } from "./config-paths";
 /**
  * Immutable path constants derived from `agentDir` at construction time.
  *
- * Computed once at startup in `computeExtensionPaths()` and embedded into
- * `ExtensionRuntime`. Later refactorings (#129 PermissionSession, #130
- * handler classes) consume this as a single dep instead of individual fields.
+ * Computed once at startup in `computeExtensionPaths()` and handed to the
+ * collaborators that read them.
  */
 export interface ExtensionPaths {
-  readonly agentDir: string;
-  readonly sessionsDir: string;
   readonly subagentSessionsDir: string;
   readonly forwardingDir: string;
   readonly globalLogsDir: string;
@@ -83,8 +80,6 @@ export function computeExtensionPaths(
   ];
 
   return {
-    agentDir,
-    sessionsDir,
     subagentSessionsDir,
     forwardingDir,
     globalLogsDir,
