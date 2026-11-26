@@ -71,8 +71,12 @@ export default function piPermissionSystemExtension(pi: ExtensionAPI): void {
   const agentDir = getAgentDir();
   // getPackageDir() is Pi's own install dir; auto-allow it for read-only tools
   // so the agent can read Pi's bundled docs/examples regardless of layout.
+  // PI_CODING_AGENT_SESSION_DIR relocates Pi's session store; the forwarding
+  // tree follows it (see ExtensionPathOptions.sessionDir for why only the
+  // inherited variable).
   const paths = computeExtensionPaths(agentDir, {
     piPackageDir: getPackageDir(),
+    sessionDir: process.env.PI_CODING_AGENT_SESSION_DIR,
   });
   // The single process.platform read for the whole extension, resolved once
   // into the path-language flavor that every consumer shares (the session's

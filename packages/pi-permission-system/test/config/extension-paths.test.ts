@@ -1,3 +1,4 @@
+import { homedir } from "node:os";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -30,6 +31,51 @@ describe("computeExtensionPaths", () => {
     expect(paths.forwardingDir).toBe(
       join("/test/agent/sessions", "permission-forwarding"),
     );
+  });
+
+  describe("forwarding directory", () => {
+    it("roots at a relocated session dir", () => {
+      const paths = computeExtensionPaths("/test/agent", {
+        sessionDir: "/data/pi",
+      });
+      expect(paths.forwardingDir).toBe("/data/pi/permission-forwarding");
+    });
+
+    it("expands a leading ~ in a relocated session dir", () => {
+      const paths = computeExtensionPaths("/test/agent", {
+        sessionDir: "~/pi-data",
+      });
+      expect(paths.forwardingDir).toBe(
+        join(homedir(), "pi-data", "permission-forwarding"),
+      );
+    });
+
+    it("ignores an empty session dir, as Pi does", () => {
+      const paths = computeExtensionPaths("/test/agent", { sessionDir: "" });
+      expect(paths.forwardingDir).toBe(
+        "/test/agent/sessions/permission-forwarding",
+      );
+    });
+
+    it("passes a relative session dir through, as Pi does", () => {
+      const paths = computeExtensionPaths("/test/agent", {
+        sessionDir: "rel/dir",
+      });
+      expect(paths.forwardingDir).toBe(
+        join("rel/dir", "permission-forwarding"),
+      );
+    });
+
+    it("leaves every other path under agentDir", () => {
+      const paths = computeExtensionPaths("/test/agent", {
+        sessionDir: "/data/pi",
+      });
+      expect(paths.subagentSessionsDir).toBe("/test/agent/subagent-sessions");
+      expect(paths.globalLogsDir).toBe(getGlobalLogsDir("/test/agent"));
+      expect(paths.piInfrastructureExcludedDirs).toEqual([
+        getGlobalLogsDir("/test/agent"),
+      ]);
+    });
   });
 
   it("derives globalLogsDir via getGlobalLogsDir(agentDir)", () => {

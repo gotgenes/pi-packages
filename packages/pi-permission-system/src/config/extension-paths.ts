@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { expandHomePath } from "#src/path/expand-home";
 import { discoverGlobalNodeModulesRoot } from "#src/path/node-modules-discovery";
 import { getGlobalLogsDir } from "./config-paths";
 
@@ -61,6 +62,18 @@ interface ExtensionPathOptions {
    * global `node_modules` root already included here.
    */
   readonly piPackageDir?: string;
+  /**
+   * Pi's relocated session store, as the inherited
+   * `PI_CODING_AGENT_SESSION_DIR` names it. When non-empty the forwarding
+   * directory roots there instead of under `agentDir`, so moving the store out
+   * of the agent directory takes the serving heartbeat with it.
+   *
+   * Only the environment value, never `--session-dir` or `settings.sessionDir`:
+   * a parent and its out-of-process child rendezvous in this directory, and an
+   * inherited variable is the one source both are guaranteed to share. A
+   * relative value passes through unchanged, as it does for Pi's own store.
+   */
+  readonly sessionDir?: string;
 }
 
 /**
@@ -71,11 +84,13 @@ interface ExtensionPathOptions {
  */
 export function computeExtensionPaths(
   agentDir: string,
-  { piPackageDir }: ExtensionPathOptions = {},
+  { piPackageDir, sessionDir }: ExtensionPathOptions = {},
 ): ExtensionPaths {
-  const sessionsDir = join(agentDir, "sessions");
+  const forwardingRoot = sessionDir
+    ? expandHomePath(sessionDir)
+    : join(agentDir, "sessions");
   const subagentSessionsDir = join(agentDir, "subagent-sessions");
-  const forwardingDir = join(sessionsDir, "permission-forwarding");
+  const forwardingDir = join(forwardingRoot, "permission-forwarding");
   const globalLogsDir = getGlobalLogsDir(agentDir);
 
   const globalNodeModulesRoot = discoverGlobalNodeModulesRoot();
