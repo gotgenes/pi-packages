@@ -543,7 +543,14 @@ export const unifiedConfigSchema = z
         default: [],
       }),
     authorizerChain: z
-      .array(z.string().min(1))
+      .array(
+        z.string().min(1).meta({
+          description:
+            "The name a chain link registered under through PermissionsService.registerAuthorizer(name, authorize), not a package name. The first-party @gotgenes/pi-permission-model-judge registers as model-judge. An unregistered name is skipped fail-safe.",
+          markdownDescription:
+            "The name a chain link registered under through `PermissionsService.registerAuthorizer(name, authorize)` \u2014 not the npm package name. The first-party [`@gotgenes/pi-permission-model-judge`](https://www.npmjs.com/package/@gotgenes/pi-permission-model-judge) registers as `model-judge`.\n\nA name nothing registered is skipped fail-safe with a warning, so a typo means more prompting, never less.",
+        }),
+      )
       .max(MAX_CONFIG_ARRAY_ITEMS)
       .optional()
       .meta({
@@ -552,6 +559,7 @@ export const unifiedConfigSchema = z
         markdownDescription:
           "Ordered names of registered **live-authority chain links** (e.g. a model judge) to consult before the terminal authorizer (the human, or the subagent-forwarding / headless-deny fallback).\n\nA link reviews an `ask` and returns `allow` / `deny` (with an optional teaching reason) / `defer` to the next link. Three invariants govern the chain:\n\n- **Config order wins.** The order here \u2014 not the order extensions register in \u2014 fixes the security-relevant chain order.\n- **Fail-safe skip.** A name with no registered link is skipped with a warning; the `ask` still reaches the terminal (more prompting, never less).\n- **Opt-in activation.** Installing a judge extension grants it no authority; a link decides nothing until you name it here.\n\nThe chain owner caps every verdict with a bounded-delegation checkpoint: a link's `allow` on an excluded surface (`external_directory` or `path`) is downgraded to `defer`, so a link cannot exceed your policy. The one exception is per ask: a link's `allow` on a bash `external_directory` ask whose every flagged path names nothing on disk below the filesystem root (and is not a proven write) is honored, and the review log records `authorizer_allow_licensed`.\n\nDefaults to an empty list (no links).",
         default: [],
+        examples: [["model-judge"]],
       }),
     permission: permissionSchema.optional(),
     shellTools: shellToolsSchema.optional(),

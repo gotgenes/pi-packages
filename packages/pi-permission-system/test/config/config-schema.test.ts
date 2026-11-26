@@ -630,6 +630,23 @@ describe("buildPermissionsJsonSchema", () => {
     expect(typeof properties.yoloMode.markdownDescription).toBe("string");
   });
 
+  it("documents each authorizerChain entry as a registered link name", () => {
+    const properties = schema.properties as Record<
+      string,
+      Record<string, unknown>
+    >;
+    const chain = properties.authorizerChain;
+    const item = chain.items as Record<string, unknown>;
+
+    expect(item.description).toEqual(
+      expect.stringContaining("registers as model-judge"),
+    );
+    expect(item.markdownDescription).toEqual(
+      expect.stringContaining("registerAuthorizer"),
+    );
+    expect(chain.examples).toEqual([["model-judge"]]);
+  });
+
   it("preserves the permission examples", () => {
     const properties = schema.properties as Record<
       string,
