@@ -8,70 +8,32 @@ import {
   unlinkSync,
   writeFileSync,
 } from "node:fs";
+import { z } from "zod";
 import {
   OWNER_ONLY_DIRECTORY_MODE,
   OWNER_ONLY_FILE_MODE,
 } from "#src/logging/log-file-permissions";
 import type { DebugReviewLogger } from "#src/logging/session-logger";
-import { asPromptPayload } from "#src/presentation/prompt-payload";
-import type { PermissionUiPromptSource } from "#src/service/permission-events";
 import {
   type ApprovalGrant,
   isSessionGrantWidth,
 } from "#src/session/approval-grant";
-import type { AskingBashUnit } from "#src/types";
 import { asDecisionSource } from "./decision-source";
+import {
+  approvalGrantSchema,
+  forwardedPermissionRequestSchema,
+} from "./forwarded-request-schema";
 import { isPermissionDecisionState } from "./permission-dialog";
 import {
   createPermissionForwardingLocation,
-  type ForwardedAccessIntent,
   type ForwardedPermissionRequest,
   type ForwardedPermissionResponse,
-  type ForwardedSessionApproval,
   type PermissionForwardingLocation,
 } from "./permission-forwarding";
 import {
   retryOnTransientFsError,
   type TransientFsRetryRecord,
 } from "./transient-fs-retry";
-
-/** Valid `permissions:ui_prompt` source values, for tolerant request reads. */
-const UI_PROMPT_SOURCES = [
-  "tool_call",
-  "skill_input",
-  "skill_read",
-] as const satisfies readonly PermissionUiPromptSource[];
-
-/** Narrow an unknown value to a valid prompt source, or `undefined`. */
-function asUiPromptSource(
-  value: unknown,
-): PermissionUiPromptSource | undefined {
-  return UI_PROMPT_SOURCES.find((source) => source === value);
-}
-
-/** Narrow an unknown value to a nullable display string, or `undefined`. */
-function asNullableDisplayString(value: unknown): string | null | undefined {
-  if (value === null || typeof value === "string") {
-    return value;
-  }
-  return undefined;
-}
-
-/** Narrow an unknown value to an `ApprovalGrant`, or `undefined`. */
-function asApprovalGrant(value: unknown): ApprovalGrant | undefined {
-  if (typeof value !== "object" || value === null) {
-    return undefined;
-  }
-  const candidate = value as Partial<ApprovalGrant>;
-  if (
-    typeof candidate.surface !== "string" ||
-    candidate.surface.length === 0 ||
-    typeof candidate.pattern !== "string"
-  ) {
-    return undefined;
-  }
-  return { surface: candidate.surface, pattern: candidate.pattern };
-}
 
 /**
  * Read a response's narrowed grants, granting nothing when they are malformed.
@@ -82,187 +44,8 @@ function asApprovalGrant(value: unknown): ApprovalGrant | undefined {
  * and the decision still reaches the requester.
  */
 function asNarrowedGrants(value: unknown): ApprovalGrant[] {
-  if (!Array.isArray(value)) return [];
-  const grants: ApprovalGrant[] = [];
-  for (const entry of value) {
-    const grant = asApprovalGrant(entry);
-    if (!grant) return [];
-    grants.push(grant);
-  }
-  return grants;
-}
-
-/**
- * Narrow an unknown value to a `ForwardedSessionApproval`, or `undefined`.
- *
- * Tolerant read: the child's session-approval suggestion is optional (absent
- * on an older child) and only accepted when well-formed — a non-empty `grants`
- * array whose every entry names a non-empty surface and a pattern. The
- * pre-#810 shape (`surface` plus `patterns`) is rejected rather than
- * normalized, so a version-skewed request drops the suggestion and the serving
- * dialog offers no whole-session scope.
- *
- * An empty `grants` array is rejected too: it would record nothing while still
- * writing a `forwarded_permission.session_recorded` entry claiming it had.
- */
-function asForwardedSessionApproval(
-  value: unknown,
-): ForwardedSessionApproval | undefined {
-  if (typeof value !== "object" || value === null) {
-    return undefined;
-  }
-  const candidate = value as Partial<ForwardedSessionApproval>;
-  if (!Array.isArray(candidate.grants) || candidate.grants.length === 0) {
-    return undefined;
-  }
-  const grants: ApprovalGrant[] = [];
-  for (const entry of candidate.grants) {
-    const grant = asApprovalGrant(entry);
-    if (!grant) return undefined;
-    grants.push(grant);
-  }
-  return { grants };
-}
-
-/**
- * Narrow an unknown value to a `ForwardedAccessIntent`, or `undefined`.
- *
- * Tolerant read: the child-fixed access intent is optional (absent on an older
- * child) and only accepted when fully well-formed — a string `surface`, an
- * all-string `matchValues` array, a `string | null` `boundaryValue`, a string
- * `requesterCwd`, and a `principal` with string `sessionId`/`agentName`. Any
- * malformed shape → `undefined`, so the serving node floors to `ask` (Step 3)
- * rather than resolving against corrupt facts.
- */
-function asForwardedAccessIntent(
-  value: unknown,
-): ForwardedAccessIntent | undefined {
-  if (typeof value !== "object" || value === null) {
-    return undefined;
-  }
-  const candidate = value as {
-    surface?: unknown;
-    matchValues?: unknown;
-    boundaryValue?: unknown;
-    floor?: unknown;
-    askingUnits?: unknown;
-    delegationLicense?: unknown;
-    requesterCwd?: unknown;
-    principal?: unknown;
-  };
-  if (
-    typeof candidate.surface !== "string" ||
-    !Array.isArray(candidate.matchValues) ||
-    !candidate.matchValues.every((entry) => typeof entry === "string") ||
-    !(
-      candidate.boundaryValue === null ||
-      typeof candidate.boundaryValue === "string"
-    ) ||
-    // A malformed floor drops the whole intent, which escalates: it must
-    // never read as "no floor".
-    !(candidate.floor === undefined || typeof candidate.floor === "string") ||
-    // Likewise a malformed unit list: it must never read as "no units", which
-    // would judge the chain's winner alone.
-    !(
-      candidate.askingUnits === undefined ||
-      isWellFormedAskingUnits(candidate.askingUnits)
-    ) ||
-    typeof candidate.requesterCwd !== "string" ||
-    typeof candidate.principal !== "object" ||
-    candidate.principal === null
-  ) {
-    return undefined;
-  }
-  const principal = candidate.principal as {
-    sessionId?: unknown;
-    agentName?: unknown;
-  };
-  if (
-    typeof principal.sessionId !== "string" ||
-    typeof principal.agentName !== "string"
-  ) {
-    return undefined;
-  }
-  return {
-    surface: candidate.surface,
-    matchValues: [...candidate.matchValues],
-    boundaryValue: candidate.boundaryValue,
-    ...(candidate.floor === undefined ? {} : { floor: candidate.floor }),
-    ...(isWellFormedAskingUnits(candidate.askingUnits)
-      ? { askingUnits: copyAskingUnits(candidate.askingUnits) }
-      : {}),
-    // Unlike a malformed floor, an unrecognized license drops only itself:
-    // absence is the restrictive reading, so the intent stays usable.
-    ...(candidate.delegationLicense === "nothing-on-disk"
-      ? { delegationLicense: candidate.delegationLicense }
-      : {}),
-    requesterCwd: candidate.requesterCwd,
-    principal: {
-      sessionId: principal.sessionId,
-      agentName: principal.agentName,
-    },
-  };
-}
-
-/**
- * True for a non-empty list of `{ command: string, floor?: string }` units.
- *
- * Empty is malformed: a child stamps the list only when it holds a unit, so an
- * empty one says nothing a well-formed request would.
- */
-function isWellFormedAskingUnits(
-  value: unknown,
-): value is readonly AskingBashUnit[] {
-  return (
-    Array.isArray(value) &&
-    value.length > 0 &&
-    value.every(isWellFormedAskingUnit)
-  );
-}
-
-/**
- * True for one `{ command: string, spellings?: string[], floor?: string }`
- * unit.
- *
- * A present `spellings` must be a non-empty all-string list: the child omits
- * the key when it has none, and a malformed list must never read as "no
- * spellings", which would let a serving `deny` written against one miss.
- */
-function isWellFormedAskingUnit(value: unknown): value is AskingBashUnit {
-  if (typeof value !== "object" || value === null) return false;
-  const unit = value as {
-    command?: unknown;
-    spellings?: unknown;
-    matchedPattern?: unknown;
-    floor?: unknown;
-  };
-  return (
-    typeof unit.command === "string" &&
-    (unit.spellings === undefined || isNonEmptyStringList(unit.spellings)) &&
-    (unit.matchedPattern === undefined ||
-      typeof unit.matchedPattern === "string") &&
-    (unit.floor === undefined || typeof unit.floor === "string")
-  );
-}
-
-function isNonEmptyStringList(value: unknown): value is string[] {
-  return (
-    Array.isArray(value) &&
-    value.length > 0 &&
-    value.every((entry) => typeof entry === "string")
-  );
-}
-
-/** Rebuild each unit field by field, so no unread key rides through. */
-function copyAskingUnits(units: readonly AskingBashUnit[]): AskingBashUnit[] {
-  return units.map((unit) => ({
-    command: unit.command,
-    ...(unit.spellings === undefined ? {} : { spellings: [...unit.spellings] }),
-    ...(unit.matchedPattern === undefined
-      ? {}
-      : { matchedPattern: unit.matchedPattern }),
-    ...(unit.floor === undefined ? {} : { floor: unit.floor }),
-  }));
+  const parsed = z.array(approvalGrantSchema).safeParse(value);
+  return parsed.success ? parsed.data : [];
 }
 
 export function formatUnknownErrorMessage(error: unknown): string {
@@ -562,41 +345,17 @@ export function readForwardedPermissionRequest(
   filePath: string,
 ): ForwardedPermissionRequest | null {
   try {
-    const raw = readFileSync(filePath, "utf-8");
-    const parsed = JSON.parse(raw) as Partial<ForwardedPermissionRequest>;
-    if (
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- JSON.parse can return null for the string "null"
-      !parsed ||
-      typeof parsed.id !== "string" ||
-      typeof parsed.createdAt !== "number" ||
-      typeof parsed.requesterSessionId !== "string" ||
-      typeof parsed.targetSessionId !== "string" ||
-      typeof parsed.requesterAgentName !== "string"
-    ) {
+    const raw: unknown = JSON.parse(readFileSync(filePath, "utf-8"));
+    const parsed = forwardedPermissionRequestSchema.safeParse(raw);
+    if (!parsed.success) {
       logPermissionForwardingWarning(
         logger,
         `Ignoring invalid forwarded permission request format in '${filePath}'`,
+        z.prettifyError(parsed.error),
       );
       return null;
     }
-
-    return {
-      id: parsed.id,
-      createdAt: parsed.createdAt,
-      requesterSessionId: parsed.requesterSessionId,
-      targetSessionId: parsed.targetSessionId,
-      requesterAgentName: parsed.requesterAgentName,
-      // Tolerant read: the payload and display fields are optional and may be
-      // absent (older child) or malformed; reconstruct only the well-formed
-      // ones. An older child's `message` is deliberately not salvaged — a
-      // skewed ask renders from the fields it does carry (ADR 0011 §9).
-      payload: asPromptPayload(parsed.payload),
-      source: asUiPromptSource(parsed.source),
-      surface: asNullableDisplayString(parsed.surface),
-      value: asNullableDisplayString(parsed.value),
-      sessionApproval: asForwardedSessionApproval(parsed.sessionApproval),
-      accessIntent: asForwardedAccessIntent(parsed.accessIntent),
-    };
+    return parsed.data;
   } catch (error) {
     logPermissionForwardingWarning(
       logger,
