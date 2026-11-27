@@ -6,10 +6,13 @@
  * object form with `extensions: []` loads none of that package's extensions in
  * both of Pi's filter modes — the default mode treats the empty array as an
  * explicit disable, and `autoload: false` delta mode starts empty and only adds
- * explicitly listed patterns. Filtering here, at resolution time, means the
- * excluded package's extension module is never imported and its factory never
- * runs, which is what makes this a prevent-load seam rather than a deny-at-use
- * one. The package's skills, prompts, and themes are untouched.
+ * explicitly listed patterns. `skills: []` disables the package's skills the
+ * same way: a child that cannot run a package's extensions should not be
+ * offered its skills either, since the skills instruct the model in the use of
+ * those extensions. Filtering here, at resolution time, means the excluded
+ * package's extension module is never imported and its factory never runs,
+ * which is what makes this a prevent-load seam rather than a deny-at-use one.
+ * The package's prompts and themes are untouched.
  */
 
 import type { PackageSource, SettingsManager } from "@earendil-works/pi-coding-agent";
@@ -51,8 +54,9 @@ export function createExcludedPackagesStorage(
 }
 
 /**
- * Return `settings` with every excluded package's `extensions` filter emptied.
- * Non-matched entries are returned by identity and the input is never mutated.
+ * Return `settings` with every excluded package's `extensions` and `skills`
+ * filters emptied. Non-matched entries are returned by identity and the input is
+ * never mutated.
  */
 export function withPackageExtensionsDisabled(
   settings: PiSettings,
@@ -71,5 +75,5 @@ function disableExtensionsIfExcluded(
 ): PackageSource {
   const source = typeof pkg === "string" ? pkg : pkg.source;
   if (!excluded.has(source)) return pkg;
-  return typeof pkg === "string" ? { source, extensions: [] } : { ...pkg, extensions: [] };
+  return typeof pkg === "string" ? { source, extensions: [], skills: [] } : { ...pkg, extensions: [], skills: [] };
 }
