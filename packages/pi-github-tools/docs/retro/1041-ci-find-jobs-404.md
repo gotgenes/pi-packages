@@ -26,3 +26,22 @@ A spike showed the inline fix fails the pre-commit `fallow audit --staged` gate,
 
 - `packages/pi-github-tools/src/lib/ci.ts` `findRun`: still over the cognitive limit (15/22) after this plan; moving `attempt`/`elapsed`/`lastSeenRun`/`retryOptions` onto a small poll-state class would bring it under.
 - `packages/pi-github-tools/src/lib/ci.ts` `watchRun`: the same three inline abort catches (14/20, inherited) could collapse into one outer catch like `findRun`'s.
+
+## Stage: Implementation — TDD (2026-11-27T17:50:41Z)
+
+### Session summary
+
+Completed all five TDD steps and added one rename commit after review: fixture hoist, abort/jobs-failure characterization, outer-abort-catch refactor with `formatFindTimeout`/`fetchRunJobs` extracted, the jobs-404 fix, and the README/skill docs.
+`ci.test.ts` went from 18 to 25 tests (one weak sleep-abort test replaced by four exact-match abort pins, plus one 403 pin and three jobs-404 tests).
+
+### Observations
+
+- The complexity predictions held exactly: `findRun` measured 12/16 after the refactor and 15/22 after the fix, and the pre-commit `fallow audit --staged` passed both commits.
+- Every planned killing mutation went red; a few killed one extra test each (making `isNotFoundError` return `false` also failed the outlasts-timeout test on its sleep count, and making it accept any `Error` also failed the jobs-abort test).
+- The permission policy denies `git commit -F -` with a heredoc; write the message with `Write` and pass `-F <file>`.
+- Pre-completion reviewer: WARN, then PASS on the delta.
+  The `formatFindTimeout` parameter, named `timeout` and clashing with the numeric budget, was renamed to `search` in a follow-up `refactor:` commit.
+- Reviewer warnings accepted as non-blocking:
+  - `isNotFoundError` matches any `HTTP 404` in the message: a 404 on the run endpoint during the same `gh run view` also matches (still a just-listed run), as would a theoretical `JSON.parse` error quoting "HTTP 404" from stdout.
+    It was not narrowed, because tying it to `gh()`'s stderr layout could miss a real 404.
+  - In an abort that races a jobs 404, `retries` reports one higher than before the refactor; the abort header is unchanged.
