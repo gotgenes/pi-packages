@@ -42,23 +42,24 @@ function mockSleepAborts(controller: AbortController) {
   });
 }
 
+const sha = "abc1234567890abcdef1234567890abcdef123456";
+
+/** Make the next run list return one in-progress run (id 100) for `sha`. */
+function mockMatchingRun() {
+  mockGhJson([
+    {
+      databaseId: 100,
+      url: "https://github.com/o/r/actions/runs/100",
+      status: "in_progress",
+      conclusion: null,
+      headSha: sha,
+      displayTitle: "CI",
+      name: "CI",
+    },
+  ]);
+}
+
 describe("transient failures", () => {
-  const sha = "abc1234567890abcdef1234567890abcdef123456";
-
-  function mockMatchingRun() {
-    mockGhJson([
-      {
-        databaseId: 100,
-        url: "https://github.com/o/r/actions/runs/100",
-        status: "in_progress",
-        conclusion: null,
-        headSha: sha,
-        displayTitle: "CI",
-        name: "CI",
-      },
-    ]);
-  }
-
   it("findRun retries the run list and reports the wait", async () => {
     mockGhFail("HTTP 503");
     mockMatchingRun();
@@ -123,21 +124,8 @@ describe("transient failures", () => {
 });
 
 describe("findRun", () => {
-  const sha = "abc1234567890abcdef1234567890abcdef123456";
-
   it("returns structured output on first-poll match", async () => {
-    // gh run list
-    mockGhJson([
-      {
-        databaseId: 100,
-        url: "https://github.com/o/r/actions/runs/100",
-        status: "in_progress",
-        conclusion: null,
-        headSha: sha,
-        displayTitle: "CI",
-        name: "CI",
-      },
-    ]);
+    mockMatchingRun();
     // gh run view (jobs)
     mockGhJson({
       jobs: [{ name: "build", status: "in_progress", conclusion: null }],
