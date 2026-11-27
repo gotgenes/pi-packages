@@ -49,4 +49,18 @@ The `pi-subagents` suite went from 2249 to 2268 tests; `check`, root `lint`, roo
 - Pre-completion reviewer: round 1 WARN (README wording, a stray blank line in `subagent.ts`, retro entry pending), round 2 (delta) PASS.
   The reviewer noted that a replaced, uncollected run's updates go from "exactly once" to "at most once", which is the operator's drop decision.
 
+## Stage: Sync (worktree) (2026-11-27T17:06:58Z)
+
+### Session summary
+
+Root `pnpm run lint` and `pnpm fallow dead-code` pass on the branch before the rebase onto local `main`; the TDD stage's reviewer ended at a delta PASS with no open WARN.
+The plan's marker reads `**Release:** ship independently`, and the three `fix(pi-subagents):` commits mean `/ship` should expect a `pi-subagents` patch release.
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-1058--/2026-11-26T21-54-29-374Z_01a219da-577d-706d-8e6c-29cdaa910df5.jsonl` — read with `read_session_file({ path: "<path>" })` for message-level verification at land/retro time.
+
+### Observations
+
+- Follow-up [#1155] (an aborted run's late completion disposing its resume's workspace) stays open and untouched by this change.
+- The two `fix:` notification commits carry `Co-authored-by: Tony Wong`; the close comment should credit the reporter's run-identity suggestion.
+
 [#1155]: https://github.com/gotgenes/pi-packages/issues/1155
