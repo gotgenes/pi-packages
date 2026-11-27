@@ -31,3 +31,22 @@ I also spiked the devDependency bump to 1.6.1 and reverted it, then wrote a thre
 #### Deferred tidyings
 
 - `test/authority/permission-prompt-component.test.ts`: "requestPermissionDecision dispatch" and other dispatcher blocks are nested under `describe("presentInlinePermissionPrompt")`; the describe tree misfiles them.
+
+## Stage: Implementation — TDD (2026-11-27T17:17:46Z)
+
+### Session summary
+
+Completed all three TDD steps: the `+` hotkey test and comment rewrite, the Pi dev-pin bump to 1.6.1 with the `hiddenTools` fixture fix, and the `feat:` that mounts the inline dialog with `blocked: { kind: "permission", message: title }` plus its docs.
+The pi-permission-system suite went from 6675 to 6677 tests (the `it.each` over the two titles).
+
+### Observations
+
+- Every killing mutation behaved as the plan predicted.
+  Deleting `blocked`, switching `kind` to `"question"`, and setting `overlay: true` each killed both `it.each` cases; a fixed `"Permission Required"` message killed only the `(Subagent)` case.
+  Appending `+` to `SYMBOLS` killed both renamed `dialog-keys` tests, plus three existing `+` pins that still run against pi-tui 1.0.0 at that step.
+- The bump step had exactly the fallout the planning spike measured: one `tsc` error and no test failures once step 1 had landed; `pnpm install` needed no `minimumReleaseAgeExclude` entry.
+- Manual check, run live: Pi in a detached `tmux` session under `PI_PROGRAM_STATUS=1 script -q /tmp/pi-1091.log`, with the project `authorizerChain` blanked temporarily (restored afterward) so the model-judge could not answer the ask, and a denied `read /etc/hosts`.
+  The captured OSC 7501 stream was `idle`, `working`, `blocked:kind=permission:msg=UGVybWlzc2lvbiBSZXF1aXJlZA==` ("Permission Required"), then `working` after the deny.
+- Pre-completion reviewer: WARN, then PASS on the delta.
+  The WARN was correct: OSC 7501 reporting arrived in Pi 1.1.0, so Pi 1.0.x reports no status at all, not `working`; the `configuration.md` sentence was fixed and amended into the feat commit, and now also names the `PI_PROGRAM_STATUS=1` override.
+  The plan's environment table still reads "Pi 1.0–1.4 → `working`"; that row should read 1.1–1.4, with 1.0 reporting nothing.
