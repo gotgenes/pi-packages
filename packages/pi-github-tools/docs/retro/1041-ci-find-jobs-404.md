@@ -60,3 +60,46 @@ The plan's marker is `**Release:** ship independently`; `pi-github-tools` gets a
 - Operator settled both remaining reviewer warnings at sync: keep the broad `HTTP 404` match in `isNotFoundError`, and accept the off-by-one `retries` count when an abort races a jobs 404.
 - Restart Pi at the root before `/ship` if its `ci_find` should exercise the fix; this ship itself runs the pre-merge tool.
 - No follow-up issues were filed; the two deferred tidyings in the Planning stage are the only carried work.
+
+## Stage: Final Retrospective (2026-11-27T18:27:47Z)
+
+### Session summary
+
+One peer session planned, implemented, and synced the fix; the root session fast-forward-merged ten commits, passed CI on the first run, closed the issue, and released `pi-github-tools-v6.1.1`.
+`ci_find` now waits out a jobs-endpoint 404 for a run it has just listed, behind a preparatory refactor that kept `findRun` under the `fallow audit --staged` complexity gate.
+
+### Observations
+
+#### What went well
+
+- The planning-stage spike paid for itself.
+  Before writing the plan, the peer applied the inline fix to the real file, staged it, and ran `fallow audit --staged`, which failed (21/37 to 25/43).
+  That turned a fix that would have been rejected at commit time into three planned preparatory steps, and the `tidy-first-assessor`'s scratch-copy measurements (12/16 after the refactor, 15/22 after the fix) held exactly in TDD.
+- Every TDD step ran a scripted killing-mutation pass (`/tmp/mut*.mjs`) that restored `ci.ts` and confirmed it with `cmp`; no probe leaked into a commit.
+- The ship had no friction: the ff-merge prediction, both root gates, CI, the close, and the release each passed on the first attempt.
+
+#### What caused friction
+
+- `slip` (self-identified) — both `ask_user` gates (planning's timeout-edge choice, sync's reviewer warnings) were blocked by the `ask-user-text-first` guard because the briefing went into thinking.
+  The peer recovered on the next call each time by posting the briefing as plain text and ending the turn, as the guard's reason string now directs (see `packages/pi-subagents/docs/retro/1088-collapsible-transcript-blocks.md`).
+  Impact: one blocked call per gate, no rework.
+- `rule-unloaded` (self-identified) — TDD step 4 committed with `git commit -F -` from a heredoc and hit the `pi-permission-system` deny rule.
+  The rule is in the `shell-traps` skill, which the `AGENTS.md` index routes heredoc bash calls to; the peer loaded `git-workflow` but not `shell-traps`.
+  Impact: one denied call; the next call wrote `/tmp/msg-1041.txt` and committed with `-F <file>`.
+- `other` — the planning stage's post-write lint batch ended in `rg -n '\\u20'`, which exits 1 on no match, so a clean check reported an error.
+  Impact: none; the output showed `rumdl` passing.
+
+#### What the operator steered
+
+- None against a recommendation.
+  The operator answered "1" at the planning gate (rethrow the last 404, the recommended option) and "keep and accept" at the sync gate (both recommended).
+
+### Diagnostic details
+
+- **Model-performance correlation** — the peer session and all three subagents (`tidy-first-assessor`, two `pre-completion-reviewer` runs) ran `anthropic/claude-opus-5-5`; each was judgment-heavy work, so no mismatch.
+- **Feedback-loop gap analysis** — the peer ran the package test file, `check`, and file-scoped `eslint`/`biome` after every step, root gates at the start and end of TDD, and `fallow health` after each `ci.ts` change; nothing was deferred to the end.
+
+### Changes made
+
+1. `.pi/skills/git-workflow/SKILL.md`: the commit-body rule (`Write` a file, pass `-F <file>`, never `-F -` from a heredoc or `-m`) now lives under § Conventional Commits, the skill a session loads before its first commit.
+2. `.pi/skills/shell-traps/SKILL.md`: § Bodies with backticks drops the two commit sentences and points to `git-workflow`.

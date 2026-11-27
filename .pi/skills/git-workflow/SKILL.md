@@ -20,6 +20,7 @@ When a `prek` hook fails to **install** (a network error building the hook env �
 Run the equivalent gate manually (`pnpm exec rumdl check`, `pnpm run lint`) and, once clean, commit with `--no-verify`.
 This applies only to a hook *install* failure — a hook that runs and *reports* a violation is a real gate; fix it, never `--no-verify` past it.
 When a commit-lint or format gate fires a false positive, disable the single offending check (the specific `committed.toml` field), not the whole gate.
+Write a commit body with quotes or backticks to a file with `Write` and pass `-F <file>` — never `-F -` from a heredoc (a deny rule blocks it) and never `-m`, which corrupts it silently (visible only in `git log -1 --format=%B`).
 Commit at meaningful checkpoints without waiting for an explicit reminder.
 Prefer small, reviewable commits that leave the repository in a valid state.
 

@@ -22,8 +22,7 @@ Pass file tool paths repo-relative (`packages/<pkg>/src/x.ts`), not hand-built a
 
 A `gh issue comment` / `gh pr comment` body containing backticks or fences belongs in a file passed with `--body-file`, whatever the quoting.
 Single quotes ship a `` \` `` literally, and double quotes need every `` ` `` escaped, where one miscount publishes mismatched code spans.
-A `git commit` body with quotes or backticks belongs in a file passed with `-F <file>`, written with `Write` — never `-F -` from a heredoc.
-A `-m` string corrupts one silently; the damage shows only in `git log -1 --format=%B`.
+A `git commit` body follows the same rule; see `git-workflow`.
 
 ## Pipelines
 
