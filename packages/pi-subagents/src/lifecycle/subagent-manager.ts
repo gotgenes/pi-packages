@@ -274,8 +274,8 @@ export class SubagentManager {
       // carrier claim; suppressing the observer here would also suppress the
       // lifecycle event and the session-history record, which are facts about
       // the run rather than announcements.
-      onRunFinished: (agent, kind) => {
-        try { this.observer?.onSubagentRunFinished(agent, kind); } catch (err) { debugLog("onSubagentRunFinished observer", err); }
+      onRunFinished: (agent, run) => {
+        try { this.observer?.onSubagentRunFinished(agent, run.kind); } catch (err) { debugLog("onSubagentRunFinished observer", err); }
       },
       onUpdateSent: (agent, message) => {
         this.observer?.onSubagentUpdate?.(agent, message);

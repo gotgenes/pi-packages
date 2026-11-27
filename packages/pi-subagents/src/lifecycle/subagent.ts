@@ -34,8 +34,12 @@ export interface SubagentLifecycleObserver {
 	onRunStarted?(agent: Subagent, kind: RunKind): void;
 	/** Fires once the session is created — the subagent's subagentSession is now available. */
 	onSessionCreated?(agent: Subagent): void;
-	/** Fires once when a run reaches a terminal state: it completed, failed, or was stopped. */
-	onRunFinished?(agent: Subagent, kind: RunKind): void;
+	/**
+	 * Fires once when a run reaches a terminal state: it completed, failed, or was
+	 * stopped. Names the run that ended, which a resume may already have replaced,
+	 * so a reader takes that run's outcome rather than the agent's latest.
+	 */
+	onRunFinished?(agent: Subagent, run: RunOutcome): void;
 	/** Fires when the running agent sends its parent a mid-run message. */
 	onUpdateSent?(agent: Subagent, message: string): void;
 	/**
@@ -674,10 +678,11 @@ export class Subagent {
 	 * when the slot finally frees no-ops on its guard — one notification.
 	 */
 	stopQueued(): void {
-		this.currentRun.stopQueued();
 		// The queued run is the agent's initial run or a resume waiting for its slot,
 		// and it ends on that run's own path.
-		this.execution.observer?.onRunFinished?.(this, this.currentRun.kind);
+		const run = this.currentRun;
+		run.stopQueued();
+		this.execution.observer?.onRunFinished?.(this, run);
 	}
 
 	/**
@@ -738,7 +743,7 @@ export class Subagent {
 		if (exhausted) run.markAborted(finalResult);
 		else run.markCompleted(finalResult);
 
-		this.execution.observer?.onRunFinished?.(this, run.kind);
+		this.execution.observer?.onRunFinished?.(this, run);
 	}
 
 	/**
@@ -780,7 +785,7 @@ export class Subagent {
 	private endBeforeStart(run: SubagentRun): void {
 		this.abort();
 		run.release();
-		this.execution.observer?.onRunFinished?.(this, run.kind);
+		this.execution.observer?.onRunFinished?.(this, run);
 	}
 
 	/** Fail a run: mark error, release its handles, best-effort workspace dispose, notify observer. */
@@ -794,7 +799,7 @@ export class Subagent {
 		run.setPendingQuestion(undefined);
 		run.release();
 		this.disposeWorkspaceQuietly(run, "error");
-		this.execution.observer?.onRunFinished?.(this, run.kind);
+		this.execution.observer?.onRunFinished?.(this, run);
 	}
 
 	/**

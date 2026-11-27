@@ -38,6 +38,8 @@ export interface CarrierClaim {
  * and records it.
  */
 export interface RunOutcome {
+	/** Which run of its agent this is: the initial run or a resume. */
+	readonly kind: RunKind;
 	readonly status: SubagentStatus;
 	readonly result: string | undefined;
 	readonly error: string | undefined;
