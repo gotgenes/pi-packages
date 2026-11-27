@@ -54,6 +54,25 @@ The `pi-permission-system` suite went from 6637 to 6675 tests (+38); every step'
   The two fixed WARNs were `docs/migration/strict-config-validation.md`'s stale yolo guidance and `config-file-writer.test.ts`'s `yoloMode` sample data; the rest are the deviations recorded above.
   `docs/migration/0644-project-trust-gating.md` and `docs/architecture/v3-architecture.md` still name `yoloMode` as historical records.
 
+## Stage: Sync (worktree) (2026-11-27T16:00:47Z)
+
+### Session summary
+
+`pnpm run lint` and `pnpm fallow dead-code` passed before the rebase; the plan's marker is `**Release:** ship independently` (a `feat!:` major).
+At ship, close [#720], [#1031], and PR [#990] with a credit comment.
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-1118--/2026-11-26T18-53-37-730Z_01a21934-c241-7274-a5f4-193d71b45612.jsonl` — read with `read_session_file({ path: "<path>" })` for message-level verification at land/retro time.
+
+### Observations
+
+- Operator decision: a headless relaying node launched with `--auto-approve` keeps serving its own children and relaying their asks upward (option 1, as implemented), rather than gating headless serving on `adjudicatesLocally()`.
+  Option 2 was weighed: it would have kept `main`'s behavior for grandchildren (denied after about two seconds) and needed `PermissionSession.activate` to activate the selection before starting forwarding.
+- The operator wants multi-hop forwarding to stay faithful rather than be gated off; filed as [#1154].
+  `ParentAuthorizer.buildForwardedRequest` stamps the relaying node as requester, so the root resolves a grandchild's ask agent-scoped to the middle node and an `agent <name>` scope matches the middle node (traced in source, not run).
+  Its Phase 16 roadmap disposition is still owed; it was put to the operator at the end of this sync.
+
+[#1154]: https://github.com/gotgenes/pi-packages/issues/1154
+
 [#720]: https://github.com/gotgenes/pi-packages/issues/720
 [#868]: https://github.com/gotgenes/pi-packages/issues/868
 [#990]: https://github.com/gotgenes/pi-packages/pull/990
