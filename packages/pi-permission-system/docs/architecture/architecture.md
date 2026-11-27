@@ -1263,6 +1263,8 @@ Non-path tokens flagged per month (unmeasured at close) is **superseded**: re-ru
   A repo-wide markdown lint check for a backtick nested in a single-backtick code span, unrelated to the channel cause.
 - [#1149] — filed by [#1115]'s planning; deferred to a later phase (operator decision).
   A forwarding liveness signal with no idle writes is a protocol change to the forwarding tree, not a channel, and [#1115]'s 30-second refresh removes its urgency.
+- [#1154] — filed by [#1118]'s sync; deferred to a later phase (operator decision).
+  A relayed forwarded ask names the relaying node as its requester, a fidelity defect in the forwarding wire rather than a channel, and today's trees are depth-2.
 
 #### Deferred tidyings swept
 
@@ -1867,3 +1869,4 @@ Each phase's findings, step plan, dependency diagram, and health metrics are pre
 [#1142]: https://github.com/gotgenes/pi-packages/issues/1142
 [#1148]: https://github.com/gotgenes/pi-packages/issues/1148
 [#1149]: https://github.com/gotgenes/pi-packages/issues/1149
+[#1154]: https://github.com/gotgenes/pi-packages/issues/1154
