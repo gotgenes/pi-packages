@@ -85,6 +85,7 @@ export function makePromptOptions(
   return {
     cwd: "/test/project",
     selectedTools: [],
+    hiddenTools: [],
     toolSnippets: {},
     toolGuidelines: {},
     promptGuidelines: [],
