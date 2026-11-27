@@ -55,6 +55,10 @@ export interface RunOutcome {
 	readonly turnBudget: TurnBudget | undefined;
 	/** A resume replaced this run after it settled. */
 	readonly replaced: boolean;
+	/** A carrier has committed to delivering this outcome. */
+	readonly claimed: boolean;
+	/** The parent has collected this outcome. */
+	readonly consumed: boolean;
 	isActive(): boolean;
 	/** Terminated by error, harness turn-limit abort, or external stop. */
 	isTerminalError(): boolean;

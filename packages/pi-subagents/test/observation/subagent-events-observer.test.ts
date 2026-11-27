@@ -217,10 +217,11 @@ describe("SubagentEventsObserver", () => {
 				const notifications = makeNotifications();
 				const { observer } = makeObserver({ notifications });
 				const record = createTestSubagent();
+				const run = createTestRun(kind);
 
-				observer.onSubagentRunFinished(record, createTestRun(kind));
+				observer.onSubagentRunFinished(record, run);
 
-				expect(notifications.sendCompletion).toHaveBeenCalledExactlyOnceWith(record);
+				expect(notifications.sendCompletion).toHaveBeenCalledExactlyOnceWith(record, run);
 			});
 
 			it("emits exactly once and appends exactly once per call", () => {

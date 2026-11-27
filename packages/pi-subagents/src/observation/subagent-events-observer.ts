@@ -69,7 +69,7 @@ export class SubagentEventsObserver implements SubagentManagerObserver {
 	 */
 	private persistAndNotify(record: Subagent, run: RunOutcome): void {
 		this.appendEntry(SUBAGENT_RECORD_ENTRY, toPersistedRecord(record, run));
-		this.notifications.sendCompletion(record);
+		this.notifications.sendCompletion(record, run);
 	}
 
 	/**

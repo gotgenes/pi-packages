@@ -197,7 +197,7 @@ export function buildEventData(record: Subagent, run: RunOutcome) {
 // ---- Notification system factory ----
 
 export interface NotificationSystem {
-  sendCompletion: (record: Subagent) => void;
+  sendCompletion: (record: Subagent, run: RunOutcome) => void;
   sendUpdate: (record: Subagent, message: string) => void;
   sendWorkspaceNotice: (record: Subagent, notice: string) => void;
   dispose: () => void;
@@ -218,13 +218,15 @@ export interface WorkspaceNoticeDetails {
 }
 
 /**
- * One announcement withheld for the parent's current run.
+ * One announcement withheld for the parent's current run, holding the run it
+ * is about: a resume can replace that run before the flush, and the record's
+ * latest run would then answer for the replacement.
  *
  * A completion for an agent supersedes an earlier one for that agent; two
  * updates are two distinct facts and both survive.
  */
 type PendingAnnouncement =
-  | { kind: "completion"; record: Subagent }
+  | { kind: "completion"; record: Subagent; run: RunOutcome }
   | { kind: "update"; record: Subagent; message: string };
 
 export class NotificationManager implements NotificationSystem {
@@ -232,7 +234,7 @@ export class NotificationManager implements NotificationSystem {
   // a followUp is handed to a queue the extension cannot recall, yet it is only
   // delivered when the run drains that queue at turn end. A parent that pulls
   // the result in between would receive it twice. So nudges that arrive mid-run
-  // are withheld here — where record.consumed is still consultable — and
+  // are withheld here — where the run's consumption is still consultable — and
   // flushed once the run settles.
   // Ordered rather than record-keyed: a completion for an agent supersedes an
   // earlier one for that agent, but announcements from different agents are
@@ -249,35 +251,46 @@ export class NotificationManager implements NotificationSystem {
     ) => void,
   ) {}
 
-  sendCompletion(record: Subagent): void {
+  /**
+   * Announce that `run` of this agent ended. The run is named, not read off the
+   * record, because a resume may already have replaced it.
+   */
+  sendCompletion(record: Subagent, run: RunOutcome): void {
     // The session is gone. It is the aborts fired during shutdown that reach
     // here, and with no parent run active a nudge would go straight out as an
     // unrecallable followUp.
     if (this.disposed) return;
-    // A carrier has committed to delivering this outcome, so announcing it would
-    // duplicate a delivery the parent is already getting. Structural and decided
-    // at the parent's request, so unlike the consumption check below it cannot
-    // race the turn.
-    if (record.claimed) return;
-    // Consumption is domain state on the record; the nudge is a pure
-    // announcement. Skip if the parent already pulled the result (enqueue-time
-    // guard); emitIndividualNudge re-reads record.consumed when the nudge is
-    // actually emitted, which is what makes the flush a fresh re-check.
-    if (record.consumed) return;
+    // Checked here and again at emit: emitIndividualNudge re-reads the run when
+    // the nudge actually goes out, which is what makes the flush a fresh check.
+    if (!this.canAnnounceCompletion(run)) return;
     if (this.parentRunActive) {
-      this.withholdCompletion(record);
+      this.withholdCompletion(record, run);
       return;
     }
-    this.emitIndividualNudge(record);
+    this.emitIndividualNudge(record, run);
+  }
+
+  /**
+   * Whether an announcement is still the right channel for this run's outcome.
+   *
+   * A claimed outcome is one a carrier has committed to delivering, so a nudge
+   * would duplicate it; structural and decided at the parent's request, it
+   * cannot race the turn. A consumed outcome the parent already pulled. A
+   * replaced run was superseded by the resume that replaced it: that resume's
+   * own completion is the announcement owed, and a pointer to collect this run
+   * would return the resume instead.
+   */
+  private canAnnounceCompletion(run: RunOutcome): boolean {
+    return !run.claimed && !run.consumed && !run.replaced;
   }
 
   /**
    * Queue a completion for the flush, superseding an earlier one for the same
-   * agent in the position that one already holds — a re-completion is the same
-   * fact told again, not a later one.
+   * agent in the position that one already holds — a later run's completion
+   * replaces the earlier run's, which its resume superseded.
    */
-  private withholdCompletion(record: Subagent): void {
-    const entry: PendingAnnouncement = { kind: "completion", record };
+  private withholdCompletion(record: Subagent, run: RunOutcome): void {
+    const entry: PendingAnnouncement = { kind: "completion", record, run };
     const existing = this.pending.findIndex(
       (queued) => queued.kind === "completion" && queued.record.id === record.id,
     );
@@ -366,7 +379,7 @@ export class NotificationManager implements NotificationSystem {
     for (const entry of withheld) {
       try {
         if (entry.kind === "update") this.emitUpdate(entry.record, entry.message);
-        else this.emitIndividualNudge(entry.record);
+        else this.emitIndividualNudge(entry.record, entry.run);
       } catch (err) {
         debugLog("notification render", err);
       }
@@ -400,11 +413,9 @@ export class NotificationManager implements NotificationSystem {
     );
   }
 
-  private emitIndividualNudge(record: Subagent): void {
-    if (record.claimed) return;
-    if (record.consumed) return;
+  private emitIndividualNudge(record: Subagent, run: RunOutcome): void {
+    if (!this.canAnnounceCompletion(run)) return;
 
-    const run = record.latestRun;
     const notification = formatTaskNotification(record, run, 500);
     // A never-started agent has no transcript and nothing to collect.
     const pointerLines = run.stoppedWhileQueued ? "" : this.buildPointerLines(record, run);

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import type { RunOutcome } from "#src/lifecycle/subagent-run";
 import {
   buildEventData,
   buildNotificationDetails,
@@ -7,6 +8,7 @@ import {
   formatWorkspaceNotice,
   NotificationManager,
 } from "#src/observation/notification";
+import type { Subagent } from "#src/types";
 import { createTestRun, createTestSubagent, makeStubExecution } from "#test/helpers/make-subagent";
 import { makeWorkspace, makeWorkspaceProvider } from "#test/helpers/make-workspace";
 import { createSubagentSessionStub, toSubagentSession } from "#test/helpers/mock-session";
@@ -41,6 +43,11 @@ function piDeliveryPath(
   if (streaming && opts?.triggerTurn !== false) return "queued";
   if (opts?.triggerTurn) return "started";
   return streaming ? "deferred" : "appended";
+}
+
+/** A record and its latest run: the pair a notice about a record's own last run carries. */
+function withLatestRun(record: Subagent): [Subagent, RunOutcome] {
+  return [record, record.latestRun];
 }
 
 // ---- Pure helper tests ----
@@ -288,14 +295,14 @@ describe("NotificationManager", () => {
   it("sendCompletion delivers the nudge immediately when the parent is idle", () => {
     const args = makeArgs();
     const system = makeManager(args);
-    system.sendCompletion(baseRecord);
+    system.sendCompletion(baseRecord, baseRecord.latestRun);
     expect(args.sendMessage).toHaveBeenCalledOnce();
   });
 
   it("every nudge carries the retrieval instruction", () => {
     const args = makeArgs();
     const system = makeManager(args);
-    system.sendCompletion(baseRecord);
+    system.sendCompletion(baseRecord, baseRecord.latestRun);
     const content = (args.sendMessage.mock.calls[0][0] as { content: string }).content;
     expect(content).toContain("get_subagent_result");
   });
@@ -304,7 +311,7 @@ describe("NotificationManager", () => {
     const args = makeArgs();
     const system = makeManager(args);
     system.sendCompletion(
-      createTestSubagent({ id: "agent-3", pendingQuestion: "Which config?", sessionReady: true }),
+      ...withLatestRun(createTestSubagent({ id: "agent-3", pendingQuestion: "Which config?", sessionReady: true })),
     );
     const content = (args.sendMessage.mock.calls[0][0] as { content: string }).content;
     expect(content).toContain("This agent is waiting on an answer:");
@@ -337,7 +344,7 @@ describe("NotificationManager", () => {
     const args = makeArgs();
     const system = makeManager(args);
 
-    system.sendCompletion(disposed);
+    system.sendCompletion(disposed, disposed.latestRun);
 
     const content = (args.sendMessage.mock.calls[0][0] as { content: string }).content;
     expect(content).toContain("Which config?");
@@ -349,7 +356,7 @@ describe("NotificationManager", () => {
     const args = makeArgs();
     const system = makeManager(args);
     system.sendCompletion(
-      createTestSubagent({ workspaceNotice: "\n\n---\nChanges saved to branch `pi-agent-3`." }),
+      ...withLatestRun(createTestSubagent({ workspaceNotice: "\n\n---\nChanges saved to branch `pi-agent-3`." })),
     );
     const content = (args.sendMessage.mock.calls[0][0] as { content: string }).content;
     expect(content).toContain("Changes saved to branch `pi-agent-3`.");
@@ -416,7 +423,7 @@ describe("NotificationManager", () => {
     const args = makeArgs();
     const system = makeManager(args);
     const record = createTestSubagent({ status: "stopped", stoppedWhileQueued: true, result: undefined });
-    system.sendCompletion(record);
+    system.sendCompletion(record, record.latestRun);
     const content = (args.sendMessage.mock.calls[0][0] as { content: string }).content;
     expect(content).toBe(formatTaskNotification(record, record.latestRun, 500));
   });
@@ -425,7 +432,7 @@ describe("NotificationManager", () => {
     const args = makeArgs();
     const system = makeManager(args);
     const consumedRecord = createTestSubagent({ id: "consumed-1", consumedAt: 5000 });
-    system.sendCompletion(consumedRecord);
+    system.sendCompletion(consumedRecord, consumedRecord.latestRun);
     expect(args.sendMessage).not.toHaveBeenCalled();
   });
 
@@ -436,7 +443,7 @@ describe("NotificationManager", () => {
       const args = makeArgs();
       const system = makeManager(args);
       system.dispose();
-      system.sendCompletion(baseRecord);
+      system.sendCompletion(baseRecord, baseRecord.latestRun);
       expect(args.sendMessage).not.toHaveBeenCalled();
     });
 
@@ -453,7 +460,7 @@ describe("NotificationManager", () => {
       // The ESC path: InterruptHandler stops queued agents from inside the
       // parent's run, so the nudge waits for agent_settled like any other.
       system.onParentAgentStart();
-      system.sendCompletion(record);
+      system.sendCompletion(record, record.latestRun);
       expect(args.sendMessage).not.toHaveBeenCalled();
 
       system.onParentAgentSettled();
@@ -533,14 +540,14 @@ describe("NotificationManager", () => {
     it("withholds a nudge that arrives while the parent's run is active", () => {
       const parent = makePiParent();
       parent.startRun();
-      parent.manager.sendCompletion(createTestSubagent({ id: "held-1" }));
+      parent.manager.sendCompletion(...withLatestRun(createTestSubagent({ id: "held-1" })));
       expect(parent.deliveredToLlm).toHaveLength(0);
     });
 
     it("delivers the withheld nudge once the run settles when the parent never pulled", () => {
       const parent = makePiParent();
       parent.startRun();
-      parent.manager.sendCompletion(createTestSubagent({ id: "kept-1" }));
+      parent.manager.sendCompletion(...withLatestRun(createTestSubagent({ id: "kept-1" })));
       parent.settleRun();
       expect(parent.deliveredToLlm).toHaveLength(1);
     });
@@ -549,7 +556,7 @@ describe("NotificationManager", () => {
       const parent = makePiParent();
       const record = createTestSubagent({ id: "race-1" });
       parent.startRun();
-      parent.manager.sendCompletion(record);
+      parent.manager.sendCompletion(record, record.latestRun);
       record.markConsumed(); // get_subagent_result, later in the same turn
       parent.settleRun();
       expect(parent.deliveredToLlm).toHaveLength(0);
@@ -559,8 +566,8 @@ describe("NotificationManager", () => {
       const parent = makePiParent();
       const record = createTestSubagent({ id: "recomplete-1" });
       parent.startRun();
-      parent.manager.sendCompletion(record);
-      parent.manager.sendCompletion(record); // e.g. a resumed run reaching terminal state again
+      parent.manager.sendCompletion(record, record.latestRun);
+      parent.manager.sendCompletion(record, record.latestRun); // e.g. a resumed run reaching terminal state again
       parent.settleRun();
       expect(parent.deliveredToLlm).toHaveLength(1);
     });
@@ -568,8 +575,8 @@ describe("NotificationManager", () => {
     it("flushes nudges from different agents in the order they arrived", () => {
       const parent = makePiParent();
       parent.startRun();
-      parent.manager.sendCompletion(createTestSubagent({ id: "first-1" }));
-      parent.manager.sendCompletion(createTestSubagent({ id: "second-1" }));
+      parent.manager.sendCompletion(...withLatestRun(createTestSubagent({ id: "first-1" })));
+      parent.manager.sendCompletion(...withLatestRun(createTestSubagent({ id: "second-1" })));
       parent.settleRun();
       expect(parent.deliveredToLlm.map(taskIdOf)).toEqual(["first-1", "second-1"]);
     });
@@ -578,26 +585,97 @@ describe("NotificationManager", () => {
       const parent = makePiParent();
       const early = createTestSubagent({ id: "early-1" });
       parent.startRun();
-      parent.manager.sendCompletion(early);
-      parent.manager.sendCompletion(createTestSubagent({ id: "late-1" }));
-      parent.manager.sendCompletion(early); // the resumed run terminates again
+      parent.manager.sendCompletion(early, early.latestRun);
+      parent.manager.sendCompletion(...withLatestRun(createTestSubagent({ id: "late-1" })));
+      parent.manager.sendCompletion(early, early.latestRun); // the resumed run terminates again
       parent.settleRun();
       expect(parent.deliveredToLlm.map(taskIdOf)).toEqual(["early-1", "late-1"]);
     });
 
     it("delivers immediately when the parent is idle at completion", () => {
       const parent = makePiParent();
-      parent.manager.sendCompletion(createTestSubagent({ id: "idle-1" }));
+      parent.manager.sendCompletion(...withLatestRun(createTestSubagent({ id: "idle-1" })));
       expect(parent.deliveredToLlm).toHaveLength(1);
     });
 
     it("dispose drops nudges withheld for the current run", () => {
       const parent = makePiParent();
       parent.startRun();
-      parent.manager.sendCompletion(createTestSubagent({ id: "disposed-1" }));
+      parent.manager.sendCompletion(...withLatestRun(createTestSubagent({ id: "disposed-1" })));
       parent.manager.dispose();
       parent.settleRun();
       expect(parent.deliveredToLlm).toHaveLength(0);
+    });
+
+    /** A settled agent with a live session, so `resume` starts a real run B. */
+    function resumableAgent(id: string) {
+      const record = createTestSubagent({ id, result: "Run A result." });
+      const stub = createSubagentSessionStub();
+      record.subagentSession = toSubagentSession(stub);
+      return { record, stub };
+    }
+
+    /** Resume in the background with a turn loop that stays in flight: run B is running. */
+    function resumeStillRunning(agent: ReturnType<typeof resumableAgent>) {
+      agent.stub.runTurnLoop.mockReturnValue(new Promise<never>(() => {}));
+      void agent.record.resume("continue", { background: true });
+    }
+
+    describe("a withheld completion whose run a resume replaced", () => {
+      it("is dropped after the parent collected it and a background resume started", () => {
+        const parent = makePiParent();
+        const agent = resumableAgent("collected-1");
+        parent.startRun();
+        parent.manager.sendCompletion(agent.record, agent.record.latestRun);
+        agent.record.markConsumed();
+        resumeStillRunning(agent);
+
+        parent.settleRun();
+
+        expect(parent.deliveredToLlm).toEqual([]);
+      });
+
+      it("is dropped when nothing collected it before a background resume started", () => {
+        const parent = makePiParent();
+        const agent = resumableAgent("uncollected-1");
+        parent.startRun();
+        parent.manager.sendCompletion(agent.record, agent.record.latestRun);
+        resumeStillRunning(agent);
+
+        parent.settleRun();
+
+        // The resume supersedes the run it replaced; its own completion announces.
+        expect(parent.deliveredToLlm).toEqual([]);
+      });
+
+      it("gives way to the resumed run's completion, in the place the first one took", async () => {
+        const parent = makePiParent();
+        const agent = resumableAgent("rerun-1");
+        parent.startRun();
+        parent.manager.sendCompletion(agent.record, agent.record.latestRun);
+        parent.manager.sendCompletion(...withLatestRun(createTestSubagent({ id: "other-1" })));
+        agent.stub.runTurnLoop.mockResolvedValue(turnLoopResult({ responseText: "Run B result." }));
+        await agent.record.resume("continue", { background: true });
+        parent.manager.sendCompletion(agent.record, agent.record.latestRun);
+
+        parent.settleRun();
+
+        expect(parent.deliveredToLlm.map(taskIdOf)).toEqual(["rerun-1", "other-1"]);
+        expect(parent.deliveredToLlm[0]).toContain("<result>Run B result.</result>");
+      });
+
+      it("is not sent to an idle parent when the replaced run's finish arrives late", () => {
+        // Abort, then resume before the aborted run's turn loop unwinds: its finish
+        // names a run the resume already replaced.
+        const parent = makePiParent();
+        const agent = resumableAgent("late-1");
+        const replaced = agent.record.latestRun;
+        resumeStillRunning(agent);
+
+        parent.manager.sendCompletion(agent.record, replaced);
+
+        expect(parent.deliveredToLlm).toEqual([]);
+      });
     });
 
     /**
@@ -660,7 +738,7 @@ describe("NotificationManager", () => {
         const record = createTestSubagent({ id: "live-1", status: "running" });
         parent.startRun();
         parent.manager.sendUpdate(record, "Course change.");
-        parent.manager.sendCompletion(record);
+        parent.manager.sendCompletion(record, record.latestRun);
         parent.settleRun();
         expect(parent.deliveredToLlm.map((c) => c.slice(0, 18))).toEqual([
           "<subagent-update>\n",
@@ -775,7 +853,7 @@ describe("NotificationManager", () => {
         parent.startRun();
         parent.manager.sendUpdate(record, "Course change.");
         record.markCompleted("Done.");
-        parent.manager.sendCompletion(record);
+        parent.manager.sendCompletion(record, record.latestRun);
         parent.settleRun();
 
         expect(parent.deliveredToLlm.map((c) => c.slice(0, 18))).toEqual(["<task-notification"]);

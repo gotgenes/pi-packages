@@ -115,7 +115,7 @@ function seedNotificationScenario() {
   const sendMessage = vi.fn();
   const notifications = new NotificationManager(sendMessage);
   const { manager } = createManager({
-    observer: { onSubagentRunFinished: (r) => notifications.sendCompletion(r) },
+    observer: { onSubagentRunFinished: (r, run) => notifications.sendCompletion(r, run) },
   });
   // The spawning tool call runs inside a parent agent run, so nudges are
   // withheld until it settles.
@@ -131,7 +131,7 @@ function seedForegroundNotificationScenario() {
   const notifications = new NotificationManager(sendMessage);
   const { promise: gate, resolve: openGate } = Promise.withResolvers<void>(); // eslint-disable-line @typescript-eslint/no-invalid-void-type -- Promise.withResolvers<void> is valid; rule does not allow void in generic fn call type args
   const { manager } = createManager({
-    observer: { onSubagentRunFinished: (r) => notifications.sendCompletion(r) },
+    observer: { onSubagentRunFinished: (r, run) => notifications.sendCompletion(r, run) },
     createSubagentSession: vi.fn(async (_params: CreateSubagentSessionParams) => {
       await gate;
       return toSubagentSession(createSubagentSessionStub());
@@ -940,6 +940,33 @@ describe("SubagentManager", () => {
 
         seeded.notifications.onParentAgentSettled();
         expect(sendMessage).not.toHaveBeenCalled();
+      });
+
+      it("drops a withheld nudge whose run a background resume replaced before the flush", async () => {
+        const sendMessage = vi.fn();
+        const notifications = new NotificationManager(sendMessage);
+        const { factory, stub } = createSessionFactory();
+        const resumed = Promise.withResolvers<TurnLoopResult>();
+        stub.runTurnLoop
+          .mockResolvedValueOnce(turnLoopResult({ responseText: "Run A result." }))
+          .mockReturnValueOnce(resumed.promise);
+        ({ manager } = createManager({
+          createSubagentSession: factory,
+          observer: { onSubagentRunFinished: (r, run) => notifications.sendCompletion(r, run) },
+        }));
+        notifications.onParentAgentStart();
+        const id = spawnBgWithToolCall(manager, "tc-1");
+        const record = manager.getRecord(id)!;
+        await record.promise;
+
+        // Run A's nudge is withheld; a background resume replaces A while the
+        // parent's run is still active, and is still running at the flush.
+        expect(manager.startResume(id, "continue", { background: true }).kind).toBe("started");
+        notifications.onParentAgentSettled();
+
+        expect(sendMessage).not.toHaveBeenCalled();
+        resumed.resolve(turnLoopResult({ responseText: "Run B result." }));
+        await record.promise;
       });
 
       it("onComplete is called for foreground agents", async () => {
@@ -1852,7 +1879,7 @@ describe("SubagentManager", () => {
           createSubagentSession: factory,
           observer: {
             onSubagentRunFinished: (r, run) => {
-              if (run.kind === "resume") notifications.sendCompletion(r);
+              if (run.kind === "resume") notifications.sendCompletion(r, run);
             },
           },
         }));
@@ -1891,7 +1918,7 @@ describe("SubagentManager", () => {
             // A consumer that resumes the moment the run settles, as a
             // subagents:completed handler can, before the waiter wakes.
             onSubagentRunFinished: (r, run) => {
-              notifications.sendCompletion(r);
+              notifications.sendCompletion(r, run);
               if (run.kind === "initial") resumeOutcome = manager.resume(r.id, "continue", { background: false, claimOutcome: true });
             },
           },
