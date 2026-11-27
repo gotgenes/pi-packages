@@ -6,7 +6,7 @@ import {
 	SUBAGENT_RECORD_ENTRY,
 	toPersistedRecord,
 } from "#src/persisted-record";
-import { createTestSubagent } from "#test/helpers/make-subagent";
+import { createTestRun, createTestSubagent } from "#test/helpers/make-subagent";
 
 function persistedRecord(overrides: Partial<PersistedSubagentRecord> = {}): PersistedSubagentRecord {
 	return {
@@ -48,7 +48,7 @@ describe("toPersistedRecord", () => {
 			outputFile: "/tasks/a.jsonl",
 		});
 
-		expect(toPersistedRecord(record)).toStrictEqual({
+		expect(toPersistedRecord(record, record.latestRun)).toStrictEqual({
 			id: "agent-9",
 			type: "Explore",
 			description: "map the module",
@@ -64,9 +64,36 @@ describe("toPersistedRecord", () => {
 		});
 	});
 
+	it("takes the outcome from the run it is given and the identity from the record", () => {
+		const record = createTestSubagent({
+			id: "agent-9",
+			type: "Explore",
+			description: "map the module",
+			toolUses: 7,
+			sessionReady: true,
+			outputFile: "/tasks/a.jsonl",
+		});
+		const stopped = createTestRun("initial", { status: "stopped", result: "Partial.", startedAt: 1200, completedAt: 1500 });
+
+		expect(toPersistedRecord(record, stopped)).toStrictEqual({
+			id: "agent-9",
+			type: "Explore",
+			description: "map the module",
+			status: "stopped",
+			result: "Partial.",
+			error: undefined,
+			turnBudget: undefined,
+			startedAt: 1200,
+			completedAt: 1500,
+			stoppedWhileQueued: false,
+			outputFile: "/tasks/a.jsonl",
+			toolUses: 7,
+		});
+	});
+
 	it("copies stoppedWhileQueued off a run stopped while queued", () => {
 		const record = createTestSubagent({ status: "stopped", stoppedWhileQueued: true, result: undefined });
-		expect(toPersistedRecord(record).stoppedWhileQueued).toBe(true);
+		expect(toPersistedRecord(record, record.latestRun).stoppedWhileQueued).toBe(true);
 	});
 });
 
@@ -160,7 +187,7 @@ describe("readPersistedRuns", () => {
 			sessionReady: true,
 			outputFile: "/tasks/round-trip.jsonl",
 		});
-		expect(readPersistedRuns([recordEntry(toPersistedRecord(record))])).toStrictEqual([
+		expect(readPersistedRuns([recordEntry(toPersistedRecord(record, record.latestRun))])).toStrictEqual([
 			{ ...summary, id: "round-trip", outputFile: "/tasks/round-trip.jsonl" },
 		]);
 	});
@@ -179,7 +206,7 @@ describe("readPersistedRuns", () => {
 			sessionReady: true,
 			outputFile: "/tasks/queued-resume.jsonl",
 		});
-		expect(readPersistedRuns([recordEntry(toPersistedRecord(record))])).toStrictEqual([
+		expect(readPersistedRuns([recordEntry(toPersistedRecord(record, record.latestRun))])).toStrictEqual([
 			{
 				...summary,
 				id: "queued-resume",

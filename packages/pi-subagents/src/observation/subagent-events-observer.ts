@@ -53,7 +53,7 @@ export class SubagentEventsObserver implements SubagentManagerObserver {
 	 * and subagents:failed subscribers keep their once-per-agent semantics.
 	 */
 	onSubagentRunFinished(record: Subagent, kind: RunKind): void {
-		this.emit(finishedChannel(record, kind), buildEventData(record));
+		this.emit(finishedChannel(record, kind), buildEventData(record, record.latestRun));
 		this.persistAndNotify(record);
 	}
 
@@ -65,7 +65,7 @@ export class SubagentEventsObserver implements SubagentManagerObserver {
 	 * not owned here.
 	 */
 	private persistAndNotify(record: Subagent): void {
-		this.appendEntry(SUBAGENT_RECORD_ENTRY, toPersistedRecord(record));
+		this.appendEntry(SUBAGENT_RECORD_ENTRY, toPersistedRecord(record, record.latestRun));
 		this.notifications.sendCompletion(record);
 	}
 

@@ -7,7 +7,7 @@ import {
   formatWorkspaceNotice,
   NotificationManager,
 } from "#src/observation/notification";
-import { createTestSubagent, makeStubExecution } from "#test/helpers/make-subagent";
+import { createTestRun, createTestSubagent, makeStubExecution } from "#test/helpers/make-subagent";
 import { makeWorkspace, makeWorkspaceProvider } from "#test/helpers/make-workspace";
 import { createSubagentSessionStub, toSubagentSession } from "#test/helpers/mock-session";
 import { turnLoopResult } from "#test/helpers/turn-loop-result";
@@ -194,7 +194,7 @@ describe("buildEventData", () => {
   });
 
   it("includes all expected fields", () => {
-    const data = buildEventData(baseRecord);
+    const data = buildEventData(baseRecord, baseRecord.latestRun);
     expect(data).toEqual({
       id: "agent-1",
       type: "Explore",
@@ -210,20 +210,36 @@ describe("buildEventData", () => {
 
   it("carries the run's turn budget", () => {
     const record = createTestSubagent({ turnBudget: { maxTurns: 2, used: 7, phase: "exhausted" }, status: "aborted" });
-    expect(buildEventData(record).turnBudget).toEqual({ maxTurns: 2, used: 7, phase: "exhausted" });
+    expect(buildEventData(record, record.latestRun).turnBudget).toEqual({ maxTurns: 2, used: 7, phase: "exhausted" });
   });
 
   it("omits tokens when total is zero", () => {
     const record = createTestSubagent({ type: "Explore", description: "Search files", result: "Found 3 files", toolUses: 5, lifetimeUsage: { input: 0, output: 0, cacheWrite: 0 } });
-    const data = buildEventData(record);
+    const data = buildEventData(record, record.latestRun);
     expect(data.tokens).toBeUndefined();
+  });
+
+  it("takes the outcome from the run it is given, not the record's latest run", () => {
+    const stopped = createTestRun("initial", { status: "stopped", result: "Partial.", startedAt: 1000, completedAt: 1500 });
+    expect(buildEventData(baseRecord, stopped)).toStrictEqual({
+      id: "agent-1",
+      type: "Explore",
+      description: "Search files",
+      result: "Partial.",
+      error: undefined,
+      status: "stopped",
+      turnBudget: undefined,
+      toolUses: 5,
+      durationMs: 500,
+      tokens: { input: 1000, output: 500, total: 1500 },
+    });
   });
 
   it("uses Date.now() fallback when completedAt is undefined", () => {
     vi.useFakeTimers();
     vi.setSystemTime(5000);
     const record = createTestSubagent({ type: "Explore", description: "Search files", result: "Found 3 files", toolUses: 5, lifetimeUsage: { input: 1000, output: 500, cacheWrite: 0 }, completedAt: undefined });
-    const data = buildEventData(record);
+    const data = buildEventData(record, record.latestRun);
     expect(data.durationMs).toBe(4000); // 5000 - 1000
     vi.useRealTimers();
   });

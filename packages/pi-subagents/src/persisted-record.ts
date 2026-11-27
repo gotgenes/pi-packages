@@ -46,24 +46,35 @@ export interface SessionEntryLike {
 	readonly data?: unknown;
 }
 
+/** What the entry takes from the agent: who it is, where its transcript is, and its cross-run tool count. */
+type PersistedIdentity = Pick<PersistedSubagentRecord, "id" | "type" | "description" | "outputFile" | "toolUses">;
+
+/** What the entry takes from the run that ended. */
+type PersistedOutcome = Pick<
+	PersistedSubagentRecord,
+	"status" | "result" | "error" | "turnBudget" | "startedAt" | "completedAt" | "stoppedWhileQueued"
+>;
+
 /**
- * Build the entry for one terminal run. A `Subagent` satisfies the parameter
- * structurally; copying field by field keeps everything else off the entry.
+ * Build the entry for one terminal run: the outcome from that run, the rest
+ * from its agent. A `Subagent` satisfies the identity and a `RunOutcome` the
+ * outcome structurally; copying field by field keeps everything else off the
+ * entry.
  */
-export function toPersistedRecord(record: PersistedSubagentRecord): PersistedSubagentRecord {
+export function toPersistedRecord(identity: PersistedIdentity, outcome: PersistedOutcome): PersistedSubagentRecord {
 	return {
-		id: record.id,
-		type: record.type,
-		description: record.description,
-		status: record.status,
-		result: record.result,
-		error: record.error,
-		turnBudget: record.turnBudget,
-		startedAt: record.startedAt,
-		completedAt: record.completedAt,
-		stoppedWhileQueued: record.stoppedWhileQueued,
-		outputFile: record.outputFile,
-		toolUses: record.toolUses,
+		id: identity.id,
+		type: identity.type,
+		description: identity.description,
+		status: outcome.status,
+		result: outcome.result,
+		error: outcome.error,
+		turnBudget: outcome.turnBudget,
+		startedAt: outcome.startedAt,
+		completedAt: outcome.completedAt,
+		stoppedWhileQueued: outcome.stoppedWhileQueued,
+		outputFile: identity.outputFile,
+		toolUses: identity.toolUses,
 	};
 }
 

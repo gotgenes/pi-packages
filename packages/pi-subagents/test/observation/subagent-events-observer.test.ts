@@ -82,7 +82,7 @@ describe("SubagentEventsObserver", () => {
 
 				observer.onSubagentRunFinished(record, "initial");
 
-				expect(emit).toHaveBeenCalledExactlyOnceWith("subagents:completed", buildEventData(record));
+				expect(emit).toHaveBeenCalledExactlyOnceWith("subagents:completed", buildEventData(record, record.latestRun));
 			});
 
 			it("emits subagents:failed for an error agent", () => {
@@ -91,7 +91,7 @@ describe("SubagentEventsObserver", () => {
 
 				observer.onSubagentRunFinished(record, "initial");
 
-				expect(emit).toHaveBeenCalledExactlyOnceWith("subagents:failed", buildEventData(record));
+				expect(emit).toHaveBeenCalledExactlyOnceWith("subagents:failed", buildEventData(record, record.latestRun));
 			});
 
 			it("persists the run's turn budget on the subagents:record entry", () => {
@@ -108,7 +108,7 @@ describe("SubagentEventsObserver", () => {
 
 				observer.onSubagentRunFinished(record, "initial");
 
-				expect(emit).toHaveBeenCalledExactlyOnceWith("subagents:failed", buildEventData(record));
+				expect(emit).toHaveBeenCalledExactlyOnceWith("subagents:failed", buildEventData(record, record.latestRun));
 			});
 
 			it("emits subagents:failed for an aborted agent", () => {
@@ -117,7 +117,7 @@ describe("SubagentEventsObserver", () => {
 
 				observer.onSubagentRunFinished(record, "initial");
 
-				expect(emit).toHaveBeenCalledExactlyOnceWith("subagents:failed", buildEventData(record));
+				expect(emit).toHaveBeenCalledExactlyOnceWith("subagents:failed", buildEventData(record, record.latestRun));
 			});
 
 			it("calls appendEntry with subagents:record and the persisted fields", () => {
@@ -175,7 +175,7 @@ describe("SubagentEventsObserver", () => {
 
 				observer.onSubagentRunFinished(record, "resume");
 
-				expect(emit).toHaveBeenCalledExactlyOnceWith("subagents:resumed", buildEventData(record));
+				expect(emit).toHaveBeenCalledExactlyOnceWith("subagents:resumed", buildEventData(record, record.latestRun));
 			});
 
 			it("emits subagents:resumed (not subagents:failed) for an error resume — payload discriminates", () => {
@@ -184,7 +184,7 @@ describe("SubagentEventsObserver", () => {
 
 				observer.onSubagentRunFinished(record, "resume");
 
-				expect(emit).toHaveBeenCalledExactlyOnceWith("subagents:resumed", buildEventData(record));
+				expect(emit).toHaveBeenCalledExactlyOnceWith("subagents:resumed", buildEventData(record, record.latestRun));
 			});
 
 			it.each(["stopped", "aborted"] as const)("emits subagents:resumed for a resume that ended %s", (status) => {
@@ -193,7 +193,7 @@ describe("SubagentEventsObserver", () => {
 
 				observer.onSubagentRunFinished(record, "resume");
 
-				expect(emit).toHaveBeenCalledExactlyOnceWith("subagents:resumed", buildEventData(record));
+				expect(emit).toHaveBeenCalledExactlyOnceWith("subagents:resumed", buildEventData(record, record.latestRun));
 			});
 
 			it("appends subagents:record with the persisted fields", () => {

@@ -1,4 +1,5 @@
 import { debugLog } from "#src/debug";
+import type { RunOutcome } from "#src/lifecycle/subagent-run";
 import type { SubagentStatus } from "#src/lifecycle/subagent-state";
 import type { TurnBudget } from "#src/lifecycle/turn-limits";
 import { getLifetimeTotal } from "#src/lifecycle/usage";
@@ -162,9 +163,12 @@ function buildResultPreview(record: Subagent, resultMaxLen: number): string {
     : record.result;
 }
 
-/** Build event data for lifecycle events from a Subagent. */
-export function buildEventData(record: Subagent) {
-  const durationMs = record.completedAt ? record.completedAt - record.startedAt : Date.now() - record.startedAt;
+/**
+ * Build event data for a lifecycle event about one run: the outcome from that
+ * run, identity and cross-run metrics from the record.
+ */
+export function buildEventData(record: Subagent, run: RunOutcome) {
+  const durationMs = run.completedAt ? run.completedAt - run.startedAt : Date.now() - run.startedAt;
   const u = record.lifetimeUsage;
   const total = getLifetimeTotal(u);
   const tokens =
@@ -175,10 +179,10 @@ export function buildEventData(record: Subagent) {
     id: record.id,
     type: record.type,
     description: record.description,
-    result: record.result,
-    error: record.error,
-    status: record.status,
-    turnBudget: record.turnBudget,
+    result: run.result,
+    error: run.error,
+    status: run.status,
+    turnBudget: run.turnBudget,
     toolUses: record.toolUses,
     durationMs,
     tokens,
