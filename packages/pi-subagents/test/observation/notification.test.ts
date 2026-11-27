@@ -63,7 +63,7 @@ describe("formatTaskNotification", () => {
   const baseRecord = createTestSubagent();
 
   it("produces valid XML structure", () => {
-    const xml = formatTaskNotification(baseRecord, 500);
+    const xml = formatTaskNotification(baseRecord, baseRecord.latestRun, 500);
     expect(xml).toContain("<task-notification>");
     expect(xml).toContain("</task-notification>");
     expect(xml).toContain("<task-id>agent-1</task-id>");
@@ -73,25 +73,36 @@ describe("formatTaskNotification", () => {
   it("truncates long results", () => {
     const longResult = "x".repeat(600);
     const record = createTestSubagent({ result: longResult });
-    const xml = formatTaskNotification(record, 100);
+    const xml = formatTaskNotification(record, record.latestRun, 100);
     expect(xml).toContain("truncated");
     expect(xml).not.toContain(longResult);
   });
 
   it("shows No output when result is undefined", () => {
     const record = createTestSubagent({ result: undefined });
-    const xml = formatTaskNotification(record, 500);
+    const xml = formatTaskNotification(record, record.latestRun, 500);
     expect(xml).toContain("No output.");
   });
 
   it("includes toolCallId from record.toolCallId when present", () => {
     const record = createTestSubagent({ toolCallId: "tc-123" });
-    const xml = formatTaskNotification(record, 500);
+    const xml = formatTaskNotification(record, record.latestRun, 500);
     expect(xml).toContain("<tool-use-id>tc-123</tool-use-id>");
   });
 
+  it("renders the outcome of the run it is given, not the record's latest run", () => {
+    const record = createTestSubagent({ toolUses: 4 });
+    const stopped = createTestRun("initial", { status: "stopped", result: "Partial.", startedAt: 1000, completedAt: 1500 });
+    const xml = formatTaskNotification(record, stopped, 500);
+    expect(xml).toContain("<status>Stopped (user request)</status>");
+    expect(xml).toContain('<summary>Subagent "Test task" stopped</summary>');
+    expect(xml).toContain("<result>Partial.</result>");
+    expect(xml).toContain("<tool_uses>4</tool_uses>");
+    expect(xml).toContain("<duration_ms>500</duration_ms>");
+  });
+
   it("excludes toolCallId when absent", () => {
-    const xml = formatTaskNotification(baseRecord, 500);
+    const xml = formatTaskNotification(baseRecord, baseRecord.latestRun, 500);
     expect(xml).not.toContain("tool-use-id");
   });
 
@@ -106,7 +117,7 @@ describe("formatTaskNotification", () => {
     });
 
     it("emits a trimmed block that claims no result and no usage", () => {
-      expect(formatTaskNotification(neverStarted, 500)).toBe(
+      expect(formatTaskNotification(neverStarted, neverStarted.latestRun, 500)).toBe(
         [
           "<task-notification>",
           "<task-id>agent-1</task-id>",
@@ -120,7 +131,7 @@ describe("formatTaskNotification", () => {
 
     it("omits the tool-use-id when the spawn carried none", () => {
       const record = createTestSubagent({ status: "stopped", stoppedWhileQueued: true, result: undefined });
-      expect(formatTaskNotification(record, 500)).not.toContain("tool-use-id");
+      expect(formatTaskNotification(record, record.latestRun, 500)).not.toContain("tool-use-id");
     });
   });
 });
@@ -155,7 +166,7 @@ describe("buildNotificationDetails", () => {
   });
 
   it("maps record fields to notification shape", () => {
-    const details = buildNotificationDetails(baseRecord, 500);
+    const details = buildNotificationDetails(baseRecord, baseRecord.latestRun, 500);
     expect(details.id).toBe("agent-1");
     expect(details.description).toBe("Test");
     expect(details.status).toBe("completed");
@@ -167,19 +178,28 @@ describe("buildNotificationDetails", () => {
 
   it("carries the run's turn budget", () => {
     const record = createTestSubagent({ turnBudget: { maxTurns: 2, used: 3, phase: "warned" } });
-    expect(buildNotificationDetails(record, 500).turnBudget).toEqual({ maxTurns: 2, used: 3, phase: "warned" });
+    expect(buildNotificationDetails(record, record.latestRun, 500).turnBudget).toEqual({ maxTurns: 2, used: 3, phase: "warned" });
   });
 
   it("truncates long result previews with ellipsis", () => {
     const record = createTestSubagent({ description: "Test", result: "x".repeat(600), toolUses: 2, completedAt: 3000, lifetimeUsage: { input: 100, output: 200, cacheWrite: 0 } });
-    const details = buildNotificationDetails(record, 100);
+    const details = buildNotificationDetails(record, record.latestRun, 100);
     expect(details.resultPreview).toHaveLength(101); // 100 chars + "…"
     expect(details.resultPreview.endsWith("…")).toBe(true);
   });
 
+  it("reports the outcome of the run it is given, not the record's latest run", () => {
+    const stopped = createTestRun("initial", { status: "stopped", result: "Partial.", startedAt: 1000, completedAt: 1500 });
+    const details = buildNotificationDetails(baseRecord, stopped, 500);
+    expect(details.status).toBe("stopped");
+    expect(details.resultPreview).toBe("Partial.");
+    expect(details.durationMs).toBe(500);
+    expect(details.toolUses).toBe(2);
+  });
+
   it("previews a never-started agent as never started, not as empty output", () => {
     const record = createTestSubagent({ status: "stopped", stoppedWhileQueued: true, result: undefined });
-    const details = buildNotificationDetails(record, 500);
+    const details = buildNotificationDetails(record, record.latestRun, 500);
     expect(details.resultPreview).toBe("Never started — stopped while queued.");
   });
 });
@@ -398,7 +418,7 @@ describe("NotificationManager", () => {
     const record = createTestSubagent({ status: "stopped", stoppedWhileQueued: true, result: undefined });
     system.sendCompletion(record);
     const content = (args.sendMessage.mock.calls[0][0] as { content: string }).content;
-    expect(content).toBe(formatTaskNotification(record, 500));
+    expect(content).toBe(formatTaskNotification(record, record.latestRun, 500));
   });
 
   it("sendCompletion skips the nudge when the record is already consumed (enqueue-time guard)", () => {

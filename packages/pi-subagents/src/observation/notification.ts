@@ -42,21 +42,25 @@ export function escapeXml(s: string): string {
     .replace(/'/g, "&apos;");
 }
 
-/** Format a structured <task-notification> XML block for the parent agent to parse. */
-export function formatTaskNotification(record: Subagent, resultMaxLen: number): string {
-  if (record.stoppedWhileQueued) return formatNeverStartedNotification(record);
+/**
+ * Format a structured <task-notification> XML block for the parent agent to
+ * parse: the outcome from the run it announces, identity and cross-run metrics
+ * from the record.
+ */
+export function formatTaskNotification(record: Subagent, run: RunOutcome, resultMaxLen: number): string {
+  if (run.stoppedWhileQueued) return formatNeverStartedNotification(record);
 
-  const status = renderStatusLabel(record);
-  const durationMs = record.completedAt ? record.completedAt - record.startedAt : 0;
+  const status = renderStatusLabel(run);
+  const durationMs = run.completedAt ? run.completedAt - run.startedAt : 0;
   const totalTokens = getLifetimeTotal(record.lifetimeUsage);
   const contextPercent = record.getContextPercent();
   const ctxXml = contextPercent !== null ? `<context_percent>${Math.round(contextPercent)}</context_percent>` : "";
   const compactXml = record.compactionCount ? `<compactions>${record.compactionCount}</compactions>` : "";
 
-  const resultPreview = record.result
-    ? record.result.length > resultMaxLen
-      ? record.result.slice(0, resultMaxLen) + "\n...(truncated, use get_subagent_result for full output)"
-      : record.result
+  const resultPreview = run.result
+    ? run.result.length > resultMaxLen
+      ? run.result.slice(0, resultMaxLen) + "\n...(truncated, use get_subagent_result for full output)"
+      : run.result
     : "No output.";
 
   const toolCallId = record.toolCallId;
@@ -67,7 +71,7 @@ export function formatTaskNotification(record: Subagent, resultMaxLen: number): 
     toolCallId ? `<tool-use-id>${escapeXml(toolCallId)}</tool-use-id>` : null,
     outputFile ? `<output-file>${escapeXml(outputFile)}</output-file>` : null,
     `<status>${escapeXml(status)}</status>`,
-    `<summary>Subagent "${escapeXml(record.description)}" ${record.status}</summary>`,
+    `<summary>Subagent "${escapeXml(record.description)}" ${run.status}</summary>`,
     `<result>${escapeXml(resultPreview)}</result>`,
     `<usage><total_tokens>${totalTokens}</total_tokens><tool_uses>${record.toolUses}</tool_uses>${ctxXml}${compactXml}<duration_ms>${durationMs}</duration_ms></usage>`,
     "</task-notification>",
@@ -133,9 +137,10 @@ function joinNotificationLines(lines: (string | null)[]): string {
   return lines.filter(Boolean).join("\n");
 }
 
-/** Build notification details for the custom message renderer. */
+/** Build notification details for the custom message renderer, the outcome from the run announced. */
 export function buildNotificationDetails(
   record: Subagent,
+  run: RunOutcome,
   resultMaxLen: number,
 ): NotificationDetails {
   const totalTokens = getLifetimeTotal(record.lifetimeUsage);
@@ -143,24 +148,24 @@ export function buildNotificationDetails(
   return {
     id: record.id,
     description: record.description,
-    status: record.status,
+    status: run.status,
     toolUses: record.toolUses,
     totalTokens,
-    durationMs: record.completedAt ? record.completedAt - record.startedAt : 0,
+    durationMs: run.completedAt ? run.completedAt - run.startedAt : 0,
     outputFile: record.outputFile,
-    error: record.error,
-    resultPreview: buildResultPreview(record, resultMaxLen),
-    turnBudget: record.turnBudget,
+    error: run.error,
+    resultPreview: buildResultPreview(run, resultMaxLen),
+    turnBudget: run.turnBudget,
   };
 }
 
 /** The renderer's preview text: the (truncated) result, or why there is none. */
-function buildResultPreview(record: Subagent, resultMaxLen: number): string {
-  if (record.stoppedWhileQueued) return "Never started — stopped while queued.";
-  if (!record.result) return "No output.";
-  return record.result.length > resultMaxLen
-    ? record.result.slice(0, resultMaxLen) + "…"
-    : record.result;
+function buildResultPreview(run: RunOutcome, resultMaxLen: number): string {
+  if (run.stoppedWhileQueued) return "Never started — stopped while queued.";
+  if (!run.result) return "No output.";
+  return run.result.length > resultMaxLen
+    ? run.result.slice(0, resultMaxLen) + "…"
+    : run.result;
 }
 
 /**
@@ -399,16 +404,17 @@ export class NotificationManager implements NotificationSystem {
     if (record.claimed) return;
     if (record.consumed) return;
 
-    const notification = formatTaskNotification(record, 500);
+    const run = record.latestRun;
+    const notification = formatTaskNotification(record, run, 500);
     // A never-started agent has no transcript and nothing to collect.
-    const pointerLines = record.stoppedWhileQueued ? "" : this.buildPointerLines(record);
+    const pointerLines = run.stoppedWhileQueued ? "" : this.buildPointerLines(record, run);
 
     this.sendMessage(
       {
         customType: "subagent-notification",
         content: notification + pointerLines,
         display: true,
-        details: buildNotificationDetails(record, 500),
+        details: buildNotificationDetails(record, run, 500),
       },
       { deliverAs: "followUp", triggerTurn: true },
     );
@@ -419,17 +425,17 @@ export class NotificationManager implements NotificationSystem {
    * the result. The nudge only announces; the parent must pull to collect (and
    * consume).
    */
-  private buildPointerLines(record: Subagent): string {
+  private buildPointerLines(record: Subagent, run: RunOutcome): string {
     const outputFile = record.outputFile;
     const transcriptLine = outputFile ? `\nFull transcript available at: ${outputFile}` : "";
     return (
       // What the child flagged along the way leads — for a run nothing else
       // collected, this nudge is the carrier those updates ride. Then where the
       // work went, so the parent reads it before the pointers.
-      renderRunUpdates(record.runUpdates) +
-      renderWorkspaceNotice(record.workspaceNotice) +
+      renderRunUpdates(run.runUpdates) +
+      renderWorkspaceNotice(run.workspaceNotice) +
       `${transcriptLine}\nCall get_subagent_result("${record.id}") to collect the full result.` +
-      renderQuestionAffordance(record.id, record.pendingQuestion, record.resumeRefusal)
+      renderQuestionAffordance(record.id, run.pendingQuestion, record.resumeRefusal)
     );
   }
 }
