@@ -657,7 +657,6 @@ export class Subagent {
 		this.currentRun.markConsumed(at);
 	}
 
-
 	/**
 	 * A carrier has committed to delivering the current run's outcome; nothing
 	 * else announces it. The returned handle lets a carrier that abandons its
