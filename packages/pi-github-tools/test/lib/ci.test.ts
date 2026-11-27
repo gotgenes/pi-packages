@@ -219,28 +219,95 @@ describe("findRun", () => {
     expect(onProgress).toHaveBeenCalled();
   });
 
-  it("returns abort message when signal fires during sleep", async () => {
-    const controller = new AbortController();
-    // First poll: no match
-    mockGhJson([]);
-    mockSleepAborts(controller);
-
-    const result = await findRun({
-      workflow: "ci",
-      expectedSha: sha,
-      timeout: 120,
-      signal: controller.signal,
-    });
-    expect(result).toContain("aborted:");
-    expect(result).toContain("cancelled by user");
-  });
-
   it("surfaces a gh failure instead of blaming the user", async () => {
     mockGhFail("HTTP 404: Not Found");
 
     await expect(
       findRun({ workflow: "ci", expectedSha: sha, timeout: 120 }),
     ).rejects.toThrow(/HTTP 404: Not Found/);
+  });
+
+  describe("abort", () => {
+    it("returns the abort message when the signal fires during the poll sleep", async () => {
+      const controller = new AbortController();
+      // First poll: no match
+      mockGhJson([]);
+      mockSleepAborts(controller);
+
+      const result = await findRun({
+        workflow: "ci",
+        expectedSha: sha,
+        timeout: 120,
+        signal: controller.signal,
+      });
+
+      expect(result).toBe(
+        "aborted: cancelled by user\n  retries: 2\n  elapsed: 0s",
+      );
+    });
+
+    it("returns the abort message without calling gh when already aborted", async () => {
+      const controller = new AbortController();
+      controller.abort();
+
+      const result = await findRun({
+        workflow: "ci",
+        expectedSha: sha,
+        timeout: 120,
+        signal: controller.signal,
+      });
+
+      expect(result).toBe(
+        "aborted: cancelled by user\n  retries: 1\n  elapsed: 0s",
+      );
+      expect(mockRunCommand).not.toHaveBeenCalled();
+    });
+
+    it("returns the abort message when the run list's retry backoff is aborted", async () => {
+      const controller = new AbortController();
+      mockGhFail("HTTP 503");
+      mockSleepAborts(controller);
+
+      const result = await findRun({
+        workflow: "ci",
+        expectedSha: sha,
+        timeout: 120,
+        signal: controller.signal,
+      });
+
+      expect(result).toBe(
+        "aborted: cancelled by user\n  retries: 1\n  elapsed: 1s",
+      );
+    });
+
+    it("returns the abort message when the jobs fetch's retry backoff is aborted", async () => {
+      const controller = new AbortController();
+      mockMatchingRun();
+      mockGhFail("HTTP 503");
+      mockSleepAborts(controller);
+
+      const result = await findRun({
+        workflow: "ci",
+        expectedSha: sha,
+        timeout: 120,
+        signal: controller.signal,
+      });
+
+      expect(result).toBe(
+        "aborted: cancelled by user\n  retries: 1\n  elapsed: 1s",
+      );
+    });
+  });
+
+  describe("jobs fetch", () => {
+    it("surfaces a non-404 client error", async () => {
+      mockMatchingRun();
+      mockGhFail("HTTP 403: Forbidden");
+
+      await expect(
+        findRun({ workflow: "ci", expectedSha: sha, timeout: 120 }),
+      ).rejects.toThrow(/HTTP 403: Forbidden/);
+    });
   });
 });
 
