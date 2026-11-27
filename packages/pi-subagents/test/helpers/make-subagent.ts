@@ -1,5 +1,6 @@
 import type { CreateSubagentSessionParams } from "#src/lifecycle/create-subagent-session";
 import { Subagent, type SubagentExecution } from "#src/lifecycle/subagent";
+import { type RunKind, type RunOutcomeInit, SubagentRun } from "#src/lifecycle/subagent-run";
 import type { SubagentSession } from "#src/lifecycle/subagent-session";
 import { SubagentState, type SubagentStatus } from "#src/lifecycle/subagent-state";
 import type { TurnBudget } from "#src/lifecycle/turn-limits";
@@ -75,15 +76,11 @@ export interface TestSubagentOptions {
 }
 
 export function createTestSubagent(overrides: TestSubagentOptions = {}): Subagent {
-	const { id, type, description, isBackground, execution, toolCallId, runUpdates, sessionReady, outputFile } = overrides;
-	// Every seed is named as a literal property, so a key that leaves its owner's
-	// init type fails the type check instead of dropping silently. A seed with a
-	// default honors an explicit `undefined` (e.g. `completedAt: undefined` for a
-	// running fixture), as the spread this replaced did.
-	const startedAt = seeded(overrides, "startedAt", 1000);
+	const { id, type, description, isBackground, execution, toolCallId, sessionReady, outputFile } = overrides;
+	const outcome = testRunOutcome(overrides);
 	const state = new SubagentState({
 		// What spans runs
-		lastProgressAt: overrides.lastProgressAt ?? startedAt,
+		lastProgressAt: overrides.lastProgressAt ?? outcome.startedAt,
 		toolUses: overrides.toolUses ?? 3,
 		lifetimeUsage: overrides.lifetimeUsage ?? { input: 500, output: 500, cacheWrite: 0 },
 		compactionCount: overrides.compactionCount,
@@ -100,19 +97,7 @@ export function createTestSubagent(overrides: TestSubagentOptions = {}): Subagen
 		}),
 		state,
 		// The initial run's outcome
-		outcome: {
-			status: seeded(overrides, "status", "completed"),
-			result: seeded(overrides, "result", "All done."),
-			error: overrides.error,
-			stoppedWhileQueued: overrides.stoppedWhileQueued,
-			startedAt,
-			completedAt: seeded(overrides, "completedAt", 2000),
-			pendingQuestion: overrides.pendingQuestion,
-			workspaceNotice: overrides.workspaceNotice,
-			turnBudget: overrides.turnBudget,
-			runUpdates,
-			consumedAt: overrides.consumedAt,
-		},
+		outcome,
 	});
 	// Assigned rather than passed to the constructor: run() is what sets this in
 	// production, and a passive fixture never runs.
@@ -122,11 +107,58 @@ export function createTestSubagent(overrides: TestSubagentOptions = {}): Subagen
 	return agent;
 }
 
+/** The seeds a test run takes: its outcome, and whether it runs in the background. */
+export type TestRunOptions = Pick<
+	TestSubagentOptions,
+	| "isBackground"
+	| "status"
+	| "result"
+	| "error"
+	| "stoppedWhileQueued"
+	| "startedAt"
+	| "completedAt"
+	| "pendingQuestion"
+	| "workspaceNotice"
+	| "turnBudget"
+	| "runUpdates"
+	| "consumedAt"
+>;
+
+/**
+ * A run of the given kind, independent of any record, defaulting exactly like
+ * the run `createTestSubagent` builds: completed, "All done.", 1000 to 2000.
+ */
+export function createTestRun(kind: RunKind, overrides: TestRunOptions = {}): SubagentRun {
+	return new SubagentRun(kind, overrides.isBackground ?? true, testRunOutcome(overrides));
+}
+
+/**
+ * The outcome seeds both fixtures share. Every seed is named as a literal
+ * property, so a key that leaves its owner's init type fails the type check
+ * instead of dropping silently. A seed with a default honors an explicit
+ * `undefined` (e.g. `completedAt: undefined` for a running fixture).
+ */
+function testRunOutcome(overrides: TestRunOptions): RunOutcomeInit {
+	return {
+		status: seeded(overrides, "status", "completed"),
+		result: seeded(overrides, "result", "All done."),
+		error: overrides.error,
+		stoppedWhileQueued: overrides.stoppedWhileQueued,
+		startedAt: seeded(overrides, "startedAt", 1000),
+		completedAt: seeded(overrides, "completedAt", 2000),
+		pendingQuestion: overrides.pendingQuestion,
+		workspaceNotice: overrides.workspaceNotice,
+		turnBudget: overrides.turnBudget,
+		runUpdates: overrides.runUpdates,
+		consumedAt: overrides.consumedAt,
+	};
+}
+
 /** The override for `key` when the caller supplied one (even `undefined`), else the fixture default. */
-function seeded<K extends keyof TestSubagentOptions>(
-	overrides: TestSubagentOptions,
+function seeded<K extends keyof TestRunOptions>(
+	overrides: TestRunOptions,
 	key: K,
-	fallback: NonNullable<TestSubagentOptions[K]>,
-): TestSubagentOptions[K] {
+	fallback: NonNullable<TestRunOptions[K]>,
+): TestRunOptions[K] {
 	return Object.hasOwn(overrides, key) ? overrides[key] : fallback;
 }

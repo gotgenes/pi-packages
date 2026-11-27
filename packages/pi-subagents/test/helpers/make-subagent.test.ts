@@ -1,5 +1,33 @@
 import { describe, expect, it } from "vitest";
-import { createTestSubagent } from "./make-subagent";
+import { createTestRun, createTestSubagent } from "./make-subagent";
+
+describe("createTestRun", () => {
+	it("builds a run of the requested kind that defaults like the test record", () => {
+		const run = createTestRun("resume");
+		expect(run.kind).toBe("resume");
+		expect(run.status).toBe("completed");
+		expect(run.result).toBe("All done.");
+		expect(run.startedAt).toBe(1000);
+		expect(run.completedAt).toBe(2000);
+		expect(run.inBackground).toBe(true);
+	});
+
+	it("builds an initial run when asked for one", () => {
+		expect(createTestRun("initial").kind).toBe("initial");
+	});
+
+	it("seeds outcome overrides, honoring an explicit undefined", () => {
+		const run = createTestRun("initial", { status: "running", result: undefined, completedAt: undefined, runUpdates: ["Progress."] });
+		expect(run.status).toBe("running");
+		expect(run.result).toBeUndefined();
+		expect(run.completedAt).toBeUndefined();
+		expect(run.runUpdates).toEqual(["Progress."]);
+	});
+
+	it("builds a foreground run when asked for one", () => {
+		expect(createTestRun("initial", { isBackground: false }).inBackground).toBe(false);
+	});
+});
 
 describe("createTestSubagent", () => {
 	describe("live-activity shorthands", () => {
