@@ -217,7 +217,7 @@ Both go to every agent, `notify_parent` only while [`midRunUpdates`](#persistent
 Where an update lands depends on whether an announcement can still reach you in time to act on it.
 It arrives as its own message when you are idle and the agent is still running — the one case where steering it is still possible.
 Otherwise it rides that agent's outcome, under "Updates this agent sent while it worked": the foreground call, the resume, the `get_subagent_result` report, or the completion notice, whichever delivers that run.
-Either way you see it once.
+Either way you see it once — unless you resume the agent before collecting that run, which supersedes the run's completion notice and the updates riding it.
 
 Accepted forms, all equivalent:
 

@@ -22,7 +22,7 @@ Run them in foreground or background, steer them mid-run, resume completed sessi
 - **Session resume** — pick up where an agent left off, preserving full conversation context.
   An agent given an isolated workspace by a `WorkspaceProvider` is resumable while that workspace is live — which, for an agent that ended its turn with a question, lasts until you answer it
 - **Ask-back** — an agent that needs information only you have calls `ask_parent` and ends its turn, and every result surfaces the question with the exact `resume` call that answers it; once that agent can no longer be resumed, the result says so and why instead of naming a call that would be refused
-- **Mid-run updates** — an agent that finds something material calls `notify_parent` and keeps working; the message arrives on its own while you are idle and that agent is still running, and otherwise rides that agent's own result, so you hear it exactly once and never as a stale prompt to steer an agent that has finished
+- **Mid-run updates** — an agent that finds something material calls `notify_parent` and keeps working; the message arrives on its own while you are idle and that agent is still running, and otherwise rides that agent's own result, so you never hear it twice and never as a stale prompt to steer an agent that has finished (resuming an agent before collecting its result supersedes that result, updates included)
 - **Turn budgets** — `max_turns` is a hard ceiling, and an agent is told how many turns it has left while it still has room to wrap up, so it answers instead of being cut off
 - **Case-insensitive agent types** — `"explore"`, `"Explore"`, `"EXPLORE"` all work.
   Unknown types fall back to general-purpose with a note
