@@ -63,4 +63,68 @@ The plan's marker reads `**Release:** ship independently`, and the three `fix(pi
 - Follow-up [#1155] (an aborted run's late completion disposing its resume's workspace) stays open and untouched by this change.
 - The two `fix:` notification commits carry `Co-authored-by: Tony Wong`; the close comment should credit the reporter's run-identity suggestion.
 
+## Stage: Final Retrospective (2026-11-27T17:14:45Z)
+
+### Session summary
+
+The peer worktree session planned, implemented, and synced #1058 in one process (planning, TDD, sync), and the root `/ship` fast-forward-merged 14 commits, passed CI, closed the issue with credit to @tonybro233, and released `pi-subagents-v26.0.2`.
+The fix threads the finished run (`RunOutcome`) through `onRunFinished`/`onSubagentRunFinished` and the update's run through `onUpdateSent`/`onSubagentUpdate`, so the nudge, the update, the lifecycle event, and the `subagents:record` entry read the run they describe.
+No stage needed rework after a commit; the only operator involvement was the planning gate.
+
+### Observations
+
+#### What went well
+
+- The planning spike (`test/spike-1058.test.ts`, deleted before the plan commit) ran the issue's cases through the real `Subagent.run`/`resume`/`abort` and found a fourth trigger the report omitted: abort, then resume before the aborted run unwinds, which mis-reports even with the parent idle.
+  That finding is what made threading the run the stronger design, not just the tidier one.
+- The second planning briefing (a tree diagram of `Subagent` → `SubagentEventsObserver` → three readers, annotated "says WHICH AGENT, not WHICH RUN", plus a "current occupant" letter analogy) resolved the mechanism question in one reply.
+- The TDD session defined a `mut()` bash function (turns 139 and 150) that applies a scripted mutation, runs the targeted tests, and restores the green copy, so three mutations ran and reverted in one tool call each time.
+  Every planned killing mutation reddened exactly the predicted tests.
+- The worktree-lane `/ship` ran with no stops: ff-merge, gates, push, CI, close, release, and teardown in about 20 tool calls.
+
+#### What caused friction
+
+- `rule-ignored` — the first planning gate (turn 34) offered "Contained: pin `latestRun` at enqueue" against "Thread the run: finished run replaces `kind` in observer hooks" without defining the observer hook or drawing where each option acts.
+  `clarification-gates` (loaded at turn 5) covers both: "Define a gate's terms of art before its substance" and "When the options act at different points of one flow, draw the flow".
+  Operator-caught: the operator answered the mechanism question with a question.
+  Impact: one extra briefing turn and about 11 minutes the gate sat open; no rework, and the operator then took the recommended option.
+  Earlier retros record the same miss: `packages/pi-permission-model-judge/docs/retro/0905-map-forced-tool-choice-per-provider-api.md`, `packages/pi-session-tools/docs/retro/0944-branch-aware-transcript-rendering.md`, `packages/pi-session-tools/docs/retro/0943-list-subagent-sessions.md`.
+- `slip` — the plan's first `Write` (turn 54) carried a duplicated step 2 and three test call-site counts that did not match the tree.
+  Self-identified by re-reading the plan; three scripted passes (turns 57–59) renumbered the steps and corrected the counts before the plan commit.
+  Impact: four tool calls; nothing committed wrong.
+- `judgment` — the plan predicted `README.md` unchanged because payload shapes did not change, but its "you hear it exactly once" wording described delivery, which the drop decision changed.
+  Caught by the `pre-completion-reviewer` (round 1 WARN).
+  Impact: one `docs:` commit and a delta review round.
+- `other` — at ship, `ci_find` failed once with `HTTP 404` on `gh run view 46039451936 --json jobs` for a run it had just listed; an immediate retry succeeded.
+  This is the second recorded occurrence after `docs/retro/1040-scrub-zsh-guidance.md`, which filed [#1041]; [#1041] is still open.
+  Impact: one extra tool call.
+- `rule-ignored` — turn 7 ran `cd packages/pi-subagents; …`, which the `pi-permission-system` policy denied; the next call used root-relative paths.
+  The mechanism already exists and worked.
+  Impact: one tool call.
+
+#### What the operator steered
+
+- `steer:choice`: "Drop (supersede)", at the planning gate on a replaced run's uncollected withheld completion, matching the agent's recommendation over "deliver it, marked as earlier".
+  Reach unstated.
+  No earlier `steer:choice` (`rg -n 'steer:choice' docs/retro packages/*/docs/retro`) records the same choice.
+- `steer:choice`: "Yes, your judgment matches min.
+  Which run is just as important.
+  I'm pleased you chose that; it aligns well with our design philosophies.", after the second briefing recommended threading the run over the contained notifier-only fix.
+  It matched the recommendation; "our design philosophies" points at a general preference for stating a fact where it is known over inferring it later, but the reach is unstated.
+  No earlier `steer:choice` records it.
+- The mechanism answer at the first gate ("I'm not actually sure. … Is there a mechanism Pi offers that we're considering?
+  I'll be honest, I need help.
+  Explain these options to me.") was a question, not a steer; the agent answered it in a visible message and ended the turn, as `clarification-gates` § *When the operator answers with a question* says.
+
+### Diagnostic details
+
+- **Model-performance correlation** — every turn in the peer session, and all three subagents (`tidy-first-assessor`, two `pre-completion-reviewer` rounds), ran on `anthropic/claude-opus-5-5`, read from the subagent transcripts.
+  All three subagent tasks are judgment work, so the model fits.
+- **Unused-tool detection** — planning located code with roughly 20 `grep`/`sed` calls and no `colgrep`; every target was a known symbol, so exact match was the right tool and nothing was missed.
+
+### Changes made
+
+1. Commented on [#1041] with this second `ci_find` jobs-fetch 404 occurrence (run 46039451936); no repository files changed beyond this retro entry.
+
+[#1041]: https://github.com/gotgenes/pi-packages/issues/1041
 [#1155]: https://github.com/gotgenes/pi-packages/issues/1155
