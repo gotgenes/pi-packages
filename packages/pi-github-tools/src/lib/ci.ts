@@ -103,34 +103,25 @@ export async function findRun(args: FindRunArgs): Promise<string> {
     },
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- intentional infinite loop with explicit return/break
-  while (true) {
-    attempt++;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- intentional infinite loop with explicit return/break
+    while (true) {
+      attempt++;
+      signal?.throwIfAborted();
 
-    if (signal?.aborted) {
-      return formatAborted(`  retries: ${attempt}`, `  elapsed: ${elapsed}s`);
-    }
-
-    const delay = findRetryDelay(attempt);
-    if (delay > 0) {
-      try {
+      const delay = findRetryDelay(attempt);
+      if (delay > 0) {
         await sleep(delay * 1000, signal);
-      } catch (error) {
-        if (!signal?.aborted) throw error;
-        return formatAborted(`  retries: ${attempt}`, `  elapsed: ${elapsed}s`);
+        elapsed += delay;
       }
-      elapsed += delay;
-    }
 
-    if (attempt > 1 && onProgress) {
-      onProgress(
-        `awaiting ${workflowFile} run for ${shortExpected}... (attempt ${attempt}, ${elapsed}s elapsed)`,
-      );
-    }
+      if (attempt > 1 && onProgress) {
+        onProgress(
+          `awaiting ${workflowFile} run for ${shortExpected}... (attempt ${attempt}, ${elapsed}s elapsed)`,
+        );
+      }
 
-    let runs: RunSummary[];
-    try {
-      runs = await ghJsonRetrying<RunSummary[]>(
+      const runs = await ghJsonRetrying<RunSummary[]>(
         [
           "run",
           "list",
@@ -143,44 +134,65 @@ export async function findRun(args: FindRunArgs): Promise<string> {
         ],
         retryOptions,
       );
-    } catch (error) {
-      if (!signal?.aborted) throw error;
-      return formatAborted(`  retries: ${attempt}`, `  elapsed: ${elapsed}s`);
-    }
 
-    if (runs.length > 0) {
-      lastSeenRun = runs[0];
-    }
-
-    const matchingRun = runs.find((r) => r.headSha === expectedSha);
-    if (matchingRun) {
-      let jobs: CIJob[];
-      try {
-        ({ jobs } = await ghJsonRetrying<RunJobs>(
-          ["run", "view", String(matchingRun.databaseId), "--json", "jobs"],
-          retryOptions,
-        ));
-      } catch (error) {
-        if (!signal?.aborted) throw error;
-        return formatAborted(`  retries: ${attempt}`, `  elapsed: ${elapsed}s`);
+      if (runs.length > 0) {
+        lastSeenRun = runs[0];
       }
-      return formatFind(matchingRun, jobs);
-    }
 
-    if (elapsed >= timeout) {
-      const lastSeenInfo = lastSeenRun
-        ? `last_seen_sha: ${lastSeenRun.headSha.substring(0, 7)} (run ${lastSeenRun.databaseId})`
-        : "last_seen_sha: none (no runs found for this workflow)";
+      const matchingRun = runs.find((r) => r.headSha === expectedSha);
+      if (matchingRun) {
+        const jobs = await fetchRunJobs(matchingRun.databaseId, retryOptions);
+        return formatFind(matchingRun, jobs);
+      }
 
-      return [
-        `timeout: no run found for workflow ${workflowFile} matching SHA ${expectedSha}`,
-        `  retries: ${attempt}`,
-        `  elapsed: ${elapsed}s`,
-        `  ${lastSeenInfo}`,
-        `  suggestion: check https://www.githubstatus.com for GitHub Actions status`,
-      ].join("\n");
+      if (elapsed >= timeout) {
+        return formatFindTimeout({
+          workflowFile,
+          expectedSha,
+          attempt,
+          elapsed,
+          lastSeenRun,
+        });
+      }
     }
+  } catch (error) {
+    if (!signal?.aborted) throw error;
+    return formatAborted(`  retries: ${attempt}`, `  elapsed: ${elapsed}s`);
   }
+}
+
+async function fetchRunJobs(
+  runId: number,
+  retryOptions: RetryOptions,
+): Promise<CIJob[]> {
+  const { jobs } = await ghJsonRetrying<RunJobs>(
+    ["run", "view", String(runId), "--json", "jobs"],
+    retryOptions,
+  );
+  return jobs;
+}
+
+interface FindTimeout {
+  workflowFile: string;
+  expectedSha: string;
+  attempt: number;
+  elapsed: number;
+  lastSeenRun: RunSummary | null;
+}
+
+function formatFindTimeout(timeout: FindTimeout): string {
+  const { lastSeenRun } = timeout;
+  const lastSeenInfo = lastSeenRun
+    ? `last_seen_sha: ${lastSeenRun.headSha.substring(0, 7)} (run ${lastSeenRun.databaseId})`
+    : "last_seen_sha: none (no runs found for this workflow)";
+
+  return [
+    `timeout: no run found for workflow ${timeout.workflowFile} matching SHA ${timeout.expectedSha}`,
+    `  retries: ${timeout.attempt}`,
+    `  elapsed: ${timeout.elapsed}s`,
+    `  ${lastSeenInfo}`,
+    `  suggestion: check https://www.githubstatus.com for GitHub Actions status`,
+  ].join("\n");
 }
 
 export interface WatchRunArgs {
