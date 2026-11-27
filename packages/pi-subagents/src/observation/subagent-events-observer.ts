@@ -1,5 +1,5 @@
 import type { SubagentManagerObserver } from "#src/lifecycle/subagent-manager";
-import type { RunKind } from "#src/lifecycle/subagent-run";
+import type { RunKind, RunOutcome } from "#src/lifecycle/subagent-run";
 import { buildEventData, type NotificationSystem } from "#src/observation/notification";
 import { SUBAGENT_RECORD_ENTRY, toPersistedRecord } from "#src/persisted-record";
 import type { CompactionInfo, Subagent } from "#src/types";
@@ -51,21 +51,24 @@ export class SubagentEventsObserver implements SubagentManagerObserver {
 	 * succeeded; a resumed run terminates in any terminal status on one distinct
 	 * channel, the payload's status/error discriminating, so subagents:completed
 	 * and subagents:failed subscribers keep their once-per-agent semantics.
+	 *
+	 * Everything is read from the run that ended, which a resume may already
+	 * have replaced: the record's latest run would describe the resume instead.
 	 */
-	onSubagentRunFinished(record: Subagent, kind: RunKind): void {
-		this.emit(finishedChannel(record, kind), buildEventData(record, record.latestRun));
-		this.persistAndNotify(record);
+	onSubagentRunFinished(record: Subagent, run: RunOutcome): void {
+		this.emit(finishedChannel(run), buildEventData(record, run));
+		this.persistAndNotify(record, run);
 	}
 
 	/**
 	 * Persist the terminal record for cross-extension history reconstruction and
 	 * announce completion, for every finished run, initial or resumed. Whether a
 	 * nudge is actually owed is the notification manager's decision — it suppresses itself when a carrier has claimed the outcome or
-	 * the parent has already consumed it. Both are domain state on the record,
+	 * the parent has already consumed it. Both are domain state on the run,
 	 * not owned here.
 	 */
-	private persistAndNotify(record: Subagent): void {
-		this.appendEntry(SUBAGENT_RECORD_ENTRY, toPersistedRecord(record, record.latestRun));
+	private persistAndNotify(record: Subagent, run: RunOutcome): void {
+		this.appendEntry(SUBAGENT_RECORD_ENTRY, toPersistedRecord(record, run));
 		this.notifications.sendCompletion(record);
 	}
 
@@ -117,7 +120,7 @@ function identityOf(record: Subagent): Pick<Subagent, "id" | "type" | "descripti
 }
 
 /** The channel a finished run is announced on. */
-function finishedChannel(record: Subagent, kind: RunKind): string {
-	if (kind === "resume") return "subagents:resumed";
-	return record.isTerminalError() ? "subagents:failed" : "subagents:completed";
+function finishedChannel(run: RunOutcome): string {
+	if (run.kind === "resume") return "subagents:resumed";
+	return run.isTerminalError() ? "subagents:failed" : "subagents:completed";
 }

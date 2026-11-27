@@ -1634,13 +1634,13 @@ describe("Subagent", () => {
 			it("transitions to aborted, a terminal error, when the harness exhausted the turn budget", async () => {
 				const { agent: record } = await runToOutcome({ turnBudget: EXHAUSTED });
 				expect(record.status).toBe("aborted");
-				expect(record.isTerminalError()).toBe(true);
+				expect(record.latestRun.isTerminalError()).toBe(true);
 			});
 
 			it("transitions to completed, not a terminal error, when the run wrapped up at its turn limit", async () => {
 				const { agent: record } = await runToOutcome({ turnBudget: WARNED });
 				expect(record.status).toBe("completed");
-				expect(record.isTerminalError()).toBe(false);
+				expect(record.latestRun.isTerminalError()).toBe(false);
 			});
 
 			it("fires observer.onRunFinished on completion", async () => {

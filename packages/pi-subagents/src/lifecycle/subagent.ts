@@ -187,7 +187,6 @@ export class Subagent {
 	get responseText(): string { return this.state.responseText; }
 	get lastProgressAt(): number { return this.state.lastProgressAt; }
 	isActive(): boolean { return this.currentRun.isActive(); }
-	isTerminalError(): boolean { return this.currentRun.isTerminalError(); }
 	isRunning(): boolean { return this.currentRun.isRunning(); }
 	canBeSteered(): boolean { return this.currentRun.canBeSteered(); }
 

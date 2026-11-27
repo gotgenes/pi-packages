@@ -687,7 +687,7 @@ describe("SubagentManager", () => {
       it("stops a queued resume as a resume, once, without running it", async () => {
         const finished: Array<[string, RunKind]> = [];
         const { x, xStub, holder, releaseHolder } = await arrangeResumeAtCapacity({
-          onSubagentRunFinished: (record, kind) => finished.push([record.id, kind]),
+          onSubagentRunFinished: (record, run) => finished.push([record.id, run.kind]),
         });
         manager.startResume(x, "continue", { background: true });
 
@@ -708,7 +708,7 @@ describe("SubagentManager", () => {
       it("stops a queued resume as a resume on abortAll", async () => {
         const finished: Array<[string, RunKind]> = [];
         const { x } = await arrangeResumeAtCapacity({
-          onSubagentRunFinished: (record, kind) => finished.push([record.id, kind]),
+          onSubagentRunFinished: (record, run) => finished.push([record.id, run.kind]),
         });
         manager.startResume(x, "continue", { background: true });
 
@@ -1476,7 +1476,7 @@ describe("SubagentManager", () => {
     });
 
     it("reports a background agent's resumed run finishing, with its kind", async () => {
-      const onSubagentRunFinished = vi.fn();
+      const onSubagentRunFinished = vi.fn<SubagentManagerObserver["onSubagentRunFinished"]>();
       const { factory, stub } = createSessionFactory();
       ({ manager } = createManager({ createSubagentSession: factory, observer: { onSubagentRunFinished } }));
 
@@ -1486,8 +1486,11 @@ describe("SubagentManager", () => {
       await manager.resume(id, "continue", { background: true });
 
       expect(onSubagentRunFinished).toHaveBeenCalledTimes(2);
-      expect(onSubagentRunFinished).toHaveBeenNthCalledWith(1, manager.getRecord(id), "initial");
-      expect(onSubagentRunFinished).toHaveBeenNthCalledWith(2, manager.getRecord(id), "resume");
+      expect(onSubagentRunFinished.mock.calls.map(([record, run]) => [record, run.kind])).toEqual([
+        [manager.getRecord(id), "initial"],
+        [manager.getRecord(id), "resume"],
+      ]);
+      expect(onSubagentRunFinished).toHaveBeenLastCalledWith(manager.getRecord(id), manager.getRecord(id)!.latestRun);
     });
 
     it("reports a foreground agent's resumed run finishing, with its kind", async () => {
@@ -1502,7 +1505,32 @@ describe("SubagentManager", () => {
       // A resumed foreground run is a terminal transition like any other; whether
       // the parent is told is the notification layer's call, not this seam's.
       expect(onSubagentRunFinished).toHaveBeenCalledTimes(2);
-      expect(onSubagentRunFinished).toHaveBeenLastCalledWith(record, "resume");
+      expect(onSubagentRunFinished).toHaveBeenLastCalledWith(record, record.latestRun);
+      expect(record.latestRun.kind).toBe("resume");
+    });
+
+    it("reports an aborted run's late finish as that run, not the resume that replaced it", async () => {
+      const onSubagentRunFinished = vi.fn<SubagentManagerObserver["onSubagentRunFinished"]>();
+      const { factory, stub } = createSessionFactory();
+      // The first loop returns only once released, after the resume has started.
+      const first = Promise.withResolvers<TurnLoopResult>();
+      const second = Promise.withResolvers<TurnLoopResult>();
+      stub.runTurnLoop.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
+      ({ manager } = createManager({ createSubagentSession: factory, observer: { onSubagentRunFinished } }));
+      const id = spawnBg(manager);
+      await vi.waitFor(() => expect(stub.runTurnLoop).toHaveBeenCalledOnce());
+      const record = manager.getRecord(id)!;
+      const aborted = record.latestRun;
+
+      expect(manager.abort(id)).toBe(true);
+      expect(manager.startResume(id, "continue", { background: true }).kind).toBe("started");
+      first.resolve(turnLoopResult({ responseText: "late answer" }));
+      await vi.waitFor(() => expect(onSubagentRunFinished).toHaveBeenCalledOnce());
+
+      expect(onSubagentRunFinished).toHaveBeenCalledExactlyOnceWith(record, aborted);
+      expect([aborted.status, record.status]).toEqual(["stopped", "running"]);
+      second.resolve(turnLoopResult({ responseText: "resumed answer" }));
+      await record.promise;
     });
 
   });
@@ -1733,7 +1761,7 @@ describe("SubagentManager", () => {
           createSubagentSession: factory,
           observer: {
             onSubagentRunStarted: (_r, kind) => calls.push(`${kind} started`),
-            onSubagentRunFinished: (_r, kind) => calls.push(`${kind} finished`),
+            onSubagentRunFinished: (_r, run) => calls.push(`${run.kind} finished`),
           },
         }));
         const id = spawnBg(manager);
@@ -1823,8 +1851,8 @@ describe("SubagentManager", () => {
         ({ manager } = createManager({
           createSubagentSession: factory,
           observer: {
-            onSubagentRunFinished: (r, kind) => {
-              if (kind === "resume") notifications.sendCompletion(r);
+            onSubagentRunFinished: (r, run) => {
+              if (run.kind === "resume") notifications.sendCompletion(r);
             },
           },
         }));
@@ -1862,9 +1890,9 @@ describe("SubagentManager", () => {
           observer: {
             // A consumer that resumes the moment the run settles, as a
             // subagents:completed handler can, before the waiter wakes.
-            onSubagentRunFinished: (r, kind) => {
+            onSubagentRunFinished: (r, run) => {
               notifications.sendCompletion(r);
-              if (kind === "initial") resumeOutcome = manager.resume(r.id, "continue", { background: false, claimOutcome: true });
+              if (run.kind === "initial") resumeOutcome = manager.resume(r.id, "continue", { background: false, claimOutcome: true });
             },
           },
         }));

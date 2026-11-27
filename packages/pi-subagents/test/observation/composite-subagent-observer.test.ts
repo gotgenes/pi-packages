@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { SubagentManagerObserver } from "#src/lifecycle/subagent-manager";
 import { CompositeSubagentObserver } from "#src/observation/composite-subagent-observer";
 import type { CompactionInfo } from "#src/types";
-import { createTestSubagent } from "#test/helpers/make-subagent";
+import { createTestRun, createTestSubagent } from "#test/helpers/make-subagent";
 
 function makeDelegate(): SubagentManagerObserver {
 	return {
@@ -47,11 +47,12 @@ describe("CompositeSubagentObserver", () => {
 			const b = makeDelegate();
 			const composite = new CompositeSubagentObserver([a, b]);
 			const record = createTestSubagent({ id: "agent-3" });
+			const run = createTestRun(kind);
 
-			composite.onSubagentRunFinished(record, kind);
+			composite.onSubagentRunFinished(record, run);
 
-			expect(a.onSubagentRunFinished).toHaveBeenCalledExactlyOnceWith(record, kind);
-			expect(b.onSubagentRunFinished).toHaveBeenCalledExactlyOnceWith(record, kind);
+			expect(a.onSubagentRunFinished).toHaveBeenCalledExactlyOnceWith(record, run);
+			expect(b.onSubagentRunFinished).toHaveBeenCalledExactlyOnceWith(record, run);
 		});
 
 		it("forwards onSubagentCompacted to every delegate with record and info", () => {

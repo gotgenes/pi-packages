@@ -9,7 +9,7 @@ import type { TuiMode } from "@earendil-works/pi-tui";
 import { AgentTypeRegistry } from "#src/config/agent-types";
 import type { Subagent } from "#src/lifecycle/subagent";
 import type { SubagentManager, SubagentManagerObserver } from "#src/lifecycle/subagent-manager";
-import type { RunKind } from "#src/lifecycle/subagent-run";
+import type { RunKind, RunOutcome } from "#src/lifecycle/subagent-run";
 import type { CompactionInfo } from "#src/types";
 import { ERROR_STATUSES, type Theme } from "#src/ui/display";
 import { renderWidgetLines, type WidgetAgent } from "#src/ui/widget-renderer";
@@ -162,7 +162,7 @@ export class AgentWidget implements SubagentManagerObserver {
   }
 
   /** A run finished — render so the finished state is seeded and the refreshed result shown. */
-  onSubagentRunFinished(_record: Subagent, _kind: RunKind) {
+  onSubagentRunFinished(_record: Subagent, _run: RunOutcome) {
     this.update();
   }
 

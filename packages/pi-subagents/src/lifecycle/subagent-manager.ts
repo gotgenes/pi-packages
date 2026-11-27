@@ -23,7 +23,7 @@ import {
   Subagent,
   type SubagentLifecycleObserver,
 } from "#src/lifecycle/subagent";
-import type { RunKind } from "#src/lifecycle/subagent-run";
+import type { RunKind, RunOutcome } from "#src/lifecycle/subagent-run";
 import type { SubagentSession } from "#src/lifecycle/subagent-session";
 import type { WorkspaceProvider } from "#src/lifecycle/workspace";
 
@@ -148,8 +148,11 @@ export interface SubagentManagerObserver {
    * polling.
    */
   onSubagentRunStarted(record: Subagent, kind: RunKind): void;
-  /** Fires when a run reaches a terminal state, whatever that state is. */
-  onSubagentRunFinished(record: Subagent, kind: RunKind): void;
+  /**
+   * Fires when a run reaches a terminal state, whatever that state is. Names the
+   * run that ended, which a resume may already have replaced.
+   */
+  onSubagentRunFinished(record: Subagent, run: RunOutcome): void;
   /**
    * Fires when a running child sends its parent a mid-run message.
    * Optional: the widget has no use for it, and a hook nobody supplies is a
@@ -275,7 +278,7 @@ export class SubagentManager {
       // lifecycle event and the session-history record, which are facts about
       // the run rather than announcements.
       onRunFinished: (agent, run) => {
-        try { this.observer?.onSubagentRunFinished(agent, run.kind); } catch (err) { debugLog("onSubagentRunFinished observer", err); }
+        try { this.observer?.onSubagentRunFinished(agent, run); } catch (err) { debugLog("onSubagentRunFinished observer", err); }
       },
       onUpdateSent: (agent, message) => {
         this.observer?.onSubagentUpdate?.(agent, message);

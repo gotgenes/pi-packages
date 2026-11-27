@@ -56,6 +56,8 @@ export interface RunOutcome {
 	/** A resume replaced this run after it settled. */
 	readonly replaced: boolean;
 	isActive(): boolean;
+	/** Terminated by error, harness turn-limit abort, or external stop. */
+	isTerminalError(): boolean;
 	markConsumed(at?: number): void;
 }
 

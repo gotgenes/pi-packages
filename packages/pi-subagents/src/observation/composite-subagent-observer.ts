@@ -1,6 +1,6 @@
 import { debugLog } from "#src/debug";
 import type { SubagentManagerObserver } from "#src/lifecycle/subagent-manager";
-import type { RunKind } from "#src/lifecycle/subagent-run";
+import type { RunKind, RunOutcome } from "#src/lifecycle/subagent-run";
 import type { CompactionInfo, Subagent } from "#src/types";
 
 /**
@@ -30,8 +30,8 @@ export class CompositeSubagentObserver implements SubagentManagerObserver {
     this.dispatch((o) => o.onSubagentCreated(record), "onSubagentCreated");
   }
 
-  onSubagentRunFinished(record: Subagent, kind: RunKind): void {
-    this.dispatch((o) => o.onSubagentRunFinished(record, kind), "onSubagentRunFinished");
+  onSubagentRunFinished(record: Subagent, run: RunOutcome): void {
+    this.dispatch((o) => o.onSubagentRunFinished(record, run), "onSubagentRunFinished");
   }
 
   onSubagentUpdate(record: Subagent, message: string): void {

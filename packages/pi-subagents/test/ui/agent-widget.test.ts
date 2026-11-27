@@ -6,7 +6,7 @@ import type { SubagentManager } from "#src/lifecycle/subagent-manager";
 import type { CompactionInfo } from "#src/types";
 import { AgentWidget, assembleWidgetState, type UICtx } from "#src/ui/agent-widget";
 import { makeModel } from "#test/helpers/make-model";
-import { createTestSubagent, makeStubExecution } from "#test/helpers/make-subagent";
+import { createTestRun, createTestSubagent, makeStubExecution } from "#test/helpers/make-subagent";
 
 // Minimal agent fixture — only the three fields AgentSummary requires.
 function makeAgent(overrides: { id?: string; status?: string; completedAt?: number } = {}) {
@@ -358,7 +358,7 @@ describe("AgentWidget — a record that runs again", () => {
 		fixture.widget.onSubagentRunStarted(createTestSubagent({ id: "a1", status: "running" }), "resume");
 		agent.status = status;
 		agent.completedAt = 9000;
-		fixture.widget.onSubagentRunFinished(createTestSubagent({ id: "a1", status }), "resume");
+		fixture.widget.onSubagentRunFinished(createTestSubagent({ id: "a1", status }), createTestRun("resume"));
 		return fixture;
 	}
 
@@ -414,7 +414,7 @@ describe("AgentWidget — self-drives from lifecycle notifications", () => {
 	it("renders the finished agent when its run finishes", () => {
 		const { widget, lastContent } = makeWidget([{ id: "a1", status: "completed", completedAt: 5000 }]);
 
-		widget.onSubagentRunFinished(createTestSubagent({ id: "a1", status: "completed" }), "initial");
+		widget.onSubagentRunFinished(createTestSubagent({ id: "a1", status: "completed" }), createTestRun("initial"));
 
 		expect(typeof lastContent()).toBe("function");
 	});
@@ -512,7 +512,7 @@ describe("AgentWidget — the animation timer tracks running agents", () => {
 
 		agents[0].status = "completed";
 		agents[0].completedAt = 5000;
-		widget.onSubagentRunFinished(createTestSubagent({ id: "a1", status: "completed" }), "initial");
+		widget.onSubagentRunFinished(createTestSubagent({ id: "a1", status: "completed" }), createTestRun("initial"));
 
 		expect(vi.getTimerCount()).toBe(0);
 		expect(typeof lastContent()).toBe("function");
@@ -529,7 +529,7 @@ describe("AgentWidget — the animation timer tracks running agents", () => {
 
 		agents[0].status = "completed";
 		agents[0].completedAt = 5000;
-		widget.onSubagentRunFinished(createTestSubagent({ id: "a1", status: "completed" }), "initial");
+		widget.onSubagentRunFinished(createTestSubagent({ id: "a1", status: "completed" }), createTestRun("initial"));
 
 		expect(vi.getTimerCount()).toBe(0);
 		expect(typeof lastContent()).toBe("function");
