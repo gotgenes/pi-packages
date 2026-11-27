@@ -44,6 +44,10 @@ Uses exponential backoff (5 s base, 30 s cap) until the run appears or the timeo
 Returns `run_id`, `url`, `status`, `sha`, `title`, and job list on success.
 Returns a structured timeout message (not an error) if the run does not appear.
 
+A freshly created run's jobs endpoint can briefly return `HTTP 404`.
+`ci_find` treats that 404 as "not ready yet" and keeps polling within `timeout`; if the 404 outlasts the timeout, it surfaces as the tool's error.
+A 404 from the run list, and any other failure fetching jobs, surfaces immediately.
+
 #### `ci_watch`
 
 Poll a GitHub Actions run by run ID until it completes or times out.

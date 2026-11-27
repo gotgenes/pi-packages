@@ -36,6 +36,7 @@ src/
 - `src/lib/` must not import from `@earendil-works/pi-coding-agent` — only `src/tools/` and `src/progress.ts` touch Pi types.
 - The `gh` CLI is the main external binary dependency; `issue_close` also runs local `git rev-parse` to refuse a comment citing an unresolvable commit SHA.
 - Retry is opt-in at the call site: read-only calls go through `ghJsonRetrying`, and `gh()` stays single-shot so a mutation cannot acquire retry by accident.
+- `ci_find` treats a 404 from a just-listed run's jobs fetch as "not ready" and polls again within its `timeout`, rethrowing the 404 once the budget is spent; it is the one 4xx the package waits out, and `isTransientError` still excludes every 4xx.
 - `ci_find` matches a run purely on `headSha` and never inspects the triggering event, so it follows a `workflow_dispatch` run — the repo's release workflow — as readily as a `push` one.
 
 The package ships no configuration.
