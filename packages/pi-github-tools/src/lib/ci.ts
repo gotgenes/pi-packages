@@ -198,16 +198,16 @@ interface FindTimeout {
   lastSeenRun: RunSummary | null;
 }
 
-function formatFindTimeout(timeout: FindTimeout): string {
-  const { lastSeenRun } = timeout;
+function formatFindTimeout(search: FindTimeout): string {
+  const { lastSeenRun } = search;
   const lastSeenInfo = lastSeenRun
     ? `last_seen_sha: ${lastSeenRun.headSha.substring(0, 7)} (run ${lastSeenRun.databaseId})`
     : "last_seen_sha: none (no runs found for this workflow)";
 
   return [
-    `timeout: no run found for workflow ${timeout.workflowFile} matching SHA ${timeout.expectedSha}`,
-    `  retries: ${timeout.attempt}`,
-    `  elapsed: ${timeout.elapsed}s`,
+    `timeout: no run found for workflow ${search.workflowFile} matching SHA ${search.expectedSha}`,
+    `  retries: ${search.attempt}`,
+    `  elapsed: ${search.elapsed}s`,
     `  ${lastSeenInfo}`,
     `  suggestion: check https://www.githubstatus.com for GitHub Actions status`,
   ].join("\n");
