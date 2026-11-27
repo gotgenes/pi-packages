@@ -71,6 +71,62 @@ At ship, close [#720], [#1031], and PR [#990] with a credit comment.
   `ParentAuthorizer.buildForwardedRequest` stamps the relaying node as requester, so the root resolves a grandchild's ask agent-scoped to the middle node and an `agent <name>` scope matches the middle node (traced in source, not run).
   Its Phase 16 roadmap disposition is still owed; it was put to the operator at the end of this sync.
 
+## Stage: Final Retrospective (2026-11-27T16:44:21Z)
+
+### Session summary
+
+The root `/ship` fast-forward-merged the peer branch, re-ran lint and `fallow dead-code` on the merged tree, pushed, and verified CI, then released `pi-permission-system-v45.0.0`.
+It closed this issue, the issues it shipped ([#720], [#1031], and [#868]), and PR [#990], crediting @maksimr and @ReStranger, and tore down the worktree.
+Across four stages (planning, TDD, and sync in one peer session on `anthropic/claude-opus-5-5`, ship at the root), the only friction that cost operator turns was the sync gate's missing baseline.
+
+### Observations
+
+#### What went well
+
+- The Tidy-First assessor's sequencing prediction held exactly: status ownership had to move in the setters commit or `PermissionSession.refreshConfig` would erase the auto-approve indicator every turn, and TDD hit that seam where the plan placed it.
+- Per-step killing mutations caught a test that was too weak: the [#868] assertion `contains model-judge` also matched `@gotgenes/pi-permission-model-judge` and was tightened to `registers as model-judge` before commit.
+- Ship step 2's full retro read found every close target ([#720], [#1031], PR [#990]) from the sync note, and the plan named [#868] as a ride-along, so all four closed in one pass with no post-ship cleanup.
+- The sync gate's second pass compared the options against published `main`, which showed option 1 was new behavior, not the status quo; the operator then filed and dispositioned the real want ([#1154]) in the same stage.
+
+#### What caused friction
+
+- `rule-ignored` — the sync gate's first briefing on the headless relaying node compared option 1 to a sibling configuration ("a subagent that does have a UI already behaves this way today") but not to `main` for the case in question.
+  `clarification-gates` ("what happens today in each concrete configuration") was in context, since planning had read it and the peer session never compacted.
+  The operator asked twice before the baseline came out, and it reversed the framing: on `main` a grandchild's ask is denied after about two seconds, so option 1 is the behavior change.
+  Impact: two extra operator turns and a three-call code-reading pass; no rework.
+  Operator-caught.
+- `other` (harness boundary, recurring) — one `ask_user` call in sync and one in this ship carried their briefing only in thinking and were blocked by `.pi/extensions/ask-user-text-first.ts`.
+  The guard's reason, from `docs/retro/1138-adopt-fallow-3-46-features.md`, sent each to a plain-text reply on the first block.
+  Impact: one rejected call per gate; the guard is working as intended.
+  Tool-caught.
+- `rule-ignored` — the [#720] close comment said "the README documents the safe spelling" before the claim was checked; the `grep` ran after `issue_close` published it.
+  The claim held (`README.md` line 167), but the check came after the point where it could stop a wrong claim (Principle 1).
+  Impact: none this time.
+  Self-identified.
+- `slip` — two `cd packages/pi-permission-system; …` bash calls (one in planning, one in TDD) were denied by the `cd packages/*` policy rule, and each was re-run from the root.
+  Impact: two rejected calls; the deny rule is the mechanism and it fired.
+  Tool-caught.
+- `judgment` — the plan's `AutoApprovingAuthorizer` decorator broke three `authorizer-selection` tests that pin the terminal's identity; TDD switched to a value terminal (the mirror of `DenyingAuthorizer`) and amended step 4 in place.
+  Impact: one amended commit; the selected terminal now reads the grant when `escalate` starts.
+  Self-identified.
+
+#### What the operator steered
+
+- `steer:rule`: "I think 2 matches explicit vs. implicit, right?", after the agent recommended option 1 (keep headless relaying nodes serving) as matching a UI node's behavior.
+- `steer:rule`: "How does this change behavior from today?
+  What second-order effects am I missing?", after the agent's case for option 2 still omitted the `main` baseline.
+- `steer:choice`: "I think for now we'll go with Option 1, however, I can tell as a user that what I want is for subagent forwardings to survive correctly in multi-hop scenarios."
+  The agent had last made the case for option 2.
+  Its reach is stated as a product direction ("what I want"), and it became [#1154].
+  No earlier `steer:choice` (`rg -n 'steer:choice' docs/retro packages/*/docs/retro`) states the same choice.
+
+### Diagnostic details
+
+- **Model-performance correlation** — every peer turn and all three subagents (the Tidy-First assessor, the pre-completion reviewer, and its delta pass) ran on `anthropic/claude-opus-5-5`, per the transcripts' inline labels.
+  That fits the assessor and the first review; the nine-turn delta review is light work for that tier, but too small to matter.
+- **Escalation-delay tracking** — no stretch ran past two calls on one error: the two `Edit` mismatches (`lifecycle.test.ts`, `lifecycle.ts`) each resolved on the next call.
+- **Feedback-loop gap analysis** — TDD ran the affected test file after every Red and Green and the named mutations per step; lint and `fallow dead-code` ran at sync and again on the merged tree at ship.
+
 [#1154]: https://github.com/gotgenes/pi-packages/issues/1154
 
 [#720]: https://github.com/gotgenes/pi-packages/issues/720
