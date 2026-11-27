@@ -1,5 +1,16 @@
 # Changelog
 
+## [6.1.1](https://github.com/gotgenes/pi-packages/compare/pi-github-tools-v6.1.0...pi-github-tools-v6.1.1) (2026-11-27)
+
+
+### Bug Fixes
+
+* **pi-github-tools:** ci_find waits out a new run's jobs 404 instead of failing ([9713499](https://github.com/gotgenes/pi-packages/commit/97134999029d10b704121cd1aeda2f13a6432679)), closes [#1041](https://github.com/gotgenes/pi-packages/issues/1041)
+
+### Documentation
+
+* **pi-github-tools:** document ci_find's wait on a new run's jobs 404 ([af25fc3](https://github.com/gotgenes/pi-packages/commit/af25fc325d4b13355127cf94ce904e74f7ad6ed7))
+
 ## [6.1.0](https://github.com/gotgenes/pi-packages/compare/pi-github-tools-v6.0.0...pi-github-tools-v6.1.0) (2026-10-05)
 
 
