@@ -61,8 +61,9 @@ const DIGITS = "0123456789";
 /**
  * pi-tui's symbol keys, minus `+`.
  *
- * `+` separates a modifier from its key in a key identifier, so pi-tui's
- * parser splits `"+"` into two empty halves and the binding matches nothing.
+ * `+` separates a modifier from its key in a key identifier, and pi-tui below
+ * 1.2.0, which the `>=1.0.0` peer range still admits, splits `"+"` into two
+ * empty halves, so the binding matches nothing there.
  * A parity test in `test/config/dialog-keys.test.ts` derives this roster from
  * pi-tui's exported `Key` constant and fails if the two drift; keeping the
  * literal here is what lets this module stay free of SDK imports.

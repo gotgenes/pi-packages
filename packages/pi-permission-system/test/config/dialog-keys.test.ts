@@ -29,7 +29,7 @@ describe("BINDABLE_DIALOG_KEY_CHARACTERS", () => {
     }
   });
 
-  it("admits exactly pi-tui's symbol keys, minus the one its matcher cannot see", () => {
+  it("admits exactly pi-tui's symbol keys, minus the one the peer floor cannot match", () => {
     const symbols = piTuiSymbolKeys();
     // Guard the derivation itself: an empty list would make the claim vacuous.
     expect(symbols.length).toBeGreaterThan(20);
@@ -39,10 +39,10 @@ describe("BINDABLE_DIALOG_KEY_CHARACTERS", () => {
     expect(admitted).toEqual(symbols.filter((symbol) => symbol !== "+"));
   });
 
-  it("excludes `+` because pi-tui reads it as a modifier separator", () => {
-    // `parseKeyId` splits the identifier on `+`, leaving no key name behind, so
-    // a `+` binding would match nothing at all.
-    expect(matchesKey("+", "+")).toBe(false);
+  it("excludes `+` because pi-tui below 1.2.0 reads it as a modifier separator", () => {
+    // The peer range reaches pi-tui 1.0.0, whose `parseKeyId` splits the
+    // identifier on `+` and leaves no key name behind, so a `+` binding would
+    // match nothing there. pi-tui 1.2.0 and later match a bare `+`.
     expect(BINDABLE_DIALOG_KEY_CHARACTERS.has("+")).toBe(false);
   });
 
