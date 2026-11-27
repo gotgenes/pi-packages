@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [45.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v44.0.2...pi-permission-system-v45.0.0) (2026-11-27)
+
+
+### Features
+
+* **pi-permission-system:** auto-approve asks with --auto-approve or /permission-system:auto-approve ([3d080e1](https://github.com/gotgenes/pi-packages/commit/3d080e1e9e4e474514b50f8dfb4c74765b38e2ec)), closes [#1118](https://github.com/gotgenes/pi-packages/issues/1118)
+* **pi-permission-system:** a headless session serves forwarded asks while auto-approve covers them ([632ca45](https://github.com/gotgenes/pi-packages/commit/632ca453ceb91da5238534752c83f3ccf339fe8c)), closes [#1118](https://github.com/gotgenes/pi-packages/issues/1118)
+* **pi-permission-system:** **breaking:** auto-approve replaces yolo ([9a4b663](https://github.com/gotgenes/pi-packages/commit/9a4b66360dfab516af0de500873c22134f2062a3)), closes [#1118](https://github.com/gotgenes/pi-packages/issues/1118)
+* **pi-permission-system:** the config schema describes each authorizerChain entry ([e9b0eed](https://github.com/gotgenes/pi-packages/commit/e9b0eed57059df9801cdd908835aef50a7fa0408)), closes [#868](https://github.com/gotgenes/pi-packages/issues/868)
+
+### Documentation
+
+* **pi-permission-system:** document auto-approve and retire yolo from the docs ([4ca08e3](https://github.com/gotgenes/pi-packages/commit/4ca08e3d97e5085495f238b027966abd83723d1a)), closes [#1118](https://github.com/gotgenes/pi-packages/issues/1118)
+* **pi-permission-system:** say a floored ask reaches auto-approve, not that yoloMode re-permits it ([1e7d992](https://github.com/gotgenes/pi-packages/commit/1e7d992c4d86a012167701a86eea96cde406748d)), closes [#1118](https://github.com/gotgenes/pi-packages/issues/1118)
+
 ## [44.0.2](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v44.0.1...pi-permission-system-v44.0.2) (2026-11-26)
 
 
