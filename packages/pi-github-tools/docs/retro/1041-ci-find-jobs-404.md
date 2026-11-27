@@ -45,3 +45,18 @@ Completed all five TDD steps and added one rename commit after review: fixture h
   - `isNotFoundError` matches any `HTTP 404` in the message: a 404 on the run endpoint during the same `gh run view` also matches (still a just-listed run), as would a theoretical `JSON.parse` error quoting "HTTP 404" from stdout.
     It was not narrowed, because tying it to `gh()`'s stderr layout could miss a real 404.
   - In an abort that races a jobs 404, `retries` reports one higher than before the refactor; the abort header is unchanged.
+
+## Stage: Sync (worktree) (2026-11-27T18:18:44Z)
+
+### Session summary
+
+Root `pnpm run lint` and `pnpm fallow dead-code` pass before the rebase onto local `main`.
+The plan's marker is `**Release:** ship independently`; `pi-github-tools` gets a patch release from the `fix:` commit.
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-1041--/2026-11-27T17-23-47-221Z_01a21e08-dd94-725d-a8c6-b2c8b9fc4266.jsonl`; read with `read_session_file({ path: "<path>" })` for message-level verification at land/retro time.
+
+### Observations
+
+- Operator settled both remaining reviewer warnings at sync: keep the broad `HTTP 404` match in `isNotFoundError`, and accept the off-by-one `retries` count when an abort races a jobs 404.
+- Restart Pi at the root before `/ship` if its `ci_find` should exercise the fix; this ship itself runs the pre-merge tool.
+- No follow-up issues were filed; the two deferred tidyings in the Planning stage are the only carried work.
