@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [26.0.2](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v26.0.1...pi-subagents-v26.0.2) (2026-11-27)
+
+
+### Bug Fixes
+
+* **pi-subagents:** report the run that finished in lifecycle events and session records ([d265ad4](https://github.com/gotgenes/pi-packages/commit/d265ad4f26398f2421ba8a932bfe5173c4290d35)), closes [#1058](https://github.com/gotgenes/pi-packages/issues/1058)
+* **pi-subagents:** keep a withheld completion nudge to the run that produced it ([1f0e422](https://github.com/gotgenes/pi-packages/commit/1f0e42258fd3af6a00733bb014ccd6dab0b6a1b1)), closes [#1058](https://github.com/gotgenes/pi-packages/issues/1058)
+* **pi-subagents:** stop announcing an earlier run's update as live progress ([7ca19a6](https://github.com/gotgenes/pi-packages/commit/7ca19a6982e263e8d9eca19b40ebd4296017ee0e)), closes [#1058](https://github.com/gotgenes/pi-packages/issues/1058)
+
+### Documentation
+
+* **pi-subagents:** say a resume before collection supersedes a run's updates ([081ae7d](https://github.com/gotgenes/pi-packages/commit/081ae7d0bcf9e9d7a7d9993dcfcbf16b25271526)), closes [#1058](https://github.com/gotgenes/pi-packages/issues/1058)
+
 ## [26.0.1](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v26.0.0...pi-subagents-v26.0.1) (2026-11-26)
 
 
