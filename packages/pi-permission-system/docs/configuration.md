@@ -261,6 +261,13 @@ A second ask that waits behind an open dialog signals when its own turn comes, a
 An ask decided without a dialog (by a rule, a session approval, or an authorizer link) emits nothing.
 Only interactive TUI sessions signal; outside interactive mode Pi routes stdout away from the terminal, so there is nothing to ring.
 
+Independently of `promptNotifications`, the dialog declares itself a wait on a permission decision.
+On Pi 1.5.0 or later, Pi then reports the session as blocked through OSC 7501 program status while the dialog is shown, and restores the previous status when it closes.
+A terminal or multiplexer that displays program status (cmux, for one) shows the session as waiting on you rather than working, with nothing to configure.
+The status message is the dialog title (`Permission Required`, or `Permission Required (Subagent)` for a forwarded ask), so it names no request value either.
+Pi writes the status only to a terminal that answers its OSC 7501 support query (or when `PI_PROGRAM_STATUS=1` forces it on).
+Pi 1.1 through 1.4 keep reporting `working` while the dialog waits, and Pi 1.0 reports no program status at all.
+
 Inside tmux, prefer `"bell"`: tmux passes a BEL through to its own bell handling, but drops OSC notifications unless passthrough is enabled.
 
 To run a program instead (Herdr, `cmux notify`, a push to your phone), write a small extension on the `permissions:ui_prompt` and `permissions:decision` broadcasts; see the [recipe](cross-extension-api.md#recipe-bridging-a-prompt-to-an-external-notifier).

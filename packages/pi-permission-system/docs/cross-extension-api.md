@@ -528,6 +528,7 @@ pi.events.on("permissions:decision", (raw) => {
 ### Recipe: bridging a prompt to an external notifier
 
 This extension can ring the terminal itself (`promptNotifications` in [configuration.md](configuration.md#terminal-notifications)).
+On Pi 1.5.0 or later it also reports a shown prompt as blocked through Pi's OSC 7501 program status, which Pi clears when the prompt closes.
 Anything beyond that (running a program, reporting to a session manager such as Herdr, calling `cmux notify`, pushing to a phone) belongs in a small extension of your own that listens to the two broadcasts.
 This package does not emit another tool's events itself: an outbound bridge would tie it to that tool's contract, where a listener leaves both sides free to change.
 

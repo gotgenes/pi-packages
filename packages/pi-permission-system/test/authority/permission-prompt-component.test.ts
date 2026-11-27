@@ -196,10 +196,23 @@ function decisionOptionKeys(captured: { component?: CapturedComponent }) {
 // ── Tests ─────────────────────────────────────────────────────────────────
 
 describe("presentInlinePermissionPrompt", () => {
-  it("renders inline (not as an overlay) with the request facts and hotkey labels", () => {
+  describe("host dialog options", () => {
+    it.each(["Permission Required", "Permission Required (Subagent)"])(
+      "mounts inline and reports the wait as blocked on a permission titled %s",
+      (title) => {
+        const { view, captured } = makeFakeView(true);
+        void presentInlinePermissionPrompt(view, title, ASK);
+        expect(captured.options).toEqual({
+          overlay: false,
+          blocked: { kind: "permission", message: title },
+        });
+      },
+    );
+  });
+
+  it("renders the request facts and hotkey labels", () => {
     const { view, captured } = makeFakeView(true);
     void presentInlinePermissionPrompt(view, "Permission Required", ASK);
-    expect(captured.options).toEqual({ overlay: false });
     const text = captured.component?.render(80).join("\n") ?? "";
     expect(text).toContain("tool : read");
     expect(text).toContain("path : /repo/secret.txt");

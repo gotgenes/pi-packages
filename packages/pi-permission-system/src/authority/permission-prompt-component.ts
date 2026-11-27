@@ -48,7 +48,8 @@ import {
  * module is the thin adapter that renders the model's state to lines, maps raw
  * keystrokes to {@link PromptEvent}s, and resolves the `ctx.ui.custom` promise
  * with the committed {@link PermissionPromptDecision}. The component renders
- * inline (never as an overlay).
+ * inline (never as an overlay), and declares itself a wait on a permission
+ * decision, so Pi reports the session as blocked while it is shown.
  */
 
 /** The subset of the session UI surface the inline dialog needs. */
@@ -257,7 +258,10 @@ export function presentInlinePermissionPrompt(
         clock,
       );
     },
-    { overlay: false },
+    // Pi 1.5.0+ reports `blocked` (OSC 7501) while the dialog is shown and
+    // restores the previous status when it closes; older Pi ignores the field.
+    // The title names no command, path, or target.
+    { overlay: false, blocked: { kind: "permission", message: title } },
   );
 }
 
