@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [45.1.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v45.0.0...pi-permission-system-v45.1.0) (2026-11-27)
+
+
+### Features
+
+* **pi-permission-system:** report a waiting permission prompt as blocked to the terminal ([bdaaeee](https://github.com/gotgenes/pi-packages/commit/bdaaeee8cbc2d2c3b80afdff5b1d1ba5809688dd)), closes [#1091](https://github.com/gotgenes/pi-packages/issues/1091)
+
 ## [45.0.0](https://github.com/gotgenes/pi-packages/compare/pi-permission-system-v44.0.2...pi-permission-system-v45.0.0) (2026-11-27)
 
 
