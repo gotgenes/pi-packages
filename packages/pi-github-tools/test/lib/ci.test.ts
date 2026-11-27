@@ -308,6 +308,69 @@ describe("findRun", () => {
         findRun({ workflow: "ci", expectedSha: sha, timeout: 120 }),
       ).rejects.toThrow(/HTTP 403: Forbidden/);
     });
+
+    describe("a just-listed run's jobs endpoint returns 404", () => {
+      const jobsNotFound =
+        "HTTP 404: Not Found (https://api.github.com/repos/o/r/actions/runs/100/jobs?per_page=100)";
+
+      it("polls again and returns the run once its jobs are available", async () => {
+        mockMatchingRun();
+        mockGhFail(jobsNotFound);
+        mockMatchingRun();
+        mockGhJson({
+          jobs: [{ name: "build", status: "in_progress", conclusion: null }],
+        });
+        const onProgress = vi.fn();
+
+        const result = await findRun({
+          workflow: "ci",
+          expectedSha: sha,
+          timeout: 120,
+          onProgress,
+        });
+
+        expect(result).toBe(
+          [
+            "run_id: 100",
+            "url: https://github.com/o/r/actions/runs/100",
+            "status: in_progress",
+            `sha: ${sha}`,
+            "short_sha: abc1234",
+            "title: CI",
+            "jobs:",
+            "  build — in_progress",
+          ].join("\n"),
+        );
+        expect(onProgress).toHaveBeenCalledWith(
+          "jobs for run 100 not available yet (HTTP 404), polling again",
+        );
+        expect(mockSleep).toHaveBeenCalledTimes(1);
+        expect(mockSleep).toHaveBeenCalledWith(5000, undefined);
+      });
+
+      it("surfaces the 404 when it outlasts the timeout", async () => {
+        mockMatchingRun();
+        mockGhFail(jobsNotFound);
+        mockMatchingRun();
+        mockGhFail(jobsNotFound);
+
+        await expect(
+          findRun({ workflow: "ci", expectedSha: sha, timeout: 5 }),
+        ).rejects.toThrow(/HTTP 404: Not Found/);
+        expect(mockSleep).toHaveBeenCalledTimes(1);
+        expect(mockSleep).toHaveBeenCalledWith(5000, undefined);
+      });
+
+      it("surfaces the 404 at once when the timeout is zero", async () => {
+        mockMatchingRun();
+        mockGhFail(jobsNotFound);
+
+        await expect(
+          findRun({ workflow: "ci", expectedSha: sha, timeout: 0 }),
+        ).rejects.toThrow(/HTTP 404: Not Found/);
+        expect(mockSleep).not.toHaveBeenCalled();
+      });
+    });
   });
 });
 

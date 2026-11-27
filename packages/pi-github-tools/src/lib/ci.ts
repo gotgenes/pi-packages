@@ -142,7 +142,12 @@ export async function findRun(args: FindRunArgs): Promise<string> {
       const matchingRun = runs.find((r) => r.headSha === expectedSha);
       if (matchingRun) {
         const jobs = await fetchRunJobs(matchingRun.databaseId, retryOptions);
-        return formatFind(matchingRun, jobs);
+        if (!(jobs instanceof Error)) return formatFind(matchingRun, jobs);
+        if (elapsed >= timeout) throw jobs;
+        onProgress?.(
+          `jobs for run ${matchingRun.databaseId} not available yet (HTTP 404), polling again`,
+        );
+        continue;
       }
 
       if (elapsed >= timeout) {
@@ -161,15 +166,28 @@ export async function findRun(args: FindRunArgs): Promise<string> {
   }
 }
 
+/**
+ * The run's jobs, or the 404 its jobs endpoint returns while the run is new.
+ * Every other failure throws.
+ */
 async function fetchRunJobs(
   runId: number,
   retryOptions: RetryOptions,
-): Promise<CIJob[]> {
-  const { jobs } = await ghJsonRetrying<RunJobs>(
-    ["run", "view", String(runId), "--json", "jobs"],
-    retryOptions,
-  );
-  return jobs;
+): Promise<CIJob[] | Error> {
+  try {
+    const { jobs } = await ghJsonRetrying<RunJobs>(
+      ["run", "view", String(runId), "--json", "jobs"],
+      retryOptions,
+    );
+    return jobs;
+  } catch (error) {
+    if (isNotFoundError(error)) return error;
+    throw error;
+  }
+}
+
+function isNotFoundError(error: unknown): error is Error {
+  return error instanceof Error && /HTTP 404\b/.test(error.message);
 }
 
 interface FindTimeout {
