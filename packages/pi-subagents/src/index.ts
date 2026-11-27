@@ -43,7 +43,7 @@ import { publishSubagentsService, unpublishSubagentsService } from "#src/service
 import { SubagentsServiceAdapter } from "#src/service/service-adapter";
 import { detectEnv } from "#src/session/env";
 import { resolveModel } from "#src/session/model-resolver";
-import { createExcludedPackagesStorage } from "#src/session/package-exclusions";
+import { createExcludedPackagesStorage, excludedFiltersBySource } from "#src/session/package-exclusions";
 import { createProjectContextLoader } from "#src/session/project-context";
 import { buildAgentPrompt } from "#src/session/prompts";
 import { inheritRegisteredProviders } from "#src/session/provider-inheritance";
@@ -124,7 +124,7 @@ export default function (pi: ExtensionAPI) {
       // The exclusion policy is resolved here, at the composition root, so the
       // assembly factory stays free of it and gets a ready-made settings view.
       createLoaderSettingsManager: (parent) => {
-        const excluded = new Set(settings.excludedExtensionPackages);
+        const excluded = excludedFiltersBySource(settings.excludedExtensionPackages);
         if (excluded.size === 0) return parent;
         return SdkSettingsManager.fromStorage(createExcludedPackagesStorage(parent, excluded), {
           projectTrusted: parent.isProjectTrusted(),
