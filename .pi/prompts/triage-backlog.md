@@ -335,13 +335,16 @@ The document contains:
 
 4. **The prioritized table** — the deliverable, carrying only `aligned`, `adjacent`, and `no charter` items:
 
-   | Rank | Item | Package(s)           | Kind         | Severity | Demand  | Why now                              |
-   | ---- | ---- | -------------------- | ------------ | -------- | ------- | ------------------------------------ |
-   | 1    | #639 | pi-permission-system | issue (ours) | keystone | 8r 4p C | Decides #671, #684, #680, #603, #604 |
+   | Rank | Item  | Package(s)           | Kind                 | Severity  | Demand                               | Why now                                         |
+   | ---- | ----- | -------------------- | -------------------- | --------- | ------------------------------------ | ----------------------------------------------- |
+   | 1    | #639  | pi-permission-system | issue (3p, credited) | keystone  | 8 reactions, 4 additional commenters | Decides #671, #684, #680, #603, #604            |
+   | 2    | #1020 | pi-permission-system | issue (ours)         | dead deny |                                      | Every `~`-prefixed `bash` rule is dead on win32 |
 
-   Use `#N` bare (they auto-link on GitHub), mark third-party items, and keep `Why now` to one sentence.
-   `Demand` reads `<r>r <p>p <flag>`: positive reactions, distinct outside participants, and the standing of the row's strongest third-party author (`C` credited, `R` returning, `1` first visit, `-` for a row of our own issues).
-   A row grouping several items sums the reactions and counts each participant once; a keystone row includes its dependants.
+   Use `#N` bare (they auto-link on GitHub) and keep `Why now` to one sentence.
+   `Kind` marks each item `ours` or `3p` (third party), and a `3p` row names the standing of its strongest third-party author: `credited` (a merged PR or a `Co-authored-by` credit on `main`), `returning` (items here at least seven days apart), or `new` (a first visit), as in `issue (3p, new)` or `issues (ours, 3p, returning)`.
+   `Demand` spells out what was measured in words: `3 reactions, 2 additional commenters`, where an additional commenter is a distinct person other than the author, the maintainer, and bots who commented or reviewed.
+   Write `1 reaction` and `1 additional commenter` in the singular, omit a zero part, and leave the cell empty when both are zero.
+   A row grouping several items sums the reactions and counts each commenter once; a keystone row includes its dependants.
    The `Package(s)` column lets the reader pick items that can run in parallel: work on different packages parallelizes, work on the same package does not.
    Name every package an item touches (the issue's `pkg:` labels, or the PR's changed `packages/<pkg>/` paths), comma-separated, without the `@gotgenes/` scope; write `repo` for a `scope:repo` item.
    A row grouping several items lists the union of their packages.
