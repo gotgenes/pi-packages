@@ -159,7 +159,6 @@ classDiagram
         +latestRun: RunOutcome
         +markCompleted() delegates
         +isActive(): boolean
-        +isTerminalError(): boolean
         +isRunning(): boolean
         +canBeSteered(): boolean
         +run()
@@ -407,7 +406,7 @@ src/
 │   └── usage.ts                    token usage tracking
 │
 ├── observation/                    reactions to the lifecycle: notification, outcome delivery, event emission
-│   ├── notification.ts             completion nudges and mid-run updates, in one arrival-ordered withheld queue (announce-only; withheld during the parent's agent run and flushed on agent_settled, each re-checking its gates at emit rather than replaying them from enqueue — a completion on claim and consumption, an update on the claim and on the child still running, since a terminated run's updates ride its outcome and this nudge is one of their carriers), plus workspace notices, which are announced straight through
+│   ├── notification.ts             completion nudges and mid-run updates, in one arrival-ordered withheld queue (announce-only; withheld during the parent's agent run and flushed on agent_settled, each holding the run it is about and re-checking that run's gates at emit rather than replaying them from enqueue — a completion on claim, consumption, and replacement by a resume, an update on the claim and on that run still running, since a terminated run's updates ride its outcome and this nudge is one of their carriers), plus workspace notices, which are announced straight through
 │   ├── outcome-delivery.ts         shared outcome rendering every result carrier composes: one status vocabulary in two presentations, body, and the addenda tail (mid-run updates, workspace notice, ask-back affordance — which names a resume only when the record says one would be accepted, and asks the parent to wait when the child has merely not settled) in one fixed order
 │   ├── composite-subagent-observer.ts fans manager notifications out to multiple observers; enumerates every member, so an optional one it omits is dropped silently
 │   └── subagent-events-observer.ts manager lifecycle observer (event emission + persistence + notification)
@@ -456,6 +455,7 @@ src/
 Record statistics (tool uses, token usage, compaction counts) and live activity (active tools, response text) are updated by `record-observer.ts`, which subscribes directly to session events.
 The turn budget is the exception: the turn loop owns the count it enforces, and reports each change to the record through its `onTurnBudget` option.
 All run state still lives on the `Subagent` record.
+Every notice about a run's end or a run's update names the run (`RunOutcome`) from `Subagent` through the manager's observer to its readers, and the nudge, the lifecycle event, and the persisted `subagents:record` entry take outcome fields from that run, never from the record's latest one — a resume can replace the run before a reader gets to it.
 
 The widget reads agent state by polling the records exposed via `SubagentManager.listAgents()` every 80 ms in fullscreen mode and every 250 ms in regular mode, where a frame's cost scales with the transcript; that poll loop is driven by the manager's lifecycle notifications (the widget subscribes as a `SubagentManagerObserver` fanned out through `CompositeSubagentObserver`), not by inbound calls from the spawn tools.
 It runs if and only if a subagent is running, since a finished agent's line carries a fixed duration and the queued line is a count, so animating either would ask Pi to re-render its whole component tree for a byte-identical result.

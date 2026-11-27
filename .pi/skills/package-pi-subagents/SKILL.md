@@ -27,7 +27,8 @@ Extension tool names are therefore supported `tools:` entries — that is the do
 
 The core installs two child-facing tools of its own on top of that list, in every child regardless of what the agent declares: `ask_parent` (records the child's question, then it ends its turn) and `notify_parent` (one-way mid-run update, gated on the `midRunUpdates` setting).
 Every update joins the ledger of the run under way (`SubagentRun`, which owns that run's whole outcome), each entry remembering whether the announcement channel delivered it, so `runUpdates` renders what the run still **owes** a carrier.
-`NotificationManager` announces one only while nothing has claimed the outcome and the child is still running (`canAnnounceUpdate`), re-read at emit rather than replayed from enqueue — a message parked for the parent's turn can be claimed or outlived by its child in between.
+`NotificationManager` announces one only while nothing has claimed the run the update joined and that run is still active (`canAnnounceUpdate`), re-read at emit rather than replayed from enqueue — a message parked for the parent's turn can be claimed or outlived by its run in between, and a resume that replaced the run cannot vouch for it.
+Every withheld announcement holds the run it is about, and a completion whose run a resume replaced is dropped: the resume's own completion is the one owed.
 Every other update rides that run's outcome through the shared addenda tail (`renderRunUpdates`), including the completion nudge, so it reaches the parent exactly once and never as a prompt to steer a finished child.
 The lifecycle event fires either way.
 The boundary the `tools:` allowlist draws is **capability**, not provenance — neither tool reaches the filesystem, the shell, or the network, so a read-only agent that gains them stays read-only.
