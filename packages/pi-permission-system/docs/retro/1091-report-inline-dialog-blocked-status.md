@@ -50,3 +50,17 @@ The pi-permission-system suite went from 6675 to 6677 tests (the `it.each` over 
 - Pre-completion reviewer: WARN, then PASS on the delta.
   The WARN was correct: OSC 7501 reporting arrived in Pi 1.1.0, so Pi 1.0.x reports no status at all, not `working`; the `configuration.md` sentence was fixed and amended into the feat commit, and now also names the `PI_PROGRAM_STATUS=1` override.
   The plan's environment table still reads "Pi 1.0–1.4 → `working`"; that row should read 1.1–1.4, with 1.0 reporting nothing.
+
+## Stage: Sync (worktree) (2026-11-27T17:24:12Z)
+
+### Session summary
+
+`pnpm run lint` and `pnpm fallow dead-code` passed, and the branch is rebased onto local `main`.
+The plan's marker is `**Release:** ship independently`, so only `pi-permission-system` gets released, and nothing is deferred or filed.
+
+**Peer session transcript:** `/Users/chris/.pi/agent/sessions/--Users-chris-development-pi-pi-packages-worktrees-issue-1091--/2026-11-27T15-46-27-073Z_01a21daf-c07f-739c-9b43-d1757cb3cbc0.jsonl` — read with `read_session_file({ path: "<path>" })` for message-level verification at land/retro time.
+
+### Observations
+
+- The feat commit carries `Co-authored-by:` trailers for Timo Wagner and Adam Wehner; credit them in the close comment too.
+- The `build:` commit bumps the Pi dev pins to 1.6.1 and regenerates `pnpm-lock.yaml`; the peer range stays `>=1.0.0`.
