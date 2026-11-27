@@ -29,4 +29,24 @@ Filed [#1155] for an aborted run's late completion disposing its resume's worksp
 
 - `packages/pi-subagents/src/observation/notification.ts`: the three duration computations (`formatTaskNotification`, `buildNotificationDetails`, `buildEventData`) differ in fallback (`0` vs `Date.now()`); a shared helper was declined as a wrong abstraction.
 
+## Stage: Implementation — TDD (2026-11-27T16:59:59Z)
+
+### Session summary
+
+All eight plan steps landed as eight commits, from the `createTestRun` fixture through the three `fix:` steps and the docs, then two follow-ups from the reviewer's WARN (a `style:` blank-line removal and a `docs:` wording fix).
+The `pi-subagents` suite went from 2249 to 2268 tests; `check`, root `lint`, root `test`, and `fallow dead-code` are green, and `verify:public-types` passes unchanged.
+
+### Observations
+
+- Every named killing mutation reddened exactly the tests the plan predicted, including (ii) leaving the collected-then-resumed case green on consumption.
+  The step 2 `toPersistedRecord` mutation (`completedAt: outcome.startedAt`) also killed three pre-existing tests, so it does not isolate the new test; the new test's discriminating signal is the record/run disagreement, which the ISP types make a compile-time property.
+- The "gives way to the resumed run's completion" test stayed green during Red, as expected: the supersede-by-agent-id rule already held; mutation (iii) confirmed it pins the rule.
+- `notification.test.ts` gained a `withLatestRun(record)` tuple helper so inline `createTestSubagent(...)` acts stay one call (`sendCompletion(...withLatestRun(...))`) rather than gaining a variable each.
+- Step 5 also added `kind`-reading assertions through a typed `vi.fn<SubagentManagerObserver["onSubagentRunFinished"]>()`; the untyped `vi.fn()` assertions on `"initial"`/`"resume"` had escaped `tsc` and failed only at runtime.
+- `Subagent.claimed` lost its last `src/` reader in step 6, as planned; `fallow dead-code` did not flag it, so its test readers were left alone.
+- Deviation: the reviewer's WARN found `README.md` ("you hear it exactly once") and `docs/configuration.md` ("Either way you see it once") overstated delivery for a run resumed before collection; both now say a resume before collection supersedes that run's notice and its updates.
+  The plan had predicted the README unchanged because payload shapes did not change; the wording described delivery, not shape.
+- Pre-completion reviewer: round 1 WARN (README wording, a stray blank line in `subagent.ts`, retro entry pending), round 2 (delta) PASS.
+  The reviewer noted that a replaced, uncollected run's updates go from "exactly once" to "at most once", which is the operator's drop decision.
+
 [#1155]: https://github.com/gotgenes/pi-packages/issues/1155
