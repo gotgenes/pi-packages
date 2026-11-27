@@ -110,13 +110,13 @@ The PR list's `comments` and `reviews` fields carry the same for a PR.
 Record three more facts per item; apart from the author's own words, they are the only evidence of who wants it.
 
 1. **Reactions**: the positive ones in `reactionGroups` (`THUMBS_UP`, `HEART`, `HOORAY`, `ROCKET`).
-2. **Outside participants**: distinct commenters and reviewers other than the author, the maintainer, and bots.
+2. **Additional commenters**: distinct people other than the author, the maintainer, and bots who commented or reviewed.
    Filter bots (`copilot-pull-request-reviewer`, any `[bot]` login) before a count reaches a table or an `ask_user` briefing.
-3. **Author standing**: credited (a merged PR or a `Co-authored-by` trailer on `main`), returning (items here at least seven days apart), or on a first visit.
+3. **Author standing**: `credited` (a merged PR or a `Co-authored-by` trailer on `main`), `returning` (items here at least seven days apart), or `new` (a first visit).
    Count trailers, not merged PRs alone: this repo reimplements adopted work, so most adopted contributors have nothing merged.
    The history comes from `gh issue list --state all --limit 2000 --json author,createdAt` and its `gh pr list` twin; the credits come from `git log --format='%(trailers:key=Co-authored-by,valueonly)'`.
 
-A reaction or outside comment dated after the prior triage is fresh demand on an old item; say so where it moves a rank.
+A reaction, or a comment from an additional commenter, dated after the prior triage is fresh demand on an old item; say so where it moves a rank.
 The `reactionGroups` field carries counts only; `gh api repos/gotgenes/pi-packages/issues/<N>/reactions` lists who reacted and when.
 
 ## Step 3: Establish real CI state (do not infer it)
@@ -251,7 +251,7 @@ Score on four axes; keep them separate rather than collapsing them into one numb
 
 **Demand is a tiebreaker inside a severity band, not a fifth axis.**
 It orders two items of like severity and never lifts an enhancement over a bug or a security fix.
-It also audits a rationale: "no external demand" is a measured claim, so check an item's reactions and outside participants before recommending or executing a close that rests on it.
+It also audits a rationale: "no external demand" is a measured claim, so check an item's reactions and additional commenters before recommending or executing a close that rests on it.
 An author with several open items and no reply on any, or one who withdrew a PR unanswered, raises the response cost of everything of theirs still open.
 
 Hold **merit** and **urgency of response** apart, and label which one is driving a rank.
